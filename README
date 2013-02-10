@@ -1,0 +1,5 @@
+Setup:
+1. Set $STOCKFISH_DIR to stockfish directory (with git enabled)
+2. Set $FISHTEST_DIR to testing directory
+  a. Testing directory needs timed.sh in it
+  b. Also, needs cutechess-cli directory, from here: http://github.com/downloads/cutechess/cutechess/cutechess-cli-linux64.tar.gz
