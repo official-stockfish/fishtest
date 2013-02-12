@@ -8,7 +8,7 @@ if ip == None:
   ip = '54.235.120.254' 
 
 rabbit = 'amqp://tasks:tasks@' + ip + '/fishtest'
-celery = Celery('tasks', broker=rabbit, backend=rabbit)
+celery = Celery('tasks', broker=rabbit, backend=rabbit, include=['tasks.games'])
 celery.add_defaults({
   'CELERY_ROUTES': {
     'tasks.games.run_games': {'queue': 'games'}
