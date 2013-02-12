@@ -25,6 +25,21 @@ def run_games(base_branch, new_branch, num_games, tc):
   sh.cp('stockfish', testing_dir)
 
   sh.cd(testing_dir)
+  sh.rm('results.pgn')
 
   # Run cutechess
-  sh.Command('./timed.sh')(num_games, tc)
+  for line in sh.Command('./timed.sh')(num_games, tc, _iter=True):
+    # Parse line like this:
+    # Score of Stockfish  130212 64bit vs base: 1701 - 1715 - 6161  [0.499] 9577
+    if 'Score' in line:
+      chunks = line.split(':')
+      chunks = chunks[1].split()
+      state = {
+        'wins': chunks[0],
+        'losses': chunks[2],
+        'draws': chunks[4],
+      }
+
+      run_games.update_state(state='PROGRESS', meta=state)
+
+  return state
