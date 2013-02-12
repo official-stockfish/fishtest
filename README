@@ -4,3 +4,7 @@ Setup:
   a. Testing directory needs timed.sh in it
   b. Also, needs cutechess-cli directory, from here: http://github.com/downloads/cutechess/cutechess/cutechess-cli-linux64.tar.gz
 3. Install latest version of celery: http://pypi.python.org/pypi/celery/
+
+Launching celery:
+cd ~/fishtest
+celery worker --app=tasks -Q games -c 1
