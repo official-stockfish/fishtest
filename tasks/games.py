@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+
 from tasks.celery import celery
 import os
 import sh
