@@ -2,7 +2,7 @@ from __future__ import absolute_import
 
 from celery import Celery
 
-rabbit = 'amqp://task:tasks@54.235.120.254//'
+rabbit = 'amqp://tasks:tasks@54.235.120.254/fishtest'
 celery = Celery('tasks', broker=rabbit, backend=rabbit)
 celery.add_defaults({
   'CELERY_ROUTES': {
