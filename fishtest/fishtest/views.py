@@ -1,6 +1,7 @@
 import os
 import sys
 from pyramid.view import view_config
+from pyramid.httpexceptions import HTTPFound
 
 # For tasks
 sys.path.append(os.path.expanduser('~/fishtest'))

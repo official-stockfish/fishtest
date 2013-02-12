@@ -1,8 +1,13 @@
 from __future__ import absolute_import
+import os
 
 from celery import Celery
 
-rabbit = 'amqp://tasks:tasks@54.235.120.254/fishtest'
+ip = os.getenv('FISHTEST_IP')
+if ip == None:
+  ip = '54.235.120.254' 
+
+rabbit = 'amqp://tasks:tasks@' + ip + '/fishtest'
 celery = Celery('tasks', broker=rabbit, backend=rabbit)
 celery.add_defaults({
   'CELERY_ROUTES': {
