@@ -138,7 +138,7 @@ def tests(request):
   failed = []
   for task, info in tasks.iteritems():
     if info['state'] == 'PENDING':
-      waiting.append('---')
+      waiting.append(format_name(tasks_db[task]['args']))
     elif info['state'] == 'FAILURE' and info['kwargs'] != None:
       failed.append('---')
 
@@ -150,7 +150,10 @@ def tests(request):
     if 'status' in run and 'result' in run['status']:
       run['results'] = format_results(run['status']['result'])
     elif 'raw' in run and 'result' in run['raw']:
-      run['results'] = format_results(ast.literal_eval(run['raw']['result']))
+      try:
+        run['results'] = format_results(ast.literal_eval(run['raw']['result']))
+      except:
+        pass 
 
     run['name'] = format_name(run['args'])
 
