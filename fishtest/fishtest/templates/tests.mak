@@ -8,9 +8,9 @@
   %if len(jobs) == 0:
     None
   %else:
-    Running
     %for job in jobs:
-      <a href="${job['url']}">${job['name']} (${job['status']})</a>
+      ${job['name']}
+      <pre>${job['results']}</pre>
     %endfor
   %endif
   </li>
@@ -32,6 +32,6 @@
 
 <h3>Recent Runs</h3>
 %for run in runs:
-  <h4>${run['args']['new_branch']} vs ${run['args']['base_branch']} - ${run['args']['num_games']} @ ${run['args']['tc']}</h4>
+  <h4>${run['name']}</h4>
   <pre>${run['results']}</pre>
 %endfor

@@ -55,6 +55,29 @@ def tests_run(request):
     return HTTPFound(location=request.route_url('tests'))
   return {}
 
+def elo(win_ratio):
+  return 400 * math.log10(win_ratio / (1 - win_ratio))
+
+def format_results(results):
+  wins = float(results['wins'])
+  losses = float(results['losses'])
+  draws = float(results['draws'])
+  total = wins + draws + losses
+  if total < 2:
+    return 'Not enough games'
+  win_ratio = (wins + (draws / 2)) / total
+  loss_ratio = 1 - win_ratio
+  draw_ratio = draws / total
+  denom99 = 2.58 * math.sqrt((win_ratio * loss_ratio) / (total - 1))
+  denom95 = 1.96 * math.sqrt((win_ratio * loss_ratio) / (total - 1))
+  elo_win = elo(win_ratio)
+  result = 'ELO: %.2f +- 99%%: %.2f 95%%: %.2f\n' % (elo_win, elo(win_ratio + denom99) - elo_win, elo(win_ratio + denom95) - elo_win)
+  result += 'Wins: %d Losses: %d Draws: %d Total: %d' % (int(wins), int(losses), int(draws), int(total))
+  return result
+
+def format_name(args):
+  return '%s vs %s - %s @ %s' % (args['new_branch'], args['base_branch'], args['num_games'], args['tc'])
+
 def get_celery_stats(tasks_db):
   machines = {}
   waiting = []
@@ -87,15 +110,16 @@ def get_celery_stats(tasks_db):
 
         if status == None:
           continue
+        results = 'Pending...'
         if job_result.result != None:
           status['result'] = job_result.result
+          results = format_results(status['result'])
 
         tasks_db[task['id']]['status'] = status
 
         machine_tasks.append({
-          'name': '---',
-          'url': '',
-          'status': status
+          'name': format_name(tasks_db[task['id']]['args']),
+          'results': results,
         })
 
       machines[worker] = machine_tasks
@@ -104,26 +128,6 @@ def get_celery_stats(tasks_db):
 
   transaction.get().commit()
   return (machines, tasks)
-
-def elo(win_ratio):
-  return 400 * math.log10(win_ratio / (1 - win_ratio))
-
-def format_results(results):
-  wins = float(results['wins'])
-  losses = float(results['losses'])
-  draws = float(results['draws'])
-  total = wins + draws + losses
-  if total < 2:
-    return 'Not enough games'
-  win_ratio = (wins + (draws / 2)) / total
-  loss_ratio = 1 - win_ratio
-  draw_ratio = draws / total
-  denom99 = 2.58 * math.sqrt((win_ratio * loss_ratio) / (total - 1))
-  denom95 = 1.96 * math.sqrt((win_ratio * loss_ratio) / (total - 1))
-  elo_win = elo(win_ratio)
-  result = 'ELO: %.2f +- 99%%: %.2f 95%%: %.2f\n' % (elo_win, elo(win_ratio + denom99) - elo_win, elo(win_ratio + denom95) - elo_win)
-  result += 'Wins: %d Losses: %d Draws: %d Total: %d' % (int(wins), int(losses), int(draws), int(total))
-  return result
 
 @view_config(route_name='tests', renderer='tests.mak')
 def tests(request):
@@ -146,8 +150,9 @@ def tests(request):
     if 'status' in run and 'result' in run['status']:
       run['results'] = format_results(run['status']['result'])
     elif 'raw' in run and 'result' in run['raw']:
-      sys.stderr.write(run['raw']['result'])
       run['results'] = format_results(ast.literal_eval(run['raw']['result']))
+
+    run['name'] = format_name(run['args'])
 
   return {
     'machines': machines,
