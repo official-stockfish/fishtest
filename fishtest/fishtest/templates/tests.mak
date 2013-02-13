@@ -32,7 +32,6 @@
 
 <h3>Recent Runs</h3>
 %for run in runs:
-  <h4>...</h4>
-  <div>Results: </div>
-  <div>Parameters: ${run['args']}</div>
+  <h4>${run['args']['new_branch']} vs ${run['args']['base_branch']} - ${run['args']['num_games']} @ ${run['args']['tc']}</h4>
+  <pre>${run['results']}</pre>
 %endfor

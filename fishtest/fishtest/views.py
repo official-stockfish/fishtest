@@ -1,4 +1,6 @@
+import ast
 import datetime
+import math
 import transaction
 import os
 import persistent, persistent.dict, persistent.list
@@ -65,7 +67,6 @@ def get_celery_stats(tasks_db):
     for id, task in tasks.iteritems():
       if id in tasks_db:
         tasks_db[id]['raw'] = task
-    transaction.get().commit()
 
     for worker, info in workers.iteritems():
       if not info['status']:
@@ -89,6 +90,8 @@ def get_celery_stats(tasks_db):
         if job_result.result != None:
           status['result'] = job_result.result
 
+        tasks_db[task['id']]['status'] = status
+
         machine_tasks.append({
           'name': '---',
           'url': '',
@@ -99,12 +102,29 @@ def get_celery_stats(tasks_db):
   except HTTPError as e:
     pass
 
+  transaction.get().commit()
   return (machines, tasks)
 
-class TestRun(persistent.Persistent):
-  def __init__(self, id):
-    self.id = id
-  
+def elo(win_ratio):
+  return 400 * math.log10(win_ratio / (1 - win_ratio))
+
+def format_results(results):
+  wins = float(results['wins'])
+  losses = float(results['losses'])
+  draws = float(results['draws'])
+  total = wins + draws + losses
+  if total < 2:
+    return 'Not enough games'
+  win_ratio = (wins + (draws / 2)) / total
+  loss_ratio = 1 - win_ratio
+  draw_ratio = draws / total
+  denom99 = 2.58 * math.sqrt((win_ratio * loss_ratio) / (total - 1))
+  denom95 = 1.96 * math.sqrt((win_ratio * loss_ratio) / (total - 1))
+  elo_win = elo(win_ratio)
+  result = 'ELO: %.2f +- 99%%: %.2f 95%%: %.2f\n' % (elo_win, elo(win_ratio + denom99) - elo_win, elo(win_ratio + denom95) - elo_win)
+  result += 'Wins: %d Losses: %d Draws: %d Total: %d' % (int(wins), int(losses), int(draws), int(total))
+  return result
+
 @view_config(route_name='tests', renderer='tests.mak')
 def tests(request):
   tasks_db = get_tasks_db()
@@ -119,7 +139,15 @@ def tests(request):
       failed.append('---')
 
   runs = [t for t in tasks_db.values()]
-  runs = sorted(runs, key=lambda k: k['start_time'])
+  runs = sorted(runs, key=lambda k: k['start_time'], reverse=True)
+
+  for run in runs:
+    run['results'] = 'Pending...'
+    if 'status' in run and 'result' in run['status']:
+      run['results'] = format_results(run['status']['result'])
+    elif 'raw' in run and 'result' in run['raw']:
+      sys.stderr.write(run['raw']['result'])
+      run['results'] = format_results(ast.literal_eval(run['raw']['result']))
 
   return {
     'machines': machines,
