@@ -1,6 +1,7 @@
+import datetime
 import transaction
 import os
-import persistent
+import persistent, persistent.dict, persistent.list
 import sys
 import ujson
 from pyramid.view import view_config
@@ -22,6 +23,12 @@ def get_db():
   connection = db.open()
   return connection.root()
 
+def get_tasks_db():
+  db = get_db()
+  if 'tasks' not in db:
+    db['tasks'] = persistent.dict.PersistentDict()
+  return db['tasks']
+
 @view_config(route_name='home', renderer='mainpage.mak')
 def mainpage(request):
   return {'project': 'fishtest'}
@@ -29,21 +36,36 @@ def mainpage(request):
 @view_config(route_name='tests_run', renderer='tests_run.mak')
 def tests_run(request):
   if 'base-branch' in request.POST:
-    run_games.delay(base_branch=request.POST['base-branch'],
-                    new_branch=request.POST['test-branch'],
-                    num_games=request.POST['num-games'],
-                    tc=request.POST['tc'])
+    args = {
+      'base_branch': request.POST['base-branch'],
+      'new_branch': request.POST['test-branch'],
+      'num_games': request.POST['num-games'],
+      'tc': request.POST['tc'],
+    }
+    new_task = run_games.delay(**args)
+
+    tasks_db = get_tasks_db()
+    tasks_db[new_task.id] = {'args': args,
+                             'start_time': datetime.datetime.now() }
+    transaction.get().commit()
+
     request.session.flash('Started test run!')
     return HTTPFound(location=request.route_url('tests'))
   return {}
 
-def get_celery_stats():
+def get_celery_stats(tasks_db):
   machines = {}
   waiting = []
 
   try:
     workers = ujson.loads(urlopen(FLOWER_URL + '/api/workers').read())
     tasks = ujson.loads(urlopen(FLOWER_URL + '/api/tasks').read())
+
+    # Update task states
+    for id, task in tasks.iteritems():
+      if id in tasks_db:
+        tasks_db[id]['raw'] = task
+    transaction.get().commit()
 
     for worker, info in workers.iteritems():
       if not info['status']:
@@ -55,12 +77,15 @@ def get_celery_stats():
 
         job_result = celery.AsyncResult(task['id'])
         # Workaround celery throwing exception accessing task status.
-        for retry in xrange(5):
+        status = None
+        for _ in xrange(5):
           try:
             status = {'status': job_result.status}
           except:
             pass
 
+        if status == None:
+          continue
         if job_result.result != None:
           status['result'] = job_result.result
 
@@ -82,7 +107,9 @@ class TestRun(persistent.Persistent):
   
 @view_config(route_name='tests', renderer='tests.mak')
 def tests(request):
-  machines, tasks = get_celery_stats()
+  tasks_db = get_tasks_db()
+
+  machines, tasks = get_celery_stats(tasks_db)
   waiting = []
   failed = []
   for task, info in tasks.iteritems():
@@ -91,10 +118,12 @@ def tests(request):
     elif info['state'] == 'FAILURE' and info['kwargs'] != None:
       failed.append('---')
 
-  db = get_db()
+  runs = [t for t in tasks_db.values()]
+  runs = sorted(runs, key=lambda k: k['start_time'])
 
   return {
     'machines': machines,
     'waiting': waiting,
     'failed': failed,
+    'runs': runs 
   }

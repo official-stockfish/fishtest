@@ -29,3 +29,10 @@
   <li>None</li>
 %endif
 </ul>
+
+<h3>Recent Runs</h3>
+%for run in runs:
+  <h4>...</h4>
+  <div>Results: </div>
+  <div>Parameters: ${run['args']}</div>
+%endfor
