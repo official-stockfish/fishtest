@@ -1,9 +1,13 @@
+import transaction
 import os
+import persistent
 import sys
 import ujson
 from pyramid.view import view_config
 from pyramid.httpexceptions import HTTPFound
 from urllib2 import urlopen, HTTPError
+from ZODB.FileStorage import FileStorage
+from ZODB.DB import DB
 
 # For tasks
 sys.path.append(os.path.expanduser('~/fishtest'))
@@ -11,6 +15,12 @@ from tasks.games import run_games
 from tasks.celery import celery
 
 FLOWER_URL = 'http://localhost:5555'
+
+def get_db():
+  storage = FileStorage(os.path.expanduser('~/testruns.db'))
+  db = DB(storage)
+  connection = db.open()
+  return connection.root()
 
 @view_config(route_name='home', renderer='mainpage.mak')
 def mainpage(request):
@@ -43,11 +53,14 @@ def get_celery_stats():
         if task['id'] in tasks and tasks[task['id']]['state'] == 'REVOKED':
           continue
 
-        try:
-          job_result = celery.AsyncResult(task['id'])
-        except:
-          job_result = celery.AsyncResult(task['id'])
-        status = {'status': job_result.status}
+        job_result = celery.AsyncResult(task['id'])
+        # Workaround celery throwing exception accessing task status.
+        for retry in xrange(5):
+          try:
+            status = {'status': job_result.status}
+          except:
+            pass
+
         if job_result.result != None:
           status['result'] = job_result.result
 
@@ -63,6 +76,10 @@ def get_celery_stats():
 
   return (machines, tasks)
 
+class TestRun(persistent.Persistent):
+  def __init__(self, id):
+    self.id = id
+  
 @view_config(route_name='tests', renderer='tests.mak')
 def tests(request):
   machines, tasks = get_celery_stats()
@@ -73,6 +90,8 @@ def tests(request):
       waiting.append('---')
     elif info['state'] == 'FAILURE' and info['kwargs'] != None:
       failed.append('---')
+
+  db = get_db()
 
   return {
     'machines': machines,
