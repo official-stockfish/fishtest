@@ -10,6 +10,7 @@ def main(global_config, **settings):
   config.add_static_view('js', 'static/js', cache_max_age=3600)
   config.add_static_view('img', 'static/img', cache_max_age=3600)
   config.add_route('home', '/')
+  config.add_route('tests', '/tests')
   config.add_route('tests_run', '/tests/run')
   config.scan()
   return config.make_wsgi_app()
