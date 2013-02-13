@@ -43,7 +43,10 @@ def get_celery_stats():
         if task['id'] in tasks and tasks[task['id']]['state'] == 'REVOKED':
           continue
 
-        job_result = celery.AsyncResult(task['id'])
+        try:
+          job_result = celery.AsyncResult(task['id'])
+        except:
+          job_result = celery.AsyncResult(task['id'])
         status = {'status': job_result.status}
         if job_result.result != None:
           status['result'] = job_result.result

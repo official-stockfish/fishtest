@@ -10,7 +10,7 @@
   %else:
     Running
     %for job in jobs:
-      <a href="${job['url']}">$job['name']</a>
+      <a href="${job['url']}">${job['name']} (${job['status']})</a>
     %endfor
   %endif
   </li>
