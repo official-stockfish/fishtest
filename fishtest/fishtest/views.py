@@ -46,10 +46,10 @@ def tests_run(request):
     }
     new_task = run_games.delay(**args)
 
-    tasks_db = get_tasks_db()
-    tasks_db[new_task.id] = {'args': args,
-                             'start_time': datetime.datetime.now() }
-    transaction.get().commit()
+    request.rundb.new_run(base_tag=args['base_branch'],
+                          new_tag=args['new_tag'],
+                          num_games=args['num_games'],
+                          tc=args['tc'])
 
     request.session.flash('Started test run!')
     return HTTPFound(location=request.route_url('tests'))
@@ -64,7 +64,7 @@ def format_results(results):
   draws = float(results['draws'])
   total = wins + draws + losses
   if total < 2:
-    return 'Not enough games'
+    return 'Pending...'
   win_ratio = (wins + (draws / 2)) / total
   loss_ratio = 1 - win_ratio
   draw_ratio = draws / total
@@ -76,20 +76,17 @@ def format_results(results):
   return result
 
 def format_name(args):
-  return '%s vs %s - %s @ %s' % (args['new_branch'], args['base_branch'], args['num_games'], args['tc'])
+  if 'base_branch' in args:
+    return '%s vs %s - %d @ %s' % (args['new_branch'], args['base_branch'], args['num_games'], args['tc'])
+  return '%s vs %s - %d @ %s' % (args['new_tag'], args['base_tag'], args['num_games'], args['tc'])
 
-def get_celery_stats(tasks_db):
+def get_celery_stats():
   machines = {}
   waiting = []
 
   try:
     workers = ujson.loads(urlopen(FLOWER_URL + '/api/workers').read())
     tasks = ujson.loads(urlopen(FLOWER_URL + '/api/tasks').read())
-
-    # Update task states
-    for id, task in tasks.iteritems():
-      if id in tasks_db:
-        tasks_db[id]['raw'] = task
 
     for worker, info in workers.iteritems():
       if not info['status']:
@@ -110,15 +107,13 @@ def get_celery_stats(tasks_db):
 
         if status == None:
           continue
+
         results = 'Pending...'
         if job_result.result != None:
-          status['result'] = job_result.result
-          results = format_results(status['result'])
-
-        tasks_db[task['id']]['status'] = status
+          results = format_results(job_result.result)
 
         machine_tasks.append({
-          'name': format_name(tasks_db[task['id']]['args']),
+          'name': '--', #format_name(tasks_db[task['id']]['args']),
           'results': results,
         })
 
@@ -131,30 +126,18 @@ def get_celery_stats(tasks_db):
 
 @view_config(route_name='tests', renderer='tests.mak')
 def tests(request):
-  tasks_db = get_tasks_db()
-
-  machines, tasks = get_celery_stats(tasks_db)
+  machines, tasks = get_celery_stats()
   waiting = []
   failed = []
   for task, info in tasks.iteritems():
     if info['state'] == 'PENDING':
-      waiting.append(format_name(tasks_db[task]['args']))
+      waiting.append('--') #format_name(tasks_db[task]['args']))
     elif info['state'] == 'FAILURE' and info['kwargs'] != None:
       failed.append('---')
 
-  runs = [t for t in tasks_db.values()]
-  runs = sorted(runs, key=lambda k: k['start_time'], reverse=True)
-
+  runs = request.rundb.get_runs()
   for run in runs:
-    run['results'] = 'Pending...'
-    if 'status' in run and 'result' in run['status']:
-      run['results'] = format_results(run['status']['result'])
-    elif 'raw' in run and 'result' in run['raw']:
-      try:
-        run['results'] = format_results(ast.literal_eval(run['raw']['result']))
-      except:
-        pass 
-
+    run['results'] = format_results(run['results'])
     run['name'] = format_name(run['args'])
 
   return {
