@@ -19,18 +19,6 @@ from tasks.celery import celery
 
 FLOWER_URL = 'http://localhost:5555'
 
-def get_db():
-  storage = FileStorage(os.path.expanduser('~/testruns.db'))
-  db = DB(storage)
-  connection = db.open()
-  return connection.root()
-
-def get_tasks_db():
-  db = get_db()
-  if 'tasks' not in db:
-    db['tasks'] = persistent.dict.PersistentDict()
-  return db['tasks']
-
 @view_config(route_name='home', renderer='mainpage.mak')
 def mainpage(request):
   return {'project': 'fishtest'}
@@ -127,22 +115,32 @@ def get_celery_stats():
 @view_config(route_name='tests', renderer='tests.mak')
 def tests(request):
   machines, tasks = get_celery_stats()
-  waiting = []
-  failed = []
-  for task, info in tasks.iteritems():
-    if info['state'] == 'PENDING':
-      waiting.append('--') #format_name(tasks_db[task]['args']))
-    elif info['state'] == 'FAILURE' and info['kwargs'] != None:
-      failed.append('---')
+  waiting_tasks = []
+  failed_tasks = []
 
   runs = request.rundb.get_runs()
   for run in runs:
     run['results'] = format_results(run['results'])
     run['name'] = format_name(run['args'])
 
+    waiting = False
+    failed = False
+    for worker in run['worker_results']:
+      if worker['celery_id'] in tasks:
+        task = tasks[worker['celery_id']]
+        if task['state'] == 'PENDING':
+          waiting = True
+        elif task['state'] == 'FAILED':
+          failed = True
+
+    if waiting:
+      waiting_tasks.append(run['name'])
+    if failed:
+      failed_tasks.append(run['name'])
+
   return {
     'machines': machines,
-    'waiting': waiting,
-    'failed': failed,
+    'waiting': waiting_tasks,
+    'failed': failed_tasks,
     'runs': runs 
   }
