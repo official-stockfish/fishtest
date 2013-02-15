@@ -64,8 +64,6 @@ def format_results(results):
   return result
 
 def format_name(args):
-  if 'base_branch' in args:
-    return '%s vs %s - %d @ %s' % (args['new_branch'], args['base_branch'], args['num_games'], args['tc'])
   return '%s vs %s - %d @ %s' % (args['new_tag'], args['base_tag'], args['num_games'], args['tc'])
 
 def get_celery_stats():
