@@ -1,3 +1,4 @@
+import ast
 import datetime
 import math
 import os
@@ -124,6 +125,9 @@ def tests(request):
           waiting = True
         elif task['state'] == 'FAILED':
           failed = True
+        # TODO: remove this once we have tasks logging their w/l/d to mongo directly
+        elif task['state'] == 'SUCCESS':
+          run['results'] = format_results(ast.literal_eval(task['result']))
 
     if waiting:
       waiting_tasks.append(run['name'])
