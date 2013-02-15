@@ -15,12 +15,17 @@ class RunDb:
               resolved_new='',
               start_time=datetime.datetime.now()):
     worker_results = []
-    while num_games > 0:
-      chunk_size = min(self.chunk_size, num_games)
+    remaining = num_games
+    while remaining > 0:
+      chunk_size = min(self.chunk_size, remaining)
       worker_results.append({
         'chunk_size': chunk_size,
       })
-      num_games -= chunk_size
+      remaining -= chunk_size
+
+    # TODO: temporary hack
+    worker_results = [{'chunk_size': num_games}]
+    # END TODO
 
     id = self.runs.insert({
       'args': {

@@ -25,7 +25,7 @@ def tests_run(request):
     args = {
       'base_branch': request.POST['base-branch'],
       'new_branch': request.POST['test-branch'],
-      'num_games': request.POST['num-games'],
+      'num_games': int(request.POST['num-games']),
       'tc': request.POST['tc'],
     }
 
