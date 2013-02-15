@@ -1,16 +1,11 @@
-import ast
 import datetime
 import math
-import transaction
 import os
-import persistent, persistent.dict, persistent.list
 import sys
 import ujson
 from pyramid.view import view_config
 from pyramid.httpexceptions import HTTPFound
 from urllib2 import urlopen, HTTPError
-from ZODB.FileStorage import FileStorage
-from ZODB.DB import DB
 
 # For tasks
 sys.path.append(os.path.expanduser('~/fishtest'))
@@ -107,7 +102,6 @@ def get_celery_stats():
   except HTTPError as e:
     pass
 
-  transaction.get().commit()
   return (machines, tasks)
 
 @view_config(route_name='tests', renderer='tests.mak')
