@@ -113,7 +113,7 @@ def tests(request):
 
   runs = request.rundb.get_runs()
   for run in runs:
-    run['results'] = format_results(run['results'])
+    run['results'] = format_results(request.rundb.get_results(run))
     run['name'] = format_name(run['args'])
 
     waiting = False
