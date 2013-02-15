@@ -28,12 +28,19 @@ def tests_run(request):
       'num_games': request.POST['num-games'],
       'tc': request.POST['tc'],
     }
+
+    run_id = request.rundb.new_run(base_tag=args['base_branch'],
+                                   new_tag=args['new_branch'],
+                                   num_games=args['num_games'],
+                                   tc=args['tc'])
+
     new_task = run_games.delay(**args)
 
-    request.rundb.new_run(base_tag=args['base_branch'],
-                          new_tag=args['new_tag'],
-                          num_games=args['num_games'],
-                          tc=args['tc'])
+    # TODO: Fix this up once we convert to chunked runs
+    new_run = request.rundb.runs.find_one(run_id)
+    new_run['worker_results'][0]['celery_id'] = new_task.id
+    request.rundb.runs.save(new_run)
+    # End TODO
 
     request.session.flash('Started test run!')
     return HTTPFound(location=request.route_url('tests'))
