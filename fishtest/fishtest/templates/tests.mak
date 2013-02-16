@@ -23,7 +23,7 @@
 <h3>Waiting</h3>
 <ul>
 %for job in waiting:
-  <li>${job}</li>
+  <li>${job | n}</li>
 %endfor
 %if len(waiting) == 0:
   <li>None</li>
@@ -32,6 +32,6 @@
 
 <h3>Recent Runs</h3>
 %for run in runs:
-  <h4>${run['name']}</h4>
+  <h4>${run['name'] | n}</h4>
   <pre>${run['results']}</pre>
 %endfor

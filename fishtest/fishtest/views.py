@@ -24,7 +24,7 @@ def get_sha(branch):
   """Resolves the git branch (ie. master, or glinscott/master) to sha commit"""
   sh.cd(os.path.expanduser('~/stockfish'))
   sh.git.fetch(branch.split('/')[0])
-  return sh.git.log(branch, n=1, no_color=True, pretty='format:%H').split()[1]
+  return sh.git.log(branch, n=1, no_color=True, pretty='format:%H a').split()[1]
 
 @view_config(route_name='tests_run', renderer='tests_run.mak')
 def tests_run(request):
@@ -76,7 +76,16 @@ def format_results(results):
   return result
 
 def format_name(args):
-  return '%s vs %s - %d @ %s' % (args['new_tag'], args['base_tag'], args['num_games'], args['tc'])
+  repo = 'https://github.com/mcostalba/FishCooking'
+  def format_sha(sha):
+    return '<a href="%s/commit/%s">%s</a>' % (repo, sha, sha[:7])
+
+  new_sha = format_sha(args['resolved_new'])
+  base_sha = format_sha(args['resolved_base'])
+
+  diff = '<a href="%s/compare/%s...%s">Diff</a>' % (repo, args['resolved_base'][:7], args['resolved_new'][:7])
+  
+  return '%s(%s) vs %s(%s) - %d @ %s - %s' % (args['new_tag'], new_sha, args['base_tag'], base_sha, args['num_games'], args['tc'], diff)
 
 def get_celery_stats():
   machines = {}
