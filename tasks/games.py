@@ -37,8 +37,10 @@ def run_games(run_id, run_chunk):
   sh.cd(testing_dir)
   sh.rm('-f', 'results.pgn')
 
+  state = None
+
   # Run cutechess
-  for line in sh.Command('./timed.sh')(run['worker_results'][run_chunk]['chunk_size'], run['args']['tc'], _iter=True):
+  def process_output(line):
     # Parse line like this:
     # Score of Stockfish  130212 64bit vs base: 1701 - 1715 - 6161  [0.499] 9577
     if 'Score' in line:
@@ -52,6 +54,7 @@ def run_games(run_id, run_chunk):
 
       rundb.update_run_results(run_id, run_chunk, **state)
 
+  sh.Command('./timed.sh')(run['worker_results'][run_chunk]['chunk_size'], run['args']['tc'], _out=process_output).wait()
   sh.rm('-rf', working_dir)
 
   return state
