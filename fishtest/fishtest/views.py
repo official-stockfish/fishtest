@@ -101,7 +101,7 @@ def get_celery_stats():
     for worker, info in workers.iteritems():
       if not info['status']:
         continue
-      machines[worker] = len(info['running_tasks'])
+      machines[worker] = 'Idle' if len(info['running_tasks']) == 0 else 'Running tasks'
   except HTTPError as e:
     pass
 

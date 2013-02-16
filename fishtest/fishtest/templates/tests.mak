@@ -4,7 +4,7 @@
 <h3>Active</h3>
 <ul>
 %for machine, jobs in machines.iteritems():
-  <li>Machine: ${machine} - Running: ${jobs} chunks</li>
+  <li>Machine: ${machine} - ${jobs}</li>
 %endfor
 %if len(machines) == 0:
   <li>No machines running</li>
