@@ -35,6 +35,7 @@ def run_games(run_id, run_chunk):
   sh.cp('stockfish', testing_dir)
 
   sh.cd(testing_dir)
+  sh.rm('-f', 'results.pgn')
 
   # Run cutechess
   for line in sh.Command('./timed.sh')(run['worker_results'][run_chunk]['chunk_size'], run['args']['tc'], _iter=True):
