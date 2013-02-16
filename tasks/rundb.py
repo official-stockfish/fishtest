@@ -1,10 +1,13 @@
-import datetime
+import datetime, os
 from bson.objectid import ObjectId
 from pymongo import MongoClient, ASCENDING, DESCENDING
 
 class RunDb:
   def __init__(self):
-    self.conn = MongoClient()
+    ip = os.getenv('FISHTEST_IP')
+    if ip == None:
+      ip = '54.235.120.254' 
+    self.conn = MongoClient(ip)
     self.db = self.conn['fishtest']
     self.runs = self.db['runs']
 

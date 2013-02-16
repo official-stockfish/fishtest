@@ -23,7 +23,7 @@ def mainpage(request):
 def get_sha(branch):
   """Resolves the git branch (ie. master, or glinscott/master) to sha commit"""
   sh.cd(os.path.expanduser('~/stockfish'))
-  sh.git.fetch()
+  sh.git.fetch(branch.split('/')[0])
   return sh.git.log(branch, n=1, no_color=True, pretty='format:%H').split()[1]
 
 @view_config(route_name='tests_run', renderer='tests_run.mak')
