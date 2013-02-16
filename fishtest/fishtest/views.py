@@ -2,6 +2,7 @@ import ast
 import datetime
 import math
 import os
+import sh
 import sys
 import ujson
 from pyramid.view import view_config
@@ -19,6 +20,14 @@ FLOWER_URL = 'http://localhost:5555'
 def mainpage(request):
   return {'project': 'fishtest'}
 
+def get_sha(branch):
+  """Resolves the git branch (ie. master, or glinscott/master) to sha commit"""
+  sh.pushd(os.path.expanduser('~/stockfish'))
+  sh.git.fetch()
+  sha = sh.git.log(branch, n=1, no_color=True, pretty='format:%H').split()[1]
+  sh.popd()
+  return sha
+
 @view_config(route_name='tests_run', renderer='tests_run.mak')
 def tests_run(request):
   if 'base-branch' in request.POST:
@@ -32,7 +41,9 @@ def tests_run(request):
     run_id = request.rundb.new_run(base_tag=args['base_branch'],
                                    new_tag=args['new_branch'],
                                    num_games=args['num_games'],
-                                   tc=args['tc'])
+                                   tc=args['tc'],
+                                   resolved_base=get_sha(args['base_branch']),
+                                   resolved_new=get_sha(args['new_branch']))
 
     new_task = run_games.delay(**args)
 
