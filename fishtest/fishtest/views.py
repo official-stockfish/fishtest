@@ -124,7 +124,7 @@ def tests(request):
         task = tasks[worker['celery_id']]
         if task['state'] == 'PENDING':
           waiting = True
-        elif task['state'] == 'FAILED':
+        elif task['state'] == 'FAILURE':
           failed = True
         elif task['state'] == 'STARTED':
           active = True

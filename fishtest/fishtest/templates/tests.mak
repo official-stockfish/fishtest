@@ -28,6 +28,15 @@
 %endif
 </ul>
 
+%if len(failed) > 0:
+<h3>Failed</h3>
+<ul>
+%for job in failed:
+  <li>${job | n}</li>
+%endfor
+</ul>
+%endif
+
 <h3>Finished</h3>
 %for run in runs:
   <h4>${run['name'] | n}</h4>
