@@ -13,11 +13,16 @@ def run_games(run_id, run_chunk):
 
   # Create temporary directory, and copy everything in.  This is to allow multiple
   # tasks to run at once
-  working_dir = tempfile.mkdtemp()
-  stockfish_dir = os.path.join(working_dir, 'stockfish')
-  testing_dir = os.path.join(working_dir, 'testing')
-  sh.cp('-r', os.getenv('STOCKFISH_DIR'), stockfish_dir)
-  sh.cp('-r', os.getenv('FISHTEST_DIR'), testing_dir)
+  use_temp_dir = False
+  if use_temp_dir:
+    working_dir = tempfile.mkdtemp()
+    stockfish_dir = os.path.join(working_dir, 'stockfish')
+    testing_dir = os.path.join(working_dir, 'testing')
+    sh.cp('-r', os.getenv('STOCKFISH_DIR'), stockfish_dir)
+    sh.cp('-r', os.getenv('FISHTEST_DIR'), testing_dir)
+  else:
+    stockfish_dir = os.getenv('STOCKFISH_DIR')
+    testing_dir = os.getenv('FISHTEST_DIR')
 
   sh.cd(os.path.join(stockfish_dir, 'src'))
   sh.git.fetch()
@@ -39,7 +44,6 @@ def run_games(run_id, run_chunk):
 
   state = None
 
-  # Run cutechess
   def process_output(line):
     # Parse line like this:
     # Score of Stockfish  130212 64bit vs base: 1701 - 1715 - 6161  [0.499] 9577
@@ -54,7 +58,10 @@ def run_games(run_id, run_chunk):
 
       rundb.update_run_results(run_id, run_chunk, **state)
 
+  # Run cutechess
   sh.Command('./timed.sh')(run['worker_results'][run_chunk]['chunk_size'], run['args']['tc'], _out=process_output).wait()
-  sh.rm('-rf', working_dir)
+
+  if use_temp_dir:
+    sh.rm('-rf', working_dir)
 
   return state
