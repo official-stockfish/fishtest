@@ -22,11 +22,9 @@ def mainpage(request):
 
 def get_sha(branch):
   """Resolves the git branch (ie. master, or glinscott/master) to sha commit"""
-  sh.pushd(os.path.expanduser('~/stockfish'))
+  sh.cd(os.path.expanduser('~/stockfish'))
   sh.git.fetch()
-  sha = sh.git.log(branch, n=1, no_color=True, pretty='format:%H').split()[1]
-  sh.popd()
-  return sha
+  return sh.git.log(branch, n=1, no_color=True, pretty='format:%H').split()[1]
 
 @view_config(route_name='tests_run', renderer='tests_run.mak')
 def tests_run(request):
