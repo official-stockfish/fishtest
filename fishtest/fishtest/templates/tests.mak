@@ -30,7 +30,6 @@
 
 <h3>Finished</h3>
 %for run in runs:
-  %if run['results'] != 'Pending...'
-    <h4>${run['name'] | n}</h4>
-    <pre>${run['results']}</pre>
+  <h4>${run['name'] | n}</h4>
+  <pre>${run['results']}</pre>
 %endfor
