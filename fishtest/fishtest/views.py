@@ -23,33 +23,29 @@ def mainpage(request):
 def get_sha(branch):
   """Resolves the git branch (ie. master, or glinscott/master) to sha commit"""
   sh.cd(os.path.expanduser('~/stockfish'))
+  # Default to origin branch
+  if '/' not in branch:
+    branch = 'origin/' + branch
   sh.git.fetch(branch.split('/')[0])
   return sh.git.log(branch, n=1, no_color=True, pretty='format:%H a').split()[1]
 
 @view_config(route_name='tests_run', renderer='tests_run.mak')
 def tests_run(request):
   if 'base-branch' in request.POST:
-    args = {
-      'base_branch': request.POST['base-branch'],
-      'new_branch': request.POST['test-branch'],
-      'num_games': int(request.POST['num-games']),
-      'tc': request.POST['tc'],
-    }
+    run_id = request.rundb.new_run(base_tag=request.POST['base-branch'],
+                                   new_tag=request.POST['test-branch'],
+                                   num_games=int(request.POST['num-games']),
+                                   tc=request.POST['tc'],
+                                   resolved_base=get_sha(request.POST['base-branch']),
+                                   resolved_new=get_sha(request.POST['test-branch']))
 
-    run_id = request.rundb.new_run(base_tag=args['base_branch'],
-                                   new_tag=args['new_branch'],
-                                   num_games=args['num_games'],
-                                   tc=args['tc'],
-                                   resolved_base=get_sha(args['base_branch']),
-                                   resolved_new=get_sha(args['new_branch']))
+    # Start a celery task for each chunk
+    new_run = request.rundb.get_run(run_id)
+    for idx, chunk in enumerate(new_run['worker_results']):
+      new_task = run_games.delay(new_run['_id'], idx)
+      chunk['celery_id'] = new_task.id
 
-    new_task = run_games.delay(**args)
-
-    # TODO: Fix this up once we convert to chunked runs
-    new_run = request.rundb.runs.find_one(run_id)
-    new_run['worker_results'][0]['celery_id'] = new_task.id
     request.rundb.runs.save(new_run)
-    # End TODO
 
     request.session.flash('Started test run!')
     return HTTPFound(location=request.route_url('tests'))
@@ -89,7 +85,7 @@ def format_name(args):
 
 def get_celery_stats():
   machines = {}
-  waiting = []
+  tasks = []
 
   try:
     workers = ujson.loads(urlopen(FLOWER_URL + '/api/workers').read())
@@ -98,33 +94,7 @@ def get_celery_stats():
     for worker, info in workers.iteritems():
       if not info['status']:
         continue
-      machine_tasks = []
-      for task in info['running_tasks']:
-        if task['id'] in tasks and tasks[task['id']]['state'] == 'REVOKED':
-          continue
-
-        job_result = celery.AsyncResult(task['id'])
-        # Workaround celery throwing exception accessing task status.
-        status = None
-        for _ in xrange(5):
-          try:
-            status = {'status': job_result.status}
-          except:
-            pass
-
-        if status == None:
-          continue
-
-        results = 'Pending...'
-        if job_result.result != None:
-          results = format_results(job_result.result)
-
-        machine_tasks.append({
-          'name': '--', #format_name(tasks_db[task['id']]['args']),
-          'results': results,
-        })
-
-      machines[worker] = machine_tasks
+      machines[worker] = len(machine_tasks)
   except HTTPError as e:
     pass
 
@@ -135,6 +105,7 @@ def tests(request):
   machines, tasks = get_celery_stats()
   waiting_tasks = []
   failed_tasks = []
+  active_tasks = []
 
   runs = request.rundb.get_runs()
   for run in runs:
@@ -143,6 +114,8 @@ def tests(request):
 
     waiting = False
     failed = False
+    active = False
+
     for worker in run['worker_results']:
       if worker['celery_id'] in tasks:
         task = tasks[worker['celery_id']]
@@ -150,18 +123,20 @@ def tests(request):
           waiting = True
         elif task['state'] == 'FAILED':
           failed = True
-        # TODO: remove this once we have tasks logging their w/l/d to mongo directly
-        elif task['state'] == 'SUCCESS':
-          run['results'] = format_results(ast.literal_eval(task['result']))
+        elif task['state'] == 'STARTED':
+          active = True
 
     if waiting:
       waiting_tasks.append(run['name'])
     if failed:
       failed_tasks.append(run['name'])
+    if active:
+      active_tasks.append(run)
 
   return {
     'machines': machines,
     'waiting': waiting_tasks,
     'failed': failed_tasks,
+    'active': active_tasks,
     'runs': runs 
   }
