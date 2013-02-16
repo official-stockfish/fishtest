@@ -1,6 +1,6 @@
 <%inherit file="base.mak"/>
 
-<h2>Stockfish Tests</h2>
+<h2>Stockfish Testing Queue</h2>
 <h3>Active</h3>
 <ul>
 %for machine, jobs in machines.iteritems():
@@ -18,7 +18,7 @@
 %endfor
 </ul>
 
-<h3>Waiting</h3>
+<h3>Pending</h3>
 <ul>
 %for job in waiting:
   <li>${job | n}</li>
@@ -28,8 +28,9 @@
 %endif
 </ul>
 
-<h3>Recent Runs</h3>
+<h3>Finished</h3>
 %for run in runs:
-  <h4>${run['name'] | n}</h4>
-  <pre>${run['results']}</pre>
+  %if run['results'] != 'Pending...'
+    <h4>${run['name'] | n}</h4>
+    <pre>${run['results']}</pre>
 %endfor
