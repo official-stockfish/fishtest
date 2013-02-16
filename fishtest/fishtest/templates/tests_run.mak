@@ -1,7 +1,7 @@
 <%inherit file="base.mak"/>
 
 <form class="form-horizontal" action="${request.url}" method="POST">
-  <legend>Stockfish test run</legend>
+  <legend>Create New Test</legend>
   <div class="control-group">
     <label class="control-label">Base branch:</label>
     <div class="controls">
@@ -15,20 +15,20 @@
     </div>
   </div>
   <div class="control-group">
-    <label class="control-label"># of games:</label>
+    <label class="control-label">Number of games:</label>
     <div class="controls">
       <input name="num-games" value="16000">
     </div>
   </div>
   <div class="control-group">
-    <label class="control-label">TC:</label>
+    <label class="control-label">Time Control:</label>
     <div class="controls">
       <input name="tc" value="15+0.05">
     </div>
   </div>
   <div class="control-group">
     <div class="controls">
-      <button type="submit" class="btn btn-primary">Start</button>
+      <button type="submit" class="btn btn-primary">Submit</button>
     </div>
   </div>
 </form>

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Stockfish Testing</title>
+  <title>Stockfish Testing Framework</title>
   <link href="/css/bootstrap.min.css" rel="stylesheet">
 
   <script src="http://code.jquery.com/jquery-1.8.3.js"></script>
