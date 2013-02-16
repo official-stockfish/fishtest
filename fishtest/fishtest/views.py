@@ -66,8 +66,11 @@ def format_results(results):
   draw_ratio = draws / total
   denom99 = 2.58 * math.sqrt((win_ratio * loss_ratio) / (total - 1))
   denom95 = 1.96 * math.sqrt((win_ratio * loss_ratio) / (total - 1))
-  elo_win = elo(win_ratio)
-  result = 'ELO: %.2f +- 99%%: %.2f 95%%: %.2f\n' % (elo_win, elo(win_ratio + denom99) - elo_win, elo(win_ratio + denom95) - elo_win)
+  if abs(win_ratio) < 1e-6 or abs(win_ratio - 1.0) < 1e-6:
+    result = 'ELO: unknown'
+  else:
+    elo_win = elo(win_ratio)
+    result = 'ELO: %.2f +- 99%%: %.2f 95%%: %.2f\n' % (elo_win, elo(win_ratio + denom99) - elo_win, elo(win_ratio + denom95) - elo_win)
   result += 'Wins: %d Losses: %d Draws: %d Total: %d' % (int(wins), int(losses), int(draws), int(total))
   return result
 
