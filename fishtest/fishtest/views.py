@@ -37,7 +37,9 @@ def tests_run(request):
                                    num_games=int(request.POST['num-games']),
                                    tc=request.POST['tc'],
                                    resolved_base=get_sha(request.POST['base-branch']),
-                                   resolved_new=get_sha(request.POST['test-branch']))
+                                   resolved_new=get_sha(request.POST['test-branch']),
+                                   name=request.POST['run-name'],
+                                   info=request.POST['run-info'])
 
     # Start a celery task for each chunk
     new_run = request.rundb.get_run(run_id)
@@ -83,8 +85,10 @@ def format_name(args):
   base_sha = format_sha(args['resolved_base'])
 
   diff = '<a href="%s/compare/%s...%s">Diff</a>' % (repo, args['resolved_base'][:7], args['resolved_new'][:7])
-  
-  return '%s(%s) vs %s(%s) - %d @ %s - %s' % (args['new_tag'], new_sha, args['base_tag'], base_sha, args['num_games'], args['tc'], diff)
+  name = '%s(%s) vs %s(%s) - %d @ %s - %s' % (args['new_tag'], new_sha, args['base_tag'], base_sha, args['num_games'], args['tc'], diff)
+  if 'name' in args:
+    name = args['name'] + ': ' + name
+  return name
 
 def get_celery_stats():
   machines = {}
@@ -113,6 +117,9 @@ def tests(request):
   runs = request.rundb.get_runs()
   for run in runs:
     run['results'] = format_results(request.rundb.get_results(run))
+    if 'info' in run['args']:
+      run['results'] += '\nInfo: ' + run['args']['info']
+
     run['name'] = format_name(run['args'])
 
     waiting = False

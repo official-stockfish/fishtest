@@ -14,6 +14,8 @@ class RunDb:
     self.chunk_size = 1000
 
   def new_run(self, base_tag, new_tag, num_games, tc,
+              name='',
+              info='',
               resolved_base='',
               resolved_new='',
               start_time=datetime.datetime.now()):
@@ -34,6 +36,8 @@ class RunDb:
         'tc': tc,
         'resolved_base': resolved_base,
         'resolved_new': resolved_new,
+        'name': name,
+        'info': info,
       },
       'start_time': start_time,
       # Will be filled in by workers, indexed by chunk-id
