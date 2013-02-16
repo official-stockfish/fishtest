@@ -4,20 +4,18 @@
 <h3>Active</h3>
 <ul>
 %for machine, jobs in machines.iteritems():
-  <li>Machine: ${machine} --
-  %if len(jobs) == 0:
-    None
-  %else:
-    %for job in jobs:
-      ${job['name']}
-      <pre>${job['results']}</pre>
-    %endfor
-  %endif
-  </li>
+  <li>Machine: ${machine} - Running: ${jobs} chunks</li>
 %endfor
 %if len(machines) == 0:
-  <li>None</li>
+  <li>No machines running</li>
 %endif
+</ul>
+<ul>
+%for run in active:
+  <li>${run['name'] | n}
+    <pre>${run['results']}</pre>
+  </li>
+%endfor
 </ul>
 
 <h3>Waiting</h3>
