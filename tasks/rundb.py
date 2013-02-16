@@ -26,10 +26,6 @@ class RunDb:
       })
       remaining -= chunk_size
 
-    # TODO: temporary hack
-    worker_results = [{'chunk_size': num_games}]
-    # END TODO
-
     id = self.runs.insert({
       'args': {
         'base_tag': base_tag,
@@ -49,6 +45,9 @@ class RunDb:
 
     return id
 
+  def get_run(self, id):
+    return self.runs.find_one({'_id': ObjectId(id)})
+    
   def get_runs(self, skip=0, limit=0):
     runs = []
     for run in self.runs.find(skip=skip, limit=limit, sort=[('start_time', DESCENDING)]):
@@ -56,7 +55,7 @@ class RunDb:
     return runs
 
   def update_run_results(self, id, chunk, wins, losses, draws):
-    run = self.runs.find_one({'_id': ObjectId(id)})
+    run = self.get_run(id)
     run['worker_results'][chunk]['stats'] = {
       'wins': wins,
       'losses': losses,
