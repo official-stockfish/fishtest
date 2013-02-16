@@ -17,13 +17,13 @@
   <div class="control-group">
     <label class="control-label"># of games:</label>
     <div class="controls">
-      <input name="num-games" value="8000">
+      <input name="num-games" value="16000">
     </div>
   </div>
   <div class="control-group">
     <label class="control-label">TC:</label>
     <div class="controls">
-      <input name="tc" value="40/3+0.1">
+      <input name="tc" value="15+0.05">
     </div>
   </div>
   <div class="control-group">
