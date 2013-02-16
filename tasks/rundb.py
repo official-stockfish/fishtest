@@ -11,7 +11,7 @@ class RunDb:
     self.db = self.conn['fishtest']
     self.runs = self.db['runs']
 
-    self.chunk_size = 100
+    self.chunk_size = 1000
 
   def new_run(self, base_tag, new_tag, num_games, tc,
               resolved_base='',
