@@ -4,8 +4,9 @@ from pyramid.events import NewRequest
 from pyramid.session import UnencryptedCookieSessionFactoryConfig
 
 # For rundb
-sys.path.append(os.path.expanduser('~/fishtest'))
-from tasks.rundb import RunDb
+dn = os.path.realpath(__file__)
+sys.path.append(os.path.join(dn,'../tasks'))
+from rundb import RunDb
 
 def main(global_config, **settings):
   """ This function returns a Pyramid WSGI application.

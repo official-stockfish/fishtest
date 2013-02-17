@@ -10,9 +10,10 @@ from pyramid.httpexceptions import HTTPFound
 from urllib2 import urlopen, HTTPError
 
 # For tasks
-sys.path.append(os.path.expanduser('~/fishtest'))
-from tasks.games import run_games
-from tasks.celery import celery
+dn = os.path.realpath(__file__)
+sys.path.append(os.path.join(dn,'../tasks'))
+from games import run_games
+from celery import celery
 
 FLOWER_URL = 'http://localhost:5555'
 
