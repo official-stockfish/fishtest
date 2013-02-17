@@ -149,6 +149,9 @@ def tests(request):
   # Filter out pending and active results from finished
   runs = [r for r in runs if r['results'] != 'Pending...' and r not in active_tasks]
 
+  # Reverse order of waiting runs so next one up is first in list
+  waiting_tasks.reverse()
+
   return {
     'machines': machines,
     'waiting': waiting_tasks,
