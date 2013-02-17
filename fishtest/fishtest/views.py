@@ -92,7 +92,7 @@ def format_name(args):
 
   diff = '<a href="%s/compare/%s...%s">Diff</a>' % (repo, args['resolved_base'][:7], args['resolved_new'][:7])
   name = '%s(%s) vs %s(%s) - %d @ %s - %s' % (args['new_tag'], new_sha, args['base_tag'], base_sha, args['num_games'], args['tc'], diff)
-  if 'name' in args:
+  if 'name' in args and len(args['name']) > 0:
     name = args['name'] + ': ' + name
   return name
 
