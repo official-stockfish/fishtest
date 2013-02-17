@@ -79,8 +79,8 @@ def format_results(results):
   style = 'label-success'
   if elo_win < 0:
     style = 'label-important'
-  
-  return {'style': style, 'info': result} 
+
+  return {'style': style, 'info': result}
 
 def format_name(args):
   repo = 'https://github.com/mcostalba/FishCooking'
@@ -149,13 +149,10 @@ def tests(request):
   # Filter out pending and active results from finished
   runs = [r for r in runs if r['results'] != 'Pending...' and r not in active_tasks]
 
-  # Reverse order of waiting runs so next one up is first in list
-  waiting_tasks.reverse()
-
   return {
     'machines': machines,
     'waiting': waiting_tasks,
     'failed': failed_tasks,
     'active': active_tasks,
-    'runs': runs 
+    'runs': runs
   }
