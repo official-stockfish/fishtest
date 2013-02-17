@@ -18,7 +18,9 @@ class RunDb:
               info='',
               resolved_base='',
               resolved_new='',
-              start_time=datetime.datetime.now()):
+              start_time=None):
+    if start_time == None:
+      start_time = datetime.datetime.now()
     worker_results = []
     remaining = num_games
     while remaining > 0:
