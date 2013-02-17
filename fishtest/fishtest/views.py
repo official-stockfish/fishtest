@@ -68,13 +68,19 @@ def format_results(results):
   draw_ratio = draws / total
   denom99 = 2.58 * math.sqrt((win_ratio * loss_ratio) / (total - 1))
   denom95 = 1.96 * math.sqrt((win_ratio * loss_ratio) / (total - 1))
+  result = []
   if abs(win_ratio) < 1e-6 or abs(win_ratio - 1.0) < 1e-6:
-    result = 'ELO: unknown'
+    result.append('ELO: unknown')
   else:
     elo_win = elo(win_ratio)
-    result = 'ELO: %.2f +- 99%%: %.2f 95%%: %.2f\n' % (elo_win, elo(win_ratio + denom99) - elo_win, elo(win_ratio + denom95) - elo_win)
-  result += 'Wins: %d Losses: %d Draws: %d Total: %d' % (int(wins), int(losses), int(draws), int(total))
-  return result
+    result.append('ELO: %.2f +- 99%%: %.2f 95%%: %.2f' % (elo_win, elo(win_ratio + denom99) - elo_win, elo(win_ratio + denom95) - elo_win))
+  result.append('Total: %d W: %d L: %d D: %d' % (int(total), int(wins), int(losses), int(draws)))
+
+  style = 'label-success'
+  if elo_win < 0:
+    style = 'label-important'
+  
+  return {'style': style, 'info': result} 
 
 def format_name(args):
   repo = 'https://github.com/mcostalba/FishCooking'
@@ -117,9 +123,6 @@ def tests(request):
   runs = request.rundb.get_runs()
   for run in runs:
     run['results'] = format_results(request.rundb.get_results(run))
-    if 'info' in run['args']:
-      run['results'] += '\nInfo: ' + run['args']['info']
-
     run['name'] = format_name(run['args'])
 
     waiting = False

@@ -12,8 +12,8 @@
 </ul>
 <ul>
 %for run in active:
-  <li>${run['name'] | n}
-    <pre>${run['results']}</pre>
+  <li>
+    <%include file="run.mak" args="run=run"/>
   </li>
 %endfor
 </ul>
@@ -38,7 +38,10 @@
 %endif
 
 <h3>Finished</h3>
+<ul>
 %for run in runs:
-  <h4>${run['name'] | n}</h4>
-  <pre>${run['results']}</pre>
+  <li style="margin-bottom:6px">
+    <%include file="run.mak" args="run=run"/>
+  </li>
 %endfor
+</ul>
