@@ -39,10 +39,10 @@
 </ul>
 
 <h3>Finished</h3>
-<ul>
+<ol>
 %for run in runs:
   <li style="margin-bottom:6px">
     <%include file="run.mak" args="run=run"/>
   </li>
 %endfor
-</ul>
+</ol>

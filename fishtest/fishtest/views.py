@@ -76,9 +76,11 @@ def format_results(results):
     result.append('ELO: %.2f +- 99%%: %.2f 95%%: %.2f' % (elo_win, elo(win_ratio + denom99) - elo_win, elo(win_ratio + denom95) - elo_win))
   result.append('Total: %d W: %d L: %d D: %d' % (int(total), int(wins), int(losses), int(draws)))
 
-  style = 'label-success'
-  if elo_win < 0:
+  style = 'label-default'
+  if elo_win < -4:
     style = 'label-important'
+  elif elo_win > 4:
+    style = 'label-success'
 
   return {'style': style, 'info': result}
 
