@@ -1,12 +1,30 @@
 Setup:
-1. Set $STOCKFISH_DIR to stockfish directory (with git enabled)
-2. Set $FISHTEST_DIR to testing directory
-  a. Testing directory needs timed.sh in it
-  b. Also, needs cutechess-cli directory, from here: http://github.com/downloads/cutechess/cutechess/cutechess-cli-linux64.tar.gz
-3. Install latest version of celery
-  a. Install http://pypi.python.org/pypi/celery/
-  b. Kombu - https://github.com/celery/kombu.git
+1. It's recommended to create a new user for running fishtest
+  a. sudo useradd fishtest
+  b. sudo passwd fishtest
+2. su fishtest; cd ~
+3. Clone fishtest
+  a. git clone https://github.com/glinscott/fishtest.git
+  b. Install latest version of celery
+      i. git clone https://github.com/celery/celery.git
+     ii. cd celery
+    iii. python setup.py build
+     iv. sudo python setup.py install 
+4. Clone FishCooking
+  a. git clone https://github.com/mcostalba/FishCooking
+  b. Set environment variable STOCKFISH_DIR to stockfish directory
+    i. export STOCKFISH_DIR=~/FishCooking
+    ii. To persist across restarts, add this line to ~/.bash_profile
+5. Set up testing directory
+  a. mkdir testing
+  b. Set environment variable FISHTEST_DIR to testing directory
+    i. export FISHTEST_DIR=~/testing 
+    ii. Also, add to ~/.bash_profile
+  c. cp ~/fishtest/scripts/timed.sh ~/testing
+    i. Make sure to edit timed.sh to appropriate concurrency!  If you have a 4 core system, it should be -concurrency 3 for example.
+  d. Get opening book and cutechess-cli
+    i. TODO
 
-Launching celery:
+Launching the worker:
 cd ~/fishtest
-celery worker --app=tasks -Q games -c 1
+./start_worker.sh
