@@ -143,8 +143,8 @@ def tests(request):
     if active:
       active_tasks.append(run)
 
-  # Filter pending results
-  runs = [r for r in runs if r['results'] != 'Pending...']
+  # Filter out pending and active results from finished
+  runs = [r for r in runs if r['results'] != 'Pending...' and r not in active_tasks]
 
   return {
     'machines': machines,
