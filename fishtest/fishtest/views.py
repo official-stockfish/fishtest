@@ -92,9 +92,9 @@ def format_results(results):
     result['info'].append('ELO: %.2f +- 99%%: %.2f 95%%: %.2f' % (elo_win, elo(win_ratio + denom99) - elo_win, elo_win95 - elo_win))
 
     if elo_win95 < 1:
-      result['style'] = 'error'
+      result['style'] = '#FF6A6A'
     elif elo(win_ratio - denom95) > -1:
-      result['style'] = 'success'
+      result['style'] = '#44EB44'
 
   result['info'].append('Total: %d W: %d L: %d D: %d' % (int(total), int(wins), int(losses), int(draws)))
   return result
