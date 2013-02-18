@@ -141,7 +141,6 @@ def tests(request):
           waiting = True
         elif task['state'] == 'FAILURE' and not 'terminated' in task:
           failed = True
-          run['name'] += '  ' + task['state'].result
         elif task['state'] == 'STARTED':
           active = True
           waiting = False
