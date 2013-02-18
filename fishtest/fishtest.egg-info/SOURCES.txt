@@ -25,3 +25,6 @@ fishtest/static/js/bootstrap.js
 fishtest/static/js/bootstrap.min.js
 fishtest/templates/base.mak
 fishtest/templates/mainpage.mak
+fishtest/templates/run.mak
+fishtest/templates/tests.mak
+fishtest/templates/tests_run.mak
