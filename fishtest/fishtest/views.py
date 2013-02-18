@@ -114,7 +114,7 @@ def format_results(results):
     elif elo(win_ratio - denom95) > -1:
       result['style'] = '#44EB44'
 
-  result['info'].append('LOS: %.2f%%' % (erf(0.85 * (wins-losses)/math.sqrt(wins+losses)) * 50 + 50))
+  result['info'].append('LOS: %.2f%%' % (erf(0.707 * (wins-losses)/math.sqrt(wins+losses)) * 50 + 50))
   result['info'].append('Total: %d W: %d L: %d D: %d' % (int(total), int(wins), int(losses), int(draws)))
   return result
 
