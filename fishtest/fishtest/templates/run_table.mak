@@ -1,18 +1,6 @@
 <%page args="runs"/>
 
 <table class='table table-striped table-condensed'>
-  <!--
-  <thead>
-    <th width="8%">Date</th>
-    <th width="14%">New</th>
-    <th width="14%">Base</th>
-    <th width="32%">Results</th>
-    <th width="15%">Games/TC</th>
-    <th>Diff</th>
-    <th width="15%">Info</th>
-  </thead>
-  -->
-
   <%
     repo = 'https://github.com/mcostalba/FishCooking'
     def format_sha(sha):
@@ -39,13 +27,15 @@
     -->
     <td width="8%">${run['start_time'].strftime("%d-%m-%y")}</td>
     <td width="14%">${run['args']['new_tag']}<br>${format_sha(run['args']['resolved_new']) | n}</td>
-    <td width="14%">${run['args']['base_tag']}<br>${format_sha(run['args']['resolved_base']) | n}</td>
+    <td width="14%">
+      ${run['args']['base_tag']}
+      <a href="${'%s/compare/%s...%s' % (repo, run['args']['resolved_base'][:7], run['args']['resolved_new'][:7])}">diff</a>
+      <br>
+      ${format_sha(run['args']['resolved_base']) | n}
+    </td>
     <td width="32%"><pre style="${get_run_style(run)};font-size:12px;margin:2px;padding:1px;line-height:13px">${'\n'.join(run['results']['info'])}</pre></td>
     <td width="15%">${run['args']['num_games']} @ ${run['args']['tc']}</td>
-    <td>
-      <a href="${'%s/compare/%s...%s' % (repo, run['args']['resolved_base'][:7], run['args']['resolved_new'][:7])}">Diff</a>
-    </td>
-    <td width="15%">${run['args'].get('info', '')}</td>
+    <td>${run['args'].get('info', '')}</td>
    </tr>
   %endfor
   </tbody>

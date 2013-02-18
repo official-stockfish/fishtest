@@ -2,12 +2,14 @@
 
 <form class="form-horizontal" action="${request.url}" method="POST">
   <legend>Create New Test</legend>
+  <!--
   <div class="control-group">
     <label class="control-label">Run name:</label>
     <div class="controls">
       <input name="run-name">
     </div>
   </div>
+  -->
   <div class="control-group">
     <label class="control-label">Base branch:</label>
     <div class="controls">
