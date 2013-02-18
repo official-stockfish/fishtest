@@ -153,12 +153,13 @@ def tests(request):
     for worker in run['worker_results']:
       if worker['celery_id'] in tasks:
         task = tasks[worker['celery_id']]
-        if task['state'] == 'PENDING':
+        if not active and task['state'] == 'PENDING':
           waiting = True
-        elif task['state'] == 'FAILURE':
+        elif task['state'] == 'FAILURE' and not 'terminated' in task:
           failed = True
         elif task['state'] == 'STARTED':
           active = True
+          waiting = False
 
     if waiting:
       waiting_tasks.append(run)
