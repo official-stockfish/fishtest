@@ -58,32 +58,33 @@ def elo(win_ratio):
   return 400 * math.log10(win_ratio / (1 - win_ratio))
 
 def format_results(results):
+  result = {'style': 'label-info', 'info': []}
   wins = float(results['wins'])
   losses = float(results['losses'])
   draws = float(results['draws'])
   total = wins + draws + losses
   if total < 2:
-    return 'Pending...'
+    result['info'].append('Pending...')
+    return result
   win_ratio = (wins + (draws / 2)) / total
   loss_ratio = 1 - win_ratio
   draw_ratio = draws / total
   denom99 = 2.58 * math.sqrt((win_ratio * loss_ratio) / (total - 1))
   denom95 = 1.96 * math.sqrt((win_ratio * loss_ratio) / (total - 1))
-  result = []
   if abs(win_ratio) < 1e-6 or abs(win_ratio - 1.0) < 1e-6:
-    result.append('ELO: unknown')
+    result['info'].append('ELO: unknown')
   else:
     elo_win = elo(win_ratio)
-    result.append('ELO: %.2f +- 99%%: %.2f 95%%: %.2f' % (elo_win, elo(win_ratio + denom99) - elo_win, elo(win_ratio + denom95) - elo_win))
-  result.append('Total: %d W: %d L: %d D: %d' % (int(total), int(wins), int(losses), int(draws)))
+    elo_win95 = elo(win_ratio + denom95)
+    result['info'].append('ELO: %.2f +- 99%%: %.2f 95%%: %.2f' % (elo_win, elo(win_ratio + denom99) - elo_win, elo_win95 - elo_win))
 
-  style = 'label-default'
-  if elo_win < -4:
-    style = 'label-important'
-  elif elo_win > 4:
-    style = 'label-success'
+    if elo_win95 < 1:
+      result['style'] = 'label-important'
+    elif elo(win_ratio - denom95) > -1:
+      result['style'] = 'label-success'
 
-  return {'style': style, 'info': result}
+  result['info'].append('Total: %d W: %d L: %d D: %d' % (int(total), int(wins), int(losses), int(draws)))
+  return result
 
 def format_name(args):
   repo = 'https://github.com/mcostalba/FishCooking'
@@ -144,14 +145,14 @@ def tests(request):
           active = True
 
     if waiting:
-      waiting_tasks.append(run['name'])
+      waiting_tasks.append(run)
     if failed:
       failed_tasks.append(run['name'])
     if active:
       active_tasks.append(run)
 
   # Filter out pending and active results from finished
-  runs = [r for r in runs if r['results'] != 'Pending...' and r not in active_tasks]
+  runs = [r for r in runs if r not in waiting_tasks and r not in active_tasks]
 
   return {
     'machines': machines,

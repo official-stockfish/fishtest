@@ -5,7 +5,7 @@
 <h3>Pending</h3>
 <ul>
 %for job in waiting:
-  <li>${job | n}</li>
+  <li>${job['name'] | n}</li>
 %endfor
 %if len(waiting) == 0:
   <li>None</li>
