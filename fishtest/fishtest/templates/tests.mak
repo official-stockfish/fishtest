@@ -3,24 +3,15 @@
 <h2>Stockfish Testing Queue</h2>
 
 <h3>Pending</h3>
-<ul>
-%for run in waiting:
-  <li style="margin-bottom:6px">
-    <%include file="run.mak" args="run=run, include_results=False"/>
-  </li>
-%endfor
 %if len(waiting) == 0:
-  <li>None</li>
+  None
+%else:
+  <%include file="run_table.mak" args="runs=waiting"/>
 %endif
-</ul>
 
 %if len(failed) > 0:
 <h3>Failed</h3>
-<ul>
-%for job in failed:
-  <li>${job | n}</li>
-%endfor
-</ul>
+<%include file="run_table.mak" args="runs=failed"/>
 %endif
 
 <h3>Active</h3>
@@ -32,19 +23,7 @@
   <li>No machines running</li>
 %endif
 </ul>
-<ul>
-%for run in active:
-  <li>
-    <%include file="run.mak" args="run=run"/>
-  </li>
-%endfor
-</ul>
+<%include file="run_table.mak" args="runs=active"/>
 
 <h3>Finished</h3>
-<ol>
-%for run in runs:
-  <li style="margin-bottom:6px">
-    <%include file="run.mak" args="run=run"/>
-  </li>
-%endfor
-</ol>
+<%include file="run_table.mak" args="runs=runs"/>

@@ -9,16 +9,16 @@
   ${self.head()}
 </head>
 <body>
-  <div class="container">
-    <div class="row">
-      <div class="span2">
+  <div class="container-fluid">
+    <div class="row-fluid">
+      <div class="span1">
         <ul class="nav nav-list">
           <li class="nav-header">Tests</li>
-          <li><a href="/tests">Tests Overview</a></li>
-          <li><a href="/tests/run">Run Test!</a></li>
+          <li><a href="/tests">Overview</a></li>
+          <li><a href="/tests/run">Run!</a></li>
         </ul>
       </div>
-      <div class="span10">
+      <div class="span11">
         ${self.flash_messages()}
         ${self.body()}
       </div>

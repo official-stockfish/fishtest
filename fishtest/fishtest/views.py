@@ -71,7 +71,7 @@ def elo(win_ratio):
   return 400 * math.log10(win_ratio / (1 - win_ratio))
 
 def format_results(results):
-  result = {'style': 'label-info', 'info': []}
+  result = {'style': '', 'info': []}
   wins = float(results['wins'])
   losses = float(results['losses'])
   draws = float(results['draws'])
@@ -92,26 +92,12 @@ def format_results(results):
     result['info'].append('ELO: %.2f +- 99%%: %.2f 95%%: %.2f' % (elo_win, elo(win_ratio + denom99) - elo_win, elo_win95 - elo_win))
 
     if elo_win95 < 1:
-      result['style'] = 'label-important'
+      result['style'] = 'error'
     elif elo(win_ratio - denom95) > -1:
-      result['style'] = 'label-success'
+      result['style'] = 'success'
 
   result['info'].append('Total: %d W: %d L: %d D: %d' % (int(total), int(wins), int(losses), int(draws)))
   return result
-
-def format_name(args):
-  repo = 'https://github.com/mcostalba/FishCooking'
-  def format_sha(sha):
-    return '<a href="%s/commit/%s">%s</a>' % (repo, sha, sha[:7])
-
-  new_sha = format_sha(args['resolved_new'])
-  base_sha = format_sha(args['resolved_base'])
-
-  diff = '<a href="%s/compare/%s...%s">Diff</a>' % (repo, args['resolved_base'][:7], args['resolved_new'][:7])
-  name = '%s(%s) vs %s(%s) - %d @ %s - %s' % (args['new_tag'], new_sha, args['base_tag'], base_sha, args['num_games'], args['tc'], diff)
-  if 'name' in args and len(args['name']) > 0:
-    name = args['name'] + ': ' + name
-  return name
 
 def get_celery_stats():
   machines = {}
@@ -143,8 +129,6 @@ def tests(request):
 
   for run in runs:
     run['results'] = format_results(request.rundb.get_results(run))
-    run['date'] = run['start_time'].strftime("%d-%m-%y")
-    run['name'] = run['date'] + '  ' + format_name(run['args'])
 
     waiting = False
     failed = False
@@ -164,7 +148,7 @@ def tests(request):
     if waiting:
       waiting_tasks.append(run)
     if failed:
-      failed_tasks.append(run['name'])
+      failed_tasks.append(run)
     if active:
       active_tasks.append(run)
 
