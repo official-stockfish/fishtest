@@ -4,8 +4,10 @@
 
 <h3>Pending</h3>
 <ul>
-%for job in waiting:
-  <li>${job['name'] | n}</li>
+%for run in waiting:
+  <li style="margin-bottom:6px">
+    <%include file="run.mak" args="run=run, include_results=False"/>
+  </li>
 %endfor
 %if len(waiting) == 0:
   <li>None</li>

@@ -54,6 +54,19 @@ def tests_run(request):
     return HTTPFound(location=request.route_url('tests'))
   return {}
 
+@view_config(route_name='tests_delete')
+def tests_delete(request):
+  run = request.rundb.get_run(request.POST['run-id'])
+  run['deleted'] = True
+  for w in run['worker_results']:
+    if 'celery_id' in w:
+      celery.control.revoke(w['celery_id'])
+  run['worker_results'] = []
+  request.rundb.runs.save(run)
+
+  request.session.flash('Deleted run')
+  return HTTPFound(location=request.route_url('tests'))
+
 def elo(win_ratio):
   return 400 * math.log10(win_ratio / (1 - win_ratio))
 
@@ -125,6 +138,9 @@ def tests(request):
   active_tasks = []
 
   runs = request.rundb.get_runs()
+  # Filter out deleted runs
+  runs = [r for r in runs if not 'deleted' in r or not r['deleted']]
+
   for run in runs:
     run['results'] = format_results(request.rundb.get_results(run))
     run['date'] = run['start_time'].strftime("%d-%m-%y")
