@@ -6,7 +6,7 @@ class RunDb:
   def __init__(self):
     ip = os.getenv('FISHTEST_IP')
     if ip == None:
-      ip = '54.235.120.254' 
+      ip = '54.235.120.254'
     self.conn = MongoClient(ip)
     self.db = self.conn['fishtest']
     self.runs = self.db['runs']
@@ -18,6 +18,8 @@ class RunDb:
               info='',
               resolved_base='',
               resolved_new='',
+              base_signature='',
+              new_signature='',
               start_time=None):
     if start_time == None:
       start_time = datetime.datetime.now()
@@ -40,6 +42,8 @@ class RunDb:
         'resolved_new': resolved_new,
         'name': name,
         'info': info,
+        'base_signature': base_signature,
+        'new_signature': new_signature,
       },
       'start_time': start_time,
       # Will be filled in by workers, indexed by chunk-id
@@ -53,7 +57,7 @@ class RunDb:
 
   def get_run(self, id):
     return self.runs.find_one({'_id': ObjectId(id)})
-    
+
   def get_runs(self, skip=0, limit=0):
     runs = []
     for run in self.runs.find(skip=skip, limit=limit, sort=[('start_time', DESCENDING)]):

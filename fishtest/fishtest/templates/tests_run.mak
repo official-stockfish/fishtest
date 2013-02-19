@@ -15,11 +15,19 @@
     <div class="controls">
       <input name="base-branch" value="master">
     </div>
+    <label class="control-label">signature:</label>
+    <div class="controls">
+      <input name="base-signature">
+    </div>
   </div>
   <div class="control-group">
     <label class="control-label">Test branch:</label>
     <div class="controls">
       <input name="test-branch">
+    </div>
+    <label class="control-label">signature:</label>
+    <div class="controls">
+      <input name="test-signature">
     </div>
   </div>
   <div class="control-group">

@@ -6,6 +6,19 @@ import os
 import sh
 import tempfile
 
+def verify_signature(engine, signature):
+
+  bench_sig = ''
+
+  def bench_output(line):
+    if 'Nodes searched' in line:
+      bench_sig = line.split(': ')[1]
+
+  sh.Command(engine)(bench, _out=bench_output).wait()
+  if bench_sig != signature:
+    raise Exception('Wrong bench in ' + engine)
+
+
 @celery.task
 def run_games(run_id, run_chunk):
   rundb = RunDb()
@@ -43,6 +56,13 @@ def run_games(run_id, run_chunk):
   sh.rm('-f', 'results.pgn')
 
   state = {'wins':0, 'losses':0, 'draws':0}
+
+  # Verify signatures are correct
+  if run['args']['base_signature'] != '':
+    verify_signature('base', run['args']['base_signature'])
+
+  if run['args']['new_signature'] != '':
+    verify_signature('stockfish', run['args']['new_signature'])
 
   def process_output(line):
     # Parse line like this:
