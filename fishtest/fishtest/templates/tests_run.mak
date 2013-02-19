@@ -2,22 +2,16 @@
 
 <form class="form-horizontal" action="${request.url}" method="POST">
   <legend>Create New Test</legend>
-  <!--
-  <div class="control-group">
-    <label class="control-label">Run name:</label>
-    <div class="controls">
-      <input name="run-name">
-    </div>
-  </div>
-  -->
   <div class="control-group">
     <label class="control-label">Base branch:</label>
     <div class="controls">
-      <input name="base-branch" value="master">
+      <input name="base-branch" value="master"/>
     </div>
+  </div>
+  <div class="control-group">
     <label class="control-label">signature:</label>
     <div class="controls">
-      <input name="base-signature">
+      <input name="base-signature"/>
     </div>
   </div>
   <div class="control-group">
@@ -25,6 +19,8 @@
     <div class="controls">
       <input name="test-branch">
     </div>
+  </div>
+  <div class="control-group">
     <label class="control-label">signature:</label>
     <div class="controls">
       <input name="test-signature">
