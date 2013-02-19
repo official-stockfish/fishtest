@@ -39,7 +39,6 @@ def tests_run(request):
                                    tc=request.POST['tc'],
                                    resolved_base=get_sha(request.POST['base-branch']),
                                    resolved_new=get_sha(request.POST['test-branch']),
-                                   name=request.POST['run-name'],
                                    info=request.POST['run-info'])
 
     # Start a celery task for each chunk
