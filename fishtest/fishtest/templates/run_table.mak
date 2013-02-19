@@ -25,16 +25,16 @@
       </form>
     </td>
     -->
-    <td width="8%">${run['start_time'].strftime("%d-%m-%y")}</td>
-    <td width="14%">${run['args']['new_tag']}<br>${format_sha(run['args']['resolved_new']) | n}</td>
-    <td width="14%">
+    <td style="width:8%">${run['start_time'].strftime("%d-%m-%y")}</td>
+    <td style="width:14%">${run['args']['new_tag']}<br>${format_sha(run['args']['resolved_new']) | n}</td>
+    <td style="width:14%">
       ${run['args']['base_tag']}
       <a href="${'%s/compare/%s...%s' % (repo, run['args']['resolved_base'][:7], run['args']['resolved_new'][:7])}">diff</a>
       <br>
       ${format_sha(run['args']['resolved_base']) | n}
     </td>
-    <td width="23%"><pre style="${get_run_style(run)};font-size:12px;margin:2px;padding:1px;line-height:13px">${'\n'.join(run['results']['info'])}</pre></td>
-    <td width="12%">${run['args']['num_games']} @ ${run['args']['tc']}</td>
+    <td style="min-width:270px"><pre style="${get_run_style(run)};font-size:12px;margin:2px;padding:1px;line-height:13px">${'\n'.join(run['results']['info'])}</pre></td>
+    <td style="width:12%">${run['args']['num_games']} @ ${run['args']['tc']}</td>
     <td>${run['args'].get('info', '')}</td>
    </tr>
   %endfor
