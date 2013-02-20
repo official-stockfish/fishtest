@@ -18,6 +18,8 @@ sys.path.append(os.path.join(dn,'../..'))
 from tasks.games import run_games
 from tasks.celery import celery
 
+# Celery Flower is assumed to be on the same machine, if not user should use
+# ssh with port forwarding to access the remote host.
 FLOWER_URL = 'http://localhost:5555'
 FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
 

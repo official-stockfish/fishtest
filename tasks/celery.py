@@ -3,11 +3,10 @@ import os
 
 from celery import Celery
 
-ip = os.getenv('FISHTEST_IP')
-if ip == None:
-  ip = '54.235.120.254' 
+# RabbitMQ server is assumed to be on the same machine, if not user should use
+# ssh with port forwarding to access the remote host.
+rabbit = 'amqp://tasks:tasks@localhost/fishtest'
 
-rabbit = 'amqp://tasks:tasks@' + ip + '/fishtest'
 celery = Celery('tasks', broker=rabbit, backend=rabbit, include=['tasks.games'])
 celery.add_defaults({
   'CELERY_ROUTES': {
