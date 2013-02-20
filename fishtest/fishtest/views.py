@@ -5,9 +5,12 @@ import os
 import sh
 import sys
 import ujson
-from pyramid.view import view_config
+from pyramid.security import remember, forget, authenticated_userid
+from pyramid.view import view_config, forbidden_view_config
 from pyramid.httpexceptions import HTTPFound
 from urllib2 import urlopen, HTTPError
+
+from .security import USERS
 
 # For tasks
 dn = os.path.dirname(os.path.realpath(__file__))
@@ -20,14 +23,32 @@ FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
 
 @view_config(route_name='home', renderer='mainpage.mak')
 def mainpage(request):
-  return {'project': 'fishtest'}
+  return {}
+
+@view_config(route_name='login', renderer='mainpage.mak')
+@forbidden_view_config(renderer='mainpage.mak')
+def login(request):
+  login_url = request.route_url('login')
+  referrer = request.url
+  if referrer == login_url:
+      referrer = '/' # never use the login form itself as came_from
+  came_from = request.params.get('came_from', referrer)
+
+  if 'form.submitted' in request.params:
+    username = request.params['username']
+    password = request.params['password']
+    if USERS.get(username) == password:
+      headers = remember(request, username)
+      return HTTPFound(location=came_from, headers=headers)
+  #TODO: failed login handling
+  return {}
 
 def get_sha(branch):
   """Resolves the git branch to sha commit"""
   commit = ujson.loads(urlopen(FISHCOOKING_URL + '/commits/' + branch).read())
   return commit['sha']
 
-@view_config(route_name='tests_run', renderer='tests_run.mak')
+@view_config(route_name='tests_run', renderer='tests_run.mak', permission='modify_db')
 def tests_run(request):
   if 'base-branch' in request.POST:
     run_id = request.rundb.new_run(base_tag=request.POST['base-branch'],
@@ -52,7 +73,7 @@ def tests_run(request):
     return HTTPFound(location=request.route_url('tests'))
   return {}
 
-@view_config(route_name='tests_delete')
+@view_config(route_name='tests_delete', permission='modify_db')
 def tests_delete(request):
   run = request.rundb.get_run(request.POST['run-id'])
   run['deleted'] = True
