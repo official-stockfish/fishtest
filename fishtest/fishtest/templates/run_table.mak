@@ -1,4 +1,4 @@
-<%page args="runs"/>
+<%page args="runs, show_delete=False"/>
 
 <table class='table table-striped table-condensed'>
   <%
@@ -15,7 +15,7 @@
   <tbody>
   %for run in runs:
    <tr>
-    <!--
+   %if show_delete:
     <td>
       <form action="/tests/delete" method="POST" style="display:inline">
         <input type="hidden" name="run-id" value="${run['_id']}">
@@ -24,7 +24,7 @@
         </button>
       </form>
     </td>
-    -->
+    %endif
     <td style="width:8%">${run['start_time'].strftime("%d-%m-%y")}</td>
     <td style="width:14%">${run['args']['new_tag']}<br>${format_sha(run['args']['resolved_new']) | n}</td>
     <td style="width:14%">

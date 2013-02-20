@@ -6,7 +6,7 @@
 %if len(waiting) == 0:
   None
 %else:
-  <%include file="run_table.mak" args="runs=waiting"/>
+  <%include file="run_table.mak" args="runs=waiting, show_delete=True"/>
 %endif
 
 %if len(failed) > 0:
