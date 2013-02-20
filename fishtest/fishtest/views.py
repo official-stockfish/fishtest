@@ -16,19 +16,16 @@ from tasks.games import run_games
 from tasks.celery import celery
 
 FLOWER_URL = 'http://localhost:5555'
+FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
 
 @view_config(route_name='home', renderer='mainpage.mak')
 def mainpage(request):
   return {'project': 'fishtest'}
 
 def get_sha(branch):
-  """Resolves the git branch (ie. master, or glinscott/master) to sha commit"""
-  sh.cd(os.path.expanduser('~/stockfish'))
-  # Default to origin branch
-  if '/' not in branch:
-    branch = 'origin/' + branch
-  sh.git.fetch(branch.split('/')[0])
-  return sh.git.log(branch, n=1, no_color=True, pretty='format:%H a').split()[1]
+  """Resolves the git branch to sha commit"""
+  commit = ujson.loads(urlopen(FISHCOOKING_URL + '/commits/' + branch).read())
+  return commit['sha']
 
 @view_config(route_name='tests_run', renderer='tests_run.mak')
 def tests_run(request):
