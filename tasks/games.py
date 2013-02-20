@@ -26,7 +26,7 @@ def run_games(run_id, run_chunk):
 
   use_temp_dir = False
   if use_temp_dir:
-    # Create temporary directory, and copy everything in.  This is to allow multiple
+    # Create temporary directory, and copy everything in. This is to allow multiple
     # tasks to run at once
     working_dir = tempfile.mkdtemp()
     stockfish_dir = os.path.join(working_dir, 'stockfish')
@@ -43,13 +43,13 @@ def run_games(run_id, run_chunk):
   # Build base
   sh.git.checkout(run['args']['resolved_base'])
   sh.make('clean')
-  sh.make('build', 'ARCH=x86-64')
+  sh.make('build', 'ARCH=x86-64-modern')
   sh.cp('stockfish', os.path.join(testing_dir, 'base'))
 
   # Build new
   sh.git.checkout(run['args']['resolved_new'])
   sh.make('clean')
-  sh.make('build', 'ARCH=x86-64')
+  sh.make('build', 'ARCH=x86-64-modern')
   sh.cp('stockfish', testing_dir)
 
   sh.cd(testing_dir)
