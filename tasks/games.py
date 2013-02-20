@@ -5,6 +5,10 @@ from tasks.rundb import RunDb
 import os
 import sh
 import tempfile
+import zipfile
+from urllib import urlretrieve
+
+FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
 
 def verify_signature(engine, signature):
 
@@ -19,38 +23,25 @@ def verify_signature(engine, signature):
     raise Exception('Wrong bench in ' + engine)
 
 
+# Download and build sources in a temporary directory then move exe to destination
+def build(sha, destination):
+  working_dir = tempfile.mkdtemp()
+  sh.cd(working_dir)
+  urlretrieve(FISHCOOKING_URL + '/zipball/' + sha, "sf.zip")
+  ZipFile("sf.zip").extractall()
+  sh.cd("src")
+  sh.make('build', 'ARCH=x86-64-modern')
+  sh.mv('stockfish', destination)
+
+
 @celery.task
 def run_games(run_id, run_chunk):
   rundb = RunDb()
   run = rundb.get_run(run_id)
 
-  use_temp_dir = False
-  if use_temp_dir:
-    # Create temporary directory, and copy everything in. This is to allow multiple
-    # tasks to run at once
-    working_dir = tempfile.mkdtemp()
-    stockfish_dir = os.path.join(working_dir, 'stockfish')
-    testing_dir = os.path.join(working_dir, 'testing')
-    sh.cp('-r', os.getenv('STOCKFISH_DIR'), stockfish_dir)
-    sh.cp('-r', os.getenv('FISHTEST_DIR'), testing_dir)
-  else:
-    stockfish_dir = os.getenv('STOCKFISH_DIR')
-    testing_dir = os.getenv('FISHTEST_DIR')
-
-  sh.cd(os.path.join(stockfish_dir, 'src'))
-  sh.git.fetch()
-
-  # Build base
-  sh.git.checkout(run['args']['resolved_base'])
-  sh.make('clean')
-  sh.make('build', 'ARCH=x86-64-modern')
-  sh.cp('stockfish', os.path.join(testing_dir, 'base'))
-
-  # Build new
-  sh.git.checkout(run['args']['resolved_new'])
-  sh.make('clean')
-  sh.make('build', 'ARCH=x86-64-modern')
-  sh.cp('stockfish', testing_dir)
+  # Download and build base and new
+  build(run['args']['resolved_base'], os.path.join(testing_dir, 'base'))
+  build(run['args']['resolved_new'] , os.path.join(testing_dir, 'stockfish'))
 
   sh.cd(testing_dir)
   sh.rm('-f', 'results.pgn')
@@ -81,8 +72,5 @@ def run_games(run_id, run_chunk):
   p = sh.Command('./timed.sh')(chunk_size, run['args']['tc'], _out=process_output)
   if p.exit_code() != 0:
     raise Exception(p.stderr())
-
-  if use_temp_dir:
-    sh.rm('-rf', working_dir)
 
   return state
