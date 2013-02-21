@@ -18,7 +18,7 @@ def verify_signature(engine, signature):
     if 'Nodes searched' in line:
       bench_sig = line.split(': ')[1]
 
-  sh.Command(engine)(bench, _out=bench_output).wait()
+  sh.Command(engine)('bench', _out=bench_output).wait()
   if bench_sig != signature:
     raise Exception('Wrong bench in ' + engine)
 
@@ -43,6 +43,15 @@ def build(sha, destination):
 def run_games(run_id, run_chunk):
   rundb = RunDb()
   run = rundb.get_run(run_id)
+  chunk = run['worker_results'][run_chunk]
+
+  stats = {'wins':0, 'losses':0, 'draws':0}
+
+  # Have we run any games on this chunk yet?
+  old_stats = chunk.get('stats', {'wins':0, 'losses':0, 'draws':0})
+  games_remaining = chunk['chunk_size'] - (old_stats['wins'] + old_stats['losses'] + old_stats['draws'])
+  if games_remaining <= 0:
+    return 'No games remaining'
 
   testing_dir = os.getenv('FISHTEST_DIR')
 
@@ -52,8 +61,6 @@ def run_games(run_id, run_chunk):
 
   sh.cd(testing_dir)
   sh.rm('-f', 'results.pgn')
-
-  state = {'wins':0, 'losses':0, 'draws':0}
 
   # Verify signatures are correct
   if len(run['args']['base_signature']) > 0:
@@ -68,16 +75,15 @@ def run_games(run_id, run_chunk):
     if 'Score' in line:
       chunks = line.split(':')
       chunks = chunks[1].split()
-      state['wins'] = int(chunks[0])
-      state['losses'] = int(chunks[2])
-      state['draws'] = int(chunks[4])
+      stats['wins'] = int(chunks[0]) + old_stats['wins']
+      stats['losses'] = int(chunks[2]) + old_stats['losses']
+      stats['draws'] = int(chunks[4]) + old_stats['draws']
 
-      rundb.update_run_results(run_id, run_chunk, **state)
+      rundb.update_run_results(run_id, run_chunk, **stats)
 
   # Run cutechess
-  chunk_size = run['worker_results'][run_chunk]['chunk_size']
-  p = sh.Command('./timed.sh')(chunk_size, run['args']['tc'], _out=process_output)
+  p = sh.Command('./timed.sh')(games_remaining, run['args']['tc'], _out=process_output)
   if p.exit_code() != 0:
     raise Exception(p.stderr())
 
-  return state
+  return stats
