@@ -27,9 +27,13 @@ def verify_signature(engine, signature):
 def build(sha, destination):
   working_dir = tempfile.mkdtemp()
   sh.cd(working_dir)
-  urlretrieve(FISHCOOKING_URL + '/zipball/' + sha, "sf.zip")
-  ZipFile("sf.zip").extractall()
-  sh.cd("src")
+  urlretrieve(FISHCOOKING_URL + '/zipball/' + sha, 'sf.zip')
+  zip_file = ZipFile('sf.zip')
+  zip_file.extractall()
+  for name in zip_file.namelist():
+    if name.endswith('/src/'):
+      src_dir = name
+  sh.cd(src_dir)
   sh.make('build', 'ARCH=x86-64-modern')
   sh.mv('stockfish', destination)
   sh.cd('/tmp')
