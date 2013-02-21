@@ -11,7 +11,7 @@
 
 %if len(failed) > 0:
 <h3>Failed</h3>
-<%include file="run_table.mak" args="runs=failed"/>
+<%include file="run_table.mak" args="runs=failed, show_delete=True"/>
 %endif
 
 <h3>Active</h3>
