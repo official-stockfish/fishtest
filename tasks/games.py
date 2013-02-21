@@ -34,7 +34,7 @@ def build(sha, destination):
   sh.cd(src_dir)
   sh.make('build', 'ARCH=x86-64-modern')
   sh.mv('stockfish', destination)
-  sh.cd('/tmp')
+  sh.cd(os.path.expanduser('~/.'))
   sh.rm('-r', working_dir)
 
 @celery.task
