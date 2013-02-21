@@ -113,7 +113,7 @@ def format_results(results):
   losses = float(results['losses'])
   draws = float(results['draws'])
   total = wins + draws + losses
-  if total < 2:
+  if total < 10:
     result['info'].append('Pending...')
     return result
   win_ratio = (wins + (draws / 2)) / total
