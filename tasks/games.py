@@ -14,14 +14,12 @@ FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
 def verify_signature(engine, signature):
   bench_sig = ''
 
-  def bench_output(line):
+  for line in sh.Command(engine)('bench', _iter='err'):
     if 'Nodes searched' in line:
-      bench_sig = line.split(': ')[1]
+      bench_sig = line.split(': ')[1].strip()
 
-  sh.Command(engine)('bench', _out=bench_output).wait()
   if bench_sig != signature:
-    raise Exception('Wrong bench in ' + engine)
-
+    raise Exception('Wrong bench in %s Expected: %s Got: %s' % (engine, signature, bench_sig))
 
 # Download and build sources in a temporary directory then move exe to destination
 def build(sha, destination):
@@ -64,10 +62,10 @@ def run_games(run_id, run_chunk):
 
   # Verify signatures are correct
   if len(run['args']['base_signature']) > 0:
-    verify_signature('base', run['args']['base_signature'])
+    verify_signature('./base', run['args']['base_signature'])
 
   if len(run['args']['new_signature']) > 0:
-    verify_signature('stockfish', run['args']['new_signature'])
+    verify_signature('./stockfish', run['args']['new_signature'])
 
   def process_output(line):
     # Parse line like this:
