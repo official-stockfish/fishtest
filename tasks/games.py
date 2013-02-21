@@ -11,7 +11,6 @@ from urllib import urlretrieve
 FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
 
 def verify_signature(engine, signature):
-
   bench_sig = ''
 
   def bench_output(line):
@@ -39,6 +38,8 @@ def run_games(run_id, run_chunk):
   rundb = RunDb()
   run = rundb.get_run(run_id)
 
+  testing_dir = os.getenv('FISHTEST_DIR')
+
   # Download and build base and new
   build(run['args']['resolved_base'], os.path.join(testing_dir, 'base'))
   build(run['args']['resolved_new'] , os.path.join(testing_dir, 'stockfish'))
@@ -49,10 +50,10 @@ def run_games(run_id, run_chunk):
   state = {'wins':0, 'losses':0, 'draws':0}
 
   # Verify signatures are correct
-  if run['args']['base_signature'] != '':
+  if len(run['args']['base_signature']) > 0:
     verify_signature('base', run['args']['base_signature'])
 
-  if run['args']['new_signature'] != '':
+  if len(run['args']['new_signature']) > 0:
     verify_signature('stockfish', run['args']['new_signature'])
 
   def process_output(line):
