@@ -7,6 +7,7 @@ import sh
 import tempfile
 import zipfile
 from urllib import urlretrieve
+from zipfile import ZipFile
 
 FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
 
