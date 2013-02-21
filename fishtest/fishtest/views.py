@@ -126,15 +126,17 @@ def format_results(results):
   else:
     elo_win = elo(win_ratio)
     elo_win95 = elo(win_ratio + denom95)
-    result['info'].append('ELO: %.2f +- 99%%: %.2f 95%%: %.2f' % (elo_win, elo(win_ratio + denom99) - elo_win, elo_win95 - elo_win))
+    eloInfo = 'ELO: %.2f +- 99%%: %.2f 95%%: %.2f' % (elo_win, elo(win_ratio + denom99) - elo_win, elo_win95 - elo_win)
+    losInfo = 'LOS: %.2f%%' % (erf(0.707 * (wins-losses)/math.sqrt(wins+losses)) * 50 + 50)
+    totalInfo = 'Total: %d W: %d L: %d D: %d' % (int(total), int(wins), int(losses), int(draws))
+    result['info'].append(eloInfo + ' ' + losInfo)
+    result['info'].append(totalInfo)
 
     if elo_win95 < 1:
       result['style'] = '#FF6A6A'
     elif elo(win_ratio - denom95) > -1:
       result['style'] = '#44EB44'
 
-  result['info'].append('LOS: %.2f%%' % (erf(0.707 * (wins-losses)/math.sqrt(wins+losses)) * 50 + 50))
-  result['info'].append('Total: %d W: %d L: %d D: %d' % (int(total), int(wins), int(losses), int(draws)))
   return result
 
 def get_celery_stats():
