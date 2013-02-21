@@ -10,8 +10,9 @@ Setup:
      ii. cd celery
     iii. python setup.py build
      iv. sudo python setup.py install 
-4. Clone FishCooking
+4. Setup FishCooking
   a. git clone https://github.com/mcostalba/FishCooking
+  b. sudo pip install pymongo
 5. Set up testing directory
   a. mkdir testing
   b. Set environment variable FISHTEST_DIR to testing directory
