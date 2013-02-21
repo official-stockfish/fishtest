@@ -31,7 +31,8 @@ def build(sha, destination):
   sh.cd("src")
   sh.make('build', 'ARCH=x86-64-modern')
   sh.mv('stockfish', destination)
-
+  sh.cd('/tmp')
+  sh.rm('-r', working_dir)
 
 @celery.task
 def run_games(run_id, run_chunk):
