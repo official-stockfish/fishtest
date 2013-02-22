@@ -124,12 +124,11 @@ def format_results(results):
   if abs(win_ratio) < 1e-6 or abs(win_ratio - 1.0) < 1e-6:
     result['info'].append('ELO: unknown')
   else:
-    denom99 = 2.58 * math.sqrt((win_ratio * loss_ratio) / (total - 1))
+    # denom99 = 2.58 * math.sqrt((win_ratio * loss_ratio) / (total - 1))
     denom95 = 1.96 * math.sqrt((win_ratio * loss_ratio) / (total - 1))
     elo_win = elo(win_ratio)
-    error99 = elo(win_ratio + denom99) - elo_win
     error95 = elo(win_ratio + denom95) - elo_win
-    eloInfo = 'ELO: %.2f +-%.0f (95%%) +-%.0f (99%%)' % (elo_win, error95, error99)
+    eloInfo = 'ELO: %.2f +-%.0f (95%%)' % (elo_win, error95)
     losInfo = 'LOS: %.1f%%' % (erf(0.707 * (wins-losses)/math.sqrt(wins+losses)) * 50 + 50)
     result['info'].append(eloInfo + ' ' + losInfo)
     result['info'].append('Total: %d W: %d L: %d D: %d' % (int(total), int(wins), int(losses), int(draws)))

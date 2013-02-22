@@ -33,7 +33,7 @@
       <br>
       ${format_sha(run['args']['resolved_base']) | n}
     </td>
-    <td style="min-width:325px;width:325px"><pre style="${get_run_style(run)};font-size:12px;margin:2px;padding:1px;line-height:13px">${'\n'.join(run['results']['info'])}</pre></td>
+    <td style="min-width:280px;width:280px"><pre style="${get_run_style(run)};font-size:12px;margin:2px;padding:1px;line-height:13px">${'\n'.join(run['results']['info'])}</pre></td>
     <td style="width:12%">${run['args']['num_games']} @ ${run['args']['tc']}</td>
     <td>${run['args'].get('info', '')}</td>
    </tr>
