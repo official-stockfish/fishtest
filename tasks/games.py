@@ -68,7 +68,8 @@ def run_games(run_id, run_chunk):
   # Setup test environment
   testing_dir = os.getenv('FISHTEST_DIR')
 
-  book = run['args'].get('book', '')
+  book = run['args'].get('book', 'varied.bin')
+  book_depth = run['args'].get('book_depth', '10')
   if len(book) > 0:
     # If we don't already have the book, download it
     if not os.path.exists(os.path.join(testing_dir, book)):
@@ -105,7 +106,7 @@ def run_games(run_id, run_chunk):
       rundb.update_run_results(run_id, run_chunk, **stats)
 
   # Run cutechess
-  p = sh.Command('./timed.sh')(games_remaining, run['args']['tc'], book, run['args']['book_depth'], _out=process_output)
+  p = sh.Command('./timed.sh')(games_remaining, run['args']['tc'], book, book_depth, _out=process_output)
   if p.exit_code != 0:
     raise Exception(p.stderr)
 
