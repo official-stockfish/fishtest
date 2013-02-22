@@ -121,22 +121,22 @@ def format_results(results):
   win_ratio = (wins + (draws / 2)) / total
   loss_ratio = 1 - win_ratio
   draw_ratio = draws / total
-  denom99 = 2.58 * math.sqrt((win_ratio * loss_ratio) / (total - 1))
-  denom95 = 1.96 * math.sqrt((win_ratio * loss_ratio) / (total - 1))
   if abs(win_ratio) < 1e-6 or abs(win_ratio - 1.0) < 1e-6:
     result['info'].append('ELO: unknown')
   else:
+    denom99 = 2.58 * math.sqrt((win_ratio * loss_ratio) / (total - 1))
+    denom95 = 1.96 * math.sqrt((win_ratio * loss_ratio) / (total - 1))
     elo_win = elo(win_ratio)
-    elo_win95 = elo(win_ratio + denom95)
-    eloInfo = 'ELO: %.2f +- 99%%: %.2f 95%%: %.2f' % (elo_win, elo(win_ratio + denom99) - elo_win, elo_win95 - elo_win)
+    error99 = elo(win_ratio + denom99) - elo_win
+    error95 = elo(win_ratio + denom95) - elo_win
+    eloInfo = 'ELO: %.2f +-%.2f (95%%) +-%.2f (99%%)' % (elo_win, error95, error99)
     losInfo = 'LOS: %.2f%%' % (erf(0.707 * (wins-losses)/math.sqrt(wins+losses)) * 50 + 50)
-    totalInfo = 'Total: %d W: %d L: %d D: %d' % (int(total), int(wins), int(losses), int(draws))
     result['info'].append(eloInfo + ' ' + losInfo)
-    result['info'].append(totalInfo)
+    result['info'].append('Total: %d W: %d L: %d D: %d' % (int(total), int(wins), int(losses), int(draws)))
 
-    if elo_win95 < 1:
+    if elo_win + error95 < 0:
       result['style'] = '#FF6A6A'
-    elif elo(win_ratio - denom95) > -1:
+    elif elo_win - error95 > 0:
       result['style'] = '#44EB44'
 
   return result
