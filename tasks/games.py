@@ -6,6 +6,8 @@ import os
 import sh
 import tempfile
 import zipfile
+import ujson
+from urllib2 import urlopen, HTTPError
 from urllib import urlretrieve
 from zipfile import ZipFile
 
@@ -51,7 +53,16 @@ def run_games(run_id, run_chunk):
   if games_remaining <= 0:
     return 'No games remaining'
 
+  # Setup test environment
   testing_dir = os.getenv('FISHTEST_DIR')
+  book = run['args']['book']
+
+  # If we don't already have the book, download it
+  if os.path.exists(os.path.join(testing_dir, book)) is False:
+    tree = ujson.loads(urlopen(FISHCOOKING_URL + '/git/trees/setup').read())
+    for blob in tree['tree']:
+      if blob['path'] == book:
+        urlretrieve(blob['url'], os.path.join(testing_dir, book))
 
   # Download and build base and new
   build(run['args']['resolved_base'], os.path.join(testing_dir, 'base'))
