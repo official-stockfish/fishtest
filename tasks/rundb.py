@@ -12,11 +12,9 @@ class RunDb:
 
     self.chunk_size = 1000
 
-  def new_run(self, base_tag, new_tag, num_games, tc,
+  def new_run(self, base_tag, new_tag, num_games, tc, book, book_depth,
               name='',
               info='',
-              book='varied.bin',
-              book_depth = '10',
               resolved_base='',
               resolved_new='',
               base_signature='',
