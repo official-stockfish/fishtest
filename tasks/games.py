@@ -35,7 +35,7 @@ def robust_download(url, retries=5):
     except:
       if retry == retries - 1:
         raise
-  
+
 # Download and build sources in a temporary directory then move exe to destination
 def build(sha, destination):
   working_dir = tempfile.mkdtemp()
@@ -71,6 +71,9 @@ def run_games(run_id, run_chunk):
 
   # Setup test environment
   testing_dir = os.getenv('FISHTEST_DIR')
+
+  if not os.path.exists(testing_dir):
+    raise Exception('Not exsisting directory FISHTEST_DIR=%s' % (testing_dir))
 
   book = run['args'].get('book', 'varied.bin')
   book_depth = run['args'].get('book_depth', '10')
