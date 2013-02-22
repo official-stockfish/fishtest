@@ -4,8 +4,8 @@ from pymongo import MongoClient, ASCENDING, DESCENDING
 
 class RunDb:
   def __init__(self):
-  # MangoDB server is assumed to be on the same machine, if not user should use
-  # ssh with port forwarding to access the remote host.
+    # MongoDB server is assumed to be on the same machine, if not user should use
+    # ssh with port forwarding to access the remote host.
     self.conn = MongoClient('localhost')
     self.db = self.conn['fishtest']
     self.runs = self.db['runs']
