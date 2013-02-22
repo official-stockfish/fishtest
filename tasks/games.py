@@ -81,7 +81,7 @@ def run_games(run_id, run_chunk):
 
   # Run cutechess
   p = sh.Command('./timed.sh')(games_remaining, run['args']['tc'], _out=process_output)
-  if p.exit_code() != 0:
-    raise Exception(p.stderr())
+  if p.exit_code != 0:
+    raise Exception(p.stderr)
 
   return stats
