@@ -91,7 +91,7 @@ def run_games(run_id, run_chunk):
       rundb.update_run_results(run_id, run_chunk, **stats)
 
   # Run cutechess
-  p = sh.Command('./timed.sh')(games_remaining, run['args']['tc'], _out=process_output)
+  p = sh.Command('./timed.sh')(games_remaining, run['args']['tc'], book, run['args']['book_depth'], _out=process_output)
   if p.exit_code != 0:
     raise Exception(p.stderr)
 
