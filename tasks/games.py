@@ -80,11 +80,15 @@ def run_games(run_id, run_chunk):
   if len(book) > 0:
     # If we don't already have the book, download it
     if not os.path.exists(os.path.join(testing_dir, book)):
+      found = False
       tree = ujson.loads(robust_download(FISHCOOKING_URL + '/git/trees/setup'))
       for blob in tree['tree']:
         if blob['path'] == book:
+          found = True
           with open(os.path.join(testing_dir, book), 'w') as f:
             f.write(robust_download(blob['url']))
+      if not found:
+        raise Exception('Book %s not found' % (book))
 
   # Download and build base and new
   build(run['args']['resolved_base'], os.path.join(testing_dir, 'base'))
