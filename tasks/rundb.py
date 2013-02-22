@@ -6,10 +6,7 @@ class RunDb:
   def __init__(self):
     # MongoDB server is assumed to be on the same machine, if not user should use
     # ssh with port forwarding to access the remote host.
-    fishtest_host = os.getenv('FISHTEST_HOST')
-    if len(fishtest_host) == 0:
-      fishtest_host = 'localhost'
-    self.conn = MongoClient(fishtest_host)
+    self.conn = MongoClient(os.getenv('FISHTEST_HOST') or 'localhost')
     self.db = self.conn['fishtest']
     self.runs = self.db['runs']
 
