@@ -5,7 +5,10 @@ from celery import Celery
 
 # RabbitMQ server is assumed to be on the same machine, if not user should use
 # ssh with port forwarding to access the remote host.
-rabbit = 'amqp://tasks:tasks@localhost/fishtest'
+fishtest_host = os.getenv('FISHTEST_HOST')
+if len(fishtest_host) == 0:
+  fishtest_host = 'localhost'
+rabbit = 'amqp://tasks:tasks@%s/fishtest' % (fishtest_host)
 
 celery = Celery('tasks', broker=rabbit, backend=rabbit, include=['tasks.games'])
 celery.add_defaults({
