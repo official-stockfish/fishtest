@@ -177,7 +177,7 @@ def tests(request):
     active = False
 
     for worker in run['worker_results']:
-      if worker['celery_id'] in tasks:
+      if 'celery_id' in worker and worker['celery_id'] in tasks:
         task = tasks[worker['celery_id']]
         if not active and task['state'] == 'PENDING':
           waiting = True
