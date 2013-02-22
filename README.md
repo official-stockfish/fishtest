@@ -1,6 +1,7 @@
 # Overview
 Fishtest is a distributed task queue for testing chess engines.  It is currently being used
-for testing changes on Stockfish with tens of thousands of games per change.
+for testing changes on Stockfish with tens of thousands of games per change. The following
+setup describes a step-by-step installation for a machine that will run test matches.
 
 ## Setup
 
@@ -42,12 +43,12 @@ Make sure to edit timed.sh to appropriate concurrency!  If you have a 4 core sys
 Get opening book and cutechess-cli
 TODO!
 
-### Set up connection to server
+### Set up ssh connection to the server
 
-Connect to the server, and forward ports locally (5555 for Celery Flower, 27017 for MongoDB and 5672 for RabbitMQ):
+Establish a ssh connection using local port forwarding (27017 for MongoDB and 5672 for RabbitMQ)
 
 ```
-$ ssh -v -f username@remote_host -L 5555:localhost:5555 -L 27017:localhost:27017 -L 5672:localhost:5672 -N
+$ ssh -f worker@remote_host -L 27017:localhost:27017 -L 5672:localhost:5672 -N
 ```
 
 ## Launching the worker
