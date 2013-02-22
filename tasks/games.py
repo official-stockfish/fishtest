@@ -28,7 +28,10 @@ def robust_download(url, retries=5):
   for retry in xrange(5):
     try:
       response = urlopen(url)
-      return response
+      bytes = response.read()
+      if len(bytes) == 0:
+        raise Exception('Zero length download %s' % (url))
+      return bytes
     except:
       if retry == retries - 1:
         raise
@@ -38,8 +41,9 @@ def build(sha, destination):
   working_dir = tempfile.mkdtemp()
   sh.cd(working_dir)
 
-  zipball = robust_download(FISHCOOKING_URL + '/zipball/' + sha)
-  zip_file = ZipFile(zipball)
+  with open('sf.gz', 'w') as f:
+    f.write(robust_download(FISHCOOKING_URL + '/zipball/' + sha))
+  zip_file = ZipFile('sf.gz')
   zip_file.extractall()
 
   for name in zip_file.namelist():
@@ -73,7 +77,7 @@ def run_games(run_id, run_chunk):
   if len(book) > 0:
     # If we don't already have the book, download it
     if not os.path.exists(os.path.join(testing_dir, book)):
-      tree = ujson.loads(robust_download(FISHCOOKING_URL + '/git/trees/setup').read())
+      tree = ujson.loads(robust_download(FISHCOOKING_URL + '/git/trees/setup'))
       for blob in tree['tree']:
         if blob['path'] == book:
           with open(os.path.join(testing_dir, book), 'w') as f:
