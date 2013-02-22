@@ -5,8 +5,9 @@ from tasks.rundb import RunDb
 import os
 import sh
 import tempfile
-import urllib2
 import zipfile
+import ujson
+from urllib2 import urlopen, HTTPError
 from zipfile import ZipFile
 
 FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
@@ -21,21 +22,25 @@ def verify_signature(engine, signature):
   if bench_sig != signature:
     raise Exception('Wrong bench in %s Expected: %s Got: %s' % (engine, signature, bench_sig))
 
+def robust_download(url, file, retries=5):
+  """Attempts to download a file for the given number of retries.  If it fails, it will
+     throw an exception describing the failure"""
+  for retry in xrange(5):
+    try:
+      response = urlopen(FISHCOOKING_URL + '/zipball/' + sha)
+      return response
+    except:
+      if retry == retries - 1:
+        raise
+  
 # Download and build sources in a temporary directory then move exe to destination
 def build(sha, destination):
   working_dir = tempfile.mkdtemp()
   sh.cd(working_dir)
 
-  # Retry download on failure 
-  for i in xrange(5):
-    try:
-      response = urllib2.urlopen(FISHCOOKING_URL + '/zipball/' + sha)
-      zip_file = ZipFile(response)
-      zip_file.extractall()
-      break
-    except:
-      if i == 4:
-        raise
+  zipball = robust_download(FISHCOOKING_URL + '/zipball/' + sha)
+  zip_file = ZipFile(zipball)
+  zip_file.extractall()
 
   for name in zip_file.namelist():
     if name.endswith('/src/'):
@@ -60,7 +65,18 @@ def run_games(run_id, run_chunk):
   if games_remaining <= 0:
     return 'No games remaining'
 
+  # Setup test environment
   testing_dir = os.getenv('FISHTEST_DIR')
+
+  book = run['args'].get('book', '')
+  if len(book) > 0:
+    # If we don't already have the book, download it
+    if not os.path.exists(os.path.join(testing_dir, book)):
+      tree = ujson.loads(robust_download(FISHCOOKING_URL + '/git/trees/setup').read())
+      for blob in tree['tree']:
+        if blob['path'] == book:
+          with open(os.path.join(testing_dir, book), 'w') as f:
+            f.write(robust_download(blob['url']))
 
   # Download and build base and new
   build(run['args']['resolved_base'], os.path.join(testing_dir, 'base'))
