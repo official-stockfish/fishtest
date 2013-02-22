@@ -129,8 +129,8 @@ def format_results(results):
     elo_win = elo(win_ratio)
     error99 = elo(win_ratio + denom99) - elo_win
     error95 = elo(win_ratio + denom95) - elo_win
-    eloInfo = 'ELO: %.2f +-%.2f (95%%) +-%.2f (99%%)' % (elo_win, error95, error99)
-    losInfo = 'LOS: %.2f%%' % (erf(0.707 * (wins-losses)/math.sqrt(wins+losses)) * 50 + 50)
+    eloInfo = 'ELO: %.2f +-%.0f (95%%) +-%.0f (99%%)' % (elo_win, error95, error99)
+    losInfo = 'LOS: %.1f%%' % (erf(0.707 * (wins-losses)/math.sqrt(wins+losses)) * 50 + 50)
     result['info'].append(eloInfo + ' ' + losInfo)
     result['info'].append('Total: %d W: %d L: %d D: %d' % (int(total), int(wins), int(losses), int(draws)))
 
