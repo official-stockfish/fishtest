@@ -22,7 +22,7 @@ def verify_signature(engine, signature):
   if bench_sig != signature:
     raise Exception('Wrong bench in %s Expected: %s Got: %s' % (engine, signature, bench_sig))
 
-def robust_download(url, file, retries=5):
+def robust_download(url, retries=5):
   """Attempts to download a file for the given number of retries.  If it fails, it will
      throw an exception describing the failure"""
   for retry in xrange(5):
