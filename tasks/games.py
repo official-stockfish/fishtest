@@ -5,8 +5,8 @@ from tasks.rundb import RunDb
 import os
 import sh
 import tempfile
+import urllib2
 import zipfile
-from urllib import urlretrieve
 from zipfile import ZipFile
 
 FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
@@ -25,9 +25,18 @@ def verify_signature(engine, signature):
 def build(sha, destination):
   working_dir = tempfile.mkdtemp()
   sh.cd(working_dir)
-  urlretrieve(FISHCOOKING_URL + '/zipball/' + sha, 'sf.zip')
-  zip_file = ZipFile('sf.zip')
-  zip_file.extractall()
+
+  # Retry download on failure 
+  for i in xrange(5):
+    try:
+      response = urllib2.urlopen(FISHCOOKING_URL + '/zipball/' + sha)
+      zip_file = ZipFile(response)
+      zip_file.extractall()
+      break
+    except:
+      if i == 4:
+        raise
+
   for name in zip_file.namelist():
     if name.endswith('/src/'):
       src_dir = name
