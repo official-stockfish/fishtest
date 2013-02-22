@@ -27,7 +27,7 @@ def robust_download(url, retries=5):
      throw an exception describing the failure"""
   for retry in xrange(5):
     try:
-      response = urlopen(FISHCOOKING_URL + '/zipball/' + sha)
+      response = urlopen(url)
       return response
     except:
       if retry == retries - 1:
