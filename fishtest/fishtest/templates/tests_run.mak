@@ -3,27 +3,27 @@
 <form class="form-horizontal" action="${request.url}" method="POST">
   <legend>Create New Test</legend>
   <div class="control-group">
-    <label class="control-label">Base branch:</label>
-    <div class="controls">
-      <input name="base-branch" value="master"/>
-    </div>
-  </div>
-  <div class="control-group">
-    <label class="control-label">signature:</label>
-    <div class="controls">
-      <input name="base-signature"/>
-    </div>
-  </div>
-  <div class="control-group">
     <label class="control-label">Test branch:</label>
     <div class="controls">
       <input name="test-branch">
     </div>
   </div>
   <div class="control-group">
-    <label class="control-label">signature:</label>
+    <label class="control-label">Test signature:</label>
     <div class="controls">
       <input name="test-signature">
+    </div>
+  </div>
+  <div class="control-group">
+    <label class="control-label">Base branch:</label>
+    <div class="controls">
+      <input name="base-branch" value="master"/>
+    </div>
+  </div>
+  <div class="control-group">
+    <label class="control-label">Base signature:</label>
+    <div class="controls">
+      <input name="base-signature"/>
     </div>
   </div>
   <div class="control-group">
@@ -39,7 +39,7 @@
     </div>
   </div>
   <div class="control-group">
-    <label class="control-label">Run info:</label>
+    <label class="control-label">Notes:</label>
     <div class="controls">
       <input name="run-info">
     </div>
