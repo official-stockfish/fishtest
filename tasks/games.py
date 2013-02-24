@@ -7,6 +7,7 @@ import sh
 import tempfile
 import zipfile
 import ujson
+from base64 import b64decode
 from urllib2 import urlopen, HTTPError
 from zipfile import ZipFile
 
@@ -45,8 +46,9 @@ def setup(item, testing_dir):
       for blob in tree['tree']:
         if blob['path'] == item:
           found = True
+          blob_json = ujson.loads(robust_download(blob['url']))
           with open(os.path.join(testing_dir, item), 'w') as f:
-            f.write(robust_download(blob['url']))
+            f.write(b64decode(blob_json['content']))
       if not found:
         raise Exception('Item %s not found' % (item))
 
