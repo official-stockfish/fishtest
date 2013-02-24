@@ -1,1 +1,5 @@
 *.pyc
+.*
+*~
+fishtest/build
+fishtest/fishtest.egg-info
