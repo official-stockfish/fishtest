@@ -36,8 +36,22 @@ def robust_download(url, retries=5):
       if retry == retries - 1:
         raise
 
-# Download and build sources in a temporary directory then move exe to destination
+def setup(item, testing_dir):
+  """If we don't have the item in testing_dir, download it from FishCooking"""
+  if len(item) > 0:
+    if not os.path.exists(os.path.join(testing_dir, item)):
+      found = False
+      tree = ujson.loads(robust_download(FISHCOOKING_URL + '/git/trees/setup'))
+      for blob in tree['tree']:
+        if blob['path'] == item:
+          found = True
+          with open(os.path.join(testing_dir, item), 'w') as f:
+            f.write(robust_download(blob['url']))
+      if not found:
+        raise Exception('Item %s not found' % (item))
+
 def build(sha, destination):
+  """Download and build sources in a temporary directory then move exe to destination"""
   working_dir = tempfile.mkdtemp()
   sh.cd(working_dir)
 
@@ -77,18 +91,9 @@ def run_games(run_id, run_chunk):
 
   book = run['args'].get('book', 'varied.bin')
   book_depth = run['args'].get('book_depth', '10')
-  if len(book) > 0:
-    # If we don't already have the book, download it
-    if not os.path.exists(os.path.join(testing_dir, book)):
-      found = False
-      tree = ujson.loads(robust_download(FISHCOOKING_URL + '/git/trees/setup'))
-      for blob in tree['tree']:
-        if blob['path'] == book:
-          found = True
-          with open(os.path.join(testing_dir, book), 'w') as f:
-            f.write(robust_download(blob['url']))
-      if not found:
-        raise Exception('Book %s not found' % (book))
+
+  setup(book, testing_dir)
+  setup('cutechess-cli.sh', testing_dir)
 
   # Download and build base and new
   build(run['args']['resolved_base'], os.path.join(testing_dir, 'base'))
@@ -117,7 +122,7 @@ def run_games(run_id, run_chunk):
       rundb.update_run_results(run_id, run_chunk, **stats)
 
   # Run cutechess
-  p = sh.Command('./timed.sh')(games_remaining, run['args']['tc'], book, book_depth, _out=process_output)
+  p = sh.Command('./cutechess-cli.sh')(games_remaining, run['args']['tc'], book, book_depth, _out=process_output)
   if p.exit_code != 0:
     raise Exception(p.stderr)
 
