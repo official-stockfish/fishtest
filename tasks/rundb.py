@@ -12,6 +12,17 @@ class RunDb:
 
     self.chunk_size = 1000
 
+  def generate_chunks(self, num_games):
+    worker_results = []
+    remaining = num_games
+    while remaining > 0:
+      chunk_size = min(self.chunk_size, remaining)
+      worker_results.append({
+        'chunk_size': chunk_size,
+      })
+      remaining -= chunk_size
+    return worker_results
+
   def new_run(self, base_tag, new_tag, num_games, tc, book, book_depth,
               name='',
               info='',
@@ -22,14 +33,6 @@ class RunDb:
               start_time=None):
     if start_time == None:
       start_time = datetime.datetime.now()
-    worker_results = []
-    remaining = num_games
-    while remaining > 0:
-      chunk_size = min(self.chunk_size, remaining)
-      worker_results.append({
-        'chunk_size': chunk_size,
-      })
-      remaining -= chunk_size
 
     id = self.runs.insert({
       'args': {
@@ -48,7 +51,7 @@ class RunDb:
       },
       'start_time': start_time,
       # Will be filled in by workers, indexed by chunk-id
-      'worker_results': worker_results,
+      'worker_results': self.generate_chunks(num_games),
       # Aggregated results
       'results': { 'wins': 0, 'losses': 0, 'draws': 0 },
       'results_stale': False,

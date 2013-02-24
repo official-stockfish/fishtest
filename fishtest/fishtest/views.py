@@ -77,6 +77,25 @@ def tests_run(request):
     return HTTPFound(location=request.route_url('tests'))
   return {}
 
+@view_config(route_name='tests_run_more', permission='modify_db')
+def tests_run(request):
+  if 'num-games' in request.POST:
+    # Start a celery task for each chunk
+    num_games = int(request.POST['num-games'])
+    run = request.rundb.get_run(request.POST['run'])
+    new_chunks = request.rundb.generate_chunks(num_games)
+    for idx, chunk in enumerate(new_chunks):
+      new_task = run_games.delay(run['_id'], idx + len(run['worker_results']))
+      chunk['celery_id'] = new_task.id
+
+    run['worker_results'] += new_chunks
+    run['args']['num_games'] += num_games
+    request.rundb.runs.save(run)
+
+    request.session.flash('New games started!')
+    return HTTPFound(location=request.route_url('tests'))
+  return {}
+
 @view_config(route_name='tests_delete', permission='modify_db')
 def tests_delete(request):
   run = request.rundb.get_run(request.POST['run-id'])
@@ -141,6 +160,12 @@ def format_results(results):
       result['style'] = '#44EB44'
 
   return result
+
+@view_config(route_name='tests_view', renderer='tests_view.mak')
+def tests_view(request):
+  run = request.rundb.get_run(request.matchdict['id'])
+  run['results'] = format_results(request.rundb.get_results(run))
+  return { 'run': run }
 
 def get_celery_stats():
   machines = {}

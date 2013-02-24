@@ -38,6 +38,8 @@ def main(global_config, **settings):
   config.add_route('login', '/login')
   config.add_route('tests', '/tests')
   config.add_route('tests_run', '/tests/run')
+  config.add_route('tests_run_more', '/tests/run_more')
+  config.add_route('tests_view', '/tests/view/{id}')
   config.add_route('tests_delete', '/tests/delete')
   config.scan()
   return config.make_wsgi_app()

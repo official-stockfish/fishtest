@@ -6,6 +6,15 @@
 
   <script src="http://code.jquery.com/jquery-1.8.3.js"></script>
 
+  <style>
+    .elo-results {
+      font-size:12px;
+      margin:2px;
+      padding:1px;
+      line-height:13px
+    }
+  </style>
+
   ${self.head()}
 </head>
 <body>
