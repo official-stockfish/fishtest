@@ -78,7 +78,7 @@ def tests_run(request):
   return {}
 
 @view_config(route_name='tests_run_more', permission='modify_db')
-def tests_run(request):
+def tests_run_more(request):
   if 'num-games' in request.POST:
     # Start a celery task for each chunk
     num_games = int(request.POST['num-games'])
