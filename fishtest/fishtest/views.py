@@ -80,7 +80,8 @@ def tests_run(request):
 @view_config(route_name='tests_run_more', permission='modify_db')
 def tests_run_more(request):
   if 'num-games' in request.POST:
-    # Start a celery task for each chunk
+    run = request.rundb.get_run(request.POST['run'])
+
     existing_games = 0
     for chunk in run['worker_results']:
       existing_games += chunk['chunk_size']
@@ -89,7 +90,7 @@ def tests_run_more(request):
     if num_games < existing_games:
       return
 
-    run = request.rundb.get_run(request.POST['run'])
+    # Start a celery task for each chunk
     new_chunks = request.rundb.generate_chunks(num_games - existing_games)
     for idx, chunk in enumerate(new_chunks):
       new_task = run_games.delay(run['_id'], idx + len(run['worker_results']))
