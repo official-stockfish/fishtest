@@ -41,5 +41,6 @@ def main(global_config, **settings):
   config.add_route('tests_run_more', '/tests/run_more')
   config.add_route('tests_view', '/tests/view/{id}')
   config.add_route('tests_delete', '/tests/delete')
+  config.add_route('tests_stop', '/tests/stop')
   config.scan()
   return config.make_wsgi_app()

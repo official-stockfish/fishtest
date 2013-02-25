@@ -104,6 +104,17 @@ def tests_run_more(request):
     return HTTPFound(location=request.route_url('tests'))
   return {}
 
+@view_config(route_name='tests_stop', permission='modify_db')
+def tests_stop(request):
+  run = request.rundb.get_run(request.POST['run-id'])
+  for w in run['worker_results']:
+    if 'celery_id' in w:
+      celery.control.revoke(w['celery_id'])
+  request.rundb.runs.save(run)
+
+  request.session.flash('Stopped run')
+  return HTTPFound(location=request.route_url('tests'))
+
 @view_config(route_name='tests_delete', permission='modify_db')
 def tests_delete(request):
   run = request.rundb.get_run(request.POST['run-id'])

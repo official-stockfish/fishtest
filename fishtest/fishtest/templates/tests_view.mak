@@ -1,6 +1,13 @@
 <%inherit file="base.mak"/>
 
-<h2>Run ${run['_id']}</h2>
+<h2>Run ${run['_id']}
+  <form action="/tests/stop" method="POST" style="display:inline">
+    <input type="hidden" name="run-id" value="${run['_id']}">
+    <button type="submit" class="btn btn-danger">
+      Stop
+    </button>
+  </form>
+</h2>
 
 <%include file="elo_results.mak" args="run=run" />
 
