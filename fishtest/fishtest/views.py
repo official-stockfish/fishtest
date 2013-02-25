@@ -81,15 +81,22 @@ def tests_run(request):
 def tests_run_more(request):
   if 'num-games' in request.POST:
     # Start a celery task for each chunk
+    existing_games = 0
+    for chunk in run['worker_results']:
+      existing_games += chunk['chunk_size']
+
     num_games = int(request.POST['num-games'])
+    if num_games < existing_games:
+      return
+
     run = request.rundb.get_run(request.POST['run'])
-    new_chunks = request.rundb.generate_chunks(num_games)
+    new_chunks = request.rundb.generate_chunks(num_games - existing_games)
     for idx, chunk in enumerate(new_chunks):
       new_task = run_games.delay(run['_id'], idx + len(run['worker_results']))
       chunk['celery_id'] = new_task.id
 
     run['worker_results'] += new_chunks
-    run['args']['num_games'] += num_games
+    run['args']['num_games'] = num_games
     request.rundb.runs.save(run)
 
     request.session.flash('New games started!')

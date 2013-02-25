@@ -11,11 +11,11 @@
 %endfor
 
 <form class="form-horizontal" action="/tests/run_more" method="POST">
-  <legend>Run more games</legend>
+  <legend>Adjust number of games</legend>
   <div class="control-group">
     <label class="control-label">Number of games:</label>
     <div class="controls">
-      <input name="num-games" value="16000">
+      <input name="num-games" value="${run['args']['num_games']}">
     </div>
   </div>
   <input type="hidden" name="run" value="${run['_id']}" />
