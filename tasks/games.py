@@ -5,6 +5,7 @@ from tasks.rundb import RunDb
 import os
 import sh
 import tempfile
+import time
 import zipfile
 import ujson
 from base64 import b64decode
@@ -36,6 +37,8 @@ def robust_download(url, retries=5):
     except:
       if retry == retries - 1:
         raise
+      # Backoff
+      time.sleep(1 + retry)
 
 def setup(item, testing_dir):
   """If we don't have the item in testing_dir, download it from FishCooking"""
