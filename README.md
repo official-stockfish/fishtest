@@ -15,14 +15,12 @@ $ cd ~
 
 ### Clone fishtest
 
-You will need the fishtest repository, as well as the development build of Celery.
+You will need the fishtest repository, as well as some python prereqs.
 ```
 $ git clone https://github.com/glinscott/fishtest.git
-$ git clone https://github.com/celery/celery.git
-$ cd celery
-$ python setup.py build
-$ sudo python setup.py install
 $ sudo pip install pymongo
+$ sudo pip install requests
+$ sudo pip install sh
 ```
 
 ### Create testing directory
@@ -34,22 +32,10 @@ $ mkdir testing
 
 Edit ~/.bash_profile and add
 export FISHTEST_DIR=~/testing
-
-$ cp ~/fishtest/scripts/timed.sh ~/testing
 ```
 
-Make sure to edit timed.sh to appropriate concurrency!  If you have a 4 core system, it should be -concurrency 3 for example.
-
-Get opening book and cutechess-cli
+Get cutechess-cli
 TODO!
-
-### Set up ssh connection to the server
-
-Establish a ssh connection using local port forwarding (27017 for MongoDB and 5672 for RabbitMQ)
-
-```
-$ ssh -f worker@remote_host -L 27017:localhost:27017 -L 5672:localhost:5672 -N
-```
 
 ## Launching the worker
 

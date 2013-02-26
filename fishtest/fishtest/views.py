@@ -198,6 +198,8 @@ def tests(request):
   # Filter out pending and active results from finished
   runs = [r for r in runs if r not in waiting_tasks and r not in active_tasks]
 
+  machines = request.rundb.get_machines()
+
   return {
     'machines': machines,
     'waiting': waiting_tasks,

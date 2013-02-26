@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 
-from tasks.rundb import RunDb
 import os
 import sh
 import tempfile
@@ -73,9 +72,7 @@ def build(sha, destination):
   sh.cd(os.path.expanduser('~/.'))
   sh.rm('-r', working_dir)
 
-def run_games(run_id, run_chunk):
-  rundb = RunDb()
-  run = rundb.get_run(run_id)
+def run_games(run, run_chunk):
   chunk = run['worker_results'][run_chunk]
 
   stats = {'wins':0, 'losses':0, 'draws':0}
@@ -90,7 +87,7 @@ def run_games(run_id, run_chunk):
   testing_dir = os.getenv('FISHTEST_DIR')
 
   if not os.path.exists(testing_dir):
-    raise Exception('Not exsisting directory FISHTEST_DIR=%s' % (testing_dir))
+    raise Exception('Directory does not exist: FISHTEST_DIR=%s' % (testing_dir))
 
   book = run['args'].get('book', 'varied.bin')
   book_depth = run['args'].get('book_depth', '10')
