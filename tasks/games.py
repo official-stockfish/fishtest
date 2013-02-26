@@ -1,6 +1,5 @@
 from __future__ import absolute_import
 
-from tasks.celery import celery
 from tasks.rundb import RunDb
 import os
 import sh
@@ -74,7 +73,6 @@ def build(sha, destination):
   sh.cd(os.path.expanduser('~/.'))
   sh.rm('-r', working_dir)
 
-@celery.task
 def run_games(run_id, run_chunk):
   rundb = RunDb()
   run = rundb.get_run(run_id)
