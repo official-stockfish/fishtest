@@ -5,6 +5,6 @@ def request_task(request):
 
 def update_task(request):
   params = {}
-  for key in [ 'id', 'task_idx', 'wins', 'losses', 'draws' ]:
+  for key in [ 'id', 'task_id', 'wins', 'losses', 'draws' ]:
     params[key] = request.params[key]
   request.rundb.update_task(**params) 

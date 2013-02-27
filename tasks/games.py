@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 import os
+import requests
 import sh
 import tempfile
 import time
@@ -72,14 +73,17 @@ def build(sha, destination):
   sh.cd(os.path.expanduser('~/.'))
   sh.rm('-r', working_dir)
 
-def run_games(run, run_chunk):
-  chunk = run['worker_results'][run_chunk]
+def upload_results(remote, run_id, task_id, results):
+  requests.post(remote + '/api/update_task')
+
+def run_games(remote, run, task_id):
+  task = run['tasks'][task_id]
 
   stats = {'wins':0, 'losses':0, 'draws':0}
 
-  # Have we run any games on this chunk yet?
-  old_stats = chunk.get('stats', {'wins':0, 'losses':0, 'draws':0})
-  games_remaining = chunk['chunk_size'] - (old_stats['wins'] + old_stats['losses'] + old_stats['draws'])
+  # Have we run any games on this task yet?
+  old_stats = task.get('stats', {'wins':0, 'losses':0, 'draws':0})
+  games_remaining = task['num_games'] - (old_stats['wins'] + old_stats['losses'] + old_stats['draws'])
   if games_remaining <= 0:
     return 'No games remaining'
 
@@ -119,7 +123,7 @@ def run_games(run, run_chunk):
       stats['losses'] = int(chunks[2]) + old_stats['losses']
       stats['draws'] = int(chunks[4]) + old_stats['draws']
 
-      rundb.update_run_results(run_id, run_chunk, **stats)
+      upload_results(remote, run['_id'], task_id, stats)
 
   # Run cutechess
   p = sh.Command('./cutechess-cli.sh')(games_remaining, run['args']['tc'], book, book_depth, _out=process_output)

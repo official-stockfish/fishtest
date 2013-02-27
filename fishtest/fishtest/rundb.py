@@ -97,18 +97,18 @@ class RunDb:
 
     return request.rundb.runs.find_and_modify(**q)
 
-  def update_task(self, id, task_idx, wins, losses, draws):
+  def update_task(self, id, task_id, wins, losses, draws):
     run = self.get_run(id)
-    if not run['tasks'][task_idx]['active']:
+    if not run['tasks'][task_id]['active']:
       # TODO: log error?
       return
 
-    run['tasks'][task_idx]['stats'] = {
+    run['tasks'][task_id]['stats'] = {
       'wins': wins,
       'losses': losses,
       'draws': draws
     }
-    run['tasks'][task_idx]['last_updated'] = datetime.utcnow()
+    run['tasks'][task_id]['last_updated'] = datetime.utcnow()
     run['results_stale'] = True
 
     self.runs.save(run)
