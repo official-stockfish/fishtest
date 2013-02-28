@@ -81,7 +81,7 @@ def upload_stats(remote, run_id, task_id, stats):
   }
   requests.post(remote + '/api/update_task', data=payload)
 
-def run_games(remote, run, task_id):
+def run_games(worker_info, remote, run, task_id):
   task = run['tasks'][task_id]
 
   stats = {'wins':0, 'losses':0, 'draws':0}
@@ -131,7 +131,7 @@ def run_games(remote, run, task_id):
       upload_stats(remote, run['_id'], task_id, stats)
 
   # Run cutechess
-  p = sh.Command('./cutechess-cli.sh')(games_remaining, run['args']['tc'], book, book_depth, _out=process_output)
+  p = sh.Command('./cutechess-cli.sh')(games_remaining, run['args']['tc'], book, book_depth, worker_info['concurrency'], _out=process_output)
   if p.exit_code != 0:
     raise Exception(p.stderr)
 

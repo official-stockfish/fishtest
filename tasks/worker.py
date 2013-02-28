@@ -23,11 +23,11 @@ def get_worker_info():
     'uname': platform.uname(),
   }
 
-def request_task(remote, worker_info):
+def request_task(worker_info, remote):
   r = requests.post(remote + '/api/request_task', data={'worker_info': worker_info})
   task = r.json()
 
-  run_games(remote, task['run'], task['task_id'])
+  run_games(worker_info, remote, task['run'], task['task_id'])
 
 def worker_loop(remote, worker_info):
   global ALIVE
@@ -55,7 +55,7 @@ def main():
   worker_info['concurrency'] = options.concurrency
 
   signal.signal(signal.SIGINT, on_sigint)
-  worker_loop(remote, worker_info)
+  worker_loop(worker_info, remote)
 
 if __name__ == '__main__':
   main()
