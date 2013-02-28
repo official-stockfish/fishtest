@@ -7,7 +7,7 @@ class RunDb:
     # MongoDB server is assumed to be on the same machine, if not user should use
     # ssh with port forwarding to access the remote host.
     self.conn = MongoClient(os.getenv('FISHTEST_HOST') or 'localhost')
-    self.db = self.conn['fishtest']
+    self.db = self.conn['fishtest_testing']
     self.runs = self.db['runs']
 
     self.chunk_size = 1000
@@ -88,7 +88,7 @@ class RunDb:
 
     return results
 
-  def allocate_task():
+  def request_task():
     q = {
       'query': {'where': {'tasks': {'$elemMatch': {'active': False, 'pending': True}}}},
       'sort': (('_id', ASCENDING)),
@@ -108,7 +108,10 @@ class RunDb:
       'losses': losses,
       'draws': draws
     }
-    run['tasks'][task_id]['last_updated'] = datetime.utcnow()
+    update_time = datetime.utcnow()
+    run['tasks'][task_id]['last_updated'] = update_time
+    run['last_updated'] = update_time
+
     run['results_stale'] = True
 
     self.runs.save(run)
