@@ -88,26 +88,36 @@ class RunDb:
 
     return results
 
-  def request_task():
+  def request_task(worker_info):
+    update_time = datetime.utcnow()
     q = {
       'query': {'where': {'tasks': {'$elemMatch': {'active': False, 'pending': True}}}},
       'sort': (('_id', ASCENDING)),
-      'update': {'$set': {'tasks.$.active': True, 'tasks.$.last_updated': datetime.utcnow()}}
+      'update': {
+        '$set': {
+          'tasks.$.active': True,
+          'tasks.$.last_updated': update_time,
+          'tasks.$.worker_info': worker_info,
+        }
+      }
     }
 
-    return request.rundb.runs.find_and_modify(**q)
+    run = request.rundb.runs.find_and_modify(**q)
+    for idx, task in enumerate(run['tasks']):
+      if task['last_updated'] == update_time:
+        task_id = idx
+        break
 
-  def update_task(self, id, task_id, wins, losses, draws):
-    run = self.get_run(id)
+    return {'run': run, 'task_id': task_id}
+
+  def update_task(self, run_id, task_id, stats):
+    run = self.get_run(run_id)
     if not run['tasks'][task_id]['active']:
       # TODO: log error?
       return
 
-    run['tasks'][task_id]['stats'] = {
-      'wins': wins,
-      'losses': losses,
-      'draws': draws
-    }
+    run['tasks'][task_id]['stats'] = stats
+
     update_time = datetime.utcnow()
     run['tasks'][task_id]['last_updated'] = update_time
     run['last_updated'] = update_time
@@ -115,4 +125,3 @@ class RunDb:
     run['results_stale'] = True
 
     self.runs.save(run)
-

@@ -4,6 +4,7 @@ import signal
 import sys
 import requests
 import time
+from .games import run_games
 
 ALIVE = True
 
@@ -23,12 +24,12 @@ def get_worker_info():
   }
 
 def request_task(remote, worker_info):
-  r = requests.post(remote + '/api/request_task')
-  r.json()
+  r = requests.post(remote + '/api/request_task', data={'worker_info': worker_info})
+  task = r.json()
 
-def worker_loop(remote):
-  worker_info = get_worker_info()
+  run_games(remote, task['run'], task['task_id'])
 
+def worker_loop(remote, worker_info):
   global ALIVE
   while ALIVE:
     print 'polling for tasks...'
@@ -44,13 +45,17 @@ def main():
   parser = OptionParser()
   parser.add_option('-h', '--host', dest='host', default='54.235.120.254')
   parser.add_option('-p', '--port', dest='port', default='6543')
+  parser.add_option('-c', '--concurrency', dest='concurrency', default='1')
   (options, args) = parser.parse_args()
 
   remote = 'http://%s:%s' % (options.host, options.port) 
   print 'Launching with %s' % (remote)
 
+  worker_info = get_worker_info()
+  worker_info['concurrency'] = options.concurrency
+
   signal.signal(signal.SIGINT, on_sigint)
-  worker_loop(remote)
+  worker_loop(remote, worker_info)
 
 if __name__ == '__main__':
   main()

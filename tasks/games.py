@@ -73,8 +73,13 @@ def build(sha, destination):
   sh.cd(os.path.expanduser('~/.'))
   sh.rm('-r', working_dir)
 
-def upload_results(remote, run_id, task_id, results):
-  requests.post(remote + '/api/update_task')
+def upload_stats(remote, run_id, task_id, stats):
+  payload = {
+    'run_id': run_id,
+    'task_id': task_id,
+    'stats': stats,
+  }
+  requests.post(remote + '/api/update_task', data=payload)
 
 def run_games(remote, run, task_id):
   task = run['tasks'][task_id]
@@ -123,7 +128,7 @@ def run_games(remote, run, task_id):
       stats['losses'] = int(chunks[2]) + old_stats['losses']
       stats['draws'] = int(chunks[4]) + old_stats['draws']
 
-      upload_results(remote, run['_id'], task_id, stats)
+      upload_stats(remote, run['_id'], task_id, stats)
 
   # Run cutechess
   p = sh.Command('./cutechess-cli.sh')(games_remaining, run['args']['tc'], book, book_depth, _out=process_output)
