@@ -1,7 +1,7 @@
-import os, ujson
+import os, json
 
 with open(os.path.expanduser('~/fishtest.users'), 'r') as f:
-  USERS = ujson.load(f)
+  USERS = json.load(f)
 
 GROUPS = {'glinscott': ['group:admins'],
           'mcostalba': ['group:admins']}
