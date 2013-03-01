@@ -43,3 +43,14 @@ TODO!
 $ cd ~/fishtest
 $ ./start_worker.sh
 ```
+
+## Running the website
+
+This is only if you wish to run your own testing environment (ie. you are testing changes on another engine).
+
+To launch a development version of the site, you can simply do:
+```
+cd ~/fishtest/fishtest
+sudo python setup.py develop
+./start.sh
+```

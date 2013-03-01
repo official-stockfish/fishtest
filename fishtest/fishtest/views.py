@@ -73,7 +73,7 @@ def tests_run_more(request):
     if num_games < existing_games:
       return
 
-    # Start a celery task for each chunk
+    # Create new chunks for the games 
     new_chunks = request.rundb.generate_chunks(num_games - existing_games)
 
     run['worker_results'] += new_chunks
