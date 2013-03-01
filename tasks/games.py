@@ -6,7 +6,7 @@ import sh
 import tempfile
 import time
 import zipfile
-import ujson
+import json
 from base64 import b64decode
 from urllib2 import urlopen, HTTPError
 from zipfile import ZipFile
@@ -44,11 +44,11 @@ def setup(item, testing_dir):
   if len(item) > 0:
     if not os.path.exists(os.path.join(testing_dir, item)):
       found = False
-      tree = ujson.loads(robust_download(FISHCOOKING_URL + '/git/trees/setup'))
+      tree = json.loads(robust_download(FISHCOOKING_URL + '/git/trees/setup'))
       for blob in tree['tree']:
         if blob['path'] == item:
           found = True
-          blob_json = ujson.loads(robust_download(blob['url']))
+          blob_json = json.loads(robust_download(blob['url']))
           with open(os.path.join(testing_dir, item), 'w') as f:
             f.write(b64decode(blob_json['content']))
       if not found:
