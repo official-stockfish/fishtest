@@ -1,4 +1,5 @@
-import datetime, os
+import os
+from datetime import datetime
 from bson.objectid import ObjectId
 from pymongo import MongoClient, ASCENDING, DESCENDING
 
@@ -92,25 +93,26 @@ class RunDb:
 
     return results
 
-  def request_task(worker_info):
-    update_time = datetime.utcnow()
+  def request_task(self, worker_info):
     q = {
-      'query': {'where': {'tasks': {'$elemMatch': {'active': False, 'pending': True}}}},
-      'sort': (('_id', ASCENDING)),
+      'new': True,
+      'query': {'tasks': {'$elemMatch': {'active': False, 'pending': True}}},
+      'sort': [('_id', ASCENDING)],
       'update': {
         '$set': {
           'tasks.$.active': True,
-          'tasks.$.last_updated': update_time,
+          'tasks.$.last_updated': datetime.utcnow(),
           'tasks.$.worker_info': worker_info,
         }
       }
     }
 
-    run = request.rundb.runs.find_and_modify(**q)
+    run = self.runs.find_and_modify(**q)
+    latest_time = datetime.min
     for idx, task in enumerate(run['tasks']):
-      if task['last_updated'] == update_time:
+      if 'last_updated' in task and task['last_updated'] > latest_time:
+        latest_time = task['last_updated']
         task_id = idx
-        break
 
     return {'run': run, 'task_id': task_id}
 
