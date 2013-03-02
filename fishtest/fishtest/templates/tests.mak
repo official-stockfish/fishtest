@@ -16,8 +16,8 @@
 
 <h3>Active</h3>
 <ul>
-%for machine, jobs in machines.iteritems():
-  <li>Machine: ${machine} - ${jobs}</li>
+%for machine in machines:
+  <li>Machine: ${machine['name']}</li>
 %endfor
 %if len(machines) == 0:
   <li>No machines running</li>

@@ -61,6 +61,10 @@ class RunDb:
 
     return id
 
+  def get_machines(self):
+    # TODO
+    return []
+
   def get_run(self, id):
     return self.runs.find_one({'_id': ObjectId(id)})
 
