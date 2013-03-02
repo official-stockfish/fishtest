@@ -2,7 +2,6 @@ import ast
 import datetime
 import math
 import os
-import sh
 import sys
 import json
 from pyramid.security import remember, forget, authenticated_userid

@@ -7,10 +7,7 @@ from pyramid.session import UnencryptedCookieSessionFactoryConfig
 
 from fishtest.security import groupfinder
 
-# For rundb
-dn = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(os.path.join(dn,'../..'))
-from tasks.rundb import RunDb
+from rundb import RunDb
 
 def main(global_config, **settings):
   """ This function returns a Pyramid WSGI application.
