@@ -7,10 +7,7 @@ from pyramid.session import UnencryptedCookieSessionFactoryConfig
 
 from fishtest.security import groupfinder
 
-# For rundb
-dn = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(os.path.join(dn,'../..'))
-from tasks.rundb import RunDb
+from rundb import RunDb
 
 def main(global_config, **settings):
   """ This function returns a Pyramid WSGI application.
@@ -42,5 +39,10 @@ def main(global_config, **settings):
   config.add_route('tests_view', '/tests/view/{id}')
   config.add_route('tests_delete', '/tests/delete')
   config.add_route('tests_stop', '/tests/stop')
+
+  # API
+  config.add_route('api_request_task', '/api/request_task')
+  config.add_route('api_update_task', '/api/update_task')
+
   config.scan()
   return config.make_wsgi_app()

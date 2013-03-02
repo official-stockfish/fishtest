@@ -1,13 +1,12 @@
 from __future__ import absolute_import
 
-from tasks.celery import celery
-from tasks.rundb import RunDb
 import os
+import requests
 import sh
 import tempfile
 import time
 import zipfile
-import ujson
+import json
 from base64 import b64decode
 from urllib2 import urlopen, HTTPError
 from zipfile import ZipFile
@@ -45,11 +44,11 @@ def setup(item, testing_dir):
   if len(item) > 0:
     if not os.path.exists(os.path.join(testing_dir, item)):
       found = False
-      tree = ujson.loads(robust_download(FISHCOOKING_URL + '/git/trees/setup'))
+      tree = json.loads(robust_download(FISHCOOKING_URL + '/git/trees/setup'))
       for blob in tree['tree']:
         if blob['path'] == item:
           found = True
-          blob_json = ujson.loads(robust_download(blob['url']))
+          blob_json = json.loads(robust_download(blob['url']))
           with open(os.path.join(testing_dir, item), 'w') as f:
             f.write(b64decode(blob_json['content']))
       if not found:
@@ -74,17 +73,22 @@ def build(sha, destination):
   sh.cd(os.path.expanduser('~/.'))
   sh.rm('-r', working_dir)
 
-@celery.task
-def run_games(run_id, run_chunk):
-  rundb = RunDb()
-  run = rundb.get_run(run_id)
-  chunk = run['worker_results'][run_chunk]
+def upload_stats(remote, run_id, task_id, stats):
+  payload = {
+    'run_id': run_id,
+    'task_id': task_id,
+    'stats': stats,
+  }
+  requests.post(remote + '/api/update_task', data=payload)
+
+def run_games(worker_info, remote, run, task_id):
+  task = run['tasks'][task_id]
 
   stats = {'wins':0, 'losses':0, 'draws':0}
 
-  # Have we run any games on this chunk yet?
-  old_stats = chunk.get('stats', {'wins':0, 'losses':0, 'draws':0})
-  games_remaining = chunk['chunk_size'] - (old_stats['wins'] + old_stats['losses'] + old_stats['draws'])
+  # Have we run any games on this task yet?
+  old_stats = task.get('stats', {'wins':0, 'losses':0, 'draws':0})
+  games_remaining = task['num_games'] - (old_stats['wins'] + old_stats['losses'] + old_stats['draws'])
   if games_remaining <= 0:
     return 'No games remaining'
 
@@ -92,7 +96,7 @@ def run_games(run_id, run_chunk):
   testing_dir = os.getenv('FISHTEST_DIR')
 
   if not os.path.exists(testing_dir):
-    raise Exception('Not exsisting directory FISHTEST_DIR=%s' % (testing_dir))
+    raise Exception('Directory does not exist: FISHTEST_DIR=%s' % (testing_dir))
 
   book = run['args'].get('book', 'varied.bin')
   book_depth = run['args'].get('book_depth', '10')
@@ -124,10 +128,11 @@ def run_games(run_id, run_chunk):
       stats['losses'] = int(chunks[2]) + old_stats['losses']
       stats['draws'] = int(chunks[4]) + old_stats['draws']
 
-      rundb.update_run_results(run_id, run_chunk, **stats)
+      upload_stats(remote, run['_id'], task_id, stats)
 
   # Run cutechess
-  p = sh.Command('./cutechess-cli.sh')(games_remaining, run['args']['tc'], book, book_depth, _out=process_output)
+  sh.chmod('+x', './cutechess-cli.sh')
+  p = sh.Command('./cutechess-cli.sh')(games_remaining, run['args']['tc'], book, book_depth, worker_info['concurrency'], _out=process_output)
   if p.exit_code != 0:
     raise Exception(p.stderr)
 

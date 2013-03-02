@@ -1,11 +1,13 @@
-CHANGES.txt
 MANIFEST.in
-README.txt
 development.ini
 production.ini
 setup.cfg
 setup.py
 fishtest/__init__.py
+fishtest/api.py
+fishtest/models.py
+fishtest/rundb.py
+fishtest/security.py
 fishtest/tests.py
 fishtest/views.py
 fishtest.egg-info/PKG-INFO
@@ -24,7 +26,9 @@ fishtest/static/img/glyphicons-halflings.png
 fishtest/static/js/bootstrap.js
 fishtest/static/js/bootstrap.min.js
 fishtest/templates/base.mak
+fishtest/templates/elo_results.mak
 fishtest/templates/mainpage.mak
-fishtest/templates/run.mak
+fishtest/templates/run_table.mak
 fishtest/templates/tests.mak
 fishtest/templates/tests_run.mak
+fishtest/templates/tests_view.mak
