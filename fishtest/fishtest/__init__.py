@@ -39,5 +39,10 @@ def main(global_config, **settings):
   config.add_route('tests_view', '/tests/view/{id}')
   config.add_route('tests_delete', '/tests/delete')
   config.add_route('tests_stop', '/tests/stop')
+
+  # API
+  config.add_route('api_request_task', '/api/request_task')
+  config.add_route('api_update_task', '/api/update_task')
+
   config.scan()
   return config.make_wsgi_app()
