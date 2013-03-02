@@ -163,7 +163,7 @@ def tests_view(request):
 
 @view_config(route_name='tests', renderer='tests.mak')
 def tests(request):
-  waiting_tasks = []
+  pending_tasks = []
   failed_tasks = []
   active_tasks = []
 
@@ -174,33 +174,33 @@ def tests(request):
   for run in runs:
     run['results'] = format_results(request.rundb.get_results(run))
 
-    waiting = False
+    pending = False
     failed = False
     active = False
 
-    for worker in run['worker_results']:
-      if worker['active'] == True:
+    for task in run['tasks']:
+      if task['active']:
         active = True
-      elif worker['pending'] == True:
+      elif task['pending']:
         pending = True
-      elif 'failure' in worker:
+      elif 'failure' in task:
         failed = True
 
-    if waiting:
-      waiting_tasks.append(run)
+    if pending:
+      pending_tasks.append(run)
     if failed:
       failed_tasks.append(run)
     if active:
       active_tasks.append(run)
 
   # Filter out pending and active results from finished
-  runs = [r for r in runs if r not in waiting_tasks and r not in active_tasks]
+  runs = [r for r in runs if r not in pending_tasks and r not in active_tasks]
 
   machines = request.rundb.get_machines()
 
   return {
     'machines': machines,
-    'waiting': waiting_tasks,
+    'pending': pending_tasks,
     'failed': failed_tasks,
     'active': active_tasks,
     'runs': runs
