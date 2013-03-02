@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import json
 import platform
 import signal
 import sys
@@ -26,8 +27,8 @@ def get_worker_info():
   }
 
 def request_task(worker_info, remote):
-  r = requests.post(remote + '/api/request_task', data={'worker_info': worker_info})
-  task = r.json()
+  r = requests.post(remote + '/api/request_task', data=json.dumps({'worker_info': worker_info}))
+  task = json.loads(r.json())
 
   run_games(worker_info, remote, task['run'], task['task_id'])
 
