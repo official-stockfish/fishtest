@@ -131,6 +131,7 @@ def run_games(worker_info, remote, run, task_id):
       upload_stats(remote, run['_id'], task_id, stats)
 
   # Run cutechess
+  sh.chmod('+x', './cutechess-cli.sh')
   p = sh.Command('./cutechess-cli.sh')(games_remaining, run['args']['tc'], book, book_depth, worker_info['concurrency'], _out=process_output)
   if p.exit_code != 0:
     raise Exception(p.stderr)
