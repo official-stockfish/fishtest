@@ -40,6 +40,7 @@
    <th>Idx</th>
    <th>Started</td>
    <th>Pending</th>
+   <th>Last Updated</th>
    <th>Games</th>
    <th>Played</th>
    <th>Wins</th>
@@ -60,6 +61,7 @@
    <td>${idx}</td>
    <td>${task['active']}</td>
    <td>${task['pending']}</td>
+   <td>${task.get('last_updated', '-')}</td>
    <td>${task['num_games']}</td>
    <td>${total}</td>
    <td>${stats.get('wins', '-')}</td>
