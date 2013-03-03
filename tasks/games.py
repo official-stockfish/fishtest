@@ -54,7 +54,7 @@ def setup(item, testing_dir):
       if not found:
         raise Exception('Item %s not found' % (item))
 
-def build(sha, destination):
+def build(sha, destination, concurrency):
   """Download and build sources in a temporary directory then move exe to destination"""
   working_dir = tempfile.mkdtemp()
   sh.cd(working_dir)
@@ -68,7 +68,7 @@ def build(sha, destination):
     if name.endswith('/src/'):
       src_dir = name
   sh.cd(src_dir)
-  sh.make('build', 'ARCH=x86-64-modern')
+  sh.make('build', '-j' + str(concurrency), 'ARCH=x86-64-modern')
   sh.mv('stockfish', destination)
   sh.cd(os.path.expanduser('~/.'))
   sh.rm('-r', working_dir)
@@ -105,8 +105,8 @@ def run_games(worker_info, remote, run, task_id):
   setup('cutechess-cli.sh', testing_dir)
 
   # Download and build base and new
-  build(run['args']['resolved_base'], os.path.join(testing_dir, 'base'))
-  build(run['args']['resolved_new'] , os.path.join(testing_dir, 'stockfish'))
+  build(run['args']['resolved_base'], os.path.join(testing_dir, 'base'), worker_info['concurrency'])
+  build(run['args']['resolved_new'] , os.path.join(testing_dir, 'stockfish'), worker_info['concurrency'])
 
   sh.cd(testing_dir)
   sh.rm('-f', 'results.pgn')
