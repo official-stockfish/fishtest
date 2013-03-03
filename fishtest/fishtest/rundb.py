@@ -4,11 +4,11 @@ from bson.objectid import ObjectId
 from pymongo import MongoClient, ASCENDING, DESCENDING
 
 class RunDb:
-  def __init__(self):
+  def __init__(self, db_name='fishtest_new'):
     # MongoDB server is assumed to be on the same machine, if not user should use
     # ssh with port forwarding to access the remote host.
     self.conn = MongoClient(os.getenv('FISHTEST_HOST') or 'localhost')
-    self.db = self.conn['fishtest_new']
+    self.db = self.conn[db_name]
     self.runs = self.db['runs']
 
     self.chunk_size = 1000
