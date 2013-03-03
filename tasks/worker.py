@@ -6,6 +6,7 @@ import sys
 import requests
 import time
 import traceback
+from bson import json_util
 from optparse import OptionParser
 from games import run_games
 
@@ -28,7 +29,10 @@ def get_worker_info():
 
 def request_task(worker_info, remote):
   r = requests.post(remote + '/api/request_task', data=json.dumps({'worker_info': worker_info}))
-  task = json.loads(r.json())
+  task = json.loads(r.text, object_hook=json_util.object_hook)
+
+  if 'task_waiting' in task:
+    return
 
   run_games(worker_info, remote, task['run'], task['task_id'])
 
