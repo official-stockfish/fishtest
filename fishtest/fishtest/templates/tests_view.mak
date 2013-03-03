@@ -38,9 +38,10 @@
  <thead>
   <tr>
    <th>Idx</th>
-   <th>Games</th>
-   <th>Pending</th>
    <th>Started</td>
+   <th>Pending</th>
+   <th>Games</th>
+   <th>Played</th>
    <th>Wins</th>
    <th>Losses</th>
    <th>Draws</th>
@@ -49,11 +50,18 @@
  <tbody>
   %for idx, task in enumerate(run['tasks']):
   <tr>
-   <% stats = task.get('stats', {}) %>
+   <%
+     stats = task.get('stats', {})
+     if 'stats' in task:
+       total = stats['wins'] + stats['losses'] + stats['draws']
+     else:
+       total = '0'
+   %>
    <td>${idx}</td>
-   <td>${task['num_games']}</td>
-   <td>${task['pending']}</td>
    <td>${task['active']}</td>
+   <td>${task['pending']}</td>
+   <td>${task['num_games']}</td>
+   <td>${total}</td>
    <td>${stats.get('wins', '-')}</td>
    <td>${stats.get('losses', '-')}</td>
    <td>${stats.get('draws', '-')}</td>
