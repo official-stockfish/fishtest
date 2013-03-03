@@ -32,3 +32,33 @@
     </div>
   </div>
 </form>
+
+<h3>Tasks</h3>
+<table class='table table-striped table-condensed'>
+ <thead>
+  <tr>
+   <th>Idx</th>
+   <th>Games</th>
+   <th>Pending</th>
+   <th>Started</td>
+   <th>Wins</th>
+   <th>Losses</th>
+   <th>Draws</th>
+  </tr>
+ </thead>
+ <tbody>
+  %for idx, task in enumerate(run['tasks']):
+  <tr>
+   <% stats = task.get('stats', {}) %>
+   <td>${idx}</td>
+   <td>${task['num_games']}</td>
+   <td>${task['pending']}</td>
+   <td>${task['active']}</td>
+   <td>${stats.get('wins', '-')}</td>
+   <td>${stats.get('losses', '-')}</td>
+   <td>${stats.get('draws', '-')}</td>
+  </tr>
+  %endfor
+ </tbody>
+</table>
+
