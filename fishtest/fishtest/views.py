@@ -1,10 +1,8 @@
-import ast
 import datetime
 import math
 import os
-import sh
 import sys
-import ujson
+import json
 from pyramid.security import remember, forget, authenticated_userid
 from pyramid.view import view_config, forbidden_view_config
 from pyramid.httpexceptions import HTTPFound
@@ -12,15 +10,6 @@ from urllib2 import urlopen, HTTPError
 
 from .security import USERS
 
-# For tasks
-dn = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(os.path.join(dn,'../..'))
-from tasks.games import run_games
-from tasks.celery import celery
-
-# Celery Flower is assumed to be on the same machine, if not user should use
-# ssh with port forwarding to access the remote host.
-FLOWER_URL = 'http://localhost:5555'
 FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
 
 @view_config(route_name='home', renderer='mainpage.mak')
@@ -47,7 +36,7 @@ def login(request):
 
 def get_sha(branch):
   """Resolves the git branch to sha commit"""
-  commit = ujson.loads(urlopen(FISHCOOKING_URL + '/commits/' + branch).read())
+  commit = json.loads(urlopen(FISHCOOKING_URL + '/commits/' + branch).read())
   return commit['sha']
 
 @view_config(route_name='tests_run', renderer='tests_run.mak', permission='modify_db')
@@ -64,14 +53,6 @@ def tests_run(request):
                                    base_signature=request.POST['base-signature'],
                                    new_signature=request.POST['test-signature'],
                                    info=request.POST['run-info'])
-
-    # Start a celery task for each chunk
-    new_run = request.rundb.get_run(run_id)
-    for idx, chunk in enumerate(new_run['worker_results']):
-      new_task = run_games.delay(new_run['_id'], idx)
-      chunk['celery_id'] = new_task.id
-
-    request.rundb.runs.save(new_run)
 
     request.session.flash('Started test run!')
     return HTTPFound(location=request.route_url('tests'))
@@ -90,11 +71,8 @@ def tests_run_more(request):
     if num_games < existing_games:
       return
 
-    # Start a celery task for each chunk
+    # Create new chunks for the games 
     new_chunks = request.rundb.generate_chunks(num_games - existing_games)
-    for idx, chunk in enumerate(new_chunks):
-      new_task = run_games.delay(run['_id'], idx + len(run['worker_results']))
-      chunk['celery_id'] = new_task.id
 
     run['worker_results'] += new_chunks
     run['args']['num_games'] = num_games
@@ -108,8 +86,7 @@ def tests_run_more(request):
 def tests_stop(request):
   run = request.rundb.get_run(request.POST['run-id'])
   for w in run['worker_results']:
-    if 'celery_id' in w:
-      celery.control.revoke(w['celery_id'])
+    w['pending'] = False
   request.rundb.runs.save(run)
 
   request.session.flash('Stopped run')
@@ -120,9 +97,7 @@ def tests_delete(request):
   run = request.rundb.get_run(request.POST['run-id'])
   run['deleted'] = True
   for w in run['worker_results']:
-    if 'celery_id' in w:
-      celery.control.revoke(w['celery_id'])
-  run['worker_results'] = []
+    w['pending'] = False
   request.rundb.runs.save(run)
 
   request.session.flash('Deleted run')
@@ -186,27 +161,9 @@ def tests_view(request):
   run['results'] = format_results(request.rundb.get_results(run))
   return { 'run': run }
 
-def get_celery_stats():
-  machines = {}
-  tasks = []
-
-  try:
-    workers = ujson.loads(urlopen(FLOWER_URL + '/api/workers').read())
-    tasks = ujson.loads(urlopen(FLOWER_URL + '/api/tasks').read())
-
-    for worker, info in workers.iteritems():
-      if not info['status']:
-        continue
-      machines[worker] = 'Idle' if len(info['running_tasks']) == 0 else 'Running tasks'
-  except HTTPError as e:
-    pass
-
-  return (machines, tasks)
-
 @view_config(route_name='tests', renderer='tests.mak')
 def tests(request):
-  machines, tasks = get_celery_stats()
-  waiting_tasks = []
+  pending_tasks = []
   failed_tasks = []
   active_tasks = []
 
@@ -217,34 +174,33 @@ def tests(request):
   for run in runs:
     run['results'] = format_results(request.rundb.get_results(run))
 
-    waiting = False
+    pending = False
     failed = False
     active = False
 
-    for worker in run['worker_results']:
-      if 'celery_id' in worker and worker['celery_id'] in tasks:
-        task = tasks[worker['celery_id']]
-        if not active and task['state'] == 'PENDING':
-          waiting = True
-        elif task['state'] == 'FAILURE' and not 'terminated' in task:
-          failed = True
-        elif task['state'] == 'STARTED':
-          active = True
-          waiting = False
+    for task in run['tasks']:
+      if task['active']:
+        active = True
+      elif task['pending']:
+        pending = True
+      elif 'failure' in task:
+        failed = True
 
-    if waiting:
-      waiting_tasks.append(run)
+    if pending:
+      pending_tasks.append(run)
     if failed:
       failed_tasks.append(run)
     if active:
       active_tasks.append(run)
 
   # Filter out pending and active results from finished
-  runs = [r for r in runs if r not in waiting_tasks and r not in active_tasks]
+  runs = [r for r in runs if r not in pending_tasks and r not in active_tasks]
+
+  machines = request.rundb.get_machines()
 
   return {
     'machines': machines,
-    'waiting': waiting_tasks,
+    'pending': pending_tasks,
     'failed': failed_tasks,
     'active': active_tasks,
     'runs': runs

@@ -1,4 +1,5 @@
-import datetime, os
+import os
+from datetime import datetime
 from bson.objectid import ObjectId
 from pymongo import MongoClient, ASCENDING, DESCENDING
 
@@ -7,21 +8,23 @@ class RunDb:
     # MongoDB server is assumed to be on the same machine, if not user should use
     # ssh with port forwarding to access the remote host.
     self.conn = MongoClient(os.getenv('FISHTEST_HOST') or 'localhost')
-    self.db = self.conn['fishtest']
+    self.db = self.conn['fishtest_testing']
     self.runs = self.db['runs']
 
     self.chunk_size = 1000
 
-  def generate_chunks(self, num_games):
-    worker_results = []
+  def generate_tasks(self, num_games):
+    tasks = []
     remaining = num_games
     while remaining > 0:
-      chunk_size = min(self.chunk_size, remaining)
-      worker_results.append({
-        'chunk_size': chunk_size,
+      task_size = min(self.chunk_size, remaining)
+      tasks.append({
+        'num_games': task_size,
+        'pending': True,
+        'active': False,
       })
-      remaining -= chunk_size
-    return worker_results
+      remaining -= task_size
+    return tasks
 
   def new_run(self, base_tag, new_tag, num_games, tc, book, book_depth,
               name='',
@@ -50,14 +53,18 @@ class RunDb:
         'new_signature': new_signature,
       },
       'start_time': start_time,
-      # Will be filled in by workers, indexed by chunk-id
-      'worker_results': self.generate_chunks(num_games),
+      # Will be filled in by tasks, indexed by task-id
+      'tasks': self.generate_tasks(num_games),
       # Aggregated results
       'results': { 'wins': 0, 'losses': 0, 'draws': 0 },
       'results_stale': False,
     })
 
     return id
+
+  def get_machines(self):
+    # TODO
+    return []
 
   def get_run(self, id):
     return self.runs.find_one({'_id': ObjectId(id)})
@@ -68,24 +75,14 @@ class RunDb:
       runs.append(run)
     return runs
 
-  def update_run_results(self, id, chunk, wins, losses, draws):
-    run = self.get_run(id)
-    run['worker_results'][chunk]['stats'] = {
-      'wins': wins,
-      'losses': losses,
-      'draws': draws
-    }
-    run['results_stale'] = True
-    self.runs.save(run)
-
   def get_results(self, run):
     if not run['results_stale']:
       return run['results']
 
     results = { 'wins': 0, 'losses': 0, 'draws': 0 }
-    for chunk in run['worker_results']:
-      if 'stats' in chunk:
-        stats = chunk['stats']
+    for task in run['tasks']:
+      if 'stats' in task:
+        stats = task['stats']
         results['wins'] += stats['wins']
         results['losses'] += stats['losses']
         results['draws'] += stats['draws']
@@ -95,3 +92,42 @@ class RunDb:
     self.runs.save(run)
 
     return results
+
+  def request_task(self, worker_info):
+    q = {
+      'new': True,
+      'query': {'tasks': {'$elemMatch': {'active': False, 'pending': True}}},
+      'sort': [('_id', ASCENDING)],
+      'update': {
+        '$set': {
+          'tasks.$.active': True,
+          'tasks.$.last_updated': datetime.utcnow(),
+          'tasks.$.worker_info': worker_info,
+        }
+      }
+    }
+
+    run = self.runs.find_and_modify(**q)
+    latest_time = datetime.min
+    for idx, task in enumerate(run['tasks']):
+      if 'last_updated' in task and task['last_updated'] > latest_time:
+        latest_time = task['last_updated']
+        task_id = idx
+
+    return {'run': run, 'task_id': task_id}
+
+  def update_task(self, run_id, task_id, stats):
+    run = self.get_run(run_id)
+    if not run['tasks'][task_id]['active']:
+      # TODO: log error?
+      return
+
+    run['tasks'][task_id]['stats'] = stats
+
+    update_time = datetime.utcnow()
+    run['tasks'][task_id]['last_updated'] = update_time
+    run['last_updated'] = update_time
+
+    run['results_stale'] = True
+
+    self.runs.save(run)

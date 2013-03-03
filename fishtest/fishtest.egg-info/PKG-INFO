@@ -1,4 +1,4 @@
-Metadata-Version: 1.1
+Metadata-Version: 1.0
 Name: fishtest
 Version: 0.0
 Summary: fishtest
@@ -6,13 +6,8 @@ Home-page: UNKNOWN
 Author: UNKNOWN
 Author-email: UNKNOWN
 License: UNKNOWN
-Description: fishtest README
+Description: 
         
-        
-        0.0
-        ---
-        
-        -  Initial version
         
 Keywords: web pyramid pylons
 Platform: UNKNOWN
