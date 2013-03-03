@@ -36,12 +36,12 @@ def request_task(worker_info, remote):
 
   run_games(worker_info, remote, task['run'], task['task_id'])
 
-def worker_loop(remote, worker_info):
+def worker_loop(worker_info, remote):
   global ALIVE
   while ALIVE:
     print 'polling for tasks...'
     try:
-      request_task(remote, worker_info)
+      request_task(worker_info, remote)
     except:
       sys.stderr.write('Exception from worker:\n')
       traceback.print_exc(file=sys.stderr)
@@ -55,7 +55,7 @@ def main():
   parser.add_option('-c', '--concurrency', dest='concurrency', default='1')
   (options, args) = parser.parse_args()
 
-  remote = 'http://%s:%s' % (options.host, options.port) 
+  remote = 'http://%s:%s' % (options.host, options.port)
   print 'Launching with %s' % (remote)
 
   worker_info = get_worker_info()
