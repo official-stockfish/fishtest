@@ -8,7 +8,7 @@ class RunDb:
     # MongoDB server is assumed to be on the same machine, if not user should use
     # ssh with port forwarding to access the remote host.
     self.conn = MongoClient(os.getenv('FISHTEST_HOST') or 'localhost')
-    self.db = self.conn['fishtest_testing']
+    self.db = self.conn['fishtest_new']
     self.runs = self.db['runs']
 
     self.chunk_size = 1000
@@ -35,7 +35,7 @@ class RunDb:
               new_signature='',
               start_time=None):
     if start_time == None:
-      start_time = datetime.datetime.now()
+      start_time = datetime.utcnow()
 
     id = self.runs.insert({
       'args': {
