@@ -11,7 +11,8 @@ def request_task(request):
 
 @view_config(route_name='api_update_task')
 def update_task(request):
-  params = {}
-  for key in [ 'run_id', 'task_id', 'stats' ]:
-    params[key] = request.params[key]
-  request.rundb.update_task(**params) 
+  request.rundb.update_task(
+    run_id=request.json_body['run_id'],
+    task_id=int(request.json_body['task_id']),
+    stats=request.json_body['stats'],
+  )
