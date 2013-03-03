@@ -1,10 +1,13 @@
 #!/usr/bin/python
+import json
 import platform
 import signal
 import sys
 import requests
 import time
-from .games import run_games
+import traceback
+from optparse import OptionParser
+from games import run_games
 
 ALIVE = True
 
@@ -24,8 +27,8 @@ def get_worker_info():
   }
 
 def request_task(worker_info, remote):
-  r = requests.post(remote + '/api/request_task', data={'worker_info': worker_info})
-  task = r.json()
+  r = requests.post(remote + '/api/request_task', data=json.dumps({'worker_info': worker_info}))
+  task = json.loads(r.json())
 
   run_games(worker_info, remote, task['run'], task['task_id'])
 
@@ -43,7 +46,7 @@ def worker_loop(remote, worker_info):
 
 def main():
   parser = OptionParser()
-  parser.add_option('-h', '--host', dest='host', default='54.235.120.254')
+  parser.add_option('-n', '--host', dest='host', default='54.235.120.254')
   parser.add_option('-p', '--port', dest='port', default='6543')
   parser.add_option('-c', '--concurrency', dest='concurrency', default='1')
   (options, args) = parser.parse_args()
