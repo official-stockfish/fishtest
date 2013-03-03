@@ -75,7 +75,7 @@ def build(sha, destination):
 
 def upload_stats(remote, run_id, task_id, stats):
   payload = {
-    'run_id': run_id,
+    'run_id': str(run_id),
     'task_id': task_id,
     'stats': stats,
   }
