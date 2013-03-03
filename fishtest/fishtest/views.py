@@ -64,17 +64,17 @@ def tests_run_more(request):
     run = request.rundb.get_run(request.POST['run'])
 
     existing_games = 0
-    for chunk in run['worker_results']:
-      existing_games += chunk['chunk_size']
+    for chunk in run['tasks']:
+      existing_games += chunk['num_games']
 
     num_games = int(request.POST['num-games'])
     if num_games < existing_games:
       return
 
     # Create new chunks for the games 
-    new_chunks = request.rundb.generate_chunks(num_games - existing_games)
+    new_chunks = request.rundb.generate_tasks(num_games - existing_games)
 
-    run['worker_results'] += new_chunks
+    run['tasks'] += new_chunks
     run['args']['num_games'] = num_games
     request.rundb.runs.save(run)
 
