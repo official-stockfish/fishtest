@@ -108,6 +108,9 @@ class RunDb:
     }
 
     run = self.runs.find_and_modify(**q)
+    if run == None:
+      return {'task_waiting': False}
+
     latest_time = datetime.min
     for idx, task in enumerate(run['tasks']):
       if 'last_updated' in task and task['last_updated'] > latest_time:
