@@ -121,14 +121,18 @@ class RunDb:
 
   def update_task(self, run_id, task_id, stats):
     run = self.get_run(run_id)
-    if not run['tasks'][task_id]['active']:
+    task = run['tasks'][task_id]
+    if not task['active']:
       # TODO: log error?
       return
 
-    run['tasks'][task_id]['stats'] = stats
+    task['stats'] = stats
+    if stats['wins'] + stats['losses'] + stats['draws'] >= task['num_games']:
+      task['active'] = False
+      task['pending'] = False
 
     update_time = datetime.utcnow()
-    run['tasks'][task_id]['last_updated'] = update_time
+    task['last_updated'] = update_time
     run['last_updated'] = update_time
 
     run['results_stale'] = True
