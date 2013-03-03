@@ -9,10 +9,11 @@ def request_task(request):
   task = request.rundb.request_task(worker_info)
   return json.dumps(task, default=json_util.default)
 
-@view_config(route_name='api_update_task')
+@view_config(route_name='api_update_task', renderer='string')
 def update_task(request):
-  request.rundb.update_task(
+  result = request.rundb.update_task(
     run_id=request.json_body['run_id'],
     task_id=int(request.json_body['task_id']),
     stats=request.json_body['stats'],
   )
+  return json.dumps(result)

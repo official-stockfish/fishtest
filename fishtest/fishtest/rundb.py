@@ -138,3 +138,5 @@ class RunDb:
     run['results_stale'] = True
 
     self.runs.save(run)
+
+    return {}
