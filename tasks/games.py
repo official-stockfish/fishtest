@@ -5,6 +5,7 @@ import requests
 import sh
 import tempfile
 import time
+import traceback
 import zipfile
 import json
 from base64 import b64decode
@@ -81,7 +82,11 @@ def upload_stats(remote, username, password, run_id, task_id, stats):
     'task_id': task_id,
     'stats': stats,
   }
-  r = requests.post(remote + '/api/update_task', data=json.dumps(payload))
+  try:
+    requests.post(remote + '/api/update_task', data=json.dumps(payload))
+  except:
+    sys.stderr.write('Exception from calling update_task:\n')
+    traceback.print_exc(file=sys.stderr)
 
 def run_games(worker_info, password, remote, run, task_id):
   task = run['tasks'][task_id]
