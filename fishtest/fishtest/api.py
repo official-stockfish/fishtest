@@ -7,12 +7,12 @@ from .security import USERS
 @view_config(route_name='api_request_task', renderer='string')
 def request_task(request):
   """Assign the highest priority task to the worker"""
-  username = request.json_body['username']
+  worker_info = request.json_body['worker_info']
+  username = worker_info['username']
   password = request.json_body['password']
   if USERS.get(username) != password:
     return json.dumps({'error': 'Invalid password'})
 
-  worker_info = request.json_body['worker_info']
   task = request.rundb.request_task(worker_info)
   return json.dumps(task, default=json_util.default)
 
