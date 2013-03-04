@@ -181,7 +181,8 @@ def tests(request):
     for task in run['tasks']:
       if task['active']:
         active = True
-      elif task['pending']:
+        pending = False
+      elif task['pending'] and not active:
         pending = True
       elif 'failure' in task:
         failed = True

@@ -17,7 +17,7 @@
 <h3>Active</h3>
 <ul>
 %for machine in machines:
-  <li>Machine: ${machine['name']}</li>
+  <li>Machine: ${machine['username']} - ${machine['concurrency']} cores</li>
 %endfor
 %if len(machines) == 0:
   <li>No machines running</li>

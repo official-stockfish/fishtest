@@ -63,8 +63,12 @@ class RunDb:
     return id
 
   def get_machines(self):
-    # TODO
-    return []
+    machines = []
+    for run in self.runs.find({'tasks': {'$elemMatch': {'active': True}}}):
+      for task in run['tasks']:
+        if task['active']:
+          machines.append(task['worker_info']) 
+    return machines
 
   def get_run(self, id):
     return self.runs.find_one({'_id': ObjectId(id)})
