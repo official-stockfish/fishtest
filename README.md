@@ -12,6 +12,25 @@ $ sudo passwd fishtest
 $ su fishtest
 $ cd ~
 ```
+### Windows setup
+
+On Windows you will need to install Python 2.7.x for x86 (not 3.x series and not 64bits) from
+
+http://www.python.org/download/releases/2.7.3/
+
+Then setuptools for 2.7.x from
+
+https://pypi.python.org/pypi/setuptools
+
+Once installation is complete, you will find an easy_install.exe program in your
+Python Scripts subdirectory. Be sure to add this directory to your PATH environment
+variable, if you haven't already done so.
+
+Then install pip with:
+
+```
+easy_install pip
+```
 
 ### Clone fishtest
 
@@ -39,14 +58,20 @@ TODO!
 
 ## Launching the worker
 
+Edit the --concurrency argument in fishtest/tasks/start_worker.sh for the number of cores in your
+system (not including Hyperthreaded cores!).  Then:
+
 ```
-$ cd ~/fishtest
+$ cd ~/fishtest/tasks
 $ ./start_worker.sh
 ```
 
 ## Running the website
 
 This is only if you wish to run your own testing environment (ie. you are testing changes on another engine).
+
+As a pre-requisite, the website needs a mongodb instance.  By default it assumes there is one
+running on localhost.  You can set FISHTEST_HOST envrionment variable to connect to a different host.
 
 To launch a development version of the site, you can simply do:
 ```
