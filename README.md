@@ -58,14 +58,20 @@ TODO!
 
 ## Launching the worker
 
+Edit the --concurrency argument in fishtest/tasks/start_worker.sh for the number of cores in your
+system (not including Hyperthreaded cores!).  Then:
+
 ```
-$ cd ~/fishtest
+$ cd ~/fishtest/tasks
 $ ./start_worker.sh
 ```
 
 ## Running the website
 
 This is only if you wish to run your own testing environment (ie. you are testing changes on another engine).
+
+As a pre-requisite, the website needs a mongodb instance.  By default it assumes there is one
+running on localhost.  You can set FISHTEST_HOST envrionment variable to connect to a different host.
 
 To launch a development version of the site, you can simply do:
 ```
