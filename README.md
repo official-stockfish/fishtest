@@ -48,18 +48,32 @@ This is where the matches will be run
 ```
 $ cd ~
 $ mkdir testing
-
-Edit ~/.bash_profile and add
-export FISHTEST_DIR=~/testing
 ```
 
 Get cutechess-cli
 TODO!
 
+### Get username/password
+
+Please e-mail us.  Once you have your username and password, you can add them
+to start_worker.sh below.
+
 ## Launching the worker
 
-Edit the --concurrency argument in fishtest/tasks/start_worker.sh for the number of cores in your
-system (not including Hyperthreaded cores!).  Then:
+The worker launch script is in fishtest/tasks/start_worker.sh.  Add the following lines,
+edited to match your setup.
+
+```
+export FISHTEST_DIR=~/testing
+export FISHTEST_USER="myusername"
+export FISHTEST_PASSWORD="mypassword"
+```
+
+Finally, edit the --concurrency argument in start_worker.sh for the number of cores in your
+system (not including Hyperthreaded cores!), and leaving one core for the OS.  For example,
+on my 4 core machine, I use --concurrency 3.
+
+Then, you can launch the worker!
 
 ```
 $ cd ~/fishtest/tasks
