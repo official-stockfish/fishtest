@@ -32,3 +32,43 @@
     </div>
   </div>
 </form>
+
+<h3>Tasks</h3>
+<table class='table table-striped table-condensed'>
+ <thead>
+  <tr>
+   <th>Idx</th>
+   <th>Started</td>
+   <th>Pending</th>
+   <th>Last Updated</th>
+   <th>Games</th>
+   <th>Played</th>
+   <th>Wins</th>
+   <th>Losses</th>
+   <th>Draws</th>
+  </tr>
+ </thead>
+ <tbody>
+  %for idx, task in enumerate(run['tasks']):
+  <tr>
+   <%
+     stats = task.get('stats', {})
+     if 'stats' in task:
+       total = stats['wins'] + stats['losses'] + stats['draws']
+     else:
+       total = '0'
+   %>
+   <td>${idx}</td>
+   <td>${task['active']}</td>
+   <td>${task['pending']}</td>
+   <td>${task.get('last_updated', '-')}</td>
+   <td>${task['num_games']}</td>
+   <td>${total}</td>
+   <td>${stats.get('wins', '-')}</td>
+   <td>${stats.get('losses', '-')}</td>
+   <td>${stats.get('draws', '-')}</td>
+  </tr>
+  %endfor
+ </tbody>
+</table>
+

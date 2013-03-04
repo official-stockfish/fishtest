@@ -85,7 +85,7 @@ def tests_run_more(request):
 @view_config(route_name='tests_stop', permission='modify_db')
 def tests_stop(request):
   run = request.rundb.get_run(request.POST['run-id'])
-  for w in run['worker_results']:
+  for w in run['tasks']:
     w['pending'] = False
   request.rundb.runs.save(run)
 
@@ -96,7 +96,7 @@ def tests_stop(request):
 def tests_delete(request):
   run = request.rundb.get_run(request.POST['run-id'])
   run['deleted'] = True
-  for w in run['worker_results']:
+  for w in run['tasks']:
     w['pending'] = False
   request.rundb.runs.save(run)
 
