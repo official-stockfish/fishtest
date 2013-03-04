@@ -27,21 +27,27 @@ def get_worker_info():
     'uname': platform.uname(),
   }
 
-def request_task(worker_info, remote):
-  r = requests.post(remote + '/api/request_task', data=json.dumps({'worker_info': worker_info}))
+def request_task(worker_info, password, remote):
+  payload = {
+    'worker_info': worker_info,
+    'password': password,
+  }
+  r = requests.post(remote + '/api/request_task', data=json.dumps(payload))
   task = json.loads(r.text, object_hook=json_util.object_hook)
 
   if 'task_waiting' in task:
     return
+  if 'error' in task:
+    raise Exception('Error from remote: %s' % (task['error']))
 
-  run_games(worker_info, remote, task['run'], task['task_id'])
+  run_games(worker_info, password, remote, task['run'], task['task_id'])
 
-def worker_loop(worker_info, remote):
+def worker_loop(worker_info, password, remote):
   global ALIVE
   while ALIVE:
     print 'polling for tasks...'
     try:
-      request_task(worker_info, remote)
+      request_task(worker_info, password, remote)
     except:
       sys.stderr.write('Exception from worker:\n')
       traceback.print_exc(file=sys.stderr)
@@ -55,14 +61,20 @@ def main():
   parser.add_option('-c', '--concurrency', dest='concurrency', default='1')
   (options, args) = parser.parse_args()
 
+  if len(args) != 2:
+    sys.stderr.write('%s [username] [password]\n' % (sys.argv[0]))
+    sys.exit(1)
+
   remote = 'http://%s:%s' % (options.host, options.port)
   print 'Launching with %s' % (remote)
 
   worker_info = get_worker_info()
   worker_info['concurrency'] = options.concurrency
+  worker_info['username'] = args[0]
 
   signal.signal(signal.SIGINT, on_sigint)
-  worker_loop(worker_info, remote)
+  signal.signal(signal.SIGTERM, on_sigint)
+  worker_loop(worker_info, args[1], remote)
 
 if __name__ == '__main__':
   main()
