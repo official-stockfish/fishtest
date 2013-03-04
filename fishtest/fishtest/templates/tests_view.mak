@@ -40,6 +40,7 @@
    <th>Idx</th>
    <th>Started</td>
    <th>Pending</th>
+   <th>Worker</th>
    <th>Last Updated</th>
    <th>Games</th>
    <th>Played</th>
@@ -57,10 +58,16 @@
        total = stats['wins'] + stats['losses'] + stats['draws']
      else:
        total = '0'
+
+     if 'worker_info' in task:
+       machine_info = task['worker_info'].get('username', '') + '-' + str(task['worker_info']['concurrency']) + 'cores'
+     else:
+       machine_info = '-'
    %>
    <td>${idx}</td>
    <td>${task['active']}</td>
    <td>${task['pending']}</td>
+   <td>${machine_info}</td>
    <td>${task.get('last_updated', '-')}</td>
    <td>${task['num_games']}</td>
    <td>${total}</td>
