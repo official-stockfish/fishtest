@@ -73,15 +73,17 @@ def build(sha, destination, concurrency):
   sh.cd(os.path.expanduser('~/.'))
   sh.rm('-r', working_dir)
 
-def upload_stats(remote, run_id, task_id, stats):
+def upload_stats(remote, username, password, run_id, task_id, stats):
   payload = {
+    'username': username,
+    'password': password,
     'run_id': str(run_id),
     'task_id': task_id,
     'stats': stats,
   }
   r = requests.post(remote + '/api/update_task', data=json.dumps(payload))
 
-def run_games(worker_info, remote, run, task_id):
+def run_games(worker_info, password, remote, run, task_id):
   task = run['tasks'][task_id]
 
   stats = {'wins':0, 'losses':0, 'draws':0}
@@ -128,7 +130,7 @@ def run_games(worker_info, remote, run, task_id):
       stats['losses'] = int(chunks[2]) + old_stats['losses']
       stats['draws'] = int(chunks[4]) + old_stats['draws']
 
-      upload_stats(remote, run['_id'], task_id, stats)
+      upload_stats(remote, worker_info['username'], password, run['_id'], task_id, stats)
 
   # Run cutechess
   sh.chmod('+x', './cutechess-cli.sh')
