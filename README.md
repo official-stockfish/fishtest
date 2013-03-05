@@ -42,16 +42,16 @@ $ sudo pip install requests
 $ sudo pip install sh
 ```
 
-### Create testing directory
+### Setup testing directory
 
-This is where the matches will be run
+This is where the matches will be run, it requires a cutechess-cli compiled from latest master to
+be installed.  The version here is for x64 linux (currently the only one avaiable).
 ```
 $ cd ~
 $ mkdir testing
+$ wget http://forwardcoding.com/cutechess-x64.tar.gz
+$ tar xvf cutechess-x64.tar.gz
 ```
-
-Get cutechess-cli
-TODO!
 
 ### Get username/password
 
