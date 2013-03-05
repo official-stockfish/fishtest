@@ -1,13 +1,14 @@
 from __future__ import absolute_import
 
+import json
 import os
 import requests
 import sh
+import sys
 import tempfile
 import time
 import traceback
 import zipfile
-import json
 from base64 import b64decode
 from urllib2 import urlopen, HTTPError
 from zipfile import ZipFile
@@ -88,7 +89,7 @@ def upload_stats(remote, username, password, run_id, task_id, stats):
     sys.stderr.write('Exception from calling update_task:\n')
     traceback.print_exc(file=sys.stderr)
 
-def run_games(worker_info, password, remote, run, task_id):
+def run_games(testing_dir, worker_info, password, remote, run, task_id):
   task = run['tasks'][task_id]
 
   stats = {'wins':0, 'losses':0, 'draws':0}
@@ -98,12 +99,6 @@ def run_games(worker_info, password, remote, run, task_id):
   games_remaining = task['num_games'] - (old_stats['wins'] + old_stats['losses'] + old_stats['draws'])
   if games_remaining <= 0:
     return 'No games remaining'
-
-  # Setup test environment
-  testing_dir = os.getenv('FISHTEST_DIR')
-
-  if not os.path.exists(testing_dir):
-    raise Exception('Directory does not exist: FISHTEST_DIR=%s' % (testing_dir))
 
   book = run['args'].get('book', 'varied.bin')
   book_depth = run['args'].get('book_depth', '10')
