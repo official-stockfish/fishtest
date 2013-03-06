@@ -9,6 +9,13 @@
   </form>
 </h2>
 
+<form class="form-inline" action="/tests/run_more" method="POST">
+  <label class="control-label">Adjust number of games:</label>
+  <input name="num-games" value="${run['args']['num_games']}">
+  <input type="hidden" name="run" value="${run['_id']}" />
+  <button type="submit" class="btn btn-primary">Submit</button>
+</form>
+
 <%include file="elo_results.mak" args="run=run" />
 
 %for arg, v in sorted(run['args'].iteritems()):
@@ -16,22 +23,6 @@
     <b>${arg}</b>: ${v}
   </div>
 %endfor
-
-<form class="form-horizontal" action="/tests/run_more" method="POST">
-  <legend>Adjust number of games</legend>
-  <div class="control-group">
-    <label class="control-label">Number of games:</label>
-    <div class="controls">
-      <input name="num-games" value="${run['args']['num_games']}">
-    </div>
-  </div>
-  <input type="hidden" name="run" value="${run['_id']}" />
-  <div class="control-group">
-    <div class="controls">
-      <button type="submit" class="btn btn-primary">Submit</button>
-    </div>
-  </div>
-</form>
 
 <h3>Tasks</h3>
 <table class='table table-striped table-condensed'>
