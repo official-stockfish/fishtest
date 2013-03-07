@@ -2,7 +2,7 @@
 
 <h2>Stockfish Testing Queue</h2>
 
-<h3>Pending</h3>
+<h3>Pending - ${pending_hours}hrs</h3>
 %if len(pending) == 0:
   None
 %else:

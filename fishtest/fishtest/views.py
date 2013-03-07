@@ -199,9 +199,18 @@ def tests(request):
 
   machines = request.rundb.get_machines()
 
+  # Calculate time remaining for pending tests
+  def parse_tc(tc):
+    chunks = tc.split('+')
+    return (float(chunks[0]) + 40*float(chunks[1])) * 2
+
+  pending_hours = sum([parse_tc(r['args']['tc']) * int(r['args']['num_games']) for r in pending_tasks]) / (60*60)
+  pending_hours /= sum([int(m['concurrency']) for m in machines])
+
   return {
     'machines': machines,
     'pending': pending_tasks,
+    'pending_hours': '%.1f' % (pending_hours),
     'failed': failed_tasks,
     'active': active_tasks,
     'runs': runs
