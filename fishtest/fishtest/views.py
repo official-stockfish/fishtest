@@ -71,7 +71,7 @@ def tests_run_more(request):
     if num_games < existing_games:
       return
 
-    # Create new chunks for the games 
+    # Create new chunks for the games
     new_chunks = request.rundb.generate_tasks(num_games - existing_games)
 
     run['tasks'] += new_chunks
@@ -158,7 +158,7 @@ def format_results(results):
 @view_config(route_name='tests_view', renderer='tests_view.mak')
 def tests_view(request):
   run = request.rundb.get_run(request.matchdict['id'])
-  run['results'] = format_results(request.rundb.get_results(run))
+  run['results_info'] = format_results(request.rundb.get_results(run))
   return { 'run': run }
 
 @view_config(route_name='tests', renderer='tests.mak')
@@ -172,7 +172,7 @@ def tests(request):
   runs = [r for r in runs if not 'deleted' in r or not r['deleted']]
 
   for run in runs:
-    run['results'] = format_results(request.rundb.get_results(run))
+    run['results_info'] = format_results(request.rundb.get_results(run))
 
     pending = False
     failed = False
@@ -195,16 +195,21 @@ def tests(request):
       active_tasks.append(run)
 
   # Filter out pending and active results from finished
-  runs = [r for r in runs if r not in pending_tasks and r not in active_tasks]
+  finished = [r for r in runs if r not in pending_tasks and r not in active_tasks]
 
   machines = request.rundb.get_machines()
 
-  # Calculate time remaining for pending tests
+  # Calculate time remaining for pending and active tests
   def parse_tc(tc):
     chunks = tc.split('+')
     return (float(chunks[0]) + 40*float(chunks[1])) * 2
 
-  pending_hours = sum([parse_tc(r['args']['tc']) * int(r['args']['num_games']) for r in pending_tasks]) / (60*60)
+  # Calculate remaining number of games for pending and active tests
+  def remaining_games(run):
+    res = run['results']
+    return run['args']['num_games'] - res['wins'] - res['losses'] - res['draws']
+
+  pending_hours = sum([parse_tc(r['args']['tc']) * remaining_games(r) for r in runs if r not in finished]) / (60*60)
   pending_hours /= sum([int(m['concurrency']) for m in machines])
 
   return {
@@ -213,5 +218,5 @@ def tests(request):
     'pending_hours': '%.1f' % (pending_hours),
     'failed': failed_tasks,
     'active': active_tasks,
-    'runs': runs
+    'runs': finished
   }
