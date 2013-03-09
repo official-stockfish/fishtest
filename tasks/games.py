@@ -24,7 +24,7 @@ if "windows" in platform.system().lower():
 
 def verify_signature(engine, signature):
   bench_sig = ''
-  output = subprocess.check_output(['./' + engine, 'bench'], stderr=subprocess.STDOUT, universal_newlines=True)
+  output = subprocess.check_output([engine, 'bench'], stderr=subprocess.STDOUT, universal_newlines=True)
   for line in output.split('\n'):
     if 'Nodes searched' in line:
       bench_sig = line.split(': ')[1].strip()
@@ -49,13 +49,13 @@ def robust_download(url, retries=5):
       time.sleep(1 + retry)
 
 def setup(item, testing_dir):
-  """If we don't have the item in testing_dir, download it from FishCooking"""
+  """Download item from FishCooking to testing_dir"""
   found = False
   tree = json.loads(robust_download(FISHCOOKING_URL + '/git/trees/setup'))
   for blob in tree['tree']:
     if blob['path'] == item:
       found = True
-      print 'Downloading %s ...' % (item)
+      print 'Downloading %s...' % (item)
       blob_json = json.loads(robust_download(blob['url']))
       with open(os.path.join(testing_dir, item), 'w') as f:
         f.write(b64decode(blob_json['content']))
@@ -64,7 +64,7 @@ def setup(item, testing_dir):
 
 def build(sha, destination, concurrency):
   """Download and build sources in a temporary directory then move exe to destination"""
-  destination = os.path.abspath(destination)
+  cur_dir = os.getcwd()
   working_dir = tempfile.mkdtemp()
   os.chdir(working_dir)
 
@@ -72,6 +72,7 @@ def build(sha, destination, concurrency):
     f.write(robust_download(FISHCOOKING_URL + '/zipball/' + sha))
   zip_file = ZipFile('sf.gz')
   zip_file.extractall()
+  zip_file.close()
 
   for name in zip_file.namelist():
     if name.endswith('/src/'):
@@ -79,7 +80,7 @@ def build(sha, destination, concurrency):
   os.chdir(src_dir)
   subprocess.check_call(['make', 'build', '-j', str(concurrency), 'ARCH=x86-64-modern'])
   shutil.move('stockfish'+ EXE_SUFFIX, destination)
-  os.chdir(os.path.expanduser('~/.'))
+  os.chdir(cur_dir)
   shutil.rmtree(working_dir)
 
 def upload_stats(remote, username, password, run_id, task_id, stats):
@@ -110,25 +111,31 @@ def run_games(testing_dir, worker_info, password, remote, run, task_id):
   book = run['args'].get('book', 'varied.bin')
   book_depth = run['args'].get('book_depth', '10')
 
-  new_engine = 'stockfish' + EXE_SUFFIX
-  base_engine = 'base' + EXE_SUFFIX
-  cutechess = 'cutechess-cli' + EXE_SUFFIX
+  testing_dir = os.path.abspath(testing_dir)
+  os.chdir(testing_dir)
 
+  new_engine = os.path.join(testing_dir, 'stockfish' + EXE_SUFFIX)
+  base_engine = os.path.join(testing_dir, 'base' + EXE_SUFFIX)
+  cutechess = os.path.join(testing_dir, 'cutechess-cli' + EXE_SUFFIX)
+
+  # Download book if not already exsisting
   if len(book) > 0 and not os.path.exists(os.path.join(testing_dir, book)):
     setup(book, testing_dir)
 
-  if not os.path.exists(os.path.join(testing_dir, cutechess)):
+  # Download cutechess if not already exsisting
+  if not os.path.exists(cutechess):
     if len(EXE_SUFFIX) > 0: zipball = 'cutechess-cli-win.zip'
     else: zipball = 'cutechess-cli-linux.zip'
     setup(zipball, testing_dir)
     zip_file = ZipFile(zipball)
     zip_file.extractall()
+    zip_file.close()
+    os.remove(zipball)
 
   # Download and build base and new
-  build(run['args']['resolved_base'], os.path.join(testing_dir, base_engine), worker_info['concurrency'])
-  build(run['args']['resolved_new'] , os.path.join(testing_dir, new_engine), worker_info['concurrency'])
+  build(run['args']['resolved_base'], base_engine, worker_info['concurrency'])
+  build(run['args']['resolved_new'], new_engine, worker_info['concurrency'])
 
-  os.chdir(testing_dir)
   if os.path.exists('results.pgn'):
     os.remove('results.pgn')
 
@@ -151,7 +158,7 @@ def run_games(testing_dir, worker_info, password, remote, run, task_id):
 
       upload_stats(remote, worker_info['username'], password, run['_id'], task_id, stats)
 
-  # Run cutechess
+  # Run cutechess TODO call directly cutechess-cli binary
   os.chmod('cutechess-cli.sh', os.stat('cutechess-cli.sh').st_mode | stat.S_IEXEC)
   cmd = ['./cutechess-cli.sh', games_remaining, run['args']['tc'], book, book_depth, worker_info['concurrency']]
   p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
