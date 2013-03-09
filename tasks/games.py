@@ -2,6 +2,7 @@ from __future__ import absolute_import
 
 import json
 import os
+import stat
 import requests
 import subprocess
 import shutil
@@ -136,7 +137,7 @@ def run_games(testing_dir, worker_info, password, remote, run, task_id):
       upload_stats(remote, worker_info['username'], password, run['_id'], task_id, stats)
 
   # Run cutechess
-  os.chmod(testing_dir + '/cutechess-cli.sh', stat.S_IXUSR)
+  os.chmod('cutechess-cli.sh', os.stat('cutechess-cli.sh').st_mode | stat.S_IEXEC)
   cmd = ['cutechess-cli.sh', games_remaining, run['args']['tc'], book, book_depth, worker_info['concurrency']]
   p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
 
