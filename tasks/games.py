@@ -50,18 +50,17 @@ def robust_download(url, retries=5):
 
 def setup(item, testing_dir):
   """If we don't have the item in testing_dir, download it from FishCooking"""
-  if len(item) > 0:
-    if not os.path.exists(os.path.join(testing_dir, item)):
-      found = False
-      tree = json.loads(robust_download(FISHCOOKING_URL + '/git/trees/setup'))
-      for blob in tree['tree']:
-        if blob['path'] == item:
-          found = True
-          blob_json = json.loads(robust_download(blob['url']))
-          with open(os.path.join(testing_dir, item), 'w') as f:
-            f.write(b64decode(blob_json['content']))
-      if not found:
-        raise Exception('Item %s not found' % (item))
+  found = False
+  tree = json.loads(robust_download(FISHCOOKING_URL + '/git/trees/setup'))
+  for blob in tree['tree']:
+    if blob['path'] == item:
+      found = True
+      print 'Downloading %s ...' % (item)
+      blob_json = json.loads(robust_download(blob['url']))
+      with open(os.path.join(testing_dir, item), 'w') as f:
+        f.write(b64decode(blob_json['content']))
+  if not found:
+    raise Exception('Item %s not found' % (item))
 
 def build(sha, destination, concurrency):
   """Download and build sources in a temporary directory then move exe to destination"""
@@ -111,11 +110,19 @@ def run_games(testing_dir, worker_info, password, remote, run, task_id):
   book = run['args'].get('book', 'varied.bin')
   book_depth = run['args'].get('book_depth', '10')
 
-  setup(book, testing_dir)
-  setup('cutechess-cli.sh', testing_dir)
-
   new_engine = 'stockfish' + EXE_SUFFIX
   base_engine = 'base' + EXE_SUFFIX
+  cutechess = 'cutechess-cli' + EXE_SUFFIX
+
+  if len(book) > 0 and not os.path.exists(os.path.join(testing_dir, book)):
+    setup(book, testing_dir)
+
+  if not os.path.exists(os.path.join(testing_dir, cutechess)):
+    if len(EXE_SUFFIX) > 0: zipball = 'cutechess-cli-win.zip'
+    else: zipball = 'cutechess-cli-linux.zip'
+    setup(zipball, testing_dir)
+    zip_file = ZipFile(zipball)
+    zip_file.extractall()
 
   # Download and build base and new
   build(run['args']['resolved_base'], os.path.join(testing_dir, base_engine), worker_info['concurrency'])
