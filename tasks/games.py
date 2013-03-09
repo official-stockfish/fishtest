@@ -3,7 +3,8 @@ from __future__ import absolute_import
 import json
 import os
 import requests
-import sh
+import subprocess
+import shutil
 import sys
 import tempfile
 import time
@@ -17,8 +18,8 @@ FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
 
 def verify_signature(engine, signature):
   bench_sig = ''
-
-  for line in sh.Command(engine)('bench', _iter='err'):
+  subprocess.check_call([engine, 'bench'], stdout=subprocess.PIPE)
+  for line in stdout:
     if 'Nodes searched' in line:
       bench_sig = line.split(': ')[1].strip()
 
@@ -58,8 +59,9 @@ def setup(item, testing_dir):
 
 def build(sha, destination, concurrency):
   """Download and build sources in a temporary directory then move exe to destination"""
+  destination = os.path.abspath(destination)
   working_dir = tempfile.mkdtemp()
-  sh.cd(working_dir)
+  os.chdir(working_dir)
 
   with open('sf.gz', 'w') as f:
     f.write(robust_download(FISHCOOKING_URL + '/zipball/' + sha))
@@ -69,11 +71,11 @@ def build(sha, destination, concurrency):
   for name in zip_file.namelist():
     if name.endswith('/src/'):
       src_dir = name
-  sh.cd(src_dir)
-  sh.make('build', '-j' + str(concurrency), 'ARCH=x86-64-modern')
-  sh.mv('stockfish', destination)
-  sh.cd(os.path.expanduser('~/.'))
-  sh.rm('-r', working_dir)
+  os.chdir(src_dir)
+  subprocess.check_call(['make', 'build', '-j', str(concurrency), 'ARCH=x86-64-modern'])
+  shutil.move('stockfish', destination)
+  os.chdir(os.path.expanduser('~/.'))
+  shutil.rmtree(working_dir)
 
 def upload_stats(remote, username, password, run_id, task_id, stats):
   payload = {
@@ -110,8 +112,9 @@ def run_games(testing_dir, worker_info, password, remote, run, task_id):
   build(run['args']['resolved_base'], os.path.join(testing_dir, 'base'), worker_info['concurrency'])
   build(run['args']['resolved_new'] , os.path.join(testing_dir, 'stockfish'), worker_info['concurrency'])
 
-  sh.cd(testing_dir)
-  sh.rm('-f', 'results.pgn')
+  os.chdir(testing_dir)
+  if os.path.exists(testing_dir + '/results.pgn'):
+    os.remove(testing_dir + '/results.pgn')
 
   # Verify signatures are correct
   if len(run['args']['base_signature']) > 0:
@@ -133,8 +136,12 @@ def run_games(testing_dir, worker_info, password, remote, run, task_id):
       upload_stats(remote, worker_info['username'], password, run['_id'], task_id, stats)
 
   # Run cutechess
-  sh.chmod('+x', './cutechess-cli.sh')
-  p = sh.Command('./cutechess-cli.sh')(games_remaining, run['args']['tc'], book, book_depth, worker_info['concurrency'], _out=process_output)
-  p.wait()
+  os.chmod(testing_dir + '/cutechess-cli.sh', stat.S_IXUSR)
+  cmd = ['cutechess-cli.sh', games_remaining, run['args']['tc'], book, book_depth, worker_info['concurrency']]
+  p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
+
+  for line in iter(p.stdout.readline,''):
+    process_output(line)
+
   if p.exit_code != 0:
     raise Exception(p.stderr)
