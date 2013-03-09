@@ -10,16 +10,21 @@ import sys
 import tempfile
 import time
 import traceback
+import platform
 import zipfile
 from base64 import b64decode
 from urllib2 import urlopen, HTTPError
 from zipfile import ZipFile
 
 FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
+EXE_SUFFIX = ''
+
+if "windows" in platform.system().lower():
+  EXE_SUFFIX = '.exe'
 
 def verify_signature(engine, signature):
   bench_sig = ''
-  output = subprocess.check_output([engine, 'bench'], stderr=subprocess.STDOUT, universal_newlines=True)
+  output = subprocess.check_output(['./' + engine, 'bench'], stderr=subprocess.STDOUT, universal_newlines=True)
   for line in output.split('\n'):
     if 'Nodes searched' in line:
       bench_sig = line.split(': ')[1].strip()
@@ -74,7 +79,7 @@ def build(sha, destination, concurrency):
       src_dir = name
   os.chdir(src_dir)
   subprocess.check_call(['make', 'build', '-j', str(concurrency), 'ARCH=x86-64-modern'])
-  shutil.move('stockfish', destination)
+  shutil.move('stockfish'+ EXE_SUFFIX, destination)
   os.chdir(os.path.expanduser('~/.'))
   shutil.rmtree(working_dir)
 
@@ -109,20 +114,23 @@ def run_games(testing_dir, worker_info, password, remote, run, task_id):
   setup(book, testing_dir)
   setup('cutechess-cli.sh', testing_dir)
 
+  new_engine = 'stockfish' + EXE_SUFFIX
+  base_engine = 'base' + EXE_SUFFIX
+
   # Download and build base and new
-  build(run['args']['resolved_base'], os.path.join(testing_dir, 'base'), worker_info['concurrency'])
-  build(run['args']['resolved_new'] , os.path.join(testing_dir, 'stockfish'), worker_info['concurrency'])
+  build(run['args']['resolved_base'], os.path.join(testing_dir, base_engine), worker_info['concurrency'])
+  build(run['args']['resolved_new'] , os.path.join(testing_dir, new_engine), worker_info['concurrency'])
 
   os.chdir(testing_dir)
-  if os.path.exists(testing_dir + '/results.pgn'):
-    os.remove(testing_dir + '/results.pgn')
+  if os.path.exists('results.pgn'):
+    os.remove('results.pgn')
 
   # Verify signatures are correct
   if len(run['args']['base_signature']) > 0:
-    verify_signature('./base', run['args']['base_signature'])
+    verify_signature(base_engine, run['args']['base_signature'])
 
   if len(run['args']['new_signature']) > 0:
-    verify_signature('./stockfish', run['args']['new_signature'])
+    verify_signature(new_engine, run['args']['new_signature'])
 
   def process_output(line):
     # Parse line like this:
@@ -138,7 +146,7 @@ def run_games(testing_dir, worker_info, password, remote, run, task_id):
 
   # Run cutechess
   os.chmod('cutechess-cli.sh', os.stat('cutechess-cli.sh').st_mode | stat.S_IEXEC)
-  cmd = ['cutechess-cli.sh', games_remaining, run['args']['tc'], book, book_depth, worker_info['concurrency']]
+  cmd = ['./cutechess-cli.sh', games_remaining, run['args']['tc'], book, book_depth, worker_info['concurrency']]
   p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
 
   for line in iter(p.stdout.readline,''):
