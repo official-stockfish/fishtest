@@ -18,8 +18,8 @@ FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
 
 def verify_signature(engine, signature):
   bench_sig = ''
-  subprocess.check_call([engine, 'bench'], stdout=subprocess.PIPE)
-  for line in stdout:
+  output = subprocess.check_output([engine, 'bench'], stderr=subprocess.STDOUT, universal_newlines=True)
+  for line in output.split('\n'):
     if 'Nodes searched' in line:
       bench_sig = line.split(': ')[1].strip()
 
