@@ -37,6 +37,8 @@ def failed_task(request):
   if USERS.get(username) != password:
     return json.dumps({'error': 'Invalid password'})
 
-  # TODO
-
-  return json.dumps({'info': 'Task canceled'})
+  result = request.rundb.failed_task(
+    run_id=request.json_body['run_id'],
+    task_id=int(request.json_body['task_id']),
+  )
+  return json.dumps(result)

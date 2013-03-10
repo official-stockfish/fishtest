@@ -141,3 +141,17 @@ class RunDb:
     self.runs.save(run)
 
     return {}
+
+  def failed_task(self, run_id, task_id):
+    run = self.runs.find_one({'_id': ObjectId(run_id)})
+    task = run['tasks'][task_id]
+    if not task['active']:
+      # TODO: log error?
+      return
+
+    # Mark the task as pending and inactive: it will be rescheduled
+    task['active'] = False
+    task['pending'] = True
+    task['worker_info'] = ''
+
+    return {}
