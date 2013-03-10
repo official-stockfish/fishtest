@@ -18,9 +18,11 @@ from zipfile import ZipFile
 
 FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
 EXE_SUFFIX = ''
+MAKE_CMD = 'make build ARCH=x86-64-modern COMP=gcc'
 
 if "windows" in platform.system().lower():
   EXE_SUFFIX = '.exe'
+  MAKE_CMD = 'mingw32-make build ARCH=x86-64-modern COMP=mingw'
 
 def verify_signature(engine, signature):
   bench_sig = ''
@@ -62,7 +64,7 @@ def setup(item, testing_dir):
   if not found:
     raise Exception('Item %s not found' % (item))
 
-def build(sha, destination, concurrency):
+def build(sha, destination):
   """Download and build sources in a temporary directory then move exe to destination"""
   cur_dir = os.getcwd()
   working_dir = tempfile.mkdtemp()
@@ -78,7 +80,7 @@ def build(sha, destination, concurrency):
     if name.endswith('/src/'):
       src_dir = name
   os.chdir(src_dir)
-  subprocess.check_call(['make', 'build', '-j', str(concurrency), 'ARCH=x86-64-modern'])
+  subprocess.check_call(MAKE_CMD)
   shutil.move('stockfish'+ EXE_SUFFIX, destination)
   os.chdir(cur_dir)
   shutil.rmtree(working_dir)
@@ -133,8 +135,8 @@ def run_games(testing_dir, worker_info, password, remote, run, task_id):
     os.remove(zipball)
 
   # Download and build base and new
-  build(run['args']['resolved_base'], base_engine, worker_info['concurrency'])
-  build(run['args']['resolved_new'], new_engine, worker_info['concurrency'])
+  build(run['args']['resolved_base'], base_engine)
+  build(run['args']['resolved_new'], new_engine)
 
   if os.path.exists('results.pgn'):
     os.remove('results.pgn')
