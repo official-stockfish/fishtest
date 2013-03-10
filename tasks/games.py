@@ -121,7 +121,7 @@ def run_games(testing_dir, worker_info, password, remote, run, task_id):
   cutechess = os.path.join(testing_dir, 'cutechess-cli' + EXE_SUFFIX)
 
   # Download book if not already exsisting
-  if len(book) > 0 and not os.path.exists(os.path.join(testing_dir, book)):
+  if not os.path.exists(os.path.join(testing_dir, book)):
     setup(book, testing_dir)
 
   # Download cutechess if not already exsisting
@@ -149,7 +149,11 @@ def run_games(testing_dir, worker_info, password, remote, run, task_id):
   if len(run['args']['new_signature']) > 0:
     verify_signature(new_engine, run['args']['new_signature'])
 
-  def process_output(line):
+  # Run cutechess TODO call directly cutechess-cli binary
+  cmd = ['./cutechess-cli.sh', games_remaining, run['args']['tc'], book, book_depth, worker_info['concurrency']]
+  p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
+
+  for line in iter(p.stdout.readline,''):
     # Parse line like this:
     # Score of Stockfish  130212 64bit vs base: 1701 - 1715 - 6161  [0.499] 9577
     if 'Score' in line:
@@ -160,13 +164,6 @@ def run_games(testing_dir, worker_info, password, remote, run, task_id):
       stats['draws'] = int(chunks[4]) + old_stats['draws']
 
       upload_stats(remote, worker_info['username'], password, run['_id'], task_id, stats)
-
-  # Run cutechess TODO call directly cutechess-cli binary
-  cmd = ['./cutechess-cli.sh', games_remaining, run['args']['tc'], book, book_depth, worker_info['concurrency']]
-  p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
-
-  for line in iter(p.stdout.readline,''):
-    process_output(line)
 
   if p.exit_code != 0:
     raise Exception(p.stderr)
