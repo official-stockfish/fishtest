@@ -29,3 +29,14 @@ def update_task(request):
     stats=request.json_body['stats'],
   )
   return json.dumps(result)
+
+@view_config(route_name='api_failed_task', renderer='string')
+def failed_task(request):
+  username = request.json_body['username']
+  password = request.json_body['password']
+  if USERS.get(username) != password:
+    return json.dumps({'error': 'Invalid password'})
+
+  # TODO
+
+  return json.dumps({'info': 'Task canceled'})

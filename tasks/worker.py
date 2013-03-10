@@ -41,7 +41,17 @@ def request_task(testing_dir, worker_info, password, remote):
   if 'error' in task:
     raise Exception('Error from remote: %s' % (task['error']))
 
-  run_games(testing_dir, worker_info, password, remote, task['run'], task['task_id'])
+  try:
+    run_games(testing_dir, worker_info, password, remote, task['run'], task['task_id'])
+  except:
+    payload = {
+      'username': worker_info['username'],
+      'password': password,
+      'run_id': str(task['run']['_id']),
+      'task_id': task['task_id']
+    }
+    requests.post(remote + '/api/failed_task', data=json.dumps(payload))
+    raise
 
 def worker_loop(testing_dir, worker_info, password, remote):
   global ALIVE
