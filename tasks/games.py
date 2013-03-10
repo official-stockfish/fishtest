@@ -70,7 +70,7 @@ def build(sha, destination):
   working_dir = tempfile.mkdtemp()
   os.chdir(working_dir)
 
-  with open('sf.gz', 'w') as f:
+  with open('sf.gz', 'wb+') as f:
     f.write(robust_download(FISHCOOKING_URL + '/zipball/' + sha))
   zip_file = ZipFile('sf.gz')
   zip_file.extractall()
