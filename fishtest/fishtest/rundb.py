@@ -67,11 +67,8 @@ class RunDb:
     for run in self.runs.find({'tasks': {'$elemMatch': {'active': True}}}):
       for task in run['tasks']:
         if task['active']:
-          machines.append(task['worker_info']) 
+          machines.append(task['worker_info'])
     return machines
-
-  def get_run(self, id):
-    return self.runs.find_one({'_id': ObjectId(id)})
 
   def get_runs(self, skip=0, limit=0):
     runs = []
@@ -124,7 +121,7 @@ class RunDb:
     return {'run': run, 'task_id': task_id}
 
   def update_task(self, run_id, task_id, stats):
-    run = self.get_run(run_id)
+    run = self.runs.find_one({'_id': ObjectId(run_id)})
     task = run['tasks'][task_id]
     if not task['active']:
       # TODO: log error?
