@@ -70,6 +70,9 @@ class RunDb:
           machines.append(task['worker_info'])
     return machines
 
+  def get_run(self, id):
+    return self.runs.find_one({'_id': ObjectId(id)})
+
   def get_runs(self, skip=0, limit=0):
     runs = []
     for run in self.runs.find(skip=skip, limit=limit, sort=[('start_time', DESCENDING)]):
@@ -121,7 +124,7 @@ class RunDb:
     return {'run': run, 'task_id': task_id}
 
   def update_task(self, run_id, task_id, stats):
-    run = self.runs.find_one({'_id': ObjectId(run_id)})
+    run = self.get_run(run_id)
     task = run['tasks'][task_id]
     if not task['active']:
       # TODO: log error?
