@@ -85,24 +85,17 @@ def build(sha, destination):
   os.chdir(cur_dir)
   shutil.rmtree(working_dir)
 
-def upload_stats(remote, username, password, run_id, task_id, stats):
-  payload = {
-    'username': username,
-    'password': password,
-    'run_id': str(run_id),
-    'task_id': task_id,
-    'stats': stats,
-  }
-  try:
-    requests.post(remote + '/api/update_task', data=json.dumps(payload))
-  except:
-    sys.stderr.write('Exception from calling update_task:\n')
-    traceback.print_exc(file=sys.stderr)
-
 def run_games(testing_dir, worker_info, password, remote, run, task_id):
-  task = run['tasks'][task_id]
 
-  stats = {'wins':0, 'losses':0, 'draws':0}
+  result = {
+    'username': worker_info['username'],
+    'password': password,
+    'run_id': str(run['_id']),
+    'task_id': task_id,
+    'stats': {'wins':0, 'losses':0, 'draws':0},
+  }
+
+  task = run['tasks'][task_id]
 
   # Have we run any games on this task yet?
   old_stats = task.get('stats', {'wins':0, 'losses':0, 'draws':0})
@@ -159,11 +152,15 @@ def run_games(testing_dir, worker_info, password, remote, run, task_id):
     if 'Score' in line:
       chunks = line.split(':')
       chunks = chunks[1].split()
-      stats['wins'] = int(chunks[0]) + old_stats['wins']
-      stats['losses'] = int(chunks[2]) + old_stats['losses']
-      stats['draws'] = int(chunks[4]) + old_stats['draws']
+      result['stats']['wins']   = int(chunks[0]) + old_stats['wins']
+      result['stats']['losses'] = int(chunks[2]) + old_stats['losses']
+      result['stats']['draws']  = int(chunks[4]) + old_stats['draws']
 
-      upload_stats(remote, worker_info['username'], password, run['_id'], task_id, stats)
+      try:
+        requests.post(remote + '/api/update_task', data=json.dumps(result))
+      except:
+        sys.stderr.write('Exception from calling update_task:\n')
+        traceback.print_exc(file=sys.stderr)
 
   if p.exit_code != 0:
     raise Exception(p.stderr)
