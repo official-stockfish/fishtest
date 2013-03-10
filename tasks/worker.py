@@ -40,15 +40,14 @@ def worker_loop(testing_dir, worker_info, password, remote):
         raise Exception('Error from remote: %s' % (req['error']))
 
       if 'task_waiting' not in req:
-        (run, task_id) = { req['run'], req['task_id'] }
         try:
-          run_games(testing_dir, worker_info, password, remote, run, task_id)
+          run_games(testing_dir, worker_info, password, remote, req['run'], req['task_id'])
         except:
           payload = {
             'username': worker_info['username'],
             'password': password,
-            'run_id': str(run['_id']),
-            'task_id': task_id
+            'run_id': str(req['run']['_id']),
+            'task_id': req['task_id']
           }
           requests.post(remote + '/api/failed_task', data=json.dumps(payload))
           raise
