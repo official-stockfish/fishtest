@@ -79,7 +79,7 @@ def build(sha, destination):
     if name.endswith('/src/'):
       src_dir = name
   os.chdir(src_dir)
-  subprocess.check_call(MAKE_CMD)
+  subprocess.check_call(MAKE_CMD, shell=True)
   shutil.move('stockfish'+ EXE_SUFFIX, destination)
   os.chdir(cur_dir)
   shutil.rmtree(working_dir)
