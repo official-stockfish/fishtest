@@ -13,6 +13,13 @@ def request_task(request):
   if USERS.get(username) != password:
     return json.dumps({'error': 'Invalid password'})
 
+  # Does this worker have a task already?  If so, just hand that back
+  existing_task = rundb.runs.find_one({'tasks': {'$elemMatch': {'active': True, 'worker_info': worker_info}}})
+  if existing_task != None:
+    for task in existing_task['tasks']:
+      if task['active'] and task['worker_info'] == worker_info:
+        return json.dumps(task, default=json_util.default) 
+
   task = request.rundb.request_task(worker_info)
   return json.dumps(task, default=json_util.default)
 
