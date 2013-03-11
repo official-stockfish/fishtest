@@ -98,6 +98,14 @@ class RunDb:
     return results
 
   def request_task(self, worker_info):
+    # Does this worker have a task already?  If so, just hand that back
+    existing_run = self.runs.find_one({'tasks': {'$elemMatch': {'active': True, 'worker_info': worker_info}}})
+    if existing_run != None:
+      for task_id, task in enumerate(existing_run['tasks']):
+        if task['active'] and task['worker_info'] == worker_info:
+          return {'run': existing_run, 'task_id': task_id}
+
+    # Ok, we get a new task
     q = {
       'new': True,
       'query': {'tasks': {'$elemMatch': {'active': False, 'pending': True}}},
