@@ -2,7 +2,6 @@
 import json
 import os
 import platform
-import signal
 import sys
 import requests
 import time
@@ -11,21 +10,8 @@ from bson import json_util
 from optparse import OptionParser
 from games import run_games
 
-ALIVE = True
-
-def on_sigint(signal, frame):
-  global ALIVE
-  if ALIVE:
-    sys.stderr.write('Shutting down gracefully...\n')
-    ALIVE = False
-    return
-
-  sys.stderr.write('Hard shutdown!  Tasks may be incomplete\n')
-  sys.exit(0)
-
 def worker_loop(testing_dir, worker_info, password, remote):
-  global ALIVE
-  while ALIVE:
+  while True:
     print 'Polling for tasks...'
     try:
       payload = {
@@ -59,9 +45,6 @@ def worker_loop(testing_dir, worker_info, password, remote):
     time.sleep(10)
 
 def main():
-  signal.signal(signal.SIGINT, on_sigint)
-  signal.signal(signal.SIGTERM, on_sigint)
-
   parser = OptionParser()
   parser.add_option('-n', '--host', dest='host', default='54.235.120.254')
   parser.add_option('-p', '--port', dest='port', default='6543')
