@@ -1,3 +1,4 @@
+import copy
 import os
 from datetime import datetime
 from bson.objectid import ObjectId
@@ -67,7 +68,9 @@ class RunDb:
     for run in self.runs.find({'tasks': {'$elemMatch': {'active': True}}}):
       for task in run['tasks']:
         if task['active']:
-          machines.append(task['worker_info'])
+          machine = copy.copy(task['worker_info'])
+          machine['last_updated'] = task.get('last_updated', None)
+          machines.append(machine)
     return machines
 
   def get_run(self, id):

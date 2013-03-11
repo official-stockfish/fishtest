@@ -198,6 +198,13 @@ def tests(request):
   finished = [r for r in runs if r not in pending_tasks and r not in active_tasks]
 
   machines = request.rundb.get_machines()
+  current_time = datetime.datetime.utcnow()
+  for machine in machines:
+    delta = current_time - machine['last_updated']
+    if delta.days != 0:
+      machine['last_updated'] = 'Over a day ago!'
+    else:
+      machine['last_updated'] = '%d seconds ago' % (delta.seconds)
 
   # Calculate time remaining for pending and active tests
   def parse_tc(tc):

@@ -18,17 +18,19 @@
 <table class="table table-striped table-condensed">
  <thead>
   <tr>
-   <th>Username</th>
+   <th>Machine</th>
    <th>Cores</th>
-   <th>Information</th>
+   <th>System</th>
+   <th>Last updated</th>
   </tr>
  </thead>
 %for machine in machines:
- <tbody.
+ <tbody>
   <tr>
    <td>${machine['username']}</td>
    <td>${machine['concurrency']}</td>
    <td>${machine['uname'][0]} ${machine['uname'][2]}</td>
+   <td>${machine['last_updated']}</td>
   </tr>
  </tbody>
 %endfor
