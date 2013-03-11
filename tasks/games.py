@@ -52,16 +52,15 @@ def robust_download(url, retries=5):
 
 def setup(item, testing_dir):
   """Download item from FishCooking to testing_dir"""
-  found = False
   tree = json.loads(robust_download(FISHCOOKING_URL + '/git/trees/setup'))
   for blob in tree['tree']:
     if blob['path'] == item:
-      found = True
       print 'Downloading %s...' % (item)
       blob_json = json.loads(robust_download(blob['url']))
       with open(os.path.join(testing_dir, item), 'w') as f:
         f.write(b64decode(blob_json['content']))
-  if not found:
+      break
+  else:
     raise Exception('Item %s not found' % (item))
 
 def build(sha, destination):
