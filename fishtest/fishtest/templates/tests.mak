@@ -15,14 +15,27 @@
 %endif
 
 <h3>Active</h3>
-<ul>
+<table class="table table-striped table-condensed">
+ <thead>
+  <tr>
+   <th>Username</th>
+   <th>Cores</th>
+   <th>Information</th>
+  </tr>
+ </thead>
 %for machine in machines:
-  <li>Machine: ${machine['username']} - ${machine['concurrency']} cores - ${machine['uname'][0]} ${machine['uname'][2]} </li>
+ <tbody.
+  <tr>
+   <td>${machine['username']}</td>
+   <td>${machine['concurrency']}</td>
+   <td>${machine['uname'][0]} ${machine['uname'][2]}</td>
+  </tr>
+ </tbody>
 %endfor
 %if len(machines) == 0:
-  <li>No machines running</li>
+  <td>No machines running</td>
 %endif
-</ul>
+</table>
 <%include file="run_table.mak" args="runs=active"/>
 
 <h3>Finished</h3>
