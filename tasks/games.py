@@ -63,7 +63,7 @@ def setup(item, testing_dir):
   else:
     raise Exception('Item %s not found' % (item))
 
-def build(sha, destination):
+def build(sha, destination, concurrency):
   """Download and build sources in a temporary directory then move exe to destination"""
   cur_dir = os.getcwd()
   working_dir = tempfile.mkdtemp()
@@ -79,7 +79,7 @@ def build(sha, destination):
     if name.endswith('/src/'):
       src_dir = name
   os.chdir(src_dir)
-  subprocess.check_call(MAKE_CMD, shell=True)
+  subprocess.check_call(MAKE_CMD + ' -j %s' % (concurrency), shell=True)
   shutil.move('stockfish'+ EXE_SUFFIX, destination)
   os.chdir(cur_dir)
   shutil.rmtree(working_dir)
@@ -128,8 +128,8 @@ def run_games(testing_dir, worker_info, password, remote, run, task_id):
     os.chmod(cutechess, os.stat(cutechess).st_mode | stat.S_IEXEC)
 
   # Download and build base and new
-  build(run['args']['resolved_base'], base_engine)
-  build(run['args']['resolved_new'], new_engine)
+  build(run['args']['resolved_base'], base_engine, worker_info['concurrency'])
+  build(run['args']['resolved_new'], new_engine, worker_info['concurrency'])
 
   if os.path.exists('results.pgn'):
     os.remove('results.pgn')

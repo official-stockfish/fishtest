@@ -23,7 +23,6 @@ def on_sigint(signal, frame):
   sys.stderr.write('Hard shutdown!  Tasks may be incomplete\n')
   sys.exit(0)
 
-
 def worker_loop(testing_dir, worker_info, password, remote):
   global ALIVE
   while ALIVE:
@@ -59,9 +58,7 @@ def worker_loop(testing_dir, worker_info, password, remote):
 
     time.sleep(10)
 
-
 def main():
-
   signal.signal(signal.SIGINT, on_sigint)
   signal.signal(signal.SIGTERM, on_sigint)
 
