@@ -142,13 +142,13 @@ def run_games(testing_dir, worker_info, password, remote, run, task_id):
     verify_signature(new_engine, run['args']['new_signature'])
 
   # Run cutechess-cli binary
-  cmd1 = "%s -repeat -rounds %s -resign movecount=3 score=400 -draw movenumber=34" % (cutechess, games_remaining)
-  cmd2 = "movecount=2 score=20 -concurrency %s -engine cmd=%s proto=uci" % (worker_info['concurrency'], new_engine)
-  cmd3 = "option.Threads=1 -engine cmd=%s proto=uci option.Threads=1 name=base" % (base_engine)
+  cmd1 = "%s -repeat -rounds %s -resign movecount=3 score=400 -draw movenumber=34 " % (cutechess, games_remaining)
+  cmd2 = "movecount=2 score=20 -concurrency %s -engine cmd=%s proto=uci " % (worker_info['concurrency'], new_engine)
+  cmd3 = "option.Threads=1 -engine cmd=%s proto=uci option.Threads=1 name=base " % (base_engine)
   cmd4 = "-each tc=%s book=%s bookdepth=%s -tournament gauntlet -pgnout results.pgn" % (run['args']['tc'], book, book_depth)
   cmd = cmd1 + cmd2 + cmd3 + cmd4
 
-  p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
+  p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True, shell=True)
 
   for line in iter(p.stdout.readline,''):
     # Parse line like this:
