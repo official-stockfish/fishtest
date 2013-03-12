@@ -163,10 +163,8 @@ class RunDb:
       # TODO: log error?
       return
 
-    # Mark the task as pending and inactive: it will be rescheduled
+    # Mark the task as inactive: it will be rescheduled
     task['active'] = False
-    task['pending'] = True
-
     self.runs.save(run)
 
     return {}
