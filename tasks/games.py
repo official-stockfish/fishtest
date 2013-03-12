@@ -58,7 +58,7 @@ def setup(item, testing_dir):
     if blob['path'] == item:
       print 'Downloading %s ...' % (item)
       blob_json = json.loads(robust_download(blob['url']))
-      with open(os.path.join(testing_dir, item), 'w') as f:
+      with open(os.path.join(testing_dir, item), 'wb+') as f:
         f.write(b64decode(blob_json['content']))
       break
   else:
