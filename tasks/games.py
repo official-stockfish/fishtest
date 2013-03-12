@@ -85,22 +85,23 @@ def build(sha, destination, concurrency):
   shutil.rmtree(working_dir)
 
 def run_games(testing_dir, worker_info, password, remote, run, task_id):
-
+  task = run['tasks'][task_id]
   result = {
     'username': worker_info['username'],
     'password': password,
     'run_id': str(run['_id']),
     'task_id': task_id,
-    'stats': {'wins':0, 'losses':0, 'draws':0},
+    'stats': task.get('stats', {'wins':0, 'losses':0, 'draws':0}),
   }
 
-  task = run['tasks'][task_id]
-
   # Have we run any games on this task yet?
-  old_stats = task.get('stats', {'wins':0, 'losses':0, 'draws':0})
-  games_remaining = task['num_games'] - (old_stats['wins'] + old_stats['losses'] + old_stats['draws'])
+  games_remaining = task['num_games'] - (result['stats']['wins'] + result['stats']['losses'] + result['stats']['draws'])
   if games_remaining <= 0:
     return 'No games remaining'
+
+  ## DEBUG REMOVE
+  games_remaining = 1
+  ## END REMOVE
 
   book = run['args'].get('book', 'varied.bin')
   book_depth = run['args'].get('book_depth', '10')
@@ -142,29 +143,55 @@ def run_games(testing_dir, worker_info, password, remote, run, task_id):
     verify_signature(new_engine, run['args']['new_signature'])
 
   # Run cutechess-cli binary
-  cmd1 = "%s -repeat -rounds %s -resign movecount=3 score=400 -draw movenumber=34 " % (cutechess, games_remaining)
-  cmd2 = "movecount=2 score=20 -concurrency %s -engine cmd=%s proto=uci " % (worker_info['concurrency'], new_engine)
-  cmd3 = "option.Threads=1 -engine cmd=%s proto=uci option.Threads=1 name=base " % (base_engine)
-  cmd4 = "-each tc=%s book=%s bookdepth=%s -tournament gauntlet -pgnout results.pgn" % (run['args']['tc'], book, book_depth)
-  cmd = cmd1 + cmd2 + cmd3 + cmd4
+  cmd = [ cutechess, '-repeat', '-rounds', str(games_remaining), '-resign', 'movecount=3', 'score=400',
+          '-draw', 'movenumber=34', 'movecount=2', 'score=20', '-concurrency', worker_info['concurrency'],
+          '-engine', 'cmd=stockfish', 'proto=uci', 'option.Threads=1',
+          '-engine', 'cmd=base', 'proto=uci', 'option.Threads=1', 'name=base',
+          '-each', 'tc=%s' % (run['args']['tc']), 'book=%s' % (book), 'bookdepth=%s' % (book_depth),
+          '-tournament', 'gauntlet', '-pgnout', 'results.pgn' ]
 
-  p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True, shell=True)
+  env = dict(os.environ)
+  env['LD_LIBRARY_PATH'] = testing_dir
+  p = subprocess.Popen(cmd, stderr=sys.stderr, universal_newlines=True, cwd=testing_dir, env=env)
 
-  for line in iter(p.stdout.readline,''):
-    # Parse line like this:
-    # Score of Stockfish  130212 64bit vs base: 1701 - 1715 - 6161  [0.499] 9577
-    if 'Score' in line:
-      chunks = line.split(':')
-      chunks = chunks[1].split()
-      result['stats']['wins']   = int(chunks[0]) + old_stats['wins']
-      result['stats']['losses'] = int(chunks[2]) + old_stats['losses']
-      result['stats']['draws']  = int(chunks[4]) + old_stats['draws']
+  pgn = None
+  def parse_pgn():
+    if pgn == None:
+      if not os.path.exists('results.pgn'):
+        return
+      pgn = open('results.pgn', 'r')
 
+    # Parse the PGN results
+    line = pgn.readline()
+    sys.stderr.write(line)
+    if line.startswith('[White'):
+      white = line.split('"')[1]
+    elif line.startswith('[Black'):
+      black = line.split('"')[1]
+    elif line.startswith('[Result'):
+      game_result = line.split('"')[1]
+      if game_result == '1/2-1/2':
+        result['stats']['draws'] += 1
+      elif game_result == "1-0":
+        if black == 'base':
+          result['stats']['wins'] += 1
+        else:
+          result['stats']['losses'] += 1
+      elif game_result == "0-1":
+        if black == 'base':
+          result['stats']['losses'] += 1
+        else:
+          result['stats']['wins'] += 1
+      else:
+        sys.stderr.write('Unknown result: %s\n' % (game_result))
+    
       try:
         requests.post(remote + '/api/update_task', data=json.dumps(result))
       except:
         sys.stderr.write('Exception from calling update_task:\n')
         traceback.print_exc(file=sys.stderr)
 
-  if p.exit_code != 0:
-    raise Exception(p.stderr)
+  while p.poll() is None:
+
+  if p.returncode != 0:
+    raise Exception('Non-zero return code: %d' % (p.returncode))
