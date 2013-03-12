@@ -26,6 +26,7 @@ if "windows" in platform.system().lower():
 
 def verify_signature(engine, signature):
   bench_sig = ''
+  print 'Verifying signature of %s ...' % (engine)
   output = subprocess.check_output([engine, 'bench'], stderr=subprocess.STDOUT, universal_newlines=True)
   for line in output.split('\n'):
     if 'Nodes searched' in line:
@@ -55,7 +56,7 @@ def setup(item, testing_dir):
   tree = json.loads(robust_download(FISHCOOKING_URL + '/git/trees/setup'))
   for blob in tree['tree']:
     if blob['path'] == item:
-      print 'Downloading %s...' % (item)
+      print 'Downloading %s ...' % (item)
       blob_json = json.loads(robust_download(blob['url']))
       with open(os.path.join(testing_dir, item), 'w') as f:
         f.write(b64decode(blob_json['content']))
