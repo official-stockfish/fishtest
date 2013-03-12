@@ -13,8 +13,14 @@ import traceback
 import platform
 import zipfile
 from base64 import b64decode
+from threading import Thread, Event
 from urllib2 import urlopen, HTTPError
 from zipfile import ZipFile
+
+try:
+  from Queue import Queue, Empty
+except ImportError:
+  from queue import Queue, Empty
 
 FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
 EXE_SUFFIX = ''
@@ -84,6 +90,17 @@ def build(sha, destination, concurrency):
   os.chdir(cur_dir)
   shutil.rmtree(working_dir)
 
+class StoppableThread(Thread):
+  def __init__(self):
+    super(StoppableThread, self).__init__()
+    self._stop = Event()
+
+  def stop(self):
+    self._stop.set()
+
+  def stopped(self):
+    return self._stop.isSet()
+
 def run_games(testing_dir, worker_info, password, remote, run, task_id):
   task = run['tasks'][task_id]
   result = {
@@ -98,10 +115,6 @@ def run_games(testing_dir, worker_info, password, remote, run, task_id):
   games_remaining = task['num_games'] - (result['stats']['wins'] + result['stats']['losses'] + result['stats']['draws'])
   if games_remaining <= 0:
     return 'No games remaining'
-
-  ## DEBUG REMOVE
-  games_remaining = 1
-  ## END REMOVE
 
   book = run['args'].get('book', 'varied.bin')
   book_depth = run['args'].get('book_depth', '10')
@@ -154,16 +167,40 @@ def run_games(testing_dir, worker_info, password, remote, run, task_id):
   env['LD_LIBRARY_PATH'] = testing_dir
   p = subprocess.Popen(cmd, stderr=sys.stderr, universal_newlines=True, cwd=testing_dir, env=env)
 
-  pgn = None
-  def parse_pgn():
-    if pgn == None:
-      if not os.path.exists('results.pgn'):
-        return
-      pgn = open('results.pgn', 'r')
+  class EnqueueResults(StoppableThread):
+    def __init__(self, queue):
+      super(EnqueueResults, self).__init__()
+      self.queue = queue
 
-    # Parse the PGN results
-    line = pgn.readline()
-    sys.stderr.write(line)
+    def run(self):
+      while not self.stopped() and not os.path.exists('results.pgn'):
+        time.sleep(1)
+      pgn = open('results.pgn', 'r')
+      while not self.stopped():
+        where = pgn.tell()
+        line = pgn.readline()
+        if not line:
+          time.sleep(1)
+          pgn.seek(where)
+        else:
+          self.queue.put(line)
+      pgn.close()
+
+  q = Queue()
+  t = EnqueueResults(q)
+  t.daemon = True
+  t.start()
+
+  while True:
+    try: line = q.get_nowait()
+    except Empty:
+      if p.poll() is not None:
+        t.stop()
+        break
+      time.sleep(1)
+      continue
+
+    # Parse the PGN for the game result
     if line.startswith('[White'):
       white = line.split('"')[1]
     elif line.startswith('[Black'):
@@ -184,14 +221,13 @@ def run_games(testing_dir, worker_info, password, remote, run, task_id):
           result['stats']['wins'] += 1
       else:
         sys.stderr.write('Unknown result: %s\n' % (game_result))
-    
+
+      # Post results to server    
       try:
         requests.post(remote + '/api/update_task', data=json.dumps(result))
       except:
         sys.stderr.write('Exception from calling update_task:\n')
         traceback.print_exc(file=sys.stderr)
-
-  while p.poll() is None:
 
   if p.returncode != 0:
     raise Exception('Non-zero return code: %d' % (p.returncode))
