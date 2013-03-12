@@ -216,8 +216,12 @@ def tests(request):
     res = run['results']
     return run['args']['num_games'] - res['wins'] - res['losses'] - res['draws']
 
-  pending_hours = sum([parse_tc(r['args']['tc']) * remaining_games(r) for r in runs if r not in finished]) / (60*60)
-  pending_hours /= sum([int(m['concurrency']) for m in machines])
+  cores = sum([int(m['concurrency']) for m in machines])
+  if cores > 0:
+    pending_hours = sum([parse_tc(r['args']['tc']) * remaining_games(r) for r in runs if r not in finished]) / (60*60)
+    pending_hours /= cores
+  else:
+    pending_hours = '- -'
 
   return {
     'machines': machines,

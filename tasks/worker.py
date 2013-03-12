@@ -36,6 +36,7 @@ def worker_loop(testing_dir, worker_info, password, remote):
             'task_id': task_id
           }
           requests.post(remote + '/api/failed_task', data=json.dumps(payload))
+          print 'Worker is disconnecting...host has been notified'
           raise
 
     except:

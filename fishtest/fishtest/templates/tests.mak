@@ -15,7 +15,7 @@
 %endif
 
 <h3>Active</h3>
-<table class="table table-striped table-condensed" style="width:60%">
+<table class="table table-striped table-condensed" style="width:40%">
  <thead>
   <tr>
    <th>Machine</th>
