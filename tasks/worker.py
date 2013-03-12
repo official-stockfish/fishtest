@@ -40,9 +40,10 @@ def worker_loop(testing_dir, worker_info, password, remote):
         'task_id': task_id
       }
       requests.post(remote + '/api/failed_task', data=json.dumps(payload))
+      sys.stderr.write('\nDisconnected from host\n')
       raise
 
-  # Run tasks until we hit five consecutive failures    
+  # Run tasks until we hit five consecutive failures
   failed = 0
   while failed < 5:
     try:
