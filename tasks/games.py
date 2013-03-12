@@ -13,14 +13,8 @@ import traceback
 import platform
 import zipfile
 from base64 import b64decode
-from threading import Thread, Event
 from urllib2 import urlopen, HTTPError
 from zipfile import ZipFile
-
-try:
-  from Queue import Queue, Empty
-except ImportError:
-  from queue import Queue, Empty
 
 FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
 EXE_SUFFIX = ''
@@ -90,17 +84,6 @@ def build(sha, destination, concurrency):
   os.chdir(cur_dir)
   shutil.rmtree(working_dir)
 
-class StoppableThread(Thread):
-  def __init__(self):
-    super(StoppableThread, self).__init__()
-    self._stop = Event()
-
-  def stop(self):
-    self._stop.set()
-
-  def stopped(self):
-    return self._stop.isSet()
-
 def run_games(testing_dir, worker_info, password, remote, run, task_id):
   task = run['tasks'][task_id]
   result = {
@@ -108,11 +91,12 @@ def run_games(testing_dir, worker_info, password, remote, run, task_id):
     'password': password,
     'run_id': str(run['_id']),
     'task_id': task_id,
-    'stats': task.get('stats', {'wins':0, 'losses':0, 'draws':0}),
+    'stats': {'wins':0, 'losses':0, 'draws':0},
   }
 
   # Have we run any games on this task yet?
-  games_remaining = task['num_games'] - (result['stats']['wins'] + result['stats']['losses'] + result['stats']['draws'])
+  old_stats = task.get('stats', {'wins':0, 'losses':0, 'draws':0})
+  games_remaining = task['num_games'] - (old_stats['wins'] + old_stats['losses'] + old_stats['draws'])
   if games_remaining <= 0:
     return 'No games remaining'
 
@@ -163,66 +147,18 @@ def run_games(testing_dir, worker_info, password, remote, run, task_id):
           '-each', 'tc=%s' % (run['args']['tc']), 'book=%s' % (book), 'bookdepth=%s' % (book_depth),
           '-tournament', 'gauntlet', '-pgnout', 'results.pgn' ]
 
-  env = dict(os.environ)
-  env['LD_LIBRARY_PATH'] = testing_dir
-  p = subprocess.Popen(cmd, stderr=sys.stderr, universal_newlines=True, cwd=testing_dir, env=env)
+  p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
 
-  class EnqueueResults(StoppableThread):
-    def __init__(self, queue):
-      super(EnqueueResults, self).__init__()
-      self.queue = queue
+  for line in iter(p.stdout.readline,''):
+    # Parse line like this:
+    # Score of Stockfish  130212 64bit vs base: 1701 - 1715 - 6161  [0.499] 9577
+    if 'Score' in line:
+      chunks = line.split(':')
+      chunks = chunks[1].split()
+      result['stats']['wins']   = int(chunks[0]) + old_stats['wins']
+      result['stats']['losses'] = int(chunks[2]) + old_stats['losses']
+      result['stats']['draws']  = int(chunks[4]) + old_stats['draws']
 
-    def run(self):
-      while not self.stopped() and not os.path.exists('results.pgn'):
-        time.sleep(1)
-      pgn = open('results.pgn', 'r')
-      while not self.stopped():
-        where = pgn.tell()
-        line = pgn.readline()
-        if not line:
-          time.sleep(1)
-          pgn.seek(where)
-        else:
-          self.queue.put(line)
-      pgn.close()
-
-  q = Queue()
-  t = EnqueueResults(q)
-  t.daemon = True
-  t.start()
-
-  while True:
-    try: line = q.get_nowait()
-    except Empty:
-      if p.poll() is not None:
-        t.stop()
-        break
-      time.sleep(1)
-      continue
-
-    # Parse the PGN for the game result
-    if line.startswith('[White'):
-      white = line.split('"')[1]
-    elif line.startswith('[Black'):
-      black = line.split('"')[1]
-    elif line.startswith('[Result'):
-      game_result = line.split('"')[1]
-      if game_result == '1/2-1/2':
-        result['stats']['draws'] += 1
-      elif game_result == "1-0":
-        if black == 'base':
-          result['stats']['wins'] += 1
-        else:
-          result['stats']['losses'] += 1
-      elif game_result == "0-1":
-        if black == 'base':
-          result['stats']['losses'] += 1
-        else:
-          result['stats']['wins'] += 1
-      else:
-        sys.stderr.write('Unknown result: %s\n' % (game_result))
-
-      # Post results to server
       try:
         requests.post(remote + '/api/update_task', data=json.dumps(result))
       except:

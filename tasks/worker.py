@@ -40,7 +40,7 @@ def worker_loop(testing_dir, worker_info, password, remote):
           'task_id': task_id
         }
         requests.post(remote + '/api/failed_task', data=json.dumps(payload))
-        sys.stderr.write('Disconnected from host')
+        sys.stderr.write('\nDisconnected from host\n')
         raise
 
     time.sleep(10)
