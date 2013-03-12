@@ -133,7 +133,7 @@ def run_games(testing_dir, worker_info, password, remote, run, task_id):
   # Download cutechess if not already exsisting
   if not os.path.exists(cutechess):
     if len(EXE_SUFFIX) > 0: zipball = 'cutechess-cli-win.zip'
-    else: zipball = 'cutechess-cli-linux.zip'
+    else: zipball = 'cutechess-cli-linux-%s.zip' % (platform.architecture()[0])
     setup(zipball, testing_dir)
     zip_file = ZipFile(zipball)
     zip_file.extractall()
@@ -222,7 +222,7 @@ def run_games(testing_dir, worker_info, password, remote, run, task_id):
       else:
         sys.stderr.write('Unknown result: %s\n' % (game_result))
 
-      # Post results to server    
+      # Post results to server
       try:
         requests.post(remote + '/api/update_task', data=json.dumps(result))
       except:
