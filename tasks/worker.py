@@ -11,39 +11,47 @@ from optparse import OptionParser
 from games import run_games
 
 def worker_loop(testing_dir, worker_info, password, remote):
-  while True:
+  def iter():
     print 'Polling for tasks...'
 
     payload = {
       'worker_info': worker_info,
       'password': password,
     }
-    try:
-      req = requests.post(remote + '/api/request_task', data=json.dumps(payload))
-      req = json.loads(req.text, object_hook=json_util.object_hook)
-    except:
-      sys.stderr.write('Exception accessing request_task:\n')
-      raise
+    req = requests.post(remote + '/api/request_task', data=json.dumps(payload))
+    req = json.loads(req.text, object_hook=json_util.object_hook)
 
     if 'error' in req:
       raise Exception('Error from remote: %s' % (req['error']))
 
-    if 'task_waiting' not in req:
-      run, task_id = req['run'], req['task_id']
-      try:
-        run_games(testing_dir, worker_info, password, remote, run, task_id)
-      except:
-        payload = {
-          'username': worker_info['username'],
-          'password': password,
-          'run_id': str(run['_id']),
-          'task_id': task_id
-        }
-        requests.post(remote + '/api/failed_task', data=json.dumps(payload))
-        sys.stderr.write('\nDisconnected from host\n')
-        raise
+    # No tasks ready for us yet, just wait...
+    if 'task_waiting' in req:
+      time.sleep(10)
+      return
 
-    time.sleep(10)
+    run, task_id = req['run'], req['task_id']
+    try:
+      run_games(testing_dir, worker_info, password, remote, run, task_id)
+    except:
+      payload = {
+        'username': worker_info['username'],
+        'password': password,
+        'run_id': str(run['_id']),
+        'task_id': task_id
+      }
+      requests.post(remote + '/api/failed_task', data=json.dumps(payload))
+      raise
+
+  # Run tasks until we hit five consecutive failures    
+  failed = 0
+  while failed < 5:
+    try:
+      iter()
+      failed = 0
+    except:
+      failed += 1
+      traceback.print_exc()
+      time.sleep(10)
 
 def main():
   parser = OptionParser()
