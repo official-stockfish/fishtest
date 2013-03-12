@@ -39,7 +39,6 @@ You will need the fishtest repository, as well as some python prereqs.
 $ git clone https://github.com/glinscott/fishtest.git
 $ sudo pip install pymongo
 $ sudo pip install requests
-$ sudo pip install sh
 ```
 
 ### Setup testing directory
