@@ -11,9 +11,10 @@ from optparse import OptionParser
 from games import run_games
 
 def worker_loop(testing_dir, worker_info, password, remote):
-  while True:
-    print 'Polling for tasks...'
-    try:
+  try:
+    while True:
+      print 'Polling for tasks...'
+
       payload = {
         'worker_info': worker_info,
         'password': password,
@@ -39,11 +40,11 @@ def worker_loop(testing_dir, worker_info, password, remote):
           print 'Worker is disconnecting...host has been notified'
           raise
 
-    except:
-      sys.stderr.write('Exception from worker:\n')
-      traceback.print_exc(file=sys.stderr)
+      time.sleep(10)
 
-    time.sleep(10)
+  except:
+    sys.stderr.write('Exception from worker:\n')
+    traceback.print_exc(file=sys.stderr)
 
 def main():
   parser = OptionParser()
