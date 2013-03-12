@@ -11,40 +11,39 @@ from optparse import OptionParser
 from games import run_games
 
 def worker_loop(testing_dir, worker_info, password, remote):
-  try:
-    while True:
-      print 'Polling for tasks...'
+  while True:
+    print 'Polling for tasks...'
 
-      payload = {
-        'worker_info': worker_info,
-        'password': password,
-      }
+    payload = {
+      'worker_info': worker_info,
+      'password': password,
+    }
+    try:
       req = requests.post(remote + '/api/request_task', data=json.dumps(payload))
       req = json.loads(req.text, object_hook=json_util.object_hook)
+    except:
+      sys.stderr.write('Exception accessing request_task:\n')
+      raise
 
-      if 'error' in req:
-        raise Exception('Error from remote: %s' % (req['error']))
+    if 'error' in req:
+      raise Exception('Error from remote: %s' % (req['error']))
 
-      if 'task_waiting' not in req:
-        run, task_id = req['run'], req['task_id']
-        try:
-          run_games(testing_dir, worker_info, password, remote, run, task_id)
-        except:
-          payload = {
-            'username': worker_info['username'],
-            'password': password,
-            'run_id': str(run['_id']),
-            'task_id': task_id
-          }
-          requests.post(remote + '/api/failed_task', data=json.dumps(payload))
-          print 'Worker is disconnecting...host has been notified'
-          raise
+    if 'task_waiting' not in req:
+      run, task_id = req['run'], req['task_id']
+      try:
+        run_games(testing_dir, worker_info, password, remote, run, task_id)
+      except:
+        payload = {
+          'username': worker_info['username'],
+          'password': password,
+          'run_id': str(run['_id']),
+          'task_id': task_id
+        }
+        requests.post(remote + '/api/failed_task', data=json.dumps(payload))
+        sys.stderr.write('Disconnected from host')
+        raise
 
-      time.sleep(10)
-
-  except:
-    sys.stderr.write('Exception from worker:\n')
-    traceback.print_exc(file=sys.stderr)
+    time.sleep(10)
 
 def main():
   parser = OptionParser()
