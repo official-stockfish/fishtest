@@ -166,5 +166,6 @@ def run_games(testing_dir, worker_info, password, remote, run, task_id):
         sys.stderr.write('Exception from calling update_task:\n')
         traceback.print_exc(file=sys.stderr)
 
+  p.wait()
   if p.returncode != 0:
     raise Exception('Non-zero return code: %d' % (p.returncode))
