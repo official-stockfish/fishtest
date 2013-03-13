@@ -24,19 +24,19 @@
    <th>Last updated</th>
   </tr>
  </thead>
-%for machine in machines:
  <tbody>
+%for machine in machines:
   <tr>
    <td>${machine['username']}</td>
    <td>${machine['concurrency']}</td>
    <td>${machine['uname'][0]} ${machine['uname'][2]}</td>
    <td>${machine['last_updated']}</td>
   </tr>
- </tbody>
 %endfor
 %if len(machines) == 0:
   <td>No machines running</td>
 %endif
+ </tbody>
 </table>
 <%include file="run_table.mak" args="runs=active"/>
 
