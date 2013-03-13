@@ -3,18 +3,10 @@ Fishtest is a distributed task queue for testing chess engines.  It is currently
 for testing changes on Stockfish with tens of thousands of games per change. The following
 setup describes a step-by-step installation for a machine that will run test matches.
 
-## Setup
-
-It's recommended to create a new user for running fishtest
-```
-$ sudo useradd fishtest
-$ sudo passwd fishtest
-$ su fishtest
-$ cd ~
-```
 ### Windows setup
 
-On Windows you will need to install Python 2.7.x for x86 (not 3.x series and not 64bits) from
+On Windows you will need to install Python 2.7.x for x86 (not 3.x series and not
+64 bit) from
 
 http://www.python.org/download/releases/2.7.3/
 
@@ -34,11 +26,11 @@ easy_install pip
 
 ### Setup fishtest
 
-First you need to install some prereqs:
+First you need to install some prereqs ('sudo' is not needed on Windows):
 
 ```
-$ sudo pip install pymongo
-$ sudo pip install requests
+sudo pip install pymongo
+sudo pip install requests
 ```
 
 Then you will need the fishtest package. You can download fishtest as a zipball
@@ -46,35 +38,27 @@ directly from https://github.com/glinscott/fishtest or, in case you have a git
 installation, you can clone it.
 
 ```
-$ git clone https://github.com/glinscott/fishtest.git
+git clone https://github.com/glinscott/fishtest.git
 ```
 
 ### Get username/password
 
-Please e-mail us.  Once you have your username and password, you can add them
-to start_worker.sh below.
+Please e-mail us.  Once you have your username and password, you can add use them
+to start the worker, see below.
 
 ## Launching the worker
 
-The worker launch script is in fishtest/start_worker.sh. Add the following lines,
-edited to match your setup.
+To launch the worker open a console/terminal window in fishtest/worker directory
+and run the following command (after changing concurrency to the correct value for
+your system, see below), providing username and password you've being given.
 
 ```
-export FISHTEST_DIR=~/testing
-export FISHTEST_USER="myusername"
-export FISHTEST_PASSWORD="mypassword"
+python worker.py --concurrency 3 username password
 ```
 
-Finally, edit the --concurrency argument in start_worker.sh for the number of cores in your
-system (not including Hyperthreaded cores!), and leaving one core for the OS.  For example,
+Option 'concurrency' refers to the number of available cores in your system (not
+including Hyperthreaded cores!), leaving one core for the OS.  For example,
 on my 4 core machine, I use --concurrency 3.
-
-Then, you can launch the worker!
-
-```
-$ cd ~/fishtest
-$ ./start_worker.sh
-```
 
 ## Running the website
 

@@ -10,7 +10,7 @@ from bson import json_util
 from optparse import OptionParser
 from games import run_games
 
-def worker_loop(testing_dir, worker_info, password, remote):
+def worker_loop(worker_info, password, remote):
   def iter():
     print 'Polling for tasks...'
 
@@ -31,7 +31,7 @@ def worker_loop(testing_dir, worker_info, password, remote):
 
     run, task_id = req['run'], req['task_id']
     try:
-      run_games(testing_dir, worker_info, password, remote, run, task_id)
+      run_games(worker_info, password, remote, run, task_id)
     except:
       payload = {
         'username': worker_info['username'],
@@ -61,13 +61,9 @@ def main():
   parser.add_option('-c', '--concurrency', dest='concurrency', default='1')
   (options, args) = parser.parse_args()
 
-  if len(args) != 3:
-    sys.stderr.write('%s [username] [password] [testing_dir]\n' % (sys.argv[0]))
+  if len(args) != 2:
+    sys.stderr.write('%s [username] [password]\n' % (sys.argv[0]))
     sys.exit(1)
-
-  testing_dir = args[2]
-  if not os.path.exists(testing_dir):
-    raise Exception('Testing directory does not exist: %s' % (testing_dir))
 
   remote = 'http://%s:%s' % (options.host, options.port)
   print 'Launching with %s' % (remote)
@@ -78,7 +74,7 @@ def main():
     'username' : args[0],
   }
 
-  worker_loop(testing_dir, worker_info, args[1], remote)
+  worker_loop(worker_info, args[1], remote)
 
 if __name__ == '__main__':
   main()

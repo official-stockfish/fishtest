@@ -26,7 +26,7 @@ if "windows" in platform.system().lower():
 
 def verify_signature(engine, signature):
   bench_sig = ''
-  print 'Verifying signature of %s ...' % (engine)
+  print 'Verifying signature of %s ...' % (os.path.basename(engine))
   output = subprocess.check_output([engine, 'bench'], stderr=subprocess.STDOUT, universal_newlines=True)
   for line in output.split('\n'):
     if 'Nodes searched' in line:
@@ -85,7 +85,7 @@ def build(sha, destination, concurrency):
   os.chdir(cur_dir)
   shutil.rmtree(working_dir)
 
-def run_games(testing_dir, worker_info, password, remote, run, task_id):
+def run_games(worker_info, password, remote, run, task_id):
   task = run['tasks'][task_id]
   result = {
     'username': worker_info['username'],
@@ -104,7 +104,12 @@ def run_games(testing_dir, worker_info, password, remote, run, task_id):
   book = run['args'].get('book', 'varied.bin')
   book_depth = run['args'].get('book_depth', '10')
 
-  testing_dir = os.path.abspath(testing_dir)
+  # Setup testing directory if not already exsisting
+  testing_dir = os.path.dirname(os.path.realpath(__file__))
+  testing_dir = os.path.join(testing_dir, 'testing')
+  if not os.path.exists(testing_dir):
+    os.makedirs(testing_dir)
+
   os.chdir(testing_dir)
 
   new_engine = os.path.join(testing_dir, 'stockfish' + EXE_SUFFIX)
@@ -154,6 +159,7 @@ def run_games(testing_dir, worker_info, password, remote, run, task_id):
     # Parse line like this:
     # Score of Stockfish  130212 64bit vs base: 1701 - 1715 - 6161  [0.499] 9577
     if 'Score' in line:
+      print line
       chunks = line.split(':')
       chunks = chunks[1].split()
       result['stats']['wins']   = int(chunks[0]) + old_stats['wins']
