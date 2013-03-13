@@ -17,12 +17,13 @@ from urllib2 import urlopen, HTTPError
 from zipfile import ZipFile
 
 FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
+ARCH = 'ARCH=x86-64-modern' if '64' in platform.architecture()[0] else 'ARCH=x86-32'
 EXE_SUFFIX = ''
-MAKE_CMD = 'make build ARCH=x86-64-modern COMP=gcc'
+MAKE_CMD = 'make build COMP=gcc ' + ARCH
 
 if "windows" in platform.system().lower():
   EXE_SUFFIX = '.exe'
-  MAKE_CMD = 'mingw32-make build ARCH=x86-64-modern COMP=mingw'
+  MAKE_CMD = 'mingw32-make build COMP=mingw ' + ARCH
 
 def verify_signature(engine, signature):
   bench_sig = ''
