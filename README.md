@@ -32,24 +32,21 @@ Then install pip with:
 easy_install pip
 ```
 
-### Clone fishtest
+### Setup fishtest
 
-You will need the fishtest repository, as well as some python prereqs.
+First you need to install some prereqs:
+
 ```
-$ git clone https://github.com/glinscott/fishtest.git
 $ sudo pip install pymongo
 $ sudo pip install requests
 ```
 
-### Setup testing directory
+Then you will need the fishtest package. You can download fishtest as a zipball
+directly from https://github.com/glinscott/fishtest or, in case you have a git
+installation, you can clone it.
 
-This is where the matches will be run, it requires a cutechess-cli compiled from latest master to
-be installed.  The version here is for x64 linux (currently the only one avaiable).
 ```
-$ cd ~
-$ mkdir testing
-$ wget http://forwardcoding.com/cutechess-x64.tar.gz
-$ tar xvf cutechess-x64.tar.gz
+$ git clone https://github.com/glinscott/fishtest.git
 ```
 
 ### Get username/password
@@ -59,7 +56,7 @@ to start_worker.sh below.
 
 ## Launching the worker
 
-The worker launch script is in fishtest/tasks/start_worker.sh.  Add the following lines,
+The worker launch script is in fishtest/start_worker.sh. Add the following lines,
 edited to match your setup.
 
 ```
@@ -75,7 +72,7 @@ on my 4 core machine, I use --concurrency 3.
 Then, you can launch the worker!
 
 ```
-$ cd ~/fishtest/tasks
+$ cd ~/fishtest
 $ ./start_worker.sh
 ```
 
