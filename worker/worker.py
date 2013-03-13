@@ -11,15 +11,23 @@ from optparse import OptionParser
 from games import run_games
 
 def worker_loop(worker_info, password, remote):
-  def iter():
+  while True:
     print 'Polling for tasks...'
 
     payload = {
       'worker_info': worker_info,
       'password': password,
     }
-    req = requests.post(remote + '/api/request_task', data=json.dumps(payload))
-    req = json.loads(req.text, object_hook=json_util.object_hook)
+    for retry in xrange(5):
+      try:
+        req = requests.post(remote + '/api/request_task', data=json.dumps(payload))
+        req = json.loads(req.text, object_hook=json_util.object_hook)
+        break
+      except:
+        sys.stderr.write('Exception accessing request_task:\n')
+        time.sleep(10)
+    else:
+      raise
 
     if 'error' in req:
       raise Exception('Error from remote: %s' % (req['error']))
@@ -27,7 +35,7 @@ def worker_loop(worker_info, password, remote):
     # No tasks ready for us yet, just wait...
     if 'task_waiting' in req:
       time.sleep(10)
-      return
+      continue
 
     run, task_id = req['run'], req['task_id']
     try:
@@ -42,17 +50,6 @@ def worker_loop(worker_info, password, remote):
       requests.post(remote + '/api/failed_task', data=json.dumps(payload))
       sys.stderr.write('\nDisconnected from host\n')
       raise
-
-  # Run tasks until we hit five consecutive failures
-  failed = 0
-  while failed < 5:
-    try:
-      iter()
-      failed = 0
-    except:
-      failed += 1
-      traceback.print_exc()
-      time.sleep(10)
 
 def main():
   parser = OptionParser()
