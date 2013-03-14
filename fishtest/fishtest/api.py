@@ -1,4 +1,4 @@
-import json
+import json, sys
 from bson import json_util
 from pyramid.view import view_config
 
@@ -11,6 +11,7 @@ def request_task(request):
   username = worker_info['username']
   password = request.json_body['password']
   if USERS.get(username) != password:
+    sys.stderr.write('Invalid login: "%s" "%s"\n' % (username, password))
     return json.dumps({'error': 'Invalid password'})
 
   task = request.rundb.request_task(worker_info)
