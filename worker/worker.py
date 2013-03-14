@@ -11,6 +11,8 @@ from optparse import OptionParser
 from games import run_games
 
 def worker_loop(worker_info, password, remote):
+  failed = 0
+
   while True:
     print 'Polling for tasks...'
 
@@ -25,6 +27,7 @@ def worker_loop(worker_info, password, remote):
         break
       except:
         sys.stderr.write('Exception accessing request_task:\n')
+        traceback.print_exc()
         time.sleep(10)
     else:
       raise
@@ -40,6 +43,7 @@ def worker_loop(worker_info, password, remote):
     run, task_id = req['run'], req['task_id']
     try:
       run_games(worker_info, password, remote, run, task_id)
+      failed = 0
     except:
       payload = {
         'username': worker_info['username'],
@@ -48,8 +52,13 @@ def worker_loop(worker_info, password, remote):
         'task_id': task_id
       }
       requests.post(remote + '/api/failed_task', data=json.dumps(payload))
-      sys.stderr.write('\nDisconnected from host\n')
-      raise
+
+      failed += 1
+      if failed >= 5:
+        raise
+
+      sys.stderr.write('\nException running games:\n')
+      traceback.print_exc()
 
 def main():
   parser = OptionParser()
