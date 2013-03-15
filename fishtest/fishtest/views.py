@@ -219,7 +219,7 @@ def tests(request):
 
   cores = sum([int(m['concurrency']) for m in machines])
   if cores > 0:
-    pending_hours = sum([parse_tc(r['args']['tc']) * remaining_games(r) for r in runs if r not in finished]) / (60*60)
+    pending_hours = sum([parse_tc(r['args']['tc']) * remaining_games(r) for r in pending_tasks + active_tasks]) / (60*60)
     pending_hours /= cores
   else:
     pending_hours = '- -'
