@@ -81,7 +81,15 @@ def build(sha, destination, concurrency):
     if name.endswith('/src/'):
       src_dir = name
   os.chdir(src_dir)
-  subprocess.check_call(MAKE_CMD + ' -j %s' % (concurrency), shell=True)
+
+  custom_make = os.path.join(cur_dir, "custom_make.txt")
+  if os.path.exists(custom_make):
+    with open(custom_make, 'r') as m:
+      make_cmd = m.read().strip()
+    subprocess.check_call(make_cmd, shell=True)
+  else:
+    subprocess.check_call(MAKE_CMD + ' -j %s' % (concurrency), shell=True)
+
   shutil.move('stockfish'+ EXE_SUFFIX, destination)
   os.chdir(cur_dir)
   shutil.rmtree(working_dir)
