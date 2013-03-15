@@ -62,10 +62,10 @@ Option *concurrency* refers to the number of available cores in your system (not
 including Hyperthreaded cores!), leaving one core for the OS.  For example,
 on my 4 core machine, I use `--concurrency 3`.
 
-On Linux, you can use the nohup command to run the worker as a background task.
+On Linux, you can use the `nohup` command to run the worker as a background task.
 
 ```
-nohup python worker.py --concurrnecy 3 username password &
+nohup python worker.py --concurrency 3 username password &
 ```
 
 #### Override default make command
