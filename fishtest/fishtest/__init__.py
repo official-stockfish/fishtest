@@ -20,12 +20,15 @@ def main(global_config, **settings):
   # Authentication
   with open(os.path.expanduser('~/fishtest.secret'), 'r') as f:
     secret = f.read()
+  def groupfinder(username, request):
+    return request.userdb.get_user_groups(username)
   config.set_authentication_policy(AuthTktAuthenticationPolicy(secret, callback=groupfinder, hashalg='sha512'))
   config.set_authorization_policy(ACLAuthorizationPolicy())
 
   rundb = RunDb()
   def add_rundb(event):
     event.request.rundb = rundb
+    event.request.userdb = rundb.userdb
   config.add_subscriber(add_rundb, NewRequest)
 
   config.add_static_view('css', 'static/css', cache_max_age=3600)
