@@ -22,7 +22,7 @@ def login(request):
   login_url = request.route_url('login')
   referrer = request.url
   if referrer == login_url:
-      referrer = '/' # never use the login form itself as came_from
+    referrer = '/' # never use the login form itself as came_from
   came_from = request.params.get('came_from', referrer)
 
   if 'form.submitted' in request.params:
@@ -52,7 +52,8 @@ def tests_run(request):
                                    resolved_new=get_sha(request.POST['test-branch']),
                                    base_signature=request.POST['base-signature'],
                                    new_signature=request.POST['test-signature'],
-                                   info=request.POST['run-info'])
+                                   info=request.POST['run-info'],
+                                   username=authenticated_userid(request))
 
     request.session.flash('Started test run!')
     return HTTPFound(location=request.route_url('tests'))

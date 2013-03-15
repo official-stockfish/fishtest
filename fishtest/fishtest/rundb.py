@@ -34,7 +34,8 @@ class RunDb:
               resolved_new='',
               base_signature='',
               new_signature='',
-              start_time=None):
+              start_time=None,
+              username=None):
     if start_time == None:
       start_time = datetime.utcnow()
 
@@ -52,6 +53,7 @@ class RunDb:
         'info': info,
         'base_signature': base_signature,
         'new_signature': new_signature,
+        'username': username,
       },
       'start_time': start_time,
       # Will be filled in by tasks, indexed by task-id
