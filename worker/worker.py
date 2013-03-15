@@ -45,6 +45,13 @@ def worker_loop(worker_info, password, remote):
       run_games(worker_info, password, remote, run, task_id)
       failed = 0
     except:
+      failed += 1
+      if failed >= 5:
+        raise
+
+      sys.stderr.write('\nException running games:\n')
+      traceback.print_exc()
+    finally:
       payload = {
         'username': worker_info['username'],
         'password': password,
@@ -52,13 +59,7 @@ def worker_loop(worker_info, password, remote):
         'task_id': task_id
       }
       requests.post(remote + '/api/failed_task', data=json.dumps(payload))
-
-      failed += 1
-      if failed >= 5:
-        raise
-
-      sys.stderr.write('\nException running games:\n')
-      traceback.print_exc()
+      sys.stderr.write('Task finished\n')
 
 def main():
   parser = OptionParser()
