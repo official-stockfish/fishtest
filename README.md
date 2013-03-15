@@ -62,7 +62,7 @@ Option 'concurrency' refers to the number of available cores in your system (not
 including Hyperthreaded cores!), leaving one core for the OS.  For example,
 on my 4 core machine, I use --concurrency 3.
 
-## Override default make command
+### Override default make command
 
 Once launched, fishtest will automatically connect to host, download the book,
 the 'cutechess-cli' game manager and the engine sources that will be compiled
