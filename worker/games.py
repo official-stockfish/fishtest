@@ -157,7 +157,7 @@ def run_games(worker_info, password, remote, run, task_id):
     verify_signature(new_engine, run['args']['new_signature'])
 
   # Run cutechess-cli binary
-  cmd = [ cutechess, '-repeat', '-rounds', str(games_remaining), '-tournament',
+  cmd = [ cutechess, '-repeat', '-recover', '-rounds', str(games_remaining), '-tournament',
          'gauntlet', '-pgnout', 'results.pgn', '-resign', 'movecount=3',
          'score=400', '-draw', 'movenumber=34', 'movecount=2', 'score=20',
          '-concurrency', str(games_concurrency), '-engine', 'cmd=stockfish',
@@ -165,7 +165,7 @@ def run_games(worker_info, password, remote, run, task_id):
          'option.Threads=%s' % (threads), 'tc=%s' % (run['args']['tc']),
          'book=%s' % (book), 'bookdepth=%s' % (book_depth) ]
 
-  print " ".join(cmd)
+  print ' '.join(cmd)
   p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
 
   for line in iter(p.stdout.readline,''):
