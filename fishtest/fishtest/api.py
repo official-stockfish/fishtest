@@ -22,6 +22,7 @@ def update_task(request):
   username = request.json_body['username']
   password = request.json_body['password']
   if USERS.get(username) != password:
+    sys.stderr.write('Invalid login: "%s" "%s"\n' % (username, password))
     return json.dumps({'error': 'Invalid password'})
 
   result = request.rundb.update_task(
@@ -36,6 +37,7 @@ def failed_task(request):
   username = request.json_body['username']
   password = request.json_body['password']
   if USERS.get(username) != password:
+    sys.stderr.write('Invalid login: "%s" "%s"\n' % (username, password))
     return json.dumps({'error': 'Invalid password'})
 
   result = request.rundb.failed_task(
@@ -43,3 +45,14 @@ def failed_task(request):
     task_id=int(request.json_body['task_id']),
   )
   return json.dumps(result)
+
+@view_config(route_name='api_request_version', renderer='string')
+def request_version(request):
+  worker_info = request.json_body['worker_info']
+  username = worker_info['username']
+  password = request.json_body['password']
+  if USERS.get(username) != password:
+    sys.stderr.write('Invalid login: "%s" "%s"\n' % (username, password))
+    return json.dumps({'error': 'Invalid password'})
+
+  return json.dumps({'version': '001'})
