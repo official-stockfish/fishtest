@@ -15,8 +15,7 @@ def invalid_password(request):
 
 @view_config(route_name='api_request_task', renderer='string')
 def request_task(request):
-  if invalid_password(request):
-    return json.dumps({'error': 'Invalid password'})
+  if invalid_password(request): return json.dumps({'error': 'Invalid password'})
 
   worker_info = request.json_body['worker_info']
   task = request.rundb.request_task(worker_info)
@@ -24,8 +23,7 @@ def request_task(request):
 
 @view_config(route_name='api_update_task', renderer='string')
 def update_task(request):
-  if invalid_password(request):
-    return json.dumps({'error': 'Invalid password'})
+  if invalid_password(request): return json.dumps({'error': 'Invalid password'})
 
   result = request.rundb.update_task(
     run_id=request.json_body['run_id'],
@@ -36,8 +34,7 @@ def update_task(request):
 
 @view_config(route_name='api_failed_task', renderer='string')
 def failed_task(request):
-  if invalid_password(request):
-    return json.dumps({'error': 'Invalid password'})
+  if invalid_password(request): return json.dumps({'error': 'Invalid password'})
 
   result = request.rundb.failed_task(
     run_id=request.json_body['run_id'],
@@ -47,7 +44,6 @@ def failed_task(request):
 
 @view_config(route_name='api_request_version', renderer='string')
 def request_version(request):
-  if invalid_password(request):
-    return json.dumps({'error': 'Invalid password'})
+  if invalid_password(request): return json.dumps({'error': 'Invalid password'})
 
   return json.dumps({'version': '001'})
