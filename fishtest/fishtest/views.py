@@ -46,6 +46,7 @@ def tests_run(request):
                                    new_tag=request.POST['test-branch'],
                                    num_games=int(request.POST['num-games']),
                                    tc=request.POST['tc'],
+                                   threads=request.POST['threads'],
                                    book=request.POST['book'],
                                    book_depth=request.POST['book-depth'],
                                    resolved_base=get_sha(request.POST['base-branch']),

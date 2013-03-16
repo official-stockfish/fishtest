@@ -27,7 +27,7 @@ class RunDb:
       remaining -= task_size
     return tasks
 
-  def new_run(self, base_tag, new_tag, num_games, tc, book, book_depth,
+  def new_run(self, base_tag, new_tag, num_games, tc, book, book_depth, threads,
               name='',
               info='',
               resolved_base='',
@@ -47,6 +47,7 @@ class RunDb:
         'tc': tc,
         'book': book,
         'book_depth': book_depth,
+        'threads': threads,
         'resolved_base': resolved_base,
         'resolved_new': resolved_new,
         'name': name,
