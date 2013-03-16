@@ -111,10 +111,13 @@ class RunDb:
         if task['active'] and task['pending'] and task['worker_info'] == worker_info:
           return {'run': existing_run, 'task_id': task_id}
 
-    # Ok, we get a new task
+    # Ok, we get a new task that does not require more threads than available concurrency
+    max_threads = worker_info['concurrency']
     q = {
       'new': True,
-      'query': {'tasks': {'$elemMatch': {'active': False, 'pending': True}}},
+      'query': { '$and': [ {'tasks': {'$elemMatch': {'active': False, 'pending': True}}},
+                           { '$or': [ {'args.$.threads': { '$exists': False }},
+                                      {'args.$.threads': { '$lte': max_threads }}]}]},
       'sort': [('_id', ASCENDING)],
       'update': {
         '$set': {
