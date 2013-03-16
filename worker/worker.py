@@ -13,8 +13,6 @@ from games import run_games
 WORKER_VERSION = 1
 
 def worker_loop(worker_info, password, remote):
-  failed = 0
-
   while True:
     print 'Polling for tasks...'
 
@@ -23,33 +21,21 @@ def worker_loop(worker_info, password, remote):
       'password': password,
     }
 
-    for retry in xrange(5):
-      try:
-        req = requests.post(remote + '/api/request_version', data=json.dumps(payload))
-        req = json.loads(req.text, object_hook=json_util.object_hook)
-        break
-      except:
-        sys.stderr.write('Exception accessing request_version:\n')
-        traceback.print_exc()
-        time.sleep(10)
-    else:
-      raise
+    try:
+      req = requests.post(remote + '/api/request_version', data=json.dumps(payload))
+      req = json.loads(req.text, object_hook=json_util.object_hook)
 
-    if 'version' in req and int(req['version']) > WORKER_VERSION:
-      sys.stderr.write('New version available, please update your fishtest and re-run:\n')
-      break
+      if 'version' in req and int(req['version']) > WORKER_VERSION:
+         sys.stderr.write('New version available, please update your fishtest and re-run:\n')
+         return
 
-    for retry in xrange(5):
-      try:
-        req = requests.post(remote + '/api/request_task', data=json.dumps(payload))
-        req = json.loads(req.text, object_hook=json_util.object_hook)
-        break
-      except:
-        sys.stderr.write('Exception accessing request_task:\n')
-        traceback.print_exc()
-        time.sleep(10)
-    else:
-      raise
+      req = requests.post(remote + '/api/request_task', data=json.dumps(payload))
+      req = json.loads(req.text, object_hook=json_util.object_hook)
+    except:
+      sys.stderr.write('Exception accessing host:\n')
+      traceback.print_exc()
+      time.sleep(10)
+      continue
 
     if 'error' in req:
       raise Exception('Error from remote: %s' % (req['error']))
@@ -62,12 +48,7 @@ def worker_loop(worker_info, password, remote):
     run, task_id = req['run'], req['task_id']
     try:
       run_games(worker_info, password, remote, run, task_id)
-      failed = 0
     except:
-      failed += 1
-      if failed >= 5:
-        raise
-
       sys.stderr.write('\nException running games:\n')
       traceback.print_exc()
     finally:
