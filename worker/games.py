@@ -161,16 +161,18 @@ def run_games(worker_info, password, remote, run, task_id):
          'gauntlet', '-pgnout', 'results.pgn', '-resign', 'movecount=3',
          'score=400', '-draw', 'movenumber=34', 'movecount=2', 'score=20',
          '-concurrency', str(games_concurrency), '-engine', 'cmd=stockfish',
-         '-engine', 'cmd=base', '-each', 'proto=uci', 'option.Threads=%s' % (threads),
-         'tc=%s' % (run['args']['tc']), 'book=%s' % (book), 'bookdepth=%s' % (book_depth) ]
+         '-engine', 'cmd=base', '-each', 'proto=uci', 'option.Hash=256',
+         'option.Threads=%s' % (threads), 'tc=%s' % (run['args']['tc']),
+         'book=%s' % (book), 'bookdepth=%s' % (book_depth) ]
 
+  print " ".join(cmd)
   p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
 
   for line in iter(p.stdout.readline,''):
+    print line
     # Parse line like this:
-    # Score of Stockfish  130212 64bit vs base: 1701 - 1715 - 6161  [0.499] 9577
+    # Score of Stockfish 16-03-13 vs Stockfish 16-03-13: 1 - 0 - 0  [1.000] 1
     if 'Score' in line:
-      print line
       chunks = line.split(':')
       chunks = chunks[1].split()
       result['stats']['wins']   = int(chunks[0]) + old_stats['wins']
