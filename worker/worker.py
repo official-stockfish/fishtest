@@ -13,8 +13,6 @@ from games import run_games
 WORKER_VERSION = 1
 
 def worker_loop(worker_info, password, remote):
-  failed = 0
-
   while True:
     print 'Polling for tasks...'
 
@@ -54,12 +52,7 @@ def worker_loop(worker_info, password, remote):
     run, task_id = req['run'], req['task_id']
     try:
       run_games(worker_info, password, remote, run, task_id)
-      failed = 0
     except:
-      failed += 1
-      if failed >= 5:
-        raise
-
       sys.stderr.write('\nException running games:\n')
       traceback.print_exc()
     finally:
