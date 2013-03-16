@@ -21,25 +21,21 @@ def worker_loop(worker_info, password, remote):
       'password': password,
     }
 
-    for retry in xrange(5):
-      try:
-        req = requests.post(remote + '/api/request_version', data=json.dumps(payload))
-        req = json.loads(req.text, object_hook=json_util.object_hook)
+    try:
+      req = requests.post(remote + '/api/request_version', data=json.dumps(payload))
+      req = json.loads(req.text, object_hook=json_util.object_hook)
 
-        if 'version' in req and int(req['version']) > WORKER_VERSION:
-           sys.stderr.write('New version available, please update your fishtest and re-run:\n')
-           return
+      if 'version' in req and int(req['version']) > WORKER_VERSION:
+         sys.stderr.write('New version available, please update your fishtest and re-run:\n')
+         return
 
-        req = requests.post(remote + '/api/request_task', data=json.dumps(payload))
-        req = json.loads(req.text, object_hook=json_util.object_hook)
-        break
-
-      except:
-        sys.stderr.write('Exception accessing host:\n')
-        traceback.print_exc()
-        time.sleep(10)
-    else:
-      raise
+      req = requests.post(remote + '/api/request_task', data=json.dumps(payload))
+      req = json.loads(req.text, object_hook=json_util.object_hook)
+    except:
+      sys.stderr.write('Exception accessing host:\n')
+      traceback.print_exc()
+      time.sleep(10)
+      continue
 
     if 'error' in req:
       raise Exception('Error from remote: %s' % (req['error']))
