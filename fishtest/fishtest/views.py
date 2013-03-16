@@ -39,25 +39,42 @@ def get_sha(branch):
   commit = json.loads(urlopen(FISHCOOKING_URL + '/commits/' + branch).read())
   return commit['sha']
 
+def validate_form(request):
+  data = {
+    'base_tag' : request.POST['base-branch'],
+    'new_tag' : request.POST['test-branch'],
+    'num_games' : request.POST['num-games'],
+    'tc' : request.POST['tc'],
+    'threads' : request.POST['threads'],
+    'book' : request.POST['book'],
+    'book_depth' : request.POST['book-depth'],
+    'resolved_base' : request.POST['base-branch'],
+    'resolved_new' : request.POST['test-branch'],
+    'base_signature' : request.POST['base-signature'],
+    'new_signature' : request.POST['test-signature'],
+    'username' : authenticated_userid(request),
+  }
+
+  if len([v for v in data.values() if len(v) == 0]) > 0:
+    data['valid'] = False
+  else:
+    data['valid'] = True
+    data['info'] = request.POST['run-info'] # This is not mandatory
+    data['resolved_base'] = get_sha(data['resolved_base'])
+    data['resolved_new'] = get_sha(data['resolved_new'])
+
+  return data
+
 @view_config(route_name='tests_run', renderer='tests_run.mak', permission='modify_db')
 def tests_run(request):
   if 'base-branch' in request.POST:
-    run_id = request.rundb.new_run(base_tag=request.POST['base-branch'],
-                                   new_tag=request.POST['test-branch'],
-                                   num_games=int(request.POST['num-games']),
-                                   tc=request.POST['tc'],
-                                   threads=request.POST['threads'],
-                                   book=request.POST['book'],
-                                   book_depth=request.POST['book-depth'],
-                                   resolved_base=get_sha(request.POST['base-branch']),
-                                   resolved_new=get_sha(request.POST['test-branch']),
-                                   base_signature=request.POST['base-signature'],
-                                   new_signature=request.POST['test-signature'],
-                                   info=request.POST['run-info'],
-                                   username=authenticated_userid(request))
-
-    request.session.flash('Started test run!')
-    return HTTPFound(location=request.route_url('tests'))
+    data = validate_form(request)
+    if data['valid']:
+      run_id = request.rundb.new_run(**data)
+      request.session.flash('Started test run!')
+      return HTTPFound(location=request.route_url('tests'))
+    else:
+      request.session.flash('Please fill all required fields')
   return {}
 
 @view_config(route_name='tests_run_more', permission='modify_db')
