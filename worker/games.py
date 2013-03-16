@@ -17,7 +17,7 @@ from urllib2 import urlopen, HTTPError
 from zipfile import ZipFile
 
 FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
-ARCH = 'ARCH=x86-64-modern' if '64' in platform.architecture()[0] else 'ARCH=x86-32'
+ARCH = 'ARCH=x86-64' if '64' in platform.architecture()[0] else 'ARCH=x86-32'
 EXE_SUFFIX = ''
 MAKE_CMD = 'make build COMP=gcc ' + ARCH
 
@@ -112,6 +112,8 @@ def run_games(worker_info, password, remote, run, task_id):
 
   book = run['args'].get('book', 'varied.bin')
   book_depth = run['args'].get('book_depth', '10')
+  threads = run['args'].get('threads', '1')
+  games_concurrency = int(worker_info['concurrency']) / int(threads)
 
   # Setup testing directory if not already exsisting
   testing_dir = os.path.dirname(os.path.realpath(__file__))
@@ -155,20 +157,22 @@ def run_games(worker_info, password, remote, run, task_id):
     verify_signature(new_engine, run['args']['new_signature'])
 
   # Run cutechess-cli binary
-  cmd = [ cutechess, '-repeat', '-rounds', str(games_remaining), '-resign', 'movecount=3', 'score=400',
-          '-draw', 'movenumber=34', 'movecount=2', 'score=20', '-concurrency', worker_info['concurrency'],
-          '-engine', 'cmd=stockfish', 'proto=uci', 'option.Threads=1',
-          '-engine', 'cmd=base', 'proto=uci', 'option.Threads=1', 'name=base',
-          '-each', 'tc=%s' % (run['args']['tc']), 'book=%s' % (book), 'bookdepth=%s' % (book_depth),
-          '-tournament', 'gauntlet', '-pgnout', 'results.pgn' ]
+  cmd = [ cutechess, '-repeat', '-rounds', str(games_remaining), '-tournament',
+         'gauntlet', '-pgnout', 'results.pgn', '-resign', 'movecount=3',
+         'score=400', '-draw', 'movenumber=34', 'movecount=2', 'score=20',
+         '-concurrency', str(games_concurrency), '-engine', 'cmd=stockfish',
+         '-engine', 'cmd=base', '-each', 'proto=uci', 'option.Hash=256',
+         'option.Threads=%s' % (threads), 'tc=%s' % (run['args']['tc']),
+         'book=%s' % (book), 'bookdepth=%s' % (book_depth) ]
 
+  print " ".join(cmd)
   p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
 
   for line in iter(p.stdout.readline,''):
+    print line
     # Parse line like this:
-    # Score of Stockfish  130212 64bit vs base: 1701 - 1715 - 6161  [0.499] 9577
+    # Score of Stockfish 16-03-13 vs Stockfish 16-03-13: 1 - 0 - 0  [1.000] 1
     if 'Score' in line:
-      print line
       chunks = line.split(':')
       chunks = chunks[1].split()
       result['stats']['wins']   = int(chunks[0]) + old_stats['wins']

@@ -10,6 +10,8 @@ from bson import json_util
 from optparse import OptionParser
 from games import run_games
 
+WORKER_VERSION = 1
+
 def worker_loop(worker_info, password, remote):
   failed = 0
 
@@ -20,6 +22,23 @@ def worker_loop(worker_info, password, remote):
       'worker_info': worker_info,
       'password': password,
     }
+
+    for retry in xrange(5):
+      try:
+        req = requests.post(remote + '/api/request_version', data=json.dumps(payload))
+        req = json.loads(req.text, object_hook=json_util.object_hook)
+        break
+      except:
+        sys.stderr.write('Exception accessing request_version:\n')
+        traceback.print_exc()
+        time.sleep(10)
+    else:
+      raise
+
+    if 'version' in req and int(req['version']) > WORKER_VERSION:
+      sys.stderr.write('New version available, please update your fishtest and re-run:\n')
+      break
+
     for retry in xrange(5):
       try:
         req = requests.post(remote + '/api/request_task', data=json.dumps(payload))

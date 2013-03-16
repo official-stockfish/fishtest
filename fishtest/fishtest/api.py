@@ -10,6 +10,11 @@ def request_task(request):
   if 'error' in token:
     return json.dumps(token)
 
+@view_config(route_name='api_request_task', renderer='string')
+def request_task(request):
+  if invalid_password(request): return json.dumps({'error': 'Invalid password'})
+
+  worker_info = request.json_body['worker_info']
   task = request.rundb.request_task(worker_info)
   return json.dumps(task, default=json_util.default)
 
@@ -37,3 +42,11 @@ def failed_task(request):
     task_id=int(request.json_body['task_id']),
   )
   return json.dumps(result)
+
+@view_config(route_name='api_request_version', renderer='string')
+def request_version(request):
+  token = request.userdb.authenticate(request.json_body['username'], request.json_body['password'])
+  if 'error' in token:
+    return json.dumps(token)
+
+  return json.dumps({'version': '001'})

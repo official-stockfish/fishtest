@@ -1,4 +1,6 @@
 #!/usr/bin/python
+import os, sys
+from datetime import datetime, timedelta
 
 # For tasks
 sys.path.append(os.path.expanduser('~/fishtest/fishtest'))
@@ -18,7 +20,7 @@ def scavenge_tasks(scavenge=True, minutes=20):
       rundb.runs.save(run)
 
 def main():
-  scavenge_tasks(scavenge=False)
+  scavenge_tasks(scavenge=True)
 
 if __name__ == '__main__':
   main()

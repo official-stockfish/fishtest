@@ -30,7 +30,7 @@ class RunDb:
       remaining -= task_size
     return tasks
 
-  def new_run(self, base_tag, new_tag, num_games, tc, book, book_depth,
+  def new_run(self, base_tag, new_tag, num_games, tc, book, book_depth, threads,
               name='',
               info='',
               resolved_base='',
@@ -38,7 +38,8 @@ class RunDb:
               base_signature='',
               new_signature='',
               start_time=None,
-              username=None):
+              username=None,
+              valid=None):
     if start_time == None:
       start_time = datetime.utcnow()
 
@@ -46,10 +47,11 @@ class RunDb:
       'args': {
         'base_tag': base_tag,
         'new_tag': new_tag,
-        'num_games': num_games,
+        'num_games': int(num_games),
         'tc': tc,
         'book': book,
         'book_depth': book_depth,
+        'threads': threads,
         'resolved_base': resolved_base,
         'resolved_new': resolved_new,
         'name': name,
@@ -60,7 +62,7 @@ class RunDb:
       },
       'start_time': start_time,
       # Will be filled in by tasks, indexed by task-id
-      'tasks': self.generate_tasks(num_games),
+      'tasks': self.generate_tasks(int(num_games)),
       # Aggregated results
       'results': { 'wins': 0, 'losses': 0, 'draws': 0 },
       'results_stale': False,
@@ -113,10 +115,13 @@ class RunDb:
         if task['active'] and task['pending'] and task['worker_info'] == worker_info:
           return {'run': existing_run, 'task_id': task_id}
 
-    # Ok, we get a new task
+    # Ok, we get a new task that does not require more threads than available concurrency
+    max_threads = worker_info['concurrency']
     q = {
       'new': True,
-      'query': {'tasks': {'$elemMatch': {'active': False, 'pending': True}}},
+      'query': { '$and': [ {'tasks': {'$elemMatch': {'active': False, 'pending': True}}},
+                           { '$or': [ {'args.$.threads': { '$exists': False }},
+                                      {'args.$.threads': { '$lte': max_threads }}]}]},
       'sort': [('_id', ASCENDING)],
       'update': {
         '$set': {

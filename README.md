@@ -26,6 +26,11 @@ Then install pip with:
 easy_install.exe pip
 ```
 
+#### Setup Python on Linux
+
+Fishtest requires Python 2.7.  If your distribution does not support upgrading to
+Python 2.7, you can install it from https://github.com/saghul/pythonz.
+
 #### Setup fishtest
 
 First you need to install some prereqs (command `sudo` is not needed on Windows):

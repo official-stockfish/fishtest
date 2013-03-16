@@ -39,6 +39,12 @@
     </div>
   </div>
   <div class="control-group">
+    <label class="control-label">Threads:</label>
+    <div class="controls">
+      <input name="threads" value="1">
+    </div>
+  </div>
+  <div class="control-group">
     <label class="control-label">Book:</label>
     <div class="controls">
       <input name="book" value="varied.bin">
