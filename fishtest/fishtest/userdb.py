@@ -16,14 +16,22 @@ class UserDb:
 
     return {'authenticated': True}
 
+  def get_users(self):
+    users = self.users.find()
+    return [u['username'] for u in users]
+
   def get_user_groups(self, username):
     user = self.users.find_one({'username': username})
     if user:
       return user['groups']
 
-  def create_user(username, password, email):
-    self.users.insert({
-      'username': username,
-      'password': password,
-      'email': email,
-    })
+  def create_user(self, username, password, email):
+    try:
+      self.users.insert({
+        'username': username,
+        'password': password,
+        'email': email,
+      })
+      return True
+    except:
+      return False

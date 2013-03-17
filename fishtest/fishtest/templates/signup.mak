@@ -1,12 +1,10 @@
 <%inherit file="base.mak"/>
 
-<h3>Stockfish testing</h3>
 <div>
-<a href="/signup">Sign up</a>
 <form class="form-horizontal" action="" method="POST">
-  <legend>Login</legend>
+  <legend>Create new user</legend>
   <div class="control-group">
-    <label class="control-label">Login:</label>
+    <label class="control-label">Username:</label>
     <div class="controls">
       <input name="username"/>
     </div>
@@ -15,6 +13,12 @@
     <label class="control-label">Password:</label>
     <div class="controls">
       <input name="password" type="password" />
+    </div>
+  </div>
+  <div class="control-group">
+    <label class="control-label">E-mail:</label>
+    <div class="controls">
+      <input name="email" />
     </div>
   </div>
   <div class="control-group">

@@ -8,8 +8,6 @@ from pyramid.view import view_config, forbidden_view_config
 from pyramid.httpexceptions import HTTPFound
 from urllib2 import urlopen, HTTPError
 
-from .security import USERS
-
 FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
 
 @view_config(route_name='home', renderer='mainpage.mak')
@@ -28,10 +26,30 @@ def login(request):
   if 'form.submitted' in request.params:
     username = request.params['username']
     password = request.params['password']
-    if USERS.get(username) == password:
+    token = request.userdb.authenticate(username, password)
+    if 'error' not in token:
       headers = remember(request, username)
       return HTTPFound(location=came_from, headers=headers)
-  #TODO: failed login handling
+
+  request.session.flash('Incorrect password')
+  return {}
+
+@view_config(route_name='signup', renderer='signup.mak')
+def signup(request):
+  if 'form.submitted' in request.params:
+    result = request.userdb.create_user(
+      username=request.params['username'],
+      password=request.params['password'],
+      email=request.params['email']
+    )
+
+    if not result:
+      request.session.flash('Invalid username') 
+
+  return {}
+
+@view_config(route_name='users', renderer='users.mak')
+def users(request):
   return {}
 
 def get_sha(branch):
@@ -56,20 +74,19 @@ def validate_form(request):
   }
 
   if len([v for v in data.values() if len(v) == 0]) > 0:
-    data['valid'] = False
-  else:
-    data['valid'] = True
-    data['info'] = request.POST['run-info'] # This is not mandatory
-    data['resolved_base'] = get_sha(data['resolved_base'])
-    data['resolved_new'] = get_sha(data['resolved_new'])
+    return data, False
 
-  return data
+  data['info'] = request.POST['run-info'] # This is not mandatory
+  data['resolved_base'] = get_sha(data['resolved_base'])
+  data['resolved_new'] = get_sha(data['resolved_new'])
+
+  return data, True
 
 @view_config(route_name='tests_run', renderer='tests_run.mak', permission='modify_db')
 def tests_run(request):
   if 'base-branch' in request.POST:
-    data = validate_form(request)
-    if data['valid']:
+    data, valid = validate_form(request)
+    if valid:
       run_id = request.rundb.new_run(**data)
       request.session.flash('Started test run!')
       return HTTPFound(location=request.route_url('tests'))

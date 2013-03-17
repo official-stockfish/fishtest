@@ -38,8 +38,7 @@ class RunDb:
               base_signature='',
               new_signature='',
               start_time=None,
-              username=None,
-              valid=None):
+              username=None):
     if start_time == None:
       start_time = datetime.utcnow()
 

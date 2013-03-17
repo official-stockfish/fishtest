@@ -36,6 +36,8 @@ def main(global_config, **settings):
   config.add_static_view('img', 'static/img', cache_max_age=3600)
   config.add_route('home', '/')
   config.add_route('login', '/login')
+  config.add_route('signup', '/signup')
+  config.add_route('users', '/users')
   config.add_route('tests', '/tests')
   config.add_route('tests_run', '/tests/run')
   config.add_route('tests_run_more', '/tests/run_more')

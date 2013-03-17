@@ -22,9 +22,13 @@
     <div class="row-fluid">
       <div class="span1">
         <ul class="nav nav-list">
+          <li><a href="/signup">Sign up</a></li>
           <li class="nav-header">Tests</li>
           <li><a href="/tests">Overview</a></li>
           <li><a href="/tests/run">Run!</a></li>
+          <li class="nav-header">Misc</li>
+          <li><a href="/">Login</a></li>
+          <li><a href="/users">Users</a></li>
         </ul>
       </div>
       <div class="span11">
