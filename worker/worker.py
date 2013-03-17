@@ -11,7 +11,7 @@ from bson import json_util
 from optparse import OptionParser
 from games import run_games
 
-WORKER_VERSION = 1
+WORKER_VERSION = 2
 ALIVE = True
 
 def on_sigint(signal, frame):

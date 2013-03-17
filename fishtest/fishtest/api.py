@@ -46,4 +46,4 @@ def failed_task(request):
 def request_version(request):
   if invalid_password(request): return json.dumps({'error': 'Invalid password'})
 
-  return json.dumps({'version': '001'})
+  return json.dumps({'version': '2'})
