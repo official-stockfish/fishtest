@@ -161,7 +161,7 @@ def run_games(worker_info, password, remote, run, task_id):
          'gauntlet', '-pgnout', 'results.pgn', '-resign', 'movecount=3',
          'score=400', '-draw', 'movenumber=34', 'movecount=2', 'score=20',
          '-concurrency', str(games_concurrency), '-engine', 'cmd=stockfish',
-         '-engine', 'cmd=base', '-each', 'proto=uci', 'option.Hash=256',
+         '-engine', 'cmd=base', '-each', 'proto=uci', 'option.Hash=128',
          'option.Threads=%s' % (threads), 'tc=%s' % (run['args']['tc']),
          'book=%s' % (book), 'bookdepth=%s' % (book_depth) ]
 
