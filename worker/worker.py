@@ -2,6 +2,7 @@
 import json
 import os
 import platform
+import signal
 import sys
 import requests
 import time
@@ -11,9 +12,17 @@ from optparse import OptionParser
 from games import run_games
 
 WORKER_VERSION = 1
+ALIVE = True
+
+def on_sigint(signal, frame):
+  global ALIVE
+  if ALIVE:
+    ALIVE = False
+    raise Exception('Exiting...')
 
 def worker_loop(worker_info, password, remote):
-  while True:
+  global ALIVE
+  while ALIVE:
     print 'Polling for tasks...'
 
     payload = {
@@ -59,9 +68,12 @@ def worker_loop(worker_info, password, remote):
         'task_id': task_id
       }
       requests.post(remote + '/api/failed_task', data=json.dumps(payload))
-      sys.stderr.write('Task finished\n')
+      sys.stderr.write('Task exited\n')
 
 def main():
+  signal.signal(signal.SIGINT, on_sigint)
+  signal.signal(signal.SIGTERM, on_sigint)
+
   parser = OptionParser()
   parser.add_option('-n', '--host', dest='host', default='54.235.120.254')
   parser.add_option('-p', '--port', dest='port', default='6543')
