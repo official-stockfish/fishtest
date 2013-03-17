@@ -38,6 +38,7 @@
    <th>Wins</th>
    <th>Losses</th>
    <th>Draws</th>
+   <th>Crashes</th>
   </tr>
  </thead>
  <tbody>
@@ -65,6 +66,7 @@
    <td>${stats.get('wins', '-')}</td>
    <td>${stats.get('losses', '-')}</td>
    <td>${stats.get('draws', '-')}</td>
+   <td>${stats.get('crashes', '-')}</td>
   </tr>
   %endfor
  </tbody>

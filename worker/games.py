@@ -17,7 +17,7 @@ from urllib2 import urlopen, HTTPError
 from zipfile import ZipFile
 
 FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
-ARCH = 'ARCH=x86-64' if '64' in platform.architecture()[0] else 'ARCH=x86-32'
+ARCH = 'ARCH=x86-64-modern' if '64' in platform.architecture()[0] else 'ARCH=x86-32'
 EXE_SUFFIX = ''
 MAKE_CMD = 'make build COMP=gcc ' + ARCH
 
@@ -101,19 +101,20 @@ def run_games(worker_info, password, remote, run, task_id):
     'password': password,
     'run_id': str(run['_id']),
     'task_id': task_id,
-    'stats': {'wins':0, 'losses':0, 'draws':0},
+    'stats': {'wins':0, 'losses':0, 'draws':0, 'crashes':0},
   }
 
   # Have we run any games on this task yet?
-  old_stats = task.get('stats', {'wins':0, 'losses':0, 'draws':0})
+  old_stats = task.get('stats', {'wins':0, 'losses':0, 'draws':0, 'crashes':0})
+  result['stats']['crashes'] = old_stats.get('crashes', 0)
   games_remaining = task['num_games'] - (old_stats['wins'] + old_stats['losses'] + old_stats['draws'])
   if games_remaining <= 0:
     return 'No games remaining'
 
   book = run['args'].get('book', 'varied.bin')
   book_depth = run['args'].get('book_depth', '10')
-  threads = run['args'].get('threads', '1')
-  games_concurrency = int(worker_info['concurrency']) / int(threads)
+  threads = int(run['args'].get('threads', 1))
+  games_concurrency = int(worker_info['concurrency']) / threads
 
   # Setup testing directory if not already exsisting
   testing_dir = os.path.dirname(os.path.realpath(__file__))
@@ -158,11 +159,11 @@ def run_games(worker_info, password, remote, run, task_id):
 
   # Run cutechess-cli binary
   cmd = [ cutechess, '-repeat', '-recover', '-rounds', str(games_remaining), '-tournament',
-         'gauntlet', '-pgnout', 'results.pgn', '-resign', 'movecount=3',
-         'score=400', '-draw', 'movenumber=34', 'movecount=2', 'score=20',
-         '-concurrency', str(games_concurrency), '-engine', 'cmd=stockfish',
-         '-engine', 'cmd=base', '-each', 'proto=uci', 'option.Hash=256',
-         'option.Threads=%s' % (threads), 'tc=%s' % (run['args']['tc']),
+         'gauntlet', '-pgnout', 'results.pgn', '-resign', 'movecount=3', 'score=400',
+         '-draw', 'movenumber=34', 'movecount=2', 'score=20', '-concurrency',
+         str(games_concurrency), '-engine', 'name=stockfish', 'cmd=stockfish',
+         '-engine', 'name=base', 'cmd=base', '-each', 'proto=uci', 'option.Hash=128',
+         'option.Threads=%d' % (threads), 'tc=%s' % (run['args']['tc']),
          'book=%s' % (book), 'bookdepth=%s' % (book_depth) ]
 
   print ' '.join(cmd)
@@ -171,7 +172,12 @@ def run_games(worker_info, password, remote, run, task_id):
   for line in iter(p.stdout.readline,''):
     print line
     # Parse line like this:
-    # Score of Stockfish 16-03-13 vs Stockfish 16-03-13: 1 - 0 - 0  [1.000] 1
+    # Finished game 1 (stockfish vs base): 0-1 {White disconnects}
+    if 'disconnects' in line:
+      result['stats']['crashes'] += 1
+
+    # Parse line like this:
+    # Score of stockfish vs base: 0 - 0 - 1  [0.500] 1
     if 'Score' in line:
       chunks = line.split(':')
       chunks = chunks[1].split()

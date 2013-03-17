@@ -50,7 +50,7 @@ class RunDb:
         'tc': tc,
         'book': book,
         'book_depth': book_depth,
-        'threads': threads,
+        'threads': int(threads),
         'resolved_base': resolved_base,
         'resolved_new': resolved_new,
         'name': name,
@@ -92,13 +92,14 @@ class RunDb:
     if not run['results_stale']:
       return run['results']
 
-    results = { 'wins': 0, 'losses': 0, 'draws': 0 }
+    results = { 'wins': 0, 'losses': 0, 'draws': 0, 'crashes': 0 }
     for task in run['tasks']:
       if 'stats' in task:
         stats = task['stats']
         results['wins'] += stats['wins']
         results['losses'] += stats['losses']
         results['draws'] += stats['draws']
+        results['crashes'] += stats.get('crashes', 0) # TODO remove get() when all worker will report crashes
 
     run['results_stale'] = False
     run['results'] = results
@@ -115,7 +116,7 @@ class RunDb:
           return {'run': existing_run, 'task_id': task_id}
 
     # Ok, we get a new task that does not require more threads than available concurrency
-    max_threads = worker_info['concurrency']
+    max_threads = int(worker_info['concurrency'])
     q = {
       'new': True,
       'query': { '$and': [ {'tasks': {'$elemMatch': {'active': False, 'pending': True}}},
