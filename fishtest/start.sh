@@ -1,3 +1,3 @@
 #!/bin/zsh
 
-nohup pserve development.ini --reload >nohup.out &
+nohup pserve production.ini >nohup.out &
