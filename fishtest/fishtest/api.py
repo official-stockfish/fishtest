@@ -3,7 +3,8 @@ from bson import json_util
 from pyramid.view import view_config
 
 def authenticate(request):
-  username = request.json_body.get('username', request.json_body['worker_info']['username'])
+  if 'username' in request.json_body: username = request.json_body['username']
+  else: username = request.json_body['worker_info']['username']
   return request.userdb.authenticate(username, request.json_body['password'])
   
 @view_config(route_name='api_request_task', renderer='string')
