@@ -113,8 +113,8 @@ def run_games(worker_info, password, remote, run, task_id):
 
   book = run['args'].get('book', 'varied.bin')
   book_depth = run['args'].get('book_depth', '10')
-  threads = run['args'].get('threads', '1')
-  games_concurrency = int(worker_info['concurrency']) / int(threads)
+  threads = int(run['args'].get('threads', 1))
+  games_concurrency = int(worker_info['concurrency']) / threads
 
   # Setup testing directory if not already exsisting
   testing_dir = os.path.dirname(os.path.realpath(__file__))
@@ -163,7 +163,7 @@ def run_games(worker_info, password, remote, run, task_id):
          '-draw', 'movenumber=34', 'movecount=2', 'score=20', '-concurrency',
          str(games_concurrency), '-engine', 'name=stockfish', 'cmd=stockfish',
          '-engine', 'name=base', 'cmd=base', '-each', 'proto=uci', 'option.Hash=128',
-         'option.Threads=%s' % (threads), 'tc=%s' % (run['args']['tc']),
+         'option.Threads=%d' % (threads), 'tc=%s' % (run['args']['tc']),
          'book=%s' % (book), 'bookdepth=%s' % (book_depth) ]
 
   print ' '.join(cmd)

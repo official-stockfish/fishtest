@@ -48,7 +48,7 @@ class RunDb:
         'tc': tc,
         'book': book,
         'book_depth': book_depth,
-        'threads': threads,
+        'threads': int(threads),
         'resolved_base': resolved_base,
         'resolved_new': resolved_new,
         'name': name,
@@ -114,7 +114,7 @@ class RunDb:
           return {'run': existing_run, 'task_id': task_id}
 
     # Ok, we get a new task that does not require more threads than available concurrency
-    max_threads = worker_info['concurrency']
+    max_threads = int(worker_info['concurrency'])
     q = {
       'new': True,
       'query': { '$and': [ {'tasks': {'$elemMatch': {'active': False, 'pending': True}}},

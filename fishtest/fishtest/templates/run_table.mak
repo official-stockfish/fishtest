@@ -29,7 +29,7 @@
       ${format_sha(run['args']['resolved_base']) | n}
     </td>
     <td style="min-width:280px;width:280px"><%include file="elo_results.mak" args="run=run" /></td>
-    <td style="width:13%">${run['args']['num_games']} @ ${run['args']['tc']} th ${run['args'].get('threads','1')}</td>
+    <td style="width:13%">${run['args']['num_games']} @ ${run['args']['tc']} th ${str(run['args'].get('threads',1))}</td>
     <td>${run['args'].get('info', '')}</td>
    </tr>
   %endfor
