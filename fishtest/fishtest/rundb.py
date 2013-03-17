@@ -90,13 +90,14 @@ class RunDb:
     if not run['results_stale']:
       return run['results']
 
-    results = { 'wins': 0, 'losses': 0, 'draws': 0 }
+    results = { 'wins': 0, 'losses': 0, 'draws': 0, 'crashes': 0 }
     for task in run['tasks']:
       if 'stats' in task:
         stats = task['stats']
         results['wins'] += stats['wins']
         results['losses'] += stats['losses']
         results['draws'] += stats['draws']
+        results['crashes'] += stats.get('crashes', 0) # TODO remove get() when all worker will report crashes
 
     run['results_stale'] = False
     run['results'] = results
