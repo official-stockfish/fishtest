@@ -5,8 +5,8 @@ class UserDb:
     self.db = db
     self.users = self.db['users']
 
-  def init_collection():
-    self.user.create_index('username', unique=True)
+  def init_collection(self):
+    self.users.create_index('username', unique=True)
 
   def authenticate(self, username, password):
     user = self.users.find_one({'username': username})
@@ -25,12 +25,18 @@ class UserDb:
     if user:
       return user['groups']
 
+  def add_user_group(self, username, group):
+    user = self.users.find_one({'username': username})
+    user['groups'].append(group)
+    self.users.save(user)
+
   def create_user(self, username, password, email):
     try:
       self.users.insert({
         'username': username,
         'password': password,
         'email': email,
+        'groups': [],
       })
       return True
     except:

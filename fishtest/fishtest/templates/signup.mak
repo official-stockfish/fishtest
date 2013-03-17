@@ -23,7 +23,7 @@
   </div>
   <div class="control-group">
     <div class="controls">
-      <button type="submit" name="form.submitted" class="btn btn-primary">Login</button>
+      <button type="submit" name="form.submitted" class="btn btn-primary">Create User</button>
     </div>
   </div>
 </form>

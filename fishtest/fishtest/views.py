@@ -45,12 +45,14 @@ def signup(request):
 
     if not result:
       request.session.flash('Invalid username') 
+    else:
+      return HTTPFound(location=request.route_url('login'))
 
   return {}
 
 @view_config(route_name='users', renderer='users.mak')
 def users(request):
-  return {}
+  return {'users': request.userdb.get_users()}
 
 def get_sha(branch):
   """Resolves the git branch to sha commit"""
