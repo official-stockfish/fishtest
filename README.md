@@ -50,7 +50,8 @@ git clone https://github.com/glinscott/fishtest.git
 
 #### Get username/password
 
-Please e-mail us.  Once you have your username and password, you can add use them
+Visit http://54.235.120.254:6543/signup to create your username and password.
+Once you have your username and password, you can add use them
 to start the worker, see below.
 
 ### Launching the worker
