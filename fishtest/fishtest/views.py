@@ -34,7 +34,7 @@ def login(request):
   request.session.flash('Incorrect password')
   return {}
 
-@view_config(route_name='signup', renderer='signup.mak')
+@view_config(route_name='signup', renderer='signup.mak', permission='modify_db')
 def signup(request):
   if 'form.submitted' in request.params:
     result = request.userdb.create_user(
