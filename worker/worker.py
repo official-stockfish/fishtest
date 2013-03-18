@@ -74,9 +74,6 @@ def main():
   signal.signal(signal.SIGINT, on_sigint)
   signal.signal(signal.SIGTERM, on_sigint)
 
-  if "windows" in platform.system().lower():
-    signal.signal(signal.CTRL_C_EVENT, on_sigint)
-
   parser = OptionParser()
   parser.add_option('-n', '--host', dest='host', default='54.235.120.254')
   parser.add_option('-p', '--port', dest='port', default='6543')
