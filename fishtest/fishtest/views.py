@@ -31,7 +31,8 @@ def login(request):
       headers = remember(request, username)
       return HTTPFound(location=came_from, headers=headers)
 
-  request.session.flash('Incorrect password')
+    request.session.flash('Incorrect password')
+
   return {}
 
 @view_config(route_name='signup', renderer='signup.mak', permission='modify_db')
