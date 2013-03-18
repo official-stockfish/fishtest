@@ -1,4 +1,5 @@
 import sys
+from pymongo import ASCENDING, DESCENDING
 
 class UserDb:
   def __init__(self, db):
@@ -17,7 +18,7 @@ class UserDb:
     return {'authenticated': True}
 
   def get_users(self):
-    users = self.users.find()
+    users = self.users.find(sort=[('_id', ASCENDING)])
     return [u['username'] for u in users]
 
   def get_user_groups(self, username):
