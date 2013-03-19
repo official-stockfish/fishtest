@@ -5,10 +5,15 @@ being used for testing changes on Stockfish with tens of thousands of games per
 change, both on Linux and Windows.  The following setup describes a step-by-step
 installation for a machine that will run test matches (a worker).
 
+#### Setup Python on Linux
+
+Fishtest requires Python 2.7.  If your distribution does not support upgrading to
+Python 2.7, you can install it from https://github.com/saghul/pythonz.
+
 #### Setup Python on Windows
 
-On Linux it is taken for granted a working installation of Python while on Windows
-you will need to install Python 2.7.x for x86 (not 3.x series and not 64 bit) from
+On Windows you will need to install Python 2.7.x for x86 (not 3.x series and not
+64 bit) from
 
 http://www.python.org/download/releases/2.7.3/
 
@@ -17,28 +22,26 @@ Then setuptools for 2.7.x from
 https://pypi.python.org/pypi/setuptools
 
 Once installation is complete, you will find an `easy_install.exe` program in your
-Python *Scripts* subdirectory. Be sure to add this directory to your PATH environment
-variable, if you haven't already done so.
-
-Then install pip with:
+Python *Scripts* subdirectory. Open a command prompt window on this directory,
+then install pip with:
 
 ```
 easy_install.exe pip
 ```
 
-#### Setup Python on Linux
-
-Fishtest requires Python 2.7.  If your distribution does not support upgrading to
-Python 2.7, you can install it from https://github.com/saghul/pythonz.
+In case something is not clear please read windows-step-by-step-installation.txt
 
 #### Setup fishtest
 
-First you need to install some prereqs (command `sudo` is not needed on Windows):
+First you need to install some prereqs:
 
 ```
 sudo pip install pymongo
 sudo pip install requests
 ```
+
+The same commands work also for Window without `sudo`. In this case you need to
+run them from the command prompt window open on Python *Scripts* subdirectory.
 
 Then you will need the fishtest package.  You can download fishtest as a zipball
 directly from https://github.com/glinscott/fishtest or, in case you have a git
