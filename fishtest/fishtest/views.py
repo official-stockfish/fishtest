@@ -205,6 +205,7 @@ def tests(request):
   pending_tasks = []
   failed_tasks = []
   active_tasks = []
+  finished = []
 
   runs = request.rundb.get_runs()
   # Filter out deleted runs
@@ -228,13 +229,12 @@ def tests(request):
 
     if pending:
       pending_tasks.append(run)
-    if failed:
+    elif failed:
       failed_tasks.append(run)
-    if active:
+    elif active:
       active_tasks.append(run)
-
-  # Filter out pending and active results from finished
-  finished = [r for r in runs if r not in pending_tasks and r not in active_tasks]
+    else:
+      finished.append(run)
 
   machines = request.rundb.get_machines()
   current_time = datetime.datetime.utcnow()
@@ -261,6 +261,11 @@ def tests(request):
     pending_hours /= cores
   else:
     pending_hours = '- -'
+  
+  def total_games(run):
+    res = run['results']
+    return res['wins'] + res['draws'] + res['losses']
+  games_played = sum([total_games(r) for r in finished])
 
   return {
     'machines': machines,
@@ -268,5 +273,6 @@ def tests(request):
     'pending_hours': '%.1f' % (pending_hours),
     'failed': failed_tasks,
     'active': active_tasks,
-    'runs': finished
+    'runs': finished,
+    'games_played': games_played
   }

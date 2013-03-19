@@ -40,5 +40,5 @@
 </table>
 <%include file="run_table.mak" args="runs=active"/>
 
-<h3>Finished</h3>
+<h3>Finished - ${games_played} games</h3>
 <%include file="run_table.mak" args="runs=runs"/>
