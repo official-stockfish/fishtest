@@ -247,19 +247,20 @@ def tests(request):
     else:
       machine['last_updated'] = '%d seconds ago' % (delta.seconds)
 
-  # Calculate time remaining for pending and active tests
-  def parse_tc(tc):
-    chunks = tc.split('+')
-    return (float(chunks[0]) + 40*float(chunks[1])) * 2
-
-  # Calculate remaining number of games for pending and active tests
+  # Calculate remaining number of games to end a run
   def remaining_games(run):
     res = run['results']
     return run['args']['num_games'] - res['wins'] - res['losses'] - res['draws']
 
+  # Calculate remaining seconds to end a run
+  def remaining_time(run):
+    chunks = run['args']['tc'].split('+')
+    game_time = (float(chunks[0]) + 40 * float(chunks[1])) * 2
+    return game_time * remaining_games(run) * int(run['args'].get('threads', 1))
+
   cores = sum([int(m['concurrency']) for m in machines])
   if cores > 0:
-    pending_hours = sum([parse_tc(r['args']['tc']) * remaining_games(r) * int(r['args'].get('threads', 1)) for r in pending_tasks + active_tasks]) / (60*60)
+    pending_hours = sum([remaining_time(r) for r in pending_tasks + active_tasks]) / (60*60)
     pending_hours /= cores
   else:
     pending_hours = '- -'
