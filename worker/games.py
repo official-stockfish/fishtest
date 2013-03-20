@@ -37,11 +37,11 @@ def verify_signature(engine, signature):
 
 def setup(item, testing_dir):
   """Download item from FishCooking to testing_dir"""
-  tree = json.loads(requests.get(FISHCOOKING_URL + '/git/trees/setup').text)
+  tree = requests.get(FISHCOOKING_URL + '/git/trees/setup').json()
   for blob in tree['tree']:
     if blob['path'] == item:
       print 'Downloading %s ...' % (item)
-      blob_json = json.loads(robust_download(blob['url']))
+      blob_json = requests.get(blob['url']).json()
       with open(os.path.join(testing_dir, item), 'wb+') as f:
         f.write(b64decode(blob_json['content']))
       break
