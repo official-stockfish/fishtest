@@ -84,9 +84,10 @@ def main():
   print 'Worker version %d connecting to %s' % (WORKER_VERSION, remote)
 
   worker_info = {
-    'uname' : platform.uname(),
-    'concurrency' : options.concurrency,
-    'username' : args[0],
+    'uname': platform.uname(),
+    'concurrency': options.concurrency,
+    'username': args[0],
+    'version': WORKER_VERSION, 
   }
 
   global ALIVE
