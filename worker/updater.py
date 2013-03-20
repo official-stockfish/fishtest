@@ -34,9 +34,15 @@ def update():
   prefix = os.path.commonprefix([n.filename for n in zip_file.infolist()])
   for name in zip_file.infolist():
     dirname = os.path.dirname(name.filename)
-    if name.filename.startswith(os.path.join(prefix, relative_worker_dir)):
-      #zip_file.open(name)
-      print name.filename
+    file_prefix = os.path.join(prefix, relative_worker_dir)
+    if name.filename.startswith(file_prefix):
+      filename = name.filename[len(file_prefix)+1:]
+      if len(filename) == 0:
+        continue
+
+      print 'Updating', filename
+      with open(os.path.join(worker_dir, filename), 'w') as f:
+        f.write(zip_file.open(name).read())
 
   shutil.rmtree(update_dir)
 
