@@ -44,6 +44,7 @@ def update():
       with open(os.path.join(worker_dir, filename), 'w') as f:
         f.write(zip_file.open(name).read())
 
+  zip_file.close()
   shutil.rmtree(update_dir)
 
   restart(worker_dir)
