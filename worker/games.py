@@ -173,7 +173,7 @@ def run_games(worker_info, password, remote, run, task_id):
     print line
     # Parse line like this:
     # Finished game 1 (stockfish vs base): 0-1 {White disconnects}
-    if 'disconnects' in line:
+    if 'disconnects' in line or 'connection stalls' in line: 
       result['stats']['crashes'] += 1
 
     # Parse line like this:
