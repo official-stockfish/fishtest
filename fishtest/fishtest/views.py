@@ -45,7 +45,7 @@ def signup(request):
     )
 
     if not result:
-      request.session.flash('Invalid username') 
+      request.session.flash('Invalid username')
     else:
       return HTTPFound(location=request.route_url('login'))
 
@@ -208,10 +208,12 @@ def tests(request):
   finished = []
 
   runs = request.rundb.get_runs()
-  # Filter out deleted runs
-  runs = [r for r in runs if not 'deleted' in r or not r['deleted']]
 
   for run in runs:
+
+    if 'deleted' in run and run['deleted']:
+      continue
+
     run['results_info'] = format_results(request.rundb.get_results(run))
 
     pending = False
@@ -261,7 +263,7 @@ def tests(request):
     pending_hours /= cores
   else:
     pending_hours = '- -'
-  
+
   def total_games(run):
     res = run['results']
     return res['wins'] + res['draws'] + res['losses']
