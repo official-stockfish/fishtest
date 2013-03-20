@@ -16,7 +16,7 @@ def restart(worker_dir):
     args = ['"%s"' % arg for arg in args]
 
   os.chdir(worker_dir)
-  os.execv(sys.executable, args)
+  os.execv(sys.executable, args) # This does not return !
 
 def update():
   worker_dir = os.path.dirname(os.path.realpath(__file__))
