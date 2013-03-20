@@ -2,7 +2,7 @@
 
 <h2>Stockfish Testing Queue</h2>
 
-<h3>Pending - ${pending_hours}hrs</h3>
+<h3>Pending - ${pending_hours} hrs</h3>
 %if len(pending) == 0:
   None
 %else:
@@ -14,7 +14,7 @@
 <%include file="run_table.mak" args="runs=failed, show_delete=True"/>
 %endif
 
-<h3>Active</h3>
+<h3>Active - ${cores} cores</h3>
 <table class="table table-striped table-condensed" style="width:40%">
  <thead>
   <tr>

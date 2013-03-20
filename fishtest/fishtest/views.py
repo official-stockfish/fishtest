@@ -247,21 +247,24 @@ def tests(request):
     else:
       machine['last_updated'] = '%d seconds ago' % (delta.seconds)
 
-  # Calculate remaining number of games to end a run
-  def remaining_games(run):
-    res = run['results']
-    return run['args']['num_games'] - res['wins'] - res['losses'] - res['draws']
-
-  # Calculate remaining seconds to end a run
-  def remaining_time(run):
+  def remaining_hours(run):
+    r = run['results']
+    remaining_games = run['args']['num_games'] - r['wins'] - r['losses'] - r['draws']
     chunks = run['args']['tc'].split('+')
-    game_time = (float(chunks[0]) + 40 * float(chunks[1])) * 2
-    return game_time * remaining_games(run) * int(run['args'].get('threads', 1))
+    game_secs = (float(chunks[0]) + 40 * float(chunks[1])) * 2
+    return game_secs * remaining_games * int(run['args'].get('threads', 1)) / (60*60)
 
   cores = sum([int(m['concurrency']) for m in machines])
   if cores > 0:
-    pending_hours = sum([remaining_time(r) for r in pending_tasks + active_tasks]) / (60*60)
-    pending_hours /= cores
+    pending_hours = 0
+    for run in pending_tasks + active_tasks:
+      eta = remaining_hours(run) / cores
+      pending_hours += eta
+      info = run['results_info']
+      if 'Pending...' in info['info']:
+        info['info'] = []
+        info['info'].append('Pending... (%.1f hrs)' % (eta))
+
   else:
     pending_hours = '- -'
 
@@ -277,5 +280,6 @@ def tests(request):
     'failed': failed_tasks,
     'active': active_tasks,
     'runs': finished,
-    'games_played': games_played
+    'games_played': games_played,
+    'cores': cores,
   }
