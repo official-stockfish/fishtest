@@ -81,7 +81,7 @@ def main():
     sys.exit(1)
 
   remote = 'http://%s:%s' % (options.host, options.port)
-  print 'Launching with %s' % (remote)
+  print 'Worker version %d connecting to %s' % (WORKER_VERSION, remote)
 
   worker_info = {
     'uname' : platform.uname(),
