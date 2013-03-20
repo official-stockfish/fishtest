@@ -1,10 +1,10 @@
 from __future__ import absolute_import
 
 import os
+import requests
 import shutil
 import sys
 from zipfile import ZipFile
-from games import robust_download
 
 FISHTEST_URL = 'https://api.github.com/repos/glinscott/fishtest'
 
@@ -25,7 +25,7 @@ def update():
     os.makedirs(update_dir)
 
   with open(os.path.join(update_dir, 'ft.zip'), 'wb+') as f:
-    f.write(robust_download(FISHTEST_URL + '/zipball/master'))
+    f.write(requests.get(FISHTEST_URL + '/zipball/master').content)
 
   # Assumes updater.py is at root of worker directory!
   relative_worker_dir = os.path.basename(worker_dir)

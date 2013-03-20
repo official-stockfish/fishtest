@@ -13,7 +13,6 @@ import traceback
 import platform
 import zipfile
 from base64 import b64decode
-from urllib2 import urlopen, HTTPError
 from zipfile import ZipFile
 
 FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
@@ -36,25 +35,9 @@ def verify_signature(engine, signature):
   if bench_sig != signature:
     raise Exception('Wrong bench in %s Expected: %s Got: %s' % (engine, signature, bench_sig))
 
-def robust_download(url, retries=5):
-  """Attempts to download a file for the given number of retries.  If it fails, it will
-     throw an exception describing the failure"""
-  for retry in xrange(5):
-    try:
-      response = urlopen(url)
-      bytes = response.read()
-      if len(bytes) == 0:
-        raise Exception('Zero length download %s' % (url))
-      return bytes
-    except:
-      if retry == retries - 1:
-        raise
-      # Backoff
-      time.sleep(1 + retry)
-
 def setup(item, testing_dir):
   """Download item from FishCooking to testing_dir"""
-  tree = json.loads(robust_download(FISHCOOKING_URL + '/git/trees/setup'))
+  tree = json.loads(requests.get(FISHCOOKING_URL + '/git/trees/setup').text)
   for blob in tree['tree']:
     if blob['path'] == item:
       print 'Downloading %s ...' % (item)
@@ -72,7 +55,7 @@ def build(sha, destination, concurrency):
   os.chdir(working_dir)
 
   with open('sf.gz', 'wb+') as f:
-    f.write(robust_download(FISHCOOKING_URL + '/zipball/' + sha))
+    f.write(requests.get(FISHCOOKING_URL + '/zipball/' + sha).content)
   zip_file = ZipFile('sf.gz')
   zip_file.extractall()
   zip_file.close()
@@ -82,7 +65,7 @@ def build(sha, destination, concurrency):
       src_dir = name
   os.chdir(src_dir)
 
-  custom_make = os.path.join(cur_dir, "custom_make.txt")
+  custom_make = os.path.join(cur_dir, 'custom_make.txt')
   if os.path.exists(custom_make):
     with open(custom_make, 'r') as m:
       make_cmd = m.read().strip()
