@@ -262,8 +262,7 @@ def tests(request):
       pending_hours += eta
       info = run['results_info']
       if 'Pending...' in info['info']:
-        info['info'] = []
-        info['info'].append('Pending... (%.1f hrs)' % (eta))
+        info['info'] = ['Pending... (%.1f hrs)' % (eta)]
 
   else:
     pending_hours = '- -'
