@@ -17,9 +17,7 @@ ALIVE = True
 
 def on_sigint(signal, frame):
   global ALIVE
-  if ALIVE:
-    ALIVE = False
-    raise Exception('Exiting...')
+  ALIVE = False
 
 def worker(worker_info, password, remote):
   payload = {
