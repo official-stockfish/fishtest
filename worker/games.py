@@ -154,6 +154,7 @@ def run_games(worker_info, password, remote, run, task_id):
 
   for line in iter(p.stdout.readline,''):
     sys.stdout.write(line)
+    sys.stdout.flush()
     # Parse line like this:
     # Finished game 1 (stockfish vs base): 0-1 {White disconnects}
     if 'disconnects' in line or 'connection stalls' in line: 
