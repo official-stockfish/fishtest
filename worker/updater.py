@@ -16,7 +16,7 @@ def restart(worker_dir):
     args = ['"%s"' % arg for arg in args]
 
   os.chdir(worker_dir)
-  os.execv(sys.executable, args)
+  os.execv(sys.executable, args) # This does not return !
 
 def update():
   worker_dir = os.path.dirname(os.path.realpath(__file__))
@@ -44,6 +44,7 @@ def update():
       with open(os.path.join(worker_dir, filename), 'w') as f:
         f.write(zip_file.open(name).read())
 
+  zip_file.close()
   shutil.rmtree(update_dir)
 
   restart(worker_dir)
