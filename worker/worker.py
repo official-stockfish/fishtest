@@ -10,8 +10,9 @@ import traceback
 from bson import json_util
 from optparse import OptionParser
 from games import run_games
+from updater import update
 
-WORKER_VERSION = 2
+WORKER_VERSION = 3
 ALIVE = True
 
 def on_sigint(signal, frame):
@@ -20,55 +21,51 @@ def on_sigint(signal, frame):
     ALIVE = False
     raise Exception('Exiting...')
 
-def worker_loop(worker_info, password, remote):
-  global ALIVE
-  while ALIVE:
-    print 'Polling for tasks...'
+def worker(worker_info, password, remote):
+  payload = {
+    'worker_info': worker_info,
+    'password': password,
+  }
 
+  try:
+    req = requests.post(remote + '/api/request_version', data=json.dumps(payload))
+    req = json.loads(req.text, object_hook=json_util.object_hook)
+
+    if int(req['version']) > WORKER_VERSION:
+      print 'Updating worker version to %d' % (int(req['version']))
+      update()
+
+    req = requests.post(remote + '/api/request_task', data=json.dumps(payload))
+    req = json.loads(req.text, object_hook=json_util.object_hook)
+  except:
+    sys.stderr.write('Exception accessing host:\n')
+    traceback.print_exc()
+    time.sleep(10)
+    return
+
+  if 'error' in req:
+    raise Exception('Error from remote: %s' % (req['error']))
+
+  # No tasks ready for us yet, just wait...
+  if 'task_waiting' in req:
+    time.sleep(10)
+    return
+
+  run, task_id = req['run'], req['task_id']
+  try:
+    run_games(worker_info, password, remote, run, task_id)
+  except:
+    sys.stderr.write('\nException running games:\n')
+    traceback.print_exc()
+  finally:
     payload = {
-      'worker_info': worker_info,
+      'username': worker_info['username'],
       'password': password,
+      'run_id': str(run['_id']),
+      'task_id': task_id
     }
-
-    try:
-      req = requests.post(remote + '/api/request_version', data=json.dumps(payload))
-      req = json.loads(req.text, object_hook=json_util.object_hook)
-
-      if 'version' in req and int(req['version']) > WORKER_VERSION:
-         sys.stderr.write('New version available, please update your fishtest and re-run:\n')
-         return
-
-      req = requests.post(remote + '/api/request_task', data=json.dumps(payload))
-      req = json.loads(req.text, object_hook=json_util.object_hook)
-    except:
-      sys.stderr.write('Exception accessing host:\n')
-      traceback.print_exc()
-      time.sleep(10)
-      continue
-
-    if 'error' in req:
-      raise Exception('Error from remote: %s' % (req['error']))
-
-    # No tasks ready for us yet, just wait...
-    if 'task_waiting' in req:
-      time.sleep(10)
-      continue
-
-    run, task_id = req['run'], req['task_id']
-    try:
-      run_games(worker_info, password, remote, run, task_id)
-    except:
-      sys.stderr.write('\nException running games:\n')
-      traceback.print_exc()
-    finally:
-      payload = {
-        'username': worker_info['username'],
-        'password': password,
-        'run_id': str(run['_id']),
-        'task_id': task_id
-      }
-      requests.post(remote + '/api/failed_task', data=json.dumps(payload))
-      sys.stderr.write('Task exited\n')
+    requests.post(remote + '/api/failed_task', data=json.dumps(payload))
+    sys.stderr.write('Task exited\n')
 
 def main():
   signal.signal(signal.SIGINT, on_sigint)
@@ -93,7 +90,9 @@ def main():
     'username' : args[0],
   }
 
-  worker_loop(worker_info, args[1], remote)
+  global ALIVE
+  while ALIVE:
+    worker(worker_info, args[1], remote)
 
 if __name__ == '__main__':
   main()
