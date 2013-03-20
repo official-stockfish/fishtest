@@ -132,7 +132,7 @@ def run_games(worker_info, password, remote, run, task_id):
   if not os.path.exists(os.path.join(testing_dir, book)):
     setup(book, testing_dir)
 
-  # Download cutechess if not already exsisting
+  # Download cutechess if not already existing
   if not os.path.exists(cutechess):
     if len(EXE_SUFFIX) > 0: zipball = 'cutechess-cli-win.zip'
     else: zipball = 'cutechess-cli-linux-%s.zip' % (platform.architecture()[0])
