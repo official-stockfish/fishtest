@@ -60,7 +60,7 @@
    <td>${task['active']}</td>
    <td>${task['pending']}</td>
    <td>${machine_info}</td>
-   <td>${task.get('last_updated', '-')}</td>
+   <td>${str(task.get('last_updated', '-')).split('.')[0]}</td>
    <td>${task['num_games']}</td>
    <td>${total}</td>
    <td>${stats.get('wins', '-')}</td>
