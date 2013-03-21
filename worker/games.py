@@ -27,10 +27,14 @@ if 'windows' in platform.system().lower():
 def verify_signature(engine, signature):
   bench_sig = ''
   print 'Verifying signature of %s ...' % (os.path.basename(engine))
-  output = subprocess.check_output([engine, 'bench'], stderr=subprocess.STDOUT, universal_newlines=True)
-  for line in output.split('\n'):
+  p = subprocess.Popen([engine, 'bench'], stderr=subprocess.PIPE, universal_newlines=True)
+  for line in iter(p.stderr.readline,''):
     if 'Nodes searched' in line:
       bench_sig = line.split(': ')[1].strip()
+
+  p.wait()
+  if p.returncode != 0:
+    raise Exception('Bench exited with non-zero code %d' % (p.returncode)) 
 
   if bench_sig != signature:
     raise Exception('Wrong bench in %s Expected: %s Got: %s' % (engine, signature, bench_sig))
@@ -152,28 +156,31 @@ def run_games(worker_info, password, remote, run, task_id):
   print ' '.join(cmd)
   p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
 
-  for line in iter(p.stdout.readline,''):
-    sys.stdout.write(line)
-    sys.stdout.flush()
-    # Parse line like this:
-    # Finished game 1 (stockfish vs base): 0-1 {White disconnects}
-    if 'disconnects' in line or 'connection stalls' in line: 
-      result['stats']['crashes'] += 1
+  try:
+    for line in iter(p.stdout.readline,''):
+      sys.stdout.write(line)
+      sys.stdout.flush()
+      # Parse line like this:
+      # Finished game 1 (stockfish vs base): 0-1 {White disconnects}
+      if 'disconnects' in line or 'connection stalls' in line: 
+        result['stats']['crashes'] += 1
 
-    # Parse line like this:
-    # Score of stockfish vs base: 0 - 0 - 1  [0.500] 1
-    if 'Score' in line:
-      chunks = line.split(':')
-      chunks = chunks[1].split()
-      result['stats']['wins']   = int(chunks[0]) + old_stats['wins']
-      result['stats']['losses'] = int(chunks[2]) + old_stats['losses']
-      result['stats']['draws']  = int(chunks[4]) + old_stats['draws']
+      # Parse line like this:
+      # Score of stockfish vs base: 0 - 0 - 1  [0.500] 1
+      if 'Score' in line:
+        chunks = line.split(':')
+        chunks = chunks[1].split()
+        result['stats']['wins']   = int(chunks[0]) + old_stats['wins']
+        result['stats']['losses'] = int(chunks[2]) + old_stats['losses']
+        result['stats']['draws']  = int(chunks[4]) + old_stats['draws']
 
-      try:
-        requests.post(remote + '/api/update_task', data=json.dumps(result))
-      except:
-        sys.stderr.write('Exception from calling update_task:\n')
-        traceback.print_exc(file=sys.stderr)
+        try:
+          requests.post(remote + '/api/update_task', data=json.dumps(result))
+        except:
+          sys.stderr.write('Exception from calling update_task:\n')
+          traceback.print_exc(file=sys.stderr)
+  except:
+    p.kill()
 
   p.wait()
   if p.returncode != 0:
