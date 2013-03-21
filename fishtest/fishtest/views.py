@@ -278,7 +278,7 @@ def tests(request):
     'pending_hours': '%.1f' % (pending_hours),
     'failed': failed_tasks,
     'active': active_tasks,
-    'runs': finished,
+    'finished': finished,
     'games_played': games_played,
     'cores': cores,
   }

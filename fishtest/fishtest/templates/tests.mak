@@ -15,7 +15,7 @@
 %endif
 
 <h3>Active - ${cores} cores</h3>
-<table class="table table-striped table-condensed" style="width:40%">
+<table class="table table-striped table-condensed" style="width:50%">
  <thead>
   <tr>
    <th>Machine</th>
@@ -42,5 +42,5 @@
 </table>
 <%include file="run_table.mak" args="runs=active"/>
 
-<h3>Finished - ${games_played} games</h3>
-<%include file="run_table.mak" args="runs=runs"/>
+<h3>Finished - ${len(finished)} tests ${games_played} games </h3>
+<%include file="run_table.mak" args="runs=finished"/>
