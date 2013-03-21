@@ -21,6 +21,7 @@
    <th>Machine</th>
    <th>Cores</th>
    <th>System</th>
+   <th>Version</th>
    <th>Last updated</th>
   </tr>
  </thead>
@@ -30,6 +31,7 @@
    <td>${machine['username']}</td>
    <td>${machine['concurrency']}</td>
    <td>${machine['uname'][0]} ${machine['uname'][2]}</td>
+   <td>${machine.get('version', '-')}</td>
    <td>${machine['last_updated']}</td>
   </tr>
 %endfor
