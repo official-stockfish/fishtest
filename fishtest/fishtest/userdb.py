@@ -21,6 +21,9 @@ class UserDb:
     users = self.users.find(sort=[('_id', ASCENDING)])
     return [u['username'] for u in users]
 
+  def get_user(self, username):
+    return self.users.find_one({'username': username})
+
   def get_user_groups(self, username):
     user = self.users.find_one({'username': username})
     if user:
