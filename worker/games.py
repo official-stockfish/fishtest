@@ -113,7 +113,13 @@ def run_games(worker_info, password, remote, run, task_id):
   base_engine = os.path.join(testing_dir, 'base' + EXE_SUFFIX)
   cutechess = os.path.join(testing_dir, 'cutechess-cli' + EXE_SUFFIX)
 
-  # Download book if not already exsisting
+  # Download and build base and new
+  build(run['args']['resolved_base'], base_engine, worker_info['concurrency'])
+  build(run['args']['resolved_new'], new_engine, worker_info['concurrency'])
+
+  os.chdir(testing_dir)
+
+  # Download book if not already existing
   if not os.path.exists(os.path.join(testing_dir, book)):
     setup(book, testing_dir)
 
@@ -128,11 +134,6 @@ def run_games(worker_info, password, remote, run, task_id):
     os.remove(zipball)
     os.chmod(cutechess, os.stat(cutechess).st_mode | stat.S_IEXEC)
 
-  # Download and build base and new
-  build(run['args']['resolved_base'], base_engine, worker_info['concurrency'])
-  build(run['args']['resolved_new'], new_engine, worker_info['concurrency'])
-
-  os.chdir(testing_dir)
   if os.path.exists('results.pgn'):
     os.remove('results.pgn')
 
