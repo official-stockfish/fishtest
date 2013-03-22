@@ -127,9 +127,8 @@ class RunDb:
     q = {
       'new': True,
       'query': { '$and': [ {'tasks': {'$elemMatch': {'active': False, 'pending': True}}},
-                           { '$or': [ {'args.$.threads': { '$exists': False }},
-                                      {'args.$.threads': { '$lte': max_threads }}]}]},
-      'sort': [('_id', ASCENDING)],
+                           {'args.threads': { '$lte': max_threads }}]},
+      'sort': [('args.priority', DESCENDING), ('_id', ASCENDING)],
       'update': {
         '$set': {
           'tasks.$.active': True,
