@@ -27,7 +27,8 @@ if 'windows' in platform.system().lower():
 def verify_signature(engine, signature):
   bench_sig = ''
   print 'Verifying signature of %s ...' % (os.path.basename(engine))
-  p = subprocess.Popen([engine, 'bench'], stderr=subprocess.PIPE, universal_newlines=True)
+  with open(os.devnull, 'wb') as f:
+    p = subprocess.Popen([engine, 'bench'], stderr=subprocess.PIPE, stdout=f, universal_newlines=True)
   for line in iter(p.stderr.readline,''):
     if 'Nodes searched' in line:
       bench_sig = line.split(': ')[1].strip()
@@ -54,6 +55,9 @@ def setup(item, testing_dir):
 
 def build(worker_dir, sha, destination, concurrency):
   """Download and build sources in a temporary directory then move exe to destination"""
+  if os.path.exists(destination):
+    os.remove(destination)
+
   tmp_dir = tempfile.mkdtemp()
   os.chdir(tmp_dir)
 
