@@ -152,8 +152,10 @@ class RunDb:
   def update_task(self, run_id, task_id, stats):
     run = self.get_run(run_id)
     task = run['tasks'][task_id]
-    if not task['active'] or not task['pending']:
+    if not task['active']:
       return {'task_alive': False}
+
+    task_alive = task['pending']
 
     task['stats'] = stats
     if stats['wins'] + stats['losses'] + stats['draws'] >= task['num_games']:
@@ -166,7 +168,7 @@ class RunDb:
     run['results_stale'] = True
     self.runs.save(run)
 
-    return {'task_alive': True}
+    return {'task_alive': task_alive}
 
   def failed_task(self, run_id, task_id):
     run = self.get_run(run_id)
