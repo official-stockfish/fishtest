@@ -34,7 +34,7 @@ def verify_signature(engine, signature):
 
   p.wait()
   if p.returncode != 0:
-    raise Exception('Bench exited with non-zero code %d' % (p.returncode)) 
+    raise Exception('Bench exited with non-zero code %d' % (p.returncode))
 
   if bench_sig != signature:
     raise Exception('Wrong bench in %s Expected: %s Got: %s' % (engine, signature, bench_sig))
@@ -109,8 +109,6 @@ def run_games(worker_info, password, remote, run, task_id):
   if not os.path.exists(testing_dir):
     os.makedirs(testing_dir)
 
-  os.chdir(testing_dir)
-
   new_engine = os.path.join(testing_dir, 'stockfish' + EXE_SUFFIX)
   base_engine = os.path.join(testing_dir, 'base' + EXE_SUFFIX)
   cutechess = os.path.join(testing_dir, 'cutechess-cli' + EXE_SUFFIX)
@@ -134,6 +132,7 @@ def run_games(worker_info, password, remote, run, task_id):
   build(run['args']['resolved_base'], base_engine, worker_info['concurrency'])
   build(run['args']['resolved_new'], new_engine, worker_info['concurrency'])
 
+  os.chdir(testing_dir)
   if os.path.exists('results.pgn'):
     os.remove('results.pgn')
 
@@ -162,7 +161,7 @@ def run_games(worker_info, password, remote, run, task_id):
       sys.stdout.flush()
       # Parse line like this:
       # Finished game 1 (stockfish vs base): 0-1 {White disconnects}
-      if 'disconnects' in line or 'connection stalls' in line: 
+      if 'disconnects' in line or 'connection stalls' in line:
         result['stats']['crashes'] += 1
 
       # Parse line like this:

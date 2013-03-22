@@ -12,7 +12,7 @@ from optparse import OptionParser
 from games import run_games
 from updater import update
 
-WORKER_VERSION = 3
+WORKER_VERSION = 4
 ALIVE = True
 
 def on_sigint(signal, frame):
@@ -87,7 +87,7 @@ def main():
     'uname': platform.uname(),
     'concurrency': options.concurrency,
     'username': args[0],
-    'version': WORKER_VERSION, 
+    'version': WORKER_VERSION,
   }
 
   global ALIVE
