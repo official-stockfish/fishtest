@@ -12,7 +12,7 @@ FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
 
 @view_config(route_name='home', renderer='mainpage.mak')
 def mainpage(request):
-  return {}
+  return HTTPFound(location=request.route_url('tests'))
 
 @view_config(route_name='login', renderer='mainpage.mak')
 @forbidden_view_config(renderer='mainpage.mak')
