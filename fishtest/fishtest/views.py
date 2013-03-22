@@ -102,8 +102,8 @@ def tests_run(request):
       request.session.flash('Please fill all required fields')
   return {}
 
-@view_config(route_name='tests_run_more', permission='modify_db')
-def tests_run_more(request):
+@view_config(route_name='tests_modify', permission='modify_db')
+def tests_modify(request):
   if 'num-games' in request.POST:
     run = request.rundb.get_run(request.POST['run'])
 
@@ -120,9 +120,10 @@ def tests_run_more(request):
 
     run['tasks'] += new_chunks
     run['args']['num_games'] = num_games
+    run['args']['priority'] = int(request.POST['priority'])
     request.rundb.runs.save(run)
 
-    request.session.flash('New games started!')
+    request.session.flash('Run successfully modified!')
     return HTTPFound(location=request.route_url('tests'))
   return {}
 

@@ -9,18 +9,15 @@
   </form>
 </h2>
 
-<form class="form-inline" action="/tests/run_more" method="POST">
-  <label class="control-label">Adjust number of games:</label>
+<form class="form" action="/tests/modify" method="POST">
+  <label class="control-label">Number of games:</label>
   <input name="num-games" value="${run['args']['num_games']}">
-  <input type="hidden" name="run" value="${run['_id']}" />
-  <button type="submit" class="btn btn-primary">Adjust</button>
-</form>
 
-<form class="form-inline" action="/tests/set_priority" method="POST">
   <label class="control-label">Adjust priority (higher is more urgent):</label>
   <input name="priority" value="${run['args']['priority']}">
+
   <input type="hidden" name="run" value="${run['_id']}" />
-  <button type="submit" class="btn btn-primary">Adjust</button>
+  <button type="submit" class="btn btn-primary">Modify</button>
 </form>
 
 <%include file="elo_results.mak" args="run=run" />
