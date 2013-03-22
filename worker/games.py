@@ -52,11 +52,10 @@ def setup(item, testing_dir):
   else:
     raise Exception('Item %s not found' % (item))
 
-def build(sha, destination, concurrency):
+def build(worker_dir, sha, destination, concurrency):
   """Download and build sources in a temporary directory then move exe to destination"""
-  cur_dir = os.getcwd()
-  working_dir = tempfile.mkdtemp()
-  os.chdir(working_dir)
+  tmp_dir = tempfile.mkdtemp()
+  os.chdir(tmp_dir)
 
   with open('sf.gz', 'wb+') as f:
     f.write(requests.get(FISHCOOKING_URL + '/zipball/' + sha).content)
@@ -69,7 +68,7 @@ def build(sha, destination, concurrency):
       src_dir = name
   os.chdir(src_dir)
 
-  custom_make = os.path.join(cur_dir, 'custom_make.txt')
+  custom_make = os.path.join(worker_dir, 'custom_make.txt')
   if os.path.exists(custom_make):
     with open(custom_make, 'r') as m:
       make_cmd = m.read().strip()
@@ -78,8 +77,8 @@ def build(sha, destination, concurrency):
     subprocess.check_call(MAKE_CMD + ' -j %s' % (concurrency), shell=True)
 
   shutil.move('stockfish'+ EXE_SUFFIX, destination)
-  os.chdir(cur_dir)
-  shutil.rmtree(working_dir)
+  os.chdir(worker_dir)
+  shutil.rmtree(tmp_dir)
 
 def run_games(worker_info, password, remote, run, task_id):
   task = run['tasks'][task_id]
@@ -104,8 +103,8 @@ def run_games(worker_info, password, remote, run, task_id):
   games_concurrency = int(worker_info['concurrency']) / threads
 
   # Setup testing directory if not already exsisting
-  testing_dir = os.path.dirname(os.path.realpath(__file__))
-  testing_dir = os.path.join(testing_dir, 'testing')
+  worker_dir = os.path.dirname(os.path.realpath(__file__))
+  testing_dir = os.path.join(worker_dir, 'testing')
   if not os.path.exists(testing_dir):
     os.makedirs(testing_dir)
 
@@ -114,8 +113,8 @@ def run_games(worker_info, password, remote, run, task_id):
   cutechess = os.path.join(testing_dir, 'cutechess-cli' + EXE_SUFFIX)
 
   # Download and build base and new
-  build(run['args']['resolved_base'], base_engine, worker_info['concurrency'])
-  build(run['args']['resolved_new'], new_engine, worker_info['concurrency'])
+  build(worker_dir, run['args']['resolved_base'], base_engine, worker_info['concurrency'])
+  build(worker_dir, run['args']['resolved_new'], new_engine, worker_info['concurrency'])
 
   os.chdir(testing_dir)
 
