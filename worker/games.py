@@ -152,6 +152,7 @@ def run_games(worker_info, password, remote, run, task_id):
          'option.Threads=%d' % (threads), 'tc=%s' % (run['args']['tc']),
          'book=%s' % (book), 'bookdepth=%s' % (book_depth) ]
 
+  print 'Running %s vs %s' % (run['args']['new_tag'], run['args']['base_tag'])
   print ' '.join(cmd)
   p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
 
