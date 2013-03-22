@@ -15,7 +15,7 @@ class UserDb:
       sys.stderr.write('Invalid login: "%s" "%s"\n' % (username, password))
       return {'error': 'Invalid password'}
 
-    return {'authenticated': True}
+    return {'username': username, 'authenticated': True}
 
   def get_users(self):
     users = self.users.find(sort=[('_id', ASCENDING)])

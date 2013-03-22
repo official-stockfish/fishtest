@@ -164,9 +164,7 @@ class RunDb:
     update_time = datetime.utcnow()
     task['last_updated'] = update_time
     run['last_updated'] = update_time
-
     run['results_stale'] = True
-
     self.runs.save(run)
 
     return {}
