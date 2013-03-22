@@ -5,8 +5,6 @@ from pyramid.config import Configurator
 from pyramid.events import NewRequest
 from pyramid.session import UnencryptedCookieSessionFactoryConfig
 
-from fishtest.security import groupfinder
-
 from rundb import RunDb
 
 def main(global_config, **settings):
