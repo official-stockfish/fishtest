@@ -27,8 +27,7 @@ if 'windows' in platform.system().lower():
 def verify_signature(engine, signature):
   bench_sig = ''
   print 'Verifying signature of %s ...' % (os.path.basename(engine))
-  with open(os.devnull, 'wb') as f:
-    p = subprocess.Popen([engine, 'bench'], stderr=subprocess.PIPE, stdout=f, universal_newlines=True)
+  p = subprocess.Popen([engine, 'bench'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
   for line in iter(p.stderr.readline,''):
     if 'Nodes searched' in line:
       bench_sig = line.split(': ')[1].strip()
