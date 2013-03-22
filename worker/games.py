@@ -98,7 +98,7 @@ def run_games(worker_info, password, remote, run, task_id):
   result['stats']['crashes'] = old_stats.get('crashes', 0)
   games_remaining = task['num_games'] - (old_stats['wins'] + old_stats['losses'] + old_stats['draws'])
   if games_remaining <= 0:
-    return 'No games remaining'
+    raise Exception('No games remaining')
 
   book = run['args'].get('book', 'varied.bin')
   book_depth = run['args'].get('book_depth', '10')
@@ -178,7 +178,12 @@ def run_games(worker_info, password, remote, run, task_id):
         result['stats']['draws']  = int(chunks[4]) + old_stats['draws']
 
         try:
-          requests.post(remote + '/api/update_task', data=json.dumps(result))
+          status = requests.post(remote + '/api/update_task', data=json.dumps(result)).json()
+          if not status['task_alive']:
+            # This task is no longer neccesary
+            p.kill()
+            p.wait()
+            return 
         except:
           sys.stderr.write('Exception from calling update_task:\n')
           traceback.print_exc(file=sys.stderr)
