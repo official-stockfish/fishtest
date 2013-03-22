@@ -64,9 +64,7 @@ def validate_form(request):
   data = {
     'base_tag' : request.POST['base-branch'],
     'new_tag' : request.POST['test-branch'],
-    'num_games' : int(request.POST['num-games']),
     'tc' : request.POST['tc'],
-    'threads' : int(request.POST['threads']),
     'book' : request.POST['book'],
     'book_depth' : request.POST['book-depth'],
     'resolved_base' : request.POST['base-branch'],
@@ -74,15 +72,21 @@ def validate_form(request):
     'base_signature' : request.POST['base-signature'],
     'new_signature' : request.POST['test-signature'],
     'username' : authenticated_userid(request),
-    'priority': int(request.POST['priority']),
   }
 
   if len([v for v in data.values() if len(v) == 0]) > 0:
     return data, False
 
-  data['info'] = request.POST['run-info'] # This is not mandatory
   data['resolved_base'] = get_sha(data['resolved_base'])
   data['resolved_new'] = get_sha(data['resolved_new'])
+
+  # Integer parameters
+  data['num_games'] = int(request.POST['num-games'])
+  data['threads'] = int(request.POST['threads'])
+  data['priority'] = int(request.POST['priority'])
+
+  # Optional
+  data['info'] = request.POST['run-info']
 
   return data, True
 
