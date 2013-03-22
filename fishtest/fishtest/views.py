@@ -64,9 +64,9 @@ def validate_form(request):
   data = {
     'base_tag' : request.POST['base-branch'],
     'new_tag' : request.POST['test-branch'],
-    'num_games' : request.POST['num-games'],
+    'num_games' : int(request.POST['num-games']),
     'tc' : request.POST['tc'],
-    'threads' : request.POST['threads'],
+    'threads' : int(request.POST['threads']),
     'book' : request.POST['book'],
     'book_depth' : request.POST['book-depth'],
     'resolved_base' : request.POST['base-branch'],
@@ -74,6 +74,7 @@ def validate_form(request):
     'base_signature' : request.POST['base-signature'],
     'new_signature' : request.POST['test-signature'],
     'username' : authenticated_userid(request),
+    'priority': int(request.POST['priority']),
   }
 
   if len([v for v in data.values() if len(v) == 0]) > 0:

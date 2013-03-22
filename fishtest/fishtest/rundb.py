@@ -38,7 +38,8 @@ class RunDb:
               base_signature='',
               new_signature='',
               start_time=None,
-              username=None):
+              username=None,
+              priority=0):
     if start_time == None:
       start_time = datetime.utcnow()
 
@@ -46,11 +47,11 @@ class RunDb:
       'args': {
         'base_tag': base_tag,
         'new_tag': new_tag,
-        'num_games': int(num_games),
+        'num_games': num_games,
         'tc': tc,
         'book': book,
         'book_depth': book_depth,
-        'threads': int(threads),
+        'threads': threads,
         'resolved_base': resolved_base,
         'resolved_new': resolved_new,
         'name': name,
@@ -58,10 +59,11 @@ class RunDb:
         'base_signature': base_signature,
         'new_signature': new_signature,
         'username': username,
+        'priority': priority,
       },
       'start_time': start_time,
       # Will be filled in by tasks, indexed by task-id
-      'tasks': self.generate_tasks(int(num_games)),
+      'tasks': self.generate_tasks(num_games),
       # Aggregated results
       'results': { 'wins': 0, 'losses': 0, 'draws': 0 },
       'results_stale': False,

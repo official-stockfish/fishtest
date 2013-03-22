@@ -57,6 +57,12 @@
     </div>
   </div>
   <div class="control-group">
+    <label class="control-label">Priority:</label>
+    <div class="controls">
+      <input name="priority" value="0">
+    </div>
+  </div>
+  <div class="control-group">
     <label class="control-label">Notes:</label>
     <div class="controls">
       <input name="run-info">
