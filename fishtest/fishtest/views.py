@@ -238,12 +238,12 @@ def tests(request):
       elif 'failure' in task:
         failed = True
 
-    if pending:
-      pending_runs.append(run)
-    elif failed:
+    if failed:
       failed_runs.append(run)
     elif active:
       active_runs.append(run)
+    elif pending:
+      pending_runs.append(run)
     else:
       finished_runs.append(run)
 
