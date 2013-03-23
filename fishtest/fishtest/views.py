@@ -225,27 +225,25 @@ def tests(request):
 
     run['results_info'] = format_results(request.rundb.get_results(run))
 
-    pending = False
-    failed = False
-    active = False
+    state = 'finished'
 
     for task in run['tasks']:
-      if task['active']:
-        active = True
-        pending = False
-      elif task['pending'] and not active:
-        pending = True
-      elif 'failure' in task:
-        failed = True
+      if 'failure' in task:
+        state = 'failed'
+        break
+      elif task['active']:
+        state = 'active'
+      elif task['pending'] and not state == 'active':
+        state = 'pending'
 
-    if failed:
-      failed_runs.append(run)
-    elif active:
-      active_runs.append(run)
-    elif pending:
-      pending_runs.append(run)
-    else:
+    if state == 'finished':
       finished_runs.append(run)
+    elif state == 'active':
+      active_runs.append(run)
+    elif state == 'pending':
+      pending_runs.append(run)
+    elif state == 'failed':
+      failed_runs.append(run)
 
   pending_runs.sort(key = lambda run: run['args']['priority'])
   machines = request.rundb.get_machines()
