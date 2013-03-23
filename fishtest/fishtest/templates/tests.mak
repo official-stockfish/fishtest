@@ -3,15 +3,15 @@
 <h2>Stockfish Testing Queue</h2>
 
 <h3>Pending - ${pending_hours} hrs</h3>
-%if len(pending) == 0:
+%if len(runs['pending']) == 0:
   None
 %else:
-  <%include file="run_table.mak" args="runs=pending, show_delete=True"/>
+  <%include file="run_table.mak" args="runs=runs['pending'], show_delete=True"/>
 %endif
 
-%if len(failed) > 0:
+%if len(runs['failed']) > 0:
 <h3>Failed</h3>
-<%include file="run_table.mak" args="runs=failed, show_delete=True"/>
+<%include file="run_table.mak" args="runs=runs['failed'], show_delete=True"/>
 %endif
 
 <h3>Active - ${cores} cores</h3>
@@ -40,7 +40,7 @@
 %endif
  </tbody>
 </table>
-<%include file="run_table.mak" args="runs=active"/>
+<%include file="run_table.mak" args="runs=runs['active']"/>
 
-<h3>Finished - ${len(finished)} tests ${games_played} games </h3>
-<%include file="run_table.mak" args="runs=finished"/>
+<h3>Finished - ${len(runs['finished'])} tests ${games_played} games </h3>
+<%include file="run_table.mak" args="runs=runs['finished']"/>
