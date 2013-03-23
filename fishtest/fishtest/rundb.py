@@ -102,7 +102,7 @@ class RunDb:
         results['wins'] += stats['wins']
         results['losses'] += stats['losses']
         results['draws'] += stats['draws']
-        results['crashes'] += stats.get('crashes', 0) # TODO remove get() when all worker will report crashes
+        results['crashes'] += stats['crashes']
 
     run['results_stale'] = False
     run['results'] = results
