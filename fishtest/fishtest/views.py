@@ -121,6 +121,7 @@ def tests_modify(request):
     # Create new chunks for the games
     new_chunks = request.rundb.generate_tasks(num_games - existing_games)
 
+    run['finished'] = False
     run['tasks'] += new_chunks
     run['args']['num_games'] = num_games
     run['args']['priority'] = int(request.POST['priority'])
@@ -224,14 +225,15 @@ def tests(request):
 
     state = 'finished'
 
-    for task in run['tasks']:
-      if 'failure' in task:
-        state = 'failed'
-        break
-      elif task['active']:
-        state = 'active'
-      elif task['pending'] and not state == 'active':
-        state = 'pending'
+    if not run['finished']:
+      for task in run['tasks']:
+        if 'failure' in task:
+          state = 'failed'
+          break
+        elif task['active']:
+          state = 'active'
+        elif task['pending'] and not state == 'active':
+          state = 'pending'
 
     runs[state].append(run)
 

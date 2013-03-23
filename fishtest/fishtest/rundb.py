@@ -67,6 +67,7 @@ class RunDb:
       # Aggregated results
       'results': { 'wins': 0, 'losses': 0, 'draws': 0 },
       'results_stale': False,
+      'finished': False,
     })
 
     return id
@@ -162,6 +163,7 @@ class RunDb:
     if stats['wins'] + stats['losses'] + stats['draws'] >= task['num_games']:
       task['active'] = False
       task['pending'] = False
+      run['finished'] = True
 
     update_time = datetime.utcnow()
     task['last_updated'] = update_time
