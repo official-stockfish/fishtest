@@ -235,6 +235,10 @@ def tests(request):
         elif task['pending'] and not state == 'active':
           state = 'pending'
 
+      if state == 'finished':
+        run['finished'] = True
+        request.rundb.runs.save(run)
+
     runs[state].append(run)
 
   runs['pending'].sort(key = lambda run: run['args']['priority'])
