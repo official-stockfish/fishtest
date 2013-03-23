@@ -244,6 +244,7 @@ def tests(request):
     else:
       finished_runs.append(run)
 
+  pending_runs.sort(key = lambda run: run['args']['priority'])
   machines = request.rundb.get_machines()
   current_time = datetime.datetime.utcnow()
   for machine in machines:
