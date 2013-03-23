@@ -3,10 +3,10 @@ import math
 import os
 import sys
 import json
+import requests
 from pyramid.security import remember, forget, authenticated_userid
 from pyramid.view import view_config, forbidden_view_config
 from pyramid.httpexceptions import HTTPFound
-from urllib2 import urlopen, HTTPError
 
 FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
 
@@ -57,7 +57,7 @@ def users(request):
 
 def get_sha(branch):
   """Resolves the git branch to sha commit"""
-  commit = json.loads(urlopen(FISHCOOKING_URL + '/commits/' + branch).read())
+  commit = requests.get(FISHCOOKING_URL + '/commits/' + branch).json()
   return commit['sha']
 
 def validate_form(request):
