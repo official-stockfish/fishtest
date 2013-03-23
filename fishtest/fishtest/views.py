@@ -85,6 +85,9 @@ def validate_form(request):
   data['threads'] = int(request.POST['threads'])
   data['priority'] = int(request.POST['priority'])
 
+  if data['num_games'] == 0 or data['threads'] == 0:
+    return data, False
+
   # Optional
   data['info'] = request.POST['run-info']
 
