@@ -208,10 +208,10 @@ def tests_view(request):
 
 @view_config(route_name='tests', renderer='tests.mak')
 def tests(request):
-  pending_tasks = []
-  failed_tasks = []
-  active_tasks = []
-  finished = []
+  pending_runs = []
+  failed_runs = []
+  active_runs = []
+  finished_runs = []
 
   runs = request.rundb.get_runs()
 
@@ -236,13 +236,13 @@ def tests(request):
         failed = True
 
     if pending:
-      pending_tasks.append(run)
+      pending_runs.append(run)
     elif failed:
-      failed_tasks.append(run)
+      failed_runs.append(run)
     elif active:
-      active_tasks.append(run)
+      active_runs.append(run)
     else:
-      finished.append(run)
+      finished_runs.append(run)
 
   machines = request.rundb.get_machines()
   current_time = datetime.datetime.utcnow()
@@ -263,7 +263,7 @@ def tests(request):
   cores = sum([int(m['concurrency']) for m in machines])
   if cores > 0:
     pending_hours = 0
-    for run in pending_tasks + active_tasks:
+    for run in pending_runs + active_runs:
       eta = remaining_hours(run) / cores
       pending_hours += eta
       info = run['results_info']
@@ -276,15 +276,15 @@ def tests(request):
   def total_games(run):
     res = run['results']
     return res['wins'] + res['draws'] + res['losses']
-  games_played = sum([total_games(r) for r in finished])
+  games_played = sum([total_games(r) for r in finished_runs])
 
   return {
     'machines': machines,
-    'pending': pending_tasks,
+    'pending': pending_runs,
     'pending_hours': '%.1f' % (pending_hours),
-    'failed': failed_tasks,
-    'active': active_tasks,
-    'finished': finished,
+    'failed': failed_runs,
+    'active': active_runs,
+    'finished': finished_runs,
     'games_played': games_played,
     'cores': cores,
   }
