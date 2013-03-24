@@ -54,7 +54,10 @@ def signup(request):
 
 @view_config(route_name='users', renderer='users.mak')
 def users(request):
-  info = defaultdict(dict)
+  info = {}
+  for username in request.userdb.get_users():
+    info[username] = {'username': username, 'completed': 0, 'last_updated': datetime.datetime.min}
+
   for run in request.rundb.get_runs():
     for task in run['tasks']:
       if 'worker_info' not in task:
@@ -62,16 +65,24 @@ def users(request):
       username = task['worker_info'].get('username', None)
       if username == None:
         continue
-      if username not in info:
-        info[username] = {'completed': 0, 'last_updated': task['last_updated']}
       info[username]['last_updated'] = max(task['last_updated'], info[username]['last_updated'])
       info[username]['completed'] += task['num_games']
 
+  current_time = datetime.datetime.utcnow()
   users = []
   for username in request.userdb.get_users():
-    info[username]['username'] = username
-    users.append(info[username])
+    user = info[username]
+    if user['last_updated'] != datetime.datetime.min:
+      delta = current_time - user['last_updated']
+      if delta.days != 0:
+        user['last_updated'] = '%d days ago' % (delta.days)
+      else:
+        user['last_updated'] = '%d minutes ago' % (delta.seconds / 60)
+    else:
+      user['last_updated'] = 'Never'
+    users.append(user)
 
+  users.sort(key=lambda k: k['completed'], reverse=True)
   return {'users': users}
 
 def get_sha(branch):
