@@ -4,6 +4,7 @@ import os
 import sys
 import json
 import requests
+from collections import defaultdict
 from pyramid.security import remember, forget, authenticated_userid
 from pyramid.view import view_config, forbidden_view_config
 from pyramid.httpexceptions import HTTPFound
@@ -53,7 +54,25 @@ def signup(request):
 
 @view_config(route_name='users', renderer='users.mak')
 def users(request):
-  return {'users': request.userdb.get_users()}
+  info = defaultdict(dict)
+  for run in request.rundb.get_runs():
+    for task in run['tasks']:
+      if 'worker_info' not in task:
+        continue
+      username = task['worker_info'].get('username', None)
+      if username == None:
+        continue
+      if username not in info:
+        info[username] = {'completed': 0, 'last_updated': task['last_updated']}
+      info[username]['last_updated'] = max(task['last_updated'], info[username]['last_updated'])
+      info[username]['completed'] += task['num_games']
+
+  users = []
+  for username in request.userdb.get_users():
+    info[username]['username'] = username
+    users.append(info[username])
+
+  return {'users': users}
 
 def get_sha(branch):
   """Resolves the git branch to sha commit"""

@@ -1,8 +1,21 @@
 <%inherit file="base.mak"/>
 
 <h3>Users</h3>
-<ul>
+<table class="table table-striped">
+ <thead>
+  <tr>
+   <th>Username</th>
+   <th>Last active</th>
+   <th>Games played</th>
+  </tr>
+ </thead>
+ <tbody>
  %for user in users:
- <li>${user}</li>
+  <tr>
+   <td>${user['username']}</td>
+   <td>${user.get('last_updated', '-')}</td>
+   <td>${user.get('completed', 0)}</td>
+  </tr>
  %endfor
-</ul>
+ </tbody>
+</table>
