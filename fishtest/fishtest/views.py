@@ -189,7 +189,7 @@ def format_results(results):
     result['info'].append('ELO: unknown')
   else:
     # denom99 = 2.58 * math.sqrt((win_ratio * loss_ratio) / (total - 1))
-    denom95 = 1.96 * math.sqrt((win_ratio * loss_ratio) / (total - 1))
+    denom95 = 1.96 * math.sqrt(((win_ratio * loss_ratio) - (draw_ratio / 4)) / (total - 1))
     elo_win = elo(win_ratio)
     error95 = elo(win_ratio + denom95) - elo_win
     eloInfo = 'ELO: %.2f +-%.1f (95%%)' % (elo_win, error95)
