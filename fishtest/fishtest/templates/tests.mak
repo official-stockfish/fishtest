@@ -15,13 +15,14 @@
 %endif
 
 <h3>Active - ${cores} cores</h3>
-<table class="table table-striped table-condensed" style="width:50%">
+<table class="table table-striped table-condensed" style="width:60%">
  <thead>
   <tr>
    <th>Machine</th>
    <th>Cores</th>
    <th>System</th>
    <th>Version</th>
+   <th>Running on</th>
    <th>Last updated</th>
   </tr>
  </thead>
@@ -31,7 +32,8 @@
    <td>${machine['username']}</td>
    <td>${machine['concurrency']}</td>
    <td>${machine['uname'][0]} ${machine['uname'][2]}</td>
-   <td>${machine.get('version', '-')}</td>
+   <td>${machine['version']}</td>
+   <td><a href="/tests/view/${machine['run']['_id']}">${machine['run']['args']['new_tag']}</td>
    <td>${machine['last_updated']}</td>
   </tr>
 %endfor

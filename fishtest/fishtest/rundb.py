@@ -79,6 +79,7 @@ class RunDb:
         if task['active']:
           machine = copy.copy(task['worker_info'])
           machine['last_updated'] = task.get('last_updated', None)
+          machine['run'] = run
           machines.append(machine)
     return machines
 
