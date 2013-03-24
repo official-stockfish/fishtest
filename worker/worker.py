@@ -20,6 +20,8 @@ def on_sigint(signal, frame):
   ALIVE = False
 
 def worker(worker_info, password, remote):
+  global ALIVE
+
   payload = {
     'worker_info': worker_info,
     'password': password,
@@ -55,7 +57,8 @@ def worker(worker_info, password, remote):
   except:
     sys.stderr.write('\nException running games:\n')
     traceback.print_exc()
-    time.sleep(10)
+    if ALIVE:
+      time.sleep(60)
   finally:
     payload = {
       'username': worker_info['username'],
