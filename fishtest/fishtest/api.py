@@ -38,9 +38,17 @@ def failed_task(request):
   )
   return json.dumps(result)
 
+@view_config(route_name='api_stop_run', renderer='string')
+def stop_run(request):
+  token = authenticate(request)
+  if 'error' in token: return json.dumps(token)
+
+  result = request.rundb.stop_run(request.json_body['run_id'])
+  return json.dumps(result)
+   
 @view_config(route_name='api_request_version', renderer='string')
 def request_version(request):
   token = authenticate(request)
   if 'error' in token: return json.dumps(token)
 
-  return json.dumps({'version': '7'})
+  return json.dumps({'version': '8'})

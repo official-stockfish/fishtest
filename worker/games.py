@@ -24,7 +24,7 @@ if 'windows' in platform.system().lower():
   EXE_SUFFIX = '.exe'
   MAKE_CMD = 'mingw32-make build COMP=mingw ' + ARCH
 
-def verify_signature(engine, signature):
+def verify_signature(engine, signature, payload):
   bench_sig = ''
   print 'Verifying signature of %s ...' % (os.path.basename(engine))
   with open(os.devnull, 'wb') as f:
@@ -37,7 +37,8 @@ def verify_signature(engine, signature):
   if p.returncode != 0:
     raise Exception('Bench exited with non-zero code %d' % (p.returncode))
 
-  if bench_sig != signature:
+  if int(bench_sig) != int(signature):
+    requests.post(remote + '/api/stop_run', data=json.dumps(payload))
     raise Exception('Wrong bench in %s Expected: %s Got: %s' % (engine, signature, bench_sig))
 
 def setup(item, testing_dir):
@@ -142,10 +143,10 @@ def run_games(worker_info, password, remote, run, task_id):
 
   # Verify signatures are correct
   if len(run['args']['base_signature']) > 0:
-    verify_signature(base_engine, run['args']['base_signature'])
+    verify_signature(base_engine, run['args']['base_signature'], result)
 
   if len(run['args']['new_signature']) > 0:
-    verify_signature(new_engine, run['args']['new_signature'])
+    verify_signature(new_engine, run['args']['new_signature'], result)
 
   # Run cutechess-cli binary
   cmd = [ cutechess, '-repeat', '-recover', '-rounds', str(games_remaining), '-tournament',

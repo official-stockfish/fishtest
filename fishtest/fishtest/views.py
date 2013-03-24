@@ -152,10 +152,7 @@ def tests_modify(request):
 
 @view_config(route_name='tests_stop', permission='modify_db')
 def tests_stop(request):
-  run = request.rundb.get_run(request.POST['run-id'])
-  for w in run['tasks']:
-    w['pending'] = False
-  request.rundb.runs.save(run)
+  request.rundb.stop_run(request.POST['run-id'])
 
   request.session.flash('Stopped run')
   return HTTPFound(location=request.route_url('tests'))

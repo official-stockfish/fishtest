@@ -185,3 +185,11 @@ class RunDb:
     self.runs.save(run)
 
     return {}
+
+  def stop_run(self, run_id):
+    run = self.get_run(run_id)
+    for w in run['tasks']:
+      w['pending'] = False
+    self.runs.save(run)
+
+    return {}
