@@ -20,7 +20,7 @@
     <td style="width:12%">${run['args']['new_tag']}<br>${base.format_sha(run['args']['resolved_new']) | n}</td>
     <td style="width:12%">
       ${run['args']['base_tag']}
-      <a href="${base.diff_url(run)}">diff</a>
+      ${base.diff_url(run)}
       <br>
       ${base.format_sha(run['args']['resolved_base']) | n}
     </td>

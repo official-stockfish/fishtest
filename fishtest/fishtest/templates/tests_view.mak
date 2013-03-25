@@ -1,5 +1,7 @@
 <%inherit file="base.mak"/>
 
+<%namespace name="base" file="base.mak"/>
+
 <h2>Run ${run['_id']}
 %if not run['finished']:
   <form action="/tests/stop" method="POST" style="display:inline">
@@ -28,7 +30,7 @@
 <%include file="elo_results.mak" args="run=run" />
 
 <div>
-  <a href="${diff_url(run)}">Diff</a>
+  ${base.diff_url(run)}
 </div>
 %for arg, v in sorted(run['args'].iteritems()):
   <div>
