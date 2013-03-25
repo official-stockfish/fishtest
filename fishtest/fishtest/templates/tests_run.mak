@@ -1,29 +1,31 @@
 <%inherit file="base.mak"/>
 
+<% re_run = len(args) > 0 %>
+
 <form class="form-horizontal" action="${request.url}" method="POST">
   <legend>Create New Test</legend>
   <div class="control-group">
     <label class="control-label">Test branch:</label>
     <div class="controls">
-      <input name="test-branch" value="${args.get('new_tag', '')}">
+      <input name="test-branch" value="${args.get('new_tag', '')}" ${'disabled' if re_run else ''}>
     </div>
   </div>
   <div class="control-group">
     <label class="control-label">Test signature:</label>
     <div class="controls">
-      <input name="test-signature" value="${args.get('new_signature', '')}">
+      <input name="test-signature" value="${args.get('new_signature', '')}" ${'disabled' if re_run else ''}>
     </div>
   </div>
   <div class="control-group">
     <label class="control-label">Base branch:</label>
     <div class="controls">
-      <input name="base-branch" value="${args.get('base_tag', 'master')}"/>
+      <input name="base-branch" value="${args.get('base_tag', 'master')}" ${'disabled' if re_run else ''}>
     </div>
   </div>
   <div class="control-group">
     <label class="control-label">Base signature:</label>
     <div class="controls">
-      <input name="base-signature" value="${args.get('base_signature', '')}">
+      <input name="base-signature" value="${args.get('base_signature', '')}" ${'disabled' if re_run else ''}>
     </div>
   </div>
   <div class="control-group">
