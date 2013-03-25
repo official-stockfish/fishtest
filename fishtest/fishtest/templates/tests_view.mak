@@ -1,12 +1,14 @@
 <%inherit file="base.mak"/>
 
 <h2>Run ${run['_id']}
+%if not run['finished']:
   <form action="/tests/stop" method="POST" style="display:inline">
     <input type="hidden" name="run-id" value="${run['_id']}">
     <button type="submit" class="btn btn-danger">
       Stop
     </button>
   </form>
+%endif
 </h2>
 
 <form class="form" action="/tests/modify" method="POST">
