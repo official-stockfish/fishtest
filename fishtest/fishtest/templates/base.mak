@@ -56,3 +56,15 @@
 
 <%def name="head()">
 </%def>
+
+<%
+  repo = 'https://github.com/mcostalba/FishCooking'
+%>
+
+<%def name="format_sha(sha)">
+  <a href="${repo}/commit/${sha}">${sha[:7]}</a>
+</%def>
+
+<%def name="diff_url(run)">
+  ${repo}/compare/${run['args']['resolved_base'][:7]}...${run['args']['resolved_new'][:7]}
+</%def>

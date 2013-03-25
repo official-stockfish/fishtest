@@ -27,6 +27,9 @@
 
 <%include file="elo_results.mak" args="run=run" />
 
+<div>
+  <a href="${diff_url(run)}">Diff</a>
+</div>
 %for arg, v in sorted(run['args'].iteritems()):
   <div>
     <b>${arg}</b>: ${v}
