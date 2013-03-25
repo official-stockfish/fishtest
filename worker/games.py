@@ -24,7 +24,7 @@ if 'windows' in platform.system().lower():
   EXE_SUFFIX = '.exe'
   MAKE_CMD = 'mingw32-make build COMP=mingw ' + ARCH
 
-def verify_signature(engine, signature, payload):
+def verify_signature(engine, signature, remote, payload):
   bench_sig = ''
   print 'Verifying signature of %s ...' % (os.path.basename(engine))
   with open(os.devnull, 'wb') as f:
@@ -143,10 +143,10 @@ def run_games(worker_info, password, remote, run, task_id):
 
   # Verify signatures are correct
   if len(run['args']['base_signature']) > 0:
-    verify_signature(base_engine, run['args']['base_signature'], result)
+    verify_signature(base_engine, run['args']['base_signature'], remote, result)
 
   if len(run['args']['new_signature']) > 0:
-    verify_signature(new_engine, run['args']['new_signature'], result)
+    verify_signature(new_engine, run['args']['new_signature'], remote, result)
 
   # Run cutechess-cli binary
   cmd = [ cutechess, '-repeat', '-recover', '-rounds', str(games_remaining), '-tournament',
