@@ -278,6 +278,7 @@ def tests(request):
       machine['last_updated'] = 'Over a day ago!'
     else:
       machine['last_updated'] = '%d seconds ago' % (delta.seconds)
+  machines.reverse()
 
   def remaining_hours(run):
     r = run['results']
