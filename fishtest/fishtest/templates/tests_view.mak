@@ -9,6 +9,9 @@
     </button>
   </form>
 %endif
+  <a href="/tests/run?id=${run['_id']}">
+    <button class="btn">Reschedule</button>
+  </a>
 </h2>
 
 <form class="form" action="/tests/modify" method="POST">

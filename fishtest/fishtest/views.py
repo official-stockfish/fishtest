@@ -97,8 +97,6 @@ def validate_form(request):
     'tc' : request.POST['tc'],
     'book' : request.POST['book'],
     'book_depth' : request.POST['book-depth'],
-    'resolved_base' : request.POST['base-branch'],
-    'resolved_new' : request.POST['test-branch'],
     'base_signature' : request.POST['base-signature'],
     'new_signature' : request.POST['test-signature'],
     'username' : authenticated_userid(request),
@@ -107,8 +105,12 @@ def validate_form(request):
   if len([v for v in data.values() if len(v) == 0]) > 0:
     return data, False
 
-  data['resolved_base'] = get_sha(data['resolved_base'])
-  data['resolved_new'] = get_sha(data['resolved_new'])
+  if 'resolved_base' in request.POST:
+    data['resolved_base'] = request.POST['resolved_base']
+    data['resolved_new'] = request.POST['resolved_new']
+  else:
+    data['resolved_base'] = get_sha(data['base_tag'])
+    data['resolved_new'] = get_sha(data['new_tag'])
 
   # Integer parameters
   data['num_games'] = int(request.POST['num-games'])
@@ -133,7 +135,14 @@ def tests_run(request):
       return HTTPFound(location=request.route_url('tests'))
     else:
       request.session.flash('Please fill all required fields')
-  return {}
+
+  run_args = {}
+  if 'id' in request.params:
+    run_args = request.rundb.get_run(request.params['id'])['args']
+
+  return {
+    'args': run_args,
+  }
 
 @view_config(route_name='tests_modify', permission='modify_db')
 def tests_modify(request):
