@@ -31,8 +31,8 @@ def worker(worker_info, password, remote):
     req = requests.post(remote + '/api/request_version', data=json.dumps(payload))
     req = json.loads(req.text)
 
-    if int(req['version']) > WORKER_VERSION:
-      print 'Updating worker version to %d' % (int(req['version']))
+    if req['version'] > WORKER_VERSION:
+      print 'Updating worker version to %d' % (req['version'])
       update()
 
     req = requests.post(remote + '/api/request_task', data=json.dumps(payload))
