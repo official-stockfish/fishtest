@@ -7,25 +7,25 @@
   <div class="control-group">
     <label class="control-label">Test branch:</label>
     <div class="controls">
-      <input name="test-branch" value="${args.get('new_tag', '')}" ${'disabled' if re_run else ''}>
+      <input name="test-branch" value="${args.get('new_tag', '')}" ${'readonly' if re_run else ''}>
     </div>
   </div>
   <div class="control-group">
     <label class="control-label">Test signature:</label>
     <div class="controls">
-      <input name="test-signature" value="${args.get('new_signature', '')}" ${'disabled' if re_run else ''}>
+      <input name="test-signature" value="${args.get('new_signature', '')}" ${'readonly' if re_run else ''}>
     </div>
   </div>
   <div class="control-group">
     <label class="control-label">Base branch:</label>
     <div class="controls">
-      <input name="base-branch" value="${args.get('base_tag', 'master')}" ${'disabled' if re_run else ''}>
+      <input name="base-branch" value="${args.get('base_tag', 'master')}" ${'readonly' if re_run else ''}>
     </div>
   </div>
   <div class="control-group">
     <label class="control-label">Base signature:</label>
     <div class="controls">
-      <input name="base-signature" value="${args.get('base_signature', '')}" ${'disabled' if re_run else ''}>
+      <input name="base-signature" value="${args.get('base_signature', '')}" ${'readonly' if re_run else ''}>
     </div>
   </div>
   <div class="control-group">
