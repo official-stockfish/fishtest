@@ -2,7 +2,28 @@
 
 <%namespace name="base" file="base.mak"/>
 
-<h2>Run ${run['_id']}
+<h3>${run['args']['new_tag']} vs ${run['args']['base_tag']} ${base.diff_url(run)}</h3>
+
+<div class="row-fluid">
+<div class="span4">
+<%include file="elo_results.mak" args="run=run" />
+</div>
+</div>
+
+<div class="row-fluid">
+
+<div class="span8">
+  <h4>Details</h4>
+
+  <table class="table table-condensed">
+  %for arg in run_args:
+    <tr><td>${arg[0]}</td><td>${arg[1]}</td></tr>
+  %endfor
+  </table>
+</div>
+
+<div class="span4">
+  <h4>Actions</h4>
 %if not run['finished']:
   <form action="/tests/stop" method="POST" style="display:inline">
     <input type="hidden" name="run-id" value="${run['_id']}">
@@ -14,29 +35,22 @@
   <a href="/tests/run?id=${run['_id']}">
     <button class="btn">Reschedule</button>
   </a>
-</h2>
 
-<form class="form" action="/tests/modify" method="POST">
-  <label class="control-label">Number of games:</label>
-  <input name="num-games" value="${run['args']['num_games']}">
+  <hr>
 
-  <label class="control-label">Adjust priority (higher is more urgent):</label>
-  <input name="priority" value="${run['args']['priority']}">
+  <form class="form" action="/tests/modify" method="POST">
+    <label class="control-label">Number of games:</label>
+    <input name="num-games" value="${run['args']['num_games']}">
 
-  <input type="hidden" name="run" value="${run['_id']}" />
-  <button type="submit" class="btn btn-primary">Modify</button>
-</form>
+    <label class="control-label">Adjust priority (higher is more urgent):</label>
+    <input name="priority" value="${run['args']['priority']}">
 
-<%include file="elo_results.mak" args="run=run" />
-
-<div>
-  ${base.diff_url(run)}
+    <input type="hidden" name="run" value="${run['_id']}" />
+    <button type="submit" class="btn btn-primary">Modify</button>
+  </form>
 </div>
-%for arg, v in sorted(run['args'].iteritems()):
-  <div>
-    <b>${arg}</b>: ${v}
-  </div>
-%endfor
+
+</div>
 
 <h3>Tasks</h3>
 <table class='table table-striped table-condensed'>

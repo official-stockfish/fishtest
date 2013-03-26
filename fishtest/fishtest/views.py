@@ -247,7 +247,16 @@ def format_results(results):
 def tests_view(request):
   run = request.rundb.get_run(request.matchdict['id'])
   run['results_info'] = format_results(request.rundb.get_results(run))
-  return { 'run': run }
+
+  run_args = []
+  for name in ['new_tag', 'new_signature', 'resolved_new',
+               'base_tag', 'base_signature', 'resolved_base',
+               'num_games', 'tc', 'threads', 'book', 'book_depth',
+               'priority', 'username', 'info']:
+    run_args.append((name, run['args'][name])) 
+  run_args.append(('id', run['_id']))
+
+  return { 'run': run, 'run_args': run_args }
 
 @view_config(route_name='tests', renderer='tests.mak')
 def tests(request):
