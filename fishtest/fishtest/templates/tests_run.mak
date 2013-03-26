@@ -67,7 +67,7 @@
   <div class="control-group">
     <label class="control-label">Notes:</label>
     <div class="controls">
-      <input name="run-info" value="${args.get('info', '')}">
+      <textarea name="run-info" class="span4">${args.get('info', '')}</textarea>
     </div>
   </div>
 
