@@ -5,11 +5,6 @@ being used for testing changes on Stockfish with tens of thousands of games per
 change, both on Linux and Windows.  The following setup describes a step-by-step
 installation for a machine that will run test matches (a worker).
 
-#### Setup Python on Linux
-
-Fishtest requires Python 2.7.  If your distribution does not support upgrading to
-Python 2.7, you can install it from https://github.com/saghul/pythonz.
-
 #### Setup Python on Windows
 
 On Windows you will need to install Python 2.7.x for x86 (not 3.x series and not
