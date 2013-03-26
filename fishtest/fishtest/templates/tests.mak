@@ -2,8 +2,8 @@
 
 <h2>Stockfish Testing Queue</h2>
 
-<h3>Pending - ${pending_hours} hrs <button class="btn" data-toggle="collapse" data-target="#pending">Show</button></h3>
-<div class="collapse" id="pending">
+<h3>Pending - ${len(runs['pending'])} tests ${pending_hours} hrs <button class="btn" data-toggle="collapse" data-target="#pending">Hide</button></h3>
+<div class="collapse in" id="pending">
 %if len(runs['pending']) == 0:
   None
 %else:
@@ -16,7 +16,7 @@
 <%include file="run_table.mak" args="runs=runs['failed'], show_delete=True"/>
 %endif
 
-<h3>Active - ${cores} cores</h3>
+<h3>Active - ${len(machines)} machines ${cores} cores</h3>
 <table class="table table-striped table-condensed" style="width:60%">
  <thead>
   <tr>
