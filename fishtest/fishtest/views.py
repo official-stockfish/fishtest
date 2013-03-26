@@ -52,6 +52,21 @@ def signup(request):
 
   return {}
 
+def delta_date(date):
+  if date != datetime.datetime.min:
+    diff = datetime.datetime.utcnow() - date
+    if diff.days != 0:
+      delta = '%d days ago' % (diff.days)
+    elif diff.seconds / 3600 > 1:
+      delta = '%d hours ago' % (diff.seconds / 3600)
+    elif diff.seconds / 60 > 1:
+      delta = '%d minutes ago' % (diff.seconds / 60)
+    else:
+      delta = '%d seconds ago' % (diff.seconds)
+  else:
+    delta = 'Never'
+  return delta
+
 @view_config(route_name='users', renderer='users.mak')
 def users(request):
   info = {}
@@ -68,20 +83,10 @@ def users(request):
       info[username]['last_updated'] = max(task['last_updated'], info[username]['last_updated'])
       info[username]['completed'] += task['num_games']
 
-  current_time = datetime.datetime.utcnow()
   users = []
   for username in request.userdb.get_users():
     user = info[username]
-    if user['last_updated'] != datetime.datetime.min:
-      delta = current_time - user['last_updated']
-      if delta.days != 0:
-        user['last_updated'] = '%d days ago' % (delta.days)
-      elif delta.seconds / 3600 > 1:
-        user['last_updated'] = '%d hours ago' % (delta.seconds / 3600)
-      else:
-        user['last_updated'] = '%d minutes ago' % (delta.seconds / 60)
-    else:
-      user['last_updated'] = 'Never'
+    user['last_updated'] = delta_date(user['last_updated'])
     users.append(user)
 
   users.sort(key=lambda k: k['completed'], reverse=True)
@@ -253,8 +258,12 @@ def tests_view(request):
                'base_tag', 'base_signature', 'resolved_base',
                'num_games', 'tc', 'threads', 'book', 'book_depth',
                'priority', 'username', 'info']:
-    run_args.append((name, run['args'][name])) 
+    run_args.append((name, run['args'][name]))
   run_args.append(('id', run['_id']))
+
+  for task in run['tasks']:
+    last_updated = task.get('last_updated', datetime.datetime.min)
+    task['last_updated'] = delta_date(last_updated)
 
   return { 'run': run, 'run_args': run_args }
 
@@ -291,13 +300,8 @@ def tests(request):
 
   runs['pending'].sort(key = lambda run: run['args']['priority'])
   machines = request.rundb.get_machines()
-  current_time = datetime.datetime.utcnow()
   for machine in machines:
-    delta = current_time - machine['last_updated']
-    if delta.days != 0:
-      machine['last_updated'] = 'Over a day ago!'
-    else:
-      machine['last_updated'] = '%d seconds ago' % (delta.seconds)
+    machine['last_updated'] = delta_date(machine['last_updated'])
   machines.reverse()
 
   def remaining_hours(run):
