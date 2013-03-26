@@ -2,12 +2,14 @@
 
 <h2>Stockfish Testing Queue</h2>
 
-<h3>Pending - ${pending_hours} hrs</h3>
+<h3>Pending - ${pending_hours} hrs <button class="btn" data-toggle="collapse" data-target="#pending">Show</button></h3>
+<div class="collapse" id="pending">
 %if len(runs['pending']) == 0:
   None
 %else:
   <%include file="run_table.mak" args="runs=runs['pending'], show_delete=True"/>
 %endif
+</div>
 
 %if len(runs['failed']) > 0:
 <h3>Failed</h3>
