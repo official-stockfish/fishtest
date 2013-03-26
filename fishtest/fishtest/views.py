@@ -76,6 +76,8 @@ def users(request):
       delta = current_time - user['last_updated']
       if delta.days != 0:
         user['last_updated'] = '%d days ago' % (delta.days)
+      elif delta.seconds / 3600 > 1:
+        user['last_updated'] = '%d hours ago' % (delta.seconds / 3600)
       else:
         user['last_updated'] = '%d minutes ago' % (delta.seconds / 60)
     else:
