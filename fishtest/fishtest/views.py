@@ -258,7 +258,7 @@ def tests_view(request):
                'base_tag', 'base_signature', 'resolved_base',
                'num_games', 'tc', 'threads', 'book', 'book_depth',
                'priority', 'username', 'info']:
-    run_args.append((name, run['args'][name]))
+    run_args.append((name, run['args'].get(name, '-')))
   run_args.append(('id', run['_id']))
 
   for task in run['tasks']:
