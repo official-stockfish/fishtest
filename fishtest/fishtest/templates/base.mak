@@ -5,6 +5,8 @@
   <link href="/css/bootstrap.min.css" rel="stylesheet">
 
   <script src="http://code.jquery.com/jquery-1.8.3.js"></script>
+  <script src="/js/bootstrap.min.js"></script>
+  <script src="/js/jquery.cookie.js"></script>
 
   <style>
     .elo-results {
@@ -37,8 +39,6 @@
       </div>
     </div>
   </div>
-
-  <script src="/js/bootstrap.min.js"></script>
 </body>
 </html>
 

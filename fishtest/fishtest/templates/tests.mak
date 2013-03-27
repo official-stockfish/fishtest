@@ -2,8 +2,8 @@
 
 <h2>Stockfish Testing Queue</h2>
 
-<h3>Pending - ${len(runs['pending'])} tests ${pending_hours} hrs <button class="btn" data-toggle="collapse" data-target="#pending">Hide</button></h3>
-<div class="collapse in" id="pending">
+<h3>Pending - ${len(runs['pending'])} tests ${pending_hours} hrs <button id="pending-button" class="btn" data-toggle="collapse" data-target="#pending">Show</button></h3>
+<div class="collapse" id="pending">
 %if len(runs['pending']) == 0:
   None
 %else:
@@ -48,3 +48,16 @@
 
 <h3>Finished - ${len(runs['finished'])} tests ${games_played} games </h3>
 <%include file="run_table.mak" args="runs=runs['finished']"/>
+
+<script type="text/javascript">
+if ($.cookie('pending_state') == 'Hide') {
+  $('#pending').addClass('in');
+  $('#pending-button').text('Hide');
+}
+
+$("#pending-button").click(function() {
+  var active = $(this).text() == 'Hide';
+  $(this).text(active ? 'Show' : 'Hide');
+  $.cookie('pending_state', $(this).text());
+});
+</script>
