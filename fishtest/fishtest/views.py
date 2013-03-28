@@ -9,6 +9,8 @@ from pyramid.security import remember, forget, authenticated_userid
 from pyramid.view import view_config, forbidden_view_config
 from pyramid.httpexceptions import HTTPFound
 
+import stat_util
+
 FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
 
 @view_config(route_name='home', renderer='mainpage.mak')
@@ -196,57 +198,46 @@ def tests_delete(request):
   request.session.flash('Deleted run')
   return HTTPFound(location=request.route_url('tests'))
 
-def elo(win_ratio):
-  return 400 * math.log10(win_ratio / (1 - win_ratio))
-
-def erf(x):
-  # save the sign of x
-  sign = 1 if x >= 0 else -1
-  x = abs(x)
-
-  # constants
-  a1 =  0.254829592
-  a2 = -0.284496736
-  a3 =  1.421413741
-  a4 = -1.453152027
-  a5 =  1.061405429
-  p  =  0.3275911
-
-  # A&S formula 7.1.26
-  t = 1.0/(1.0 + p*x)
-  y = 1.0 - (((((a5*t + a4)*t) + a3)*t + a2)*t + a1)*t*math.exp(-x*x)
-  return sign*y # erf(-x) = -erf(x)
-
 def format_results(results):
   result = {'style': '', 'info': []}
-  wins = float(results['wins'])
-  losses = float(results['losses'])
-  draws = float(results['draws'])
-  total = wins + draws + losses
-  if total < 10:
+
+  # win/loss/draw count
+  W = float(results['wins'])
+  L = float(results['losses'])
+  D = float(results['draws'])
+  N = W + L + D
+
+  # If the score is 0% or 100% the formulas will crash
+  # anyway the statistics are only asymptotic
+  if W == 0 or L == 0:
     result['info'].append('Pending...')
     return result
-  win_ratio = (wins + (draws / 2)) / total
-  loss_ratio = 1 - win_ratio
-  draw_ratio = draws / total
-  if abs(win_ratio) < 1e-6 or abs(win_ratio - 1.0) < 1e-6:
-    result['info'].append('ELO: unknown')
-  else:
-    # denom99 = 2.58 * math.sqrt((win_ratio * loss_ratio) / (total - 1))
-    denom95 = 1.96 * math.sqrt(((win_ratio * loss_ratio) - (draw_ratio / 4)) / (total - 1))
-    elo_win = elo(win_ratio)
-    error95 = elo(win_ratio + denom95) - elo_win
-    eloInfo = 'ELO: %.2f +-%.1f (95%%)' % (elo_win, error95)
-    losInfo = 'LOS: %.1f%%' % (erf(0.707 * (wins-losses)/math.sqrt(wins+losses)) * 50 + 50)
-    result['info'].append(eloInfo + ' ' + losInfo)
-    result['info'].append('Total: %d W: %d L: %d D: %d' % (int(total), int(wins), int(losses), int(draws)))
 
-    if elo_win + error95 < 0:
-      result['style'] = '#FF6A6A'
-    elif elo_win - error95 > 0:
-      result['style'] = '#44EB44'
+  # win/loss/draw ratio
+  w = W/N
+  l = L/N
+  d = D/N
 
-  return result
+  # mu is the empirical mean of the variables (Xi), assumed i.i.d.
+  mu = w + d/2
+  # stdev is the empirical standard deviation of the random variable (X1+...+X_N)/N
+  stdev = math.sqrt(w*(1-mu)**2 + l*(0-mu)**2 + d*(0.5-mu)**2) / math.sqrt(N)
+
+  # 95% confidence interval for mu
+  mu_min = mu + stat_util.phi_inv(0.025)*stdev
+  mu_max = mu + stat_util.phi_inv(0.975)*stdev
+
+  # display the results
+  eloInfo = 'ELO: %.2f +-%.1f (95%%)' % (stat_util.elo(mu), (stat_util.elo(mu_max)-stat_util.elo(mu_min))/2)
+  losInfo = 'LOS: %.1f%%' % (stat_util.phi((mu-0.5)/sigma)
+
+  result['info'].append(eloInfo + ' ' + losInfo)
+  result['info'].append('Total: %d W: %d L: %d D: %d' % (int(N), int(W), int(L), int(D)))
+
+  if los < 0.05:
+    result['style'] = '#FF6A6A'
+  elif los > 0.95:
+    result['style'] = '#44EB44'
 
 @view_config(route_name='tests_view', renderer='tests_view.mak')
 def tests_view(request):
