@@ -227,9 +227,11 @@ def format_results(results):
   mu_min = mu + stat_util.phi_inv(0.025)*stdev
   mu_max = mu + stat_util.phi_inv(0.975)*stdev
 
+  los = stat_util.phi((mu-0.5)/stdev)
+
   # display the results
   eloInfo = 'ELO: %.2f +-%.1f (95%%)' % (stat_util.elo(mu), (stat_util.elo(mu_max)-stat_util.elo(mu_min))/2)
-  losInfo = 'LOS: %.1f%%' % (stat_util.phi((mu-0.5)/sigma)
+  losInfo = 'LOS: %.1f%%' % (los * 100)
 
   result['info'].append(eloInfo + ' ' + losInfo)
   result['info'].append('Total: %d W: %d L: %d D: %d' % (int(N), int(W), int(L), int(D)))
@@ -238,6 +240,8 @@ def format_results(results):
     result['style'] = '#FF6A6A'
   elif los > 0.95:
     result['style'] = '#44EB44'
+
+  return result
 
 @view_config(route_name='tests_view', renderer='tests_view.mak')
 def tests_view(request):
