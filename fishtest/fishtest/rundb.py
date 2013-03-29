@@ -6,6 +6,8 @@ from pymongo import MongoClient, ASCENDING, DESCENDING
 
 from userdb import UserDb
 
+import stat_util
+
 class RunDb:
   def __init__(self, db_name='fishtest_new'):
     # MongoDB server is assumed to be on the same machine, if not user should use
@@ -147,6 +149,25 @@ class RunDb:
       if 'last_updated' in task and task['last_updated'] > latest_time:
         latest_time = task['last_updated']
         task_id = idx
+
+    # Check for an early stop condition, we do this at request_task time, not at
+    # update_task to avoid unnecessary overhead becuase eraly stop has task boundaries
+    results = self.get_results(run)
+    WLD = [results['wins'], results['losses'], results['draws']]
+    N = sum(WLD)
+    elo, elo95, los = stat_util.get_elo(WLD)
+
+    early_stop_rules = [(5000, -5), (8000, -3), (10000, -1)]
+
+    for r in early_stop_rules:
+      if N >= r[0] and N <= r[0] + 1000 and elo <= r[1]:
+        stop = True
+        break
+    else:
+      stop = False
+
+    if stop:
+      print 'Early stop of ', run['_id']
 
     return {'run': run, 'task_id': task_id}
 
