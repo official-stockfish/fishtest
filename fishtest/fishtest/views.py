@@ -1,5 +1,4 @@
 import datetime
-import math
 import os
 import sys
 import json
@@ -202,39 +201,22 @@ def format_results(results):
   result = {'style': '', 'info': []}
 
   # win/loss/draw count
-  W = float(results['wins'])
-  L = float(results['losses'])
-  D = float(results['draws'])
-  N = W + L + D
+  WLD = [results['wins'], results['losses'], results['draws']]
 
   # If the score is 0% or 100% the formulas will crash
   # anyway the statistics are only asymptotic
-  if W == 0 or L == 0:
+  if WLD[0] == 0 or WLD[1] == 0:
     result['info'].append('Pending...')
     return result
 
-  # win/loss/draw ratio
-  w = W/N
-  l = L/N
-  d = D/N
+  elo, elo95, los = stat_util.get_elo(WLD)
 
-  # mu is the empirical mean of the variables (Xi), assumed i.i.d.
-  mu = w + d/2
-  # stdev is the empirical standard deviation of the random variable (X1+...+X_N)/N
-  stdev = math.sqrt(w*(1-mu)**2 + l*(0-mu)**2 + d*(0.5-mu)**2) / math.sqrt(N)
-
-  # 95% confidence interval for mu
-  mu_min = mu + stat_util.phi_inv(0.025)*stdev
-  mu_max = mu + stat_util.phi_inv(0.975)*stdev
-
-  los = stat_util.phi((mu-0.5)/stdev)
-
-  # display the results
-  eloInfo = 'ELO: %.2f +-%.1f (95%%)' % (stat_util.elo(mu), (stat_util.elo(mu_max)-stat_util.elo(mu_min))/2)
+  # Display the results
+  eloInfo = 'ELO: %.2f +-%.1f (95%%)' % (elo, elo95)
   losInfo = 'LOS: %.1f%%' % (los * 100)
 
   result['info'].append(eloInfo + ' ' + losInfo)
-  result['info'].append('Total: %d W: %d L: %d D: %d' % (int(N), int(W), int(L), int(D)))
+  result['info'].append('Total: %d W: %d L: %d D: %d' % (sum(WLD), WLD[0], WLD[1], WLD[2]))
 
   if los < 0.05:
     result['style'] = '#FF6A6A'

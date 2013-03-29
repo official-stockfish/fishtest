@@ -26,3 +26,27 @@ def phi_inv(p):
 def elo(x):
   assert(0 < x and x < 1)
   return -400*math.log10(1/x-1)
+
+def get_elo(WLD):
+
+  # win/loss/draw ratio
+  N = sum(WLD)
+  w = float(WLD[0])/N
+  l = float(WLD[1])/N
+  d = float(WLD[2])/N
+
+  # mu is the empirical mean of the variables (Xi), assumed i.i.d.
+  mu = w + d/2
+
+  # stdev is the empirical standard deviation of the random variable (X1+...+X_N)/N
+  stdev = math.sqrt(w*(1-mu)**2 + l*(0-mu)**2 + d*(0.5-mu)**2) / math.sqrt(N)
+
+  # 95% confidence interval for mu
+  mu_min = mu + phi_inv(0.025) * stdev
+  mu_max = mu + phi_inv(0.975) * stdev
+
+  el = elo(mu)
+  elo95 = (elo(mu_max) - elo(mu_min)) / 2
+  los = phi((mu-0.5) / stdev)
+
+  return el, elo95, los
