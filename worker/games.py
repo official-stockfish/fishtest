@@ -11,6 +11,7 @@ import tempfile
 import time
 import traceback
 import platform
+import psutil
 import zipfile
 from base64 import b64decode
 from zipfile import ZipFile
@@ -117,6 +118,13 @@ def run_games(worker_info, password, remote, run, task_id):
   base_engine = os.path.join(testing_dir, 'base' + EXE_SUFFIX)
   cutechess = os.path.join(testing_dir, 'cutechess-cli' + EXE_SUFFIX)
 
+  # Kill any stale / hanging engine process
+  for proc in psutil.process_iter():
+      if proc.name == os.path.basename(new_engine)  or \
+         proc.name == os.path.basename(base_engine) or \
+         proc.name == os.path.basename(cutechess):
+           proc.kill()
+
   # Download and build base and new
   build(worker_dir, run['args']['resolved_base'], base_engine, worker_info['concurrency'])
   build(worker_dir, run['args']['resolved_new'], new_engine, worker_info['concurrency'])
@@ -185,7 +193,7 @@ def run_games(worker_info, password, remote, run, task_id):
             # This task is no longer neccesary
             p.kill()
             p.wait()
-            return 
+            return
         except:
           sys.stderr.write('Exception from calling update_task:\n')
           traceback.print_exc(file=sys.stderr)
