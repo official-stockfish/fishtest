@@ -32,7 +32,6 @@ First you need to install some prereqs:
 
 ```
 sudo pip install pymongo
-sudo pip install psutil
 sudo pip install requests
 ```
 

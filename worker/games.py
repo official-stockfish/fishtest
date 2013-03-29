@@ -11,7 +11,6 @@ import tempfile
 import time
 import traceback
 import platform
-import psutil
 import zipfile
 from base64 import b64decode
 from zipfile import ZipFile
@@ -117,13 +116,6 @@ def run_games(worker_info, password, remote, run, task_id):
   new_engine = os.path.join(testing_dir, 'stockfish' + EXE_SUFFIX)
   base_engine = os.path.join(testing_dir, 'base' + EXE_SUFFIX)
   cutechess = os.path.join(testing_dir, 'cutechess-cli' + EXE_SUFFIX)
-
-  # Kill any stale / hanging engine process
-  for proc in psutil.process_iter():
-      if proc.name == os.path.basename(new_engine)  or \
-         proc.name == os.path.basename(base_engine) or \
-         proc.name == os.path.basename(cutechess):
-           proc.kill()
 
   # Download and build base and new
   build(worker_dir, run['args']['resolved_base'], base_engine, worker_info['concurrency'])
