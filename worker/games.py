@@ -56,9 +56,6 @@ def setup(item, testing_dir):
 
 def build(worker_dir, sha, destination, concurrency):
   """Download and build sources in a temporary directory then move exe to destination"""
-  if os.path.exists(destination):
-    os.remove(destination)
-
   tmp_dir = tempfile.mkdtemp()
   os.chdir(tmp_dir)
 
@@ -105,6 +102,8 @@ def run_games(worker_info, password, remote, run, task_id):
   book = run['args'].get('book', 'varied.bin')
   book_depth = run['args'].get('book_depth', '10')
   threads = int(run['args'].get('threads', 1))
+  new_engine_url = run.get('new_engine_url', '')
+  base_engine_url = run.get('base_engine_url', '')
   games_concurrency = int(worker_info['concurrency']) / threads
 
   # Setup testing directory if not already exsisting
@@ -117,9 +116,20 @@ def run_games(worker_info, password, remote, run, task_id):
   base_engine = os.path.join(testing_dir, 'base' + EXE_SUFFIX)
   cutechess = os.path.join(testing_dir, 'cutechess-cli' + EXE_SUFFIX)
 
-  # Download and build base and new
-  build(worker_dir, run['args']['resolved_base'], base_engine, worker_info['concurrency'])
-  build(worker_dir, run['args']['resolved_new'], new_engine, worker_info['concurrency'])
+  # Download or build from sources base and new
+  if os.path.exists(new_engine): os.remove(new_engine)
+  if len(new_engine_url) > 0:
+    with open(new_engine, 'wb+') as f:
+      f.write(requests.get(new_engine_url).content)
+  else:
+    build(worker_dir, run['args']['resolved_new'], new_engine, worker_info['concurrency'])
+
+  if os.path.exists(base_engine): os.remove(base_engine)
+  if len(base_engine_url) > 0:
+    with open(base_engine, 'wb+') as f:
+      f.write(requests.get(base_engine_url).content)
+  else:
+    build(worker_dir, run['args']['resolved_base'], base_engine, worker_info['concurrency'])
 
   os.chdir(testing_dir)
 
