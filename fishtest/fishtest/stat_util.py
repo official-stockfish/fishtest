@@ -39,7 +39,7 @@ def get_elo(WLD):
   mu = w + d/2
 
   # stdev is the empirical standard deviation of the random variable (X1+...+X_N)/N
-  stdev = math.sqrt(w*(1-mu)**2 + l*(0-mu)**2 + d*(0.5-mu)**2) / math.sqrt(N)
+  stdev = math.sqrt(w*(1-mu)**2 + l*(0-mu)**2 + d*(0.5-mu)**2) / math.sqrt(N-1)
 
   # 95% confidence interval for mu
   mu_min = mu + phi_inv(0.025) * stdev
