@@ -124,9 +124,21 @@ def run_games(worker_info, password, remote, run, task_id):
   base_engine = os.path.join(testing_dir, 'base' + EXE_SUFFIX)
   cutechess = os.path.join(testing_dir, 'cutechess-cli' + EXE_SUFFIX)
 
+  # We have already run another task from the same run ?
+  run_id_file = os.path.join(testing_dir, 'run_id.txt')
+  if os.path.exists(run_id_file):
+    with open(run_id_file, 'r') as f:
+      run_id = f.read().strip()
+  else:
+      run_id = ''
+
   # Download or build from sources base and new
-  setup_engine(new_engine, new_url, worker_dir, run['args']['resolved_new'], worker_info['concurrency'])
-  setup_engine(base_engine, base_url, worker_dir, run['args']['resolved_base'], worker_info['concurrency'])
+  if str(run['_id']) != run_id:
+    if os.path.exists(run_id_file): os.remove(run_id_file)
+    setup_engine(new_engine, new_url, worker_dir, run['args']['resolved_new'], worker_info['concurrency'])
+    setup_engine(base_engine, base_url, worker_dir, run['args']['resolved_base'], worker_info['concurrency'])
+    with open(run_id_file, 'w') as f:
+      f.write(str(run['_id']))
 
   os.chdir(testing_dir)
 
