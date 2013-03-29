@@ -82,6 +82,14 @@ def build(worker_dir, sha, destination, concurrency):
   os.chdir(worker_dir)
   shutil.rmtree(tmp_dir)
 
+def setup_engine(destination, url, worker_dir, sha, concurrency):
+  if os.path.exists(destination): os.remove(destination)
+  if len(url) > 0:
+    with open(destination, 'wb+') as f:
+      f.write(requests.get(url).content)
+  else:
+    build(worker_dir, sha, destination, concurrency)
+
 def run_games(worker_info, password, remote, run, task_id):
   task = run['tasks'][task_id]
   result = {
@@ -102,8 +110,8 @@ def run_games(worker_info, password, remote, run, task_id):
   book = run['args'].get('book', 'varied.bin')
   book_depth = run['args'].get('book_depth', '10')
   threads = int(run['args'].get('threads', 1))
-  new_engine_url = run.get('new_engine_url', '')
-  base_engine_url = run.get('base_engine_url', '')
+  new_url = run.get('new_engine_url', '')
+  base_url = run.get('base_engine_url', '')
   games_concurrency = int(worker_info['concurrency']) / threads
 
   # Setup testing directory if not already exsisting
@@ -117,19 +125,8 @@ def run_games(worker_info, password, remote, run, task_id):
   cutechess = os.path.join(testing_dir, 'cutechess-cli' + EXE_SUFFIX)
 
   # Download or build from sources base and new
-  if os.path.exists(new_engine): os.remove(new_engine)
-  if len(new_engine_url) > 0:
-    with open(new_engine, 'wb+') as f:
-      f.write(requests.get(new_engine_url).content)
-  else:
-    build(worker_dir, run['args']['resolved_new'], new_engine, worker_info['concurrency'])
-
-  if os.path.exists(base_engine): os.remove(base_engine)
-  if len(base_engine_url) > 0:
-    with open(base_engine, 'wb+') as f:
-      f.write(requests.get(base_engine_url).content)
-  else:
-    build(worker_dir, run['args']['resolved_base'], base_engine, worker_info['concurrency'])
+  setup_engine(new_engine, new_url, worker_dir, run['args']['resolved_new'], worker_info['concurrency'])
+  setup_engine(base_engine, base_url, worker_dir, run['args']['resolved_base'], worker_info['concurrency'])
 
   os.chdir(testing_dir)
 
