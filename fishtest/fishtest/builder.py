@@ -11,20 +11,34 @@ from rundb import RunDb
 
 FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
 
+LINUX32 = {
+  'system': 'linux',
+  'architecture': '32',
+  'make_cmd': 'make build ARCH=x86-32 COMP=gcc',
+  'gcc_alias': '',
+}
+LINUX64 = {
+  'system': 'linux',
+  'architecture': '64',
+  'make_cmd': 'make build ARCH=x86-64-modern COMP=gcc',
+  'gcc_alias': '',
+}
 WIN32 = {
   'system': 'windows',
   'architecture': '32',
   'make_cmd': 'make build ARCH=x86-32 COMP=gcc',
+  'gcc_alias': 'x86_64-w64-mingw32-c++',
 }
 WIN64 = {
   'system': 'windows',
   'architecture': '64',
   'make_cmd': 'make build ARCH=x86-64-modern COMP=gcc',
+  'gcc_alias': 'x86_64-w64-mingw32-c++',
 }
 
-TARGETS = [WIN32, WIN64]
+TARGETS = [LINUX32, LINUX64, WIN32, WIN64]
 
-def make(orig_src_dir, destination, make_cmd):
+def make(orig_src_dir, destination, target):
   """Build sources in a temporary directory then move exe to destination"""
   cur_dir = os.getcwd()
   tmp_dir = tempfile.mkdtemp()
@@ -33,13 +47,14 @@ def make(orig_src_dir, destination, make_cmd):
   shutil.copytree(orig_src_dir, src_dir)
   os.chdir(src_dir)
 
-  # Patch the makefile to cross-compile
-  with open('tmp', 'wt') as out:
-    for line in open('Makefile'):
-      out.write(line.replace('CXX=g++', 'CXX=x86_64-w64-mingw32-c++'))
-    shutil.copyfile('tmp', 'Makefile')
+  # Patch the makefile to cross-compile for Windows
+  if len(target['gcc_alias']) > 0:
+    with open('tmp', 'wt') as out:
+      for line in open('Makefile'):
+        out.write(line.replace('CXX=g++', 'CXX=' + target['gcc_alias']))
+      shutil.copyfile('tmp', 'Makefile')
 
-  subprocess.check_call(make_cmd, shell=True)
+  subprocess.check_call(target['make_cmd'], shell=True)
   subprocess.check_call('make strip', shell=True)
 
   shutil.move('stockfish', destination)
@@ -69,16 +84,16 @@ def build(sha, binaries_dir):
   src_dir = download(sha, tmp_dir)
 
   for t in TARGETS:
-    signature = t['system'] + t['architecture'] + '_' + sha
+    signature = sha + '_' + t['system'] + '_' + t['architecture']
     destination = os.path.join(binaries_dir, signature)
     print 'Building %s ...' % (signature)
-    make(src_dir, destination, t['make_cmd'])
+    make(src_dir, destination, t)
 
   shutil.rmtree(tmp_dir)
 
 def binary_exists(sha, binaries_dir):
   for files in os.listdir(binaries_dir):
-    if files.endswith(sha):
+    if files.startswith(sha):
       return True
   else:
     return False
