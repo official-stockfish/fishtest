@@ -15,24 +15,13 @@ repo=g.get_repo("mcostalba/Stockfish")
 
 FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
 
-#To launch web server in the binary directory, type : python -c "import SimpleHTTPServer;SimpleHTTPServer.test()"
-
-def build(sha, destination, make_cmd):
-  """Download and build sources in a temporary directory then move exe to destination"""
-  cur_dir = os.cwd()
+def build(orig_src_dir, destination, make_cmd):
+  """Build sources in a temporary directory then move exe to destination"""
+  cur_dir = os.getcwd()
   tmp_dir = tempfile.mkdtemp()
-  os.chdir(tmp_dir)
+  src_dir = os.path.join(tmp_dir, '/src/')
 
-  with open('sf.gz', 'wb+') as f:
-    f.write(requests.get(FISHCOOKING_URL + '/zipball/' + sha).content)
-  zip_file = ZipFile('sf.gz')
-  zip_file.extractall()
-  zip_file.close()
-
-  for name in zip_file.namelist():
-    if name.endswith('/src/'):
-      src_dir = name
-
+  shutil.copytree(orig_src_dir, src_dir)
   os.chdir(src_dir)
 
   # Patch the makefile to cross-compile
@@ -46,6 +35,22 @@ def build(sha, destination, make_cmd):
   shutil.move('stockfish', destination)
   os.chdir(cur_dir)
   shutil.rmtree(tmp_dir)
+
+def download(sha, working_dir):
+  """Download and extract sources and return src directory"""
+  sf_zip = os.path.join(working_dir, 'sf.gz')
+  with open(sf_zip, 'wb+') as f:
+    f.write(requests.get(FISHCOOKING_URL + '/zipball/' + sha).content)
+  zip_file = ZipFile(sf_zip)
+  zip_file.extractall()
+  zip_file.close()
+
+  for name in zip_file.namelist():
+    if name.endswith('/src/'):
+      src_dir = name
+      break
+
+  return os.path.join(working_dir, src_dir)
 
 def survey():
     for commit in repo.get_commits()[:20]:
