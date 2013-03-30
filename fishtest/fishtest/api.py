@@ -1,6 +1,8 @@
 import json, sys
 from pyramid.view import view_config
 
+from builder import get_binary_url
+
 def authenticate(request):
   if 'username' in request.json_body: username = request.json_body['username']
   else: username = request.json_body['worker_info']['username']
@@ -11,7 +13,8 @@ def request_task(request):
   token = authenticate(request)
   if 'error' in token: return json.dumps(token)
 
-  result = request.rundb.request_task(request.json_body['worker_info'])
+  worker_info = request.json_body['worker_info']
+  result = request.rundb.request_task(worker_info)
 
   if 'task_waiting' in result:
     return json.dumps(result)
@@ -22,7 +25,23 @@ def request_task(request):
     '_id': str(run['_id']),
     'args': run['args'],
     'tasks': [],
+    'new_engine_url': '',
+    'base_engine_url': '',
   }
+
+  # Check if we have a binary to feed
+  binaries_dir = run.get('binaries_dir', '')
+  if len(binaries_dir) > 0:
+    new_sha = run['args']['resolved_new']
+    base_sha = run['args']['resolved_base']
+    min_run['new_engine_url'] = get_binary_url(new_sha, binaries_dir, worker_info)
+    min_run['base_engine_url'] = get_binary_url(base_sha, binaries_dir, worker_info)
+
+    # TODO Disable at the moment
+    print 'new_engine_url %s' % (min_run['new_engine_url'])
+    print 'base_engine_url %s' % (min_run['base_engine_url'])
+    min_run['new_engine_url'] = ''
+    min_run['base_engine_url'] = ''
 
   for task in run['tasks']:
     min_task = {'num_games': task['num_games']}
@@ -63,7 +82,7 @@ def stop_run(request):
 
   result = request.rundb.stop_run(request.json_body['run_id'])
   return json.dumps(result)
-   
+
 @view_config(route_name='api_request_version', renderer='string')
 def request_version(request):
   token = authenticate(request)
