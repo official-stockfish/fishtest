@@ -137,10 +137,10 @@ def survey(rundb, binaries_dir):
   runs = rundb.get_runs_to_build()
   for run in runs:
     for item in items:
-        sha, signature = run['args'][item[0]], run['args'][item[1]]
-        # Check before to rebuild, master could be already exsisting
-        if not binary_exists(sha, binaries_dir):
-            build(sha, signature, binaries_dir)
+      sha, signature = run['args'][item[0]], run['args'][item[1]]
+      # Check before to rebuild, master could be already exsisting
+      if not binary_exists(sha, binaries_dir):
+        build(sha, signature, binaries_dir)
 
     # Reload run in case has been updated while compiling
     r = rundb.get_run(str(run['_id']))
