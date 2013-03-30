@@ -157,7 +157,8 @@ class RunDb:
     N = sum(WLD)
     elo, elo95, los = stat_util.get_elo(WLD)
 
-    early_stop_rules = [(5000, -5), (8000, -3), (10000, -1)]
+    # Formula tweaked with Joona's 'simul' tool: efficency > 30%, error rate < 2%
+    early_stop_rules = [(4000, -10), (6000, -5), (8000, -3), (10000, -2), (12000, -1)]
 
     for r in early_stop_rules:
       if N >= r[0] and N <= r[0] + 1000 and elo <= r[1]:
