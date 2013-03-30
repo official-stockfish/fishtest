@@ -8,6 +8,19 @@ from zipfile import ZipFile
 from rundb import RunDb
 
 FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
+BINARIES_DIR_PATH = 'binaries'
+WIN32 = {
+  'system': 'windows',
+  'architecture': '32',
+  'make_cmd': 'make build ARCH=x86-32 COMP=gcc',
+}
+WIN64 = {
+  'system': 'windows',
+  'architecture': '64',
+  'make_cmd': 'make build ARCH=x86-64-modern COMP=gcc',
+}
+
+TARGETS = [WIN32, WIN64]
 
 def make(orig_src_dir, destination, make_cmd):
   """Build sources in a temporary directory then move exe to destination"""
@@ -51,7 +64,7 @@ def build(sha, binaries_dir, targets):
   tmp_dir = tempfile.mkdtemp()
   src_dir = download(sha, tmp_dir)
 
-  for t in targets:
+  for t in TARGETS:
     signature = t['system'] + t['architecture'] + '_' + sha
     destination = os.path.join(binaries_dir, signature)
     make(src_dir, destination, t['make_cmd'])
@@ -75,12 +88,13 @@ def survey(rundb):
       continue
     for item in sha_fields:
         sha = run['args'][item]
-        if not binary_exsists(sha, binaries_dir):
-            build(sha, binaries_dir)
+        # Check before to rebuild, master could be already exsisting
+        if not binary_exsists(sha, BINARIES_DIR_PATH):
+            build(sha, BINARIES_DIR_PATH)
 
     # Reload run in case has been updated while compiling
     r = rundb.get_run(str(run['_id']))
-    r['binaries_dir'] = binaries_dir
+    r['binaries_dir'] = BINARIES_DIR_PATH
     rundb.runs.save(r)
 
 def main():
