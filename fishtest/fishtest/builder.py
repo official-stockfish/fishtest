@@ -99,13 +99,16 @@ def download(sha, working_dir):
 
   return os.path.join(working_dir, src_dir)
 
+def get_binary_filename(sha, system, architecture):
+  return sha + '_' + system + '_' + architecture
+
 def build(sha, signature, binaries_dir):
   """Download and build to multi target a single commit"""
   tmp_dir = tempfile.mkdtemp()
   src_dir = download(sha, tmp_dir)
 
   for t in TARGETS:
-    filename = sha + '_' + t['system'] + '_' + t['architecture']
+    filename = get_binary_filename(sha, t['system'], t['architecture'])
     destination = os.path.join(binaries_dir, filename)
     make(src_dir, destination, t)
     if t['native']: # We can run only native builds
@@ -119,6 +122,14 @@ def binary_exists(sha, binaries_dir):
       return True
   else:
     return False
+
+def get_binary_url(binaries_dir, sha, worker_info):
+  uname = worker_info['uname']
+  system = 'windows' if 'Windows' in uname else 'linux'
+  architecture = '64' if '64' in uname else '32'
+  filename = get_binary_filename(sha, system, architecture)
+  engine_path = os.path.join(binaries_dir, filename)
+  return engine_path if os.path.exists(engine_path) else ''
 
 def survey(rundb, binaries_dir):
   print 'Checking for runs to build...'
