@@ -3,12 +3,14 @@ import requests
 import zipfile
 import shutil
 import subprocess
+import sys
 import time
+from optparse import OptionParser
 from zipfile import ZipFile
 from rundb import RunDb
 
 FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
-BINARIES_DIR_PATH = 'binaries'
+
 WIN32 = {
   'system': 'windows',
   'architecture': '32',
@@ -71,14 +73,14 @@ def build(sha, binaries_dir, targets):
 
   shutil.rmtree(tmp_dir)
 
-def binary_exsists(sha, binaries_dir):
+def binary_exists(sha, binaries_dir):
   for files in os.listdir(binaries_dir):
     if files.endswith(sha):
       return True
   else:
     return False
 
-def survey(rundb):
+def survey(rundb, binaries_dir):
   sha_fields = ['resolved_base', 'resolved_new']
   runs = rundb.get_runs()
   for run in runs:
@@ -89,18 +91,29 @@ def survey(rundb):
     for item in sha_fields:
         sha = run['args'][item]
         # Check before to rebuild, master could be already exsisting
-        if not binary_exsists(sha, BINARIES_DIR_PATH):
-            build(sha, BINARIES_DIR_PATH)
+        if not binary_exists(sha, binaries_dir):
+            build(sha, binaries_dir)
 
     # Reload run in case has been updated while compiling
     r = rundb.get_run(str(run['_id']))
-    r['binaries_dir'] = BINARIES_DIR_PATH
+    r['binaries_dir'] = binaries_dir
     rundb.runs.save(r)
 
 def main():
+  parser = OptionParser()
+  (options, args) = parser.parse_args()
+  if len(args) != 1:
+    sys.stderr.write('Usage: %s [binaries dir]\n' % (sys.argv[0]))
+    sys.exit(1)
+
+  binaries_dir = args[0]
+  if not os.path.isdir(binaries_dir):
+    sys.stderr.write('Directory %s does not exist\n' % (binaries_dir))
+    sys.exit(1)
+
   rundb = RunDb()
   while 1:
-    survey(rundb)
+    survey(rundb, binaries_dir)
     time.sleep(60)
 
 if __name__ == '__main__':
