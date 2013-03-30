@@ -20,7 +20,8 @@ ARCH = 'ARCH=x86-64-modern' if '64' in platform.architecture()[0] else 'ARCH=x86
 EXE_SUFFIX = ''
 MAKE_CMD = 'make build COMP=gcc ' + ARCH
 
-if 'windows' in platform.system().lower():
+IS_WINDOWS = 'windows' in platform.system().lower()
+if IS_WINDOWS:
   EXE_SUFFIX = '.exe'
   MAKE_CMD = 'mingw32-make build COMP=mingw ' + ARCH
 
@@ -209,7 +210,11 @@ def run_games(worker_info, password, remote, run, task_id):
           sys.stderr.write('Exception from calling update_task:\n')
           traceback.print_exc(file=sys.stderr)
   except:
-    p.kill()
+    if IS_WINDOWS:
+      # Kill doesn't kill subprocesses on Windows
+      subprocess.call(['taskkill', '/F', '/T', '/PID', str(p.pid)])
+    else:
+      p.kill()
 
   p.wait()
   if p.returncode != 0:
