@@ -84,12 +84,8 @@ def binary_exists(sha, binaries_dir):
 
 def survey(rundb, binaries_dir):
   sha_fields = ['resolved_base', 'resolved_new']
-  runs = rundb.get_runs()
+  runs = rundb.get_runs_to_build()
   for run in runs:
-    if 'binaries_dir' not in run:
-      continue
-    if len(run['binaries_dir']) > 0:
-      continue
     for item in sha_fields:
         sha = run['args'][item]
         # Check before to rebuild, master could be already exsisting

@@ -87,6 +87,12 @@ class RunDb:
   def get_run(self, id):
     return self.runs.find_one({'_id': ObjectId(id)})
 
+  def get_runs_to_build(self):
+    runs = []
+    for run in self.runs.find({ 'binaries_dir': '' }):
+      runs.append(run)
+    return runs
+
   def get_runs(self, skip=0, limit=0):
     runs = []
     for run in self.runs.find(skip=skip, limit=limit, sort=[('start_time', DESCENDING)]):
