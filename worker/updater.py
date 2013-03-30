@@ -37,7 +37,7 @@ def update():
     file_prefix = os.path.join(prefix, relative_worker_dir)
     if name.filename.startswith(file_prefix):
       filename = name.filename[len(file_prefix)+1:]
-      if len(filename) == 0:
+      if len(filename) == 0 or not os.path.basename(filename):
         continue
 
       print 'Updating', filename
