@@ -40,7 +40,7 @@ WIN64 = {
   'native': False,
 }
 
-TARGETS = [LINUX32, LINUX64, WIN32, WIN64]
+TARGETS = [WIN32, WIN64]
 
 def verify_signature(engine, signature):
   bench_sig = ''
