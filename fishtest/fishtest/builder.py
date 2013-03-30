@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import time
 from zipfile import ZipFile
+from rundb import RunDb
 
 FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
 
@@ -57,12 +58,36 @@ def build(sha, binaries_dir, targets):
 
   shutil.rmtree(tmp_dir)
 
-def survey():
-    for commit in repo.get_commits()[:20]:
-        print commit.sha
-        if not (os.path.isfile(binaryPath+"stockfish-"+commit.sha+".exe")):
-            build(commit.sha)
+def binary_exsists(sha, binaries_dir):
+  for files in os.listdir(binaries_dir):
+    if files.endswith(sha):
+      return True
+  else:
+    return False
 
-while 1:
-    survey()
+def survey(rundb):
+  sha_fields = ['resolved_base', 'resolved_new']
+  runs = rundb.get_runs()
+  for run in runs:
+    if 'binaries_dir' not in run:
+      continue
+    if len(run['binaries_dir']) > 0:
+      continue
+    for item in sha_fields:
+        sha = run['args'][item]
+        if not binary_exsists(sha, binaries_dir):
+            build(sha, binaries_dir)
+
+    # Reload run in case has been updated while compiling
+    r = rundb.get_run(str(run['_id']))
+    r['binaries_dir'] = binaries_dir
+    rundb.runs.save(r)
+
+def main():
+  rundb = RunDb()
+  while 1:
+    survey(rundb)
     time.sleep(60)
+
+if __name__ == '__main__':
+  main()

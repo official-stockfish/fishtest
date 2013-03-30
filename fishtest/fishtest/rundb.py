@@ -68,6 +68,7 @@ class RunDb:
       'results': { 'wins': 0, 'losses': 0, 'draws': 0 },
       'results_stale': False,
       'finished': False,
+      'binaries_dir': '',
     })
 
     return id
