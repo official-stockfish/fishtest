@@ -12,35 +12,12 @@ On Windows you will need to install Python 2.7.x for x86 (not 3.x series and not
 
 http://www.python.org/download/releases/2.7.3/
 
-Then setuptools for 2.7.x from
-
-https://pypi.python.org/pypi/setuptools
-
-Once installation is complete, you will find an `easy_install.exe` program in your
-Python *Scripts* subdirectory. Open a command prompt window on this directory,
-then install pip with:
-
-```
-easy_install.exe pip
-```
-
 In case something is not clear please read windows-step-by-step-installation.txt
 
 #### Setup fishtest
 
-First you need to install some prereqs:
-
-```
-sudo pip install pymongo
-sudo pip install requests
-```
-
-The same commands work also for Window without `sudo`. In this case you need to
-run them from the command prompt window open on Python *Scripts* subdirectory.
-
-Then you will need the fishtest package.  You can download fishtest as a zipball
-directly from https://github.com/glinscott/fishtest or, in case you have a git
-installation, you can clone it.
+You can download fishtest as a zipball directly from https://github.com/glinscott/fishtest
+or, in case you have a git installation, you can clone it.
 
 ```
 git clone https://github.com/glinscott/fishtest.git
