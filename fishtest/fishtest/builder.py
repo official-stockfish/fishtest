@@ -1,21 +1,14 @@
-from github import Github
-from subprocess import call
-import os.path
+import os
 import requests
 import zipfile
 import shutil
+import subprocess
 import time
 from zipfile import ZipFile
 
-#Parameters
-g = Github("GITHUBLOGIN", "GITHUBPASSWORD")
-binaryPath="/home/ec2-user/autobuilder/binary/"
-sourcePath="/home/ec2-user/autobuilder/src/"
-repo=g.get_repo("mcostalba/Stockfish")
-
 FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
 
-def build(orig_src_dir, destination, make_cmd):
+def make(orig_src_dir, destination, make_cmd):
   """Build sources in a temporary directory then move exe to destination"""
   cur_dir = os.getcwd()
   tmp_dir = tempfile.mkdtemp()
@@ -51,6 +44,18 @@ def download(sha, working_dir):
       break
 
   return os.path.join(working_dir, src_dir)
+
+def build(sha, binaries_dir, targets):
+  """Download and build to multi target a single commit"""
+  tmp_dir = tempfile.mkdtemp()
+  src_dir = download(sha, tmp_dir)
+
+  for t in targets:
+    signature = t['system'] + t['architecture'] + '_' + sha
+    destination = os.path.join(binaries_dir, signature)
+    make(src_dir, destination, t['make_cmd'])
+
+  shutil.rmtree(tmp_dir)
 
 def survey():
     for commit in repo.get_commits()[:20]:
