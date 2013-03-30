@@ -25,7 +25,10 @@ def request_task(request):
   }
 
   for task in run['tasks']:
-    min_run['tasks'].append({'stats': task['stats'], 'num_games': task['num_games']})
+    min_task = {'num_games': task['num_games']}
+    if 'stats' in task:
+      min_task['stats'] = task['stats']
+    min_run['tasks'].append(min_task)
 
   result['run'] = min_run
   return json.dumps(result)
@@ -66,4 +69,4 @@ def request_version(request):
   token = authenticate(request)
   if 'error' in token: return json.dumps(token)
 
-  return json.dumps({'version': 9})
+  return json.dumps({'version': 10})
