@@ -40,6 +40,7 @@ def make(orig_src_dir, destination, make_cmd):
     shutil.copyfile('tmp', 'Makefile')
 
   subprocess.check_call(make_cmd, shell=True)
+  subprocess.check_call('make strip', shell=True)
 
   shutil.move('stockfish', destination)
   os.chdir(cur_dir)
