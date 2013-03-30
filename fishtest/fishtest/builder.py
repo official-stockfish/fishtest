@@ -16,30 +16,51 @@ LINUX32 = {
   'architecture': '32',
   'make_cmd': 'make build ARCH=x86-32 COMP=gcc',
   'gcc_alias': '',
+  'native': True,
 }
 LINUX64 = {
   'system': 'linux',
   'architecture': '64',
   'make_cmd': 'make build ARCH=x86-64-modern COMP=gcc',
   'gcc_alias': '',
+  'native': True,
 }
 WIN32 = {
   'system': 'windows',
   'architecture': '32',
   'make_cmd': 'make build ARCH=x86-32 COMP=gcc',
   'gcc_alias': 'x86_64-w64-mingw32-c++',
+  'native': False,
 }
 WIN64 = {
   'system': 'windows',
   'architecture': '64',
   'make_cmd': 'make build ARCH=x86-64-modern COMP=gcc',
   'gcc_alias': 'x86_64-w64-mingw32-c++',
+  'native': False,
 }
 
 TARGETS = [LINUX32, LINUX64, WIN32, WIN64]
 
+def verify_signature(engine, signature):
+  bench_sig = ''
+  print 'Verifying signature of %s ...' % (os.path.basename(engine))
+  with open(os.devnull, 'wb') as f:
+    p = subprocess.Popen([engine, 'bench'], stderr=subprocess.PIPE, stdout=f, universal_newlines=True)
+  for line in iter(p.stderr.readline,''):
+    if 'Nodes searched' in line:
+      bench_sig = line.split(': ')[1].strip()
+
+  p.wait()
+  if p.returncode != 0:
+    raise Exception('Bench exited with non-zero code %d' % (p.returncode))
+
+  if int(bench_sig) != int(signature):
+    raise Exception('Wrong bench in %s Expected: %s Got: %s' % (engine, signature, bench_sig))
+
 def make(orig_src_dir, destination, target):
   """Build sources in a temporary directory then move exe to destination"""
+  print 'Building %s ...' % (os.path.basename(destination))
   cur_dir = os.getcwd()
   tmp_dir = tempfile.mkdtemp()
   src_dir = os.path.join(tmp_dir, '/src/')
@@ -63,6 +84,7 @@ def make(orig_src_dir, destination, target):
 
 def download(sha, working_dir):
   """Download and extract sources and return src directory"""
+  print 'Downloading %s ...' % (sha)
   sf_zip = os.path.join(working_dir, 'sf.gz')
   with open(sf_zip, 'wb+') as f:
     f.write(requests.get(FISHCOOKING_URL + '/zipball/' + sha).content)
@@ -77,17 +99,17 @@ def download(sha, working_dir):
 
   return os.path.join(working_dir, src_dir)
 
-def build(sha, binaries_dir):
+def build(sha, signature, binaries_dir):
   """Download and build to multi target a single commit"""
-  print 'Downloading %s ...' % (sha)
   tmp_dir = tempfile.mkdtemp()
   src_dir = download(sha, tmp_dir)
 
   for t in TARGETS:
-    signature = sha + '_' + t['system'] + '_' + t['architecture']
-    destination = os.path.join(binaries_dir, signature)
-    print 'Building %s ...' % (signature)
+    filename = sha + '_' + t['system'] + '_' + t['architecture']
+    destination = os.path.join(binaries_dir, filename)
     make(src_dir, destination, t)
+    if t['native']: # We can run only native builds
+      verify_signature(destination, signature)
 
   shutil.rmtree(tmp_dir)
 
@@ -99,14 +121,15 @@ def binary_exists(sha, binaries_dir):
     return False
 
 def survey(rundb, binaries_dir):
-  sha_fields = ['resolved_base', 'resolved_new']
+  print 'Checking for runs to build...'
+  items = [('resolved_base', 'base_signature'), ('resolved_new', 'new_signature')]
   runs = rundb.get_runs_to_build()
   for run in runs:
-    for item in sha_fields:
-        sha = run['args'][item]
+    for item in items:
+        sha, signature = run['args'][item[0]], run['args'][item[1]]
         # Check before to rebuild, master could be already exsisting
         if not binary_exists(sha, binaries_dir):
-            build(sha, binaries_dir)
+            build(sha, signature, binaries_dir)
 
     # Reload run in case has been updated while compiling
     r = rundb.get_run(str(run['_id']))
@@ -127,7 +150,6 @@ def main():
 
   rundb = RunDb()
   while 1:
-    print 'Checking for runs to build...'
     survey(rundb, binaries_dir)
     time.sleep(60)
 
