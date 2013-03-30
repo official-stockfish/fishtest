@@ -41,7 +41,9 @@ def update():
         continue
 
       print 'Updating', filename
-      with open(os.path.join(worker_dir, filename), 'w') as f:
+      target_filename = os.path.join(worker_dir, filename)
+      with open(target_filename, 'w') as f:
+        os.makedirs(os.path.dirname(target_filename))
         f.write(zip_file.open(name).read())
 
   zip_file.close()
