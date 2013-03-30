@@ -1,5 +1,4 @@
 import json, sys
-from bson import json_util
 from pyramid.view import view_config
 
 def authenticate(request):
@@ -12,8 +11,24 @@ def request_task(request):
   token = authenticate(request)
   if 'error' in token: return json.dumps(token)
 
-  task = request.rundb.request_task(request.json_body['worker_info'])
-  return json.dumps(task, default=json_util.default)
+  result = request.rundb.request_task(request.json_body['worker_info'])
+
+  if 'task_waiting' in result:
+    return json.dumps(result)
+
+  # Strip the run of unneccesary information
+  run = result['run']
+  min_run = {
+    '_id': str(run['_id']),
+    'args': run['args'],
+    'tasks': [],
+  }
+
+  for task in run['tasks']:
+    min_run['tasks'].append({'stats': task['stats'], 'num_games': task['num_games']})
+
+  result['run'] = min_run
+  return json.dumps(result)
 
 @view_config(route_name='api_update_task', renderer='string')
 def update_task(request):

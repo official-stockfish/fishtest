@@ -7,7 +7,6 @@ import sys
 import requests
 import time
 import traceback
-from bson import json_util
 from optparse import OptionParser
 from games import run_games
 from updater import update
@@ -36,7 +35,7 @@ def worker(worker_info, password, remote):
       update()
 
     req = requests.post(remote + '/api/request_task', data=json.dumps(payload))
-    req = json.loads(req.text, object_hook=json_util.object_hook)
+    req = json.loads(req.text)
   except:
     sys.stderr.write('Exception accessing host:\n')
     traceback.print_exc()
