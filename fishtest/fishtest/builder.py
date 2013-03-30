@@ -61,14 +61,16 @@ def download(sha, working_dir):
 
   return os.path.join(working_dir, src_dir)
 
-def build(sha, binaries_dir, targets):
+def build(sha, binaries_dir):
   """Download and build to multi target a single commit"""
+  print 'Downloading %s ...' % (sha)
   tmp_dir = tempfile.mkdtemp()
   src_dir = download(sha, tmp_dir)
 
   for t in TARGETS:
     signature = t['system'] + t['architecture'] + '_' + sha
     destination = os.path.join(binaries_dir, signature)
+    print 'Building %s ...' % (signature)
     make(src_dir, destination, t['make_cmd'])
 
   shutil.rmtree(tmp_dir)
@@ -113,6 +115,7 @@ def main():
 
   rundb = RunDb()
   while 1:
+    print 'Checking for runs to build...'
     survey(rundb, binaries_dir)
     time.sleep(60)
 
