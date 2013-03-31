@@ -91,6 +91,13 @@ def setup_engine(destination, url, worker_dir, sha, concurrency):
   else:
     build(worker_dir, sha, destination, concurrency)
 
+def kill_process(p):
+  if IS_WINDOWS:
+    # Kill doesn't kill subprocesses on Windows
+    subprocess.call(['taskkill', '/F', '/T', '/PID', str(p.pid)])
+  else:
+    p.kill()
+
 def run_games(worker_info, password, remote, run, task_id):
   task = run['tasks'][task_id]
   result = {
@@ -203,18 +210,14 @@ def run_games(worker_info, password, remote, run, task_id):
           status = requests.post(remote + '/api/update_task', data=json.dumps(result)).json()
           if not status['task_alive']:
             # This task is no longer neccesary
-            p.kill()
+            kill_process(p)
             p.wait()
             return
         except:
           sys.stderr.write('Exception from calling update_task:\n')
           traceback.print_exc(file=sys.stderr)
   except:
-    if IS_WINDOWS:
-      # Kill doesn't kill subprocesses on Windows
-      subprocess.call(['taskkill', '/F', '/T', '/PID', str(p.pid)])
-    else:
-      p.kill()
+    kill_process(p)
 
   p.wait()
   if p.returncode != 0:
