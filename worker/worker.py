@@ -11,7 +11,7 @@ from optparse import OptionParser
 from games import run_games
 from updater import update
 
-WORKER_VERSION = 10
+WORKER_VERSION = 11
 ALIVE = True
 
 def on_sigint(signal, frame):
