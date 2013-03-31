@@ -89,7 +89,7 @@ class RunDb:
 
   def get_runs_to_build(self):
     runs = []
-    for run in self.runs.find({ 'binaries_dir': '' }):
+    for run in self.runs.find({ 'binaries_dir': '', 'finished': False }):
       runs.append(run)
     return runs
 
