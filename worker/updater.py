@@ -42,10 +42,10 @@ def update():
 
       print 'Updating', filename
       target_filename = os.path.join(worker_dir, filename)
+      dirname = os.path.dirname(target_filename)
+      if not os.path.exists(dirname):
+        os.makedirs(dirname)
       with open(target_filename, 'w') as f:
-        dirname = os.path.dirname(target_filename)
-        if not os.path.exists(dirname):
-          os.makedirs(dirname)
         f.write(zip_file.open(name).read())
 
   zip_file.close()
