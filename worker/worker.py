@@ -87,6 +87,7 @@ def main():
 
   worker_info = {
     'uname': platform.uname(),
+    'architecture': platform.architecture(),
     'concurrency': options.concurrency,
     'username': args[0],
     'version': WORKER_VERSION,
