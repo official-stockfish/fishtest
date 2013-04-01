@@ -1,4 +1,0 @@
-pyramid
-pyramid_debugtoolbar
-waitress
-pymongo
