@@ -107,6 +107,8 @@ def validate_form(request):
     'book_depth' : request.POST['book-depth'],
     'base_signature' : request.POST['base-signature'],
     'new_signature' : request.POST['test-signature'],
+    'base_options' : request.POST['base-options'],
+    'new_options' : request.POST['new-options'],
     'username' : authenticated_userid(request),
   }
 
@@ -231,8 +233,8 @@ def tests_view(request):
   run['results_info'] = format_results(request.rundb.get_results(run))
 
   run_args = []
-  for name in ['new_tag', 'new_signature', 'resolved_new',
-               'base_tag', 'base_signature', 'resolved_base',
+  for name in ['new_tag', 'new_signature', 'new_options', 'resolved_new',
+               'base_tag', 'base_signature', 'base_options', 'resolved_base',
                'num_games', 'tc', 'threads', 'book', 'book_depth',
                'priority', 'username', 'info']:
     run_args.append((name, run['args'].get(name, '-')))

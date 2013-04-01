@@ -11,6 +11,12 @@
     </div>
   </div>
   <div class="control-group">
+    <label class="control-label">Test options:</label>
+    <div class="controls">
+    <input name="new-options" value="${args.get('new_options', 'Hash=128 OwnBook=false')}">
+    </div>
+  </div>
+  <div class="control-group">
     <label class="control-label">Test signature:</label>
     <div class="controls">
       <input name="test-signature" value="${args.get('new_signature', '')}" ${'readonly' if re_run else ''}>
@@ -20,6 +26,12 @@
     <label class="control-label">Base branch:</label>
     <div class="controls">
       <input name="base-branch" value="${args.get('base_tag', 'master')}" ${'readonly' if re_run else ''}>
+    </div>
+  </div>
+  <div class="control-group">
+    <label class="control-label">Base options:</label>
+    <div class="controls">
+    <input name="base-options" value="${args.get('base_options', 'Hash=128 OwnBook=false')}">
     </div>
   </div>
   <div class="control-group">
