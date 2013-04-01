@@ -117,10 +117,16 @@ def run_games(worker_info, password, remote, run, task_id):
 
   book = run['args'].get('book', 'varied.bin')
   book_depth = run['args'].get('book_depth', '10')
+  new_options = run['args'].get('new_options', 'Hash=128 OwnBook=false')
+  base_options = run['args'].get('base_options', 'Hash=128 OwnBook=false')
   threads = int(run['args'].get('threads', 1))
   new_url = run.get('new_engine_url', '')
   base_url = run.get('base_engine_url', '')
   games_concurrency = int(worker_info['concurrency']) / threads
+
+  # Format options according to cutechess syntax
+  new_options = ['option.'+x for x in new_options.split()]
+  base_options = ['option.'+x for x in base_options.split()]
 
   # Setup testing directory if not already exsisting
   worker_dir = os.path.dirname(os.path.realpath(__file__))
@@ -179,8 +185,8 @@ def run_games(worker_info, password, remote, run, task_id):
   cmd = [ cutechess, '-repeat', '-recover', '-rounds', str(games_remaining), '-tournament',
          'gauntlet', '-pgnout', 'results.pgn', '-resign', 'movecount=3', 'score=400',
          '-draw', 'movenumber=34', 'movecount=2', 'score=20', '-concurrency',
-         str(games_concurrency), '-engine', 'name=stockfish', 'cmd=stockfish',
-         '-engine', 'name=base', 'cmd=base', '-each', 'proto=uci', 'option.Hash=128',
+         str(games_concurrency), '-engine', 'name=stockfish', 'cmd=stockfish'] + new_options + [
+         '-engine', 'name=base', 'cmd=base'] + base_options + ['-each', 'proto=uci',
          'option.Threads=%d' % (threads), 'tc=%s' % (run['args']['tc']),
          'book=%s' % (book), 'bookdepth=%s' % (book_depth) ]
 
