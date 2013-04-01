@@ -37,6 +37,11 @@ def request_task(request):
     min_run['new_engine_url'] = get_binary_url(new_sha, binaries_dir, worker_info)
     min_run['base_engine_url'] = get_binary_url(base_sha, binaries_dir, worker_info)
 
+    # Or both are set or none: avoid artifacts due to different compiles
+    if min_run['new_engine_url'] == '' or min_run['base_engine_url'] == '':
+      min_run['new_engine_url'] = ''
+      min_run['base_engine_url'] = ''
+
     # TODO Disable at the moment
     print 'new_engine_url %s' % (min_run['new_engine_url'])
     print 'base_engine_url %s' % (min_run['base_engine_url'])
