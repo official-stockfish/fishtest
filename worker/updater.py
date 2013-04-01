@@ -5,8 +5,9 @@ import requests
 import shutil
 import sys
 from zipfile import ZipFile
+from distutils.dir_util import copy_tree
 
-FISHTEST_URL = 'https://api.github.com/repos/glinscott/fishtest'
+WORKER_URL = 'https://github.com/glinscott/fishtest/archive/worker.zip'
 
 def restart(worker_dir):
   """Restarts the worker, using the same arguments"""
@@ -24,31 +25,16 @@ def update():
   if not os.path.exists(update_dir):
     os.makedirs(update_dir)
 
-  with open(os.path.join(update_dir, 'ft.zip'), 'wb+') as f:
-    f.write(requests.get(FISHTEST_URL + '/zipball/master').content)
+  worker_zip = os.path.join(update_dir, 'wk.zip')
+  with open(worker_zip, 'wb+') as f:
+    f.write(requests.get(WORKER_URL).content)
 
-  # Assumes updater.py is at root of worker directory!
-  relative_worker_dir = os.path.basename(worker_dir)
-
-  zip_file = ZipFile(os.path.join(update_dir, 'ft.zip'))
-  prefix = os.path.commonprefix([n.filename for n in zip_file.infolist()])
-  for name in zip_file.infolist():
-    dirname = os.path.dirname(name.filename)
-    file_prefix = os.path.join(prefix, relative_worker_dir)
-    if name.filename.startswith(file_prefix):
-      filename = name.filename[len(file_prefix)+1:]
-      if len(filename) == 0 or not os.path.basename(filename):
-        continue
-
-      print 'Updating', filename
-      target_filename = os.path.join(worker_dir, filename)
-      dirname = os.path.dirname(target_filename)
-      if not os.path.exists(dirname):
-        os.makedirs(dirname)
-      with open(target_filename, 'w') as f:
-        f.write(zip_file.open(name).read())
-
+  zip_file = ZipFile(worker_zip)
+  zip_file.extractall(update_dir)
   zip_file.close()
+  prefix = os.path.commonprefix([n.filename for n in zip_file.infolist()])
+  worker_src = os.path.join(update_dir, prefix, 'worker')
+  copy_tree(worker_src, worker_dir)
   shutil.rmtree(update_dir)
 
   restart(worker_dir)
