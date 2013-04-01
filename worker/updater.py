@@ -7,7 +7,7 @@ import sys
 from zipfile import ZipFile
 from distutils.dir_util import copy_tree
 
-WORKER_URL = 'https://github.com/glinscott/fishtest/archive/worker.zip'
+WORKER_URL = 'https://github.com/glinscott/fishtest/archive/master.zip'
 
 def restart(worker_dir):
   """Restarts the worker, using the same arguments"""
@@ -33,8 +33,9 @@ def update():
   zip_file.extractall(update_dir)
   zip_file.close()
   prefix = os.path.commonprefix([n.filename for n in zip_file.infolist()])
-  worker_src = os.path.join(update_dir, prefix, 'worker')
-  copy_tree(worker_src, worker_dir)
+  fishtest_src = os.path.join(update_dir, prefix)
+  fishtest_dir = os.path.dirname(worker_dir) # fishtest_dir is assumed to be parent of worker_dir
+  copy_tree(fishtest_src, fishtest_dir)
   shutil.rmtree(update_dir)
 
   restart(worker_dir)
