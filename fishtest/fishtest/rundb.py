@@ -159,26 +159,6 @@ class RunDb:
         latest_time = task['last_updated']
         task_id = idx
 
-    # Check for an early stop condition, we do this at request_task time, not at
-    # update_task to avoid unnecessary overhead becuase eraly stop has task boundaries
-    results = self.get_results(run)
-    WLD = [results['wins'], results['losses'], results['draws']]
-    N = sum(WLD)
-    elo, elo95, los = stat_util.get_elo(WLD)
-
-    # Formula tweaked with Joona's 'simul' tool: efficency > 30%, error rate < 2%
-    early_stop_rules = [(4000, -10), (6000, -5), (8000, -3), (10000, -2), (12000, -1)]
-
-    for r in early_stop_rules:
-      if N >= r[0] and N <= r[0] + 1000 and elo <= r[1]:
-        stop = True
-        break
-    else:
-      stop = False
-
-    if stop:
-      print 'Early stop of ', run['_id']
-
     return {'run': run, 'task_id': task_id}
 
   def update_task(self, run_id, task_id, stats):
