@@ -50,3 +50,8 @@ def get_elo(WLD):
   los = phi((mu-0.5) / stdev)
 
   return el, elo95, los
+
+def check_sprt_stop(wins, losses, draws, elo1):
+  """Uses the SPRT test to determine if a test should continue.  Returns a tuple with first
+     element a boolean saying if test is to continue, the second, a string with the state of the test"""
+  return True, 'Indeterminate'

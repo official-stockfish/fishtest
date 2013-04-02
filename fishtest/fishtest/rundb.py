@@ -39,30 +39,36 @@ class RunDb:
               base_signature='',
               new_signature='',
               start_time=None,
+              sprt=None,
               username=None,
               priority=0):
     if start_time == None:
       start_time = datetime.utcnow()
 
+    run_args = {
+      'base_tag': base_tag,
+      'new_tag': new_tag,
+      'num_games': num_games,
+      'tc': tc,
+      'book': book,
+      'book_depth': book_depth,
+      'threads': threads,
+      'resolved_base': resolved_base,
+      'resolved_new': resolved_new,
+      'base_options': base_options,
+      'new_options': new_options,
+      'info': info,
+      'base_signature': base_signature,
+      'new_signature': new_signature,
+      'username': username,
+      'priority': priority,
+    }
+
+    if sprt != None:
+      run_args['sprt'] = sprt
+
     id = self.runs.insert({
-      'args': {
-        'base_tag': base_tag,
-        'new_tag': new_tag,
-        'num_games': num_games,
-        'tc': tc,
-        'book': book,
-        'book_depth': book_depth,
-        'threads': threads,
-        'resolved_base': resolved_base,
-        'resolved_new': resolved_new,
-        'base_options': base_options,
-        'new_options': new_options,
-        'info': info,
-        'base_signature': base_signature,
-        'new_signature': new_signature,
-        'username': username,
-        'priority': priority,
-      },
+      'args': run_args,
       'start_time': start_time,
       # Will be filled in by tasks, indexed by task-id
       'tasks': self.generate_tasks(num_games),
@@ -179,6 +185,16 @@ class RunDb:
     run['last_updated'] = update_time
     run['results_stale'] = True
     self.runs.save(run)
+
+    # Check if SPRT stopping is enabled
+    if 'sprt' in task['args']:
+      results = self.get_results(run)
+      should_stop, state = stat_util.check_sprt_stop(**results, elo1=task['args']['sprt']['elo1'])
+      if should_stop:
+        run['args']['sprt']['state'] = state
+        self.runs.save(run)
+
+        self.stop_run(run_id)
 
     return {'task_alive': task_alive}
 
