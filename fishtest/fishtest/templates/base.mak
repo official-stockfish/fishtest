@@ -24,13 +24,16 @@
     <div class="row-fluid">
       <div class="span1">
         <ul class="nav nav-list">
-          <li><a href="/signup">Sign up</a></li>
+          <li><a href="/">Login</a></li>
           <li class="nav-header">Tests</li>
           <li><a href="/tests">Overview</a></li>
           <li><a href="/tests/run">New</a></li>
           <li class="nav-header">Misc</li>
-          <li><a href="/">Login</a></li>
           <li><a href="/users">Users</a></li>
+          <li class="nav-header">Help</li>
+          <li><a href="https://groups.google.com/forum/?fromgroups=#!forum/fishcooking">Forum</a></li>
+          <li class="nav-header">Admin</li>
+          <li><a href="/signup">Register</a></li>
         </ul>
       </div>
       <div class="span11">
