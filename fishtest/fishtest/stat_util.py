@@ -28,7 +28,6 @@ def elo(x):
   return -400*math.log10(1/x-1)
 
 def get_elo(WLD):
-
   # win/loss/draw ratio
   N = sum(WLD)
   w = float(WLD[0])/N
@@ -52,44 +51,44 @@ def get_elo(WLD):
   return el, elo95, los
 
 def bayeselo_to_proba(elo, drawelo):
-	"""
-	elo is expressed in BayesELO (relative to the choice drawelo).
-	Returns a probability, P['win'], P['loss'], P['draw']
-	"""
-	P = {'win': 0.0, 'loss': 0.0, 'draw': 0.0}
-	P['win'] = 1.0 / (1.0 + pow(10.0, (-elo + drawelo) / 400.0))
-	P['loss'] = 1.0 / (1.0 + pow(10.0, (elo + drawelo) / 400.0))
-	P['draw'] = 1.0 - P['win'] - P['loss']
-	return P
+  """
+  elo is expressed in BayesELO (relative to the choice drawelo).
+  Returns a probability, P['win'], P['loss'], P['draw']
+  """
+  P = {}
+  P['win'] = 1.0 / (1.0 + pow(10.0, (-elo + drawelo) / 400.0))
+  P['loss'] = 1.0 / (1.0 + pow(10.0, (elo + drawelo) / 400.0))
+  P['draw'] = 1.0 - P['win'] - P['loss']
+  return P
 
 def SPRT(R, elo0, alpha, elo1, beta, drawelo):
-	"""
-	Sequential Probability Ratio Test
-	H0: elo = elo0
-	H1: elo = elo1
-	alpha = max typeI error (reached on elo = elo0)
-	beta = max typeII error for elo >= elo1 (reached on elo = elo1)
-	R['wins'], R['losses'], R['draws'] contains the number of wins, losses and draws
+  """
+  Sequential Probability Ratio Test
+  H0: elo = elo0
+  H1: elo = elo1
+  alpha = max typeI error (reached on elo = elo0)
+  beta = max typeII error for elo >= elo1 (reached on elo = elo1)
+  R['wins'], R['losses'], R['draws'] contains the number of wins, losses and draws
 
-	Returns a tuple
-	True, 'H0': stop and accept H0
-	True: 'H1': stop and accept H1
-	False, '': continue sampling
-	"""
-	# Probability laws under H0 and H1
-	P0 = bayeselo_to_proba(elo0, drawelo)
-	P1 = bayeselo_to_proba(elo1, drawelo)
+  Returns a tuple
+  True, 'H0': stop and accept H0
+  True: 'H1': stop and accept H1
+  False, '': continue sampling
+  """
+  # Probability laws under H0 and H1
+  P0 = bayeselo_to_proba(elo0, drawelo)
+  P1 = bayeselo_to_proba(elo1, drawelo)
 
-	# Log-Likelyhood Ratio
-	LLR = R['wins']*math.log(P1['win']/P0['win']) + R['losses']*math.log(P1['loss']/P0['loss']) + R['draws']*math.log(P1['draw']/P0['draw'])
+  # Log-Likelyhood Ratio
+  LLR = R['wins']*math.log(P1['win']/P0['win']) + R['losses']*math.log(P1['loss']/P0['loss']) + R['draws']*math.log(P1['draw']/P0['draw'])
 
-	# See if the LLR has crossed the bounds
-	lower_bound = math.log(beta/(1-alpha))
-	upper_bound = math.log((1-beta)/alpha)
+  # See if the LLR has crossed the bounds
+  lower_bound = math.log(beta/(1-alpha))
+  upper_bound = math.log((1-beta)/alpha)
 
-	if LLR < lower_bound:
-		return True, 'H0'
-	elif upper_bound:
-		return True, 'H1'
-	else:
-		return False, ''
+  if LLR < lower_bound:
+    return True, 'rejected'
+  elif upper_bound:
+    return True, 'accepted'
+  else:
+    return False, ''
