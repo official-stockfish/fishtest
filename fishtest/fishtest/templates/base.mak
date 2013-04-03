@@ -31,6 +31,7 @@
           <li class="nav-header">Misc</li>
           <li><a href="/users">Users</a></li>
           <li class="nav-header">Help</li>
+          <li><a href="https://github.com/glinscott/fishtest">Github</a></li>
           <li><a href="https://groups.google.com/forum/?fromgroups=#!forum/fishcooking">Forum</a></li>
           <li class="nav-header">Admin</li>
           <li><a href="/signup">Register</a></li>
