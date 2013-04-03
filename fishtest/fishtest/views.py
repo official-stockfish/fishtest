@@ -96,7 +96,7 @@ def users(request):
 def get_sha(branch):
   """Resolves the git branch to sha commit"""
   commit = requests.get(FISHCOOKING_URL + '/commits/' + branch).json()
-  return commit['sha']
+  return commit.get('sha', '')
 
 def validate_form(request):
   data = {
@@ -121,6 +121,9 @@ def validate_form(request):
   else:
     data['resolved_base'] = get_sha(data['base_tag'])
     data['resolved_new'] = get_sha(data['new_tag'])
+
+  if len(data['resolved_base']) == 0 or len(data['resolved_new']) == 0:
+    return data, False
 
   stop_rule = request.POST['stop_rule']
 
