@@ -131,7 +131,7 @@ def validate_form(request):
       'alpha': 0.05,
       'elo1': float(request.POST['sprt_elo1']),
       'beta': 0.05,
-      'drawelo': 200.0,
+      'drawelo': 240.0,
     }
     data['num_games'] = 64000
   else:

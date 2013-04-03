@@ -88,7 +88,7 @@ def SPRT(R, elo0, alpha, elo1, beta, drawelo):
 
   if LLR < lower_bound:
     return True, 'rejected'
-  elif upper_bound:
+  elif LLR > upper_bound:
     return True, 'accepted'
   else:
     return False, ''
