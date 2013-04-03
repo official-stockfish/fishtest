@@ -17,26 +17,7 @@ Manual step:
 - Computer, right-click, Properties -> Choose 'Advanced system settings' -> Advanced tab -> Environmental variables
 - Add 'd:\Python27\Scripts\' (or where ever you installed python) to the end of the PATH variable from system variables (with a ';' separator).
 
-2) Install setup tools
-
-Website:
-https://pypi.python.org/pypi/setuptools
-
-Package to download and install:
-setuptools-0.6c11.win32-py2.7.exe
-https://pypi.python.org/packages/2.7/s/setuptools/setuptools-0.6c11.win32-py2.7.exe
-
-Installation step-by-step:
-- It will find Python's location from the registry, so just next, next, finish, done.
-
-3) Install pip (and packages with pip)
-
-Open up a NEW command prompt (also fine without 'as administrator') and run the following steps one after the other:
-- 'easy_install.exe pip' (Pip [package manager] will download and install)
-- 'pip install pymongo' (Pip [just installed] will download and install the package pymongo)
-- 'pip install requests' (Pip will download and install the package requests)
-
-4) Install the compiler (mingw) and msys
+2) Install the compiler (mingw) and msys
 
 Website:
 http://sourceforge.net/projects/mingw
@@ -55,7 +36,7 @@ Manual step:
 
 to the PATH variable (both with a ';' separator).
 
-5) Install GIT
+3) Install GIT
 
 Website:
 http://msysgit.github.com/
@@ -67,26 +48,25 @@ https://code.google.com/p/msysgit/downloads/detail?name=Git-1.8.1.2-preview20130
 Installation step-by-step:
 - Installed it to 'D:\Git' with other options left as per default.
 
-6) Get the sources
+4) Get the sources
 
 Installation step-by-step:
 - Open up a NEW command prompt (also fine without 'as administrator') in e.g. root of D drive.
 - Type 'D:\Git\bin\git.exe clone https://github.com/glinscott/fishtest.git', which will create 'D:\fishtest' and all python sources and other tools for testing.
 
-7) Modify your TEMP folder (if needed)
+5) Modify your TEMP folder (if needed)
 
 In order not to download the sources and build to your C: drive, create a D:\Temp folder and route the temp files there:
 - Go to Computer, right-click, Properties -> Choose 'Advanced system settings' -> Advanced tab -> Environmental variables and modify the current users (!) TEMP and TMP folders to 'd:\Temp'.
 
-8) User/pass
+6) User/pass
 
 Get a username/password pair from Marco/Gary :)
 
-9) Running the worker process
+7) Running the worker process
 
 Open a command prompt in 'd:\fishtest\worker\' and type:
 'd:\Python27\python.exe worker.py --concurrency <cores> <username> <password>'
 [Option concurrency refers to the number of available cores in your system (not including Hyperthreaded cores!), leaving one core for the OS. For example, on my 4 core machine, I use --concurrency 3.]
 
-10) Let it run :)
-
+8) Let it run :)
