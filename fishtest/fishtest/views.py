@@ -250,9 +250,12 @@ def tests_view(request):
   run_args = []
   for name in ['new_tag', 'new_signature', 'new_options', 'resolved_new',
                'base_tag', 'base_signature', 'base_options', 'resolved_base',
-               'num_games', 'tc', 'threads', 'book', 'book_depth',
+               'sprt', 'num_games', 'tc', 'threads', 'book', 'book_depth',
                'priority', 'username', 'info']:
-    run_args.append((name, run['args'].get(name, '-')))
+    value = run['args'].get(name, '-')
+    if name == 'sprt' and value != '-':
+      value = 'elo0: %.2f alpha: %.2f elo1: %.2f beta: %.2f state: %s' % (value['elo0'], value['alpha'], value['elo1'], value['beta'], value.get('state', '-'))
+    run_args.append((name, value))
   run_args.append(('id', run['_id']))
 
   for task in run['tasks']:
