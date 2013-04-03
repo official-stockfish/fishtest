@@ -41,9 +41,24 @@
     </div>
   </div>
   <div class="control-group">
+    <label class="control-label">Stop rule:</label>
+    <div class="controls">
+      <select name="stop_rule">
+        <option value="sprt">SPRT</option>
+        <option value="numgames">NumGames</option>
+      </select>
+    </div>
+  </div>
+  <div class="control-group">
     <label class="control-label">Number of games:</label>
     <div class="controls">
       <input name="num-games" value="${args.get('num_games', 16000)}">
+    </div>
+  </div>
+  <div class="control-group">
+    <label class="control-label">SPRT Elo1:</label>
+    <div class="controls">
+      <input name="sprt_elo1" value="${args.get('sprt', {'elo1': 5.0})['elo1']}">
     </div>
   </div>
   <div class="control-group">

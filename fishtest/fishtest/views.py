@@ -122,12 +122,21 @@ def validate_form(request):
     data['resolved_base'] = get_sha(data['base_tag'])
     data['resolved_new'] = get_sha(data['new_tag'])
 
+  stop_rule = request.POST['stop_rule']
+
   # Integer parameters
-  data['num_games'] = int(request.POST['num-games'])
+  if stop_rule == 'sprt':
+    data['sprt'] = {'elo1': float(request.POST['sprt_elo1'])}
+    data['num_games'] = 64000
+  else:
+    data['num_games'] = int(request.POST['num-games'])
+    if data['num_games'] <= 0:
+      return data, False
+
   data['threads'] = int(request.POST['threads'])
   data['priority'] = int(request.POST['priority'])
 
-  if data['num_games'] == 0 or data['threads'] == 0:
+  if data['threads'] <= 0:
     return data, False
 
   # Optional
@@ -285,7 +294,10 @@ def tests(request):
 
   def remaining_hours(run):
     r = run['results']
-    remaining_games = run['args']['num_games'] - r['wins'] - r['losses'] - r['draws']
+    expected_games = run['args']['num_games']
+    if 'sprt' in run['args']:
+      expected_games = 16000
+    remaining_games = max(0, expected_games - r['wins'] - r['losses'] - r['draws'])
     chunks = run['args']['tc'].split('+')
     game_secs = (float(chunks[0]) + 40 * float(chunks[1])) * 2
     return game_secs * remaining_games * int(run['args'].get('threads', 1)) / (60*60)
