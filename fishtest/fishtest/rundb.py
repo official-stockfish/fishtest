@@ -120,6 +120,9 @@ class RunDb:
         results['draws'] += stats['draws']
         results['crashes'] += stats['crashes']
 
+    if 'sprt' in run['args'] and 'state' in run['args']['sprt']:
+      results['sprt'] = run['args']['sprt']['state']
+
     run['results_stale'] = False
     run['results'] = results
     self.runs.save(run)

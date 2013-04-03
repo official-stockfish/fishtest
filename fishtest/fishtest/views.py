@@ -238,11 +238,18 @@ def format_results(results):
   result['info'].append(eloInfo + ' ' + losInfo)
   result['info'].append('Total: %d W: %d L: %d D: %d' % (sum(WLD), WLD[0], WLD[1], WLD[2]))
 
-  if los < 0.05:
-    result['style'] = '#FF6A6A'
+  state = 'unknown' 
+  if 'sprt' in results:
+    state = results['sprt']
+  elif los < 0.05:
+    state = 'rejected' 
   elif los > 0.95:
-    result['style'] = '#44EB44'
+    state = 'accepted' 
 
+  if state == 'rejected':
+    result['style'] = '#FF6A6A'
+  elif state == 'accepted':
+    result['style'] = '#44EB44'
   return result
 
 @view_config(route_name='tests_view', renderer='tests_view.mak')
