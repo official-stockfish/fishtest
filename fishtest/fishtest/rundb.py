@@ -189,7 +189,7 @@ class RunDb:
     # Check if SPRT stopping is enabled
     if 'sprt' in task['args']:
       results = self.get_results(run)
-      should_stop, state = stat_util.check_sprt_stop(**results, elo1=task['args']['sprt']['elo1'])
+      should_stop, state = stat_util.check_sprt_stop(elo1=task['args']['sprt']['elo1'], **results)
       if should_stop:
         run['args']['sprt']['state'] = state
         self.runs.save(run)
@@ -218,6 +218,7 @@ class RunDb:
       if 'stats' not in task and not task['active']:
         # Truncate the empty tasks
         del run['tasks'][idx:]
+        break
     self.runs.save(run)
 
     return {}
