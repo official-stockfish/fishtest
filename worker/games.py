@@ -180,6 +180,16 @@ def run_games(worker_info, password, remote, run, task_id):
 
   if len(run['args']['new_signature']) > 0:
     verify_signature(new_engine, run['args']['new_signature'], remote, result)
+    
+  # Benchmarck to adjust cpu scaling
+  print 'Benchmarking...'
+  p = subprocess.Popen(["./base", "bench", "32", "1"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+  out, err = p.communicate()
+  nps = float(err.split(':')[-1])
+  factor = 1500000.0/nps  
+  base_tc=run['args']['tc'].split('+')[0]
+  scaled_tc= ('tc=%s' % (run['args']['tc'])).replace(base_tc+'+',str(float(base_tc)*factor)+'+')
+  print "CPU factor :"+str(factor)+ ' - tc adjusted to ' + scaled_tc
 
   # Run cutechess-cli binary
   cmd = [ cutechess, '-repeat', '-recover', '-rounds', str(games_remaining), '-tournament',
@@ -187,7 +197,7 @@ def run_games(worker_info, password, remote, run, task_id):
          '-draw', 'movenumber=34', 'movecount=2', 'score=20', '-concurrency',
          str(games_concurrency), '-engine', 'name=stockfish', 'cmd=stockfish'] + new_options + [
          '-engine', 'name=base', 'cmd=base'] + base_options + ['-each', 'proto=uci',
-         'option.Threads=%d' % (threads), 'tc=%s' % (run['args']['tc']),
+         'option.Threads=%d' % (threads), scaled_tc,
          'book=%s' % (book), 'bookdepth=%s' % (book_depth) ]
 
   print 'Running %s vs %s' % (run['args']['new_tag'], run['args']['base_tag'])
