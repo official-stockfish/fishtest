@@ -136,7 +136,8 @@ def validate_form(request):
       'beta': 0.05,
       'drawelo': 240.0,
     }
-    data['num_games'] = 64000
+    # Arbitrary limit on number of games played.  Shouldn't be hit in practice
+    data['num_games'] = 128000
   else:
     data['num_games'] = int(request.POST['num-games'])
     if data['num_games'] <= 0:
