@@ -136,7 +136,10 @@ def run_games(worker_info, password, remote, run, task_id):
 
   new_engine = os.path.join(testing_dir, 'stockfish' + EXE_SUFFIX)
   base_engine = os.path.join(testing_dir, 'base' + EXE_SUFFIX)
-  cutechess = os.path.join(testing_dir, 'cutechess-cli' + EXE_SUFFIX)
+  if os.path.exists('/usr/bin/cutechess-cli'):
+    cutechess = '/usr/bin/cutechess-cli'
+  else:
+    cutechess = os.path.join(testing_dir, 'cutechess-cli' + EXE_SUFFIX)
 
   # We have already run another task from the same run ?
   run_id_file = os.path.join(testing_dir, 'run_id.txt')
