@@ -73,34 +73,35 @@ def main():
   signal.signal(signal.SIGINT, on_sigint)
   signal.signal(signal.SIGTERM, on_sigint)
 
-  #config file setup
+  # Config file setup
   config_file = 'fishtest.cfg'
   config = SafeConfigParser()
   config.read(config_file)
 
   parser = OptionParser()
-  parser.add_option('-n', '--host', dest='host', default=config.get('parameters','host'))
-  parser.add_option('-p', '--port', dest='port', default=config.get('parameters','port'))
-  parser.add_option('-c', '--concurrency', dest='concurrency', default=config.get('parameters','concurrency'))
+  parser.add_option('-n', '--host', dest='host', default=config.get('parameters', 'host'))
+  parser.add_option('-p', '--port', dest='port', default=config.get('parameters', 'port'))
+  parser.add_option('-c', '--concurrency', dest='concurrency', default=config.get('parameters', 'concurrency'))
   (options, args) = parser.parse_args()
       
   if len(args) != 2:
-    #try to read parameters from the the config file
-    username = config.get('login','username')
-    password = config.get('login','password')
-    if username!='' and password!='':
+    # Try to read parameters from the the config file
+    username = config.get('login', 'username')
+    password = config.get('login', 'password', raw=True)
+    if len(username) != 0 and len(password) != 0:
       args.extend([ username, password ])
     else:
       sys.stderr.write('%s [username] [password]\n' % (sys.argv[0]))
       sys.exit(1)
       
-  #write command line parameters to the config file
+  # Write command line parameters to the config file
   config.set('login', 'username', args[0])
   config.set('login', 'password', args[1])
   config.set('parameters', 'host', options.host)
   config.set('parameters', 'port', options.port)
   config.set('parameters', 'concurrency', options.concurrency)
-  config.write(open(config_file, 'w')) 
+  with open(config_file, 'w') as f:
+    config.write(f)
 
   remote = 'http://%s:%s' % (options.host, options.port)
   print 'Worker version %d connecting to %s' % (WORKER_VERSION, remote)
