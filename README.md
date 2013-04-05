@@ -16,7 +16,10 @@ In case something is not clear please read windows-step-by-step-installation.txt
 
 #### Setup fishtest
 
-You can download fishtest as a zipball directly from https://github.com/glinscott/fishtest
+You can download fishtest directly from Github:
+
+https://github.com/glinscott/fishtest/archive/master.zip
+
 or, in case you have a git installation, you can clone it.
 
 ```
@@ -36,6 +39,10 @@ your system, see below), providing username and password you've been given.
 ```
 python worker.py --concurrency 3 username password
 ```
+or, after the first access, a simple
+```
+python worker.py
+```
 
 Option *concurrency* refers to the number of available cores in your system (not
 including Hyperthreaded cores!), leaving one core for the OS.  For example,
@@ -44,7 +51,7 @@ on my 4 core machine, I use `--concurrency 3`.
 On Linux, you can use the `nohup` command to run the worker as a background task.
 
 ```
-nohup python worker.py --concurrency 3 username password &
+nohup python worker.py &
 ```
 
 #### Override default make command
