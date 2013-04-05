@@ -7,6 +7,7 @@ import sys
 import requests
 import time
 import traceback
+from ConfigParser import SafeConfigParser
 from optparse import OptionParser
 from games import run_games
 from updater import update
@@ -72,15 +73,34 @@ def main():
   signal.signal(signal.SIGINT, on_sigint)
   signal.signal(signal.SIGTERM, on_sigint)
 
-  parser = OptionParser()
-  parser.add_option('-n', '--host', dest='host', default='54.235.120.254')
-  parser.add_option('-p', '--port', dest='port', default='6543')
-  parser.add_option('-c', '--concurrency', dest='concurrency', default='1')
-  (options, args) = parser.parse_args()
+  #config file setup
+  config_file = 'fishtest.cfg'
+  config = SafeConfigParser()
+  config.read(config_file)
 
+  parser = OptionParser()
+  parser.add_option('-n', '--host', dest='host', default=config.get('parameters','host'))
+  parser.add_option('-p', '--port', dest='port', default=config.get('parameters','port'))
+  parser.add_option('-c', '--concurrency', dest='concurrency', default=config.get('parameters','concurrency'))
+  (options, args) = parser.parse_args()
+      
   if len(args) != 2:
-    sys.stderr.write('%s [username] [password]\n' % (sys.argv[0]))
-    sys.exit(1)
+    #try to read parameters from the the config file
+    username = config.get('login','username')
+    password = config.get('login','password')
+    if username!='' and password!='':
+      args.extend([ username, password ])
+    else:
+      sys.stderr.write('%s [username] [password]\n' % (sys.argv[0]))
+      sys.exit(1)
+      
+  #write command line parameters to the config file
+  config.set('login', 'username', args[0])
+  config.set('login', 'password', args[1])
+  config.set('parameters', 'host', options.host)
+  config.set('parameters', 'port', options.port)
+  config.set('parameters', 'concurrency', options.concurrency)
+  config.write(open(config_file, 'w')) 
 
   remote = 'http://%s:%s' % (options.host, options.port)
   print 'Worker version %d connecting to %s' % (WORKER_VERSION, remote)
