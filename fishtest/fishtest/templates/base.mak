@@ -64,9 +64,9 @@
 <%def name="repo()">https://github.com/mcostalba/FishCooking</%def>
 
 <%def name="format_sha(sha)">
-  <a href="${repo()}/commit/${sha}">${sha[:7]}</a>
+  <a href="${repo()}/commit/${sha}" target="_blank">${sha[:7]}</a>
 </%def>
 
 <%def name="diff_url(run, title='diff')">
-  <a href="${repo()}/compare/${run['args']['resolved_base'][:7]}...${run['args']['resolved_new'][:7]}">${title}</a>
+  <a href="${repo()}/compare/${run['args']['resolved_base'][:7]}...${run['args']['resolved_new'][:7]}" target="_blank">${title}</a>
 </%def>
