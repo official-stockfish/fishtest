@@ -47,6 +47,10 @@
         <option value="sprt">SPRT</option>
         <option value="numgames">NumGames</option>
       </select>
+      <div class="btn-group">
+        <div class="btn" id="fast_test">Fast</div>
+        <div class="btn" id="slow_test">Slow</div>
+      </div>
     </div>
   </div>
   <div class="control-group">
@@ -128,5 +132,15 @@ $(function() {
 
   update_sprt();
   $('select[name=stop_rule]').change(update_sprt);
+
+  $('#fast_test').click(function() {
+    $('input[name=sprt_elo0]').val('-1.5');
+    $('input[name=sprt_elo1]').val('4.5');
+  });
+
+  $('#slow_test').click(function() {
+    $('input[name=sprt_elo0]').val('0.0');
+    $('input[name=sprt_elo1]').val('6.0');
+  });
 });
 </script>
