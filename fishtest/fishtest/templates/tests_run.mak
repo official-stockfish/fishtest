@@ -58,13 +58,13 @@
   <div class="control-group">
     <label class="control-label">SPRT Elo0:</label>
     <div class="controls">
-      <input name="sprt_elo0" value="${args.get('sprt', {'elo0': 0.0})['elo0']}">
+      <input name="sprt_elo0" value="${args.get('sprt', {'elo0': -1.5})['elo0']}">
     </div>
   </div>
   <div class="control-group">
     <label class="control-label">SPRT Elo1:</label>
     <div class="controls">
-      <input name="sprt_elo1" value="${args.get('sprt', {'elo1': 6.0})['elo1']}">
+      <input name="sprt_elo1" value="${args.get('sprt', {'elo1': 4.5})['elo1']}">
     </div>
   </div>
   <div class="control-group">
@@ -115,3 +115,18 @@
     </div>
   </div>
 </form>
+
+<script type="text/javascript">
+$(function() {
+  var update_sprt = function() {
+    var enabled = $('select[name=stop_rule]').val() == 'sprt';
+
+    $('input[name=num-games]').prop('disabled', enabled);
+    $('input[name=sprt_elo0]').prop('disabled', !enabled);
+    $('input[name=sprt_elo1]').prop('disabled', !enabled);
+  };
+
+  update_sprt();
+  $('select[name=stop_rule]').change(update_sprt);
+});
+</script>
