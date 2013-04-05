@@ -130,7 +130,7 @@ def validate_form(request):
   # Integer parameters
   if stop_rule == 'sprt':
     data['sprt'] = {
-      'elo0': 0.0,
+      'elo0': float(request.POST['sprt_elo0']),
       'alpha': 0.05,
       'elo1': float(request.POST['sprt_elo1']),
       'beta': 0.05,

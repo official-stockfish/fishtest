@@ -56,9 +56,15 @@
     </div>
   </div>
   <div class="control-group">
+    <label class="control-label">SPRT Elo0:</label>
+    <div class="controls">
+      <input name="sprt_elo0" value="${args.get('sprt', {'elo0': 0.0})['elo0']}">
+    </div>
+  </div>
+  <div class="control-group">
     <label class="control-label">SPRT Elo1:</label>
     <div class="controls">
-      <input name="sprt_elo1" value="${args.get('sprt', {'elo1': 5.0})['elo1']}">
+      <input name="sprt_elo1" value="${args.get('sprt', {'elo1': 6.0})['elo1']}">
     </div>
   </div>
   <div class="control-group">
