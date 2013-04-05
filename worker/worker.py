@@ -15,6 +15,26 @@ from updater import update
 WORKER_VERSION = 13
 ALIVE = True
 
+def setup_config_file(config_file):
+  ''' Config file setup, adds defaults if not exsisting '''
+  config = SafeConfigParser()
+  config.read(config_file)
+
+  defaults = [('login', 'username', ''), ('login', 'password', ''),
+              ('parameters', 'host', '54.235.120.254'),
+              ('parameters', 'port', '6543'),
+              ('parameters', 'concurrency', '3')]
+
+  for v in defaults:
+    if not config.has_section(v[0]):
+      config.add_section(v[0])
+    if not config.has_option(v[0], v[1]):
+      config.set(*v)
+      with open(config_file, 'w') as f:
+        config.write(f)
+
+  return config
+
 def on_sigint(signal, frame):
   global ALIVE
   ALIVE = False
@@ -73,17 +93,14 @@ def main():
   signal.signal(signal.SIGINT, on_sigint)
   signal.signal(signal.SIGTERM, on_sigint)
 
-  # Config file setup
   config_file = 'fishtest.cfg'
-  config = SafeConfigParser()
-  config.read(config_file)
-
+  config = setup_config_file(config_file)
   parser = OptionParser()
   parser.add_option('-n', '--host', dest='host', default=config.get('parameters', 'host'))
   parser.add_option('-p', '--port', dest='port', default=config.get('parameters', 'port'))
   parser.add_option('-c', '--concurrency', dest='concurrency', default=config.get('parameters', 'concurrency'))
   (options, args) = parser.parse_args()
-      
+
   if len(args) != 2:
     # Try to read parameters from the the config file
     username = config.get('login', 'username')
@@ -93,7 +110,7 @@ def main():
     else:
       sys.stderr.write('%s [username] [password]\n' % (sys.argv[0]))
       sys.exit(1)
-      
+
   # Write command line parameters to the config file
   config.set('login', 'username', args[0])
   config.set('login', 'password', args[1])
