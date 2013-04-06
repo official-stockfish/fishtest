@@ -25,11 +25,7 @@ if IS_WINDOWS:
   EXE_SUFFIX = '.exe'
   MAKE_CMD = 'mingw32-make build COMP=mingw ' + ARCH
 
-def verify_signature(engine, signature, remote, payload, concurrency):
-  busy_process = subprocess.Popen([engine], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-  busy_process.stdin.write('setoption name Threads value %d\n' % (concurrency-1))
-  busy_process.stdin.write('go infinite\n')
-
+def verify_signature(engine, signature, remote, payload):
   bench_sig = ''
   print 'Verifying signature of %s ...' % (os.path.basename(engine))
   with open(os.devnull, 'wb') as f:
@@ -48,9 +44,6 @@ def verify_signature(engine, signature, remote, payload, concurrency):
     requests.post(remote + '/api/stop_run', data=json.dumps(payload))
     raise Exception('Wrong bench in %s Expected: %s Got: %s' % (engine, signature, bench_sig))
 
-  busy_process.stdin.write('quit\n')
-  busy_process.wait()
-  
   return bench_nps
 
 def setup(item, testing_dir):
@@ -218,10 +211,10 @@ def run_games(worker_info, password, remote, run, task_id):
 
   # Verify signatures are correct
   if len(run['args']['base_signature']) > 0:
-    base_nps = verify_signature(base_engine, run['args']['base_signature'], remote, result, games_concurrency)
+    base_nps = verify_signature(base_engine, run['args']['base_signature'], remote, result)
 
   if len(run['args']['new_signature']) > 0:
-    verify_signature(new_engine, run['args']['new_signature'], remote, result, games_concurrency)
+    verify_signature(new_engine, run['args']['new_signature'], remote, result)
 
   # Benchmark to adjust cpu scaling
   scaled_tc = adjust_tc(run['args']['tc'], base_nps)
