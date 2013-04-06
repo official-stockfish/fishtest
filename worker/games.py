@@ -14,6 +14,8 @@ import platform
 import zipfile
 from base64 import b64decode
 from zipfile import ZipFile
+from multiprocessing import Process
+from signal import SIGKILL
 
 FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
 ARCH = 'ARCH=x86-64-modern' if '64' in platform.architecture()[0] else 'ARCH=x86-32'
@@ -25,7 +27,13 @@ if IS_WINDOWS:
   EXE_SUFFIX = '.exe'
   MAKE_CMD = 'mingw32-make build COMP=mingw ' + ARCH
 
-def verify_signature(engine, signature, remote, payload):
+def verify_signature(engine, signature, remote, payload, concurrency):
+  dummyProcess=[]
+  for i in range(1, concurrency): #Keep other cpu cores busy while benchmarking
+    p=Process(target=busy)
+    dummyProcess.append(p)
+    p.start()
+
   bench_sig = ''
   print 'Verifying signature of %s ...' % (os.path.basename(engine))
   with open(os.devnull, 'wb') as f:
@@ -44,7 +52,17 @@ def verify_signature(engine, signature, remote, payload):
     requests.post(remote + '/api/stop_run', data=json.dumps(payload))
     raise Exception('Wrong bench in %s Expected: %s Got: %s' % (engine, signature, bench_sig))
 
+  for process in dummyProcess: # Free the busy CPU cores
+    os.kill(process.pid,SIGKILL)
+    process.join()
+
   return bench_nps
+
+def busy():
+  """Dummy function to keep a CPU core busy"""
+  x=0
+  while(True):
+    x+=1
 
 def setup(item, testing_dir):
   """Download item from FishCooking to testing_dir"""
@@ -180,10 +198,10 @@ def run_games(worker_info, password, remote, run, task_id):
 
   # Verify signatures are correct
   if len(run['args']['base_signature']) > 0:
-    base_nps=verify_signature(base_engine, run['args']['base_signature'], remote, result)
+    base_nps=verify_signature(base_engine, run['args']['base_signature'], remote, result, games_concurrency)
 
   if len(run['args']['new_signature']) > 0:
-    verify_signature(new_engine, run['args']['new_signature'], remote, result)
+    verify_signature(new_engine, run['args']['new_signature'], remote, result, games_concurrency)
 
   # Benchmarck to adjust cpu scaling
   factor = 1500000.0/base_nps # Set target NPS to 1500000
