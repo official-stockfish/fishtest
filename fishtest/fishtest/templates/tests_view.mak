@@ -57,8 +57,6 @@
  <thead>
   <tr>
    <th>Idx</th>
-   <th>Started</td>
-   <th>Pending</th>
    <th>Worker</th>
    <th>Last Updated</th>
    <th>Games</th>
@@ -73,6 +71,9 @@
   %for idx, task in enumerate(run['tasks']):
   <tr>
    <%
+     if not task['active'] and task['pending']:
+       continue
+
      stats = task.get('stats', {})
      if 'stats' in task:
        total = stats['wins'] + stats['losses'] + stats['draws']
@@ -90,8 +91,6 @@
        active_style = ''
    %>
    <td>${idx}</td>
-   <td>${task['active']}</td>
-   <td>${task['pending']}</td>
    <td><span style=${active_style}>${machine_info}</span></td>
    <td>${str(task.get('last_updated', '-')).split('.')[0]}</td>
    <td>${task['num_games']}</td>
