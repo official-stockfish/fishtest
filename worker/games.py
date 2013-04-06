@@ -14,8 +14,6 @@ import platform
 import zipfile
 from base64 import b64decode
 from zipfile import ZipFile
-from multiprocessing import Process
-from signal import SIGKILL
 
 FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
 ARCH = 'ARCH=x86-64-modern' if '64' in platform.architecture()[0] else 'ARCH=x86-32'
@@ -28,12 +26,8 @@ if IS_WINDOWS:
   MAKE_CMD = 'mingw32-make build COMP=mingw ' + ARCH
 
 def verify_signature(engine, signature, remote, payload, concurrency):
-  dummyProcess=[]
-  for i in range(1, concurrency): #Keep other cpu cores busy while benchmarking
-    p=Process(target=busy)
-    dummyProcess.append(p)
-    p.start()
-
+  busy_process=subprocess.Popen([engine],stdin=subprocess.PIPE,stdout=subprocess.PIPE)
+  busy_process.stdin.write("setoption name Threads value "+str(concurrency-1)+"\ngo infinite\n")
   bench_sig = ''
   print 'Verifying signature of %s ...' % (os.path.basename(engine))
   with open(os.devnull, 'wb') as f:
@@ -52,17 +46,9 @@ def verify_signature(engine, signature, remote, payload, concurrency):
     requests.post(remote + '/api/stop_run', data=json.dumps(payload))
     raise Exception('Wrong bench in %s Expected: %s Got: %s' % (engine, signature, bench_sig))
 
-  for process in dummyProcess: # Free the busy CPU cores
-    os.kill(process.pid,SIGKILL)
-    process.join()
-
+  busy_process.stdin.write("quit\n")
+  
   return bench_nps
-
-def busy():
-  """Dummy function to keep a CPU core busy"""
-  x=0
-  while(True):
-    x+=1
 
 def setup(item, testing_dir):
   """Download item from FishCooking to testing_dir"""
