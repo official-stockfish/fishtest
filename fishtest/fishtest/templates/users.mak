@@ -1,6 +1,5 @@
 <%inherit file="base.mak"/>
 
-<h3>Users</h3>
 <table class="table table-striped table-condensed">
  <thead>
   <tr>
