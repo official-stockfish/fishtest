@@ -182,7 +182,7 @@ def run_games(worker_info, password, remote, run, task_id):
     verify_signature(new_engine, run['args']['new_signature'], remote, result)
 
   # Run cutechess-cli binary
-  cmd = [ cutechess, '-repeat', '-recover', '-rounds', str(games_remaining), '-tournament',
+  cmd = [ cutechess, '-repeat', '-rounds', str(games_remaining), '-tournament',
          'gauntlet', '-pgnout', 'results.pgn', '-resign', 'movecount=3', 'score=400',
          '-draw', 'movenumber=34', 'movecount=2', 'score=20', '-concurrency',
          str(games_concurrency), '-engine', 'name=stockfish', 'cmd=stockfish'] + new_options + [
