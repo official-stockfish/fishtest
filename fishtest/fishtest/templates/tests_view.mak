@@ -69,32 +69,32 @@
  </thead>
  <tbody>
   %for idx, task in enumerate(run['tasks']):
-  <tr>
-   <%
-     if not task['active'] and task['pending']:
-       continue
+  <%
+    if not task['active'] and task['pending']:
+      continue
 
-     stats = task.get('stats', {})
-     if 'stats' in task:
-       total = stats['wins'] + stats['losses'] + stats['draws']
-     else:
-       total = '0'
+    stats = task.get('stats', {})
+    if 'stats' in task:
+      total = stats['wins'] + stats['losses'] + stats['draws']
+    else:
+      total = '0'
 
-     if 'worker_info' in task:
-       machine_info = task['worker_info'].get('username', '') + '-' + str(task['worker_info']['concurrency']) + 'cores'
-     else:
-       machine_info = '-'
+    if 'worker_info' in task:
+      machine_info = task['worker_info'].get('username', '') + '-' + str(task['worker_info']['concurrency']) + 'cores'
+    else:
+      machine_info = '-'
 
-     if task['active'] and task['pending']:
-       active_style = 'font-weight:bold'
-     else:
-       active_style = ''
-   %>
+    if task['active'] and task['pending']:
+      active_style = 'info'
+    else:
+      active_style = ''
+  %>
+  <tr class="${active_style}">
    <td>${idx}</td>
-   <td><span style=${active_style}>${machine_info}</span></td>
+   <td>${machine_info}</td>
    <td>${str(task.get('last_updated', '-')).split('.')[0]}</td>
    <td>${task['num_games']}</td>
-   <td><span style=${active_style}>${total}</span></td>
+   <td>${total}</td>
    <td>${stats.get('wins', '-')}</td>
    <td>${stats.get('losses', '-')}</td>
    <td>${stats.get('draws', '-')}</td>
