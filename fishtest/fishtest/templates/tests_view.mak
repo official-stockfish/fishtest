@@ -83,14 +83,19 @@
        machine_info = task['worker_info'].get('username', '') + '-' + str(task['worker_info']['concurrency']) + 'cores'
      else:
        machine_info = '-'
+
+     if task['active'] and task['pending']:
+       active_style = 'font-weight:bold'
+     else:
+       active_style = ''
    %>
    <td>${idx}</td>
    <td>${task['active']}</td>
    <td>${task['pending']}</td>
-   <td>${machine_info}</td>
+   <td><span style=${active_style}>${machine_info}</span></td>
    <td>${str(task.get('last_updated', '-')).split('.')[0]}</td>
    <td>${task['num_games']}</td>
-   <td>${total}</td>
+   <td><span style=${active_style}>${total}</span></td>
    <td>${stats.get('wins', '-')}</td>
    <td>${stats.get('losses', '-')}</td>
    <td>${stats.get('draws', '-')}</td>
