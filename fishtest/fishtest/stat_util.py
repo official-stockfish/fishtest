@@ -71,7 +71,7 @@ def proba_to_bayeselo(P):
   drawelo = 200 * math.log10((1-P['loss'])/P['loss'] * (1-P['win'])/P['win'])
   return elo, drawelo
 
-def SPRT(R, elo0, alpha, elo1, beta):
+def SPRT(R, elo0, alpha, elo1, beta, drawelo):
   """
   Sequential Probability Ratio Test
   H0: elo = elo0
@@ -91,8 +91,6 @@ def SPRT(R, elo0, alpha, elo1, beta):
     N = R['wins'] + R['losses'] + R['draws']
     P = {'win': float(R['wins'])/N, 'loss': float(R['losses'])/N, 'draw': float(R['draws'])/N}
     elo, drawelo = proba_to_bayeselo(P)
-  else:
-    drawelo = 240.0
 
   # Probability laws under H0 and H1
   P0 = bayeselo_to_proba(elo0, drawelo)
