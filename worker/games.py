@@ -26,8 +26,10 @@ if IS_WINDOWS:
   MAKE_CMD = 'mingw32-make build COMP=mingw ' + ARCH
 
 def verify_signature(engine, signature, remote, payload, concurrency):
-  busy_process=subprocess.Popen([engine],stdin=subprocess.PIPE,stdout=subprocess.PIPE)
-  busy_process.stdin.write("setoption name Threads value "+str(concurrency-1)+"\ngo infinite\n")
+  busy_process = subprocess.Popen([engine], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+  busy_process.stdin.write('setoption name Threads value %d\n' % (concurrency-1))
+  busy_process.stdin.write('go infinite\n')
+
   bench_sig = ''
   print 'Verifying signature of %s ...' % (os.path.basename(engine))
   with open(os.devnull, 'wb') as f:
@@ -46,7 +48,8 @@ def verify_signature(engine, signature, remote, payload, concurrency):
     requests.post(remote + '/api/stop_run', data=json.dumps(payload))
     raise Exception('Wrong bench in %s Expected: %s Got: %s' % (engine, signature, bench_sig))
 
-  busy_process.stdin.write("quit\n")
+  busy_process.stdin.write('quit\n')
+  busy_process.wait()
   
   return bench_nps
 
@@ -105,6 +108,37 @@ def kill_process(p):
     subprocess.call(['taskkill', '/F', '/T', '/PID', str(p.pid)])
   else:
     p.kill()
+
+def adjust_tc(tc, base_nps):
+  factor = 1500000.0 / base_nps # Set target NPS to 1500000
+
+  # Parse the time control in cutechess format
+  chunks = tc.split('+')
+  increment = 0.0
+  if len(chunks) == 2:
+    increment = float(chunks[1])
+
+  chunks = chunks[0].split('/')
+  num_moves = 0
+  if len(chunks) == 2:
+    num_moves = int(chunks[0])
+
+  time_tc = chunks[-1]
+  chunks = time_tc.split(':')
+  if len(chunks) == 2:
+    time_tc = float(chunks[0]) * 60 + float(chunks[1])
+  else:
+    time_tc = float(chunks[0])
+
+  # Rebuild scaled_tc now
+  scaled_tc = '%.2f' % (time_tc * factor)
+  if increment > 0.0:
+    scaled_tc += '+%.2f' % (increment)
+  if num_moves > 0:
+    scaled_tc = '%d/%s' % (num_moves, scaled_tc)
+
+  print 'CPU factor : %f - tc adjusted to %s' % (factor, scaled_tc)
+  return scaled_tc
 
 def run_games(worker_info, password, remote, run, task_id):
   task = run['tasks'][task_id]
@@ -184,16 +218,13 @@ def run_games(worker_info, password, remote, run, task_id):
 
   # Verify signatures are correct
   if len(run['args']['base_signature']) > 0:
-    base_nps=verify_signature(base_engine, run['args']['base_signature'], remote, result, games_concurrency)
+    base_nps = verify_signature(base_engine, run['args']['base_signature'], remote, result, games_concurrency)
 
   if len(run['args']['new_signature']) > 0:
     verify_signature(new_engine, run['args']['new_signature'], remote, result, games_concurrency)
 
-  # Benchmarck to adjust cpu scaling
-  factor = 1500000.0/base_nps # Set target NPS to 1500000
-  base_tc=run['args']['tc'].split('+')[0]
-  scaled_tc= ('tc=%s' % (run['args']['tc'])).replace(base_tc+'+',str(float(base_tc)*factor)+'+')
-  print "CPU factor :"+str(factor)+ ' - tc adjusted to ' + scaled_tc
+  # Benchmark to adjust cpu scaling
+  scaled_tc = adjust_tc(run['args']['tc'], base_nps)
 
   # Run cutechess-cli binary
   cmd = [ cutechess, '-repeat', '-recover', '-rounds', str(games_remaining), '-tournament',
@@ -201,7 +232,7 @@ def run_games(worker_info, password, remote, run, task_id):
          '-draw', 'movenumber=34', 'movecount=2', 'score=20', '-concurrency',
          str(games_concurrency), '-engine', 'name=stockfish', 'cmd=stockfish'] + new_options + [
          '-engine', 'name=base', 'cmd=base'] + base_options + ['-each', 'proto=uci',
-         'option.Threads=%d' % (threads), scaled_tc,
+         'option.Threads=%d' % (threads), 'tc=%s' % (scaled_tc),
          'book=%s' % (book), 'bookdepth=%s' % (book_depth) ]
 
   print 'Running %s vs %s' % (run['args']['new_tag'], run['args']['base_tag'])
