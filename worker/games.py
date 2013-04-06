@@ -103,7 +103,7 @@ def kill_process(p):
     p.kill()
 
 def adjust_tc(tc, base_nps):
-  factor = 1500000.0 / base_nps # Set target NPS to 1500000
+  factor = 1200000.0 / base_nps
 
   # Parse the time control in cutechess format
   chunks = tc.split('+')
@@ -210,14 +210,12 @@ def run_games(worker_info, password, remote, run, task_id):
     os.remove('results.pgn')
 
   # Verify signatures are correct
-  if len(run['args']['base_signature']) > 0:
-    base_nps = verify_signature(base_engine, run['args']['base_signature'], remote, result)
-
-  if len(run['args']['new_signature']) > 0:
-    verify_signature(new_engine, run['args']['new_signature'], remote, result)
+  base_nps = verify_signature(base_engine, run['args']['base_signature'], remote, result)
+  verify_signature(new_engine, run['args']['new_signature'], remote, result)
 
   # Benchmark to adjust cpu scaling
   scaled_tc = adjust_tc(run['args']['tc'], base_nps)
+  result['nps'] = base_nps
 
   # Run cutechess-cli binary
   cmd = [ cutechess, '-repeat', '-rounds', str(games_remaining), '-tournament',
