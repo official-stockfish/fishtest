@@ -85,7 +85,6 @@ def SPRT(R, elo0, alpha, elo1, beta):
   True: 'H1': stop and accept H1
   False, '': continue sampling
   """
-  print R
 
   # Estimate drawelo out of sample
   if (R['wins'] > 0 and R['losses'] > 0):
@@ -94,8 +93,6 @@ def SPRT(R, elo0, alpha, elo1, beta):
     elo, drawelo = proba_to_bayeselo(P)
   else:
     drawelo = 240.0
-
-  print 'drawelo = %r' % drawelo
 
   # Probability laws under H0 and H1
   P0 = bayeselo_to_proba(elo0, drawelo)
@@ -107,8 +104,6 @@ def SPRT(R, elo0, alpha, elo1, beta):
   # See if the LLR has crossed the bounds
   lower_bound = math.log(beta/(1-alpha))
   upper_bound = math.log((1-beta)/alpha)
-
-  print 'LLR = %r, lbound = %r, ubound = %r' % (LLR, lower_bound, upper_bound)
 
   if LLR < lower_bound:
     return True, 'rejected'
