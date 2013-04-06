@@ -239,13 +239,13 @@ def format_results(results):
   result['info'].append(eloInfo + ' ' + losInfo)
   result['info'].append('Total: %d W: %d L: %d D: %d' % (sum(WLD), WLD[0], WLD[1], WLD[2]))
 
-  state = 'unknown' 
+  state = 'unknown'
   if 'sprt' in results:
     state = results['sprt']
   elif los < 0.05:
-    state = 'rejected' 
+    state = 'rejected'
   elif los > 0.95:
-    state = 'accepted' 
+    state = 'accepted'
 
   if state == 'rejected':
     result['style'] = '#FF6A6A'
