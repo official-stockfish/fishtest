@@ -33,6 +33,8 @@ def verify_signature(engine, signature, remote, payload):
   for line in iter(p.stderr.readline,''):
     if 'Nodes searched' in line:
       bench_sig = line.split(': ')[1].strip()
+    if 'Nodes/second' in line:
+      bench_nps = float(line.split(': ')[1].strip())
 
   p.wait()
   if p.returncode != 0:
@@ -41,6 +43,8 @@ def verify_signature(engine, signature, remote, payload):
   if int(bench_sig) != int(signature):
     requests.post(remote + '/api/stop_run', data=json.dumps(payload))
     raise Exception('Wrong bench in %s Expected: %s Got: %s' % (engine, signature, bench_sig))
+
+  return bench_nps
 
 def setup(item, testing_dir):
   """Download item from FishCooking to testing_dir"""
@@ -176,10 +180,16 @@ def run_games(worker_info, password, remote, run, task_id):
 
   # Verify signatures are correct
   if len(run['args']['base_signature']) > 0:
-    verify_signature(base_engine, run['args']['base_signature'], remote, result)
+    base_nps=verify_signature(base_engine, run['args']['base_signature'], remote, result)
 
   if len(run['args']['new_signature']) > 0:
     verify_signature(new_engine, run['args']['new_signature'], remote, result)
+
+  # Benchmarck to adjust cpu scaling
+  factor = 1500000.0/base_nps # Set target NPS to 1500000
+  base_tc=run['args']['tc'].split('+')[0]
+  scaled_tc= ('tc=%s' % (run['args']['tc'])).replace(base_tc+'+',str(float(base_tc)*factor)+'+')
+  print "CPU factor :"+str(factor)+ ' - tc adjusted to ' + scaled_tc
 
   # Run cutechess-cli binary
   cmd = [ cutechess, '-repeat', '-recover', '-rounds', str(games_remaining), '-tournament',
@@ -187,7 +197,7 @@ def run_games(worker_info, password, remote, run, task_id):
          '-draw', 'movenumber=34', 'movecount=2', 'score=20', '-concurrency',
          str(games_concurrency), '-engine', 'name=stockfish', 'cmd=stockfish'] + new_options + [
          '-engine', 'name=base', 'cmd=base'] + base_options + ['-each', 'proto=uci',
-         'option.Threads=%d' % (threads), 'tc=%s' % (run['args']['tc']),
+         'option.Threads=%d' % (threads), scaled_tc,
          'book=%s' % (book), 'bookdepth=%s' % (book_depth) ]
 
   print 'Running %s vs %s' % (run['args']['new_tag'], run['args']['base_tag'])
