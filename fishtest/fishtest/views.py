@@ -288,7 +288,6 @@ def tests(request):
   all_runs = request.rundb.get_runs()
 
   for run in all_runs:
-
     if 'deleted' in run and run['deleted']:
       continue
 
@@ -298,10 +297,7 @@ def tests(request):
 
     if not run['finished']:
       for task in run['tasks']:
-        if 'failure' in task:
-          state = 'failed'
-          break
-        elif task['active']:
+        if task['active']:
           state = 'active'
         elif task['pending'] and not state == 'active':
           state = 'pending'
@@ -309,6 +305,9 @@ def tests(request):
       if state == 'finished':
         run['finished'] = True
         request.rundb.runs.save(run)
+
+    if state == 'finished' and len(run['tasks']) == 0:
+      state = 'failed'
 
     runs[state].append(run)
 
