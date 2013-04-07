@@ -53,6 +53,7 @@ class RunDb:
       'book': book,
       'book_depth': book_depth,
       'threads': threads,
+      'regression_test': regression_test,
       'resolved_base': resolved_base,
       'resolved_new': resolved_new,
       'base_options': base_options,

@@ -5,6 +5,15 @@
 <form class="form-horizontal" action="${request.url}" method="POST">
   <legend>Create New Test</legend>
   <div class="control-group">
+    <label class="control-label">Test type:</label>
+    <div class="controls">
+      <select name="test_type">
+        <option value="Standard">Standard</option>
+        <option value="Regression">Regression</option>
+      </select>
+    </div>
+  </div>
+  <div class="control-group">
     <label class="control-label">Test branch:</label>
     <div class="controls">
       <input name="test-branch" value="${args.get('new_tag', '')}" ${'readonly' if re_run else ''}>

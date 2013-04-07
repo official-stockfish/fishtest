@@ -112,6 +112,16 @@ def validate_form(request):
     'username' : authenticated_userid(request),
   }
 
+  test_type = request.POST['test_type']
+
+  if test_type == 'Regression':
+    data['regression_test'] = True
+    data['base_tag'] = data['new_tag']
+    data['base_signature'] = data['new_signature']
+    data['base_options'] = data['new_options']
+  else:
+    data['regression_test'] = False
+
   if len([v for v in data.values() if len(v) == 0]) > 0:
     return data, False
 
