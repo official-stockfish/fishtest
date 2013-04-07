@@ -38,6 +38,7 @@ class RunDb:
               resolved_new='',
               base_signature='',
               new_signature='',
+              regression_test=False,
               start_time=None,
               sprt=None,
               username=None,

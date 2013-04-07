@@ -112,18 +112,14 @@ def validate_form(request):
     'username' : authenticated_userid(request),
   }
 
-  test_type = request.POST['test_type']
+  if len([v for v in data.values() if len(v) == 0]) > 0:
+    return data, 'Missing required option'
 
-  if test_type == 'Regression':
-    data['regression_test'] = True
+  data['regression_test'] = request.POST['test_type'] == 'Regression'
+  if data['regression_test']:
     data['base_tag'] = data['new_tag']
     data['base_signature'] = data['new_signature']
     data['base_options'] = data['new_options']
-  else:
-    data['regression_test'] = False
-
-  if len([v for v in data.values() if len(v) == 0]) > 0:
-    return data, False
 
   if 'resolved_base' in request.POST:
     data['resolved_base'] = request.POST['resolved_base']
@@ -133,7 +129,7 @@ def validate_form(request):
     data['resolved_new'] = get_sha(data['new_tag'])
 
   if len(data['resolved_base']) == 0 or len(data['resolved_new']) == 0:
-    return data, False
+    return data, 'Unable to find branch!'
 
   stop_rule = request.POST['stop_rule']
 
@@ -151,29 +147,29 @@ def validate_form(request):
   else:
     data['num_games'] = int(request.POST['num-games'])
     if data['num_games'] <= 0:
-      return data, False
+      return data, 'Number of games must be >= 0'
 
   data['threads'] = int(request.POST['threads'])
   data['priority'] = int(request.POST['priority'])
 
   if data['threads'] <= 0:
-    return data, False
+    return data, 'Threads must be >= 0'
 
   # Optional
   data['info'] = request.POST['run-info']
 
-  return data, True
+  return data, ''
 
 @view_config(route_name='tests_run', renderer='tests_run.mak', permission='modify_db')
 def tests_run(request):
   if 'base-branch' in request.POST:
-    data, valid = validate_form(request)
-    if valid:
+    data, error_message = validate_form(request)
+    if len(error_message) == 0:
       run_id = request.rundb.new_run(**data)
       request.session.flash('Started test run!')
       return HTTPFound(location=request.route_url('tests'))
     else:
-      request.session.flash('Please fill all required fields')
+      request.session.flash(error_message)
 
   run_args = {}
   if 'id' in request.params:
