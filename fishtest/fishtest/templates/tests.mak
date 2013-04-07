@@ -17,12 +17,12 @@
 %endif
 
 <h3>Active - ${len(machines)} machines ${cores} cores</h3>
-<table class="table table-striped table-condensed" style="width:60%">
+<table class="table table-striped table-condensed" style="width:70%">
  <thead>
   <tr>
    <th>Machine</th>
    <th>Cores</th>
-   <th>Nps</th>
+   <th>MNps</th>
    <th>System</th>
    <th>Version</th>
    <th>Running on</th>
@@ -34,7 +34,7 @@
   <tr>
    <td>${machine['username']}</td>
    <td>${machine['concurrency']}</td>
-   <td>${machine['nps']}</td>
+   <td>${'%.2f' % (machine['nps'] / 1000000.0)}</td>
    <td>${machine['uname'][0]} ${machine['uname'][2]}</td>
    <td>${machine['version']}</td>
    <td><a href="/tests/view/${machine['run']['_id']}">${machine['run']['args']['new_tag']}</td>
