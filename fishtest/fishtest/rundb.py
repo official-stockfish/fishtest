@@ -90,6 +90,7 @@ class RunDb:
           machine = copy.copy(task['worker_info'])
           machine['last_updated'] = task.get('last_updated', None)
           machine['run'] = run
+          machine['nps'] = task.get('nps', 0)
           machines.append(machine)
     return machines
 
@@ -175,7 +176,7 @@ class RunDb:
 
     return {'run': run, 'task_id': task_id}
 
-  def update_task(self, run_id, task_id, stats):
+  def update_task(self, run_id, task_id, stats, nps):
     run = self.get_run(run_id)
     task = run['tasks'][task_id]
     if not task['active']:
@@ -184,6 +185,7 @@ class RunDb:
     task_alive = task['pending']
 
     task['stats'] = stats
+    task['nps'] = nps
     if stats['wins'] + stats['losses'] + stats['draws'] >= task['num_games']:
       task['active'] = False
       task['pending'] = False
