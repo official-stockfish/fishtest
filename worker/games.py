@@ -220,14 +220,21 @@ def run_games(worker_info, password, remote, run, task_id):
   scaled_tc = adjust_tc(run['args']['tc'], base_nps)
   result['nps'] = base_nps
 
+  # Handle book or pgn file
+  pgn_cmd = []
+  book_cmd = []
+  if book.endswith('.pgn'):
+    pgn_cmd = ['-openings', 'file=%s' % (book), 'format=pgn', 'order=random', 'plies=%s' % (book_depth)]
+  else:
+    book_cmd = ['book=%s' % (book), 'bookdepth=%s' % (book_depth) ]
+
   # Run cutechess-cli binary
-  cmd = [ cutechess, '-repeat', '-rounds', str(games_remaining), '-tournament',
-         'gauntlet', '-pgnout', 'results.pgn', '-resign', 'movecount=3', 'score=400',
-         '-draw', 'movenumber=34', 'movecount=2', 'score=20', '-concurrency',
-         str(games_concurrency), '-engine', 'name=stockfish', 'cmd=stockfish'] + new_options + [
-         '-engine', 'name=base', 'cmd=base'] + base_options + ['-each', 'proto=uci',
-         'option.Threads=%d' % (threads), 'tc=%s' % (scaled_tc),
-         'book=%s' % (book), 'bookdepth=%s' % (book_depth) ]
+  cmd = [ cutechess, '-repeat', '-rounds', str(games_remaining), '-tournament', 'gauntlet',
+         '-pgnout', 'results.pgn', '-resign', 'movecount=3', 'score=400', '-draw', 'movenumber=34',
+         'movecount=2', 'score=20', '-concurrency', str(games_concurrency)] + pgn_cmd + \
+        ['-engine', 'name=stockfish', 'cmd=stockfish'] + new_options + \
+        ['-engine', 'name=base', 'cmd=base'] + base_options + ['-each', 'proto=uci', \
+         'option.Threads=%d' % (threads), 'tc=%s' % (scaled_tc)] + book_cmd
 
   if not regression_test:
     print 'Running %s vs %s' % (run['args']['new_tag'], run['args']['base_tag'])
