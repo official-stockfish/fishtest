@@ -312,7 +312,7 @@ def tests(request):
 
     runs[state].append(run)
 
-  runs['pending'].sort(key = lambda run: run['args']['priority'])
+  runs['pending'].sort(reverse=True, key=lambda run: (-run['args']['priority'], run['start_time']))
   machines = request.rundb.get_machines()
   for machine in machines:
     machine['last_updated'] = delta_date(machine['last_updated'])

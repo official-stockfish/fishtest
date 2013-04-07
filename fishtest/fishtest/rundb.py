@@ -106,7 +106,9 @@ class RunDb:
 
   def get_runs(self, skip=0, limit=0):
     runs = []
-    for run in self.runs.find(skip=skip, limit=limit, sort=[('start_time', DESCENDING)]):
+    for run in self.runs.find(skip=skip,
+                              limit=limit,
+                              sort=[('last_updated', DESCENDING), ('start_time', DESCENDING)]):
       runs.append(run)
     return runs
 
@@ -178,6 +180,9 @@ class RunDb:
 
   def update_task(self, run_id, task_id, stats, nps):
     run = self.get_run(run_id)
+    if task_id >= len(run['tasks']):
+      return {'task_alive': False}
+
     task = run['tasks'][task_id]
     if not task['active']:
       return {'task_alive': False}
