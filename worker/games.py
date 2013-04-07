@@ -155,6 +155,7 @@ def run_games(worker_info, password, remote, run, task_id):
   new_options = run['args'].get('new_options', 'Hash=128 OwnBook=false')
   base_options = run['args'].get('base_options', 'Hash=128 OwnBook=false')
   threads = int(run['args'].get('threads', 1))
+  regression_test = run['args'].get('regression_test', False)
   new_url = run.get('new_engine_url', '')
   base_url = run.get('base_engine_url', '')
   games_concurrency = int(worker_info['concurrency']) / threads
@@ -185,7 +186,8 @@ def run_games(worker_info, password, remote, run, task_id):
   if str(run['_id']) != run_id:
     if os.path.exists(run_id_file): os.remove(run_id_file)
     setup_engine(new_engine, new_url, worker_dir, run['args']['resolved_new'], worker_info['concurrency'])
-    setup_engine(base_engine, base_url, worker_dir, run['args']['resolved_base'], worker_info['concurrency'])
+    if not regression_test:
+      setup_engine(base_engine, base_url, worker_dir, run['args']['resolved_base'], worker_info['concurrency'])
     with open(run_id_file, 'w') as f:
       f.write(str(run['_id']))
 
@@ -210,8 +212,9 @@ def run_games(worker_info, password, remote, run, task_id):
     os.remove('results.pgn')
 
   # Verify signatures are correct
-  base_nps = verify_signature(base_engine, run['args']['base_signature'], remote, result)
-  verify_signature(new_engine, run['args']['new_signature'], remote, result)
+  base_nps = verify_signature(new_engine, run['args']['new_signature'], remote, result)
+  if not regression_test:
+    verify_signature(base_engine, run['args']['base_signature'], remote, result)
 
   # Benchmark to adjust cpu scaling
   scaled_tc = adjust_tc(run['args']['tc'], base_nps)
@@ -226,7 +229,12 @@ def run_games(worker_info, password, remote, run, task_id):
          'option.Threads=%d' % (threads), 'tc=%s' % (scaled_tc),
          'book=%s' % (book), 'bookdepth=%s' % (book_depth) ]
 
-  print 'Running %s vs %s' % (run['args']['new_tag'], run['args']['base_tag'])
+  if not regression_test:
+    print 'Running %s vs %s' % (run['args']['new_tag'], run['args']['base_tag'])
+  else:
+    cmd = ['cutechess_regression_test.sh']
+    print 'Running regression test of %s' % (run['args']['new_tag'])
+
   print ' '.join(cmd)
   p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
 
