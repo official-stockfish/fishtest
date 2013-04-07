@@ -143,12 +143,16 @@ class RunDb:
             task['active'] = False
             self.runs.save(existing_run)
 
+    # TODO Disable possibility to download regression tests for now
+    can_do_regression = False
+
     # Ok, we get a new task that does not require more threads than available concurrency
     max_threads = int(worker_info['concurrency'])
     q = {
       'new': True,
       'query': { '$and': [ {'tasks': {'$elemMatch': {'active': False, 'pending': True}}},
-                           {'args.threads': { '$lte': max_threads }}]},
+                           {'args.threads': { '$lte': max_threads }},
+                           {'$or': [{can_do_regression}, {'args.regression_test': False}]}]},
       'sort': [('args.priority', DESCENDING), ('_id', ASCENDING)],
       'update': {
         '$set': {
