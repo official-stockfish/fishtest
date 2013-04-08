@@ -1,8 +1,10 @@
 ### Overview
 
-Fishtest is a distributed task queue for testing chess engines.  It is currently
-being used for testing changes on Stockfish with tens of thousands of games per
-change, both on Linux and Windows.  The following setup describes a step-by-step
+Fishtest is a distributed task queue for testing chess engines.  The main instance
+for Stockfish is http://54.235.120.254:6543/tests.
+
+It is currently being used for testing changes on Stockfish, using tens of thousands
+of games, both on Linux and Windows.  The following setup describes a step-by-step
 installation for a machine that will run test matches (a worker).
 
 #### Setup Python on Windows
