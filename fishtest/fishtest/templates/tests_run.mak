@@ -95,7 +95,7 @@
   <div class="control-group">
     <label class="control-label">Book:</label>
     <div class="controls">
-      <input name="book" value="${args.get('book', 'varied.bin')}">
+      <input name="book" value="${args.get('book', 'swcr.pgn')}">
     </div>
   </div>
   <div class="control-group">

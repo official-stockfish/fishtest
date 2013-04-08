@@ -150,14 +150,14 @@ def run_games(worker_info, password, remote, run, task_id):
   if games_remaining <= 0:
     raise Exception('No games remaining')
 
-  book = run['args'].get('book', 'varied.bin')
-  book_depth = run['args'].get('book_depth', '10')
-  new_options = run['args'].get('new_options', 'Hash=128 OwnBook=false')
-  base_options = run['args'].get('base_options', 'Hash=128 OwnBook=false')
-  threads = int(run['args'].get('threads', 1))
+  book = run['args']['book']
+  book_depth = run['args']['book_depth']
+  new_options = run['args']['new_options']
+  base_options = run['args']['base_options']
+  threads = int(run['args']['threads'])
   regression_test = run['args'].get('regression_test', False)
-  new_url = run.get('new_engine_url', '')
-  base_url = run.get('base_engine_url', '')
+  new_url = run['new_engine_url']
+  base_url = run['base_engine_url']
   games_concurrency = int(worker_info['concurrency']) / threads
 
   # Format options according to cutechess syntax
