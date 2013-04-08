@@ -225,8 +225,10 @@ def run_games(worker_info, password, remote, run, task_id):
   book_cmd = []
   if book.endswith('.pgn'):
     pgn_cmd = ['-openings', 'file=%s' % (book), 'format=pgn', 'order=random', 'plies=%s' % (book_depth)]
+  elif book.endswith('.epd'):
+    pgn_cmd = ['-openings', 'file=%s' % (book), 'format=epd', 'order=random', 'plies=%s' % (book_depth)]
   else:
-    book_cmd = ['book=%s' % (book), 'bookdepth=%s' % (book_depth) ]
+    book_cmd = ['book=%s' % (book), 'bookdepth=%s' % (book_depth)]
 
   # Run cutechess-cli binary
   cmd = [ cutechess, '-repeat', '-rounds', str(games_remaining), '-tournament', 'gauntlet',
