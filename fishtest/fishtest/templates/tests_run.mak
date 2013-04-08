@@ -95,13 +95,13 @@
   <div class="control-group">
     <label class="control-label">Book:</label>
     <div class="controls">
-      <input name="book" value="${args.get('book', 'swcr.pgn')}">
+      <input name="book" value="${args.get('book', '8moves_GM.pgn')}">
     </div>
   </div>
   <div class="control-group">
     <label class="control-label">Book Depth:</label>
     <div class="controls">
-      <input name="book-depth" value="${args.get('book_depth', 10)}">
+      <input name="book-depth" value="${args.get('book_depth', 8)}">
     </div>
   </div>
   <div class="control-group">
