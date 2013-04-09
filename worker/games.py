@@ -101,6 +101,14 @@ def kill_process(p):
     subprocess.call(['taskkill', '/F', '/T', '/PID', str(p.pid)])
   else:
     p.kill()
+    
+def find_executable(name):
+  for path in os.environ["PATH"].split(os.pathsep):
+    path = path.strip('"')
+    exe_file = os.path.join(path, name)
+    if os.path.isfile(exe_file) and os.access(exe_file, os.X_OK):
+      return exe_file
+  return None
 
 def adjust_tc(tc, base_nps):
   factor = 1200000.0 / base_nps
@@ -172,9 +180,8 @@ def run_games(worker_info, password, remote, run, task_id):
 
   new_engine = os.path.join(testing_dir, 'stockfish' + EXE_SUFFIX)
   base_engine = os.path.join(testing_dir, 'base' + EXE_SUFFIX)
-  if os.path.exists('/usr/bin/cutechess-cli'):
-    cutechess = '/usr/bin/cutechess-cli'
-  else:
+  cutechess = find_executable('cutechess-cli' + EXE_SUFFIX)
+  if cutechess is None:
     cutechess = os.path.join(testing_dir, 'cutechess-cli' + EXE_SUFFIX)
 
   # We have already run another task from the same run ?
