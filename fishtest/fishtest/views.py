@@ -291,7 +291,8 @@ def tests(request):
     if 'deleted' in run and run['deleted']:
       continue
 
-    run['results_info'] = format_results(request.rundb.get_results(run))
+    results = request.rundb.get_results(run)
+    run['results_info'] = format_results(results)
 
     state = 'finished'
 
@@ -306,7 +307,7 @@ def tests(request):
         run['finished'] = True
         request.rundb.runs.save(run)
 
-    if state == 'finished' and len(run['tasks']) == 0:
+    if state == 'finished' and results['wins'] + results['losses'] + results['draws'] == 0:
       state = 'failed'
 
     runs[state].append(run)

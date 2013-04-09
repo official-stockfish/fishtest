@@ -81,8 +81,8 @@ def SPRT(R, elo0, alpha, elo1, beta, drawelo):
   R['wins'], R['losses'], R['draws'] contains the number of wins, losses and draws
 
   Returns a tuple
-  True, 'H0': stop and accept H0
-  True: 'H1': stop and accept H1
+  True, 'rejected': stop and accept H0
+  True: 'accepted': stop and accept H1
   False, '': continue sampling
   """
 
