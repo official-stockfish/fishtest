@@ -125,7 +125,7 @@ def binary_exists(sha, binaries_dir):
 
 def get_binary_url(binaries_dir, sha, worker_info):
   system = worker_info['uname'][0].lower()
-  architecture = worker_info.get('architecture', '32') # TODO remove 'get' once workers are updated
+  architecture = worker_info['architecture']
   architecture = '64' if '64' in architecture else '32'
   filename = get_binary_filename(sha, system, architecture)
   engine_path = os.path.join(binaries_dir, filename)

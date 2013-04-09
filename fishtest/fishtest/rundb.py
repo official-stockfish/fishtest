@@ -38,6 +38,7 @@ class RunDb:
               resolved_new='',
               base_signature='',
               new_signature='',
+              regression_test=False,
               start_time=None,
               sprt=None,
               username=None,
@@ -53,6 +54,7 @@ class RunDb:
       'book': book,
       'book_depth': book_depth,
       'threads': threads,
+      'regression_test': regression_test,
       'resolved_base': resolved_base,
       'resolved_new': resolved_new,
       'base_options': base_options,
@@ -89,6 +91,7 @@ class RunDb:
           machine = copy.copy(task['worker_info'])
           machine['last_updated'] = task.get('last_updated', None)
           machine['run'] = run
+          machine['nps'] = task.get('nps', 0)
           machines.append(machine)
     return machines
 
@@ -103,7 +106,9 @@ class RunDb:
 
   def get_runs(self, skip=0, limit=0):
     runs = []
-    for run in self.runs.find(skip=skip, limit=limit, sort=[('start_time', DESCENDING)]):
+    for run in self.runs.find(skip=skip,
+                              limit=limit,
+                              sort=[('last_updated', DESCENDING), ('start_time', DESCENDING)]):
       runs.append(run)
     return runs
 
@@ -142,6 +147,9 @@ class RunDb:
             task['active'] = False
             self.runs.save(existing_run)
 
+    # TODO Disable possibility to download regression tests for now
+    can_do_regression = False
+
     # Ok, we get a new task that does not require more threads than available concurrency
     max_threads = int(worker_info['concurrency'])
     q = {
@@ -170,8 +178,11 @@ class RunDb:
 
     return {'run': run, 'task_id': task_id}
 
-  def update_task(self, run_id, task_id, stats):
+  def update_task(self, run_id, task_id, stats, nps):
     run = self.get_run(run_id)
+    if task_id >= len(run['tasks']):
+      return {'task_alive': False}
+
     task = run['tasks'][task_id]
     if not task['active']:
       return {'task_alive': False}
@@ -179,6 +190,7 @@ class RunDb:
     task_alive = task['pending']
 
     task['stats'] = stats
+    task['nps'] = nps
     if stats['wins'] + stats['losses'] + stats['draws'] >= task['num_games']:
       task['active'] = False
       task['pending'] = False

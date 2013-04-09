@@ -5,6 +5,12 @@
 <table class='table table-striped table-condensed'>
   <tbody>
   %for run in runs:
+   <%
+    if 'sprt' in run['args']:
+      num_games = 'sprt'
+    else:
+      num_games = run['args']['num_games']
+   %>
    <tr>
    %if show_delete:
     <td>
@@ -25,7 +31,7 @@
       ${base.format_sha(run['args']['resolved_base']) | n}
     </td>
     <td style="min-width:280px;width:280px"><%include file="elo_results.mak" args="run=run" /></td>
-    <td style="width:14%">${run['args']['num_games']} @ ${run['args']['tc']} th ${str(run['args'].get('threads',1))}</td>
+    <td style="width:14%">${num_games} @ ${run['args']['tc']} th ${str(run['args'].get('threads',1))}</td>
     <td>${run['args'].get('info', '')}</td>
    </tr>
   %endfor

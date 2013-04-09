@@ -1,8 +1,10 @@
 ### Overview
 
-Fishtest is a distributed task queue for testing chess engines.  It is currently
-being used for testing changes on Stockfish with tens of thousands of games per
-change, both on Linux and Windows.  The following setup describes a step-by-step
+Fishtest is a distributed task queue for testing chess engines.  The main instance
+for Stockfish is http://54.235.120.254/tests.
+
+It is currently being used for testing changes on Stockfish, using tens of thousands
+of games, both on Linux and Windows.  The following setup describes a step-by-step
 installation for a machine that will run test matches (a worker).
 
 #### Setup Python on Windows
@@ -16,7 +18,10 @@ In case something is not clear please read windows-step-by-step-installation.txt
 
 #### Setup fishtest
 
-You can download fishtest as a zipball directly from https://github.com/glinscott/fishtest
+You can download fishtest directly from Github:
+
+https://github.com/glinscott/fishtest/archive/master.zip
+
 or, in case you have a git installation, you can clone it.
 
 ```
@@ -36,6 +41,10 @@ your system, see below), providing username and password you've been given.
 ```
 python worker.py --concurrency 3 username password
 ```
+or, after the first access, a simple
+```
+python worker.py
+```
 
 Option *concurrency* refers to the number of available cores in your system (not
 including Hyperthreaded cores!), leaving one core for the OS.  For example,
@@ -44,7 +53,7 @@ on my 4 core machine, I use `--concurrency 3`.
 On Linux, you can use the `nohup` command to run the worker as a background task.
 
 ```
-nohup python worker.py --concurrency 3 username password &
+nohup python worker.py &
 ```
 
 #### Override default make command

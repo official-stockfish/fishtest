@@ -5,6 +5,15 @@
 <form class="form-horizontal" action="${request.url}" method="POST">
   <legend>Create New Test</legend>
   <div class="control-group">
+    <label class="control-label">Test type:</label>
+    <div class="controls">
+      <select name="test_type">
+        <option value="Standard">Standard</option>
+        <option value="Regression">Regression</option>
+      </select>
+    </div>
+  </div>
+  <div class="control-group">
     <label class="control-label">Test branch:</label>
     <div class="controls">
       <input name="test-branch" value="${args.get('new_tag', '')}" ${'readonly' if re_run else ''}>
@@ -47,6 +56,10 @@
         <option value="sprt">SPRT</option>
         <option value="numgames">NumGames</option>
       </select>
+      <div class="btn-group">
+        <div class="btn" id="fast_test">Fast</div>
+        <div class="btn" id="slow_test">Slow</div>
+      </div>
     </div>
   </div>
   <div class="control-group">
@@ -56,9 +69,15 @@
     </div>
   </div>
   <div class="control-group">
+    <label class="control-label">SPRT Elo0:</label>
+    <div class="controls">
+      <input name="sprt_elo0" value="${args.get('sprt', {'elo0': -1.5})['elo0']}">
+    </div>
+  </div>
+  <div class="control-group">
     <label class="control-label">SPRT Elo1:</label>
     <div class="controls">
-      <input name="sprt_elo1" value="${args.get('sprt', {'elo1': 5.0})['elo1']}">
+      <input name="sprt_elo1" value="${args.get('sprt', {'elo1': 4.5})['elo1']}">
     </div>
   </div>
   <div class="control-group">
@@ -76,13 +95,13 @@
   <div class="control-group">
     <label class="control-label">Book:</label>
     <div class="controls">
-      <input name="book" value="${args.get('book', 'varied.bin')}">
+      <input name="book" value="${args.get('book', '8moves_GM.pgn')}">
     </div>
   </div>
   <div class="control-group">
     <label class="control-label">Book Depth:</label>
     <div class="controls">
-      <input name="book-depth" value="${args.get('book_depth', 10)}">
+      <input name="book-depth" value="${args.get('book_depth', 8)}">
     </div>
   </div>
   <div class="control-group">
@@ -109,3 +128,28 @@
     </div>
   </div>
 </form>
+
+<script type="text/javascript">
+$(function() {
+  var update_sprt = function() {
+    var enabled = $('select[name=stop_rule]').val() == 'sprt';
+
+    $('input[name=num-games]').prop('disabled', enabled);
+    $('input[name=sprt_elo0]').prop('disabled', !enabled);
+    $('input[name=sprt_elo1]').prop('disabled', !enabled);
+  };
+
+  update_sprt();
+  $('select[name=stop_rule]').change(update_sprt);
+
+  $('#fast_test').click(function() {
+    $('input[name=sprt_elo0]').val('-1.5');
+    $('input[name=sprt_elo1]').val('4.5');
+  });
+
+  $('#slow_test').click(function() {
+    $('input[name=sprt_elo0]').val('0.0');
+    $('input[name=sprt_elo1]').val('6.0');
+  });
+});
+</script>

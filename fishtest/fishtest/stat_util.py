@@ -61,6 +61,16 @@ def bayeselo_to_proba(elo, drawelo):
   P['draw'] = 1.0 - P['win'] - P['loss']
   return P
 
+def proba_to_bayeselo(P):
+  """
+  Takes a probability: P['win'], P['loss']
+  Returns elo, drawelo
+  """
+  assert(0 < P['win'] and P['win'] < 1 and 0 < P['loss'] and P['loss'] < 1)
+  elo = 200 * math.log10(P['win']/P['loss'] * (1-P['loss'])/(1-P['win']))
+  drawelo = 200 * math.log10((1-P['loss'])/P['loss'] * (1-P['win'])/P['win'])
+  return elo, drawelo
+
 def SPRT(R, elo0, alpha, elo1, beta, drawelo):
   """
   Sequential Probability Ratio Test
@@ -71,10 +81,17 @@ def SPRT(R, elo0, alpha, elo1, beta, drawelo):
   R['wins'], R['losses'], R['draws'] contains the number of wins, losses and draws
 
   Returns a tuple
-  True, 'H0': stop and accept H0
-  True: 'H1': stop and accept H1
+  True, 'rejected': stop and accept H0
+  True: 'accepted': stop and accept H1
   False, '': continue sampling
   """
+
+  # Estimate drawelo out of sample
+  if (R['wins'] > 0 and R['losses'] > 0):
+    N = R['wins'] + R['losses'] + R['draws']
+    P = {'win': float(R['wins'])/N, 'loss': float(R['losses'])/N, 'draw': float(R['draws'])/N}
+    elo, drawelo = proba_to_bayeselo(P)
+
   # Probability laws under H0 and H1
   P0 = bayeselo_to_proba(elo0, drawelo)
   P1 = bayeselo_to_proba(elo1, drawelo)
@@ -92,3 +109,11 @@ def SPRT(R, elo0, alpha, elo1, beta, drawelo):
     return True, 'accepted'
   else:
     return False, ''
+
+if __name__ == "__main__":
+  # unit tests
+  print SPRT({'wins': 10, 'losses': 0, 'draws': 20}, 0, 0.05, 5, 0.05)
+  print SPRT({'wins': 10, 'losses': 1, 'draws': 20}, 0, 0.05, 5, 0.05)
+  print SPRT({'wins': 5019, 'losses': 5026, 'draws': 15699}, 0, 0.05, 5, 0.05)
+  print SPRT({'wins': 1450, 'losses': 1500, 'draws': 4000}, 0, 0.05, 6, 0.05)
+  print SPRT({'wins': 716, 'losses': 591, 'draws': 2163}, 0, 0.05, 6, 0.05)

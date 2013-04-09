@@ -33,6 +33,8 @@ def verify_signature(engine, signature, remote, payload):
   for line in iter(p.stderr.readline,''):
     if 'Nodes searched' in line:
       bench_sig = line.split(': ')[1].strip()
+    if 'Nodes/second' in line:
+      bench_nps = float(line.split(': ')[1].strip())
 
   p.wait()
   if p.returncode != 0:
@@ -41,6 +43,8 @@ def verify_signature(engine, signature, remote, payload):
   if int(bench_sig) != int(signature):
     requests.post(remote + '/api/stop_run', data=json.dumps(payload))
     raise Exception('Wrong bench in %s Expected: %s Got: %s' % (engine, signature, bench_sig))
+
+  return bench_nps
 
 def setup(item, testing_dir):
   """Download item from FishCooking to testing_dir"""
@@ -98,6 +102,37 @@ def kill_process(p):
   else:
     p.kill()
 
+def adjust_tc(tc, base_nps):
+  factor = 1200000.0 / base_nps
+
+  # Parse the time control in cutechess format
+  chunks = tc.split('+')
+  increment = 0.0
+  if len(chunks) == 2:
+    increment = float(chunks[1])
+
+  chunks = chunks[0].split('/')
+  num_moves = 0
+  if len(chunks) == 2:
+    num_moves = int(chunks[0])
+
+  time_tc = chunks[-1]
+  chunks = time_tc.split(':')
+  if len(chunks) == 2:
+    time_tc = float(chunks[0]) * 60 + float(chunks[1])
+  else:
+    time_tc = float(chunks[0])
+
+  # Rebuild scaled_tc now
+  scaled_tc = '%.2f' % (time_tc * factor)
+  if increment > 0.0:
+    scaled_tc += '+%.2f' % (increment)
+  if num_moves > 0:
+    scaled_tc = '%d/%s' % (num_moves, scaled_tc)
+
+  print 'CPU factor : %f - tc adjusted to %s' % (factor, scaled_tc)
+  return scaled_tc
+
 def run_games(worker_info, password, remote, run, task_id):
   task = run['tasks'][task_id]
   result = {
@@ -115,13 +150,14 @@ def run_games(worker_info, password, remote, run, task_id):
   if games_remaining <= 0:
     raise Exception('No games remaining')
 
-  book = run['args'].get('book', 'varied.bin')
-  book_depth = run['args'].get('book_depth', '10')
-  new_options = run['args'].get('new_options', 'Hash=128 OwnBook=false')
-  base_options = run['args'].get('base_options', 'Hash=128 OwnBook=false')
-  threads = int(run['args'].get('threads', 1))
-  new_url = run.get('new_engine_url', '')
-  base_url = run.get('base_engine_url', '')
+  book = run['args']['book']
+  book_depth = run['args']['book_depth']
+  new_options = run['args']['new_options']
+  base_options = run['args']['base_options']
+  threads = int(run['args']['threads'])
+  regression_test = run['args'].get('regression_test', False)
+  new_url = run['new_engine_url']
+  base_url = run['base_engine_url']
   games_concurrency = int(worker_info['concurrency']) / threads
 
   # Format options according to cutechess syntax
@@ -153,7 +189,8 @@ def run_games(worker_info, password, remote, run, task_id):
   if str(run['_id']) != run_id:
     if os.path.exists(run_id_file): os.remove(run_id_file)
     setup_engine(new_engine, new_url, worker_dir, run['args']['resolved_new'], worker_info['concurrency'])
-    setup_engine(base_engine, base_url, worker_dir, run['args']['resolved_base'], worker_info['concurrency'])
+    if not regression_test:
+      setup_engine(base_engine, base_url, worker_dir, run['args']['resolved_base'], worker_info['concurrency'])
     with open(run_id_file, 'w') as f:
       f.write(str(run['_id']))
 
@@ -178,22 +215,37 @@ def run_games(worker_info, password, remote, run, task_id):
     os.remove('results.pgn')
 
   # Verify signatures are correct
-  if len(run['args']['base_signature']) > 0:
+  base_nps = verify_signature(new_engine, run['args']['new_signature'], remote, result)
+  if not regression_test:
     verify_signature(base_engine, run['args']['base_signature'], remote, result)
 
-  if len(run['args']['new_signature']) > 0:
-    verify_signature(new_engine, run['args']['new_signature'], remote, result)
+  # Benchmark to adjust cpu scaling
+  scaled_tc = adjust_tc(run['args']['tc'], base_nps)
+  result['nps'] = base_nps
+
+  # Handle book or pgn file
+  pgn_cmd = []
+  book_cmd = []
+  if book.endswith('.pgn') or book.endswith('.epd'):
+    plies = 2 * int(book_depth)
+    pgn_cmd = ['-openings', 'file=%s' % (book), 'format=%s' % (book[-3:]), 'order=random', 'plies=%d' % (plies)]
+  else:
+    book_cmd = ['book=%s' % (book), 'bookdepth=%s' % (book_depth)]
 
   # Run cutechess-cli binary
-  cmd = [ cutechess, '-repeat', '-recover', '-rounds', str(games_remaining), '-tournament',
-         'gauntlet', '-pgnout', 'results.pgn', '-resign', 'movecount=3', 'score=400',
-         '-draw', 'movenumber=34', 'movecount=2', 'score=20', '-concurrency',
-         str(games_concurrency), '-engine', 'name=stockfish', 'cmd=stockfish'] + new_options + [
-         '-engine', 'name=base', 'cmd=base'] + base_options + ['-each', 'proto=uci',
-         'option.Threads=%d' % (threads), 'tc=%s' % (run['args']['tc']),
-         'book=%s' % (book), 'bookdepth=%s' % (book_depth) ]
+  cmd = [ cutechess, '-repeat', '-rounds', str(games_remaining), '-tournament', 'gauntlet',
+         '-pgnout', 'results.pgn', '-resign', 'movecount=3', 'score=400', '-draw', 'movenumber=34',
+         'movecount=2', 'score=20', '-concurrency', str(games_concurrency)] + pgn_cmd + \
+        ['-engine', 'name=stockfish', 'cmd=stockfish'] + new_options + \
+        ['-engine', 'name=base', 'cmd=base'] + base_options + ['-each', 'proto=uci', \
+         'option.Threads=%d' % (threads), 'tc=%s' % (scaled_tc)] + book_cmd
 
-  print 'Running %s vs %s' % (run['args']['new_tag'], run['args']['base_tag'])
+  if not regression_test:
+    print 'Running %s vs %s' % (run['args']['new_tag'], run['args']['base_tag'])
+  else:
+    cmd = ['cutechess_regression_test.sh']
+    print 'Running regression test of %s' % (run['args']['new_tag'])
+
   print ' '.join(cmd)
   p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
 

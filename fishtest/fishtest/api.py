@@ -66,6 +66,7 @@ def update_task(request):
     run_id=request.json_body['run_id'],
     task_id=int(request.json_body['task_id']),
     stats=request.json_body['stats'],
+    nps=request.json_body.get('nps', 0),
   )
   return json.dumps(result)
 
@@ -93,4 +94,4 @@ def request_version(request):
   token = authenticate(request)
   if 'error' in token: return json.dumps(token)
 
-  return json.dumps({'version': 13})
+  return json.dumps({'version': 18})

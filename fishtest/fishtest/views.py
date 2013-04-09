@@ -113,7 +113,13 @@ def validate_form(request):
   }
 
   if len([v for v in data.values() if len(v) == 0]) > 0:
-    return data, False
+    return data, 'Missing required option'
+
+  data['regression_test'] = request.POST['test_type'] == 'Regression'
+  if data['regression_test']:
+    data['base_tag'] = data['new_tag']
+    data['base_signature'] = data['new_signature']
+    data['base_options'] = data['new_options']
 
   if 'resolved_base' in request.POST:
     data['resolved_base'] = request.POST['resolved_base']
@@ -123,46 +129,47 @@ def validate_form(request):
     data['resolved_new'] = get_sha(data['new_tag'])
 
   if len(data['resolved_base']) == 0 or len(data['resolved_new']) == 0:
-    return data, False
+    return data, 'Unable to find branch!'
 
   stop_rule = request.POST['stop_rule']
 
   # Integer parameters
   if stop_rule == 'sprt':
     data['sprt'] = {
-      'elo0': 0.0,
+      'elo0': float(request.POST['sprt_elo0']),
       'alpha': 0.05,
       'elo1': float(request.POST['sprt_elo1']),
       'beta': 0.05,
       'drawelo': 240.0,
     }
-    data['num_games'] = 64000
+    # Arbitrary limit on number of games played.  Shouldn't be hit in practice
+    data['num_games'] = 128000
   else:
     data['num_games'] = int(request.POST['num-games'])
     if data['num_games'] <= 0:
-      return data, False
+      return data, 'Number of games must be >= 0'
 
   data['threads'] = int(request.POST['threads'])
   data['priority'] = int(request.POST['priority'])
 
   if data['threads'] <= 0:
-    return data, False
+    return data, 'Threads must be >= 0'
 
   # Optional
   data['info'] = request.POST['run-info']
 
-  return data, True
+  return data, ''
 
 @view_config(route_name='tests_run', renderer='tests_run.mak', permission='modify_db')
 def tests_run(request):
   if 'base-branch' in request.POST:
-    data, valid = validate_form(request)
-    if valid:
+    data, error_message = validate_form(request)
+    if len(error_message) == 0:
       run_id = request.rundb.new_run(**data)
       request.session.flash('Started test run!')
       return HTTPFound(location=request.route_url('tests'))
     else:
-      request.session.flash('Please fill all required fields')
+      request.session.flash(error_message)
 
   run_args = {}
   if 'id' in request.params:
@@ -238,13 +245,13 @@ def format_results(results):
   result['info'].append(eloInfo + ' ' + losInfo)
   result['info'].append('Total: %d W: %d L: %d D: %d' % (sum(WLD), WLD[0], WLD[1], WLD[2]))
 
-  state = 'unknown' 
+  state = 'unknown'
   if 'sprt' in results:
     state = results['sprt']
   elif los < 0.05:
-    state = 'rejected' 
+    state = 'rejected'
   elif los > 0.95:
-    state = 'accepted' 
+    state = 'accepted'
 
   if state == 'rejected':
     result['style'] = '#FF6A6A'
@@ -281,20 +288,17 @@ def tests(request):
   all_runs = request.rundb.get_runs()
 
   for run in all_runs:
-
     if 'deleted' in run and run['deleted']:
       continue
 
-    run['results_info'] = format_results(request.rundb.get_results(run))
+    results = request.rundb.get_results(run)
+    run['results_info'] = format_results(results)
 
     state = 'finished'
 
     if not run['finished']:
       for task in run['tasks']:
-        if 'failure' in task:
-          state = 'failed'
-          break
-        elif task['active']:
+        if task['active']:
           state = 'active'
         elif task['pending'] and not state == 'active':
           state = 'pending'
@@ -303,9 +307,12 @@ def tests(request):
         run['finished'] = True
         request.rundb.runs.save(run)
 
+    if state == 'finished' and results['wins'] + results['losses'] + results['draws'] == 0:
+      state = 'failed'
+
     runs[state].append(run)
 
-  runs['pending'].sort(key = lambda run: run['args']['priority'])
+  runs['pending'].sort(reverse=True, key=lambda run: (-run['args']['priority'], run['start_time']))
   machines = request.rundb.get_machines()
   for machine in machines:
     machine['last_updated'] = delta_date(machine['last_updated'])
