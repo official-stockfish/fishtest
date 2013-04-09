@@ -22,7 +22,7 @@ def setup_config_file(config_file):
 
   defaults = [('login', 'username', ''), ('login', 'password', ''),
               ('parameters', 'host', '54.235.120.254'),
-              ('parameters', 'port', '6543'),
+              ('parameters', 'port', '80'),
               ('parameters', 'concurrency', '3')]
 
   for v in defaults:
