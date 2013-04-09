@@ -1,0 +1,11 @@
+Installing Mongo:
+
+TODO
+
+Mapping port 6543 to port 80:
+
+sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 6543
+sudo iptables -I INPUT -p tcp --dport 6543 -j ACCEPT
+sudo iptables -t nat -A OUTPUT -o lo -p tcp --dport 80 -j REDIRECT --to-port 6543
+
+sudo /sbin/service iptables save
