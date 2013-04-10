@@ -59,7 +59,6 @@
    <th>Idx</th>
    <th>Worker</th>
    <th>Last Updated</th>
-   <th>Games</th>
    <th>Played</th>
    <th>Wins</th>
    <th>Losses</th>
@@ -95,8 +94,7 @@
    <td>${idx}</td>
    <td>${machine_info}</td>
    <td>${str(task.get('last_updated', '-')).split('.')[0]}</td>
-   <td>${task['num_games']}</td>
-   <td>${total}</td>
+   <td>${total} / ${task['num_games']}</td>
    <td>${stats.get('wins', '-')}</td>
    <td>${stats.get('losses', '-')}</td>
    <td>${stats.get('draws', '-')}</td>
