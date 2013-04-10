@@ -204,14 +204,14 @@ class RunDb:
     # Check if SPRT stopping is enabled
     if 'sprt' in run['args']:
       sprt = run['args']['sprt']
-      should_stop, state = stat_util.SPRT(self.get_results(run),
-                                          elo0=sprt['elo0'],
-                                          alpha=sprt['alpha'],
-                                          elo1=sprt['elo1'],
-                                          beta=sprt['beta'],
-                                          drawelo=sprt['drawelo'])
-      if should_stop:
-        run['args']['sprt']['state'] = state
+      sprt_stats = stat_util.SPRT(self.get_results(run),
+                                  elo0=sprt['elo0'],
+                                  alpha=sprt['alpha'],
+                                  elo1=sprt['elo1'],
+                                  beta=sprt['beta'],
+                                  drawelo=sprt['drawelo'])
+      if sprt_stats['finished']:
+        run['args']['sprt']['state'] = sprt_stats['state']
         self.runs.save(run)
 
         self.stop_run(run_id)

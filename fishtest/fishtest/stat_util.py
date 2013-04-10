@@ -80,10 +80,11 @@ def SPRT(R, elo0, alpha, elo1, beta, drawelo):
   beta = max typeII error for elo >= elo1 (reached on elo = elo1)
   R['wins'], R['losses'], R['draws'] contains the number of wins, losses and draws
 
-  Returns a tuple
-  True, 'rejected': stop and accept H0
-  True: 'accepted': stop and accept H1
-  False, '': continue sampling
+  Returns a dict:
+  finished - bool, True means test is finished, False means continue sampling
+  state - string, 'accepted', 'rejected' or ''
+  llr - Log-likelihood ratio
+  lower_bound/upper_bound - SPRT bounds
   """
 
   # Estimate drawelo out of sample
@@ -103,12 +104,22 @@ def SPRT(R, elo0, alpha, elo1, beta, drawelo):
   lower_bound = math.log(beta/(1-alpha))
   upper_bound = math.log((1-beta)/alpha)
 
+  result = {
+    'finished': False,
+    'state': '',
+    'llr': LLR,
+    'lower_bound': lower_bound,
+    'upper_bound': upper_bound,
+  }
+
   if LLR < lower_bound:
-    return True, 'rejected'
+    result['finished'] = True
+    result['state'] = 'rejected'
   elif LLR > upper_bound:
-    return True, 'accepted'
-  else:
-    return False, ''
+    result['finished'] = True
+    result['state'] = 'accepted'
+
+  return result
 
 if __name__ == "__main__":
   # unit tests
