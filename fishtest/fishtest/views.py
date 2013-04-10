@@ -224,11 +224,12 @@ def tests_delete(request):
   request.session.flash('Deleted run')
   return HTTPFound(location=request.route_url('tests'))
 
-def format_results(results):
+def format_results(rundb, run):
   result = {'style': '', 'info': []}
 
   # win/loss/draw count
-  WLD = [results['wins'], results['losses'], results['draws']]
+  run_results = rundb.get_results(run)
+  WLD = [run_results['wins'], run_results['losses'], run_results['draws']]
 
   # If the score is 0% or 100% the formulas will crash
   # anyway the statistics are only asymptotic
@@ -236,22 +237,33 @@ def format_results(results):
     result['info'].append('Pending...')
     return result
 
-  elo, elo95, los = stat_util.get_elo(WLD)
-
-  # Display the results
-  eloInfo = 'ELO: %.2f +-%.1f (95%%)' % (elo, elo95)
-  losInfo = 'LOS: %.1f%%' % (los * 100)
-
-  result['info'].append(eloInfo + ' ' + losInfo)
-  result['info'].append('Total: %d W: %d L: %d D: %d' % (sum(WLD), WLD[0], WLD[1], WLD[2]))
-
   state = 'unknown'
-  if 'sprt' in results:
-    state = results['sprt']
-  elif los < 0.05:
-    state = 'rejected'
-  elif los > 0.95:
-    state = 'accepted'
+  if 'sprt' in run['args']:
+    sprt = run['args']['sprt']
+    state = sprt.get('state', '')
+
+    stats = stat_util.SPRT(run_results,
+                           elo0=sprt['elo0'],
+                           alpha=sprt['alpha'],
+                           elo1=sprt['elo1'],
+                           beta=sprt['beta'],
+                           drawelo=sprt['drawelo'])
+    result['info'].append('LLR: %.2f (%.2lf,%.2lf)' % (stats['llr'], stats['lower_bound'], stats['upper_bound']))
+  else:
+    elo, elo95, los = stat_util.get_elo(WLD)
+
+    # Display the results
+    eloInfo = 'ELO: %.2f +-%.1f (95%%)' % (elo, elo95)
+    losInfo = 'LOS: %.1f%%' % (los * 100)
+
+    result['info'].append(eloInfo + ' ' + losInfo)
+
+    if los < 0.05:
+      state = 'rejected'
+    elif los > 0.95:
+      state = 'accepted'
+
+  result['info'].append('Total: %d W: %d L: %d D: %d' % (sum(WLD), WLD[0], WLD[1], WLD[2]))
 
   if state == 'rejected':
     result['style'] = '#FF6A6A'
@@ -262,7 +274,7 @@ def format_results(results):
 @view_config(route_name='tests_view', renderer='tests_view.mak')
 def tests_view(request):
   run = request.rundb.get_run(request.matchdict['id'])
-  run['results_info'] = format_results(request.rundb.get_results(run))
+  run['results_info'] = format_results(request.rundb, run)
 
   run_args = []
   for name in ['new_tag', 'new_signature', 'new_options', 'resolved_new',
@@ -292,7 +304,7 @@ def tests(request):
       continue
 
     results = request.rundb.get_results(run)
-    run['results_info'] = format_results(results)
+    run['results_info'] = format_results(request.rundb, run)
 
     state = 'finished'
 
