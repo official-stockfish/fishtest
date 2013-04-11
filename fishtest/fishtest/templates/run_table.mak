@@ -23,6 +23,7 @@
     </td>
     %endif
     <td style="width:6%"><a href="/tests/view/${run['_id']}">${run['start_time'].strftime("%d-%m-%y")}</a></td>
+    <td style="width:2%">${run['args'].get('username','')[:2]}</td>
     <td style="width:12%">${run['args']['new_tag']}<br>${base.format_sha(run['args']['resolved_new']) | n}</td>
     <td style="width:12%">
       ${run['args']['base_tag']}
