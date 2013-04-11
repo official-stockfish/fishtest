@@ -72,9 +72,13 @@ def delta_date(date):
 def users(request):
   info = {}
   for username in request.userdb.get_users():
-    info[username] = {'username': username, 'completed': 0, 'last_updated': datetime.datetime.min}
+    info[username] = {'username': username, 'completed': 0, 'tests': 0, 'last_updated': datetime.datetime.min}
 
   for run in request.rundb.get_runs():
+    if 'username' in run['args']:
+      username = run['args']['username']
+      info[username]['tests'] += 1
+
     for task in run['tasks']:
       if 'worker_info' not in task:
         continue

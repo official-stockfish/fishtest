@@ -6,14 +6,16 @@
    <th>Username</th>
    <th>Last active</th>
    <th>Games played</th>
+   <th>Tests submitted</th>
   </tr>
  </thead>
  <tbody>
  %for user in users:
   <tr>
    <td>${user['username']}</td>
-   <td>${user.get('last_updated', '-')}</td>
-   <td>${user.get('completed', 0)}</td>
+   <td>${user['last_updated']}</td>
+   <td>${user['completed']}</td>
+   <td>${user['tests']}</td>
   </tr>
  %endfor
  </tbody>
