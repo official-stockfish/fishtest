@@ -71,8 +71,9 @@ def delta_date(date):
 @view_config(route_name='users', renderer='users.mak')
 def users(request):
   info = {}
-  for username in request.userdb.get_users():
-    info[username] = {'username': username, 'completed': 0, 'tests': 0, 'last_updated': datetime.datetime.min}
+  for u in request.userdb.get_users():
+    username = u['username']
+    info[username] = {'username': username, 'completed': 0, 'tests': 0, 'tests_repo': u.get('tests_repo', '-'), 'last_updated': datetime.datetime.min}
 
   for run in request.rundb.get_runs():
     if 'username' in run['args']:
@@ -89,8 +90,8 @@ def users(request):
       info[username]['completed'] += task['num_games']
 
   users = []
-  for username in request.userdb.get_users():
-    user = info[username]
+  for u in info.keys():
+    user = info[u]
     user['last_updated'] = delta_date(user['last_updated'])
     users.append(user)
 

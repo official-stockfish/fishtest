@@ -18,8 +18,7 @@ class UserDb:
     return {'username': username, 'authenticated': True}
 
   def get_users(self):
-    users = self.users.find(sort=[('_id', ASCENDING)])
-    return [u['username'] for u in users]
+    return self.users.find(sort=[('_id', ASCENDING)])
 
   def get_user(self, username):
     return self.users.find_one({'username': username})

@@ -7,6 +7,7 @@
    <th>Last active</th>
    <th>Games played</th>
    <th>Tests submitted</th>
+   <th>Tests repository</th>
   </tr>
  </thead>
  <tbody>
@@ -16,6 +17,7 @@
    <td>${user['last_updated']}</td>
    <td>${user['completed']}</td>
    <td>${user['tests']}</td>
+   <td>${user['tests_repo']}</td>
   </tr>
  %endfor
  </tbody>
