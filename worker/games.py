@@ -59,13 +59,13 @@ def setup(item, testing_dir):
   else:
     raise Exception('Item %s not found' % (item))
 
-def build(worker_dir, sha, destination, concurrency):
+def build(worker_dir, sha, repo_url, destination, concurrency):
   """Download and build sources in a temporary directory then move exe to destination"""
   tmp_dir = tempfile.mkdtemp()
   os.chdir(tmp_dir)
 
   with open('sf.gz', 'wb+') as f:
-    f.write(requests.get(FISHCOOKING_URL + '/zipball/' + sha).content)
+    f.write(requests.get(repo_url + '/zipball/' + sha).content)
   zip_file = ZipFile('sf.gz')
   zip_file.extractall()
   zip_file.close()
@@ -87,13 +87,13 @@ def build(worker_dir, sha, destination, concurrency):
   os.chdir(worker_dir)
   shutil.rmtree(tmp_dir)
 
-def setup_engine(destination, url, worker_dir, sha, concurrency):
+def setup_engine(destination, exe_url, worker_dir, sha, repo_url, concurrency):
   if os.path.exists(destination): os.remove(destination)
-  if len(url) > 0:
+  if len(exe_url) > 0:
     with open(destination, 'wb+') as f:
-      f.write(requests.get(url).content)
+      f.write(requests.get(exe_url).content)
   else:
-    build(worker_dir, sha, destination, concurrency)
+    build(worker_dir, sha, repo_url, destination, concurrency)
 
 def kill_process(p):
   if IS_WINDOWS:
@@ -156,8 +156,9 @@ def run_games(worker_info, password, remote, run, task_id):
   base_options = run['args']['base_options']
   threads = int(run['args']['threads'])
   regression_test = run['args'].get('regression_test', False)
-  new_url = run['new_engine_url']
-  base_url = run['base_engine_url']
+  new_exe_url = run['new_engine_url']
+  base_exe_url = run['base_engine_url']
+  repo_url = run.get('repo_url', FISHCOOKING_URL)
   games_concurrency = int(worker_info['concurrency']) / threads
 
   # Format options according to cutechess syntax
@@ -185,9 +186,9 @@ def run_games(worker_info, password, remote, run, task_id):
   # Download or build from sources base and new
   if str(run['_id']) != run_id:
     if os.path.exists(run_id_file): os.remove(run_id_file)
-    setup_engine(new_engine, new_url, worker_dir, run['args']['resolved_new'], worker_info['concurrency'])
+    setup_engine(new_engine, new_exe_url, worker_dir, run['args']['resolved_new'], repo_url, worker_info['concurrency'])
     if not regression_test:
-      setup_engine(base_engine, base_url, worker_dir, run['args']['resolved_base'], worker_info['concurrency'])
+      setup_engine(base_engine, base_exe_url, worker_dir, run['args']['resolved_base'], repo_url, worker_info['concurrency'])
     with open(run_id_file, 'w') as f:
       f.write(str(run['_id']))
 
