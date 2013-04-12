@@ -134,7 +134,7 @@ def validate_form(request):
     u = request.userdb.get_user(data['username'])
     if u['tests_repo'] != data['tests_repo']:
       u['tests_repo'] = data['tests_repo']
-      request.userdb.save(u)
+      request.userdb.users.save(u)
 
   if len(data['resolved_base']) == 0 or len(data['resolved_new']) == 0:
     return data, 'Unable to find branch!'
