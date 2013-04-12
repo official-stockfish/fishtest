@@ -158,7 +158,7 @@ def run_games(worker_info, password, remote, run, task_id):
   regression_test = run['args'].get('regression_test', False)
   new_exe_url = run['new_engine_url']
   base_exe_url = run['base_engine_url']
-  repo_url = run.get('repo_url', FISHCOOKING_URL)
+  repo_url = run['args'].get('tests_repo', FISHCOOKING_URL)
   games_concurrency = int(worker_info['concurrency']) / threads
 
   # Format options according to cutechess syntax

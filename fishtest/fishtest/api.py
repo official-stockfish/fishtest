@@ -21,14 +21,12 @@ def request_task(request):
 
   # Strip the run of unneccesary information
   run = result['run']
-  u = request.userdb.get_user(worker_info['username'])
   min_run = {
     '_id': str(run['_id']),
     'args': run['args'],
     'tasks': [],
     'new_engine_url': '',
     'base_engine_url': '',
-    'repo_url': u['tests_repo'],
   }
 
   # Check if we have a binary to feed
