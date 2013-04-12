@@ -28,8 +28,7 @@ if IS_WINDOWS:
 def github_api(repo):
   """ Convert from https://github.com/<user>/<repo>
       To https://api.github.com/repos/<user>/<repo> """
-  r = repo.split('github.com')
-  return ''.join([r[0], 'api.github.com/repos',r[1]])
+  return repo.replace('https://github.com', 'https://api.github.com/repos')
 
 def verify_signature(engine, signature, remote, payload):
   bench_sig = ''

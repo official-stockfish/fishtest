@@ -98,10 +98,7 @@ def users(request):
 
 def get_sha(branch, repo_url):
   """Resolves the git branch to sha commit"""
-  # Convert from https://github.com/<user>/<repo>
-  # To https://api.github.com/repos/<user>/<repo>
-  r = repo_url.split('github.com')
-  api_url = ''.join([r[0], 'api.github.com/repos',r[1]])
+  api_url = repo_url.replace('https://github.com', 'https://api.github.com/repos')
   commit = requests.get(api_url + '/commits/' + branch).json()
   return commit.get('sha', '')
 
