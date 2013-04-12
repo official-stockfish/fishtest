@@ -42,6 +42,7 @@ class RunDb:
               start_time=None,
               sprt=None,
               username=None,
+              tests_repo=None,
               priority=0):
     if start_time == None:
       start_time = datetime.utcnow()
@@ -63,6 +64,7 @@ class RunDb:
       'base_signature': base_signature,
       'new_signature': new_signature,
       'username': username,
+      'tests_repo': tests_repo,
       'priority': priority,
     }
 

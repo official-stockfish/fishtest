@@ -111,6 +111,12 @@
     </div>
   </div>
   <div class="control-group">
+    <label class="control-label">Test Repo:</label>
+    <div class="controls">
+      <input name="tests-repo" value="${tests_repo}" ${'readonly' if re_run else ''}>
+    </div>
+  </div>
+  <div class="control-group">
     <label class="control-label">Notes:</label>
     <div class="controls">
       <textarea name="run-info" class="span4">${args.get('info', '')}</textarea>

@@ -113,6 +113,7 @@ def validate_form(request):
     'base_options' : request.POST['base-options'],
     'new_options' : request.POST['new-options'],
     'username' : authenticated_userid(request),
+    'tests_repo' : request.POST['tests-repo'],
   }
 
   if len([v for v in data.values() if len(v) == 0]) > 0:
@@ -128,9 +129,12 @@ def validate_form(request):
     data['resolved_base'] = request.POST['resolved_base']
     data['resolved_new'] = request.POST['resolved_new']
   else:
+    data['resolved_base'] = get_sha(data['base_tag'], data['tests_repo'])
+    data['resolved_new'] = get_sha(data['new_tag'], data['tests_repo'])
     u = request.userdb.get_user(data['username'])
-    data['resolved_base'] = get_sha(data['base_tag'], u['tests_repo'])
-    data['resolved_new'] = get_sha(data['new_tag'], u['tests_repo'])
+    if u['tests_repo'] != data['tests_repo']:
+      u['tests_repo'] = data['tests_repo']
+      request.userdb.save(u)
 
   if len(data['resolved_base']) == 0 or len(data['resolved_new']) == 0:
     return data, 'Unable to find branch!'
@@ -179,9 +183,10 @@ def tests_run(request):
   if 'id' in request.params:
     run_args = request.rundb.get_run(request.params['id'])['args']
 
-  return {
-    'args': run_args,
-  }
+  username = authenticated_userid(request)
+  u = request.userdb.get_user(username)
+
+  return { 'args': run_args, 'tests_repo': u['tests_repo'] }
 
 @view_config(route_name='tests_modify', permission='modify_db')
 def tests_modify(request):
@@ -284,7 +289,7 @@ def tests_view(request):
   for name in ['new_tag', 'new_signature', 'new_options', 'resolved_new',
                'base_tag', 'base_signature', 'base_options', 'resolved_base',
                'sprt', 'num_games', 'tc', 'threads', 'book', 'book_depth',
-               'priority', 'username', 'info']:
+               'priority', 'username', 'tests_repo', 'info']:
     value = run['args'].get(name, '-')
     if name == 'sprt' and value != '-':
       value = 'elo0: %.2f alpha: %.2f elo1: %.2f beta: %.2f state: %s' % (value['elo0'], value['alpha'], value['elo1'], value['beta'], value.get('state', '-'))
