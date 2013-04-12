@@ -15,7 +15,7 @@ import zipfile
 from base64 import b64decode
 from zipfile import ZipFile
 
-FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
+FISHCOOKING_URL = 'https://github.com/mcostalba/FishCooking'
 ARCH = 'ARCH=x86-64-modern' if '64' in platform.architecture()[0] else 'ARCH=x86-32'
 EXE_SUFFIX = ''
 MAKE_CMD = 'make build COMP=gcc ' + ARCH
@@ -24,6 +24,12 @@ IS_WINDOWS = 'windows' in platform.system().lower()
 if IS_WINDOWS:
   EXE_SUFFIX = '.exe'
   MAKE_CMD = 'mingw32-make build COMP=mingw ' + ARCH
+
+def github_api(repo):
+  """ Convert from https://github.com/<user>/<repo>
+      To https://api.github.com/repos/<user>/<repo> """
+  r = repo.split('github.com')
+  return ''.join([r[0], 'api.github.com/repos',r[1]])
 
 def verify_signature(engine, signature, remote, payload):
   bench_sig = ''
@@ -48,7 +54,7 @@ def verify_signature(engine, signature, remote, payload):
 
 def setup(item, testing_dir):
   """Download item from FishCooking to testing_dir"""
-  tree = requests.get(FISHCOOKING_URL + '/git/trees/setup').json()
+  tree = requests.get(github_api(FISHCOOKING_URL) + '/git/trees/setup').json()
   for blob in tree['tree']:
     if blob['path'] == item:
       print 'Downloading %s ...' % (item)
@@ -65,7 +71,7 @@ def build(worker_dir, sha, repo_url, destination, concurrency):
   os.chdir(tmp_dir)
 
   with open('sf.gz', 'wb+') as f:
-    f.write(requests.get(repo_url + '/zipball/' + sha).content)
+    f.write(requests.get(github_api(repo_url) + '/zipball/' + sha).content)
   zip_file = ZipFile('sf.gz')
   zip_file.extractall()
   zip_file.close()
