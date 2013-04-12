@@ -10,8 +10,6 @@ from pyramid.httpexceptions import HTTPFound
 
 import stat_util
 
-FISHCOOKING_URL = 'https://api.github.com/repos/mcostalba/FishCooking'
-
 @view_config(route_name='home', renderer='mainpage.mak')
 def mainpage(request):
   return HTTPFound(location=request.route_url('tests'))
@@ -98,9 +96,9 @@ def users(request):
   users.sort(key=lambda k: k['completed'], reverse=True)
   return {'users': users}
 
-def get_sha(branch):
+def get_sha(branch, repo_url):
   """Resolves the git branch to sha commit"""
-  commit = requests.get(FISHCOOKING_URL + '/commits/' + branch).json()
+  commit = requests.get(repo_url + '/commits/' + branch).json()
   return commit.get('sha', '')
 
 def validate_form(request):
@@ -130,8 +128,12 @@ def validate_form(request):
     data['resolved_base'] = request.POST['resolved_base']
     data['resolved_new'] = request.POST['resolved_new']
   else:
-    data['resolved_base'] = get_sha(data['base_tag'])
-    data['resolved_new'] = get_sha(data['new_tag'])
+    for u in request.userdb.get_users():
+      if u['username'] == data['username']:
+        repo_url = u['tests_repo']
+        data['resolved_base'] = get_sha(data['base_tag'], repo_url)
+        data['resolved_new'] = get_sha(data['new_tag'], repo_url)
+        break
 
   if len(data['resolved_base']) == 0 or len(data['resolved_new']) == 0:
     return data, 'Unable to find branch!'
