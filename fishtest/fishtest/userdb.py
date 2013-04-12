@@ -40,6 +40,7 @@ class UserDb:
         'password': password,
         'email': email,
         'groups': [],
+        'tests_repo': ''
       })
       return True
     except:

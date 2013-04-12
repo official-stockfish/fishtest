@@ -71,7 +71,7 @@ def users(request):
   info = {}
   for u in request.userdb.get_users():
     username = u['username']
-    info[username] = {'username': username, 'completed': 0, 'tests': 0, 'tests_repo': u.get('tests_repo', '-'), 'last_updated': datetime.datetime.min}
+    info[username] = {'username': username, 'completed': 0, 'tests': 0, 'tests_repo': u.get('tests_repo', ''), 'last_updated': datetime.datetime.min}
 
   for run in request.rundb.get_runs():
     if 'username' in run['args']:
@@ -128,12 +128,9 @@ def validate_form(request):
     data['resolved_base'] = request.POST['resolved_base']
     data['resolved_new'] = request.POST['resolved_new']
   else:
-    for u in request.userdb.get_users():
-      if u['username'] == data['username']:
-        repo_url = u['tests_repo']
-        data['resolved_base'] = get_sha(data['base_tag'], repo_url)
-        data['resolved_new'] = get_sha(data['new_tag'], repo_url)
-        break
+    u = request.userdb.get_user(data['username'])
+    data['resolved_base'] = get_sha(data['base_tag'], u['tests_repo'])
+    data['resolved_new'] = get_sha(data['new_tag'], u['tests_repo'])
 
   if len(data['resolved_base']) == 0 or len(data['resolved_new']) == 0:
     return data, 'Unable to find branch!'
