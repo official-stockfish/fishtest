@@ -189,7 +189,7 @@ def tests_run(request):
   username = authenticated_userid(request)
   u = request.userdb.get_user(username)
 
-  return { 'args': run_args, 'tests_repo': u['tests_repo'] }
+  return { 'args': run_args, 'tests_repo': u.get('tests_repo', '') }
 
 @view_config(route_name='tests_modify', permission='modify_db')
 def tests_modify(request):
