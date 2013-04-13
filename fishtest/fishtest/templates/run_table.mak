@@ -14,12 +14,17 @@
    <tr>
    %if show_delete:
     <td>
-      <form action="/tests/delete" method="POST" style="display:inline">
-        <input type="hidden" name="run-id" value="${run['_id']}">
-        <button type="submit" class="btn btn-danger btn-mini">
+      <div class="dropdown">
+        <button type="submit" class="btn btn-danger btn-mini" data-toggle="dropdown">
           <i class="icon-trash"></i>
         </button>
-      </form>
+        <div class="dropdown-menu" role="menu">
+          <form action="/tests/delete" method="POST" style="display:inline">
+            <input type="hidden" name="run-id" value="${run['_id']}">
+            <button type="submit" class="btn btn-danger btn-mini">Confirm</button>
+          </form>
+        </div>
+      </div>
     </td>
     %endif
     <td style="width:6%"><a href="/tests/view/${run['_id']}">${run['start_time'].strftime("%d-%m-%y")}</a></td>
