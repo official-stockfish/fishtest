@@ -16,7 +16,7 @@
    <td>${user['username']}</td>
    <td>${user['last_updated']}</td>
    <td>${user['completed']}</td>
-   <td>${user['tests']}</td>
+   <td><a href="/tests/user/${user['username']}">${user['tests']}</td>
    <td><a href="${user['tests_repo']}" target="_blank">${user['tests_repo']}</a></td>
   </tr>
  %endfor
