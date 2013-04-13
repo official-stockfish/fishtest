@@ -135,7 +135,7 @@ def validate_form(request):
     data['resolved_base'] = get_sha(data['base_tag'], data['tests_repo'])
     data['resolved_new'] = get_sha(data['new_tag'], data['tests_repo'])
     u = request.userdb.get_user(data['username'])
-    if u['tests_repo'] != data['tests_repo']:
+    if u.get('tests_repo', '') != data['tests_repo']:
       u['tests_repo'] = data['tests_repo']
       request.userdb.users.save(u)
 
