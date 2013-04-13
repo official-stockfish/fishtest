@@ -17,7 +17,7 @@
    <td>${user['last_updated']}</td>
    <td>${user['completed']}</td>
    <td>${user['tests']}</td>
-   <td>${user['tests_repo']}</td>
+   <td><a href="${user['tests_repo']}" target="_blank">${user['tests_repo']}</a></td>
   </tr>
  %endfor
  </tbody>
