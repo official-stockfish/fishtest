@@ -30,7 +30,7 @@ git clone https://github.com/glinscott/fishtest.git
 
 #### Get username/password
 
-Please e-mail us, and we will give you your username and password.
+Please e-mail me at gmail.com, username "glinscott", and we will give you your username and password.
 
 ### Launching the worker
 
