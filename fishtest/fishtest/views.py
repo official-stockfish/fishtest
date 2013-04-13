@@ -306,13 +306,20 @@ def tests_view(request):
   return { 'run': run, 'run_args': run_args }
 
 @view_config(route_name='tests', renderer='tests.mak')
+@view_config(route_name='tests_user', renderer='tests.mak')
 def tests(request):
+  username = request.matchdict.get('username','')
+  filter_by_user = True if len(username) > 0 else False
+
   runs = { 'pending':[], 'failed':[], 'active':[], 'finished':[] }
 
   all_runs = request.rundb.get_runs()
 
   for run in all_runs:
     if 'deleted' in run and run['deleted']:
+      continue
+
+    if filter_by_user and run['args'].get('username', '') != username:
       continue
 
     results = request.rundb.get_results(run)
@@ -364,7 +371,7 @@ def tests(request):
         info['info'] = ['Pending... (%.1f hrs)' % (eta)]
 
   else:
-    pending_hours = '- -'
+    pending_hours = 0
 
   def total_games(run):
     res = run['results']
@@ -374,6 +381,7 @@ def tests(request):
   return {
     'runs': runs,
     'machines': machines,
+    'show_machines': not filter_by_user,
     'pending_hours': '%.1f' % (pending_hours),
     'games_played': games_played,
     'cores': cores,

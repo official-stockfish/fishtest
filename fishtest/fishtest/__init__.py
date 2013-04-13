@@ -42,6 +42,7 @@ def main(global_config, **settings):
   config.add_route('tests_view', '/tests/view/{id}')
   config.add_route('tests_delete', '/tests/delete')
   config.add_route('tests_stop', '/tests/stop')
+  config.add_route('tests_user', '/tests/user/{username}')
 
   # API
   config.add_route('api_request_task', '/api/request_task')
