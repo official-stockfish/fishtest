@@ -353,6 +353,7 @@ def tests(request):
     return game_secs * remaining_games * int(run['args'].get('threads', 1)) / (60*60)
 
   cores = sum([int(m['concurrency']) for m in machines])
+  nps = sum([int(m['concurrency']) * int(m.get('nps', 0)) for m in machines])
   if cores > 0:
     pending_hours = 0
     for run in runs['pending'] + runs['active']:
@@ -376,4 +377,5 @@ def tests(request):
     'pending_hours': '%.1f' % (pending_hours),
     'games_played': games_played,
     'cores': cores,
+    'nps': nps,
   }

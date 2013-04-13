@@ -16,7 +16,7 @@
 <%include file="run_table.mak" args="runs=runs['failed'], show_delete=True"/>
 %endif
 
-<h3>Active - ${len(machines)} machines ${cores} cores</h3>
+<h3>Active - ${len(machines)} machines ${cores} cores ${'%.2fM' % (nps / (cores * 1000000.0))} nps</h3>
 <table class="table table-striped table-condensed" style="width:70%">
  <thead>
   <tr>
