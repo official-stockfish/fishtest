@@ -178,6 +178,11 @@ class RunDb:
         latest_time = task['last_updated']
         task_id = idx
 
+    # Lower priority of long running tests
+    if task_id > 46 and 'sprt' in run['args'] and run['args']['priority'] == 0:
+      run['args']['priority'] = -1
+      self.runs.save(run)
+
     return {'run': run, 'task_id': task_id}
 
   def update_task(self, run_id, task_id, stats, nps):
