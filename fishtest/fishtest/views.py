@@ -128,6 +128,7 @@ def validate_form(request):
     data['base_signature'] = data['new_signature']
     data['base_options'] = data['new_options']
 
+  # In case of reschedule use old data, otherwise resolve sha and update user's tests_repo
   if 'resolved_base' in request.POST:
     data['resolved_base'] = request.POST['resolved_base']
     data['resolved_new'] = request.POST['resolved_new']
