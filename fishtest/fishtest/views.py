@@ -378,8 +378,21 @@ def tests(request):
     return res['wins'] + res['draws'] + res['losses']
   games_played = sum([total_games(r) for r in runs['finished']])
 
+  # Pagination
+  finished_runs = len(runs['finished'])
+  page = int(request.params.get('page', 1)) - 1
+  page_size = 50
+  pages = [{'idx': 'Prev', 'url': '?page=%d' % (page), 'state': 'disabled' if page == 0 else ''}]
+  for idx, page_idx in enumerate(range(0, finished_runs, page_size)):
+    pages.append({'idx': idx + 1, 'url': '?page=%d' % (idx + 1), 'state': 'active' if page == idx else ''})
+  pages.append({'idx': 'Next', 'url': '?page=%d' % (page + 2), 'state': 'disabled' if page + 1 == len(pages) - 1 else ''})
+  runs['finished'] = runs['finished'][page*page_size:(page+1)*page_size]
+
   return {
     'runs': runs,
+    'finished_runs': finished_runs,
+    'page_idx': page,
+    'pages': pages,
     'machines': machines,
     'show_machines': not filter_by_user,
     'pending_hours': '%.1f' % (pending_hours),

@@ -2,6 +2,8 @@
 
 <h2>Stockfish Testing Queue</h2>
 
+%if page_idx == 0:
+
 <h3>Pending - ${len(runs['pending'])} tests ${pending_hours} hrs <button id="pending-button" class="btn" data-toggle="collapse" data-target="#pending">Show</button></h3>
 <div class="collapse" id="pending">
 %if len(runs['pending']) == 0:
@@ -52,7 +54,18 @@
 %endif
 <%include file="run_table.mak" args="runs=runs['active']"/>
 
-<h3>Finished - ${len(runs['finished'])} tests ${games_played} games </h3>
+%endif
+
+<h3>Finished - ${finished_runs} tests ${games_played} games
+<span class="pagination pagination-small">
+ <ul>
+ %for page in pages:
+  <li class="${page['state']}"><a href="${page['url']}">${page['idx']}</a></li>
+ %endfor
+ </ul>
+</span>
+</h3>
+
 <%include file="run_table.mak" args="runs=runs['finished']"/>
 
 <script type="text/javascript">
