@@ -63,8 +63,8 @@
 
 <%def name="repo(run)">${run['args'].get('tests_repo', 'https://github.com/mcostalba/FishCooking')}</%def>
 
-<%def name="format_sha(sha, run)">
-  <a href="${repo(run)}/commit/${sha}" target="_blank">${sha[:7]}</a>
+<%def name="format_sha(branch, sha, run)">
+  <a href="${repo(run)}/commit/${sha}" target="_blank">${branch}</a>
 </%def>
 
 <%def name="diff_url(run, title='diff')">
