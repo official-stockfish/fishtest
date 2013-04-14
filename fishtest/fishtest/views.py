@@ -236,11 +236,10 @@ def tests_delete(request):
   request.session.flash('Deleted run')
   return HTTPFound(location=request.route_url('tests'))
 
-def format_results(rundb, run):
+def format_results(run_results, run):
   result = {'style': '', 'info': []}
 
   # win/loss/draw count
-  run_results = rundb.get_results(run)
   WLD = [run_results['wins'], run_results['losses'], run_results['draws']]
 
   # If the score is 0% or 100% the formulas will crash
@@ -286,7 +285,8 @@ def format_results(rundb, run):
 @view_config(route_name='tests_view', renderer='tests_view.mak')
 def tests_view(request):
   run = request.rundb.get_run(request.matchdict['id'])
-  run['results_info'] = format_results(request.rundb, run)
+  results = request.rundb.get_results(run)
+  run['results_info'] = format_results(results, run)
 
   run_args = []
   for name in ['new_tag', 'new_signature', 'new_options', 'resolved_new',
@@ -323,7 +323,7 @@ def tests(request):
       continue
 
     results = request.rundb.get_results(run)
-    run['results_info'] = format_results(request.rundb, run)
+    run['results_info'] = format_results(results, run)
 
     state = 'finished'
 
