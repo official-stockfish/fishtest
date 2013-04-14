@@ -57,13 +57,15 @@
 %endif
 
 <h3>Finished - ${finished_runs} tests ${games_played} games
-<span class="pagination pagination-small">
- <ul>
- %for page in pages:
-  <li class="${page['state']}"><a href="${page['url']}">${page['idx']}</a></li>
- %endfor
- </ul>
-</span>
+%if len(pages) > 3:
+ <span class="pagination pagination-small">
+  <ul>
+  %for page in pages:
+   <li class="${page['state']}"><a href="${page['url']}">${page['idx']}</a></li>
+  %endfor
+  </ul>
+ </span>
+%endif
 </h3>
 
 <%include file="run_table.mak" args="runs=runs['finished']"/>
