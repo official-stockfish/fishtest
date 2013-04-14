@@ -113,7 +113,7 @@
   <div class="control-group">
     <label class="control-label">Test Repo:</label>
     <div class="controls">
-      <input name="tests-repo" value="${tests_repo}" ${'readonly' if re_run else ''}>
+      <input name="tests-repo" value="${args.get('tests_repo', tests_repo)}" ${'readonly' if re_run else ''}>
     </div>
   </div>
   <div class="control-group">
