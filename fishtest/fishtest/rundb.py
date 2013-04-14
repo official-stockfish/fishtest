@@ -186,10 +186,8 @@ class RunDb:
       return {'task_alive': False}
 
     task = run['tasks'][task_id]
-    if not task['active']:
+    if not task['active'] or not task['pending']:
       return {'task_alive': False}
-
-    task_alive = task['pending']
 
     task['stats'] = stats
     task['nps'] = nps
@@ -218,14 +216,16 @@ class RunDb:
 
         self.stop_run(run_id)
 
-    return {'task_alive': task_alive}
+    return {'task_alive': True}
 
   def failed_task(self, run_id, task_id):
     run = self.get_run(run_id)
+    if task_id >= len(run['tasks']):
+      return {'task_alive': False}
+
     task = run['tasks'][task_id]
-    if not task['active']:
-      # TODO: log error?
-      return
+    if not task['active'] or not task['pending']:
+      return {'task_alive': False}
 
     # Mark the task as inactive: it will be rescheduled
     task['active'] = False
