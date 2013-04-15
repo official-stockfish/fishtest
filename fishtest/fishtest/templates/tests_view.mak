@@ -17,7 +17,11 @@
 
   <table class="table table-condensed">
   %for arg in run_args:
+    %if len(arg[2]) == 0:
     <tr><td>${arg[0]}</td><td>${arg[1]}</td></tr>
+    %else:
+    <tr><td>${arg[0]}</td><td><a href="${arg[2]}" target="_blank">${arg[1]}</a></td></tr>
+    %endif
   %endfor
   </table>
 </div>

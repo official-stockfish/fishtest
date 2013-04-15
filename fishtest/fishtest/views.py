@@ -288,17 +288,26 @@ def tests_view(request):
   run = request.rundb.get_run(request.matchdict['id'])
   results = request.rundb.get_results(run)
   run['results_info'] = format_results(results, run)
+  run_args = [('id', run['_id'], '')]
 
-  run_args = []
   for name in ['new_tag', 'new_signature', 'new_options', 'resolved_new',
                'base_tag', 'base_signature', 'base_options', 'resolved_base',
                'sprt', 'num_games', 'tc', 'threads', 'book', 'book_depth',
                'priority', 'username', 'tests_repo', 'info']:
     value = run['args'].get(name, '-')
+    url = ''
+
     if name == 'sprt' and value != '-':
-      value = 'elo0: %.2f alpha: %.2f elo1: %.2f beta: %.2f state: %s' % (value['elo0'], value['alpha'], value['elo1'], value['beta'], value.get('state', '-'))
-    run_args.append((name, value))
-  run_args.append(('id', run['_id']))
+      value = 'elo0: %.2f alpha: %.2f elo1: %.2f beta: %.2f state: %s' % \
+              (value['elo0'], value['alpha'], value['elo1'], value['beta'], value.get('state', '-'))
+    elif name == 'new_tag':
+      url = run['args']['tests_repo'] + '/commit/' + run['args']['resolved_new']
+    elif name == 'base_tag':
+      url = run['args']['tests_repo'] + '/commit/' + run['args']['resolved_base']
+    elif name == 'tests_repo':
+      url = value
+
+    run_args.append((name, value, url))
 
   for task in run['tasks']:
     last_updated = task.get('last_updated', datetime.datetime.min)
