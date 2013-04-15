@@ -16,7 +16,7 @@
     <td>
       <div class="dropdown">
         <button type="submit" class="btn btn-danger btn-mini" data-toggle="dropdown">
-          <i class="icon-trash"></i>
+          <i class="icon-trash icon-white"></i>
         </button>
         <div class="dropdown-menu" role="menu">
           <form action="/tests/delete" method="POST" style="display:inline">
