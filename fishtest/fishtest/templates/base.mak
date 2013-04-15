@@ -67,6 +67,6 @@
   <a href="${repo(run)}/commit/${sha}" target="_blank">${branch}</a>
 </%def>
 
-<%def name="diff_url(run, title='diff')">
-  <a href="${repo(run)}/compare/${run['args']['resolved_base'][:7]}...${run['args']['resolved_new'][:7]}" target="_blank">${title}</a>
+<%def name="diff_url(run)">
+  <a href="${repo(run)}/compare/${run['args']['resolved_base'][:7]}...${run['args']['resolved_new'][:7]}" target="_blank" class="btn btn-mini"><i class="icon-book"></i></a>
 </%def>
