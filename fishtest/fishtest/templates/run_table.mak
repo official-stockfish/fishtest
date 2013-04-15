@@ -29,9 +29,8 @@
     %endif
     <td style="width:6%">${run['start_time'].strftime("%d-%m-%y")}</td>
     <td style="width:2%">${run['args'].get('username','')[:2]}</td>
-    <td style="width:18%">${base.diff_url(run)}
-                          <a href="/tests/view/${run['_id']}">${run['args']['new_tag'][:23]}</a>
-    </td>
+    <td style="width:16%"><a href="/tests/view/${run['_id']}">${run['args']['new_tag'][:23]}</a></td>
+    <td style="width:2%">${base.diff_url(run)}</td>
     <td style="min-width:285px;width:285px"><%include file="elo_results.mak" args="run=run" /></td>
     <td style="width:14%">${num_games} @ ${run['args']['tc']} th ${str(run['args'].get('threads',1))}</td>
     <td>${run['args'].get('info', '')}</td>
