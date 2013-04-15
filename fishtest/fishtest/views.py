@@ -300,12 +300,14 @@ def tests_view(request):
     if name == 'sprt' and value != '-':
       value = 'elo0: %.2f alpha: %.2f elo1: %.2f beta: %.2f state: %s' % \
               (value['elo0'], value['alpha'], value['elo1'], value['beta'], value.get('state', '-'))
-    elif name == 'new_tag':
-      url = run['args']['tests_repo'] + '/commit/' + run['args']['resolved_new']
-    elif name == 'base_tag':
-      url = run['args']['tests_repo'] + '/commit/' + run['args']['resolved_base']
-    elif name == 'tests_repo':
-      url = value
+
+    if 'tests_repo' in run['args']:
+      if name == 'new_tag':
+        url = run['args']['tests_repo'] + '/commit/' + run['args']['resolved_new']
+      elif name == 'base_tag':
+        url = run['args']['tests_repo'] + '/commit/' + run['args']['resolved_base']
+      elif name == 'tests_repo' :
+        url = value
 
     run_args.append((name, value, url))
 
