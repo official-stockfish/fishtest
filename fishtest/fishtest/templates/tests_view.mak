@@ -73,14 +73,11 @@
  <tbody>
   %for idx, task in enumerate(run['tasks']):
   <%
-    if not task['active'] and task['pending']:
-      continue
-
     stats = task.get('stats', {})
     if 'stats' in task:
       total = stats['wins'] + stats['losses'] + stats['draws']
     else:
-      total = '0'
+      continue
 
     if 'worker_info' in task:
       machine_info = task['worker_info'].get('username', '') + '-' + str(task['worker_info']['concurrency']) + 'cores'
