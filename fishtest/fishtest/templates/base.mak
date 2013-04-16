@@ -68,5 +68,5 @@
 </%def>
 
 <%def name="diff_url(run)">
-  <a href="${repo(run)}/compare/${run['args']['resolved_base'][:7]}...${run['args']['resolved_new'][:7]}" target="_blank">...</a>
+  <a href="${repo(run)}/compare/${run['args']['resolved_base'][:7]}...${run['args']['resolved_new'][:7]}" target="_blank">diff</a>
 </%def>
