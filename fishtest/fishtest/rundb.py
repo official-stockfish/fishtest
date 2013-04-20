@@ -191,7 +191,7 @@ class RunDb:
 
     return {'run': run, 'task_id': task_id}
 
-  def update_task(self, run_id, task_id, game_id, stats, nps):
+  def update_task(self, run_id, task_id, game_id, stats, nps, game_result):
     run = self.get_run(run_id)
     if task_id >= len(run['tasks']):
       return {'task_alive': False}
@@ -230,7 +230,7 @@ class RunDb:
     # Check if we are doing a CLOP tuning, in this case update
     # result and wake up clop.py process waiting for it.
     if 'clop' in run['args']:
-      self.clopdb.write_result(game_id, result)
+      self.clopdb.write_result(game_id, game_result)
       game = self.clopdb.get_game(game_id)
       pid = game.get('pid', 0)
       os.system("kill -14 %d" % (pid))

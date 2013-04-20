@@ -80,9 +80,10 @@ def update_task(request):
   result = request.rundb.update_task(
     run_id=request.json_body['run_id'],
     task_id=int(request.json_body['task_id']),
-    game_id=request.json_body.get('game_id', 0),
+    game_id=request.json_body.get('game_id', ''),
     stats=request.json_body['stats'],
     nps=request.json_body.get('nps', 0),
+    game_result=request.json_body.get('game_result', 'stop'),
   )
   return json.dumps(result)
 

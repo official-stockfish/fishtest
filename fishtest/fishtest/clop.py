@@ -17,10 +17,15 @@ def test_active():
 
 def start_clop(run_id, branch, params):
   this_file = os.path.realpath(__file__)
-  testName = branch + '_' + str(run_id)
+  testName = branch + '_' + run_id
   s = 'Name %s\nScript %s' % (testName, this_file)
-  for p in params:
-    s += '\nIntegerParameter %s %d %d' % (p[0], p[1], p[2])
+  for p in params.split(']'):
+    if len(p) == 0:
+      continue
+    # params is in the form p1[0 100] p2[-10 10]
+    name = p.split('[')[0]
+    minmax = p.split('[')[1].split()
+    s += '\nIntegerParameter %s %s %s' % (name, minmax[0], minmax[1])
   for i in range(1, 3):
     s += '\nProcessor machine%d\nProcessor machine%d' % (i, i)
   s += '\nReplications 2\nDrawElo 100\nH 3\nCorrelations all\n'
