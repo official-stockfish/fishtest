@@ -44,16 +44,10 @@ def play_game(clopdb, data):
   # Go to sleep now, waiting to be wake up when game is done
   signal.pause()
 
-  game = clopdb.get_game(data['pid'])
+  game = clopdb.get_game(game_id)
   result = game.get('result', 'stop')
-  clopdb.remove_game(data['pid'])
+  clopdb.remove_game(game_id)
   return result
-
-def write_result(clopdb, pid, result):
-  # TODO Move to fishtest the DB update to avoid a new connection at each result
-  '''Update result in clopdb and wake up waiting process'''
-  clopdb.write_result(pid, result)
-  os.system("kill -14 %d" % (pid))
 
 def main():
   '''Handles CLOP interface in both directions
@@ -71,12 +65,6 @@ def main():
   # arguments are clop_dir and run_id
   if 'start_clop' in sys.argv[1]:
     start_clop(sys.argv[2], sys.argv[3])
-    return
-
-  # Result is ready, called from fishtest
-  # arguments are process pid and game result
-  if 'write_result' in sys.argv[1]:
-    write_result(clopdb, int(sys.argv[2]), sys.argv[3])
     return
 
   # Run a new game, called from CLOP
