@@ -27,6 +27,7 @@ def main(global_config, **settings):
   def add_rundb(event):
     event.request.rundb = rundb
     event.request.userdb = rundb.userdb
+    event.request.clopdb = rundb.clopdb
   config.add_subscriber(add_rundb, NewRequest)
 
   config.add_static_view('css', 'static/css', cache_max_age=3600)
@@ -50,6 +51,7 @@ def main(global_config, **settings):
   config.add_route('api_failed_task', '/api/failed_task')
   config.add_route('api_stop_run', '/api/stop_run')
   config.add_route('api_request_version', '/api/request_version')
+  config.add_route('api_request_clop_game', '/api/request_clop_game')
 
   config.scan()
   return config.make_wsgi_app()
