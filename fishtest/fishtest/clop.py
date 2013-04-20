@@ -6,6 +6,8 @@ import time
 import sys
 from rundb import RunDb
 
+CLOP_DIR = './clop/'
+
 def handler(signum, frame):
   return
 
@@ -13,15 +15,7 @@ def test_active():
   ''' Stub, connect to DB'''
   return True
 
-def get_params(run_id):
-  '''Read CLOP parameters of corresponding run_id'''
-  run = rundb.get_run(run_id)
-  branch = run['args']['new_tag']
-  params = run['args']['clop']['params']
-  return branch, params
-
-def start_clop(clop_dir, run_id):
-  branch, params = get_params(run_id)
+def start_clop(run_id, branch, params):
   this_file = os.path.realpath(__file__)
   testName = branch + '_' + str(run_id)
   s = 'Name %s\nScript %s' % (testName, this_file)
@@ -33,28 +27,13 @@ def start_clop(clop_dir, run_id):
 
   print s
 
-  os.chdir(clop_dir)
-  cmd = [os.path.join(clop_dir, 'clop-console'), 'c']
+  os.chdir(CLOP_DIR)
+  cmd = [os.path.join(CLOP_DIR, 'clop-console'), 'c']
   p = subprocess.Popen(cmd, stdin=subprocess.PIPE)
   p.stdin.write(s)
 
-def play_game(clopdb, data):
-  '''Add new game in clopdb and go to sleep waiting for result'''
-  game_id = clopdb.add_game(**data)
-
-  # Go to sleep now, waiting to be wake up when game is done
-  signal.pause()
-
-  game = clopdb.get_game(game_id)
-  result = game.get('result', 'stop')
-  clopdb.remove_game(game_id)
-  return result
-
 def main():
-  '''Handles CLOP interface in both directions
-     We can be called both from fishtest (to start CLOP or
-     to update results) and from CLOP (to start a new game)
-  '''
+  '''Called by CLOP to start a new game'''
   signal.signal(signal.SIGALRM, handler)
   rundb = RunDb()
   clopdb = rundb.clopdb
@@ -74,7 +53,16 @@ def main():
   with open('debug.log', 'a') as f:
     print >>f, data
 
-  result = play_game(clopdb, data)
+  # Add new game row in clopdb
+  game_id = clopdb.add_game(**data)
+
+  # Go to sleep now, waiting to be wake up when game is done
+  signal.pause()
+
+  # Game is finished, read result and remove game row
+  game = clopdb.get_game(game_id)
+  result = game.get('result', 'stop')
+  clopdb.remove_game(game_id)
 
   with open('debug.log', 'a') as f:
     print >>f, data, 'result', result

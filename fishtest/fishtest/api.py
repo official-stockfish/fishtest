@@ -32,7 +32,9 @@ def request_task(request):
 
   # If is the start of a CLOP tuning session start CLOP
   if 'clop' in run['args'] and result['task_id'] == 0:
-    clop.start_clop('clop/', str(run['_id']))
+    clop.start_clop(str(run['_id']),
+                    run['args']['new_tag'],
+                    run['args']['clop']['params'])
 
   # Check if we have a binary to feed
   binaries_dir = run.get('binaries_dir', '')
