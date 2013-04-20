@@ -14,9 +14,10 @@ def test_active():
   return True
 
 def get_params(run_id):
-  ''' Stub, connect to DB '''
-  branch = 'test'
-  params = [('p1', 0, 10), ('p2', -10, 10), ('p3', -20, 20)]
+  '''Read CLOP parameters of corresponding run_id'''
+  run = rundb.get_run(run_id)
+  branch = run['args']['new_tag']
+  params = run['args']['clop']['params']
   return branch, params
 
 def start_clop(clop_dir, run_id):
@@ -57,15 +58,6 @@ def main():
   signal.signal(signal.SIGALRM, handler)
   rundb = RunDb()
   clopdb = rundb.clopdb
-
-  if len(sys.argv) < 2:
-    sys.exit(1)
-
-  # Start CLOP, called from fishtest
-  # arguments are clop_dir and run_id
-  if 'start_clop' in sys.argv[1]:
-    start_clop(sys.argv[2], sys.argv[3])
-    return
 
   # Run a new game, called from CLOP
   # Check if test is still active

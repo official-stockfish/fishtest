@@ -1,4 +1,5 @@
 import json, sys
+import clop
 from pyramid.view import view_config
 
 from builder import get_binary_url
@@ -28,6 +29,10 @@ def request_task(request):
     'new_engine_url': '',
     'base_engine_url': '',
   }
+
+  # If is the start of a CLOP tuning session start CLOP
+  if 'clop' in run['args'] and result['task_id'] == 0:
+    clop.start_clop('clop/', str(run['_id']))
 
   # Check if we have a binary to feed
   binaries_dir = run.get('binaries_dir', '')
