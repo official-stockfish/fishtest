@@ -156,6 +156,9 @@ def validate_form(request):
     }
     # Arbitrary limit on number of games played.  Shouldn't be hit in practice
     data['num_games'] = 128000
+  elif stop_rule == 'clop':
+    data['clop'] = { 'params': request.POST['clop-params'] }
+    data['num_games'] = 64000
   else:
     data['num_games'] = int(request.POST['num-games'])
     if data['num_games'] <= 0:
@@ -292,14 +295,21 @@ def tests_view(request):
 
   for name in ['new_tag', 'new_signature', 'new_options', 'resolved_new',
                'base_tag', 'base_signature', 'base_options', 'resolved_base',
-               'sprt', 'num_games', 'tc', 'threads', 'book', 'book_depth',
+               'sprt', 'num_games', 'clop', 'tc', 'threads', 'book', 'book_depth',
                'priority', 'username', 'tests_repo', 'info']:
-    value = run['args'].get(name, '-')
+
+    if not name in run['args']:
+      continue
+
+    value = run['args'][name]
     url = ''
 
     if name == 'sprt' and value != '-':
       value = 'elo0: %.2f alpha: %.2f elo1: %.2f beta: %.2f state: %s' % \
               (value['elo0'], value['alpha'], value['elo1'], value['beta'], value.get('state', '-'))
+
+    if name == 'clop' and value != '-':
+      value = value['params']
 
     if 'tests_repo' in run['args']:
       if name == 'new_tag':

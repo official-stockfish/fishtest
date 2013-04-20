@@ -55,6 +55,7 @@
       <select name="stop_rule">
         <option value="sprt">SPRT</option>
         <option value="numgames">NumGames</option>
+        <option value="clop">CLOP</option>
       </select>
       <div class="btn-group">
         <div class="btn" id="fast_test">Fast</div>
@@ -78,6 +79,12 @@
     <label class="control-label">SPRT Elo1:</label>
     <div class="controls">
       <input name="sprt_elo1" value="${args.get('sprt', {'elo1': 4.5})['elo1']}">
+    </div>
+  </div>
+  <div class="control-group">
+    <label class="control-label">CLOP parameters:</label>
+    <div class="controls">
+    <input name="clop-params" value="${args.get('clop', {'params': 'p1[-10 10] p2[0, 100]'})['params']}">
     </div>
   </div>
   <div class="control-group">
@@ -138,11 +145,14 @@
 <script type="text/javascript">
 $(function() {
   var update_sprt = function() {
-    var enabled = $('select[name=stop_rule]').val() == 'sprt';
+    var num_disabled  = $('select[name=stop_rule]').val() != 'numgames';
+    var sprt_disabled = $('select[name=stop_rule]').val() != 'sprt';
+    var clop_disabled = $('select[name=stop_rule]').val() != 'clop';
 
-    $('input[name=num-games]').prop('disabled', enabled);
-    $('input[name=sprt_elo0]').prop('disabled', !enabled);
-    $('input[name=sprt_elo1]').prop('disabled', !enabled);
+    $('input[name=num-games]').prop('disabled', num_disabled);
+    $('input[name=clop-params]').prop('disabled', clop_disabled);
+    $('input[name=sprt_elo0]').prop('disabled', sprt_disabled);
+    $('input[name=sprt_elo1]').prop('disabled', sprt_disabled);
   };
 
   update_sprt();

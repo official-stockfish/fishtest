@@ -43,6 +43,7 @@ class RunDb:
               regression_test=False,
               start_time=None,
               sprt=None,
+              clop=None,
               username=None,
               tests_repo=None,
               priority=0):
@@ -72,6 +73,9 @@ class RunDb:
 
     if sprt != None:
       run_args['sprt'] = sprt
+
+    if clop != None:
+      run_args['clop'] = clop
 
     id = self.runs.insert({
       'args': run_args,
