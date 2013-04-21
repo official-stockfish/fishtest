@@ -3,7 +3,7 @@ import os
 import signal
 import subprocess
 import time
-import sys
+from sys import argv
 from rundb import RunDb
 
 CLOP_DIR = './clop/'
@@ -16,7 +16,8 @@ def test_active():
   return True
 
 def start_clop(run_id, branch, params):
-  this_file = os.path.realpath(__file__)
+  this_file = os.path.dirname(os.path.realpath(__file__)) # Points to *.pyc
+  this_file = os.path.join(this_file, 'clop.py')
   testName = branch + '_' + run_id
   s = 'Name %s\nScript %s' % (testName, this_file)
   for p in params.split(']'):
@@ -32,10 +33,10 @@ def start_clop(run_id, branch, params):
 
   print s
 
-  os.chdir(CLOP_DIR)
   cmd = [os.path.join(CLOP_DIR, 'clop-console'), 'c']
-  p = subprocess.Popen(cmd, stdin=subprocess.PIPE)
+  p = subprocess.Popen(cmd, stdin=subprocess.PIPE, cwd=CLOP_DIR)
   p.stdin.write(s)
+  p.stdin.close()
 
 def main():
   '''Called by CLOP to start a new game'''
@@ -50,10 +51,13 @@ def main():
     return
 
   data = { 'pid': os.getpid(),
-           'machine': sys.argv[1],
-           'seed': sys.argv[2],
-           'params': sys.argv[3:],
+           'machine': argv[1],
+           'seed': int(argv[2]),
+           'params': [(argv[i], argv[i+1]) for i in range(3, len(argv), 2)],
          }
+
+  # Choose the engine's playing side (color) based on CLOP's seed
+  data['white'] = True if data['seed'] % 2 == 0 else False
 
   with open('debug.log', 'a') as f:
     print >>f, data

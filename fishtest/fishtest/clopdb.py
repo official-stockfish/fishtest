@@ -1,4 +1,5 @@
 import sys
+from bson.objectid import ObjectId
 from pymongo import ASCENDING, DESCENDING
 
 class ClopDb:
