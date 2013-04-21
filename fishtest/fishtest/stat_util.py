@@ -24,7 +24,8 @@ def phi_inv(p):
   return math.sqrt(2)*erf_inv(2*p-1)
 
 def elo(x):
-  assert(0 < x and x < 1)
+  if x <= 0:
+    return 0.0
   return -400*math.log10(1/x-1)
 
 def get_elo(WLD):
