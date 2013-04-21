@@ -191,7 +191,7 @@ class RunDb:
 
     return {'run': run, 'task_id': task_id}
 
-  def update_task(self, run_id, task_id, game_id, stats, nps, game_result):
+  def update_task(self, run_id, task_id, stats, nps, clop):
     run = self.get_run(run_id)
     if task_id >= len(run['tasks']):
       return {'task_alive': False}
@@ -231,11 +231,15 @@ class RunDb:
     # result, wake up clop.py process waiting for it and
     # fetch next game.
     if 'clop' in run['args']:
-      self.clopdb.write_result(game_id, game_result)
-      game = self.clopdb.get_game(game_id)
-      pid = game.get('pid', 0)
-      os.system("kill -14 %d" % (pid))
-      return self.clopdb.request_game()
+      if len(clop['game_id']) > 0:
+        self.clopdb.write_result(clop['game_id'], clop['game_result'])
+        game = self.clopdb.get_game(clop['game_id'])
+        pid = game.get('pid', 0)
+        os.system("kill -14 %d" % (pid))
+      if clop['fetch_next']:
+        req = self.clopdb.request_game()
+        req['task_alive'] = True
+        return req
 
     return {'task_alive': True}
 

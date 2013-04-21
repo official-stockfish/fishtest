@@ -25,6 +25,15 @@ if IS_WINDOWS:
   EXE_SUFFIX = '.exe'
   MAKE_CMD = 'mingw32-make build COMP=mingw ' + ARCH
 
+def get_clop_result(wld, white):
+  ''' Convert result to W or L or D'''
+  if wld[0] == '1':
+    return "W" if white else "L"
+  elif wld[1] == '1':
+    return "L" if white else "W"
+  else:
+    return "D"
+
 def github_api(repo):
   """ Convert from https://github.com/<user>/<repo>
       To https://api.github.com/repos/<user>/<repo> """
@@ -161,6 +170,7 @@ def run_games(worker_info, password, remote, run, task_id):
   base_options = run['args']['base_options']
   threads = int(run['args']['threads'])
   regression_test = run['args'].get('regression_test', False)
+  clop_tuning = True if 'clop' in run['args'] else False
   new_exe_url = run['new_engine_url']
   base_exe_url = run['base_engine_url']
   repo_url = run['args'].get('tests_repo', FISHCOOKING_URL)
@@ -235,53 +245,97 @@ def run_games(worker_info, password, remote, run, task_id):
   else:
     book_cmd = ['book=%s' % (book), 'bookdepth=%s' % (book_depth)]
 
-  # Run cutechess-cli binary
-  cmd = [ cutechess, '-repeat', '-rounds', str(games_remaining), '-tournament', 'gauntlet',
-         '-pgnout', 'results.pgn', '-resign', 'movecount=3', 'score=400', '-draw', 'movenumber=34',
-         'movecount=2', 'score=20', '-concurrency', str(games_concurrency)] + pgn_cmd + \
-        ['-engine', 'name=stockfish', 'cmd=stockfish'] + new_options + \
-        ['-engine', 'name=base', 'cmd=base'] + base_options + ['-each', 'proto=uci', \
-         'option.Threads=%d' % (threads), 'tc=%s' % (scaled_tc)] + book_cmd
+  clop = {
+    'game_id': '',
+    'white': True,
+    'fetch_next': False,
+    'fcp': [],
+    'scp': [],
+    'game_result': ''
+  }
 
-  if not regression_test:
-    print 'Running %s vs %s' % (run['args']['new_tag'], run['args']['base_tag'])
-  else:
-    cmd = ['cutechess_regression_test.sh']
-    print 'Running regression test of %s' % (run['args']['new_tag'])
+  # CLOP loop start here
+  keep_looping = True
+  while (keep_looping):
 
-  print ' '.join(cmd)
-  p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
+    if clop_tuning:
+      games_to_play = 1
+      games_remaining -= 1
+      clop['fetch_next'] = games_remaining > 1
+      keep_looping = clop['fetch_next']
+    else:
+      games_to_play = games_remaining
+      keep_looping = False
 
-  try:
-    for line in iter(p.stdout.readline,''):
-      sys.stdout.write(line)
-      sys.stdout.flush()
-      # Parse line like this:
-      # Finished game 1 (stockfish vs base): 0-1 {White disconnects}
-      if 'disconnects' in line or 'connection stalls' in line:
-        result['stats']['crashes'] += 1
+    # Run cutechess-cli binary
+    cmd = [ cutechess, '-repeat', '-rounds', str(games_to_play), '-tournament', 'gauntlet',
+           '-pgnout', 'results.pgn', '-resign', 'movecount=3', 'score=400', '-draw', 'movenumber=34',
+           'movecount=2', 'score=20', '-concurrency', str(games_concurrency)] + pgn_cmd + \
+          ['-engine', 'name=stockfish', 'cmd=stockfish'] + new_options + clop['fcp'] + \
+          ['-engine', 'name=base', 'cmd=base'] + base_options + clop['scp'] + \
+          ['-each', 'proto=uci', 'option.Threads=%d' % (threads), 'tc=%s' % (scaled_tc)] + book_cmd
 
-      # Parse line like this:
-      # Score of stockfish vs base: 0 - 0 - 1  [0.500] 1
-      if 'Score' in line:
-        chunks = line.split(':')
-        chunks = chunks[1].split()
-        result['stats']['wins']   = int(chunks[0]) + old_stats['wins']
-        result['stats']['losses'] = int(chunks[2]) + old_stats['losses']
-        result['stats']['draws']  = int(chunks[4]) + old_stats['draws']
+    if not regression_test:
+      print 'Running %s vs %s' % (run['args']['new_tag'], run['args']['base_tag'])
+    else:
+      cmd = ['cutechess_regression_test.sh']
+      print 'Running regression test of %s' % (run['args']['new_tag'])
 
-        try:
-          status = requests.post(remote + '/api/update_task', data=json.dumps(result)).json()
-          if not status['task_alive']:
-            # This task is no longer neccesary
-            kill_process(p)
-            p.wait()
-            return
-        except:
-          sys.stderr.write('Exception from calling update_task:\n')
-          traceback.print_exc(file=sys.stderr)
-  except:
-    kill_process(p)
+    print ' '.join(cmd)
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
+
+    try:
+      for line in iter(p.stdout.readline,''):
+        sys.stdout.write(line)
+        sys.stdout.flush()
+        # Parse line like this:
+        # Finished game 1 (stockfish vs base): 0-1 {White disconnects}
+        if 'disconnects' in line or 'connection stalls' in line:
+          result['stats']['crashes'] += 1
+
+        # Parse line like this:
+        # Score of stockfish vs base: 0 - 0 - 1  [0.500] 1
+        if 'Score' in line:
+          chunks = line.split(':')
+          chunks = chunks[1].split()
+          wld = [chunks[0], chunks[2], chunks[4]]
+          result['stats']['wins']   = int(wld[0]) + old_stats['wins']
+          result['stats']['losses'] = int(wld[1]) + old_stats['losses']
+          result['stats']['draws']  = int(wld[2]) + old_stats['draws']
+
+          if clop_tuning:
+            clop['game_result'] = get_clop_result(wld, clop['white'])
+            result['clop'] = clop
+
+          try:
+            req = requests.post(remote + '/api/update_task', data=json.dumps(result)).json()
+
+            if not req['task_alive']:
+              # This task is no longer neccesary
+              kill_process(p)
+              p.wait()
+              return
+
+            if clop_tuning:
+              if not 'game_id' in req:
+                p.wait()
+                return
+              else:
+                clop['game_id'] = req['game_id']
+                clop['white'] = req['white']
+                clop['fcp'] = ['option.%s=%s'%(x[0], x[1]) for x in req['params']]
+                clop['scp'] = []
+                if not clop['white']:
+                  clop['fcp'], clop['scp'] = clop['scp'], clop['fcp']
+
+          except:
+            sys.stderr.write('Exception from calling update_task:\n')
+            traceback.print_exc(file=sys.stderr)
+            break
+    except:
+      traceback.print_exc(file=sys.stderr)
+      kill_process(p)
+      break
 
   p.wait()
   if p.returncode != 0:
