@@ -64,14 +64,6 @@ def request_task(request):
   result['run'] = min_run
   return json.dumps(result)
 
-@view_config(route_name='api_request_clop_game', renderer='string')
-def request_clop_game(request):
-  token = authenticate(request)
-  if 'error' in token: return json.dumps(token)
-
-  result = request.clopdb.request_game()
-  return json.dumps(result)
-
 @view_config(route_name='api_update_task', renderer='string')
 def update_task(request):
   token = authenticate(request)

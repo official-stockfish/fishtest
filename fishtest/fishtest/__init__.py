@@ -51,7 +51,6 @@ def main(global_config, **settings):
   config.add_route('api_failed_task', '/api/failed_task')
   config.add_route('api_stop_run', '/api/stop_run')
   config.add_route('api_request_version', '/api/request_version')
-  config.add_route('api_request_clop_game', '/api/request_clop_game')
 
   config.scan()
   return config.make_wsgi_app()

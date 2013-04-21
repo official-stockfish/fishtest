@@ -228,12 +228,14 @@ class RunDb:
         self.stop_run(run_id)
 
     # Check if we are doing a CLOP tuning, in this case update
-    # result and wake up clop.py process waiting for it.
+    # result, wake up clop.py process waiting for it and
+    # fetch next game.
     if 'clop' in run['args']:
       self.clopdb.write_result(game_id, game_result)
       game = self.clopdb.get_game(game_id)
       pid = game.get('pid', 0)
       os.system("kill -14 %d" % (pid))
+      return self.clopdb.request_game()
 
     return {'task_alive': True}
 
