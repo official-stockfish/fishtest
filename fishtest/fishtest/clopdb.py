@@ -19,11 +19,12 @@ class ClopDb:
   def write_result(self, game_id, result):
     self.clop.update({ '_id': ObjectId(game_id) }, { '$set': { 'result': result }, })
 
-  def add_game(self, pid, machine, seed, params):
+  def add_game(self, pid, machine, seed, white, params):
     id = self.clop.insert({
       'pid': pid,
       'machine': machine,
       'seed': seed,
+      'white': white,
       'params': params,
       'result': '',
       'started': False,
@@ -37,7 +38,8 @@ class ClopDb:
         self.clop.save(game)
         return { 'game_id': str(game['_id']),
                  'seed': game['seed'],
+                 'white': game['white'],
                  'params': game['params'] }
     else:
-      return {'game_waiting': False}
+      return {'no_games': True}
 
