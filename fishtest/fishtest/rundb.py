@@ -178,6 +178,8 @@ class RunDb:
     if run == None:
       return {'task_waiting': False}
 
+    # Count number of active tasks and find the task we have just activated: it
+    # is the one with the highest 'last_updated' field
     latest_time = datetime.min
     for idx, task in enumerate(run['tasks']):
       if 'last_updated' in task and task['last_updated'] > latest_time:
@@ -233,11 +235,8 @@ class RunDb:
     if 'clop' in run['args']:
       if len(clop['game_id']) > 0:
         self.clopdb.write_result(clop['game_id'], clop['game_result'])
-        game = self.clopdb.get_game(clop['game_id'])
-        pid = game.get('pid', 0)
-        os.system("kill -14 %d" % (pid))
       if clop['fetch_next']:
-        req = self.clopdb.request_game()
+        req = self.clopdb.request_game(run_id, task_id)
         req['task_alive'] = True
         return req
 
@@ -255,6 +254,10 @@ class RunDb:
     # Mark the task as inactive: it will be rescheduled
     task['active'] = False
     self.runs.save(run)
+
+    for game in self.clopdb.get_games(run_id):
+      if game['task_id'] == str(task_id):
+        self.clopdb.write_result(game['game_id'], 'stop')
 
     return {}
 

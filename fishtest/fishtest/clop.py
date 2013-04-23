@@ -8,7 +8,7 @@ from rundb import RunDb
 
 CLOP_DIR = './clop/'
 
-def handler(signum, frame):
+def resume(signum, frame):
   return
 
 def test_active():
@@ -28,7 +28,7 @@ def start_clop(run_id, branch, params):
     minmax = p.split('[')[1].split()
     s += '\nIntegerParameter %s %s %s' % (name, minmax[0], minmax[1])
   for i in range(1, 3):
-    s += '\nProcessor machine%d\nProcessor machine%d' % (i, i)
+    s += '\nProcessor %s_%d\nProcessor %s_%d' % (run_id, i, run_id, i)
   s += '\nReplications 2\nDrawElo 100\nH 3\nCorrelations all\n'
 
   print s
@@ -40,7 +40,7 @@ def start_clop(run_id, branch, params):
 
 def main():
   '''Called by CLOP to start a new game'''
-  signal.signal(signal.SIGALRM, handler)
+  signal.signal(signal.SIGCONT, resume)
   rundb = RunDb()
   clopdb = rundb.clopdb
 
@@ -51,7 +51,7 @@ def main():
     return
 
   data = { 'pid': os.getpid(),
-           'machine': argv[1],
+           'run_id': argv[1].split('_')[0],
            'seed': int(argv[2]),
            'params': [(argv[i], argv[i+1]) for i in range(3, len(argv), 2)],
          }
@@ -70,7 +70,7 @@ def main():
 
   # Game is finished, read result and remove game row
   game = clopdb.get_game(game_id)
-  result = game.get('result', 'stop')
+  result = game['result'] if game != None else 'stop'
   clopdb.remove_game(game_id)
 
   with open('debug.log', 'a') as f:

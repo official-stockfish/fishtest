@@ -30,11 +30,16 @@ def request_task(request):
     'base_engine_url': '',
   }
 
-  # If is the start of a CLOP tuning session start CLOP
-  if 'clop' in run['args'] and result['task_id'] == 0:
-    clop.start_clop(str(run['_id']),
-                    run['args']['new_tag'],
-                    run['args']['clop']['params'])
+  # If is the start of a CLOP tuning session start CLOP. To check we are starting
+  # a new CLOP run, check if there is only one active task in the run (the one
+  # we are returning now.
+  if 'clop' in run['args']:
+    active_tasks = 0
+    for task in run['tasks']:
+      if task['active']:
+        active_tasks += 1
+    if active_tasks == 1:
+      clop.start_clop(str(run['_id']), run['args']['new_tag'], run['args']['clop']['params'])
 
   # Check if we have a binary to feed
   binaries_dir = run.get('binaries_dir', '')
