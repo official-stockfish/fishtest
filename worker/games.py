@@ -260,6 +260,7 @@ def run_games(worker_info, password, remote, run, task_id):
 
     if clop_tuning:
       games_to_play = 1
+      games_concurrency = 1
       games_remaining -= 1
       clop['fetch_next'] = games_remaining > 1
       keep_looping = clop['fetch_next']
