@@ -256,7 +256,7 @@ def run_games(worker_info, password, remote, run, task_id):
 
   # CLOP loop start here
   keep_looping = True
-  while (keep_looping):
+  while keep_looping:
 
     if clop_tuning:
       games_to_play = 1

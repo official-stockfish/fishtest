@@ -8,11 +8,14 @@ class ClopDb:
     self.db = db
     self.clop = self.db['clop']
 
-  def get_games(self, run_id = ''):
+  def get_games(self, run_id = '', task_id = ''):
     if len(run_id) == 0:
       return self.clop.find(sort=[('_id', ASCENDING)])
-    else:
+    elif len(task_id) == 0:
       return self.clop.find({'run_id': run_id}, sort=[('_id', ASCENDING)])
+    else:
+      return self.clop.find({'$and': [{'run_id': run_id}, {'task_id': task_id}]},
+                            sort=[('_id', ASCENDING)])
 
   def get_game(self, game_id):
     return self.clop.find_one({'_id': ObjectId(game_id)})
@@ -20,12 +23,18 @@ class ClopDb:
   def remove_game(self, game_id):
     return self.clop.remove({'_id': ObjectId(game_id)}, True)
 
+  def stop_games(self, run_id = '', task_id = ''):
+    for game in self.get_games(run_id, str(task_id)):
+      self.write_result(str(game['_id']), 'stop')
+
   def write_result(self, game_id, result):
     game = self.get_game(game_id)
     if game != None:
       game['result'] = result
       self.clop.save(game)
-      os.system("kill -18 %d" % (game['pid']))
+      ret = os.system("kill -18 %d" % (game['pid']))
+      if ret != 0: # No process found, force removing of the game
+        self.remove_game(game_id)
 
   def add_game(self, pid, run_id, seed, white, params):
     id = self.clop.insert({

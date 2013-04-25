@@ -255,9 +255,9 @@ class RunDb:
     task['active'] = False
     self.runs.save(run)
 
-    for game in self.clopdb.get_games(run_id):
-      if game['task_id'] == str(task_id):
-        self.clopdb.write_result(game['game_id'], 'stop')
+    # Exit any pending game
+    if 'clop' in run['args']:
+      self.clopdb.stop_games(run_id, task_id)
 
     return {}
 

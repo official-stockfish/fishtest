@@ -16,6 +16,17 @@ def test_active():
   return True
 
 def start_clop(run_id, branch, params):
+
+  rundb = RunDb()
+  clopdb = rundb.clopdb
+
+  clopdb.stop_games(run_id)
+  time.sleep(1)
+  retries = 0
+  while clopdb.get_games(run_id).count() > 0 and retries < 5:
+    retries += 1
+    time.sleep(1)
+
   this_file = os.path.dirname(os.path.realpath(__file__)) # Points to *.pyc
   this_file = os.path.join(this_file, 'clop.py')
   testName = branch + '_' + run_id
@@ -64,6 +75,7 @@ def main():
 
   # Add new game row in clopdb
   game_id = clopdb.add_game(**data)
+  rundb.conn.disconnect() # MongoClient binds a port for listening while connected
 
   # Go to sleep now, waiting to be wake up when game is done
   signal.pause()
