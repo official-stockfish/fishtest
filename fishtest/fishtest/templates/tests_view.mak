@@ -56,6 +56,45 @@
 
 </div>
 
+%if 'clop' in run['args']:
+<h3>Games</h3>
+<table class='table table-striped table-condensed'>
+ <thead>
+  <tr>
+   <th>Idx</th>
+   <th>Pid</th>
+   <th>Seed</th>
+   <th>White</th>
+   <th>Parameters</th>
+   <th>Result</th>
+  </tr>
+ </thead>
+ <tbody>
+  %for game in run['games']:
+  <%
+    idx = game['task_id'] if len(game['task_id']) > 0 else 'pending'
+    parameters = ['%s=%s'%(x[0], x[1]) for x in game['params']]
+
+    if idx != 'pending':
+      active_style = 'info'
+    elif len(game['result']) > 0:
+        active_style = 'error'
+    else:
+      active_style = ''
+  %>
+  <tr class="${active_style}">
+   <td>${idx}</td>
+   <td>${game['pid']}</td>
+   <td>${game['seed']}</td>
+   <td>${game['white']}</td>
+   <td>${',  '.join(parameters)}</td>
+   <td>${game['result']}</td>
+  </tr>
+  %endfor
+ </tbody>
+</table>
+%endif
+
 <h3>Tasks</h3>
 <table class='table table-striped table-condensed'>
  <thead>

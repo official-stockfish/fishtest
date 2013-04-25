@@ -178,8 +178,7 @@ class RunDb:
     if run == None:
       return {'task_waiting': False}
 
-    # Count number of active tasks and find the task we have just activated: it
-    # is the one with the highest 'last_updated' field
+    # Find the task we have just activated: the one with the highest 'last_updated'
     latest_time = datetime.min
     for idx, task in enumerate(run['tasks']):
       if 'last_updated' in task and task['last_updated'] > latest_time:

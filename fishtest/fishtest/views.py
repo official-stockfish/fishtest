@@ -325,6 +325,9 @@ def tests_view(request):
     last_updated = task.get('last_updated', datetime.datetime.min)
     task['last_updated'] = delta_date(last_updated)
 
+  if 'clop' in run['args']:
+    run['games'] = [g for g in request.clopdb.get_games(str(run['_id']))]
+
   return { 'run': run, 'run_args': run_args }
 
 @view_config(route_name='tests', renderer='tests.mak')
