@@ -6,7 +6,7 @@ import time
 from sys import argv
 from rundb import RunDb
 
-CLOP_DIR = './clop/'
+CLOP_DIR = os.getenv('CLOP_DIR')
 
 def resume(signum, frame):
   return
