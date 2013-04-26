@@ -133,6 +133,8 @@
   %if 'resolved_base' in args:
     <input type="hidden" name="resolved_base" value="${args['resolved_base']}">
     <input type="hidden" name="resolved_new" value="${args['resolved_new']}">
+    <input type="hidden" name="msg_base" value="${args['msg_base']}">
+    <input type="hidden" name="msg_new" value="${args['msg_new']}">
   %endif
 
   <div class="control-group">

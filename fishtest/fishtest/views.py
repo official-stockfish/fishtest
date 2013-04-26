@@ -102,7 +102,10 @@ def get_sha(branch, repo_url):
   """Resolves the git branch to sha commit"""
   api_url = repo_url.replace('https://github.com', 'https://api.github.com/repos')
   commit = requests.get(api_url + '/commits/' + branch).json()
-  return commit.get('sha', '')
+  if 'sha' in commit:
+    return commit['sha'], commit['commit']['message'].split('\n')[0]
+  else:
+    return '', ''
 
 def validate_form(request):
   data = {
@@ -132,9 +135,11 @@ def validate_form(request):
   if 'resolved_base' in request.POST:
     data['resolved_base'] = request.POST['resolved_base']
     data['resolved_new'] = request.POST['resolved_new']
+    data['msg_base'] = request.POST['msg_base']
+    data['msg_new'] = request.POST['msg_new']
   else:
-    data['resolved_base'] = get_sha(data['base_tag'], data['tests_repo'])
-    data['resolved_new'] = get_sha(data['new_tag'], data['tests_repo'])
+    data['resolved_base'], data['msg_base'] = get_sha(data['base_tag'], data['tests_repo'])
+    data['resolved_new'], data['msg_new'] = get_sha(data['new_tag'], data['tests_repo'])
     u = request.userdb.get_user(data['username'])
     if u.get('tests_repo', '') != data['tests_repo']:
       u['tests_repo'] = data['tests_repo']
@@ -303,6 +308,12 @@ def tests_view(request):
 
     value = run['args'][name]
     url = ''
+
+    if name == 'new_tag' and 'msg_new' in run['args']:
+      value += '  (' + run['args']['msg_new'][:30] + ')'
+
+    if name == 'base_tag' and 'msg_base' in run['args']:
+      value += '  (' + run['args']['msg_base'][:30] + ')'
 
     if name == 'sprt' and value != '-':
       value = 'elo0: %.2f alpha: %.2f elo1: %.2f beta: %.2f state: %s' % \
