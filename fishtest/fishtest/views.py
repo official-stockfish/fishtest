@@ -74,7 +74,7 @@ def users(request):
     info[username] = {'username': username, 'completed': 0, 'tests': 0, 'tests_repo': u.get('tests_repo', ''), 'last_updated': datetime.datetime.min}
 
   for run in request.rundb.get_runs():
-    if 'deleted' in run and run['deleted']:
+    if 'deleted' in run:
       continue
     if 'username' in run['args']:
       username = run['args']['username']
@@ -352,7 +352,7 @@ def tests(request):
   all_runs = request.rundb.get_runs()
 
   for run in all_runs:
-    if 'deleted' in run and run['deleted']:
+    if 'deleted' in run:
       continue
 
     if filter_by_user and run['args'].get('username', '') != username:
