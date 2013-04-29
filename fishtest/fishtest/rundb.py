@@ -90,7 +90,7 @@ class RunDb:
       'results': { 'wins': 0, 'losses': 0, 'draws': 0 },
       'results_stale': False,
       'finished': False,
-      'waiting_build': True,
+      'builder': '',
     })
 
     return id
@@ -110,8 +110,15 @@ class RunDb:
   def get_run(self, id):
     return self.runs.find_one({'_id': ObjectId(id)})
 
-  def get_run_to_build(self):
-    return self.runs.find_one({ 'waiting_build': True, 'finished': False, 'deleted': {'$exists': False}})
+  def get_run_to_build(self, user):
+    run = None
+    # First look for an uncompleted build by the same user
+    if len(user) > 0:
+      run = self.runs.find_one({ 'builder': user, 'new_engine_url': {'$exists': False}, 'finished': False, 'deleted': {'$exists': False}})
+    # Then for a new test to build
+    if run == None:
+      run = self.runs.find_one({ 'builder': '', 'finished': False, 'deleted': {'$exists': False}})
+    return run
 
   def get_runs(self, skip=0, limit=0):
     runs = []

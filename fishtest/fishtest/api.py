@@ -83,11 +83,12 @@ def request_build(request):
   token = authenticate(request)
   if 'error' in token: return json.dumps(token)
 
-  run = rundb.get_run_to_build()
+  user = request['worker_info']['username']
+  run = rundb.get_run_to_build(user)
   if run == None:
     return json.dumps({'no_run': True})
 
-  run['waiting_build'] = False
+  run['builder'] = user
   rundb.runs.save(run)
   min_run = {
     'run_id': str(run['_id']),
