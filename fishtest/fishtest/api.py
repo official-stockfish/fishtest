@@ -2,8 +2,6 @@ import json, sys
 import clop
 from pyramid.view import view_config
 
-from builder import get_binary_url
-
 def authenticate(request):
   if 'username' in request.json_body: username = request.json_body['username']
   else: username = request.json_body['worker_info']['username']
@@ -37,25 +35,6 @@ def request_task(request):
     active_tasks = sum(t['active'] for t in run['tasks'])
     if active_tasks == 1:
       clop.start_clop(str(run['_id']), run['args']['new_tag'], run['args']['clop']['params'])
-
-  # Check if we have a binary to feed
-  binaries_dir = run.get('binaries_dir', '')
-  if len(binaries_dir) > 0:
-    new_sha = run['args']['resolved_new']
-    base_sha = run['args']['resolved_base']
-    min_run['new_engine_url'] = get_binary_url(new_sha, binaries_dir, worker_info)
-    min_run['base_engine_url'] = get_binary_url(base_sha, binaries_dir, worker_info)
-
-    # Or both are set or none: avoid artifacts due to different compiles
-    if min_run['new_engine_url'] == '' or min_run['base_engine_url'] == '':
-      min_run['new_engine_url'] = ''
-      min_run['base_engine_url'] = ''
-
-    # TODO Disable at the moment
-    print 'new_engine_url %s' % (min_run['new_engine_url'])
-    print 'base_engine_url %s' % (min_run['base_engine_url'])
-    min_run['new_engine_url'] = ''
-    min_run['base_engine_url'] = ''
 
   for task in run['tasks']:
     min_task = {'num_games': task['num_games']}
@@ -98,6 +77,37 @@ def stop_run(request):
 
   result = request.rundb.stop_run(request.json_body['run_id'])
   return json.dumps(result)
+
+@view_config(route_name='api_request_build', renderer='string')
+def request_build(request):
+  token = authenticate(request)
+  if 'error' in token: return json.dumps(token)
+
+  run = rundb.get_run_to_build()
+  if run == None:
+    return json.dumps({'no_run': True})
+
+  run['waiting_build'] = False
+  rundb.runs.save(run)
+  min_run = {
+    'run_id': str(run['_id']),
+    'args': run['args'],
+  }
+  return json.dumps(min_run)
+
+@view_config(route_name='api_build_ready', renderer='string')
+def build_ready(request):
+  token = authenticate(request)
+  if 'error' in token: return json.dumps(token)
+
+  run = rundb.get_run(request['run_id'])
+  if run == None:
+    return json.dumps({'ok': False})
+
+  run['args']['new_engine_url'] = request['new_engine_url']
+  run['args']['base_engine_url'] = request['base_engine_url']
+  rundb.runs.save(run)
+  return json.dumps({'ok': True})
 
 @view_config(route_name='api_request_version', renderer='string')
 def request_version(request):

@@ -90,7 +90,7 @@ class RunDb:
       'results': { 'wins': 0, 'losses': 0, 'draws': 0 },
       'results_stale': False,
       'finished': False,
-      'binaries_dir': '',
+      'waiting_build': True,
     })
 
     return id
@@ -110,11 +110,8 @@ class RunDb:
   def get_run(self, id):
     return self.runs.find_one({'_id': ObjectId(id)})
 
-  def get_runs_to_build(self):
-    runs = []
-    for run in self.runs.find({ 'binaries_dir': '', 'finished': False, 'deleted': {'$exists': False}}):
-      runs.append(run)
-    return runs
+  def get_run_to_build(self):
+    return self.runs.find_one({ 'waiting_build': True, 'finished': False, 'deleted': {'$exists': False}})
 
   def get_runs(self, skip=0, limit=0):
     runs = []

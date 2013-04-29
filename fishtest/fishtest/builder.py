@@ -10,9 +10,6 @@ import time
 import zipfile
 from optparse import OptionParser
 from zipfile import ZipFile
-from rundb import RunDb
-
-FISHCOOKING_URL = 'https://github.com/mcostalba/FishCooking'
 
 LINUX32 = {
   'system': 'linux',
@@ -113,47 +110,72 @@ def binary_exists(sha, binaries_dir):
   else:
     return False
 
-def get_binary_url(binaries_dir, sha, worker_info):
-  system = worker_info['uname'][0].lower()
-  architecture = worker_info['architecture']
-  architecture = '64' if '64' in architecture else '32'
-  filename = get_binary_filename(sha, system, architecture)
-  engine_path = os.path.join(binaries_dir, filename)
-  return engine_path if os.path.exists(engine_path) else ''
-
-def survey(rundb, binaries_dir):
-  print 'Checking for runs to build...'
-  items = ['resolved_base', 'resolved_new']
-  runs = rundb.get_runs_to_build()
-  for run in runs:
-    repo_url = run['args'].get('tests_repo', FISHCOOKING_URL)
-    for item in items:
-      sha = run['args'][item]
-      # Check before to rebuild, master could be already exsisting
-      if not binary_exists(sha, binaries_dir):
-        build(repo_url, sha, binaries_dir)
-
-    # Reload run in case has been updated while compiling
-    r = rundb.get_run(str(run['_id']))
-    r['binaries_dir'] = binaries_dir
-    rundb.runs.save(r)
-
 def main():
   parser = OptionParser()
+  parser.add_option('-n', '--host', dest='host', default='54.235.120.254')
+  parser.add_option('-p', '--port', dest='port', default='80')
   (options, args) = parser.parse_args()
-  if len(args) != 1:
-    sys.stderr.write('Usage: %s [binaries dir]\n' % (sys.argv[0]))
+
+  if len(args) != 4:
+    sys.stderr.write('Usage: %s [binaries dir] [binaries url] [username] [password]\n' % (sys.argv[0]))
     sys.exit(1)
 
   binaries_dir = args[0]
+  binaries_url = args[1]
+
   if not os.path.isdir(binaries_dir):
     sys.stderr.write('Directory %s does not exist\n' % (binaries_dir))
     sys.exit(1)
 
-  rundb = RunDb()
+  worker_info = {
+    'uname': platform.uname(),
+    'architecture': platform.architecture(),
+    'username': args[2],
+    'version': '1',
+  }
+
+  payload = {
+    'worker_info': worker_info,
+    'password': args[3],
+    'run_id': '',
+    'new_engine_url': '',
+    'base_engine_url':'',
+  }
+
+  system = worker_info['uname'][0].lower()
+  architecture = worker_info['architecture']
+  architecture = '64' if '64' in architecture else '32'
+
+  print 'Connecting to %s...' % (remote)
+  remote = 'http://%s:%s' % (options.host, options.port)
+
   while 1:
-    survey(rundb, binaries_dir)
+    try:
+      print 'Fetching build...'
+      run = requests.post(remote + '/api/request_build', data=json.dumps(payload))
+      run = json.loads(run.text)
+
+      if 'args' in run:
+        filenames = []
+        repo_url = run['args']['tests_repo']
+        for item in ['resolved_new', 'resolved_base']:
+          sha = run['args'][item]
+          filenames.append(get_binary_filename(sha, system, architecture))
+          if not binary_exists(sha, binaries_dir):
+            build(repo_url, sha, binaries_dir)
+
+        payload['run_id'] = run['run_id']
+        payload['new_engine_url'] = binaries_url + '/' + filenames[0]
+        payload['base_engine_url'] = binaries_url + '/' + filenames[1]
+        req = requests.post(remote + '/api/build_ready', data=json.dumps(payload))
+        continue
+
+    except:
+      sys.stderr.write('Exception accessing host:\n')
+      traceback.print_exc()
+
     time.sleep(60)
 
 if __name__ == '__main__':
   main()
+
