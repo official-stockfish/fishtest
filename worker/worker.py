@@ -12,7 +12,7 @@ from optparse import OptionParser
 from games import run_games
 from updater import update
 
-WORKER_VERSION = 20
+WORKER_VERSION = 21
 ALIVE = True
 
 def setup_config_file(config_file):
@@ -78,7 +78,7 @@ def worker(worker_info, password, remote):
     sys.stderr.write('\nException running games:\n')
     traceback.print_exc()
     if ALIVE:
-      time.sleep(60)
+      time.sleep(300)
   finally:
     payload = {
       'username': worker_info['username'],
