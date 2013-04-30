@@ -25,6 +25,12 @@ if IS_WINDOWS:
   EXE_SUFFIX = '.exe'
   MAKE_CMD = 'mingw32-make build COMP=mingw ' + ARCH
 
+def binary_filename(sha):
+  system = platform.uname()[0].lower()
+  architecture = platform.architecture()
+  architecture = '64' if '64' in architecture else '32'
+  return sha + '_' + system + '_' + architecture
+
 def get_clop_result(wld, white):
   ''' Convert result to W or L or D'''
   if wld[0] == '1':
@@ -101,13 +107,19 @@ def build(worker_dir, sha, repo_url, destination, concurrency):
   os.chdir(worker_dir)
   shutil.rmtree(tmp_dir)
 
-def setup_engine(destination, exe_url, worker_dir, sha, repo_url, concurrency):
+def setup_engine(destination, binaries_url, worker_dir, sha, repo_url, concurrency):
   if os.path.exists(destination): os.remove(destination)
-  if len(exe_url) > 0:
-    with open(destination, 'wb+') as f:
-      f.write(requests.get(exe_url).content)
-  else:
-    build(worker_dir, sha, repo_url, destination, concurrency)
+  if len(binaries_url) > 0:
+    try:
+      binary = requests.get(binaries_url + '/' + binary_filename(sha)).content
+      with open(destination, 'wb+') as f:
+        f.write(binary)
+      return
+    except:
+      sys.stderr.write('Unable to download exe, fall back on local compile:\n')
+      traceback.print_exc(file=sys.stderr)
+
+  build(worker_dir, sha, repo_url, destination, concurrency)
 
 def kill_process(p):
   if IS_WINDOWS:
@@ -171,8 +183,7 @@ def run_games(worker_info, password, remote, run, task_id):
   threads = int(run['args']['threads'])
   regression_test = run['args'].get('regression_test', False)
   clop_tuning = True if 'clop' in run['args'] else False
-  new_exe_url = run['args'].get('new_engine_url', '')
-  base_exe_url = run['args'].get('base_engine_url', '')
+  binaries_url = run.get('binaries_url', '')
   repo_url = run['args'].get('tests_repo', FISHCOOKING_URL)
   games_concurrency = int(worker_info['concurrency']) / threads
 
@@ -201,9 +212,9 @@ def run_games(worker_info, password, remote, run, task_id):
   # Download or build from sources base and new
   if str(run['_id']) != run_id:
     if os.path.exists(run_id_file): os.remove(run_id_file)
-    setup_engine(new_engine, new_exe_url, worker_dir, run['args']['resolved_new'], repo_url, worker_info['concurrency'])
+    setup_engine(new_engine, binaries_url, worker_dir, run['args']['resolved_new'], repo_url, worker_info['concurrency'])
     if not regression_test:
-      setup_engine(base_engine, base_exe_url, worker_dir, run['args']['resolved_base'], repo_url, worker_info['concurrency'])
+      setup_engine(base_engine, binaries_url, worker_dir, run['args']['resolved_base'], repo_url, worker_info['concurrency'])
     with open(run_id_file, 'w') as f:
       f.write(str(run['_id']))
 

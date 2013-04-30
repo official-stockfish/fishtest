@@ -83,13 +83,10 @@ def request_build(request):
   token = authenticate(request)
   if 'error' in token: return json.dumps(token)
 
-  user = request['worker_info']['username']
-  run = rundb.get_run_to_build(user)
+  run = request.rundb.get_run_to_build()
   if run == None:
     return json.dumps({'no_run': True})
 
-  run['builder'] = user
-  rundb.runs.save(run)
   min_run = {
     'run_id': str(run['_id']),
     'args': run['args'],
@@ -101,13 +98,12 @@ def build_ready(request):
   token = authenticate(request)
   if 'error' in token: return json.dumps(token)
 
-  run = rundb.get_run(request['run_id'])
+  run = request.rundb.get_run(request.json_body['run_id'])
   if run == None:
     return json.dumps({'ok': False})
 
-  run['args']['new_engine_url'] = request['new_engine_url']
-  run['args']['base_engine_url'] = request['base_engine_url']
-  rundb.runs.save(run)
+  run['binaries_url'] = request.json_body['binaries_url']
+  request.rundb.runs.save(run)
   return json.dumps({'ok': True})
 
 @view_config(route_name='api_request_version', renderer='string')
