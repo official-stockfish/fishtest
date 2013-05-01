@@ -8,3 +8,4 @@ tar cvzf dump.tar.gz dump
 DAY=$(date +%Y%m%d --utc -d '1 hour')
 mkdir -p archive/$DAY
 mv dump.tar.gz archive/$DAY
+s3put -b fishtest -p /home/web/ archive/$DAY/dump.tar.gz
