@@ -1,5 +1,7 @@
 #!/bin/zsh
 
+source ~/.zshrc
+
 cd ~/backup
 ~/mongodb-linux-x86_64-2.2.3/bin/mongodump
 rm -f dump.tar.gz
