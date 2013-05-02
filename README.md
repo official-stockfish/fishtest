@@ -10,9 +10,7 @@ installation for a machine that will run test matches (a worker).
 #### Setup Python on Windows
 
 On Windows you will need to install Python 2.7.x for x86 (not 3.x series and not
-64 bit) from
-
-http://www.python.org/download/releases/2.7.3/
+64 bit) from http://www.python.org/ftp/python/2.7.4/python-2.7.4.msi
 
 In case something is not clear please read windows-step-by-step-installation.txt
 
