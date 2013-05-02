@@ -108,12 +108,13 @@ def build(repo_url, sha, binaries_dir):
 
   shutil.rmtree(tmp_dir)
 
-def binary_exists(sha, binaries_dir):
-  for files in os.listdir(binaries_dir):
-    if files.startswith(sha):
-      return True
-  else:
-    return False
+def upload_files(payload, binaries_dir):
+  for path in os.listdir(binaries_dir):
+    if not os.path.isdir(path):
+      name = os.path.basename(path)
+      print 'Uploading %s' % (name)
+      with open(path, 'rb') as f:
+        req = requests.post(payload['binaries_url'], files={name: f})
 
 def main():
   parser = OptionParser()
@@ -121,28 +122,22 @@ def main():
   parser.add_option('-p', '--port', dest='port', default='80')
   (options, args) = parser.parse_args()
 
-  if len(args) != 4:
-    sys.stderr.write('Usage: %s [binaries dir] [binaries url] [username] [password]\n' % (sys.argv[0]))
-    sys.exit(1)
-
-  binaries_dir = args[0]
-
-  if not os.path.isdir(binaries_dir):
-    sys.stderr.write('Directory %s does not exist\n' % (binaries_dir))
+  if len(args) != 2:
+    sys.stderr.write('Usage: %s [username] [password]\n' % (sys.argv[0]))
     sys.exit(1)
 
   worker_info = {
     'uname': platform.uname(),
     'architecture': platform.architecture(),
-    'username': args[2],
+    'username': args[0],
     'version': '1',
   }
 
   payload = {
     'worker_info': worker_info,
-    'password': args[3],
+    'password': args[1],
     'run_id': '',
-    'binaries_url': args[1],
+    'binaries_url': remote + '/binaries/',
   }
 
   system = worker_info['uname'][0].lower()
@@ -158,11 +153,14 @@ def main():
       run = requests.post(remote + '/api/request_build', data=json.dumps(payload)).json()
 
       if 'args' in run:
+        binaries_dir = tempfile.mkdtemp()
         repo_url = run['args'].get('tests_repo', FISHCOOKING_URL)
         for item in ['resolved_new', 'resolved_base']:
           sha = run['args'][item]
-          if not binary_exists(sha, binaries_dir):
-            build(repo_url, sha, binaries_dir)
+          build(repo_url, sha, binaries_dir)
+
+        upload_files(payload, binaries_dir)
+        shutil.rmtree(binaries_dir)
 
         payload['run_id'] = run['run_id']
         requests.post(remote + '/api/build_ready', data=json.dumps(payload))
