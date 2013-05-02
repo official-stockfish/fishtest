@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import boto
 import json
 import os
 import requests
@@ -33,14 +34,14 @@ LINUX64 = {
 WIN32 = {
   'system': 'windows',
   'architecture': '32',
-  'make_cmd': 'make build ARCH=x86-32 COMP=gcc',
+  'make_cmd': 'make build ARCH=x86-32 COMP=mingw',
   'gcc_alias': 'x86_64-w64-mingw32-c++',
   'native': False,
 }
 WIN64 = {
   'system': 'windows',
   'architecture': '64',
-  'make_cmd': 'make build ARCH=x86-64-modern COMP=gcc',
+  'make_cmd': 'make build ARCH=x86-64-modern COMP=mingw',
   'gcc_alias': 'x86_64-w64-mingw32-c++',
   'native': False,
 }
@@ -109,12 +110,14 @@ def build(repo_url, sha, binaries_dir):
   shutil.rmtree(tmp_dir)
 
 def upload_files(payload, binaries_dir):
-  for path in os.listdir(binaries_dir):
-    if not os.path.isdir(path):
-      name = os.path.basename(path)
-      print 'Uploading %s' % (name)
-      with open(path, 'rb') as f:
-        req = requests.post(payload['binaries_url'], files={name: f})
+  conn = boto.connect_s3()
+  bucket = conn.get_bucket('fishtest')
+  k = boto.s3.key.Key(bucket)
+
+  for name in os.listdir(binaries_dir):
+    print 'Uploading %s' % (name)
+    k.key = os.path.join('binaries', name)
+    k.set_contents_from_filename(os.path.join(binaries_dir, name))
 
 def main():
   parser = OptionParser()
@@ -125,6 +128,9 @@ def main():
   if len(args) != 2:
     sys.stderr.write('Usage: %s [username] [password]\n' % (sys.argv[0]))
     sys.exit(1)
+
+  remote = 'http://%s:%s' % (options.host, options.port)
+  print 'Connecting to %s' % (remote)
 
   worker_info = {
     'uname': platform.uname(),
@@ -137,15 +143,12 @@ def main():
     'worker_info': worker_info,
     'password': args[1],
     'run_id': '',
-    'binaries_url': remote + '/binaries/',
+    'binaries_url': 'http://fishtest.s3.amazonaws.com/binaries',
   }
 
   system = worker_info['uname'][0].lower()
   architecture = worker_info['architecture']
   architecture = '64' if '64' in architecture else '32'
-
-  remote = 'http://%s:%s' % (options.host, options.port)
-  print 'Connecting to %s' % (remote)
 
   while 1:
     try:
@@ -158,10 +161,11 @@ def main():
         for item in ['resolved_new', 'resolved_base']:
           sha = run['args'][item]
           build(repo_url, sha, binaries_dir)
+          break
 
         upload_files(payload, binaries_dir)
         shutil.rmtree(binaries_dir)
-
+        
         payload['run_id'] = run['run_id']
         requests.post(remote + '/api/build_ready', data=json.dumps(payload))
         continue
