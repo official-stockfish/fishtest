@@ -161,7 +161,6 @@ def main():
         for item in ['resolved_new', 'resolved_base']:
           sha = run['args'][item]
           build(repo_url, sha, binaries_dir)
-          break
 
         upload_files(payload, binaries_dir)
         shutil.rmtree(binaries_dir)
