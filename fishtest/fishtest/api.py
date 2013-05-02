@@ -24,8 +24,7 @@ def request_task(request):
     '_id': str(run['_id']),
     'args': run['args'],
     'tasks': [],
-    'new_engine_url': '',
-    'base_engine_url': '',
+    'binaries_url': run['binaries_url'],
   }
 
   # If is the start of a CLOP tuning session start CLOP. To check we are starting
@@ -111,4 +110,4 @@ def request_version(request):
   token = authenticate(request)
   if 'error' in token: return json.dumps(token)
 
-  return json.dumps({'version': 21})
+  return json.dumps({'version': 22})
