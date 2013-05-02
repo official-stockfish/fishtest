@@ -111,10 +111,11 @@ def setup_engine(destination, binaries_url, worker_dir, sha, repo_url, concurren
   if os.path.exists(destination): os.remove(destination)
   if len(binaries_url) > 0:
     try:
-      binary = requests.get(binaries_url + '/' + binary_filename(sha)).content
-      with open(destination, 'wb+') as f:
-        f.write(binary)
-      return
+      r = requests.get(binaries_url + '/' + binary_filename(sha))
+      if r.status_code == 200:
+        with open(destination, 'wb+') as f:
+          f.write(r.binary)
+        return
     except:
       sys.stderr.write('Unable to download exe, fall back on local compile:\n')
       traceback.print_exc(file=sys.stderr)
