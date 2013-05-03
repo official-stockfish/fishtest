@@ -13,6 +13,7 @@ def request_task(request):
   if 'error' in token: return json.dumps(token)
 
   worker_info = request.json_body['worker_info']
+  worker_info['ip_addr'] = request.remote_addr
   result = request.rundb.request_task(worker_info)
 
   if 'task_waiting' in result:
