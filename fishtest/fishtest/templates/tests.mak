@@ -36,9 +36,6 @@
  %for machine in machines:
    <tr>
     <td>${machine['username']}
-    %if 'ip_addr' in machine:
-      <IMG SRC="http://api.hostip.info/flag.php?ip=${machine['ip_addr']}" width="26" height="13" ALT="IP Address Lookup">
-    %endif
     </td>
     <td>${machine['concurrency']}</td>
     <td>${'%.2f' % (machine['nps'] / 1000000.0)}</td>
