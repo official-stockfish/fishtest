@@ -113,6 +113,7 @@ def setup_engine(destination, binaries_url, worker_dir, sha, repo_url, concurren
     try:
       r = requests.get(binaries_url + '/' + binary_filename(sha))
       if r.status_code == 200:
+        print 'Downloaded %s' % (os.path.basename(destination))
         with open(destination, 'wb+') as f:
           f.write(r.content)
         return
