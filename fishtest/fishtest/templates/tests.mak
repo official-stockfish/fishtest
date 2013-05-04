@@ -35,9 +35,12 @@
   <tbody>
  %for machine in machines:
    <tr>
-    <td>${machine['username']}
-    </td>
-    <td>${machine['concurrency']}</td>
+    <td>${machine['username']}</td>
+    <td>
+    %if 'flag_ip' in machine:
+      <IMG SRC="${machine['flag_ip']}" ALT="Country Flag">
+    %endif
+    ${machine['concurrency']}</td>
     <td>${'%.2f' % (machine['nps'] / 1000000.0)}</td>
     <td>${machine['uname'][0]} ${machine['uname'][2]}</td>
     <td>${machine['version']}</td>
