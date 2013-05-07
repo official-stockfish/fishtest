@@ -41,7 +41,7 @@ WIN32 = {
 WIN64 = {
   'system': 'windows',
   'architecture': '64',
-  'make_cmd': 'make build ARCH=x86-64-modern COMP=mingw',
+  'make_cmd': 'make build ARCH=x86-64 COMP=mingw',
   'gcc_alias': 'x86_64-w64-mingw32-c++',
   'native': False,
 }
@@ -150,7 +150,7 @@ def main():
   architecture = worker_info['architecture']
   architecture = '64' if '64' in architecture else '32'
 
-  while 1:
+  while True:
     try:
       print 'Fetching build...'
       run = requests.post(remote + '/api/request_build', data=json.dumps(payload)).json()
