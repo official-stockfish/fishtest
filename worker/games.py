@@ -284,7 +284,7 @@ def run_games(worker_info, password, remote, run, task_id):
     # Run cutechess-cli binary
     cmd = [ cutechess, '-repeat', '-rounds', str(games_to_play), '-tournament', 'gauntlet',
            '-pgnout', 'results.pgn', '-resign', 'movecount=3', 'score=400', '-draw', 'movenumber=34',
-           'movecount=2', 'score=20', '-concurrency', str(games_concurrency)] + pgn_cmd + \
+           'movecount=8', 'score=20', '-concurrency', str(games_concurrency)] + pgn_cmd + \
           ['-engine', 'name=stockfish', 'cmd=stockfish'] + new_options + clop['fcp'] + \
           ['-engine', 'name=base', 'cmd=base'] + base_options + clop['scp'] + \
           ['-each', 'proto=uci', 'option.Threads=%d' % (threads), 'tc=%s' % (scaled_tc)] + book_cmd
