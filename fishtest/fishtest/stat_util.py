@@ -88,35 +88,33 @@ def SPRT(R, elo0, alpha, elo1, beta, drawelo):
   lower_bound/upper_bound - SPRT bounds
   """
 
+  result = {
+    'finished': False,
+    'state': '',
+    'llr': 0.0,
+    'lower_bound': math.log(beta/(1-alpha)),
+    'upper_bound': math.log((1-beta)/alpha),
+  }
+
   # Estimate drawelo out of sample
-  if (R['wins'] > 0 and R['losses'] > 0):
+  if (R['wins'] > 0 and R['losses'] > 0 and R['draws'] > 0):
     N = R['wins'] + R['losses'] + R['draws']
     P = {'win': float(R['wins'])/N, 'loss': float(R['losses'])/N, 'draw': float(R['draws'])/N}
     elo, drawelo = proba_to_bayeselo(P)
+  else:
+    return result
 
   # Probability laws under H0 and H1
   P0 = bayeselo_to_proba(elo0, drawelo)
   P1 = bayeselo_to_proba(elo1, drawelo)
 
   # Log-Likelyhood Ratio
-  LLR = R['wins']*math.log(P1['win']/P0['win']) + R['losses']*math.log(P1['loss']/P0['loss']) + R['draws']*math.log(P1['draw']/P0['draw'])
+  result['llr'] = R['wins']*math.log(P1['win']/P0['win']) + R['losses']*math.log(P1['loss']/P0['loss']) + R['draws']*math.log(P1['draw']/P0['draw'])
 
-  # See if the LLR has crossed the bounds
-  lower_bound = math.log(beta/(1-alpha))
-  upper_bound = math.log((1-beta)/alpha)
-
-  result = {
-    'finished': False,
-    'state': '',
-    'llr': LLR,
-    'lower_bound': lower_bound,
-    'upper_bound': upper_bound,
-  }
-
-  if LLR < lower_bound:
+  if result['llr'] < result['lower_bound']:
     result['finished'] = True
     result['state'] = 'rejected'
-  elif LLR > upper_bound:
+  elif result['llr'] > result['upper_bound']:
     result['finished'] = True
     result['state'] = 'accepted'
 
@@ -124,8 +122,8 @@ def SPRT(R, elo0, alpha, elo1, beta, drawelo):
 
 if __name__ == "__main__":
   # unit tests
-  print SPRT({'wins': 10, 'losses': 0, 'draws': 20}, 0, 0.05, 5, 0.05)
-  print SPRT({'wins': 10, 'losses': 1, 'draws': 20}, 0, 0.05, 5, 0.05)
-  print SPRT({'wins': 5019, 'losses': 5026, 'draws': 15699}, 0, 0.05, 5, 0.05)
-  print SPRT({'wins': 1450, 'losses': 1500, 'draws': 4000}, 0, 0.05, 6, 0.05)
-  print SPRT({'wins': 716, 'losses': 591, 'draws': 2163}, 0, 0.05, 6, 0.05)
+  print SPRT({'wins': 10, 'losses': 0, 'draws': 20}, 0, 0.05, 5, 0.05, 200)
+  print SPRT({'wins': 10, 'losses': 1, 'draws': 20}, 0, 0.05, 5, 0.05, 200)
+  print SPRT({'wins': 5019, 'losses': 5026, 'draws': 15699}, 0, 0.05, 5, 0.05, 200)
+  print SPRT({'wins': 1450, 'losses': 1500, 'draws': 4000}, 0, 0.05, 6, 0.05, 200)
+  print SPRT({'wins': 716, 'losses': 591, 'draws': 2163}, 0, 0.05, 6, 0.05, 200)
