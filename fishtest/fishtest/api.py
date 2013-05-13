@@ -38,7 +38,7 @@ def request_task(request):
     '_id': str(run['_id']),
     'args': run['args'],
     'tasks': [],
-    'binaries_url': run['binaries_url'],
+    'binaries_url': run.get('binaries_url', ''),
   }
 
   # If is the start of a CLOP tuning session start CLOP. To check we are starting
