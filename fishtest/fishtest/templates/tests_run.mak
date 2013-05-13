@@ -63,25 +63,25 @@
       </div>
     </div>
   </div>
-  <div class="control-group">
+  <div class="control-group stop_rule numgames">
     <label class="control-label">Number of games:</label>
     <div class="controls">
       <input name="num-games" value="${args.get('num_games', 16000)}">
     </div>
   </div>
-  <div class="control-group">
+  <div class="control-group stop_rule sprt">
     <label class="control-label">SPRT Elo0:</label>
     <div class="controls">
       <input name="sprt_elo0" value="${args.get('sprt', {'elo0': -1.5})['elo0']}">
     </div>
   </div>
-  <div class="control-group">
+  <div class="control-group stop_rule sprt">
     <label class="control-label">SPRT Elo1:</label>
     <div class="controls">
       <input name="sprt_elo1" value="${args.get('sprt', {'elo1': 4.5})['elo1']}">
     </div>
   </div>
-  <div class="control-group">
+  <div class="control-group stop_rule clop">
     <label class="control-label">CLOP parameters:</label>
     <div class="controls">
     <input name="clop-params" value="${args.get('clop', {'params': 'p1[-10 10] p2[0, 100]'})['params']}">
@@ -147,14 +147,11 @@
 <script type="text/javascript">
 $(function() {
   var update_sprt = function() {
-    var num_disabled  = $('select[name=stop_rule]').val() != 'numgames';
-    var sprt_disabled = $('select[name=stop_rule]').val() != 'sprt';
-    var clop_disabled = $('select[name=stop_rule]').val() != 'clop';
-
-    $('input[name=num-games]').prop('disabled', num_disabled);
-    $('input[name=clop-params]').prop('disabled', clop_disabled);
-    $('input[name=sprt_elo0]').prop('disabled', sprt_disabled);
-    $('input[name=sprt_elo1]').prop('disabled', sprt_disabled);
+    $('.stop_rule').show();
+    var stop_rule = $('select[name=stop_rule]').val();
+    if (stop_rule != 'numgames') $('.numgames').hide();
+    if (stop_rule != 'sprt') $('.sprt').hide();
+    if (stop_rule != 'clop') $('.clop').hide();
   };
 
   update_sprt();
@@ -163,11 +160,13 @@ $(function() {
   $('#fast_test').click(function() {
     $('input[name=sprt_elo0]').val('-1.5');
     $('input[name=sprt_elo1]').val('4.5');
+    $('input[name=tc]').val('15+0.05');
   });
 
   $('#slow_test').click(function() {
     $('input[name=sprt_elo0]').val('0.0');
     $('input[name=sprt_elo1]').val('6.0');
+    $('input[name=tc]').val('60+0.05');
   });
 });
 </script>
