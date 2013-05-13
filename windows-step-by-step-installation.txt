@@ -13,60 +13,19 @@ Installation step-by-step:
 - Install it with all the features
 - Next, next, finish, done
 
-Manual step:
-- Computer, right-click, Properties -> Choose 'Advanced system settings' -> Advanced tab -> Environmental variables
-- Add 'd:\Python27\Scripts\' (or where ever you installed python) to the end of the PATH variable from system variables (with a ';' separator).
+2) Get the sources
 
-2) Install the compiler (mingw) and msys
+Download https://github.com/glinscott/fishtest/archive/master.zip, and unzip it to a new directory.
+For example, 'd:\fishtest'.
 
-Website:
-http://sourceforge.net/projects/mingw
-
-Download link:
-http://sourceforge.net/projects/mingw/files/latest/download
-
-Installation step-by-step:
-- Choose 'Download latest repository catalogues'
-- Choose 'D:\MinGW' for installation path
-- Check 'C++' and 'MSYS Basic System' from the options
-This will create a command prompt window and catalogue and download/install a lot(!) of packages, just let it run and grab a coffee.
-
-Manual step:
-- Now register both bin folders in the PATH variable, so go to Computer, right-click, Properties -> Choose 'Advanced system settings' -> Advanced tab -> Environmental variables and add 'd:\MinGW\bin\' and 'd:\MinGW\msys\1.0\bin\' both
-
-to the PATH variable (both with a ';' separator).
-
-3) Install GIT
-
-Website:
-http://msysgit.github.com/
-
-Package to download and install:
-Git-1.8.1.2-preview20130201.exe
-https://code.google.com/p/msysgit/downloads/detail?name=Git-1.8.1.2-preview20130201.exe&can=2&q=full+installer+official+git
-
-Installation step-by-step:
-- Installed it to 'D:\Git' with other options left as per default.
-
-4) Get the sources
-
-Installation step-by-step:
-- Open up a NEW command prompt (also fine without 'as administrator') in e.g. root of D drive.
-- Type 'D:\Git\bin\git.exe clone https://github.com/glinscott/fishtest.git', which will create 'D:\fishtest' and all python sources and other tools for testing.
-
-5) Modify your TEMP folder (if needed)
-
-In order not to download the sources and build to your C: drive, create a D:\Temp folder and route the temp files there:
-- Go to Computer, right-click, Properties -> Choose 'Advanced system settings' -> Advanced tab -> Environmental variables and modify the current users (!) TEMP and TMP folders to 'd:\Temp'.
-
-6) User/pass
+3) User/pass
 
 Get a username/password pair from Marco/Gary :)
 
-7) Running the worker process
+4) Running the worker process
 
 Open a command prompt in 'd:\fishtest\worker\' and type:
 'd:\Python27\python.exe worker.py --concurrency <cores> <username> <password>'
 [Option concurrency refers to the number of available cores in your system (not including Hyperthreaded cores!), leaving one core for the OS. For example, on my 4 core machine, I use --concurrency 3.]
 
-8) Let it run :)
+5) Let it run :)
