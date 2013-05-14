@@ -404,7 +404,9 @@ def tests(request):
       pending_hours += eta
       info = run['results_info']
       if 'Pending...' in info['info']:
-        info['info'] = ['Pending... (%.1f hrs)' % (eta)]
+        info['info'][0] += ' (%.1f hrs)' % (eta)
+        if 'binaries_url' in run:
+          info['info'][0] += ' (+bin)'
 
   else:
     pending_hours = 0
