@@ -67,7 +67,10 @@ def make(orig_src_dir, destination, target):
   if len(target['gcc_alias']) > 0:
     with open('tmp', 'w') as out:
       with open('Makefile') as f:
-        out.write(f.read().replace('CXX=g++', 'CXX=' + target['gcc_alias']))
+        new_makefile = f.read()
+        new_makefile = new_makefile.replace('CXX=g++', 'CXX=' + target['gcc_alias'])
+        new_makefile = new_makefile.replace('$(EXTRALDFLAGS)', '$(EXTRALDFLAGS) -static-libstdc++ -static-libgcc')
+        out.write(new_makefile)
     shutil.copyfile('tmp', 'Makefile')
 
   subprocess.check_call(target['make_cmd'], shell=True)
