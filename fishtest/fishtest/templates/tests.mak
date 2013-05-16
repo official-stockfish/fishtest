@@ -37,8 +37,8 @@
    <tr>
     <td>${machine['username']}</td>
     <td>
-    %if 'flag_ip' in machine:
-      <IMG SRC="${machine['flag_ip']}" ALT="Country Flag">
+    %if 'country_code' in machine:
+      ${machine['country_code']}
     %endif
     ${machine['concurrency']}</td>
     <td>${'%.2f' % (machine['nps'] / 1000000.0)}</td>

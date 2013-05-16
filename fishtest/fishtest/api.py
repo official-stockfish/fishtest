@@ -3,7 +3,7 @@ import clop
 import requests
 from pyramid.view import view_config
 
-FLAG_HOST = 'http://whatismyipaddress.com/ip/'
+FLAG_HOST = 'http://freegeoip.net/json/'
 
 def authenticate(request):
   if 'username' in request.json_body: username = request.json_body['username']
@@ -20,12 +20,7 @@ def request_task(request):
   # Get country flag ip
   r = requests.get(FLAG_HOST + request.remote_addr)
   if r.status_code == 200:
-    flag_ip = r.text.split('<tr><th>Country:</th><td>')
-    if len(flag_ip) > 1:
-      flag_ip = flag_ip[1].split('</td></tr>')[0]
-      if 'img src=\"' in flag_ip:
-        flag_ip = flag_ip.split('img src=\"')[1].split('\" alt=')[0]
-        worker_info['flag_ip'] = flag_ip
+    worker_info['country_code'] = r.json().get('country_code', '')
 
   result = request.rundb.request_task(worker_info)
 
