@@ -161,6 +161,61 @@ def adjust_tc(tc, base_nps):
   print 'CPU factor : %f - tc adjusted to %s' % (factor, scaled_tc)
   return scaled_tc
 
+def run_game(p, remote, result, clop, clop_tuning, old_stats):
+  failed_updates = 0
+
+  for line in iter(p.stdout.readline,''):
+    sys.stdout.write(line)
+    sys.stdout.flush()
+    # Parse line like this:
+    # Finished game 1 (stockfish vs base): 0-1 {White disconnects}
+    if 'disconnects' in line or 'connection stalls' in line:
+      result['stats']['crashes'] += 1
+
+    # Parse line like this:
+    # Score of stockfish vs base: 0 - 0 - 1  [0.500] 1
+    if 'Score' in line:
+      chunks = line.split(':')
+      chunks = chunks[1].split()
+      wld = [chunks[0], chunks[2], chunks[4]]
+      result['stats']['wins']   = int(wld[0]) + old_stats['wins']
+      result['stats']['losses'] = int(wld[1]) + old_stats['losses']
+      result['stats']['draws']  = int(wld[2]) + old_stats['draws']
+
+      if clop_tuning:
+        clop['game_result'] = get_clop_result(wld, clop['white'])
+        result['clop'] = clop
+
+      try:
+        req = requests.post(remote + '/api/update_task', data=json.dumps(result)).json()
+        failed_updates = 0
+
+        if not req['task_alive']:
+          # This task is no longer neccesary
+          kill_process(p)
+          p.wait()
+          return
+
+        if clop_tuning:
+          if not 'game_id' in req:
+            p.wait()
+            return
+          else:
+            clop['game_id'] = req['game_id']
+            clop['white'] = req['white']
+            clop['fcp'] = ['option.%s=%s'%(x[0], x[1]) for x in req['params']]
+            clop['scp'] = []
+            if not clop['white']:
+              clop['fcp'], clop['scp'] = clop['scp'], clop['fcp']
+
+      except:
+        sys.stderr.write('Exception from calling update_task:\n')
+        traceback.print_exc(file=sys.stderr)
+        failed_updates += 1
+        if failed_updates > 5:
+          kill_process(p)
+          break
+
 def run_games(worker_info, password, remote, run, task_id):
   task = run['tasks'][task_id]
   result = {
@@ -299,53 +354,7 @@ def run_games(worker_info, password, remote, run, task_id):
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
 
     try:
-      for line in iter(p.stdout.readline,''):
-        sys.stdout.write(line)
-        sys.stdout.flush()
-        # Parse line like this:
-        # Finished game 1 (stockfish vs base): 0-1 {White disconnects}
-        if 'disconnects' in line or 'connection stalls' in line:
-          result['stats']['crashes'] += 1
-
-        # Parse line like this:
-        # Score of stockfish vs base: 0 - 0 - 1  [0.500] 1
-        if 'Score' in line:
-          chunks = line.split(':')
-          chunks = chunks[1].split()
-          wld = [chunks[0], chunks[2], chunks[4]]
-          result['stats']['wins']   = int(wld[0]) + old_stats['wins']
-          result['stats']['losses'] = int(wld[1]) + old_stats['losses']
-          result['stats']['draws']  = int(wld[2]) + old_stats['draws']
-
-          if clop_tuning:
-            clop['game_result'] = get_clop_result(wld, clop['white'])
-            result['clop'] = clop
-
-          try:
-            req = requests.post(remote + '/api/update_task', data=json.dumps(result)).json()
-
-            if not req['task_alive']:
-              # This task is no longer neccesary
-              kill_process(p)
-              p.wait()
-              return
-
-            if clop_tuning:
-              if not 'game_id' in req:
-                p.wait()
-                return
-              else:
-                clop['game_id'] = req['game_id']
-                clop['white'] = req['white']
-                clop['fcp'] = ['option.%s=%s'%(x[0], x[1]) for x in req['params']]
-                clop['scp'] = []
-                if not clop['white']:
-                  clop['fcp'], clop['scp'] = clop['scp'], clop['fcp']
-
-          except:
-            sys.stderr.write('Exception from calling update_task:\n')
-            traceback.print_exc(file=sys.stderr)
-            break
+      run_game(p, remote, result, clop, clop_tuning, old_stats)
     except:
       traceback.print_exc(file=sys.stderr)
       kill_process(p)
