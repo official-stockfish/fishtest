@@ -1,5 +1,7 @@
 <%inherit file="base.mak"/>
 
+<link href="/css/flags.css" rel="stylesheet">
+
 <h2>Stockfish Testing Queue</h2>
 
 %if page_idx == 0:
@@ -38,7 +40,7 @@
     <td>${machine['username']}</td>
     <td>
     %if 'country_code' in machine:
-      <IMG SRC="http://www.geonames.org/flags/x/${machine['country_code'].lower()}.gif" width="26" height="13">
+      <div class="flag flag-${machine['country_code'].lower()}" style="display:inline-block"></div>
     %endif
     ${machine['concurrency']}</td>
     <td>${'%.2f' % (machine['nps'] / 1000000.0)}</td>
