@@ -38,7 +38,7 @@
     <td>${machine['username']}</td>
     <td>
     %if 'country_code' in machine:
-      ${machine['country_code']}
+      <IMG SRC="http://www.geonames.org/flags/x/${machine['country_code'].lower()}.gif" width="26" height="13">
     %endif
     ${machine['concurrency']}</td>
     <td>${'%.2f' % (machine['nps'] / 1000000.0)}</td>
