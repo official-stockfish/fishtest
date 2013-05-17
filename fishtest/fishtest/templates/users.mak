@@ -5,7 +5,7 @@
   <tr>
    <th>Username</th>
    <th>Last active</th>
-   <th>Games played</th>
+   <th>CPU Hours</th>
    <th>Tests submitted</th>
    <th>Tests repository</th>
   </tr>

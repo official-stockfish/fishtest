@@ -66,6 +66,29 @@ def delta_date(date):
     delta = 'Never'
   return delta
 
+def parse_tc(tc):
+  # Parse the time control in cutechess format
+  chunks = tc.split('+')
+  increment = 0.0
+  if len(chunks) == 2:
+    increment = float(chunks[1])
+
+  chunks = chunks[0].split('/')
+  num_moves = 0
+  if len(chunks) == 2:
+    num_moves = int(chunks[0])
+
+  time_tc = chunks[-1]
+  chunks = time_tc.split(':')
+  if len(chunks) == 2:
+    time_tc = float(chunks[0]) * 60 + float(chunks[1])
+  else:
+    time_tc = float(chunks[0])
+
+  if num_moves > 0:
+    time_tc = time_tc * (40.0 / num_moves)
+  return time_tc + (increment * 40.0)
+  
 @view_config(route_name='users', renderer='users.mak')
 def users(request):
   info = {}
@@ -80,6 +103,8 @@ def users(request):
       username = run['args']['username']
       info[username]['tests'] += 1
 
+    tc = parse_tc(run['args']['tc'])
+
     for task in run['tasks']:
       if 'worker_info' not in task:
         continue
@@ -87,7 +112,7 @@ def users(request):
       if username == None:
         continue
       info[username]['last_updated'] = max(task['last_updated'], info[username]['last_updated'])
-      info[username]['completed'] += task['num_games']
+      info[username]['completed'] += int(task['num_games'] * tc / (60 * 60))
 
   users = []
   for u in info.keys():
