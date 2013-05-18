@@ -1,5 +1,10 @@
 <%inherit file="base.mak"/>
 
+<h4>Total Users: ${len(users)}
+    Tests submitted: ${sum(u['tests'] for u in users)}
+    CPU time: ${'%.2f years' % (float(sum(u['completed'] for u in users))/(24*365))}
+</h4>
+
 <table class="table table-striped table-condensed">
  <thead>
   <tr>
