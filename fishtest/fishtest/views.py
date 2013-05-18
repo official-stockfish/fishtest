@@ -94,7 +94,7 @@ def users(request):
   info = {}
   for u in request.userdb.get_users():
     username = u['username']
-    info[username] = {'username': username, 'completed': 0, 'tests': 0, 'tests_repo': u.get('tests_repo', ''), 'last_updated': datetime.datetime.min}
+    info[username] = {'username': username, 'cpu_hours': 0, 'games': 0, 'tests': 0, 'tests_repo': u.get('tests_repo', ''), 'last_updated': datetime.datetime.min}
 
   for run in request.rundb.get_runs():
     if 'deleted' in run:
@@ -112,7 +112,8 @@ def users(request):
       if username == None:
         continue
       info[username]['last_updated'] = max(task['last_updated'], info[username]['last_updated'])
-      info[username]['completed'] += float(task['num_games'] * tc / (60 * 60))
+      info[username]['cpu_hours'] += float(task['num_games'] * tc / (60 * 60))
+      info[username]['games'] += task['num_games']
 
   users = []
   for u in info.keys():
@@ -120,7 +121,7 @@ def users(request):
     user['last_updated'] = delta_date(user['last_updated'])
     users.append(user)
 
-  users.sort(key=lambda k: k['completed'], reverse=True)
+  users.sort(key=lambda k: k['cpu_hours'], reverse=True)
   return {'users': users}
 
 def get_sha(branch, repo_url):
