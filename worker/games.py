@@ -193,20 +193,11 @@ def run_game(p, remote, result, clop, clop_tuning, old_stats):
         if not req['task_alive']:
           # This task is no longer neccesary
           kill_process(p)
-          p.wait()
-          return
+          return req
 
         if clop_tuning:
-          if not 'game_id' in req:
-            p.wait()
-            return
-          else:
-            clop['game_id'] = req['game_id']
-            clop['white'] = req['white']
-            clop['fcp'] = ['option.%s=%s'%(x[0], x[1]) for x in req['params']]
-            clop['scp'] = []
-            if not clop['white']:
-              clop['fcp'], clop['scp'] = clop['scp'], clop['fcp']
+          # One game at a time
+          return req
 
       except:
         sys.stderr.write('Exception from calling update_task:\n')
@@ -215,6 +206,8 @@ def run_game(p, remote, result, clop, clop_tuning, old_stats):
         if failed_updates > 5:
           kill_process(p)
           break
+
+  return { 'finished': True }
 
 def run_games(worker_info, password, remote, run, task_id):
   task = run['tasks'][task_id]
@@ -354,7 +347,18 @@ def run_games(worker_info, password, remote, run, task_id):
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
 
     try:
-      run_game(p, remote, result, clop, clop_tuning, old_stats)
+      req = run_game(p, remote, result, clop, clop_tuning, old_stats)
+      p.wait()
+
+      if clop_tuning and 'game_id' in req:
+        # Read parameters for next game
+        clop['game_id'] = req['game_id']
+        clop['white'] = req['white']
+        clop['fcp'] = ['option.%s=%s'%(x[0], x[1]) for x in req['params']]
+        clop['scp'] = []
+        if not clop['white']:
+          clop['fcp'], clop['scp'] = clop['scp'], clop['fcp']
+
     except:
       traceback.print_exc(file=sys.stderr)
       kill_process(p)
