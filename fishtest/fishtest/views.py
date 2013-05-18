@@ -88,7 +88,7 @@ def parse_tc(tc):
   if num_moves > 0:
     time_tc = time_tc * (40.0 / num_moves)
   return time_tc + (increment * 40.0)
-  
+
 @view_config(route_name='users', renderer='users.mak')
 def users(request):
   info = {}
@@ -112,7 +112,7 @@ def users(request):
       if username == None:
         continue
       info[username]['last_updated'] = max(task['last_updated'], info[username]['last_updated'])
-      info[username]['completed'] += int(task['num_games'] * tc / (60 * 60))
+      info[username]['completed'] += float(task['num_games'] * tc / (60 * 60))
 
   users = []
   for u in info.keys():
