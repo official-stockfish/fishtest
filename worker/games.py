@@ -177,10 +177,10 @@ def run_game(p, remote, result, clop, clop_tuning, old_stats):
     if 'Score' in line:
       chunks = line.split(':')
       chunks = chunks[1].split()
-      wld = [chunks[0], chunks[2], chunks[4]]
-      result['stats']['wins']   = int(wld[0]) + old_stats['wins']
-      result['stats']['losses'] = int(wld[1]) + old_stats['losses']
-      result['stats']['draws']  = int(wld[2]) + old_stats['draws']
+      wld = [int(chunks[0]), int(chunks[2]), int(chunks[4])]
+      result['stats']['wins']   = wld[0] + old_stats['wins']
+      result['stats']['losses'] = wld[1] + old_stats['losses']
+      result['stats']['draws']  = wld[2] + old_stats['draws']
 
       if clop_tuning:
         clop['game_result'] = get_clop_result(wld, clop['white'])
@@ -208,6 +208,59 @@ def run_game(p, remote, result, clop, clop_tuning, old_stats):
           break
 
   return { 'finished': True }
+
+def launch_cutechess(cmd, remote, result, old_stats, clop_tuning, regression_test):
+
+  clop = {
+    'game_id': '',
+    'white': True,
+    'fetch_next': False,
+    'fcp': [],
+    'scp': [],
+    'game_result': ''
+  }
+
+  if not regression_test:
+    cmd_base = ' '.join(cmd).split('_clop_')
+
+  # CLOP loop start here
+  while True:
+
+    # Run cutechess-cli binary
+    if regression_test:
+      cmd = ['cutechess_regression_test.sh']
+    else:
+      cmd = cmd_base[0].split() + clop['fcp'] + \
+            cmd_base[1].split() + clop['scp'] + cmd_base[2].split()
+
+    print ' '.join(cmd)
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
+
+    try:
+      req = run_game(p, remote, result, clop, clop_tuning, old_stats)
+      p.wait()
+
+      if p.returncode != 0:
+        raise Exception('Non-zero return code: %d' % (p.returncode))
+
+      if not clop_tuning:
+        return
+      elif 'game_id' in req:
+          # Read parameters for next game
+          clop['game_id'] = req['game_id']
+          clop['white'] = req['white']
+          clop['fcp'] = ['option.%s=%s'%(x[0], x[1]) for x in req['params']]
+          clop['scp'] = []
+          if not clop['white']:
+            clop['fcp'], clop['scp'] = clop['scp'], clop['fcp']
+      else:
+        return
+
+    except:
+      traceback.print_exc(file=sys.stderr)
+      kill_process(p)
+      p.wait()
+      break
 
 def run_games(worker_info, password, remote, run, task_id):
   task = run['tasks'][task_id]
@@ -306,64 +359,24 @@ def run_games(worker_info, password, remote, run, task_id):
   else:
     book_cmd = ['book=%s' % (book), 'bookdepth=%s' % (book_depth)]
 
-  clop = {
-    'game_id': '',
-    'white': True,
-    'fetch_next': False,
-    'fcp': [],
-    'scp': [],
-    'game_result': ''
-  }
+  if not regression_test:
+    print 'Running %s vs %s' % (run['args']['new_tag'], run['args']['base_tag'])
+  else:
+    print 'Running regression test of %s' % (run['args']['new_tag'])
 
-  # CLOP loop start here
-  keep_looping = True
-  while keep_looping:
+  if clop_tuning:
+    games_to_play = 1
+    games_concurrency = 1
+  else:
+    games_to_play = games_remaining
 
-    if clop_tuning:
-      games_to_play = 1
-      games_concurrency = 1
-      games_remaining -= 1
-      clop['fetch_next'] = games_remaining > 1
-      keep_looping = clop['fetch_next']
-    else:
-      games_to_play = games_remaining
-      keep_looping = False
+  # Run cutechess-cli binary
+  cmd = [ cutechess, '-repeat', '-rounds', str(games_to_play), '-tournament', 'gauntlet',
+         '-pgnout', 'results.pgn', '-resign', 'movecount=3', 'score=400', '-draw', 'movenumber=34',
+         'movecount=8', 'score=20', '-concurrency', str(games_concurrency)] + pgn_cmd + \
+        ['-engine', 'name=stockfish', 'cmd=stockfish'] + new_options + \
+        ['_clop_','-engine', 'name=base', 'cmd=base'] + base_options + \
+        ['_clop_','-each', 'proto=uci', 'option.Threads=%d' % (threads), 'tc=%s' % (scaled_tc)] + book_cmd
 
-    # Run cutechess-cli binary
-    cmd = [ cutechess, '-repeat', '-rounds', str(games_to_play), '-tournament', 'gauntlet',
-           '-pgnout', 'results.pgn', '-resign', 'movecount=3', 'score=400', '-draw', 'movenumber=34',
-           'movecount=8', 'score=20', '-concurrency', str(games_concurrency)] + pgn_cmd + \
-          ['-engine', 'name=stockfish', 'cmd=stockfish'] + new_options + clop['fcp'] + \
-          ['-engine', 'name=base', 'cmd=base'] + base_options + clop['scp'] + \
-          ['-each', 'proto=uci', 'option.Threads=%d' % (threads), 'tc=%s' % (scaled_tc)] + book_cmd
 
-    if not regression_test:
-      print 'Running %s vs %s' % (run['args']['new_tag'], run['args']['base_tag'])
-    else:
-      cmd = ['cutechess_regression_test.sh']
-      print 'Running regression test of %s' % (run['args']['new_tag'])
-
-    print ' '.join(cmd)
-    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
-
-    try:
-      req = run_game(p, remote, result, clop, clop_tuning, old_stats)
-      p.wait()
-
-      if clop_tuning and 'game_id' in req:
-        # Read parameters for next game
-        clop['game_id'] = req['game_id']
-        clop['white'] = req['white']
-        clop['fcp'] = ['option.%s=%s'%(x[0], x[1]) for x in req['params']]
-        clop['scp'] = []
-        if not clop['white']:
-          clop['fcp'], clop['scp'] = clop['scp'], clop['fcp']
-
-    except:
-      traceback.print_exc(file=sys.stderr)
-      kill_process(p)
-      break
-
-  p.wait()
-  if p.returncode != 0:
-    raise Exception('Non-zero return code: %d' % (p.returncode))
+  launch_cutechess(cmd, remote, result, old_stats, clop_tuning, regression_test)
