@@ -111,9 +111,16 @@ def users(request):
       username = task['worker_info'].get('username', None)
       if username == None:
         continue
+
+      if 'stats' in task:
+        stats = task['stats']
+        num_games = stats['wins'] + stats['losses'] + stats['draws']
+      else:
+        num_games = task['num_games']
+
       info[username]['last_updated'] = max(task['last_updated'], info[username]['last_updated'])
-      info[username]['cpu_hours'] += float(task['num_games'] * tc / (60 * 60))
-      info[username]['games'] += task['num_games']
+      info[username]['cpu_hours'] += float(num_games * tc / (60 * 60))
+      info[username]['games'] += num_games
 
   users = []
   for u in info.keys():
