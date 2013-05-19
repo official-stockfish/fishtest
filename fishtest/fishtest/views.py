@@ -68,6 +68,12 @@ def delta_date(date):
 
 def parse_tc(tc):
   # Parse the time control in cutechess format
+  if tc == '15+0.05':
+    return 17.0
+
+  if tc == '60+0.05':
+    return 62.0
+
   chunks = tc.split('+')
   increment = 0.0
   if len(chunks) == 2:
@@ -104,6 +110,13 @@ def users(request):
       info[username]['tests'] += 1
 
     tc = parse_tc(run['args']['tc'])
+
+    # Total time for a game is assumed to be the double of tc for each player
+    # reduced for 70% becuase on average game is stopped earlier. For instance
+    # in case of 60+0.05 time for each player is 62 secs, so the game duration
+    # is 62*2*70%
+    # TODO 70% shall be measured and not just assumed.
+    tc = 2 * tc * 0.70
 
     for task in run['tasks']:
       if 'worker_info' not in task:
