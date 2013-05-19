@@ -8,6 +8,7 @@ import subprocess
 import shutil
 import sys
 import tempfile
+import threading
 import time
 import traceback
 import platform
@@ -380,5 +381,7 @@ def run_games(worker_info, password, remote, run, task_id):
         ['_clop_','-engine', 'name=base', 'cmd=base'] + base_options + \
         ['_clop_','-each', 'proto=uci', 'option.Threads=%d' % (threads), 'tc=%s' % (scaled_tc)] + book_cmd
 
-
-  launch_cutechess(cmd, remote, result, old_stats, clop_tuning, regression_test)
+  payload = (cmd, remote, result, old_stats, clop_tuning, regression_test)
+  th = threading.Thread(target=launch_cutechess, args=payload)
+  th.start()
+  th.join()
