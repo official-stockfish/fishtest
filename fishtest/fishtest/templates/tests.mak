@@ -21,7 +21,10 @@
 %endif
 
 %if show_machines:
- <h3>Active - ${len(machines)} machines ${cores} cores ${'%.2fM' % (nps / (cores * 1000000.0 + 1))} nps</h3>
+ <h3>Active - ${len(machines)} machines ${cores}
+     cores ${'%.2fM' % (nps / (cores * 1000000.0 + 1))} nps
+     (${'%.2fM' % (nps / (1000000.0 + 1))} total nps)
+ </h3>
  <table class="table table-striped table-condensed" style="width:70%">
   <thead>
    <tr>
