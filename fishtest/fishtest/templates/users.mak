@@ -1,10 +1,17 @@
 <%inherit file="base.mak"/>
 
-<h4>Total Users: ${len(users)}
-    Tests submitted: ${sum(u['tests'] for u in users)}
-    Games played: ${sum(u['games'] for u in users)}
-    CPU time: ${'%.2f years' % (sum(u['cpu_hours'] for u in users)/(24*365))}
-</h4>
+<h3>Users</h3>
+
+<dl class="dl-horizontal">
+  <dt>Total Users</dt>
+  <dd>${len(users)}</dd>
+  <dt>Tests submitted</dt>
+  <dd>${sum(u['tests'] for u in users)}</dd>
+  <dt>Games played</dt>
+  <dd>${sum(u['games'] for u in users)}</dd>
+  <dt>CPU time</dt>
+  <dd>${'%.2f years' % (sum(u['cpu_hours'] for u in users)/(24*365))}</dd>
+</dl>
 
 <table class="table table-striped table-condensed">
  <thead>
