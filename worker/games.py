@@ -215,7 +215,7 @@ def launch_cutechess(cmd, remote, result, old_stats, clop_tuning, regression_tes
   clop = {
     'game_id': '',
     'white': True,
-    'fetch_next': False,
+    'fetch_next': True,
     'fcp': [],
     'scp': [],
     'game_result': ''
@@ -366,10 +366,12 @@ def run_games(worker_info, password, remote, run, task_id):
     print 'Running regression test of %s' % (run['args']['new_tag'])
 
   if clop_tuning:
+    threads = games_concurrency
     games_to_play = 1
     games_concurrency = 1
     pgnout = []
   else:
+    threads = 1
     games_to_play = games_remaining
     pgnout = ['-pgnout', 'results.pgn']
 
@@ -382,6 +384,11 @@ def run_games(worker_info, password, remote, run, task_id):
         ['_clop_','-each', 'proto=uci', 'option.Threads=%d' % (threads), 'tc=%s' % (scaled_tc)] + book_cmd
 
   payload = (cmd, remote, result, old_stats, clop_tuning, regression_test)
-  th = threading.Thread(target=launch_cutechess, args=payload)
-  th.start()
-  th.join()
+  th = []
+  for idx in range(threads):
+    th.append(threading.Thread(target=launch_cutechess, args=payload))
+    th[idx].start()
+
+  # Wait for all the threads have finished
+  for idx in range(threads):
+    th[idx].join()

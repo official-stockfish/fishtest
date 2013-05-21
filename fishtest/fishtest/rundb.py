@@ -234,12 +234,12 @@ class RunDb:
     if 'clop' in run['args']:
       if len(clop['game_id']) > 0:
         self.clopdb.write_result(clop['game_id'], clop['game_result'])
-      if clop['fetch_next']:
+      if task['active']:
         req = self.clopdb.request_game(run_id, task_id)
         req['task_alive'] = True
         return req
 
-    return {'task_alive': True}
+    return {'task_alive': task['active']}
 
   def failed_task(self, run_id, task_id):
     run = self.get_run(run_id)
