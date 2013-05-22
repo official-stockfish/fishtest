@@ -98,8 +98,21 @@ def parse_tc(tc):
 
 @view_config(route_name='actions', renderer='actions.mak')
 def actions(request):
-  return {'actions': request.actiondb.get_actions()}
-  
+  actions = []
+  for action in request.actiondb.get_actions():
+    if action['action'] == 'modify_run':
+      action['run'] = action['data']['before']['args']['new_tag']
+      action['_id'] = action['data']['before']['_id']
+      action['description'] = 'priority change from %s to %s' % (action['data']['before']['args']['priority'], action['data']['after']['args']['priority'])
+    else:
+      action['run'] = action['data']['args']['new_tag']
+      action['_id'] = action['data']['_id']
+      action['description'] = ' '.join(action['action'].split('_'))
+
+    actions.append(copy.copy(action))
+
+  return {'actions': actions}
+
 @view_config(route_name='users', renderer='users.mak')
 def users(request):
   info = {}
