@@ -100,16 +100,20 @@ def parse_tc(tc):
 def actions(request):
   actions = []
   for action in request.actiondb.get_actions():
+    item = {
+      'action': action['action'],
+      'time': action['time'],
+      'username': action['username'],
+    }
     if action['action'] == 'modify_run':
-      action['run'] = action['data']['before']['args']['new_tag']
-      action['_id'] = action['data']['before']['_id']
-      action['description'] = 'priority change from %s to %s' % (action['data']['before']['args']['priority'], action['data']['after']['args']['priority'])
+      item['run'] = action['data']['before']['args']['new_tag']
+      item['_id'] = action['data']['before']['_id']
+      item['description'] = 'priority change from %s to %s' % (action['data']['before']['args']['priority'], action['data']['after']['args']['priority'])
     else:
-      action['run'] = action['data']['args']['new_tag']
-      action['_id'] = action['data']['_id']
-      action['description'] = ' '.join(action['action'].split('_'))
-
-    actions.append(copy.copy(action))
+      item['run'] = action['data']['args']['new_tag']
+      item['_id'] = action['data']['_id']
+      item['description'] = ' '.join(action['action'].split('_'))
+    actions.append(item)
 
   return {'actions': actions}
 
