@@ -1,3 +1,4 @@
+import copy
 import datetime
 import os
 import sys
@@ -95,6 +96,10 @@ def parse_tc(tc):
     time_tc = time_tc * (40.0 / num_moves)
   return time_tc + (increment * 40.0)
 
+@view_config(route_name='actions', renderer='actions.mak')
+def actions(request):
+  return {'actions': request.actiondb.get_actions()}
+  
 @view_config(route_name='users', renderer='users.mak')
 def users(request):
   info = {}
@@ -232,6 +237,8 @@ def tests_run(request):
     data, error_message = validate_form(request)
     if len(error_message) == 0:
       run_id = request.rundb.new_run(**data)
+
+      request.actiondb.new_run(authenticated_userid(request), request.rundb.get_run(run_id))
       request.session.flash('Started test run!')
       return HTTPFound(location=request.route_url('tests'))
     else:
@@ -250,6 +257,7 @@ def tests_run(request):
 def tests_modify(request):
   if 'num-games' in request.POST:
     run = request.rundb.get_run(request.POST['run'])
+    before = copy.deepcopy(run)
 
     existing_games = 0
     for chunk in run['tasks']:
@@ -269,6 +277,8 @@ def tests_modify(request):
     run['args']['priority'] = int(request.POST['priority'])
     request.rundb.runs.save(run)
 
+    request.actiondb.modify_run(authenticated_userid(request), before, run)
+
     request.session.flash('Run successfully modified!')
     return HTTPFound(location=request.route_url('tests'))
   return {}
@@ -276,6 +286,9 @@ def tests_modify(request):
 @view_config(route_name='tests_stop', permission='modify_db')
 def tests_stop(request):
   request.rundb.stop_run(request.POST['run-id'])
+
+  run = request.rundb.get_run(request.POST['run-id'])
+  request.actiondb.stop_run(authenticated_userid(request), run)
 
   request.session.flash('Stopped run')
   return HTTPFound(location=request.route_url('tests'))
@@ -287,6 +300,8 @@ def tests_delete(request):
   for w in run['tasks']:
     w['pending'] = False
   request.rundb.runs.save(run)
+
+  request.actiondb.delete_run(authenticated_userid(request), run)
 
   request.session.flash('Deleted run')
   return HTTPFound(location=request.route_url('tests'))

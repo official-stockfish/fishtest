@@ -6,6 +6,7 @@ from pymongo import MongoClient, ASCENDING, DESCENDING
 
 from clopdb import ClopDb
 from userdb import UserDb
+from actiondb import ActionDb
 
 import stat_util
 
@@ -17,6 +18,7 @@ class RunDb:
     self.db = self.conn[db_name]
     self.userdb = UserDb(self.db)
     self.clopdb = ClopDb(self.db)
+    self.actiondb = ActionDb(self.db)
     self.runs = self.db['runs']
 
     self.chunk_size = 1000

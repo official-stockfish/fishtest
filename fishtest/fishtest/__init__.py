@@ -28,6 +28,7 @@ def main(global_config, **settings):
     event.request.rundb = rundb
     event.request.userdb = rundb.userdb
     event.request.clopdb = rundb.clopdb
+    event.request.actiondb = rundb.actiondb
   config.add_subscriber(add_rundb, NewRequest)
 
   config.add_static_view('css', 'static/css', cache_max_age=3600)
@@ -37,6 +38,7 @@ def main(global_config, **settings):
   config.add_route('login', '/login')
   config.add_route('signup', '/signup')
   config.add_route('users', '/users')
+  config.add_route('actions', '/actions')
   config.add_route('tests', '/tests')
   config.add_route('tests_run', '/tests/run')
   config.add_route('tests_modify', '/tests/modify')
