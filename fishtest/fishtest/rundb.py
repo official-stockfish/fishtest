@@ -199,6 +199,7 @@ class RunDb:
   def update_task(self, run_id, task_id, stats, nps, clop):
 
     now = datetime.utcnow()
+    global FREQ_CNT
     FREQ_CNT = [x for x in FREQ_CNT if (now - x).total_seconds() < 60]
     FREQ_CNT.append(now)
 
