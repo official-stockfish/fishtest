@@ -6,7 +6,6 @@ class ActionDb:
   def __init__(self, db):
     self.db = db
     self.actions = self.db['actions']
-    self.actions.remove()
 
   def get_actions(self):
     return self.actions.find(sort=[('_id', DESCENDING)])
