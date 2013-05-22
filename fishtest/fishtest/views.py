@@ -458,7 +458,7 @@ def tests(request):
     runs[state].append(run)
 
   runs['pending'].sort(reverse=True, key=lambda run: (-run['args']['priority'], run['start_time']))
-  machines = request.rundb.get_machines()
+  machines, games_per_minute = request.rundb.get_machines()
   for machine in machines:
     machine['last_updated'] = delta_date(machine['last_updated'])
   machines.reverse()
@@ -515,4 +515,5 @@ def tests(request):
     'games_played': games_played,
     'cores': cores,
     'nps': nps,
+    'games_per_minute': games_per_minute,
   }
