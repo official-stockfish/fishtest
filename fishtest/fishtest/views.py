@@ -62,7 +62,7 @@ def delta_date(date):
     elif diff.seconds / 60 > 1:
       delta = '%d minutes ago' % (diff.seconds / 60)
     else:
-      delta = '%d seconds ago' % (diff.seconds)
+      delta = 'seconds ago'
   else:
     delta = 'Never'
   return delta
