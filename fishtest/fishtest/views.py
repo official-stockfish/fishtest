@@ -72,7 +72,7 @@ def parse_tc(tc):
   # reduced for 70% becuase on average game is stopped earlier. For instance
   # in case of 60+0.05 time for each player is 62 secs, so the game duration
   # is 62*2*70%
-  scale = 2 * 0.80
+  scale = 2 * 0.90
 
   # Parse the time control in cutechess format
   if tc == '15+0.05':
