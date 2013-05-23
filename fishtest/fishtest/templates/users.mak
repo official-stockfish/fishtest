@@ -20,6 +20,7 @@
   <tr>
    <th>Username</th>
    <th>Last active</th>
+   <th>Games/Hour</th>
    <th>CPU Hours</th>
    <th>Games played</th>
    <th>Tests submitted</th>
@@ -31,6 +32,7 @@
   <tr>
    <td>${user['username']}</td>
    <td>${user['last_updated']}</td>
+   <td>${int(user['games_per_hour'])}</td>
    <td>${int(user['cpu_hours'])}</td>
    <td>${int(user['games'])}</td>
    <td><a href="/tests/user/${user['username']}">${user['tests']}</td>

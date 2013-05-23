@@ -68,12 +68,19 @@ def delta_date(date):
   return delta
 
 def parse_tc(tc):
+  # Total time for a game is assumed to be the double of tc for each player
+  # reduced for 70% becuase on average game is stopped earlier. For instance
+  # in case of 60+0.05 time for each player is 62 secs, so the game duration
+  # is 62*2*70%
+  # TODO 70% shall be measured and not just assumed.
+  scale = 2 * 0.70
+
   # Parse the time control in cutechess format
   if tc == '15+0.05':
-    return 17.0
+    return 17.0 * scale
 
   if tc == '60+0.05':
-    return 62.0
+    return 62.0 * scale
 
   chunks = tc.split('+')
   increment = 0.0
@@ -94,7 +101,7 @@ def parse_tc(tc):
 
   if num_moves > 0:
     time_tc = time_tc * (40.0 / num_moves)
-  return time_tc + (increment * 40.0)
+  return (time_tc + (increment * 40.0)) * scale
 
 @view_config(route_name='actions', renderer='actions.mak')
 def actions(request):
@@ -122,7 +129,13 @@ def users(request):
   info = {}
   for u in request.userdb.get_users():
     username = u['username']
-    info[username] = {'username': username, 'cpu_hours': 0, 'games': 0, 'tests': 0, 'tests_repo': u.get('tests_repo', ''), 'last_updated': datetime.datetime.min}
+    info[username] = {'username': username, 
+                      'cpu_hours': 0,
+                      'games': 0,
+                      'tests': 0,
+                      'tests_repo': u.get('tests_repo', ''),
+                      'last_updated': datetime.datetime.min,
+                      'games_per_hour': 0.0,}
 
   for run in request.rundb.get_runs():
     if 'deleted' in run:
@@ -132,13 +145,6 @@ def users(request):
       info[username]['tests'] += 1
 
     tc = parse_tc(run['args']['tc'])
-
-    # Total time for a game is assumed to be the double of tc for each player
-    # reduced for 70% becuase on average game is stopped earlier. For instance
-    # in case of 60+0.05 time for each player is 62 secs, so the game duration
-    # is 62*2*70%
-    # TODO 70% shall be measured and not just assumed.
-    tc = 2 * tc * 0.70
 
     for task in run['tasks']:
       if 'worker_info' not in task:
@@ -156,6 +162,10 @@ def users(request):
       info[username]['last_updated'] = max(task['last_updated'], info[username]['last_updated'])
       info[username]['cpu_hours'] += float(num_games * tc / (60 * 60))
       info[username]['games'] += num_games
+
+  for machine in request.rundb.get_machines():
+    games_per_hour = (machine['nps'] / 1200000.0) * (3600.0 / parse_tc(machine['run']['args']['tc'])) * int(machine['concurrency'])
+    info[machine['username']]['games_per_hour'] += games_per_hour
 
   users = []
   for u in info.keys():
@@ -458,9 +468,13 @@ def tests(request):
     runs[state].append(run)
 
   runs['pending'].sort(reverse=True, key=lambda run: (-run['args']['priority'], run['start_time']))
-  machines, games_per_minute = request.rundb.get_machines()
+
+  games_per_minute = 0.0
+  machines = request.rundb.get_machines()
   for machine in machines:
     machine['last_updated'] = delta_date(machine['last_updated'])
+    if machine['nps'] != 0:
+      games_per_minute += (machine['nps'] / 1200000.0) * (60.0 / parse_tc(machine['run']['args']['tc'])) * int(machine['concurrency'])
   machines.reverse()
 
   def remaining_hours(run):
@@ -469,12 +483,11 @@ def tests(request):
     if 'sprt' in run['args']:
       expected_games = 16000
     remaining_games = max(0, expected_games - r['wins'] - r['losses'] - r['draws'])
-    chunks = run['args']['tc'].split('+')
-    game_secs = (float(chunks[0]) + 40 * float(chunks[1])) * 2
+    game_secs = parse_tc(run['args']['tc'])
     return game_secs * remaining_games * int(run['args'].get('threads', 1)) / (60*60)
 
   cores = sum([int(m['concurrency']) for m in machines])
-  nps = sum([int(m['concurrency']) * int(m.get('nps', 0)) for m in machines])
+  nps = sum([int(m['concurrency']) * m['nps'] for m in machines])
   if cores > 0:
     pending_hours = 0
     for run in runs['pending'] + runs['active']:
@@ -515,5 +528,5 @@ def tests(request):
     'games_played': games_played,
     'cores': cores,
     'nps': nps,
-    'games_per_minute': games_per_minute,
+    'games_per_minute': int(games_per_minute),
   }
