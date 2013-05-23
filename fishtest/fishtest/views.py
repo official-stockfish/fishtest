@@ -72,8 +72,7 @@ def parse_tc(tc):
   # reduced for 70% becuase on average game is stopped earlier. For instance
   # in case of 60+0.05 time for each player is 62 secs, so the game duration
   # is 62*2*70%
-  # TODO 70% shall be measured and not just assumed.
-  scale = 2 * 0.70
+  scale = 2 * 0.80
 
   # Parse the time control in cutechess format
   if tc == '15+0.05':
@@ -163,7 +162,8 @@ def users(request):
       info[username]['cpu_hours'] += float(num_games * tc / (60 * 60))
       info[username]['games'] += num_games
 
-  for machine in request.rundb.get_machines():
+  machines, _ = request.rundb.get_machines()
+  for machine in machines:
     games_per_hour = (machine['nps'] / 1200000.0) * (3600.0 / parse_tc(machine['run']['args']['tc'])) * int(machine['concurrency'])
     info[machine['username']]['games_per_hour'] += games_per_hour
 
