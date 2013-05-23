@@ -129,7 +129,7 @@ def users(request):
   info = {}
   for u in request.userdb.get_users():
     username = u['username']
-    info[username] = {'username': username, 
+    info[username] = {'username': username,
                       'cpu_hours': 0,
                       'games': 0,
                       'tests': 0,
@@ -470,7 +470,7 @@ def tests(request):
   runs['pending'].sort(reverse=True, key=lambda run: (-run['args']['priority'], run['start_time']))
 
   games_per_minute = 0.0
-  machines = request.rundb.get_machines()
+  machines, real_games_per_minute = request.rundb.get_machines()
   for machine in machines:
     machine['last_updated'] = delta_date(machine['last_updated'])
     if machine['nps'] != 0:
@@ -529,4 +529,5 @@ def tests(request):
     'cores': cores,
     'nps': nps,
     'games_per_minute': int(games_per_minute),
+    'real_games_per_minute': real_games_per_minute,
   }
