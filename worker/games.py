@@ -16,6 +16,9 @@ import zipfile
 from base64 import b64decode
 from zipfile import ZipFile
 
+# Global beacuse is shared across threads
+old_stats = {'wins':0, 'losses':0, 'draws':0, 'crashes':0}
+
 FISHCOOKING_URL = 'https://github.com/mcostalba/FishCooking'
 ARCH = 'ARCH=x86-64-modern' if '64' in platform.architecture()[0] else 'ARCH=x86-32'
 EXE_SUFFIX = ''
@@ -162,7 +165,8 @@ def adjust_tc(tc, base_nps):
   print 'CPU factor : %f - tc adjusted to %s' % (factor, scaled_tc)
   return scaled_tc
 
-def run_game(p, remote, result, clop, clop_tuning, old_stats):
+def run_game(p, remote, result, clop, clop_tuning):
+  global old_stats
   failed_updates = 0
 
   for line in iter(p.stdout.readline,''):
@@ -185,6 +189,7 @@ def run_game(p, remote, result, clop, clop_tuning, old_stats):
 
       if clop_tuning:
         clop['game_result'] = get_clop_result(wld, clop['white'])
+        old_stats = result['stats'] # FIXME player color is not correctly handled
         result['clop'] = clop
 
       try:
@@ -210,7 +215,7 @@ def run_game(p, remote, result, clop, clop_tuning, old_stats):
 
   return { 'finished': True }
 
-def launch_cutechess(cmd, remote, result, old_stats, clop_tuning, regression_test):
+def launch_cutechess(cmd, remote, result, clop_tuning, regression_test):
 
   clop = {
     'game_id': '',
@@ -238,7 +243,7 @@ def launch_cutechess(cmd, remote, result, old_stats, clop_tuning, regression_tes
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
 
     try:
-      req = run_game(p, remote, result, clop, clop_tuning, old_stats)
+      req = run_game(p, remote, result, clop, clop_tuning)
       p.wait()
 
       if p.returncode != 0:
@@ -274,6 +279,7 @@ def run_games(worker_info, password, remote, run, task_id):
   }
 
   # Have we run any games on this task yet?
+  global old_stats
   old_stats = task.get('stats', {'wins':0, 'losses':0, 'draws':0, 'crashes':0})
   result['stats']['crashes'] = old_stats.get('crashes', 0)
   games_remaining = task['num_games'] - (old_stats['wins'] + old_stats['losses'] + old_stats['draws'])
@@ -383,7 +389,7 @@ def run_games(worker_info, password, remote, run, task_id):
         ['_clop_','-engine', 'name=base', 'cmd=base'] + base_options + \
         ['_clop_','-each', 'proto=uci', 'option.Threads=%d' % (threads), 'tc=%s' % (scaled_tc)] + book_cmd
 
-  payload = (cmd, remote, result, old_stats, clop_tuning, regression_test)
+  payload = (cmd, remote, result, clop_tuning, regression_test)
   th = []
   for idx in range(threads):
     th.append(threading.Thread(target=launch_cutechess, args=payload))
