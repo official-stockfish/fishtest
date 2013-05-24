@@ -36,9 +36,9 @@ def start_clop(run_id, branch, params):
       continue
     # params is in the form p1[0 100] p2[-10 10]
     name = p.split('[')[0]
-    minmax = p.split('[')[1].split()
+    minmax = p.split('[')[1].replace(',', '').split()
     s += '\nIntegerParameter %s %s %s' % (name, minmax[0], minmax[1])
-  for i in range(1, 3):
+  for i in range(1, 30):
     s += '\nProcessor %s_%d\nProcessor %s_%d' % (run_id, i, run_id, i)
   s += '\nReplications 2\nDrawElo 100\nH 3\nCorrelations all\n'
 

@@ -247,6 +247,8 @@ class RunDb:
         req = self.clopdb.request_game(run_id, task_id)
         req['task_alive'] = True
         return req
+      else:
+        self.clopdb.stop_games(run_id)
 
     return {'task_alive': task['active']}
 
