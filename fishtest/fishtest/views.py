@@ -162,7 +162,7 @@ def users(request):
       info[username]['cpu_hours'] += float(num_games * tc / (60 * 60))
       info[username]['games'] += num_games
 
-  machines, _ = request.rundb.get_machines()
+  machines = request.rundb.get_machines()
   for machine in machines:
     games_per_hour = (machine['nps'] / 1200000.0) * (3600.0 / parse_tc(machine['run']['args']['tc'])) * int(machine['concurrency'])
     info[machine['username']]['games_per_hour'] += games_per_hour
@@ -470,7 +470,7 @@ def tests(request):
   runs['pending'].sort(reverse=True, key=lambda run: (-run['args']['priority'], run['start_time']))
 
   games_per_minute = 0.0
-  machines, real_games_per_minute = request.rundb.get_machines()
+  machines = request.rundb.get_machines()
   for machine in machines:
     machine['last_updated'] = delta_date(machine['last_updated'])
     if machine['nps'] != 0:
@@ -529,5 +529,4 @@ def tests(request):
     'cores': cores,
     'nps': nps,
     'games_per_minute': int(games_per_minute),
-    'real_games_per_minute': real_games_per_minute,
   }

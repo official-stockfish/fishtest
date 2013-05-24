@@ -24,7 +24,7 @@
  <h3>Active - ${len(machines)} machines ${cores}
      cores ${'%.2fM' % (nps / (cores * 1000000.0 + 1))} nps
      (${'%.2fM' % (nps / (1000000.0 + 1))} total nps)
-     ${games_per_minute} games/minute (${real_games_per_minute})
+     ${games_per_minute} games/minute
  </h3>
  <table class="table table-striped table-condensed" style="width:70%">
   <thead>

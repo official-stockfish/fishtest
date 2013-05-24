@@ -10,8 +10,6 @@ from actiondb import ActionDb
 
 import stat_util
 
-FREQ_CNT = []
-
 class RunDb:
   def __init__(self, db_name='fishtest_new'):
     # MongoDB server is assumed to be on the same machine, if not user should use
@@ -108,7 +106,7 @@ class RunDb:
           machine['run'] = run
           machine['nps'] = task.get('nps', 0)
           machines.append(machine)
-    return machines, len(FREQ_CNT)
+    return machines
 
   def get_run(self, id):
     return self.runs.find_one({'_id': ObjectId(id)})
@@ -197,11 +195,6 @@ class RunDb:
     return {'run': run, 'task_id': task_id}
 
   def update_task(self, run_id, task_id, stats, nps, clop):
-    now = datetime.utcnow()
-    global FREQ_CNT
-    FREQ_CNT = [x for x in FREQ_CNT if (now - x).seconds < 60]
-    FREQ_CNT.append(now)
-
     run = self.get_run(run_id)
     if task_id >= len(run['tasks']):
       return {'task_alive': False}
