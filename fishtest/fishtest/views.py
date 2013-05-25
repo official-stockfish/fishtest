@@ -398,10 +398,10 @@ def tests_view(request):
     url = ''
 
     if name == 'new_tag' and 'msg_new' in run['args']:
-      value += '  (' + run['args']['msg_new'][:30] + ')'
+      value += '  (' + run['args']['msg_new'][:50] + ')'
 
     if name == 'base_tag' and 'msg_base' in run['args']:
-      value += '  (' + run['args']['msg_base'][:30] + ')'
+      value += '  (' + run['args']['msg_base'][:50] + ')'
 
     if name == 'sprt' and value != '-':
       value = 'elo0: %.2f alpha: %.2f elo1: %.2f beta: %.2f state: %s' % \
