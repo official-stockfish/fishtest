@@ -13,8 +13,6 @@ from pyramid.httpexceptions import HTTPFound
 
 import stat_util
 
-RESULTS_POSTING = 'fishcooking_results@googlegroups.com'
-
 @view_config(route_name='home', renderer='mainpage.mak')
 def mainpage(request):
   return HTTPFound(location=request.route_url('tests'))
@@ -437,18 +435,23 @@ def post_result(run):
 
   title = run['args']['new_tag'][:23]
 
-  body  = run['start_time'].strftime("%d-%m-%y") + '\n'
-  body += run['args'].get('username','')[:2] + '\n'
-  body += run['args']['new_tag'] + ' (' + run['args'].get('msg_new', '') + ')' + '\n'
-  body += run['args']['base_tag'] + ' (' + run['args'].get('msg_base', '') + ')' + '\n'
-  body += ' '.join(run['results_info']['info']) + '\n'
-  body += run['args']['tc'] + ' th ' + str(run['args'].get('threads',1)) + '\n'
-  body += run['args'].get('info', '') + '\n'
+  body = 'http://tests.stockfishchess.org/tests/view/%s\n\n' % (str(run['_id']))
+
+  body += run['start_time'].strftime("%d-%m-%y") + ' from '
+  body += run['args'].get('username','') + '\n\n'
+
+  body += run['args']['new_tag'] + ': ' + run['args'].get('msg_new', '') + '\n'
+  body += run['args']['base_tag'] + ': ' + run['args'].get('msg_base', '') + '\n\n'
+
+  body += 'TC: ' + run['args']['tc'] + ' th ' + str(run['args'].get('threads',1)) + '\n'
+  body += '\n'.join(run['results_info']['info']) + '\n\n'
+
+  body += run['args'].get('info', '') + '\n\n'
 
   msg = MIMEText(body)
   msg['Subject'] = title
   msg['From'] = 'mcostalba@gmail.com'
-  msg['To'] = RESULTS_POSTING
+  msg['To'] = 'fishcooking_results@googlegroups.com'
 
   s = smtplib.SMTP('localhost')
   s.sendmail(msg['From'], [msg['To']], msg.as_string())
