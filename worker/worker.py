@@ -86,7 +86,10 @@ def worker(worker_info, password, remote):
       'run_id': str(run['_id']),
       'task_id': task_id
     }
-    requests.post(remote + '/api/failed_task', data=json.dumps(payload))
+    try:
+      requests.post(remote + '/api/failed_task', data=json.dumps(payload))
+    except:
+      pass
     sys.stderr.write('Task exited\n')
 
 def main():
