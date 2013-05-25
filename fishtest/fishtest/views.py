@@ -450,7 +450,7 @@ def post_result(run):
 
   msg = MIMEText(body)
   msg['Subject'] = title
-  msg['From'] = 'mcostalba@gmail.com'
+  msg['From'] = 'fishtest@noreply.github.com'
   msg['To'] = 'fishcooking_results@googlegroups.com'
 
   s = smtplib.SMTP('localhost')
