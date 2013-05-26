@@ -435,6 +435,9 @@ def post_result(run):
 
   title = run['args']['new_tag'][:23]
 
+  if 'username' in run['args']:
+    title += '  (' + run['args']['username'] + ')'
+
   body = 'http://tests.stockfishchess.org/tests/view/%s\n\n' % (str(run['_id']))
 
   body += run['start_time'].strftime("%d-%m-%y") + ' from '
