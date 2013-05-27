@@ -122,6 +122,20 @@ class RunDb:
       runs.append(run)
     return runs
 
+  def get_clop_exclusion_list(self, minimum):
+    exclusion_list = []
+    for run in self.runs.find({'args.clop': {'$exists': True}, 'finished': False, 'deleted': {'$exists': False}}):
+      total_games = 0
+      available_games = 0
+      for game in self.clopdb.get_games(str(run['_id'])):
+        total_games += 1
+        if len(game['task_id']) == 0:
+          available_games += 1
+
+      if total_games > 0 and available_games < minimum:
+        exclusion_list.append(run['_id'])
+    return exclusion_list
+
   def get_results(self, run):
     if not run['results_stale']:
       return run['results']
@@ -145,9 +159,14 @@ class RunDb:
     return results
 
   def request_task(self, worker_info):
+
+    # Build list of CLOP runs that are already almost full
+    max_threads = int(worker_info['concurrency'])
+    exclusion_list = self.get_clop_exclusion_list(5 + max_threads)
+
     # Does this worker have a task already?  If so, just hand that back
     existing_run = self.runs.find_one({'tasks': {'$elemMatch': {'active': True, 'worker_info': worker_info}}})
-    if existing_run != None:
+    if existing_run != None and existing_run['_id'] not in exclusion_list:
       for task_id, task in enumerate(existing_run['tasks']):
         if task['active'] and task['worker_info'] == worker_info:
           if task['pending']:
@@ -161,11 +180,11 @@ class RunDb:
     can_do_regression = False
 
     # Ok, we get a new task that does not require more threads than available concurrency
-    max_threads = int(worker_info['concurrency'])
     q = {
       'new': True,
       'query': { '$and': [ {'tasks': {'$elemMatch': {'active': False, 'pending': True}}},
-                           {'args.threads': { '$lte': max_threads }}]},
+                           {'args.threads': { '$lte': max_threads }},
+                           {'_id': { '$nin': exclusion_list}}]},
       'sort': [('args.priority', DESCENDING), ('_id', ASCENDING)],
       'update': {
         '$set': {
