@@ -315,6 +315,7 @@ def tests_modify(request):
 @view_config(route_name='tests_stop', permission='modify_db')
 def tests_stop(request):
   request.rundb.stop_run(request.POST['run-id'])
+  request.clopdb.stop_games(request.POST['run-id'])
 
   run = request.rundb.get_run(request.POST['run-id'])
   request.actiondb.stop_run(authenticated_userid(request), run)
