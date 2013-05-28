@@ -11,10 +11,11 @@ def scavenge_tasks(scavenge=True, minutes=60):
   rundb = RunDb()
   for run in rundb.get_runs():
     changed = False
-    for task in run['tasks']:
+    for idx, task in enumerate(run['tasks']):
       if task['active'] and task['last_updated'] < datetime.utcnow() - timedelta(minutes=minutes):
         print 'Scavenging', task
         task['active'] = False
+        rundb.clopdb.stop_games(run['_id'], idx) 
         changed = True
     if changed and scavenge:
       rundb.runs.save(run)
