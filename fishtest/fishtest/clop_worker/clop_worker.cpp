@@ -1,21 +1,24 @@
-#include <zmq.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
 #include <assert.h>
 
-int main (void)
+#include "zmq.hpp"
+
+int main(int argc, char** argv)
 {
-  //  Socket to talk to clients
-  void *context = zmq_ctx_new();
-  void *responder = zmq_socket(context, ZMQ_REP);
-  int rc = zmq_bind(responder, "tcp://*:5555");
-  while (1) {
-    char buffer[1000];
-    zmq_recv(responder, buffer, 1000, 0);
-    printf("Received %s\n", buffer);
-    zmq_send(responder, "World", 5, 0);
-    sleep(1);          //  Do some 'work'
+  zmq::context_t context(1);
+  zmq::socket_t socket(context, ZMQ_REP);
+  socket.bind("tcp://*:5555");
+  while (true) {
+    zmq::message_t request;
+    socket.recv(&request);
+
+    sleep(1);
+
+    zmq::message_t reply(5);
+    memcpy(reply.data(), "world", 5);
+    socket.send(reply);
   }
   return 0;
 }
