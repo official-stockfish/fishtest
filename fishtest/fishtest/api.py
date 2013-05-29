@@ -36,14 +36,6 @@ def request_task(request):
     'binaries_url': run.get('binaries_url', ''),
   }
 
-  # If is the start of a CLOP tuning session start CLOP. To check we are starting
-  # a new CLOP run, check if there is only one active task in the run (the one
-  # we are returning now.
-  if 'clop' in run['args']:
-    active_tasks = sum(t['active'] for t in run['tasks'])
-    if active_tasks == 1:
-      clop.start_clop(str(run['_id']), run['args']['new_tag'], run['args']['clop']['params'])
-
   for task in run['tasks']:
     min_task = {'num_games': task['num_games']}
     if 'stats' in task:

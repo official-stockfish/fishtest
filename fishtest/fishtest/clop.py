@@ -8,15 +8,7 @@ from rundb import RunDb
 
 CLOP_DIR = os.getenv('CLOP_DIR')
 
-def resume(signum, frame):
-  return
-
-def test_active():
-  ''' Stub, connect to DB'''
-  return True
-
 def start_clop(run_id, branch, params):
-
   rundb = RunDb()
   clopdb = rundb.clopdb
 
@@ -28,7 +20,7 @@ def start_clop(run_id, branch, params):
     time.sleep(1)
 
   this_file = os.path.dirname(os.path.realpath(__file__)) # Points to *.pyc
-  this_file = os.path.join(this_file, 'clop.py')
+  this_file = os.path.join(this_file, 'clop_worker', 'clop_worker')
   testName = branch + '_' + run_id
   s = 'Name %s\nScript %s' % (testName, this_file)
   for p in params.split(']'):
@@ -38,7 +30,7 @@ def start_clop(run_id, branch, params):
     name = p.split('[')[0]
     minmax = p.split('[')[1].replace(',', '').split()
     s += '\nIntegerParameter %s %s %s' % (name, minmax[0], minmax[1])
-  for i in range(1, 5):
+  for i in range(1, 30):
     s += '\nProcessor %s_%d\nProcessor %s_%d' % (run_id, i, run_id, i)
   s += '\nReplications 2\nDrawElo 100\nH 3\nCorrelations all\n'
 
@@ -50,16 +42,16 @@ def start_clop(run_id, branch, params):
   p.stdin.close()
 
 def main():
-  '''Called by CLOP to start a new game'''
-  signal.signal(signal.SIGCONT, resume)
   rundb = RunDb()
-  clopdb = rundb.clopdb
 
-  # Run a new game, called from CLOP
-  # Check if test is still active
-  if not test_active():
-    print 'stop'
-    return
+  active_clop = []
+  # Poll the active games, checking for new CLOP
+  while True:
+    time.sleep(30) 
+    for run in rundb.runs.find({'tasks': {'$elemMatch': {'active': True}}}):
+      # If is the start of a CLOP tuning session start CLOP.
+      if 'clop' in run['args'] and not run['_id'] in active_clop:
+        start_clop(str(run['_id']), run['args']['new_tag'], run['args']['clop']['params'])
 
   data = { 'pid': os.getpid(),
            'run_id': argv[1].split('_')[0],
