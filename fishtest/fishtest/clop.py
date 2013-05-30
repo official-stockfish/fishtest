@@ -6,6 +6,7 @@ import time
 import zmq
 from sys import argv
 from rundb import RunDb
+from zmq.eventloop import ioloop, zmqstream
 
 CLOP_DIR = os.getenv('CLOP_DIR')
 
@@ -42,30 +43,33 @@ def start_clop(run_id, branch, params):
   p.stdin.write(s)
   p.stdin.close()
 
+def on_message(stream, message):
+  print 'Got:', message[0]
+  stream.send(message[0])
+
 def main():
   rundb = RunDb()
 
   context = zmq.Context()
   socket = context.socket(zmq.REP)
   socket.bind('tcp://127.0.0.1:5000')
-  stream = zmq.ZMQStream(socket)
+  stream = zmqstream.ZMQStream(socket)
+  stream.on_recv_stream(on_message)
 
-  from zmq.eventloop import ioloop
-  ioloop.install()
-  mainloop = ioloop.IOLoop.instance()
-  mainloop.start()
-
-  while True:
+  def check_runs():
     for run in rundb.runs.find({'tasks': {'$elemMatch': {'active': True}}}):
       # If is the start of a CLOP tuning session start CLOP.
       if 'clop' in run['args'] and not run['_id'] in active_clop:
         start_clop(str(run['_id']), run['args']['new_tag'], run['args']['clop']['params'])
 
-    if socket.poll(1000) == 0:
-      continue
-    msg = socket.recv()
-    print 'Got:', msg
-    socket.send(msg)
+  check_runs_timer = ioloop.PeriodicCallback(check_runs, 30 * 1000)
+  check_runs_timer.start()
+
+  ioloop.install()
+  mainloop = ioloop.IOLoop.instance()
+  mainloop.start()
+
+  ########################
 
   active_clop = []
 
