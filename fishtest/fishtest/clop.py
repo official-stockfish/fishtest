@@ -3,6 +3,7 @@ import os
 import signal
 import subprocess
 import time
+import zmq
 from sys import argv
 from rundb import RunDb
 
@@ -44,14 +45,29 @@ def start_clop(run_id, branch, params):
 def main():
   rundb = RunDb()
 
-  active_clop = []
-  # Poll the active games, checking for new CLOP
+  context = zmq.Context()
+  socket = context.socket(zmq.REP)
+  socket.bind('tcp://127.0.0.1:5000')
+  stream = zmq.ZMQStream(socket)
+
+  from zmq.eventloop import ioloop
+  ioloop.install()
+  mainloop = ioloop.IOLoop.instance()
+  mainloop.start()
+
   while True:
-    time.sleep(30) 
     for run in rundb.runs.find({'tasks': {'$elemMatch': {'active': True}}}):
       # If is the start of a CLOP tuning session start CLOP.
       if 'clop' in run['args'] and not run['_id'] in active_clop:
         start_clop(str(run['_id']), run['args']['new_tag'], run['args']['clop']['params'])
+
+    if socket.poll(1000) == 0:
+      continue
+    msg = socket.recv()
+    print 'Got:', msg
+    socket.send(msg)
+
+  active_clop = []
 
   data = { 'pid': os.getpid(),
            'run_id': argv[1].split('_')[0],
