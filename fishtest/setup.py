@@ -9,7 +9,8 @@ requires = [
     'pyramid',
     'pyramid_debugtoolbar',
     'waitress',
-    'pymongo'
+    'pymongo',
+    'pyzmq',
     ]
 
 setup(name='fishtest',
