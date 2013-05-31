@@ -47,8 +47,9 @@ def main():
   clopdb = rundb.clopdb
 
   def on_clop_request(stream, message):
-    data = { 'pid': int(message[0]),
-             'run_id': message[1].split('_')[0],
+    client_id = message[0]
+    message = message[2:]
+    data = { 'run_id': message[1].split('_')[0],
              'seed': int(message[2]),
              'params': [(message[i], message[i+1]) for i in range(3, len(message), 2)],
            }
@@ -58,13 +59,14 @@ def main():
 
     # Add new game row in clopdb
     game_id = clopdb.add_game(**data)
-    GAME_ID_TO_STREAM[game_id] = stream
+    GAME_ID_TO_STREAM[game_id] = (stream, client_id)
 
     with open('debug.log', 'a') as f:
       print >>f, game_id, data
 
   def on_game_finished(message):
     # Game is finished, read result and remove game row
+    print message
     game_id = message[0]
     game = clopdb.get_game(game_id)
     result = game['result'] if game != None else 'stop'
@@ -73,11 +75,13 @@ def main():
     with open('debug.log', 'a') as f:
       print >>f, game_id, 'result', result
 
-    GAME_ID_TO_STREAM[game_id].send(result)
+    if game_id in GAME_ID_TO_STREAM:
+      client_id, stream = GAME_ID_TO_STREAM[game_id]
+      stream.sendmultipart((client_id, result))
 
   context = zmq.Context()
 
-  client_socket = context.socket(zmq.REP)
+  client_socket = context.socket(zmq.ROUTER)
   client_socket.bind('tcp://127.0.0.1:5000')
   client_stream = zmqstream.ZMQStream(client_socket)
   client_stream.on_recv_stream(on_clop_request)
@@ -96,7 +100,7 @@ def main():
         active_clop.add(run['_id'])
         start_clop(clopdb, str(run['_id']), run['args']['new_tag'], run['args']['clop']['params'])
 
-  check_runs_timer = ioloop.PeriodicCallback(check_runs, 30 * 1000)
+  check_runs_timer = ioloop.PeriodicCallback(check_runs, 5 * 1000)
   check_runs_timer.start()
 
   ioloop.install()

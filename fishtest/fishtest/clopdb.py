@@ -35,9 +35,8 @@ class ClopDb:
       self.clop.save(game)
       self.clop_socket.send_multipart((game_id, result))
 
-  def add_game(self, pid, run_id, seed, white, params):
+  def add_game(self, run_id, seed, white, params):
     id = self.clop.insert({
-      'pid': pid,
       'run_id': run_id,
       'task_id': '',
       'seed': seed,

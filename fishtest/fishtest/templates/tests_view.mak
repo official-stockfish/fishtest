@@ -62,7 +62,6 @@
  <thead>
   <tr>
    <th>Idx</th>
-   <th>Pid</th>
    <th>Seed</th>
    <th>White</th>
    <th>Parameters</th>
@@ -84,7 +83,6 @@
   %>
   <tr class="${active_style}">
    <td>${idx}</td>
-   <td>${game['pid']}</td>
    <td>${game['seed']}</td>
    <td>${game['white']}</td>
    <td>${',  '.join(parameters)}</td>
