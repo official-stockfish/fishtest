@@ -33,7 +33,7 @@ class ClopDb:
     if game != None:
       game['result'] = result
       self.clop.save(game)
-      clop_socket.send_multipart((game_id, result))
+      self.clop_socket.send_multipart((game_id, result))
 
   def add_game(self, pid, run_id, seed, white, params):
     id = self.clop.insert({

@@ -94,7 +94,7 @@ def main():
       # If is the start of a CLOP tuning session start CLOP.
       if 'clop' in run['args'] and run['_id'] not in active_clop:
         active_clop.add(run['_id'])
-        start_clop(clop_db, str(run['_id']), run['args']['new_tag'], run['args']['clop']['params'])
+        start_clop(clopdb, str(run['_id']), run['args']['new_tag'], run['args']['clop']['params'])
 
   check_runs_timer = ioloop.PeriodicCallback(check_runs, 30 * 1000)
   check_runs_timer.start()
