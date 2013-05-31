@@ -4,9 +4,10 @@ from bson.objectid import ObjectId
 from pymongo import ASCENDING, DESCENDING
 
 class ClopDb:
-  def __init__(self, db):
+  def __init__(self, db, clop_socket):
     self.db = db
     self.clop = self.db['clop']
+    self.clop_socket = clop_socket
 
   def get_games(self, run_id = '', task_id = ''):
     if len(run_id) == 0:
@@ -32,9 +33,7 @@ class ClopDb:
     if game != None:
       game['result'] = result
       self.clop.save(game)
-      ret = os.system("kill -18 %d" % (game['pid']))
-      if ret != 0: # No process found, force removing of the game
-        self.remove_game(game_id)
+      clop_socket.send_multipart((game_id, result))
 
   def add_game(self, pid, run_id, seed, white, params):
     id = self.clop.insert({

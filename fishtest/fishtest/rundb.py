@@ -11,13 +11,13 @@ from actiondb import ActionDb
 import stat_util
 
 class RunDb:
-  def __init__(self, db_name='fishtest_new'):
+  def __init__(self, db_name='fishtest_new', clop_socket=None):
     # MongoDB server is assumed to be on the same machine, if not user should use
     # ssh with port forwarding to access the remote host.
     self.conn = MongoClient(os.getenv('FISHTEST_HOST') or 'localhost')
     self.db = self.conn[db_name]
     self.userdb = UserDb(self.db)
-    self.clopdb = ClopDb(self.db)
+    self.clopdb = ClopDb(self.db, clop_socket)
     self.actiondb = ActionDb(self.db)
     self.runs = self.db['runs']
 

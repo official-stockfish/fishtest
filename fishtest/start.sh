@@ -2,5 +2,6 @@
 
 export CLOP_DIR=~/clop
 
-pkill pserve clop
+pkill pserve
+pkill clop
 nohup pserve production.ini >nohup.out &

@@ -10,10 +10,7 @@ from zmq.eventloop import ioloop, zmqstream
 
 CLOP_DIR = os.getenv('CLOP_DIR')
 
-def start_clop(run_id, branch, params):
-  rundb = RunDb()
-  clopdb = rundb.clopdb
-
+def start_clop(clopdb, run_id, branch, params):
   clopdb.stop_games(run_id)
   time.sleep(1)
   retries = 0
@@ -32,7 +29,7 @@ def start_clop(run_id, branch, params):
     name = p.split('[')[0]
     minmax = p.split('[')[1].replace(',', '').split()
     s += '\nIntegerParameter %s %s %s' % (name, minmax[0], minmax[1])
-  for i in range(1, 30):
+  for i in range(1, 5):
     s += '\nProcessor %s_%d\nProcessor %s_%d' % (run_id, i, run_id, i)
   s += '\nReplications 2\nDrawElo 100\nH 3\nCorrelations all\n'
 
@@ -45,37 +42,38 @@ def start_clop(run_id, branch, params):
 
 GAME_ID_TO_STREAM = {}
 
-def on_clop_request(stream, message):
-  data = { 'pid': int(message[0]),
-           'run_id': message[1].split('_')[0],
-           'seed': int(message[2]),
-           'params': [(message[i], message[i+1]) for i in range(3, len(message), 2)],
-         }
-
-  # Choose the engine's playing side (color) based on CLOP's seed
-  data['white'] = True if data['seed'] % 2 == 0 else False
-
-  # Add new game row in clopdb
-  game_id = clopdb.add_game(**data)
-  GAME_ID_TO_STREAM[game_id] = stream
-
-  with open('debug.log', 'a') as f:
-    print >>f, game_id, data
-
-def on_game_finished(message):
-  # Game is finished, read result and remove game row
-  game_id = message[0]
-  game = clopdb.get_game(game_id)
-  result = game['result'] if game != None else 'stop'
-  clopdb.remove_game(game_id)
-
-  with open('debug.log', 'a') as f:
-    print >>f, game_id, 'result', result
-
-  GAME_ID_TO_STREAM[game_id].send(result)
-
 def main():
   rundb = RunDb()
+  clopdb = rundb.clopdb
+
+  def on_clop_request(stream, message):
+    data = { 'pid': int(message[0]),
+             'run_id': message[1].split('_')[0],
+             'seed': int(message[2]),
+             'params': [(message[i], message[i+1]) for i in range(3, len(message), 2)],
+           }
+
+    # Choose the engine's playing side (color) based on CLOP's seed
+    data['white'] = True if data['seed'] % 2 == 0 else False
+
+    # Add new game row in clopdb
+    game_id = clopdb.add_game(**data)
+    GAME_ID_TO_STREAM[game_id] = stream
+
+    with open('debug.log', 'a') as f:
+      print >>f, game_id, data
+
+  def on_game_finished(message):
+    # Game is finished, read result and remove game row
+    game_id = message[0]
+    game = clopdb.get_game(game_id)
+    result = game['result'] if game != None else 'stop'
+    clopdb.remove_game(game_id)
+
+    with open('debug.log', 'a') as f:
+      print >>f, game_id, 'result', result
+
+    GAME_ID_TO_STREAM[game_id].send(result)
 
   context = zmq.Context()
 
@@ -96,7 +94,7 @@ def main():
       # If is the start of a CLOP tuning session start CLOP.
       if 'clop' in run['args'] and run['_id'] not in active_clop:
         active_clop.add(run['_id'])
-        start_clop(str(run['_id']), run['args']['new_tag'], run['args']['clop']['params'])
+        start_clop(clop_db, str(run['_id']), run['args']['new_tag'], run['args']['clop']['params'])
 
   check_runs_timer = ioloop.PeriodicCallback(check_runs, 30 * 1000)
   check_runs_timer.start()
