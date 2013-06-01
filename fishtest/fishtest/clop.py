@@ -58,7 +58,7 @@ def main():
     data['white'] = True if data['seed'] % 2 == 0 else False
 
     # Add new game row in clopdb
-    game_id = clopdb.add_game(**data)
+    game_id = str(clopdb.add_game(**data))
     GAME_ID_TO_STREAM[game_id] = (stream, client_id)
 
     with open('debug.log', 'a') as f:
@@ -76,8 +76,12 @@ def main():
       print >>f, game_id, 'result', result
 
     if game_id in GAME_ID_TO_STREAM:
-      client_id, stream = GAME_ID_TO_STREAM[game_id]
-      stream.sendmultipart((client_id, result))
+      stream, client_id = GAME_ID_TO_STREAM[game_id]
+      print 'Sending', client_id, result
+      stream.send(client_id, zmq.MORE)
+      stream.send_unicode(result)
+    else:
+      print 'Missing game_id!'
 
   context = zmq.Context()
 

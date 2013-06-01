@@ -29,7 +29,9 @@ int main(int argc, char** argv)
 
   zmq::message_t response;
   socket.recv(&response);
-  printf("%s\n", static_cast<char*>(response.data()));
+  memcpy(buf, response.data(), response.size());
+  buf[response.size()] = 0;
+  printf("%s\n", buf);
 
   return 0;
 }
