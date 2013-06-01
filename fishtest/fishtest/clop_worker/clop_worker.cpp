@@ -1,37 +1,35 @@
-#include <stdio.h>
+#include <iostream>
+#include <sstream>
+#include <string>
 #include <unistd.h>
-#include <string.h>
-#include <assert.h>
 
 #include "zmq.hpp"
 
+using namespace std;
+using namespace zmq;
+
 int main(int argc, char** argv)
 {
-  zmq::context_t context(1);
-  zmq::socket_t socket(context, ZMQ_REQ);
+  context_t context(1);
+  socket_t socket(context, ZMQ_REQ);
   socket.connect("tcp://127.0.0.1:5000");
 
-  char buf[100];
-  for (int i = 0; i < argc; ++i) {
-    int n;
-    char* c;
-    if (i == 0) {
-      c = buf;
-      snprintf(buf, sizeof(buf), "%d", getpid()); 
-    } else {
-      c = argv[i];
-    }
-    n = strlen(c);
-    zmq::message_t message(n);
-    memcpy(message.data(), c, n);
-    socket.send(message, i == argc - 1 ? 0 : ZMQ_SNDMORE);
+  string token;
+  stringstream ss;
+  ss << getpid();
+
+  for (int i = 1; i < argc; i++)
+      ss << string(argv[i]);
+
+  while (ss >> token)
+  {
+      message_t msg((void*)token.data(), token.length(), NULL);
+      socket.send(msg, ss.rdbuf()->in_avail() ? ZMQ_SNDMORE : 0);
   }
 
-  zmq::message_t response;
+  message_t response;
   socket.recv(&response);
-  memcpy(buf, response.data(), response.size());
-  buf[response.size()] = 0;
-  printf("%s\n", buf);
+  cout << string((const char*)response.data(), response.size()) << endl;
 
   return 0;
 }
