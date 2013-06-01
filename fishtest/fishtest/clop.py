@@ -78,7 +78,8 @@ def main():
     if game_id in GAME_ID_TO_STREAM:
       stream, client_id = GAME_ID_TO_STREAM[game_id]
       print 'Sending', client_id, result
-      stream.send(client_id, zmq.MORE)
+      stream.send(client_id, zmq.SNDMORE)
+      stream.send('', zmq.SNDMORE)
       stream.send_unicode(result)
     else:
       print 'Missing game_id!'
