@@ -103,7 +103,7 @@ def main():
         active_clop.add(run['_id'])
         start_clop(clopdb, str(run['_id']), run['args']['new_tag'], run['args']['clop']['params'])
 
-  check_runs_timer = ioloop.PeriodicCallback(check_runs, 5 * 1000)
+  check_runs_timer = ioloop.PeriodicCallback(check_runs, 20 * 1000)
   check_runs_timer.start()
 
   ioloop.install()
