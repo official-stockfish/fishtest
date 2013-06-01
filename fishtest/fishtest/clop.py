@@ -66,7 +66,6 @@ def main():
 
   def on_game_finished(message):
     # Game is finished, read result and remove game row
-    print message
     game_id = message[0]
     game = clopdb.get_game(game_id)
     result = game['result'] if game != None else 'stop'
@@ -77,7 +76,6 @@ def main():
 
     if game_id in GAME_ID_TO_STREAM:
       stream, client_id = GAME_ID_TO_STREAM[game_id]
-      print 'Sending', client_id, result
       stream.send(client_id, zmq.SNDMORE)
       stream.send('', zmq.SNDMORE)
       stream.send_unicode(result)
