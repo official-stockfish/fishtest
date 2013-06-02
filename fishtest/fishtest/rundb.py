@@ -277,10 +277,6 @@ class RunDb:
     task['active'] = False
     self.runs.save(run)
 
-    # Exit any pending game
-    if 'clop' in run['args']:
-      self.clopdb.stop_games(run_id, task_id)
-
     return {}
 
   def stop_run(self, run_id):
