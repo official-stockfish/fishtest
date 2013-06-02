@@ -38,6 +38,7 @@ def setup_config_file(config_file):
 def on_sigint(signal, frame):
   global ALIVE
   ALIVE = False
+  raise Exception('Terminated by signal')
 
 def worker(worker_info, password, remote):
   global ALIVE

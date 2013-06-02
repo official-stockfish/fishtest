@@ -252,13 +252,13 @@ def launch_cutechess(cmd, remote, result, clop_tuning, regression_test):
       if not clop_tuning:
         return
       elif 'game_id' in req:
-          # Read parameters for next game
-          clop['game_id'] = req['game_id']
-          clop['white'] = req['white']
-          clop['fcp'] = ['option.%s=%s'%(x[0], x[1]) for x in req['params']]
-          clop['scp'] = []
-          if not clop['white']:
-            clop['fcp'], clop['scp'] = clop['scp'], clop['fcp']
+        # Read parameters for next game
+        clop['game_id'] = req['game_id']
+        clop['white'] = req['white']
+        clop['fcp'] = ['option.%s=%s'%(x[0], x[1]) for x in req['params']]
+        clop['scp'] = []
+        if not clop['white']:
+          clop['fcp'], clop['scp'] = clop['scp'], clop['fcp']
       else:
         return
 
@@ -397,4 +397,6 @@ def run_games(worker_info, password, remote, run, task_id):
 
   # Wait for all the threads have finished
   for idx in range(threads):
-    th[idx].join()
+    # Super long timeout is a workaround for signal handling when doing thread.join
+    # See http://stackoverflow.com/questions/631441/interruptible-thread-join-in-python
+    th[idx].join(2**31)
