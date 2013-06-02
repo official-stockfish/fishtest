@@ -87,7 +87,7 @@
       active_style = ''
 
     if 'clop' in run['args']:
-      games_per_task[idx] = games_per_task.get(idx, 0) + 1
+      games_per_task[str(idx)] = games_per_task.get(str(idx), 0) + 1
   %>
   <tr class="${active_style}">
    <td>${idx}</td>
@@ -146,7 +146,7 @@
    <td>${str(task.get('last_updated', '-')).split('.')[0]}</td>
    <td>${total} / ${task['num_games']}</td>
    %if 'clop' in run['args']:
-   <td>${str(games_per_task.get(idx, '-'))}</td>
+   <td>${str(games_per_task.get(str(idx), '-'))}</td>
    %else:
    <td>${stats.get('wins', '-')}</td>
    <td>${stats.get('losses', '-')}</td>
