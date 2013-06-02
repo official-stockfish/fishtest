@@ -57,7 +57,11 @@
 </div>
 
 %if 'clop' in run['args']:
-<h3>Games</h3>
+<%
+  active_cnt  = sum([int(len(g['task_id'])  > 0) for g in run['games']])
+  pending_cnt = sum([int(len(g['task_id']) == 0) for g in run['games']])
+%>
+<h3>Games - ${active_cnt} active  ${pending_cnt} pending</h3>
 <table class='table table-striped table-condensed'>
  <thead>
   <tr>
