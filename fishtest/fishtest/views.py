@@ -348,6 +348,10 @@ def format_results(run_results, run):
     result['info'].append('Pending...')
     return result
 
+  if 'clop' in run['args']:
+    result['info'].append('Total: %d' % (sum(WLD)))
+    return result
+
   state = 'unknown'
   if 'sprt' in run['args']:
     sprt = run['args']['sprt']
