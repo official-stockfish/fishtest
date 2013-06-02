@@ -60,6 +60,7 @@
 <%
   active_cnt  = sum([int(len(g['task_id'])  > 0) for g in run['games']])
   pending_cnt = sum([int(len(g['task_id']) == 0) for g in run['games']])
+  games_per_task = {}
 %>
 <h3>Games - ${active_cnt} active  ${pending_cnt} pending</h3>
 <table class='table table-striped table-condensed'>
@@ -84,6 +85,9 @@
         active_style = 'error'
     else:
       active_style = ''
+
+    if 'clop' in run['args']:
+      games_per_task[idx] = games_per_task.get(idx, 0) + 1
   %>
   <tr class="${active_style}">
    <td>${idx}</td>
@@ -105,9 +109,13 @@
    <th>Worker</th>
    <th>Last Updated</th>
    <th>Played</th>
+   %if 'clop' in run['args']:
+   <th>Playing now</th>
+   %else:
    <th>Wins</th>
    <th>Losses</th>
    <th>Draws</th>
+   %endif
    <th>Crashes</th>
   </tr>
  </thead>
@@ -137,12 +145,15 @@
    <td>${machine_info}</td>
    <td>${str(task.get('last_updated', '-')).split('.')[0]}</td>
    <td>${total} / ${task['num_games']}</td>
+   %if 'clop' in run['args']:
+   <td>${str(games_per_task.get(idx, '-'))}</td>
+   %else:
    <td>${stats.get('wins', '-')}</td>
    <td>${stats.get('losses', '-')}</td>
    <td>${stats.get('draws', '-')}</td>
+   %endif
    <td>${stats.get('crashes', '-')}</td>
   </tr>
   %endfor
  </tbody>
 </table>
-
