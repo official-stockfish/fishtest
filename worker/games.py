@@ -224,6 +224,8 @@ def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit
   clop = {}
   if clop_tuning:
     # Request parameters for next game
+    req = requests.post(remote + '/api/request_clop', data=json.dumps(result)).json()
+
     clop['game_id'] = req['game_id']
     clop['white'] = req['white']
     clop['fcp'] = ['option.%s=%s'%(x[0], x[1]) for x in req['params']]
@@ -250,11 +252,6 @@ def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit
 
     if p.returncode != 0:
       raise Exception('Non-zero return code: %d' % (p.returncode))
-
-    if 'game_id' in req:
-    else:
-      return
-
   except:
     traceback.print_exc(file=sys.stderr)
     kill_process(p)
@@ -310,7 +307,7 @@ def run_games(worker_info, password, remote, run, task_id):
     with open(run_id_file, 'r') as f:
       run_id = f.read().strip()
   else:
-      run_id = ''
+    run_id = ''
 
   # Download or build from sources base and new
   if str(run['_id']) != run_id:
@@ -387,13 +384,12 @@ def run_games(worker_info, password, remote, run, task_id):
   if threads == 1:
     launch_cutechess(*payload)
   else:
-    th = []
-    for idx in range(threads):
-      th.append(threading.Thread(target=launch_cutechess, args=payload))
-      th[idx].start()
+    th = [threading.Thread(target=launch_cutechess, args=payload) for _ in range(threads)]
+    for t in th:
+      t.start()
 
-    # Wait for all the threads have finished
-    for idx in range(threads):
+    # Wait for all the threads to finish
+    for t in th:
       # Super long timeout is a workaround for signal handling when doing thread.join
       # See http://stackoverflow.com/questions/631441/interruptible-thread-join-in-python
-      th[idx].join(2**31)
+      t.join(2**31)
