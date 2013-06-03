@@ -200,13 +200,13 @@ def run_game(p, remote, result, clop, clop_tuning):
         req = requests.post(remote + '/api/update_task', data=json.dumps(result)).json()
         failed_updates = 0
 
+        if clop_tuning:
+          # One game at a time
+          return req
+
         if not req['task_alive']:
           # This task is no longer neccesary
           kill_process(p)
-          return req
-
-        if clop_tuning:
-          # One game at a time
           return req
 
       except:
@@ -221,56 +221,45 @@ def run_game(p, remote, result, clop, clop_tuning):
 
 def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit):
 
-  clop = {
-    'game_id': '',
-    'white': True,
-    'fetch_next': True,
-    'fcp': [],
-    'scp': [],
-    'game_result': ''
-  }
+  clop = {}
+  if clop_tuning:
+    # Request parameters for next game
+    clop['game_id'] = req['game_id']
+    clop['white'] = req['white']
+    clop['fcp'] = ['option.%s=%s'%(x[0], x[1]) for x in req['params']]
+    clop['scp'] = []
+    if not clop['white']:
+      clop['fcp'], clop['scp'] = clop['scp'], clop['fcp']
 
   if not regression_test:
     cmd_base = ' '.join(cmd).split('_clop_')
 
-  # CLOP loop start here
-  while True:
+  # Run cutechess-cli binary
+  if regression_test:
+    cmd = ['cutechess_regression_test.sh']
+  else:
+    cmd = cmd_base[0].split() + clop['fcp'] + \
+          cmd_base[1].split() + clop['scp'] + cmd_base[2].split()
 
-    # Run cutechess-cli binary
-    if regression_test:
-      cmd = ['cutechess_regression_test.sh']
+  print ' '.join(cmd)
+  p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
+
+  try:
+    req = run_game(p, remote, result, clop, clop_tuning)
+    p.wait(tc_limit)
+
+    if p.returncode != 0:
+      raise Exception('Non-zero return code: %d' % (p.returncode))
+
+    if 'game_id' in req:
     else:
-      cmd = cmd_base[0].split() + clop['fcp'] + \
-            cmd_base[1].split() + clop['scp'] + cmd_base[2].split()
+      return
 
-    print ' '.join(cmd)
-    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
-
-    try:
-      req = run_game(p, remote, result, clop, clop_tuning)
-      p.wait(tc_limit)
-
-      if p.returncode != 0:
-        raise Exception('Non-zero return code: %d' % (p.returncode))
-
-      if not clop_tuning:
-        return
-      elif 'game_id' in req:
-        # Read parameters for next game
-        clop['game_id'] = req['game_id']
-        clop['white'] = req['white']
-        clop['fcp'] = ['option.%s=%s'%(x[0], x[1]) for x in req['params']]
-        clop['scp'] = []
-        if not clop['white']:
-          clop['fcp'], clop['scp'] = clop['scp'], clop['fcp']
-      else:
-        return
-
-    except:
-      traceback.print_exc(file=sys.stderr)
-      kill_process(p)
-      p.wait()
-      break
+  except:
+    traceback.print_exc(file=sys.stderr)
+    kill_process(p)
+    p.wait()
+    break
 
 def run_games(worker_info, password, remote, run, task_id):
   task = run['tasks'][task_id]
@@ -296,7 +285,7 @@ def run_games(worker_info, password, remote, run, task_id):
   base_options = run['args']['base_options']
   threads = int(run['args']['threads'])
   regression_test = run['args'].get('regression_test', False)
-  clop_tuning = True if 'clop' in run['args'] else False
+  clop_tuning = 'clop' in run['args']
   binaries_url = run.get('binaries_url', '')
   repo_url = run['args'].get('tests_repo', FISHCOOKING_URL)
   games_concurrency = int(worker_info['concurrency']) / threads
