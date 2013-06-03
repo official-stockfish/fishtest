@@ -5,6 +5,7 @@ import subprocess
 import threading
 import time
 import zmq
+from bson.objectid import ObjectId
 from sys import argv
 from rundb import RunDb
 from zmq.eventloop import ioloop, zmqstream
@@ -13,16 +14,10 @@ CLOP_DIR = os.getenv('CLOP_DIR')
 
 def read_clop_status(p, rundb, run_id):
   for line in iter(p.stdout.readline, ''):
-    rundb.runs.update({'_id': run_id, {'args.clop.status': line})
+    print 'Updating status:', line
+    rundb.runs.update({'_id': ObjectId(run_id)}, {'$set': {'args.clop.status': line}})
   
 def start_clop(rundb, clopdb, run_id, branch, params):
-  clopdb.stop_games(run_id)
-  time.sleep(1)
-  retries = 0
-  while clopdb.get_games(run_id).count() > 0 and retries < 5:
-    retries += 1
-    time.sleep(1)
-
   this_file = os.path.dirname(os.path.realpath(__file__)) # Points to *.pyc
   this_file = os.path.join(this_file, 'clop_worker', 'clop_worker')
   test_name = branch + '_' + run_id
@@ -51,7 +46,7 @@ def start_clop(rundb, clopdb, run_id, branch, params):
   status_thread.start()
 
   return {
-    'thread': thread,
+    'thread': status_thread,
     'process': p,
   }
 
@@ -65,9 +60,9 @@ def main():
     client_id = message[0]
     message = message[2:]
     data = {
-      'run_id': message[1].split('_')[0],
-      'seed': int(message[2]),
-      'params': [(message[i], message[i+1]) for i in range(3, len(message), 2)],
+      'run_id': message[0].split('_')[0],
+      'seed': int(message[1]),
+      'params': [(message[i], message[i+1]) for i in range(2, len(message), 2)],
     }
 
     # Choose the engine's playing side (color) based on CLOP's seed
@@ -113,11 +108,7 @@ def main():
 
   active_clop = dict()
   def check_runs():
-    for run in rundb.runs.find({'tasks': {'$elemMatch': {'active': True}}}):
-      # If is the start of a CLOP tuning session start CLOP.
-      if 'clop' in run['args'] and run['_id'] not in active_clop:
-        active_clop[run['_id']] = start_clop(rundb, clopdb, str(run['_id']), run['args']['new_tag'], run['args']['clop']['params'])
-
+    # Check if the clop runs are still active
     for run_id, info in active_clop.items():
       run = rundb.get_run(run_id)
       alive = False
@@ -126,9 +117,17 @@ def main():
           alive = True
       if not alive:
         print 'Killing task', run_id
-        clopdb.stop_games(run_id)
+        for game in self.get_games(run_id):
+          on_game_finished(game['_id'])
+
         info['process'].kill()
         del active_clop[run_id]
+
+    for run in rundb.runs.find({'tasks': {'$elemMatch': {'active': True}}}):
+      # If is the start of a CLOP tuning session start CLOP.
+      if 'clop' in run['args'] and run['_id'] not in active_clop:
+        active_clop[run['_id']] = start_clop(rundb, clopdb, str(run['_id']), run['args']['new_tag'], run['args']['clop']['params'])
+
 
   check_runs_timer = ioloop.PeriodicCallback(check_runs, 20 * 1000)
   check_runs_timer.start()

@@ -415,7 +415,7 @@ def tests_view(request):
               (value['elo0'], value['alpha'], value['elo1'], value['beta'], value.get('state', '-'))
 
     if name == 'clop' and value != '-':
-      value = value['params']
+      value = str(value['params']) + ' ' + value.get('status', '-')
 
     if 'tests_repo' in run['args']:
       if name == 'new_tag':

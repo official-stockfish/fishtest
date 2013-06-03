@@ -14,17 +14,11 @@ int main(int argc, char** argv)
   socket_t socket(context, ZMQ_REQ);
   socket.connect("tcp://127.0.0.1:5000");
 
-  string token;
-  stringstream ss;
-  ss << getpid();
-
-  for (int i = 1; i < argc; i++)
-      ss << string(argv[i]);
-
-  while (ss >> token)
-  {
-      message_t msg((void*)token.data(), token.length(), NULL);
-      socket.send(msg, ss.rdbuf()->in_avail() ? ZMQ_SNDMORE : 0);
+  for (int i = 1; i < argc; i++) {
+      string token(argv[i]);
+      message_t msg(token.size());
+      memcpy(msg.data(), token.data(), token.size());
+      socket.send(msg, i != argc - 1 ? ZMQ_SNDMORE : 0);
   }
 
   message_t response;
