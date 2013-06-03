@@ -117,7 +117,7 @@ def main():
           alive = True
       if not alive:
         print 'Killing task', run_id
-        for game in self.get_games(run_id):
+        for game in clopdb.get_games(run_id):
           on_game_finished(game['_id'])
 
         info['process'].kill()
