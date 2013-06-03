@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 
+import datetime
 import json
 import os
 import stat
@@ -157,13 +158,16 @@ def adjust_tc(tc, base_nps):
 
   # Rebuild scaled_tc now
   scaled_tc = '%.2f' % (time_tc * factor)
+  tc_limit = time_tc * factor * 3
   if increment > 0.0:
     scaled_tc += '+%.2f' % (increment)
+    tc_limit += increment * 100
   if num_moves > 0:
     scaled_tc = '%d/%s' % (num_moves, scaled_tc)
+    tc_limit *= 100.0 / num_moves 
 
   print 'CPU factor : %f - tc adjusted to %s' % (factor, scaled_tc)
-  return scaled_tc
+  return scaled_tc, tc_limit
 
 def run_game(p, remote, result, clop, clop_tuning):
   global old_stats
@@ -215,7 +219,7 @@ def run_game(p, remote, result, clop, clop_tuning):
 
   return { 'finished': True }
 
-def launch_cutechess(cmd, remote, result, clop_tuning, regression_test):
+def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit):
 
   clop = {
     'game_id': '',
@@ -244,7 +248,7 @@ def launch_cutechess(cmd, remote, result, clop_tuning, regression_test):
 
     try:
       req = run_game(p, remote, result, clop, clop_tuning)
-      p.wait()
+      p.wait(tc_limit)
 
       if p.returncode != 0:
         raise Exception('Non-zero return code: %d' % (p.returncode))
@@ -354,7 +358,7 @@ def run_games(worker_info, password, remote, run, task_id):
     verify_signature(base_engine, run['args']['base_signature'], remote, result)
 
   # Benchmark to adjust cpu scaling
-  scaled_tc = adjust_tc(run['args']['tc'], base_nps)
+  scaled_tc, tc_limit = adjust_tc(run['args']['tc'], base_nps)
   result['nps'] = base_nps
 
   # Handle book or pgn file
@@ -389,14 +393,18 @@ def run_games(worker_info, password, remote, run, task_id):
         ['_clop_','-engine', 'name=base', 'cmd=base'] + base_options + \
         ['_clop_','-each', 'proto=uci', 'option.Threads=%d' % (threads), 'tc=%s' % (scaled_tc)] + book_cmd
 
-  payload = (cmd, remote, result, clop_tuning, regression_test)
-  th = []
-  for idx in range(threads):
-    th.append(threading.Thread(target=launch_cutechess, args=payload))
-    th[idx].start()
+  payload = (cmd, remote, result, clop_tuning, regression_test, tc_limit)
 
-  # Wait for all the threads have finished
-  for idx in range(threads):
-    # Super long timeout is a workaround for signal handling when doing thread.join
-    # See http://stackoverflow.com/questions/631441/interruptible-thread-join-in-python
-    th[idx].join(2**31)
+  if threads == 1:
+    launch_cutechess(*payload)
+  else:
+    th = []
+    for idx in range(threads):
+      th.append(threading.Thread(target=launch_cutechess, args=payload))
+      th[idx].start()
+
+    # Wait for all the threads have finished
+    for idx in range(threads):
+      # Super long timeout is a workaround for signal handling when doing thread.join
+      # See http://stackoverflow.com/questions/631441/interruptible-thread-join-in-python
+      th[idx].join(2**31)
