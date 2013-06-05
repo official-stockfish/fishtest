@@ -256,7 +256,6 @@ def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit
     traceback.print_exc(file=sys.stderr)
     kill_process(p)
     p.wait()
-    break
 
 def run_games(worker_info, password, remote, run, task_id):
   task = run['tasks'][task_id]
