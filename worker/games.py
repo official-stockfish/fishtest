@@ -221,7 +221,10 @@ def run_game(p, remote, result, clop, clop_tuning):
 
 def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit):
 
-  clop = {}
+  clop = {
+    'fcp': [],
+    'scp': [],
+  }
   if clop_tuning:
     # Request parameters for next game
     req = requests.post(remote + '/api/request_clop', data=json.dumps(result)).json()
@@ -229,7 +232,6 @@ def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit
     clop['game_id'] = req['game_id']
     clop['white'] = req['white']
     clop['fcp'] = ['option.%s=%s'%(x[0], x[1]) for x in req['params']]
-    clop['scp'] = []
     if not clop['white']:
       clop['fcp'], clop['scp'] = clop['scp'], clop['fcp']
 
