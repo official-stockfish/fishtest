@@ -249,16 +249,9 @@ class RunDb:
 
         self.stop_run(run_id)
 
-    # Check if we are doing a CLOP tuning, in this case update
-    # result, wake up clop.py process waiting for it and
-    # fetch next game.
-    if 'clop' in run['args']:
-      if len(clop['game_id']) > 0:
-        self.clopdb.write_result(clop['game_id'], clop['game_result'])
-      if task['active']:
-        req = self.clopdb.request_game(run_id, task_id)
-        req['task_alive'] = True
-        return req
+    # Update clop results
+    if 'clop' in run['args'] and len(clop['game_id']) > 0:
+      self.clopdb.write_result(clop['game_id'], clop['game_result'])
 
     return {'task_alive': task['active']}
 

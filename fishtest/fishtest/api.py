@@ -112,3 +112,13 @@ def request_version(request):
   if 'error' in token: return json.dumps(token)
 
   return json.dumps({'version': 31})
+
+@view_config(route_name='api_request_clop', renderer='string')
+def request_clop(request):
+  token = authenticate(request)
+  if 'error' in token: return json.dumps(token)
+
+  run_id = request.json_body['run_id']
+  task_id = int(request.json_body['task_id'])
+
+  return json.dumps(request.clopdb.request_game(run_id, task_id))

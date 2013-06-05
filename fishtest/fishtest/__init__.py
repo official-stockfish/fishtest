@@ -60,6 +60,7 @@ def main(global_config, **settings):
   config.add_route('api_request_build', '/api/request_build')
   config.add_route('api_build_ready', '/api/build_ready')
   config.add_route('api_request_version', '/api/request_version')
+  config.add_route('api_request_clop', '/api/request_clop')
 
   config.scan()
   return config.make_wsgi_app()
