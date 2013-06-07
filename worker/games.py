@@ -250,7 +250,7 @@ def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit
 
   try:
     req = run_game(p, remote, result, clop, clop_tuning)
-    p.wait(tc_limit)
+    p.wait()
 
     if p.returncode != 0:
       raise Exception('Non-zero return code: %d' % (p.returncode))
