@@ -200,10 +200,6 @@ def run_game(p, remote, result, clop, clop_tuning):
         req = requests.post(remote + '/api/update_task', data=json.dumps(result)).json()
         failed_updates = 0
 
-        if clop_tuning:
-          # One game at a time
-          return req
-
         if not req['task_alive']:
           # This task is no longer neccesary
           kill_process(p)
