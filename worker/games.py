@@ -213,7 +213,7 @@ def run_game(p, remote, result, clop, clop_tuning):
           kill_process(p)
           break
 
-  return { 'task_alive': False }
+  return { 'task_alive': clop_tuning }
 
 def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit):
 
