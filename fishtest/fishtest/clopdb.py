@@ -26,7 +26,8 @@ class ClopDb:
 
   def stop_games(self, run_id = '', task_id = ''):
     for game in self.get_games(run_id, str(task_id)):
-      self.write_result(str(game['_id']), 'stop')
+      if len(game['result']) == 0:
+        self.write_result(str(game['_id']), 'stop')
 
   def write_result(self, game_id, result):
     game = self.get_game(game_id)

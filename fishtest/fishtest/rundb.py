@@ -252,6 +252,8 @@ class RunDb:
     # Update clop results
     if 'clop' in run['args'] and len(clop['game_id']) > 0:
       self.clopdb.write_result(clop['game_id'], clop['game_result'])
+      if not task['active']:
+        self.clopdb.stop_games(run_id, task_id)
 
     return {'task_alive': task['active']}
 
@@ -267,6 +269,9 @@ class RunDb:
     # Mark the task as inactive: it will be rescheduled
     task['active'] = False
     self.runs.save(run)
+
+    if 'clop' in run['args']:
+      self.clopdb.stop_games(run_id, task_id)
 
     return {}
 

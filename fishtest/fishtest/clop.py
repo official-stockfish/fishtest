@@ -127,7 +127,6 @@ def main():
       if 'clop' in run['args'] and run['_id'] not in active_clop:
         active_clop[run['_id']] = start_clop(rundb, clopdb, str(run['_id']), run['args']['new_tag'], run['args']['clop']['params'])
 
-
   check_runs_timer = ioloop.PeriodicCallback(check_runs, 20 * 1000)
   check_runs_timer.start()
 
