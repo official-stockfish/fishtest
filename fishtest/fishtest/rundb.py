@@ -122,7 +122,7 @@ class RunDb:
       runs.append(run)
     return runs
 
-  def get_clop_exclusion_list(self, minimum, version):
+  def get_clop_exclusion_list(self, minimum):
     exclusion_list = []
     for run in self.runs.find({'args.clop': {'$exists': True}, 'finished': False, 'deleted': {'$exists': False}}):
       total_games = 0
@@ -134,10 +134,6 @@ class RunDb:
 
       if total_games > 0 and available_games < minimum:
         exclusion_list.append(run['_id'])
-      # TESTING
-      elif version != 31:
-        exclusion_list.append(run['_id'])
-      # END TESTING
     return exclusion_list
 
   def get_results(self, run):
@@ -166,7 +162,7 @@ class RunDb:
 
     # Build list of CLOP runs that are already almost full
     max_threads = int(worker_info['concurrency'])
-    exclusion_list = self.get_clop_exclusion_list(5 + max_threads, worker_info['version'])
+    exclusion_list = self.get_clop_exclusion_list(5 + max_threads)
 
     # Does this worker have a task already?  If so, just hand that back
     existing_run = self.runs.find_one({'tasks': {'$elemMatch': {'active': True, 'worker_info': worker_info}}})
