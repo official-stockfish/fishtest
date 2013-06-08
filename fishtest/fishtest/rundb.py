@@ -127,7 +127,7 @@ class RunDb:
     for run in self.runs.find({'args.clop': {'$exists': True}, 'finished': False, 'deleted': {'$exists': False}}):
       total_games = 0
       available_games = 0
-      for game in self.clopdb.get_games(str(run['_id'])):
+      for game in self.clopdb.get_games(run['_id']):
         total_games += 1
         if len(game['task_id']) == 0:
           available_games += 1

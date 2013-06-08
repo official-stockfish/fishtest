@@ -10,6 +10,8 @@ class ClopDb:
     self.clop_socket = clop_socket
 
   def get_games(self, run_id = '', task_id = ''):
+    run_id = str(run_id)
+    task_id = str(task_id)
     if len(run_id) == 0:
       return self.clop.find(sort=[('_id', ASCENDING)])
     elif len(task_id) == 0:
@@ -25,16 +27,16 @@ class ClopDb:
     return self.clop.remove({'_id': ObjectId(game_id)}, True)
 
   def stop_games(self, run_id = '', task_id = ''):
-    for game in self.get_games(run_id, str(task_id)):
+    for game in self.get_games(run_id, task_id):
       if len(game['result']) == 0:
-        self.write_result(str(game['_id']), 'stop')
+        self.write_result(game['_id'], 'stop')
 
   def write_result(self, game_id, result):
     game = self.get_game(game_id)
     if game != None:
       game['result'] = result
       self.clop.save(game)
-      self.clop_socket.send_unicode(game_id)
+      self.clop_socket.send_unicode(str(game_id))
 
   def add_game(self, run_id, seed, white, params):
     id = self.clop.insert({

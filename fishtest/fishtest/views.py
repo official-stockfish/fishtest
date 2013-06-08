@@ -432,7 +432,7 @@ def tests_view(request):
     task['last_updated'] = delta_date(last_updated)
 
   if 'clop' in run['args']:
-    run['games'] = [g for g in request.clopdb.get_games(str(run['_id']))]
+    run['games'] = [g for g in request.clopdb.get_games(run['_id'])]
 
   return { 'run': run, 'run_args': run_args }
 
