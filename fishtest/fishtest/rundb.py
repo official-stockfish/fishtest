@@ -122,7 +122,7 @@ class RunDb:
       runs.append(run)
     return runs
 
-  def get_clop_exclusion_list(self, minimum):
+  def get_clop_exclusion_list(self, minimum, version):
     exclusion_list = []
     for run in self.runs.find({'args.clop': {'$exists': True}, 'finished': False, 'deleted': {'$exists': False}}):
       total_games = 0
@@ -134,6 +134,10 @@ class RunDb:
 
       if total_games > 0 and available_games < minimum:
         exclusion_list.append(run['_id'])
+      # TESTING
+      elif version != 31:
+        exclusion_list.append(run['_id'])
+      # END TESTING
     return exclusion_list
 
   def get_results(self, run):
