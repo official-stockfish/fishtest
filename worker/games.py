@@ -213,7 +213,7 @@ def run_game(p, remote, result, clop, clop_tuning):
           kill_process(p)
           break
 
-  return { 'finished': True }
+  return { 'task_alive': False }
 
 def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit):
 
@@ -254,6 +254,12 @@ def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit
     traceback.print_exc(file=sys.stderr)
     kill_process(p)
     p.wait()
+
+  return req
+
+def run_clop(*args):
+  while launch_cutechess(*args)['task_alive']:
+    pass
 
 def run_games(worker_info, password, remote, run, task_id):
   task = run['tasks'][task_id]
@@ -381,12 +387,17 @@ def run_games(worker_info, password, remote, run, task_id):
   if threads == 1:
     launch_cutechess(*payload)
   else:
-    th = [threading.Thread(target=launch_cutechess, args=payload) for _ in range(threads)]
+    th = [threading.Thread(target=run_clop, args=payload) for _ in range(threads)]
     for t in th:
       t.start()
 
     # Wait for all the threads to finish
-    for t in th:
-      # Super long timeout is a workaround for signal handling when doing thread.join
-      # See http://stackoverflow.com/questions/631441/interruptible-thread-join-in-python
-      t.join(2**31)
+    end_time = datetime.datetime.now() + datetime.timedelta(seconds=tc_limit*games_remaining/games_concurrency)
+    while datetime.datetime.now() < end_time:
+      working = False
+      for t in th:
+        if t.is_alive():
+          working = True
+      if not working:
+        return
+      time.sleep(1)
