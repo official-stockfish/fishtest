@@ -142,7 +142,7 @@ def main():
   while ALIVE:
     if not success:
       time.sleep(300)
-    success = worker(worker_info, args[1], remote):
+    success = worker(worker_info, args[1], remote)
 
 if __name__ == '__main__':
   main()
