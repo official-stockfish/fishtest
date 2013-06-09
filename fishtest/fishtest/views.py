@@ -349,6 +349,8 @@ def format_results(run_results, run):
     return result
 
   if 'clop' in run['args']:
+    status = ' '.join(run['args']['clop'].get('status', '-').split())
+    result['info'].append('Status: %s' % (status))
     result['info'].append('Total: %d' % (sum(WLD)))
     return result
 
@@ -415,7 +417,7 @@ def tests_view(request):
               (value['elo0'], value['alpha'], value['elo1'], value['beta'], value.get('state', '-'))
 
     if name == 'clop' and value != '-':
-      value = str(value['params']) + ' ' + value.get('status', '-')
+      value = str(value['params'])
 
     if 'tests_repo' in run['args']:
       if name == 'new_tag':
