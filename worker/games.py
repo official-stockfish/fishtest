@@ -17,6 +17,11 @@ import zipfile
 from base64 import b64decode
 from zipfile import ZipFile
 
+try:
+  from Queue import Queue, Empty
+except ImportError:
+  from queue import Queue, Empty  # python 3.x
+
 # Global beacuse is shared across threads
 old_stats = {'wins':0, 'losses':0, 'draws':0, 'crashes':0}
 
@@ -169,11 +174,27 @@ def adjust_tc(tc, base_nps):
   print 'CPU factor : %f - tc adjusted to %s' % (factor, scaled_tc)
   return scaled_tc, tc_limit
 
-def run_game(p, remote, result, clop, clop_tuning):
+def enqueue_output(out, queue):
+  for line in iter(out.readline, b''):
+    queue.put(line)
+  out.close()
+
+def run_game(p, remote, result, clop, clop_tuning, tc_limit):
   global old_stats
   failed_updates = 0
 
-  for line in iter(p.stdout.readline,''):
+  q = Queue()
+  t = threading.Thread(target=enqueue_output, args=(p.stdout, q))
+  t.daemon = True
+  t.start()
+
+  end_time = datetime.datetime.now() + datetime.timedelta(seconds=tc_limit)
+  while datetime.datetime.now() < end_time:
+    try: line = q.get_nowait()
+    except Empty:
+      time.sleep(1)
+      continue
+
     sys.stdout.write(line)
     sys.stdout.flush()
     # Parse line like this:
@@ -213,6 +234,10 @@ def run_game(p, remote, result, clop, clop_tuning):
           kill_process(p)
           break
 
+  if datetime.datetime.now() >= end_time:
+    kill_process(p)
+    raise Exception('Time limit elapsed')
+
   return { 'task_alive': clop_tuning }
 
 def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit):
@@ -242,10 +267,10 @@ def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit
           cmd_base[1].split() + clop['scp'] + cmd_base[2].split()
 
   print ' '.join(cmd)
-  p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
+  p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True, bufsize=1, close_fds=not IS_WINDOWS)
 
   try:
-    req = run_game(p, remote, result, clop, clop_tuning)
+    req = run_game(p, remote, result, clop, clop_tuning, tc_limit)
     p.wait()
 
     if p.returncode != 0:
@@ -382,7 +407,7 @@ def run_games(worker_info, password, remote, run, task_id):
         ['_clop_','-engine', 'name=base', 'cmd=base'] + base_options + \
         ['_clop_','-each', 'proto=uci', 'option.Threads=%d' % (threads), 'tc=%s' % (scaled_tc)] + book_cmd
 
-  payload = (cmd, remote, result, clop_tuning, regression_test, tc_limit)
+  payload = (cmd, remote, result, clop_tuning, regression_test, tc_limit*games_to_play/games_concurrency)
 
   if threads == 1:
     launch_cutechess(*payload)
@@ -392,12 +417,7 @@ def run_games(worker_info, password, remote, run, task_id):
       t.start()
 
     # Wait for all the threads to finish
-    end_time = datetime.datetime.now() + datetime.timedelta(seconds=tc_limit*games_remaining/games_concurrency)
-    while datetime.datetime.now() < end_time:
-      working = False
-      for t in th:
-        if t.is_alive():
-          working = True
-      if not working:
-        return
-      time.sleep(1)
+    for t in th:
+      # Super long timeout is a workaround for signal handling when doing thread.join
+      # See http://stackoverflow.com/questions/631441/interruptible-thread-join-in-python
+      t.join(2 ** 31)
