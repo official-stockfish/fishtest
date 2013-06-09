@@ -12,7 +12,7 @@ from optparse import OptionParser
 from games import run_games
 from updater import update
 
-WORKER_VERSION = 31
+WORKER_VERSION = 32
 ALIVE = True
 
 def setup_config_file(config_file):
@@ -72,14 +72,14 @@ def worker(worker_info, password, remote):
     time.sleep(10)
     return
 
+  success = True
   run, task_id = req['run'], req['task_id']
   try:
     run_games(worker_info, password, remote, run, task_id)
   except:
     sys.stderr.write('\nException running games:\n')
     traceback.print_exc()
-    if ALIVE:
-      time.sleep(300)
+    success = False
   finally:
     payload = {
       'username': worker_info['username'],
@@ -92,6 +92,8 @@ def worker(worker_info, password, remote):
     except:
       pass
     sys.stderr.write('Task exited\n')
+
+  return success
 
 def main():
   signal.signal(signal.SIGINT, on_sigint)
@@ -135,9 +137,12 @@ def main():
     'version': WORKER_VERSION,
   }
 
+  success = True 
   global ALIVE
   while ALIVE:
-    worker(worker_info, args[1], remote)
+    if not success:
+      time.sleep(300)
+    success = worker(worker_info, args[1], remote):
 
 if __name__ == '__main__':
   main()
