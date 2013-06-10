@@ -44,11 +44,11 @@ def binary_filename(sha):
 def get_clop_result(wld, white):
   ''' Convert result to W or L or D'''
   if wld[0] == 1:
-    return "W" if white else "L"
+    return 'W' if white else 'L'
   elif wld[1] == 1:
-    return "L" if white else "W"
+    return 'L' if white else 'W'
   else:
-    return "D"
+    return 'D'
 
 def github_api(repo):
   """ Convert from https://github.com/<user>/<repo>
