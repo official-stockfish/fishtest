@@ -276,8 +276,11 @@ def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit
       raise Exception('Non-zero return code: %d' % (p.returncode))
   except:
     traceback.print_exc(file=sys.stderr)
-    kill_process(p)
-    p.wait()
+    try:
+      kill_process(p)
+      p.wait() 
+    except:
+      pass 
 
   return req
 
