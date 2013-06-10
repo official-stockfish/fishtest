@@ -117,7 +117,7 @@ def main():
       if not alive:
         print 'Killing task', run_id
         for game in clopdb.get_games(run_id):
-          on_game_finished(game['_id'])
+          on_game_finished([game['_id']])
 
         info['process'].kill()
         del active_clop[run_id]
