@@ -236,7 +236,6 @@ def run_game(p, remote, result, clop, clop_tuning, tc_limit):
 
   if datetime.datetime.now() >= end_time:
     kill_process(p)
-    raise Exception('Time limit elapsed')
 
   return { 'task_alive': clop_tuning }
 
