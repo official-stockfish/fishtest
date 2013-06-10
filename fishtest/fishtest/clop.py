@@ -78,7 +78,15 @@ def main():
     # Game is finished, read result and remove game row
     game_id = message[0]
     game = clopdb.get_game(game_id)
-    result = game['result'] if game != None else 'stop'
+    result = game['result']
+    if result == 'stop':
+      # Clear the game so it can be reassigned
+      game['result'] = ''
+      game['task_id'] = '' 
+      clopdb.clop.save(game)
+      return
+
+    # Makr the game as finished
     clopdb.remove_game(game_id)
 
     with open('debug.log', 'a') as f:
