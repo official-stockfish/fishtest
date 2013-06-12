@@ -189,7 +189,7 @@ def run_game(p, remote, result, clop, clop_tuning, tc_limit):
   t.start()
 
   end_time = datetime.datetime.now() + datetime.timedelta(seconds=tc_limit)
-  while datetime.datetime.now() < end_time:
+  while datetime.datetime.now() < end_time and p.poll() == None:
     try: line = q.get_nowait()
     except Empty:
       time.sleep(1)
@@ -197,6 +197,12 @@ def run_game(p, remote, result, clop, clop_tuning, tc_limit):
 
     sys.stdout.write(line)
     sys.stdout.flush()
+
+    # Cutechess can exit unexpectedly
+    if 'Finished match' in line:
+      kill_process(p)
+      break
+
     # Parse line like this:
     # Finished game 1 (stockfish vs base): 0-1 {White disconnects}
     if 'disconnects' in line or 'connection stalls' in line:
