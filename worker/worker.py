@@ -12,16 +12,16 @@ from optparse import OptionParser
 from games import run_games
 from updater import update
 
-WORKER_VERSION = 33
+WORKER_VERSION = 34
 ALIVE = True
 
 def setup_config_file(config_file):
-  ''' Config file setup, adds defaults if not exsisting '''
+  ''' Config file setup, adds defaults if not existing '''
   config = SafeConfigParser()
   config.read(config_file)
 
   defaults = [('login', 'username', ''), ('login', 'password', ''),
-              ('parameters', 'host', '54.235.120.254'),
+              ('parameters', 'host', 'tests.stockfishchess.org'),
               ('parameters', 'port', '80'),
               ('parameters', 'concurrency', '3')]
 
@@ -116,6 +116,10 @@ def main():
     else:
       sys.stderr.write('%s [username] [password]\n' % (sys.argv[0]))
       sys.exit(1)
+
+  # Re-route old IP
+  if '54.235.120.254' in options.host:
+    options.host = 'tests.stockfishchess.org'
 
   # Write command line parameters to the config file
   config.set('login', 'username', args[0])

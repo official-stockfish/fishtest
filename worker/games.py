@@ -415,7 +415,7 @@ def run_games(worker_info, password, remote, run, task_id):
         ['_clop_','-engine', 'name=base', 'cmd=base'] + base_options + \
         ['_clop_','-each', 'proto=uci', 'option.Threads=%d' % (threads), 'tc=%s' % (scaled_tc)] + book_cmd
 
-  payload = (cmd, remote, result, clop_tuning, regression_test, tc_limit*games_to_play/games_concurrency)
+  payload = (cmd, remote, result, clop_tuning, regression_test, tc_limit * games_to_play / min(games_to_play, games_concurrency))
 
   if threads == 1:
     launch_cutechess(*payload)
