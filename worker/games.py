@@ -166,7 +166,7 @@ def adjust_tc(tc, base_nps):
   tc_limit = time_tc * factor * 3
   if increment > 0.0:
     scaled_tc += '+%.2f' % (increment)
-    tc_limit += increment * 100
+    tc_limit += increment * 200
   if num_moves > 0:
     scaled_tc = '%d/%s' % (num_moves, scaled_tc)
     tc_limit *= 100.0 / num_moves 
@@ -189,9 +189,11 @@ def run_game(p, remote, result, clop, clop_tuning, tc_limit):
   t.start()
 
   end_time = datetime.datetime.now() + datetime.timedelta(seconds=tc_limit)
-  while datetime.datetime.now() < end_time and p.poll() == None:
+  while datetime.datetime.now() < end_time:
     try: line = q.get_nowait()
     except Empty:
+      if p.poll() != None:
+        break
       time.sleep(1)
       continue
 
