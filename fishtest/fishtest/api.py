@@ -18,7 +18,7 @@ def request_task(request):
   worker_info = request.json_body['worker_info']
 
   # Get country flag ip
-  r = requests.get(FLAG_HOST + request.remote_addr)
+  r = requests.get(FLAG_HOST + request.remote_addr, timeout=1.0)
   if r.status_code == 200:
     worker_info['country_code'] = r.json().get('country_code', '')
 
