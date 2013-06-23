@@ -1,3 +1,11 @@
+Setting up the server
+
+Install zeromq
+
+sudo pip install pyramid
+sudo pip install boto
+sudo pip install pyzmq
+
 Installing Mongo:
 
 Install latest MongoDB x64 to ~/mongodb
