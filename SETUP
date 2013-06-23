@@ -3,8 +3,10 @@ Setting up the server
 Install zeromq
 
 sudo pip install pyramid
+sudo pip install waitress
 sudo pip install boto
 sudo pip install pyzmq
+sudo pip install requests
 
 Installing Mongo:
 
@@ -28,3 +30,8 @@ sudo iptables -I INPUT -p tcp --dport 6543 -j ACCEPT
 sudo iptables -t nat -A OUTPUT -o lo -p tcp --dport 80 -j REDIRECT --to-port 6543
 
 sudo /sbin/service iptables save
+
+Setting up fishtest:
+
+cd ~/fishtest/fishtest
+sudo python install.py develop 
