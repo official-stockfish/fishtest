@@ -1,5 +1,15 @@
 Installing Mongo:
 
+Install latest MongoDB x64 to ~/mongodb
+Start MongoDB:
+ - cd ~/mongodb/bin
+ - nohup ./mongod >mongod.out &
+Restore database from s3 fishtest/backup/archive/20130623:
+ - mkdir -p ~/archive/restore
+ - cd ~/archive/restore
+ - Using boto "fetch_file s3://fishtest/backup/archive/20130623/dump.tar.gz -o dump.tar.gz"
+ - tar xvf dump.tar.gz
+ -
 TODO
 
 Mapping port 6543 to port 80:
