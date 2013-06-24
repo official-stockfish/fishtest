@@ -400,12 +400,12 @@ def run_games(worker_info, password, remote, run, task_id):
     print 'Running regression test of %s' % (run['args']['new_tag'])
 
   if clop_tuning:
-    threads = games_concurrency
+    worker_threads = games_concurrency
     games_to_play = 1
     games_concurrency = 1
     pgnout = []
   else:
-    threads = 1
+    worker_threads = 1
     games_to_play = games_remaining
     pgnout = ['-pgnout', 'results.pgn']
 
@@ -419,14 +419,14 @@ def run_games(worker_info, password, remote, run, task_id):
 
   payload = (cmd, remote, result, clop_tuning, regression_test, tc_limit * games_to_play / min(games_to_play, games_concurrency))
 
-  if threads == 1:
+  if worker_threads == 1:
     launch_cutechess(*payload)
   else:
-    th = [threading.Thread(target=run_clop, args=payload) for _ in range(threads)]
+    th = [threading.Thread(target=run_clop, args=payload) for _ in range(worker_threads)]
     for t in th:
       t.start()
 
-    # Wait for all the threads to finish
+    # Wait for all the worker threads to finish
     for t in th:
       # Super long timeout is a workaround for signal handling when doing thread.join
       # See http://stackoverflow.com/questions/631441/interruptible-thread-join-in-python
