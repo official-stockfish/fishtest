@@ -485,7 +485,7 @@ def tests(request):
       continue
 
     results = request.rundb.get_results(run)
-    if not run['finished'] or not 'results_info' in run:
+    if not run['finished']:
       run['results_info'] = format_results(results, run)
 
     state = 'finished'
