@@ -107,7 +107,7 @@ def parse_tc(tc):
 @view_config(route_name='actions', renderer='actions.mak')
 def actions(request):
   actions = []
-  for action in request.actiondb.get_actions():
+  for action in request.actiondb.get_actions(100):
     item = {
       'action': action['action'],
       'time': action['time'],
