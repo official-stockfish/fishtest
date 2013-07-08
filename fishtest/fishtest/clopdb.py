@@ -27,6 +27,7 @@ class ClopDb:
     return self.clop.remove({'_id': ObjectId(game_id)}, True)
 
   def stop_games(self, run_id = '', task_id = ''):
+    print 'clop stop_games %s %s' % (run_id, task_id)
     for game in self.get_games(run_id, task_id):
       if len(game['result']) == 0:
         self.write_result(game['_id'], 'stop')
