@@ -124,7 +124,7 @@ def upload_files(payload, binaries_dir):
 
 def main():
   parser = OptionParser()
-  parser.add_option('-n', '--host', dest='host', default='54.235.120.254')
+  parser.add_option('-n', '--host', dest='host', default='tests.stockfishchess.org')
   parser.add_option('-p', '--port', dest='port', default='80')
   (options, args) = parser.parse_args()
 
