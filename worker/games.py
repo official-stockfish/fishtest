@@ -37,7 +37,7 @@ if IS_WINDOWS:
 
 def binary_filename(sha):
   system = platform.uname()[0].lower()
-  architecture = platform.architecture()
+  architecture = platform.architecture()[0]
   architecture = '64' if '64' in architecture else '32'
   return sha + '_' + system + '_' + architecture
 
@@ -121,9 +121,10 @@ def setup_engine(destination, binaries_url, worker_dir, sha, repo_url, concurren
   if os.path.exists(destination): os.remove(destination)
   if len(binaries_url) > 0:
     try:
-      r = requests.get(binaries_url + '/' + binary_filename(sha))
+      binary_url = binaries_url + '/' + binary_filename(sha)
+      r = requests.get(binary_url)
       if r.status_code == 200:
-        print 'Downloaded %s' % (os.path.basename(destination))
+        print 'Downloaded %s from %s' % (os.path.basename(destination), binary_url)
         with open(destination, 'wb+') as f:
           f.write(r.content)
         return
