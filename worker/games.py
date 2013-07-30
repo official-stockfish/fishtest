@@ -25,20 +25,30 @@ except ImportError:
 # Global beacuse is shared across threads
 old_stats = {'wins':0, 'losses':0, 'draws':0, 'crashes':0}
 
+IS_WINDOWS = 'windows' in platform.system().lower()
+
+def is_windows_64bit():
+  if 'PROCESSOR_ARCHITEW6432' in os.environ:
+    return True
+  return os.environ['PROCESSOR_ARCHITECTURE'].endswith('64')
+
+def is_64bit():
+  if IS_WINDOWS:
+    return is_windows_64bit()
+  return '64' in platform.architecture()[0]
+
 FISHCOOKING_URL = 'https://github.com/mcostalba/FishCooking'
-ARCH = 'ARCH=x86-64-modern' if '64' in platform.architecture()[0] else 'ARCH=x86-32'
+ARCH = 'ARCH=x86-64-modern' if is_64bit() else 'ARCH=x86-32'
 EXE_SUFFIX = ''
 MAKE_CMD = 'make build COMP=gcc ' + ARCH
 
-IS_WINDOWS = 'windows' in platform.system().lower()
 if IS_WINDOWS:
   EXE_SUFFIX = '.exe'
   MAKE_CMD = 'mingw32-make build COMP=mingw ' + ARCH
 
 def binary_filename(sha):
   system = platform.uname()[0].lower()
-  architecture = platform.architecture()[0]
-  architecture = '64' if '64' in architecture else '32'
+  architecture = '64' if is_64bit() else '32'
   return sha + '_' + system + '_' + architecture
 
 def get_clop_result(wld, white):
