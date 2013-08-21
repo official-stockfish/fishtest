@@ -26,9 +26,9 @@ or, in case you have a git installation, you can clone it.
 git clone https://github.com/glinscott/fishtest.git
 ```
 
-#### Get username/password
+#### Sign up
 
-Please e-mail me at gmail.com, username "glinscott", and we will give you your username and password.
+Create your username/password at http://tests.stockfishchess.org/signup
 
 ### Launching the worker
 
