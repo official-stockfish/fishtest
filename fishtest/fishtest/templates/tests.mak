@@ -26,7 +26,7 @@
      (${'%.2fM' % (nps / (1000000.0 + 1))} total nps)
      ${games_per_minute} games/minute
  </h3>
- <table class="table table-striped table-condensed" style="width:70%">
+ <table class="table table-striped table-condensed" style="max-width:700px">
   <thead>
    <tr>
     <th>Machine</th>
