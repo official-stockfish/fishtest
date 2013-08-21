@@ -36,12 +36,15 @@
     </button>
   </form>
 %if not run.get('approved', False):
-  <form action="/tests/approve" method="POST" style="display:inline">
-    <input type="hidden" name="run-id" value="${run['_id']}">
-    <button type="submit" class="btn btn-success">
-      Approve
-    </button>
-  </form>
+  <span> 
+    <a href="https://github.com/mcostalba/Stockfish/compare/master...${run['args']['resolved_base'][:7]}" target="_blank">Master diff</a>
+    <form action="/tests/approve" method="POST" style="display:inline">
+      <input type="hidden" name="run-id" value="${run['_id']}">
+      <button type="submit" class="btn btn-success">
+        Approve
+      </button>
+    </form>
+  </span>
 %endif
 %endif
   <a href="/tests/run?id=${run['_id']}">
