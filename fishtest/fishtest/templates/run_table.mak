@@ -28,12 +28,14 @@
         </div>
       </div>
     </td>
-    %if not run.get('approved', False):
+    %if run.get('approved', False):
     <td>
       <button class="btn btn-success btn-mini">
-        <i class="icon-question-sign"></i>
+        <i class="icon-thumbs-up"></i>
       </button>
     <td>
+    %else:
+    <td></td>
     %endif
     %endif
     <td style="width:6%">${run['start_time'].strftime("%d-%m-%y")}</td>
