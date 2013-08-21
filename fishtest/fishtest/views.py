@@ -38,9 +38,13 @@ def login(request):
 
   return {}
 
-@view_config(route_name='signup', renderer='signup.mak', permission='modify_db')
+@view_config(route_name='signup', renderer='signup.mak')
 def signup(request):
   if 'form.submitted' in request.params:
+    if len(request.params.get('password', '')) == 0:
+      request.session.flash('Non-empty password required')
+      return {}
+
     result = request.userdb.create_user(
       username=request.params['username'],
       password=request.params['password'],
