@@ -22,6 +22,9 @@ class ActionDb:
   def stop_run(self, username, run):
     self._new_action(username, 'stop_run', run)
 
+  def approve_run(self, username, run):
+    self._new_action(username, 'approve_run', run)
+
   def _new_action(self, username, action, data):
     self.actions.insert({
       'username': username,

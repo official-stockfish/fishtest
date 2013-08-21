@@ -327,6 +327,19 @@ def tests_stop(request):
   request.session.flash('Stopped run')
   return HTTPFound(location=request.route_url('tests'))
 
+@view_config(route_name='tests_approve', permission='approve_run')
+def tests_approve(request):
+  username = authenticated_userid(request)
+  if not request.rundb.approve_run(request.POST['run-id'], username):
+    request.session.flash('Unable to approve run!')
+    return HTTPFound(location=request.route_url('tests'))
+
+  run = request.rundb.get_run(request.POST['run-id'])
+  request.actiondb.approve_run(username, run)
+
+  request.session.flash('Approved run')
+  return HTTPFound(location=request.route_url('tests'))
+
 @view_config(route_name='tests_delete', permission='modify_db')
 def tests_delete(request):
   run = request.rundb.get_run(request.POST['run-id'])

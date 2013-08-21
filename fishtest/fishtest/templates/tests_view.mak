@@ -35,6 +35,14 @@
       Stop
     </button>
   </form>
+%if not run.get('approved', False):
+  <form action="/tests/approve" method="POST" style="display:inline">
+    <input type="hidden" name="run-id" value="${run['_id']}">
+    <button type="submit" class="btn btn-success">
+      Approve
+    </button>
+  </form>
+%endif
 %endif
   <a href="/tests/run?id=${run['_id']}">
     <button class="btn">Reschedule</button>

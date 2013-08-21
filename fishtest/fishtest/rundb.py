@@ -92,6 +92,8 @@ class RunDb:
       'results': { 'wins': 0, 'losses': 0, 'draws': 0 },
       'results_stale': False,
       'finished': False,
+      'approved': False,
+      'approver': '',
     })
 
     return id
@@ -176,15 +178,13 @@ class RunDb:
             task['active'] = False
             self.runs.save(existing_run)
 
-    # TODO Disable possibility to download regression tests for now
-    can_do_regression = False
-
     # Ok, we get a new task that does not require more threads than available concurrency
     q = {
       'new': True,
       'query': { '$and': [ {'tasks': {'$elemMatch': {'active': False, 'pending': True}}},
                            {'args.threads': { '$lte': max_threads }},
-                           {'_id': { '$nin': exclusion_list}}]},
+                           {'_id': { '$nin': exclusion_list}},
+                           {'approved': True}]},
       'sort': [('args.priority', DESCENDING), ('_id', ASCENDING)],
       'update': {
         '$set': {
@@ -286,3 +286,14 @@ class RunDb:
     self.runs.save(run)
 
     return {}
+
+  def approve_run(self, run_id, approver):
+    run = self.get_run(run_id)
+    # Can't self approve
+    if run['args']['username'] == approver:
+      return False
+
+    run['approved'] = True
+    run['approver'] = approver
+    self.runs.save(run)
+    return True
