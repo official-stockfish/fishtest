@@ -66,7 +66,7 @@
   <div class="control-group stop_rule numgames">
     <label class="control-label">Number of games:</label>
     <div class="controls">
-      <input name="num-games" value="${args.get('num_games', 16000)}">
+      <input name="num-games" value="${args.get('num_games', 20000)}">
     </div>
   </div>
   <div class="control-group stop_rule sprt">
