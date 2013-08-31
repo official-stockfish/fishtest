@@ -9,23 +9,23 @@ http://www.python.org/ftp/python/2.7.3/python-2.7.3.msi
 
 Installation step-by-step:
 - Install for all users
-- Install it to some directory (I choose 'D:\Python27')
+- Install it to some directory (I choose 'C:\Python27')
 - Install it with all the features
 - Next, next, finish, done
 
 2) Get the sources
 
 Download https://github.com/glinscott/fishtest/archive/master.zip, and unzip it to a new directory.
-For example, 'd:\fishtest'.
+For example, 'c:\fishtest'.
 
 3) User/pass
 
-Get a username/password pair from Marco/Gary :)
+Create a username/password for yourself at http://tests.stockfishchess.org/signup
 
 4) Running the worker process
 
-Open a command prompt in 'd:\fishtest\worker\' and type:
-'d:\Python27\python.exe worker.py --concurrency <cores> <username> <password>'
+Open a command prompt in 'c:\fishtest\worker\' and type:
+'c:\Python27\python.exe worker.py --concurrency <cores> <username> <password>'
 [Option concurrency refers to the number of available cores in your system (not including Hyperthreaded cores!), leaving one core for the OS. For example, on my 4 core machine, I use --concurrency 3.]
 
 5) Let it run :)
