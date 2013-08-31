@@ -13,6 +13,7 @@ On Windows you will need to install Python 2.7.x for x86 (not 3.x series and not
 64 bit) from http://www.python.org/ftp/python/2.7.4/python-2.7.4.msi
 
 In case something is not clear please read windows-step-by-step-installation.txt
+or view https://www.youtube.com/watch?v=jePuj9-T4oU
 
 #### Setup fishtest
 
