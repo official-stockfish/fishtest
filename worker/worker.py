@@ -12,7 +12,7 @@ from optparse import OptionParser
 from games import run_games
 from updater import update
 
-WORKER_VERSION = 38
+WORKER_VERSION = 39
 ALIVE = True
 
 def setup_config_file(config_file):
@@ -141,7 +141,7 @@ def main():
     'version': WORKER_VERSION,
   }
 
-  success = True 
+  success = True
   global ALIVE
   while ALIVE:
     if not success:

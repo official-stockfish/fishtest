@@ -152,7 +152,7 @@ def kill_process(p):
     p.kill()
 
 def adjust_tc(tc, base_nps):
-  factor = 1200000.0 / base_nps
+  factor = 1400000.0 / base_nps
 
   # Parse the time control in cutechess format
   chunks = tc.split('+')
@@ -180,7 +180,7 @@ def adjust_tc(tc, base_nps):
     tc_limit += increment * 200
   if num_moves > 0:
     scaled_tc = '%d/%s' % (num_moves, scaled_tc)
-    tc_limit *= 100.0 / num_moves 
+    tc_limit *= 100.0 / num_moves
 
   print 'CPU factor : %f - tc adjusted to %s' % (factor, scaled_tc)
   return scaled_tc, tc_limit
@@ -297,9 +297,9 @@ def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit
     traceback.print_exc(file=sys.stderr)
     try:
       kill_process(p)
-      p.wait() 
+      p.wait()
     except:
-      pass 
+      pass
 
   return req
 
