@@ -382,7 +382,7 @@ def format_results(run_results, run):
                            elo1=sprt['elo1'],
                            beta=sprt['beta'],
                            drawelo=sprt['drawelo'])
-    result['info'].append('LLR: %.2f (%.2lf,%.2lf)' % (stats['llr'], stats['lower_bound'], stats['upper_bound']))
+    result['info'].append('LLR: %.2f (%.2lf,%.2lf) [%.2f,%.2f]' % (stats['llr'], stats['lower_bound'], stats['upper_bound'], sprt['elo0'], sprt['elo1']))
   else:
     elo, elo95, los = stat_util.get_elo(WLD)
 
