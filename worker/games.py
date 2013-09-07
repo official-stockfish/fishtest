@@ -46,7 +46,6 @@ if IS_WINDOWS:
   EXE_SUFFIX = '.exe'
   MAKE_CMD = 'mingw32-make build COMP=mingw ' + ARCH
 
-<<<<<<< HEAD
 def binary_filename(sha):
   system = platform.uname()[0].lower()
   architecture = '64' if is_64bit() else '32'
