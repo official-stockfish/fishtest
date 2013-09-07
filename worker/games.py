@@ -46,6 +46,7 @@ if IS_WINDOWS:
   EXE_SUFFIX = '.exe'
   MAKE_CMD = 'mingw32-make build COMP=mingw ' + ARCH
 
+<<<<<<< HEAD
 def binary_filename(sha):
   system = platform.uname()[0].lower()
   architecture = '64' if is_64bit() else '32'
@@ -65,7 +66,12 @@ def github_api(repo):
       To https://api.github.com/repos/<user>/<repo> """
   return repo.replace('https://github.com', 'https://api.github.com/repos')
 
-def verify_signature(engine, signature, remote, payload):
+def verify_signature(engine, signature, remote, payload, concurrency):
+  if concurrency > 1:
+    busy_process = subprocess.Popen([engine], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+    busy_process.stdin.write('setoption name Threads value %d\n' % (concurrency-1))
+    busy_process.stdin.write('go infinite\n')
+
   bench_sig = ''
   print 'Verifying signature of %s ...' % (os.path.basename(engine))
   with open(os.devnull, 'wb') as f:
@@ -84,6 +90,10 @@ def verify_signature(engine, signature, remote, payload):
     requests.post(remote + '/api/stop_run', data=json.dumps(payload))
     raise Exception('Wrong bench in %s Expected: %s Got: %s' % (engine, signature, bench_sig))
 
+  if concurrency > 1:
+    busy_process.stdin.write('quit\n')
+    busy_process.wait()
+  
   return bench_nps
 
 def setup(item, testing_dir):
@@ -388,9 +398,9 @@ def run_games(worker_info, password, remote, run, task_id):
     os.remove('results.pgn')
 
   # Verify signatures are correct
-  base_nps = verify_signature(new_engine, run['args']['new_signature'], remote, result)
+  base_nps = verify_signature(new_engine, run['args']['new_signature'], remote, result, games_concurrency)
   if not regression_test:
-    verify_signature(base_engine, run['args']['base_signature'], remote, result)
+    verify_signature(base_engine, run['args']['base_signature'], remote, result, games_concurrency)
 
   # Benchmark to adjust cpu scaling
   scaled_tc, tc_limit = adjust_tc(run['args']['tc'], base_nps)
