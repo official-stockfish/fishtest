@@ -11,7 +11,7 @@ from rundb import RunDb
 from zmq.eventloop import ioloop, zmqstream
 
 CLOP_DIR = os.getenv('CLOP_DIR')
-NUM_CLOP = 16
+NUM_CLOP = 256
 
 def read_clop_status(p, rundb, run_id):
   for line in iter(p.stdout.readline, ''):
