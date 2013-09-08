@@ -11,7 +11,7 @@ from rundb import RunDb
 from zmq.eventloop import ioloop, zmqstream
 
 CLOP_DIR = os.getenv('CLOP_DIR')
-NUM_CLOP = 256
+NUM_CLOP = 160
 
 def read_clop_status(p, rundb, run_id):
   for line in iter(p.stdout.readline, ''):
@@ -79,6 +79,10 @@ def main():
     # Game is finished, read result and remove game row
     game_id = message[0]
     game = clopdb.get_game(game_id)
+    if game == None:
+      clopdb.remove_game(game_id)
+      return
+    
     result = game['result']
     if result == 'stop':
       # Clear the game so it can be reassigned
