@@ -3,7 +3,7 @@
 <h3>Stockfish testing</h3>
 <div class="alert alert-info alert-block">
 <h4>Permission Required</h4>
-Running or modifying tests requires special permission.  Please email me at gmail, address: glinscott for access.
+Creating or modifying tests requires special permission.  Please email me at gmail, address: glinscott for access.
 </div>
 
 <div>
