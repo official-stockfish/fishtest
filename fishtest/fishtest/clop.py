@@ -11,6 +11,7 @@ from rundb import RunDb
 from zmq.eventloop import ioloop, zmqstream
 
 CLOP_DIR = os.getenv('CLOP_DIR')
+NUM_CLOP = 16
 
 def read_clop_status(p, rundb, run_id):
   for line in iter(p.stdout.readline, ''):
@@ -28,7 +29,7 @@ def start_clop(rundb, clopdb, run_id, branch, params):
     name = p.split('[')[0]
     minmax = p.split('[')[1].replace(',', '').split()
     s += '\nIntegerParameter %s %s %s' % (name, minmax[0], minmax[1])
-  for i in range(1, 8):
+  for i in range(1, NUM_CLOP / 2):
     s += '\nProcessor %s_%d\nProcessor %s_%d' % (run_id, i, run_id, i)
   s += '\nReplications 2\nDrawElo 100\nH 3\nCorrelations all\n'
 
@@ -86,7 +87,7 @@ def main():
       clopdb.clop.save(game)
       return
 
-    # Makr the game as finished
+    # Mark the game as finished
     clopdb.remove_game(game_id)
 
     with open('debug.log', 'a') as f:
@@ -115,20 +116,30 @@ def main():
 
   active_clop = dict()
   def check_runs():
+    def kill_task(run_id):
+      print 'Killing task', run_id
+      for game in clopdb.get_games(run_id):
+        on_game_finished([game['_id']])
+
+      if run_id in active_clop:
+        active_clop[run_id]['process'].kill()
+        del active_clop[run_id]
+    
     # Check if the clop runs are still active
+    for run_id in rundb.get_clop_exclusion_list(10000):
+      # Check if active clop processes has fallen below a threshold
+      if len(list(clopdb.get_games(run_id))) < NUM_CLOP / 2:
+        kill_task(run_id)
+
     for run_id, info in active_clop.items():
       run = rundb.get_run(run_id)
       alive = False
       for task in run['tasks']:
         if task['active']:
           alive = True
-      if not alive:
-        print 'Killing task', run_id
-        for game in clopdb.get_games(run_id):
-          on_game_finished([game['_id']])
 
-        info['process'].kill()
-        del active_clop[run_id]
+      if not alive:
+        kill_task(run_id)
 
     for run in rundb.runs.find({'tasks': {'$elemMatch': {'active': True}}}):
       # If is the start of a CLOP tuning session start CLOP.
