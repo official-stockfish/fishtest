@@ -281,8 +281,10 @@ class RunDb:
   def stop_run(self, run_id):
     run = self.get_run(run_id)
     for idx, task in enumerate(run['tasks']):
+      is_active = task['active']
+      task['active'] = False
       task['pending'] = False
-      if 'stats' not in task and not task['active']:
+      if 'stats' not in task and not is_active:
         # Truncate the empty tasks
         del run['tasks'][idx:]
         break
