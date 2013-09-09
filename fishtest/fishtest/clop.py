@@ -15,7 +15,8 @@ NUM_CLOP = 160
 
 def read_clop_status(p, rundb, run_id):
   for line in iter(p.stdout.readline, ''):
-    rundb.runs.update({'_id': ObjectId(run_id)}, {'$set': {'args.clop.status': line}})
+    if len(line.strip()) > 0:
+      rundb.runs.update({'_id': ObjectId(run_id)}, {'$set': {'args.clop.status': line}})
   
 def start_clop(rundb, clopdb, run_id, branch, params):
   this_file = os.path.dirname(os.path.realpath(__file__)) # Points to *.pyc
