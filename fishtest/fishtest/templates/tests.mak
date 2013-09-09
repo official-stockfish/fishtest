@@ -48,7 +48,7 @@
     %endif
     ${machine['concurrency']}</td>
     <td>${'%.2f' % (machine['nps'] / 1000000.0)}</td>
-    <td>${machine['uname'][0]} ${machine['uname'][2]}</td>
+    <td>${machine['uname']}</td>
     <td>${machine['version']}</td>
     <td><a href="/tests/view/${machine['run']['_id']}">${machine['run']['args']['new_tag']}</td>
     <td>${machine['last_updated']}</td>

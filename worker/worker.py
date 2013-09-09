@@ -12,7 +12,7 @@ from optparse import OptionParser
 from games import run_games
 from updater import update
 
-WORKER_VERSION = 40
+WORKER_VERSION = 41
 ALIVE = True
 
 def setup_config_file(config_file):
@@ -51,6 +51,11 @@ def worker(worker_info, password, remote):
   try:
     req = requests.post(remote + '/api/request_version', data=json.dumps(payload))
     req = json.loads(req.text)
+
+    if 'version' not in req:
+      print 'Incorrect username/password'
+      time.sleep(5)
+      sys.exit(1)
 
     if req['version'] > WORKER_VERSION:
       print 'Updating worker version to %d' % (req['version'])
@@ -133,8 +138,9 @@ def main():
   remote = 'http://%s:%s' % (options.host, options.port)
   print 'Worker version %d connecting to %s' % (WORKER_VERSION, remote)
 
+  uname = platform.uname()
   worker_info = {
-    'uname': platform.uname(),
+    'uname': uname[0] + ' ' + uname[2],
     'architecture': platform.architecture(),
     'concurrency': options.concurrency,
     'username': args[0],

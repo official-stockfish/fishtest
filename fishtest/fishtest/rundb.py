@@ -107,6 +107,9 @@ class RunDb:
           machine['last_updated'] = task.get('last_updated', None)
           machine['run'] = run
           machine['nps'] = task.get('nps', 0)
+          # TODO(glinscott): Temporary - remove once worker version >= 41
+          if not isinstance(machine['uname'], basestring):
+            machine['uname'] = machine['uname'][0] + machine['uname'][2]
           machines.append(machine)
     return machines
 
