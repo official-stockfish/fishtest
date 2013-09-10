@@ -227,9 +227,14 @@ class RunDb:
     if not task['active'] or not task['pending']:
       return {'task_alive': False}
 
+    # Guard against incorrect results
+    num_games = stats['wins'] + stats['losses'] + stats['draws']
+    if 'stats' in task and num_games < task['stats']['wins'] + task['stats']['losses'] + task['stats']['draws']:
+      return {'task_alive': False} 
+
     task['stats'] = stats
     task['nps'] = nps
-    if stats['wins'] + stats['losses'] + stats['draws'] >= task['num_games']:
+    if num_games >= task['num_games']:
       task['active'] = False
       task['pending'] = False
 
