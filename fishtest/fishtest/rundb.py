@@ -169,6 +169,7 @@ class RunDb:
     max_threads = int(worker_info['concurrency'])
     exclusion_list = self.get_clop_exclusion_list(5 + max_threads)
 
+    """
     # Does this worker have a task already?  If so, just hand that back
     existing_run = self.runs.find_one({'tasks': {'$elemMatch': {'active': True, 'worker_info': worker_info}}})
     if existing_run != None and existing_run['_id'] not in exclusion_list:
@@ -180,6 +181,7 @@ class RunDb:
             # Don't hand back tasks that have been marked as no longer pending
             task['active'] = False
             self.runs.save(existing_run)
+    """
 
     # Ok, we get a new task that does not require more threads than available concurrency
     q = {
