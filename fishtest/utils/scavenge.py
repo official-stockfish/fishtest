@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 sys.path.append(os.path.expanduser('~/fishtest/fishtest'))
 from fishtest.rundb import RunDb
 
-def scavenge_tasks(scavenge=True, minutes=10):
+def scavenge_tasks(scavenge=True, minutes=5):
   """Check for tasks that have not been updated recently"""
   rundb = RunDb()
   for run in rundb.get_runs():
