@@ -7,12 +7,13 @@ import sys
 import requests
 import time
 import traceback
+import uuid
 from ConfigParser import SafeConfigParser
 from optparse import OptionParser
 from games import run_games
 from updater import update
 
-WORKER_VERSION = 41
+WORKER_VERSION = 42
 ALIVE = True
 
 def setup_config_file(config_file):
@@ -145,6 +146,7 @@ def main():
     'concurrency': options.concurrency,
     'username': args[0],
     'version': WORKER_VERSION,
+    'unique_key': str(uuid.uuid4()),
   }
 
   success = True
