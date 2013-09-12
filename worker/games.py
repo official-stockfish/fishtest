@@ -71,27 +71,29 @@ def verify_signature(engine, signature, remote, payload, concurrency):
     busy_process.stdin.write('setoption name Threads value %d\n' % (concurrency-1))
     busy_process.stdin.write('go infinite\n')
 
-  bench_sig = ''
-  print 'Verifying signature of %s ...' % (os.path.basename(engine))
-  with open(os.devnull, 'wb') as f:
-    p = subprocess.Popen([engine, 'bench'], stderr=subprocess.PIPE, stdout=f, universal_newlines=True)
-  for line in iter(p.stderr.readline,''):
-    if 'Nodes searched' in line:
-      bench_sig = line.split(': ')[1].strip()
-    if 'Nodes/second' in line:
-      bench_nps = float(line.split(': ')[1].strip())
+  try:
+    bench_sig = ''
+    print 'Verifying signature of %s ...' % (os.path.basename(engine))
+    with open(os.devnull, 'wb') as f:
+      p = subprocess.Popen([engine, 'bench'], stderr=subprocess.PIPE, stdout=f, universal_newlines=True)
+    for line in iter(p.stderr.readline,''):
+      if 'Nodes searched' in line:
+        bench_sig = line.split(': ')[1].strip()
+      if 'Nodes/second' in line:
+        bench_nps = float(line.split(': ')[1].strip())
 
-  p.wait()
-  if p.returncode != 0:
-    raise Exception('Bench exited with non-zero code %d' % (p.returncode))
+    p.wait()
+    if p.returncode != 0:
+      raise Exception('Bench exited with non-zero code %d' % (p.returncode))
 
-  if int(bench_sig) != int(signature):
-    requests.post(remote + '/api/stop_run', data=json.dumps(payload))
-    raise Exception('Wrong bench in %s Expected: %s Got: %s' % (engine, signature, bench_sig))
+    if int(bench_sig) != int(signature):
+      requests.post(remote + '/api/stop_run', data=json.dumps(payload))
+      raise Exception('Wrong bench in %s Expected: %s Got: %s' % (engine, signature, bench_sig))
 
-  if concurrency > 1:
-    busy_process.stdin.write('quit\n')
-    busy_process.wait()
+  finally:
+    if concurrency > 1:
+      busy_process.stdin.write('quit\n')
+      busy_process.kill()
   
   return bench_nps
 
