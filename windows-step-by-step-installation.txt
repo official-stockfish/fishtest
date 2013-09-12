@@ -24,7 +24,7 @@ Create a username/password for yourself at http://tests.stockfishchess.org/signu
 
 4) Running the worker process
 
-Open a command prompt in 'c:\fishtest\worker\' and type:
+Open a windows command prompt (run cmd.exe) in 'c:\fishtest\worker\' and type:
 'c:\Python27\python.exe worker.py --concurrency <cores> <username> <password>'
 [Option concurrency refers to the number of available cores in your system (not including Hyperthreaded cores!), leaving one core for the OS. For example, on my 4 core machine, I use --concurrency 3.]
 
