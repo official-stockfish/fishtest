@@ -170,9 +170,8 @@ def main():
               'username': worker_info['username'],
               'password': payload['password'],
               'run_id': run['run_id'],
-              'task_id': -1,
             }
-            requests.post(remote + '/api/failed_task', data=json.dumps(failed_payload))
+            requests.post(remote + '/api/stop_run', data=json.dumps(failed_payload))
             raise e
 
         upload_files(payload, binaries_dir)
