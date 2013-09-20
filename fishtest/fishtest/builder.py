@@ -163,7 +163,17 @@ def main():
         repo_url = run['args'].get('tests_repo', FISHCOOKING_URL)
         for item in ['resolved_new', 'resolved_base']:
           sha = run['args'][item]
-          build(repo_url, sha, binaries_dir)
+          try:
+            build(repo_url, sha, binaries_dir)
+          except Exception as e: 
+            failed_payload = {
+              'username': worker_info['username'],
+              'password': payload['password'],
+              'run_id': run['run_id'],
+              'task_id': -1,
+            }
+            requests.post(remote + '/api/failed_task', data=json.dumps(failed_payload))
+            raise e
 
         upload_files(payload, binaries_dir)
         shutil.rmtree(binaries_dir)

@@ -267,12 +267,13 @@ class RunDb:
 
   def failed_task(self, run_id, task_id):
     run = self.get_run(run_id)
-    if task_id >= len(run['tasks']):
-      return {'task_alive': False}
+    if task_id != -1:
+      if task_id >= len(run['tasks']):
+        return {'task_alive': False}
 
-    task = run['tasks'][task_id]
-    if not task['active'] or not task['pending']:
-      return {'task_alive': False}
+      task = run['tasks'][task_id]
+      if not task['active'] or not task['pending']:
+        return {'task_alive': False}
 
     # Mark the task as inactive: it will be rescheduled
     task['active'] = False
