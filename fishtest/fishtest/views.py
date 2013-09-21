@@ -120,14 +120,15 @@ def actions(request):
     if action['action'] == 'modify_run':
       item['run'] = action['data']['before']['args']['new_tag']
       item['_id'] = action['data']['before']['_id']
+      item['description'] = 'modify:'
       before = action['data']['before']['args']['priority']
       after = action['data']['after']['args']['priority']
       if before != after:
-        item['description'] = 'priority changed from %s to %s' % (before, after)
+        item['description'] += ' priority changed from %s to %s' % (before, after)
       before = action['data']['before']['args']['num_games']
       after = action['data']['after']['args']['num_games']
       if before != after:
-        item['description'] = 'games changed from %s to %s' % (before, after)
+        item['description'] += 'games changed from %s to %s' % (before, after)
     else:
       item['run'] = action['data']['args']['new_tag']
       item['_id'] = action['data']['_id']
