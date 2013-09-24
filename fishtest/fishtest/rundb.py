@@ -83,7 +83,7 @@ class RunDb:
     if clop != None:
       run_args['clop'] = clop
 
-    id = self.runs.insert({
+    new_run = {
       'args': run_args,
       'start_time': start_time,
       # Will be filled in by tasks, indexed by task-id
@@ -94,9 +94,15 @@ class RunDb:
       'finished': False,
       'approved': False,
       'approver': '',
-    })
+    }
 
-    return id
+    # Check for an existing approval matching the git commit SHAs
+    existing_approval = self.runs.find_one({'args': {'resolved_base': resolved_base, 'resolved_new': resolved_new}, 'approved': True})
+    if existing_approval != None:
+      new_run['approved'] = True
+      new_run['approver'] = existing_approval['approver']
+
+    return self.runs.insert(new_run)
 
   def get_machines(self):
     machines = []
