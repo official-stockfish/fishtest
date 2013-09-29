@@ -94,7 +94,7 @@ def verify_signature(engine, signature, remote, payload, concurrency):
     if concurrency > 1:
       busy_process.stdin.write('quit\n')
       busy_process.kill()
-  
+
   return bench_nps
 
 def setup(item, testing_dir):
@@ -163,7 +163,7 @@ def kill_process(p):
     p.kill()
 
 def adjust_tc(tc, base_nps):
-  factor = 1400000.0 / base_nps
+  factor = 1600000.0 / base_nps
 
   # Parse the time control in cutechess format
   chunks = tc.split('+')
