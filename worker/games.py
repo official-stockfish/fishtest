@@ -162,8 +162,11 @@ def kill_process(p):
   else:
     p.kill()
 
-def adjust_tc(tc, base_nps):
+def adjust_tc(tc, base_nps, concurrency):
   factor = 1600000.0 / base_nps
+  if factor < 0.4:
+    sys.stderr.write('This machine is too slow to run fishtest effectively - sorry!\n')
+    sys.exit(1)
 
   # Parse the time control in cutechess format
   chunks = tc.split('+')
@@ -404,7 +407,7 @@ def run_games(worker_info, password, remote, run, task_id):
     verify_signature(base_engine, run['args']['base_signature'], remote, result, games_concurrency)
 
   # Benchmark to adjust cpu scaling
-  scaled_tc, tc_limit = adjust_tc(run['args']['tc'], base_nps)
+  scaled_tc, tc_limit = adjust_tc(run['args']['tc'], base_nps, int(worker_info['concurrency']))
   result['nps'] = base_nps
 
   # Handle book or pgn file
