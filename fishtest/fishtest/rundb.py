@@ -187,6 +187,7 @@ class RunDb:
             task['active'] = False
             self.runs.save(existing_run)
 
+    """
     # We need to allocate a new task, but first check we don't have the same
     # machine already running because multiple connections are not allowed.
     remote_addr = worker_info['remote_addr']
@@ -196,6 +197,7 @@ class RunDb:
     # Allow one already exsisting connection in case of a stale/stopped task
     if connections > 1:
       return {'task_waiting': False}
+    """
 
     # Ok, we get a new task that does not require more threads than available concurrency
     q = {
