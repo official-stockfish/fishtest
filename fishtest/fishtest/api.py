@@ -16,6 +16,7 @@ def request_task(request):
   if 'error' in token: return json.dumps(token)
 
   worker_info = request.json_body['worker_info']
+  worker_info['remote_addr'] = request.remote_addr
 
   # Get country flag ip
   try:
