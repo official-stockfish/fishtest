@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import json
+import multiprocessing
 import os
 import platform
 import signal
@@ -13,7 +14,7 @@ from optparse import OptionParser
 from games import run_games
 from updater import update
 
-WORKER_VERSION = 44
+WORKER_VERSION = 45
 ALIVE = True
 
 def setup_config_file(config_file):
@@ -139,11 +140,20 @@ def main():
   remote = 'http://%s:%s' % (options.host, options.port)
   print 'Worker version %d connecting to %s' % (WORKER_VERSION, remote)
 
+  try:
+    cpu_count = min(int(options.concurrency), multiprocessing.cpu_count() - 1)
+  except:
+    cpu_count = int(options.concurrency)
+
+  if cpu_count <= 0:
+    sys.stderr.write('Not enough CPUs to run fishtest (it requires at least two)\n')
+    sys.exit(1)
+
   uname = platform.uname()
   worker_info = {
     'uname': uname[0] + ' ' + uname[2],
     'architecture': platform.architecture(),
-    'concurrency': options.concurrency,
+    'concurrency': cpu_count,
     'username': args[0],
     'version': WORKER_VERSION,
     'unique_key': str(uuid.uuid4()),
