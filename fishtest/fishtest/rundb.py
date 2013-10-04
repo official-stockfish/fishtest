@@ -97,10 +97,14 @@ class RunDb:
     }
 
     # Check for an existing approval matching the git commit SHAs
-    existing_approval = self.runs.find_one({'args.resolved_base': resolved_base, 'args.resolved_new': resolved_new, 'approved': True})
-    if existing_approval != None:
+    def get_approval(sha):
+      q = { '$or': [{ 'args.resolved_base': sha }, { 'args.resolved_new': sha }], 'approved': True }
+      return self.runs.find_one(q)
+    base_approval = get_approval(resolved_base)
+    new_approval = get_approval(resolved_new)
+    if base_approval != None and new_approval != None:
       new_run['approved'] = True
-      new_run['approver'] = existing_approval['approver']
+      new_run['approver'] = new_approval['approver']
 
     return self.runs.insert(new_run)
 
