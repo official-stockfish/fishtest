@@ -417,6 +417,10 @@ def format_results(run_results, run):
     result['style'] = '#44EB44'
   return result
 
+def chi2(tasks):
+  """Perform chi^2 test on the stats from each worker"""
+  pass
+
 @view_config(route_name='tests_view', renderer='tests_view.mak')
 def tests_view(request):
   run = request.rundb.get_run(request.matchdict['id'])

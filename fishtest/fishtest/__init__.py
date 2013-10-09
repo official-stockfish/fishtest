@@ -26,7 +26,7 @@ def main(global_config, **settings):
   context = zmq.Context()
 
   clop_socket = context.socket(zmq.PUB)
-  clop_socket.bind('tcp://127.0.0.1:5001')
+  clop_socket.bind('tcp://127.0.0.1:' + settings.get('clop_port', '5001'))
 
   rundb = RunDb(clop_socket=clop_socket)
   def add_rundb(event):
