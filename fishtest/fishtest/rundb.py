@@ -139,11 +139,12 @@ class RunDb:
     return self.runs.find({'finished': False},
                           sort=[('last_updated', DESCENDING), ('start_time', DESCENDING)])
 
-  def get_finished_runs(self, skip=0, limit=0):
-    c = self.runs.find({'finished': True, 'deleted': {'$exists': False}},
-                       skip=skip,
-                       limit=limit,
-                       sort=[('last_updated', DESCENDING)])
+  def get_finished_runs(self, skip=0, limit=0, username=''):
+    q = {'finished': True, 'deleted': {'$exists': False}}
+    if len(username) > 0:
+      q['args.username'] = username
+
+    c = self.runs.find(q, skip=skip, limit=limit, sort=[('last_updated', DESCENDING)])
     return (list(c), c.count())
 
   def get_clop_exclusion_list(self, minimum):

@@ -161,14 +161,13 @@ def users(request):
       username = run['args']['username']
       info[username]['tests'] += 1
 
-    tc = parse_tc(run['args']['tc'])
-
     for task in run['tasks']:
       if 'worker_info' not in task:
         continue
       username = task['worker_info'].get('username', None)
       if username == None:
         continue
+      tc = parse_tc(run['args']['tc'])
 
       if 'stats' in task:
         stats = task['stats']
@@ -504,14 +503,13 @@ def post_result(run):
 @view_config(route_name='tests', renderer='tests.mak')
 @view_config(route_name='tests_user', renderer='tests.mak')
 def tests(request):
-  username = request.matchdict.get('username','')
-  filter_by_user = True if len(username) > 0 else False
+  username = request.matchdict.get('username', '')
 
   runs = { 'pending':[], 'failed':[], 'active':[], 'finished':[] }
 
   unfinished_runs = request.rundb.get_unfinished_runs()
   for run in unfinished_runs:
-    if filter_by_user and run['args'].get('username', '') != username:
+    if len(username) > 0 and run['args'].get('username', '') != username:
       continue
 
     results = request.rundb.get_results(run)
@@ -578,7 +576,7 @@ def tests(request):
   # Pagination
   page = int(request.params.get('page', 1)) - 1
   page_size = 50
-  finished, num_finished = request.rundb.get_finished_runs(page*page_size, page_size)
+  finished, num_finished = request.rundb.get_finished_runs(skip=page*page_size, limit=page_size, username=username)
   runs['finished'] += finished
 
   pages = [{'idx': 'Prev', 'url': '?page=%d' % (page), 'state': 'disabled' if page == 0 else ''}]
@@ -592,7 +590,7 @@ def tests(request):
     'page_idx': page,
     'pages': pages,
     'machines': machines,
-    'show_machines': not filter_by_user,
+    'show_machines': len(username) == 0,
     'pending_hours': '%.1f' % (pending_hours),
     'games_played': games_played,
     'cores': cores,
