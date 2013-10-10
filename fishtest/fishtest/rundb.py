@@ -23,6 +23,9 @@ class RunDb:
 
     self.chunk_size = 1000
 
+  def build_indices(self):
+    self.runs.ensure_index([('finished', ASCENDING), ('last_updated', DESCENDING)])
+
   def generate_tasks(self, num_games):
     tasks = []
     remaining = num_games
@@ -129,13 +132,19 @@ class RunDb:
   def get_run_to_build(self):
     return self.runs.find_one({'binaries_url': {'$exists': False}, 'finished': False, 'deleted': {'$exists': False}})
 
-  def get_runs(self, skip=0, limit=0):
-    runs = []
-    for run in self.runs.find(skip=skip,
-                              limit=limit,
-                              sort=[('last_updated', DESCENDING), ('start_time', DESCENDING)]):
-      runs.append(run)
-    return runs
+  def get_runs(self):
+    return list(self.runs.find(sort=[('last_updated', DESCENDING), ('start_time', DESCENDING)]))
+
+  def get_unfinished_runs(self):
+    return self.runs.find({'finished': False},
+                          sort=[('last_updated', DESCENDING), ('start_time', DESCENDING)])
+
+  def get_finished_runs(self, skip=0, limit=0):
+    c = self.runs.find({'finished': True, 'deleted': {'$exists': False}},
+                       skip=skip,
+                       limit=limit,
+                       sort=[('last_updated', DESCENDING)])
+    return (list(c), c.count())
 
   def get_clop_exclusion_list(self, minimum):
     exclusion_list = []
