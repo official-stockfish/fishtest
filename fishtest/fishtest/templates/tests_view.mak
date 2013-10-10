@@ -63,6 +63,15 @@
     <input type="hidden" name="run" value="${run['_id']}" />
     <button type="submit" class="btn btn-primary">Modify</button>
   </form>
+
+  <hr>
+
+  <h4>Stats</h4>
+  <table class="table table-condensed">
+    <tr><td>chi^2</td><td>${chi2[0]}</td></tr>
+    <tr><td>df</td><td>${chi2[1]}</td></tr>
+    <tr><td>p-value</td><td>${'%.2f' % (chi2[2])}</td></tr>
+  </table>
 </div>
 
 </div>

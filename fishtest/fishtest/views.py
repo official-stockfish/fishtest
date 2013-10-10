@@ -1,6 +1,8 @@
 import copy
 import datetime
+import numpy
 import os
+import scipy.stats
 import sys
 import json
 import smtplib
@@ -419,7 +421,24 @@ def format_results(run_results, run):
 
 def chi2(tasks):
   """Perform chi^2 test on the stats from each worker"""
-  pass
+  observed = []
+  for task in tasks: 
+    stats = task.get('stats', {})
+    observed.append([stats.get('wins', 0), stats.get('losses', 0), stats.get('draws', 0)])
+
+  observed = numpy.array(observed)
+  rows,columns = observed.shape
+  df = (rows - 1) * (columns - 1)
+  column_sums = numpy.sum(observed, axis=0)
+  row_sums = numpy.sum(observed, axis=1)
+  grand_total = numpy.sum(column_sums)
+  if grand_total == 0:
+    return (0.0, 0.0, 0.0)
+
+  expected = numpy.outer(row_sums, column_sums) / grand_total
+  diff = observed - expected
+  chi2 = numpy.sum(diff * diff / expected)
+  return (chi2, df, 1 - scipy.stats.chi2.cdf(chi2, df))
 
 @view_config(route_name='tests_view', renderer='tests_view.mak')
 def tests_view(request):
@@ -469,7 +488,7 @@ def tests_view(request):
   if 'clop' in run['args']:
     run['games'] = [g for g in request.clopdb.get_games(run['_id'])]
 
-  return { 'run': run, 'run_args': run_args }
+  return { 'run': run, 'run_args': run_args, 'chi2': chi2(run['tasks']) }
 
 def post_result(run):
 
