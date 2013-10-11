@@ -420,7 +420,12 @@ def format_results(run_results, run):
     result['style'] = '#44EB44'
   return result
 
-def chi2(tasks):
+def get_worker_key(task):
+  if 'worker_info' not in task:
+    return '-'
+  return '%s-%dcores' % (task['worker_info'].get('username', ''), task['worker_info']['concurrency'])
+
+def get_chi2(tasks):
   """Perform chi^2 test on the stats from each worker"""
 
   # Aggregate results by worker
@@ -429,7 +434,7 @@ def chi2(tasks):
     if 'worker_info' not in task:
       continue
     stats = task.get('stats', {})
-    key = task['worker_info']['username'] + str(task['worker_info']['concurrency'])
+    key = get_worker_key(task)
     results = [float(stats.get('wins', 0)), float(stats.get('losses', 0)), float(stats.get('draws', 0))]
     if results == [0.0, 0.0, 0.0]:
       continue
@@ -453,8 +458,16 @@ def chi2(tasks):
 
   expected = numpy.outer(row_sums, column_sums) / grand_total
   diff = observed - expected
+  residual = diff / numpy.sqrt(expected)
+  for idx in range(len(users)):
+    users[users.keys()[idx]] = numpy.sum(residual[idx])
   chi2 = numpy.sum(diff * diff / expected)
-  return (chi2, df, 1 - scipy.stats.chi2.cdf(chi2, df))
+  return {
+    'chi2': chi2,
+    'dof': df,
+    'p': 1 - scipy.stats.chi2.cdf(chi2, df),
+    'residual': users,
+  }
 
 @view_config(route_name='tests_view', renderer='tests_view.mak')
 def tests_view(request):
@@ -497,14 +510,24 @@ def tests_view(request):
 
     run_args.append((name, value, url))
 
+  chi2 = get_chi2(run['tasks'])
   for task in run['tasks']:
+    task['worker_key'] = get_worker_key(task)
+    task['residual'] = chi2['residual'].get(task['worker_key'], 0.0)
+    if abs(task['residual']) < 1.0:
+      task['residual_color'] = '#44EB44'
+    elif abs(task['residual']) < 3.0:
+      task['residual_color'] = 'yellow'
+    else:
+      task['residual_color'] = '#FF6A6A'
+
     last_updated = task.get('last_updated', datetime.datetime.min)
     task['last_updated'] = delta_date(last_updated)
 
   if 'clop' in run['args']:
     run['games'] = [g for g in request.clopdb.get_games(run['_id'])]
 
-  return { 'run': run, 'run_args': run_args, 'chi2': chi2(run['tasks']) }
+  return { 'run': run, 'run_args': run_args, 'chi2': chi2 }
 
 def post_result(run):
 
