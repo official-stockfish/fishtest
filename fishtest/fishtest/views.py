@@ -516,7 +516,7 @@ def tests_view(request):
   for task in run['tasks']:
     task['worker_key'] = get_worker_key(task)
     task['residual'] = chi2['residual'].get(task['worker_key'], 0.0)
-    if abs(task['residual']) < 1.0:
+    if abs(task['residual']) < 2.0:
       task['residual_color'] = '#44EB44'
     elif abs(task['residual']) < 3.0:
       task['residual_color'] = 'yellow'
