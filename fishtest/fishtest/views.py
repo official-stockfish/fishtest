@@ -459,9 +459,10 @@ def get_chi2(tasks):
 
   expected = numpy.outer(row_sums, column_sums) / grand_total
   diff = observed - expected
-  residual = diff / numpy.sqrt(expected)
+  adj = numpy.outer((1 - row_sums / grand_total), (1 - column_sums / grand_total))
+  residual = diff / numpy.sqrt(expected * adj)
   for idx in range(len(users)):
-    users[users.keys()[idx]] = numpy.sum(residual[idx])
+    users[users.keys()[idx]] = numpy.max(numpy.abs(residual[idx]))
   chi2 = numpy.sum(diff * diff / expected)
   return {
     'chi2': chi2,
