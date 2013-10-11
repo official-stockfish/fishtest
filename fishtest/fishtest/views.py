@@ -426,6 +426,9 @@ def chi2(tasks):
     stats = task.get('stats', {})
     observed.append([stats.get('wins', 0), stats.get('losses', 0), stats.get('draws', 0)])
 
+  if len(observed) == 0:
+    return (0.0, 0.0, 0.0)
+
   observed = numpy.array(observed)
   rows,columns = observed.shape
   df = (rows - 1) * (columns - 1)
