@@ -431,6 +431,8 @@ def chi2(tasks):
     stats = task.get('stats', {})
     key = task['worker_info']['username'] + str(task['worker_info']['concurrency'])
     results = [float(stats.get('wins', 0)), float(stats.get('losses', 0)), float(stats.get('draws', 0))]
+    if results == [0.0, 0.0, 0.0]:
+      continue
     if key in users:
       for idx in range(len(results)):
         users[key][idx] += results[idx] 
