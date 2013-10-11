@@ -163,7 +163,7 @@ class RunDb:
     if not run['results_stale']:
       return run['results']
 
-    results = { 'wins': 0, 'losses': 0, 'draws': 0, 'crashes': 0 }
+    results = { 'wins': 0, 'losses': 0, 'draws': 0, 'crashes': 0, 'time_losses':0 }
     for task in run['tasks']:
       if 'stats' in task:
         stats = task['stats']
@@ -171,6 +171,7 @@ class RunDb:
         results['losses'] += stats['losses']
         results['draws'] += stats['draws']
         results['crashes'] += stats['crashes']
+        results['time_losses'] += stats.get('time_losses', 0)
 
     if 'sprt' in run['args'] and 'state' in run['args']['sprt']:
       results['sprt'] = run['args']['sprt']['state']

@@ -23,7 +23,7 @@ except ImportError:
   from queue import Queue, Empty  # python 3.x
 
 # Global beacuse is shared across threads
-old_stats = {'wins':0, 'losses':0, 'draws':0, 'crashes':0}
+old_stats = {'wins':0, 'losses':0, 'draws':0, 'crashes':0, 'time_losses':0}
 
 IS_WINDOWS = 'windows' in platform.system().lower()
 
@@ -235,6 +235,9 @@ def run_game(p, remote, result, clop, clop_tuning, tc_limit):
     if 'disconnects' in line or 'connection stalls' in line:
       result['stats']['crashes'] += 1
 
+    if 'on time' in line:
+      result['stats']['time_losses'] += 1
+
     # Parse line like this:
     # Score of stockfish vs base: 0 - 0 - 1  [0.500] 1
     if 'Score' in line:
@@ -328,13 +331,14 @@ def run_games(worker_info, password, remote, run, task_id):
     'password': password,
     'run_id': str(run['_id']),
     'task_id': task_id,
-    'stats': {'wins':0, 'losses':0, 'draws':0, 'crashes':0},
+    'stats': {'wins':0, 'losses':0, 'draws':0, 'crashes':0, 'time_losses':0},
   }
 
   # Have we run any games on this task yet?
   global old_stats
-  old_stats = task.get('stats', {'wins':0, 'losses':0, 'draws':0, 'crashes':0})
+  old_stats = task.get('stats', {'wins':0, 'losses':0, 'draws':0, 'crashes':0, 'time_losses':0})
   result['stats']['crashes'] = old_stats.get('crashes', 0)
+  result['stats']['time_losses'] = old_stats.get('time_losses', 0)
   games_remaining = task['num_games'] - (old_stats['wins'] + old_stats['losses'] + old_stats['draws'])
   if games_remaining <= 0:
     raise Exception('No games remaining')

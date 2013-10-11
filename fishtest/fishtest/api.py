@@ -115,7 +115,7 @@ def request_version(request):
   token = authenticate(request)
   if 'error' in token: return json.dumps(token)
 
-  return json.dumps({'version': 45})
+  return json.dumps({'version': 46})
 
 @view_config(route_name='api_request_clop', renderer='string')
 def request_clop(request):
