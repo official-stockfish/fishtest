@@ -70,7 +70,7 @@
   <table class="table table-condensed">
     <tr><td>chi^2</td><td>${chi2[0]}</td></tr>
     <tr><td>df</td><td>${chi2[1]}</td></tr>
-    <tr><td>p-value</td><td>${'%.2f' % (chi2[2])}</td></tr>
+    <tr><td>p-value</td><td>${'%.2f' % (chi2[2] * 100)}%</td></tr>
   </table>
 </div>
 
