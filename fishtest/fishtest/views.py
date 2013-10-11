@@ -424,25 +424,23 @@ def chi2(tasks):
   """Perform chi^2 test on the stats from each worker"""
 
   # Aggregate results by worker
-  observed = {}
+  users = {}
   for task in tasks: 
     if 'worker_info' not in task:
       continue
     stats = task.get('stats', {})
     key = task['worker_info']['username'] + str(task['worker_info']['concurrency'])
-    results = [stats.get('wins', 0), stats.get('losses', 0), stats.get('draws', 0)]
-    if key in observed:
+    results = [float(stats.get('wins', 0)), float(stats.get('losses', 0)), float(stats.get('draws', 0))]
+    if key in users:
       for idx in range(len(results)):
-        observed[key][idx] += results[idx] 
+        users[key][idx] += results[idx] 
     else:
-      observed[key] = results
+      users[key] = results
 
-  observed = observed.values()
-
-  if len(observed) == 0:
+  if len(users) == 0:
     return (0.0, 0.0, 0.0)
 
-  observed = numpy.array(observed)
+  observed = numpy.array(users.values())
   rows,columns = observed.shape
   df = (rows - 1) * (columns - 1)
   column_sums = numpy.sum(observed, axis=0)
