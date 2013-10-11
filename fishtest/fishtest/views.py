@@ -2,6 +2,7 @@ import copy
 import datetime
 import numpy
 import os
+import scipy
 import scipy.stats
 import sys
 import json
@@ -421,10 +422,22 @@ def format_results(run_results, run):
 
 def chi2(tasks):
   """Perform chi^2 test on the stats from each worker"""
-  observed = []
+
+  # Aggregate results by worker
+  observed = {}
   for task in tasks: 
+    if 'worker_info' not in task:
+      continue
     stats = task.get('stats', {})
-    observed.append([stats.get('wins', 0), stats.get('losses', 0), stats.get('draws', 0)])
+    key = task['worker_info']['username'] + str(task['worker_info']['concurrency'])
+    results = [stats.get('wins', 0), stats.get('losses', 0), stats.get('draws', 0)]
+    if key in observed:
+      for idx in range(len(results)):
+        observed[key][idx] += results[idx] 
+    else:
+      observed[key] = results
+
+  observed = observed.values()
 
   if len(observed) == 0:
     return (0.0, 0.0, 0.0)
