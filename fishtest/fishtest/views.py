@@ -423,29 +423,30 @@ def format_results(run_results, run):
 def get_worker_key(task):
   if 'worker_info' not in task:
     return '-'
-  return '%s-%dcores' % (task['worker_info'].get('username', ''), task['worker_info']['concurrency'])
+  return '%s-%scores' % (task['worker_info'].get('username', ''), str(task['worker_info']['concurrency']))
 
 def get_chi2(tasks):
   """Perform chi^2 test on the stats from each worker"""
+  results = {'chi2': 0.0, 'dof': 0, 'p': 0.0, 'residual': {}}
 
   # Aggregate results by worker
   users = {}
   for task in tasks: 
     if 'worker_info' not in task:
       continue
-    stats = task.get('stats', {})
     key = get_worker_key(task)
-    results = [float(stats.get('wins', 0)), float(stats.get('losses', 0)), float(stats.get('draws', 0))]
-    if results == [0.0, 0.0, 0.0]:
+    stats = task.get('stats', {})
+    wld = [float(stats.get('wins', 0)), float(stats.get('losses', 0)), float(stats.get('draws', 0))]
+    if wld == [0.0, 0.0, 0.0]:
       continue
     if key in users:
-      for idx in range(len(results)):
-        users[key][idx] += results[idx] 
+      for idx in range(len(wld)):
+        users[key][idx] += wld[idx] 
     else:
-      users[key] = results
+      users[key] = wld 
 
   if len(users) == 0:
-    return (0.0, 0.0, 0.0)
+    return results
 
   observed = numpy.array(users.values())
   rows,columns = observed.shape
@@ -454,7 +455,7 @@ def get_chi2(tasks):
   row_sums = numpy.sum(observed, axis=1)
   grand_total = numpy.sum(column_sums)
   if grand_total == 0:
-    return (0.0, 0.0, 0.0)
+    return results
 
   expected = numpy.outer(row_sums, column_sums) / grand_total
   diff = observed - expected
