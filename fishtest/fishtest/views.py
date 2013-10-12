@@ -425,25 +425,27 @@ def get_worker_key(task):
     return '-'
   return '%s-%scores' % (task['worker_info'].get('username', ''), str(task['worker_info']['concurrency']))
 
-def get_chi2(tasks):
+def get_chi2(tasks, bad_users):
   """Perform chi^2 test on the stats from each worker"""
   results = {'chi2': 0.0, 'dof': 0, 'p': 0.0, 'residual': {}}
 
   # Aggregate results by worker
   users = {}
-  for task in tasks: 
+  for task in tasks:
     if 'worker_info' not in task:
       continue
     key = get_worker_key(task)
+    if key in bad_users:
+      continue
     stats = task.get('stats', {})
     wld = [float(stats.get('wins', 0)), float(stats.get('losses', 0)), float(stats.get('draws', 0))]
     if wld == [0.0, 0.0, 0.0]:
       continue
     if key in users:
       for idx in range(len(wld)):
-        users[key][idx] += wld[idx] 
+        users[key][idx] += wld[idx]
     else:
-      users[key] = wld 
+      users[key] = wld
 
   if len(users) == 0:
     return results
@@ -512,16 +514,22 @@ def tests_view(request):
 
     run_args.append((name, value, url))
 
-  chi2 = get_chi2(run['tasks'])
-  for task in run['tasks']:
-    task['worker_key'] = get_worker_key(task)
-    task['residual'] = chi2['residual'].get(task['worker_key'], 0.0)
-    if abs(task['residual']) < 2.0:
-      task['residual_color'] = '#44EB44'
-    elif abs(task['residual']) < 3.0:
-      task['residual_color'] = 'yellow'
-    else:
-      task['residual_color'] = '#FF6A6A'
+  bad_users = []
+  again = true
+  while again:
+    again = false
+    chi2 = get_chi2(run['tasks'], bad_users)
+    for task in run['tasks']:
+      task['worker_key'] = get_worker_key(task)
+      task['residual'] = chi2['residual'].get(task['worker_key'], 0.0)
+      if abs(task['residual']) < 2.0:
+        task['residual_color'] = '#44EB44'
+      elif abs(task['residual']) < 3.0:
+        task['residual_color'] = 'yellow'
+      else:
+        task['residual_color'] = '#FF6A6A'
+        bad_users.append(task['worker_key'])
+        again = true
 
     last_updated = task.get('last_updated', datetime.datetime.min)
     task['last_updated'] = delta_date(last_updated)
