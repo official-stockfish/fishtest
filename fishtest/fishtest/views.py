@@ -519,12 +519,15 @@ def tests_view(request):
     last_updated = task.get('last_updated', datetime.datetime.min)
     task['last_updated'] = delta_date(last_updated)
 
-  bad_users = []
+  bad_users = set()
   again = True
   while again:
     again = False
     chi2 = get_chi2(run['tasks'], bad_users)
+    cur_bad_users = set()
     for task in run['tasks']:
+      if task['worker_key'] in bad_users:
+        continue
       task['residual'] = chi2['residual'].get(task['worker_key'], 0.0)
       if abs(task['residual']) < 2.0:
         task['residual_color'] = '#44EB44'
@@ -532,8 +535,9 @@ def tests_view(request):
         task['residual_color'] = 'yellow'
       else:
         task['residual_color'] = '#FF6A6A'
-        bad_users.append(task['worker_key'])
+        cur_bad_users.add(task['worker_key'])
         again = True
+    bad_users.update(cur_bad_users)
 
   if 'clop' in run['args']:
     run['games'] = [g for g in request.clopdb.get_games(run['_id'])]
