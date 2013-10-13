@@ -51,6 +51,7 @@ def main(global_config, **settings):
   config.add_route('tests_delete', '/tests/delete')
   config.add_route('tests_stop', '/tests/stop')
   config.add_route('tests_approve', '/tests/approve')
+  config.add_route('tests_purge', '/tests/purge')
   config.add_route('tests_user', '/tests/user/{username}')
 
   # API

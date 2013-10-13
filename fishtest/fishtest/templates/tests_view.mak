@@ -46,6 +46,13 @@
     </form>
   </span>
 %endif
+%else:
+  <form action="/tests/purge" method="POST" style="display:inline">
+    <input type="hidden" name="run-id" value="${run['_id']}">
+    <button type="submit" class="btn btn-danger">
+      Purge
+    </button>
+  </form>
 %endif
   <a href="/tests/run?id=${run['_id']}">
     <button class="btn">Reschedule</button>

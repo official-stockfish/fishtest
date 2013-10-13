@@ -25,6 +25,9 @@ class ActionDb:
   def approve_run(self, username, run):
     self._new_action(username, 'approve_run', run)
 
+  def purge_run(self, username, run):
+    self._new_action(username, 'purge_run', run)
+
   def _new_action(self, username, action, data):
     self.actions.insert({
       'username': username,
