@@ -519,7 +519,7 @@ def calculate_residuals(run):
   residuals = chi2['residual']
 
   while True:
-    cur_bad_users = set()
+    worst_user = {}
     for task in run['tasks']:
       if task['worker_key'] in bad_users:
         continue
@@ -530,10 +530,13 @@ def calculate_residuals(run):
         task['residual_color'] = 'yellow'
       else:
         task['residual_color'] = '#FF6A6A'
-        cur_bad_users.add(task['worker_key'])
-    if len(cur_bad_users) == 0:
+        if len(worst_user) == 0 or task['residual'] > worst_user['residual']:
+            worst_user['worker_key'] = task['worker_key']
+            worst_user['residual'] = task['residual']
+
+    if len(worst_user) == 0:
       break
-    bad_users.update(cur_bad_users)
+    bad_users.update(worst_user['worker_key'])
     residuals = get_chi2(run['tasks'], bad_users)['residual']
 
   return chi2
