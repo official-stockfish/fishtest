@@ -530,6 +530,8 @@ def calculate_residuals(run):
         task['residual_color'] = 'yellow'
       else:
         task['residual_color'] = '#FF6A6A'
+
+      if chi2['p'] < 0.01:
         if len(worst_user) == 0 or task['residual'] > worst_user['residual']:
             worst_user['worker_key'] = task['worker_key']
             worst_user['residual'] = task['residual']
