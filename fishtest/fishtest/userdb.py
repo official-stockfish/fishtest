@@ -56,4 +56,5 @@ class UserDb:
     # TODO: hook the blocked info into the database
     blocked = ''
     if worker_info['remote_addr'] in blocked or worker_info['username'] in blocked:
-      return {'task_waiting': False}
+      return True
+    return False
