@@ -45,3 +45,9 @@ class UserDb:
       return True
     except:
       return False
+
+  def get_machine_limit(self, username):
+    user = self.users.find_one({'username': username})
+    if user and 'machine_limit' in user:
+      return user['machine_limit']
+    return 4

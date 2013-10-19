@@ -215,7 +215,7 @@ class RunDb:
     connections = sum([int(m.get('remote_addr','') == remote_addr) for m in machines])
 
     # Allow a few connections, for multiple computers on same IP
-    if connections > 3:
+    if connections >= self.userdb.get_machine_limit(worker_info['username']):
       return {'task_waiting': False}
 
     # Ok, we get a new task that does not require more threads than available concurrency
