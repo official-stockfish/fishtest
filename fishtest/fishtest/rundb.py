@@ -184,10 +184,8 @@ class RunDb:
 
   def request_task(self, worker_info):
     # Check for blocked user or ip
-    with open('blocked_users.txt') as f:
-      blocked = f.read()
-      if worker_info['remote_addr'] in blocked or worker_info['username'] in blocked:
-        return {'task_waiting': False}
+    if self.userdb.is_blocked(worker_info):
+      return {'task_waiting': False}
 
     # Build list of CLOP runs that are already almost full
     max_threads = int(worker_info['concurrency'])
