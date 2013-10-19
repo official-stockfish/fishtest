@@ -518,7 +518,8 @@ def calculate_residuals(run):
   chi2 = get_chi2(run['tasks'], bad_users)
   residuals = chi2['residual']
 
-  while True:
+  # Limit bad users to 5 for now
+  for _ in range(5):
     worst_user = {}
     for task in run['tasks']:
       if task['worker_key'] in bad_users:
@@ -533,8 +534,8 @@ def calculate_residuals(run):
 
       if chi2['p'] < 0.01:
         if len(worst_user) == 0 or task['residual'] > worst_user['residual']:
-            worst_user['worker_key'] = task['worker_key']
-            worst_user['residual'] = task['residual']
+          worst_user['worker_key'] = task['worker_key']
+          worst_user['residual'] = task['residual']
 
     if len(worst_user) == 0:
       break
