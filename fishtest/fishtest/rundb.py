@@ -89,6 +89,7 @@ class RunDb:
     new_run = {
       'args': run_args,
       'start_time': start_time,
+      'last_updated': start_time,
       # Will be filled in by tasks, indexed by task-id
       'tasks': self.generate_tasks(num_games),
       # Aggregated results
