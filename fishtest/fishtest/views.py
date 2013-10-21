@@ -650,9 +650,6 @@ def tests(request):
       request.rundb.runs.save(run)
       post_result(run)
 
-    if state == 'finished' and results['wins'] + results['losses'] + results['draws'] == 0:
-      state = 'failed'
-
     runs[state].append(run)
 
   runs['pending'].sort(reverse=True, key=lambda run: (-run['args']['priority'], run['start_time']))
@@ -700,6 +697,13 @@ def tests(request):
   page_size = 50
   finished, num_finished = request.rundb.get_finished_runs(skip=page*page_size, limit=page_size, username=username)
   runs['finished'] += finished
+
+  for run in finished:
+    results = request.rundb.get_results(run)
+    if results['wins'] + results['losses'] + results['draws'] == 0:
+      runs['failed'].append(run)
+
+  runs['finished'] = [r for r in runs['finished'] if r not in runs['failed']]
 
   pages = [{'idx': 'Prev', 'url': '?page=%d' % (page), 'state': 'disabled' if page == 0 else ''}]
   for idx, page_idx in enumerate(range(0, num_finished, page_size)):
