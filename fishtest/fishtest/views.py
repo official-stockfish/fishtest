@@ -381,10 +381,10 @@ def tests_purge(request):
   run['results_stale'] = True
   results = request.rundb.get_results(run)
   played_games = results['wins'] + results['losses'] + results['draws']
-  request.rundb.generate_tasks(run['args']['num_games'] - played_games)
+  run['tasks'] += request.rundb.generate_tasks(run['args']['num_games'] - played_games)
 
   run['finished'] = False
-  if 'sprt' in run['args']:
+  if 'sprt' in run['args'] and 'state' in run['args']['sprt']:
     del run['args']['sprt']['state']
 
   request.rundb.runs.save(run)
