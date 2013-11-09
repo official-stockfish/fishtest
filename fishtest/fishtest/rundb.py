@@ -156,7 +156,12 @@ class RunDb:
         if len(game['task_id']) == 0:
           available_games += 1
 
-      if available_games < minimum:
+      active = False
+      for task in run['tasks']:
+        if task['active']:
+          active = True
+
+      if available_games < minimum and active:
         exclusion_list.append(run['_id'])
     return exclusion_list
 
@@ -193,7 +198,7 @@ class RunDb:
     if worker_info['username'] == 'glinscott':
       exclusion_list = self.get_clop_exclusion_list(5 + max_threads)
     else:
-      exclusion_list = self.get_clop_exclusion_list(1000000)
+      exclusion_list = [r['_id'] for r in self.runs.find({'args.clop': {'$exists': True}, 'finished': False, 'deleted': {'$exists': False}})]
 
     # Does this worker have a task already?  If so, just hand that back
     existing_run = self.runs.find_one({'tasks': {'$elemMatch': {'active': True, 'worker_info': worker_info}}})
