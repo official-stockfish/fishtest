@@ -94,6 +94,8 @@ def main():
 
     # Mark the game as finished
     clopdb.remove_game(game_id)
+    if len(result) == 0:
+      return
 
     with open('debug.log', 'a') as f:
       print >>f, game_id, 'result', result
@@ -119,6 +121,7 @@ def main():
   server_stream = zmqstream.ZMQStream(server_socket)
   server_stream.on_recv(on_game_finished)
 
+  kill_runs_counter = 0
   active_clop = dict()
   def check_runs():
     def kill_task(run_id):
@@ -136,6 +139,12 @@ def main():
       if len(list(clopdb.get_games(run_id))) < NUM_CLOP / 2:
         kill_task(run_id)
 
+    # Huge hack, just restart clop every 5 minutes - avoids things getting stuck
+    kill_runs_counter += 1
+    kill_all_runs = kill_runs_counter >= 15
+    if kill_all_runs:
+      kill_runs_counter = 0
+ 
     for run_id, info in active_clop.items():
       run = rundb.get_run(run_id)
       alive = False
@@ -143,10 +152,10 @@ def main():
         if task['active']:
           alive = True
 
-      if not alive:
+      if not alive or kill_all_runs:
         kill_task(run_id)
 
-    for run in rundb.runs.find({'tasks': {'$elemMatch': {'active': True}}}):
+    for run in rundb.runs.find({'finished': False, 'tasks': {'$elemMatch': {'active': True}}}):
       # If is the start of a CLOP tuning session start CLOP.
       if 'clop' in run['args'] and run['_id'] not in active_clop:
         active_clop[run['_id']] = start_clop(rundb, clopdb, str(run['_id']), run['args']['new_tag'], run['args']['clop']['params'])
