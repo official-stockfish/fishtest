@@ -12,7 +12,7 @@ from rundb import RunDb
 from zmq.eventloop import ioloop, zmqstream
 
 CLOP_DIR = os.getenv('CLOP_DIR')
-NUM_CLOP = 40
+NUM_CLOP = 60
 
 def kill_process_tree(pid):
   p = psutil.Process(pid)
@@ -140,9 +140,9 @@ def main():
         kill_process_tree(active_clop[run_id]['process'].pid)
         del active_clop[run_id]
     
-    # Huge hack, just restart clop every 5 minutes - avoids things getting stuck
+    # Huge hack, just restart clop every 15 minutes - avoids things getting stuck
     check_run_state['kill_runs_counter'] += 1
-    kill_all_runs = check_run_state['kill_runs_counter'] >= 15
+    kill_all_runs = check_run_state['kill_runs_counter'] >= 45
     if kill_all_runs:
       check_run_state['kill_runs_counter'] = 0
  
