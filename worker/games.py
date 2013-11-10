@@ -273,7 +273,7 @@ def run_game(p, remote, result, clop, clop_tuning, tc_limit):
   if datetime.datetime.now() >= end_time:
     kill_process(p)
 
-  return { 'task_alive': clop_tuning }
+  return { 'task_alive': True }
 
 def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit):
   clop = {
@@ -335,6 +335,7 @@ def run_clop(*args):
       sys.stderr.write('Exception while running clop task:\n')
       traceback.print_exc(file=sys.stderr)
       time.sleep(5)
+  sys.stderr.write('WARNING Exiting clop worker thread\n')
 
 def run_games(worker_info, password, remote, run, task_id):
   task = run['tasks'][task_id]
