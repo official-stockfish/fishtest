@@ -50,7 +50,7 @@ class ClopDb:
     })
     return id
 
-  def request_game(self, run_id, task_id):
+  def request_game(self, rundb, run_id, task_id):
     for game in self.get_games(run_id):
       if len(game['task_id']) == 0:
         game['task_id'] = str(task_id)
@@ -59,6 +59,12 @@ class ClopDb:
                  'seed': game['seed'],
                  'white': game['white'],
                  'params': game['params'] }
-    else:
-      return {'no_games': True,
-              'task_alive': True}
+
+    run = rundb.get_run(run_id)
+    if task_id >= len(run['tasks']):
+      return {'task_alive': False}
+    task = run['tasks'][task_id]
+    if not task['active'] or not task['pending']:
+      return {'task_alive': False}
+
+    return {'task_alive': True}

@@ -285,15 +285,17 @@ def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit
     # Request parameters for next game
     req = requests.post(remote + '/api/request_clop', data=json.dumps(result)).json()
 
-    if 'no_games' in req:
-      # Retry in 5 seconds
-      raise Exception('no_games for request_clop.  waiting...')
-
-    clop['game_id'] = req['game_id']
-    clop['white'] = req['white']
-    clop['fcp'] = ['option.%s=%s'%(x[0], x[1]) for x in req['params']]
-    if not clop['white']:
-      clop['fcp'], clop['scp'] = clop['scp'], clop['fcp']
+    if 'game_id' in req:
+      clop['game_id'] = req['game_id']
+      clop['white'] = req['white']
+      clop['fcp'] = ['option.%s=%s'%(x[0], x[1]) for x in req['params']]
+      if not clop['white']:
+        clop['fcp'], clop['scp'] = clop['scp'], clop['fcp']
+    else:
+      if req['task_alive']:
+        # Retry in 5 seconds
+        raise Exception('no_games for request_clop.  waiting...')
+      return req
 
   if not regression_test:
     cmd_base = ' '.join(cmd).split('_clop_')

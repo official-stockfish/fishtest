@@ -125,4 +125,4 @@ def request_clop(request):
   run_id = request.json_body['run_id']
   task_id = int(request.json_body['task_id'])
 
-  return json.dumps(request.clopdb.request_game(run_id, task_id))
+  return json.dumps(request.clopdb.request_game(request.rundb, run_id, task_id))
