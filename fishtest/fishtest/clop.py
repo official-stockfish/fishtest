@@ -121,7 +121,7 @@ def main():
   server_stream = zmqstream.ZMQStream(server_socket)
   server_stream.on_recv(on_game_finished)
 
-  kill_runs_counter = 0
+  check_run_state = {'kill_runs_counter': 0}
   active_clop = dict()
   def check_runs():
     def kill_task(run_id):
@@ -140,10 +140,10 @@ def main():
         kill_task(run_id)
 
     # Huge hack, just restart clop every 5 minutes - avoids things getting stuck
-    kill_runs_counter += 1
-    kill_all_runs = kill_runs_counter >= 15
+    check_run_state['kill_runs_counter'] += 1
+    kill_all_runs = check_run_state['kill_runs_counter'] >= 15
     if kill_all_runs:
-      kill_runs_counter = 0
+      check_run_state['kill_runs_counter'] = 0
  
     for run_id, info in active_clop.items():
       run = rundb.get_run(run_id)
