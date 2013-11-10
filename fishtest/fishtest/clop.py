@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import os
+import psutil
 import signal
 import subprocess
 import threading
@@ -12,6 +13,12 @@ from zmq.eventloop import ioloop, zmqstream
 
 CLOP_DIR = os.getenv('CLOP_DIR')
 NUM_CLOP = 40
+
+def kill_process_tree(pid):
+  p = psutil.Process(pid)
+  for child in p.get_children(recursive=True):
+    child.send_signal(signal.SIGKILL)
+  p.send_signal(signal.SIGKILL)
 
 def read_clop_status(p, rundb, run_id):
   for line in iter(p.stdout.readline, ''):
@@ -130,7 +137,7 @@ def main():
         on_game_finished([game['_id']])
 
       if run_id in active_clop:
-        active_clop[run_id]['process'].kill()
+        kill_process_tree(active_clop[run_id]['process'].pid)
         del active_clop[run_id]
     
     # Huge hack, just restart clop every 5 minutes - avoids things getting stuck

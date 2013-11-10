@@ -9,6 +9,7 @@ requires = [
     'pyramid',
     'pyramid_debugtoolbar',
     'waitress',
+    'psutil',
     'pymongo',
     'pyzmq',
     ]
