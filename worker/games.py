@@ -283,15 +283,11 @@ def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit
 
   if clop_tuning:
     # Request parameters for next game
-    try:
-      req = requests.post(remote + '/api/request_clop', data=json.dumps(result)).json()
-    except:
-      req = {'no_games': True, 'task_alive': True}
+    req = requests.post(remote + '/api/request_clop', data=json.dumps(result)).json()
 
     if 'no_games' in req:
       # Retry in 5 seconds
-      time.sleep(5)
-      return req
+      raise Exception('no_games for request_clop.  waiting...')
 
     clop['game_id'] = req['game_id']
     clop['white'] = req['white']
@@ -329,8 +325,14 @@ def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit
   return req
 
 def run_clop(*args):
-  while launch_cutechess(*args)['task_alive']:
-    pass
+  while True:
+    try:
+      if not launch_cutechess(*args)['task_alive']
+        break
+    except:
+      sys.stderr.write('Exception while running clop task:\n')
+      traceback.print_exc(file=sys.stderr)
+      time.sleep(5)
 
 def run_games(worker_info, password, remote, run, task_id):
   task = run['tasks'][task_id]
