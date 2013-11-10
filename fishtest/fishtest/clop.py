@@ -11,7 +11,7 @@ from rundb import RunDb
 from zmq.eventloop import ioloop, zmqstream
 
 CLOP_DIR = os.getenv('CLOP_DIR')
-NUM_CLOP = 160
+NUM_CLOP = 40
 
 def read_clop_status(p, rundb, run_id):
   for line in iter(p.stdout.readline, ''):
@@ -133,12 +133,6 @@ def main():
         active_clop[run_id]['process'].kill()
         del active_clop[run_id]
     
-    # Check if the clop runs are still active
-    for run_id in rundb.get_clop_exclusion_list(10000):
-      # Check if active clop processes has fallen below a threshold
-      if len(list(clopdb.get_games(run_id))) < NUM_CLOP / 2:
-        kill_task(run_id)
-
     # Huge hack, just restart clop every 5 minutes - avoids things getting stuck
     check_run_state['kill_runs_counter'] += 1
     kill_all_runs = check_run_state['kill_runs_counter'] >= 15
