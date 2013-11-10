@@ -60,4 +60,5 @@ class ClopDb:
                  'white': game['white'],
                  'params': game['params'] }
     else:
-      return {'no_games': True}
+      return {'no_games': True,
+              'task_alive': True}

@@ -14,7 +14,7 @@ from optparse import OptionParser
 from games import run_games
 from updater import update
 
-WORKER_VERSION = 46
+WORKER_VERSION = 47
 ALIVE = True
 
 def setup_config_file(config_file):
