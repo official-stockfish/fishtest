@@ -326,12 +326,11 @@ def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit
 
   return req
 
-clop_running = True
+clop_threads = {'active': True}
 def run_clop(*args):
-  while clop_running:
+  while clop_threads['active']:
     try:
-      if not launch_cutechess(*args)['task_alive']:
-        clop_running = False
+      clop_threads['active'] = launch_cutechess(*args)['task_alive']
     except:
       sys.stderr.write('Exception while running clop task:\n')
       traceback.print_exc(file=sys.stderr)
@@ -465,7 +464,7 @@ def run_games(worker_info, password, remote, run, task_id):
   if worker_threads == 1:
     launch_cutechess(*payload)
   else:
-    clop_running = True
+    clop_threads['active'] = True
     th = [threading.Thread(target=run_clop, args=payload) for _ in range(worker_threads)]
     for t in th:
       t.start()
