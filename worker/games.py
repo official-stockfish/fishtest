@@ -327,7 +327,7 @@ def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit
 def run_clop(*args):
   while True:
     try:
-      if not launch_cutechess(*args)['task_alive']
+      if not launch_cutechess(*args)['task_alive']:
         break
     except:
       sys.stderr.write('Exception while running clop task:\n')
