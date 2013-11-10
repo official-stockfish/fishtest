@@ -330,7 +330,8 @@ clop_threads = {'active': True}
 def run_clop(*args):
   while clop_threads['active']:
     try:
-      clop_threads['active'] = launch_cutechess(*args)['task_alive']
+      if not launch_cutechess(*args)['task_alive']:
+        clop_threads['active'] =  False
     except:
       sys.stderr.write('Exception while running clop task:\n')
       traceback.print_exc(file=sys.stderr)
