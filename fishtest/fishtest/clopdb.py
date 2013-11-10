@@ -17,7 +17,7 @@ class ClopDb:
     elif len(task_id) == 0:
       return self.clop.find({'run_id': run_id}, sort=[('_id', ASCENDING)])
     else:
-      return self.clop.find({'$and': [{'run_id': run_id}, {'task_id': task_id}]},
+      return self.clop.find({'run_id': run_id, 'task_id': task_id},
                             sort=[('_id', ASCENDING)])
 
   def get_game(self, game_id):
