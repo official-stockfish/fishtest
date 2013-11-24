@@ -297,17 +297,16 @@ def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit
         raise Exception('no_games for request_clop.  waiting...')
       return req
 
-  if not regression_test:
-    cmd_base = ' '.join(cmd).split('_clop_')
-
   # Run cutechess-cli binary
   if regression_test:
     cmd = ['cutechess_regression_test.sh']
   else:
-    cmd = cmd_base[0].split() + clop['fcp'] + \
-          cmd_base[1].split() + clop['scp'] + cmd_base[2].split()
+    idx = cmd.index('_clop_')
+    cmd = cmd[:idx] + clop['fcp'] + cmd[idx+1:]
+    idx = cmd.index('_clop_')
+    cmd = cmd[:idx] + clop['scp'] + cmd[idx+1:]
 
-  print ' '.join(cmd)
+  print cmd
   p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True, bufsize=1, close_fds=not IS_WINDOWS)
 
   try:
@@ -369,8 +368,20 @@ def run_games(worker_info, password, remote, run, task_id):
   games_concurrency = int(worker_info['concurrency']) / threads
 
   # Format options according to cutechess syntax
-  new_options = ['option.'+x for x in new_options.split()]
-  base_options = ['option.'+x for x in base_options.split()]
+  def parse_options(s):
+    results = []
+    chunks = s.split('=')
+    if len(chunks) == 0:
+      return results 
+    param = chunks[0]
+    for c in chunks[1:]:
+      val = c.split()
+      results.append('option.%s=%s' % (param, val[0]))
+      param = ' '.join(val[1:])
+    return results
+ 
+  new_options = parse_options(new_options)
+  base_options = parse_options(base_options)
 
   # Setup testing directory if not already exsisting
   worker_dir = os.path.dirname(os.path.realpath(__file__))
