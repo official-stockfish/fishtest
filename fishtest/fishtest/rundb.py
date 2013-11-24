@@ -195,7 +195,10 @@ class RunDb:
 
     # Build list of CLOP runs that are already almost full
     max_threads = int(worker_info['concurrency'])
-    exclusion_list = self.get_clop_exclusion_list(2 + max_threads)
+    if 'Windows' in worker_info['uname']:
+      exclusion_list = [r['_id'] for r in self.runs.find({'args.clop': {'$exists': True}, 'finished': False, 'deleted': {'$exists': False}})]
+    else: 
+      exclusion_list = self.get_clop_exclusion_list(2 + max_threads)
 
     # Does this worker have a task already?  If so, just hand that back
     existing_run = self.runs.find_one({'tasks': {'$elemMatch': {'active': True, 'worker_info': worker_info}}})
