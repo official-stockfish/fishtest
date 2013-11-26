@@ -134,7 +134,7 @@ class RunDb:
     return self.runs.find_one({'binaries_url': {'$exists': False}, 'finished': False, 'deleted': {'$exists': False}})
 
   def get_runs(self):
-    return list(self.runs.find(sort=[('last_updated', DESCENDING), ('start_time', DESCENDING)]))
+    return list(self.get_unfinished_runs()) + self.get_finished_runs()[0]
 
   def get_unfinished_runs(self):
     return self.runs.find({'finished': False},

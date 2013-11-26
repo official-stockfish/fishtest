@@ -164,13 +164,13 @@ def users(request):
       username = run['args']['username']
       info[username]['tests'] += 1
 
+    tc = parse_tc(run['args']['tc'])
     for task in run['tasks']:
       if 'worker_info' not in task:
         continue
       username = task['worker_info'].get('username', None)
       if username == None:
         continue
-      tc = parse_tc(run['args']['tc'])
 
       if 'stats' in task:
         stats = task['stats']
