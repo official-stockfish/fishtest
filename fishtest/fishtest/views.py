@@ -368,7 +368,7 @@ def tests_purge(request):
   if 'bad_tasks' not in run:
     run['bad_tasks'] = []
   for task in run['tasks']:
-    if task['residual'] > 3.0:
+    if task['residual'] > 2.7:
       run['bad_tasks'].append(task)
       del task['stats']
       task['pending'] = True
@@ -530,7 +530,7 @@ def calculate_residuals(run):
       task['residual'] = residuals.get(task['worker_key'], 0.0)
       if abs(task['residual']) < 2.0:
         task['residual_color'] = '#44EB44'
-      elif abs(task['residual']) < 3.0:
+      elif abs(task['residual']) < 2.7:
         task['residual_color'] = 'yellow'
       else:
         task['residual_color'] = '#FF6A6A'
