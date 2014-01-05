@@ -197,7 +197,7 @@ class RunDb:
     max_threads = int(worker_info['concurrency'])
     if 'Windows' in worker_info['uname']:
       exclusion_list = [r['_id'] for r in self.runs.find({'args.clop': {'$exists': True}, 'finished': False, 'deleted': {'$exists': False}})]
-    else: 
+    else:
       exclusion_list = self.get_clop_exclusion_list(2 + max_threads)
 
     # Does this worker have a task already?  If so, just hand that back
@@ -251,8 +251,13 @@ class RunDb:
         task_id = idx
 
     # Lower priority of long running tests
-    if task_id > 46 and 'sprt' in run['args'] and run['args']['priority'] == 0:
+    if task_id > 40 and 'sprt' in run['args'] and run['args']['priority'] == 0:
       run['args']['priority'] = -1
+      self.runs.save(run)
+
+    # Lower priority of LTC long running tests
+    if task_id > 50 and 'sprt' in run['args'] and parse_tc(run['args']['tc']) > 100:
+      run['args']['priority'] = -3
       self.runs.save(run)
 
     return {'run': run, 'task_id': task_id}
