@@ -7,6 +7,7 @@ from pymongo import MongoClient, ASCENDING, DESCENDING
 from clopdb import ClopDb
 from userdb import UserDb
 from actiondb import ActionDb
+from views import parse_tc
 
 import stat_util
 
