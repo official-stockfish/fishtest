@@ -371,7 +371,7 @@ def tests_purge(request):
     if task['residual'] > 2.7:
       run['bad_tasks'].append(task)
       del task['stats']
-      task['pending'] = True
+      del task['worker_key']
 
   if len(run['bad_tasks']) == 0:
     request.session.flash('No bad workers!')
@@ -381,7 +381,8 @@ def tests_purge(request):
   run['results_stale'] = True
   results = request.rundb.get_results(run)
   played_games = results['wins'] + results['losses'] + results['draws']
-  run['tasks'] += request.rundb.generate_tasks(run['args']['num_games'] - played_games)
+  if played_games < run['args']['num_games']:
+    run['tasks'] += request.rundb.generate_tasks(run['args']['num_games'] - played_games)
 
   run['finished'] = False
   if 'sprt' in run['args'] and 'state' in run['args']['sprt']:
