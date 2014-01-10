@@ -279,14 +279,18 @@ def run_game(p, remote, result, clop, clop_tuning, tc_limit):
 
 
 def survey_cpu(process, concurrency):
-  max_load=100-50/(concurrency+1)
-  while(process.poll()==None):
+  max_load = 100-50/(concurrency+1)
+  while(process.poll() == None):
     time.sleep(10)
-    usage=int(Popen('wmic cpu get loadpercentage', stdout=PIPE, shell=True).stdout.read().split('\n')[1].strip())
+    if IS_WINDOWS :
+      usage = int(Popen('wmic cpu get loadpercentage', stdout=PIPE, shell=True).stdout.read().split('\n')[1].strip())
+    else :
+      top = Popen('top -bn2 | grep %Cpu\(s\)', stdout=PIPE, shell=True).stdout.read().split('\n')[1]
+      usage = int(top[top.index(':') + 1 : top.index(',')].strip())
     print str(usage)
-    if usage>max_load:
+    if usage > max_load:
       kill_process(process)
-      raise Exception("CPU usage to high ("+str(usage)+"). Please don't use your computer while running fishtest.")
+      raise Exception("CPU usage to high (" + str(usage) + "). Please don't use your computer while running fishtest.")
 
 
 def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit, concurrency):
