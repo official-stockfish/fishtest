@@ -16,6 +16,8 @@ import platform
 import zipfile
 from base64 import b64decode
 from zipfile import ZipFile
+from threading import Thread
+from subprocess import Popen, PIPE
 
 try:
   from Queue import Queue, Empty
@@ -275,7 +277,19 @@ def run_game(p, remote, result, clop, clop_tuning, tc_limit):
 
   return { 'task_alive': True }
 
-def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit):
+
+def survey_cpu(process, concurrency):
+  max_load=100-50/(concurrency+1)
+  while(process.poll()==None):
+    time.sleep(10)
+    usage=int(Popen('wmic cpu get loadpercentage', stdout=PIPE, shell=True).stdout.read().split('\n')[1].strip())
+    print str(usage)
+    if usage>max_load:
+      kill_process(process)
+      raise Exception("CPU usage to high ("+str(usage)+"). Please don't use your computer while running fishtest.")
+
+
+def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit, concurrency):
   clop = {
     'fcp': [],
     'scp': [],
@@ -308,6 +322,8 @@ def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit
 
   print cmd
   p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True, bufsize=1, close_fds=not IS_WINDOWS)
+  surveyThread = Thread(target = survey_cpu, args=(p,concurrency))
+  surveyThread.start()
 
   try:
     req = run_game(p, remote, result, clop, clop_tuning, tc_limit)
@@ -471,7 +487,7 @@ def run_games(worker_info, password, remote, run, task_id):
         ['_clop_','-engine', 'name=base', 'cmd=base'] + base_options + \
         ['_clop_','-each', 'proto=uci', 'option.Threads=%d' % (threads), 'tc=%s' % (scaled_tc)] + book_cmd
 
-  payload = (cmd, remote, result, clop_tuning, regression_test, tc_limit * games_to_play / min(games_to_play, games_concurrency))
+  payload = (cmd, remote, result, clop_tuning, regression_test, tc_limit * games_to_play / min(games_to_play, games_concurrency), games_concurrency)
 
   if worker_threads == 1:
     launch_cutechess(*payload)
