@@ -287,7 +287,7 @@ def survey_cpu(process, concurrency, bucket):
     else :
       usage = float(Popen('top -bn1 | grep Cpu\(s\)', stdout=PIPE, shell=True).stdout.read().split(' ')[2].strip().replace(',', '.').replace('%us', ''))
     if usage > max_load:
-      bucket.put("CPU usage to high ("+str(usage)+"). Please don't use your computer while running fishtest.")
+      bucket.put("CPU usage too high ("+str(usage)+"). Please don't use your computer while running fishtest.")
       kill_process(process)
 
 
