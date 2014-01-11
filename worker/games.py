@@ -278,19 +278,17 @@ def run_game(p, remote, result, clop, clop_tuning, tc_limit):
   return { 'task_alive': True }
 
 
-def survey_cpu(process, concurrency):
+def survey_cpu(process, concurrency, bucket):
   max_load = 100-50/(concurrency+1)
-  while(process.poll() == None):
+  while process.poll() is None:
     time.sleep(10)
-    if IS_WINDOWS :
+    if IS_WINDOWS:
       usage = int(Popen('wmic cpu get loadpercentage', stdout=PIPE, shell=True).stdout.read().split('\n')[1].strip())
     else :
-      top = Popen('top -bn2 | grep %Cpu\(s\)', stdout=PIPE, shell=True).stdout.read().split('\n')[1]
-      usage = int(top[top.index(':') + 1 : top.index(',')].strip())
-    print str(usage)
+      usage = float(Popen('top -bn1 | grep Cpu\(s\)', stdout=PIPE, shell=True).stdout.read().split(' ')[2].strip().replace(',', '.').replace('%us', ''))
     if usage > max_load:
+      bucket.put("CPU usage to high ("+str(usage)+"). Please don't use your computer while running fishtest.")
       kill_process(process)
-      raise Exception("CPU usage to high (" + str(usage) + "). Please don't use your computer while running fishtest.")
 
 
 def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit, concurrency):
@@ -326,7 +324,8 @@ def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit
 
   print cmd
   p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True, bufsize=1, close_fds=not IS_WINDOWS)
-  surveyThread = Thread(target = survey_cpu, args=(p,concurrency))
+  bucket = Queue()
+  surveyThread = Thread(target=survey_cpu, args=(p, concurrency, bucket))
   surveyThread.start()
 
   try:
@@ -334,7 +333,12 @@ def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit
     p.wait()
 
     if p.returncode != 0:
-      raise Exception('Non-zero return code: %d' % (p.returncode))
+      if bucket.empty():
+        raise Exception('Non-zero return code: %d' % (p.returncode))
+      else:
+        print bucket.get()
+        print 'Retrying in 60 seconds.'
+        time.sleep(60)
   except:
     traceback.print_exc(file=sys.stderr)
     try:
