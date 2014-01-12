@@ -311,7 +311,7 @@ def tests_modify(request):
 
     if not can_modify_run(request, run):
       request.session.flash('Unable to modify another users run!')
-      return HTTPFound(location=request.url)
+      return HTTPFound(location=request.route_url('tests'))
 
     existing_games = 0
     for chunk in run['tasks']:
@@ -342,7 +342,7 @@ def tests_stop(request):
   run = request.rundb.get_run(request.POST['run-id'])
   if not can_modify_run(request, run):
     request.session.flash('Unable to modify another users run!')
-    return HTTPFound(location=request.url)
+    return HTTPFound(location=request.route_url('tests'))
 
   request.rundb.stop_run(request.POST['run-id'])
   request.clopdb.stop_games(request.POST['run-id'])
@@ -411,7 +411,7 @@ def tests_delete(request):
   run = request.rundb.get_run(request.POST['run-id'])
   if not can_modify_run(request, run):
     request.session.flash('Unable to modify another users run!')
-    return HTTPFound(location=request.url)
+    return HTTPFound(location=request.route_url('tests'))
 
   run['deleted'] = True
   run['finished'] = True
