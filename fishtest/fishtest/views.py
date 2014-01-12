@@ -278,7 +278,7 @@ def validate_form(request):
 
   return data, ''
 
-@view_config(route_name='tests_run', renderer='tests_run.mak', permission='modify_db')
+@view_config(route_name='tests_run', renderer='tests_run.mak')
 def tests_run(request):
   if 'base-branch' in request.POST:
     data, error_message = validate_form(request)
@@ -300,11 +300,18 @@ def tests_run(request):
 
   return { 'args': run_args, 'tests_repo': u.get('tests_repo', '') }
 
-@view_config(route_name='tests_modify', permission='modify_db')
+def can_modify_run(request, run):
+  return run['args']['username'] == authenticated_userid(request) # or has_permission('approve_run', request.context, request)
+
+@view_config(route_name='tests_modify')
 def tests_modify(request):
   if 'num-games' in request.POST:
     run = request.rundb.get_run(request.POST['run'])
     before = copy.deepcopy(run)
+
+    if not can_modify_run(request, run):
+      request.session.flash('Unable to modify another users run!')
+      return HTTPFound(location=request.url)
 
     existing_games = 0
     for chunk in run['tasks']:
@@ -330,8 +337,13 @@ def tests_modify(request):
     return HTTPFound(location=request.route_url('tests'))
   return {}
 
-@view_config(route_name='tests_stop', permission='modify_db')
+@view_config(route_name='tests_stop')
 def tests_stop(request):
+  run = request.rundb.get_run(request.POST['run-id'])
+  if not can_modify_run(request, run):
+    request.session.flash('Unable to modify another users run!')
+    return HTTPFound(location=request.url)
+
   request.rundb.stop_run(request.POST['run-id'])
   request.clopdb.stop_games(request.POST['run-id'])
 
@@ -394,9 +406,13 @@ def tests_purge(request):
   request.session.flash('Purged run')
   return HTTPFound(location=request.route_url('tests'))
 
-@view_config(route_name='tests_delete', permission='modify_db')
+@view_config(route_name='tests_delete')
 def tests_delete(request):
   run = request.rundb.get_run(request.POST['run-id'])
+  if not can_modify_run(request, run):
+    request.session.flash('Unable to modify another users run!')
+    return HTTPFound(location=request.url)
+
   run['deleted'] = True
   run['finished'] = True
   for w in run['tasks']:
