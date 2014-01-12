@@ -10,7 +10,7 @@ import smtplib
 import requests
 from email.mime.text import MIMEText
 from collections import defaultdict
-from pyramid.security import remember, forget, authenticated_userid
+from pyramid.security import remember, forget, authenticated_userid, has_permission
 from pyramid.view import view_config, forbidden_view_config
 from pyramid.httpexceptions import HTTPFound
 
@@ -301,7 +301,7 @@ def tests_run(request):
   return { 'args': run_args, 'tests_repo': u.get('tests_repo', '') }
 
 def can_modify_run(request, run):
-  return run['args']['username'] == authenticated_userid(request) # or has_permission('approve_run', request.context, request)
+  return run['args']['username'] == authenticated_userid(request) or has_permission('approve_run', request.context, request)
 
 @view_config(route_name='tests_modify', permission='modify_db')
 def tests_modify(request):

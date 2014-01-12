@@ -24,7 +24,6 @@
     <div class="row-fluid">
       <div class="span1">
         <ul class="nav nav-list">
-          <li><a href="/">Login</a></li>
           <li class="nav-header">Tests</li>
           <li><a href="/tests">Overview</a></li>
           <li><a href="/tests/run">New</a></li>
