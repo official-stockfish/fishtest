@@ -26,7 +26,10 @@ class UserDb:
   def get_user_groups(self, username):
     user = self.users.find_one({'username': username})
     if user:
-      return user['groups']
+      groups = user['groups']
+      # Everyone is in this group by default
+      groups.append('group:admins')
+      return groups
 
   def add_user_group(self, username, group):
     user = self.users.find_one({'username': username})
