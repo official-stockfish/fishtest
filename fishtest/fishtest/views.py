@@ -318,15 +318,12 @@ def tests_modify(request):
       existing_games += chunk['num_games']
 
     num_games = int(request.POST['num-games'])
-    if num_games < existing_games:
-      request.session.flash('Reducing number of games not supported yet')
-      return HTTPFound(location=request.route_url('tests'))
-
-    # Create new chunks for the games
-    new_chunks = request.rundb.generate_tasks(num_games - existing_games)
+    if num_games > existing_games:
+      # Create new chunks for the games
+      new_chunks = request.rundb.generate_tasks(num_games - existing_games)
+      run['tasks'] += new_chunks
 
     run['finished'] = False
-    run['tasks'] += new_chunks
     run['args']['num_games'] = num_games
     run['args']['priority'] = int(request.POST['priority'])
     request.rundb.runs.save(run)
