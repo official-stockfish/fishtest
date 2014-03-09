@@ -30,6 +30,7 @@
           <li class="nav-header">Misc</li>
           <li><a href="/users">Users</a></li>
           <li><a href="/actions">Actions</a></li>
+          <li><a href="https://github.com/glinscott/fishtest/wiki" target="_blank">Help</a></li>
           <li class="nav-header">Links</li>
           <li><a href="https://github.com/glinscott/fishtest" target="_blank">Github</a></li>
           <li><a href="https://groups.google.com/forum/?fromgroups=#!forum/fishcooking" target="_blank">Forum</a></li>
