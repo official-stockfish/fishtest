@@ -5,6 +5,7 @@ class UserDb:
   def __init__(self, db):
     self.db = db
     self.users = self.db['users']
+    self.user_cache = self.db['user_cache']
 
   def init_collection(self):
     self.users.create_index('username', unique=True)
