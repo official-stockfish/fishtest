@@ -1,10 +1,10 @@
 #!/usr/bin/python
-import os, sys
+import datetime, os, sys
 
 # For tasks
 sys.path.append(os.path.expanduser('~/fishtest/fishtest'))
 from fishtest.rundb import RunDb
-from views import parse_tc
+from fishtest.views import parse_tc, delta_date
 
 def update_users():
   rundb = RunDb()
@@ -56,10 +56,9 @@ def update_users():
     user['last_updated'] = delta_date(user['last_updated'])
     users.append(user)
 
-  users.sort(key=lambda k: k['cpu_hours'], reverse=True)
 
   rundb.userdb.user_cache.remove()
-  rundb.userdb.user_cache.save(users)
+  rundb.userdb.user_cache.insert(users)
 
 def main():
   update_users()

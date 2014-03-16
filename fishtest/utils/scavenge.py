@@ -9,7 +9,7 @@ from fishtest.rundb import RunDb
 def scavenge_tasks(scavenge=True, minutes=5):
   """Check for tasks that have not been updated recently"""
   rundb = RunDb()
-  for run in rundb.get_runs():
+  for run in rundb.runs.find({'tasks': {'$elemMatch': {'active': True}}}):
     changed = False
     for idx, task in enumerate(run['tasks']):
       if task['active'] and task['last_updated'] < datetime.utcnow() - timedelta(minutes=minutes):
