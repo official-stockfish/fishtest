@@ -55,7 +55,7 @@
       <select name="stop_rule">
         <option value="sprt">SPRT</option>
         <option value="numgames">NumGames</option>
-        <option value="clop">CLOP</option>
+        <!-- <option value="clop">CLOP</option> -->
       </select>
       <div class="btn-group">
         <div class="btn" id="fast_test">Fast</div>
