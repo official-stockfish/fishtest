@@ -66,7 +66,7 @@
 
 %endif
 
-<h3>Finished - ${finished_runs} tests ${games_played} games
+<h3>Finished - ${finished_runs} tests
 %if len(pages) > 3:
  <span class="pagination pagination-small">
   <ul>
