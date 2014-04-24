@@ -221,7 +221,7 @@ class RunDb:
 
     # Allow a few connections, for multiple computers on same IP
     if connections >= self.userdb.get_machine_limit(worker_info['username']):
-      return {'task_waiting': False}
+      return {'task_waiting': False, 'hit_machine_limit': True}
 
     # Ok, we get a new task that does not require more threads than available concurrency
     q = {
