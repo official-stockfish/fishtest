@@ -87,8 +87,10 @@ def verify_signature(engine, signature, remote, payload, concurrency):
       raise Exception('Bench exited with non-zero code %d' % (p.returncode))
 
     if int(bench_sig) != int(signature):
+      message = 'Wrong bench in %s Expected: %s Got: %s' % (engine, signature, bench_sig)
+      payload['message'] = message
       requests.post(remote + '/api/stop_run', data=json.dumps(payload))
-      raise Exception('Wrong bench in %s Expected: %s Got: %s' % (engine, signature, bench_sig))
+      raise Exception(message)
 
   finally:
     if concurrency > 1:
