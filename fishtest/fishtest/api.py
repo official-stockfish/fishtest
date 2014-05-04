@@ -5,10 +5,12 @@ from pyramid.view import view_config
 
 FLAG_HOST = 'http://freegeoip.net/json/'
 
+def get_username(request):
+  if 'username' in request.json_body: return request.json_body['username']
+  return request.json_body['worker_info']['username']
+
 def authenticate(request):
-  if 'username' in request.json_body: username = request.json_body['username']
-  else: username = request.json_body['worker_info']['username']
-  return request.userdb.authenticate(username, request.json_body['password'])
+  return request.userdb.authenticate(get_username(request), request.json_body['password'])
 
 @view_config(route_name='api_request_task', renderer='string')
 def request_task(request):
@@ -79,6 +81,7 @@ def stop_run(request):
   token = authenticate(request)
   if 'error' in token: return json.dumps(token)
 
+  request.actiondb.stop_run(get_username(request), request.json_body['run_id'], request.json_body.get('message', 'No reason!'))
   result = request.rundb.stop_run(request.json_body['run_id'])
   return json.dumps(result)
 
