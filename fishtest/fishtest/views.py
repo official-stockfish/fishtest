@@ -141,7 +141,7 @@ def actions(request):
       item['_id'] = action['data']['_id']
       item['description'] = ' '.join(action['action'].split('_'))
       if action['action'] == 'stop_run':
-        item['description'] += ': %s' % (action['data'].get('stop_reason', 'No stop reason'))
+        item['description'] += ': %s' % (action['data'].get('stop_reason', 'User stop'))
 
     actions.append(item)
 
