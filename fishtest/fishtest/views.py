@@ -140,7 +140,7 @@ def actions(request):
       item['run'] = action['data']['args']['new_tag']
       item['_id'] = action['data']['_id']
       item['description'] = ' '.join(action['action'].split('_'))
-      if action['action'] == 'stop_run':
+      if action['action'] == 'stop_run' and isinstance(action['data'], basestring):
         item['description'] += ': %s' % (action['data'])
 
     actions.append(item)
