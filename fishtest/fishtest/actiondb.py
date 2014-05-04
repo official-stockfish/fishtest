@@ -19,8 +19,8 @@ class ActionDb:
   def delete_run(self, username, run):
     self._new_action(username, 'delete_run', run)
 
-  def stop_run(self, username, run, message=''):
-    self._new_action(username, 'stop_run', run, message)
+  def stop_run(self, username, run):
+    self._new_action(username, 'stop_run', run)
 
   def approve_run(self, username, run):
     self._new_action(username, 'approve_run', run)
