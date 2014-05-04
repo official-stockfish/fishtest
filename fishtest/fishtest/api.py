@@ -82,7 +82,7 @@ def stop_run(request):
   if 'error' in token: return json.dumps(token)
 
   run = request.rundb.get_run(request.json_body['run_id'])
-  run['stop_reason'] = request.json_body.get('message', 'No reason!'))
+  run['stop_reason'] = request.json_body.get('message', 'No reason!')
   request.actiondb.stop_run(get_username(request), run)
 
   result = request.rundb.stop_run(request.json_body['run_id'])
