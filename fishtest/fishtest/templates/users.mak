@@ -3,9 +3,9 @@
 <ul class="inline">
 <li><dl class="dl-horizontal">
   <dt>Testers</dt>
-  <dd>${len(users)}</dd>
+  <dd>${sum(u['last_updated'] != 'Never' for u in users)}</dd>
   <dt>Developers</dt>
-  <dd>${sum(len(u['tests_repo']) > 0 for u in users)}</dd>
+  <dd>${sum(u['tests'] > 0 for u in users)}</dd>
 </dl></li>
 <li><dl class="dl-horizontal">
   <dt>Active testers</dt>
