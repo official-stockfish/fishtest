@@ -51,7 +51,7 @@ def binary_filename(sha):
   architecture = '64' if is_64bit() else '32'
   return sha + '_' + system + '_' + architecture
 
-def get_clop_result(wld, white):
+def get_spsa_result(wld, white):
   ''' Convert result to W or L or D'''
   if wld[0] == 1:
     return 'W' if white else 'L'
@@ -206,7 +206,7 @@ def enqueue_output(out, queue):
     queue.put(line)
   out.close()
 
-def run_game(p, remote, result, clop, clop_tuning, tc_limit):
+def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
   global old_stats
   failed_updates = 0
 
@@ -250,10 +250,10 @@ def run_game(p, remote, result, clop, clop_tuning, tc_limit):
       result['stats']['losses'] = wld[1] + old_stats['losses']
       result['stats']['draws']  = wld[2] + old_stats['draws']
 
-      if clop_tuning:
-        clop['game_result'] = get_clop_result(wld, clop['white'])
+      if spsa_tuning:
+        spsa['game_result'] = get_spsa_result(wld, spsa['white'])
         old_stats = result['stats'] # FIXME player color is not correctly handled
-        result['clop'] = clop
+        result['spsa'] = spsa
 
       try:
         req = requests.post(remote + '/api/update_task', data=json.dumps(result)).json()
@@ -277,42 +277,42 @@ def run_game(p, remote, result, clop, clop_tuning, tc_limit):
 
   return { 'task_alive': True }
 
-def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit):
-  clop = {
+def launch_cutechess(cmd, remote, result, spsa_tuning, regression_test, tc_limit):
+  spsa = {
     'fcp': [],
     'scp': [],
   }
 
-  if clop_tuning:
+  if spsa_tuning:
     # Request parameters for next game
-    req = requests.post(remote + '/api/request_clop', data=json.dumps(result)).json()
+    req = requests.post(remote + '/api/request_spsa', data=json.dumps(result)).json()
 
     if 'game_id' in req:
-      clop['game_id'] = req['game_id']
-      clop['white'] = req['white']
-      clop['fcp'] = ['option.%s=%s'%(x[0], x[1]) for x in req['params']]
-      if not clop['white']:
-        clop['fcp'], clop['scp'] = clop['scp'], clop['fcp']
+      spsa['game_id'] = req['game_id']
+      spsa['white'] = req['white']
+      spsa['fcp'] = ['option.%s=%s'%(x[0], x[1]) for x in req['params']]
+      if not spsa['white']:
+        spsa['fcp'], spsa['scp'] = spsa['scp'], spsa['fcp']
     else:
       if req['task_alive']:
         # Retry in 5 seconds
-        raise Exception('no_games for request_clop.  waiting...')
+        raise Exception('no_games for request_spsa.  waiting...')
       return req
 
   # Run cutechess-cli binary
   if regression_test:
     cmd = ['cutechess_regression_test.sh']
   else:
-    idx = cmd.index('_clop_')
-    cmd = cmd[:idx] + clop['fcp'] + cmd[idx+1:]
-    idx = cmd.index('_clop_')
-    cmd = cmd[:idx] + clop['scp'] + cmd[idx+1:]
+    idx = cmd.index('_spsa_')
+    cmd = cmd[:idx] + spsa['fcp'] + cmd[idx+1:]
+    idx = cmd.index('_spsa_')
+    cmd = cmd[:idx] + spsa['scp'] + cmd[idx+1:]
 
   print cmd
   p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True, bufsize=1, close_fds=not IS_WINDOWS)
 
   try:
-    req = run_game(p, remote, result, clop, clop_tuning, tc_limit)
+    req = run_game(p, remote, result, spsa, spsa_tuning, tc_limit)
     p.wait()
 
     if p.returncode != 0:
@@ -326,18 +326,6 @@ def launch_cutechess(cmd, remote, result, clop_tuning, regression_test, tc_limit
       pass
 
   return req
-
-clop_threads = {'active': True}
-def run_clop(*args):
-  while clop_threads['active']:
-    try:
-      if not launch_cutechess(*args)['task_alive']:
-        clop_threads['active'] =  False
-    except:
-      sys.stderr.write('Exception while running clop task:\n')
-      traceback.print_exc(file=sys.stderr)
-      time.sleep(5)
-  sys.stderr.write('WARNING Exiting clop worker thread\n')
 
 def run_games(worker_info, password, remote, run, task_id):
   task = run['tasks'][task_id]
@@ -364,7 +352,7 @@ def run_games(worker_info, password, remote, run, task_id):
   base_options = run['args']['base_options']
   threads = int(run['args']['threads'])
   regression_test = run['args'].get('regression_test', False)
-  clop_tuning = 'clop' in run['args']
+  spsa_tuning = 'spsa' in run['args']
   binaries_url = run.get('binaries_url', '')
   repo_url = run['args'].get('tests_repo', FISHCOOKING_URL)
   games_concurrency = int(worker_info['concurrency']) / threads
@@ -455,13 +443,10 @@ def run_games(worker_info, password, remote, run, task_id):
   else:
     print 'Running regression test of %s' % (run['args']['new_tag'])
 
-  if clop_tuning:
-    worker_threads = games_concurrency
-    games_to_play = 1
-    games_concurrency = 1
+  if spsa_tuning:
+    games_to_play = games_concurrency
     pgnout = []
   else:
-    worker_threads = 1
     games_to_play = games_remaining
     pgnout = ['-pgnout', 'results.pgn']
 
@@ -470,21 +455,7 @@ def run_games(worker_info, password, remote, run, task_id):
         ['-resign', 'movecount=3', 'score=400', '-draw', 'movenumber=34',
          'movecount=8', 'score=20', '-concurrency', str(games_concurrency)] + pgn_cmd + \
         ['-engine', 'name=stockfish', 'cmd=stockfish'] + new_options + \
-        ['_clop_','-engine', 'name=base', 'cmd=base'] + base_options + \
-        ['_clop_','-each', 'proto=uci', 'option.Threads=%d' % (threads), 'tc=%s' % (scaled_tc)] + book_cmd
+        ['_spsa_','-engine', 'name=base', 'cmd=base'] + base_options + \
+        ['_spsa_','-each', 'proto=uci', 'option.Threads=%d' % (threads), 'tc=%s' % (scaled_tc)] + book_cmd
 
-  payload = (cmd, remote, result, clop_tuning, regression_test, tc_limit * games_to_play / min(games_to_play, games_concurrency))
-
-  if worker_threads == 1:
-    launch_cutechess(*payload)
-  else:
-    clop_threads['active'] = True
-    th = [threading.Thread(target=run_clop, args=payload) for _ in range(worker_threads)]
-    for t in th:
-      t.start()
-
-    # Wait for all the worker threads to finish
-    for t in th:
-      # Super long timeout is a workaround for signal handling when doing thread.join
-      # See http://stackoverflow.com/questions/631441/interruptible-thread-join-in-python
-      t.join(2 ** 31)
+  launch_cutechess(cmd, remote, result, spsa_tuning, regression_test, tc_limit * games_to_play / min(games_to_play, games_concurrency))
