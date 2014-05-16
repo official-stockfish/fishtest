@@ -83,7 +83,7 @@
 
 </div>
 
-%if 'clop' in run['args']:
+%if 'spsa' in run['args']:
 <%
   active_cnt  = sum([int(len(g['task_id'])  > 0) for g in run['games']])
   pending_cnt = sum([int(len(g['task_id']) == 0) for g in run['games']])
@@ -113,7 +113,7 @@
     else:
       active_style = ''
 
-    if 'clop' in run['args']:
+    if 'spsa' in run['args']:
       games_per_task[str(idx)] = games_per_task.get(str(idx), 0) + 1
   %>
   <tr class="${active_style}">
@@ -136,7 +136,7 @@
    <th>Worker</th>
    <th>Last Updated</th>
    <th>Played</th>
-   %if 'clop' in run['args']:
+   %if 'spsa' in run['args']:
    <th>Playing now</th>
    %else:
    <th>Wins</th>
@@ -169,7 +169,7 @@
    <td>${task['worker_key']}</td>
    <td>${str(task.get('last_updated', '-')).split('.')[0]}</td>
    <td>${total} / ${task['num_games']}</td>
-   %if 'clop' in run['args']:
+   %if 'spsa' in run['args']:
    <td>${str(games_per_task.get(str(idx), '-'))}</td>
    %else:
    <td>${stats.get('wins', '-')}</td>

@@ -1,5 +1,5 @@
 import json, sys
-import clop
+import spsa 
 import requests
 from pyramid.view import view_config
 
@@ -61,7 +61,7 @@ def update_task(request):
     task_id=int(request.json_body['task_id']),
     stats=request.json_body['stats'],
     nps=request.json_body.get('nps', 0),
-    clop=request.json_body.get('clop', []),
+    spsa=request.json_body.get('spsa', []),
   )
   return json.dumps(result)
 
@@ -123,12 +123,12 @@ def request_version(request):
 
   return json.dumps({'version': 53})
 
-@view_config(route_name='api_request_clop', renderer='string')
-def request_clop(request):
+@view_config(route_name='api_request_spsa', renderer='string')
+def request_spsa(request):
   token = authenticate(request)
   if 'error' in token: return json.dumps(token)
 
   run_id = request.json_body['run_id']
   task_id = int(request.json_body['task_id'])
 
-  return json.dumps(request.clopdb.request_game(request.rundb, run_id, task_id))
+  return json.dumps(request.spsadb.request_game(request.rundb, run_id, task_id))

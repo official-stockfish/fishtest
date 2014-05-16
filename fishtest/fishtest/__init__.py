@@ -25,14 +25,11 @@ def main(global_config, **settings):
 
   context = zmq.Context()
 
-  clop_socket = context.socket(zmq.PUB)
-  clop_socket.bind('tcp://127.0.0.1:' + settings.get('clop_port', '5001'))
-
-  rundb = RunDb(clop_socket=clop_socket)
+  rundb = RunDb()
   def add_rundb(event):
     event.request.rundb = rundb
     event.request.userdb = rundb.userdb
-    event.request.clopdb = rundb.clopdb
+    event.request.spsadb = rundb.spsadb
     event.request.actiondb = rundb.actiondb
   config.add_subscriber(add_rundb, NewRequest)
 
@@ -62,7 +59,7 @@ def main(global_config, **settings):
   config.add_route('api_request_build', '/api/request_build')
   config.add_route('api_build_ready', '/api/build_ready')
   config.add_route('api_request_version', '/api/request_version')
-  config.add_route('api_request_clop', '/api/request_clop')
+  config.add_route('api_request_spsa', '/api/request_spsa')
 
   config.scan()
   return config.make_wsgi_app()

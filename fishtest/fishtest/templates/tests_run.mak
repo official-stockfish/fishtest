@@ -55,7 +55,7 @@
       <select name="stop_rule">
         <option value="sprt">SPRT</option>
         <option value="numgames">NumGames</option>
-        <!-- <option value="clop">CLOP</option> -->
+        <option value="spsa">SPSA</option>
       </select>
       <div class="btn-group">
         <div class="btn" id="fast_test">Fast</div>
@@ -81,10 +81,10 @@
       <input name="sprt_elo1" value="${args.get('sprt', {'elo1': 4.5})['elo1']}">
     </div>
   </div>
-  <div class="control-group stop_rule clop">
-    <label class="control-label">CLOP parameters:</label>
+  <div class="control-group stop_rule spsa">
+    <label class="control-label">SPSA parameters:</label>
     <div class="controls">
-    <input name="clop-params" value="${args.get('clop', {'params': 'p1[-10 10] p2[0, 100]'})['params']}">
+    <input name="spsa-params" value="${args.get('spsa', {'params': 'p1[-10 10] p2[0, 100]'})['params']}">
     </div>
   </div>
   <div class="control-group">
@@ -151,7 +151,7 @@ $(function() {
     var stop_rule = $('select[name=stop_rule]').val();
     if (stop_rule != 'numgames') $('.numgames').hide();
     if (stop_rule != 'sprt') $('.sprt').hide();
-    if (stop_rule != 'clop') $('.clop').hide();
+    if (stop_rule != 'spsa') $('.spsa').hide();
   };
 
   update_sprt();

@@ -216,8 +216,8 @@ def validate_form(request):
     }
     # Arbitrary limit on number of games played.  Shouldn't be hit in practice
     data['num_games'] = 128000
-  elif stop_rule == 'clop':
-    data['clop'] = { 'params': request.POST['clop-params'] }
+  elif stop_rule == 'spsa':
+    data['spsa'] = { 'params': request.POST['spsa-params'] }
     data['num_games'] = 64000
   else:
     data['num_games'] = int(request.POST['num-games'])
@@ -299,7 +299,7 @@ def tests_stop(request):
     return HTTPFound(location=request.route_url('tests'))
 
   request.rundb.stop_run(request.POST['run-id'])
-  request.clopdb.stop_games(request.POST['run-id'])
+  request.spsadb.stop_games(request.POST['run-id'])
 
   run = request.rundb.get_run(request.POST['run-id'])
   request.actiondb.stop_run(authenticated_userid(request), run)
@@ -390,8 +390,8 @@ def format_results(run_results, run):
     result['info'].append('Pending...')
     return result
 
-  if 'clop' in run['args']:
-    status = ' '.join(run['args']['clop'].get('status', '-').split())
+  if 'spsa' in run['args']:
+    status = ' '.join(run['args']['spsa'].get('status', '-').split())
     result['info'].append('Status: %s' % (status))
     result['info'].append('Total: %d' % (sum(WLD)))
     return result
@@ -527,7 +527,7 @@ def tests_view(request):
 
   for name in ['new_tag', 'new_signature', 'new_options', 'resolved_new',
                'base_tag', 'base_signature', 'base_options', 'resolved_base',
-               'sprt', 'num_games', 'clop', 'tc', 'threads', 'book', 'book_depth',
+               'sprt', 'num_games', 'spsa', 'tc', 'threads', 'book', 'book_depth',
                'priority', 'username', 'tests_repo', 'info']:
 
     if not name in run['args']:
@@ -546,7 +546,7 @@ def tests_view(request):
       value = 'elo0: %.2f alpha: %.2f elo1: %.2f beta: %.2f state: %s' % \
               (value['elo0'], value['alpha'], value['elo1'], value['beta'], value.get('state', '-'))
 
-    if name == 'clop' and value != '-':
+    if name == 'spsa' and value != '-':
       value = str(value['params'])
 
     if 'tests_repo' in run['args']:
@@ -563,8 +563,8 @@ def tests_view(request):
     last_updated = task.get('last_updated', datetime.datetime.min)
     task['last_updated'] = delta_date(last_updated)
 
-  if 'clop' in run['args']:
-    run['games'] = [g for g in request.clopdb.get_games(run['_id'])]
+  if 'spsa' in run['args']:
+    run['games'] = [g for g in request.spsadb.get_games(run['_id'])]
 
   return { 'run': run, 'run_args': run_args, 'chi2': calculate_residuals(run)}
 

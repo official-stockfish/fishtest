@@ -4,7 +4,7 @@ from datetime import datetime
 from bson.objectid import ObjectId
 from pymongo import MongoClient, ASCENDING, DESCENDING
 
-from clopdb import ClopDb
+from spsadb import SpsaDb
 from userdb import UserDb
 from actiondb import ActionDb
 from views import parse_tc
@@ -12,13 +12,13 @@ from views import parse_tc
 import stat_util
 
 class RunDb:
-  def __init__(self, db_name='fishtest_new', clop_socket=None):
+  def __init__(self, db_name='fishtest_new'):
     # MongoDB server is assumed to be on the same machine, if not user should use
     # ssh with port forwarding to access the remote host.
     self.conn = MongoClient(os.getenv('FISHTEST_HOST') or 'localhost')
     self.db = self.conn[db_name]
     self.userdb = UserDb(self.db)
-    self.clopdb = ClopDb(self.db, clop_socket)
+    self.spsadb = SpsaDb(self.db)
     self.actiondb = ActionDb(self.db)
     self.runs = self.db['runs']
 
@@ -51,7 +51,7 @@ class RunDb:
               regression_test=False,
               start_time=None,
               sprt=None,
-              clop=None,
+              spsa=None,
               username=None,
               tests_repo=None,
               priority=0):
@@ -84,8 +84,8 @@ class RunDb:
     if sprt != None:
       run_args['sprt'] = sprt
 
-    if clop != None:
-      run_args['clop'] = clop
+    if spsa != None:
+      run_args['spsa'] = spsa
 
     new_run = {
       'args': run_args,
@@ -149,23 +149,6 @@ class RunDb:
     c = self.runs.find(q, skip=skip, limit=limit, sort=[('last_updated', DESCENDING)])
     return (list(c), c.count())
 
-  def get_clop_exclusion_list(self, minimum):
-    exclusion_list = []
-    for run in self.runs.find({'args.clop': {'$exists': True}, 'finished': False, 'deleted': {'$exists': False}}):
-      available_games = 0
-      for game in self.clopdb.get_games(run['_id']):
-        if len(game['task_id']) == 0:
-          available_games += 1
-
-      active = False
-      for task in run['tasks']:
-        if task['active']:
-          active = True
-
-      if available_games < minimum and active:
-        exclusion_list.append(run['_id'])
-    return exclusion_list
-
   def get_results(self, run):
     if not run['results_stale']:
       return run['results']
@@ -194,12 +177,11 @@ class RunDb:
     if self.userdb.is_blocked(worker_info):
       return {'task_waiting': False}
 
-    # Build list of CLOP runs that are already almost full
+    # Windows workers are buggy with CLOP/SPSA runs potentially
     max_threads = int(worker_info['concurrency'])
-    if 'Windows' in worker_info['uname']:
-      exclusion_list = [r['_id'] for r in self.runs.find({'args.clop': {'$exists': True}, 'finished': False, 'deleted': {'$exists': False}})]
-    else:
-      exclusion_list = self.get_clop_exclusion_list(2 + max_threads)
+    exclusion_list = []
+    #if 'Windows' in worker_info['uname']:
+    #  exclusion_list = [r['_id'] for r in self.runs.find({'args.spsa': {'$exists': True}, 'finished': False, 'deleted': {'$exists': False}})]
 
     # Does this worker have a task already?  If so, just hand that back
     existing_run = self.runs.find_one({'tasks': {'$elemMatch': {'active': True, 'worker_info': worker_info}}})
@@ -263,7 +245,7 @@ class RunDb:
 
     return {'run': run, 'task_id': task_id}
 
-  def update_task(self, run_id, task_id, stats, nps, clop):
+  def update_task(self, run_id, task_id, stats, nps, spsa):
     run = self.get_run(run_id)
     if task_id >= len(run['tasks']):
       return {'task_alive': False}
@@ -304,11 +286,9 @@ class RunDb:
 
         self.stop_run(run_id)
 
-    # Update clop results
-    if 'clop' in run['args'] and len(clop['game_id']) > 0:
-      self.clopdb.write_result(clop['game_id'], clop['game_result'])
-      if not task['active']:
-        self.clopdb.stop_games(run_id, task_id)
+    # Update spsa results
+    if 'spsa' in run['args'] and len(spsa['game_id']) > 0:
+      self.spsadb.write_result(spsa['game_id'], spsa['game_result'])
 
     return {'task_alive': task['active']}
 
@@ -324,9 +304,6 @@ class RunDb:
     # Mark the task as inactive: it will be rescheduled
     task['active'] = False
     self.runs.save(run)
-
-    if 'clop' in run['args']:
-      self.clopdb.stop_games(run_id, task_id)
 
     return {}
 

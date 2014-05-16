@@ -8,8 +8,8 @@
    <%
     if 'sprt' in run['args']:
       num_games = 'sprt'
-    elif 'clop' in run['args']:
-      num_games = 'clop'
+    elif 'spsa' in run['args']:
+      num_games = 'spsa'
     else:
       num_games = run['args']['num_games']
    %>
