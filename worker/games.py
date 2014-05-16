@@ -277,7 +277,7 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
 
   return { 'task_alive': True }
 
-def launch_cutechess(cmd, remote, result, spsa_tuning, regression_test, tc_limit):
+def launch_cutechess(cmd, remote, result, spsa_tuning, tc_limit):
   spsa = {
     'fcp': [],
     'scp': [],
@@ -300,13 +300,10 @@ def launch_cutechess(cmd, remote, result, spsa_tuning, regression_test, tc_limit
       return req
 
   # Run cutechess-cli binary
-  if regression_test:
-    cmd = ['cutechess_regression_test.sh']
-  else:
-    idx = cmd.index('_spsa_')
-    cmd = cmd[:idx] + spsa['fcp'] + cmd[idx+1:]
-    idx = cmd.index('_spsa_')
-    cmd = cmd[:idx] + spsa['scp'] + cmd[idx+1:]
+  idx = cmd.index('_spsa_')
+  cmd = cmd[:idx] + spsa['fcp'] + cmd[idx+1:]
+  idx = cmd.index('_spsa_')
+  cmd = cmd[:idx] + spsa['scp'] + cmd[idx+1:]
 
   print cmd
   p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True, bufsize=1, close_fds=not IS_WINDOWS)
@@ -351,7 +348,6 @@ def run_games(worker_info, password, remote, run, task_id):
   new_options = run['args']['new_options']
   base_options = run['args']['base_options']
   threads = int(run['args']['threads'])
-  regression_test = run['args'].get('regression_test', False)
   spsa_tuning = 'spsa' in run['args']
   binaries_url = run.get('binaries_url', '')
   repo_url = run['args'].get('tests_repo', FISHCOOKING_URL)
@@ -395,8 +391,7 @@ def run_games(worker_info, password, remote, run, task_id):
   if str(run['_id']) != run_id:
     if os.path.exists(run_id_file): os.remove(run_id_file)
     setup_engine(new_engine, binaries_url, worker_dir, run['args']['resolved_new'], repo_url, worker_info['concurrency'])
-    if not regression_test:
-      setup_engine(base_engine, binaries_url, worker_dir, run['args']['resolved_base'], repo_url, worker_info['concurrency'])
+    setup_engine(base_engine, binaries_url, worker_dir, run['args']['resolved_base'], repo_url, worker_info['concurrency'])
     with open(run_id_file, 'w') as f:
       f.write(str(run['_id']))
 
@@ -422,8 +417,7 @@ def run_games(worker_info, password, remote, run, task_id):
 
   # Verify signatures are correct
   base_nps = verify_signature(new_engine, run['args']['new_signature'], remote, result, games_concurrency)
-  if not regression_test:
-    verify_signature(base_engine, run['args']['base_signature'], remote, result, games_concurrency)
+  verify_signature(base_engine, run['args']['base_signature'], remote, result, games_concurrency)
 
   # Benchmark to adjust cpu scaling
   scaled_tc, tc_limit = adjust_tc(run['args']['tc'], base_nps, int(worker_info['concurrency']))
@@ -438,10 +432,7 @@ def run_games(worker_info, password, remote, run, task_id):
   else:
     book_cmd = ['book=%s' % (book), 'bookdepth=%s' % (book_depth)]
 
-  if not regression_test:
-    print 'Running %s vs %s' % (run['args']['new_tag'], run['args']['base_tag'])
-  else:
-    print 'Running regression test of %s' % (run['args']['new_tag'])
+  print 'Running %s vs %s' % (run['args']['new_tag'], run['args']['base_tag'])
 
   if spsa_tuning:
     games_to_play = games_concurrency
@@ -458,4 +449,4 @@ def run_games(worker_info, password, remote, run, task_id):
         ['_spsa_','-engine', 'name=base', 'cmd=base'] + base_options + \
         ['_spsa_','-each', 'proto=uci', 'option.Threads=%d' % (threads), 'tc=%s' % (scaled_tc)] + book_cmd
 
-  launch_cutechess(cmd, remote, result, spsa_tuning, regression_test, tc_limit * games_to_play / min(games_to_play, games_concurrency))
+  launch_cutechess(cmd, remote, result, spsa_tuning, tc_limit * games_to_play / min(games_to_play, games_concurrency))
