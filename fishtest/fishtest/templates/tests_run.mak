@@ -102,7 +102,7 @@
   <div class="control-group stop_rule spsa">
     <label class="control-label">SPSA parameters:</label>
     <div class="controls">
-      <textarea name="spsa_raw_params" class="span6">${args.get('spsa', {'raw_params': """Aggressivess,30,0,200,10,0.0020
+      <textarea name="spsa_raw_params" class="span6">${args.get('spsa', {'raw_params': """Aggressiveness,30,0,200,10,0.0020
 Cowardice,150,0,200,10,0.0020"""})['raw_params']}</textarea>
     </div>
   </div>

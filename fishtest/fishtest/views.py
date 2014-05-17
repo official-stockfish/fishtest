@@ -424,12 +424,6 @@ def format_results(run_results, run):
     result['info'].append('Pending...')
     return result
 
-  if 'spsa' in run['args']:
-    status = ' '.join(run['args']['spsa'].get('status', '-').split())
-    result['info'].append('Status: %s' % (status))
-    result['info'].append('Total: %d' % (sum(WLD)))
-    return result
-
   state = 'unknown'
   if 'sprt' in run['args']:
     sprt = run['args']['sprt']

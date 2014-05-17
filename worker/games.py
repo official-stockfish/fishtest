@@ -218,9 +218,8 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
     sys.stdout.write(line)
     sys.stdout.flush()
 
-    # Cutechess can exit unexpectedly
+    # Have we reached the end of the match?  Then just exit
     if 'Finished match' in line:
-      kill_process(p)
       break
 
     # Parse line like this:
@@ -279,16 +278,16 @@ def launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, tc_limit):
     # Request parameters for next game
     req = requests.post(remote + '/api/request_spsa', data=json.dumps(result)).json()
 
-    spsa['w_params'] = ['option.%s=%d'%(x['name'], int(x['value'])) for x in req['w_params']]
-    spsa['b_params'] = ['option.%s=%d'%(x['name'], int(x['value'])) for x in req['b_params']]
+    spsa['w_params'] = req['w_params']
+    spsa['b_params'] = req['b_params']
 
     result['spsa'] = spsa
 
   # Run cutechess-cli binary
   idx = cmd.index('_spsa_')
-  cmd = cmd[:idx] + spsa['w_params'] + cmd[idx+1:]
+  cmd = cmd[:idx] + ['option.%s=%d'%(x['name'], round(x['value'])) for x in spsa['w_params']] + cmd[idx+1:]
   idx = cmd.index('_spsa_')
-  cmd = cmd[:idx] + spsa['b_params'] + cmd[idx+1:]
+  cmd = cmd[:idx] + ['option.%s=%d'%(x['name'], round(x['value'])) for x in spsa['b_params']] + cmd[idx+1:]
 
   print cmd
   p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True, bufsize=1, close_fds=not IS_WINDOWS)
@@ -426,14 +425,18 @@ def run_games(worker_info, password, remote, run, task_id):
     games_to_play = games_remaining
     pgnout = ['-pgnout', 'results.pgn']
 
-  # Run cutechess-cli binary
-  cmd = [ cutechess, '-repeat', '-rounds', str(games_to_play), '-tournament', 'gauntlet'] + pgnout + \
-        ['-resign', 'movecount=3', 'score=400', '-draw', 'movenumber=34',
-         'movecount=8', 'score=20', '-concurrency', str(games_concurrency)] + pgn_cmd + \
-        ['-engine', 'name=stockfish', 'cmd=stockfish'] + new_options + ['_spsa_'] + \
-        ['-engine', 'name=base', 'cmd=base'] + base_options + ['_spsa_'] + \
-        ['-each', 'proto=uci', 'option.Threads=%d' % (threads), 'tc=%s' % (scaled_tc)] + book_cmd
-
   while games_remaining > 0:
-    launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, tc_limit * games_to_play / min(games_to_play, games_concurrency))
-    games_reamining -= games_to_play
+    # Run cutechess-cli binary
+    cmd = [ cutechess, '-repeat', '-rounds', str(games_to_play), '-tournament', 'gauntlet'] + pgnout + \
+          ['-resign', 'movecount=3', 'score=400', '-draw', 'movenumber=34',
+           'movecount=8', 'score=20', '-concurrency', str(games_concurrency)] + pgn_cmd + \
+          ['-engine', 'name=stockfish', 'cmd=stockfish'] + new_options + ['_spsa_'] + \
+          ['-engine', 'name=base', 'cmd=base'] + base_options + ['_spsa_'] + \
+          ['-each', 'proto=uci', 'option.Threads=%d' % (threads), 'tc=%s' % (scaled_tc)] + book_cmd
+
+    task_status = launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, tc_limit * games_to_play / min(games_to_play, games_concurrency))
+    if not task_status.get('task_alive', False):
+      break
+
+    old_stats = result['stats'].copy()
+    games_remaining -= games_to_play
