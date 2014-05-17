@@ -4,7 +4,6 @@ from datetime import datetime
 from bson.objectid import ObjectId
 from pymongo import MongoClient, ASCENDING, DESCENDING
 
-from spsadb import SpsaDb
 from userdb import UserDb
 from actiondb import ActionDb
 from views import parse_tc
@@ -18,7 +17,6 @@ class RunDb:
     self.conn = MongoClient(os.getenv('FISHTEST_HOST') or 'localhost')
     self.db = self.conn[db_name]
     self.userdb = UserDb(self.db)
-    self.spsadb = SpsaDb(self.db)
     self.actiondb = ActionDb(self.db)
     self.runs = self.db['runs']
 
@@ -269,7 +267,6 @@ class RunDb:
     task['last_updated'] = update_time
     run['last_updated'] = update_time
     run['results_stale'] = True
-    self.runs.save(run)
 
     # Check if SPRT stopping is enabled
     if 'sprt' in run['args']:
@@ -287,8 +284,10 @@ class RunDb:
         self.stop_run(run_id)
 
     # Update spsa results
-    if 'spsa' in run['args'] and len(spsa['game_id']) > 0:
-      self.spsadb.write_result(spsa['game_id'], spsa['game_result'])
+    if 'spsa' in run['args'] and spsa['wins'] + spsa['losses'] + spsa['draws'] == spsa['num_games']:
+      self.update_spsa(run, spsa)
+
+    self.runs.save(run)
 
     return {'task_alive': task['active']}
 
@@ -335,3 +334,51 @@ class RunDb:
     run['approver'] = approver
     self.runs.save(run)
     return True
+
+  def request_spsa(self, run_id, task_id):
+    run = self.get_run(run_id)
+
+    if task_id >= len(run['tasks']):
+      return {'task_alive': False}
+    task = run['tasks'][task_id]
+    if not task['active'] or not task['pending']:
+      return {'task_alive': False}
+
+    result = {
+      'task_alive': True,
+      'w_params': [],
+      'b_params': [],
+    }
+
+    spsa = run['args']['spsa']
+
+    # Increment the iter counter
+    spsa['iter'] += 1 
+    self.runs.save(run)
+
+    # Generate the next set of tuning parameters
+    for param in spsa['params']:
+      a = param['a'] / (spsa['A'] + spsa['iter']) ** spsa['alpha']
+      c = param['c'] / spsa['iter'] ** spsa['gamma']
+      R = a / c ** 2
+      result['w_params'].append({
+        'name': param['name'],
+        'value': min(max(param['theta'] + c, param['min']), param['max']),
+        'R': R,
+        'c': c,
+      })
+      result['b_params'].append({
+        'name': param['name'],
+        'value': min(max(param['theta'] - c, param['min']), param['max']),
+      })
+      
+    return result
+
+  def update_spsa(self, run, spsa_results):
+    spsa = run['args']['spsa']
+    # Normalize the result to be within the range -2..2
+    result = (spsa_results['wins'] - spsa_results['losses']) / (spsa_results['num_games'] / 2)
+    for idx, param in enumerate(spsa['params']):
+      R = spsa_results['w_params'][idx]['R']
+      c = spsa_results['w_params'][idx]['c']
+      param['theta'] = min(max(param['theta'] + R * c * result, param['min']), param['max'])

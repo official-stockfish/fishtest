@@ -61,7 +61,7 @@ def update_task(request):
     task_id=int(request.json_body['task_id']),
     stats=request.json_body['stats'],
     nps=request.json_body.get('nps', 0),
-    spsa=request.json_body.get('spsa', []),
+    spsa=request.json_body.get('spsa', {}),
   )
   return json.dumps(result)
 
@@ -131,4 +131,4 @@ def request_spsa(request):
   run_id = request.json_body['run_id']
   task_id = int(request.json_body['task_id'])
 
-  return json.dumps(request.spsadb.request_game(request.rundb, run_id, task_id))
+  return json.dumps(request.rundb.request_spsa(run_id, task_id))

@@ -162,6 +162,29 @@ def get_sha(branch, repo_url):
   else:
     return '', ''
 
+def parse_spsa_params(raw, num_games, spsa):
+  params = []
+  for line in raw.split('\n'):
+    chunks = line.strip().split(',')
+    if len(chunks) == 0:
+      continue
+    if len(chunks) != 6:
+      raise Exception('"%s" needs 6 parameters"' % (line))
+    param = {
+      'name': chunks[0],
+      'start': float(chunks[1]),
+      'min': float(chunks[2]),
+      'max': float(chunks[3]),
+      'c_end': float(chunks[4]),
+      'r_end': float(chunks[5]),
+    }
+    param['c'] = param['c_end'] * num_games ** spsa['gamma']
+    param['a_end'] = param['r_end'] * param['c_end'] ** 2
+    param['a'] = param['a_end'] * (spsa['A'] + num_games) ** spsa['alpha']
+    param['theta'] = param['start']
+
+  return params
+
 def validate_form(request):
   data = {
     'base_tag' : request.POST['base-branch'],
@@ -178,7 +201,7 @@ def validate_form(request):
   }
 
   if len([v for v in data.values() if len(v) == 0]) > 0:
-    return data, 'Missing required option'
+    raise Exception('Missing required option')
 
   data['regression_test'] = request.POST['test_type'] == 'Regression'
   if data['regression_test']:
@@ -201,7 +224,7 @@ def validate_form(request):
       request.userdb.users.save(u)
 
   if len(data['resolved_base']) == 0 or len(data['resolved_new']) == 0:
-    return data, 'Unable to find branch!'
+    raise Exception('Unable to find branch!')
 
   stop_rule = request.POST['stop_rule']
 
@@ -217,36 +240,46 @@ def validate_form(request):
     # Arbitrary limit on number of games played.  Shouldn't be hit in practice
     data['num_games'] = 128000
   elif stop_rule == 'spsa':
-    data['spsa'] = { 'params': request.POST['spsa-params'] }
-    data['num_games'] = 64000
+    data['num_games'] = int(request.POST['num-games'])
+    if data['num_games'] <= 0:
+      raise Exception('Number of games must be >= 0')
+
+    data['spsa'] = {
+      'A': int(request.POST['spsa_A']),
+      'alpha': float(request.POST['spsa_alpha']),
+      'gamma': float(request.POST['spsa_gamma']),
+      'raw_params': request.POST['spsa_raw_params'],
+      'iter': 0,
+    }
+    data['params'] = parse_spsa_params(request.POST['spsa_raw_params'], data['num_games'], data['spsa'])
   else:
     data['num_games'] = int(request.POST['num-games'])
     if data['num_games'] <= 0:
-      return data, 'Number of games must be >= 0'
+      raise Exception('Number of games must be >= 0')
 
   data['threads'] = int(request.POST['threads'])
   data['priority'] = int(request.POST['priority'])
 
   if data['threads'] <= 0:
-    return data, 'Threads must be >= 0'
+    raise Exception('Threads must be >= 1')
 
   # Optional
   data['info'] = request.POST['run-info']
 
-  return data, ''
+  return data
 
 @view_config(route_name='tests_run', renderer='tests_run.mak', permission='modify_db')
 def tests_run(request):
   if 'base-branch' in request.POST:
-    data, error_message = validate_form(request)
-    if len(error_message) == 0:
+    try:
+      data = validate_form(request)
       run_id = request.rundb.new_run(**data)
 
       request.actiondb.new_run(authenticated_userid(request), request.rundb.get_run(run_id))
       request.session.flash('Started test run!')
       return HTTPFound(location=request.route_url('tests'))
-    else:
-      request.session.flash(error_message)
+    except Exception as e:
+      request.session.flash(str(e))
 
   run_args = {}
   if 'id' in request.params:

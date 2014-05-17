@@ -29,7 +29,6 @@ def main(global_config, **settings):
   def add_rundb(event):
     event.request.rundb = rundb
     event.request.userdb = rundb.userdb
-    event.request.spsadb = rundb.spsadb
     event.request.actiondb = rundb.actiondb
   config.add_subscriber(add_rundb, NewRequest)
 

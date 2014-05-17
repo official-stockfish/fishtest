@@ -51,15 +51,6 @@ def binary_filename(sha):
   architecture = '64' if is_64bit() else '32'
   return sha + '_' + system + '_' + architecture
 
-def get_spsa_result(wld, white):
-  ''' Convert result to W or L or D'''
-  if wld[0] == 1:
-    return 'W' if white else 'L'
-  elif wld[1] == 1:
-    return 'L' if white else 'W'
-  else:
-    return 'D'
-
 def github_api(repo):
   """ Convert from https://github.com/<user>/<repo>
       To https://api.github.com/repos/<user>/<repo> """
@@ -251,9 +242,9 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
       result['stats']['draws']  = wld[2] + old_stats['draws']
 
       if spsa_tuning:
-        spsa['game_result'] = get_spsa_result(wld, spsa['white'])
-        old_stats = result['stats'] # FIXME player color is not correctly handled
-        result['spsa'] = spsa
+        spsa['wins'] = wld[0]
+        spsa['losses'] = wld[1]
+        spsa['draws'] = wld[2]
 
       try:
         req = requests.post(remote + '/api/update_task', data=json.dumps(result)).json()
@@ -277,33 +268,27 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
 
   return { 'task_alive': True }
 
-def launch_cutechess(cmd, remote, result, spsa_tuning, tc_limit):
+def launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, tc_limit):
   spsa = {
-    'fcp': [],
-    'scp': [],
+    'w_params': [],
+    'b_params': [],
+    'num_games': games_to_play,
   }
 
   if spsa_tuning:
     # Request parameters for next game
     req = requests.post(remote + '/api/request_spsa', data=json.dumps(result)).json()
 
-    if 'game_id' in req:
-      spsa['game_id'] = req['game_id']
-      spsa['white'] = req['white']
-      spsa['fcp'] = ['option.%s=%s'%(x[0], x[1]) for x in req['params']]
-      if not spsa['white']:
-        spsa['fcp'], spsa['scp'] = spsa['scp'], spsa['fcp']
-    else:
-      if req['task_alive']:
-        # Retry in 5 seconds
-        raise Exception('no_games for request_spsa.  waiting...')
-      return req
+    spsa['w_params'] = ['option.%s=%d'%(x['name'], int(x['value'])) for x in req['w_params']]
+    spsa['b_params'] = ['option.%s=%d'%(x['name'], int(x['value'])) for x in req['b_params']]
+
+    result['spsa'] = spsa
 
   # Run cutechess-cli binary
   idx = cmd.index('_spsa_')
-  cmd = cmd[:idx] + spsa['fcp'] + cmd[idx+1:]
+  cmd = cmd[:idx] + spsa['w_params'] + cmd[idx+1:]
   idx = cmd.index('_spsa_')
-  cmd = cmd[:idx] + spsa['scp'] + cmd[idx+1:]
+  cmd = cmd[:idx] + spsa['b_params'] + cmd[idx+1:]
 
   print cmd
   p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True, bufsize=1, close_fds=not IS_WINDOWS)
@@ -435,7 +420,7 @@ def run_games(worker_info, password, remote, run, task_id):
   print 'Running %s vs %s' % (run['args']['new_tag'], run['args']['base_tag'])
 
   if spsa_tuning:
-    games_to_play = games_concurrency
+    games_to_play = games_concurrency * 2
     pgnout = []
   else:
     games_to_play = games_remaining
@@ -445,8 +430,10 @@ def run_games(worker_info, password, remote, run, task_id):
   cmd = [ cutechess, '-repeat', '-rounds', str(games_to_play), '-tournament', 'gauntlet'] + pgnout + \
         ['-resign', 'movecount=3', 'score=400', '-draw', 'movenumber=34',
          'movecount=8', 'score=20', '-concurrency', str(games_concurrency)] + pgn_cmd + \
-        ['-engine', 'name=stockfish', 'cmd=stockfish'] + new_options + \
-        ['_spsa_','-engine', 'name=base', 'cmd=base'] + base_options + \
-        ['_spsa_','-each', 'proto=uci', 'option.Threads=%d' % (threads), 'tc=%s' % (scaled_tc)] + book_cmd
+        ['-engine', 'name=stockfish', 'cmd=stockfish'] + new_options + ['_spsa_'] + \
+        ['-engine', 'name=base', 'cmd=base'] + base_options + ['_spsa_'] + \
+        ['-each', 'proto=uci', 'option.Threads=%d' % (threads), 'tc=%s' % (scaled_tc)] + book_cmd
 
-  launch_cutechess(cmd, remote, result, spsa_tuning, tc_limit * games_to_play / min(games_to_play, games_concurrency))
+  while games_remaining > 0:
+    launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, tc_limit * games_to_play / min(games_to_play, games_concurrency))
+    games_reamining -= games_to_play

@@ -82,9 +82,30 @@
     </div>
   </div>
   <div class="control-group stop_rule spsa">
+    <label class="control-label">SPSA A:</label>
+    <div class="controls">
+			<input name="spsa_A" value="${args.get('spsa', {'A': 5000})['A']}">
+    </div>
+  </div>
+  <div class="control-group stop_rule spsa">
+    <label class="control-label">SPSA Gamma:</label>
+    <div class="controls">
+			<input name="spsa_gamma" value="${args.get('spsa', {'gamma': 0.101})['gamma']}">
+    </div>
+  </div>
+  <div class="control-group stop_rule spsa">
+    <label class="control-label">SPSA Alpha:</label>
+    <div class="controls">
+			<input name="spsa_alpha" value="${args.get('spsa', {'alpha': 0.602})['alpha']}">
+    </div>
+  </div>
+  <div class="control-group stop_rule spsa">
     <label class="control-label">SPSA parameters:</label>
     <div class="controls">
-    <input name="spsa-params" value="${args.get('spsa', {'params': 'p1[-10 10] p2[0, 100]'})['params']}">
+      <textbox name="spsa_raw_params">
+				${args.get('spsa', {'raw_params': """Aggressivess,30,0,200,10,0.0020
+Cowardice,150,0,200,10,0.0020"""})['raw_params']}
+      </textbox>
     </div>
   </div>
   <div class="control-group">
