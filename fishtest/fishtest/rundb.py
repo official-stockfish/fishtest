@@ -175,11 +175,8 @@ class RunDb:
     if self.userdb.is_blocked(worker_info):
       return {'task_waiting': False}
 
-    # Windows workers are buggy with CLOP/SPSA runs potentially
     max_threads = int(worker_info['concurrency'])
     exclusion_list = []
-    #if 'Windows' in worker_info['uname']:
-    #  exclusion_list = [r['_id'] for r in self.runs.find({'args.spsa': {'$exists': True}, 'finished': False, 'deleted': {'$exists': False}})]
 
     # Does this worker have a task already?  If so, just hand that back
     existing_run = self.runs.find_one({'tasks': {'$elemMatch': {'active': True, 'worker_info': worker_info}}})
