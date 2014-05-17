@@ -1,5 +1,6 @@
 import copy
 import os
+import random
 from datetime import datetime
 from bson.objectid import ObjectId
 from pymongo import MongoClient, ASCENDING, DESCENDING
@@ -358,15 +359,17 @@ class RunDb:
       a = param['a'] / (spsa['A'] + spsa['iter']) ** spsa['alpha']
       c = param['c'] / spsa['iter'] ** spsa['gamma']
       R = a / c ** 2
+      flip = 1 if bool(random.getrandbits(1)) else -1
       result['w_params'].append({
         'name': param['name'],
-        'value': min(max(param['theta'] + c, param['min']), param['max']),
+        'value': min(max(param['theta'] + c * flip, param['min']), param['max']),
         'R': R,
         'c': c,
+        'flip': flip,
       })
       result['b_params'].append({
         'name': param['name'],
-        'value': min(max(param['theta'] - c, param['min']), param['max']),
+        'value': min(max(param['theta'] - c * flip, param['min']), param['max']),
       })
       
     return result
@@ -378,4 +381,5 @@ class RunDb:
     for idx, param in enumerate(spsa['params']):
       R = spsa_results['w_params'][idx]['R']
       c = spsa_results['w_params'][idx]['c']
-      param['theta'] = min(max(param['theta'] + R * c * result, param['min']), param['max'])
+      flip = spsa_results['w_params'][idx]['flip']
+      param['theta'] = min(max(param['theta'] + R * c * result * flip, param['min']), param['max'])
