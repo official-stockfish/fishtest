@@ -165,16 +165,16 @@ Cowardice,150,0,200,10,0.0020"""})['raw_params']}</textarea>
 
 <script type="text/javascript">
 $(function() {
-  var update_sprt = function() {
+  var update_visibility = function() {
+    $('.stop_rule').hide();
     var stop_rule = $('select[name=stop_rule]').val();
-    if (stop_rule != 'numgames') $('.numgames').hide();
-    if (stop_rule != 'sprt') $('.sprt').hide();
-    if (stop_rule != 'spsa') $('.spsa').hide();
-    $('.stop_rule').show();
+    if (stop_rule == 'numgames') $('.numgames').show();
+    if (stop_rule == 'sprt') $('.sprt').show();
+    if (stop_rule == 'spsa') $('.spsa').show();
   };
 
-  update_sprt();
-  $('select[name=stop_rule]').change(update_sprt);
+  update_visibility();
+  $('select[name=stop_rule]').change(update_visibility);
 
   $('#fast_test').click(function() {
     $('input[name=sprt_elo0]').val('-1.5');
