@@ -63,7 +63,7 @@
       </div>
     </div>
   </div>
-  <div class="control-group stop_rule numgames">
+  <div class="control-group stop_rule numgames spsa">
     <label class="control-label">Number of games:</label>
     <div class="controls">
       <input name="num-games" value="${args.get('num_games', 20000)}">
@@ -166,11 +166,11 @@ Cowardice,150,0,200,10,0.0020"""})['raw_params']}</textarea>
 <script type="text/javascript">
 $(function() {
   var update_sprt = function() {
-    $('.stop_rule').show();
     var stop_rule = $('select[name=stop_rule]').val();
     if (stop_rule != 'numgames') $('.numgames').hide();
     if (stop_rule != 'sprt') $('.sprt').hide();
     if (stop_rule != 'spsa') $('.spsa').hide();
+    $('.stop_rule').show();
   };
 
   update_sprt();
