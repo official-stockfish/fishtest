@@ -418,6 +418,10 @@ def format_results(run_results, run):
   # win/loss/draw count
   WLD = [run_results['wins'], run_results['losses'], run_results['draws']]
 
+  if 'spsa' in run['args']:
+    result['info'].append('%d/%d iterations' % (run['args']['spsa']['iter'], run['args']['num_games']))
+    return result
+
   # If the score is 0% or 100% the formulas will crash
   # anyway the statistics are only asymptotic
   if WLD[0] == 0 or WLD[1] == 0:
