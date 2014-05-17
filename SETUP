@@ -1,11 +1,8 @@
 Setting up the server
 
-Install zeromq
-
 sudo pip install pyramid
 sudo pip install waitress
 sudo pip install boto
-sudo pip install pyzmq
 sudo pip install requests
 
 Installing Mongo:
