@@ -1,5 +1,4 @@
 import json, sys
-import spsa 
 import requests
 from pyramid.view import view_config
 

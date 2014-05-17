@@ -15,10 +15,12 @@
 <div class="span8">
   <h4>Details</h4>
 
+	<%! import markupsafe %>
+
   <table class="table table-condensed">
   %for arg in run_args:
     %if len(arg[2]) == 0:
-    <tr><td>${arg[0]}</td><td>${arg[1]}</td></tr>
+		<tr><td>${arg[0]}</td><td>${str(markupsafe.Markup(arg[1])).replace('\n', '<br>') | n}</td></tr>
     %else:
     <tr><td>${arg[0]}</td><td><a href="${arg[2]}" target="_blank">${arg[1]}</a></td></tr>
     %endif
@@ -83,51 +85,6 @@
 
 </div>
 
-%if 'spsa' in run['args']:
-<%
-  active_cnt  = sum([int(len(g['task_id'])  > 0) for g in run['games']])
-  pending_cnt = sum([int(len(g['task_id']) == 0) for g in run['games']])
-  games_per_task = {}
-%>
-<h3>Games - ${active_cnt} active  ${pending_cnt} pending</h3>
-<table class='table table-striped table-condensed'>
- <thead>
-  <tr>
-   <th>Idx</th>
-   <th>Seed</th>
-   <th>White</th>
-   <th>Parameters</th>
-   <th>Result</th>
-  </tr>
- </thead>
- <tbody>
-  %for game in run['games']:
-  <%
-    idx = game['task_id'] if len(game['task_id']) > 0 else 'pending'
-    parameters = ['%s=%s'%(x[0], x[1]) for x in game['params']]
-
-    if idx != 'pending':
-      active_style = 'info'
-    elif len(game['result']) > 0:
-        active_style = 'error'
-    else:
-      active_style = ''
-
-    if 'spsa' in run['args']:
-      games_per_task[str(idx)] = games_per_task.get(str(idx), 0) + 1
-  %>
-  <tr class="${active_style}">
-   <td>${idx}</td>
-   <td>${game['seed']}</td>
-   <td>${game['white']}</td>
-   <td>${',  '.join(parameters)}</td>
-   <td>${game['result']}</td>
-  </tr>
-  %endfor
- </tbody>
-</table>
-%endif
-
 <h3>Tasks</h3>
 <table class='table table-striped table-condensed'>
  <thead>
@@ -136,13 +93,9 @@
    <th>Worker</th>
    <th>Last Updated</th>
    <th>Played</th>
-   %if 'spsa' in run['args']:
-   <th>Playing now</th>
-   %else:
    <th>Wins</th>
    <th>Losses</th>
    <th>Draws</th>
-   %endif
    <th>Crashes</th>
    <th>Time</th>
    <th>Residual</th>
@@ -169,13 +122,9 @@
    <td>${task['worker_key']}</td>
    <td>${str(task.get('last_updated', '-')).split('.')[0]}</td>
    <td>${total} / ${task['num_games']}</td>
-   %if 'spsa' in run['args']:
-   <td>${str(games_per_task.get(str(idx), '-'))}</td>
-   %else:
    <td>${stats.get('wins', '-')}</td>
    <td>${stats.get('losses', '-')}</td>
    <td>${stats.get('draws', '-')}</td>
-   %endif
    <td>${stats.get('crashes', '-')}</td>
    <td>${stats.get('time_losses', '-')}</td>
    <td style="background-color:${task['residual_color']}">${'%.3f' % (task['residual'])}</td>

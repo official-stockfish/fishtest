@@ -183,6 +183,8 @@ def parse_spsa_params(raw, num_games, spsa):
     param['a'] = param['a_end'] * (spsa['A'] + num_games) ** spsa['alpha']
     param['theta'] = param['start']
 
+    params.append(param)
+
   return params
 
 def validate_form(request):
@@ -251,7 +253,7 @@ def validate_form(request):
       'raw_params': request.POST['spsa_raw_params'],
       'iter': 0,
     }
-    data['params'] = parse_spsa_params(request.POST['spsa_raw_params'], data['num_games'], data['spsa'])
+    data['spsa']['params'] = parse_spsa_params(request.POST['spsa_raw_params'], data['num_games'], data['spsa'])
   else:
     data['num_games'] = int(request.POST['num-games'])
     if data['num_games'] <= 0:
@@ -332,7 +334,6 @@ def tests_stop(request):
     return HTTPFound(location=request.route_url('tests'))
 
   request.rundb.stop_run(request.POST['run-id'])
-  request.spsadb.stop_games(request.POST['run-id'])
 
   run = request.rundb.get_run(request.POST['run-id'])
   request.actiondb.stop_run(authenticated_userid(request), run)
@@ -556,7 +557,7 @@ def tests_view(request):
   run = request.rundb.get_run(request.matchdict['id'])
   results = request.rundb.get_results(run)
   run['results_info'] = format_results(results, run)
-  run_args = [('id', run['_id'], '')]
+  run_args = [('id', str(run['_id']), '')]
 
   for name in ['new_tag', 'new_signature', 'new_options', 'resolved_new',
                'base_tag', 'base_signature', 'base_options', 'resolved_base',
@@ -580,7 +581,9 @@ def tests_view(request):
               (value['elo0'], value['alpha'], value['elo1'], value['beta'], value.get('state', '-'))
 
     if name == 'spsa' and value != '-':
-      value = str(value['params'])
+      params = ['param: %s, best: %.2f, start: %.2f, min: %.2f, max: %.2f, c %f, a %f' % \
+                (p['name'], p['theta'], p['start'], p['min'], p['max'], p['c'], p['a']) for p in value['params']]
+      value = 'Iter: %d, A: %d, alpha %f, gamma %f\n%s' % (value['iter'], value['A'], value['alpha'], value['gamma'], '\n'.join(params))
 
     if 'tests_repo' in run['args']:
       if name == 'new_tag':
@@ -590,14 +593,11 @@ def tests_view(request):
       elif name == 'tests_repo' :
         url = value
 
-    run_args.append((name, value, url))
+    run_args.append((name, str(value), url))
 
   for task in run['tasks']:
     last_updated = task.get('last_updated', datetime.datetime.min)
     task['last_updated'] = delta_date(last_updated)
-
-  if 'spsa' in run['args']:
-    run['games'] = [g for g in request.spsadb.get_games(run['_id'])]
 
   return { 'run': run, 'run_args': run_args, 'chi2': calculate_residuals(run)}
 

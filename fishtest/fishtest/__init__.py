@@ -1,4 +1,4 @@
-import os, sys, zmq
+import os, sys
 from pyramid.authentication import AuthTktAuthenticationPolicy
 from pyramid.authorization import ACLAuthorizationPolicy
 from pyramid.config import Configurator
@@ -22,8 +22,6 @@ def main(global_config, **settings):
     return request.userdb.get_user_groups(username)
   config.set_authentication_policy(AuthTktAuthenticationPolicy(secret, callback=groupfinder, hashalg='sha512'))
   config.set_authorization_policy(ACLAuthorizationPolicy())
-
-  context = zmq.Context()
 
   rundb = RunDb()
   def add_rundb(event):
