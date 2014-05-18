@@ -162,7 +162,7 @@ def get_sha(branch, repo_url):
   else:
     return '', ''
 
-def parse_spsa_params(raw, num_games, spsa):
+def parse_spsa_params(raw, spsa):
   params = []
   for line in raw.split('\n'):
     chunks = line.strip().split(',')
@@ -178,9 +178,9 @@ def parse_spsa_params(raw, num_games, spsa):
       'c_end': float(chunks[4]),
       'r_end': float(chunks[5]),
     }
-    param['c'] = param['c_end'] * num_games ** spsa['gamma']
+    param['c'] = param['c_end'] * spsa['num_iter'] ** spsa['gamma']
     param['a_end'] = param['r_end'] * param['c_end'] ** 2
-    param['a'] = param['a_end'] * (spsa['A'] + num_games) ** spsa['alpha']
+    param['a'] = param['a_end'] * (spsa['A'] + spsa['num_iter']) ** spsa['alpha']
     param['theta'] = param['start']
 
     params.append(param)
@@ -252,8 +252,9 @@ def validate_form(request):
       'gamma': float(request.POST['spsa_gamma']),
       'raw_params': request.POST['spsa_raw_params'],
       'iter': 0,
+      'num_iter': data['num_games'],
     }
-    data['spsa']['params'] = parse_spsa_params(request.POST['spsa_raw_params'], data['num_games'], data['spsa'])
+    data['spsa']['params'] = parse_spsa_params(request.POST['spsa_raw_params'], data['spsa'])
   else:
     data['num_games'] = int(request.POST['num-games'])
     if data['num_games'] <= 0:
