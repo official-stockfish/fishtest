@@ -420,7 +420,8 @@ def format_results(run_results, run):
   WLD = [run_results['wins'], run_results['losses'], run_results['draws']]
 
   if 'spsa' in run['args']:
-    result['info'].append('%d/%d iterations' % (run['args']['spsa']['iter'], run['args']['num_games']))
+    result['info'].append('%d/%d iterations' % (run['args']['spsa']['iter'], run['args']['spsa']['num_iter']))
+    result['info'].append('%d/%d games played' % (WLD[0] + WLD[1] + WLD[2], run['args']['num_games']))
     return result
 
   # If the score is 0% or 100% the formulas will crash
