@@ -75,12 +75,14 @@
 
   <hr>
 
+  %if 'spsa' not in run['args']:
   <h4>Stats</h4>
   <table class="table table-condensed">
     <tr><td>chi^2</td><td>${'%.2f' % (chi2['chi2'])}</td></tr>
     <tr><td>dof</td><td>${chi2['dof']}</td></tr>
     <tr><td>p-value</td><td>${'%.2f' % (chi2['p'] * 100)}%</td></tr>
   </table>
+	%endif
 </div>
 
 </div>
@@ -98,7 +100,10 @@
    <th>Draws</th>
    <th>Crashes</th>
    <th>Time</th>
+
+   %if 'spsa' not in run['args']:
    <th>Residual</th>
+	 %endif
   </tr>
  </thead>
  <tbody>
@@ -127,7 +132,10 @@
    <td>${stats.get('draws', '-')}</td>
    <td>${stats.get('crashes', '-')}</td>
    <td>${stats.get('time_losses', '-')}</td>
+
+   %if 'spsa' not in run['args']:
    <td style="background-color:${task['residual_color']}">${'%.3f' % (task['residual'])}</td>
+	 %endif
   </tr>
   %endfor
  </tbody>
