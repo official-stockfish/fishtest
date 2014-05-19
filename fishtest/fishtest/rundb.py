@@ -376,6 +376,7 @@ class RunDb:
 
   def update_spsa(self, run, spsa_results):
     spsa = run['args']['spsa']
+    spsa['iter'] += int(spsa_results['num_games'] / 2) - 1
     result = spsa_results['wins'] - spsa_results['losses']
     for idx, param in enumerate(spsa['params']):
       R = spsa_results['w_params'][idx]['R']
