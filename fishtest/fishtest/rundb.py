@@ -376,10 +376,19 @@ class RunDb:
 
   def update_spsa(self, run, spsa_results):
     spsa = run['args']['spsa']
+
     spsa['iter'] += int(spsa_results['num_games'] / 2) - 1
+
+    # Update the current theta based on the results from the worker
+    # Worker wins/losses are always in terms of w_params
     result = spsa_results['wins'] - spsa_results['losses']
     for idx, param in enumerate(spsa['params']):
       R = spsa_results['w_params'][idx]['R']
       c = spsa_results['w_params'][idx]['c']
       flip = spsa_results['w_params'][idx]['flip']
       param['theta'] = min(max(param['theta'] + R * c * result * flip, param['min']), param['max'])
+
+    # Every 100 iterations, record the parameters
+    param_history = spsa.get('param_history', [])
+    if len(param_history) < spsa['iter'] / 100:
+      param_history.append(list(spsa['params']))

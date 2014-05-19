@@ -553,6 +553,16 @@ def calculate_residuals(run):
 
   return chi2
 
+@view_config(route_name='tests_view_spsa_history', renderer='json'):
+def tests_view_spsa_history(request):
+  run = request.rundb.get_run(request.matchdict['id'])
+  if 'spsa' not in run['args']:
+    return {}
+
+  spsa = run['args']['spsa']
+  params_history = spsa.get('params_history', [])
+  return {'params_history': params_history}
+
 @view_config(route_name='tests_view', renderer='tests_view.mak')
 def tests_view(request):
   run = request.rundb.get_run(request.matchdict['id'])

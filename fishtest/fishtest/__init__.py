@@ -42,6 +42,7 @@ def main(global_config, **settings):
   config.add_route('tests_run', '/tests/run')
   config.add_route('tests_modify', '/tests/modify')
   config.add_route('tests_view', '/tests/view/{id}')
+  config.add_route('tests_view_spsa_history', '/tests/view/{id}/spsa_history')
   config.add_route('tests_delete', '/tests/delete')
   config.add_route('tests_stop', '/tests/stop')
   config.add_route('tests_approve', '/tests/approve')
