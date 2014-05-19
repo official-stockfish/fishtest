@@ -371,7 +371,8 @@ def tests_purge(request):
   for task in run['tasks']:
     if task['residual'] > 2.7:
       run['bad_tasks'].append(task)
-      del task['stats']
+      if 'stats' in task:
+        del task['stats']
       del task['worker_key']
 
   if len(run['bad_tasks']) == 0:
