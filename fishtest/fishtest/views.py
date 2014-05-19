@@ -252,7 +252,7 @@ def validate_form(request):
       'gamma': float(request.POST['spsa_gamma']),
       'raw_params': request.POST['spsa_raw_params'],
       'iter': 0,
-      'num_iter': data['num_games'],
+      'num_iter': int(data['num_games'] / 2),
     }
     data['spsa']['params'] = parse_spsa_params(request.POST['spsa_raw_params'], data['spsa'])
   else:
