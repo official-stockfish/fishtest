@@ -382,13 +382,20 @@ class RunDb:
     # Update the current theta based on the results from the worker
     # Worker wins/losses are always in terms of w_params
     result = spsa_results['wins'] - spsa_results['losses']
+    summary = []
     for idx, param in enumerate(spsa['params']):
       R = spsa_results['w_params'][idx]['R']
       c = spsa_results['w_params'][idx]['c']
       flip = spsa_results['w_params'][idx]['flip']
       param['theta'] = min(max(param['theta'] + R * c * result * flip, param['min']), param['max'])
+      summary.append({
+        'theta': param['theta'],
+        'R': R,
+        'c': c,
+      })
 
     # Every 100 iterations, record the parameters
-    param_history = spsa.get('param_history', [])
-    if len(param_history) < spsa['iter'] / 100:
-      param_history.append(list(spsa['params']))
+    if 'param_history' not in spsa:
+      spsa['param_history'] = []
+    if len(spsa['param_history']) < spsa['iter'] / 100:
+      spsa['param_history'].append(summary)
