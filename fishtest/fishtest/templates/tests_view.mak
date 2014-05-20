@@ -10,7 +10,7 @@
 
 <script>
 (function (w) {
-  var spsa_history, spsa_params, i, j, chart, data, googleformat, param_columns;
+  var spsa_history, spsa_params, i, j, chart, data, googleformat, param_columns, visible_line;
   var columns = [];
   var series = {};
 
@@ -68,13 +68,21 @@
             }
           };
           // grey out the legend entry
-          options.colors = chartcolors.slice(0);
-          options.colors[col - 1] = '#CCCCCC';
+          visible_line[col - 1] = false;
         } else {
           // show the data series
           columns[col] = col;
-          options.colors = chartcolors.slice(0);
+          visible_line[col - 1] = true;
         }
+
+        options.colors = chartcolors.slice(0);
+
+        for (i = 0; i < columns.length; i++) {
+          if (visible_line[i] == false) {
+            options.colors[i] = '#CCCCCC';
+          }
+        }
+
         var view = new google.visualization.DataView(data);
         view.setColumns(columns);
         chart.draw(view, options);
@@ -88,9 +96,11 @@
 
       googleformat = [];
       param_columns = [''];
+      visible_line = [];
 
       for (i = 0; i < spsa_params.length; i++) {
         param_columns.push(spsa_params[i].name);
+        visible_line.push(true);
       }
       googleformat.push(param_columns);
 
