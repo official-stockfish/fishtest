@@ -111,6 +111,7 @@
         googleformat.push(d);
       }
 
+      drawChart();
     });
   });
 })(window);
