@@ -2,12 +2,8 @@
 
 <%namespace name="base" file="base.mak"/>
 
-<!--FIXME: add if condition to avoid running the following scripts if this test is not spsa -->
-
-<!--FIXME: don't run this script to make a plot if spsa test is not approved or started -->
-
+%if 'spsa' in run['args']:
 <script type="text/javascript" src="https://www.google.com/jsapi"></script>
-
 <script>
 (function (w) {
   var spsa_history, spsa_params, i, j, chart, data, googleformat, param_columns, visible_line;
@@ -119,6 +115,7 @@
   });
 })(window);
 </script>
+%endif
 
 <h3>${run['args']['new_tag']} vs ${run['args']['base_tag']} ${base.diff_url(run)}</h3>
 
@@ -207,12 +204,9 @@
 
 </div>
 
-
-<!--FIXME: add if condition around this div to avoid creating it if this test is not spsa -->
-
+%if 'spsa' in run['args']:
 <div id="div_spsa_history_plot"></div>
-
-<!-- -->
+%endif
 
 <h3>Tasks</h3>
 <table class='table table-striped table-condensed'>
