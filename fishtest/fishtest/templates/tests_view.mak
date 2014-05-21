@@ -29,7 +29,6 @@
   };
 
   google.load('visualization', '1.0', {'packages': ['corechart']});
-  google.setOnLoadCallback(drawChart);
 
   function drawChart() {
     if (!spsa_history || spsa_history.length < 1) return;
