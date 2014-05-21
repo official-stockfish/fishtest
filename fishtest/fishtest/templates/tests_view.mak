@@ -27,12 +27,14 @@
 
   $(document).ready(function(){
 
+    $("#div_spsa_preload").fadeIn();
+
     //load google library
     google.load('visualization', '1.0', {packages:['corechart'], callback: function() {
 
       //request data for chart
       $.getJSON('${run_args[0][1]}/spsa_history', function (data) {
-
+        
         var spsa_params = data.params;
         var spsa_history = data.param_history;
 
@@ -61,7 +63,7 @@
         for (var i = 0; i < chart_data.getNumberOfColumns(); i++) {
           columns.push(i);
         }
-
+        
         //show/hide functionality
         google.visualization.events.addListener(chart_object, 'select', function(e) {
           
@@ -101,7 +103,28 @@
           }
         });
 
+      }).fail(function(xhr, status, error) {
+        var msg;
+        if (xhr.status === 0) {
+            msg = 'No connection. Verify Network.';
+        } else if (xhr.status == 404) {
+            msg = '<b>HTTP 404</b>  Requested page for chart data not found.';
+        } else if (xhr.status == 500) {
+            msg = '<b>HTTP 500</b> Internal Server Error. Failed to retrieve chart data.';
+        } else if (exception === 'parsererror') {
+            msg = 'Failed to parse JSON.';
+        } else if (exception === 'timeout') {
+            msg = 'Time out error.';
+        } else if (exception === 'abort') {
+            msg = 'Request aborted.';
+        } else {
+            msg = '<b>Uncaught Error</b> ' + xhr.responseText;
+        }
+        $("#div_spsa_error").html(msg).show();
+      }).always(function() { //after request is complete
+        $("#div_spsa_preload").hide();
       });
+
     }});
   });
 
@@ -197,6 +220,11 @@
 </div>
 
 %if 'spsa' in run['args']:
+<div id="div_spsa_preload" style="background-image:url('/img/preload.gif'); width: 256px; height: 32px; display: none;">
+<div style="height: 100%; width: 100%; text-align:center; padding-top: 5px;">
+Loading graph...
+</div></div>
+<div id="div_spsa_error" style="display: none; border: 1px solid red; color: red; width: 400px; "></div>
 <div id="div_spsa_history_plot"></div>
 %endif
 
