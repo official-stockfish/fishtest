@@ -5,14 +5,11 @@
 %if 'spsa' in run['args']:
 <script type="text/javascript" src="https://www.google.com/jsapi"></script>
 <script>
-(function (w) {
-  var spsa_history, spsa_params, i, j, chart, data, googleformat, param_columns, visible_line;
-  var columns = [];
-  var series = {};
+(function () {
 
-  var chartcolors = ["#3366cc", "#dc3912", "#ff9900", "#109618", "#990099", "#0099c6", "#dd4477", "#66aa00", "#b82e2e", "#316395", "#994499", "#22aa99", "#aaaa11", "#6633cc", "#e67300", "#8b0707", "#651067", "#329262", "#5574a6", "#3b3eac", "#b77322", "#16d620", "#b91383", "#f4359e", "#9c5935", "#a9c413", "#2a778d", "#668d1c", "#bea413", "#0c5922", "#743411"];
+  var chart_colors = ["#3366cc", "#dc3912", "#ff9900", "#109618", "#990099", "#0099c6", "#dd4477", "#66aa00", "#b82e2e", "#316395", "#994499", "#22aa99", "#aaaa11", "#6633cc", "#e67300", "#8b0707", "#651067", "#329262", "#5574a6", "#3b3eac", "#b77322", "#16d620", "#b91383", "#f4359e", "#9c5935", "#a9c413", "#2a778d", "#668d1c", "#bea413", "#0c5922", "#743411"];
 
-  var options = {
+  var chart_options = {
     'curveType': 'function',
     'chartArea': {
       'width': '800',
@@ -25,94 +22,89 @@
     'legend': {
       'position': 'right'
     },
-    'colors': chartcolors.slice(0)
+    'colors': chart_colors.slice(0)
   };
 
-  google.load('visualization', '1.0', {'packages': ['corechart']});
+  $(document).ready(function(){
 
-  function drawChart() {
-    if (!spsa_history || spsa_history.length < 1) return;
+    //load google library
+    google.load('visualization', '1.0', {packages:['corechart'], callback: function() {
 
-    data = google.visualization.arrayToDataTable(googleformat);
+      //request data for chart
+      $.getJSON('${run_args[0][1]}/spsa_history', function (data) {
 
-    for (var i = 0; i < data.getNumberOfColumns(); i++) {
-      columns.push(i);
-      if (i > 0) {
-        series[i - 1] = {};
-      }
-    }
+        var spsa_params = data.params;
+        var spsa_history = data.param_history;
 
-    chart = new google.visualization.LineChart(document.getElementById('div_spsa_history_plot'));
-    google.visualization.events.addListener(chart, 'select', selectHandler);
+        if (!spsa_history || spsa_history.length < 1) return;
 
-    chart.draw(data, options);
-  }
+        var i, j, googleformat = [], param_columns = [''], visible_line = [], columns = [];
 
-  function selectHandler(e) {
-    var sel = chart.getSelection();
-    if (sel.length > 0) {
-      if (sel[0].row == null) {
-        var col = sel[0].column;
-        if (columns[col] == col) {
-          // hide the data series
-          columns[col] = {
-            label: data.getColumnLabel(col),
-            type: data.getColumnType(col),
-            calc: function () {
-              return null;
-            }
-          };
-          // grey out the legend entry
-          visible_line[col - 1] = false;
-        } else {
-          // show the data series
-          columns[col] = col;
-          visible_line[col - 1] = true;
+        for (i = 0; i < spsa_params.length; i++) {
+          param_columns.push(spsa_params[i].name);
+          visible_line.push(true);
         }
-
-        options.colors = chartcolors.slice(0);
-
-        for (i = 0; i < columns.length; i++) {
-          if (visible_line[i] == false) {
-            options.colors[i] = '#CCCCCC';
+        googleformat.push(param_columns);
+        for (i = 0; i < spsa_history.length; i++) {
+          var d = [i];
+          for (j = 0; j < spsa_params.length; j++) {
+            d.push(spsa_history[i][j].theta);
           }
+          googleformat.push(d);
         }
 
-        var view = new google.visualization.DataView(data);
-        view.setColumns(columns);
-        chart.draw(view, options);
-      }
-    }
-  }
+        var chart_data = google.visualization.arrayToDataTable(googleformat);
+        var chart_object = new google.visualization.LineChart(document.getElementById('div_spsa_history_plot'));
+        
+        chart_object.draw(chart_data, chart_options);
 
-  $(w).ready(function () {
-    $.get('${run_args[0][1]}/spsa_history', function (d) {
-      spsa_params = d.params;
-
-      googleformat = [];
-      param_columns = [''];
-      visible_line = [];
-
-      for (i = 0; i < spsa_params.length; i++) {
-        param_columns.push(spsa_params[i].name);
-        visible_line.push(true);
-      }
-      googleformat.push(param_columns);
-
-      spsa_history = d.param_history;
-      if (!spsa_history || spsa_history.length < 1) return;
-
-      for (i = 0; i < spsa_history.length; i++) {
-        var d = [i];
-        for (j = 0; j < spsa_params.length; j++) {
-          d.push(spsa_history[i][j].theta);
+        for (var i = 0; i < chart_data.getNumberOfColumns(); i++) {
+          columns.push(i);
         }
-        googleformat.push(d);
-      }
 
-      drawChart();
-    });
+        //show/hide functionality
+        google.visualization.events.addListener(chart_object, 'select', function(e) {
+          
+          var sel = chart_object.getSelection();
+          if (sel.length > 0) {
+            if (sel[0].row == null) {
+              var col = sel[0].column;
+              if (columns[col] == col) {
+                // hide the data series
+                columns[col] = {
+                  label: chart_data.getColumnLabel(col),
+                  type: chart_data.getColumnType(col),
+                  calc: function () {
+                    return null;
+                  }
+                };
+                // grey out the legend entry
+                visible_line[col - 1] = false;
+              } else {
+                // show the data series
+                columns[col] = col;
+                visible_line[col - 1] = true;
+              }
+
+              chart_options.colors = chart_colors.slice(0);
+
+              for (i = 0; i < columns.length; i++) {
+                if (visible_line[i] == false) {
+                  chart_options.colors[i] = '#CCCCCC';
+                }
+              }
+
+              var view = new google.visualization.DataView(chart_data);
+              view.setColumns(columns);
+              chart_object.draw(view, chart_options);
+            }
+          }
+        });
+
+      });
+    }});
   });
+
 })(window);
 </script>
 %endif
