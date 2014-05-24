@@ -122,6 +122,17 @@ def upload_files(payload, binaries_dir):
     k.key = os.path.join('binaries', name)
     k.set_contents_from_filename(os.path.join(binaries_dir, name))
 
+def retry_build_ready(remote, payload, retries):
+  if retries == 0:
+    requests.post(remote + '/api/build_ready', data=json.dumps(payload))
+    return
+
+  try:
+    requests.post(remote + '/api/build_ready', data=json.dumps(payload))
+  except:
+    time.sleep(5)
+    retry_build_ready(remote, payload, retries-1)
+
 def main():
   parser = OptionParser()
   parser.add_option('-n', '--host', dest='host', default='tests.stockfishchess.org')
@@ -155,7 +166,6 @@ def main():
 
   while True:
     try:
-      print 'Fetching build...'
       run = requests.post(remote + '/api/request_build', data=json.dumps(payload)).json()
 
       if 'args' in run:
@@ -178,7 +188,7 @@ def main():
         shutil.rmtree(binaries_dir)
         
         payload['run_id'] = run['run_id']
-        requests.post(remote + '/api/build_ready', data=json.dumps(payload))
+        retry_build_ready(remote, payload, 10)
         continue
 
     except:
