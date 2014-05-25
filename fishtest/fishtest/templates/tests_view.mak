@@ -4,132 +4,11 @@
 
 %if 'spsa' in run['args']:
 <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+<script type="text/javascript" src="/js/gkr.js"></script>
 <script>
-(function () {
-
-  var chart_colors = ["#3366cc", "#dc3912", "#ff9900", "#109618", "#990099", "#0099c6", "#dd4477", "#66aa00", "#b82e2e", "#316395", "#994499", "#22aa99", "#aaaa11", "#6633cc", "#e67300", "#8b0707", "#651067", "#329262", "#5574a6", "#3b3eac", "#b77322", "#16d620", "#b91383", "#f4359e", "#9c5935", "#a9c413", "#2a778d", "#668d1c", "#bea413", "#0c5922", "#743411"];
-
-  var chart_options = {
-    'curveType': 'function',
-    'chartArea': {
-      'width': '800',
-      'height': '450',
-      'left': 40,
-      'top': 20
-    },
-    'width': 1000,
-    'height': 500,
-    'legend': {
-      'position': 'right'
-    },
-    'colors': chart_colors.slice(0)
-  };
-
-  $(document).ready(function(){
-
-    $("#div_spsa_preload").fadeIn();
-
-    //load google library
-    google.load('visualization', '1.0', {packages:['corechart'], callback: function() {
-
-      //request data for chart
-      $.getJSON('${run_args[0][1]}/spsa_history', function (data) {
-        
-        var spsa_params = data.params;
-        var spsa_history = data.param_history;
-
-        if (!spsa_history || spsa_history.length < 1) return;
-
-        var i, j, googleformat = [], param_columns = [''], visible_line = [], columns = [];
-
-        for (i = 0; i < spsa_params.length; i++) {
-          param_columns.push(spsa_params[i].name);
-          visible_line.push(true);
-        }
-        googleformat.push(param_columns);
-        for (i = 0; i < spsa_history.length; i++) {
-          var d = [i];
-          for (j = 0; j < spsa_params.length; j++) {
-            d.push(spsa_history[i][j].theta);
-          }
-          googleformat.push(d);
-        }
-
-        var chart_data = google.visualization.arrayToDataTable(googleformat);
-        var chart_object = new google.visualization.LineChart(document.getElementById('div_spsa_history_plot'));
-        
-        chart_object.draw(chart_data, chart_options);
-
-        for (var i = 0; i < chart_data.getNumberOfColumns(); i++) {
-          columns.push(i);
-        }
-        
-        //show/hide functionality
-        google.visualization.events.addListener(chart_object, 'select', function(e) {
-          
-          var sel = chart_object.getSelection();
-          if (sel.length > 0) {
-            if (sel[0].row == null) {
-              var col = sel[0].column;
-              if (columns[col] == col) {
-                // hide the data series
-                columns[col] = {
-                  label: chart_data.getColumnLabel(col),
-                  type: chart_data.getColumnType(col),
-                  calc: function () {
-                    return null;
-                  }
-                };
-                // grey out the legend entry
-                visible_line[col - 1] = false;
-              } else {
-                // show the data series
-                columns[col] = col;
-                visible_line[col - 1] = true;
-              }
-
-              chart_options.colors = chart_colors.slice(0);
-
-              for (i = 0; i < columns.length; i++) {
-                if (visible_line[i] == false) {
-                  chart_options.colors[i] = '#CCCCCC';
-                }
-              }
-
-              var view = new google.visualization.DataView(chart_data);
-              view.setColumns(columns);
-              chart_object.draw(view, chart_options);
-            }
-          }
-        });
-
-      }).fail(function(xhr, status, error) {
-        var msg;
-        if (xhr.status === 0) {
-            msg = 'No connection. Verify Network.';
-        } else if (xhr.status == 404) {
-            msg = '<b>HTTP 404</b>  Requested page for chart data not found.';
-        } else if (xhr.status == 500) {
-            msg = '<b>HTTP 500</b> Internal Server Error. Failed to retrieve chart data.';
-        } else if (exception === 'parsererror') {
-            msg = 'Failed to parse JSON.';
-        } else if (exception === 'timeout') {
-            msg = 'Time out error.';
-        } else if (exception === 'abort') {
-            msg = 'Request aborted.';
-        } else {
-            msg = '<b>Uncaught Error</b> ' + xhr.responseText;
-        }
-        $("#div_spsa_error").html(msg).show();
-      }).always(function() { //after request is complete
-        $("#div_spsa_preload").hide();
-      });
-
-    }});
-  });
-
-})(window);
+var spsa_history_url = '${run_args[0][1]}/spsa_history';
 </script>
+<script type="text/javascript" src="/js/spsa.js"></script>
 %endif
 
 <h3>${run['args']['new_tag']} vs ${run['args']['base_tag']} ${base.diff_url(run)}</h3>
@@ -225,6 +104,18 @@
 Loading graph...
 </div></div>
 <div id="div_spsa_error" style="display: none; border: 1px solid red; color: red; width: 400px; "></div>
+<div id="chart_toolbar" style="display: none;">
+Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smooth_plus" class="btn">&nbsp;&nbsp;&nbsp;+&nbsp;&nbsp;&nbsp;</button>
+<button id="btn_smooth_minus" class="btn">&nbsp;&nbsp;&nbsp;−&nbsp;&nbsp;&nbsp;</button>
+</div>
+<div class="btn-group">
+<button id="btn_view_individual" type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+    View Indiviual Parameter<span class="caret"></span>
+  </button>
+  <ul class="dropdown-menu" role="menu" id="dropdown_individual"></ul>
+</div>
+<button id="btn_view_all" class="btn">View All</button>
+</div>
 <div id="div_spsa_history_plot"></div>
 %endif
 
