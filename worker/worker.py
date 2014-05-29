@@ -51,7 +51,7 @@ def worker(worker_info, password, remote):
   }
 
   try:
-    req = requests.post(remote + '/api/request_version', data=json.dumps(payload))
+    req = requests.post(remote + '/api/request_version', data=json.dumps(payload), headers={'Content-type': 'application/json'})
     req = json.loads(req.text)
 
     if 'version' not in req:
@@ -63,7 +63,7 @@ def worker(worker_info, password, remote):
       print 'Updating worker version to %d' % (req['version'])
       update()
 
-    req = requests.post(remote + '/api/request_task', data=json.dumps(payload))
+    req = requests.post(remote + '/api/request_task', data=json.dumps(payload), headers={'Content-type': 'application/json'})
     req = json.loads(req.text)
   except:
     sys.stderr.write('Exception accessing host:\n')
@@ -95,7 +95,7 @@ def worker(worker_info, password, remote):
       'task_id': task_id
     }
     try:
-      requests.post(remote + '/api/failed_task', data=json.dumps(payload))
+      requests.post(remote + '/api/failed_task', data=json.dumps(payload), headers={'Content-type': 'application/json'})
     except:
       pass
     sys.stderr.write('Task exited\n')

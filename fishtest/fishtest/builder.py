@@ -124,11 +124,11 @@ def upload_files(payload, binaries_dir):
 
 def retry_build_ready(remote, payload, retries):
   if retries == 0:
-    requests.post(remote + '/api/build_ready', data=json.dumps(payload))
+    requests.post(remote + '/api/build_ready', data=json.dumps(payload), headers={'Content-type': 'application/json'})
     return
 
   try:
-    requests.post(remote + '/api/build_ready', data=json.dumps(payload))
+    requests.post(remote + '/api/build_ready', data=json.dumps(payload), headers={'Content-type': 'application/json'})
   except:
     time.sleep(5)
     retry_build_ready(remote, payload, retries-1)
@@ -166,7 +166,7 @@ def main():
 
   while True:
     try:
-      run = requests.post(remote + '/api/request_build', data=json.dumps(payload)).json()
+      run = requests.post(remote + '/api/request_build', data=json.dumps(payload), headers={'Content-type': 'application/json'}).json()
 
       if 'args' in run:
         binaries_dir = tempfile.mkdtemp()
@@ -181,7 +181,7 @@ def main():
               'password': payload['password'],
               'run_id': run['run_id'],
             }
-            requests.post(remote + '/api/stop_run', data=json.dumps(failed_payload))
+            requests.post(remote + '/api/stop_run', data=json.dumps(failed_payload), headers={'Content-type': 'application/json'})
             raise e
 
         upload_files(payload, binaries_dir)

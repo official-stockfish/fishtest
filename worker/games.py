@@ -80,7 +80,7 @@ def verify_signature(engine, signature, remote, payload, concurrency):
     if int(bench_sig) != int(signature):
       message = 'Wrong bench in %s Expected: %s Got: %s' % (os.path.basename(engine), signature, bench_sig)
       payload['message'] = message
-      requests.post(remote + '/api/stop_run', data=json.dumps(payload))
+      requests.post(remote + '/api/stop_run', data=json.dumps(payload), headers={'Content-type': 'application/json'})
       raise Exception(message)
 
   finally:
@@ -246,7 +246,7 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
         spsa['draws'] = wld[2]
 
       try:
-        req = requests.post(remote + '/api/update_task', data=json.dumps(result)).json()
+        req = requests.post(remote + '/api/update_task', data=json.dumps(result), headers={'Content-type': 'application/json'}).json()
         failed_updates = 0
 
         if not req['task_alive']:
@@ -276,7 +276,7 @@ def launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, tc_limit):
 
   if spsa_tuning:
     # Request parameters for next game
-    req = requests.post(remote + '/api/request_spsa', data=json.dumps(result)).json()
+    req = requests.post(remote + '/api/request_spsa', data=json.dumps(result), headers={'Content-type': 'application/json'}).json()
 
     spsa['w_params'] = req['w_params']
     spsa['b_params'] = req['b_params']
