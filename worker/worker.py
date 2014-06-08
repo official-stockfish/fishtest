@@ -76,6 +76,7 @@ def worker(worker_info, password, remote):
 
   # No tasks ready for us yet, just wait...
   if 'task_waiting' in req:
+    print 'No tasks available at this time, waiting...'
     time.sleep(10)
     return
 
