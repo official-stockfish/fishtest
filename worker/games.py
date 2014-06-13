@@ -220,6 +220,7 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
 
     # Have we reached the end of the match?  Then just exit
     if 'Finished match' in line:
+      kill_process(p)
       break
 
     # Parse line like this:
@@ -294,7 +295,7 @@ def launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, tc_limit):
 
   try:
     req = run_game(p, remote, result, spsa, spsa_tuning, tc_limit)
-    p.wait()
+    p.communicate()
 
     if p.returncode != 0:
       raise Exception('Non-zero return code: %d' % (p.returncode))
@@ -302,7 +303,7 @@ def launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, tc_limit):
     traceback.print_exc(file=sys.stderr)
     try:
       kill_process(p)
-      p.wait()
+      p.communicate()
     except:
       pass
 
