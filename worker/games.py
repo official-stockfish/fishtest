@@ -294,20 +294,15 @@ def launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, tc_limit):
   p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True, bufsize=1, close_fds=not IS_WINDOWS)
 
   try:
-    req = run_game(p, remote, result, spsa, spsa_tuning, tc_limit)
-    p.communicate()
-
-    if p.returncode != 0:
-      raise Exception('Non-zero return code: %d' % (p.returncode))
+    return run_game(p, remote, result, spsa, spsa_tuning, tc_limit)
   except:
     traceback.print_exc(file=sys.stderr)
     try:
       kill_process(p)
-      p.communicate()
     except:
       pass
 
-  return req
+  return { 'task_alive': False }
 
 def run_games(worker_info, password, remote, run, task_id):
   task = run['tasks'][task_id]
