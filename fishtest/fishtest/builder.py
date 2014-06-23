@@ -180,6 +180,7 @@ def main():
               'username': worker_info['username'],
               'password': payload['password'],
               'run_id': run['run_id'],
+              'message': 'Compile error',
             }
             requests.post(remote + '/api/stop_run', data=json.dumps(failed_payload), headers={'Content-type': 'application/json'})
             raise e
