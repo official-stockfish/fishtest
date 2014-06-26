@@ -48,7 +48,7 @@ var spsa_history_url = '${run_args[0][1]}/spsa_history';
   </form>
 %if not run.get('approved', False):
   <span>
-    <a href="https://github.com/mcostalba/Stockfish/compare/master...${run['args']['resolved_base'][:7]}" target="_blank">Master diff</a>
+    <a href="https://github.com/official-stockfish/Stockfish/compare/master...${run['args']['resolved_base'][:7]}" target="_blank">Master diff</a>
     <form action="/tests/approve" method="POST" style="display:inline">
       <input type="hidden" name="run-id" value="${run['_id']}">
       <button type="submit" class="btn btn-success">
