@@ -4,6 +4,9 @@
 
 <form class="form-horizontal" action="${request.url}" method="POST">
   <legend>Create New Test</legend>
+  Please read the <a href="https://github.com/glinscott/fishtest/wiki/Creating-my-first-test">Testing Guidelines</a> before
+  creating your test.
+
   <div class="control-group">
     <label class="control-label">Test type:</label>
     <div class="controls">
