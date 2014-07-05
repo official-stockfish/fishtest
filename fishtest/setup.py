@@ -8,6 +8,7 @@ CHANGES = ''
 requires = [
     'pyramid',
     'pyramid_debugtoolbar',
+    'pyramid_mako',
     'waitress',
     'pymongo',
     'numpy<1.16',
