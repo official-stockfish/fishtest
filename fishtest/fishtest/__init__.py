@@ -15,6 +15,8 @@ def main(global_config, **settings):
                         session_factory=session_factory,
                         root_factory='fishtest.models.RootFactory')
 
+  config.include('pyramid_mako')
+
   # Authentication
   with open(os.path.expanduser('~/fishtest.secret'), 'r') as f:
     secret = f.read()
