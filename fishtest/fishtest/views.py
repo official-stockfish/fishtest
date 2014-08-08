@@ -306,6 +306,10 @@ def tests_modify(request):
       request.session.flash('Unable to modify another users run!')
       return HTTPFound(location=request.route_url('tests'))
 
+    if not ('sprt' in run['args'] or 'spsa' in run['args']):
+      request.session.flash('Unable to modify number of games in a fixed game test!')
+      return HTTPFound(location=request.route_url('tests'))
+
     existing_games = 0
     for chunk in run['tasks']:
       existing_games += chunk['num_games']
