@@ -49,4 +49,4 @@ sudo /sbin/service iptables save
 Setting up fishtest:
 
 cd ~/fishtest/fishtest
-sudo python install.py develop 
+sudo python setup.py develop 
