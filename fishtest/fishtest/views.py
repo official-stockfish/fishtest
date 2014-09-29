@@ -606,7 +606,11 @@ def tests_view(request):
       elif name == 'tests_repo' :
         url = value
 
-    run_args.append((name, value.encode('ascii', 'replace'), url))
+    try:
+      strval = str(value)
+    except:
+      strval = value.encode('ascii', 'replace')
+    run_args.append((name, strval, url))
 
   for task in run['tasks']:
     last_updated = task.get('last_updated', datetime.datetime.min)
