@@ -688,7 +688,8 @@ def tests(request):
     if state == 'finished':
       run['finished'] = True
       request.rundb.runs.save(run)
-      post_result(run)
+      if not purge_run(request.rundb, run):
+        post_result(run)
 
     runs[state].append(run)
 
