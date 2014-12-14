@@ -359,6 +359,36 @@ def tests_approve(request):
   request.session.flash('Approved run')
   return HTTPFound(location=request.route_url('tests'))
 
+def purge_run(rundb, run):
+  # Remove bad runs
+  purged = False
+  calculate_residuals(run)
+  if 'bad_tasks' not in run:
+    run['bad_tasks'] = []
+  for task in run['tasks']:
+    if task['residual'] > 2.7:
+      purged = True
+      run['bad_tasks'].append(task)
+      if 'stats' in task:
+        del task['stats']
+      del task['worker_key']
+
+  if purged:
+    # Generate new tasks if needed
+    run['results_stale'] = True
+    results = rundb.get_results(run)
+    played_games = results['wins'] + results['losses'] + results['draws']
+    if played_games < run['args']['num_games']:
+      run['tasks'] += rundb.generate_tasks(run['args']['num_games'] - played_games)
+
+    run['finished'] = False
+    if 'sprt' in run['args'] and 'state' in run['args']['sprt']:
+      del run['args']['sprt']['state']
+    
+    rundb.runs.save(run)
+
+  return purged 
+
 @view_config(route_name='tests_purge', permission='approve_run')
 def tests_purge(request):
   username = authenticated_userid(request)
@@ -368,33 +398,11 @@ def tests_purge(request):
     request.session.flash('Can only purge completed run')
     return HTTPFound(location=request.route_url('tests'))
 
-  # Remove bad runs
-  calculate_residuals(run)
-  if 'bad_tasks' not in run:
-    run['bad_tasks'] = []
-  for task in run['tasks']:
-    if task['residual'] > 2.7:
-      run['bad_tasks'].append(task)
-      if 'stats' in task:
-        del task['stats']
-      del task['worker_key']
-
-  if len(run['bad_tasks']) == 0:
+  purged = purge_run(request.rundb, run)
+  if not purged:
     request.session.flash('No bad workers!')
     return HTTPFound(location=request.route_url('tests'))
 
-  # Generate new tasks if needed
-  run['results_stale'] = True
-  results = request.rundb.get_results(run)
-  played_games = results['wins'] + results['losses'] + results['draws']
-  if played_games < run['args']['num_games']:
-    run['tasks'] += request.rundb.generate_tasks(run['args']['num_games'] - played_games)
-
-  run['finished'] = False
-  if 'sprt' in run['args'] and 'state' in run['args']['sprt']:
-    del run['args']['sprt']['state']
-
-  request.rundb.runs.save(run)
   request.actiondb.purge_run(username, run)
 
   request.session.flash('Purged run')

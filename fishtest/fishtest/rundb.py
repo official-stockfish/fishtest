@@ -7,7 +7,7 @@ from pymongo import MongoClient, ASCENDING, DESCENDING
 
 from userdb import UserDb
 from actiondb import ActionDb
-from views import parse_tc
+from views import parse_tc, purge_run
 
 import stat_util
 
@@ -320,6 +320,8 @@ class RunDb:
     if prune_idx < len(run['tasks']):
       del run['tasks'][prune_idx:]
     self.runs.save(run)
+
+    purge_run(self, run)
 
     return {}
 
