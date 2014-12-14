@@ -686,9 +686,9 @@ def tests(request):
         state = 'pending'
 
     if state == 'finished':
-      run['finished'] = True
-      request.rundb.runs.save(run)
       if not purge_run(request.rundb, run):
+        run['finished'] = True
+        request.rundb.runs.save(run)
         post_result(run)
 
     runs[state].append(run)
