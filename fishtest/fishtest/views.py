@@ -538,6 +538,14 @@ def calculate_residuals(run):
       if task['worker_key'] in bad_users:
         continue
       task['residual'] = residuals.get(task['worker_key'], 0.0)
+
+      # Special case crashes or time losses
+      stats = task.get('stats', {})
+      crashes = stats.get('crashes', 0)
+      time_losses = stats.get('time_losses', 0)
+      if crashes > 0 or time_losses > 0:
+        task['residual'] = 8.0
+
       if abs(task['residual']) < 2.0:
         task['residual_color'] = '#44EB44'
       elif abs(task['residual']) < 2.7:
