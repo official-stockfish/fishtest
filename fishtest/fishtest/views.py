@@ -362,11 +362,11 @@ def tests_approve(request):
 def purge_run(rundb, run):
   # Remove bad runs
   purged = False
-  calculate_residuals(run)
+  chi2 = calculate_residuals(run)
   if 'bad_tasks' not in run:
     run['bad_tasks'] = []
   for task in run['tasks']:
-    if task['residual'] > 2.7:
+    if task['residual'] > 7.0 or (task['residual'] > 2.7 and chi2['p'] < 0.05):
       purged = True
       run['bad_tasks'].append(task)
       if 'stats' in task:
