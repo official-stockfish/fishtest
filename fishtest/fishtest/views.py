@@ -366,7 +366,7 @@ def purge_run(rundb, run):
   if 'bad_tasks' not in run:
     run['bad_tasks'] = []
   for task in run['tasks']:
-    if task['residual'] > 7.0 or (task['residual'] > 2.7 and chi2['p'] < 0.05):
+    if task['residual'] > 7.0 or (task['worker_key'] in chi2['bad_users'] and chi2['p'] < 0.05):
       purged = True
       run['bad_tasks'].append(task)
       if 'stats' in task:
@@ -539,8 +539,8 @@ def calculate_residuals(run):
   chi2 = get_chi2(run['tasks'], bad_users)
   residuals = chi2['residual']
 
-  # Limit bad users to 5 for now
-  for _ in range(5):
+  # Limit bad users to 1 for now
+  for _ in range(1):
     worst_user = {}
     for task in run['tasks']:
       if task['worker_key'] in bad_users:
@@ -571,6 +571,7 @@ def calculate_residuals(run):
     bad_users.update(worst_user['worker_key'])
     residuals = get_chi2(run['tasks'], bad_users)['residual']
 
+  chi2['bad_users'] = bad_users
   return chi2
 
 @view_config(route_name='tests_view_spsa_history', renderer='json')
