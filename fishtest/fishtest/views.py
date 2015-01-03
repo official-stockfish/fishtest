@@ -366,7 +366,7 @@ def purge_run(rundb, run):
   if 'bad_tasks' not in run:
     run['bad_tasks'] = []
   for task in run['tasks']:
-    if task['residual'] > 7.0 or (task['worker_key'] in chi2['bad_users'] and chi2['p'] < 0.05):
+    if task['worker_key'] in chi2['bad_users']:
       purged = True
       run['bad_tasks'].append(task)
       if 'stats' in task:
@@ -561,7 +561,7 @@ def calculate_residuals(run):
       else:
         task['residual_color'] = '#FF6A6A'
 
-      if chi2['p'] < 0.01:
+      if chi2['p'] < 0.05 or task['residual'] > 7.0:
         if len(worst_user) == 0 or task['residual'] > worst_user['residual']:
           worst_user['worker_key'] = task['worker_key']
           worst_user['residual'] = task['residual']
