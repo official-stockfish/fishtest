@@ -165,91 +165,21 @@ def get_sha(branch, repo_url):
 @view_config(route_name='regression', renderer='regression.mak')
 def regression(request):
   fishtest_regression_data = [
-    {"date": "02-01-15",
-     "link": "54a710160ebc5962f8460cf3",
-     "elo": "48.16",
-     "error": "2.0", 
-     "commit": "91cc82a"
-    },
-    {"date": "27-12-14",
-     "link": "549e0cfa0ebc595444a9aa4f", 
-     "elo": "46.26",
-     "error": "1.9", 
-     "commit": "296534f"
-    },
-    {"date": "09-12-14",
-     "link": "548716860ebc59615b9c1cda", 
-     "elo": "41.42",
-     "error": "1.9", 
-     "commit": "1588642"
-    },
-    {"date": "29-11-14",
-     "link": "5479f1ef0ebc5910c1f22551", 
-     "elo": "39.02",
-     "error": "1.9", 
-     "commit": "fe07ae4"
-    },
-    {"date": "12-11-14",
-     "link": "5463d2e40ebc592ab9e50ff7", 
-     "elo": "36.21",
-     "error": "1.9", 
-     "commit": "c6d45c6"
-    },
-    {"date": "01-11-14",
-     "link": "545559640ebc59410ea4e5fa",
-     "elo": "31.00",
-     "error": "1.9", 
-     "commit": "79fa72f"
-    },
-    {"date": "17-10-14",
-     "link": "54411bc40ebc59731a7ea6ae",
-     "elo": "27.58",
-     "error": "1.9", 
-     "commit": "480682b"
-    },
-    {"date": "28-09-14",
-     "link": "54276b500ebc59568afa4265",
-     "elo": "22.80",
-     "error": "1.9", 
-     "commit": "ea9c424"
-    },
-    {"date": "13-09-14",
-     "link": "54144bf40ebc5923f6d66d54",
-     "elo": "15.90",
-     "error": "1.8", 
-     "commit": "cd065dd"
-    },
-    {"date": "06-08-14",
-     "link": "53e207dd0ebc592db1a06475",
-     "elo": "19.68",
-     "error": "1.8", 
-     "commit": "9da0155"
-    },
-    {"date": "23-07-14",
-     "link": "53cff3620ebc592c34a4a383",
-     "elo": "19.63",
-     "error": "1.8", 
-     "commit": "4758fd3"
-    },
-    {"date": "29-06-14",
-     "link": "53b06b140ebc5948a2398082",
-     "elo": "10.78",
-     "error": "1.8", 
-     "commit": "ffedfa3"
-    },
-    {"date": "15-06-14",
-     "link": "539d0ccf0ebc59659be39682",
-     "elo": "8.30",
-     "error": "2.0", 
-     "commit": "84dabe5"
-    },
-    {"date": "03-06-14",
-     "link": "538e10500ebc5940a3b7f018",
-     "elo": "5.35",
-     "error": "1.8", 
-     "commit": "adeded2"
-    }
-  ]
+    {'elo': '48.16', 'error': '2.0', 'link': '54a710160ebc5962f8460cf3', 'date': u'2015-01-02T20:31:02Z', 'commit': '91cc82a'},
+    {'elo': '46.26', 'error': '1.9', 'link': '549e0cfa0ebc595444a9aa4f', 'date': u'2014-12-22T07:33:07Z', 'commit': '296534f'},
+    {'elo': '41.42', 'error': '1.9', 'link': '548716860ebc59615b9c1cda', 'date': u'2014-12-08T00:18:26Z', 'commit': '1588642'},
+    {'elo': '39.02', 'error': '1.9', 'link': '5479f1ef0ebc5910c1f22551', 'date': u'2014-11-25T23:56:48Z', 'commit': 'fe07ae4'},
+    {'elo': '36.21', 'error': '1.9', 'link': '5463d2e40ebc592ab9e50ff7', 'date': u'2014-11-10T23:06:12Z', 'commit': 'c6d45c6'},
+    {'elo': '31.00', 'error': '1.9', 'link': '545559640ebc59410ea4e5fa', 'date': u'2014-11-01T21:24:33Z', 'commit': '79fa72f'},
+    {'elo': '27.58', 'error': '1.9', 'link': '54411bc40ebc59731a7ea6ae', 'date': u'2014-10-15T18:36:22Z', 'commit': '480682b'},
+    {'elo': '22.80', 'error': '1.9', 'link': '54276b500ebc59568afa4265', 'date': u'2014-09-27T20:33:28Z', 'commit': 'ea9c424'},
+    {'elo': '15.90', 'error': '1.8', 'link': '54144bf40ebc5923f6d66d54', 'date': u'2014-09-04T19:19:03Z', 'commit': 'cd065dd'},
+    {'elo': '19.68', 'error': '1.8', 'link': '53e207dd0ebc592db1a06475', 'date': u'2014-08-06T10:42:10Z', 'commit': '9da0155'},
+    {'elo': '19.63', 'error': '1.8', 'link': '53cff3620ebc592c34a4a383', 'date': u'2014-07-22T23:05:10Z', 'commit': '4758fd3'},
+    {'elo': '10.78', 'error': '1.8', 'link': '53b06b140ebc5948a2398082', 'date': u'2014-06-29T19:17:40Z', 'commit': 'ffedfa3'},
+    {'elo': '8.30', 'error': '2.0', 'link': '539d0ccf0ebc59659be39682', 'date': u'2014-06-11T23:32:16Z', 'commit': '84dabe5'},
+    {'elo': '5.35', 'error': '1.8', 'link': '538e10500ebc5940a3b7f018', 'date': u'2014-06-03T18:01:36Z', 'commit': 'adeded2'}]
+
   jenslehmann_regression_data = [{'description': '04-01-14 Run 3', 'games':'63180', 'data':[
     {'date_committed': u'2014-12-28T18:06:56Z', 'sha': '6933f05f4b1b7b1bd2c072029bf5a06cbeac5b0b', 'points': '32322.00', 'elo': '8.1', 'error': '2.0'}, 
     {'date_committed': u'2014-12-25T10:09:07Z', 'sha': '2bfacf136cf780936aab3ddfb1dfce0163d09d40', 'points': '32212.50', 'elo': '6.9', 'error': '2.0'}, 

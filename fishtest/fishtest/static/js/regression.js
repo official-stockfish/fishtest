@@ -1,15 +1,9 @@
 (function() {
 	var current_jl_testid;
-	
-	function dateformat(d) {
-		var m,d,y, ds = d.split("-");
-		d = Number(ds[0]) + 1, m = ds[1], y = "20" + ds[2];
-		return new Date(y + "-" + m + "-" + d);
-	}
 
 	function draw_fishtest() {
 		fishtest_data.sort(function(a,b){
-			var d1 = dateformat(a.date), d2 = dateformat(b.date); 
+			var d1 = new Date(a.date), d2 = new Date(b.date); 
 			if (d1.getTime() > d2.getTime()) {return 1} else {return -1}
 		});
 
