@@ -952,7 +952,15 @@ def tests(request):
         state = 'pending'
 
     if state == 'finished':
-      if not purge_run(request.rundb, run):
+      purged = 0
+      while purge_run(request.rundb, run) and purged < 5:
+        purged += 1
+        run = request.rundb.get_run(run['_id'])
+
+        results = request.rundb.get_results(run)
+        run['results_info'] = format_results(results, run)
+
+      if purged == 0:
         run['finished'] = True
         request.rundb.runs.save(run)
         post_result(run)
