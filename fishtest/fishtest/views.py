@@ -816,7 +816,7 @@ def calculate_residuals(run):
       stats = task.get('stats', {})
       crashes = stats.get('crashes', 0)
       time_losses = stats.get('time_losses', 0)
-      if crashes > 0 or time_losses > 0:
+      if crashes > 1 or time_losses > 1:
         task['residual'] = 8.0
 
       if abs(task['residual']) < 2.0:
@@ -833,7 +833,7 @@ def calculate_residuals(run):
 
     if len(worst_user) == 0:
       break
-    bad_users.update(worst_user['worker_key'])
+    bad_users.add(worst_user['worker_key'])
     residuals = get_chi2(run['tasks'], bad_users)['residual']
 
   chi2['bad_users'] = bad_users
