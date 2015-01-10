@@ -6,6 +6,7 @@ class UserDb:
     self.db = db
     self.users = self.db['users']
     self.user_cache = self.db['user_cache']
+    self.flag_cache = self.db['flag_cache']
 
   def init_collection(self):
     self.users.create_index('username', unique=True)
@@ -58,7 +59,7 @@ class UserDb:
 
   def is_blocked(self, worker_info):
     # TODO: hook the blocked info into the database
-    blocked = 'garry561'
+    blocked = [ 'garry561', 'EthanOConnor', 'IamLupo' ]
     if worker_info['remote_addr'] in blocked or worker_info['username'] in blocked:
       return True
     return False

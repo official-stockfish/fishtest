@@ -2,7 +2,29 @@ import json, sys
 import requests
 from pyramid.view import view_config
 
-FLAG_HOST = 'http://freegeoip.net/json/'
+def get_flag(request):
+  ip = request.remote_addr
+  result = request.userdb.flag_cache.find_one({'ip': ip})
+  if result != None:
+    return result['country_code']
+
+  # Get country flag ip
+  try:
+    #FLAG_HOST = 'http://freegeoip.net/json/'
+    FLAG_HOST = 'http://geoip.nekudo.com/api/'
+
+    r = requests.get(FLAG_HOST + request.remote_addr, timeout=1.0)
+    if r.status_code == 200:
+      country_code = r.json()['country']['code']
+
+      request.userdb.flag_cache.insert({
+        'ip': ip,
+        'country_code': country_code
+      })
+
+      return country_code
+  except:
+    return None
 
 def get_username(request):
   if 'username' in request.json_body: return request.json_body['username']
@@ -18,14 +40,9 @@ def request_task(request):
 
   worker_info = request.json_body['worker_info']
   worker_info['remote_addr'] = request.remote_addr
-
-  # Get country flag ip
-  try:
-    r = requests.get(FLAG_HOST + request.remote_addr, timeout=1.0)
-    if r.status_code == 200:
-      worker_info['country_code'] = r.json().get('country_code', '')
-  except:
-    pass
+  flag = get_flag(request)
+  if flag:
+    worker_info['country_code'] = flag
 
   result = request.rundb.request_task(worker_info)
 
