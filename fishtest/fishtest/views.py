@@ -165,7 +165,7 @@ def regression_request_isvalid(request):
     (request.GET["type"] == "fishtest" or \
     request.GET["type"] == "jl")
 
-@view_config(route_name='regression_data', renderer='regression_data.mak')
+@view_config(route_name='regression_data', renderer='regression_data.mak', permission='modify_db')
 def regression_data(request):
   if not regression_request_isvalid(request):
     return HTTPBadRequest()
@@ -175,7 +175,7 @@ def regression_data(request):
     'data': json.dumps(request.regressiondb.get(request.GET["type"]))
    }
 
-@view_config(route_name='regression_data', xhr=True, renderer='json', request_method='POST')
+@view_config(route_name='regression_data', xhr=True, renderer='json', request_method='POST', permission='modify_db')
 def regression_data_xhr(request):
   if not regression_request_isvalid(request):
     return HTTPBadRequest()
