@@ -154,8 +154,8 @@ def users(request):
   return {'users': users}
 
 @view_config(route_name='regression', renderer='regression.mak')
- def regression(request):
-    return {
+def regression(request):
+  return {
     'fishtest_regression_data': json.dumps(request.regressiondb.get("fishtest")),
     'jl_regression_data': json.dumps(request.regressiondb.get("jl"))
   }
