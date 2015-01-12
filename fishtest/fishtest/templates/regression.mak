@@ -7,14 +7,18 @@
     e.innerHTML = input;
     return e.childNodes.length === 0 ? "" : e.childNodes[0].nodeValue;
   }
-  var fishtest_data = $.parseJSON(decode("${fishtest}"));
-  var jl_data = $.parseJSON(decode("${jenstest}"));
+  var fishtest_data = $.parseJSON(decode("${fishtest_regression_data}"));
+  var jl_data = $.parseJSON(decode("${jl_regression_data}"));
 </script>
 <script type="text/javascript" src="/js/regression.js"></script>
 
-<legend>Testing for software regression</legend>
+<h3>Testing for software regression</h3>
 
 <h4>Fishtest regression tests against Stockfish 5</h4>
+
+<div>
+<a href="/regression/data?type=fishtest" class="btn btn-default" role="button">Update Data</a>
+</div>
 
 <div id="fishtest_graph" style="width: 900px; height: 600px;"></div>
 
@@ -27,6 +31,9 @@
   "caret"></span></button>
 
   <ul class="dropdown-menu" id="dropdown_jl_tests"></ul>
+  <div class="btn-group" role="group" style="margin-left: 10px;">
+    <a href="/regression/data?type=jl" class="btn btn-default" role="button">Update Data</a>
+  </div>
 </div>
 
 <div style="padding: 5px;">
@@ -37,6 +44,6 @@
 
 <h4>Link to old results</h4>
 
-<div>
+<div style="margin-bottom: 70px;">
   <a href="http://bit.ly/11QsIkd" target="_blank">http://bit.ly/11QsIkd</a>
 </div>

@@ -12,7 +12,7 @@ from email.mime.text import MIMEText
 from collections import defaultdict
 from pyramid.security import remember, forget, authenticated_userid, has_permission
 from pyramid.view import view_config, forbidden_view_config
-from pyramid.httpexceptions import HTTPFound
+from pyramid.httpexceptions import HTTPFound, HTTPBadRequest
 
 import stat_util
 
@@ -152,6 +152,35 @@ def users(request):
   users = list(request.userdb.user_cache.find())
   users.sort(key=lambda k: k['cpu_hours'], reverse=True)
   return {'users': users}
+
+@view_config(route_name='regression', renderer='regression.mak')
+ def regression(request):
+    return {
+    'fishtest_regression_data': json.dumps(request.regressiondb.get("fishtest")),
+    'jl_regression_data': json.dumps(request.regressiondb.get("jl"))
+  }
+
+def regression_request_isvalid(request):
+  return ("type" in request.GET) and \
+    (request.GET["type"] == "fishtest" or \
+    request.GET["type"] == "jl")
+
+@view_config(route_name='regression_data', renderer='regression_data.mak')
+def regression_data(request):
+  if not regression_request_isvalid(request):
+    return HTTPBadRequest()
+
+  return {
+    'test_type': request.GET["type"],
+    'data': json.dumps(request.regressiondb.get(request.GET["type"]))
+   }
+
+@view_config(route_name='regression_data', xhr=True, renderer='json', request_method='POST')
+def regression_data_xhr(request):
+  if not regression_request_isvalid(request):
+    return HTTPBadRequest()
+
+  request.regressiondb.save(request.GET["type"], request.json_body)
 
 def get_sha(branch, repo_url):
   """Resolves the git branch to sha commit"""

@@ -2,7 +2,9 @@
   var current_jl_testid;
 
   function draw_fishtest() {
-    fishtest_data.sort(function(a, b) {
+    var data = fishtest_data == null ? [] : fishtest_data;
+
+    data.sort(function(a, b) {
       var d1 = new Date(a.date),
         d2 = new Date(b.date);
       if (d1.getTime() > d2.getTime()) {
@@ -12,25 +14,25 @@
       }
     });
 
-    var fishtest_datatable = new google.visualization.DataTable();
-    fishtest_datatable.addColumn('string', 'commit');
-    fishtest_datatable.addColumn('number', 'elo');
-    fishtest_datatable.addColumn({
+    var datatable = new google.visualization.DataTable();
+    datatable.addColumn('string', 'commit');
+    datatable.addColumn('number', 'elo');
+    datatable.addColumn({
       id: 'eloplus',
       type: 'number',
       role: 'interval'
     });
-    fishtest_datatable.addColumn({
+    datatable.addColumn({
       id: 'elominus',
       type: 'number',
       role: 'interval'
     });
 
-    for (var i = 0; i < fishtest_data.length; i++) {
-      fishtest_datatable.addRow([fishtest_data[i].commit,
-        parseFloat(fishtest_data[i].elo),
-        parseFloat(fishtest_data[i].elo) + parseFloat(fishtest_data[i].error),
-        parseFloat(fishtest_data[i].elo) - parseFloat(fishtest_data[i].error)
+    for (var i = 0; i < data.length; i++) {
+      datatable.addRow([data[i].commit,
+        parseFloat(data[i].elo),
+        parseFloat(data[i].elo) + parseFloat(data[i].error),
+        parseFloat(data[i].elo) - parseFloat(data[i].error)
       ]);
     }
 
@@ -53,17 +55,17 @@
     };
 
     var fishtest_graph = new google.visualization.LineChart(document.getElementById('fishtest_graph'));
-    fishtest_graph.draw(fishtest_datatable, options_lines);
+    fishtest_graph.draw(datatable, options_lines);
 
     google.visualization.events.addListener(fishtest_graph, 'select', function(e) {
       if (fishtest_graph.getSelection()[0]) {
-        window.open('tests/view/' + fishtest_data[fishtest_graph.getSelection()[0]['row']].link, '_blank');
+        window.open('tests/view/' + data[fishtest_graph.getSelection()[0]['row']].link, '_blank');
       }
     });
   }
 
   function draw_jl_tests(test_id) {
-    var data = jl_data[test_id].data;
+    var data = jl_data == null ? [] : jl_data[test_id].data;
 
     data.sort(function(a, b) {
       var d1 = new Date(a.date_committed),
@@ -124,8 +126,14 @@
     });
 
     current_jl_testid = test_id;
-    $("#btn_select_jl_test_caption").html(jl_data[test_id].description);
-    $("#jl_games_count").html(jl_data[test_id].games)
+    if (jl_data == null) {
+      $("#btn_select_jl_test_caption").html("No data available");
+      $("#jl_games_count").html("N/A")
+    }
+    else {
+      $("#btn_select_jl_test_caption").html(jl_data[test_id].description);
+      $("#jl_games_count").html(jl_data[test_id].games)
+    }
   }
 
   $(document).ready(function() {
@@ -135,6 +143,8 @@
       callback: function() {
         draw_fishtest();
         draw_jl_tests(0);
+
+        if (jl_data == null) return;
 
         for (j = 0; j < jl_data.length; j++) {
           $("#dropdown_jl_tests").append("<li><a test_id=\"" + j + "\" >" + jl_data[j].description + "</a></li>");
