@@ -6,8 +6,8 @@
     var data = !fishtest_data || fishtest_data.length < 1 ? [] : fishtest_data;
 
     data.sort(function(a, b) {
-      var d1 = new Date(a.date),
-        d2 = new Date(b.date);
+      var d1 = new Date(a.date_committed),
+        d2 = new Date(b.date_committed);
       if (d1.getTime() > d2.getTime()) {
         return 1
       } else {

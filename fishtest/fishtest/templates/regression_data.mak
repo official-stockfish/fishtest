@@ -22,7 +22,7 @@ td {
 	<form action="/regression/data/save?type=fishtest" method="post">
 	<div class="form-group form-horizontal">
 	   <input  class="form-control" style="width: 60px;" maxlength="7" id="input_commit" name="commit" type="text" placeholder="Commit" required>
-	   <input  class="form-control" style="width: 150px;" id="input_committed_date" name="committed_date" type="text" placeholder="Commited Date" required>
+	   <input  class="form-control" style="width: 150px;" id="input_date_committed" name="date_committed" type="text" placeholder="Commited Date" required>
 	   <input  class="form-control" style="width: 200px;" id="input_link" type="text" name="link" placeholder="Fishtest Link" required>
 	   <input  class="form-control" style="width: 60px;" id="input_elo" type="number" step="any" name="elo" placeholder="Elo" required>
 	   <input  class="form-control" style="width: 60px;" id="input_error" type="number" step="any" name="error" placeholder="Error" required>
@@ -51,7 +51,7 @@ td {
 		</td>
 		</form>
 		<td>${item['data']['commit']}</td>
-		<td>${item['data']['committed_date']}</td>
+		<td>${item['data']['date_committed']}</td>
 		<td>${item['data']['link']}</td>
 		<td>${item['data']['elo']}</td>
 		<td>${item['data']['error']}</td>
