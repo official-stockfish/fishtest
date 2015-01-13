@@ -28,7 +28,7 @@
   </div>
 </div>
 
-<div style="position:relative;">
+<div style="position:relative; width: 1200px; height: 600px;">
   <div id="jl_graph" style="position: absolute; top: 0; left: 0; width: 900px; height: 600px;"></div>
   <div style="position: absolute; top: 0; left: 900px; padding: 5px;">
     <div><b>Description:</b></div>
@@ -38,8 +38,9 @@
   </div>
 </div>
 
-<h4>Link to old results</h4>
 
-<div style="margin-bottom: 70px;">
+
+<div style="margin-bottom: 70px; position relative">
+<h4>Link to old results</h4>
   <a href="http://bit.ly/11QsIkd" target="_blank">http://bit.ly/11QsIkd</a>
 </div>
