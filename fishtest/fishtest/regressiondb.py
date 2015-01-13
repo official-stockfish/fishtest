@@ -37,7 +37,7 @@ class RegressionDb:
     if test_type == "jl":
       data["data"] = self.parse_jl_csv(data["data"].split("\n"))
 
-    data["date"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    data["date"] = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
     
     self.regression_data.save(
       {"test_type": test_type,

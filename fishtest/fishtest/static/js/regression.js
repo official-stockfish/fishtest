@@ -134,7 +134,9 @@
     else {
       $("#btn_select_jl_test_caption").html(jl_data[test_id].description);
       $("#description").html(jl_data[test_id].long_description.replace(/\n/g,'<br/>'));
-      $("#date").html(jl_data[test_id].date)
+
+      var date = new Date(jl_data[test_id].date);
+      $("#date").html(date.toDateString())
     }
   }
 
