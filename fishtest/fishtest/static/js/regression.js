@@ -135,7 +135,7 @@
       $("#btn_select_jl_test_caption").html(jl_data[test_id].description);
       $("#description").html(jl_data[test_id].long_description.replace(/\n/g,'<br/>'));
 
-      var date = new Date(jl_data[test_id].date);
+      var date = new Date(jl_data[test_id].date_saved);
       $("#date").html(date.toDateString())
     }
   }
@@ -153,8 +153,8 @@
 
           //sort by date so that most recent runs are placed on top
           jl_data.sort(function(a,b) {
-            var d1 = new Date(a.date),
-              d2 = new Date(b.date);
+            var d1 = new Date(a.date_saved),
+              d2 = new Date(b.date_saved);
             if (d1.getTime() < d2.getTime()) {
               return 1
             } else {
