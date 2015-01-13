@@ -153,34 +153,59 @@ def users(request):
   users.sort(key=lambda k: k['cpu_hours'], reverse=True)
   return {'users': users}
 
+
 @view_config(route_name='regression', renderer='regression.mak')
 def regression(request):
-  return {
-    'fishtest_regression_data': json.dumps(request.regressiondb.get("fishtest")),
-    'jl_regression_data': json.dumps(request.regressiondb.get("jl"))
-  }
+  return {}
 
 def regression_request_isvalid(request):
   return ("type" in request.GET) and \
     (request.GET["type"] == "fishtest" or \
     request.GET["type"] == "jl")
 
-@view_config(route_name='regression_data', renderer='regression_data.mak', permission='modify_db')
+@view_config(route_name='regression_data', renderer='regression_data.mak')
 def regression_data(request):
   if not regression_request_isvalid(request):
     return HTTPBadRequest()
 
   return {
     'test_type': request.GET["type"],
-    'data': json.dumps(request.regressiondb.get(request.GET["type"]))
+    'data': request.regressiondb.get(request.GET["type"])
    }
 
-@view_config(route_name='regression_data', xhr=True, renderer='json', request_method='POST', permission='modify_db')
-def regression_data_xhr(request):
+@view_config(route_name='regression_data_json', renderer='json')
+def regression_data_json(request):
+  return json.dumps({
+    'fishtest_regression_data': request.regressiondb.get("fishtest", True),
+    'jl_regression_data': request.regressiondb.get("jl", True)
+  })
+
+#
+# Does everyone have save privilage? Perhaps it makes sense to create
+# a new group and give that group ability to save regression data
+#
+
+@view_config(route_name='regression_data_save', request_method='POST')
+def regression_data_save(request):
   if not regression_request_isvalid(request):
     return HTTPBadRequest()
 
-  request.regressiondb.save(request.GET["type"], request.json_body)
+  obj = {}
+  for d in request.POST:
+    obj[d] = request.POST[d];
+
+  request.regressiondb.save(request.GET["type"], obj, authenticated_userid(request))
+
+  return HTTPFound(location="/regression/data?type=" + request.GET["type"])
+
+@view_config(route_name='regression_data_delete', request_method='POST', permission='modify_db')
+def regression_data_delete(request):
+  if not regression_request_isvalid(request) or "_id" not in request.POST:
+    return HTTPBadRequest()
+
+  request.regressiondb.delete(request.POST["_id"])
+  return HTTPFound(location="/regression/data?type=" + request.GET["type"])
+
 
 def get_sha(branch, repo_url):
   """Resolves the git branch to sha commit"""

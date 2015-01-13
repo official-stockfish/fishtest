@@ -1,15 +1,7 @@
 <%inherit file="base.mak"/>
 
 <script type="text/javascript" src="https://www.google.com/jsapi"></script>
-<script type="text/javascript" >
-  function decode(input) {
-    var e = document.createElement('div');
-    e.innerHTML = input;
-    return e.childNodes.length === 0 ? "" : e.childNodes[0].nodeValue;
-  }
-  var fishtest_data = $.parseJSON(decode("${fishtest_regression_data}"));
-  var jl_data = $.parseJSON(decode("${jl_regression_data}"));
-</script>
+
 <script type="text/javascript" src="/js/regression.js"></script>
 
 <h3>Testing for software regression</h3>
@@ -36,11 +28,15 @@
   </div>
 </div>
 
-<div style="padding: 5px;">
-  Number of games played per engine: <span id="jl_games_count"></span>
+<div style="position:relative;">
+  <div id="jl_graph" style="position: absolute; top: 0; left: 0; width: 900px; height: 600px;"></div>
+  <div style="position: absolute; top: 0; left: 900px; padding: 5px;">
+    <div><b>Description:</b></div>
+    <div style="width: 300px;" id="description"></div>
+    <div style="padding-top: 30px;"><b>Date</b></div>
+    <div id="date"></div>
+  </div>
 </div>
-
-<div id="jl_graph" style="width: 900px; height: 600px;"></div>
 
 <h4>Link to old results</h4>
 

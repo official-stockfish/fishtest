@@ -1,8 +1,9 @@
+
 (function() {
-  var current_jl_testid;
+  var current_jl_testid, fishtest_data, jl_data;
 
   function draw_fishtest() {
-    var data = fishtest_data == null ? [] : fishtest_data;
+    var data = !fishtest_data || fishtest_data.length < 1 ? [] : fishtest_data;
 
     data.sort(function(a, b) {
       var d1 = new Date(a.date),
@@ -65,7 +66,7 @@
   }
 
   function draw_jl_tests(test_id) {
-    var data = jl_data == null ? [] : jl_data[test_id].data;
+    var data = !jl_data || jl_data.length < 1 ? [] : jl_data[test_id].data;
 
     data.sort(function(a, b) {
       var d1 = new Date(a.date_committed),
@@ -105,7 +106,7 @@
       lineWidth: 2,
       intervals: {
         style: 'bars'
-      }, //, barWidth: 0.1
+      }, 
       legend: 'none',
       chartArea: {
         left: 50,
@@ -126,13 +127,14 @@
     });
 
     current_jl_testid = test_id;
-    if (jl_data == null) {
+    if (!jl_data || jl_data.length < 1) {
       $("#btn_select_jl_test_caption").html("No data available");
       $("#jl_games_count").html("N/A")
     }
     else {
       $("#btn_select_jl_test_caption").html(jl_data[test_id].description);
-      $("#jl_games_count").html(jl_data[test_id].games)
+      $("#description").html(jl_data[test_id].long_description.replace(/\n/g,'<br/>'));
+      $("#date").html(jl_data[test_id].date)
     }
   }
 
@@ -141,19 +143,37 @@
     google.load('visualization', '1.0', {
       packages: ['corechart'],
       callback: function() {
-        draw_fishtest();
-        draw_jl_tests(0);
 
-        if (jl_data == null) return;
+        $.get('/regression/data/json', function(d) {
+          data = $.parseJSON(d);
+          fishtest_data = data.fishtest_regression_data;
+          jl_data = data.jl_regression_data;
 
-        for (j = 0; j < jl_data.length; j++) {
-          $("#dropdown_jl_tests").append("<li><a test_id=\"" + j + "\" >" + jl_data[j].description + "</a></li>");
-        }
+          //sort by date so that most recent runs are placed on top
+          jl_data.sort(function(a,b) {
+            var d1 = new Date(a.date),
+              d2 = new Date(b.date);
+            if (d1.getTime() < d2.getTime()) {
+              return 1
+            } else {
+              return -1
+            }
+          })
 
-        $("#dropdown_jl_tests").find('a').on('click', function() {
-          draw_jl_tests($(this).attr('test_id'));
-        });
+          draw_fishtest();
+          draw_jl_tests(0);
 
+          if (!jl_data || jl_data.length < 1 ) return;
+
+          for (j = 0; j < jl_data.length; j++) {
+            $("#dropdown_jl_tests").append("<li><a test_id=\"" + j + "\" >" + jl_data[j].description + "</a></li>");
+          }
+
+          $("#dropdown_jl_tests").find('a').on('click', function() {
+            draw_jl_tests($(this).attr('test_id'));
+          });
+
+        })
       }
     });
   });
