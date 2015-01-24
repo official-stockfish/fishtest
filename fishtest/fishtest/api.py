@@ -94,6 +94,10 @@ def failed_task(request):
 
 @view_config(route_name='api_stop_run', renderer='string')
 def stop_run(request):
+  return {}
+
+  # Stop run disabled until can be done more securely
+  """
   token = authenticate(request)
   if 'error' in token: return json.dumps(token)
 
@@ -103,6 +107,7 @@ def stop_run(request):
 
   result = request.rundb.stop_run(request.json_body['run_id'])
   return json.dumps(result)
+  """
 
 @view_config(route_name='api_request_build', renderer='string')
 def request_build(request):
