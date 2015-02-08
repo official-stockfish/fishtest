@@ -551,7 +551,7 @@ def calculate_residuals(run):
       stats = task.get('stats', {})
       crashes = stats.get('crashes', 0)
       time_losses = stats.get('time_losses', 0)
-      if crashes > 1 or time_losses > 1:
+      if crashes + time_losses > 3:
         task['residual'] = 8.0
 
       if abs(task['residual']) < 2.0:
@@ -561,7 +561,7 @@ def calculate_residuals(run):
       else:
         task['residual_color'] = '#FF6A6A'
 
-      if chi2['p'] < 0.05 or task['residual'] > 7.0:
+      if chi2['p'] < 0.01 or task['residual'] > 7.0:
         if len(worst_user) == 0 or task['residual'] > worst_user['residual']:
           worst_user['worker_key'] = task['worker_key']
           worst_user['residual'] = task['residual']
