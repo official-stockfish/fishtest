@@ -94,20 +94,20 @@ def failed_task(request):
 
 @view_config(route_name='api_stop_run', renderer='string')
 def stop_run(request):
-  return {}
-
-  # Stop run disabled until can be done more securely
-  """
   token = authenticate(request)
   if 'error' in token: return json.dumps(token)
 
+  username = get_username(request) 
+  user = request.userdb.user_cache.find_one({'username': username})
+  if not user or user['cpu_hours'] < 1000:
+    return ''
+
   run = request.rundb.get_run(request.json_body['run_id'])
   run['stop_reason'] = request.json_body.get('message', 'No reason!')
-  request.actiondb.stop_run(get_username(request), run)
+  request.actiondb.stop_run(username, run)
 
   result = request.rundb.stop_run(request.json_body['run_id'])
   return json.dumps(result)
-  """
 
 @view_config(route_name='api_request_build', renderer='string')
 def request_build(request):
