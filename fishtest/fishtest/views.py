@@ -672,6 +672,7 @@ def tests(request):
 
   unfinished_runs = request.rundb.get_unfinished_runs()
   for run in unfinished_runs:
+    # Is username filtering on?  If so, match just runs from that user
     if len(username) > 0 and run['args'].get('username', '') != username:
       continue
 
@@ -686,6 +687,8 @@ def tests(request):
       elif task['pending'] and not state == 'active':
         state = 'pending'
 
+    # Auto-purge runs here (this is hacky, ideally we would do it
+    # when the run was finished, not when it is first viewed)
     if state == 'finished':
       purged = 0
       while purge_run(request.rundb, run) and purged < 5:
@@ -757,7 +760,10 @@ def tests(request):
 
   pages = [{'idx': 'Prev', 'url': '?page=%d' % (page), 'state': 'disabled' if page == 0 else ''}]
   for idx, page_idx in enumerate(range(0, num_finished, page_size)):
-    pages.append({'idx': idx + 1, 'url': '?page=%d' % (idx + 1), 'state': 'active' if page == idx else ''})
+    if idx < 5 or abs(page - idx) < 5 or idx > (num_finished / page_size) - 5:
+      pages.append({'idx': idx + 1, 'url': '?page=%d' % (idx + 1), 'state': 'active' if page == idx else ''})
+    elif pages[-1]['idx'] != '...':
+      pages.append({'idx': '...', 'url': '', 'state': 'disabled'})
   pages.append({'idx': 'Next', 'url': '?page=%d' % (page + 2), 'state': 'disabled' if page + 1 == len(pages) - 1 else ''})
 
   return {

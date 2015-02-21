@@ -2,5 +2,5 @@
 
 cd /home/fishtest/fishtest/fishtest
 
-pkill pserve
+pkill -f pserve
 nohup pserve --monitor-restart production.ini >nohup.out &
