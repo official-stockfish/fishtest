@@ -56,6 +56,7 @@ def update_users():
     user['last_updated'] = delta_date(user['last_updated'])
     users.append(user)
 
+  users = [u for u in users if u['games'] > 0 or u['tests'] > 0]
 
   rundb.userdb.user_cache.remove()
   rundb.userdb.user_cache.insert(users)

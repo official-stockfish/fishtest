@@ -1,4 +1,6 @@
 #!/bin/zsh
 
-pkill pserve
-nohup pserve production.ini >nohup.out &
+cd /home/fishtest/fishtest/fishtest
+
+pkill -f pserve
+nohup pserve --monitor-restart production.ini >nohup.out &

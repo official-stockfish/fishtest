@@ -311,6 +311,10 @@ def tests_modify(request):
       existing_games += chunk['num_games']
 
     num_games = int(request.POST['num-games'])
+    if num_games > run['args']['num_games'] and not ('sprt' in run['args'] or 'spsa' in run['args']):
+      request.session.flash('Unable to modify number of games in a fixed game test!')
+      return HTTPFound(location=request.route_url('tests'))
+
     if num_games > existing_games:
       # Create new chunks for the games
       new_chunks = request.rundb.generate_tasks(num_games - existing_games)
@@ -355,6 +359,36 @@ def tests_approve(request):
   request.session.flash('Approved run')
   return HTTPFound(location=request.route_url('tests'))
 
+def purge_run(rundb, run):
+  # Remove bad runs
+  purged = False
+  chi2 = calculate_residuals(run)
+  if 'bad_tasks' not in run:
+    run['bad_tasks'] = []
+  for task in run['tasks']:
+    if task['worker_key'] in chi2['bad_users']:
+      purged = True
+      run['bad_tasks'].append(task)
+      if 'stats' in task:
+        del task['stats']
+      del task['worker_key']
+
+  if purged:
+    # Generate new tasks if needed
+    run['results_stale'] = True
+    results = rundb.get_results(run)
+    played_games = results['wins'] + results['losses'] + results['draws']
+    if played_games < run['args']['num_games']:
+      run['tasks'] += rundb.generate_tasks(run['args']['num_games'] - played_games)
+
+    run['finished'] = False
+    if 'sprt' in run['args'] and 'state' in run['args']['sprt']:
+      del run['args']['sprt']['state']
+    
+    rundb.runs.save(run)
+
+  return purged 
+
 @view_config(route_name='tests_purge', permission='approve_run')
 def tests_purge(request):
   username = authenticated_userid(request)
@@ -364,33 +398,11 @@ def tests_purge(request):
     request.session.flash('Can only purge completed run')
     return HTTPFound(location=request.route_url('tests'))
 
-  # Remove bad runs
-  calculate_residuals(run)
-  if 'bad_tasks' not in run:
-    run['bad_tasks'] = []
-  for task in run['tasks']:
-    if task['residual'] > 2.7:
-      run['bad_tasks'].append(task)
-      if 'stats' in task:
-        del task['stats']
-      del task['worker_key']
-
-  if len(run['bad_tasks']) == 0:
+  purged = purge_run(request.rundb, run)
+  if not purged:
     request.session.flash('No bad workers!')
     return HTTPFound(location=request.route_url('tests'))
 
-  # Generate new tasks if needed
-  run['results_stale'] = True
-  results = request.rundb.get_results(run)
-  played_games = results['wins'] + results['losses'] + results['draws']
-  if played_games < run['args']['num_games']:
-    run['tasks'] += request.rundb.generate_tasks(run['args']['num_games'] - played_games)
-
-  run['finished'] = False
-  if 'sprt' in run['args'] and 'state' in run['args']['sprt']:
-    del run['args']['sprt']['state']
-
-  request.rundb.runs.save(run)
   request.actiondb.purge_run(username, run)
 
   request.session.flash('Purged run')
@@ -527,13 +539,21 @@ def calculate_residuals(run):
   chi2 = get_chi2(run['tasks'], bad_users)
   residuals = chi2['residual']
 
-  # Limit bad users to 5 for now
-  for _ in range(5):
+  # Limit bad users to 1 for now
+  for _ in range(1):
     worst_user = {}
     for task in run['tasks']:
       if task['worker_key'] in bad_users:
         continue
       task['residual'] = residuals.get(task['worker_key'], 0.0)
+
+      # Special case crashes or time losses
+      stats = task.get('stats', {})
+      crashes = stats.get('crashes', 0)
+      time_losses = stats.get('time_losses', 0)
+      if crashes + time_losses > 3:
+        task['residual'] = 8.0
+
       if abs(task['residual']) < 2.0:
         task['residual_color'] = '#44EB44'
       elif abs(task['residual']) < 2.7:
@@ -541,16 +561,17 @@ def calculate_residuals(run):
       else:
         task['residual_color'] = '#FF6A6A'
 
-      if chi2['p'] < 0.01:
+      if chi2['p'] < 0.01 or task['residual'] > 7.0:
         if len(worst_user) == 0 or task['residual'] > worst_user['residual']:
           worst_user['worker_key'] = task['worker_key']
           worst_user['residual'] = task['residual']
 
     if len(worst_user) == 0:
       break
-    bad_users.update(worst_user['worker_key'])
+    bad_users.add(worst_user['worker_key'])
     residuals = get_chi2(run['tasks'], bad_users)['residual']
 
+  chi2['bad_users'] = bad_users
   return chi2
 
 @view_config(route_name='tests_view_spsa_history', renderer='json')
@@ -602,7 +623,11 @@ def tests_view(request):
       elif name == 'tests_repo' :
         url = value
 
-    run_args.append((name, str(value), url))
+    try:
+      strval = str(value)
+    except:
+      strval = value.encode('ascii', 'replace')
+    run_args.append((name, strval, url))
 
   for task in run['tasks']:
     last_updated = task.get('last_updated', datetime.datetime.min)
@@ -647,6 +672,7 @@ def tests(request):
 
   unfinished_runs = request.rundb.get_unfinished_runs()
   for run in unfinished_runs:
+    # Is username filtering on?  If so, match just runs from that user
     if len(username) > 0 and run['args'].get('username', '') != username:
       continue
 
@@ -661,10 +687,21 @@ def tests(request):
       elif task['pending'] and not state == 'active':
         state = 'pending'
 
+    # Auto-purge runs here (this is hacky, ideally we would do it
+    # when the run was finished, not when it is first viewed)
     if state == 'finished':
-      run['finished'] = True
-      request.rundb.runs.save(run)
-      post_result(run)
+      purged = 0
+      while purge_run(request.rundb, run) and purged < 5:
+        purged += 1
+        run = request.rundb.get_run(run['_id'])
+
+        results = request.rundb.get_results(run)
+        run['results_info'] = format_results(results, run)
+
+      if purged == 0:
+        run['finished'] = True
+        request.rundb.runs.save(run)
+        post_result(run)
 
     runs[state].append(run)
 
@@ -723,7 +760,10 @@ def tests(request):
 
   pages = [{'idx': 'Prev', 'url': '?page=%d' % (page), 'state': 'disabled' if page == 0 else ''}]
   for idx, page_idx in enumerate(range(0, num_finished, page_size)):
-    pages.append({'idx': idx + 1, 'url': '?page=%d' % (idx + 1), 'state': 'active' if page == idx else ''})
+    if idx < 5 or abs(page - idx) < 5 or idx > (num_finished / page_size) - 5:
+      pages.append({'idx': idx + 1, 'url': '?page=%d' % (idx + 1), 'state': 'active' if page == idx else ''})
+    elif pages[-1]['idx'] != '...':
+      pages.append({'idx': '...', 'url': '', 'state': 'disabled'})
   pages.append({'idx': 'Next', 'url': '?page=%d' % (page + 2), 'state': 'disabled' if page + 1 == len(pages) - 1 else ''})
 
   return {

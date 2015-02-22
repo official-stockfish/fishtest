@@ -110,7 +110,7 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
 </div>
 <div class="btn-group">
 <button id="btn_view_individual" type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
-    View Indiviual Parameter<span class="caret"></span>
+    View Individual Parameter<span class="caret"></span>
   </button>
   <ul class="dropdown-menu" role="menu" id="dropdown_individual"></ul>
 </div>
