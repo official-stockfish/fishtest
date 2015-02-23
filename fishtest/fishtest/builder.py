@@ -69,7 +69,7 @@ def make(orig_src_dir, destination, target):
       with open('Makefile') as f:
         new_makefile = f.read()
         new_makefile = new_makefile.replace('CXX=g++', 'CXX=' + target['gcc_alias'])
-        new_makefile = new_makefile.replace('$(EXTRALDFLAGS)', '$(EXTRALDFLAGS) -static-libstdc++ -static-libgcc')
+        new_makefile = new_makefile.replace('$(EXTRALDFLAGS)', '$(EXTRALDFLAGS) -static-libstdc++ -static-libgcc -static')
         out.write(new_makefile)
     shutil.copyfile('tmp', 'Makefile')
 
