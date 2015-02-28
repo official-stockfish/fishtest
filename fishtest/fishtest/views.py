@@ -163,7 +163,7 @@ def regression_request_isvalid(request):
     (request.GET["type"] == "fishtest" or \
     request.GET["type"] == "jl")
 
-@view_config(route_name='regression_data', renderer='regression_data.mak')
+@view_config(route_name='regression_data', renderer='regression_data.mak', permission='modify_stats')
 def regression_data(request):
   if not regression_request_isvalid(request):
     return HTTPBadRequest()
@@ -180,12 +180,7 @@ def regression_data_json(request):
     'jl_regression_data': request.regressiondb.get("jl", True)
   })
 
-#
-# Does everyone have save privilage? Perhaps it makes sense to create
-# a new group and give that group ability to save regression data
-#
-
-@view_config(route_name='regression_data_save', request_method='POST')
+@view_config(route_name='regression_data_save', request_method='POST', permission='modify_stats')
 def regression_data_save(request):
   if not regression_request_isvalid(request):
     return HTTPBadRequest()
@@ -198,14 +193,13 @@ def regression_data_save(request):
 
   return HTTPFound(location="/regression/data?type=" + request.GET["type"])
 
-@view_config(route_name='regression_data_delete', request_method='POST', permission='modify_db')
+@view_config(route_name='regression_data_delete', request_method='POST', permission='modify_stats')
 def regression_data_delete(request):
   if not regression_request_isvalid(request) or "_id" not in request.POST:
     return HTTPBadRequest()
 
   request.regressiondb.delete(request.POST["_id"])
   return HTTPFound(location="/regression/data?type=" + request.GET["type"])
-
 
 def get_sha(branch, repo_url):
   """Resolves the git branch to sha commit"""
