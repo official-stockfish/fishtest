@@ -28,6 +28,7 @@ def main(global_config, **settings):
     event.request.rundb = rundb
     event.request.userdb = rundb.userdb
     event.request.actiondb = rundb.actiondb
+    event.request.regressiondb = rundb.regressiondb
   config.add_subscriber(add_rundb, NewRequest)
 
   config.add_static_view('css', 'static/css', cache_max_age=3600)
@@ -39,6 +40,10 @@ def main(global_config, **settings):
   config.add_route('users', '/users')
   config.add_route('actions', '/actions')
   config.add_route('regression', '/regression')
+  config.add_route('regression_data', '/regression/data')
+  config.add_route('regression_data_json', '/regression/data/json')
+  config.add_route('regression_data_save', '/regression/data/save')
+  config.add_route('regression_data_delete', '/regression/data/delete')
   config.add_route('tests', '/tests')
   config.add_route('tests_run', '/tests/run')
   config.add_route('tests_modify', '/tests/modify')
