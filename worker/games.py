@@ -421,6 +421,10 @@ def run_games(worker_info, password, remote, run, task_id):
     games_to_play = games_remaining
     pgnout = ['-pgnout', 'results.pgn']
 
+  threads_cmd=[]
+  if not any("Threads" in s for s in new_options + base_options):
+    threads_cmd = ['option.Threads=%d' % (threads)]
+
   while games_remaining > 0:
     # Run cutechess-cli binary
     cmd = [ cutechess, '-repeat', '-rounds', str(games_to_play), '-tournament', 'gauntlet'] + pgnout + \
@@ -428,7 +432,7 @@ def run_games(worker_info, password, remote, run, task_id):
            'movecount=8', 'score=20', '-concurrency', str(games_concurrency)] + pgn_cmd + \
           ['-engine', 'name=stockfish', 'cmd=stockfish'] + new_options + ['_spsa_'] + \
           ['-engine', 'name=base', 'cmd=base'] + base_options + ['_spsa_'] + \
-          ['-each', 'proto=uci', 'option.Threads=%d' % (threads), 'tc=%s' % (scaled_tc)] + book_cmd
+          ['-each', 'proto=uci', 'tc=%s' % (scaled_tc)] + threads_cmd + book_cmd
 
     task_status = launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, tc_limit * games_to_play / min(games_to_play, games_concurrency))
     if not task_status.get('task_alive', False):
