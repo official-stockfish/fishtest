@@ -6,7 +6,7 @@
 
 <h3>Testing for software regression</h3>
 
-<h4>Fishtest regression tests against Stockfish 5</h4>
+<h4>Regression tests against latest release</h4>
 
 <div>
 <a href="/regression/data?type=fishtest" class="btn btn-default" role="button">Update Data</a>
