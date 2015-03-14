@@ -189,25 +189,25 @@
 
   function update_table_of_standings(data) {
     $("#table_standings tbody").html("");
+
     for (var i = 0; i < data.length; i ++) {
-      if (i == 0) {
-        $("#table_standings tbody").append("<tr><td>" + 
-        (new Date(data[i].date_committed)).toString() + "</td><td>" +
-        "<a href=\"https://github.com/official-stockfish/Stockfish/commit/" + 
-        data[i].sha + "\"  target=\"_blank\">" + data[i].sha + "</a></td><td>" + 
-        (Math.round(data[i].elo * 100)/100) + "±" + (Math.round(data[i].error * 100)/100) + "</td><td></td><td></td></tr>");
-      }
-      else {
-        $("#table_standings tbody").append("<tr><td>" + 
-        (new Date(data[i].date_committed)).toString() + "</td><td>" +
-        "<a href=\"https://github.com/official-stockfish/Stockfish/commit/" + 
-        data[i].sha + "\"  target=\"_blank\">" + data[i].sha + "</a></td><td>" + 
-        (Math.round(data[i].elo * 100)/100) + " ± " + (Math.round(data[i].error * 100)/100) 
-        + "</td><td style=\"background-color: " + elo_change_color(data[i].elo - data[i - 1].elo) + "\">" + 
-        (Math.round((data[i].elo - data[i - 1].elo) * 100)/100) + 
-        " </td><td><a class=\"btn btn-default\" href=\"https://github.com/official-stockfish/Stockfish/compare/" + 
-        data[i - 1].sha + "..." + data[i].sha  + "\" target=\"_blank\">diff</a></td></tr>");
-      }
+
+      var date_committed = "<td>" + (new Date(data[i].date_committed)).toString() + "</td>";
+
+      var sha = "<td><a href=\"https://github.com/official-stockfish/Stockfish/commit/" + 
+                data[i].sha + "\"  target=\"_blank\">" + data[i].sha.substring(0, 7) + "</a></td>"
+
+      var elo = "<td>" + (Math.round(data[i].elo * 100)/100) + "±" + 
+                (Math.round(data[i].error * 100) / 100) + "</td>";
+
+      var change = i == 0? "<td></td>": "<td style=\"background-color: " + elo_change_color(data[i].elo - data[i - 1].elo) + "\">" + 
+                   (Math.round((data[i].elo - data[i - 1].elo) * 100) / 100) + " </td>";
+
+      var diff = i == 0? "<td></td>": "<td><a class=\"btn btn-default\" href=\"https://github.com/official-stockfish/Stockfish/compare/" + 
+                 data[i - 1].sha + "..." + data[i].sha  + "\" target=\"_blank\">diff</a></td>";
+
+
+      $("#table_standings tbody").append("<tr>" + date_committed + sha + elo + change + diff + "</tr>");
     }
   }
 
