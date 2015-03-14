@@ -1,5 +1,22 @@
 <%inherit file="base.mak"/>
 
+<style type="text/css">
+  #table_standings {
+    border-collapse: collapse;
+    margin-top: 20px;
+  }
+
+  #table_standings td, th{
+    border: 1px solid #ddd;
+    padding: 10px 10px;
+
+  }
+
+  #table_standings td:last-child a{
+    margin-top: -42px;
+  }
+</style>
+
 <script type="text/javascript" src="https://www.google.com/jsapi"></script>
 
 <script type="text/javascript" src="/js/regression.js"></script>
@@ -28,8 +45,28 @@
   </div>
 </div>
 
-<div style="position:relative; width: 1200px; height: 600px;">
-  <div id="jl_graph" style="position: absolute; top: 0; left: 0; width: 900px; height: 600px;"></div>
+<div style="position:relative;">
+  <div style="position: absolute; top: 0; left: 0; width: 900px;">
+    <div id="jl_graph" style="width: 900px; height: 600px;"></div>
+    <div>
+      <table id="table_standings">
+      <thead><tr>
+        <th>Date Committed</th>
+        <th>Commit SHA</th>
+        <th>Elo</th>
+        <th>Change</th>
+        <th></th>
+      </tr></thead>
+      <tbody></tbody>
+      </table>
+    </div>
+
+    <div style="margin-bottom: 70px; margin-top: 100px;">
+      <h4>Link to old results</h4>
+      <a href="http://bit.ly/11QsIkd" target="_blank">http://bit.ly/11QsIkd</a>
+    </div>
+  </div>
+
   <div style="position: absolute; top: 0; left: 900px; padding: 5px;">
     <div><b>Description:</b></div>
     <div style="width: 300px;" id="description"></div>
@@ -39,8 +76,3 @@
 </div>
 
 
-
-<div style="margin-bottom: 70px; position relative">
-<h4>Link to old results</h4>
-  <a href="http://bit.ly/11QsIkd" target="_blank">http://bit.ly/11QsIkd</a>
-</div>

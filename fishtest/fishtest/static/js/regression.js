@@ -137,6 +137,77 @@
 
       var date = new Date(jl_data[test_id].date_saved);
       $("#date").html(date.toDateString())
+
+      update_table_of_standings(jl_data[test_id].data);
+    }
+  }
+
+  function elo_change_color(elo_difference) {
+
+    function scaled_sigmoid(value) {
+      return (200 / (1 + Math.exp(-1 * value / 10))) - 100
+    }
+
+    function makeGradientColor(color1, color2, percent) {
+      var newColor = {};
+
+      function makeChannel(a, b) {
+        return(a + Math.round((b-a)*(percent/100)));
+      }
+
+      function makeColorPiece(num) {
+        num = Math.min(num, 255);   // not more than 255
+        num = Math.max(num, 0);     // not less than 0
+        var str = num.toString(16);
+        if (str.length < 2) {
+            str = "0" + str;
+        }
+        return(str);
+      }
+
+      newColor.r = makeChannel(color1.r, color2.r);
+      newColor.g = makeChannel(color1.g, color2.g);
+      newColor.b = makeChannel(color1.b, color2.b);
+      newColor.cssColor = "#" + 
+                          makeColorPiece(newColor.r) + 
+                          makeColorPiece(newColor.g) + 
+                          makeColorPiece(newColor.b);
+      return(newColor);
+    }
+
+    var red = {r:255, g:0, b:0};
+    var green = {r:0, g:255, b:0};
+    var white = {r:255, g:255, b:255};
+
+    if (elo_difference > 0) {
+      return makeGradientColor(white, green, scaled_sigmoid(elo_difference)).cssColor;
+    }
+    else {
+      return makeGradientColor(white, red, -1 * scaled_sigmoid(elo_difference)).cssColor;
+    }
+  }
+
+  function update_table_of_standings(data) {
+    $("#table_standings tbody").html("");
+    for (var i = 0; i < data.length; i ++) {
+      if (i == 0) {
+        $("#table_standings tbody").append("<tr><td>" + 
+        (new Date(data[i].date_committed)).toString() + "</td><td>" +
+        "<a href=\"https://github.com/official-stockfish/Stockfish/commit/" + 
+        data[i].sha + "\"  target=\"_blank\">" + data[i].sha + "</a></td><td>" + 
+        (Math.round(data[i].elo * 100)/100) + "±" + (Math.round(data[i].error * 100)/100) + "</td><td></td><td></td></tr>");
+      }
+      else {
+        $("#table_standings tbody").append("<tr><td>" + 
+        (new Date(data[i].date_committed)).toString() + "</td><td>" +
+        "<a href=\"https://github.com/official-stockfish/Stockfish/commit/" + 
+        data[i].sha + "\"  target=\"_blank\">" + data[i].sha + "</a></td><td>" + 
+        (Math.round(data[i].elo * 100)/100) + " ± " + (Math.round(data[i].error * 100)/100) 
+        + "</td><td style=\"background-color: " + elo_change_color(data[i].elo - data[i - 1].elo) + "\">" + 
+        (Math.round((data[i].elo - data[i - 1].elo) * 100)/100) + 
+        " </td><td><a class=\"btn btn-default\" href=\"https://github.com/official-stockfish/Stockfish/compare/" + 
+        data[i - 1].sha + "..." + data[i].sha  + "\" target=\"_blank\">diff</a></td></tr>");
+      }
     }
   }
 
