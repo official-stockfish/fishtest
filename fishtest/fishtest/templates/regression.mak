@@ -1,18 +1,18 @@
-<%inherit file="base.mak"/>
+<%inherit file="base.mak"/>%>
 
 <style type="text/css">
-  #table_standings {
+  .table_standings, {
     border-collapse: collapse;
     margin-top: 20px;
   }
 
-  #table_standings td, th{
+  .table_standings td, th{
     border: 1px solid #ddd;
     padding: 10px 10px;
 
   }
 
-  #table_standings td:last-child a{
+  .table_standings td:last-child a{
     margin-top: -42px;
   }
 </style>
@@ -30,8 +30,20 @@
 </div>
 
 <div id="fishtest_graph" style="width: 900px; height: 600px;"></div>
+<div>
+<table class="table_standings" id="table_standings_fishtest">
+      <thead><tr>
+        <th>Commit SHA</th>
+        <th>Test Details</th>
+        <th>Elo</th>
+        <th>Change</th>
+        <th></th>
+      </tr></thead>
+      <tbody></tbody>
+      </table>
+</div>
 
-<h4>Tournament regression tests carried out by Jens Lehmann</h4>
+<h4 style="margin-top: 70px; margin-bottom: 20px;">Tournament regression tests carried out by Jens Lehmann</h4>
 
 <div class="btn-group">
   <button class="btn btn-default dropdown-toggle" data-toggle="dropdown" id=
@@ -49,7 +61,7 @@
   <div style="position: absolute; top: 0; left: 0; width: 900px;">
     <div id="jl_graph" style="width: 900px; height: 600px;"></div>
     <div>
-      <table id="table_standings">
+      <table class="table_standings" id="table_standings_jl">
       <thead><tr>
         <th>Date Committed</th>
         <th>Commit SHA</th>
