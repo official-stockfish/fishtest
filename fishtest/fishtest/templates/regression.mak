@@ -1,4 +1,4 @@
-<%inherit file="base.mak"/>%>
+<%inherit file="base.mak"/>
 
 <style type="text/css">
   .table_standings, {
