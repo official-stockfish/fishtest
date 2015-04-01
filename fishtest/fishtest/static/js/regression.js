@@ -210,7 +210,7 @@
       var commit_field = test_type == "fishtest" ? "commit" : "sha";
 
       var link = test_type != "fishtest" ? "" :
-        "<td><a target=\"_blank\" href=\"tests\/" + data[i].link + "\">details</a></td>";
+        "<td><a target=\"_blank\" href=\"tests\/view\/" + data[i].link + "\">details</a></td>";
 
       var date_committed = test_type == "fishtest" ? "" :
         "<td>" + (new Date(data[i].date_committed)).toString() + "</td>";
