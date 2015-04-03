@@ -141,6 +141,12 @@ Cowardice,150,0,200,10,0.0020"""})['raw_params']}</textarea>
     </div>
   </div>
   <div class="control-group">
+    <label class="control-label">Throughput:</label>
+    <div class="controls">
+      <input name="throughput" value="${args.get('throughput', 1000)}">
+    </div>
+  </div>
+  <div class="control-group">
     <label class="control-label">Test Repo:</label>
     <div class="controls">
       <input name="tests-repo" value="${args.get('tests_repo', tests_repo)}" ${'readonly' if re_run else ''}>
