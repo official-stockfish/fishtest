@@ -79,7 +79,7 @@ var spsa_history_url = '${run_args[0][1]}/spsa_history';
     <input name="priority" value="${run['args']['priority']}">
 
     <label class="control-label">Adjust throughput:</label>
-    <input name="throughput" value="${run['args']['throughput']}">
+    <input name="throughput" value="${run['args'].get('throughput', 1000)}">
 
     <input type="hidden" name="run" value="${run['_id']}" />
     <button type="submit" class="btn btn-primary">Modify</button>
