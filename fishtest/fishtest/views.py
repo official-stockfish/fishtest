@@ -310,6 +310,7 @@ def validate_form(request):
 
   data['threads'] = int(request.POST['threads'])
   data['priority'] = int(request.POST['priority'])
+  data['throughput'] = int(request.POST['throughput'])
 
   if data['threads'] <= 0:
     raise Exception('Threads must be >= 1')
@@ -371,6 +372,7 @@ def tests_modify(request):
     run['finished'] = False
     run['args']['num_games'] = num_games
     run['args']['priority'] = int(request.POST['priority'])
+    run['args']['throughput'] = int(request.POST['throughput'])
     request.rundb.runs.save(run)
 
     request.actiondb.modify_run(authenticated_userid(request), before, run)
@@ -640,7 +642,7 @@ def tests_view(request):
   for name in ['new_tag', 'new_signature', 'new_options', 'resolved_new',
                'base_tag', 'base_signature', 'base_options', 'resolved_base',
                'sprt', 'num_games', 'spsa', 'tc', 'threads', 'book', 'book_depth',
-               'priority', 'username', 'tests_repo', 'info']:
+               'priority', 'internal_priority', 'username', 'tests_repo', 'info']:
 
     if not name in run['args']:
       continue

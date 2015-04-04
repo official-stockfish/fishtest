@@ -39,6 +39,7 @@
           <li><a href="/regression">Regression</a></li>
           <!--<li><a href="http://bit.ly/11QsIkd" target="_blank">Regression</a></li>-->
           <li><a href="http://abrok.eu/stockfish/" target="_blank">Compiles</a></li>
+          <li><a href="https://github.com/official-stockfish/Stockfish" target="_blank">SF-github</a></li>          
           <li class="nav-header">Admin</li>
           <li><a href="/signup">Register</a></li>
         </ul>
