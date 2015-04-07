@@ -41,7 +41,7 @@ WIN32 = {
   'system': 'windows',
   'architecture': '32',
   'make_cmd': 'make build ARCH=x86-32 COMP=mingw',
-  'gcc_alias': 'x86_64-w64-mingw32-c++',
+  'gcc_alias': 'i686-w64-mingw32-c++',
   'native': False,
 }
 WIN64 = {
