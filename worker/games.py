@@ -37,6 +37,8 @@ def is_64bit():
     return is_windows_64bit()
   return '64' in platform.architecture()[0]
 
+HTTP_TIMEOUT = 5.0
+
 FISHCOOKING_URL = 'https://github.com/mcostalba/FishCooking'
 ARCH = 'ARCH=x86-64-modern' if is_64bit() else 'ARCH=x86-32'
 EXE_SUFFIX = ''
@@ -80,7 +82,7 @@ def verify_signature(engine, signature, remote, payload, concurrency):
     if int(bench_sig) != int(signature):
       message = 'Wrong bench in %s Expected: %s Got: %s' % (os.path.basename(engine), signature, bench_sig)
       payload['message'] = message
-      requests.post(remote + '/api/stop_run', data=json.dumps(payload), headers={'Content-type': 'application/json'})
+      requests.post(remote + '/api/stop_run', data=json.dumps(payload), headers={'Content-type': 'application/json'}, timeout=HTTP_TIMEOUT)
       raise Exception(message)
 
   finally:
@@ -92,11 +94,11 @@ def verify_signature(engine, signature, remote, payload, concurrency):
 
 def setup(item, testing_dir):
   """Download item from FishCooking to testing_dir"""
-  tree = requests.get(github_api(FISHCOOKING_URL) + '/git/trees/setup').json()
+  tree = requests.get(github_api(FISHCOOKING_URL) + '/git/trees/setup', timeout=HTTP_TIMEOUT).json()
   for blob in tree['tree']:
     if blob['path'] == item:
       print 'Downloading %s ...' % (item)
-      blob_json = requests.get(blob['url']).json()
+      blob_json = requests.get(blob['url'], timeout=HTTP_TIMEOUT).json()
       with open(os.path.join(testing_dir, item), 'wb+') as f:
         f.write(b64decode(blob_json['content']))
       break
@@ -109,7 +111,7 @@ def build(worker_dir, sha, repo_url, destination, concurrency):
   os.chdir(tmp_dir)
 
   with open('sf.gz', 'wb+') as f:
-    f.write(requests.get(github_api(repo_url) + '/zipball/' + sha).content)
+    f.write(requests.get(github_api(repo_url) + '/zipball/' + sha, timeout=HTTP_TIMEOUT).content)
   zip_file = ZipFile('sf.gz')
   zip_file.extractall()
   zip_file.close()
@@ -136,7 +138,7 @@ def setup_engine(destination, binaries_url, worker_dir, sha, repo_url, concurren
   if len(binaries_url) > 0:
     try:
       binary_url = binaries_url + '/' + binary_filename(sha)
-      r = requests.get(binary_url)
+      r = requests.get(binary_url, timeout=HTTP_TIMEOUT)
       if r.status_code == 200:
         print 'Downloaded %s from %s' % (os.path.basename(destination), binary_url)
         with open(destination, 'wb+') as f:
@@ -247,7 +249,7 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
         spsa['draws'] = wld[2]
 
       try:
-        req = requests.post(remote + '/api/update_task', data=json.dumps(result), headers={'Content-type': 'application/json'}).json()
+        req = requests.post(remote + '/api/update_task', data=json.dumps(result), headers={'Content-type': 'application/json'}, timeout=HTTP_TIMEOUT).json()
         failed_updates = 0
 
         if not req['task_alive']:
@@ -277,7 +279,7 @@ def launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, tc_limit):
 
   if spsa_tuning:
     # Request parameters for next game
-    req = requests.post(remote + '/api/request_spsa', data=json.dumps(result), headers={'Content-type': 'application/json'}).json()
+    req = requests.post(remote + '/api/request_spsa', data=json.dumps(result), headers={'Content-type': 'application/json'}, timeout=HTTP_TIMEOUT).json()
 
     spsa['w_params'] = req['w_params']
     spsa['b_params'] = req['b_params']
