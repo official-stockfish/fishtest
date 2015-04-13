@@ -52,7 +52,7 @@ WIN64 = {
   'native': False,
 }
 
-TARGETS = [WIN32, WIN64]
+TARGETS = [WIN64]
 
 def github_api(repo):
   """ Convert from https://github.com/<user>/<repo>
