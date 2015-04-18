@@ -42,11 +42,11 @@ HTTP_TIMEOUT = 5.0
 FISHCOOKING_URL = 'https://github.com/mcostalba/FishCooking'
 ARCH = 'ARCH=x86-64-modern' if is_64bit() else 'ARCH=x86-32'
 EXE_SUFFIX = ''
-MAKE_CMD = 'make build COMP=gcc ' + ARCH
+MAKE_CMD = 'make profile-build COMP=gcc ' + ARCH
 
 if IS_WINDOWS:
   EXE_SUFFIX = '.exe'
-  MAKE_CMD = 'mingw32-make build COMP=mingw ' + ARCH
+  MAKE_CMD = 'mingw32-make profile-build COMP=mingw ' + ARCH
 
 def binary_filename(sha):
   system = platform.uname()[0].lower()
