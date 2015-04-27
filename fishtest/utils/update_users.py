@@ -20,6 +20,9 @@ def update_users():
                       'last_updated': datetime.datetime.min,
                       'games_per_hour': 0.0,}
 
+  for u in rundb.userdb.old_user_cache.find():
+    info[u['username']] = u
+
   for run in rundb.get_runs():
     if 'deleted' in run:
       continue
@@ -41,7 +44,11 @@ def update_users():
       else:
         num_games = task['num_games']
 
-      info[username]['last_updated'] = max(task['last_updated'], info[username]['last_updated'])
+      try:
+        info[username]['last_updated'] = max(task['last_updated'], info[username]['last_updated'])
+      except:
+        info[username]['last_updated'] = task['last_updated']
+
       info[username]['cpu_hours'] += float(num_games * tc / (60 * 60))
       info[username]['games'] += num_games
 
@@ -53,7 +60,10 @@ def update_users():
   users = []
   for u in info.keys():
     user = info[u]
-    user['last_updated'] = delta_date(user['last_updated'])
+    try:
+      user['last_updated'] = delta_date(user['last_updated'])
+    except:
+      pass
     users.append(user)
 
   users = [u for u in users if u['games'] > 0 or u['tests'] > 0]

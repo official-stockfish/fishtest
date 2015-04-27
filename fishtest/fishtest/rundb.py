@@ -23,6 +23,7 @@ class RunDb:
     self.actiondb = ActionDb(self.db)
     self.regressiondb = RegressionDb(self.db)
     self.runs = self.db['runs']
+    self.old_runs = self.db['old_runs']
 
     self.chunk_size = 1000
 
@@ -135,7 +136,10 @@ class RunDb:
     return machines
 
   def get_run(self, id):
-    return self.runs.find_one({'_id': ObjectId(id)})
+    run = self.runs.find_one({'_id': ObjectId(id)})
+    if not run:
+      run = self.old_runs.find_one({'_id': ObjectId(id)})
+    return run
 
   def get_run_to_build(self):
     return self.runs.find_one({'binaries_url': {'$exists': False}, 'finished': False, 'deleted': {'$exists': False}})
