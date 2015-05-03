@@ -1,10 +1,15 @@
 #!/usr/bin/python
 
 # Currently run as a docker container, off an ubuntu 14.04 base image.
+#
+# To rebuild:
 # sudo docker run -i -t ubuntu:14.04 /bin/bash
 # sudo apt-get install mingw64
 # sudo docker commit -m "Setup builder" 68413c782455 fishtest_builder
 # sudo docker attach sharp_babbage
+#
+# To restart:
+# sudo docker run -i -t fishtest_builder /bin/bash
 
 import boto
 import json
