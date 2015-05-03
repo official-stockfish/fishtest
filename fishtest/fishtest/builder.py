@@ -31,28 +31,28 @@ FISHCOOKING_URL = 'https://github.com/mcostalba/FishCooking'
 LINUX32 = {
   'system': 'linux',
   'architecture': '32',
-  'make_cmd': 'make profile-build ARCH=x86-32 COMP=gcc',
+  'make_cmd': 'make build ARCH=x86-32 COMP=gcc',
   'gcc_alias': '',
   'native': True,
 }
 LINUX64 = {
   'system': 'linux',
   'architecture': '64',
-  'make_cmd': 'make profile-build ARCH=x86-64-modern COMP=gcc',
+  'make_cmd': 'make build ARCH=x86-64-modern COMP=gcc',
   'gcc_alias': '',
   'native': True,
 }
 WIN32 = {
   'system': 'windows',
   'architecture': '32',
-  'make_cmd': 'make profile-build ARCH=x86-32 COMP=mingw',
+  'make_cmd': 'make build ARCH=x86-32 COMP=mingw',
   'gcc_alias': 'i686-w64-mingw32-c++',
   'native': False,
 }
 WIN64 = {
   'system': 'windows',
   'architecture': '64',
-  'make_cmd': 'make profile-build ARCH=x86-64 COMP=mingw',
+  'make_cmd': 'make build ARCH=x86-64 COMP=mingw',
   'gcc_alias': 'x86_64-w64-mingw32-c++',
   'native': False,
 }
