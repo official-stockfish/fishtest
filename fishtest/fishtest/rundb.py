@@ -157,7 +157,16 @@ class RunDb:
       q['args.username'] = username
 
     c = self.runs.find(q, skip=skip, limit=limit, sort=[('last_updated', DESCENDING)])
-    return (list(c), c.count())
+    result = [list(c), c.count()]
+
+    if limit != 0 and len(result[0]) != limit:
+      c = self.old_runs.find(q, skip=max(0, skip-c.count()), limit=limit-len(result[0]), username=username)
+      result[0] += list(c)
+      result[1] += c.count()
+    else:
+      result[1] += self.old_runs.find().count()
+      
+    return result
 
   def get_results(self, run):
     if not run['results_stale']:
