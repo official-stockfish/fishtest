@@ -60,7 +60,7 @@ class UserDb:
 
   def is_blocked(self, worker_info):
     # TODO: hook the blocked info into the database
-    blocked = [ 'garry561', 'EthanOConnor', 'IamLupo' ]
+    blocked = [ 'garry561', 'EthanOConnor', 'IamLupo', 'waykohler' ]
     if worker_info['remote_addr'] in blocked or worker_info['username'] in blocked:
       return True
     return False
