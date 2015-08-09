@@ -26,7 +26,7 @@
   <div class="control-group">
     <label class="control-label">Test options:</label>
     <div class="controls">
-    <input name="new-options" value="${args.get('new_options', 'Hash=128 OwnBook=false')}">
+    <input name="new-options" value="${args.get('new_options', 'Hash=128')}">
     </div>
   </div>
   <div class="control-group">
@@ -44,7 +44,7 @@
   <div class="control-group">
     <label class="control-label">Base options:</label>
     <div class="controls">
-    <input name="base-options" value="${args.get('base_options', 'Hash=128 OwnBook=false')}">
+    <input name="base-options" value="${args.get('base_options', 'Hash=128')}">
     </div>
   </div>
   <div class="control-group">
@@ -76,13 +76,13 @@
   <div class="control-group stop_rule sprt">
     <label class="control-label">SPRT Elo0:</label>
     <div class="controls">
-      <input name="sprt_elo0" value="${args.get('sprt', {'elo0': -1.5})['elo0']}">
+      <input name="sprt_elo0" value="${args.get('sprt', {'elo0': 0})['elo0']}">
     </div>
   </div>
   <div class="control-group stop_rule sprt">
     <label class="control-label">SPRT Elo1:</label>
     <div class="controls">
-      <input name="sprt_elo1" value="${args.get('sprt', {'elo1': 4.5})['elo1']}">
+      <input name="sprt_elo1" value="${args.get('sprt', {'elo1': 5})['elo1']}">
     </div>
   </div>
   <div class="control-group stop_rule spsa">
@@ -187,14 +187,14 @@ $(function() {
   $('select[name=stop_rule]').change(update_visibility);
 
   $('#fast_test').click(function() {
-    $('input[name=sprt_elo0]').val('-1.5');
-    $('input[name=sprt_elo1]').val('4.5');
+    $('input[name=sprt_elo0]').val('0');
+    $('input[name=sprt_elo1]').val('5');
     $('input[name=tc]').val('15+0.05');
   });
 
   $('#slow_test').click(function() {
-    $('input[name=sprt_elo0]').val('0.0');
-    $('input[name=sprt_elo1]').val('6.0');
+    $('input[name=sprt_elo0]').val('0');
+    $('input[name=sprt_elo1]').val('5');
     $('input[name=tc]').val('60+0.05');
   });
 });
