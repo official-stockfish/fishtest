@@ -739,7 +739,7 @@ def tests(request):
 
     # Auto-purge runs here (this is hacky, ideally we would do it
     # when the run was finished, not when it is first viewed)
-    if state == 'finished':
+    if state == 'finished' and 'spsa' not in run['args']:
       purged = 0
       while purge_run(request.rundb, run) and purged < 5:
         purged += 1
