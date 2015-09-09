@@ -739,14 +739,15 @@ def tests(request):
 
     # Auto-purge runs here (this is hacky, ideally we would do it
     # when the run was finished, not when it is first viewed)
-    if state == 'finished' and 'spsa' not in run['args'] and run['args']['threads'] == 1:
+    if state == 'finished':
       purged = 0
-      while purge_run(request.rundb, run) and purged < 5:
-        purged += 1
-        run = request.rundb.get_run(run['_id'])
+      if 'spsa' not in run['args'] and run['args']['threads'] == 1:
+        while purge_run(request.rundb, run) and purged < 5:
+          purged += 1
+          run = request.rundb.get_run(run['_id'])
 
-        results = request.rundb.get_results(run)
-        run['results_info'] = format_results(results, run)
+          results = request.rundb.get_results(run)
+          run['results_info'] = format_results(results, run)
 
       if purged == 0:
         run['finished'] = True
