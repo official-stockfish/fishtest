@@ -156,7 +156,7 @@ class RunDb:
     if len(username) > 0:
       q['args.username'] = username
 
-    c = self.runs.find(q, skip=skip, limit=limit, sort=[('last_updated', DESCENDING)])
+    c = self.runs.find(q, skip=skip, limit=limit, sort=[('start_time', DESCENDING)])
     result = [list(c), c.count()]
 
     if limit != 0 and len(result[0]) != limit:
