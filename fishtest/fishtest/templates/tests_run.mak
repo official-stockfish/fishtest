@@ -113,7 +113,7 @@ Cowardice,150,0,200,10,0.0020"""})['raw_params']}</textarea>
   <div class="control-group">
     <label class="control-label">Time Control:</label>
     <div class="controls">
-      <input name="tc" value="${args.get('tc', '15+0.05')}">
+      <input name="tc" value="${args.get('tc', '10+0.1')}">
     </div>
   </div>
   <div class="control-group">
@@ -189,13 +189,13 @@ $(function() {
   $('#fast_test').click(function() {
     $('input[name=sprt_elo0]').val('0');
     $('input[name=sprt_elo1]').val('5');
-    $('input[name=tc]').val('15+0.05');
+    $('input[name=tc]').val('10+0.1');
   });
 
   $('#slow_test').click(function() {
     $('input[name=sprt_elo0]').val('0');
     $('input[name=sprt_elo1]').val('5');
-    $('input[name=tc]').val('60+0.05');
+    $('input[name=tc]').val('40+0.4');
   });
 });
 </script>
