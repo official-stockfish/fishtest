@@ -209,6 +209,8 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
   t.start()
 
   end_time = datetime.datetime.now() + datetime.timedelta(seconds=tc_limit)
+  print('TC limit', tc_limit, 'End time:', end_time)
+
   while datetime.datetime.now() < end_time:
     try: line = q.get_nowait()
     except Empty:
@@ -222,6 +224,7 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
 
     # Have we reached the end of the match?  Then just exit
     if 'Finished match' in line:
+      print('Finished match cleanly')
       kill_process(p)
       break
 
@@ -254,6 +257,7 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
 
         if not req['task_alive']:
           # This task is no longer neccesary
+          print('Server told us task is no longer needed')
           kill_process(p)
           return req
 
@@ -262,10 +266,12 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
         traceback.print_exc(file=sys.stderr)
         failed_updates += 1
         if failed_updates > 5:
+          print('Too many failed update attempts')
           kill_process(p)
           break
 
   if datetime.datetime.now() >= end_time:
+    print(datetime.datetime.now(), 'is past end time', end_time)
     kill_process(p)
 
   return { 'task_alive': True }
@@ -300,6 +306,7 @@ def launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, tc_limit):
   except:
     traceback.print_exc(file=sys.stderr)
     try:
+      print('Exception running games')
       kill_process(p)
     except:
       pass
