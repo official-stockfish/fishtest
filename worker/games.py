@@ -13,6 +13,7 @@ import threading
 import time
 import traceback
 import platform
+import struct
 import zipfile
 from base64 import b64decode
 from zipfile import ZipFile
@@ -445,6 +446,7 @@ def run_games(worker_info, password, remote, run, task_id):
     cmd = [ cutechess, '-repeat', '-rounds', str(games_to_play), '-tournament', 'gauntlet'] + pgnout + \
           ['-resign', 'movecount=3', 'score=400', '-draw', 'movenumber=34',
            'movecount=8', 'score=20', '-concurrency', str(games_concurrency)] + pgn_cmd + \
+          ['-srand', "%d" % struct.unpack("<L", os.urandom(struct.calcsize("<L")))] + \
           ['-engine', 'name=stockfish', 'cmd=stockfish'] + new_options + ['_spsa_'] + \
           ['-engine', 'name=base', 'cmd=base'] + base_options + ['_spsa_'] + \
           ['-each', 'proto=uci', 'tc=%s' % (scaled_tc)] + nodestime_cmd + threads_cmd + book_cmd
