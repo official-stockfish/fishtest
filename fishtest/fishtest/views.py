@@ -600,8 +600,7 @@ def calculate_residuals(run):
       # Special case crashes or time losses
       stats = task.get('stats', {})
       crashes = stats.get('crashes', 0)
-      time_losses = stats.get('time_losses', 0)
-      if crashes + time_losses > 3:
+      if crashes > 3:
         task['residual'] = 8.0
 
       if abs(task['residual']) < 2.0:
