@@ -195,7 +195,7 @@ $(function() {
   $('#slow_test').click(function() {
     $('input[name=sprt_elo0]').val('0');
     $('input[name=sprt_elo1]').val('5');
-    $('input[name=tc]').val('100+1');
+    $('input[name=tc]').val('60+0.6');
   });
 });
 </script>
