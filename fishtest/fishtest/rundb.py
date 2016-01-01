@@ -253,7 +253,7 @@ class RunDb:
     # Formula: - second_since_epoch - played_and_allocated_tasks * 3600 * 1000 / games_throughput
     # With default value 'throughput = 1000', this means that the priority is unchanged as long as we play at rate '1000 games / hour'.
     if (run['args']['throughput'] != None and run['args']['throughput'] != 0):
-      run['args']['internal_priority'] = - time.mktime(run['start_time'].timetuple()) - task_id * 3600 * 1000 / run['args']['throughput']
+      run['args']['internal_priority'] = - time.mktime(run['start_time'].timetuple()) - task_id * 3600 * 1000 * run['args']['threads'] / run['args']['throughput']
     self.runs.save(run)
 
     return {'run': run, 'task_id': task_id}

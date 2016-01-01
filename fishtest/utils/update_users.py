@@ -22,6 +22,7 @@ def update_users():
 
   for u in rundb.userdb.old_user_cache.find():
     info[u['username']] = u
+    info[u['username']]['last_updated'] = 'Months ago'
 
   for run in rundb.get_runs():
     if 'deleted' in run:
