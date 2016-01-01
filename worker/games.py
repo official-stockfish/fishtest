@@ -64,6 +64,7 @@ def verify_signature(engine, signature, remote, payload, concurrency):
     busy_process = subprocess.Popen([engine], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     busy_process.stdin.write('setoption name Threads value %d\n' % (concurrency-1))
     busy_process.stdin.write('go infinite\n')
+	# test commit from gh-gui
 
   try:
     bench_sig = ''
