@@ -160,7 +160,7 @@ class RunDb:
     result = [list(c), c.count()]
 
     if limit != 0 and len(result[0]) != limit:
-      c = self.old_runs.find(q, skip=max(0, skip-c.count()), limit=limit-len(result[0]), username=username)
+      c = self.old_runs.find(q, skip=max(0, skip-c.count()), limit=limit-len(result[0]))
       result[0] += list(c)
       result[1] += c.count()
     else:
