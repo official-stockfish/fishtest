@@ -1,6 +1,9 @@
 #!/bin/bash
 # to setup fishtest on Ubuntu, simply run: 
 # sudo bash setup-fishtest.sh
+#
+# to use fishtest connect to:
+# http://<ip-address>:6543
 
 # upgrade the system
 apt-get -y update
