@@ -164,7 +164,7 @@ class RunDb:
       result[0] += list(c)
       result[1] += c.count()
     else:
-      result[1] += self.old_runs.find().count()
+      result[1] += self.old_runs.find(q).count()
       
     return result
 
