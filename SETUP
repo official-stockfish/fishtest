@@ -50,3 +50,24 @@ Setting up fishtest:
 
 cd ~/fishtest/fishtest
 sudo python setup.py develop 
+
+# Setting up fishtest to start on boot
+sudo vi /etc/rc.d/rc.local
+add "su - fishtest -c /home/fishtest/startup.sh" to end
+
+startup.sh:
+#!/bin/zsh
+
+cd /home/fishtest
+
+(
+cd mongodb/bin
+nohup ./mongod >mongod.out &!
+)
+
+sleep 5
+
+(
+cd fishtest/fishtest
+./start.sh
+)
