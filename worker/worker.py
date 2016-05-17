@@ -24,10 +24,15 @@ def setup_config_file(config_file):
   config = SafeConfigParser()
   config.read(config_file)
 
+try:
+  cpu_count = str((multiprocessing.cpu_count()/2) - 1)
+except:
+  cpu_count = str(3)
+
   defaults = [('login', 'username', ''), ('login', 'password', ''),
               ('parameters', 'host', 'tests.stockfishchess.org'),
               ('parameters', 'port', '80'),
-              ('parameters', 'concurrency', '3')]
+              ('parameters', 'concurrency', 'cpu_count')]
 
   for v in defaults:
     if not config.has_section(v[0]):
