@@ -367,14 +367,11 @@ class RunDb:
 
     spsa = run['args']['spsa']
 
-    # Increment the iter counter
-    spsa['iter'] += 1 
-    self.runs.save(run)
-
     # Generate the next set of tuning parameters
+    iter_local = spsa['iter'] + 1 #assume at least one completed, and avoid division by zero
     for param in spsa['params']:
-      a = param['a'] / (spsa['A'] + spsa['iter']) ** spsa['alpha']
-      c = param['c'] / spsa['iter'] ** spsa['gamma']
+      a = param['a'] / (spsa['A'] + iter_local) ** spsa['alpha']
+      c = param['c'] / iter_local ** spsa['gamma']
       R = a / c ** 2
       flip = 1 if bool(random.getrandbits(1)) else -1
       result['w_params'].append({
@@ -388,13 +385,13 @@ class RunDb:
         'name': param['name'],
         'value': min(max(param['theta'] - c * flip, param['min']), param['max']),
       })
-      
+
     return result
 
   def update_spsa(self, run, spsa_results):
     spsa = run['args']['spsa']
 
-    spsa['iter'] += int(spsa_results['num_games'] / 2) - 1
+    spsa['iter'] += int(spsa_results['num_games'] / 2)
 
     # Update the current theta based on the results from the worker
     # Worker wins/losses are always in terms of w_params
