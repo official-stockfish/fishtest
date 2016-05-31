@@ -268,8 +268,13 @@ class RunDb:
       return {'task_alive': False}
 
     # Guard against incorrect results
-    num_games = stats['wins'] + stats['losses'] + stats['draws']
-    if 'stats' in task and num_games < task['stats']['wins'] + task['stats']['losses'] + task['stats']['draws']:
+    count_games = lambda d: d['wins'] + d['losses'] + d['draws']
+    num_games = count_games(stats)
+    old_num_games = count_games(task['stats']) if 'stats' in task else num_games
+    spsa_games = count_games(spsa) if 'spsa' in run['args'] else 0
+    if num_games < old_num_games \
+            or (spsa_games > 0 and num_games <= 0) \
+            or (spsa_games > 0 and 'stats' in task and num_games <= old_num_games):
       return {'task_alive': False}
 
     task['stats'] = stats
@@ -284,7 +289,7 @@ class RunDb:
     run['results_stale'] = True
 
     # Update spsa results
-    if 'spsa' in run['args'] and spsa['wins'] + spsa['losses'] + spsa['draws'] == spsa['num_games']:
+    if 'spsa' in run['args'] and spsa_games == spsa['num_games']:
       self.update_spsa(run, spsa)
 
     self.runs.save(run)
