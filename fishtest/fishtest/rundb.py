@@ -355,6 +355,14 @@ class RunDb:
     self.runs.save(run)
     return True
 
+  def spsa_param_clip(param, increment, clipping):
+    if clipping == 'old':
+      return min(max(param['theta'] + increment, param['min']), param['max'])
+    else: #clipping == 'careful':
+      inc = min(abs(increment), abs(param['theta'] - param['min']) / 2, abs(param['theta'] - param['max']) / 2)
+      inc_sgn = 0 if increment == 0 else increment / abs(increment)
+      return param['theta'] + inc_sgn * inc
+
   def request_spsa(self, run_id, task_id):
     run = self.get_run(run_id)
 
@@ -371,6 +379,8 @@ class RunDb:
     }
 
     spsa = run['args']['spsa']
+    if 'clipping' not in spsa:
+        spsa['clipping'] = 'old'
 
     # Generate the next set of tuning parameters
     iter_local = spsa['iter'] + 1 #assume at least one completed, and avoid division by zero
@@ -381,20 +391,22 @@ class RunDb:
       flip = 1 if bool(random.getrandbits(1)) else -1
       result['w_params'].append({
         'name': param['name'],
-        'value': min(max(param['theta'] + c * flip, param['min']), param['max']),
+        'value': spsa_param_clip(param, c * flip, spsa['clipping']),
         'R': R,
         'c': c,
         'flip': flip,
       })
       result['b_params'].append({
         'name': param['name'],
-        'value': min(max(param['theta'] - c * flip, param['min']), param['max']),
+        'value': spsa_param_clip(param, -c * flip, spsa['clipping']),
       })
 
     return result
 
   def update_spsa(self, run, spsa_results):
     spsa = run['args']['spsa']
+    if 'clipping' not in spsa:
+        spsa['clipping'] = 'old'
 
     spsa['iter'] += int(spsa_results['num_games'] / 2)
 
@@ -406,7 +418,7 @@ class RunDb:
       R = spsa_results['w_params'][idx]['R']
       c = spsa_results['w_params'][idx]['c']
       flip = spsa_results['w_params'][idx]['flip']
-      param['theta'] = min(max(param['theta'] + R * c * result * flip, param['min']), param['max'])
+      param['theta'] = spsa_param_clip(param, R * c * result * flip, spsa['clipping']),
       summary.append({
         'theta': param['theta'],
         'R': R,
