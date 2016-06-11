@@ -530,10 +530,26 @@ def format_results(run_results, run):
     result['style'] = '#44EB44'
   return result
 
+UUID_MAP = defaultdict(dict)
 def get_worker_key(task):
+  global UUID_MAP
+
   if 'worker_info' not in task:
     return '-'
-  return '%s-%scores' % (task['worker_info'].get('username', ''), str(task['worker_info']['concurrency']))
+  username = task['worker_info'].get('username', '')
+  cores = str(task['worker_info']['concurrency'])
+
+  uuid = task['worker_info'].get('unique_key', '')
+  if uuid not in UUID_MAP[username]:
+    next_idx = len(UUID_MAP[username])
+    UUID_MAP[username][uuid] = next_idx
+
+  worker_key = '%s-%scores' % (username, cores)
+  suffix = UUID_MAP[username][uuid]
+  if suffix != 0:
+    worker_key += "-" + str(suffix)
+
+  return worker_key
 
 def get_chi2(tasks, bad_users):
   """Perform chi^2 test on the stats from each worker"""
