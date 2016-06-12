@@ -356,7 +356,7 @@ class RunDb:
     self.runs.save(run)
     return True
 
-  def spsa_param_clip_round(param, increment, clipping, rounding):
+  def spsa_param_clip_round(self, param, increment, clipping, rounding):
     value = 0.0
 
     if clipping == 'old':
@@ -408,14 +408,14 @@ class RunDb:
       flip = 1 if bool(random.getrandbits(1)) else -1
       result['w_params'].append({
         'name': param['name'],
-        'value': spsa_param_clip_round(param, c * flip, spsa['clipping'], spsa['rounding']),
+        'value': self.spsa_param_clip_round(param, c * flip, spsa['clipping'], spsa['rounding']),
         'R': R,
         'c': c,
         'flip': flip,
       })
       result['b_params'].append({
         'name': param['name'],
-        'value': spsa_param_clip_round(param, -c * flip, spsa['clipping'], spsa['rounding']),
+        'value': self.spsa_param_clip_round(param, -c * flip, spsa['clipping'], spsa['rounding']),
       })
 
     return result
@@ -435,7 +435,7 @@ class RunDb:
       R = spsa_results['w_params'][idx]['R']
       c = spsa_results['w_params'][idx]['c']
       flip = spsa_results['w_params'][idx]['flip']
-      param['theta'] = spsa_param_clip_round(param, R * c * result * flip, spsa['clipping'], 'deterministic'),
+      param['theta'] = self.spsa_param_clip_round(param, R * c * result * flip, spsa['clipping'], 'deterministic')
       summary.append({
         'theta': param['theta'],
         'R': R,
