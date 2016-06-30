@@ -363,8 +363,11 @@ class RunDb:
       value = min(max(param['theta'] + increment, param['min']), param['max'])
     else: #clipping == 'careful':
       inc = min(abs(increment), abs(param['theta'] - param['min']) / 2, abs(param['theta'] - param['max']) / 2)
-      inc_sgn = 0 if increment == 0 else increment / abs(increment)
-      value = param['theta'] + inc_sgn * inc
+      if inc > 0:
+          inc_sgn = 0 if increment == 0 else increment / abs(increment)
+          value = param['theta'] + inc_sgn * inc
+      else: #revert to old behavior to bounce off boundary
+          value = min(max(param['theta'] + increment, param['min']), param['max'])
 
     #'deterministic' rounding calls round() inside the worker.
     #'randomized' says 4.p should be 5 with probability p, 4 with probability 1-p,
