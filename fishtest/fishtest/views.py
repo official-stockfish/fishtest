@@ -301,6 +301,8 @@ def validate_form(request):
       'raw_params': request.POST['spsa_raw_params'],
       'iter': 0,
       'num_iter': int(data['num_games'] / 2),
+      'clipping': request.POST['spsa_clipping'],
+      'rounding': request.POST['spsa_rounding'],
     }
     data['spsa']['params'] = parse_spsa_params(request.POST['spsa_raw_params'], data['spsa'])
   else:
@@ -678,7 +680,10 @@ def tests_view(request):
     if name == 'spsa' and value != '-':
       params = ['param: %s, best: %.2f, start: %.2f, min: %.2f, max: %.2f, c %f, a %f' % \
                 (p['name'], p['theta'], p['start'], p['min'], p['max'], p['c'], p['a']) for p in value['params']]
-      value = 'Iter: %d, A: %d, alpha %f, gamma %f\n%s' % (value['iter'], value['A'], value['alpha'], value['gamma'], '\n'.join(params))
+      value = 'Iter: %d, A: %d, alpha %f, gamma %f, clipping %s, rounding %s\n%s' % (value['iter'], value['A'], value['alpha'], value['gamma'],
+              value['clipping'] if 'clipping' in value else 'old',
+              value['rounding'] if 'rounding' in value else 'deterministic',
+              '\n'.join(params))
 
     if 'tests_repo' in run['args']:
       if name == 'new_tag':

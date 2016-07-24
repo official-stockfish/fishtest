@@ -110,6 +110,24 @@
 Cowardice,150,0,200,10,0.0020"""})['raw_params']}</textarea>
     </div>
   </div>
+  <div class="control-group stop_rule spsa">
+    <label class="control-label">SPSA clipping:</label>
+    <div class="controls">
+      <select name="spsa_clipping">
+        <option value="old">old</option>
+        <option value="careful">careful</option>
+      </select>
+    </div>
+  </div>
+  <div class="control-group stop_rule spsa">
+    <label class="control-label">SPSA rounding:</label>
+    <div class="controls">
+      <select name="spsa_rounding">
+        <option value="deterministic">deterministic</option>
+        <option value="randomized">randomized</option>
+      </select>
+    </div>
+  </div>
   <div class="control-group">
     <label class="control-label">Time Control:</label>
     <div class="controls">
