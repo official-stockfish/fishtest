@@ -737,6 +737,7 @@ def post_result(run):
 @view_config(route_name='tests_user', renderer='tests.mak')
 def tests(request):
   username = request.matchdict.get('username', '')
+  success_only = len(request.params.get('success_only', '')) > 0
 
   runs = { 'pending':[], 'failed':[], 'active':[], 'finished':[] }
 
@@ -819,7 +820,7 @@ def tests(request):
   # Pagination
   page = max(0, int(request.params.get('page', 1)) - 1)
   page_size = 50
-  finished, num_finished = request.rundb.get_finished_runs(skip=page*page_size, limit=page_size, username=username)
+  finished, num_finished = request.rundb.get_finished_runs(skip=page*page_size, limit=page_size, username=username, success_only=success_only)
   runs['finished'] += finished
 
   for run in finished:
@@ -836,6 +837,10 @@ def tests(request):
     elif pages[-1]['idx'] != '...':
       pages.append({'idx': '...', 'url': '', 'state': 'disabled'})
   pages.append({'idx': 'Next', 'url': '?page=%d' % (page + 2), 'state': 'disabled' if page + 1 == len(pages) - 1 else ''})
+
+  if success_only:
+    for page in pages:
+      page['url'] += '&success_only=1'
 
   return {
     'runs': runs,

@@ -152,10 +152,14 @@ class RunDb:
     return self.runs.find({'finished': False},
                           sort=[('last_updated', DESCENDING), ('start_time', DESCENDING)])
 
-  def get_finished_runs(self, skip=0, limit=0, username=''):
+  def get_finished_runs(self, skip=0, limit=0, username='', success_only=False):
     q = {'finished': True, 'deleted': {'$exists': False}}
     if len(username) > 0:
       q['args.username'] = username
+    if success_only:
+      # This is unfortunate, but the only way we have of telling if a run was successful or
+      # not currently is the color!
+      q['results_info.style'] = '#44EB44'
 
     c = self.runs.find(q, skip=skip, limit=limit, sort=[('last_updated', DESCENDING)])
     result = [list(c), c.count()]
