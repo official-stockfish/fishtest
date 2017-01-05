@@ -6,6 +6,41 @@ sys.path.append(os.path.expanduser('~/fishtest/fishtest'))
 from fishtest.rundb import RunDb
 from fishtest.views import parse_tc, delta_date
 
+visited_runs = {}
+def process_run(run, info):
+  global visited_runs
+  if run['_id'] in visited_runs:
+    return
+  visited_runs[run['_id']] = True
+
+  if 'deleted' in run:
+    return
+  if 'username' in run['args']:
+    username = run['args']['username']
+    info[username]['tests'] += 1
+
+  tc = parse_tc(run['args']['tc'])
+  for task in run['tasks']:
+    if 'worker_info' not in task:
+      continue
+    username = task['worker_info'].get('username', None)
+    if username == None:
+      continue
+
+    if 'stats' in task:
+      stats = task['stats']
+      num_games = stats['wins'] + stats['losses'] + stats['draws']
+    else:
+      num_games = task['num_games']
+
+    try:
+      info[username]['last_updated'] = max(task['last_updated'], info[username]['last_updated'])
+    except:
+      info[username]['last_updated'] = task['last_updated']
+
+    info[username]['cpu_hours'] += float(num_games * tc / (60 * 60))
+    info[username]['games'] += num_games
+
 def update_users():
   rundb = RunDb()
 
@@ -24,34 +59,19 @@ def update_users():
     info[u['username']] = u
     info[u['username']]['last_updated'] = 'Months ago'
 
-  for run in rundb.get_runs():
-    if 'deleted' in run:
-      continue
-    if 'username' in run['args']:
-      username = run['args']['username']
-      info[username]['tests'] += 1
+  for run in rundb.get_unfinished_runs():
+    process_run(run, info)
 
-    tc = parse_tc(run['args']['tc'])
-    for task in run['tasks']:
-      if 'worker_info' not in task:
-        continue
-      username = task['worker_info'].get('username', None)
-      if username == None:
-        continue
-
-      if 'stats' in task:
-        stats = task['stats']
-        num_games = stats['wins'] + stats['losses'] + stats['draws']
-      else:
-        num_games = task['num_games']
-
-      try:
-        info[username]['last_updated'] = max(task['last_updated'], info[username]['last_updated'])
-      except:
-        info[username]['last_updated'] = task['last_updated']
-
-      info[username]['cpu_hours'] += float(num_games * tc / (60 * 60))
-      info[username]['games'] += num_games
+  # Step through these 100 at a time to avoid using too much RAM
+  current = 0
+  step_size = 100
+  while True:
+    runs = rundb.get_finished_runs(skip=current, limit=step_size)[0]
+    if len(runs) == 0:
+      break
+    for run in runs:
+      process_run(run, info)
+    current += step_size
 
   machines = rundb.get_machines()
   for machine in machines:
@@ -71,6 +91,8 @@ def update_users():
 
   rundb.userdb.user_cache.remove()
   rundb.userdb.user_cache.insert(users)
+
+  print('Successfully updated %d users' % (len(users)))
 
 def main():
   update_users()
