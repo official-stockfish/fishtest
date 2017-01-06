@@ -153,6 +153,11 @@ def users(request):
   users.sort(key=lambda k: k['cpu_hours'], reverse=True)
   return {'users': users}
 
+@view_config(route_name='users_monthly', renderer='users.mak')
+def users_monthly(request):
+  users = list(request.userdb.top_month.find())
+  users.sort(key=lambda k: k['cpu_hours'], reverse=True)
+  return {'users': users}
 
 @view_config(route_name='regression', renderer='regression.mak')
 def regression(request):

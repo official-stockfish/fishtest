@@ -38,6 +38,7 @@ def main(global_config, **settings):
   config.add_route('login', '/login')
   config.add_route('signup', '/signup')
   config.add_route('users', '/users')
+  config.add_route('users_monthly', '/users/monthly')
   config.add_route('actions', '/actions')
   config.add_route('regression', '/regression')
   config.add_route('regression_data', '/regression/data')

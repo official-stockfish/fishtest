@@ -6,13 +6,7 @@ sys.path.append(os.path.expanduser('~/fishtest/fishtest'))
 from fishtest.rundb import RunDb
 from fishtest.views import parse_tc, delta_date
 
-visited_runs = {}
 def process_run(run, info):
-  global visited_runs
-  if run['_id'] in visited_runs:
-    return
-  visited_runs[run['_id']] = True
-
   if 'deleted' in run:
     return
   if 'username' in run['args']:
@@ -41,35 +35,7 @@ def process_run(run, info):
     info[username]['cpu_hours'] += float(num_games * tc / (60 * 60))
     info[username]['games'] += num_games
 
-def update_users():
-  rundb = RunDb()
-
-  info = {}
-  for u in rundb.userdb.get_users():
-    username = u['username']
-    info[username] = {'username': username,
-                      'cpu_hours': 0,
-                      'games': 0,
-                      'tests': 0,
-                      'tests_repo': u.get('tests_repo', ''),
-                      'last_updated': datetime.datetime.min,
-                      'games_per_hour': 0.0,}
-
-  for run in rundb.get_unfinished_runs():
-    process_run(run, info)
-
-  # Step through these 100 at a time to avoid using too much RAM
-  current = 0
-  step_size = 100
-  while True:
-    runs = rundb.get_finished_runs(skip=current, limit=step_size)[0]
-    if len(runs) == 0:
-      break
-    for run in runs:
-      process_run(run, info)
-    current += step_size
-
-  machines = rundb.get_machines()
+def build_users(machines, info):
   for machine in machines:
     games_per_hour = (machine['nps'] / 1200000.0) * (3600.0 / parse_tc(machine['run']['args']['tc'])) * int(machine['concurrency'])
     info[machine['username']]['games_per_hour'] += games_per_hour
@@ -84,9 +50,50 @@ def update_users():
     users.append(user)
 
   users = [u for u in users if u['games'] > 0 or u['tests'] > 0]
+  return users
 
+def update_users():
+  rundb = RunDb()
+
+  info = {}
+  top_month = {}
+  for u in rundb.userdb.get_users():
+    username = u['username']
+    info[username] = {'username': username,
+                      'cpu_hours': 0,
+                      'games': 0,
+                      'tests': 0,
+                      'tests_repo': u.get('tests_repo', ''),
+                      'last_updated': datetime.datetime.min,
+                      'games_per_hour': 0.0,}
+    top_month[username] = info[username].copy()
+
+  for run in rundb.get_unfinished_runs():
+    process_run(run, info)
+    process_run(run, top_month)
+
+  # Step through these 100 at a time to avoid using too much RAM
+  current = 0
+  step_size = 100
+  now = datetime.datetime.utcnow()
+  while True:
+    runs = rundb.get_finished_runs(skip=current, limit=step_size)[0]
+    if len(runs) == 0:
+      break
+    for run in runs:
+      process_run(run, info)
+      if (now - run['start_time']).days < 31: 
+        process_run(run, top_month)
+    current += step_size
+
+  machines = rundb.get_machines()
+
+  users = build_users(machines, info)
   rundb.userdb.user_cache.remove()
   rundb.userdb.user_cache.insert(users)
+
+  rundb.userdb.top_month.remove()
+  rundb.userdb.top_month.insert(build_users(machines, top_month))
 
   print('Successfully updated %d users' % (len(users)))
 
