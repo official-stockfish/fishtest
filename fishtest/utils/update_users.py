@@ -55,11 +55,6 @@ def update_users():
                       'last_updated': datetime.datetime.min,
                       'games_per_hour': 0.0,}
 
-  for u in rundb.userdb.old_user_cache.find():
-    info[u['username']] = u
-    info[u['username']]['games_per_hour'] = 0.0
-    info[u['username']]['last_updated'] = 'Months ago'
-
   for run in rundb.get_unfinished_runs():
     process_run(run, info)
 
