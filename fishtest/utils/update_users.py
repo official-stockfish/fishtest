@@ -32,7 +32,7 @@ def process_run(run, info):
     except:
       info[username]['last_updated'] = task['last_updated']
 
-    info[username]['cpu_hours'] += float(num_games * tc / (60 * 60))
+    info[username]['cpu_hours'] += float(num_games * int(run['args'].get('threads', 1)) * tc / (60 * 60))
     info[username]['games'] += num_games
 
 def build_users(machines, info):
