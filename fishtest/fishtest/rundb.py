@@ -161,7 +161,7 @@ class RunDb:
       # not currently is the color!
       q['results_info.style'] = '#44EB44'
 
-    c = self.runs.find(q, skip=skip, limit=limit, sort=[('last_updated', DESCENDING)])
+    c = self.runs.find(q, skip=skip, limit=limit, sort=[('start_time', DESCENDING)])
     result = [list(c), c.count()]
 
     if limit != 0 and len(result[0]) != limit:
