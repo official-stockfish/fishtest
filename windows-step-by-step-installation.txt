@@ -1,11 +1,8 @@
-1) Download and install Python 2.7.3 (last 2.x package and x86!)
+1) Setup Python on Windows
 
-Website:
-http://www.python.org/download/releases/2.7.3/
-
-Package to download and install:
-Windows x86 MSI Installer (2.7.3)
-http://www.python.org/ftp/python/2.7.3/python-2.7.3.msi
+Download and install Python 2.7.x (not 3.x series):
+ - Python 2.7.11 32-bit - from https://www.python.org/ftp/python/2.7.11/python-2.7.11.msi
+ - Python 2.7.11 64-bit - from https://www.python.org/ftp/python/2.7.11/python-2.7.11.amd64.msi
 
 Installation step-by-step:
 - Install for all users
