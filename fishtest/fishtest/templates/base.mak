@@ -32,7 +32,7 @@
           <li><a href="/users">Users</a></li>
           <li><a href="/users/monthly">Top Month</a></li>
           <li><a href="/actions">Actions</a></li>
-          <li><a href="https://github.com/glinscott/fishtest/wiki" target="_blank">Help</a></li>
+          <li><a href="https://github.com/glinscott/fishtest/wiki" target="_blank">Wiki</a></li>
           <li><a href="http://chatwing.com/stockfish" target="_blank">Chat</a></li>
           <li class="nav-header">Links</li>
           <li><a href="https://github.com/glinscott/fishtest" target="_blank">Github</a></li>
