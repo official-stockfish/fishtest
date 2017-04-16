@@ -47,6 +47,7 @@ MAKE_CMD = 'make profile-build COMP=gcc ' + ARCH
 
 if IS_WINDOWS:
   EXE_SUFFIX = '.exe'
+  MAKE_CMD = 'make profile-build COMP=mingw ' + ARCH
 
 def binary_filename(sha):
   system = platform.uname()[0].lower()
