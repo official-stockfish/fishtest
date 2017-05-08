@@ -106,7 +106,8 @@ def setup(item, testing_dir):
   else:
     raise Exception('Item %s not found' % (item))
 
-def build(worker_dir, sha, repo_url, destination, concurrency):
+def setup_engine(destination, worker_dir, sha, repo_url, concurrency):
+  if os.path.exists(destination): os.remove(destination)
   """Download and build sources in a temporary directory then move exe to destination"""
   tmp_dir = tempfile.mkdtemp()
   os.chdir(tmp_dir)
@@ -133,23 +134,6 @@ def build(worker_dir, sha, repo_url, destination, concurrency):
   shutil.move('stockfish'+ EXE_SUFFIX, destination)
   os.chdir(worker_dir)
   shutil.rmtree(tmp_dir)
-
-def setup_engine(destination, binaries_url, worker_dir, sha, repo_url, concurrency):
-  if os.path.exists(destination): os.remove(destination)
-  if len(binaries_url) > 0:
-    try:
-      binary_url = binaries_url + '/' + binary_filename(sha)
-      r = requests.get(binary_url, timeout=HTTP_TIMEOUT)
-      if r.status_code == 200:
-        print 'Downloaded %s from %s' % (os.path.basename(destination), binary_url)
-        with open(destination, 'wb+') as f:
-          f.write(r.content)
-        return
-    except:
-      sys.stderr.write('Unable to download exe, fall back on local compile:\n')
-      traceback.print_exc(file=sys.stderr)
-
-  build(worker_dir, sha, repo_url, destination, concurrency)
 
 def kill_process(p):
   if IS_WINDOWS:
@@ -339,7 +323,6 @@ def run_games(worker_info, password, remote, run, task_id):
   base_options = run['args']['base_options']
   threads = int(run['args']['threads'])
   spsa_tuning = 'spsa' in run['args']
-  binaries_url = run.get('binaries_url', '')
   repo_url = run['args'].get('tests_repo', FISHCOOKING_URL)
   games_concurrency = int(worker_info['concurrency']) / threads
 
@@ -377,11 +360,11 @@ def run_games(worker_info, password, remote, run, task_id):
   else:
     run_id = ''
 
-  # Download or build from sources base and new
+  # Build from sources new and base engines
   if str(run['_id']) != run_id:
     if os.path.exists(run_id_file): os.remove(run_id_file)
-    setup_engine(new_engine, binaries_url, worker_dir, run['args']['resolved_new'], repo_url, worker_info['concurrency'])
-    setup_engine(base_engine, binaries_url, worker_dir, run['args']['resolved_base'], repo_url, worker_info['concurrency'])
+    setup_engine(new_engine, worker_dir, run['args']['resolved_new'], repo_url, worker_info['concurrency'])
+    setup_engine(base_engine, worker_dir, run['args']['resolved_base'], repo_url, worker_info['concurrency'])
     with open(run_id_file, 'w') as f:
       f.write(str(run['_id']))
 
