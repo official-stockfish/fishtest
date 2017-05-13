@@ -1,0 +1,4 @@
+version: 1.0.{build}
+shallow_clone: true
+build:
+  verbosity: minimal
