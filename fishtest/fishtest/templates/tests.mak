@@ -25,6 +25,7 @@
      cores ${'%.2fM' % (nps / (cores * 1000000.0 + 1))} nps
      (${'%.2fM' % (nps / (1000000.0 + 1))} total nps)
      ${games_per_minute} games/minute
+<button id="machines-button" class="btn" data-toggle="collapse" data-target="#machines">Show</button>
  </h3>
  <table class="table table-striped table-condensed" style="max-width:960px">
   <thead>
@@ -59,6 +60,7 @@
  %endif
   </tbody>
  </table>
+</div>
 %else:
  <h3>Active - ${len(runs['active'])} tests</h3>
 %endif
@@ -90,5 +92,18 @@ $("#pending-button").click(function() {
   var active = $(this).text() == 'Hide';
   $(this).text(active ? 'Show' : 'Hide');
   $.cookie('pending_state', $(this).text());
+});
+</script>
+
+<script type="text/javascript">
+if ($.cookie('machines_state') == 'Hide') {
+  $('#machines').addClass('in');
+  $('#machines-button').text('Hide');
+}
+
+$("#machines-button").click(function() {
+  var active = $(this).text() == 'Hide';
+  $(this).text(active ? 'Show' : 'Hide');
+  $.cookie('machines_state', $(this).text());
 });
 </script>
