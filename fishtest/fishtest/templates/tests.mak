@@ -27,6 +27,7 @@
      ${games_per_minute} games/minute
 <button id="machines-button" class="btn" data-toggle="collapse" data-target="#machines">Show</button>
  </h3>
+<div class="collapse" id="machines">
  <table class="table table-striped table-condensed" style="max-width:960px">
   <thead>
    <tr>
