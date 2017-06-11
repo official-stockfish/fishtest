@@ -788,7 +788,7 @@ def tests(request):
 
     runs[state].append(run)
 
-  runs['pending'].sort(reverse=True, key=lambda run: (-run['args']['priority'], run['start_time']))
+  runs['pending'].sort(key=lambda run: (run['args']['priority'], run['args']['internal_priority']))
   runs['active'].sort(reverse=True, key=lambda run: ('sprt' in run['args'], run['results_info']['llr'] if 'llr' in run['results_info'] else 0,
                                                      'spsa' not in run['args'], run['results']['wins'] + run['results']['draws'] + run['results']['losses']))
 
