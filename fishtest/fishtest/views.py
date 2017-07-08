@@ -511,6 +511,7 @@ def format_results(run_results, run):
                            elo1=sprt['elo1'],
                            beta=sprt['beta'],
                            drawelo=sprt['drawelo'])
+    result['llr'] = stats['llr']
     result['info'].append('LLR: %.2f (%.2lf,%.2lf) [%.2f,%.2f]' % (stats['llr'], stats['lower_bound'], stats['upper_bound'], sprt['elo0'], sprt['elo1']))
   else:
     elo, elo95, los = stat_util.get_elo(WLD)
@@ -783,6 +784,8 @@ def tests(request):
     runs[state].append(run)
 
   runs['pending'].sort(reverse=True, key=lambda run: (-run['args']['priority'], run['start_time']))
+  runs['active'].sort(reverse=True, key=lambda run: ('sprt' in run['args'], run['results_info']['llr'] if 'llr' in run['results_info'] else 0,
+                                                     'spsa' not in run['args'], run['results']['wins'] + run['results']['draws'] + run['results']['losses']))
 
   games_per_minute = 0.0
   machines = request.rundb.get_machines()
