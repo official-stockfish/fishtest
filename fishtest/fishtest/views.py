@@ -378,6 +378,8 @@ def tests_modify(request):
 
     run['finished'] = False
     run['args']['num_games'] = num_games
+    if 'spsa' in run['args']:
+        run['args']['spsa']['num_iter'] = int(num_games / 2)
     run['args']['priority'] = int(request.POST['priority'])
     run['args']['throughput'] = int(request.POST['throughput'])
     request.rundb.runs.save(run)
