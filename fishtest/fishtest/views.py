@@ -135,6 +135,11 @@ def actions(request):
       if before != after:
         item['description'].append('games changed from %s to %s' % (before, after))
 
+      before = action['data']['before']['args']['throughput']
+      after = action['data']['after']['args']['throughput']
+      if before != after:
+        item['description'].append('throughput changed from %s to %s' % (before, after))
+
       item['description'] = 'modify: ' + ','.join(item['description'])
     else:
       item['run'] = action['data']['args']['new_tag']
