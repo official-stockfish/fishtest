@@ -24,7 +24,7 @@ def phi_inv(p):
   return math.sqrt(2)*erf_inv(2*p-1)
 
 def elo(x):
-  if x <= 0:
+  if x <= 0 or x >= 1:
     return 0.0
   return -400*math.log10(1/x-1)
 
