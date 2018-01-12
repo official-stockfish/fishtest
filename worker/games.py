@@ -88,8 +88,7 @@ def verify_signature(engine, signature, remote, payload, concurrency):
 
   finally:
     if concurrency > 1:
-      busy_process.stdin.write('quit\n')
-      busy_process.kill()
+      busy_process.communicate('quit\n')
 
   return bench_nps
 
