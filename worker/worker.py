@@ -14,7 +14,7 @@ from optparse import OptionParser
 from games import run_games
 from updater import update
 
-WORKER_VERSION = 59
+WORKER_VERSION = 60
 ALIVE = True
 
 HTTP_TIMEOUT = 5.0
@@ -166,7 +166,7 @@ def main():
   global ALIVE
   while ALIVE:
     if not success:
-      time.sleep(1800)
+      time.sleep(300)
     success = worker(worker_info, args[1], remote)
 
 if __name__ == '__main__':
