@@ -61,10 +61,6 @@
         <option value="numgames">NumGames</option>
         <option value="spsa">SPSA</option>
       </select>
-      <div class="btn-group">
-        <div class="btn" id="fast_test">Fast</div>
-        <div class="btn" id="slow_test">Slow</div>
-      </div>
     </div>
   </div>
   <div class="control-group stop_rule numgames spsa">
@@ -132,6 +128,10 @@ Cowardice,150,0,200,10,0.0020"""})['raw_params']}</textarea>
     <label class="control-label">Time Control:</label>
     <div class="controls">
       <input name="tc" value="${args.get('tc', '10+0.1')}">
+      <div class="btn-group">
+        <div class="btn" id="fast_test">Fast</div>
+        <div class="btn" id="slow_test">Slow</div>
+      </div>
     </div>
   </div>
   <div class="control-group">
