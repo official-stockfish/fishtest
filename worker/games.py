@@ -407,6 +407,8 @@ def run_games(worker_info, password, remote, run, task_id):
 
   # Verify signatures are correct
   base_nps = verify_signature(new_engine, run['args']['new_signature'], remote, result, games_concurrency * threads)
+  if not spsa_tuning:
+    verify_signature(base_engine, run['args']['base_signature'], remote, result, games_concurrency * threads)
 
   # Benchmark to adjust cpu scaling
   scaled_tc, tc_limit = adjust_tc(run['args']['tc'], base_nps, int(worker_info['concurrency']))
