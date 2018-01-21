@@ -15,6 +15,10 @@
       padding:1px;
       line-height:13px
     }
+    .checkbox.inline {
+      margin-left: 20px;
+      margin-right: 0;
+    }
   </style>
 
   ${self.head()}

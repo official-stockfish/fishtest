@@ -269,6 +269,8 @@ def validate_form(request):
     data['base_signature'] = data['new_signature']
     data['base_options'] = data['new_options']
 
+  data['auto_purge'] = request.POST.get('auto-purge') is not None
+
   # In case of reschedule use old data, otherwise resolve sha and update user's tests_repo
   if 'resolved_base' in request.POST:
     data['resolved_base'] = request.POST['resolved_base']
@@ -670,7 +672,8 @@ def tests_view(request):
   for name in ['new_tag', 'new_signature', 'new_options', 'resolved_new',
                'base_tag', 'base_signature', 'base_options', 'resolved_base',
                'sprt', 'num_games', 'spsa', 'tc', 'threads', 'book', 'book_depth',
-               'priority', 'internal_priority', 'username', 'tests_repo', 'info']:
+               'auto_purge', 'priority', 'internal_priority', 'username', 'tests_repo',
+               'info']:
 
     if not name in run['args']:
       continue
@@ -773,7 +776,7 @@ def tests(request):
     # when the run was finished, not when it is first viewed)
     if state == 'finished':
       purged = 0
-      if 'spsa' not in run['args'] and run['args']['threads'] == 1:
+      if run['args'].get('auto_purge', True) and 'spsa' not in run['args'] and run['args']['threads'] == 1:
         while purge_run(request.rundb, run) and purged < 5:
           purged += 1
           run = request.rundb.get_run(run['_id'])
