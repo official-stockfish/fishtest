@@ -165,6 +165,12 @@ Cowardice,150,0,200,10,0.0020"""})['raw_params']}</textarea>
     </div>
   </div>
   <div class="control-group">
+    <label class="control-label">Advanced:</label>
+    <div class="controls checkbox inline">
+      <input name="auto-purge" type="checkbox" checked="checked" value="True">Auto-purge
+    </div>
+  </div>
+  <div class="control-group">
     <label class="control-label">Priority:</label>
     <div class="controls">
       <input name="priority" value="${args.get('priority', 0)}">

@@ -58,6 +58,7 @@ class RunDb:
               spsa=None,
               username=None,
               tests_repo=None,
+              auto_purge=True,
               throughput=1000,
               priority=0):
     if start_time == None:
@@ -83,6 +84,7 @@ class RunDb:
       'new_signature': new_signature,
       'username': username,
       'tests_repo': tests_repo,
+      'auto_purge': auto_purge,
       'throughput': throughput,
       'priority': priority,
       'internal_priority': - time.mktime(start_time.timetuple()),
