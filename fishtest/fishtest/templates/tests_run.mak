@@ -70,12 +70,24 @@
     </div>
   </div>
   <div class="control-group stop_rule sprt">
+    <label class="control-label">SPRT bounds:</label>
+    <div class="controls">
+      <select name="bounds">
+        <option value="standard">Standard [0,5]</option>
+        <option value="tweak">Parameter Tweak [0,4]</option>
+        <option value="regression">Non-regression [-3,1]</option>
+        <option value="simplification">Simplification [-3,1]</option>
+        <option value="custom">Custom bounds...</option>
+      </select>
+    </div>
+  </div>
+  <div class="control-group stop_rule sprt custom_bounds">
     <label class="control-label">SPRT Elo0:</label>
     <div class="controls">
       <input name="sprt_elo0" value="${args.get('sprt', {'elo0': 0})['elo0']}">
     </div>
   </div>
-  <div class="control-group stop_rule sprt">
+  <div class="control-group stop_rule sprt custom_bounds">
     <label class="control-label">SPRT Elo1:</label>
     <div class="controls">
       <input name="sprt_elo1" value="${args.get('sprt', {'elo1': 5})['elo1']}">
@@ -193,16 +205,29 @@ Cowardice,150,0,200,10,0.0020"""})['raw_params']}</textarea>
 
 <script type="text/javascript">
 $(function() {
+  var update_bounds = function() {
+    var bounds = $('select[name=bounds]').val();
+    if (bounds == 'standard') { $('input[name=sprt_elo0]').val('0'); $('input[name=sprt_elo1]').val('5'); }
+    if (bounds == 'tweak') { $('input[name=sprt_elo0]').val('0'); $('input[name=sprt_elo1]').val('4'); }
+    if (bounds == 'regression') { $('input[name=sprt_elo0]').val('-3'); $('input[name=sprt_elo1]').val('1'); }
+    if (bounds == 'simplification') { $('input[name=sprt_elo0]').val('-3'); $('input[name=sprt_elo1]').val('1'); }
+    if (bounds == 'custom')
+      $('.custom_bounds').show();
+    else
+      $('.custom_bounds').hide();
+  };
   var update_visibility = function() {
     $('.stop_rule').hide();
     var stop_rule = $('select[name=stop_rule]').val();
     if (stop_rule == 'numgames') $('.numgames').show();
-    if (stop_rule == 'sprt') $('.sprt').show();
+    if (stop_rule == 'sprt') { $('.sprt').show(); update_bounds(); }
     if (stop_rule == 'spsa') $('.spsa').show();
   };
 
+  $('select[name=bounds]').val("${'custom' if re_run else 'standard'}");
   update_visibility();
   $('select[name=stop_rule]').change(update_visibility);
+  $('select[name=bounds]').change(update_bounds);
 
   $('#fast_test').click(function() {
     $('input[name=tc]').val('10+0.1');
