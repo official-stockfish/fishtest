@@ -415,7 +415,9 @@ def run_games(worker_info, password, remote, run, task_id):
   # Handle book or pgn file
   pgn_cmd = []
   book_cmd = []
-  if book.endswith('.pgn') or book.endswith('.epd'):
+  if book_depth <= 0:
+    pass
+  elif book.endswith('.pgn') or book.endswith('.epd'):
     plies = 2 * int(book_depth)
     pgn_cmd = ['-openings', 'file=%s' % (book), 'format=%s' % (book[-3:]), 'order=random', 'plies=%d' % (plies)]
   else:
