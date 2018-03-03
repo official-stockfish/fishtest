@@ -93,13 +93,29 @@ def verify_signature(engine, signature, remote, payload, concurrency):
 
   return bench_nps
 
+def cleanup(item, testing_dir):
+  """Remove corrupted opening books"""
+  target_path = os.path.join(testing_dir, item)
+  stat_info = os.stat(target_path)
+  if not os.path.exists(os.path.join(testing_dir, book)):
+    return True
+  elif statinfo.st_size == 0:
+    os.remove(target_path)
+    return False
+  else:
+    return True
+
 def setup(item, testing_dir):
   """Download item from FishCooking to testing_dir"""
   tree = requests.get(github_api(FISHCOOKING_URL) + '/git/trees/setup', timeout=HTTP_TIMEOUT).json()
   for blob in tree['tree']:
     if blob['path'] == item:
       print 'Downloading %s ...' % (item)
-      blob_json = requests.get(blob['url'], timeout=HTTP_TIMEOUT).json()
+      while True:
+        blob_request = requests.get(blob['url'], timeout=HTTP_TIMEOUT)
+        blob_json = blob_request.json()
+        if blob_request.status_code == requests.codes.ok:
+          break
       with open(os.path.join(testing_dir, item), 'wb+') as f:
         f.write(b64decode(blob_json['content']))
       break
@@ -380,9 +396,16 @@ def run_games(worker_info, password, remote, run, task_id):
 
   os.chdir(testing_dir)
 
-  # Download book if not already existing
-  if not os.path.exists(os.path.join(testing_dir, book)):
-    setup(book, testing_dir)
+  # Check that book is ok
+  if os.path.exists(os.path.join(testing_dir, book)):
+    cleanup(book, testing_dir)
+
+  # Download book if not already existing or the downloaed book has size 0
+  while True:
+    if not os.path.exists(os.path.join(testing_dir, book)):
+      setup(book, testing_dir)
+    if cleanup(book, testing_dir) and os.path.exists(os.path.join(testing_dir, book)):
+      break
 
   # Download cutechess if not already existing
   if not os.path.exists(cutechess):
