@@ -38,7 +38,7 @@ def is_64bit():
     return is_windows_64bit()
   return '64' in platform.architecture()[0]
 
-HTTP_TIMEOUT = 5.0
+HTTP_TIMEOUT = 10.0
 
 FISHCOOKING_URL = 'https://github.com/mcostalba/FishCooking'
 ARCH = 'ARCH=x86-64-modern' if is_64bit() else 'ARCH=x86-32'
@@ -265,7 +265,7 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
         sys.stderr.write('Exception from calling update_task:\n')
         traceback.print_exc(file=sys.stderr)
         failed_updates += 1
-        if failed_updates > 5:
+        if failed_updates > 10:
           print('Too many failed update attempts')
           kill_process(p)
           break
