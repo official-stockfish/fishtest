@@ -14,10 +14,10 @@ from optparse import OptionParser
 from games import run_games
 from updater import update
 
-WORKER_VERSION = 61
+WORKER_VERSION = 63
 ALIVE = True
 
-HTTP_TIMEOUT = 5.0
+HTTP_TIMEOUT = 10.0
 
 def setup_config_file(config_file):
   ''' Config file setup, adds defaults if not existing '''
