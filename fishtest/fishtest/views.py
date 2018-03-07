@@ -15,6 +15,8 @@ from pyramid.view import view_config, forbidden_view_config
 from pyramid.httpexceptions import HTTPFound, HTTPBadRequest
 
 import stat_util
+import pyramid_beaker
+from beaker.cache import cache_region
 
 @view_config(route_name='home', renderer='mainpage.mak')
 def mainpage(request):
@@ -749,7 +751,12 @@ def post_result(run):
 
 @view_config(route_name='tests', renderer='tests.mak')
 @view_config(route_name='tests_user', renderer='tests.mak')
+def tests_cached(request):
+    return tests(request)
+
+@cache_region('short_term', 'tests_view')
 def tests(request):
+  
   username = request.matchdict.get('username', '')
   success_only = len(request.params.get('success_only', '')) > 0
 

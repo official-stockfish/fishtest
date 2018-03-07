@@ -6,8 +6,10 @@ README = ''
 CHANGES = ''
 
 requires = [
+    'pyramid_mako',
     'pyramid',
     'pyramid_debugtoolbar',
+    'pyramid_beaker',
     'waitress',
     'psutil',
     'pymongo',
