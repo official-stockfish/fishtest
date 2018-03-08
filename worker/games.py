@@ -4,6 +4,7 @@ import datetime
 import json
 import os
 import stat
+import random
 import requests
 import subprocess
 import shutil
@@ -269,6 +270,7 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
           print('Too many failed update attempts')
           kill_process(p)
           break
+        time.sleep(random.randint(failed_updates*failed_updates, 4 * failed_updates*failed_updates))
 
   if datetime.datetime.now() >= end_time:
     print(datetime.datetime.now(), 'is past end time', end_time)

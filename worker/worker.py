@@ -5,6 +5,7 @@ import os
 import platform
 import signal
 import sys
+import random
 import requests
 import time
 import traceback
@@ -14,7 +15,7 @@ from optparse import OptionParser
 from games import run_games
 from updater import update
 
-WORKER_VERSION = 61
+WORKER_VERSION = 62
 ALIVE = True
 
 HTTP_TIMEOUT = 5.0
@@ -53,6 +54,8 @@ def worker(worker_info, password, remote):
   }
 
   try:
+    print 'Will fetch task soon...'
+    time.sleep(random.randint(1,30))
     req = requests.post(remote + '/api/request_version', data=json.dumps(payload), headers={'Content-type': 'application/json'}, timeout=HTTP_TIMEOUT)
     req = json.loads(req.text)
 
@@ -70,7 +73,7 @@ def worker(worker_info, password, remote):
   except:
     sys.stderr.write('Exception accessing host:\n')
     traceback.print_exc()
-    time.sleep(10)
+    time.sleep(random.randint(10,60))
     return
 
   if 'error' in req:
@@ -79,7 +82,7 @@ def worker(worker_info, password, remote):
   # No tasks ready for us yet, just wait...
   if 'task_waiting' in req:
     print 'No tasks available at this time, waiting...'
-    time.sleep(10)
+    time.sleep(random.randint(10,60))
     return
 
   success = True
