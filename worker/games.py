@@ -200,6 +200,9 @@ def enqueue_output(out, queue):
     queue.put(line)
   out.close()
 
+w_params = None
+b_params = None
+
 def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
   global old_stats
   failed_updates = 0
@@ -251,6 +254,8 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
         spsa['wins'] = wld[0]
         spsa['losses'] = wld[1]
         spsa['draws'] = wld[2]
+        if spsa['num_games'] == spsa['wins'] + spsa['losses'] + spsa['draws']:
+            spsa['w_params'] = w_params
 
       try:
         req = requests.post(remote + '/api/update_task', data=json.dumps(result), headers={'Content-type': 'application/json'}, timeout=HTTP_TIMEOUT).json()
@@ -289,16 +294,20 @@ def launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, tc_limit):
     # Request parameters for next game
     req = requests.post(remote + '/api/request_spsa', data=json.dumps(result), headers={'Content-type': 'application/json'}, timeout=HTTP_TIMEOUT).json()
 
-    spsa['w_params'] = req['w_params']
-    spsa['b_params'] = req['b_params']
+    global w_params, b_params
+    w_params = req['w_params']
+    b_params = req['b_params']
 
     result['spsa'] = spsa
+  else:
+    w_params = []
+    b_params = []
 
   # Run cutechess-cli binary
   idx = cmd.index('_spsa_')
-  cmd = cmd[:idx] + ['option.%s=%d'%(x['name'], round(x['value'])) for x in spsa['w_params']] + cmd[idx+1:]
+  cmd = cmd[:idx] + ['option.%s=%d'%(x['name'], round(x['value'])) for x in w_params] + cmd[idx+1:]
   idx = cmd.index('_spsa_')
-  cmd = cmd[:idx] + ['option.%s=%d'%(x['name'], round(x['value'])) for x in spsa['b_params']] + cmd[idx+1:]
+  cmd = cmd[:idx] + ['option.%s=%d'%(x['name'], round(x['value'])) for x in b_params] + cmd[idx+1:]
 
   print cmd
   p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True, bufsize=1, close_fds=not IS_WINDOWS)
