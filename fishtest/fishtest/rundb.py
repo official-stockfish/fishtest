@@ -30,6 +30,10 @@ class RunDb:
 
   def build_indices(self):
     self.runs.ensure_index([('finished', ASCENDING), ('last_updated', DESCENDING)])
+    self.runs.ensure_index([('tasks.pending', ASCENDING)],
+                           partialFilterExpression = { 'tasks': { '$elemMatch': {'pending': True} } } )
+    self.runs.ensure_index([('tasks.active', ASCENDING)],
+                           partialFilterExpression = { 'tasks': { '$elemMatch': {'active': True} } } )
 
   def generate_tasks(self, num_games):
     tasks = []
