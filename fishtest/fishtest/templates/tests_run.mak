@@ -141,8 +141,8 @@ Cowardice,150,0,200,10,0.0020"""})['raw_params']}</textarea>
     <div class="controls">
       <input name="tc" value="${args.get('tc', '10+0.1')}">
       <div class="btn-group">
-        <div class="btn" id="fast_test">Fast</div>
-        <div class="btn" id="slow_test">Slow</div>
+        <div class="btn" id="fast_test">short (STC)</div>
+        <div class="btn" id="slow_test">long (LTC)</div>
       </div>
     </div>
   </div>
