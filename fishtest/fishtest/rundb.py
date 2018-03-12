@@ -16,8 +16,9 @@ from views import parse_tc
 import stat_util
 from synchro import synchronized
 
-# reentrant lock for task management
+# reentrant locks for run and task management
 lock = threading.RLock()
+task_lock = threading.RLock()
 
 class RunDb:
   def __init__(self, db_name='fishtest_new'):
@@ -132,7 +133,7 @@ class RunDb:
 
     return self.runs.insert(new_run)
 
-  @synchronized(lock)
+  @synchronized(task_lock)
   def get_machines(self):
     machines = []
     for run in self.runs.find({'tasks': {'$elemMatch': {'active': True}}}):
@@ -278,7 +279,7 @@ class RunDb:
 
     return {'run': run, 'task_id': task_id}
 
-  @synchronized(lock)
+  @synchronized(task_lock)
   def update_task(self, run_id, task_id, stats, nps, spsa):
     run = self.get_run(run_id)
     if task_id >= len(run['tasks']):
