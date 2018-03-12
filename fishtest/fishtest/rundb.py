@@ -3,6 +3,7 @@ import os
 import random
 import math
 import time
+import threading
 from datetime import datetime
 from bson.objectid import ObjectId
 from pymongo import MongoClient, ASCENDING, DESCENDING
@@ -13,6 +14,11 @@ from regressiondb import RegressionDb
 from views import parse_tc
 
 import stat_util
+from synchro import synchronized
+
+# reentrant locks for run and task management
+lock = threading.RLock()
+task_lock = threading.RLock()
 
 class RunDb:
   def __init__(self, db_name='fishtest_new'):
@@ -28,9 +34,11 @@ class RunDb:
 
     self.chunk_size = 1000
 
+  @synchronized(lock)
   def build_indices(self):
     self.runs.ensure_index([('finished', ASCENDING), ('last_updated', DESCENDING)])
 
+  @synchronized(lock)
   def generate_tasks(self, num_games):
     tasks = []
     remaining = num_games
@@ -44,6 +52,7 @@ class RunDb:
       remaining -= task_size
     return tasks
 
+  @synchronized(lock)
   def new_run(self, base_tag, new_tag, num_games, tc, book, book_depth, threads, base_options, new_options,
               info='',
               resolved_base='',
@@ -111,6 +120,7 @@ class RunDb:
     }
 
     # Check for an existing approval matching the git commit SHAs
+    @synchronized(lock)
     def get_approval(sha):
       q = { '$or': [{ 'args.resolved_base': sha }, { 'args.resolved_new': sha }], 'approved': True }
       return self.runs.find_one(q)
@@ -123,6 +133,7 @@ class RunDb:
 
     return self.runs.insert(new_run)
 
+  @synchronized(task_lock)
   def get_machines(self):
     machines = []
     for run in self.runs.find({'tasks': {'$elemMatch': {'active': True}}}):
@@ -150,6 +161,7 @@ class RunDb:
   def get_runs(self):
     return list(self.get_unfinished_runs()) + self.get_finished_runs()[0]
 
+  @synchronized(lock)
   def get_unfinished_runs(self):
     return self.runs.find({'finished': False},
                           sort=[('last_updated', DESCENDING), ('start_time', DESCENDING)])
@@ -175,6 +187,7 @@ class RunDb:
       
     return result
 
+  @synchronized(lock)
   def get_results(self, run):
     if not run['results_stale']:
       return run['results']
@@ -198,6 +211,7 @@ class RunDb:
 
     return results
 
+  @synchronized(lock)
   def request_task(self, worker_info):
     # Check for blocked user or ip
     if self.userdb.is_blocked(worker_info):
@@ -265,6 +279,7 @@ class RunDb:
 
     return {'run': run, 'task_id': task_id}
 
+  @synchronized(task_lock)
   def update_task(self, run_id, task_id, stats, nps, spsa):
     run = self.get_run(run_id)
     if task_id >= len(run['tasks']):
@@ -318,6 +333,7 @@ class RunDb:
 
     return {'task_alive': task['active']}
 
+  @synchronized(lock)
   def failed_task(self, run_id, task_id):
     run = self.get_run(run_id)
     if task_id >= len(run['tasks']):
@@ -333,6 +349,7 @@ class RunDb:
 
     return {}
 
+  @synchronized(lock)
   def stop_run(self, run_id):
     run = self.get_run(run_id)
     prune_idx = len(run['tasks'])
@@ -351,6 +368,7 @@ class RunDb:
 
     return {}
 
+  @synchronized(lock)
   def approve_run(self, run_id, approver):
     run = self.get_run(run_id)
     # Can't self approve
@@ -387,6 +405,7 @@ class RunDb:
 
     return value
 
+  @synchronized(lock)
   def request_spsa(self, run_id, task_id):
     run = self.get_run(run_id)
 
@@ -428,7 +447,8 @@ class RunDb:
       })
 
     return result
-
+  
+  @synchronized(lock)
   def update_spsa(self, run, spsa_results):
     spsa = run['args']['spsa']
     if 'clipping' not in spsa:
