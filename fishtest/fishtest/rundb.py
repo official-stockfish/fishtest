@@ -3,6 +3,8 @@ import os
 import random
 import math
 import time
+import threading
+
 from datetime import datetime
 from bson.objectid import ObjectId
 from pymongo import MongoClient, ASCENDING, DESCENDING
@@ -265,7 +267,30 @@ class RunDb:
 
     return {'run': run, 'task_id': task_id}
 
+  # Create a lock for each active run
+  run_lock = threading.Lock()
+  active_runs = {}
+  purge_count = 0
+
+  def active_run_lock(self, id):
+    with self.run_lock:
+      self.purge_count = self.purge_count + 1
+      if self.purge_count > 100000:
+        self.active_runs.clear()
+        self.purge_count = 0
+      if id in self.active_runs:
+        active_lock = self.active_runs[id]
+      else:
+        active_lock = threading.Lock()
+        self.active_runs[id] = active_lock
+      return active_lock
+
   def update_task(self, run_id, task_id, stats, nps, spsa):
+    lock = self.active_run_lock(run_id)
+    with lock:
+      return self.sync_update_task(run_id, task_id, stats, nps, spsa)
+
+  def sync_update_task(self, run_id, task_id, stats, nps, spsa):
     run = self.get_run(run_id)
     if task_id >= len(run['tasks']):
       return {'task_alive': False}
