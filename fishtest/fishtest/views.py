@@ -8,6 +8,9 @@ import sys
 import json
 import smtplib
 import requests
+import time
+import threading
+
 from email.mime.text import MIMEText
 from collections import defaultdict
 from pyramid.security import remember, forget, authenticated_userid, has_permission
@@ -15,6 +18,20 @@ from pyramid.view import view_config, forbidden_view_config
 from pyramid.httpexceptions import HTTPFound, HTTPBadRequest
 
 import stat_util
+
+# For caching the tests output
+cache_time = 2
+last_tests = None
+last_time = 0
+
+def clear_cache():
+  global last_time
+  last_time = 0
+
+def cached_flash(request, requestString):
+  clear_cache()
+  request.session.flash(requestString)
+  return
 
 @view_config(route_name='home', renderer='mainpage.mak')
 def mainpage(request):
@@ -342,7 +359,7 @@ def tests_run(request):
       run_id = request.rundb.new_run(**data)
 
       request.actiondb.new_run(authenticated_userid(request), request.rundb.get_run(run_id))
-      request.session.flash('Started test run!')
+      cached_flash(request, 'Started test run!')
       return HTTPFound(location=request.route_url('tests'))
     except Exception as e:
       request.session.flash(str(e))
@@ -391,7 +408,7 @@ def tests_modify(request):
 
     request.actiondb.modify_run(authenticated_userid(request), before, run)
 
-    request.session.flash('Run successfully modified!')
+    cached_flash(request, 'Run successfully modified!')
     return HTTPFound(location=request.route_url('tests'))
   return {}
 
@@ -407,7 +424,7 @@ def tests_stop(request):
   run = request.rundb.get_run(request.POST['run-id'])
   request.actiondb.stop_run(authenticated_userid(request), run)
 
-  request.session.flash('Stopped run')
+  cached_flash(request, 'Stopped run')
   return HTTPFound(location=request.route_url('tests'))
 
 @view_config(route_name='tests_approve', permission='approve_run')
@@ -420,7 +437,7 @@ def tests_approve(request):
   run = request.rundb.get_run(request.POST['run-id'])
   request.actiondb.approve_run(username, run)
 
-  request.session.flash('Approved run')
+  cached_flash(request, 'Approved run')
   return HTTPFound(location=request.route_url('tests'))
 
 def purge_run(rundb, run):
@@ -469,7 +486,7 @@ def tests_purge(request):
 
   request.actiondb.purge_run(username, run)
 
-  request.session.flash('Purged run')
+  cached_flash(request, 'Purged run')
   return HTTPFound(location=request.route_url('tests'))
 
 @view_config(route_name='tests_delete', permission='modify_db')
@@ -487,7 +504,7 @@ def tests_delete(request):
 
   request.actiondb.delete_run(authenticated_userid(request), run)
 
-  request.session.flash('Deleted run')
+  cached_flash(request, 'Deleted run')
   return HTTPFound(location=request.route_url('tests'))
 
 def format_results(run_results, run):
@@ -747,12 +764,24 @@ def post_result(run):
   s.sendmail(msg['From'], [msg['To']], msg.as_string())
   s.quit()
 
+# Guard against parallel builds of main page
+building = threading.Semaphore()
+
 @view_config(route_name='tests', renderer='tests.mak')
 @view_config(route_name='tests_user', renderer='tests.mak')
 def tests(request):
   username = request.matchdict.get('username', '')
   success_only = len(request.params.get('success_only', '')) > 0
 
+  do_cache = (len(username) == 0 and not success_only and request.params.get('page', 1) == 1)
+  
+  global last_tests, last_time
+  if do_cache:
+    if time.time() - last_time < cache_time:
+      return last_tests
+    if not building.acquire(last_tests is None):
+      return last_tests
+    
   runs = { 'pending':[], 'failed':[], 'active':[], 'finished':[] }
 
   unfinished_runs = request.rundb.get_unfinished_runs()
@@ -858,7 +887,7 @@ def tests(request):
     for page in pages:
       page['url'] += '&success_only=1'
 
-  return {
+  result = {
     'runs': runs,
     'finished_runs': num_finished,
     'page_idx': page,
@@ -871,3 +900,10 @@ def tests(request):
     'nps': nps,
     'games_per_minute': int(games_per_minute),
   }
+  
+  if do_cache:
+    last_tests = result
+    last_time = time.time()
+    building.release()
+
+  return result
