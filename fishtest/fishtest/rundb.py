@@ -175,7 +175,7 @@ class RunDb:
       
     return result
 
-  def get_results(self, run):
+  def get_results(self, run, save_run = True):
     if not run['results_stale']:
       return run['results']
 
@@ -194,7 +194,8 @@ class RunDb:
 
     run['results_stale'] = False
     run['results'] = results
-    self.runs.save(run)
+    if save_run:
+      self.runs.save(run)
 
     return results
 
@@ -299,12 +300,10 @@ class RunDb:
     if 'spsa' in run['args'] and spsa_games == spsa['num_games']:
       self.update_spsa(run, spsa)
 
-    self.runs.save(run)
-
     # Check if SPRT stopping is enabled
     if 'sprt' in run['args']:
       sprt = run['args']['sprt']
-      sprt_stats = stat_util.SPRT(self.get_results(run),
+      sprt_stats = stat_util.SPRT(self.get_results(run, False),
                                   elo0=sprt['elo0'],
                                   alpha=sprt['alpha'],
                                   elo1=sprt['elo1'],
@@ -312,9 +311,11 @@ class RunDb:
                                   drawelo=sprt['drawelo'])
       if sprt_stats['finished']:
         run['args']['sprt']['state'] = sprt_stats['state']
-        self.runs.save(run)
+        self.stop_run(run_id, run)
 
-        self.stop_run(run_id)
+    if (   not 'spsa' in run['args'] or spsa_games == spsa['num_games']
+        or num_games >= task['num_games'] or len(spsa['w_params']) < 20):
+      self.runs.save(run)
 
     return {'task_alive': task['active']}
 
@@ -333,8 +334,11 @@ class RunDb:
 
     return {}
 
-  def stop_run(self, run_id):
-    run = self.get_run(run_id)
+  def stop_run(self, run_id, run = None):
+    save_it = False
+    if run is None:
+      run = self.get_run(run_id)
+      save_it = True
     prune_idx = len(run['tasks'])
     for idx, task in enumerate(run['tasks']):
       is_active = task['active']
@@ -347,7 +351,8 @@ class RunDb:
     # Truncate the empty tasks
     if prune_idx < len(run['tasks']):
       del run['tasks'][prune_idx:]
-    self.runs.save(run)
+    if save_it:
+      self.runs.save(run)
 
     return {}
 
