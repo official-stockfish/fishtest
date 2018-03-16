@@ -780,6 +780,11 @@ def tests(request):
     if time.time() - last_time < cache_time:
       return last_tests
     if not building.acquire(last_tests is None):
+      # We have a current cache and another thread is rebuilding, so return the current cache
+      return last_tests
+    elif time.time() - last_time < cache_time:
+      # Another thread has built the cache for us, so we are done
+      building.release()
       return last_tests
     
   runs = { 'pending':[], 'failed':[], 'active':[], 'finished':[] }
