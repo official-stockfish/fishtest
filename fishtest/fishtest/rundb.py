@@ -481,8 +481,18 @@ class RunDb:
         'c': c,
       })
 
-    # Every 100 iterations, record the parameters
+    # Every 100/1000 iterations, record the parameters
+    # and stop at 500000 or 200000
     if 'param_history' not in spsa:
       spsa['param_history'] = []
-    if len(spsa['param_history']) < spsa['iter'] / 100:
-      spsa['param_history'].append(summary)
+    if len(spsa['params']) < 20:
+      freq = 100
+      maxlen = 5001
+    else:
+      freq = 1000
+      maxlen = 201
+    if len(spsa['param_history']) < maxlen:
+      if len(spsa['param_history']) < spsa['iter'] / freq:
+        spsa['param_history'].append(summary)
+    elif len(spsa['param_history']) > maxlen:
+        spsa['param_history'] = spsa['param_history'][-maxlen:]
