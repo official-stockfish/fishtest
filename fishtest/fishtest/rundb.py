@@ -201,10 +201,17 @@ class RunDb:
 
     return results
 
+  # Limit concurrent request_task
+  task_sema = threading.Semaphore()
+
   def request_task(self, worker_info):
+
     # Check for blocked user or ip
     if self.userdb.is_blocked(worker_info):
       return {'task_waiting': False}
+
+    if not self.task_sema.acquire(False):
+      return {'task_waiting': False} 
 
     max_threads = int(worker_info['concurrency'])
     exclusion_list = []
@@ -215,6 +222,7 @@ class RunDb:
       for task_id, task in enumerate(existing_run['tasks']):
         if task['active'] and task['worker_info'] == worker_info:
           if task['pending']:
+            self.task_sema.release()
             return {'run': existing_run, 'task_id': task_id}
           else:
             # Don't hand back tasks that have been marked as no longer pending
@@ -229,6 +237,7 @@ class RunDb:
 
     # Allow a few connections, for multiple computers on same IP
     if connections >= self.userdb.get_machine_limit(worker_info['username']):
+      self.task_sema.release()
       return {'task_waiting': False, 'hit_machine_limit': True}
 
     # Ok, we get a new task that does not require more threads than available concurrency
@@ -250,6 +259,7 @@ class RunDb:
 
     run = self.runs.find_and_modify(**q)
     if run == None:
+      self.task_sema.release()
       return {'task_waiting': False}
 
     # Find the task we have just activated: the one with the highest 'last_updated'
@@ -266,6 +276,7 @@ class RunDb:
       run['args']['internal_priority'] = - time.mktime(run['start_time'].timetuple()) - task_id * 3600 * self.chunk_size * run['args']['threads'] / run['args']['throughput']
     self.runs.save(run)
 
+    self.task_sema.release()
     return {'run': run, 'task_id': task_id}
 
   # Create a lock for each active run
