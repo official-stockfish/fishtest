@@ -39,7 +39,7 @@ def is_64bit():
     return is_windows_64bit()
   return '64' in platform.architecture()[0]
 
-HTTP_TIMEOUT = 5.0
+HTTP_TIMEOUT = 15.0
 
 FISHCOOKING_URL = 'https://github.com/mcostalba/FishCooking'
 ARCH = 'ARCH=x86-64-modern' if is_64bit() else 'ARCH=x86-32'
@@ -49,6 +49,10 @@ MAKE_CMD = 'make profile-build COMP=gcc ' + ARCH
 if IS_WINDOWS:
   EXE_SUFFIX = '.exe'
   MAKE_CMD = 'make profile-build COMP=mingw ' + ARCH
+
+def printout(s):
+  print s
+  sys.stdout.flush()
 
 def binary_filename(sha):
   system = platform.uname()[0].lower()
@@ -68,7 +72,7 @@ def verify_signature(engine, signature, remote, payload, concurrency):
 
   try:
     bench_sig = ''
-    print 'Verifying signature of %s ...' % (os.path.basename(engine))
+    printout('Verifying signature of %s ...' % (os.path.basename(engine)))
     with open(os.devnull, 'wb') as f:
       p = subprocess.Popen([engine, 'bench'], stderr=subprocess.PIPE, stdout=f, universal_newlines=True)
     for line in iter(p.stderr.readline,''):
@@ -98,7 +102,7 @@ def setup(item, testing_dir):
   tree = requests.get(github_api(FISHCOOKING_URL) + '/git/trees/setup', timeout=HTTP_TIMEOUT).json()
   for blob in tree['tree']:
     if blob['path'] == item:
-      print 'Downloading %s ...' % (item)
+      printout('Downloading %s ...' % (item))
       blob_json = requests.get(blob['url'], timeout=HTTP_TIMEOUT).json()
       with open(os.path.join(testing_dir, item), 'wb+') as f:
         f.write(b64decode(blob_json['content']))
@@ -141,7 +145,7 @@ def setup_engine(destination, binaries_url, worker_dir, sha, repo_url, concurren
       binary_url = binaries_url + '/' + binary_filename(sha)
       r = requests.get(binary_url, timeout=HTTP_TIMEOUT)
       if r.status_code == 200:
-        print 'Downloaded %s from %s' % (os.path.basename(destination), binary_url)
+        printout('Downloaded %s from %s' % (os.path.basename(destination), binary_url))
         with open(destination, 'wb+') as f:
           f.write(r.content)
         return
@@ -192,7 +196,7 @@ def adjust_tc(tc, base_nps, concurrency):
     scaled_tc = '%d/%s' % (num_moves, scaled_tc)
     tc_limit *= 100.0 / num_moves
 
-  print 'CPU factor : %f - tc adjusted to %s' % (factor, scaled_tc)
+  printout('CPU factor : %f - tc adjusted to %s' % (factor, scaled_tc))
   return scaled_tc, tc_limit
 
 def enqueue_output(out, queue):
@@ -213,7 +217,7 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
   t.start()
 
   end_time = datetime.datetime.now() + datetime.timedelta(seconds=tc_limit)
-  print('TC limit', tc_limit, 'End time:', end_time)
+  printout('TC limit '+str(tc_limit)+' End time: '+str(end_time))
 
   while datetime.datetime.now() < end_time:
     try: line = q.get_nowait()
@@ -228,7 +232,7 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
 
     # Have we reached the end of the match?  Then just exit
     if 'Finished match' in line:
-      print('Finished match cleanly')
+      printout('Finished match cleanly')
       kill_process(p)
       break
 
@@ -258,12 +262,14 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
             spsa['w_params'] = w_params
 
       try:
+        t0 = datetime.datetime.utcnow()
         req = requests.post(remote + '/api/update_task', data=json.dumps(result), headers={'Content-type': 'application/json'}, timeout=HTTP_TIMEOUT).json()
         failed_updates = 0
+        printout("Task updated successfully in "+str((datetime.datetime.utcnow()-t0).total_seconds())+"s")
 
         if not req['task_alive']:
           # This task is no longer neccesary
-          print('Server told us task is no longer needed')
+          printout('Server told us task is no longer needed')
           kill_process(p)
           return req
 
@@ -272,13 +278,13 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
         traceback.print_exc(file=sys.stderr)
         failed_updates += 1
         if failed_updates > 5:
-          print('Too many failed update attempts')
+          printout('Too many failed update attempts')
           kill_process(p)
           break
         time.sleep(random.randint(failed_updates*failed_updates, 4 * failed_updates*failed_updates))
 
   if datetime.datetime.now() >= end_time:
-    print(datetime.datetime.now(), 'is past end time', end_time)
+    printout(datetime.datetime.now()+' is past end time '+end_time)
     kill_process(p)
 
   return { 'task_alive': True }
@@ -309,7 +315,7 @@ def launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, tc_limit):
   idx = cmd.index('_spsa_')
   cmd = cmd[:idx] + ['option.%s=%d'%(x['name'], round(x['value'])) for x in b_params] + cmd[idx+1:]
 
-  print cmd
+  printout(cmd)
   p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True, bufsize=1, close_fds=not IS_WINDOWS)
 
   try:
@@ -317,7 +323,7 @@ def launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, tc_limit):
   except:
     traceback.print_exc(file=sys.stderr)
     try:
-      print('Exception running games')
+      printout('Exception running games')
       kill_process(p)
     except:
       pass
@@ -434,7 +440,7 @@ def run_games(worker_info, password, remote, run, task_id):
   else:
     book_cmd = ['book=%s' % (book), 'bookdepth=%s' % (book_depth)]
 
-  print 'Running %s vs %s' % (run['args']['new_tag'], run['args']['base_tag'])
+  printout('Running %s vs %s' % (run['args']['new_tag'], run['args']['base_tag']))
 
   if spsa_tuning:
     games_to_play = games_concurrency * 2
