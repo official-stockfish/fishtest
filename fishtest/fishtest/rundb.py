@@ -153,7 +153,8 @@ class RunDb:
     return list(self.get_unfinished_runs()) + self.get_finished_runs()[0]
 
   def get_unfinished_runs(self):
-    return self.runs.find({'finished': False},
+    with self.run_lock:
+      return self.runs.find({'finished': False},
                           sort=[('last_updated', DESCENDING), ('start_time', DESCENDING)])
 
   def get_finished_runs(self, skip=0, limit=0, username='', success_only=False):
