@@ -20,18 +20,24 @@ class RunDb:
   def __init__(self, db_name='fishtest_new'):
     # MongoDB server is assumed to be on the same machine, if not user should use
     # ssh with port forwarding to access the remote host.
-    self.conn = MongoClient(os.getenv('FISHTEST_HOST') or 'localhost')
-    self.db = self.conn[db_name]
+    self.client = MongoClient(os.getenv('FISHTEST_HOST') or 'localhost')
+    self.db = self.client[db_name]
+
     self.userdb = UserDb(self.db)
     self.actiondb = ActionDb(self.db)
     self.regressiondb = RegressionDb(self.db)
+
+    # self.runs and self.old_runs should be phased out and local definitions used in 
+    # the functions where they are needed
+    # Note: these are currently still used outside this source file
     self.runs = self.db['runs']
     self.old_runs = self.db['old_runs']
 
     self.chunk_size = 1000
 
   def build_indices(self):
-    self.runs.ensure_index([('finished', ASCENDING), ('last_updated', DESCENDING)])
+    runs = self.db['runs']
+    runs.ensure_index([('finished', ASCENDING), ('last_updated', DESCENDING)])
 
   def generate_tasks(self, num_games):
     tasks = []
@@ -66,6 +72,7 @@ class RunDb:
     if start_time == None:
       start_time = datetime.utcnow()
 
+    runs = self.db['runs']
     run_args = {
       'base_tag': base_tag,
       'new_tag': new_tag,
@@ -115,7 +122,7 @@ class RunDb:
     # Check for an existing approval matching the git commit SHAs
     def get_approval(sha):
       q = { '$or': [{ 'args.resolved_base': sha }, { 'args.resolved_new': sha }], 'approved': True }
-      return self.runs.find_one(q)
+      return runs.find_one(q)
     base_approval = get_approval(resolved_base)
     new_approval = get_approval(resolved_new)
     allow_auto = username in ['mcostalba', 'jkiiski', 'glinscott', 'lbraesch'] 
@@ -123,11 +130,12 @@ class RunDb:
       new_run['approved'] = True
       new_run['approver'] = new_approval['approver']
 
-    return self.runs.insert(new_run)
+    return runs.insert(new_run)
 
   def get_machines(self):
+    runs = self.db['runs']
     machines = []
-    for run in self.runs.find({'tasks': {'$elemMatch': {'active': True}}}):
+    for run in runs.find({'tasks': {'$elemMatch': {'active': True}}}):
       for task in run['tasks']:
         if task['active']:
           machine = copy.copy(task['worker_info'])
@@ -141,22 +149,28 @@ class RunDb:
     return machines
 
   def get_run(self, id):
-    run = self.runs.find_one({'_id': ObjectId(id)})
+    runs = self.db['runs']
+    old_runs = self.db['old_runs']
+
+    run = runs.find_one({'_id': ObjectId(id)})
     if not run:
-      run = self.old_runs.find_one({'_id': ObjectId(id)})
+      run = old_runs.find_one({'_id': ObjectId(id)})
     return run
 
   def get_run_to_build(self):
-    return self.runs.find_one({'binaries_url': {'$exists': False}, 'finished': False, 'deleted': {'$exists': False}})
+    runs = self.db['runs']
+    return runs.find_one({'binaries_url': {'$exists': False}, 'finished': False, 'deleted': {'$exists': False}})
 
   def get_runs(self):
     return list(self.get_unfinished_runs()) + self.get_finished_runs()[0]
 
   def get_unfinished_runs(self):
-    return self.runs.find({'finished': False},
+    runs = self.db['runs']
+    return runs.find({'finished': False},
                           sort=[('last_updated', DESCENDING), ('start_time', DESCENDING)])
 
   def get_finished_runs(self, skip=0, limit=0, username='', success_only=False):
+    runs = self.db['runs']
     q = {'finished': True, 'deleted': {'$exists': False}}
     if len(username) > 0:
       q['args.username'] = username
@@ -165,7 +179,7 @@ class RunDb:
       # not currently is the color!
       q['results_info.style'] = '#44EB44'
 
-    c = self.runs.find(q, skip=skip, limit=limit, sort=[('last_updated', DESCENDING)])
+    c = runs.find(q, skip=skip, limit=limit, sort=[('last_updated', DESCENDING)])
     result = [list(c), c.count()]
 
     if limit != 0 and len(result[0]) != limit:
@@ -178,6 +192,7 @@ class RunDb:
     return result
 
   def get_results(self, run, save_run = True):
+    runs = self.db['runs']
     if not run['results_stale']:
       return run['results']
 
@@ -197,7 +212,7 @@ class RunDb:
     run['results_stale'] = False
     run['results'] = results
     if save_run:
-      self.runs.save(run)
+      runs.save(run)
 
     return results
 
@@ -213,11 +228,12 @@ class RunDb:
     if not self.task_sema.acquire(False):
       return {'task_waiting': False} 
 
+    runs = self.db['runs']
     max_threads = int(worker_info['concurrency'])
     exclusion_list = []
 
     # Does this worker have a task already?  If so, just hand that back
-    existing_run = self.runs.find_one({'tasks': {'$elemMatch': {'active': True, 'worker_info': worker_info}}})
+    existing_run = runs.find_one({'tasks': {'$elemMatch': {'active': True, 'worker_info': worker_info}}})
     if existing_run != None and existing_run['_id'] not in exclusion_list:
       for task_id, task in enumerate(existing_run['tasks']):
         if task['active'] and task['worker_info'] == worker_info:
@@ -227,7 +243,7 @@ class RunDb:
           else:
             # Don't hand back tasks that have been marked as no longer pending
             task['active'] = False
-            self.runs.save(existing_run)
+            runs.save(existing_run)
 
     # We need to allocate a new task, but first check we don't have the same
     # machine already running because multiple connections are not allowed.
@@ -257,7 +273,7 @@ class RunDb:
       }
     }
 
-    run = self.runs.find_and_modify(**q)
+    run = runs.find_and_modify(**q)
     if run == None:
       self.task_sema.release()
       return {'task_waiting': False}
@@ -274,7 +290,7 @@ class RunDb:
     # With default value 'throughput = 1000', this means that the priority is unchanged as long as we play at rate '1000 games / hour'.
     if (run['args']['throughput'] != None and run['args']['throughput'] != 0):
       run['args']['internal_priority'] = - time.mktime(run['start_time'].timetuple()) - task_id * 3600 * self.chunk_size * run['args']['threads'] / run['args']['throughput']
-    self.runs.save(run)
+    runs.save(run)
 
     self.task_sema.release()
     return {'run': run, 'task_id': task_id}
@@ -305,6 +321,8 @@ class RunDb:
       return self.sync_update_task(run_id, task_id, stats, nps, spsa)
 
   def sync_update_task(self, run_id, task_id, stats, nps, spsa):
+    runs = self.db['runs']
+
     run = self.get_run(run_id)
     if task_id >= len(run['tasks']):
       return {'task_alive': False}
@@ -353,11 +371,12 @@ class RunDb:
 
     if (   not 'spsa' in run['args'] or spsa_games == spsa['num_games']
         or num_games >= task['num_games'] or len(spsa['w_params']) < 20):
-      self.runs.save(run)
+      runs.save(run)
 
     return {'task_alive': task['active']}
 
   def failed_task(self, run_id, task_id):
+    runs = self.db['runs']
     run = self.get_run(run_id)
     if task_id >= len(run['tasks']):
       return {'task_alive': False}
@@ -368,11 +387,12 @@ class RunDb:
 
     # Mark the task as inactive: it will be rescheduled
     task['active'] = False
-    self.runs.save(run)
+    runs.save(run)
 
     return {}
 
   def stop_run(self, run_id, run = None):
+    runs = self.db['runs']
     save_it = False
     if run is None:
       run = self.get_run(run_id)
@@ -390,11 +410,12 @@ class RunDb:
     if prune_idx < len(run['tasks']):
       del run['tasks'][prune_idx:]
     if save_it:
-      self.runs.save(run)
+      runs.save(run)
 
     return {}
 
   def approve_run(self, run_id, approver):
+    runs = self.db['runs']
     run = self.get_run(run_id)
     # Can't self approve
     if run['args']['username'] == approver:
@@ -402,7 +423,7 @@ class RunDb:
 
     run['approved'] = True
     run['approver'] = approver
-    self.runs.save(run)
+    runs.save(run)
     return True
 
   def spsa_param_clip_round(self, param, increment, clipping, rounding):
