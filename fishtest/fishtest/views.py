@@ -26,7 +26,9 @@ last_time = 0
 
 def clear_cache():
   global last_time
+  building.acquire()
   last_time = 0
+  building.release()
 
 def cached_flash(request, requestString):
   clear_cache()
