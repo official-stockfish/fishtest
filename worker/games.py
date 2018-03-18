@@ -391,7 +391,8 @@ def run_games(worker_info, password, remote, run, task_id):
   if str(run['_id']) != run_id:
     if os.path.exists(run_id_file): os.remove(run_id_file)
     setup_engine(new_engine, binaries_url, worker_dir, run['args']['resolved_new'], repo_url, worker_info['concurrency'])
-    setup_engine(base_engine, binaries_url, worker_dir, run['args']['resolved_base'], repo_url, worker_info['concurrency'])
+    if not spsa_tuning:
+      setup_engine(base_engine, binaries_url, worker_dir, run['args']['resolved_base'], repo_url, worker_info['concurrency'])
     with open(run_id_file, 'w') as f:
       f.write(str(run['_id']))
 
@@ -417,7 +418,8 @@ def run_games(worker_info, password, remote, run, task_id):
 
   # Verify signatures are correct
   base_nps = verify_signature(new_engine, run['args']['new_signature'], remote, result, games_concurrency * threads)
-  verify_signature(base_engine, run['args']['base_signature'], remote, result, games_concurrency * threads)
+  if not spsa_tuning:
+    verify_signature(base_engine, run['args']['base_signature'], remote, result, games_concurrency * threads)
 
   # Benchmark to adjust cpu scaling
   scaled_tc, tc_limit = adjust_tc(run['args']['tc'], base_nps, int(worker_info['concurrency']))
@@ -455,13 +457,22 @@ def run_games(worker_info, password, remote, run, task_id):
 
   while games_remaining > 0:
     # Run cutechess-cli binary
-    cmd = [ cutechess, '-repeat', '-rounds', str(games_to_play), '-tournament', 'gauntlet'] + pgnout + \
-          ['-srand', "%d" % struct.unpack("<L", os.urandom(struct.calcsize("<L")))] + \
-          ['-resign', 'movecount=3', 'score=400', '-draw', 'movenumber=34',
-           'movecount=8', 'score=20', '-concurrency', str(games_concurrency)] + pgn_cmd + \
-          ['-engine', 'name=stockfish', 'cmd=stockfish'] + new_options + ['_spsa_'] + \
-          ['-engine', 'name=base', 'cmd=base'] + base_options + ['_spsa_'] + \
-          ['-each', 'proto=uci', 'tc=%s' % (scaled_tc)] + nodestime_cmd + threads_cmd + book_cmd
+    if spsa_tuning:
+      cmd = [ cutechess, '-repeat', '-rounds', str(games_to_play), '-tournament', 'gauntlet'] + pgnout + \
+        ['-srand', "%d" % struct.unpack("<L", os.urandom(struct.calcsize("<L")))] + \
+        ['-resign', 'movecount=3', 'score=400', '-draw', 'movenumber=34',
+         'movecount=8', 'score=20', '-concurrency', str(games_concurrency)] + pgn_cmd + \
+        ['-engine', 'name=stockfish', 'cmd=stockfish'] + new_options + ['_spsa_'] + \
+        ['-engine', 'name=base', 'cmd=stockfish'] + base_options + ['_spsa_'] + \
+        ['-each', 'proto=uci', 'tc=%s' % (scaled_tc)] + nodestime_cmd + threads_cmd + book_cmd
+    else:
+      cmd = [ cutechess, '-repeat', '-rounds', str(games_to_play), '-tournament', 'gauntlet'] + pgnout + \
+        ['-srand', "%d" % struct.unpack("<L", os.urandom(struct.calcsize("<L")))] + \
+        ['-resign', 'movecount=3', 'score=400', '-draw', 'movenumber=34',
+         'movecount=8', 'score=20', '-concurrency', str(games_concurrency)] + pgn_cmd + \
+        ['-engine', 'name=stockfish', 'cmd=stockfish'] + new_options + ['_spsa_'] + \
+        ['-engine', 'name=base', 'cmd=base'] + base_options + ['_spsa_'] + \
+        ['-each', 'proto=uci', 'tc=%s' % (scaled_tc)] + nodestime_cmd + threads_cmd + book_cmd
 
     task_status = launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, tc_limit * games_to_play / min(games_to_play, games_concurrency))
     if not task_status.get('task_alive', False):
