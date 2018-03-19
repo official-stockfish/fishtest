@@ -289,13 +289,15 @@ class RunDb:
     with self.run_lock:
       self.purge_count = self.purge_count + 1
       if self.purge_count > 100000:
-        self.active_runs.clear()
+        old = time.time() - 10000
+        self.active_runs = dict((k,v) for k, v in self.active_runs.iteritems() if v['time'] >= old)
         self.purge_count = 0
       if id in self.active_runs:
-        active_lock = self.active_runs[id]
+        active_lock = self.active_runs[id]['lock']
+        self.active_runs[id]['time'] = time.time()
       else:
         active_lock = threading.Lock()
-        self.active_runs[id] = active_lock
+        self.active_runs[id] = { 'time': time.time(), 'lock': active_lock }
       return active_lock
 
   def update_task(self, run_id, task_id, stats, nps, spsa):
