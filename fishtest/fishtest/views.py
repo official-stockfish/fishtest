@@ -406,7 +406,8 @@ def tests_modify(request):
     run['args']['num_games'] = num_games
     run['args']['priority'] = int(request.POST['priority'])
     run['args']['throughput'] = int(request.POST['throughput'])
-    request.rundb.runs.save(run)
+    request.rundb.buffer(run, True)
+    request.rundb.task_time = 0
 
     request.actiondb.modify_run(authenticated_userid(request), before, run)
 
@@ -468,7 +469,7 @@ def purge_run(rundb, run):
     if 'sprt' in run['args'] and 'state' in run['args']['sprt']:
       del run['args']['sprt']['state']
     
-    rundb.runs.save(run)
+    rundb.buffer(run, True)
 
   return purged 
 
@@ -502,7 +503,8 @@ def tests_delete(request):
   run['finished'] = True
   for w in run['tasks']:
     w['pending'] = False
-  request.rundb.runs.save(run)
+  request.rundb.buffer(run, True)
+  request.rundb.task_time = 0
 
   request.actiondb.delete_run(authenticated_userid(request), run)
 
@@ -734,7 +736,7 @@ def tests_view(request):
 
   for task in run['tasks']:
     last_updated = task.get('last_updated', datetime.datetime.min)
-    task['last_updated'] = delta_date(last_updated)
+    task['last_updated'] = last_updated
 
   return { 'run': run, 'run_args': run_args, 'chi2': calculate_residuals(run)}
 
@@ -797,7 +799,7 @@ def tests(request):
     if len(username) > 0 and run['args'].get('username', '') != username:
       continue
 
-    results = request.rundb.get_results(run)
+    results = request.rundb.get_results(run, False)
     run['results_info'] = format_results(results, run)
 
     state = 'finished'
@@ -817,12 +819,12 @@ def tests(request):
           purged += 1
           run = request.rundb.get_run(run['_id'])
 
-          results = request.rundb.get_results(run)
+          results = request.rundb.get_results(run, True)
           run['results_info'] = format_results(results, run)
 
       if purged == 0:
         run['finished'] = True
-        request.rundb.runs.save(run)
+        request.rundb.buffer(run, True)
         post_result(run)
 
     runs[state].append(run)
