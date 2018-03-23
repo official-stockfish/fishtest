@@ -258,6 +258,7 @@ class RunDb:
 
   task_time = 0
   task_runs = None
+  worker_task = {}
 
   def request_task(self, worker_info):
     with self.task_lock:
@@ -281,7 +282,8 @@ class RunDb:
 
     # Does this worker have a task already?  If so, just hand that back
     for runt in self.task_runs:
-      if runt['_id'] not in exclusion_list:
+      key = worker_info['unique_key']
+      if key in self.worker_task and self.worker_task[key] == runt['_id']:
         run = self.get_run(runt['_id'])
         task_id = -1
         for task in run['tasks']:
@@ -296,9 +298,11 @@ class RunDb:
 
     # We need to allocate a new task, but first check we don't have the same
     # machine already running because multiple connections are not allowed.
-    remote_addr = worker_info['remote_addr']
-    machines = self.get_machines()
-    connections = sum([int(m.get('remote_addr','') == remote_addr) for m in machines])
+    connections = 0
+    for run in self.task_runs:
+      for task in run['tasks']:
+        if task['active'] and task['worker_info']['remote_addr'] == worker_info['remote_addr']:
+          connections = connections + 1
 
     # Allow a few connections, for multiple computers on same IP
     if connections >= self.userdb.get_machine_limit(worker_info['username']):
@@ -309,7 +313,9 @@ class RunDb:
     for runt in self.task_runs:
       run = self.get_run(runt['_id'])
       if run['_id'] not in exclusion_list and run['approved']:
+        task_id = -1
         for task in run['tasks']:
+          task_id = task_id + 1
           if not task['active'] and task['pending'] and run['args']['threads'] <= max_threads:
             task['active'] = True
             task['last_updated'] = datetime.utcnow()
@@ -322,13 +328,6 @@ class RunDb:
     if not run_found:
       return {'task_waiting': False}
 
-    # Find the task we have just activated: the one with the highest 'last_updated'
-    latest_time = datetime.min
-    for idx, task in enumerate(run['tasks']):
-      if 'last_updated' in task and task['last_updated'] > latest_time:
-        latest_time = task['last_updated']
-        task_id = idx
-
     # Recalculate internal priority based on task start date and throughput
     # Formula: - second_since_epoch - played_and_allocated_tasks * 3600 * chunk_size / games_throughput
     # With default value 'throughput = 1000', this means that the priority is unchanged as long as we play at rate '1000 games / hour'.
@@ -336,6 +335,8 @@ class RunDb:
       run['args']['internal_priority'] = - time.mktime(run['start_time'].timetuple()) - task_id * 3600 * self.chunk_size * run['args']['threads'] / run['args']['throughput']
 
     self.buffer(run, True)
+
+    self.worker_task[worker_info['unique_key']] = run['_id']
 
     return {'run': run, 'task_id': task_id}
 
