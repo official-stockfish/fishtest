@@ -269,7 +269,6 @@ class RunDb:
 
   task_time = 0
   task_runs = None
-  worker_task = {}
 
   def request_task(self, worker_info):
     if self.task_semaphore.acquire(False):
@@ -291,22 +290,6 @@ class RunDb:
 
     max_threads = int(worker_info['concurrency'])
     exclusion_list = []
-
-    # Does this worker have a task already?  If so, just hand that back
-    for runt in self.task_runs:
-      key = worker_info['unique_key']
-      if key in self.worker_task and self.worker_task[key] == runt['_id']:
-        run = self.get_run(runt['_id'])
-        task_id = -1
-        for task in run['tasks']:
-          task_id = task_id + 1
-          if task['active'] and task['worker_info'] == worker_info:
-            if task['pending']:
-              return {'run': run, 'task_id': task_id}
-            else:
-              # Don't hand back tasks that have been marked as no longer pending
-              task['active'] = False
-              self.buffer(run, True)
 
     # We need to allocate a new task, but first check we don't have the same
     # machine already running because multiple connections are not allowed.
@@ -353,8 +336,6 @@ class RunDb:
         runt['args']['internal_priority'] = run['args']['internal_priority']
         self.task_runs.sort(key=lambda r: (-r['args']['priority'], -r['args']['internal_priority'], r['_id']))
         break
-
-    self.worker_task[worker_info['unique_key']] = run['_id']
 
     return {'run': run, 'task_id': task_id}
 
