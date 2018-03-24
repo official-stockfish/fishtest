@@ -581,4 +581,4 @@ class RunDb:
       if len(spsa['param_history']) < spsa['iter'] / freq:
         spsa['param_history'].append(summary)
     elif len(spsa['param_history']) > maxlen:
-        spsa['param_history'] = spsa['param_history'][-maxlen:]
+        spsa['param_history'] = []
