@@ -571,9 +571,12 @@ class RunDb:
     if len(spsa['params']) < 20:
       freq = 100
       maxlen = 5001
-    else:
+    elif len(spsa['params']) < 50:
       freq = 1000
       maxlen = 201
+    else:
+      freq = 10000
+      maxlen = 41
     if len(spsa['param_history']) < maxlen:
       if len(spsa['param_history']) < spsa['iter'] / freq:
         spsa['param_history'].append(summary)
