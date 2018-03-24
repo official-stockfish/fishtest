@@ -561,21 +561,15 @@ class RunDb:
         'c': c,
       })
 
-    # Every 100/1000 iterations, record the parameters
-    # and stop at 500000 or 200000
+    # Store the history every 'freq' iterations.
+    # More tuned parameters result in a lower update frequency,
+    # so that the required storage (performance) remains constant.
+    L = len(spsa['params'])
+    freq = L * 25
+    if freq < 100:
+      freq = 100
+    maxlen = 250000 / freq
     if 'param_history' not in spsa:
       spsa['param_history'] = []
-    if len(spsa['params']) < 20:
-      freq = 100
-      maxlen = 5001
-    elif len(spsa['params']) < 50:
-      freq = 1000
-      maxlen = 201
-    else:
-      freq = 10000
-      maxlen = 41
-    if len(spsa['param_history']) < maxlen:
-      if len(spsa['param_history']) < spsa['iter'] / freq:
-        spsa['param_history'].append(summary)
-    elif len(spsa['param_history']) > maxlen:
-        spsa['param_history'] = spsa['param_history'][-maxlen:]
+    if len(spsa['param_history']) < min(maxlen, spsa['iter'] / freq):
+      spsa['param_history'].append(summary)
