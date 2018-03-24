@@ -155,7 +155,7 @@ class RunDb:
       run = self.runs.find_one({'_id': ObjectId(id)})
       if not run:
         run = self.old_runs.find_one({'_id': ObjectId(id)})
-      self.run_cache[id] = { 'rtime': time.time(), 'wtime': time.time(), 'run': run, 'dirty': False }
+      self.run_cache[id] = { 'rtime': time.time(), 'ftime': time.time(), 'run': run, 'dirty': False }
       return run
 
   def buffer(self, run, flush):
@@ -165,10 +165,14 @@ class RunDb:
         self.timer.start()
       id = str(run['_id'])
       if flush:
-        self.run_cache[id] = { 'dirty': False, 'rtime': time.time(), 'wtime': time.time(), 'run': run }
+        self.run_cache[id] = { 'dirty': False, 'rtime': time.time(), 'ftime': time.time(), 'run': run }
         self.runs.save(run)
       else:
-        self.run_cache[id] = { 'dirty': True, 'rtime': time.time(), 'wtime': time.time(), 'run': run }
+        if id in self.run_cache:
+          ftime = self.run_cache[id]['ftime']
+        else:
+          ftime = time.time()
+        self.run_cache[id] = { 'dirty': True, 'rtime': time.time(), 'ftime': ftime, 'run': run }
 
   def flush_buffers(self):
     with self.run_cache_lock:
@@ -179,15 +183,15 @@ class RunDb:
         if not self.run_cache[id]['dirty']:
           if self.run_cache[id]['rtime'] < now - 10:
             del self.run_cache[id]
-        elif self.run_cache[id]['wtime'] < old:
-          old = self.run_cache[id]['wtime']
+        elif self.run_cache[id]['ftime'] < old:
+          old = self.run_cache[id]['ftime']
           oldest = id
       if not oldest is None:
         if int(now) % 60 == 0:
           self.scavenge(self.run_cache[oldest]['run'])
         self.runs.save(self.run_cache[oldest]['run'])
         self.run_cache[oldest]['dirty'] = False
-        self.run_cache[oldest]['wtime'] = time.time()
+        self.run_cache[oldest]['ftime'] = time.time()
       self.timer = threading.Timer(1.0, self.flush_buffers)
       self.timer.start()
 
