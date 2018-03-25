@@ -55,7 +55,6 @@ def request_task(request):
     '_id': str(run['_id']),
     'args': run['args'],
     'tasks': [],
-    'binaries_url': run.get('binaries_url', ''),
   }
 
   for task in run['tasks']:
@@ -108,34 +107,6 @@ def stop_run(request):
 
   result = request.rundb.stop_run(request.json_body['run_id'])
   return json.dumps(result)
-
-@view_config(route_name='api_request_build', renderer='string')
-def request_build(request):
-  token = authenticate(request)
-  if 'error' in token: return json.dumps(token)
-
-  run = request.rundb.get_run_to_build()
-  if run == None:
-    return json.dumps({'no_run': True})
-
-  min_run = {
-    'run_id': str(run['_id']),
-    'args': run['args'],
-  }
-  return json.dumps(min_run)
-
-@view_config(route_name='api_build_ready', renderer='string')
-def build_ready(request):
-  token = authenticate(request)
-  if 'error' in token: return json.dumps(token)
-
-  run = request.rundb.get_run(request.json_body['run_id'])
-  if run == None:
-    return json.dumps({'ok': False})
-
-  run['binaries_url'] = request.json_body['binaries_url']
-  request.rundb.runs.save(run)
-  return json.dumps({'ok': True})
 
 @view_config(route_name='api_request_version', renderer='string')
 def request_version(request):
