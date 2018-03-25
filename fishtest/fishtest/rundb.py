@@ -201,9 +201,6 @@ class RunDb:
       if task['active'] and task['last_updated'] < old:
         task['active'] = False
 
-  def get_run_to_build(self):
-    return self.runs.find_one({'binaries_url': {'$exists': False}, 'finished': False, 'deleted': {'$exists': False}})
-
   def get_runs(self):
     return list(self.get_unfinished_runs()) + self.get_finished_runs()[0]
 

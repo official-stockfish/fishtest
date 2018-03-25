@@ -860,8 +860,6 @@ def tests(request):
       info = run['results_info']
       if 'Pending...' in info['info']:
         info['info'][0] += ' (%.1f hrs)' % (eta)
-        if 'binaries_url' in run:
-          info['info'][0] += ' (+bin)'
 
   else:
     pending_hours = 0
