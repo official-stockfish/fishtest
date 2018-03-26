@@ -26,7 +26,7 @@ from .cookies import extract_cookies_to_jar
 from .exceptions import ConnectionError, Timeout, SSLError
 
 DEFAULT_POOLSIZE = 1
-DEFAULT_RETRIES = 3
+DEFAULT_RETRIES = 0
 
 
 class BaseAdapter(object):
