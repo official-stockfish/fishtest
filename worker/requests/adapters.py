@@ -25,7 +25,7 @@ from .packages.urllib3.exceptions import HTTPError as _HTTPError
 from .cookies import extract_cookies_to_jar
 from .exceptions import ConnectionError, Timeout, SSLError
 
-DEFAULT_POOLSIZE = 10
+DEFAULT_POOLSIZE = 1
 DEFAULT_RETRIES = 0
 
 
