@@ -340,6 +340,12 @@ class RunDb:
 
     self.buffer(run, True)
 
+    for runt in self.task_runs:
+      if runt['_id'] == run['_id']:
+        runt['args']['internal_priority'] = run['args']['internal_priority']
+        self.task_runs.sort(key=lambda r: (-r['args']['priority'], -r['args']['internal_priority'], r['_id']))
+        break
+
     self.worker_task[worker_info['unique_key']] = run['_id']
 
     return {'run': run, 'task_id': task_id}
