@@ -827,7 +827,8 @@ def tests(request):
         request.rundb.buffer(run, True)
         post_result(run)
 
-    runs[state].append(run)
+    else:
+      runs[state].append(run)
 
   runs['pending'].sort(key=lambda run: (run['args']['priority'], run['args']['internal_priority']))
   runs['active'].sort(reverse=True, key=lambda run: ('sprt' in run['args'], run['results_info']['llr'] if 'llr' in run['results_info'] else 0,
