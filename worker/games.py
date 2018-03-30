@@ -5,7 +5,6 @@ import json
 import os
 import stat
 import random
-import requests
 import subprocess
 import shutil
 import sys
