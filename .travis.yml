@@ -3,4 +3,4 @@ python:
   - "2.6"
 # command to run tests
 script: 
-  - python setup.py test
+  - cd worker && python setup.py test

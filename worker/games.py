@@ -5,7 +5,6 @@ import json
 import os
 import stat
 import random
-import requests
 import subprocess
 import shutil
 import sys
@@ -16,6 +15,7 @@ import traceback
 import platform
 import struct
 import zipfile
+import requests
 from base64 import b64decode
 from zipfile import ZipFile
 
