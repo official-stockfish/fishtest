@@ -15,6 +15,7 @@ import traceback
 import platform
 import struct
 import zipfile
+import requests
 from base64 import b64decode
 from zipfile import ZipFile
 
