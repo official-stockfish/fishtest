@@ -1,0 +1,5 @@
+pyramid
+bson
+pymongo
+scipy
+requests
