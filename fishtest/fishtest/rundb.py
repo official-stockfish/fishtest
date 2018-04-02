@@ -176,10 +176,15 @@ class RunDb:
           ftime = time.time()
         self.run_cache[id] = { 'dirty': True, 'rtime': time.time(), 'ftime': ftime, 'run': run }
 
-  def flush_buffers(self):
-    if self.timer is None:
-      return
+  def stop(self):
     with self.run_cache_lock:
+      self.timer = None
+    time.sleep(1.1)
+
+  def flush_buffers(self):
+    with self.run_cache_lock:
+      if self.timer is None:
+        return
       now = time.time()
       old = now + 1
       oldest = None

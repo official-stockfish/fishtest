@@ -5,12 +5,6 @@
 <table class='table table-striped table-condensed'>
   <tbody>
   %for run in runs:
-   <%
-    if 'sprt' in run['args']:
-      num_games = 'sprt'
-    else:
-      num_games = run['args']['num_games']
-   %>
    <tr>
    %if show_delete:
     <td>
@@ -43,7 +37,13 @@
     <td style="width:16%"><a href="/tests/view/${run['_id']}">${run['args']['new_tag'][:23]}</a></td>
     <td style="width:2%">${base.diff_url(run)}</td>
     <td style="min-width:285px;width:285px"><%include file="elo_results.mak" args="run=run" /></td>
-    <td style="width:14%">${num_games} @ ${run['args']['tc']} th ${str(run['args'].get('threads',1))}</td>
+    <td style="width:14%">
+    %if 'sprt' in run['args']:
+    <a href="http://hardy.uhasselt.be/Toga/live_elo.html?${str(run['_id'])}" target="_blank">sprt</a>
+    %else:
+    ${run['args']['num_games']}
+    %endif
+     @ ${run['args']['tc']} th ${str(run['args'].get('threads',1))}</td>
     <td>${run['args'].get('info', '')}</td>
    </tr>
   %endfor
