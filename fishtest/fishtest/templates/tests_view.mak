@@ -29,7 +29,14 @@ var spsa_history_url = '${run_args[0][1]}/spsa_history';
   <table class="table table-condensed">
   %for arg in run_args:
     %if len(arg[2]) == 0:
-		<tr><td>${arg[0]}</td><td>${str(markupsafe.Markup(arg[1])).replace('\n', '<br>') | n}</td></tr>
+      %if arg[0] == 'username' and approver:
+        <%
+        username = arg[1]
+        %>
+        <tr><td>${arg[0]}</td><td><a href="/user/${arg[1]}">${arg[1]}</a></td></tr>
+      %else:
+        <tr><td>${arg[0]}</td><td>${str(markupsafe.Markup(arg[1])).replace('\n', '<br>') | n}</td></tr>
+      %endif
     %else:
     <tr><td>${arg[0]}</td><td><a href="${arg[2]}" target="_blank">${arg[1]}</a></td></tr>
     %endif
@@ -165,7 +172,11 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
   %>
   <tr class="${active_style}">
    <td>${idx}</td>
-   <td>${task['worker_key']}</td>
+   %if approver:
+     <td><a href="/user/${task['worker_key'].split('-')[0]}">${task['worker_key']}</a></td>
+   %else:
+     <td>${task['worker_key']}</td>
+   %endif
    <td>${str(task.get('last_updated', '-')).split('.')[0]}</td>
    <td>${total} / ${task['num_games']}</td>
    <td>${stats.get('wins', '-')}</td>

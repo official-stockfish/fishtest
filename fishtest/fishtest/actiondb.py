@@ -28,6 +28,9 @@ class ActionDb:
   def purge_run(self, username, run):
     self._new_action(username, 'purge_run', run)
 
+  def block_user(self, username, data):
+    self._new_action(username, 'block_user', data)
+
   def _new_action(self, username, action, data):
     self.actions.insert({
       'username': username,
