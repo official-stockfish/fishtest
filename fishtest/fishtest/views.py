@@ -56,7 +56,7 @@ def login(request):
       headers = remember(request, username)
       return HTTPFound(location=came_from, headers=headers)
 
-    request.session.flash('Incorrect password')
+    request.session.flash(token['error']) # 'Incorrect password')
 
   return {}
 
@@ -139,7 +139,10 @@ def actions(request):
       'time': action['time'],
       'username': action['username'],
     }
-    if action['action'] == 'modify_run':
+    if action['action'] == 'block_user':
+      item['description'] = ('blocked' if action['data']['blocked'] else 'unblocked')
+      item['user'] = action['data']['user']
+    elif action['action'] == 'modify_run':
       item['run'] = action['data']['before']['args']['new_tag']
       item['_id'] = action['data']['before']['_id']
       item['description'] = []
@@ -169,8 +172,25 @@ def actions(request):
 
     actions.append(item)
 
-  return {'actions': actions}
+  return {'actions': actions, 'approver': has_permission('approve_run', request.context, request)}
 
+@view_config(route_name='user', renderer='user.mak')
+def user(request):
+  if not has_permission('approve_run', request.context, request):
+    request.session.flash('You cannot inspect users')
+    return HTTPFound(location=request.route_url('tests'))
+  username = request.matchdict.get('username', '')
+  user = request.userdb.get_user(username)
+  if 'user' in request.POST:
+    user['blocked'] = ('blocked' in request.POST)
+    request.userdb.save_user(user)
+    request.actiondb.block_user(authenticated_userid(request), {'user': username, 'blocked': user['blocked']})
+    request.session.flash(('Blocked' if user['blocked'] else 'Unblocked') + ' user ' + username)
+    return HTTPFound(location=request.route_url('tests'))
+  userc = request.userdb.user_cache.find_one({'username': username})
+  hours = userc['cpu_hours'] if userc is not None else 0
+  return {'user': user, 'limit': request.userdb.get_machine_limit(username), 'hours': hours}
+  
 @view_config(route_name='users', renderer='users.mak')
 def users(request):
   users = list(request.userdb.user_cache.find())
@@ -738,7 +758,8 @@ def tests_view(request):
     last_updated = task.get('last_updated', datetime.datetime.min)
     task['last_updated'] = last_updated
 
-  return { 'run': run, 'run_args': run_args, 'chi2': calculate_residuals(run)}
+  return { 'run': run, 'run_args': run_args, 'chi2': calculate_residuals(run),
+          'approver': has_permission('approve_run', request.context, request)}
 
 def post_result(run):
   title = run['args']['new_tag'][:23]

@@ -18,6 +18,9 @@ class UserDb:
     if not user or user['password'] != password:
       sys.stderr.write('Invalid login: "%s" "%s"\n' % (username, password))
       return {'error': 'Invalid password'}
+    if 'blocked' in user and user['blocked']:
+      sys.stderr.write('Blocked login: "%s" "%s"\n' % (username, password))
+      return {'error': 'Blocked'}
 
     return {'username': username, 'authenticated': True}
 
@@ -52,6 +55,9 @@ class UserDb:
       return True
     except:
       return False
+  
+  def save_user(self, user):
+      self.users.save(user)
 
   def get_machine_limit(self, username):
     user = self.users.find_one({'username': username})
@@ -60,6 +66,9 @@ class UserDb:
     return 4
 
   def is_blocked(self, worker_info):
+    user = self.users.find_one({'username': worker_info['username']})
+    if not user or ('blocked' in user and user['blocked']):
+      return True
     # TODO: hook the blocked info into the database
     blocked = [ 'garry561', 'EthanOConnor', 'IamLupo', 'waykohler' ]
     if worker_info['remote_addr'] in blocked or worker_info['username'] in blocked:
