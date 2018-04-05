@@ -266,14 +266,20 @@ class RunDb:
 
   # Limit concurrent request_task
   task_lock = threading.Lock()
+  task_semaphore = threading.Semaphore(4)
 
   task_time = 0
   task_runs = None
   worker_task = {}
 
   def request_task(self, worker_info):
-    with self.task_lock:
-      return self.sync_request_task(worker_info)
+    if self.task_semaphore.acquire(False):
+      with self.task_lock:
+        r= self.sync_request_task(worker_info)
+      self.task_semaphore.release()
+      return r
+    else:
+      return {'task_waiting': False}
 
   def sync_request_task(self, worker_info):
 
