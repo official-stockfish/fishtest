@@ -14,9 +14,9 @@ requires = [
     'pyzmq',
     ]
 
-setup(name='fishtest',
-      version='0.0',
-      description='fishtest',
+setup(name='fishtest-server',
+      version='0.1',
+      description='fishtest-server',
       long_description=README + '\n\n' + CHANGES,
       classifiers=[
         "Programming Language :: Python",
@@ -33,7 +33,7 @@ setup(name='fishtest',
       zip_safe=False,
       install_requires=requires,
       tests_require=requires,
-      test_suite="fishtest",
+      test_suite="test_server",
       entry_points="""\
       [paste.app_factory]
       main = fishtest:main

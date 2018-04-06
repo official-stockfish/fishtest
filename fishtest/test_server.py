@@ -1,7 +1,7 @@
 import unittest
 import datetime
 
-from fishtest.fishtest.rundb import RunDb
+from fishtest.rundb import RunDb
 
 rundb = None
 run_id = None

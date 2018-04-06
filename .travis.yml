@@ -7,4 +7,5 @@ before_script:
   - sleep 5
 # command to run tests
 script: 
-  - (cd worker && python setup.py test) && python setup.py test
+  - ./test_server.sh
+  - ./test_worker.sh
