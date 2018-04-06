@@ -3,6 +3,7 @@ import worker
 import os
 import os.path
 import subprocess
+import games
 
 class workerTest(unittest.TestCase):
 
@@ -25,6 +26,11 @@ class workerTest(unittest.TestCase):
     p = subprocess.Popen(["python" , "worker.py"], stderr = subprocess.PIPE)
     result = p.stderr.readline()
     self.assertEqual(result, 'worker.py [username] [password]\n')
+
+  def test_setup_exception(self): 
+    cwd = os.getcwd()
+    with self.assertRaises(Exception):
+      games.setup_engine('foo', cwd, 'foo', 'https://foo', 1)
 
 if __name__ == "__main__":
   unittest.main()
