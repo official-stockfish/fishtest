@@ -12,6 +12,8 @@ requires = [
     'psutil',
     'pymongo',
     'pyzmq',
+    'scipy',
+    'requests'
     ]
 
 setup(name='fishtest-server',

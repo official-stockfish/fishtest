@@ -1,4 +1,3 @@
-#!/bin/bash
+#!/bin/sh
 cd worker
 python setup.py test
-cd ..

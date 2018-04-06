@@ -61,6 +61,7 @@ class RunDb:
               username=None,
               tests_repo=None,
               auto_purge=True,
+              auto_approve=False,
               throughput=1000,
               priority=0):
     if start_time == None:
@@ -118,8 +119,7 @@ class RunDb:
       return self.runs.find_one(q)
     base_approval = get_approval(resolved_base)
     new_approval = get_approval(resolved_new)
-    allow_auto = username in ['mcostalba', 'jkiiski', 'glinscott', 'lbraesch'] 
-    if base_approval != None and new_approval != None and allow_auto:
+    if base_approval != None and new_approval != None and auto_approve:
       new_run['approved'] = True
       new_run['approver'] = new_approval['approver']
 
@@ -134,9 +134,6 @@ class RunDb:
           machine['last_updated'] = task.get('last_updated', None)
           machine['run'] = run
           machine['nps'] = task.get('nps', 0)
-          # TODO(glinscott): Temporary - remove once worker version >= 41
-          if not isinstance(machine['uname'], basestring):
-            machine['uname'] = machine['uname'][0] + machine['uname'][2]
           machines.append(machine)
     return machines
 
@@ -219,10 +216,12 @@ class RunDb:
       return self.runs.find({'finished': False},
                           sort=[('last_updated', DESCENDING), ('start_time', DESCENDING)])
 
-  def get_finished_runs(self, skip=0, limit=0, username='', success_only=False):
+  def get_finished_runs(self, skip=0, limit=0, username='', success_only=False, ltc_only=False):
     q = {'finished': True, 'deleted': {'$exists': False}}
     if len(username) > 0:
       q['args.username'] = username
+    if ltc_only:
+      q['args.tc'] = {'$regex':'^([4-9][0-9])|([1-9][0-9][0-9])'}
     if success_only:
       # This is unfortunate, but the only way we have of telling if a run was successful or
       # not currently is the color!
@@ -282,10 +281,6 @@ class RunDb:
       return {'task_waiting': False}
 
   def sync_request_task(self, worker_info):
-
-    # Check for blocked user or ip
-    if self.userdb.is_blocked(worker_info):
-      return {'task_waiting': False}
 
     if time.time() > self.task_time + 60:
       self.task_runs = []

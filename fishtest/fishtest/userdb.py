@@ -65,12 +65,3 @@ class UserDb:
       return user['machine_limit']
     return 4
 
-  def is_blocked(self, worker_info):
-    user = self.users.find_one({'username': worker_info['username']})
-    if not user or ('blocked' in user and user['blocked']):
-      return True
-    # TODO: hook the blocked info into the database
-    blocked = [ 'garry561', 'EthanOConnor', 'IamLupo', 'waykohler' ]
-    if worker_info['remote_addr'] in blocked or worker_info['username'] in blocked:
-      return True
-    return False

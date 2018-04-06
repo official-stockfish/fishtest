@@ -1,4 +1,3 @@
-#!/bin/bash
+#!/bin/sh
 cd fishtest
 python setup.py test
-cd ..
