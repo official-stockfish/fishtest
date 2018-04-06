@@ -41,11 +41,7 @@ def main(global_config, **settings):
   config.add_route('users', '/users')
   config.add_route('users_monthly', '/users/monthly')
   config.add_route('actions', '/actions')
-  config.add_route('regression', '/regression')
-  config.add_route('regression_data', '/regression/data')
-  config.add_route('regression_data_json', '/regression/data/json')
-  config.add_route('regression_data_save', '/regression/data/save')
-  config.add_route('regression_data_delete', '/regression/data/delete')
+
   config.add_route('tests', '/tests')
   config.add_route('tests_run', '/tests/run')
   config.add_route('tests_modify', '/tests/modify')

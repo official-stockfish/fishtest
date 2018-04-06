@@ -4,6 +4,7 @@ import datetime
 from fishtest.rundb import RunDb
 
 rundb = None
+run_id_stc = None
 run_id = None
   
 class CreateServerTest(unittest.TestCase):
@@ -13,9 +14,17 @@ class CreateServerTest(unittest.TestCase):
     rundb.stop()
 
   def test_10_create_run(self):
-    global rundb, run_id
+    global rundb, run_id, run_id_stc
     rundb= RunDb()
-    run_id = rundb.new_run('master', 'master', 100000, '10+0.01', 'book', 10, 1, '', '',
+    # STC
+    run_id_stc = rundb.new_run('master', 'master', 100000, '10+0.01', 'book', 10, 1, '', '',
+                           username='travis', tests_repo='travis', start_time= datetime.datetime.utcnow())
+    run = rundb.get_run(run_id_stc)
+    run['finished'] = True
+    rundb.buffer(run, True)
+
+    # LTC
+    run_id = rundb.new_run('master', 'master', 100000, '150+0.01', 'book', 10, 1, '', '',
                            username='travis', tests_repo='travis', start_time= datetime.datetime.utcnow())
     print(' '); print(run_id)
     run = rundb.get_run(run_id)
@@ -29,7 +38,17 @@ class CreateServerTest(unittest.TestCase):
     r= rundb.update_task(run_id, 0, {'wins': 1, 'losses': 1, 'draws': 998, 'crashes': 0, 'time_losses': 0}, 1000000, '')
     self.assertEqual(r, {'task_alive': False})
 
-  def test_30_delete_run(self):
+  def test_30_finish(self):
+    run = rundb.get_run(run_id)
+    run['finished'] = True
+    rundb.buffer(run, True)
+
+  def test_40_list_LTC(self):
+    l= rundb.get_finished_runs(limit= 3, ltc_only= True)[0]
+    for r in l:
+      print(r['args']['tc'])
+
+  def test_90_delete_runs(self):
     run = rundb.get_run(run_id)
     run['deleted'] = True
     run['finished'] = True
@@ -37,6 +56,9 @@ class CreateServerTest(unittest.TestCase):
       w['pending'] = False
     rundb.buffer(run, True)
 
+    run = rundb.get_run(run_id_stc)
+    run['deleted'] = True
+    rundb.buffer(run, True)
 
 if __name__ == "__main__":
   unittest.main()

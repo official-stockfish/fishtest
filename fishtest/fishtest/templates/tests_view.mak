@@ -135,12 +135,13 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
 <div id="div_spsa_history_plot"></div>
 %endif
 
-<h3>Tasks</h3>
+<h3>Tasks ${totals}</h3>
 <table class='table table-striped table-condensed'>
  <thead>
   <tr>
    <th>Idx</th>
    <th>Worker</th>
+   <th>Info</th>
    <th>Last Updated</th>
    <th>Played</th>
    <th>Wins</th>
@@ -173,10 +174,11 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
   <tr class="${active_style}">
    <td>${idx}</td>
    %if approver:
-     <td><a href="/user/${task['worker_key'].split('-')[0]}">${task['worker_key']}</a></td>
+     <td><a href="/user/${task['worker_info']['username']}">${task['worker_key']}</a></td>
    %else:
      <td>${task['worker_key']}</td>
    %endif
+   <td>${task['worker_info']['uname']}</td>
    <td>${str(task.get('last_updated', '-')).split('.')[0]}</td>
    <td>${total} / ${task['num_games']}</td>
    <td>${stats.get('wins', '-')}</td>
