@@ -719,7 +719,8 @@ def tests_view(request):
 
   return { 'run': run, 'run_args': run_args, 'chi2': calculate_residuals(run),
           'approver': has_permission('approve_run', request.context, request),
-          'totals': '(%s active worker%s with %s cores)' % (active, ('s' if active != 1 else ''), cores)}
+          'totals': '(%s active worker%s with %s core%s)' % (active, ('s' if active != 1 else ''),
+                                                             cores, ('s' if cores != 1 else ''))}
 
 def post_result(run):
   title = run['args']['new_tag'][:23]

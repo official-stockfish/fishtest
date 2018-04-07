@@ -3,17 +3,19 @@ import datetime
 
 from fishtest.rundb import RunDb
 
+import util
+
 rundb = None
 run_id_stc = None
 run_id = None
   
-class CreateServerTest(unittest.TestCase):
+class CreateRunDBTest(unittest.TestCase):
 
   def tearDown(self):
     # Shutdown flush thread:
     rundb.stop()
 
-  def test_10_create_run(self):
+  def test_10_create_run(self): 
     global rundb, run_id, run_id_stc
     rundb= RunDb()
     # STC
@@ -32,6 +34,8 @@ class CreateServerTest(unittest.TestCase):
     self.assertFalse(run['tasks'][0][u'active'])
     run['tasks'][0][u'active'] = True
     
+    print(util.find_run()['args'])
+    
   def test_20_update_task(self):
     r= rundb.update_task(run_id, 0, {'wins': 1, 'losses': 1, 'draws': 997, 'crashes': 0, 'time_losses': 0}, 1000000, '')
     self.assertEqual(r, {'task_alive': True})
@@ -49,16 +53,15 @@ class CreateServerTest(unittest.TestCase):
       print(r['args']['tc'])
 
   def test_90_delete_runs(self):
-    run = rundb.get_run(run_id)
-    run['deleted'] = True
-    run['finished'] = True
-    for w in run['tasks']:
-      w['pending'] = False
-    rundb.buffer(run, True)
+    for run in rundb.get_runs():
+      if run['args']['username'] == 'travis' and not 'deleted' in run:
+        print('del ')
+        run['deleted'] = True
+        run['finished'] = True
+        for w in run['tasks']:
+          w['pending'] = False
+        rundb.buffer(run, True)
 
-    run = rundb.get_run(run_id_stc)
-    run['deleted'] = True
-    rundb.buffer(run, True)
 
 if __name__ == "__main__":
   unittest.main()

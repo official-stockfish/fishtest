@@ -45,6 +45,8 @@ class UserDb:
 
   def create_user(self, username, password, email):
     try:
+      if self.users.find_one({'username': username}):
+        return False
       self.users.insert({
         'username': username,
         'password': password,

@@ -9,9 +9,7 @@ requires = [
     'pyramid',
     'pyramid_debugtoolbar',
     'waitress',
-    'psutil',
     'pymongo',
-    'pyzmq',
     'scipy',
     'requests'
     ]
@@ -35,7 +33,7 @@ setup(name='fishtest-server',
       zip_safe=False,
       install_requires=requires,
       tests_require=requires,
-      test_suite="test_server",
+      test_suite="run_all_tests.server_test_suite",
       entry_points="""\
       [paste.app_factory]
       main = fishtest:main
