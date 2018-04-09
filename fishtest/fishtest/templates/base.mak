@@ -42,8 +42,8 @@
           <li><a href="https://github.com/glinscott/fishtest" target="_blank">Github</a></li>
           <li><a href="https://groups.google.com/forum/?fromgroups=#!forum/fishcooking" target="_blank">Forum</a></li>
           <li><a href="https://groups.google.com/forum/?fromgroups=#!forum/fishcooking_results" target="_blank">History</a></li>
-          <li><a href="https://hxim.github.io/Stockfish-Evaluation-Guide/" target="_blank">EvalGuide</a></li>
-	  <li><a href="https://github.com/glinscott/fishtest/wiki/Regression-Tests" target="_blank">Regression</a></li>
+          <li><a href="https://hxim.github.io/Stockfish-Evaluation-Guide/" target="_blank">Eval&shy;Guide</a></li>
+	  <li><a href="https://github.com/glinscott/fishtest/wiki/Regression-Tests" target="_blank">Regres&shy;sion</a></li>
           <li><a href="http://abrok.eu/stockfish/" target="_blank">Compiles</a></li>
           <li><a href="https://github.com/official-stockfish/Stockfish" target="_blank">SF-github</a></li>
           <li class="nav-header">Admin</li>
