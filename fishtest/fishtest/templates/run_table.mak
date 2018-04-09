@@ -36,7 +36,7 @@
     <td style="width:2%"><a href="/tests/user/${run['args'].get('username','')}">${run['args'].get('username','')[:2]}</td>
     <td style="width:16%"><a href="/tests/view/${run['_id']}">${run['args']['new_tag'][:23]}</a></td>
     <td style="width:2%">${base.diff_url(run)}</td>
-    <td style="min-width:305px;width:305px"><%include file="elo_results.mak" args="run=run" /></td>
+    <td style="min-width:300px;width:300px"><%include file="elo_results.mak" args="run=run" /></td>
     <td style="width:14%">
     %if 'sprt' in run['args']:
     <a href="http://hardy.uhasselt.be/Toga/live_elo.html?${str(run['_id'])}" target="_blank">sprt</a>
