@@ -3,6 +3,7 @@
 <head>
   <title>Stockfish Testing Framework</title>
   <link href="/css/bootstrap.min.css" rel="stylesheet">
+  <%block name="meta"/>
 
   <script src="http://code.jquery.com/jquery-1.8.3.js"></script>
   <script src="/js/bootstrap.min.js"></script>

@@ -712,8 +712,8 @@ def tests_view(request):
   cores = 0
   for task in run['tasks']:
     if task['active']:
-      active = active + 1
-      cores = cores + task['worker_info']['concurrency']
+      active += 1
+      cores += task['worker_info']['concurrency']
     last_updated = task.get('last_updated', datetime.datetime.min)
     task['last_updated'] = last_updated
 
@@ -845,6 +845,9 @@ def tests(request):
       info = run['results_info']
       if 'Pending...' in info['info']:
         info['info'][0] += ' (%.1f hrs)' % (eta)
+        if 'sprt' in run['args']:
+          sprt = run['args']['sprt']
+          info['info'].append(('[%.2f,%.2f]') % (sprt['elo0'], sprt['elo1']))
 
   else:
     pending_hours = 0
