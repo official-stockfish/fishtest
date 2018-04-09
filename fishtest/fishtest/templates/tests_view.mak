@@ -14,7 +14,7 @@ var spsa_history_url = '${run_args[0][1]}/spsa_history';
 <h3>${run['args']['new_tag']} vs ${run['args']['base_tag']} ${base.diff_url(run)}</h3>
 
 <div class="row-fluid">
-<div class="span4">
+<div class="span6">
 <%include file="elo_results.mak" args="run=run" />
 </div>
 </div>
