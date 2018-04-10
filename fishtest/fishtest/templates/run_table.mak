@@ -39,7 +39,7 @@
     <td style="min-width:305px;width:305px"><%include file="elo_results.mak" args="run=run" /></td>
     <td style="width:14%">
     %if 'sprt' in run['args']:
-    <a href="http://hardy.uhasselt.be/Toga/live_elo.html?${str(run['_id'])}" target="_blank">sprt</a>
+    <a href="/html/live_elo.html?${str(run['_id'])}" target="_blank">sprt</a>
     %else:
     ${run['args']['num_games']}
     %endif

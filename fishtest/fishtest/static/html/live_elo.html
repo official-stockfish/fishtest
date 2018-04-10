@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Elo estimates from SPRT tests</title>
+    <link rel="stylesheet" type="text/css" href="/css/live_elo.css?1">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css" integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
+  </head>
+  <body>
+    <div class="container">
+      <ul id="_tab_list" class="nav nav-tabs">
+        <li class="nav-item" id="_new" style="visibility:hidden;">
+          <span  class="nav-link pointer" onClick="Tab_list.show(this.parentNode.id.slice(1));"> New... </span> 
+        </li>
+      </ul>
+      <div class="d-flex">
+        <input type="text" id="live" placeholder="Copy/paste test URL from fishtest." value=""
+               onkeydown = "if (event.keyCode == 13) follow_live(false);" style="flex-grow:1;">
+        <button onclick="follow_live(false);" style="flex-grow:0;"><i class="material-icons" style="vertical-align:bottom;">get_app</i></button>
+        <button onclick="Tab_list.delete_active();" style="flex-grow:0;"><i class="material-icons" style="vertical-align:bottom;">cancel</i></button>
+      </div>
+      <br>
+      <div class="d-flex justify-content-center">
+        <div id="LLR_chart_div" style="display:inline-block;"></div>
+        <div style="width:1em;"></div>
+        <div id="LOS_chart_div" style="display:inline-block;"></div>
+        <div style="width:1em;"></div>
+        <div id="ELO_chart_div" style="display:inline-block;"></div>
+      </div>
+      <br>
+      <div class="error" id="error">
+      </div>
+      <table id="data" class="table table-sm" style="visibility:hidden;">
+        <tr><td>Commit</td><td id="commit"></td></tr>
+        <tr><td>Info</td><td id="info"></td></tr>
+        <tr><td>Submitter</td><td id="username"></td></tr>
+        <tr><td>TC</td><td id="tc"></td></tr>
+        <tr><td>SPRT</td><td id="sprt"></td></tr>
+        <tr><td>LLR</td><td id="LLR"></td></tr>
+        <tr><td>Elo</td><td id="elo"></td></tr>
+        <tr><td>LOS</td><td id="LOS"></td></tr>
+        <tr><td>Games</td><td id="games"></td></tr>
+        <tr><td>Link</td><td id="link"></td></tr>
+      </table>
+    </div>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script type="text/javascript" src="/js/live_elo.js?1"></script>
+    <script type="text/javascript" src="/js/sprt_elo.js?1"></script>
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js" integrity="sha384-vFJXuSJphROIrBnz7yo7oB41mKfc8JzQZiCq4NCceLEaO4IHwicKwpJf9c9IpFgh" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js" integrity="sha384-alpBpkh1PFOepccYVYDB4do5UnbKysX5WZXm3XxPqe5iKTfUKjNkCk9SaVuEZflJ" crossorigin="anonymous"></script>
+  </body>
+</html>
+
