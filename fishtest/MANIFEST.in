@@ -1,2 +1,2 @@
 include *.txt *.ini *.cfg *.rst
-recursive-include fishtest *.ico *.png *.css *.gif *.jpg *.pt *.txt *.mak *.mako *.js *.html *.xml
+recursive-include fishtest *.ico *.png *.css *.gif *.jpg *.pt *.txt *.mak *.mako *.js *.html *.xml *.mem

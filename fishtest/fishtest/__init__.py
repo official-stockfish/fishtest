@@ -30,6 +30,7 @@ def main(global_config, **settings):
     event.request.actiondb = rundb.actiondb
   config.add_subscriber(add_rundb, NewRequest)
 
+  config.add_static_view('html', 'static/html', cache_max_age=3600)
   config.add_static_view('css', 'static/css', cache_max_age=3600)
   config.add_static_view('js', 'static/js', cache_max_age=3600)
   config.add_static_view('img', 'static/img', cache_max_age=3600)
