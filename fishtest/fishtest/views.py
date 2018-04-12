@@ -335,7 +335,7 @@ def tests_run(request):
       run_id = request.rundb.new_run(**data)
 
       request.actiondb.new_run(authenticated_userid(request), request.rundb.get_run(run_id))
-      cached_flash(request, 'Started test run!')
+      cached_flash(request, 'Submitted test to the queue!')
       return HTTPFound(location=request.route_url('tests'))
     except Exception as e:
       request.session.flash(str(e))
