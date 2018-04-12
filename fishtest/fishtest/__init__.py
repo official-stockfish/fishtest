@@ -28,7 +28,6 @@ def main(global_config, **settings):
     event.request.rundb = rundb
     event.request.userdb = rundb.userdb
     event.request.actiondb = rundb.actiondb
-    event.request.regressiondb = rundb.regressiondb
   config.add_subscriber(add_rundb, NewRequest)
 
   config.add_static_view('css', 'static/css', cache_max_age=3600)
