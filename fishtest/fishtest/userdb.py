@@ -1,4 +1,6 @@
 import sys
+import time
+from datetime import datetime
 from pymongo import ASCENDING, DESCENDING
 
 class UserDb:
@@ -26,6 +28,16 @@ class UserDb:
 
   def get_users(self):
     return self.users.find(sort=[('_id', ASCENDING)])
+  
+  # Cache pending for 60s
+  last_pending_time = 0
+  last_pending = None
+  
+  def get_pending(self):
+    if time.time() > self.last_pending_time + 60:
+      self.last_pending_time = time.time()
+      self.last_pending = list(self.users.find({'blocked': True}, sort=[('_id', ASCENDING)]))
+    return self.last_pending
 
   def get_user(self, username):
     return self.users.find_one({'username': username})
@@ -50,16 +62,21 @@ class UserDb:
       self.users.insert({
         'username': username,
         'password': password,
+        'registration_time': datetime.utcnow(),
+        'blocked': True,
         'email': email,
         'groups': [],
         'tests_repo': ''
       })
+      self.last_pending_time = 0
+
       return True
     except:
       return False
   
   def save_user(self, user):
-      self.users.save(user)
+    self.users.save(user)
+    self.last_pending_time = 0
 
   def get_machine_limit(self, username):
     user = self.users.find_one({'username': username})

@@ -345,12 +345,13 @@ class RunDb:
         self.active_runs[id] = { 'time': time.time(), 'lock': active_lock }
       return active_lock
 
-  def update_task(self, run_id, task_id, stats, nps, spsa):
+  def update_task(self, run_id, task_id, stats, nps, spsa, username):
     lock = self.active_run_lock(str(run_id))
     with lock:
-      return self.sync_update_task(run_id, task_id, stats, nps, spsa)
+      return self.sync_update_task(run_id, task_id, stats, nps, spsa, username)
 
-  def sync_update_task(self, run_id, task_id, stats, nps, spsa):
+  def sync_update_task(self, run_id, task_id, stats, nps, spsa, username):
+
     run = self.get_run(run_id)
     if task_id >= len(run['tasks']):
       return {'task_alive': False}
@@ -358,7 +359,10 @@ class RunDb:
     task = run['tasks'][task_id]
     if not task['active'] or not task['pending']:
       return {'task_alive': False}
-
+    if task['worker_info']['username'] != username:
+      print('Update_task: Non matching username: ' + username)
+      return {'task_alive': False}
+    
     # Guard against incorrect results
     count_games = lambda d: d['wins'] + d['losses'] + d['draws']
     num_games = count_games(stats)

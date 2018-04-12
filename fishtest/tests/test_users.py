@@ -13,7 +13,8 @@ class Create1UsersTest(unittest.TestCase):
   def setUp(self):
     rundb= RunDb()
     self.request = testing.DummyRequest(
-            params= {'form.submitted': True, 'username': 'JoeUser', 'password': 'secret', 'email': 'joe@user.net'},
+            params= {'form.submitted': True, 'username': 'JoeUser',
+              'password': 'secret', 'password2': 'secret', 'email': 'joe@user.net'},
             userdb = rundb.userdb
             )
 
@@ -40,6 +41,7 @@ class Create2LoginTest(unittest.TestCase):
     config = testing.setUp(request = self.request)
 
   def tearDown(self):
+    self.request.userdb.users.delete_many({'username': 'JoeUser'})
     testing.tearDown()
 
   def test_logins(self):
@@ -50,8 +52,16 @@ class Create2LoginTest(unittest.TestCase):
 
       self.params['password'] = 'secret'
       r= login(self.request)
-      self.assertTrue('found' in str(r))
+      # Still blocked:
+      self.assertFalse('found' in str(r))
 
+      # Unblock:
+      user = self.request.userdb.get_user('JoeUser')
+      user['blocked'] = False
+      self.request.userdb.save_user(user)
+      r= login(self.request)
+      self.assertTrue('found' in str(r))
+      
 
 if __name__ == "__main__":
   unittest.main()

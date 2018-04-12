@@ -60,22 +60,36 @@ def login(request):
 
   return {}
 
+@view_config(route_name='logout')
+def logout(request):
+  session = request.session
+  headers = forget(request)
+  session.invalidate()
+  return HTTPFound(location= request.route_url('tests'), headers= headers)
+
 @view_config(route_name='signup', renderer='signup.mak')
 def signup(request):
   if 'form.submitted' in request.params:
     if len(request.params.get('password', '')) == 0:
       request.session.flash('Non-empty password required')
       return {}
+    if request.params.get('password') != request.params.get('password2', ''):
+      request.session.flash('Matching verify password required')
+      return {}
+    if not '@' in request.params.get('email', ''):
+      request.session.flash('Email required')
+      return {}
 
     result = request.userdb.create_user(
-      username=request.params['username'],
-      password=request.params['password'],
-      email=request.params['email']
+      username= request.params['username'],
+      password= request.params['password'],
+      email= request.params['email']
     )
 
     if not result:
       request.session.flash('Invalid username')
     else:
+      request.session.flash('Your account will be activated by an administrator soon...')
       return HTTPFound(location=request.route_url('login'))
 
   return {}
@@ -174,22 +188,47 @@ def actions(request):
 
   return {'actions': actions, 'approver': has_permission('approve_run', request.context, request)}
 
-@view_config(route_name='user', renderer='user.mak')
-def user(request):
+@view_config(route_name='pending', renderer='pending.mak')
+def pending(request):
   if not has_permission('approve_run', request.context, request):
+    request.session.flash('You cannot view pending users')
+    return HTTPFound(location=request.route_url('tests'))
+  users = request.userdb.get_pending()
+  return { 'users': users }
+
+@view_config(route_name='user', renderer='user.mak')
+@view_config(route_name='profile', renderer='user.mak')
+def user(request):
+  userid = authenticated_userid(request)
+  if not userid:
+    request.session.flash('Please login')
+    return HTTPFound(location=request.route_url('login'))
+  username = request.matchdict.get('username', userid)
+  profile = (username == userid)
+  if not profile and not has_permission('approve_run', request.context, request):
     request.session.flash('You cannot inspect users')
     return HTTPFound(location=request.route_url('tests'))
-  username = request.matchdict.get('username', '')
   user = request.userdb.get_user(username)
   if 'user' in request.POST:
-    user['blocked'] = ('blocked' in request.POST)
+    if profile:
+      if len(request.params.get('password')) > 0:
+        if request.params.get('password') != request.params.get('password2', ''):
+          request.session.flash('Matching verify password required')
+          return {'user': user, 'profile': profile}
+        user['password'] = request.params.get('password')
+      if len(request.params.get('email')) > 0:
+        user['email'] = request.params.get('email')
+    else:
+      user['blocked'] = ('blocked' in request.POST)
+      request.actiondb.block_user(authenticated_userid(request), {'user': username, 'blocked': user['blocked']})
+      request.session.flash(('Blocked' if user['blocked'] else 'Unblocked') + ' user ' + username)
     request.userdb.save_user(user)
-    request.actiondb.block_user(authenticated_userid(request), {'user': username, 'blocked': user['blocked']})
-    request.session.flash(('Blocked' if user['blocked'] else 'Unblocked') + ' user ' + username)
     return HTTPFound(location=request.route_url('tests'))
-  userc = request.userdb.user_cache.find_one({'username': username})
-  hours = userc['cpu_hours'] if userc is not None else 0
-  return {'user': user, 'limit': request.userdb.get_machine_limit(username), 'hours': hours}
+  if not profile:
+    userc = request.userdb.user_cache.find_one({'username': username})
+    hours = userc['cpu_hours'] if userc is not None else 0
+    return {'user': user, 'limit': request.userdb.get_machine_limit(username), 'hours': hours, 'profile': profile}
+  return {'user': user, 'profile': profile}
   
 @view_config(route_name='users', renderer='users.mak')
 def users(request):
