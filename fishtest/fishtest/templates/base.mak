@@ -49,7 +49,10 @@
           <li><a href="https://github.com/official-stockfish/Stockfish" target="_blank">SF-github</a></li>
           <li class="nav-header">Admin</li>
           <li><a href="/signup">Register</a></li>
+          <li><a href="/user">Profile</a></li>
           <li><a href="/login">Login</a></li>
+          <li><a href="/logout">Logout</a></li>
+          <li><a href="/pending">Pending (${len(request.userdb.get_pending())})</a></li>
         </ul>
       </div>
       <div class="span11">

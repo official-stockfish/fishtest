@@ -77,6 +77,7 @@ def update_task(request):
     stats=request.json_body['stats'],
     nps=request.json_body.get('nps', 0),
     spsa=request.json_body.get('spsa', {}),
+    username=get_username(request)
   )
   return json.dumps(result)
 

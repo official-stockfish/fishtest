@@ -33,13 +33,16 @@ class CreateRunDBTest(unittest.TestCase):
     print(run['tasks'][0])
     self.assertFalse(run['tasks'][0][u'active'])
     run['tasks'][0][u'active'] = True
+    run['tasks'][0][u'worker_info'] = {'username': 'worker1'}
     
     print(util.find_run()['args'])
     
   def test_20_update_task(self):
-    r= rundb.update_task(run_id, 0, {'wins': 1, 'losses': 1, 'draws': 997, 'crashes': 0, 'time_losses': 0}, 1000000, '')
+    r= rundb.update_task(run_id, 0, {'wins': 1, 'losses': 1, 'draws': 997, 'crashes': 0, 'time_losses': 0}, 1000000, '', 'worker2')
+    self.assertEqual(r, {'task_alive': False})
+    r= rundb.update_task(run_id, 0, {'wins': 1, 'losses': 1, 'draws': 997, 'crashes': 0, 'time_losses': 0}, 1000000, '', 'worker1')
     self.assertEqual(r, {'task_alive': True})
-    r= rundb.update_task(run_id, 0, {'wins': 1, 'losses': 1, 'draws': 998, 'crashes': 0, 'time_losses': 0}, 1000000, '')
+    r= rundb.update_task(run_id, 0, {'wins': 1, 'losses': 1, 'draws': 998, 'crashes': 0, 'time_losses': 0}, 1000000, '', 'worker1')
     self.assertEqual(r, {'task_alive': False})
 
   def test_30_finish(self):

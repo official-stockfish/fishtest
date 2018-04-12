@@ -8,7 +8,31 @@
   </div>
   <div class="control-group">
     <label class="control-label">eMail:</label>
-    <label class="control-label">${user['email']}</label>
+    %if profile:
+      <div class="controls">
+        <input name="email" type="email" value="${user['email']}" required="required"/>
+      </div>
+    %else:
+      <label class="control-label">&nbsp;<a href="mailto:${user['email']}?Subject=Fishtest%20Account">${user['email']}</a></label>
+    %endif
+  </div>
+  %if profile:
+  <div class="control-group">
+    <label class="control-label">New password:</label>
+    <div class="controls">
+      <input name="password" type="password"/>
+    </div>
+  </div>
+  <div class="control-group">
+    <label class="control-label">Verify password:</label>
+    <div class="controls">
+      <input name="password2" type="password"/>
+    </div>
+  </div>
+  %else:
+  <div class="control-group">
+    <label class="control-label">Registration Time:</label>
+    <label class="control-label">${user['registration_time'] if 'registration_time' in user else 'Unknown'}</label>
   </div>
   <div class="control-group">
     <label class="control-label">Machine Limit:</label>
@@ -24,9 +48,9 @@
   %>
   <div class="control-group">
     <label class="control-label">Blocked:</label>
-    <label class="control-label"><input name="blocked" type="checkbox" ${checked} value="True">
-    </label>
+    <label class="control-label"><input name="blocked" type="checkbox" ${checked} value="True"></label>
   </div>
+  %endif
   <p>
   <div class="control-group">
     <div class="controls">
