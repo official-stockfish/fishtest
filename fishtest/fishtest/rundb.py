@@ -11,8 +11,6 @@ from pymongo import MongoClient, ASCENDING, DESCENDING
 
 from userdb import UserDb
 from actiondb import ActionDb
-from regressiondb import RegressionDb
-from views import parse_tc
 
 import stat_util
 
@@ -24,7 +22,6 @@ class RunDb:
     self.db = self.conn[db_name]
     self.userdb = UserDb(self.db)
     self.actiondb = ActionDb(self.db)
-    self.regressiondb = RegressionDb(self.db)
     self.runs = self.db['runs']
     self.old_runs = self.db['old_runs']
 
