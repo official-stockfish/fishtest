@@ -58,7 +58,6 @@ class RunDb:
               username=None,
               tests_repo=None,
               auto_purge=True,
-              auto_approve=False,
               throughput=1000,
               priority=0):
     if start_time == None:
@@ -109,16 +108,6 @@ class RunDb:
       'approved': False,
       'approver': '',
     }
-
-    # Check for an existing approval matching the git commit SHAs
-    def get_approval(sha):
-      q = { '$or': [{ 'args.resolved_base': sha }, { 'args.resolved_new': sha }], 'approved': True }
-      return self.runs.find_one(q)
-    base_approval = get_approval(resolved_base)
-    new_approval = get_approval(resolved_new)
-    if base_approval != None and new_approval != None and auto_approve:
-      new_run['approved'] = True
-      new_run['approver'] = new_approval['approver']
 
     return self.runs.insert(new_run)
 
