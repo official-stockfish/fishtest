@@ -331,7 +331,6 @@ def tests_run(request):
   if 'base-branch' in request.POST:
     try:
       data = validate_form(request)
-      data['auto_approve'] = has_permission('approve_run', request.context, request)
       run_id = request.rundb.new_run(**data)
 
       request.actiondb.new_run(authenticated_userid(request), request.rundb.get_run(run_id))
