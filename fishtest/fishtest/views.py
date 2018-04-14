@@ -836,17 +836,18 @@ def tests(request):
 
   cores = sum([int(m['concurrency']) for m in machines])
   nps = sum([int(m['concurrency']) * m['nps'] for m in machines])
-  if cores > 0:
-    pending_hours = 0
-    for run in runs['pending'] + runs['active']:
+  pending_hours = 0
+  for run in runs['pending'] + runs['active']:
+    if cores > 0:
       eta = remaining_hours(run) / cores
       pending_hours += eta
-      info = run['results_info']
-      if 'Pending...' in info['info']:
+    info = run['results_info']
+    if 'Pending...' in info['info']:
+      if cores > 0:
         info['info'][0] += ' (%.1f hrs)' % (eta)
-        if 'sprt' in run['args']:
-          sprt = run['args']['sprt']
-          info['info'].append(('[%.2f,%.2f]') % (sprt['elo0'], sprt['elo1']))
+      if 'sprt' in run['args']:
+        sprt = run['args']['sprt']
+        info['info'].append(('[%.2f,%.2f]') % (sprt['elo0'], sprt['elo1']))
 
   else:
     pending_hours = 0
