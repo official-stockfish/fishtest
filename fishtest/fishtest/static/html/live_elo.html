@@ -10,17 +10,6 @@
   </head>
   <body>
     <div class="container">
-      <ul id="_tab_list" class="nav nav-tabs">
-        <li class="nav-item" id="_new" style="visibility:hidden;">
-          <span  class="nav-link pointer" onClick="Tab_list.show(this.parentNode.id.slice(1));"> New... </span> 
-        </li>
-      </ul>
-      <div class="d-flex">
-        <input type="text" id="live" placeholder="Copy/paste test URL from fishtest." value=""
-               onkeydown = "if (event.keyCode == 13) follow_live(false);" style="flex-grow:1;">
-        <button onclick="follow_live(false);" style="flex-grow:0;"><i class="material-icons" style="vertical-align:bottom;">get_app</i></button>
-        <button onclick="Tab_list.delete_active();" style="flex-grow:0;"><i class="material-icons" style="vertical-align:bottom;">cancel</i></button>
-      </div>
       <br>
       <div class="d-flex justify-content-center">
         <div id="LLR_chart_div" style="display:inline-block;"></div>
@@ -48,9 +37,5 @@
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <script type="text/javascript" src="/js/live_elo.js?1"></script>
     <script type="text/javascript" src="/js/sprt_elo.js?1"></script>
-    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js" integrity="sha384-vFJXuSJphROIrBnz7yo7oB41mKfc8JzQZiCq4NCceLEaO4IHwicKwpJf9c9IpFgh" crossorigin="anonymous"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js" integrity="sha384-alpBpkh1PFOepccYVYDB4do5UnbKysX5WZXm3XxPqe5iKTfUKjNkCk9SaVuEZflJ" crossorigin="anonymous"></script>
   </body>
 </html>
-

@@ -33,6 +33,30 @@ def get_username(request):
 def authenticate(request):
   return request.userdb.authenticate(get_username(request), request.json_body['password'])
 
+def strip_run(run):
+  if 'tasks' in run:
+    del run['tasks']
+  if 'bad_tasks' in run:
+    del run['bad_tasks']
+  if 'spsa' in run['args'] and 'param_history' in run['args']['spsa']:
+    del run['args']['spsa']['param_history']
+  run['_id'] = str(run['_id'])
+  run['start_time'] = str(run['start_time'])
+  run['last_updated'] = str(run['last_updated'])
+  return run
+
+@view_config(route_name='api_active_runs', renderer='string')
+def active_runs(request):
+  l = {}
+  for run in request.rundb.get_unfinished_runs():
+    l[run['_id']] = strip_run(run)
+  return json.dumps(l)
+
+@view_config(route_name='api_get_run', renderer='string')
+def get_run(request):
+  run = request.rundb.get_run(request.matchdict['id'])
+  return json.dumps(strip_run(run.copy()))
+
 @view_config(route_name='api_request_task', renderer='string')
 def request_task(request):
   token = authenticate(request)
