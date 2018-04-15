@@ -12,6 +12,7 @@ run_id = None
 class CreateRunDBTest(unittest.TestCase):
 
   def tearDown(self):
+    rundb.runs.delete_many({'args.username': 'travis'})
     # Shutdown flush thread:
     rundb.stop()
 
