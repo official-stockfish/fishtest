@@ -118,6 +118,7 @@ def setup(item, testing_dir):
         blob_json = blob_request.json()
         if blob_request.status_code == requests.codes.ok:
           break
+        sleep(5)
       with open(os.path.join(testing_dir, item), 'wb+') as f:
         f.write(b64decode(blob_json['content']))
       break
