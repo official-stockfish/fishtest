@@ -10,6 +10,7 @@ import smtplib
 import requests
 import time
 import threading
+import re
 
 from email.mime.text import MIMEText
 from collections import defaultdict
@@ -242,6 +243,13 @@ def users_monthly(request):
   users.sort(key=lambda k: k['cpu_hours'], reverse=True)
   return {'users': users}
 
+def get_master_bench():
+  bs = re.compile('(^|\s)[Bb]ench[ :]+([0-9]{7})', re.MULTILINE)
+  for c in requests.get('https://api.github.com/repos/official-stockfish/Stockfish/commits').json():
+    m = bs.search(c['commit']['message'])
+    if m:
+      return m.group(2)
+
 def get_sha(branch, repo_url):
   """Resolves the git branch to sha commit"""
   api_url = repo_url.replace('https://github.com', 'https://api.github.com/repos')
@@ -291,14 +299,19 @@ def validate_form(request):
     'tests_repo' : request.POST['tests-repo'],
   }
 
+  # Fill new_signature from commit info if left blank
+  if len(data['new_signature']) == 0:
+    found = False
+    api_url = data['tests_repo'].replace('https://github.com', 'https://api.github.com/repos')
+    api_url += ('/commits' + '/' + data['new_tag'])
+    bs = re.compile('(^|\s)[Bb]ench[ :]+([0-9]{7})', re.MULTILINE)
+    c= requests.get(api_url).json()
+    m = bs.search(c['commit']['message'])
+    if m:
+      data['new_signature']= m.group(2)
+
   if len([v for v in data.values() if len(v) == 0]) > 0:
     raise Exception('Missing required option')
-
-  data['regression_test'] = request.POST['test_type'] == 'Regression'
-  if data['regression_test']:
-    data['base_tag'] = data['new_tag']
-    data['base_signature'] = data['new_signature']
-    data['base_options'] = data['new_options']
 
   data['auto_purge'] = request.POST.get('auto-purge') is not None
 
@@ -318,6 +331,20 @@ def validate_form(request):
 
   if len(data['resolved_base']) == 0 or len(data['resolved_new']) == 0:
     raise Exception('Unable to find branch!')
+
+  # Check entered bench
+  if data['base_tag'] == 'master':
+    found = False
+    api_url = data['tests_repo'].replace('https://github.com', 'https://api.github.com/repos')
+    api_url += '/commits'
+    bs = re.compile('(^|\s)[Bb]ench[ :]+([0-9]{7})', re.MULTILINE)
+    for c in requests.get(api_url).json():
+      m = bs.search(c['commit']['message'])
+      if m:
+        found = True
+        break
+    if not found or m.group(2) != data['base_signature']:
+      raise Exception('Bench signature of Base master does not match, please "git pull upstream master" !')
 
   stop_rule = request.POST['stop_rule']
 
@@ -385,7 +412,7 @@ def tests_run(request):
   username = authenticated_userid(request)
   u = request.userdb.get_user(username)
 
-  return { 'args': run_args, 'tests_repo': u.get('tests_repo', '') }
+  return { 'args': run_args, 'tests_repo': u.get('tests_repo', ''), 'bench': get_master_bench() }
 
 def can_modify_run(request, run):
   return run['args']['username'] == authenticated_userid(request) or has_permission('approve_run', request.context, request)
