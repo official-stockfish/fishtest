@@ -126,11 +126,12 @@ def stop_run(request):
   if not user or user['cpu_hours'] < 1000:
     return ''
 
-  run = request.rundb.get_run(request.json_body['run_id'])
-  run['stop_reason'] = request.json_body.get('message', 'No reason!')
-  request.actiondb.stop_run(username, run)
+  with request.rundb.active_run_lock(str(request.json_body['run_id'])):
+    run = request.rundb.get_run(request.json_body['run_id'])
+    run['stop_reason'] = request.json_body.get('message', 'API request')
+    request.actiondb.stop_run(username, run)
 
-  result = request.rundb.stop_run(request.json_body['run_id'])
+    result = request.rundb.stop_run(request.json_body['run_id'])
   return json.dumps(result)
 
 @view_config(route_name='api_request_version', renderer='string')

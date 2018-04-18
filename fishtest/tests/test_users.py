@@ -1,4 +1,5 @@
 import unittest
+import datetime
 
 from pyramid import testing
 
@@ -7,8 +8,10 @@ from fishtest.rundb import RunDb
 from fishtest.views import signup
 from fishtest.views import login
 
+from fishtest.api import stop_run
+
   
-class Create1UsersTest(unittest.TestCase):
+class Create10UsersTest(unittest.TestCase):
 
   def setUp(self):
     rundb= RunDb()
@@ -28,9 +31,13 @@ class Create1UsersTest(unittest.TestCase):
       config.add_route('login', '/login')
       config.add_route('signup', '/signup')
       print(signup(self.request))
+      userc= {}
+      userc['cpu_hours'] = 12345
+      userc['username'] = 'JoeUser'
+      self.request.userdb.user_cache.insert(userc)
 
-  
-class Create2LoginTest(unittest.TestCase):
+
+class Create50LoginTest(unittest.TestCase):
 
   def setUp(self):
     rundb= RunDb()
@@ -41,7 +48,6 @@ class Create2LoginTest(unittest.TestCase):
     config = testing.setUp(request = self.request)
 
   def tearDown(self):
-    self.request.userdb.users.delete_many({'username': 'JoeUser'})
     testing.tearDown()
 
   def test_logins(self):
@@ -61,6 +67,40 @@ class Create2LoginTest(unittest.TestCase):
       self.request.userdb.save_user(user)
       r= login(self.request)
       self.assertTrue('found' in str(r))
+
+  
+rundb = None
+
+class Create90APITest(unittest.TestCase):
+  def setUp(self):
+    global rundb
+    rundb= RunDb()
+    run_id = rundb.new_run('master', 'master', 100000, '100+0.01', 'book', 10, 1, '', '',
+                           username='travis', tests_repo='travis', start_time= datetime.datetime.utcnow())
+    json_params= {'username': 'JoeUser', 'password': 'secret', 'run_id': run_id, 'message': 'travis'}
+    self.request = testing.DummyRequest(
+            json_body= json_params,
+            method='POST',
+            rundb = rundb,
+            userdb = rundb.userdb,
+            actiondb = rundb.actiondb
+            )
+
+    config = testing.setUp(request = self.request)
+
+  def tearDown(self):
+    self.request.userdb.users.delete_many({'username': 'JoeUser'})
+    self.request.userdb.user_cache.delete_many({'username': 'JoeUser'})
+    # Shutdown flush thread:
+    global rundb
+    rundb.stop()
+    testing.tearDown()
+
+  def test_stop_run(self):
+    with testing.testConfig() as config:
+      config.add_route('api_stop_run', '/api/stop_run')
+      self.assertEqual(stop_run(self.request), '{}')
+      self.assertEqual(self.request.rundb.get_run(self.request.json_body['run_id'])['stop_reason'], 'travis')
       
 
 if __name__ == "__main__":
