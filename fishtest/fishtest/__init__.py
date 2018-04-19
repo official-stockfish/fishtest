@@ -39,8 +39,6 @@ def main(global_config, **settings):
   config.add_route('logout', '/logout')
   config.add_route('signup', '/signup')
   config.add_route('user', '/user/{username}')
-  config.add_route('drop_all', '/drop')
-  config.add_route('drop', '/drop/{username}')
   config.add_route('profile', '/user')
   config.add_route('pending', '/pending')
   config.add_route('users', '/users')
