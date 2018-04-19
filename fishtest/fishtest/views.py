@@ -208,24 +208,6 @@ def pending(request):
 
   return { 'users': request.userdb.get_pending(), 'idle': get_idle_users(request) }
 
-@view_config(route_name='drop')
-@view_config(route_name='drop_all')
-def drop(request):
-  userid = authenticated_userid(request)
-  if not userid:
-    request.session.flash('Please login')
-    return HTTPFound(location=request.route_url('login'))
-  if not has_permission('approve_run', request.context, request):
-    request.session.flash('You cannot drop idle users')
-    return HTTPFound(location=request.route_url('tests'))
-  user = request.matchdict.get('username')
-  if not user:
-    for u in get_idle_users(request):
-      request.userdb.users.delete_one({'username': u['username']})
-  else:
-    request.userdb.users.delete_many({'username': user})
-  return HTTPFound(location=request.route_url('pending'))
-
 @view_config(route_name='user', renderer='user.mak')
 @view_config(route_name='profile', renderer='user.mak')
 def user(request):
