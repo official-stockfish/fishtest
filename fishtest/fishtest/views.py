@@ -80,6 +80,18 @@ def signup(request):
       request.session.flash('Email required')
       return {}
 
+    path = os.path.expanduser('~/fishtest.captcha.secret')
+    if os.path.exists(path):
+      with open(path, 'r') as f:
+        secret = f.read()
+        payload = {'secret': secret, 'response': request.params.get('g-recaptcha-response',''), 'remoteip': request.remote_addr}
+        response= requests.post('https://www.google.com/recaptcha/api/siteverify', data=payload).json()
+        if not 'success' in response or not response['success']:
+          if 'error-codes' in response:
+            print(response['error-codes'])
+          request.session.flash('Captcha failed')
+          return {}
+
     result = request.userdb.create_user(
       username= request.params['username'],
       password= request.params['password'],

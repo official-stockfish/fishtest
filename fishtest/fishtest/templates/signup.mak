@@ -1,6 +1,7 @@
 <%inherit file="base.mak"/>
 
 <div>
+<p></p>
 <p>
 Note that many modern browsers can generate/remember a strong password for you.
 </p>
@@ -31,6 +32,11 @@ If it is not suggested by default you can try right-clicking on the password ent
     <label class="control-label">E-mail:</label>
     <div class="controls">
       <input name="email" type="email" required="required"/>
+    </div>
+  </div>
+  <div class="control-group">
+    <div class="controls">
+      <div class="g-recaptcha" data-sitekey="6LdAiFQUAAAAANhHq-9aMlFW0xuo-xcI8E3faZAg"></div>
     </div>
   </div>
   <div class="control-group">
