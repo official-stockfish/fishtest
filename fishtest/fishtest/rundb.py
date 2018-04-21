@@ -187,7 +187,7 @@ class RunDb:
       self.timer.start()
 
   def scavenge(self, run):
-    old = datetime.utcnow() - timedelta(minutes= 30)
+    old = datetime.utcnow() - timedelta(minutes=30)
     for task in run['tasks']:
       if task['active'] and task['last_updated'] < old:
         task['active'] = False
@@ -223,7 +223,7 @@ class RunDb:
       
     return result
 
-  def get_results(self, run, save_run = True):
+  def get_results(self, run, save_run=True):
     if not run['results_stale']:
       return run['results']
 
@@ -423,7 +423,7 @@ class RunDb:
 
     return {}
 
-  def stop_run(self, run_id, run = None):
+  def stop_run(self, run_id, run=None):
     save_it = False
     if run is None:
       run = self.get_run(run_id)

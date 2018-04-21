@@ -7,8 +7,13 @@ class ActionDb:
     self.db = db
     self.actions = self.db['actions']
 
-  def get_actions(self, max_num):
-    return self.actions.find(sort=[('_id', DESCENDING)], limit=max_num)
+  def get_actions(self, max_num, action=None, username=None):
+    q = {}
+    if action:
+      q['action'] = action
+    if username:
+      q['username'] = username
+    return self.actions.find(q, sort=[('_id', DESCENDING)], limit=max_num)
 
   def new_run(self, username, run):
     self._new_action(username, 'new_run', run)

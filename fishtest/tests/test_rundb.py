@@ -21,14 +21,14 @@ class CreateRunDBTest(unittest.TestCase):
     rundb= RunDb()
     # STC
     run_id_stc = rundb.new_run('master', 'master', 100000, '10+0.01', 'book', 10, 1, '', '',
-                           username='travis', tests_repo='travis', start_time= datetime.datetime.utcnow())
+                           username='travis', tests_repo='travis', start_time=datetime.datetime.utcnow())
     run = rundb.get_run(run_id_stc)
     run['finished'] = True
     rundb.buffer(run, True)
 
     # LTC
     run_id = rundb.new_run('master', 'master', 100000, '150+0.01', 'book', 10, 1, '', '',
-                           username='travis', tests_repo='travis', start_time= datetime.datetime.utcnow())
+                           username='travis', tests_repo='travis', start_time=datetime.datetime.utcnow())
     print(' '); print(run_id)
     run = rundb.get_run(run_id)
     print(run['tasks'][0])
@@ -52,7 +52,7 @@ class CreateRunDBTest(unittest.TestCase):
     rundb.buffer(run, True)
 
   def test_40_list_LTC(self):
-    l= rundb.get_finished_runs(limit= 3, ltc_only= True)[0]
+    l= rundb.get_finished_runs(limit=3, ltc_only=True)[0]
     for r in l:
       print(r['args']['tc'])
 
