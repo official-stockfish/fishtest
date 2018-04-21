@@ -1,6 +1,24 @@
 <%inherit file="base.mak"/>
 <h3> </h3>
 
+<form>
+Show only:
+<select id="restrict" name="action">
+  <option value="">All</option>
+  <option value="new_run">New Run</option>
+  <option value="approve_run">Approve Run</option>
+  <option value="modify_run">Modify Run</option>
+  <option value="stop_run">Stop Run</option>
+  <option value="delete_run">Delete Run</option>
+  <option value="purge_run">Purge Run</option>
+  <option value="block_user">Block/Unblock User</option>
+</select>
+&nbsp;From user:
+<input id="user" type="text" name="user" class="submit_on_enter">
+<br/>
+<button type="submit" class="btn btn-success">Select</button>
+</form>
+
 <table class="table table-striped table-condensed">
  <thead>
   <tr>
