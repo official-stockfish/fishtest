@@ -36,7 +36,7 @@ If it is not suggested by default you can try right-clicking on the password ent
   </div>
   <div class="control-group">
     <div class="controls">
-      <div class="g-recaptcha" data-sitekey="6LdAiFQUAAAAANhHq-9aMlFW0xuo-xcI8E3faZAg"></div>
+      <div class="g-recaptcha" data-sitekey="6LfYzlQUAAAAAIfrOdH_NNN75XO5Bz-e-bbuHEsn"></div>
     </div>
   </div>
   <div class="control-group">
