@@ -32,7 +32,7 @@ def get_idle_users(days):
   idle= idle.values()
   return idle
 
-def scavenge_users(scavenge=True, days=7):
+def scavenge_users(scavenge=True, days=28):
     for u in get_idle_users(days):
       print(u['username'])
       if scavenge:
