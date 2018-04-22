@@ -463,8 +463,7 @@ def tests_modify(request):
     request.actiondb.modify_run(authenticated_userid(request), before, run)
 
     cached_flash(request, 'Run successfully modified!')
-    return HTTPFound(location=request.route_url('tests'))
-  return {}
+  return HTTPFound(location=request.route_url('tests'))
 
 @view_config(route_name='tests_stop', permission='modify_db')
 def tests_stop(request):
@@ -483,15 +482,16 @@ def tests_stop(request):
 
 @view_config(route_name='tests_approve', permission='approve_run')
 def tests_approve(request):
-  username = authenticated_userid(request)
-  if not request.rundb.approve_run(request.POST['run-id'], username):
-    request.session.flash('Unable to approve run!')
-    return HTTPFound(location=request.route_url('tests'))
+  if 'run-id' in request.POST:
+    username = authenticated_userid(request)
+    if not request.rundb.approve_run(request.POST['run-id'], username):
+      request.session.flash('Unable to approve run!')
+      return HTTPFound(location=request.route_url('tests'))
 
-  run = request.rundb.get_run(request.POST['run-id'])
-  request.actiondb.approve_run(username, run)
+    run = request.rundb.get_run(request.POST['run-id'])
+    request.actiondb.approve_run(username, run)
 
-  cached_flash(request, 'Approved run')
+    cached_flash(request, 'Approved run')
   return HTTPFound(location=request.route_url('tests'))
 
 def purge_run(rundb, run):
