@@ -273,9 +273,12 @@ def users_monthly(request):
 def get_master_bench():
   bs = re.compile('(^|\s)[Bb]ench[ :]+([0-9]{7})', re.MULTILINE)
   for c in requests.get('https://api.github.com/repos/official-stockfish/Stockfish/commits').json():
+    if not 'commit' in c:
+      return None
     m = bs.search(c['commit']['message'])
     if m:
       return m.group(2)
+  return None
 
 def get_sha(branch, repo_url):
   """Resolves the git branch to sha commit"""
@@ -324,18 +327,24 @@ def validate_form(request):
     'new_options' : request.POST['new-options'],
     'username' : authenticated_userid(request),
     'tests_repo' : request.POST['tests-repo'],
+    'info' : request.POST['run-info']
   }
 
-  # Fill new_signature from commit info if left blank
-  if len(data['new_signature']) == 0:
-    found = False
+  # Fill new_signature/info from commit info if left blank
+  if len(data['new_signature']) == 0 or len(data['info']) == 0:
     api_url = data['tests_repo'].replace('https://github.com', 'https://api.github.com/repos')
     api_url += ('/commits' + '/' + data['new_tag'])
-    bs = re.compile('(^|\s)[Bb]ench[ :]+([0-9]{7})', re.MULTILINE)
     c= requests.get(api_url).json()
-    m = bs.search(c['commit']['message'])
-    if m:
-      data['new_signature']= m.group(2)
+    if not 'commit' in c:
+      raise Exception('Cannot find branch in developer repository')
+    if len(data['new_signature']) == 0:
+      bs = re.compile('(^|\s)[Bb]ench[ :]+([0-9]{7})', re.MULTILINE)
+      m = bs.search(c['commit']['message'])
+      if m:
+        data['new_signature']= m.group(2)
+    if len(data['info']) == 0:
+        data['info'] = ('STC: ' if re.match('^[012][0-9][^0-9].*', data['tc']) else 'LTC: ') \
+          + c['commit']['message']
 
   if len([v for v in data.values() if len(v) == 0]) > 0:
     raise Exception('Missing required option')
@@ -414,9 +423,6 @@ def validate_form(request):
   if data['threads'] <= 0:
     raise Exception('Threads must be >= 1')
 
-  # Optional
-  data['info'] = request.POST['run-info']
-
   return data
 
 @view_config(route_name='tests_run', renderer='tests_run.mak', permission='modify_db')
@@ -428,7 +434,7 @@ def tests_run(request):
 
       request.actiondb.new_run(authenticated_userid(request), request.rundb.get_run(run_id))
       cached_flash(request, 'Submitted test to the queue!')
-      return HTTPFound(location=request.route_url('tests'))
+      return HTTPFound(location='/tests/view/' + str(run_id))
     except Exception as e:
       request.session.flash(str(e))
 
