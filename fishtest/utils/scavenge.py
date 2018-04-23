@@ -28,7 +28,8 @@ def get_idle_users(days):
          or u['registration_time'] < datetime.utcnow() - timedelta(days=days):
         idle[u['username']] = u
   for u in rundb.userdb.user_cache.find():
-    del idle[u['username']]
+    if u['username'] in idle:
+      del idle[u['username']]
   idle= idle.values()
   return idle
 
