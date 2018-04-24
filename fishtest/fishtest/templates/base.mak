@@ -3,6 +3,7 @@
 <head>
   <title>Stockfish Testing Framework</title>
   <link href="/css/bootstrap.min.css" rel="stylesheet">
+  <%block name="meta"/>
 
   <script src="http://code.jquery.com/jquery-1.8.3.js"></script>
   <script src="/js/bootstrap.min.js"></script>
@@ -22,6 +23,8 @@
   </style>
 
   ${self.head()}
+  
+  <script src='https://www.google.com/recaptcha/api.js'></script>
 </head>
 <body>
   <div class="container-fluid">
@@ -31,24 +34,27 @@
           <li class="nav-header">Tests</li>
           <li><a href="/tests">Overview</a></li>
           <li><a href="/tests?success_only=1">Greens</a></li>
+          <li><a href="/tests?ltc_only=1">Slow (LTC)</a></li>
           <li><a href="/tests/run">New</a></li>
           <li class="nav-header">Misc</li>
           <li><a href="/users">Users</a></li>
           <li><a href="/users/monthly">Top Month</a></li>
           <li><a href="/actions">Actions</a></li>
           <li><a href="https://github.com/glinscott/fishtest/wiki" target="_blank">Wiki</a></li>
-          <li><a href="http://chatwing.com/stockfish" target="_blank">Chat</a></li>
           <li class="nav-header">Links</li>
           <li><a href="https://github.com/glinscott/fishtest" target="_blank">Github</a></li>
           <li><a href="https://groups.google.com/forum/?fromgroups=#!forum/fishcooking" target="_blank">Forum</a></li>
           <li><a href="https://groups.google.com/forum/?fromgroups=#!forum/fishcooking_results" target="_blank">History</a></li>
-          <li><a href="https://hxim.github.io/Stockfish-Evaluation-Guide/" target="_blank">EvalGuide</a></li>
-          <li><a href="/regression">Regression</a></li>
-          <!--<li><a href="http://bit.ly/11QsIkd" target="_blank">Regression</a></li>-->
+          <li><a href="https://hxim.github.io/Stockfish-Evaluation-Guide/" target="_blank">Eval&shy;Guide</a></li>
+	  <li><a href="https://github.com/glinscott/fishtest/wiki/Regression-Tests" target="_blank">Regres&shy;sion</a></li>
           <li><a href="http://abrok.eu/stockfish/" target="_blank">Compiles</a></li>
           <li><a href="https://github.com/official-stockfish/Stockfish" target="_blank">SF-github</a></li>
           <li class="nav-header">Admin</li>
           <li><a href="/signup">Register</a></li>
+          <li><a href="/user">Profile</a></li>
+          <li><a href="/login">Login</a></li>
+          <li><a href="/logout">Logout</a></li>
+          <li><a href="/pending">Pending (${len(request.userdb.get_pending())})</a></li>
         </ul>
       </div>
       <div class="span11">

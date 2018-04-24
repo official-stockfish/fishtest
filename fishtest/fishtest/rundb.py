@@ -3,14 +3,14 @@ import os
 import random
 import math
 import time
-from datetime import datetime
+import threading
+
+from datetime import datetime, timedelta
 from bson.objectid import ObjectId
 from pymongo import MongoClient, ASCENDING, DESCENDING
 
 from userdb import UserDb
 from actiondb import ActionDb
-from regressiondb import RegressionDb
-from views import parse_tc
 
 import stat_util
 
@@ -22,7 +22,6 @@ class RunDb:
     self.db = self.conn[db_name]
     self.userdb = UserDb(self.db)
     self.actiondb = ActionDb(self.db)
-    self.regressiondb = RegressionDb(self.db)
     self.runs = self.db['runs']
     self.old_runs = self.db['old_runs']
 
@@ -52,7 +51,6 @@ class RunDb:
               msg_new='',
               base_signature='',
               new_signature='',
-              regression_test=False,
               start_time=None,
               sprt=None,
               spsa=None,
@@ -72,7 +70,6 @@ class RunDb:
       'book': book,
       'book_depth': book_depth,
       'threads': threads,
-      'regression_test': regression_test,
       'resolved_base': resolved_base,
       'resolved_new': resolved_new,
       'msg_base': msg_base,
@@ -110,17 +107,6 @@ class RunDb:
       'approver': '',
     }
 
-    # Check for an existing approval matching the git commit SHAs
-    def get_approval(sha):
-      q = { '$or': [{ 'args.resolved_base': sha }, { 'args.resolved_new': sha }], 'approved': True }
-      return self.runs.find_one(q)
-    base_approval = get_approval(resolved_base)
-    new_approval = get_approval(resolved_new)
-    allow_auto = username in ['mcostalba', 'jkiiski', 'glinscott', 'lbraesch'] 
-    if base_approval != None and new_approval != None and allow_auto:
-      new_run['approved'] = True
-      new_run['approver'] = new_approval['approver']
-
     return self.runs.insert(new_run)
 
   def get_machines(self):
@@ -132,32 +118,94 @@ class RunDb:
           machine['last_updated'] = task.get('last_updated', None)
           machine['run'] = run
           machine['nps'] = task.get('nps', 0)
-          # TODO(glinscott): Temporary - remove once worker version >= 41
-          if not isinstance(machine['uname'], basestring):
-            machine['uname'] = machine['uname'][0] + machine['uname'][2]
           machines.append(machine)
     return machines
 
-  def get_run(self, id):
-    run = self.runs.find_one({'_id': ObjectId(id)})
-    if not run:
-      run = self.old_runs.find_one({'_id': ObjectId(id)})
-    return run
+  # Cache runs
+  run_cache = {}
+  run_cache_lock = threading.Lock()
+  run_cache_write_lock = threading.Lock()
 
-  def get_run_to_build(self):
-    return self.runs.find_one({'binaries_url': {'$exists': False}, 'finished': False, 'deleted': {'$exists': False}})
+  timer = None
+
+  def get_run(self, id):
+    with self.run_cache_lock:
+      id = str(id)
+      if id in self.run_cache:
+        self.run_cache[id]['rtime'] = time.time()
+        return self.run_cache[id]['run']
+      run = self.runs.find_one({'_id': ObjectId(id)})
+      if not run:
+        run = self.old_runs.find_one({'_id': ObjectId(id)})
+      self.run_cache[id] = { 'rtime': time.time(), 'ftime': time.time(), 'run': run, 'dirty': False }
+      return run
+
+  def buffer(self, run, flush):
+    with self.run_cache_lock:
+      if self.timer is None:
+        self.timer = threading.Timer(1.0, self.flush_buffers)
+        self.timer.start()
+      id = str(run['_id'])
+      if flush:
+        self.run_cache[id] = { 'dirty': False, 'rtime': time.time(), 'ftime': time.time(), 'run': run }
+        with self.run_cache_write_lock:
+          self.runs.save(run)
+      else:
+        if id in self.run_cache:
+          ftime = self.run_cache[id]['ftime']
+        else:
+          ftime = time.time()
+        self.run_cache[id] = { 'dirty': True, 'rtime': time.time(), 'ftime': ftime, 'run': run }
+
+  def stop(self):
+    with self.run_cache_lock:
+      self.timer = None
+    time.sleep(1.1)
+
+  def flush_buffers(self):
+    with self.run_cache_lock:
+      if self.timer is None:
+        return
+      now = time.time()
+      old = now + 1
+      oldest = None
+      for id in self.run_cache.keys():
+        if not self.run_cache[id]['dirty']:
+          if self.run_cache[id]['rtime'] < now - 10:
+            del self.run_cache[id]
+        elif self.run_cache[id]['ftime'] < old:
+          old = self.run_cache[id]['ftime']
+          oldest = id
+      if not oldest is None:
+        if int(now) % 60 == 0:
+          self.scavenge(self.run_cache[oldest]['run'])
+        with self.run_cache_write_lock:
+          self.runs.save(self.run_cache[oldest]['run'])
+        self.run_cache[oldest]['dirty'] = False
+        self.run_cache[oldest]['ftime'] = time.time()
+      self.timer = threading.Timer(1.0, self.flush_buffers)
+      self.timer.start()
+
+  def scavenge(self, run):
+    old = datetime.utcnow() - timedelta(minutes=30)
+    for task in run['tasks']:
+      if task['active'] and task['last_updated'] < old:
+        task['active'] = False
 
   def get_runs(self):
     return list(self.get_unfinished_runs()) + self.get_finished_runs()[0]
 
   def get_unfinished_runs(self):
-    return self.runs.find({'finished': False},
+    with self.run_cache_write_lock:
+      return self.runs.find({'finished': False},
                           sort=[('last_updated', DESCENDING), ('start_time', DESCENDING)])
 
-  def get_finished_runs(self, skip=0, limit=0, username='', success_only=False):
+  def get_finished_runs(self, skip=0, limit=0, username='', success_only=False, ltc_only=False):
     q = {'finished': True, 'deleted': {'$exists': False}}
     if len(username) > 0:
       q['args.username'] = username
+    if ltc_only:
+      q['args.tc'] = {'$regex':'^([4-9][0-9])|([1-9][0-9][0-9])'}
     if success_only:
       # This is unfortunate, but the only way we have of telling if a run was successful or
       # not currently is the color!
@@ -175,7 +223,7 @@ class RunDb:
       
     return result
 
-  def get_results(self, run):
+  def get_results(self, run, save_run=True):
     if not run['results_stale']:
       return run['results']
 
@@ -194,78 +242,114 @@ class RunDb:
 
     run['results_stale'] = False
     run['results'] = results
-    self.runs.save(run)
+    if save_run:
+      self.buffer(run, True)
 
     return results
 
+  # Limit concurrent request_task
+  task_lock = threading.Lock()
+  task_semaphore = threading.Semaphore(4)
+
+  task_time = 0
+  task_runs = None
+
   def request_task(self, worker_info):
-    # Check for blocked user or ip
-    if self.userdb.is_blocked(worker_info):
+    if self.task_semaphore.acquire(False):
+      with self.task_lock:
+        r= self.sync_request_task(worker_info)
+      self.task_semaphore.release()
+      return r
+    else:
       return {'task_waiting': False}
+
+  def sync_request_task(self, worker_info):
+
+    if time.time() > self.task_time + 60:
+      self.task_runs = []
+      for r in self.get_unfinished_runs():
+        self.task_runs.append(r)
+      self.task_runs.sort(key=lambda r: (-r['args']['priority'], -r['args']['internal_priority'], r['_id']))
+      self.task_time = time.time()
 
     max_threads = int(worker_info['concurrency'])
     exclusion_list = []
 
-    # Does this worker have a task already?  If so, just hand that back
-    existing_run = self.runs.find_one({'tasks': {'$elemMatch': {'active': True, 'worker_info': worker_info}}})
-    if existing_run != None and existing_run['_id'] not in exclusion_list:
-      for task_id, task in enumerate(existing_run['tasks']):
-        if task['active'] and task['worker_info'] == worker_info:
-          if task['pending']:
-            return {'run': existing_run, 'task_id': task_id}
-          else:
-            # Don't hand back tasks that have been marked as no longer pending
-            task['active'] = False
-            self.runs.save(existing_run)
-
     # We need to allocate a new task, but first check we don't have the same
     # machine already running because multiple connections are not allowed.
-    remote_addr = worker_info['remote_addr']
-    machines = self.get_machines()
-    connections = sum([int(m.get('remote_addr','') == remote_addr) for m in machines])
+    connections = 0
+    for run in self.task_runs:
+      for task in run['tasks']:
+        if task['active'] and task['worker_info']['remote_addr'] == worker_info['remote_addr']:
+          connections = connections + 1
 
     # Allow a few connections, for multiple computers on same IP
     if connections >= self.userdb.get_machine_limit(worker_info['username']):
       return {'task_waiting': False, 'hit_machine_limit': True}
 
     # Ok, we get a new task that does not require more threads than available concurrency
-    q = {
-      'new': True,
-      'query': { '$and': [ {'tasks': {'$elemMatch': {'active': False, 'pending': True}}},
-                           {'args.threads': { '$lte': max_threads }},
-                           {'_id': { '$nin': exclusion_list}},
-                           {'approved': True}]},
-      'sort': [('args.priority', DESCENDING), ('args.internal_priority', DESCENDING), ('_id', ASCENDING)],
-      'update': {
-        '$set': {
-          'tasks.$.active': True,
-          'tasks.$.last_updated': datetime.utcnow(),
-          'tasks.$.worker_info': worker_info,
-        }
-      }
-    }
+    run_found = False
+    for runt in self.task_runs:
+      run = self.get_run(runt['_id'])
+      if run['_id'] not in exclusion_list and run['approved']:
+        task_id = -1
+        for task in run['tasks']:
+          task_id = task_id + 1
+          if not task['active'] and task['pending'] and run['args']['threads'] <= max_threads:
+            task['active'] = True
+            task['last_updated'] = datetime.utcnow()
+            task['worker_info'] = worker_info
+            run_found = True
+            break
+      if run_found:
+        break
 
-    run = self.runs.find_and_modify(**q)
-    if run == None:
+    if not run_found:
       return {'task_waiting': False}
-
-    # Find the task we have just activated: the one with the highest 'last_updated'
-    latest_time = datetime.min
-    for idx, task in enumerate(run['tasks']):
-      if 'last_updated' in task and task['last_updated'] > latest_time:
-        latest_time = task['last_updated']
-        task_id = idx
 
     # Recalculate internal priority based on task start date and throughput
     # Formula: - second_since_epoch - played_and_allocated_tasks * 3600 * chunk_size / games_throughput
     # With default value 'throughput = 1000', this means that the priority is unchanged as long as we play at rate '1000 games / hour'.
     if (run['args']['throughput'] != None and run['args']['throughput'] != 0):
       run['args']['internal_priority'] = - time.mktime(run['start_time'].timetuple()) - task_id * 3600 * self.chunk_size * run['args']['threads'] / run['args']['throughput']
-    self.runs.save(run)
+
+    self.buffer(run, True)
+
+    for runt in self.task_runs:
+      if runt['_id'] == run['_id']:
+        runt['args']['internal_priority'] = run['args']['internal_priority']
+        self.task_runs.sort(key=lambda r: (-r['args']['priority'], -r['args']['internal_priority'], r['_id']))
+        break
 
     return {'run': run, 'task_id': task_id}
 
-  def update_task(self, run_id, task_id, stats, nps, spsa):
+  # Create a lock for each active run
+  run_lock = threading.Lock()
+  active_runs = {}
+  purge_count = 0
+
+  def active_run_lock(self, id):
+    with self.run_lock:
+      self.purge_count = self.purge_count + 1
+      if self.purge_count > 100000:
+        old = time.time() - 10000
+        self.active_runs = dict((k,v) for k, v in self.active_runs.iteritems() if v['time'] >= old)
+        self.purge_count = 0
+      if id in self.active_runs:
+        active_lock = self.active_runs[id]['lock']
+        self.active_runs[id]['time'] = time.time()
+      else:
+        active_lock = threading.Lock()
+        self.active_runs[id] = { 'time': time.time(), 'lock': active_lock }
+      return active_lock
+
+  def update_task(self, run_id, task_id, stats, nps, spsa, username):
+    lock = self.active_run_lock(str(run_id))
+    with lock:
+      return self.sync_update_task(run_id, task_id, stats, nps, spsa, username)
+
+  def sync_update_task(self, run_id, task_id, stats, nps, spsa, username):
+
     run = self.get_run(run_id)
     if task_id >= len(run['tasks']):
       return {'task_alive': False}
@@ -273,7 +357,10 @@ class RunDb:
     task = run['tasks'][task_id]
     if not task['active'] or not task['pending']:
       return {'task_alive': False}
-
+    if task['worker_info']['username'] != username:
+      print('Update_task: Non matching username: ' + username)
+      return {'task_alive': False}
+    
     # Guard against incorrect results
     count_games = lambda d: d['wins'] + d['losses'] + d['draws']
     num_games = count_games(stats)
@@ -284,11 +371,13 @@ class RunDb:
             or (spsa_games > 0 and 'stats' in task and num_games <= old_num_games):
       return {'task_alive': False}
 
+    flush = False
     task['stats'] = stats
     task['nps'] = nps
     if num_games >= task['num_games']:
       task['active'] = False
       task['pending'] = False
+      flush = True
 
     update_time = datetime.utcnow()
     task['last_updated'] = update_time
@@ -299,12 +388,10 @@ class RunDb:
     if 'spsa' in run['args'] and spsa_games == spsa['num_games']:
       self.update_spsa(run, spsa)
 
-    self.runs.save(run)
-
     # Check if SPRT stopping is enabled
     if 'sprt' in run['args']:
       sprt = run['args']['sprt']
-      sprt_stats = stat_util.SPRT(self.get_results(run),
+      sprt_stats = stat_util.SPRT(self.get_results(run, False),
                                   elo0=sprt['elo0'],
                                   alpha=sprt['alpha'],
                                   elo1=sprt['elo1'],
@@ -312,9 +399,12 @@ class RunDb:
                                   drawelo=sprt['drawelo'])
       if sprt_stats['finished']:
         run['args']['sprt']['state'] = sprt_stats['state']
-        self.runs.save(run)
+        self.stop_run(run_id, run)
+        flush = True
 
-        self.stop_run(run_id)
+    if (   not 'spsa' in run['args'] or spsa_games == spsa['num_games']
+        or num_games >= task['num_games'] or len(spsa['w_params']) < 20):
+      self.buffer(run, flush)
 
     return {'task_alive': task['active']}
 
@@ -329,12 +419,15 @@ class RunDb:
 
     # Mark the task as inactive: it will be rescheduled
     task['active'] = False
-    self.runs.save(run)
+    self.buffer(run, True)
 
     return {}
 
-  def stop_run(self, run_id):
-    run = self.get_run(run_id)
+  def stop_run(self, run_id, run=None):
+    save_it = False
+    if run is None:
+      run = self.get_run(run_id)
+      save_it = True
     prune_idx = len(run['tasks'])
     for idx, task in enumerate(run['tasks']):
       is_active = task['active']
@@ -347,7 +440,9 @@ class RunDb:
     # Truncate the empty tasks
     if prune_idx < len(run['tasks']):
       del run['tasks'][prune_idx:]
-    self.runs.save(run)
+    if save_it:
+      self.buffer(run, True)
+      self.task_time = 0
 
     return {}
 
@@ -359,7 +454,8 @@ class RunDb:
 
     run['approved'] = True
     run['approver'] = approver
-    self.runs.save(run)
+    self.buffer(run, True)
+    self.task_time = 0
     return True
 
   def spsa_param_clip_round(self, param, increment, clipping, rounding):
@@ -451,8 +547,15 @@ class RunDb:
         'c': c,
       })
 
-    # Every 100 iterations, record the parameters
+    # Store the history every 'freq' iterations.
+    # More tuned parameters result in a lower update frequency,
+    # so that the required storage (performance) remains constant.
+    L = len(spsa['params'])
+    freq = L * 25
+    if freq < 100:
+      freq = 100
+    maxlen = 250000 / freq
     if 'param_history' not in spsa:
       spsa['param_history'] = []
-    if len(spsa['param_history']) < spsa['iter'] / 100:
+    if len(spsa['param_history']) < min(maxlen, spsa['iter'] / freq):
       spsa['param_history'].append(summary)

@@ -28,23 +28,23 @@ def main(global_config, **settings):
     event.request.rundb = rundb
     event.request.userdb = rundb.userdb
     event.request.actiondb = rundb.actiondb
-    event.request.regressiondb = rundb.regressiondb
   config.add_subscriber(add_rundb, NewRequest)
 
+  config.add_static_view('html', 'static/html', cache_max_age=3600)
   config.add_static_view('css', 'static/css', cache_max_age=3600)
   config.add_static_view('js', 'static/js', cache_max_age=3600)
   config.add_static_view('img', 'static/img', cache_max_age=3600)
   config.add_route('home', '/')
   config.add_route('login', '/login')
+  config.add_route('logout', '/logout')
   config.add_route('signup', '/signup')
+  config.add_route('user', '/user/{username}')
+  config.add_route('profile', '/user')
+  config.add_route('pending', '/pending')
   config.add_route('users', '/users')
   config.add_route('users_monthly', '/users/monthly')
   config.add_route('actions', '/actions')
-  config.add_route('regression', '/regression')
-  config.add_route('regression_data', '/regression/data')
-  config.add_route('regression_data_json', '/regression/data/json')
-  config.add_route('regression_data_save', '/regression/data/save')
-  config.add_route('regression_data_delete', '/regression/data/delete')
+
   config.add_route('tests', '/tests')
   config.add_route('tests_run', '/tests/run')
   config.add_route('tests_modify', '/tests/modify')
@@ -61,10 +61,10 @@ def main(global_config, **settings):
   config.add_route('api_update_task', '/api/update_task')
   config.add_route('api_failed_task', '/api/failed_task')
   config.add_route('api_stop_run', '/api/stop_run')
-  config.add_route('api_request_build', '/api/request_build')
-  config.add_route('api_build_ready', '/api/build_ready')
   config.add_route('api_request_version', '/api/request_version')
   config.add_route('api_request_spsa', '/api/request_spsa')
+  config.add_route('api_active_runs', '/api/active_runs')
+  config.add_route('api_get_run', '/api/get_run/{id}')
 
   config.scan()
   return config.make_wsgi_app()

@@ -1,4 +1,6 @@
 import sys
+import time
+from datetime import datetime
 from pymongo import ASCENDING, DESCENDING
 
 class UserDb:
@@ -18,11 +20,24 @@ class UserDb:
     if not user or user['password'] != password:
       sys.stderr.write('Invalid login: "%s" "%s"\n' % (username, password))
       return {'error': 'Invalid password'}
+    if 'blocked' in user and user['blocked']:
+      sys.stderr.write('Blocked login: "%s" "%s"\n' % (username, password))
+      return {'error': 'Blocked'}
 
     return {'username': username, 'authenticated': True}
 
   def get_users(self):
     return self.users.find(sort=[('_id', ASCENDING)])
+  
+  # Cache pending for 60s
+  last_pending_time = 0
+  last_pending = None
+  
+  def get_pending(self):
+    if time.time() > self.last_pending_time + 60:
+      self.last_pending_time = time.time()
+      self.last_pending = list(self.users.find({'blocked': True}, sort=[('_id', ASCENDING)]))
+    return self.last_pending
 
   def get_user(self, username):
     return self.users.find_one({'username': username})
@@ -42,16 +57,26 @@ class UserDb:
 
   def create_user(self, username, password, email):
     try:
+      if self.users.find_one({'username': username}):
+        return False
       self.users.insert({
         'username': username,
         'password': password,
+        'registration_time': datetime.utcnow(),
+        'blocked': True,
         'email': email,
         'groups': [],
         'tests_repo': ''
       })
+      self.last_pending_time = 0
+
       return True
     except:
       return False
+  
+  def save_user(self, user):
+    self.users.save(user)
+    self.last_pending_time = 0
 
   def get_machine_limit(self, username):
     user = self.users.find_one({'username': username})
@@ -59,9 +84,3 @@ class UserDb:
       return user['machine_limit']
     return 4
 
-  def is_blocked(self, worker_info):
-    # TODO: hook the blocked info into the database
-    blocked = [ 'garry561', 'EthanOConnor', 'IamLupo', 'waykohler' ]
-    if worker_info['remote_addr'] in blocked or worker_info['username'] in blocked:
-      return True
-    return False

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Elo estimates from SPRT tests</title>
+    <link rel="stylesheet" type="text/css" href="/css/live_elo.css?1">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css" integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
+  </head>
+  <body>
+    <div class="container">
+      <br>
+      <div class="d-flex justify-content-center">
+        <div id="LLR_chart_div" style="display:inline-block;"></div>
+        <div style="width:1em;"></div>
+        <div id="LOS_chart_div" style="display:inline-block;"></div>
+        <div style="width:1em;"></div>
+        <div id="ELO_chart_div" style="display:inline-block;"></div>
+      </div>
+      <br>
+      <div class="error" id="error">
+      </div>
+      <table id="data" class="table table-sm" style="visibility:hidden;">
+        <tr><td>Commit</td><td id="commit"></td></tr>
+        <tr><td>Info</td><td id="info"></td></tr>
+        <tr><td>Submitter</td><td id="username"></td></tr>
+        <tr><td>TC</td><td id="tc"></td></tr>
+        <tr><td>SPRT</td><td id="sprt"></td></tr>
+        <tr><td>LLR</td><td id="LLR"></td></tr>
+        <tr><td>Elo</td><td id="elo"></td></tr>
+        <tr><td>LOS</td><td id="LOS"></td></tr>
+        <tr><td>Games</td><td id="games"></td></tr>
+        <tr><td>Link</td><td id="link"></td></tr>
+      </table>
+    </div>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script type="text/javascript" src="/js/live_elo.js?1"></script>
+    <script type="text/javascript" src="/js/sprt_elo.js?1"></script>
+  </body>
+</html>

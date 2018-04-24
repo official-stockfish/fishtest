@@ -8,6 +8,10 @@ import sys
 import json
 import smtplib
 import requests
+import time
+import threading
+import re
+
 from email.mime.text import MIMEText
 from collections import defaultdict
 from pyramid.security import remember, forget, authenticated_userid, has_permission
@@ -15,6 +19,22 @@ from pyramid.view import view_config, forbidden_view_config
 from pyramid.httpexceptions import HTTPFound, HTTPBadRequest
 
 import stat_util
+
+# For caching the tests output
+cache_time = 2
+last_tests = None
+last_time = 0
+
+def clear_cache():
+  global last_time
+  building.acquire()
+  last_time = 0
+  building.release()
+
+def cached_flash(request, requestString):
+  clear_cache()
+  request.session.flash(requestString)
+  return
 
 @view_config(route_name='home', renderer='mainpage.mak')
 def mainpage(request):
@@ -37,9 +57,16 @@ def login(request):
       headers = remember(request, username)
       return HTTPFound(location=came_from, headers=headers)
 
-    request.session.flash('Incorrect password')
+    request.session.flash(token['error']) # 'Incorrect password')
 
   return {}
+
+@view_config(route_name='logout')
+def logout(request):
+  session = request.session
+  headers = forget(request)
+  session.invalidate()
+  return HTTPFound(location=request.route_url('tests'), headers=headers)
 
 @view_config(route_name='signup', renderer='signup.mak')
 def signup(request):
@@ -47,6 +74,27 @@ def signup(request):
     if len(request.params.get('password', '')) == 0:
       request.session.flash('Non-empty password required')
       return {}
+    if request.params.get('password') != request.params.get('password2', ''):
+      request.session.flash('Matching verify password required')
+      return {}
+    if not '@' in request.params.get('email', ''):
+      request.session.flash('Email required')
+      return {}
+    if len(request.params.get('username', '')) == 0:
+      request.session.flash('Username required')
+      return {}
+
+    path = os.path.expanduser('~/fishtest.captcha.secret')
+    if os.path.exists(path):
+      with open(path, 'r') as f:
+        secret = f.read()
+        payload = {'secret': secret, 'response': request.params.get('g-recaptcha-response',''), 'remoteip': request.remote_addr}
+        response= requests.post('https://www.google.com/recaptcha/api/siteverify', data=payload).json()
+        if not 'success' in response or not response['success']:
+          if 'error-codes' in response:
+            print(response['error-codes'])
+          request.session.flash('Captcha failed')
+          return {}
 
     result = request.userdb.create_user(
       username=request.params['username'],
@@ -57,6 +105,7 @@ def signup(request):
     if not result:
       request.session.flash('Invalid username')
     else:
+      request.session.flash('Your account will be activated by an administrator soon...')
       return HTTPFound(location=request.route_url('login'))
 
   return {}
@@ -113,14 +162,20 @@ def parse_tc(tc):
 
 @view_config(route_name='actions', renderer='actions.mak')
 def actions(request):
+  search_action = request.params.get('action', '')
+  search_user = request.params.get('user', '')
+
   actions = []
-  for action in request.actiondb.get_actions(100):
+  for action in request.actiondb.get_actions(100, search_action, search_user):
     item = {
       'action': action['action'],
       'time': action['time'],
       'username': action['username'],
     }
-    if action['action'] == 'modify_run':
+    if action['action'] == 'block_user':
+      item['description'] = ('blocked' if action['data']['blocked'] else 'unblocked')
+      item['user'] = action['data']['user']
+    elif action['action'] == 'modify_run':
       item['run'] = action['data']['before']['args']['new_tag']
       item['_id'] = action['data']['before']['_id']
       item['description'] = []
@@ -150,8 +205,59 @@ def actions(request):
 
     actions.append(item)
 
-  return {'actions': actions}
+  return {'actions': actions, 'approver': has_permission('approve_run', request.context, request)}
 
+def get_idle_users(request):
+  idle = {}
+  for u in request.userdb.get_users():
+    idle[u['username']] = u
+  for u in request.userdb.user_cache.find():
+    del idle[u['username']]
+  idle= idle.values()
+  return idle
+
+@view_config(route_name='pending', renderer='pending.mak')
+def pending(request):
+  if not has_permission('approve_run', request.context, request):
+    request.session.flash('You cannot view pending users')
+    return HTTPFound(location=request.route_url('tests'))
+
+  return { 'users': request.userdb.get_pending(), 'idle': get_idle_users(request) }
+
+@view_config(route_name='user', renderer='user.mak')
+@view_config(route_name='profile', renderer='user.mak')
+def user(request):
+  userid = authenticated_userid(request)
+  if not userid:
+    request.session.flash('Please login')
+    return HTTPFound(location=request.route_url('login'))
+  username = request.matchdict.get('username', userid)
+  profile = (username == userid)
+  if not profile and not has_permission('approve_run', request.context, request):
+    request.session.flash('You cannot inspect users')
+    return HTTPFound(location=request.route_url('tests'))
+  user = request.userdb.get_user(username)
+  if 'user' in request.POST:
+    if profile:
+      if len(request.params.get('password')) > 0:
+        if request.params.get('password') != request.params.get('password2', ''):
+          request.session.flash('Matching verify password required')
+          return {'user': user, 'profile': profile}
+        user['password'] = request.params.get('password')
+      if len(request.params.get('email')) > 0:
+        user['email'] = request.params.get('email')
+    else:
+      user['blocked'] = ('blocked' in request.POST)
+      request.actiondb.block_user(authenticated_userid(request), {'user': username, 'blocked': user['blocked']})
+      request.session.flash(('Blocked' if user['blocked'] else 'Unblocked') + ' user ' + username)
+    request.userdb.save_user(user)
+    return HTTPFound(location=request.route_url('tests'))
+  if not profile:
+    userc = request.userdb.user_cache.find_one({'username': username})
+    hours = userc['cpu_hours'] if userc is not None else 0
+    return {'user': user, 'limit': request.userdb.get_machine_limit(username), 'hours': hours, 'profile': profile}
+  return {'user': user, 'profile': profile}
+  
 @view_config(route_name='users', renderer='users.mak')
 def users(request):
   users = list(request.userdb.user_cache.find())
@@ -164,52 +270,15 @@ def users_monthly(request):
   users.sort(key=lambda k: k['cpu_hours'], reverse=True)
   return {'users': users}
 
-@view_config(route_name='regression', renderer='regression.mak')
-def regression(request):
-  return {}
-
-def regression_request_isvalid(request):
-  return ("type" in request.GET) and \
-    (request.GET["type"] == "fishtest" or \
-    request.GET["type"] == "jl")
-
-@view_config(route_name='regression_data', renderer='regression_data.mak', permission='modify_stats')
-def regression_data(request):
-  if not regression_request_isvalid(request):
-    return HTTPBadRequest()
-
-  return {
-    'test_type': request.GET["type"],
-    'data': request.regressiondb.get(request.GET["type"])
-   }
-
-@view_config(route_name='regression_data_json', renderer='json')
-def regression_data_json(request):
-  return json.dumps({
-    'fishtest_regression_data': request.regressiondb.get("fishtest", True),
-    'jl_regression_data': request.regressiondb.get("jl", True)
-  })
-
-@view_config(route_name='regression_data_save', request_method='POST', permission='modify_stats')
-def regression_data_save(request):
-  if not regression_request_isvalid(request):
-    return HTTPBadRequest()
-
-  obj = {}
-  for d in request.POST:
-    obj[d] = request.POST[d];
-
-  request.regressiondb.save(request.GET["type"], obj, authenticated_userid(request))
-
-  return HTTPFound(location="/regression/data?type=" + request.GET["type"])
-
-@view_config(route_name='regression_data_delete', request_method='POST', permission='modify_stats')
-def regression_data_delete(request):
-  if not regression_request_isvalid(request) or "_id" not in request.POST:
-    return HTTPBadRequest()
-
-  request.regressiondb.delete(request.POST["_id"])
-  return HTTPFound(location="/regression/data?type=" + request.GET["type"])
+def get_master_bench():
+  bs = re.compile('(^|\s)[Bb]ench[ :]+([0-9]{7})', re.MULTILINE)
+  for c in requests.get('https://api.github.com/repos/official-stockfish/Stockfish/commits').json():
+    if not 'commit' in c:
+      return None
+    m = bs.search(c['commit']['message'])
+    if m:
+      return m.group(2)
+  return None
 
 def get_sha(branch, repo_url):
   """Resolves the git branch to sha commit"""
@@ -258,16 +327,33 @@ def validate_form(request):
     'new_options' : request.POST['new-options'],
     'username' : authenticated_userid(request),
     'tests_repo' : request.POST['tests-repo'],
+    'info' : request.POST['run-info']
   }
+
+  def strip_message(m):
+    s = re.sub("[Bb]ench[ :]+[0-9]{7}\s*", "", m)
+    s = re.sub("[ \t]+", " ", s)
+    s = re.sub("\n+", "\n", s)
+    return s.rstrip()
+
+  # Fill new_signature/info from commit info if left blank
+  if len(data['new_signature']) == 0 or len(data['info']) == 0:
+    api_url = data['tests_repo'].replace('https://github.com', 'https://api.github.com/repos')
+    api_url += ('/commits' + '/' + data['new_tag'])
+    c= requests.get(api_url).json()
+    if not 'commit' in c:
+      raise Exception('Cannot find branch in developer repository')
+    if len(data['new_signature']) == 0:
+      bs = re.compile('(^|\s)[Bb]ench[ :]+([0-9]{7})', re.MULTILINE)
+      m = bs.search(c['commit']['message'])
+      if m:
+        data['new_signature']= m.group(2)
+    if len(data['info']) == 0:
+        data['info'] = ('STC: ' if re.match('^[012][0-9][^0-9].*', data['tc']) else 'LTC: ') \
+          + strip_message(c['commit']['message'])
 
   if len([v for v in data.values() if len(v) == 0]) > 0:
     raise Exception('Missing required option')
-
-  data['regression_test'] = request.POST['test_type'] == 'Regression'
-  if data['regression_test']:
-    data['base_tag'] = data['new_tag']
-    data['base_signature'] = data['new_signature']
-    data['base_options'] = data['new_options']
 
   data['auto_purge'] = request.POST.get('auto-purge') is not None
 
@@ -287,6 +373,20 @@ def validate_form(request):
 
   if len(data['resolved_base']) == 0 or len(data['resolved_new']) == 0:
     raise Exception('Unable to find branch!')
+
+  # Check entered bench
+  if data['base_tag'] == 'master':
+    found = False
+    api_url = data['tests_repo'].replace('https://github.com', 'https://api.github.com/repos')
+    api_url += '/commits'
+    bs = re.compile('(^|\s)[Bb]ench[ :]+([0-9]{7})', re.MULTILINE)
+    for c in requests.get(api_url).json():
+      m = bs.search(c['commit']['message'])
+      if m:
+        found = True
+        break
+    if not found or m.group(2) != data['base_signature']:
+      raise Exception('Bench signature of Base master does not match, please "git pull upstream master" !')
 
   stop_rule = request.POST['stop_rule']
 
@@ -329,9 +429,6 @@ def validate_form(request):
   if data['threads'] <= 0:
     raise Exception('Threads must be >= 1')
 
-  # Optional
-  data['info'] = request.POST['run-info']
-
   return data
 
 @view_config(route_name='tests_run', renderer='tests_run.mak', permission='modify_db')
@@ -342,8 +439,8 @@ def tests_run(request):
       run_id = request.rundb.new_run(**data)
 
       request.actiondb.new_run(authenticated_userid(request), request.rundb.get_run(run_id))
-      request.session.flash('Started test run!')
-      return HTTPFound(location=request.route_url('tests'))
+      cached_flash(request, 'Submitted test to the queue!')
+      return HTTPFound(location='/tests/view/' + str(run_id))
     except Exception as e:
       request.session.flash(str(e))
 
@@ -354,7 +451,7 @@ def tests_run(request):
   username = authenticated_userid(request)
   u = request.userdb.get_user(username)
 
-  return { 'args': run_args, 'tests_repo': u.get('tests_repo', '') }
+  return { 'args': run_args, 'tests_repo': u.get('tests_repo', ''), 'bench': get_master_bench() }
 
 def can_modify_run(request, run):
   return run['args']['username'] == authenticated_userid(request) or has_permission('approve_run', request.context, request)
@@ -387,13 +484,13 @@ def tests_modify(request):
     run['args']['num_games'] = num_games
     run['args']['priority'] = int(request.POST['priority'])
     run['args']['throughput'] = int(request.POST['throughput'])
-    request.rundb.runs.save(run)
+    request.rundb.buffer(run, True)
+    request.rundb.task_time = 0
 
     request.actiondb.modify_run(authenticated_userid(request), before, run)
 
-    request.session.flash('Run successfully modified!')
-    return HTTPFound(location=request.route_url('tests'))
-  return {}
+    cached_flash(request, 'Run successfully modified!')
+  return HTTPFound(location=request.route_url('tests'))
 
 @view_config(route_name='tests_stop', permission='modify_db')
 def tests_stop(request):
@@ -407,20 +504,21 @@ def tests_stop(request):
   run = request.rundb.get_run(request.POST['run-id'])
   request.actiondb.stop_run(authenticated_userid(request), run)
 
-  request.session.flash('Stopped run')
+  cached_flash(request, 'Stopped run')
   return HTTPFound(location=request.route_url('tests'))
 
 @view_config(route_name='tests_approve', permission='approve_run')
 def tests_approve(request):
-  username = authenticated_userid(request)
-  if not request.rundb.approve_run(request.POST['run-id'], username):
-    request.session.flash('Unable to approve run!')
-    return HTTPFound(location=request.route_url('tests'))
+  if 'run-id' in request.POST:
+    username = authenticated_userid(request)
+    if not request.rundb.approve_run(request.POST['run-id'], username):
+      request.session.flash('Unable to approve run!')
+      return HTTPFound(location=request.route_url('tests'))
 
-  run = request.rundb.get_run(request.POST['run-id'])
-  request.actiondb.approve_run(username, run)
+    run = request.rundb.get_run(request.POST['run-id'])
+    request.actiondb.approve_run(username, run)
 
-  request.session.flash('Approved run')
+    cached_flash(request, 'Approved run')
   return HTTPFound(location=request.route_url('tests'))
 
 def purge_run(rundb, run):
@@ -449,7 +547,7 @@ def purge_run(rundb, run):
     if 'sprt' in run['args'] and 'state' in run['args']['sprt']:
       del run['args']['sprt']['state']
     
-    rundb.runs.save(run)
+    rundb.buffer(run, True)
 
   return purged 
 
@@ -469,7 +567,7 @@ def tests_purge(request):
 
   request.actiondb.purge_run(username, run)
 
-  request.session.flash('Purged run')
+  cached_flash(request, 'Purged run')
   return HTTPFound(location=request.route_url('tests'))
 
 @view_config(route_name='tests_delete', permission='modify_db')
@@ -483,11 +581,12 @@ def tests_delete(request):
   run['finished'] = True
   for w in run['tasks']:
     w['pending'] = False
-  request.rundb.runs.save(run)
+  request.rundb.buffer(run, True)
+  request.rundb.task_time = 0
 
   request.actiondb.delete_run(authenticated_userid(request), run)
 
-  request.session.flash('Deleted run')
+  cached_flash(request, 'Deleted run')
   return HTTPFound(location=request.route_url('tests'))
 
 def format_results(run_results, run):
@@ -713,11 +812,19 @@ def tests_view(request):
       strval = value.encode('ascii', 'replace')
     run_args.append((name, strval, url))
 
+  active = 0
+  cores = 0
   for task in run['tasks']:
+    if task['active']:
+      active += 1
+      cores += task['worker_info']['concurrency']
     last_updated = task.get('last_updated', datetime.datetime.min)
-    task['last_updated'] = delta_date(last_updated)
+    task['last_updated'] = last_updated
 
-  return { 'run': run, 'run_args': run_args, 'chi2': calculate_residuals(run)}
+  return { 'run': run, 'run_args': run_args, 'chi2': calculate_residuals(run),
+          'approver': has_permission('approve_run', request.context, request),
+          'totals': '(%s active worker%s with %s core%s)' % (active, ('s' if active != 1 else ''),
+                                                             cores, ('s' if cores != 1 else ''))}
 
 def post_result(run):
   title = run['args']['new_tag'][:23]
@@ -747,12 +854,31 @@ def post_result(run):
   s.sendmail(msg['From'], [msg['To']], msg.as_string())
   s.quit()
 
+# Guard against parallel builds of main page
+building = threading.Semaphore()
+
 @view_config(route_name='tests', renderer='tests.mak')
 @view_config(route_name='tests_user', renderer='tests.mak')
 def tests(request):
   username = request.matchdict.get('username', '')
   success_only = len(request.params.get('success_only', '')) > 0
+  ltc_only = len(request.params.get('ltc_only', '')) > 0
 
+  do_cache = (len(username) == 0 and not success_only and not ltc_only
+              and request.params.get('page', 1) == 1)
+  
+  global last_tests, last_time
+  if do_cache:
+    if time.time() - last_time < cache_time:
+      return last_tests
+    if not building.acquire(last_tests is None):
+      # We have a current cache and another thread is rebuilding, so return the current cache
+      return last_tests
+    elif time.time() - last_time < cache_time:
+      # Another thread has built the cache for us, so we are done
+      building.release()
+      return last_tests
+    
   runs = { 'pending':[], 'failed':[], 'active':[], 'finished':[] }
 
   unfinished_runs = request.rundb.get_unfinished_runs()
@@ -761,7 +887,7 @@ def tests(request):
     if len(username) > 0 and run['args'].get('username', '') != username:
       continue
 
-    results = request.rundb.get_results(run)
+    results = request.rundb.get_results(run, False)
     run['results_info'] = format_results(results, run)
 
     state = 'finished'
@@ -781,15 +907,16 @@ def tests(request):
           purged += 1
           run = request.rundb.get_run(run['_id'])
 
-          results = request.rundb.get_results(run)
+          results = request.rundb.get_results(run, True)
           run['results_info'] = format_results(results, run)
 
       if purged == 0:
         run['finished'] = True
-        request.rundb.runs.save(run)
+        request.rundb.buffer(run, True)
         post_result(run)
 
-    runs[state].append(run)
+    else:
+      runs[state].append(run)
 
   runs['pending'].sort(key=lambda run: (run['args']['priority'], run['args']['internal_priority']))
   runs['active'].sort(reverse=True, key=lambda run: ('sprt' in run['args'], run['results_info']['llr'] if 'llr' in run['results_info'] else 0,
@@ -814,16 +941,18 @@ def tests(request):
 
   cores = sum([int(m['concurrency']) for m in machines])
   nps = sum([int(m['concurrency']) * m['nps'] for m in machines])
-  if cores > 0:
-    pending_hours = 0
-    for run in runs['pending'] + runs['active']:
+  pending_hours = 0
+  for run in runs['pending'] + runs['active']:
+    if cores > 0:
       eta = remaining_hours(run) / cores
       pending_hours += eta
-      info = run['results_info']
-      if 'Pending...' in info['info']:
+    info = run['results_info']
+    if 'Pending...' in info['info']:
+      if cores > 0:
         info['info'][0] += ' (%.1f hrs)' % (eta)
-        if 'binaries_url' in run:
-          info['info'][0] += ' (+bin)'
+      if 'sprt' in run['args']:
+        sprt = run['args']['sprt']
+        info['info'].append(('[%.2f,%.2f]') % (sprt['elo0'], sprt['elo1']))
 
   else:
     pending_hours = 0
@@ -836,7 +965,8 @@ def tests(request):
   # Pagination
   page = max(0, int(request.params.get('page', 1)) - 1)
   page_size = 50
-  finished, num_finished = request.rundb.get_finished_runs(skip=page*page_size, limit=page_size, username=username, success_only=success_only)
+  finished, num_finished = request.rundb.get_finished_runs(skip=page*page_size, limit=page_size, username=username,
+                                                           success_only=success_only, ltc_only=ltc_only)
   runs['finished'] += finished
 
   for run in finished:
@@ -857,8 +987,11 @@ def tests(request):
   if success_only:
     for page in pages:
       page['url'] += '&success_only=1'
+  if ltc_only:
+    for page in pages:
+      page['url'] += '&ltc_only=1'
 
-  return {
+  result = {
     'runs': runs,
     'finished_runs': num_finished,
     'page_idx': page,
@@ -871,3 +1004,10 @@ def tests(request):
     'nps': nps,
     'games_per_minute': int(games_per_minute),
   }
+  
+  if do_cache:
+    last_tests = result
+    last_time = time.time()
+    building.release()
+
+  return result

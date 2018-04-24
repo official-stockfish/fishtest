@@ -1,5 +1,5 @@
 *.pyc
 .*
 *~
-fishtest/build
-fishtest/fishtest.egg-info
+fishtest/nohup.out
+fishtest/fishtest_server.egg-info

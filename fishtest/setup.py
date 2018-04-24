@@ -9,14 +9,14 @@ requires = [
     'pyramid',
     'pyramid_debugtoolbar',
     'waitress',
-    'psutil',
     'pymongo',
-    'pyzmq',
+    'scipy',
+    'requests'
     ]
 
-setup(name='fishtest',
-      version='0.0',
-      description='fishtest',
+setup(name='fishtest-server',
+      version='0.1',
+      description='fishtest-server',
       long_description=README + '\n\n' + CHANGES,
       classifiers=[
         "Programming Language :: Python",
@@ -33,7 +33,7 @@ setup(name='fishtest',
       zip_safe=False,
       install_requires=requires,
       tests_require=requires,
-      test_suite="fishtest",
+      test_suite="run_all_tests.server_test_suite",
       entry_points="""\
       [paste.app_factory]
       main = fishtest:main

@@ -9,15 +9,6 @@
 
   <br><br>
   <div class="control-group">
-    <label class="control-label">Test type:</label>
-    <div class="controls">
-      <select name="test_type">
-        <option value="Standard">Standard</option>
-        <option value="Regression">Regression</option>
-      </select>
-    </div>
-  </div>
-  <div class="control-group">
     <label class="control-label">Test branch:</label>
     <div class="controls">
       <input name="test-branch" value="${args.get('new_tag', '')}" ${'readonly' if re_run else ''}>
@@ -32,7 +23,7 @@
   <div class="control-group">
     <label class="control-label">Test signature:</label>
     <div class="controls">
-      <input name="test-signature" value="${args.get('new_signature', '')}" ${'readonly' if re_run else ''}>
+      <input name="test-signature" placeholder="Defaults to last commit message" value="${args.get('new_signature', '')}" ${'readonly' if re_run else ''}>
     </div>
   </div>
   <div class="control-group">
@@ -50,7 +41,7 @@
   <div class="control-group">
     <label class="control-label">Base signature:</label>
     <div class="controls">
-      <input name="base-signature" value="${args.get('base_signature', '')}" ${'readonly' if re_run else ''}>
+      <input name="base-signature" value="${args.get('base_signature', bench)}" ${'readonly' if re_run else ''}>
     </div>
   </div>
   <div class="control-group">
@@ -141,8 +132,8 @@ Cowardice,150,0,200,10,0.0020"""})['raw_params']}</textarea>
     <div class="controls">
       <input name="tc" value="${args.get('tc', '10+0.1')}">
       <div class="btn-group">
-        <div class="btn" id="fast_test">Fast</div>
-        <div class="btn" id="slow_test">Slow</div>
+        <div class="btn" id="fast_test">short (STC)</div>
+        <div class="btn" id="slow_test">long (LTC)</div>
       </div>
     </div>
   </div>
@@ -191,7 +182,7 @@ Cowardice,150,0,200,10,0.0020"""})['raw_params']}</textarea>
   <div class="control-group">
     <label class="control-label">Notes:</label>
     <div class="controls">
-      <textarea name="run-info" class="span4">${args.get('info', '')}</textarea>
+      <textarea name="run-info" class="span4" placeholder="Defaults to commit message">${args.get('info', '')}</textarea>
     </div>
   </div>
 

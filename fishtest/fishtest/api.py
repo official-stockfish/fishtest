@@ -33,6 +33,30 @@ def get_username(request):
 def authenticate(request):
   return request.userdb.authenticate(get_username(request), request.json_body['password'])
 
+def strip_run(run):
+  if 'tasks' in run:
+    del run['tasks']
+  if 'bad_tasks' in run:
+    del run['bad_tasks']
+  if 'spsa' in run['args'] and 'param_history' in run['args']['spsa']:
+    del run['args']['spsa']['param_history']
+  run['_id'] = str(run['_id'])
+  run['start_time'] = str(run['start_time'])
+  run['last_updated'] = str(run['last_updated'])
+  return run
+
+@view_config(route_name='api_active_runs', renderer='string')
+def active_runs(request):
+  l = {}
+  for run in request.rundb.get_unfinished_runs():
+    l[run['_id']] = strip_run(run)
+  return json.dumps(l)
+
+@view_config(route_name='api_get_run', renderer='string')
+def get_run(request):
+  run = request.rundb.get_run(request.matchdict['id'])
+  return json.dumps(strip_run(run.copy()))
+
 @view_config(route_name='api_request_task', renderer='string')
 def request_task(request):
   token = authenticate(request)
@@ -55,7 +79,6 @@ def request_task(request):
     '_id': str(run['_id']),
     'args': run['args'],
     'tasks': [],
-    'binaries_url': run.get('binaries_url', ''),
   }
 
   for task in run['tasks']:
@@ -78,6 +101,7 @@ def update_task(request):
     stats=request.json_body['stats'],
     nps=request.json_body.get('nps', 0),
     spsa=request.json_body.get('spsa', {}),
+    username=get_username(request)
   )
   return json.dumps(result)
 
@@ -102,40 +126,13 @@ def stop_run(request):
   if not user or user['cpu_hours'] < 1000:
     return ''
 
-  run = request.rundb.get_run(request.json_body['run_id'])
-  run['stop_reason'] = request.json_body.get('message', 'No reason!')
-  request.actiondb.stop_run(username, run)
+  with request.rundb.active_run_lock(str(request.json_body['run_id'])):
+    run = request.rundb.get_run(request.json_body['run_id'])
+    run['stop_reason'] = request.json_body.get('message', 'API request')
+    request.actiondb.stop_run(username, run)
 
-  result = request.rundb.stop_run(request.json_body['run_id'])
+    result = request.rundb.stop_run(request.json_body['run_id'])
   return json.dumps(result)
-
-@view_config(route_name='api_request_build', renderer='string')
-def request_build(request):
-  token = authenticate(request)
-  if 'error' in token: return json.dumps(token)
-
-  run = request.rundb.get_run_to_build()
-  if run == None:
-    return json.dumps({'no_run': True})
-
-  min_run = {
-    'run_id': str(run['_id']),
-    'args': run['args'],
-  }
-  return json.dumps(min_run)
-
-@view_config(route_name='api_build_ready', renderer='string')
-def build_ready(request):
-  token = authenticate(request)
-  if 'error' in token: return json.dumps(token)
-
-  run = request.rundb.get_run(request.json_body['run_id'])
-  if run == None:
-    return json.dumps({'ok': False})
-
-  run['binaries_url'] = request.json_body['binaries_url']
-  request.rundb.runs.save(run)
-  return json.dumps({'ok': True})
 
 @view_config(route_name='api_request_version', renderer='string')
 def request_version(request):
