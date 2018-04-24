@@ -330,6 +330,12 @@ def validate_form(request):
     'info' : request.POST['run-info']
   }
 
+  def strip_message(m):
+    s = re.sub("[Bb]ench[ :]+[0-9]{7}\s*", "", m)
+    s = re.sub("[ \t]+", " ", s)
+    s = re.sub("\n+", "\n", s)
+    return s.rstrip()
+
   # Fill new_signature/info from commit info if left blank
   if len(data['new_signature']) == 0 or len(data['info']) == 0:
     api_url = data['tests_repo'].replace('https://github.com', 'https://api.github.com/repos')
@@ -344,7 +350,7 @@ def validate_form(request):
         data['new_signature']= m.group(2)
     if len(data['info']) == 0:
         data['info'] = ('STC: ' if re.match('^[012][0-9][^0-9].*', data['tc']) else 'LTC: ') \
-          + c['commit']['message']
+          + strip_message(c['commit']['message'])
 
   if len([v for v in data.values() if len(v) == 0]) > 0:
     raise Exception('Missing required option')
