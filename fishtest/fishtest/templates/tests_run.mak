@@ -182,7 +182,7 @@ Cowardice,150,0,200,10,0.0020"""})['raw_params']}</textarea>
   <div class="control-group">
     <label class="control-label">Notes:</label>
     <div class="controls">
-      <textarea name="run-info" class="span4">${args.get('info', '')}</textarea>
+      <textarea name="run-info" class="span4" placeholder="Defaults to commit message">${args.get('info', '')}</textarea>
     </div>
   </div>
 
