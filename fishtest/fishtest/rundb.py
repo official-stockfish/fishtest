@@ -402,9 +402,7 @@ class RunDb:
         self.stop_run(run_id, run)
         flush = True
 
-    if (   not 'spsa' in run['args'] or spsa_games == spsa['num_games']
-        or num_games >= task['num_games'] or len(spsa['w_params']) < 20):
-      self.buffer(run, flush)
+    self.buffer(run, flush)
 
     return {'task_alive': task['active']}
 
@@ -532,6 +530,18 @@ class RunDb:
 
     spsa['iter'] += int(spsa_results['num_games'] / 2)
 
+    # Store the history every 'freq' iterations.
+    # More tuned parameters result in a lower update frequency,
+    # so that the required storage (performance) remains constant.
+    if 'param_history' not in spsa:
+      spsa['param_history'] = []
+    L = len(spsa['params'])
+    freq = L * 25
+    if freq < 100:
+      freq = 100
+    maxlen = 250000 / freq
+    grow_summary = len(spsa['param_history']) < min(maxlen, spsa['iter'] / freq)
+    
     # Update the current theta based on the results from the worker
     # Worker wins/losses are always in terms of w_params
     result = spsa_results['wins'] - spsa_results['losses']
@@ -541,21 +551,12 @@ class RunDb:
       c = spsa_results['w_params'][idx]['c']
       flip = spsa_results['w_params'][idx]['flip']
       param['theta'] = self.spsa_param_clip_round(param, R * c * result * flip, spsa['clipping'], 'deterministic')
-      summary.append({
-        'theta': param['theta'],
-        'R': R,
-        'c': c,
-      })
+      if grow_summary:
+        summary.append({
+          'theta': param['theta'],
+          'R': R,
+          'c': c,
+        })
 
-    # Store the history every 'freq' iterations.
-    # More tuned parameters result in a lower update frequency,
-    # so that the required storage (performance) remains constant.
-    L = len(spsa['params'])
-    freq = L * 25
-    if freq < 100:
-      freq = 100
-    maxlen = 250000 / freq
-    if 'param_history' not in spsa:
-      spsa['param_history'] = []
-    if len(spsa['param_history']) < min(maxlen, spsa['iter'] / freq):
+    if grow_summary:
       spsa['param_history'].append(summary)
