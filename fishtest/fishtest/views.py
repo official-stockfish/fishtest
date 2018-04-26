@@ -399,8 +399,9 @@ def validate_form(request):
       'beta': 0.05,
       'drawelo': 240.0,
     }
-    # Arbitrary limit on number of games played.  Shouldn't be hit in practice
-    data['num_games'] = 1000000
+    # Limit on number of games played.  Shouldn't be hit in practice as long as it is larger than > ~200000
+    # must scale with chunk_size to avoid overloading the server.
+    data['num_games'] = 1000 * request.rundb.chunk_size
   elif stop_rule == 'spsa':
     data['num_games'] = int(request.POST['num-games'])
     if data['num_games'] <= 0:
