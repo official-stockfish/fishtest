@@ -25,7 +25,7 @@ class RunDb:
     self.runs = self.db['runs']
     self.old_runs = self.db['old_runs']
 
-    self.chunk_size = 1000
+    self.chunk_size = 250
 
   def build_indices(self):
     self.runs.ensure_index([('finished', ASCENDING), ('last_updated', DESCENDING)])
