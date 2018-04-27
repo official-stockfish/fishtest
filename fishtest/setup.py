@@ -11,6 +11,7 @@ requires = [
     'waitress',
     'pymongo',
     'scipy',
+    'numpy',
     'requests'
     ]
 

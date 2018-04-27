@@ -25,7 +25,7 @@ class RunDb:
     self.runs = self.db['runs']
     self.old_runs = self.db['old_runs']
 
-    self.chunk_size = 1000
+    self.chunk_size = 250
 
   def build_indices(self):
     self.runs.ensure_index([('finished', ASCENDING), ('last_updated', DESCENDING)])
@@ -343,12 +343,12 @@ class RunDb:
         self.active_runs[id] = { 'time': time.time(), 'lock': active_lock }
       return active_lock
 
-  def update_task(self, run_id, task_id, stats, nps, spsa, username):
+  def update_task(self, worker, run_id, task_id, stats, nps, spsa, username):
     lock = self.active_run_lock(str(run_id))
     with lock:
-      return self.sync_update_task(run_id, task_id, stats, nps, spsa, username)
+      return self.sync_update_task(worker, run_id, task_id, stats, nps, spsa, username)
 
-  def sync_update_task(self, run_id, task_id, stats, nps, spsa, username):
+  def sync_update_task(self, worker, run_id, task_id, stats, nps, spsa, username):
 
     run = self.get_run(run_id)
     if task_id >= len(run['tasks']):
@@ -386,7 +386,7 @@ class RunDb:
 
     # Update spsa results
     if 'spsa' in run['args'] and spsa_games == spsa['num_games']:
-      self.update_spsa(run, spsa)
+      self.update_spsa(worker, run, spsa)
 
     # Check if SPRT stopping is enabled
     if 'sprt' in run['args']:
@@ -402,9 +402,7 @@ class RunDb:
         self.stop_run(run_id, run)
         flush = True
 
-    if (   not 'spsa' in run['args'] or spsa_games == spsa['num_games']
-        or num_games >= task['num_games'] or len(spsa['w_params']) < 20):
-      self.buffer(run, flush)
+    self.buffer(run, flush)
 
     return {'task_alive': task['active']}
 
@@ -424,6 +422,7 @@ class RunDb:
     return {}
 
   def stop_run(self, run_id, run=None):
+    self.clear_params(run_id)
     save_it = False
     if run is None:
       run = self.get_run(run_id)
@@ -482,8 +481,29 @@ class RunDb:
             value = fl
 
     return value
+  
+  # Store SPSA parameters for each worker
+  spsa_params = {}
+  
+  def store_params(self, run_id, worker, params):
+    run_id = str(run_id)
+    if not run_id in self.spsa_params:
+      self.spsa_params[run_id] = {}
+    self.spsa_params[run_id][worker] = params
 
-  def request_spsa(self, run_id, task_id):
+  def get_params(self, run_id, worker):
+    run_id = str(run_id)
+    if not run_id in self.spsa_params:
+      # Should only happen after server restart
+      return self.generate_spsa(worker, self.get_run(run_id))['w_params']
+    return self.spsa_params[run_id][worker]
+
+  def clear_params(self, run_id):
+    run_id = str(run_id)
+    if run_id in self.spsa_params:
+      del self.spsa_params[run_id]
+
+  def request_spsa(self, worker, run_id, task_id):
     run = self.get_run(run_id)
 
     if task_id >= len(run['tasks']):
@@ -492,6 +512,11 @@ class RunDb:
     if not task['active'] or not task['pending']:
       return {'task_alive': False}
 
+    result = self.generate_spsa(worker, run)
+    self.store_params(run['_id'], worker, result['w_params'])
+    return result
+
+  def generate_spsa(self, worker, run):
     result = {
       'task_alive': True,
       'w_params': [],
@@ -525,37 +550,41 @@ class RunDb:
 
     return result
 
-  def update_spsa(self, run, spsa_results):
+  def update_spsa(self, worker, run, spsa_results):
     spsa = run['args']['spsa']
     if 'clipping' not in spsa:
         spsa['clipping'] = 'old'
 
     spsa['iter'] += int(spsa_results['num_games'] / 2)
 
-    # Update the current theta based on the results from the worker
-    # Worker wins/losses are always in terms of w_params
-    result = spsa_results['wins'] - spsa_results['losses']
-    summary = []
-    for idx, param in enumerate(spsa['params']):
-      R = spsa_results['w_params'][idx]['R']
-      c = spsa_results['w_params'][idx]['c']
-      flip = spsa_results['w_params'][idx]['flip']
-      param['theta'] = self.spsa_param_clip_round(param, R * c * result * flip, spsa['clipping'], 'deterministic')
-      summary.append({
-        'theta': param['theta'],
-        'R': R,
-        'c': c,
-      })
-
     # Store the history every 'freq' iterations.
     # More tuned parameters result in a lower update frequency,
     # so that the required storage (performance) remains constant.
+    if 'param_history' not in spsa:
+      spsa['param_history'] = []
     L = len(spsa['params'])
     freq = L * 25
     if freq < 100:
       freq = 100
     maxlen = 250000 / freq
-    if 'param_history' not in spsa:
-      spsa['param_history'] = []
-    if len(spsa['param_history']) < min(maxlen, spsa['iter'] / freq):
+    grow_summary = len(spsa['param_history']) < min(maxlen, spsa['iter'] / freq)
+    
+    # Update the current theta based on the results from the worker
+    # Worker wins/losses are always in terms of w_params
+    result = spsa_results['wins'] - spsa_results['losses']
+    summary = []
+    w_params = self.get_params(run['_id'], worker)
+    for idx, param in enumerate(spsa['params']):
+      R = w_params[idx]['R']
+      c = w_params[idx]['c']
+      flip = w_params[idx]['flip']
+      param['theta'] = self.spsa_param_clip_round(param, R * c * result * flip, spsa['clipping'], 'deterministic')
+      if grow_summary:
+        summary.append({
+          'theta': param['theta'],
+          'R': R,
+          'c': c,
+        })
+
+    if grow_summary:
       spsa['param_history'].append(summary)

@@ -1,5 +1,7 @@
 import sys
 import time
+import threading
+
 from datetime import datetime
 from pymongo import ASCENDING, DESCENDING
 
@@ -32,12 +34,14 @@ class UserDb:
   # Cache pending for 60s
   last_pending_time = 0
   last_pending = None
-  
+  pending_lock = threading.Lock()
+
   def get_pending(self):
-    if time.time() > self.last_pending_time + 60:
-      self.last_pending_time = time.time()
-      self.last_pending = list(self.users.find({'blocked': True}, sort=[('_id', ASCENDING)]))
-    return self.last_pending
+    with self.pending_lock:
+      if time.time() > self.last_pending_time + 60:
+        self.last_pending = list(self.users.find({'blocked': True}, sort=[('_id', ASCENDING)]))
+        self.last_pending_time = time.time()
+      return self.last_pending
 
   def get_user(self, username):
     return self.users.find_one({'username': username})

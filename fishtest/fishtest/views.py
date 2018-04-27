@@ -349,7 +349,7 @@ def validate_form(request):
       if m:
         data['new_signature']= m.group(2)
     if len(data['info']) == 0:
-        data['info'] = ('STC: ' if re.match('^[012][0-9][^0-9].*', data['tc']) else 'LTC: ') \
+        data['info'] = ('' if re.match('^[012][0-9][^0-9].*', data['tc']) else 'LTC: ') \
           + strip_message(c['commit']['message'])
 
   if len([v for v in data.values() if len(v) == 0]) > 0:
@@ -399,8 +399,9 @@ def validate_form(request):
       'beta': 0.05,
       'drawelo': 240.0,
     }
-    # Arbitrary limit on number of games played.  Shouldn't be hit in practice
-    data['num_games'] = 1000000
+    # Limit on number of games played.  Shouldn't be hit in practice as long as it is larger than > ~200000
+    # must scale with chunk_size to avoid overloading the server.
+    data['num_games'] = 1000 * request.rundb.chunk_size
   elif stop_rule == 'spsa':
     data['num_games'] = int(request.POST['num-games'])
     if data['num_games'] <= 0:
