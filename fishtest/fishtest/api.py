@@ -96,6 +96,7 @@ def update_task(request):
   if 'error' in token: return json.dumps(token)
 
   result = request.rundb.update_task(
+    worker=request.json_body['unique_key'],
     run_id=request.json_body['run_id'],
     task_id=int(request.json_body['task_id']),
     stats=request.json_body['stats'],
@@ -149,4 +150,4 @@ def request_spsa(request):
   run_id = request.json_body['run_id']
   task_id = int(request.json_body['task_id'])
 
-  return json.dumps(request.rundb.request_spsa(run_id, task_id))
+  return json.dumps(request.rundb.request_spsa(request.json_body['unique_key'], run_id, task_id))
