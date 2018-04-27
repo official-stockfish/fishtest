@@ -93,6 +93,19 @@ def verify_signature(engine, signature, remote, payload, concurrency):
 
   return bench_nps
 
+def cleanup(item, testing_dir):
+  """Remove corrupted opening books"""
+  target_path = os.path.join(testing_dir, item)
+  if os.path.exists(target_path):
+    stat_info = os.stat(target_path)
+  else:
+    return True
+  if stat_info.st_size == 0:
+    os.remove(target_path)
+    return False
+  else:
+    return True
+
 def setup(item, testing_dir):
   """Download item from FishCooking to testing_dir"""
   tree = requests.get(github_api(FISHCOOKING_URL) + '/git/trees/setup', timeout=HTTP_TIMEOUT).json()
@@ -100,6 +113,12 @@ def setup(item, testing_dir):
     if blob['path'] == item:
       print 'Downloading %s ...' % (item)
       blob_json = requests.get(blob['url'], timeout=HTTP_TIMEOUT).json()
+      while not cleanup(item, testing_dir):
+        blob_request = requests.get(blob['url'], timeout=HTTP_TIMEOUT)
+        blob_json = blob_request.json()
+        if blob_request.status_code == requests.codes.ok:
+          break
+        sleep(5)
       with open(os.path.join(testing_dir, item), 'wb+') as f:
         f.write(b64decode(blob_json['content']))
       break
