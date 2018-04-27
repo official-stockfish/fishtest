@@ -14,11 +14,16 @@ from ConfigParser import SafeConfigParser
 from optparse import OptionParser
 from games import run_games
 from updater import update
+from datetime import datetime
 
-WORKER_VERSION = 62
+WORKER_VERSION = 63
 ALIVE = True
 
-HTTP_TIMEOUT = 5.0
+HTTP_TIMEOUT = 15.0
+
+def printout(s):
+  print s
+  sys.stdout.flush()
 
 def setup_config_file(config_file):
   ''' Config file setup, adds defaults if not existing '''
@@ -56,6 +61,7 @@ def worker(worker_info, password, remote):
   try:
     print 'Will fetch task soon...'
     time.sleep(random.randint(1,30))
+    t0 = datetime.utcnow()
     req = requests.post(remote + '/api/request_version', data=json.dumps(payload), headers={'Content-type': 'application/json'}, timeout=HTTP_TIMEOUT)
     req = json.loads(req.text)
 
@@ -65,9 +71,11 @@ def worker(worker_info, password, remote):
       sys.exit(1)
 
     if req['version'] > WORKER_VERSION:
-      print 'Updating worker version to %d' % (req['version'])
+      printout('Updating worker version to %d' % (req['version']))
       update()
+    printout("Worker version checked successfully in "+str((datetime.utcnow()-t0).total_seconds())+"s")
 
+    t0 = datetime.utcnow()
     req = requests.post(remote + '/api/request_task', data=json.dumps(payload), headers={'Content-type': 'application/json'}, timeout=HTTP_TIMEOUT)
     req = json.loads(req.text)
   except:
@@ -76,12 +84,13 @@ def worker(worker_info, password, remote):
     time.sleep(random.randint(10,60))
     return
 
+  printout("Task requested in "+str((datetime.utcnow()-t0).total_seconds())+"s")
   if 'error' in req:
     raise Exception('Error from remote: %s' % (req['error']))
 
   # No tasks ready for us yet, just wait...
   if 'task_waiting' in req:
-    print 'No tasks available at this time, waiting...'
+    printout('No tasks available at this time, waiting...\n')
     time.sleep(random.randint(10,60))
     return
 
@@ -109,6 +118,7 @@ def worker(worker_info, password, remote):
   return success
 
 def main():
+  printout("Worker starting ...\n")
   signal.signal(signal.SIGINT, on_sigint)
   signal.signal(signal.SIGTERM, on_sigint)
 
@@ -144,7 +154,7 @@ def main():
     config.write(f)
 
   remote = 'http://%s:%s' % (options.host, options.port)
-  print 'Worker version %d connecting to %s' % (WORKER_VERSION, remote)
+  printout('Worker version %d connecting to %s' % (WORKER_VERSION, remote))
 
   try:
     cpu_count = min(int(options.concurrency), multiprocessing.cpu_count() - 1)
