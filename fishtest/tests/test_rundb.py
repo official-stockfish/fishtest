@@ -39,11 +39,12 @@ class CreateRunDBTest(unittest.TestCase):
     print(util.find_run()['args'])
     
   def test_20_update_task(self):
-    r= rundb.update_task(run_id, 0, {'wins': 1, 'losses': 1, 'draws': 997, 'crashes': 0, 'time_losses': 0}, 1000000, '', 'worker2')
+    worker_id = 'travis'
+    r= rundb.update_task(worker_id, run_id, 0, {'wins': 1, 'losses': 1, 'draws': rundb.chunk_size-3, 'crashes': 0, 'time_losses': 0}, 1000000, '', 'worker2')
     self.assertEqual(r, {'task_alive': False})
-    r= rundb.update_task(run_id, 0, {'wins': 1, 'losses': 1, 'draws': 997, 'crashes': 0, 'time_losses': 0}, 1000000, '', 'worker1')
+    r= rundb.update_task(worker_id, run_id, 0, {'wins': 1, 'losses': 1, 'draws': rundb.chunk_size-3, 'crashes': 0, 'time_losses': 0}, 1000000, '', 'worker1')
     self.assertEqual(r, {'task_alive': True})
-    r= rundb.update_task(run_id, 0, {'wins': 1, 'losses': 1, 'draws': 998, 'crashes': 0, 'time_losses': 0}, 1000000, '', 'worker1')
+    r= rundb.update_task(worker_id, run_id, 0, {'wins': 1, 'losses': 1, 'draws': rundb.chunk_size-2, 'crashes': 0, 'time_losses': 0}, 1000000, '', 'worker1')
     self.assertEqual(r, {'task_alive': False})
 
   def test_30_finish(self):

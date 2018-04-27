@@ -238,8 +238,6 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
         spsa['wins'] = wld[0]
         spsa['losses'] = wld[1]
         spsa['draws'] = wld[2]
-        if spsa['num_games'] == spsa['wins'] + spsa['losses'] + spsa['draws']:
-            spsa['w_params'] = w_params
 
       try:
         req = requests.post(remote + '/api/update_task', data=json.dumps(result), headers={'Content-type': 'application/json'}, timeout=HTTP_TIMEOUT).json()
@@ -311,6 +309,7 @@ def launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, tc_limit):
 def run_games(worker_info, password, remote, run, task_id):
   task = run['tasks'][task_id]
   result = {
+    'unique_key': worker_info['unique_key'],
     'username': worker_info['username'],
     'password': password,
     'run_id': str(run['_id']),
