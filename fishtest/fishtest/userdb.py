@@ -17,8 +17,28 @@ class UserDb:
   def init_collection(self):
     self.users.create_index('username', unique=True)
 
+  # Cache user lookups for 60s
+  user_lock = threading.Lock()
+  cache = {}
+
+  def find(self, name):
+    with self.user_lock:
+      if name in self.cache:
+        u = self.cache[name]
+        if u['time'] > time.time() - 60:
+          return u['user']
+      user = self.users.find_one({'username': name})
+      if not user:
+        return None
+      self.cache[name] = { 'user': user, 'time': time.time() }
+      return user
+
+  def clear_cache(self):
+    with self.user_lock:
+      self.cache.clear()
+
   def authenticate(self, username, password):
-    user = self.users.find_one({'username': username})
+    user = self.find(username)
     if not user or user['password'] != password:
       sys.stderr.write('Invalid login: "%s" "%s"\n' % (username, password))
       return {'error': 'Invalid password'}
@@ -44,10 +64,10 @@ class UserDb:
       return self.last_pending
 
   def get_user(self, username):
-    return self.users.find_one({'username': username})
+    return self.find(username)
 
   def get_user_groups(self, username):
-    user = self.users.find_one({'username': username})
+    user = self.find(username)
     if user:
       groups = user['groups']
       # Everyone is in this group by default
@@ -55,13 +75,13 @@ class UserDb:
       return groups
 
   def add_user_group(self, username, group):
-    user = self.users.find_one({'username': username})
+    user = self.find(username)
     user['groups'].append(group)
     self.users.save(user)
 
   def create_user(self, username, password, email):
     try:
-      if self.users.find_one({'username': username}):
+      if self.find(username):
         return False
       self.users.insert({
         'username': username,
@@ -83,7 +103,7 @@ class UserDb:
     self.last_pending_time = 0
 
   def get_machine_limit(self, username):
-    user = self.users.find_one({'username': username})
+    user = self.find(username)
     if user and 'machine_limit' in user:
       return user['machine_limit']
     return 4
