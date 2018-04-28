@@ -118,7 +118,7 @@ def setup(item, testing_dir):
         blob_json = blob_request.json()
         if blob_request.status_code == requests.codes.ok:
           break
-        sleep(5)
+        sleep(HTTP_TIMEOUT)
       with open(os.path.join(testing_dir, item), 'wb+') as f:
         f.write(b64decode(blob_json['content']))
       break
@@ -287,7 +287,7 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
           printout('Too many failed update attempts')
           kill_process(p)
           break
-        time.sleep(random.randint(failed_updates*failed_updates, 4 * failed_updates*failed_updates))
+        time.sleep(HTTP_TIMEOUT)
 
   if datetime.datetime.now() >= end_time:
     printout(datetime.datetime.now()+' is past end time '+end_time)

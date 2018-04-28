@@ -60,7 +60,7 @@ def worker(worker_info, password, remote):
 
   try:
     print 'Will fetch task soon...'
-    time.sleep(random.randint(1,30))
+    time.sleep(random.randint(1,10))
     t0 = datetime.utcnow()
     req = requests.post(remote + '/api/request_version', data=json.dumps(payload), headers={'Content-type': 'application/json'}, timeout=HTTP_TIMEOUT)
     req = json.loads(req.text)
@@ -91,7 +91,8 @@ def worker(worker_info, password, remote):
   # No tasks ready for us yet, just wait...
   if 'task_waiting' in req:
     printout('No tasks available at this time, waiting...\n')
-    time.sleep(random.randint(10,60))
+    # Note that after this sleep we have another ALIVE HTTP_TIMEOUT...
+    time.sleep(random.randint(1,10))
     return
 
   success = True
@@ -179,7 +180,7 @@ def main():
   global ALIVE
   while ALIVE:
     if not success:
-      time.sleep(300)
+      time.sleep(HTTP_TIMEOUT)
     success = worker(worker_info, args[1], remote)
 
 if __name__ == '__main__':
