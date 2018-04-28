@@ -62,9 +62,12 @@ def github_api(repo):
 
 def verify_signature(engine, signature, remote, payload, concurrency):
   if concurrency > 1:
-    busy_process = subprocess.Popen([engine], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    busy_process.stdin.write('setoption name Threads value %d\n' % (concurrency-1))
-    busy_process.stdin.write('go infinite\n')
+    try:
+      busy_process = subprocess.Popen([engine], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+      busy_process.stdin.write('setoption name Threads value %d\n' % (concurrency-1))
+      busy_process.stdin.write('go infinite\n')
+    except:
+      raise Exception('Failed to start busy process in parallel to bench')
 
   try:
     bench_sig = ''
@@ -89,7 +92,10 @@ def verify_signature(engine, signature, remote, payload, concurrency):
 
   finally:
     if concurrency > 1:
-      busy_process.communicate('quit\n')
+      try:
+        busy_process.communicate('quit\n')
+      except:
+        raise Exception('Failed to stop busy process in parallel to bench')
 
   return bench_nps
 
