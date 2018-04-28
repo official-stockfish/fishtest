@@ -128,7 +128,7 @@ def setup(item, testing_dir):
 def setup_engine(destination, worker_dir, sha, repo_url, concurrency):
   if os.path.exists(destination): os.remove(destination)
   """Download and build sources in a temporary directory then move exe to destination"""
-  tmp_dir = tempfile.mkdtemp()
+  tmp_dir = tempfile.mkdtemp(dir=worker_dir)
   
   try:
     os.chdir(tmp_dir)
