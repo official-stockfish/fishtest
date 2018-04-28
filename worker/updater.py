@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import os
 import shutil
 import sys
+import requests
 from zipfile import ZipFile
 from distutils.dir_util import copy_tree
 

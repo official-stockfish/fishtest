@@ -37,6 +37,6 @@ setup(name='fishtest-server',
       test_suite="run_all_tests.server_test_suite",
       entry_points="""\
       [paste.app_factory]
-      main = fishtest:main
+      main=fishtest:main
       """,
       )
