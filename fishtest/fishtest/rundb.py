@@ -343,12 +343,12 @@ class RunDb:
         self.active_runs[id] = { 'time': time.time(), 'lock': active_lock }
       return active_lock
 
-  def update_task(self, worker, run_id, task_id, stats, nps, spsa, username):
+  def update_task(self, run_id, task_id, stats, nps, spsa, username):
     lock = self.active_run_lock(str(run_id))
     with lock:
-      return self.sync_update_task(worker, run_id, task_id, stats, nps, spsa, username)
+      return self.sync_update_task(run_id, task_id, stats, nps, spsa, username)
 
-  def sync_update_task(self, worker, run_id, task_id, stats, nps, spsa, username):
+  def sync_update_task(self, run_id, task_id, stats, nps, spsa, username):
 
     run = self.get_run(run_id)
     if task_id >= len(run['tasks']):
@@ -386,7 +386,7 @@ class RunDb:
 
     # Update spsa results
     if 'spsa' in run['args'] and spsa_games == spsa['num_games']:
-      self.update_spsa(worker, run, spsa)
+      self.update_spsa(task['worker_info']['unique_key'], run, spsa)
 
     # Check if SPRT stopping is enabled
     if 'sprt' in run['args']:
@@ -495,7 +495,7 @@ class RunDb:
     run_id = str(run_id)
     if not run_id in self.spsa_params:
       # Should only happen after server restart
-      return self.generate_spsa(worker, self.get_run(run_id))['w_params']
+      return self.generate_spsa(self.get_run(run_id))['w_params']
     return self.spsa_params[run_id][worker]
 
   def clear_params(self, run_id):
@@ -503,7 +503,7 @@ class RunDb:
     if run_id in self.spsa_params:
       del self.spsa_params[run_id]
 
-  def request_spsa(self, worker, run_id, task_id):
+  def request_spsa(self, run_id, task_id):
     run = self.get_run(run_id)
 
     if task_id >= len(run['tasks']):
@@ -512,11 +512,11 @@ class RunDb:
     if not task['active'] or not task['pending']:
       return {'task_alive': False}
 
-    result = self.generate_spsa(worker, run)
-    self.store_params(run['_id'], worker, result['w_params'])
+    result = self.generate_spsa(run)
+    self.store_params(run['_id'], task['worker_info']['unique_key'], result['w_params'])
     return result
 
-  def generate_spsa(self, worker, run):
+  def generate_spsa(self, run):
     result = {
       'task_alive': True,
       'w_params': [],

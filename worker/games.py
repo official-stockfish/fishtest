@@ -290,7 +290,7 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
         time.sleep(HTTP_TIMEOUT)
 
   if datetime.datetime.now() >= end_time:
-    printout(datetime.datetime.now()+' is past end time '+end_time)
+    printout(str(datetime.datetime.now())+' is past end time '+str(end_time))
     kill_process(p)
 
   return { 'task_alive': True }
@@ -339,7 +339,6 @@ def launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, tc_limit):
 def run_games(worker_info, password, remote, run, task_id):
   task = run['tasks'][task_id]
   result = {
-    'unique_key': worker_info['unique_key'],
     'username': worker_info['username'],
     'password': password,
     'run_id': str(run['_id']),
