@@ -646,6 +646,8 @@ def format_results(run_results, run):
   return result
 
 UUID_MAP = defaultdict(dict)
+key_lock = threading.Lock()
+
 def get_worker_key(task):
   global UUID_MAP
 
@@ -655,9 +657,10 @@ def get_worker_key(task):
   cores = str(task['worker_info']['concurrency'])
 
   uuid = task['worker_info'].get('unique_key', '')
-  if uuid not in UUID_MAP[username]:
-    next_idx = len(UUID_MAP[username])
-    UUID_MAP[username][uuid] = next_idx
+  with key_lock:
+    if uuid not in UUID_MAP[username]:
+      next_idx = len(UUID_MAP[username])
+      UUID_MAP[username][uuid] = next_idx
 
   worker_key = '%s-%scores' % (username, cores)
   suffix = UUID_MAP[username][uuid]
