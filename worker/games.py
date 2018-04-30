@@ -452,6 +452,7 @@ def run_games(worker_info, password, remote, run, task_id):
 
   if spsa_tuning:
     games_to_play = games_concurrency * 2
+    tc_limit *= 2
     pgnout = []
   else:
     games_to_play = games_remaining
