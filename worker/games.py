@@ -164,11 +164,15 @@ def setup_engine(destination, worker_dir, sha, repo_url, concurrency):
     shutil.rmtree(tmp_dir)
     
 def kill_process(p):
-  if IS_WINDOWS:
-    # Kill doesn't kill subprocesses on Windows
-    subprocess.call(['taskkill', '/F', '/T', '/PID', str(p.pid)])
-  else:
-    p.kill()
+  try:
+    if IS_WINDOWS:
+      # Kill doesn't kill subprocesses on Windows
+      subprocess.call(['taskkill', '/F', '/T', '/PID', str(p.pid)])
+    else:
+      p.kill()
+  except:
+    printout('Note: ' + str(sys.exc_info()[0]) + ' killing the process pid: ' + str(p.pid) + ', possibly already terminated')
+    pass
 
 def adjust_tc(tc, base_nps, concurrency):
   factor = 1600000.0 / base_nps
