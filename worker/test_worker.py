@@ -1,5 +1,6 @@
 import unittest
 import worker
+import updater
 import games
 import os
 import os.path
@@ -29,7 +30,10 @@ class workerTest(unittest.TestCase):
   def test_worker_script(self):
     p = subprocess.Popen(["python" , "worker.py"], stderr = subprocess.PIPE)
     result = p.stderr.readline()
+    if not isinstance(result, str):
+      result = result.decode('utf-8')
     self.assertEqual(result, 'worker.py [username] [password]\n')
+    p.stderr.close()
     
   def test_item_download(self):
     self.assertTrue(games.cleanup('foo.txt', '.'))
@@ -44,15 +48,22 @@ class workerTest(unittest.TestCase):
     self.assertTrue(os.path.exists(os.path.join('.','foo.txt')))
     self.assertTrue(games.cleanup('foo.txt', '.'))
     
-    games.setup('polyglot.ini', '.')
-    self.assertTrue(os.path.exists(os.path.join('.','polyglot.ini')))
-    
-    
+    try:
+      games.setup('polyglot.ini', '.')
+      self.assertTrue(os.path.exists(os.path.join('.','polyglot.ini')))
+    except KeyError:
+      print('Hit github.com API limit')
+      pass
 
   def test_setup_exception(self): 
     cwd = os.getcwd()
     with self.assertRaises(Exception):
       games.setup_engine('foo', cwd, 'foo', 'https://foo', 1)
+
+  def test_updater(self): 
+    file_list = updater.update(restart=False, test=True)
+    print(file_list)
+    self.assertTrue('worker' in file_list)
 
 if __name__ == "__main__":
   unittest.main()
