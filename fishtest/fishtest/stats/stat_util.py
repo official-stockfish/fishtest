@@ -1,6 +1,9 @@
 from __future__ import division
+
 import math,copy
-import LLRcalc,sprt
+
+from fishtest.stats import LLRcalc
+from fishtest.stats import sprt
 
 def erf(x):
   #Python 2.7 defines math.erf(), but we need to cater for older versions.
@@ -64,7 +67,7 @@ def stats(results):
 def get_elo(results):
 # "results" is an array of length 2*n+1 with aggregated frequences
 # for n games
-  
+
   results=regularize(results)
   games,mu,var=stats(results)
   stdev = math.sqrt(var)
@@ -132,11 +135,11 @@ def SPRT_elo(R, alpha=0.05, beta=0.05, p=0.05, elo0=None, elo1=None, elo_model=N
   Calculate an elo estimate from an sprt test.
   """
   assert(elo_model in ['BayesElo','logistic'])
-  
+
   # Estimate drawelo out of sample
   R3=regularize([R['losses'],R['draws'],R['wins']])
   drawelo=draw_elo_calc(R3)
-  
+
   # Convert the bounds to logistic elo if necessary
   if elo_model=='BayesElo':
     lelo0,lelo1=[bayeselo_to_elo(elo_, drawelo) for elo_ in (elo0,elo1)]
@@ -162,7 +165,7 @@ def SPRT_elo(R, alpha=0.05, beta=0.05, p=0.05, elo0=None, elo1=None, elo_model=N
   # Now return the estimates
   return a
 
-  
+
 def SPRT(R, elo0, alpha, elo1, beta, elo_model=None):
   """
   Sequential Probability Ratio Test

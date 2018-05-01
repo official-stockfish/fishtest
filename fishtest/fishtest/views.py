@@ -37,7 +37,7 @@ def cached_flash(request, requestString):
   return
 
 _here = os.path.dirname(__file__)
-with open(os.path.join(_here, 'static', 'favicon.ico'), 'r') as f:
+with open(os.path.join(_here, 'static', 'favicon.ico'), 'rb') as f:
   _icon = f.read()
 _fi_response = Response(content_type='image/x-icon', body=_icon)
 
@@ -238,7 +238,7 @@ def get_idle_users(request):
     idle[u['username']] = u
   for u in request.userdb.user_cache.find():
     del idle[u['username']]
-  idle= idle.values()
+  idle= list(idle.values())
   return idle
 
 @view_config(route_name='pending', renderer='pending.mak')
@@ -376,7 +376,7 @@ def validate_form(request):
         data['info'] = ('' if re.match('^[012]?[0-9][^0-9].*', data['tc']) else 'LTC: ') \
           + strip_message(c['commit']['message'])
 
-  if len([v for v in data.values() if len(v) == 0]) > 0:
+  if len([v for v in list(data.values()) if len(v) == 0]) > 0:
     raise Exception('Missing required option')
 
   data['auto_purge'] = request.POST.get('auto-purge') is not None
@@ -762,7 +762,7 @@ def get_chi2(tasks, bad_users):
   if len(users) == 0:
     return results
 
-  observed = numpy.array(users.values())
+  observed = numpy.array(list(users.values()))
   rows,columns = observed.shape
   # Results only from one worker: skip the test for workers homogeneity
   if rows == 1:
@@ -794,7 +794,7 @@ def get_chi2(tasks, bad_users):
   std_error = numpy.sqrt(expected * numpy.outer((1 - row_sums / grand_total), (1 - column_sums / grand_total)))
   adj_residual = raw_residual / std_error
   for idx in range(len(users)):
-    users[users.keys()[idx]] = numpy.max(numpy.abs(adj_residual[idx]))
+    users[list(users.keys())[idx]] = numpy.max(numpy.abs(adj_residual[idx]))
   chi2 = numpy.sum(raw_residual * raw_residual / expected)
   return {
     'chi2': chi2,

@@ -1,6 +1,8 @@
 from __future__ import division
-import brentq
+
 import math,sys,copy
+
+from fishtest.stats.brentq import brentq
 
 def MLE(pdf,s):
     """
@@ -8,10 +10,10 @@ This function computes the maximum likelood estimate for
 a discrete distribution with expectation value s,
 given an observed (i.e. empirical) distribution pdf.
 
-pdf is a list of tuples (ai,pi), i=1,...,N. It is assumed that 
+pdf is a list of tuples (ai,pi), i=1,...,N. It is assumed that
 that the ai are strictly ascending, a1<s<aN and p1>0, pN>0.
 
-The theory behind this function can be found in the online 
+The theory behind this function can be found in the online
 document
 
 http://hardy.uhasselt.be/Toga/computeLLR.pdf
@@ -24,7 +26,7 @@ http://hardy.uhasselt.be/Toga/computeLLR.pdf
     assert(v<s<w)
     l,u=-1/(w-s),1/(s-v)
     f=lambda x:sum([p*(a-s)/(1+x*(a-s)) for a,p in pdf])
-    res=brentq.brentq(f,l+epsilon,u-epsilon,epsilon=epsilon)
+    res=brentq(f,l+epsilon,u-epsilon,epsilon=epsilon)
     assert(res['converged'])
     x=res['x0']
     pdf_MLE=[(a,p/(1+x*(a-s))) for a,p in pdf]
@@ -57,13 +59,13 @@ kurtosis for a discrete distribution.
 def LLRjumps(pdf,s0,s1):
     pdf0,pdf1=[MLE(pdf,s) for s in (s0,s1)]
     return [(math.log(pdf1[i][1])-math.log(pdf0[i][1]),pdf[i][1]) for i in range(0,len(pdf))]
-        
+
 def LLR(pdf,s0,s1):
     """
 This function computes the generalized log likelihood ratio (divided by N)
 for s=s1 versus s=s0 where pdf is an empirical distribution and
 s is the expectation value of the true distribution.
-pdf is a list of pairs (value,probability). 
+pdf is a list of pairs (value,probability).
 """
     return stats(LLRjumps(pdf,s0,s1))[0]
 
@@ -130,7 +132,7 @@ def L_(x):
     return 1/(1+10**(-x/400))
 
 def regularize(l):
-    """ 
+    """
 If necessary mix in a small prior for regularization.
 """
     epsilon=1e-3
@@ -145,10 +147,10 @@ def results_to_pdf(results):
     N=sum(results)
     l=len(results)
     return N,[(i/(l-1),results[i]/N) for i in range(0,l)]
-    
+
 def LLR_logistic(elo0,elo1,results):
-    """ 
-This function computes the generalized log-likelihood ratio for "results" 
+    """
+This function computes the generalized log-likelihood ratio for "results"
 which should be a list of either length 3 or 5. If the length
 is 3 then it should contain the frequencies of L,D,W. If the length
 is 5 then it should contain the frequencies of the game pairs

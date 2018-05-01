@@ -1,9 +1,11 @@
 from __future__ import division
+
 import math,copy
 import argparse
-from brownian import Brownian
-from brentq import brentq
-import LLRcalc
+
+from fishtest.stats.brownian import Brownian
+from fishtest.stats.brentq import brentq
+from fishtest.stats import LLRcalc
 
 class sprt:
     def __init__(self,alpha=0.05,beta=0.05,elo0=0,elo1=5):
@@ -86,7 +88,7 @@ less than p.
 if __name__=='__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--alpha",help="probability of a false positve",type=float,default=0.05)
-    parser.add_argument("--beta" ,help="probability of a false negative",type=float,default=0.05) 
+    parser.add_argument("--beta" ,help="probability of a false negative",type=float,default=0.05)
     parser.add_argument("--elo0", help="H0 (expressed in LogisticElo)",type=float,default=0.0)
     parser.add_argument("--elo1", help="H1 (expressed in LogisticElo)",type=float,default=5.0)
     parser.add_argument("--level",help="confidence level",type=float,default=0.95)
