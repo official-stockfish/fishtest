@@ -1,4 +1,6 @@
 #!/usr/bin/python
+from __future__ import print_function
+
 import json
 import multiprocessing
 import os
@@ -10,7 +12,10 @@ import requests
 import time
 import traceback
 import uuid
-from ConfigParser import SafeConfigParser
+try:
+  from ConfigParser import SafeConfigParser
+except ImportError:
+  from configparser import SafeConfigParser # Python3
 from optparse import OptionParser
 from games import run_games
 from updater import update
@@ -20,10 +25,6 @@ WORKER_VERSION = 64
 ALIVE = True
 
 HTTP_TIMEOUT = 15.0
-
-def printout(s):
-  print s
-  sys.stdout.flush()
 
 def setup_config_file(config_file):
   ''' Config file setup, adds defaults if not existing '''
@@ -59,21 +60,21 @@ def worker(worker_info, password, remote):
   }
 
   try:
-    print 'Will fetch task soon...'
+    print('Will fetch task soon...')
     time.sleep(random.randint(1,10))
     t0 = datetime.utcnow()
     req = requests.post(remote + '/api/request_version', data=json.dumps(payload), headers={'Content-type': 'application/json'}, timeout=HTTP_TIMEOUT)
     req = json.loads(req.text)
 
     if 'version' not in req:
-      print 'Incorrect username/password'
+      print('Incorrect username/password')
       time.sleep(5)
       sys.exit(1)
 
     if req['version'] > WORKER_VERSION:
-      printout('Updating worker version to %d' % (req['version']))
+      print('Updating worker version to %s' % (req['version']))
       update()
-    printout("Worker version checked successfully in "+str((datetime.utcnow()-t0).total_seconds())+"s")
+    print("Worker version checked successfully in %ss" % ((datetime.utcnow() - t0).total_seconds()))
 
     t0 = datetime.utcnow()
     req = requests.post(remote + '/api/request_task', data=json.dumps(payload), headers={'Content-type': 'application/json'}, timeout=HTTP_TIMEOUT)
@@ -84,13 +85,13 @@ def worker(worker_info, password, remote):
     time.sleep(random.randint(10,60))
     return
 
-  printout("Task requested in "+str((datetime.utcnow()-t0).total_seconds())+"s")
+  print("Task requested in %ss" % ((datetime.utcnow() - t0).total_seconds()))
   if 'error' in req:
     raise Exception('Error from remote: %s' % (req['error']))
 
   # No tasks ready for us yet, just wait...
   if 'task_waiting' in req:
-    printout('No tasks available at this time, waiting...\n')
+    print('No tasks available at this time, waiting...\n')
     # Note that after this sleep we have another ALIVE HTTP_TIMEOUT...
     time.sleep(random.randint(1,10))
     return
@@ -119,7 +120,7 @@ def worker(worker_info, password, remote):
   return success
 
 def main():
-  printout("Worker starting ...\n")
+  print("Worker starting ...\n")
   signal.signal(signal.SIGINT, on_sigint)
   signal.signal(signal.SIGTERM, on_sigint)
 
@@ -155,7 +156,7 @@ def main():
     config.write(f)
 
   remote = 'http://%s:%s' % (options.host, options.port)
-  printout('Worker version %d connecting to %s' % (WORKER_VERSION, remote))
+  print('Worker version %s connecting to %s' % (WORKER_VERSION, remote))
 
   try:
     cpu_count = min(int(options.concurrency), multiprocessing.cpu_count() - 1)
@@ -172,7 +173,7 @@ def main():
     'architecture': platform.architecture(),
     'concurrency': cpu_count,
     'username': args[0],
-    'version': WORKER_VERSION,
+    'version': "%s:%s" % (WORKER_VERSION, sys.version_info[0]),
     'unique_key': str(uuid.uuid4()),
   }
 

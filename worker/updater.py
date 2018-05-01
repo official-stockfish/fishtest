@@ -19,7 +19,7 @@ def restart(worker_dir):
   os.chdir(worker_dir)
   os.execv(sys.executable, args) # This does not return !
 
-def update():
+def update(restart=True, test=False):
   worker_dir = os.path.dirname(os.path.realpath(__file__))
   update_dir = os.path.join(worker_dir, 'update')
   if not os.path.exists(update_dir):
@@ -35,7 +35,17 @@ def update():
   prefix = os.path.commonprefix([n.filename for n in zip_file.infolist()])
   fishtest_src = os.path.join(update_dir, prefix)
   fishtest_dir = os.path.dirname(worker_dir) # fishtest_dir is assumed to be parent of worker_dir
-  copy_tree(fishtest_src, fishtest_dir)
+  if not test:
+    copy_tree(fishtest_src, fishtest_dir)
+  else:
+    file_list = os.listdir(fishtest_src)
   shutil.rmtree(update_dir)
 
-  restart(worker_dir)
+  if restart:
+    restart(worker_dir)
+
+  if test:
+    return file_list
+
+if __name__ == '__main__':
+  update(False)
