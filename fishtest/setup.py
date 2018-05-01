@@ -11,8 +11,8 @@ requires = [
     'pyramid_mako',
     'waitress',
     'pymongo',
-    'numpy<1.16',
-    'scipy<1.2',
+    'numpy',
+    'scipy',
     'requests',
     'awscli',
     ]
