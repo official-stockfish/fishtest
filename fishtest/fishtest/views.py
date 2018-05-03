@@ -257,7 +257,7 @@ def user(request):
     hours = userc['cpu_hours'] if userc is not None else 0
     return {'user': user, 'limit': request.userdb.get_machine_limit(username), 'hours': hours, 'profile': profile}
   return {'user': user, 'profile': profile}
-  
+
 @view_config(route_name='users', renderer='users.mak')
 def users(request):
   users = list(request.userdb.user_cache.find())
@@ -870,7 +870,7 @@ def tests(request):
 
   do_cache = (len(username) == 0 and not success_only and not ltc_only
               and request.params.get('page', 1) == 1)
-  
+
   global last_tests, last_time
   if do_cache:
     if time.time() - last_time < cache_time:
@@ -885,130 +885,138 @@ def tests(request):
     
   runs = { 'pending':[], 'failed':[], 'active':[], 'finished':[] }
 
-  unfinished_runs = request.rundb.get_unfinished_runs()
-  for run in unfinished_runs:
-    # Is username filtering on?  If so, match just runs from that user
-    if len(username) > 0 and run['args'].get('username', '') != username:
-      continue
+  try:
+    unfinished_runs = request.rundb.get_unfinished_runs()
+    for run in unfinished_runs:
+      # Is username filtering on?  If so, match just runs from that user
+      if len(username) > 0 and run['args'].get('username', '') != username:
+        continue
 
-    results = request.rundb.get_results(run, False)
-    run['results_info'] = format_results(results, run)
+      results = request.rundb.get_results(run, False)
+      run['results_info'] = format_results(results, run)
 
-    state = 'finished'
+      state = 'finished'
 
-    for task in run['tasks']:
-      if task['active']:
-        state = 'active'
-      elif task['pending'] and not state == 'active':
-        state = 'pending'
+      for task in run['tasks']:
+        if task['active']:
+          state = 'active'
+        elif task['pending'] and not state == 'active':
+          state = 'pending'
 
-    # Auto-purge runs here (this is hacky, ideally we would do it
-    # when the run was finished, not when it is first viewed)
-    if state == 'finished':
-      purged = 0
-      if run['args'].get('auto_purge', True) and 'spsa' not in run['args'] and run['args']['threads'] == 1:
-        while purge_run(request.rundb, run) and purged < 5:
-          purged += 1
-          run = request.rundb.get_run(run['_id'])
+      # Auto-purge runs here (this is hacky, ideally we would do it
+      # when the run was finished, not when it is first viewed)
+      if state == 'finished':
+        purged = 0
+        if run['args'].get('auto_purge', True) and 'spsa' not in run['args'] and run['args']['threads'] == 1:
+          while purge_run(request.rundb, run) and purged < 5:
+            purged += 1
+            run = request.rundb.get_run(run['_id'])
 
-          results = request.rundb.get_results(run, True)
-          run['results_info'] = format_results(results, run)
+            results = request.rundb.get_results(run, True)
+            run['results_info'] = format_results(results, run)
 
-      if purged == 0:
-        run['finished'] = True
-        request.rundb.buffer(run, True)
-        post_result(run)
+        if purged == 0:
+          run['finished'] = True
+          request.rundb.buffer(run, True)
+          post_result(run)
+
+      else:
+        runs[state].append(run)
+
+    runs['pending'].sort(key=lambda run: (run['args']['priority'], run['args']['internal_priority']))
+    runs['active'].sort(reverse=True, key=lambda run: ('sprt' in run['args'], run['results_info']['llr'] if 'llr' in run['results_info'] else 0,
+                                                       'spsa' not in run['args'], run['results']['wins'] + run['results']['draws'] + run['results']['losses']))
+
+    games_per_minute = 0.0
+    machines = request.rundb.get_machines()
+    for machine in machines:
+      machine['last_updated'] = delta_date(machine['last_updated'])
+      if machine['nps'] != 0:
+        games_per_minute += (machine['nps'] / 1200000.0) * (60.0 / parse_tc(machine['run']['args']['tc'])) * int(machine['concurrency'])
+    machines.reverse()
+
+    def remaining_hours(run):
+      r = run['results']
+      expected_games = run['args']['num_games']
+      if 'sprt' in run['args']:
+        expected_games = 16000
+      remaining_games = max(0, expected_games - r['wins'] - r['losses'] - r['draws'])
+      game_secs = parse_tc(run['args']['tc'])
+      return game_secs * remaining_games * int(run['args'].get('threads', 1)) / (60*60)
+
+    cores = sum([int(m['concurrency']) for m in machines])
+    nps = sum([int(m['concurrency']) * m['nps'] for m in machines])
+    pending_hours = 0
+    for run in runs['pending'] + runs['active']:
+      if cores > 0:
+        eta = remaining_hours(run) / cores
+        pending_hours += eta
+      info = run['results_info']
+      if 'Pending...' in info['info']:
+        if cores > 0:
+          info['info'][0] += ' (%.1f hrs)' % (eta)
+        if 'sprt' in run['args']:
+          sprt = run['args']['sprt']
+          info['info'].append(('[%.2f,%.2f]') % (sprt['elo0'], sprt['elo1']))
 
     else:
-      runs[state].append(run)
+      pending_hours = 0
 
-  runs['pending'].sort(key=lambda run: (run['args']['priority'], run['args']['internal_priority']))
-  runs['active'].sort(reverse=True, key=lambda run: ('sprt' in run['args'], run['results_info']['llr'] if 'llr' in run['results_info'] else 0,
-                                                     'spsa' not in run['args'], run['results']['wins'] + run['results']['draws'] + run['results']['losses']))
+    def total_games(run):
+      res = run['results']
+      return res['wins'] + res['draws'] + res['losses']
+    games_played = sum([total_games(r) for r in runs['finished']])
 
-  games_per_minute = 0.0
-  machines = request.rundb.get_machines()
-  for machine in machines:
-    machine['last_updated'] = delta_date(machine['last_updated'])
-    if machine['nps'] != 0:
-      games_per_minute += (machine['nps'] / 1200000.0) * (60.0 / parse_tc(machine['run']['args']['tc'])) * int(machine['concurrency'])
-  machines.reverse()
+    # Pagination
+    page = max(0, int(request.params.get('page', 1)) - 1)
+    page_size = 50
+    finished, num_finished = request.rundb.get_finished_runs(skip=page*page_size, limit=page_size, username=username,
+                                                             success_only=success_only, ltc_only=ltc_only)
+    runs['finished'] += finished
 
-  def remaining_hours(run):
-    r = run['results']
-    expected_games = run['args']['num_games']
-    if 'sprt' in run['args']:
-      expected_games = 16000
-    remaining_games = max(0, expected_games - r['wins'] - r['losses'] - r['draws'])
-    game_secs = parse_tc(run['args']['tc'])
-    return game_secs * remaining_games * int(run['args'].get('threads', 1)) / (60*60)
+    for run in finished:
+      results = request.rundb.get_results(run)
+      if results['wins'] + results['losses'] + results['draws'] == 0:
+        runs['failed'].append(run)
 
-  cores = sum([int(m['concurrency']) for m in machines])
-  nps = sum([int(m['concurrency']) * m['nps'] for m in machines])
-  pending_hours = 0
-  for run in runs['pending'] + runs['active']:
-    if cores > 0:
-      eta = remaining_hours(run) / cores
-      pending_hours += eta
-    info = run['results_info']
-    if 'Pending...' in info['info']:
-      if cores > 0:
-        info['info'][0] += ' (%.1f hrs)' % (eta)
-      if 'sprt' in run['args']:
-        sprt = run['args']['sprt']
-        info['info'].append(('[%.2f,%.2f]') % (sprt['elo0'], sprt['elo1']))
+    runs['finished'] = [r for r in runs['finished'] if r not in runs['failed']]
 
-  else:
-    pending_hours = 0
+    pages = [{'idx': 'Prev', 'url': '?page=%d' % (page), 'state': 'disabled' if page == 0 else ''}]
+    for idx, page_idx in enumerate(range(0, num_finished, page_size)):
+      if idx < 5 or abs(page - idx) < 5 or idx > (num_finished / page_size) - 5:
+        pages.append({'idx': idx + 1, 'url': '?page=%d' % (idx + 1), 'state': 'active' if page == idx else ''})
+      elif pages[-1]['idx'] != '...':
+        pages.append({'idx': '...', 'url': '', 'state': 'disabled'})
+    pages.append({'idx': 'Next', 'url': '?page=%d' % (page + 2), 'state': 'disabled' if page + 1 == len(pages) - 1 else ''})
 
-  def total_games(run):
-    res = run['results']
-    return res['wins'] + res['draws'] + res['losses']
-  games_played = sum([total_games(r) for r in runs['finished']])
+    if success_only:
+      for page in pages:
+        page['url'] += '&success_only=1'
+    if ltc_only:
+      for page in pages:
+        page['url'] += '&ltc_only=1'
 
-  # Pagination
-  page = max(0, int(request.params.get('page', 1)) - 1)
-  page_size = 50
-  finished, num_finished = request.rundb.get_finished_runs(skip=page*page_size, limit=page_size, username=username,
-                                                           success_only=success_only, ltc_only=ltc_only)
-  runs['finished'] += finished
+    result = {
+      'runs': runs,
+      'finished_runs': num_finished,
+      'page_idx': page,
+      'pages': pages,
+      'machines': machines,
+      'show_machines': len(username) == 0,
+      'pending_hours': '%.1f' % (pending_hours),
+      'games_played': games_played,
+      'cores': cores,
+      'nps': nps,
+      'games_per_minute': int(games_per_minute),
+    }
 
-  for run in finished:
-    results = request.rundb.get_results(run)
-    if results['wins'] + results['losses'] + results['draws'] == 0:
-      runs['failed'].append(run)
+  except Exception as e:
+    if do_cache:
+      building.release()
+    print('Overview exception: ' + str(e))
 
-  runs['finished'] = [r for r in runs['finished'] if r not in runs['failed']]
+    return last_tests
 
-  pages = [{'idx': 'Prev', 'url': '?page=%d' % (page), 'state': 'disabled' if page == 0 else ''}]
-  for idx, page_idx in enumerate(range(0, num_finished, page_size)):
-    if idx < 5 or abs(page - idx) < 5 or idx > (num_finished / page_size) - 5:
-      pages.append({'idx': idx + 1, 'url': '?page=%d' % (idx + 1), 'state': 'active' if page == idx else ''})
-    elif pages[-1]['idx'] != '...':
-      pages.append({'idx': '...', 'url': '', 'state': 'disabled'})
-  pages.append({'idx': 'Next', 'url': '?page=%d' % (page + 2), 'state': 'disabled' if page + 1 == len(pages) - 1 else ''})
-
-  if success_only:
-    for page in pages:
-      page['url'] += '&success_only=1'
-  if ltc_only:
-    for page in pages:
-      page['url'] += '&ltc_only=1'
-
-  result = {
-    'runs': runs,
-    'finished_runs': num_finished,
-    'page_idx': page,
-    'pages': pages,
-    'machines': machines,
-    'show_machines': len(username) == 0,
-    'pending_hours': '%.1f' % (pending_hours),
-    'games_played': games_played,
-    'cores': cores,
-    'nps': nps,
-    'games_per_minute': int(games_per_minute),
-  }
-  
   if do_cache:
     last_tests = result
     last_time = time.time()
