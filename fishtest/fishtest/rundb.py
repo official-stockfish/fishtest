@@ -256,10 +256,11 @@ class RunDb:
 
   def request_task(self, worker_info):
     if self.task_semaphore.acquire(False):
-      with self.task_lock:
-        r= self.sync_request_task(worker_info)
-      self.task_semaphore.release()
-      return r
+      try:
+        with self.task_lock:
+          return self.sync_request_task(worker_info)
+      finally:
+        self.task_semaphore.release()
     else:
       return {'task_waiting': False}
 
