@@ -297,9 +297,9 @@ class RunDb:
         for task in run['tasks']:
           task_id = task_id + 1
           if not task['active'] and task['pending'] and run['args']['threads'] <= max_threads:
-            task['active'] = True
-            task['last_updated'] = datetime.utcnow()
             task['worker_info'] = worker_info
+            task['last_updated'] = datetime.utcnow()
+            task['active'] = True
             run_found = True
             break
       if run_found:
