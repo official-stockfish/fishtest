@@ -171,7 +171,7 @@ class RunDb:
       oldest = None
       for id in self.run_cache.keys():
         if not self.run_cache[id]['dirty']:
-          if self.run_cache[id]['rtime'] < now - 10:
+          if self.run_cache[id]['rtime'] < now - 60:
             del self.run_cache[id]
         elif self.run_cache[id]['ftime'] < old:
           old = self.run_cache[id]['ftime']
@@ -314,7 +314,7 @@ class RunDb:
     if (run['args']['throughput'] != None and run['args']['throughput'] != 0):
       run['args']['internal_priority'] = - time.mktime(run['start_time'].timetuple()) - task_id * 3600 * self.chunk_size * run['args']['threads'] / run['args']['throughput']
 
-    self.buffer(run, True)
+    self.buffer(run, False)
 
     for runt in self.task_runs:
       if runt['_id'] == run['_id']:
