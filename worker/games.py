@@ -6,7 +6,6 @@ import json
 import os
 import glob
 import stat
-import random
 import subprocess
 import shutil
 import sys
@@ -16,7 +15,6 @@ import time
 import traceback
 import platform
 import struct
-import zipfile
 import requests
 from base64 import b64decode
 from zipfile import ZipFile
@@ -420,8 +418,10 @@ def run_games(worker_info, password, remote, run, task_id):
     os.remove(zipball)
     os.chmod(cutechess, os.stat(cutechess).st_mode | stat.S_IEXEC)
 
-  if os.path.exists('results.pgn'):
-    os.remove('results.pgn')
+  pgn_name = 'results-' + worker_info['unique_key'] + '.pgn'
+  if os.path.exists(pgn_name):
+    os.remove(pgn_name)
+  pgnfile = os.path.join(testing_dir, pgn_name)
 
   # Verify signatures are correct
   verify_signature(new_engine, run['args']['new_signature'], remote, result, games_concurrency * threads)
@@ -450,7 +450,7 @@ def run_games(worker_info, password, remote, run, task_id):
     pgnout = []
   else:
     games_to_play = games_remaining
-    pgnout = ['-pgnout', 'results.pgn']
+    pgnout = ['-pgnout', pgn_name]
 
   threads_cmd=[]
   if not any("Threads" in s for s in new_options + base_options):
@@ -462,14 +462,19 @@ def run_games(worker_info, password, remote, run, task_id):
   if any ("nodestime" in s for s in new_options + base_options):
     nodestime_cmd = ['timemargin=10000']
 
+  def make_player(arg):
+    return run['args'][arg].split(' ')[0]
+
   while games_remaining > 0:
     # Run cutechess-cli binary
     cmd = [ cutechess, '-repeat', '-rounds', str(int(games_to_play)), '-tournament', 'gauntlet'] + pgnout + \
+          ['-site', 'http://tests.stockfishchess.org/tests/view/' + run['_id']] + \
+          ['-event', 'Batch %d: %s vs %s' % (task_id, make_player('new_tag'), make_player('base_tag'))] + \
           ['-srand', "%d" % struct.unpack("<L", os.urandom(struct.calcsize("<L")))] + \
           ['-resign', 'movecount=3', 'score=400', '-draw', 'movenumber=34',
            'movecount=8', 'score=20', '-concurrency', str(int(games_concurrency))] + pgn_cmd + \
-          ['-engine', 'name=stockfish', 'cmd=%s' % (new_engine_name)] + new_options + ['_spsa_'] + \
-          ['-engine', 'name=base', 'cmd=%s' % (base_engine_name)] + base_options + ['_spsa_'] + \
+          ['-engine', 'name=New-'+run['args']['resolved_new'][:7], 'cmd=%s' % (new_engine_name)] + new_options + ['_spsa_'] + \
+          ['-engine', 'name=Base-'+run['args']['resolved_base'][:7], 'cmd=%s' % (base_engine_name)] + base_options + ['_spsa_'] + \
           ['-each', 'proto=uci', 'tc=%s' % (scaled_tc)] + nodestime_cmd + threads_cmd + book_cmd
 
     task_status = launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, tc_limit * games_to_play / min(games_to_play, games_concurrency))
@@ -478,3 +483,5 @@ def run_games(worker_info, password, remote, run, task_id):
 
     old_stats = result['stats'].copy()
     games_remaining -= games_to_play
+  
+  return pgnfile

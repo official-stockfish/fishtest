@@ -172,7 +172,11 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
       active_style = ''
   %>
   <tr class="${active_style}">
-   <td>${idx}</td>
+   %if int(str(task['worker_info']['version']).split(':')[0]) > 64:
+     <td><a href="/api/pgn/${'%s-%d'%(run['_id'],idx)}.pgn">${idx}</a></td>
+   %else:
+     <td>${idx}</td>
+   %endif
    %if approver:
      <td><a href="/user/${task['worker_info']['username']}">${task['worker_key']}</a></td>
    %else:
@@ -189,7 +193,7 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
 
    %if 'spsa' not in run['args']:
    <td style="background-color:${task['residual_color']}">${'%.3f' % (task['residual'])}</td>
-	 %endif
+   %endif
   </tr>
   %endfor
  </tbody>

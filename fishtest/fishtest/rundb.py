@@ -4,15 +4,16 @@ import random
 import math
 import time
 import threading
+import zlib
 
 from datetime import datetime, timedelta
 from bson.objectid import ObjectId
+from bson.binary import Binary
 from pymongo import MongoClient, ASCENDING, DESCENDING
-
 from userdb import UserDb
 from actiondb import ActionDb
 
-import stat_util
+import fishtest.stat_util
 
 class RunDb:
   def __init__(self, db_name='fishtest_new'):
@@ -22,6 +23,7 @@ class RunDb:
     self.db = self.conn[db_name]
     self.userdb = UserDb(self.db)
     self.actiondb = ActionDb(self.db)
+    self.pgndb = self.db['pgns']
     self.runs = self.db['runs']
     self.old_runs = self.db['old_runs']
 
@@ -29,6 +31,7 @@ class RunDb:
 
   def build_indices(self):
     self.runs.ensure_index([('finished', ASCENDING), ('last_updated', DESCENDING)])
+    self.pgndb.ensure_index([('run_id', ASCENDING)])
 
   def generate_tasks(self, num_games):
     tasks = []
@@ -120,6 +123,17 @@ class RunDb:
           machine['nps'] = task.get('nps', 0)
           machines.append(machine)
     return machines
+  
+  def get_pgn(self, id):
+    
+    id = id.split('.')[0] # strip .pgn
+    pgn = self.pgndb.find_one({'run_id': id})
+    if pgn:
+      return zlib.decompress(pgn['pgn_zip']).decode()
+    return None
+
+  def get_pgn_100(self, skip):
+    return [p['run_id'] for p in self.pgndb.find(skip=skip, limit=100, sort=[('_id',DESCENDING)])]
 
   # Cache runs
   run_cache = {}
@@ -402,7 +416,7 @@ class RunDb:
     # Check if SPRT stopping is enabled
     if 'sprt' in run['args']:
       sprt = run['args']['sprt']
-      sprt_stats = stat_util.SPRT(self.get_results(run, False),
+      sprt_stats = fishtest.stat_util.SPRT(self.get_results(run, False),
                                   elo0=sprt['elo0'],
                                   alpha=sprt['alpha'],
                                   elo1=sprt['elo1'],
@@ -417,6 +431,12 @@ class RunDb:
 
     return {'task_alive': task['active']}
 
+  def upload_pgn(self, run_id, pgn_zip):
+
+    self.pgndb.insert({'run_id': run_id, 'pgn_zip': Binary(pgn_zip)})
+    
+    return {}
+  
   def failed_task(self, run_id, task_id):
     run = self.get_run(run_id)
     if task_id >= len(run['tasks']):
