@@ -16,12 +16,14 @@ try:
   from ConfigParser import SafeConfigParser
 except ImportError:
   from configparser import SafeConfigParser # Python3
+import zlib
+import base64
 from optparse import OptionParser
 from games import run_games
 from updater import update
 from datetime import datetime
 
-WORKER_VERSION = 65
+WORKER_VERSION = 66
 ALIVE = True
 
 HTTP_TIMEOUT = 15.0
@@ -60,8 +62,7 @@ def worker(worker_info, password, remote):
   }
 
   try:
-    print('Will fetch task soon...')
-    time.sleep(random.randint(1,10))
+    print('Fetch task...')
     t0 = datetime.utcnow()
     req = requests.post(remote + '/api/request_version', data=json.dumps(payload), headers={'Content-type': 'application/json'}, timeout=HTTP_TIMEOUT)
     req = json.loads(req.text)
@@ -99,7 +100,7 @@ def worker(worker_info, password, remote):
   success = True
   run, task_id = req['run'], req['task_id']
   try:
-    run_games(worker_info, password, remote, run, task_id)
+    pgn_file = run_games(worker_info, password, remote, run, task_id)
   except:
     sys.stderr.write('\nException running games:\n')
     traceback.print_exc()
@@ -113,6 +114,25 @@ def worker(worker_info, password, remote):
     }
     try:
       requests.post(remote + '/api/failed_task', data=json.dumps(payload), headers={'Content-type': 'application/json'}, timeout=HTTP_TIMEOUT)
+    except:
+      pass
+
+    if success and ALIVE:
+      sleep = random.randint(1,10)
+      print('Wait %d seconds before upload of PGN...' % (sleep))
+      time.sleep(sleep)
+      if not 'spsa' in run['args']:
+        try:
+          with open(pgn_file, 'r') as f:
+            data = f.read()
+          payload['pgn'] = base64.b64encode(zlib.compress(data.encode('utf-8'))).decode()
+          print('Uploading compressed PGN of %d bytes' % (len(payload['pgn'])))
+          requests.post(remote + '/api/upload_pgn', data=json.dumps(payload), headers={'Content-type': 'application/json'}, timeout=HTTP_TIMEOUT)
+        except:
+          sys.stderr.write('\nException PGN upload:\n')
+          traceback.print_exc()
+    try:
+      os.remove(pgn_file)
     except:
       pass
     sys.stderr.write('Task exited\n')

@@ -1,5 +1,7 @@
 import json, sys
+import base64
 import requests
+import pyramid.httpexceptions as exc
 from pyramid.view import view_config
 
 def get_flag(request):
@@ -122,6 +124,34 @@ def failed_task(request):
     task_id=int(request.json_body['task_id']),
   )
   return json.dumps(result)
+
+@view_config(route_name='api_upload_pgn', renderer='string')
+def upload_pgn(request):
+  token = authenticate(request)
+  if 'error' in token: return json.dumps(token)
+
+  result = request.rundb.upload_pgn(
+    run_id=request.json_body['run_id'] + '-' + str(request.json_body['task_id']),
+    pgn_zip=base64.b64decode(request.json_body['pgn'])
+  )
+  return json.dumps(result)
+
+@view_config(route_name='api_download_pgn', renderer='string')
+def download_pgn(request):
+  pgn = request.rundb.get_pgn(request.matchdict['id'])
+  if pgn == None:
+    raise exc.exception_response(404)
+  if '.pgn' in request.matchdict['id']:
+    request.response.content_type = 'application/x-chess-pgn'
+  return pgn
+
+@view_config(route_name='api_download_pgn_100', renderer='string')
+def download_pgn_100(request):
+  skip = int(request.matchdict['skip'])
+  urls = request.rundb.get_pgn_100(skip)
+  if urls == None:
+    raise exc.exception_response(404)
+  return json.dumps(urls)
 
 @view_config(route_name='api_stop_run', renderer='string')
 def stop_run(request):

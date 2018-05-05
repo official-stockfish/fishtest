@@ -21,7 +21,7 @@ db_name='fishtest_new'
 conn = MongoClient(os.getenv('FISHTEST_HOST') or 'localhost')
 db = conn[db_name]
 runs = db['runs']
-
+pgns = db['pgns']
 
 
 def printout(s):
@@ -30,8 +30,11 @@ def printout(s):
 
 
 # create indexes:
-printout("Creating index ...")
-runs.create_index([('tasks.pending', ASCENDING)])
+#printout("Creating index ...")
+#runs.create_index([('tasks.pending', ASCENDING)])
+
+printout("Creating pgn index ...")
+pgns.ensure_index([('run_id', ASCENDING)])
 
 # IF INDEX NEEDS TO BE DROPPED, COMMENT OUT ABOVE 2 LINES, AND UNCOMMENT NEXT 2:
 # printout("\nDropping index ...")
@@ -41,3 +44,4 @@ runs.create_index([('tasks.pending', ASCENDING)])
 # display current list of indexes
 printout("\nCurrent Indexes:")
 pprint.pprint(runs.index_information(), stream=None, indent=1, width=80, depth=None)
+pprint.pprint(pgns.index_information(), stream=None, indent=1, width=80, depth=None)
