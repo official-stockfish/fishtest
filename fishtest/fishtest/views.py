@@ -495,17 +495,18 @@ def tests_modify(request):
 
 @view_config(route_name='tests_stop', permission='modify_db')
 def tests_stop(request):
-  run = request.rundb.get_run(request.POST['run-id'])
-  if not can_modify_run(request, run):
-    request.session.flash('Unable to modify another users run!')
-    return HTTPFound(location=request.route_url('tests'))
+  if 'run-id' in request.POST:
+    run = request.rundb.get_run(request.POST['run-id'])
+    if not can_modify_run(request, run):
+      request.session.flash('Unable to modify another users run!')
+      return HTTPFound(location=request.route_url('tests'))
 
-  request.rundb.stop_run(request.POST['run-id'])
+    request.rundb.stop_run(request.POST['run-id'])
 
-  run = request.rundb.get_run(request.POST['run-id'])
-  request.actiondb.stop_run(authenticated_userid(request), run)
+    run = request.rundb.get_run(request.POST['run-id'])
+    request.actiondb.stop_run(authenticated_userid(request), run)
 
-  cached_flash(request, 'Stopped run')
+    cached_flash(request, 'Stopped run')
   return HTTPFound(location=request.route_url('tests'))
 
 @view_config(route_name='tests_approve', permission='approve_run')
@@ -573,21 +574,22 @@ def tests_purge(request):
 
 @view_config(route_name='tests_delete', permission='modify_db')
 def tests_delete(request):
-  run = request.rundb.get_run(request.POST['run-id'])
-  if not can_modify_run(request, run):
-    request.session.flash('Unable to modify another users run!')
-    return HTTPFound(location=request.route_url('tests'))
+  if 'run-id' in request.POST:
+    run = request.rundb.get_run(request.POST['run-id'])
+    if not can_modify_run(request, run):
+      request.session.flash('Unable to modify another users run!')
+      return HTTPFound(location=request.route_url('tests'))
 
-  run['deleted'] = True
-  run['finished'] = True
-  for w in run['tasks']:
-    w['pending'] = False
-  request.rundb.buffer(run, True)
-  request.rundb.task_time = 0
+    run['deleted'] = True
+    run['finished'] = True
+    for w in run['tasks']:
+      w['pending'] = False
+    request.rundb.buffer(run, True)
+    request.rundb.task_time = 0
 
-  request.actiondb.delete_run(authenticated_userid(request), run)
+    request.actiondb.delete_run(authenticated_userid(request), run)
 
-  cached_flash(request, 'Deleted run')
+    cached_flash(request, 'Deleted run')
   return HTTPFound(location=request.route_url('tests'))
 
 def format_results(run_results, run):
