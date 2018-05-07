@@ -1,6 +1,4 @@
-#!/bin/zsh
-
-source ~/.zshrc
+#!/bin/sh
 
 cd ~/backup
 ~/mongodb/bin/mongodump
