@@ -292,11 +292,11 @@ class RunDb:
     run_found = False
     for runt in self.task_runs:
       run = self.get_run(runt['_id'])
-      if run['_id'] not in exclusion_list and run['approved']:
+      if run['_id'] not in exclusion_list and run['approved'] and run['args']['threads'] <= max_threads:
         task_id = -1
         for task in run['tasks']:
           task_id = task_id + 1
-          if not task['active'] and task['pending'] and run['args']['threads'] <= max_threads:
+          if not task['active'] and task['pending']:
             task['worker_info'] = worker_info
             task['last_updated'] = datetime.utcnow()
             task['active'] = True
@@ -376,8 +376,8 @@ class RunDb:
     task['stats'] = stats
     task['nps'] = nps
     if num_games >= task['num_games']:
+      task['pending'] = False # Make pending False before making active false to prevent race in request_task
       task['active'] = False
-      task['pending'] = False
       flush = True
 
     update_time = datetime.utcnow()
@@ -431,8 +431,8 @@ class RunDb:
     prune_idx = len(run['tasks'])
     for idx, task in enumerate(run['tasks']):
       is_active = task['active']
+      task['pending'] = False # Make pending False before making active false to prevent race in request_task
       task['active'] = False
-      task['pending'] = False
       if 'stats' not in task and not is_active:
         prune_idx = min(idx, prune_idx)
       else:
