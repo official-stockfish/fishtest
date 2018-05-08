@@ -4,7 +4,7 @@
 <form class="form-horizontal" action="${request.url}" method="POST">
   <div class="control-group">
     <label class="control-label">Username:</label>
-    <label class="control-label">${user['username']}</label>
+    <label class="control-label"><a href="/tests/user/${user['username']}">${user['username']}</a></label>
   </div>
   <div class="control-group">
     <label class="control-label">eMail:</label>
