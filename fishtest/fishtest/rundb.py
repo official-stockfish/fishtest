@@ -247,6 +247,20 @@ class RunDb:
 
     return results
 
+  def recalc_prio(self, run, task_id=None):
+    if task_id is None:
+      task_id = -1
+      for task in run['tasks']:
+        task_id = task_id + 1
+        if not task['active'] and task['pending']:
+          break
+    # Recalculate internal priority based on task start date and throughput
+    # Formula: - second_since_epoch - played_and_allocated_tasks * 3600 * chunk_size / games_throughput
+    # With default value 'throughput = 1000', this means that the priority is unchanged as long as we play at rate '1000 games / hour'.
+    if (run['args']['throughput'] != None and run['args']['throughput'] != 0):
+      run['args']['internal_priority'] = - time.mktime(run['start_time'].timetuple()) - \
+        task_id * 3600 * self.chunk_size * run['args']['threads'] / run['args']['throughput']
+
   # Limit concurrent request_task
   task_lock = threading.Lock()
   task_semaphore = threading.Semaphore(4)
@@ -308,11 +322,7 @@ class RunDb:
     if not run_found:
       return {'task_waiting': False}
 
-    # Recalculate internal priority based on task start date and throughput
-    # Formula: - second_since_epoch - played_and_allocated_tasks * 3600 * chunk_size / games_throughput
-    # With default value 'throughput = 1000', this means that the priority is unchanged as long as we play at rate '1000 games / hour'.
-    if (run['args']['throughput'] != None and run['args']['throughput'] != 0):
-      run['args']['internal_priority'] = - time.mktime(run['start_time'].timetuple()) - task_id * 3600 * self.chunk_size * run['args']['threads'] / run['args']['throughput']
+    self.recalc_prio(run, task_id)
 
     self.buffer(run, False)
 

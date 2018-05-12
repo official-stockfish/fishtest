@@ -485,6 +485,7 @@ def tests_modify(request):
     run['args']['num_games'] = num_games
     run['args']['priority'] = int(request.POST['priority'])
     run['args']['throughput'] = int(request.POST['throughput'])
+    request.rundb.recalc_prio(run)
     request.rundb.buffer(run, True)
     request.rundb.task_time = 0
 
