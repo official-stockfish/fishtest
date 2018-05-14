@@ -31,7 +31,7 @@ Show only:
  <tbody>
  %for action in actions:
   <tr>
-   <td>${action['time'].strftime("%d-%m-%y %H:%M:%S")}</td>
+   <td>${action['time'].strftime("%y-%m-%d %H:%M:%S")}</td>
    %if approver:
    <td><a href="/user/${action['username']}">${action['username']}</a></td>
    %else:

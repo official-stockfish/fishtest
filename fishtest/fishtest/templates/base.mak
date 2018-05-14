@@ -20,11 +20,32 @@
       margin-left: 20px;
       margin-right: 0;
     }
+    th {
+      cursor: pointer;
+    }
   </style>
 
   ${self.head()}
   
   <script src='https://www.google.com/recaptcha/api.js'></script>
+  <script>
+    const getCellValue = (tr, idx) => tr.children[idx].innerText || tr.children[idx].textContent;
+
+    const comparer = (idx, asc) => (a, b) => ((v1, v2) =>
+      v1 !== '' && v2 !== '' && !isNaN(v1) && !isNaN(v2) ? v1 - v2 : v1.toString().localeCompare(v2)
+      )(getCellValue(asc ? a : b, idx), getCellValue(asc ? b : a, idx));
+
+    // do the work...
+    window.onload=function(){
+      document.querySelectorAll('th').forEach(th => th.addEventListener('click', (() => {
+        const table = th.closest('table');
+        const body = table.querySelector('tbody');
+        Array.from(body.querySelectorAll('tr'))
+          .sort(comparer(Array.from(th.parentNode.children).indexOf(th), this.asc = !this.asc))
+          .forEach(tr => body.appendChild(tr) );
+      })));
+    }
+  </script>
 </head>
 <body>
   <div class="container-fluid">
