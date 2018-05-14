@@ -252,11 +252,9 @@ def user(request):
       request.session.flash(('Blocked' if user['blocked'] else 'Unblocked') + ' user ' + username)
     request.userdb.save_user(user)
     return HTTPFound(location=request.route_url('tests'))
-  if not profile:
-    userc = request.userdb.user_cache.find_one({'username': username})
-    hours = userc['cpu_hours'] if userc is not None else 0
-    return {'user': user, 'limit': request.userdb.get_machine_limit(username), 'hours': hours, 'profile': profile}
-  return {'user': user, 'profile': profile}
+  userc = request.userdb.user_cache.find_one({'username': username})
+  hours = int(userc['cpu_hours']) if userc is not None else 0
+  return {'user': user, 'limit': request.userdb.get_machine_limit(username), 'hours': hours, 'profile': profile}
 
 @view_config(route_name='users', renderer='users.mak')
 def users(request):

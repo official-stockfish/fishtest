@@ -29,7 +29,7 @@
       <input name="password2" type="password"/>
     </div>
   </div>
-  %else:
+  %endif
   <div class="control-group">
     <label class="control-label">Registration Time:</label>
     <label class="control-label">${user['registration_time'] if 'registration_time' in user else 'Unknown'}</label>
@@ -42,6 +42,7 @@
     <label class="control-label">CPU-Hours:</label>
     <label class="control-label">${hours}</label>
   </div>
+  %if not profile:
   <%
   blocked = user['blocked'] if 'blocked' in user else False
   checked = 'checked' if blocked else ''
