@@ -1,7 +1,6 @@
 import unittest
 import worker
 import updater
-import games
 import os
 import os.path
 import subprocess
@@ -15,7 +14,10 @@ class workerTest(unittest.TestCase):
     if os.path.exists('polyglot.ini'):
       os.remove('polyglot.ini')
    
-   
+  def test_item_download(self):
+    games.setup('polyglot.ini', '.')
+    self.assertTrue(os.path.exists(os.path.join('.','polyglot.ini')))
+
   def test_config_setup(self):      
     config = worker.setup_config_file('foo.txt')
         
@@ -35,26 +37,6 @@ class workerTest(unittest.TestCase):
     self.assertEqual(result, 'worker.py [username] [password]\n')
     p.stderr.close()
     
-  def test_item_download(self):
-    self.assertTrue(games.cleanup('foo.txt', '.'))
-    with open(os.path.join('.', 'foo.txt'), 'w'):
-      pass
-    self.assertFalse(games.cleanup('foo.txt', '.'))
-    self.assertFalse(os.path.exists('foo.txt'))
-    
-    f = open(os.path.join('.', 'foo.txt'), 'w')
-    f.write('This file is not empty')
-    f.close()
-    self.assertTrue(os.path.exists(os.path.join('.','foo.txt')))
-    self.assertTrue(games.cleanup('foo.txt', '.'))
-    
-    try:
-      games.setup('polyglot.ini', '.')
-      self.assertTrue(os.path.exists(os.path.join('.','polyglot.ini')))
-    except KeyError:
-      print('Hit github.com API limit')
-      pass
-
   def test_setup_exception(self): 
     cwd = os.getcwd()
     with self.assertRaises(Exception):
