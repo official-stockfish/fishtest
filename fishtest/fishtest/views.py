@@ -347,7 +347,7 @@ def validate_form(request):
       if m:
         data['new_signature']= m.group(2)
     if len(data['info']) == 0:
-        data['info'] = ('' if re.match('^[012][0-9][^0-9].*', data['tc']) else 'LTC: ') \
+        data['info'] = ('' if re.match('^[012]?[0-9][^0-9].*', data['tc']) else 'LTC: ') \
           + strip_message(c['commit']['message'])
 
   if len([v for v in data.values() if len(v) == 0]) > 0:
