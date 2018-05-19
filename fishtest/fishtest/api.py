@@ -81,11 +81,18 @@ def request_task(request):
     'tasks': [],
   }
 
-  for task in run['tasks']:
+  if int(str(worker_info['version']).split(':')[0]) > 64:
+    task = run['tasks'][result['task_id']]
     min_task = {'num_games': task['num_games']}
     if 'stats' in task:
       min_task['stats'] = task['stats']
-    min_run['tasks'].append(min_task)
+    min_run['my_task'] = min_task
+  else:
+    for task in run['tasks']:
+      min_task = {'num_games': task['num_games']}
+      if 'stats' in task:
+        min_task['stats'] = task['stats']
+      min_run['tasks'].append(min_task)
 
   result['run'] = min_run
   return json.dumps(result)

@@ -350,7 +350,7 @@ def launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, tc_limit):
   return { 'task_alive': False }
 
 def run_games(worker_info, password, remote, run, task_id):
-  task = run['tasks'][task_id]
+  task = run['my_task']
   result = {
     'username': worker_info['username'],
     'password': password,
