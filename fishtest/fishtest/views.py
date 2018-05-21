@@ -468,6 +468,11 @@ def tests_modify(request):
     existing_games = 0
     for chunk in run['tasks']:
       existing_games += chunk['num_games']
+      if 'stats' in chunk:
+        stats = chunk['stats']
+        total = stats['wins'] + stats['losses'] + stats['draws']
+        if total < chunk['num_games']:
+          chunk['pending'] = True
 
     num_games = int(request.POST['num-games'])
     if num_games > run['args']['num_games'] and not ('sprt' in run['args'] or 'spsa' in run['args']):
