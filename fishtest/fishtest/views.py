@@ -26,9 +26,10 @@ last_tests = None
 last_time = 0
 
 def clear_cache():
-  global last_time
+  global last_time, last_tests
   building.acquire()
   last_time = 0
+  last_tests = None
   building.release()
 
 def cached_flash(request, requestString):
