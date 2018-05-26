@@ -84,6 +84,9 @@ def signup(request):
     if len(request.params.get('username', '')) == 0:
       request.session.flash('Username required')
       return {}
+    if not request.params.get('username', '').isalnum():
+      request.session.flash('Alphanumeric username required')
+      return {}
 
     path = os.path.expanduser('~/fishtest.captcha.secret')
     if os.path.exists(path):

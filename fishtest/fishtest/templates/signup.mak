@@ -13,13 +13,13 @@ If it is not suggested by default you can try right-clicking on the password ent
   <div class="control-group">
     <label class="control-label">Username:</label>
     <div class="controls">
-      <input name="username" required="required"/>
+      <input name="username" pattern="[A-Za-z0-9]{2,}" title="Only letters and digits and at least 2 long" required="required"/>
     </div>
   </div>
   <div class="control-group">
     <label class="control-label">Password:</label>
     <div class="controls">
-      <input name="password" type="password" required="required"/>
+      <input name="password" type="password" pattern=".{8,}" title="Eight or more characters" required="required"/>
     </div>
   </div>
   <div class="control-group">
