@@ -244,45 +244,45 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
     # Parse line like this (wins and losses):
     # Finished game 35 (New-1fd2593 vs Base-3d6995e): 0-1 {Black wins by adjudication}
     if 'White' or 'Black' in line:
-    w_segm = line.split('vs')
-    if 'New' in w_segm[0]:
+      w_segm = line.split('vs')
+      if 'New' in w_segm[0]:
         if 'White' in line:
-            if 'adjudication' in line:
-                result['wins']['win_a'] += 1
+          if 'adjudication' in line:
+            result['wins']['win_a'] += 1
+          if 'mated' in line:
+            result['losses']['loss_m'] += 1
+          if 'time' in line:
+            result['losses']['loss_t'] += 1
+          if 'illegal' in line:
+            result['losses']['loss_i'] += 1
+        if 'Black' in line:
+          if 'adjudication' in line:
+            result['losses']['loss_a'] += 1
+          if 'mated' in line:
+            result['wins']['win_m'] += 1
+          if 'time' in line:
+            result['wins']['win_t'] += 1
+          if 'illegal' in line:
+            result['wins']['win_i'] += 1
+      if 'Base' in w_segm[0]:
+        if 'White' in line:
+          if 'adjudication' in line:
+            result['losses']['loss_a'] += 1
             if 'mated' in line:
-                result['losses']['loss_m'] += 1
+              result['wins']['win_m'] += 1
             if 'time' in line:
-                result['losses']['loss_t'] += 1
+              result['wins']['win_t'] += 1
             if 'illegal' in line:
-                result['losses']['loss_i'] += 1
+              result['wins']['win_i'] += 1
         if 'Black' in line:
             if 'adjudication' in line:
-                result['losses']['loss_a'] += 1
+              result['wins']['win_a'] += 1
             if 'mated' in line:
-                result['wins']['win_m'] += 1
+              result['losses']['loss_m'] += 1
             if 'time' in line:
-                result['wins']['win_t'] += 1
+              result['losses']['loss_t'] += 1
             if 'illegal' in line:
-                result['wins']['win_i'] += 1
-    if 'Base' in w_segm[0]:
-        if 'White' in line:
-            if 'adjudication' in line:
-                result['losses']['loss_a'] += 1
-            if 'mated' in line:
-                result['wins']['win_m'] += 1
-            if 'time' in line:
-                result['wins']['win_t'] += 1
-            if 'illegal' in line:
-                result['wins']['win_i'] += 1
-        if 'Black' in line:
-            if 'adjudication' in line:
-                result['wins']['win_a'] += 1
-            if 'mated' in line:
-                result['losses']['loss_m'] += 1
-            if 'time' in line:
-                result['losses']['loss_t'] += 1
-            if 'illegal' in line:
-                result['losses']['loss_i'] += 1
+              result['losses']['loss_i'] += 1
     
     # Parse line like this (draws):
     # Finished game 73 (stockfish vs base): 1/2-1/2 {Draw by adjudication}
