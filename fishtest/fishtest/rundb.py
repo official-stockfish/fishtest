@@ -5,6 +5,7 @@ import math
 import time
 import threading
 import zlib
+import re
 
 from datetime import datetime, timedelta
 from bson.objectid import ObjectId
@@ -125,7 +126,6 @@ class RunDb:
     return machines
   
   def get_pgn(self, id):
-    
     id = id.split('.')[0] # strip .pgn
     pgn = self.pgndb.find_one({'run_id': id})
     if pgn:
@@ -302,6 +302,8 @@ class RunDb:
       self.task_time = time.time()
 
     max_threads = int(worker_info['concurrency'])
+    min_threads = int(worker_info.get('min_threads', 1))
+    max_memory = int(worker_info.get('max_memory', 0))
     exclusion_list = []
 
     # We need to allocate a new task, but first check we don't have the same
@@ -316,11 +318,26 @@ class RunDb:
     if connections >= self.userdb.get_machine_limit(worker_info['username']):
       return {'task_waiting': False, 'hit_machine_limit': True}
 
-    # Ok, we get a new task that does not require more threads than available concurrency
+    # Get a new task that matches the worker requirements
     run_found = False
     for runt in self.task_runs:
       run = self.get_run(runt['_id'])
-      if run['_id'] not in exclusion_list and run['approved'] and run['args']['threads'] <= max_threads:
+      # compute required TT memory
+      need_tt = 0
+      if max_memory > 0:
+        def get_hash(s):
+          h = re.search('Hash=([0-9]+)', s)
+          if h:
+            return int(h.group(1))
+          return 0
+        need_tt += get_hash(run['args']['new_options'])
+        need_tt += get_hash(run['args']['base_options'])
+        need_tt *= max_threads // run['args']['threads']
+
+      if run['_id'] not in exclusion_list and run['approved'] \
+         and run['args']['threads'] <= max_threads \
+         and run['args']['threads'] >= min_threads \
+         and need_tt <= max_memory:
         task_id = -1
         for task in run['tasks']:
           task_id = task_id + 1
