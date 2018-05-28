@@ -242,6 +242,24 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
       result['stats']['time_losses'] += 1
 
     # Parse line like this:
+    # Finished game 73 (stockfish vs base): 1/2-1/2 {Draw by adjudication}
+    if 'Finished' in line:
+        segm = line.split('{')
+        segm = segm[1]
+        segm = segm[:-1]
+        if 'Draw by adjudication' in segm:
+            result['details']['draw_a'] += 1
+        if 'Draw by 3-fold repetition' in segm:
+            result['details']['draw_r'] += 1
+        if 'Draw by insufficient mating material' in segm:
+            result['details']['draw_i'] += 1
+        if 'Draw by fifty moves rule' in segm:
+            result['details']['draw_f'] += 1
+        if 'Draw by stalemate' in segm:
+            result['details']['draw_s'] += 1
+        print('D: a={0} r={1} i={2} f={3} s={4}'.format(repr(result['details']['draw_a']), repr(result['details']['draw_r']), repr(result['details']['draw_i']), repr(result['details']['draw_f']), repr(result['details']['draw_s'])))
+    
+    # Parse line like this:
     # Score of stockfish vs base: 0 - 0 - 1  [0.500] 1
     if 'Score' in line:
       chunks = line.split(':')
@@ -336,6 +354,7 @@ def run_games(worker_info, password, remote, run, task_id):
     'run_id': str(run['_id']),
     'task_id': task_id,
     'stats': {'wins':0, 'losses':0, 'draws':0, 'crashes':0, 'time_losses':0},
+    'details': {'draw_a':0, 'draw_r':0, 'draw_i':0, 'draw_f':0, 'draw_s':0}
   }
 
   # Have we run any games on this task yet?
