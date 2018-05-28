@@ -4,6 +4,7 @@ from __future__ import print_function
 import json
 import multiprocessing
 import os
+import re
 import platform
 import signal
 import sys
@@ -14,8 +15,10 @@ import traceback
 import uuid
 try:
   from ConfigParser import SafeConfigParser
+  config = SafeConfigParser()
 except ImportError:
-  from configparser import SafeConfigParser # Python3
+  from configparser import ConfigParser # Python3
+  config = ConfigParser()
 import zlib
 import base64
 from optparse import OptionParser
@@ -23,20 +26,36 @@ from games import run_games
 from updater import update
 from datetime import datetime
 
-WORKER_VERSION = 66
+WORKER_VERSION = 67
 ALIVE = True
 
 HTTP_TIMEOUT = 15.0
 
 def setup_config_file(config_file):
   ''' Config file setup, adds defaults if not existing '''
-  config = SafeConfigParser()
   config.read(config_file)
+
+  mem = 0
+  try:
+    if 'Linux' in platform.system():
+      cmd = 'free'
+    else:
+      cmd = 'wmic computersystem get TotalPhysicalMemory'
+    with os.popen(cmd) as proc:
+      mem_str = str(proc.readlines())
+    mem = int(re.search(r'\d+', mem_str).group())
+    print('Memory: ' + str(mem))
+  except:
+    traceback.print_exc()
+    pass
 
   defaults = [('login', 'username', ''), ('login', 'password', ''),
               ('parameters', 'host', 'tests.stockfishchess.org'),
               ('parameters', 'port', '80'),
-              ('parameters', 'concurrency', '3')]
+              ('parameters', 'concurrency', '3'),
+              ('parameters', 'max_memory', str(int(mem / 2 / 1024))),
+              ('parameters', 'min_threads', '1'),
+              ]
 
   for v in defaults:
     if not config.has_section(v[0]):
@@ -150,6 +169,8 @@ def main():
   parser.add_option('-n', '--host', dest='host', default=config.get('parameters', 'host'))
   parser.add_option('-p', '--port', dest='port', default=config.get('parameters', 'port'))
   parser.add_option('-c', '--concurrency', dest='concurrency', default=config.get('parameters', 'concurrency'))
+  parser.add_option('-m', '--max_memory', dest='max_memory', default=config.get('parameters', 'max_memory'))
+  parser.add_option('-t', '--min_threads', dest='min_threads', default=config.get('parameters', 'min_threads'))
   (options, args) = parser.parse_args()
 
   if len(args) != 2:
@@ -172,6 +193,8 @@ def main():
   config.set('parameters', 'host', options.host)
   config.set('parameters', 'port', options.port)
   config.set('parameters', 'concurrency', options.concurrency)
+  config.set('parameters', 'max_memory', options.max_memory)
+  config.set('parameters', 'min_threads', options.min_threads)
   with open(config_file, 'w') as f:
     config.write(f)
 
@@ -192,6 +215,8 @@ def main():
     'uname': uname[0] + ' ' + uname[2],
     'architecture': platform.architecture(),
     'concurrency': cpu_count,
+    'max_memory': int(options.max_memory),
+    'min_threads': int(options.min_threads),
     'username': args[0],
     'version': "%s:%s" % (WORKER_VERSION, sys.version_info[0]),
     'unique_key': str(uuid.uuid4()),
