@@ -268,21 +268,21 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
         if 'White' in line:
           if 'adjudication' in line:
             result['losses']['loss_a'] += 1
-            if 'mated' in line:
-              result['wins']['win_m'] += 1
-            if 'time' in line:
-              result['wins']['win_t'] += 1
-            if 'illegal' in line:
-              result['wins']['win_i'] += 1
+          if 'mated' in line:
+            result['wins']['win_m'] += 1
+          if 'time' in line:
+            result['wins']['win_t'] += 1
+          if 'illegal' in line:
+            result['wins']['win_i'] += 1
         if 'Black' in line:
-            if 'adjudication' in line:
-              result['wins']['win_a'] += 1
-            if 'mated' in line:
-              result['losses']['loss_m'] += 1
-            if 'time' in line:
-              result['losses']['loss_t'] += 1
-            if 'illegal' in line:
-              result['losses']['loss_i'] += 1
+          if 'adjudication' in line:
+            result['wins']['win_a'] += 1
+          if 'mated' in line:
+            result['losses']['loss_m'] += 1
+          if 'time' in line:
+            result['losses']['loss_t'] += 1
+          if 'illegal' in line:
+            result['losses']['loss_i'] += 1
     
     # Parse line like this (draws):
     # Finished game 73 (stockfish vs base): 1/2-1/2 {Draw by adjudication}
