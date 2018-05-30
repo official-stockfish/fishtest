@@ -383,7 +383,11 @@ def run_games(worker_info, password, remote, run, task_id):
   if len(engines) > 25:
     engines.sort(key=os.path.getmtime)
     for old_engine in engines[:len(engines)-25]:
-      os.remove(old_engine)
+      try:
+         os.remove(old_engine)
+      except:
+         print('Note: failed to remove an old engine binary ' + str(old_engine))
+         pass
 
   # create new engines
   sha_new = run['args']['resolved_new']
