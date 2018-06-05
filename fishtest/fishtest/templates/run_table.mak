@@ -76,7 +76,7 @@
     ${run['args']['num_games']}
     %endif
      @ ${run['args']['tc']} th ${str(run['args'].get('threads',1))}</td>
-    <td>${run['args'].get('info', '')}</td>
+    <td style="word-break:break-word">${run['args'].get('info', '')}</td>
    </tr>
   %endfor
   </tbody>
