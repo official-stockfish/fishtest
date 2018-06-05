@@ -240,7 +240,7 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
 
     if 'on time' in line:
       result['stats']['time_losses'] += 1
-
+    
     # Parse line like this (wins and losses):
     # Finished game 35 (New-1fd2593 vs Base-3d6995e): 0-1 {Black wins by adjudication}
     if 'White' or 'Black' in line:
@@ -300,7 +300,7 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
             result['draws']['draw_f'] += 1
         if 'Draw by stalemate' in segm:
             result['draws']['draw_s'] += 1
-    
+            
     # Parse line like this:
     # Score of stockfish vs base: 0 - 0 - 1  [0.500] 1
     if 'Score' in line:
@@ -449,7 +449,11 @@ def run_games(worker_info, password, remote, run, task_id):
   if len(engines) > 25:
     engines.sort(key=os.path.getmtime)
     for old_engine in engines[:len(engines)-25]:
-      os.remove(old_engine)
+      try:
+         os.remove(old_engine)
+      except:
+         print('Note: failed to remove an old engine binary ' + str(old_engine))
+         pass
 
   # create new engines
   sha_new = run['args']['resolved_new']
