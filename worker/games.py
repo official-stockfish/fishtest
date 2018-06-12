@@ -324,6 +324,7 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
         print('L: a={0} m={1} t={2} i={3}'.format(repr(result['losses']['loss_a']), repr(result['losses']['loss_m']), repr(result['losses']['loss_t']), repr(result['losses']['loss_i'])))
         print('D: a={0} r={1} i={2} f={3} s={4}'.format(repr(result['draws']['draw_a']), repr(result['draws']['draw_r']), repr(result['draws']['draw_i']), repr(result['draws']['draw_f']), repr(result['draws']['draw_s'])))
         print("Task updated successfully in %ss" % ((datetime.datetime.utcnow() - t0).total_seconds()))
+        print(' ')
 
         if not req['task_alive']:
           # This task is no longer neccesary
