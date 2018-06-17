@@ -18,6 +18,7 @@ import struct
 import requests
 from base64 import b64decode
 from zipfile import ZipFile
+import worker_stats
 
 try:
   from Queue import Queue, Empty
@@ -240,67 +241,11 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
 
     if 'on time' in line:
       result['stats']['time_losses'] += 1
-    
-    # Parse line like this (wins and losses):
-    # Finished game 35 (New-1fd2593 vs Base-3d6995e): 0-1 {Black wins by adjudication}
-    if 'White' or 'Black' in line:
-      w_segm = line.split('vs')
-      if 'New' in w_segm[0]:
-        if 'White' in line:
-          if 'adjudication' in line:
-            result['wins']['win_a'] += 1
-          if 'mated' in line:
-            result['losses']['loss_m'] += 1
-          if 'time' in line:
-            result['losses']['loss_t'] += 1
-          if 'illegal' in line:
-            result['losses']['loss_i'] += 1
-        if 'Black' in line:
-          if 'adjudication' in line:
-            result['losses']['loss_a'] += 1
-          if 'mated' in line:
-            result['wins']['win_m'] += 1
-          if 'time' in line:
-            result['wins']['win_t'] += 1
-          if 'illegal' in line:
-            result['wins']['win_i'] += 1
-      if 'Base' in w_segm[0]:
-        if 'White' in line:
-          if 'adjudication' in line:
-            result['losses']['loss_a'] += 1
-          if 'mated' in line:
-            result['wins']['win_m'] += 1
-          if 'time' in line:
-            result['wins']['win_t'] += 1
-          if 'illegal' in line:
-            result['wins']['win_i'] += 1
-        if 'Black' in line:
-          if 'adjudication' in line:
-            result['wins']['win_a'] += 1
-          if 'mated' in line:
-            result['losses']['loss_m'] += 1
-          if 'time' in line:
-            result['losses']['loss_t'] += 1
-          if 'illegal' in line:
-            result['losses']['loss_i'] += 1
-    
-    # Parse line like this (draws):
-    # Finished game 73 (stockfish vs base): 1/2-1/2 {Draw by adjudication}
+
+    # Generate extra statistics
     if 'Finished' in line:
-        segm = line.split('{')
-        segm = segm[1]
-        segm = segm[:-1]
-        if 'Draw by adjudication' in segm:
-            result['draws']['draw_a'] += 1
-        if 'Draw by 3-fold repetition' in segm:
-            result['draws']['draw_r'] += 1
-        if 'Draw by insufficient mating material' in segm:
-            result['draws']['draw_i'] += 1
-        if 'Draw by fifty moves rule' in segm:
-            result['draws']['draw_f'] += 1
-        if 'Draw by stalemate' in segm:
-            result['draws']['draw_s'] += 1
-            
+      worker_stats(result, line)
+
     # Parse line like this:
     # Score of stockfish vs base: 0 - 0 - 1  [0.500] 1
     if 'Score' in line:
@@ -320,11 +265,8 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
         t0 = datetime.datetime.utcnow()
         req = requests.post(remote + '/api/update_task', data=json.dumps(result), headers={'Content-type': 'application/json'}, timeout=HTTP_TIMEOUT).json()
         failed_updates = 0
-        print('W: a={0} m={1} t={2} i={3}'.format(repr(result['wins']['win_a']), repr(result['wins']['win_m']), repr(result['wins']['win_t']), repr(result['wins']['win_i'])))
-        print('L: a={0} m={1} t={2} i={3}'.format(repr(result['losses']['loss_a']), repr(result['losses']['loss_m']), repr(result['losses']['loss_t']), repr(result['losses']['loss_i'])))
-        print('D: a={0} r={1} i={2} f={3} s={4}'.format(repr(result['draws']['draw_a']), repr(result['draws']['draw_r']), repr(result['draws']['draw_i']), repr(result['draws']['draw_f']), repr(result['draws']['draw_s'])))
+        print_details(result)
         print("Task updated successfully in %ss" % ((datetime.datetime.utcnow() - t0).total_seconds()))
-        print(' ')
 
         if not req['task_alive']:
           # This task is no longer neccesary
@@ -400,9 +342,9 @@ def run_games(worker_info, password, remote, run, task_id):
     'run_id': str(run['_id']),
     'task_id': task_id,
     'stats': {'wins':0, 'losses':0, 'draws':0, 'crashes':0, 'time_losses':0},
-    'draws': {'draw_a':0, 'draw_r':0, 'draw_i':0, 'draw_f':0, 'draw_s':0},
-    'wins': {'win_a':0, 'win_m':0, 'win_t':0, 'win_i':0},
-    'losses': {'loss_a':0, 'loss_m':0, 'loss_t':0, 'loss_i':0}
+    'details': {'draw_a':0, 'draw_r':0, 'draw_i':0, 'draw_f':0, 'draw_s':0,
+                'win_a':0, 'win_m':0, 'win_t':0, 'win_i':0,
+                'loss_a':0, 'loss_m':0, 'loss_t':0, 'loss_i':0}
   }
 
   # Have we run any games on this task yet?
