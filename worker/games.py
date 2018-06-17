@@ -16,9 +16,9 @@ import traceback
 import platform
 import struct
 import requests
+import worker_stats
 from base64 import b64decode
 from zipfile import ZipFile
-import worker_stats
 
 try:
   from Queue import Queue, Empty
@@ -242,7 +242,7 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
     if 'on time' in line:
       result['stats']['time_losses'] += 1
 
-    # Generate extra statistics
+    # Generate extra statistics on W/L/D
     if 'Finished' in line:
       worker_stats(result, line)
 
@@ -265,6 +265,7 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
         t0 = datetime.datetime.utcnow()
         req = requests.post(remote + '/api/update_task', data=json.dumps(result), headers={'Content-type': 'application/json'}, timeout=HTTP_TIMEOUT).json()
         failed_updates = 0
+        # Print details from worker_statistics to output
         print_details(result)
         print("Task updated successfully in %ss" % ((datetime.datetime.utcnow() - t0).total_seconds()))
 
