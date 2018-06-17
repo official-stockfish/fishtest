@@ -27,7 +27,7 @@ def purge_pgn(days):
     
     skip = False
     if    (re.match('^([2-9][0-9])|(1[0-9][0-9])', run['args']['tc']) \
-       and run['last_updated'] > datetime.utcnow() - timedelta(days=20*days)) \
+       and run['last_updated'] > datetime.utcnow() - timedelta(days=5*days)) \
        or run['last_updated'] > datetime.utcnow() - timedelta(days=days):
       saved_runs += 1
       skip = True
@@ -47,7 +47,7 @@ def purge_pgn(days):
   print('PGN runs/tasks purged: %5d/%7d' % (deleted_runs, deleted_tasks)) 
 
 def main():
-  purge_pgn(days=8)
+  purge_pgn(days=2)
 
 if __name__ == '__main__':
   main()
