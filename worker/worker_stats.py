@@ -1,3 +1,6 @@
+import datetime
+import sys
+
 def worker_stats(result, line):
     # Parse line like this (wins and losses):
     # Finished game 35 (New-1fd2593 vs Base-3d6995e): 0-1 {Black wins by adjudication}
@@ -67,6 +70,13 @@ def print_details(result):
     
     # Print result to output
     if total_wld > 0:
+        print('Total: {0} W: {1} L: {2} D: {3}'.format(total_wld, total_w, total_l, total_d))
         print('W[{0}%]: a={1} m={2} t={3} i={4}'.format("%.1f" % ((float(total_w) / total_wld)*100), result['details']['win_a'], result['details']['win_m'], result['details']['win_t'], result['details']['win_i']))
         print('L[{0}%]: a={1} m={2} t={3} i={4}'.format("%.1f" % ((float(total_l) / total_wld)*100), result['details']['loss_a'], result['details']['loss_m'], result['details']['loss_t'], result['details']['loss_i']))
         print('D[{0}%]: a={1} r={2} i={3} f={4} s={5}'.format("%.1f" % ((float(total_d) / total_wld)*100), result['details']['draw_a'], result['details']['draw_r'], result['details']['draw_i'], result['details']['draw_f'], result['details']['draw_s']))
+
+def check_time():
+    cur_time = str(datetime.datetime.now().time())
+    th = cur_time.split(':')
+    if 8 <= int(th[0]) <= 21:
+        sys.exit()
