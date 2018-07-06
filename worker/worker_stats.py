@@ -10,39 +10,39 @@ def worker_stats(result, line):
             if 'White' in line:
                 if 'adjudication' in line:
                     result['details']['win_a'] += 1
-                if 'mated' in line:
+                elif 'mated' in line:
                     result['details']['loss_m'] += 1
-                if 'time' in line:
+                elif 'time' in line:
                     result['details']['loss_t'] += 1
-                if 'illegal' in line:
+                elif 'illegal' in line:
                     result['details']['loss_i'] += 1
-            if 'Black' in line:
+            elif 'Black' in line:
                 if 'adjudication' in line:
                     result['details']['loss_a'] += 1
-                if 'mated' in line:
+                elif 'mated' in line:
                     result['details']['win_m'] += 1
-                if 'time' in line:
+                elif 'time' in line:
                     result['details']['win_t'] += 1
-                if 'illegal' in line:
+                elif 'illegal' in line:
                     result['details']['win_i'] += 1
-        if 'Base' in w_segm[0]:
+        elif 'Base' in w_segm[0]:
             if 'White' in line:
                 if 'adjudication' in line:
                     result['details']['loss_a'] += 1
-                if 'mated' in line:
+                elif 'mated' in line:
                     result['details']['win_m'] += 1
-                if 'time' in line:
+                elif 'time' in line:
                     result['details']['win_t'] += 1
-                if 'illegal' in line:
+                elif 'illegal' in line:
                     result['details']['win_i'] += 1
-            if 'Black' in line:
+            elif 'Black' in line:
                 if 'adjudication' in line:
                     result['details']['win_a'] += 1
-                if 'mated' in line:
+                elif 'mated' in line:
                     result['details']['loss_m'] += 1
-                if 'time' in line:
+                elif 'time' in line:
                     result['details']['loss_t'] += 1
-                if 'illegal' in line:
+                elif 'illegal' in line:
                     result['details']['loss_i'] += 1
 
     # Parse line like this (draws):
@@ -53,13 +53,13 @@ def worker_stats(result, line):
         segm = segm[:-1]
         if 'Draw by adjudication' in segm:
             result['details']['draw_a'] += 1
-        if 'Draw by 3-fold repetition' in segm:
+        elif 'Draw by 3-fold repetition' in segm:
             result['details']['draw_r'] += 1
-        if 'Draw by insufficient mating material' in segm:
+        elif 'Draw by insufficient mating material' in segm:
             result['details']['draw_i'] += 1
-        if 'Draw by fifty moves rule' in segm:
+        elif 'Draw by fifty moves rule' in segm:
             result['details']['draw_f'] += 1
-        if 'Draw by stalemate' in segm:
+        elif 'Draw by stalemate' in segm:
             result['details']['draw_s'] += 1
 
 def print_details(result):
@@ -74,9 +74,3 @@ def print_details(result):
         print('W[{0}%]: a={1} m={2} t={3} i={4}'.format("%.1f" % ((float(total_w) / total_wld)*100), result['details']['win_a'], result['details']['win_m'], result['details']['win_t'], result['details']['win_i']))
         print('L[{0}%]: a={1} m={2} t={3} i={4}'.format("%.1f" % ((float(total_l) / total_wld)*100), result['details']['loss_a'], result['details']['loss_m'], result['details']['loss_t'], result['details']['loss_i']))
         print('D[{0}%]: a={1} r={2} i={3} f={4} s={5}'.format("%.1f" % ((float(total_d) / total_wld)*100), result['details']['draw_a'], result['details']['draw_r'], result['details']['draw_i'], result['details']['draw_f'], result['details']['draw_s']))
-
-def check_time():
-    cur_time = str(datetime.datetime.now().time())
-    th = cur_time.split(':')
-    if 8 <= int(th[0]) <= 21:
-        sys.exit()

@@ -18,8 +18,7 @@ import struct
 import requests
 from base64 import b64decode
 from zipfile import ZipFile
-from worker_stats import worker_stats
-from worker_stats import print_details
+from worker_stats import *
 
 try:
   from Queue import Queue, Empty
