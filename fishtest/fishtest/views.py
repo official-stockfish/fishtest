@@ -425,6 +425,10 @@ def validate_form(request):
     if data['num_games'] <= 0:
       raise Exception('Number of games must be >= 0')
 
+  max_games = 4000 * request.rundb.chunk_size
+  if data['num_games'] > max_games:
+    raise Exception('Number of games must be <= ' + str(max_games))
+
   data['threads'] = int(request.POST['threads'])
   data['priority'] = int(request.POST['priority'])
   data['throughput'] = int(request.POST['throughput'])
