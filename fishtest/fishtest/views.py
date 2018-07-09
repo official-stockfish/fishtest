@@ -487,6 +487,11 @@ def tests_modify(request):
       request.session.flash('Unable to modify number of games in a fixed game test!')
       return HTTPFound(location=request.route_url('tests'))
 
+    max_games = 4000 * request.rundb.chunk_size
+    if num_games > max_games:
+      request.session.flash('Number of games must be <= ' + str(max_games))
+      return HTTPFound(location=request.route_url('tests'))
+
     if num_games > existing_games:
       # Create new chunks for the games
       new_chunks = request.rundb.generate_tasks(num_games - existing_games)
