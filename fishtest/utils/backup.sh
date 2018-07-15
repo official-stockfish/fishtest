@@ -6,6 +6,7 @@ source ~/.bashrc
 cd ~/backup
 ~/mongodb/bin/mongodump && \
 rm -f dump.tar.gz && \
+rm -f dump/fishtest_new/pgns.* && \
 tar -czvf dump.tar.gz dump && \
 rm -rf dump
 
