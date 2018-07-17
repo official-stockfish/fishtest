@@ -344,8 +344,9 @@ def run_games(worker_info, password, remote, run, task_id):
     'task_id': task_id,
     'stats': {'wins':0, 'losses':0, 'draws':0, 'crashes':0, 'time_losses':0},
     'details': {'draw_a':0, 'draw_r':0, 'draw_i':0, 'draw_f':0, 'draw_s':0,
-                'win_a':0, 'win_m':0, 'win_t':0, 'win_i':0,
-                'loss_a':0, 'loss_m':0, 'loss_t':0, 'loss_i':0}
+                'win_a':0, 'win_m':0, 'win_t':0, 'win_i':0, 'win_c':0,
+                'loss_a':0, 'loss_m':0, 'loss_t':0, 'loss_i':0, 'loss_c':0,
+                'win_white':0, 'win_black':0, 'loss_white':0, 'loss_black':0,}
   }
 
   # Have we run any games on this task yet?
