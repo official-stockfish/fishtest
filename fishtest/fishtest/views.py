@@ -425,6 +425,10 @@ def validate_form(request):
     if data['num_games'] <= 0:
       raise Exception('Number of games must be >= 0')
 
+  max_games = 4000 * request.rundb.chunk_size
+  if data['num_games'] > max_games:
+    raise Exception('Number of games must be <= ' + str(max_games))
+
   data['threads'] = int(request.POST['threads'])
   data['priority'] = int(request.POST['priority'])
   data['throughput'] = int(request.POST['throughput'])
@@ -481,6 +485,11 @@ def tests_modify(request):
     num_games = int(request.POST['num-games'])
     if num_games > run['args']['num_games'] and not ('sprt' in run['args'] or 'spsa' in run['args']):
       request.session.flash('Unable to modify number of games in a fixed game test!')
+      return HTTPFound(location=request.route_url('tests'))
+
+    max_games = 4000 * request.rundb.chunk_size
+    if num_games > max_games:
+      request.session.flash('Number of games must be <= ' + str(max_games))
       return HTTPFound(location=request.route_url('tests'))
 
     if num_games > existing_games:
