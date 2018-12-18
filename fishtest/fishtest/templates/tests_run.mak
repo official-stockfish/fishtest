@@ -17,7 +17,7 @@
   <div class="control-group">
     <label class="control-label">Test options:</label>
     <div class="controls">
-    <input name="new-options" value="${args.get('new_options', 'Hash=4')}">
+    <input name="new-options" value="${args.get('new_options', 'Hash=8')}">
     </div>
   </div>
   <div class="control-group">
@@ -35,7 +35,7 @@
   <div class="control-group">
     <label class="control-label">Base options:</label>
     <div class="controls">
-    <input name="base-options" value="${args.get('base_options', 'Hash=4')}">
+    <input name="base-options" value="${args.get('base_options', 'Hash=8')}">
     </div>
   </div>
   <div class="control-group">
@@ -230,8 +230,8 @@ $(function() {
 
   $('#fast_test').click(function() {
     $('input[name=tc]').val('10+0.1');
-    $('input[name=new-options]').val('Hash=4');
-    $('input[name=base-options]').val('Hash=4');
+    $('input[name=new-options]').val('Hash=8');
+    $('input[name=base-options]').val('Hash=8');
   });
 
   $('#slow_test').click(function() {
