@@ -64,7 +64,8 @@
     <label class="control-label">SPRT bounds:</label>
     <div class="controls">
       <select name="bounds">
-        <option value="standard">Standard [0,5]</option>
+        <option value="standard">Standard STC [0.5, 4.5]</option>
+        <option value="standard">Standard LTC [0, 3.5]</option>
         <option value="tweak">Parameter Tweak [0,4]</option>
         <option value="regression">Non-regression [-3,1]</option>
         <option value="simplification">Simplification [-3,1]</option>
