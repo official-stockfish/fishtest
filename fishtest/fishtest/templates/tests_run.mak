@@ -64,8 +64,8 @@
     <label class="control-label">SPRT bounds:</label>
     <div class="controls">
       <select name="bounds">
-        <option value="standard STC">Standard STC [0.5, 4.5]</option>
-        <option value="standard LTC">Standard LTC [0, 3.5]</option>
+        <option value="standard STC">Standard STC [0.5,4.5]</option>
+        <option value="standard LTC">Standard LTC [0,3.5]</option>
         <option value="tweak">Parameter Tweak [0,4]</option>
         <option value="regression">Non-regression [-3,1]</option>
         <option value="simplification">Simplification [-3,1]</option>
@@ -205,7 +205,8 @@ Cowardice,150,0,200,10,0.0020"""})['raw_params']}</textarea>
 $(function() {
   var update_bounds = function() {
     var bounds = $('select[name=bounds]').val();
-    if (bounds == 'standard') { $('input[name=sprt_elo0]').val('0'); $('input[name=sprt_elo1]').val('5'); }
+    if (bounds == 'standard STC') { $('input[name=sprt_elo0]').val('0.5'); $('input[name=sprt_elo1]').val('4.5'); }
+    if (bounds == 'standard LTC') { $('input[name=sprt_elo0]').val('0'); $('input[name=sprt_elo1]').val('3.5'); }
     if (bounds == 'tweak') { $('input[name=sprt_elo0]').val('0'); $('input[name=sprt_elo1]').val('4'); }
     if (bounds == 'regression') { $('input[name=sprt_elo0]').val('-3'); $('input[name=sprt_elo1]').val('1'); }
     if (bounds == 'simplification') { $('input[name=sprt_elo0]').val('-3'); $('input[name=sprt_elo1]').val('1'); }
