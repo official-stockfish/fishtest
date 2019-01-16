@@ -27,7 +27,7 @@ from updater import update
 from datetime import datetime
 from os import path
 
-WORKER_VERSION = 70
+WORKER_VERSION = 71
 ALIVE = True
 HTTP_TIMEOUT = 15.0
 
