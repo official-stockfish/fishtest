@@ -253,6 +253,9 @@ class RunDb:
       return run['results']
 
     results = { 'wins': 0, 'losses': 0, 'draws': 0, 'crashes': 0, 'time_losses':0 }
+    
+    has_pentanomial=True
+    pentanomial=5*[0]
     for task in run['tasks']:
       if 'stats' in task:
         stats = task['stats']
@@ -261,6 +264,12 @@ class RunDb:
         results['draws'] += stats['draws']
         results['crashes'] += stats['crashes']
         results['time_losses'] += stats.get('time_losses', 0)
+        if 'pentanomial' in stats.keys() and has_pentanomial:
+          pentanomial=[pentanomial[i]+stats['pentanomial'][i] for i in range(0,5)]
+        else:
+          has_pentanomial=False
+    if has_pentanomial:
+      results['pentanomial']=pentanomial
 
     if 'sprt' in run['args'] and 'state' in run['args']['sprt']:
       results['sprt'] = run['args']['sprt']['state']
