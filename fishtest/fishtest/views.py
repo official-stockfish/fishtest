@@ -689,6 +689,8 @@ def format_results(run_results, run):
       state = 'accepted'
 
   result['info'].append('Total: %d W: %d L: %d D: %d' % (sum(WLD), WLD[0], WLD[1], WLD[2]))
+  if 'pentanomial' in run_results.keys():
+    result['info'].append("Ptnml(0-2): "+", ".join(str(run_results['pentanomial'][i]) for i in range(0,5)))
 
   if state == 'rejected':
     if WLD[0] > WLD[1]:
