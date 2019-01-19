@@ -1,4 +1,4 @@
-import math
+import math,copy
 
 def erf(x):
   #Python 2.7 defines math.erf(), but we need to cater for older versions.
@@ -24,32 +24,45 @@ def phi_inv(p):
   return math.sqrt(2)*erf_inv(2*p-1)
 
 def elo(x):
-  if x <= 0 or x >= 1:
-    return 0.0
+  epsilon=1e-3
+  x=max(x,epsilon)
+  x=min(x,1-epsilon)
   return -400*math.log10(1/x-1)
 
-def get_elo(WLD):
-  # win/loss/draw ratio
-  N = sum(WLD)
-  w = float(WLD[0])/N
-  l = float(WLD[1])/N
-  d = float(WLD[2])/N
 
-  # mu is the empirical mean of the variables (Xi), assumed i.i.d.
-  mu = w + d/2
+def get_elo(results):
+# "results" is an array of length 2*n+1 with aggregated frequences
+# for n games
+  l=len(results)
 
-  # stdev is the empirical standard deviation of the random variable (X1+...+X_N)/N
-  stdev = math.sqrt(w*(1-mu)**2 + l*(0-mu)**2 + d*(0.5-mu)**2) / math.sqrt(N)
+# first introduce a small prior to avoid division by zero
+  results=copy.copy(results)
+  for i in range(0,l):
+    if results[i]==0:
+      results[i]=1e-3
+  N=sum(results)
+  games=N*(l-1)/2.0
 
-  # 95% confidence interval for mu
-  mu_min = mu + phi_inv(0.025) * stdev
-  mu_max = mu + phi_inv(0.975) * stdev
+# empirical expected score for a single game
+  mu=sum([results[i]*(i/2.0) for i in range(0,l)])/games
 
-  el = elo(mu)
-  elo95 = (elo(mu_max) - elo(mu_min)) / 2
-  los = phi((mu-0.5) / stdev)
+# empirical expected variance for a single game
+  mu_=(l-1)/2.0*mu
+  var=sum([results[i]*(i/2.0-mu_)**2.0 for i in range(0,l)])/games
 
-  return el, elo95, los
+# matching standard deviation
+  stdev = math.sqrt(var)
+
+# 95% confidence interval for mu
+  mu_min=mu+phi_inv(0.025)*stdev/math.sqrt(games)
+  mu_max=mu+phi_inv(0.975)*stdev/math.sqrt(games)
+
+  el=elo(mu)
+  elo95=(elo(mu_max)-elo(mu_min))/2.0
+  los = phi((mu-0.5)/(stdev/math.sqrt(games)))
+
+  return el,elo95,los
+
 
 def bayeselo_to_proba(elo, drawelo):
   """

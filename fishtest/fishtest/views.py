@@ -675,7 +675,10 @@ def format_results(run_results, run):
     result['llr'] = stats['llr']
     result['info'].append('LLR: %.2f (%.2lf,%.2lf) [%.2f,%.2f]' % (stats['llr'], stats['lower_bound'], stats['upper_bound'], sprt['elo0'], sprt['elo1']))
   else:
-    elo, elo95, los = stat_util.get_elo(WLD)
+    if 'pentanomial' in run_results.keys():
+      elo, elo95, los = stat_util.get_elo(run_results['pentanomial'])
+    else:
+      elo, elo95, los = stat_util.get_elo([WLD[1],WLD[2],WLD[0]])
 
     # Display the results
     eloInfo = 'ELO: %.2f +-%.1f (95%%)' % (elo, elo95)
