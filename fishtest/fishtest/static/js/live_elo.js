@@ -5,30 +5,30 @@ var LOS_chart=null;
 var LLR_chart=null;
 var ELO_chart=null;
 
-window.onpopstate=function(e){
-    displayURL(e.state);
-};
-                
-var Module={};
-// Emscripten callback. 
-Module.onRuntimeInitialized=function() {
-    history.replaceState(""+location,"","");
-    google.charts.setOnLoadCallback(function(){
-        LOS_chart = new google.visualization.Gauge(document.getElementById('LOS_chart_div'));
-        LLR_chart = new google.visualization.Gauge(document.getElementById('LLR_chart_div'));
-        ELO_chart = new google.visualization.Gauge(document.getElementById('ELO_chart_div'));
-        clear_gauges();
-        displayURL(""+window.location)
-    });
-}
+google.charts.setOnLoadCallback(function(){
+    LOS_chart = new google.visualization.Gauge(document.getElementById('LOS_chart_div'));
+    LLR_chart = new google.visualization.Gauge(document.getElementById('LLR_chart_div'));
+    ELO_chart = new google.visualization.Gauge(document.getElementById('ELO_chart_div'));
+    clear_gauges();
+    displayURL(""+window.location)
+});
 
-function compute(m){
+function collect(m){
     var sprt= m.args.sprt;
-    var ret=Module.ccall('export_json',
-                         'string',
-                         ['number','number','number','number','number','number','number','number','number'],
-                         [sprt.alpha,sprt.beta,sprt.elo0,sprt.elo1,0.95,0,m.results['wins'],m.results['draws'],m.results['losses']]);
-    return JSON.parse(ret);
+    var results=m.results;
+    var ret= m.elo;
+    ret.alpha=sprt.alpha;
+    ret.beta=sprt.beta;
+    ret.elo_raw0=sprt.elo0;
+    ret.elo_raw1=sprt.elo1;
+    ret.W=results.wins;
+    ret.D=results.draws;
+    ret.L=results.losses;
+    ret.ci_lower=ret.ci[0];
+    ret.ci_upper=ret.ci[1];
+    ret.games=ret.W+ret.D+ret.L;
+    ret.p=0.05;
+    return ret;
 }
 
 
@@ -45,8 +45,12 @@ function decodeURL(url){
     return null;
 }
 
-function sanitizeURL(url){
+function viewURL(url){
     return "/tests/view/"+url;
+}
+
+function statsURL(url){
+    return "/tests/stats/"+url;
 }
 
 function set_gauges(LLR,a,b,LOS,elo,ci_lower,ci_upper){
@@ -130,9 +134,10 @@ function escapeHtml (string) {
 }
 
 function display_data(items){
-    var link=sanitizeURL(items['_id']);
+    var link=viewURL(items['_id']);
+    var stats=statsURL(items['_id']);
 
-    var j=compute(items);
+    var j=collect(items);
     document.getElementById("error").style.display="none";
     document.getElementById("data").style.visibility="visible";
     document.getElementById("commit").innerHTML="<a href="+items.args.tests_repo+"/compare/"
@@ -183,7 +188,7 @@ function follow_live(testURL, retry){
     }
     var xhttp = new XMLHttpRequest();
     var timestamp=(new Date()).getTime();
-    xhttp.open("GET", "/api/get_run/"+test+'?'+timestamp, true);
+    xhttp.open("GET", "/api/get_elo/"+test+'?'+timestamp, true);
     xhttp.onreadystatechange = function() {
         if (this.readyState == 4) {
             if(this.status == 200){

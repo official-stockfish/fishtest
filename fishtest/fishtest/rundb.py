@@ -15,7 +15,7 @@ from userdb import UserDb
 from actiondb import ActionDb
 from views import format_results
 
-import fishtest.stat_util
+import fishtest.stats.stat_util
 
 class RunDb:
   def __init__(self, db_name='fishtest_new'):
@@ -462,7 +462,7 @@ class RunDb:
     # Check if SPRT stopping is enabled
     if 'sprt' in run['args']:
       sprt = run['args']['sprt']
-      sprt_stats = fishtest.stat_util.SPRT(self.get_results(run, False),
+      sprt_stats = fishtest.stats.stat_util.SPRT(self.get_results(run, False),
                                   elo0=sprt['elo0'],
                                   alpha=sprt['alpha'],
                                   elo1=sprt['elo1'],
