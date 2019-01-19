@@ -57,6 +57,7 @@ def main(global_config, **settings):
   config.add_route('tests_approve', '/tests/approve')
   config.add_route('tests_purge', '/tests/purge')
   config.add_route('tests_user', '/tests/user/{username}')
+  config.add_route('tests_stats', '/tests/stats/{id}')
 
   # API
   config.add_route('api_request_task', '/api/request_task')
@@ -70,6 +71,7 @@ def main(global_config, **settings):
   config.add_route('api_upload_pgn', '/api/upload_pgn')
   config.add_route('api_download_pgn', '/api/pgn/{id}')
   config.add_route('api_download_pgn_100', '/api/pgn_100/{skip}')
+  config.add_route('api_get_elo', '/api/get_elo/{id}')
 
   config.scan()
   return config.make_wsgi_app()

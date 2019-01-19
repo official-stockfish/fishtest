@@ -17,7 +17,7 @@ from pyramid.view import view_config, forbidden_view_config
 from pyramid.httpexceptions import HTTPFound, HTTPBadRequest
 from pyramid.response import Response
 
-import stat_util
+import fishtest.stats.stat_util
 
 # For caching the tests output
 cache_time = 2
@@ -667,16 +667,19 @@ def format_results(run_results, run):
     sprt = run['args']['sprt']
     state = sprt.get('state', '')
 
-    stats = stat_util.SPRT(run_results,
-                           elo0=sprt['elo0'],
-                           alpha=sprt['alpha'],
-                           elo1=sprt['elo1'],
-                           beta=sprt['beta'],
-                           drawelo=sprt['drawelo'])
+    stats = fishtest.stats.stat_util.SPRT(run_results,
+                                          elo0=sprt['elo0'],
+                                          alpha=sprt['alpha'],
+                                          elo1=sprt['elo1'],
+                                          beta=sprt['beta'],
+                                          drawelo=sprt['drawelo'])
     result['llr'] = stats['llr']
     result['info'].append('LLR: %.2f (%.2lf,%.2lf) [%.2f,%.2f]' % (stats['llr'], stats['lower_bound'], stats['upper_bound'], sprt['elo0'], sprt['elo1']))
   else:
-    elo, elo95, los = stat_util.get_elo(WLD)
+    if 'pentanomial' in run_results.keys():
+      elo, elo95, los = fishtest.stats.stat_util.get_elo(run_results['pentanomial'])
+    else:
+      elo, elo95, los = fishtest.stats.stat_util.get_elo([WLD[1],WLD[2],WLD[0]])
 
     # Display the results
     eloInfo = 'ELO: %.2f +-%.1f (95%%)' % (elo, elo95)
@@ -834,6 +837,12 @@ def calculate_residuals(run):
 
   chi2['bad_users'] = bad_users
   return chi2
+
+@view_config(route_name='tests_stats', renderer='tests_stats.mak')
+def tests_stats(request):
+  run = request.rundb.get_run(request.matchdict['id'])
+  request.rundb.get_results(run)
+  return {'run':run}
 
 @view_config(route_name='tests_view_spsa_history', renderer='json')
 def tests_view_spsa_history(request):

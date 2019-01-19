@@ -41,6 +41,9 @@ var spsa_history_url = '${run_args[0][1]}/spsa_history';
     <tr><td>${arg[0]}</td><td><a href="${arg[2]}" target="_blank">${arg[1]}</a></td></tr>
     %endif
   %endfor
+  <tr><td>raw statistics</td><td>
+  <a href=/tests/stats/${run['_id']}>/tests/stats/${run['_id']}</a>
+  </td></tr>
   </table>
 </div>
 
