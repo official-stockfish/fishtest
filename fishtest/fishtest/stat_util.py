@@ -1,3 +1,4 @@
+from __future__ import division
 import math,copy
 
 def erf(x):
@@ -29,17 +30,27 @@ def elo(x):
   x=min(x,1-epsilon)
   return -400*math.log10(1/x-1)
 
+def L(x):
+    return 1/(1+10**(-x/400.0))
+
+def regularize(results):
+  """
+Introduce a small prior to avoid division by zero
+"""
+  results=copy.copy(results)
+  l=len(results)
+  for i in range(0,l):
+    if results[i]==0:
+      results[i]=1e-3
+  return results
 
 def get_elo(results):
 # "results" is an array of length 2*n+1 with aggregated frequences
 # for n games
   l=len(results)
 
-# first introduce a small prior to avoid division by zero
-  results=copy.copy(results)
-  for i in range(0,l):
-    if results[i]==0:
-      results[i]=1e-3
+# avoid division by zero
+  results=regularize(results)
   N=sum(results)
   games=N*(l-1)/2.0
 
@@ -93,6 +104,9 @@ def SPRT(R, elo0, alpha, elo1, beta, drawelo):
   alpha = max typeI error (reached on elo = elo0)
   beta = max typeII error for elo >= elo1 (reached on elo = elo1)
   R['wins'], R['losses'], R['draws'] contains the number of wins, losses and draws
+  R['pentanomial'] contains the pentanomial frequencies
+
+  The drawelo parameter is a historical artifact and is not used.
 
   Returns a dict:
   finished - bool, True means test is finished, False means continue sampling
@@ -121,17 +135,99 @@ def SPRT(R, elo0, alpha, elo1, beta, drawelo):
   P0 = bayeselo_to_proba(elo0, drawelo)
   P1 = bayeselo_to_proba(elo1, drawelo)
 
-  # Log-Likelyhood Ratio
-  result['llr'] = R['wins']*math.log(P1['win']/P0['win']) + R['losses']*math.log(P1['loss']/P0['loss']) + R['draws']*math.log(P1['draw']/P0['draw'])
+  # Conversion of bounds to logistic elo for use with the pentanomial model
+  scale_factor = (4*10**(-drawelo/400.0))/(1+10**(-drawelo/400.0))**2
+  lelo0=scale_factor*elo0
+  lelo1=scale_factor*elo1
 
-  if result['llr'] < result['lower_bound']:
+  # Log-Likelihood Ratio
+  if 'pentanomial' in R.keys():
+    LLR_,overshoot=LLR_logistic(lelo0,lelo1,R['pentanomial'])
+    overshoot=min((result['upper_bound']-result['lower_bound'])/20,overshoot)
+    result['llr']=LLR_
+  else:
+    result['llr'] = R['wins']*math.log(P1['win']/P0['win']) + R['losses']*math.log(P1['loss']/P0['loss']) + R['draws']*math.log(P1['draw']/P0['draw'])
+    overshoot=0
+
+  if result['llr'] < result['lower_bound']+overshoot:
     result['finished'] = True
     result['state'] = 'rejected'
-  elif result['llr'] > result['upper_bound']:
+  elif result['llr'] > result['upper_bound']-overshoot:
     result['finished'] = True
     result['state'] = 'accepted'
 
   return result
+
+def MLE(pdf,s):
+    """
+This function computes the maximum likelood estimate for
+a discrete distribution with expectation value s,
+given an observed (i.e. empirical) distribution pdf.
+pdf is a list of tuples (ai,pi), i=1,...,N. It is assumed that
+that the ai are strictly ascending, a1<s<aN and p1>0, pN>0.
+The theory behind this function can be found in the online
+document
+http://hardy.uhasselt.be/Toga/computeLLR.pdf
+(see Proposition 1.1).
+To solve the equation (1.3) in loc. cit. we use a specialized
+Newton solver.
+"""
+    epsilon=1e-9
+    v,w=pdf[0][0],pdf[-1][0]
+    l,u=-1/(w-s),1/(s-v)
+    f=lambda x:sum([p*(a-s)/(1+x*(a-s)) for a,p in pdf])
+    fp=lambda x:sum([-p*(a-s)**2/(1+x*(a-s))**2 for a,p in pdf])
+    x=0
+    fx=f(x)
+    while True:
+#        print("s=%3f x=%.10f f(x)=%g [ %3f %3f]" % (s,x,f(x),l,u))
+        if fx==0:
+            break
+        xpre,fxpre=x,fx
+        x=x-fx/fp(x)
+        if x<=l:
+            x=(10*l+xpre)/11
+        elif x>=u:
+            x=(10*u+xpre)/11
+        fx=f(x)
+        if abs(x-xpre) <epsilon:
+            break
+    return [(a,p/(1+x*(a-s))) for a,p in pdf]
+
+def LL(pdf1,pdf2):
+    return sum([pdf1[i][1]*math.log(pdf2[i][1]) for i in range(0,len(pdf1))])
+
+def LLR(pdf,s0,s1):
+    """
+This function computes the generalized log likelihood ratio (divided by N)
+for s=s1 versus s=s0 where pdf is an empirical distribution and
+s is the expectation value of the true distribution.
+pdf is a list of pairs (value,probability).
+"""
+    return LL(pdf,MLE(pdf,s1))-LL(pdf,MLE(pdf,s0))
+
+def stats(pdf):
+    s=sum([prob*value for value,prob in pdf])
+    var=sum([prob*(value-s)**2 for value,prob in pdf])
+    return s,var
+
+def LLR_logistic(elo0,elo1,results):
+    """
+This function computes the generalized log-likelihood ratio for "results"
+which should be a list of either length 3 or 5. If the length
+is 3 then it should contain the frequencies of L,D,W. If the length
+is 5 then it should contain the frequencies of the game pairs
+LL,LD+DL,LW+DD+WL,DW+WD,WW.
+elo0,elo1 are in logistic elo.
+"""
+    results=regularize(results)
+    s0,s1=[L(elo) for elo in (elo0,elo1)]
+    N=sum(results)
+    l=len(results)
+    pdf=[(i/(l-1),results[i]/N) for i in range(0,l)]
+    s,var=stats(pdf)
+    overshoot=0.583*(s1-s0)/math.sqrt(var)
+    return N*LLR(pdf,s0,s1),overshoot
 
 if __name__ == "__main__":
   # unit tests
@@ -140,3 +236,7 @@ if __name__ == "__main__":
   print SPRT({'wins': 5019, 'losses': 5026, 'draws': 15699}, 0, 0.05, 5, 0.05, 200)
   print SPRT({'wins': 1450, 'losses': 1500, 'draws': 4000}, 0, 0.05, 6, 0.05, 200)
   print SPRT({'wins': 716, 'losses': 591, 'draws': 2163}, 0, 0.05, 6, 0.05, 200)
+  print SPRT({'wins': 13543,'losses': 13624, 'draws': 34333}, -3, 0.05, 1, 0.05, 200)
+  print SPRT({'wins': 13543,'losses': 13624, 'draws': 34333, 'pentanomial':[1187, 7410, 13475, 7378, 1164]}, -3, 0.05, 1, 0.05, 200)
+  print SPRT({'wins': 65388,'losses': 65804, 'draws': 56553}, -3, 0.05, 1, 0.05, 200)
+  print SPRT({'wins': 65388,'losses': 65804, 'draws': 56553, 'pentanomial':[10789, 19328, 33806, 19402, 10543]}, -3, 0.05, 1, 0.05, 200)
