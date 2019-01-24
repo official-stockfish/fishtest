@@ -63,6 +63,7 @@ def verify_signature(engine, signature, remote, payload, concurrency):
     busy_process = subprocess.Popen([engine], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
     busy_process.stdin.write(enc('setoption name Threads value %d\n' % (concurrency-1)))
     busy_process.stdin.write(enc('go infinite\n'))
+    busy_process.stdin.flush()
 
   try:
     bench_sig = ''
