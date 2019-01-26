@@ -62,7 +62,7 @@ def get_run(request):
 
 @view_config(route_name='api_get_elo', renderer='string')
 def get_elo(request):
-  run = request.rundb.get_run(request.matchdict['id'])
+  run = request.rundb.get_run(request.matchdict['id']).copy()
   results=run['results']
   if 'sprt' not in run['args']:
     return json.dumps({})
