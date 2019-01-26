@@ -183,7 +183,7 @@ function follow_live(testURL, retry){
     }
     var xhttp = new XMLHttpRequest();
     var timestamp=(new Date()).getTime();
-    xhttp.open("GET", "/api/get_run/"+test+'?'+timestamp, true);
+    xhttp.open("GET", "/api/get_elo/"+test+'?'+timestamp, true);
     xhttp.onreadystatechange = function() {
         if (this.readyState == 4) {
             if(this.status == 200){
