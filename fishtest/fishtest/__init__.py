@@ -68,6 +68,7 @@ def main(global_config, **settings):
   config.add_route('api_upload_pgn', '/api/upload_pgn')
   config.add_route('api_download_pgn', '/api/pgn/{id}')
   config.add_route('api_download_pgn_100', '/api/pgn_100/{skip}')
+  config.add_route('api_get_elo', '/api/get_elo/{id}')
 
   config.scan()
   return config.make_wsgi_app()

@@ -3,6 +3,7 @@ import base64
 import requests
 import pyramid.httpexceptions as exc
 from pyramid.view import view_config
+import fishtest.stats.sprt
 
 def get_flag(request):
   ip = request.remote_addr
@@ -58,6 +59,29 @@ def active_runs(request):
 def get_run(request):
   run = request.rundb.get_run(request.matchdict['id'])
   return json.dumps(strip_run(run.copy()))
+
+@view_config(route_name='api_get_elo', renderer='string')
+def get_elo(request):
+  run = request.rundb.get_run(request.matchdict['id'])
+  results=run['results']
+  if 'sprt' not in run['args']:
+    return json.dumps({})
+  sprt=run['args'].get('sprt',{})
+  alpha=sprt['alpha']
+  beta=sprt['beta']
+  elo0=sprt['elo0']
+  elo1=sprt['elo1']
+  L=results['losses']
+  D=results['draws']
+  W=results['wins']
+  p=0.05
+  # 0=BayesElo inputs
+  s=fishtest.stats.sprt.sprt(alpha=alpha,beta=beta,elo0=elo0,elo1=elo1,mode=0)
+  s.set_state(W,D,L)
+  a=s.analytics(p)
+  run=strip_run(run)
+  run['elo']=a
+  return json.dumps(run)
 
 @view_config(route_name='api_request_task', renderer='string')
 def request_task(request):
