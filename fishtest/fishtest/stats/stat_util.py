@@ -1,6 +1,7 @@
 from __future__ import division
 from scipy.optimize import brentq
 import math,copy
+import LLRcalc
 
 def erf(x):
   #Python 2.7 defines math.erf(), but we need to cater for older versions.
@@ -143,7 +144,7 @@ def SPRT(R, elo0, alpha, elo1, beta, drawelo):
 
   # Log-Likelihood Ratio
   if 'pentanomial' in R.keys():
-    LLR_,overshoot=LLR_logistic(lelo0,lelo1,R['pentanomial'])
+    LLR_,overshoot=LLRcalc.LLR_logistic(lelo0,lelo1,R['pentanomial'])
     overshoot=min((result['upper_bound']-result['lower_bound'])/20,overshoot)
     result['llr']=LLR_
   else:
@@ -158,81 +159,6 @@ def SPRT(R, elo0, alpha, elo1, beta, drawelo):
     result['state'] = 'accepted'
 
   return result
-
-def MLE(pdf,s):
-    """
-This function computes the maximum likelood estimate for
-a discrete distribution with expectation value s,
-given an observed (i.e. empirical) distribution pdf.
-
-pdf is a list of tuples (ai,pi), i=1,...,N. It is assumed that 
-that the ai are strictly ascending, a1<s<aN and p1>0, pN>0.
-
-The theory behind this function can be found in the online 
-document
-
-http://hardy.uhasselt.be/Toga/computeLLR.pdf
-
-(see Proposition 1.1).
-
-"""
-    epsilon=1e-9
-    v,w=pdf[0][0],pdf[-1][0]
-    l,u=-1/(w-s),1/(s-v)
-    f=lambda x:sum([p*(a-s)/(1+x*(a-s)) for a,p in pdf])
-    x,res=brentq(f,l+epsilon,u-epsilon,full_output=True)
-    assert(res.converged)
-    pdf_MLE=[(a,p/(1+x*(a-s))) for a,p in pdf]
-    s_,var=stats(pdf_MLE) # for validation
-    assert(abs(s-s_)<1e-6)
-    return pdf_MLE
-
-def LL(pdf1,pdf2):
-    return sum([pdf1[i][1]*math.log(pdf2[i][1]) for i in range(0,len(pdf1))])
-
-def LLR(pdf,s0,s1):
-    """
-This function computes the generalized log likelihood ratio (divided by N)
-for s=s1 versus s=s0 where pdf is an empirical distribution and
-s is the expectation value of the true distribution.
-pdf is a list of pairs (value,probability).
-"""
-    return LL(pdf,MLE(pdf,s1))-LL(pdf,MLE(pdf,s0))
-
-def stats(pdf):
-    epsilon=1e-6
-    for i in range(0,len(pdf)):
-      assert(-epsilon<=pdf[i][1]<=1+epsilon)
-    n=sum([prob for value,prob in pdf])
-    assert(abs(n-1)<epsilon)
-    s=sum([prob*value for value,prob in pdf])
-    var=sum([prob*(value-s)**2 for value,prob in pdf])
-    return s,var
-
-def results_to_pdf(results):
-  results=regularize(results)
-  N=sum(results)
-  l=len(results)
-  return N,[(i/(l-1),results[i]/N) for i in range(0,l)]
-
-def LLR_logistic(elo0,elo1,results):
-    """
-This function computes the generalized log-likelihood ratio for "results"
-which should be a list of either length 3 or 5. If the length
-is 3 then it should contain the frequencies of L,D,W. If the length
-is 5 then it should contain the frequencies of the game pairs
-LL,LD+DL,LW+DD+WL,DW+WD,WW.
-elo0,elo1 are in logistic elo.
-"""
-    s0,s1=[L(elo) for elo in (elo0,elo1)]
-    N,pdf=results_to_pdf(results)
-    s,var=stats(pdf)
-    # The well-known universal constant 0.583 is for normal increments.
-    # For the trinomial distribution it should be 0.5.
-    # For the pentanomial distribution there is also a formula.
-    # In practice this appears to make no difference.
-    overshoot=0.583*(s1-s0)/math.sqrt(var)
-    return N*LLR(pdf,s0,s1),overshoot
 
 if __name__ == "__main__":
   # unit tests
