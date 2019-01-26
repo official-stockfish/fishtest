@@ -5,39 +5,35 @@ var LOS_chart=null;
 var LLR_chart=null;
 var ELO_chart=null;
 
-window.onpopstate=function(e){
-    displayURL(e.state);
-};
+//window.onpopstate=function(e){
+//    displayURL(e.state);
+//};
                 
-var Module={};
-// Emscripten callback. 
-Module.onRuntimeInitialized=function() {
-    history.replaceState(""+location,"","");
-    google.charts.setOnLoadCallback(function(){
-        LOS_chart = new google.visualization.Gauge(document.getElementById('LOS_chart_div'));
-        LLR_chart = new google.visualization.Gauge(document.getElementById('LLR_chart_div'));
-        ELO_chart = new google.visualization.Gauge(document.getElementById('ELO_chart_div'));
-        clear_gauges();
-        displayURL(""+window.location)
-    });
-}
+//    history.replaceState(""+location,"","");
+google.charts.setOnLoadCallback(function(){
+    LOS_chart = new google.visualization.Gauge(document.getElementById('LOS_chart_div'));
+    LLR_chart = new google.visualization.Gauge(document.getElementById('LLR_chart_div'));
+    ELO_chart = new google.visualization.Gauge(document.getElementById('ELO_chart_div'));
+    clear_gauges();
+    displayURL(""+window.location)
+});
 
-function compute(m){
+function collect(m){
     var sprt= m.args.sprt;
     var results=m.results;
-    var elo= m.elo;
-    elo.alpha=sprt.alpha;
-    elo.beta=sprt.beta;
-    elo.elo_raw0=sprt.elo0;
-    elo.elo_raw1=sprt.elo1;
-    elo.W=results.wins;
-    elo.D=results.draws;
-    elo.L=results.losses;
-    elo.ci_lower=elo.ci[0];
-    elo.ci_upper=elo.ci[1];
-    elo.games=elo.W+elo.D+elo.L+0.5;
-    elo.p=0.05;
-    return elo;
+    var ret= m.elo;
+    ret.alpha=sprt.alpha;
+    ret.beta=sprt.beta;
+    ret.elo_raw0=sprt.elo0;
+    ret.elo_raw1=sprt.elo1;
+    ret.W=results.wins;
+    ret.D=results.draws;
+    ret.L=results.losses;
+    ret.ci_lower=ret.ci[0];
+    ret.ci_upper=ret.ci[1];
+    ret.games=ret.W+ret.D+ret.L;
+    ret.p=0.05;
+    return ret;
 }
 
 
@@ -141,7 +137,7 @@ function escapeHtml (string) {
 function display_data(items){
     var link=sanitizeURL(items['_id']);
 
-    var j=compute(items);
+    var j=collect(items);
     document.getElementById("error").style.display="none";
     document.getElementById("data").style.visibility="visible";
     document.getElementById("commit").innerHTML="<a href="+items.args.tests_repo+"/compare/"
