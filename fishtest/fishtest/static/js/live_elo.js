@@ -24,11 +24,20 @@ Module.onRuntimeInitialized=function() {
 
 function compute(m){
     var sprt= m.args.sprt;
-    var ret=Module.ccall('export_json',
-                         'string',
-                         ['number','number','number','number','number','number','number','number','number'],
-                         [sprt.alpha,sprt.beta,sprt.elo0,sprt.elo1,0.95,0,m.results['wins'],m.results['draws'],m.results['losses']]);
-    return JSON.parse(ret);
+    var results=m.results;
+    var elo= m.elo;
+    elo.alpha=sprt.alpha;
+    elo.beta=sprt.beta;
+    elo.elo_raw0=sprt.elo0;
+    elo.elo_raw1=sprt.elo1;
+    elo.W=results.wins;
+    elo.D=results.draws;
+    elo.L=results.losses;
+    elo.ci_lower=elo.ci[0];
+    elo.ci_upper=elo.ci[1];
+    elo.games=elo.W+elo.D+elo.L+0.5;
+    elo.p=0.05;
+    return elo;
 }
 
 
