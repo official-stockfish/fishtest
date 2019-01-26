@@ -1,4 +1,5 @@
 from __future__ import division
+from scipy.optimize import brentq
 import math,copy
 
 def erf(x):
@@ -163,36 +164,28 @@ def MLE(pdf,s):
 This function computes the maximum likelood estimate for
 a discrete distribution with expectation value s,
 given an observed (i.e. empirical) distribution pdf.
-pdf is a list of tuples (ai,pi), i=1,...,N. It is assumed that
+
+pdf is a list of tuples (ai,pi), i=1,...,N. It is assumed that 
 that the ai are strictly ascending, a1<s<aN and p1>0, pN>0.
-The theory behind this function can be found in the online
+
+The theory behind this function can be found in the online 
 document
+
 http://hardy.uhasselt.be/Toga/computeLLR.pdf
+
 (see Proposition 1.1).
-To solve the equation (1.3) in loc. cit. we use a specialized
-Newton solver.
+
 """
     epsilon=1e-9
     v,w=pdf[0][0],pdf[-1][0]
     l,u=-1/(w-s),1/(s-v)
     f=lambda x:sum([p*(a-s)/(1+x*(a-s)) for a,p in pdf])
-    fp=lambda x:sum([-p*(a-s)**2/(1+x*(a-s))**2 for a,p in pdf])
-    x=0
-    fx=f(x)
-    while True:
-#        print("s=%3f x=%.10f f(x)=%g [ %3f %3f]" % (s,x,f(x),l,u))
-        if fx==0:
-            break
-        xpre,fxpre=x,fx
-        x=x-fx/fp(x)
-        if x<=l:
-            x=(10*l+xpre)/11
-        elif x>=u:
-            x=(10*u+xpre)/11
-        fx=f(x)
-        if abs(x-xpre) <epsilon:
-            break
-    return [(a,p/(1+x*(a-s))) for a,p in pdf]
+    x,res=brentq(f,l+epsilon,u-epsilon,full_output=True)
+    assert(res.converged)
+    pdf_MLE=[(a,p/(1+x*(a-s))) for a,p in pdf]
+    s_,var=stats(pdf_MLE) # for validation
+    assert(abs(s-s_)<1e-6)
+    return pdf_MLE
 
 def LL(pdf1,pdf2):
     return sum([pdf1[i][1]*math.log(pdf2[i][1]) for i in range(0,len(pdf1))])
@@ -207,9 +200,20 @@ pdf is a list of pairs (value,probability).
     return LL(pdf,MLE(pdf,s1))-LL(pdf,MLE(pdf,s0))
 
 def stats(pdf):
+    epsilon=1e-6
+    for i in range(0,len(pdf)):
+      assert(-epsilon<=pdf[i][1]<=1+epsilon)
+    n=sum([prob for value,prob in pdf])
+    assert(abs(n-1)<epsilon)
     s=sum([prob*value for value,prob in pdf])
     var=sum([prob*(value-s)**2 for value,prob in pdf])
     return s,var
+
+def results_to_pdf(results):
+  results=regularize(results)
+  N=sum(results)
+  l=len(results)
+  return N,[(i/(l-1),results[i]/N) for i in range(0,l)]
 
 def LLR_logistic(elo0,elo1,results):
     """
@@ -220,12 +224,13 @@ is 5 then it should contain the frequencies of the game pairs
 LL,LD+DL,LW+DD+WL,DW+WD,WW.
 elo0,elo1 are in logistic elo.
 """
-    results=regularize(results)
     s0,s1=[L(elo) for elo in (elo0,elo1)]
-    N=sum(results)
-    l=len(results)
-    pdf=[(i/(l-1),results[i]/N) for i in range(0,l)]
+    N,pdf=results_to_pdf(results)
     s,var=stats(pdf)
+    # The well-known universal constant 0.583 is for normal increments.
+    # For the trinomial distribution it should be 0.5.
+    # For the pentanomial distribution there is also a formula.
+    # In practice this appears to make no difference.
     overshoot=0.583*(s1-s0)/math.sqrt(var)
     return N*LLR(pdf,s0,s1),overshoot
 
