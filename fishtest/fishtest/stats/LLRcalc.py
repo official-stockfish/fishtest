@@ -23,7 +23,7 @@ http://hardy.uhasselt.be/Toga/computeLLR.pdf
     v,w=pdf[0][0],pdf[-1][0]
     l,u=-1/(w-s),1/(s-v)
     f=lambda x:sum([p*(a-s)/(1+x*(a-s)) for a,p in pdf])
-    res=brentq.brentq(f,l+epsilon,u-epsilon)
+    res=brentq.brentq(f,l+epsilon,u-epsilon,epsilon=epsilon)
     assert(res['converged'])
     x=res['x0']
     pdf_MLE=[(a,p/(1+x*(a-s))) for a,p in pdf]
