@@ -36,11 +36,17 @@ def setup_config_file(config_file):
   config.read(config_file)
 
   mem = 0
+  system_type = platform.system().lower()
   try:
-    if 'Linux' in platform.system():
-      cmd = 'free'
-    else:
+    if 'linux' in system_type:
+      cmd = 'free -b'
+    elif 'windows' in system_type:
       cmd = 'wmic computersystem get TotalPhysicalMemory'
+    elif 'darwin' in system_type:
+      cmd = 'sysctl hw.memsize' 
+    else:
+      cmd = ''
+      print('Unknown system')
     with os.popen(cmd) as proc:
       mem_str = str(proc.readlines())
     mem = int(re.search(r'\d+', mem_str).group())
@@ -53,7 +59,7 @@ def setup_config_file(config_file):
               ('parameters', 'host', 'tests.stockfishchess.org'),
               ('parameters', 'port', '80'),
               ('parameters', 'concurrency', '3'),
-              ('parameters', 'max_memory', str(int(mem / 2 / 1024))),
+              ('parameters', 'max_memory', str(int(mem / 2 / 1024 / 1024))),
               ('parameters', 'min_threads', '1'),
               ]
 
