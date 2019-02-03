@@ -43,7 +43,7 @@ def setup_config_file(config_file):
     elif 'windows' in system_type:
       cmd = 'wmic computersystem get TotalPhysicalMemory'
     elif 'darwin' in system_type:
-      cmd = 'sysctl hw.memsize' 
+      cmd = 'sysctl hw.memsize'
     else:
       cmd = ''
       print('Unknown system')
@@ -165,7 +165,8 @@ def worker(worker_info, password, remote):
   return success
 
 def main():
-  print("Worker starting ...\n")
+  print("Worker started in " + os.getcwd() + " ...\n")
+
   signal.signal(signal.SIGINT, on_sigint)
   signal.signal(signal.SIGTERM, on_sigint)
 

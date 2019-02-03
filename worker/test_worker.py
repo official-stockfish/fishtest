@@ -13,7 +13,7 @@ class workerTest(unittest.TestCase):
       os.remove('foo.txt')
     if os.path.exists('polyglot.ini'):
       os.remove('polyglot.ini')
-   
+
   def test_item_download(self):
     try:
       games.setup('polyglot.ini', '.')
@@ -21,9 +21,9 @@ class workerTest(unittest.TestCase):
     except KeyError:
       pass
 
-  def test_config_setup(self):      
+  def test_config_setup(self):
     config = worker.setup_config_file('foo.txt')
-        
+
     self.assertTrue(config.has_section('login'))
     self.assertTrue(config.has_section('parameters'))
     self.assertTrue(config.has_option('login', 'username'))
@@ -31,7 +31,7 @@ class workerTest(unittest.TestCase):
     self.assertTrue(config.has_option('parameters', 'host'))
     self.assertTrue(config.has_option('parameters', 'port'))
     self.assertTrue(config.has_option('parameters', 'concurrency'))
-        
+
   def test_worker_script(self):
     p = subprocess.Popen(["python" , "worker.py"], stderr = subprocess.PIPE)
     result = p.stderr.readline()
@@ -39,13 +39,13 @@ class workerTest(unittest.TestCase):
       result = result.decode('utf-8')
     self.assertEqual(result, 'worker.py [username] [password]\n')
     p.stderr.close()
-    
-  def test_setup_exception(self): 
+
+  def test_setup_exception(self):
     cwd = os.getcwd()
     with self.assertRaises(Exception):
       games.setup_engine('foo', cwd, 'foo', 'https://foo', 1)
 
-  def test_updater(self): 
+  def test_updater(self):
     file_list = updater.update(restart=False, test=True)
     print(file_list)
     self.assertTrue('worker' in file_list)

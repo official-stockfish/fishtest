@@ -7,16 +7,18 @@ import requests
 from zipfile import ZipFile
 from distutils.dir_util import copy_tree
 
+start_dir = os.getcwd()
+
 WORKER_URL = 'https://github.com/glinscott/fishtest/archive/master.zip'
 
-def do_restart(worker_dir):
+def do_restart():
   """Restarts the worker, using the same arguments"""
   args = sys.argv[:]
   args.insert(0, sys.executable)
   if sys.platform == 'win32':
     args = ['"%s"' % arg for arg in args]
 
-  os.chdir(worker_dir)
+  os.chdir(start_dir)
   os.execv(sys.executable, args) # This does not return !
 
 def update(restart=True, test=False):
@@ -41,8 +43,9 @@ def update(restart=True, test=False):
     file_list = os.listdir(fishtest_src)
   shutil.rmtree(update_dir)
 
+  print("start_dir: " + start_dir)
   if restart:
-    do_restart(worker_dir)
+    do_restart()
 
   if test:
     return file_list
