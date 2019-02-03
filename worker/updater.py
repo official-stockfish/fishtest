@@ -9,7 +9,7 @@ from distutils.dir_util import copy_tree
 
 WORKER_URL = 'https://github.com/glinscott/fishtest/archive/master.zip'
 
-def restart(worker_dir):
+def do_restart(worker_dir):
   """Restarts the worker, using the same arguments"""
   args = sys.argv[:]
   args.insert(0, sys.executable)
@@ -42,7 +42,7 @@ def update(restart=True, test=False):
   shutil.rmtree(update_dir)
 
   if restart:
-    restart(worker_dir)
+    do_restart(worker_dir)
 
   if test:
     return file_list
