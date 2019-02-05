@@ -158,9 +158,8 @@ def brentq(f, xa, xb, xtol=EPS, epsilon=1e-6, max_iter=500):
 
 if __name__=='__main__':
     import math
-#    f=lambda x:4*x**5-x**3-3
     f=lambda x:math.cos(x)-x
-    print brentq(f,0,math.pi/2)
+    print(brentq(f,0,math.pi/2))
 
 
     

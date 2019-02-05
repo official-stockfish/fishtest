@@ -71,14 +71,8 @@ def get_elo(request):
   beta=sprt['beta']
   elo0=sprt['elo0']
   elo1=sprt['elo1']
-  L=results['losses']
-  D=results['draws']
-  W=results['wins']
   p=0.05
-  # 0=BayesElo inputs
-  s=fishtest.stats.sprt.sprt(alpha=alpha,beta=beta,elo0=elo0,elo1=elo1,mode=0)
-  s.set_state(W,D,L)
-  a=s.analytics(p)
+  a=fishtest.stats.stat_util.SPRT_elo(results,alpha=alpha,beta=beta,elo0=elo0,elo1=elo1)
   run=strip_run(run)
   run['elo']=a
   return json.dumps(run)

@@ -5,11 +5,6 @@ var LOS_chart=null;
 var LLR_chart=null;
 var ELO_chart=null;
 
-//window.onpopstate=function(e){
-//    displayURL(e.state);
-//};
-                
-//    history.replaceState(""+location,"","");
 google.charts.setOnLoadCallback(function(){
     LOS_chart = new google.visualization.Gauge(document.getElementById('LOS_chart_div'));
     LLR_chart = new google.visualization.Gauge(document.getElementById('LLR_chart_div'));

@@ -21,6 +21,7 @@ http://hardy.uhasselt.be/Toga/computeLLR.pdf
 """
     epsilon=1e-9
     v,w=pdf[0][0],pdf[-1][0]
+    assert(v<s<w)
     l,u=-1/(w-s),1/(s-v)
     f=lambda x:sum([p*(a-s)/(1+x*(a-s)) for a,p in pdf])
     res=brentq.brentq(f,l+epsilon,u-epsilon,epsilon=epsilon)
@@ -41,7 +42,7 @@ def stats(pdf):
     var=sum([prob*(value-s)**2 for value,prob in pdf])
     return s,var
 
-def LLjumps(pdf,s0,s1):
+def LLRjumps(pdf,s0,s1):
     pdf0,pdf1=[MLE(pdf,s) for s in (s0,s1)]
     return [(math.log(pdf1[i][1])-math.log(pdf0[i][1]),pdf[i][1]) for i in range(0,len(pdf))]
         
@@ -52,7 +53,7 @@ for s=s1 versus s=s0 where pdf is an empirical distribution and
 s is the expectation value of the true distribution.
 pdf is a list of pairs (value,probability). 
 """
-    return stats(LLjumps(pdf,s0,s1))[0]
+    return stats(LLRjumps(pdf,s0,s1))[0]
 
 def LLR_alt(pdf,s0,s1):
     """
@@ -77,6 +78,41 @@ http://hardy.uhasselt.be/Toga/GSPRT_approximation.pdf
 """
     s,var=stats(pdf)
     return (s1-s0)*(2*s-s0-s1)/var/2.0
+
+def LLR_drift_variance(pdf,s0,s1,s=None):
+    """
+Computes the drift and variance of the LLR
+for a test s=s0 against s=s0
+when the empirical distribution is pdf,
+but the true value of s is as given by
+the argument s. If s is not given
+then it is assumed that pdf is the true
+distribution.
+"""
+    if s!=None:
+        pdf=MLE(pdf,s)
+    jumps=LLRjumps(pdf,s0,s1)
+    return stats(jumps)
+
+def LLR_drift_variance_alt2(pdf,s0,s1,s=None):
+    """
+Computes the approximated drift and variance of the LLR
+for a test s=s0 against s=s0
+approximated by a Brownian motion, when
+the empirical distribution is pdf,
+but the true value of s is as given by
+the argument s. If s is not given
+the it is assumed that pdf is the true
+distribution. See
+
+http://hardy.uhasselt.be/Toga/GSPRT_approximation.pdf
+"""
+    s_,v_=stats(pdf)
+    # replace v_ by its MLE if requested
+    s,v=(s_,v_) if s==None else (s,v_+(s-s_)**2)
+    mu=(s-(s0+s1)/2)*(s1-s0)/v
+    var=(s1-s0)**2/v
+    return mu,var
 
 def L_(x):
     return 1/(1+10**(-x/400))
@@ -111,9 +147,11 @@ elo0,elo1 are in logistic elo.
     N,pdf=results_to_pdf(results)
     s,var=stats(pdf)
     # The well-known universal constant 0.583 is for normal increments.
-    # For the trinomial distribution it should be 0.5.
-    # For the pentanomial distribution there is also a formula.
-    # In practice this appears to make no difference.
+    # In practice it appears to work well in general.
     overshoot=0.583*(s1-s0)/math.sqrt(var)
-    return N*LLR(pdf,s0,s1),overshoot
+    # This division in cases (for safety) is probably not necessary.
+    if N<100:
+        return N*LLR(pdf,s0,s1),overshoot
+    else:
+        return N*LLR_alt(pdf,s0,s1),overshoot
 
