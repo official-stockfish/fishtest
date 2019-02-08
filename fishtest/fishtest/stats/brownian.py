@@ -55,7 +55,7 @@ class Brownian:
             ret=self.outcome_cdf_alt2(T,y)
         else:
             ret=self.outcome_cdf_alt1(T,y)
-#        assert -1e-3 <= ret <= 1+1e-3  # DO NOT FORGET TO COMMENT THIS BACK IN
+        assert -1e-3 <= ret <= 1+1e-3
         return ret
         
     def outcome_cdf_alt1(self,T=None,y=None):

@@ -122,7 +122,6 @@ def SPRT_elo(R, alpha=0.05, beta=0.05, p=0.05, elo0=None, elo1=None):
   P0 = bayeselo_to_proba(elo0, drawelo)
   P1 = bayeselo_to_proba(elo1, drawelo)
 
-  # Conversion of bounds to logistic elo for use with the pentanomial model
   lelo0=elo(P0[2]+0.5*P0[1])
   lelo1=elo(P1[2]+0.5*P1[1])
 
