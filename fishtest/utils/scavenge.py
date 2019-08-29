@@ -34,13 +34,14 @@ def get_idle_users(days):
   return idle
 
 def scavenge_users(scavenge=True, days=28):
-    for u in get_idle_users(days):
-      if scavenge:
-        rundb.userdb.users.remove({'_id': u['_id']})
+  for u in get_idle_users(days):
+    if scavenge:
+      rundb.userdb.users.remove({'_id': u['_id']})
 
 def main():
   scavenge_tasks(scavenge=True)
-  scavenge_users(scavenge=True)
+  # scavenge_users(scavenge=True) # Fix this, see
+  # https://github.com/glinscott/fishtest/issues/323#issuecomment-526127748
 
 if __name__ == '__main__':
   main()
