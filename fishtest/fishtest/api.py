@@ -12,7 +12,6 @@ def get_flag(request):
 
   # Get country flag ip
   try:
-    #FLAG_HOST = 'http://freegeoip.net/json/'
     FLAG_HOST = 'http://geoip.nekudo.com/api/'
 
     r = requests.get(FLAG_HOST + request.remote_addr, timeout=1.0)
