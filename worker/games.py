@@ -110,7 +110,7 @@ def setup_engine(destination, worker_dir, sha, repo_url, concurrency):
   if os.path.exists(destination): os.remove(destination)
   """Download and build sources in a temporary directory then move exe to destination"""
   tmp_dir = tempfile.mkdtemp(dir=worker_dir)
-  
+
   try:
     os.chdir(tmp_dir)
     with open('sf.gz', 'wb+') as f:
@@ -135,15 +135,15 @@ def setup_engine(destination, worker_dir, sha, repo_url, concurrency):
         subprocess.check_call(MAKE_CMD + ' -j %s' % (concurrency) + ' strip', shell=True)
       except:
         pass
-      
-      
+
+
     shutil.move('stockfish'+ EXE_SUFFIX, destination)
   except:
     raise Exception('Failed to setup engine for %s' % (sha))
   finally:
     os.chdir(worker_dir)
     shutil.rmtree(tmp_dir)
-    
+
 def kill_process(p):
   try:
     if IS_WINDOWS:
@@ -362,14 +362,14 @@ def run_games(worker_info, password, remote, run, task_id):
     results = []
     chunks = s.split('=')
     if len(chunks) == 0:
-      return results 
+      return results
     param = chunks[0]
     for c in chunks[1:]:
       val = c.split()
       results.append('option.%s=%s' % (param, val[0]))
       param = ' '.join(val[1:])
     return results
- 
+
   new_options = parse_options(new_options)
   base_options = parse_options(base_options)
 
@@ -461,7 +461,7 @@ def run_games(worker_info, password, remote, run, task_id):
   if not any("Threads" in s for s in new_options + base_options):
     threads_cmd = ['option.Threads=%d' % (threads)]
 
-  # If nodestime is being used, give engines extra grace time to 
+  # If nodestime is being used, give engines extra grace time to
   # make time losses virtually impossible
   nodestime_cmd=[]
   if any ("nodestime" in s for s in new_options + base_options):
@@ -473,7 +473,7 @@ def run_games(worker_info, password, remote, run, task_id):
   while games_remaining > 0:
     # Run cutechess-cli binary
     cmd = [ cutechess, '-repeat', '-rounds', str(int(games_to_play)), '-tournament', 'gauntlet'] + pgnout + \
-          ['-site', 'http://tests.stockfishchess.org/tests/view/' + run['_id']] + \
+          ['-site', 'https://tests.stockfishchess.org/tests/view/' + run['_id']] + \
           ['-event', 'Batch %d: %s vs %s' % (task_id, make_player('new_tag'), make_player('base_tag'))] + \
           ['-srand', "%d" % struct.unpack("<L", os.urandom(struct.calcsize("<L")))] + \
           ['-resign', 'movecount=3', 'score=400', '-draw', 'movenumber=34',
@@ -488,5 +488,5 @@ def run_games(worker_info, password, remote, run, task_id):
 
     old_stats = result['stats'].copy()
     games_remaining -= games_to_play
-  
+
   return pgnfile
