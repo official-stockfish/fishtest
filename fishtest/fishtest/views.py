@@ -4,8 +4,6 @@ import numpy
 import os
 import scipy
 import scipy.stats
-import sys
-import json
 import smtplib
 import requests
 import time
@@ -92,9 +90,11 @@ def signup(request):
     if os.path.exists(path):
       with open(path, 'r') as f:
         secret = f.read()
-        payload = {'secret': secret, 'response': request.params.get('g-recaptcha-response',''), 'remoteip': request.remote_addr}
+        payload = {'secret': secret,
+                   'response': request.params.get('g-recaptcha-response', ''),
+                   'remoteip': request.remote_addr}
         response= requests.post('https://www.google.com/recaptcha/api/siteverify', data=payload).json()
-        if not 'success' in response or not response['success']:
+        if 'success' not in response or not response['success']:
           if 'error-codes' in response:
             print(response['error-codes'])
           request.session.flash('Captcha failed')
@@ -565,10 +565,10 @@ def purge_run(rundb, run):
     run['finished'] = False
     if 'sprt' in run['args'] and 'state' in run['args']['sprt']:
       del run['args']['sprt']['state']
-    
+
     rundb.buffer(run, True)
 
-  return purged 
+  return purged
 
 @view_config(route_name='tests_purge', permission='approve_run')
 def tests_purge(request):
@@ -811,12 +811,18 @@ def tests_view(request):
 
     if name == 'sprt' and value != '-':
       value = 'elo0: %.2f alpha: %.2f elo1: %.2f beta: %.2f state: %s' % \
-              (value['elo0'], value['alpha'], value['elo1'], value['beta'], value.get('state', '-'))
+              (value['elo0'], value['alpha'], value['elo1'], value['beta'],
+               value.get('state', '-'))
 
     if name == 'spsa' and value != '-':
+      iter_local = value['iter'] + 1 # assume at least one completed, and avoid division by zero
       params = ['param: %s, best: %.2f, start: %.2f, min: %.2f, max: %.2f, c %f, a %f' % \
-                (p['name'], p['theta'], p['start'], p['min'], p['max'], p['c'], p['a']) for p in value['params']]
-      value = 'Iter: %d, A: %d, alpha %f, gamma %f, clipping %s, rounding %s\n%s' % (value['iter'], value['A'], value['alpha'], value['gamma'],
+                (p['name'], p['theta'], p['start'], p['min'], p['max'],
+                 p['c'] / (iter_local ** value['gamma']),
+                 p['a'] / (value['A'] + iter_local) ** value['alpha'])
+                for p in value['params']]
+      value = 'Iter: %d, A: %d, alpha %f, gamma %f, clipping %s, rounding %s\n%s' \
+              % (iter_local, value['A'], value['alpha'], value['gamma'],
               value['clipping'] if 'clipping' in value else 'old',
               value['rounding'] if 'rounding' in value else 'deterministic',
               '\n'.join(params))
@@ -901,7 +907,7 @@ def tests(request):
       # Another thread has built the cache for us, so we are done
       building.release()
       return last_tests
-    
+
   runs = { 'pending':[], 'failed':[], 'active':[], 'finished':[] }
 
   try:
