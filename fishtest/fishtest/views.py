@@ -274,7 +274,10 @@ def users_monthly(request):
 
 def get_master_bench():
   bs = re.compile('(^|\s)[Bb]ench[ :]+([0-9]{7})', re.MULTILINE)
-  for c in requests.get('https://api.github.com/repos/official-stockfish/Stockfish/commits').json():
+  for c in requests.get(
+      'https://api.github.com/repos/official-stockfish/Stockfish/commits'
+      + "?client_id=" + os.getenv("GITHUB_CLIENT_ID")
+      + "&client_secret=" + os.getenv("GITHUB_CLIENT_SECRET")).json():
     if not 'commit' in c:
       return None
     m = bs.search(c['commit']['message'])
