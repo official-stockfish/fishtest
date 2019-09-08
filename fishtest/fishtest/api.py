@@ -158,13 +158,14 @@ def stop_run(request):
   token = authenticate(request)
   if 'error' in token: return json.dumps(token)
 
-  username = get_username(request) 
+  username = get_username(request)
   user = request.userdb.user_cache.find_one({'username': username})
   if not user or user['cpu_hours'] < 1000:
     return ''
 
   with request.rundb.active_run_lock(str(request.json_body['run_id'])):
     run = request.rundb.get_run(request.json_body['run_id'])
+    run['finished'] = True
     run['stop_reason'] = request.json_body.get('message', 'API request')
     request.actiondb.stop_run(username, run)
 
