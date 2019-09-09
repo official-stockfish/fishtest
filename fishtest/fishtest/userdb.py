@@ -50,7 +50,7 @@ class UserDb:
 
   def get_users(self):
     return self.users.find(sort=[('_id', ASCENDING)])
-  
+
   # Cache pending for 60s
   last_pending_time = 0
   last_pending = None
@@ -70,8 +70,6 @@ class UserDb:
     user = self.find(username)
     if user:
       groups = user['groups']
-      # Everyone is in this group by default
-      groups.append('group:admins')
       return groups
 
   def add_user_group(self, username, group):
@@ -97,7 +95,7 @@ class UserDb:
       return True
     except:
       return False
-  
+
   def save_user(self, user):
     self.users.save(user)
     self.last_pending_time = 0
