@@ -20,28 +20,8 @@ def scavenge_tasks(scavenge=True, minutes=60):
     if changed and scavenge:
       rundb.runs.save(run)
 
-def get_idle_users(days):
-  """Check for users that have never been active"""
-  idle = {}
-  for u in rundb.userdb.get_users():
-      if not 'registration_time' in u \
-         or u['registration_time'] < datetime.utcnow() - timedelta(days=days):
-        idle[u['username']] = u
-  for u in rundb.userdb.user_cache.find():
-    if u['username'] in idle:
-      del idle[u['username']]
-  idle= idle.values()
-  return idle
-
-def scavenge_users(scavenge=True, days=28):
-  for u in get_idle_users(days):
-    if scavenge:
-      rundb.userdb.users.remove({'_id': u['_id']})
-
 def main():
   scavenge_tasks(scavenge=True)
-  # scavenge_users(scavenge=True) # Fix this, see
-  # https://github.com/glinscott/fishtest/issues/323#issuecomment-526127748
 
 if __name__ == '__main__':
   main()

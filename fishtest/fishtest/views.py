@@ -176,7 +176,10 @@ def actions(request):
       'time': action['time'],
       'username': action['username'],
     }
-    if action['action'] == 'block_user':
+    if action['action'] == 'update_stats':
+      item['user'] = ''
+      item['description'] = 'Update user statistics'
+    elif action['action'] == 'block_user':
       item['description'] = ('blocked' if action['data']['blocked'] else 'unblocked')
       item['user'] = action['data']['user']
     elif action['action'] == 'modify_run':
