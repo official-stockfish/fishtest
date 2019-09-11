@@ -27,6 +27,7 @@ class RunDb:
     self.pgndb = self.db['pgns']
     self.runs = self.db['runs']
     self.old_runs = self.db['old_runs']
+    self.deltas = self.db['deltas']
 
     self.chunk_size = 250
 
@@ -124,7 +125,7 @@ class RunDb:
           machine['nps'] = task.get('nps', 0)
           machines.append(machine)
     return machines
-  
+
   def get_pgn(self, id):
     id = id.split('.')[0] # strip .pgn
     pgn = self.pgndb.find_one({'run_id': id})
@@ -234,7 +235,7 @@ class RunDb:
       result[1] += c.count()
     else:
       result[1] += self.old_runs.find(q).count()
-      
+
     return result
 
   def get_results(self, run, save_run=True):
@@ -403,7 +404,7 @@ class RunDb:
     if task['worker_info']['username'] != username:
       print('Update_task: Non matching username: ' + username)
       return {'task_alive': False}
-    
+
     # Guard against incorrect results
     count_games = lambda d: d['wins'] + d['losses'] + d['draws']
     num_games = count_games(stats)
@@ -452,9 +453,9 @@ class RunDb:
   def upload_pgn(self, run_id, pgn_zip):
 
     self.pgndb.insert({'run_id': run_id, 'pgn_zip': Binary(pgn_zip)})
-    
+
     return {}
-  
+
   def failed_task(self, run_id, task_id):
     run = self.get_run(run_id)
     if task_id >= len(run['tasks']):
@@ -530,10 +531,10 @@ class RunDb:
             value = fl
 
     return value
-  
+
   # Store SPSA parameters for each worker
   spsa_params = {}
-  
+
   def store_params(self, run_id, worker, params):
     run_id = str(run_id)
     if not run_id in self.spsa_params:
@@ -617,7 +618,7 @@ class RunDb:
       freq = 100
     maxlen = 250000 / freq
     grow_summary = len(spsa['param_history']) < min(maxlen, spsa['iter'] / freq)
-    
+
     # Update the current theta based on the results from the worker
     # Worker wins/losses are always in terms of w_params
     result = spsa_results['wins'] - spsa_results['losses']

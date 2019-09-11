@@ -32,7 +32,7 @@ Show only:
  %for action in actions:
   <tr>
    <td>${action['time'].strftime("%y-%m-%d %H:%M:%S")}</td>
-   %if approver:
+   %if approver and 'fishtest.' not in action['username']:
    <td><a href="/user/${action['username']}">${action['username']}</a></td>
    %else:
    <td>${action['username']}</td>

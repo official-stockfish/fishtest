@@ -15,6 +15,9 @@ class ActionDb:
       q['username'] = username
     return self.actions.find(q, sort=[('_id', DESCENDING)], limit=max_num)
 
+  def update_stats(self):
+    self._new_action('fishtest.system', 'update_stats', '')
+
   def new_run(self, username, run):
     self._new_action(username, 'new_run', run)
 
