@@ -10,8 +10,8 @@ requires = [
     'pyramid_debugtoolbar',
     'waitress',
     'pymongo',
-    'scipy',
-    'numpy',
+    'numpy<1.16',
+    'scipy<1.2',
     'requests'
     ]
 
