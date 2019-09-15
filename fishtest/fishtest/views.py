@@ -438,7 +438,7 @@ def validate_form(request):
 
   return data
 
-@view_config(route_name='tests_run', renderer='tests_run.mak', permission='modify_db')
+@view_config(route_name='tests_run', renderer='tests_run.mak')
 def tests_run(request):
   if 'base-branch' in request.POST:
     try:
@@ -463,7 +463,7 @@ def tests_run(request):
 def can_modify_run(request, run):
   return run['args']['username'] == authenticated_userid(request) or has_permission('approve_run', request.context, request)
 
-@view_config(route_name='tests_modify', permission='modify_db')
+@view_config(route_name='tests_modify')
 def tests_modify(request):
   if 'num-games' in request.POST:
     run = request.rundb.get_run(request.POST['run'])
@@ -510,7 +510,7 @@ def tests_modify(request):
     cached_flash(request, 'Run successfully modified!')
   return HTTPFound(location=request.route_url('tests'))
 
-@view_config(route_name='tests_stop', permission='modify_db')
+@view_config(route_name='tests_stop')
 def tests_stop(request):
   if 'run-id' in request.POST:
     run = request.rundb.get_run(request.POST['run-id'])
@@ -589,7 +589,7 @@ def tests_purge(request):
   cached_flash(request, 'Purged run')
   return HTTPFound(location=request.route_url('tests'))
 
-@view_config(route_name='tests_delete', permission='modify_db')
+@view_config(route_name='tests_delete')
 def tests_delete(request):
   if 'run-id' in request.POST:
     run = request.rundb.get_run(request.POST['run-id'])
