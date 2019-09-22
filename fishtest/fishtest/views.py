@@ -524,6 +524,7 @@ def tests_stop(request):
     request.rundb.stop_run(request.POST['run-id'])
 
     run = request.rundb.get_run(request.POST['run-id'])
+    run['finished'] = True
     request.actiondb.stop_run(authenticated_userid(request), run)
 
     cached_flash(request, 'Stopped run')
