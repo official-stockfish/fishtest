@@ -12,19 +12,23 @@ rundb = RunDb()
 
 def purge_pgn(days):
   """Purge old PGNs except LTC (>= 20s) runs"""
-  
+
   deleted_runs = 0
   deleted_tasks = 0
   saved_runs = 0
   saved_tasks = 0
-  
+  now = datetime.utcnow()
+
   run_count = 0
   for run in rundb.runs.find({'finished': True, 'deleted': {'$exists': False}}):
-    
+
+    if (now - run['start_time']).days > 30:
+      break
+
     run_count += 1
     if run_count % 10 == 0:
       print('Run: %05d' % (run_count), end='\r')
-    
+
     skip = False
     if    (re.match('^([2-9][0-9])|(1[0-9][0-9])', run['args']['tc']) \
        and run['last_updated'] > datetime.utcnow() - timedelta(days=5*days)) \
@@ -42,9 +46,9 @@ def purge_pgn(days):
         else:
           rundb.pgndb.remove({'_id': pgn['_id']})
           deleted_tasks += 1
-  
+
   print('PGN runs/tasks saved:  %5d/%7d' % (saved_runs, saved_tasks))
-  print('PGN runs/tasks purged: %5d/%7d' % (deleted_runs, deleted_tasks)) 
+  print('PGN runs/tasks purged: %5d/%7d' % (deleted_runs, deleted_tasks))
 
 def main():
   purge_pgn(days=2)
