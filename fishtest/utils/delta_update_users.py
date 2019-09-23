@@ -99,6 +99,8 @@ def update_users():
       info[username] = rundb.userdb.user_cache.find_one({'username': username})
       if not info[username]:
         info[username] = top_month[username].copy()
+      else:
+        info[username]['games_per_hour'] = 0.0
 
   for run in rundb.get_unfinished_runs():
     process_run(run, top_month)
