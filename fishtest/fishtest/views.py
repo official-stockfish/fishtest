@@ -583,8 +583,11 @@ def purge_run(rundb, run):
 
   return purged
 
-@view_config(route_name='tests_purge', permission='approve_run')
+@view_config(route_name='tests_purge')
 def tests_purge(request):
+  if not has_permission('approve_run', request.context, request):
+    request.session.flash('Please login as approver')
+    return HTTPFound(location=request.route_url('login'))
   username = authenticated_userid(request)
 
   run = request.rundb.get_run(request.POST['run-id'])
