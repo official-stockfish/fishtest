@@ -14,8 +14,6 @@ skip = False
 
 def process_run(run, info, deltas=None):
   global skip
-  if 'deleted' in run:
-    return
   if deltas and (skip or str(run['_id']) in deltas):
     skip = True
     return
@@ -38,7 +36,7 @@ def process_run(run, info, deltas=None):
       stats = task['stats']
       num_games = stats['wins'] + stats['losses'] + stats['draws']
     else:
-      num_games = task['num_games']
+      num_games = 0
 
     try:
       info[username]['last_updated'] = max(task['last_updated'], info[username]['last_updated'])
