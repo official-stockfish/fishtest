@@ -443,6 +443,9 @@ def validate_form(request):
 
 @view_config(route_name='tests_run', renderer='tests_run.mak')
 def tests_run(request):
+  if not authenticated_userid(request):
+    request.session.flash('Please login')
+    return HTTPFound(location=request.route_url('login'))
   if 'base-branch' in request.POST:
     try:
       data = validate_form(request)
@@ -468,6 +471,9 @@ def can_modify_run(request, run):
 
 @view_config(route_name='tests_modify')
 def tests_modify(request):
+  if not authenticated_userid(request):
+    request.session.flash('Please login')
+    return HTTPFound(location=request.route_url('login'))
   if 'num-games' in request.POST:
     run = request.rundb.get_run(request.POST['run'])
     before = copy.deepcopy(run)
@@ -515,6 +521,9 @@ def tests_modify(request):
 
 @view_config(route_name='tests_stop')
 def tests_stop(request):
+  if not authenticated_userid(request):
+    request.session.flash('Please login')
+    return HTTPFound(location=request.route_url('login'))
   if 'run-id' in request.POST:
     run = request.rundb.get_run(request.POST['run-id'])
     if not can_modify_run(request, run):
@@ -595,6 +604,9 @@ def tests_purge(request):
 
 @view_config(route_name='tests_delete')
 def tests_delete(request):
+  if not authenticated_userid(request):
+    request.session.flash('Please login')
+    return HTTPFound(location=request.route_url('login'))
   if 'run-id' in request.POST:
     run = request.rundb.get_run(request.POST['run-id'])
     if not can_modify_run(request, run):
