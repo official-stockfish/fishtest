@@ -1020,6 +1020,8 @@ def tests(request):
 
     for run in finished:
       results = request.rundb.get_results(run)
+      if 'results_info' not in run:
+        run['results_info'] = format_results(results, run)
       if results['wins'] + results['losses'] + results['draws'] == 0:
         runs['failed'].append(run)
 
