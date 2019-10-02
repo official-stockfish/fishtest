@@ -1,18 +1,18 @@
 #!/bin/sh
 
-# Load the AWS variables when scheduled with cron
-source ~/.bashrc
+# Load the variables with the AWS keys, cron uses a limited environment
+source ${HOME}/.bashrc
 
-cd ~/backup
-~/mongodb/bin/mongodump && \
+cd ${HOME}/backup
+${HOME}/mongodb/bin/mongodump && \
 rm -f dump.tar.gz && \
 rm -f dump/fishtest_new/pgns.* && \
 tar -czvf dump.tar.gz dump && \
 rm -rf dump
 
-DAY=$(date +%Y%m%d --utc -d '1 hour')
-mkdir -p archive/$DAY
-mv dump.tar.gz archive/$DAY
-s3put -b fishtest -p /home/fishtest/ archive/$DAY/dump.tar.gz
+date_utc=$(date +%Y%m%d --utc)
+mkdir -p archive/${date_utc}
+mv dump.tar.gz archive/${date_utc}
+s3put -b fishtest -p /home/fishtest/ archive/${date_utc}/dump.tar.gz
 # Keep only the latest archive locally, we've filled the HD up multiple times
-mv archive/$DAY/dump.tar.gz .
+mv archive/${date_utc}/dump.tar.gz .
