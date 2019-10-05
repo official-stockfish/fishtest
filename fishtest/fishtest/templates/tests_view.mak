@@ -172,11 +172,7 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
       active_style = ''
   %>
   <tr class="${active_style}">
-   %if int(str(task['worker_info']['version']).split(':')[0]) > 65:
-     <td><a href="/api/pgn/${'%s-%d'%(run['_id'],idx)}.pgn">${idx}</a></td>
-   %else:
-     <td>${idx}</td>
-   %endif
+   <td><a href="/api/pgn/${'%s-%d'%(run['_id'],idx)}.pgn">${idx}</a></td>
    %if approver:
      <td><a href="/user/${task['worker_info']['username']}">${task['worker_key']}</a></td>
    %else:
