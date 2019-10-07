@@ -160,7 +160,7 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
   <%
     stats = task.get('stats', {})
     if 'stats' in task:
-      total = stats['wins'] + stats['losses'] + stats['draws']
+      total = str(stats['wins'] + stats['losses'] + stats['draws']).zfill(3)
     else:
       continue
 
