@@ -25,6 +25,7 @@ from optparse import OptionParser
 from games import run_games
 from updater import update
 from datetime import datetime
+from os import path
 
 WORKER_VERSION = 69
 ALIVE = True
@@ -165,12 +166,13 @@ def worker(worker_info, password, remote):
   return success
 
 def main():
-  print("Worker started in " + os.getcwd() + " ...\n")
+  worker_dir = path.dirname(path.realpath(__file__))
+  print("Worker started in " + worker_dir + " ...\n")
 
   signal.signal(signal.SIGINT, on_sigint)
   signal.signal(signal.SIGTERM, on_sigint)
 
-  config_file = 'fishtest.cfg'
+  config_file = path.join(worker_dir, 'fishtest.cfg')
   config = setup_config_file(config_file)
   parser = OptionParser()
   parser.add_option('-n', '--host', dest='host', default=config.get('parameters', 'host'))
@@ -232,6 +234,8 @@ def main():
   success = True
   global ALIVE
   while ALIVE:
+    if path.isfile(path.join(worker_dir, 'fish.exit')):
+      break
     if not success:
       time.sleep(HTTP_TIMEOUT)
     success = worker(worker_info, args[1], remote)
