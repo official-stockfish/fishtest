@@ -530,8 +530,8 @@ def tests_stop(request):
       request.session.flash('Unable to modify another users run!')
       return HTTPFound(location=request.route_url('tests'))
 
-    request.rundb.stop_run(request.POST['run-id'])
     run['finished'] = True
+    request.rundb.stop_run(request.POST['run-id'])
     request.actiondb.stop_run(authenticated_userid(request), run)
 
     cached_flash(request, 'Stopped run')
