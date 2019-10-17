@@ -122,6 +122,7 @@ def update_users():
     current += step_size
 
   if new_deltas:
+    new_deltas.update(deltas)
     rundb.deltas.remove()
     rundb.deltas.save(new_deltas)
 
