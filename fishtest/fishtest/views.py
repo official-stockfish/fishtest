@@ -672,8 +672,10 @@ def format_results(run_results, run):
 
   result['info'].append('Total: %d W: %d L: %d D: %d' % (sum(WLD), WLD[0], WLD[1], WLD[2]))
 
+  tc = run['args']['tc']
+
   if state == 'rejected':
-    if WLD[0] > WLD[1]:
+    if WLD[0] > WLD[1] and tc == '60+0.05':
       result['style'] = 'yellow'
     else:
       result['style'] = '#FF6A6A'
