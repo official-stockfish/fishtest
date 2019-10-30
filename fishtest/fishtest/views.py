@@ -678,7 +678,7 @@ def format_results(run_results, run):
     else:
       result['style'] = '#FF6A6A'
   elif state == 'accepted':
-    if (float(sprt['elo0']) + float(sprt['elo1'])) < 0.0:
+    if 'sprt' in run['args'] and (float(sprt['elo0']) + float(sprt['elo1'])) < 0.0:
       result['style'] = '#66CCFF'
     else:
       result['style'] = '#44EB44'
