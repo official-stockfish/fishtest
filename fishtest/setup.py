@@ -14,7 +14,8 @@ requires = [
     'numpy<1.16',
     'scipy<1.2',
     'requests',
-    'boto'
+    'boto',
+    'numba',
     ]
 
 setup(name='fishtest-server',

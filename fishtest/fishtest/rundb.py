@@ -7,6 +7,9 @@ import threading
 import zlib
 import re
 
+import numba
+from numba import jit
+
 from datetime import datetime, timedelta
 from bson.objectid import ObjectId
 from bson.binary import Binary
@@ -637,7 +640,10 @@ class RunDb:
       R = w_params[idx]['R']
       c = w_params[idx]['c']
       flip = w_params[idx]['flip']
-      param['theta'] = self.spsa_param_clip_round(param, R * c * result * flip, spsa['clipping'], 'deterministic')
+      #param['theta'] = self.spsa_param_clip_round(param, R * c * result * flip, spsa['clipping'], 'deterministic')
+      param['theta'] = jit_spsa_param_clip_round(
+          float(param['theta']), float(param['min']), float(param['max']),
+          R * c * result * flip, spsa['clipping'])
       if grow_summary:
         summary.append({
           'theta': param['theta'],
@@ -647,3 +653,20 @@ class RunDb:
 
     if grow_summary:
       spsa['param_history'].append(summary)
+
+@jit(nopython=True)
+def jit_spsa_param_clip_round(theta, pmin, pmax, increment, clipping):
+  value = 0.0
+
+  if clipping == 'old':
+    value = min(max(theta + increment, pmin), pmax)
+  else: #clipping == 'careful':
+    inc = min(abs(increment), abs(theta - pmin) / 2, abs(theta - pmax) / 2)
+    if inc > 0:
+        inc_sgn = 0 if increment == 0 else increment / abs(increment)
+        value = theta + inc_sgn * inc
+    else: #revert to old behavior to bounce off boundary
+        value = min(max(theta + increment, pmin), pmax)
+
+  return value
+
