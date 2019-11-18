@@ -1,4 +1,7 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+
+from __future__ import print_function
+
 import os, sys
 from datetime import datetime, timedelta
 
@@ -14,7 +17,7 @@ def scavenge_tasks(scavenge=True, minutes=60):
     changed = False
     for idx, task in enumerate(run['tasks']):
       if task['active'] and task['last_updated'] < datetime.utcnow() - timedelta(minutes=minutes):
-        print 'Scavenging', task
+        print('Scavenging', task)
         task['active'] = False
         changed = True
     if changed and scavenge:

@@ -1,5 +1,5 @@
 *.pyc
 .*
 *~
-fishtest/nohup.out
+fishtest/env
 fishtest/fishtest_server.egg-info
