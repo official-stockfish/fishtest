@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 
 # index_pending.py - create new index on runs.tasks.pending
 #
@@ -7,12 +8,12 @@
 # If the index needs to be removed for any reason, comment out the create_index()
 # and uncomment the drop_index() and rerun.
 
+from __future__ import print_function
 
 import os
 import sys
 import pprint
 from pymongo import MongoClient, ASCENDING, DESCENDING
-
 
 db_name='fishtest_new'
 
@@ -23,11 +24,9 @@ db = conn[db_name]
 runs = db['runs']
 pgns = db['pgns']
 
-
 def printout(s):
-  print s
+  print(s)
   sys.stdout.flush()
-
 
 # create indexes:
 #printout("Creating index ...")
@@ -39,7 +38,6 @@ pgns.ensure_index([('run_id', ASCENDING)])
 # IF INDEX NEEDS TO BE DROPPED, COMMENT OUT ABOVE 2 LINES, AND UNCOMMENT NEXT 2:
 # printout("\nDropping index ...")
 # runs.drop_index('tasks.pending_1')
-
 
 # display current list of indexes
 printout("\nCurrent Indexes:")
