@@ -26,9 +26,8 @@ from games import run_games
 from updater import update
 from datetime import datetime
 
-WORKER_VERSION = 69
+WORKER_VERSION = 70
 ALIVE = True
-
 HTTP_TIMEOUT = 15.0
 
 
