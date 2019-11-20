@@ -16,7 +16,7 @@ def move_tasks(move=True, days=100):
   """Check for tasks to move"""
   skipped = 0
   moved = 0
-  for run in rundb.runs.find({'tasks': {'$elemMatch': {'active': False}}}):
+  for run in rundb.runs.find({'finished': True}):
     if run['last_updated'] < datetime.utcnow() - timedelta(days=days):
         if moved % 100 == 0:
             print('Moved: ', moved, run['last_updated'])
