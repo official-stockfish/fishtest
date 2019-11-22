@@ -8,7 +8,7 @@
 cd ${HOME}/backup
 mongodump && \
 rm -f dump.tar.gz && \
-rm -f dump/fishtest_new/pgns.* && \
+: > dump/fishtest_new/pgns.bson && \
 tar -czvf dump.tar.gz dump && \
 rm -rf dump
 
