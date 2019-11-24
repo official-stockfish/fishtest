@@ -116,7 +116,7 @@ class RunDb:
 
   def get_machines(self):
     machines = []
-    for run in self.runs.find({'tasks': {'$elemMatch': {'active': True}}}):
+    for run in self.runs.find({'finished': False, 'tasks': {'$elemMatch': {'active': True}}}):
       for task in run['tasks']:
         if task['active']:
           machine = copy.copy(task['worker_info'])
