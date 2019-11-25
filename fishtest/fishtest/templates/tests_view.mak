@@ -173,7 +173,7 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
   %>
   <tr class="${active_style}">
    <td><a href="/api/pgn/${'%s-%d'%(run['_id'],idx)}.pgn">${idx}</a></td>
-   %if approver and 'worker_info' in task:
+   %if approver and 'worker_info' in task and 'username' in task['worker_info']:
      <td><a href="/user/${task['worker_info']['username']}">${task['worker_key']}</a></td>
    %else:
      <td>${task['worker_key']}</td>
