@@ -216,7 +216,7 @@ class RunDb:
                           sort=[('last_updated', DESCENDING), ('start_time', DESCENDING)])
 
   def get_finished_runs(self, skip=0, limit=0, username='', success_only=False, ltc_only=False):
-    q = {'finished': True, 'deleted': {'$exists': False}}
+    q = {'finished': True}
     if len(username) > 0:
       q['args.username'] = username
     if ltc_only:
