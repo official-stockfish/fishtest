@@ -89,6 +89,7 @@ class RunDb:
       'auto_purge': auto_purge,
       'throughput': throughput,
       'priority': priority,
+      'ip_start_time': - time.mktime(start_time.timetuple())
       'internal_priority': - time.mktime(start_time.timetuple()),
     }
 
@@ -282,9 +283,16 @@ class RunDb:
     # Formula: - second_since_epoch - played_and_allocated_tasks * 3600 * chunk_size / games_throughput
     # With default value 'throughput = 3000', this means that the priority is unchanged as long as
     # we play at rate '3000 games / hour'.
+    # A copy of the test start date is used. This is adjusted if the test gets ahead of its expected schedule
+    # so that it can keep some of those gains.
     if (run['args']['throughput'] != None and run['args']['throughput'] != 0):
-      run['args']['internal_priority'] = - time.mktime(run['start_time'].timetuple()) - \
+      run['args']['ip_start_time'] = run['start_time'] if (run['args']['ip_start_time'] == None)
+      new_internal_prio = - time.mktime(run['args']['ip_start_time'].timetuple()) - \
         task_id * 3600 * self.chunk_size * run['args']['threads'] / run['args']['throughput']
+      time_gain = -time.time() - new_internal_prio
+      if time_gain > 0:
+        run['args']['ip_start_time'] += time_gain / 2
+      run['args']['internal_priority'] = new_internal_prio
 
   # Limit concurrent request_task
   task_lock = threading.Lock()
