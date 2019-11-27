@@ -228,20 +228,22 @@ class RunDb:
 
     c = self.runs.find(q, skip=skip, limit=limit, sort=[('last_updated', DESCENDING)])
     no_del = []
+    del_count = 0
     for run in c:
       if 'deleted' in run:
+        del_count += 1
         continue
       no_del.append(run)
-    result = [no_del, len(no_del)]
+    result = [no_del, c.count()]
 
-    if limit != 0 and len(result[0]) != limit:
+    if limit != 0 and len(result[0]) != limit - del_count:
       c = self.old_runs.find(q, skip=max(0, skip-c.count()),
                              limit=limit-len(result[0]),
                              sort=[('_id',DESCENDING)])
       result[0] += list(c)
       result[1] += c.count()
     else:
-      result[1] += self.old_runs.find(q).count()
+      result[1] += self.old_runs.find().count()
 
     return result
 
