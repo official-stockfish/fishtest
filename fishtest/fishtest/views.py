@@ -933,8 +933,6 @@ def tests(request):
   try:
     unfinished_runs = request.rundb.get_unfinished_runs()
     for run in unfinished_runs:
-      if 'deleted' in run:
-        continue
       # Is username filtering on?  If so, match just runs from that user
       if len(username) > 0 and run['args'].get('username', '') != username:
         continue
