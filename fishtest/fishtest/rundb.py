@@ -227,7 +227,12 @@ class RunDb:
       q['results_info.style'] = '#44EB44'
 
     c = self.runs.find(q, skip=skip, limit=limit, sort=[('last_updated', DESCENDING)])
-    result = [list(c), c.count()]
+    no_del = []
+    for run in c:
+      if 'deleted' in run:
+        continue
+      no_del.append(run)
+    result = [no_del, len(no_del)]
 
     if limit != 0 and len(result[0]) != limit:
       c = self.old_runs.find(q, skip=max(0, skip-c.count()),
