@@ -746,6 +746,9 @@ def get_chi2(tasks, bad_users):
   expected = numpy.outer(row_sums, column_sums) / grand_total
   diff = observed - expected
   adj = numpy.outer((1 - row_sums / grand_total), (1 - column_sums / grand_total))
+  if expected * adj <= 0:
+    return results
+
   residual = diff / numpy.sqrt(expected * adj)
   for idx in range(len(users)):
     users[users.keys()[idx]] = numpy.max(numpy.abs(residual[idx]))
