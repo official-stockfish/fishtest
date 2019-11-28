@@ -30,30 +30,102 @@ def printout(s):
   print(s)
   sys.stdout.flush()
 
+def qlen(c):
+  if (c): return len(list(c))
+  else  : return 0
 
 
+# Tests: Hint some queries
+
+printout("\nHinted queries:")
+printout("\nFetching unfinished runs old hint ...")
+start = time.time()
+c = runs.find({'finished': False}, sort=[('last_updated', DESCENDING), ('start_time', DESCENDING)]
+             ).hint('finished_1_last_updated_-1')
+end = time.time()
+
+printout("{} rows {:1.4f}".format(qlen(c), end-start) + "s\nFetching unfinished runs new hint ...")
+start = time.time()
+c = runs.find({'finished': False}, sort=[('last_updated', DESCENDING)]).hint('finished_1_last_updated_-1')
+end = time.time()
+
+printout("{} rows {:1.4f}".format(qlen(c), end-start) + "s\nFetching machines hint ...")
+start = time.time()
+c = runs.find({'finished': False, 'tasks': {'$elemMatch': {'active': True}}}).hint('finished_1_last_updated_-1')
+end = time.time()
+
+printout("{} rows {:1.4f}".format(qlen(c), end-start) + "s\nFetching finished runs hint ...")
+start = time.time()
+q = {'finished': True}
+c = runs.find(q, limit=50, sort=[('last_updated', DESCENDING)]).hint('finished_1_last_updated_-1')
+end = time.time()
+
+printout("{} rows {:1.4f}".format(qlen(c), end-start) + "s\nFetching finished runs (user vdv) hint ...")
+start = time.time()
+q = {'finished': True, 'args.username': "vdv"}
+c = runs.find(q, limit=50, sort=[('last_updated', DESCENDING)]).hint('finished_1_last_updated_-1')
+end = time.time()
+
+# Extra conditions that might be applied to finished_runs:
+#     q['args.username'] = username
+#     q['args.tc'] = {'$regex':'^([4-9][0-9])|([1-9][0-9][0-9])'}
+#     q['results_info.style'] = '#44EB44'
+
+
+# Time some important queries using call to rundb function
+
+printout("{} rows {:1.4f}".format(qlen(c), end-start) + "s\n\nOriginal queries:")
 printout("\nFetching unfinished runs ...")
 start = time.time()
-unfinished_runs = rundb.get_unfinished_runs()
+c = rundb.get_unfinished_runs()
 end = time.time()
 
-printout(str(end-start) + "s\nFetching machines ...")
+printout("{} rows {:1.4f}".format(qlen(c), end-start) + "s\nFetching machines ...")
 start = time.time()
-machines = rundb.get_machines()
+c = rundb.get_machines()
 end = time.time()
 
-printout(str(end-start) + "s\nFetching finished runs ...")
+printout("{} rows {:1.4f}".format(qlen(c), end-start) + "s\nFetching finished runs ...")
 start = time.time()
-finished, num_finished = rundb.get_finished_runs(skip=0, limit=50, username='',
+c, n = rundb.get_finished_runs(skip=0, limit=50, username='',
                                                  success_only=False, ltc_only=False)
 end = time.time()
 
-printout(str(end-start) + "s\nRequesting pgn ...")
-if (len(finished) == 0):
-    finished.append({'_id':'abc'})
+printout("{} rows {:1.4f}".format(qlen(c), end-start) + "s\nFetching finished runs (vdv) ...")
 start = time.time()
-pgn = rundb.get_pgn(str(finished[0]['_id']) + ".pgn")
+c, n = rundb.get_finished_runs(skip=0, limit=50, username='vdv',
+                                                 success_only=False, ltc_only=False)
 end = time.time()
 
-printout(str(end-start) + "s\n")
+printout("{} rows {:1.4f}".format(qlen(c), end-start) + "s\nRequesting pgn ...")
+if (n == 0):
+    c.append({'_id':'abc'})
+start = time.time()
+c = rundb.get_pgn(str(c[0]['_id']) + ".pgn")
+end = time.time()
+
+
+# Tests: Explain some queries - should show which indexes are being used
+
+printout("{} rows {:1.4f}".format(qlen(c), end-start) + "s\n\nExplain queries")
+printout("\nFetching unfinished runs xp ...")
+start = time.time()
+c = runs.find({'finished': False}, sort=[('last_updated', DESCENDING), ('start_time', DESCENDING)]).explain()
+printout(pprint.pformat(c, indent=3, width=110))
+end = time.time()
+
+printout("{} rows {:1.4f}".format(qlen(c), end-start) + "s\nFetching machines xp ...")
+start = time.time()
+c = runs.find({'finished': False, 'tasks': {'$elemMatch': {'active': True}}}).explain()
+printout(pprint.pformat(c, indent=3, width=110))
+end = time.time()
+
+printout("{} rows {:1.4f}".format(qlen(c), end-start) + "s\nFetching finished runs xp ...")
+start = time.time()
+q = {'finished': True}
+c = runs.find(q, skip=0, limit=50, sort=[('last_updated', DESCENDING)]).explain()
+printout(pprint.pformat(c, indent=3, width=110))
+end = time.time()
+
+printout("{} rows {:1.4f}".format(qlen(c), end-start) + "s\n")
 
