@@ -754,20 +754,38 @@ def get_chi2(tasks, bad_users):
 
   observed = numpy.array(users.values())
   rows,columns = observed.shape
-  df = (rows - 1) * (columns - 1)
-  column_sums = numpy.sum(observed, axis=0)
-  row_sums = numpy.sum(observed, axis=1)
-  grand_total = numpy.sum(column_sums)
-  if grand_total == 0:
+  # Results only from one worker: skip the test for workers homogeneity
+  if rows == 1:
+    results = {'chi2': float('nan'), 'dof': 0, 'p': float('nan'), 'residual': {}}
     return results
 
+  column_sums = numpy.sum(observed, axis=0)
+  columns_not_zero = sum(i > 0 for i in column_sums)
+  df = (rows - 1) * (columns - 1)
+
+  if columns_not_zero == 0:
+    return results
+  # Results only of one type: workers are identical wrt the test
+  elif columns_not_zero == 1:
+    results = {'chi2': 0.0, 'dof': df, 'p': 1.0, 'residual': {}}
+    return results
+  # Results only of two types: workers are identical wrt the missing result type
+  # Change the data shape to avoid divide by zero
+  elif columns_not_zero == 2:
+    idx = numpy.argwhere(numpy.all(observed[..., :] == 0, axis=0))
+    observed = numpy.delete(observed, idx, axis=1)
+    column_sums = numpy.sum(observed, axis=0)
+
+  row_sums = numpy.sum(observed, axis=1)
+  grand_total = numpy.sum(column_sums)
+
   expected = numpy.outer(row_sums, column_sums) / grand_total
-  diff = observed - expected
-  adj = numpy.outer((1 - row_sums / grand_total), (1 - column_sums / grand_total))
-  residual = diff / numpy.sqrt(expected * adj)
+  raw_residual = observed - expected
+  std_error = numpy.sqrt(expected * numpy.outer((1 - row_sums / grand_total), (1 - column_sums / grand_total)))
+  adj_residual = raw_residual / std_error
   for idx in range(len(users)):
-    users[users.keys()[idx]] = numpy.max(numpy.abs(residual[idx]))
-  chi2 = numpy.sum(diff * diff / expected)
+    users[users.keys()[idx]] = numpy.max(numpy.abs(adj_residual[idx]))
+  chi2 = numpy.sum(raw_residual * raw_residual / expected)
   return {
     'chi2': chi2,
     'dof': df,
