@@ -914,7 +914,7 @@ def tests(request):
   ltc_only = len(request.params.get('ltc_only', '')) > 0
 
   do_cache = (len(username) == 0 and not success_only and not ltc_only
-              and request.params.get('page', 1) == 1)
+              and request.params.get('page', "1") == "1")
 
   full_info = (len(username) != 0 or do_cache)
 
@@ -1006,9 +1006,6 @@ def tests(request):
           if 'sprt' in run['args']:
             sprt = run['args']['sprt']
             info['info'].append(('[%.2f,%.2f]') % (sprt['elo0'], sprt['elo1']))
-
-      else:
-        pending_hours = 0
 
     else: # not full_info
       cores = 0
