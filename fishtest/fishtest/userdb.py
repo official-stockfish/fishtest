@@ -11,7 +11,6 @@ class UserDb:
     self.users = self.db['users']
     self.user_cache = self.db['user_cache']
     self.top_month = self.db['top_month']
-    self.old_user_cache = self.db['old_user_cache']
     self.flag_cache = self.db['flag_cache']
 
   def init_collection(self):
