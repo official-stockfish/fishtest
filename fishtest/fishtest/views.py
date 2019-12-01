@@ -15,6 +15,7 @@ from collections import defaultdict
 from pyramid.security import remember, forget, authenticated_userid, has_permission
 from pyramid.view import view_config, forbidden_view_config
 from pyramid.httpexceptions import HTTPFound, HTTPBadRequest
+from pyramid.response import Response
 
 import stat_util
 
@@ -34,6 +35,22 @@ def cached_flash(request, requestString):
   clear_cache()
   request.session.flash(requestString)
   return
+
+with open(os.path.join('fishtest', 'static', 'favicon.ico'), 'r') as f:
+  _icon = f.read()
+_fi_response = Response(content_type='image/x-icon', body=_icon)
+
+with open(os.path.join('fishtest', 'static', 'robots.txt'), 'r') as f:
+  _robots = f.read()
+_robots_response = Response(content_type='text/plain', body= _robots)
+
+@view_config(name='favicon.ico')
+def favicon_view(context, request):
+  return _fi_response
+
+@view_config(name='robots.txt')
+def robotstxt_view(context, request):
+  return _robots_response
 
 @view_config(route_name='home', renderer='mainpage.mak')
 def mainpage(request):
