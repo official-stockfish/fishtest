@@ -6,10 +6,10 @@
 . ${HOME}/.profile
 
 cd ${HOME}/backup
-mongodump && \
-rm -f dump.tar.gz && \
-: > dump/fishtest_new/pgns.bson && \
-tar -czvf dump.tar.gz dump && \
+for db_name in "fishtest_new" "admin" "fishtest" "fishtest_testing"; do
+  mongodump --db=${db_name} --excludeCollection="pgns" --gzip
+done
+tar -cv dump | gzip -1 > dump.tar.gz
 rm -rf dump
 
 date_utc=$(date +%Y%m%d --utc)
