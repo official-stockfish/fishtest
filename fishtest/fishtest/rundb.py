@@ -89,8 +89,8 @@ class RunDb:
       'auto_purge': auto_purge,
       'throughput': throughput,
       'priority': priority,
-      'ip_start_time': - time.mktime(start_time.timetuple())
-      'internal_priority': - time.mktime(start_time.timetuple()),
+      'ip_start_time': - time.mktime(start_time.timetuple()),
+      'internal_priority': - time.mktime(start_time.timetuple())
     }
 
     if sprt != None:
