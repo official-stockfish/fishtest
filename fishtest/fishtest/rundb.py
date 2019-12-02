@@ -286,7 +286,7 @@ class RunDb:
     # A copy of the test start date is used. This is adjusted if the test gets ahead of its expected schedule
     # so that it can keep some of those gains.
     if (run['args']['throughput'] != None and run['args']['throughput'] != 0):
-      if (run['args']['ip_start_time'] == None):
+      if ('ip_start_time' not in run['args']):
         run['args']['ip_start_time'] = run['start_time']
       new_internal_prio = - time.mktime(run['args']['ip_start_time'].timetuple()) - \
         task_id * 3600 * self.chunk_size * run['args']['threads'] / run['args']['throughput']
