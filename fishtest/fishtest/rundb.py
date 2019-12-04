@@ -517,15 +517,12 @@ class RunDb:
     return True
 
   def spsa_param_clip_round(self, param, increment, clipping, rounding):
-    value = 0.0
-
     if clipping == 'old':
       value = min(max(param['theta'] + increment, param['min']), param['max'])
     else: #clipping == 'careful':
       inc = min(abs(increment), abs(param['theta'] - param['min']) / 2, abs(param['theta'] - param['max']) / 2)
       if inc > 0:
-          inc_sgn = 0 if increment == 0 else increment / abs(increment)
-          value = param['theta'] + inc_sgn * inc
+          value = param['theta'] + inc * increment / abs(increment)
       else: #revert to old behavior to bounce off boundary
           value = min(max(param['theta'] + increment, param['min']), param['max'])
 
