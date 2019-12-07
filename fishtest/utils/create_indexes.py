@@ -25,8 +25,8 @@ pgns = db['pgns']
 
 
 indexList = { 'runs' : [ [(u'args.username', ASCENDING)],
-                         [(u'finished', ASCENDING), (u'last_updated', DESCENDING)],
                          [(u'finished', ASCENDING), (u'last_updated', DESCENDING), (u'start_time', DESCENDING)] ],
+                         # [(u'finished', ASCENDING), (u'last_updated', DESCENDING)],
                          # [(u'deleted', ASCENDING)],
                          # [(u'deleted', ASCENDING), (u'finished', ASCENDING)],
                          # [(u'last_updated', DESCENDING), (u'start_time', DESCENDING)],
