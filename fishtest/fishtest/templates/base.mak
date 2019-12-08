@@ -75,7 +75,11 @@
           <li><a href="/user">Profile</a></li>
           <li><a href="/login">Login</a></li>
           <li><a href="/logout">Logout</a></li>
-          <li><a href="/pending">Pending (${len(request.userdb.get_pending())})</a></li>
+          %if len(request.userdb.get_pending()) > 0:
+          <li><a style="color:red" href="/pending">Pending (${len(request.userdb.get_pending())})</a></li>
+          %else:
+          <li><a href="/pending">Pending</a></li>
+          %endif
         </ul>
       </div>
       <div class="span11">

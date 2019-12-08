@@ -272,6 +272,7 @@ def user(request):
         user['email'] = request.params.get('email')
     else:
       user['blocked'] = ('blocked' in request.POST)
+      request.userdb.last_pending_time = 0
       request.actiondb.block_user(authenticated_userid(request), {'user': username, 'blocked': user['blocked']})
       request.session.flash(('Blocked' if user['blocked'] else 'Unblocked') + ' user ' + username)
     request.userdb.save_user(user)
