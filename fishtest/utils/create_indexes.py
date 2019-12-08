@@ -49,9 +49,7 @@ for cn in db.list_collection_names():
 
     # Drop all indexes on collections cn except _id_
     printout("")
-    k = c.index_information().keys()
-    k.sort()
-    for idx in k:
+    for idx in c.index_information().keys():
       if idx != "_id_":
         printout("Dropping " + cn + " index " + idx + " ...")
         c.drop_index(idx)
