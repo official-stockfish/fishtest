@@ -8,7 +8,7 @@ import util
 rundb = None
 run_id_stc = None
 run_id = None
-  
+
 class CreateRunDBTest(unittest.TestCase):
 
   def tearDown(self):
@@ -16,7 +16,7 @@ class CreateRunDBTest(unittest.TestCase):
     # Shutdown flush thread:
     rundb.stop()
 
-  def test_10_create_run(self): 
+  def test_10_create_run(self):
     global rundb, run_id, run_id_stc
     rundb= RunDb()
     # STC
@@ -34,10 +34,11 @@ class CreateRunDBTest(unittest.TestCase):
     print(run['tasks'][0])
     self.assertFalse(run['tasks'][0][u'active'])
     run['tasks'][0][u'active'] = True
-    run['tasks'][0][u'worker_info'] = {'username': 'worker1', 'unique_key': 'travis'}
-    
+    run['tasks'][0][u'worker_info'] = {'username': 'worker1', 'unique_key': 'travis', 'concurrency': 1}
+    run['cores'] = 1
+
     print(util.find_run()['args'])
-    
+
   def test_20_update_task(self):
     r= rundb.update_task(run_id, 0, {'wins': 1, 'losses': 1, 'draws': rundb.chunk_size-3, 'crashes': 0, 'time_losses': 0}, 1000000, '', 'worker2')
     self.assertEqual(r, {'task_alive': False})

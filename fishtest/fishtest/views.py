@@ -528,7 +528,7 @@ def tests_modify(request):
     run['args']['num_games'] = num_games
     run['args']['priority'] = int(request.POST['priority'])
     run['args']['throughput'] = int(request.POST['throughput'])
-    request.rundb.recalc_prio(run)
+    request.rundb.calc_itp(run)
     request.rundb.buffer(run, True)
     request.rundb.task_time = 0
 
@@ -850,7 +850,7 @@ def tests_view(request):
   for name in ['new_tag', 'new_signature', 'new_options', 'resolved_new',
                'base_tag', 'base_signature', 'base_options', 'resolved_base',
                'sprt', 'num_games', 'spsa', 'tc', 'threads', 'book', 'book_depth',
-               'auto_purge', 'priority', 'internal_priority', 'username', 'tests_repo',
+               'auto_purge', 'priority', 'itp', 'username', 'tests_repo',
                'info']:
 
     if not name in run['args']:
@@ -1007,7 +1007,8 @@ def tests(request):
         else:
           runs[state].append(run)
 
-      runs['pending'].sort(key=lambda run: (run['args']['priority'], run['args']['internal_priority']))
+      runs['pending'].sort(key=lambda run: (run['args']['priority'],
+                                            run['args']['itp'] if 'itp' in run['args'] else 100))
       runs['active'].sort(reverse=True, key=lambda run: ('sprt' in run['args'], run['results_info']['llr'] if 'llr' in run['results_info'] else 0,
                                                        'spsa' not in run['args'], run['results']['wins'] + run['results']['draws'] + run['results']['losses']))
 
