@@ -20,9 +20,6 @@
 <%include file="run_table.mak" args="runs=runs['failed'], show_delete=True"/>
 %endif
 
-<%
-id_cores = {}
-%>
 %if show_machines:
  <h3>Active - ${len(machines)} machines ${cores}
      cores ${'%.2fM' % (nps / (cores * 1000000.0 + 1))} nps
@@ -45,13 +42,6 @@ id_cores = {}
    </thead>
    <tbody>
   %for machine in machines:
-<%
-    id = machine['run']['_id']
-    if id not in id_cores:
-      id_cores[id] = machine['concurrency']
-    else:
-      id_cores[id] += machine['concurrency']
-%>
     <tr>
      <td>${machine['username']}</td>
      <td>
@@ -75,7 +65,7 @@ id_cores = {}
 %else:
  <h3>Active - ${len(runs['active'])} tests</h3>
 %endif
-<%include file="run_table.mak" args="runs=runs['active'],id_cores=id_cores"/>
+<%include file="run_table.mak" args="runs=runs['active']"/>
 
 %endif
 

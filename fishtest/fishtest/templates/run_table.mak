@@ -1,4 +1,4 @@
-<%page args="runs, show_delete=False, active=False, id_cores={}"/>
+<%page args="runs, show_delete=False, active=False"/>
 
 <%namespace name="base" file="base.mak"/>
 
@@ -75,7 +75,7 @@
     %else:
     ${run['args']['num_games']}
     %endif
-    @ ${run['args']['tc']} th ${str(run['args'].get('threads',1))}<br>${('cores: '+str(id_cores[run['_id']])) if run['_id'] in id_cores else ''}</td>
+    @ ${run['args']['tc']} th ${str(run['args'].get('threads',1))}<br>${('cores: '+str(run['cores'])) if not run['finished'] and 'cores' in run else ''}</td>
     <td style="word-break:break-word">${run['args'].get('info', '')}</td>
    </tr>
   %endfor

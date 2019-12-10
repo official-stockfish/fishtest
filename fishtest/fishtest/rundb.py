@@ -13,6 +13,7 @@ from bson.binary import Binary
 from pymongo import MongoClient, ASCENDING, DESCENDING
 from userdb import UserDb
 from actiondb import ActionDb
+from views import format_results
 
 import fishtest.stat_util
 
@@ -62,7 +63,7 @@ class RunDb:
               username=None,
               tests_repo=None,
               auto_purge=True,
-              throughput=3000,
+              throughput=100,
               priority=0):
     if start_time == None:
       start_time = datetime.utcnow()
@@ -88,8 +89,8 @@ class RunDb:
       'tests_repo': tests_repo,
       'auto_purge': auto_purge,
       'throughput': throughput,
+      'itp': 100,  # internal throughput
       'priority': priority,
-      'internal_priority': - time.mktime(start_time.timetuple()),
     }
 
     if sprt != None:
@@ -271,20 +272,30 @@ class RunDb:
 
     return results
 
-  def recalc_prio(self, run, task_id=None):
-    if task_id is None:
-      task_id = -1
-      for task in run['tasks']:
-        task_id = task_id + 1
-        if not task['active'] and task['pending']:
-          break
-    # Recalculate internal priority based on task start date and throughput
-    # Formula: - second_since_epoch - played_and_allocated_tasks * 3600 * chunk_size / games_throughput
-    # With default value 'throughput = 3000', this means that the priority is unchanged as long as
-    # we play at rate '3000 games / hour'.
-    if (run['args']['throughput'] != None and run['args']['throughput'] != 0):
-      run['args']['internal_priority'] = - time.mktime(run['start_time'].timetuple()) - \
-        task_id * 3600 * self.chunk_size * run['args']['threads'] / run['args']['throughput']
+  def calc_itp(self, run):
+    itp = run['args']['throughput']
+    if itp < 1:
+      itp = 1
+    elif itp > 500:
+      itp = 500
+    itp *= math.sqrt(float(run['args']['tc'].split('+')[0]) / 10)
+    itp *= math.sqrt(run['args']['threads'])
+    if 'sprt' not in run['args']:
+      itp *= 0.5
+    else:
+      results = self.get_results(run)
+      run['results_info'] = format_results(results, run)
+      if 'llr' in run['results_info']:
+        llr = run['results_info']['llr']
+        itp *= (5 + llr) / 5
+    run['args']['itp'] = itp
+
+  def sum_cores(self, run):
+    cores = 0
+    for task in run['tasks']:
+      if task['active']:
+        cores += int(task['worker_info']['concurrency'])
+    run['cores'] = cores
 
   # Limit concurrent request_task
   task_lock = threading.Lock()
@@ -304,12 +315,17 @@ class RunDb:
       return {'task_waiting': False}
 
   def sync_request_task(self, worker_info):
-
     if time.time() > self.task_time + 60:
       self.task_runs = []
       for r in self.get_unfinished_runs():
+        run = self.get_run(r['_id'])
+        self.sum_cores(run)
+        r['cores'] = run['cores']
+        self.calc_itp(run)
+        r['args']['itp'] = run['args']['itp']
         self.task_runs.append(r)
-      self.task_runs.sort(key=lambda r: (-r['args']['priority'], -r['args']['internal_priority'], r['_id']))
+      self.task_runs.sort(key=lambda r: (-r['args']['priority'],
+        r['cores'] / r['args']['itp'] * 100.0, -r['args']['itp'], r['_id']))
       self.task_time = time.time()
 
     max_threads = int(worker_info['concurrency'])
@@ -364,15 +380,15 @@ class RunDb:
     if not run_found:
       return {'task_waiting': False}
 
-    self.recalc_prio(run, task_id)
-
-    self.buffer(run, False)
-
     for runt in self.task_runs:
       if runt['_id'] == run['_id']:
-        runt['args']['internal_priority'] = run['args']['internal_priority']
-        self.task_runs.sort(key=lambda r: (-r['args']['priority'], -r['args']['internal_priority'], r['_id']))
+        self.sum_cores(run)
+        runt['cores'] = run['cores']
+        self.task_runs.sort(key=lambda r: (-r['args']['priority'],
+          r['cores'] / r['args']['itp'] * 100.0, -r['args']['itp'], r['_id']))
         break
+
+    self.buffer(run, False)
 
     return {'run': run, 'task_id': task_id}
 
@@ -428,6 +444,7 @@ class RunDb:
     task['stats'] = stats
     task['nps'] = nps
     if num_games >= task['num_games']:
+      run['cores'] -= task['worker_info']['concurrency']
       task['pending'] = False # Make pending False before making active false to prevent race in request_task
       task['active'] = False
       flush = True
@@ -486,6 +503,7 @@ class RunDb:
     if run is None:
       run = self.get_run(run_id)
       save_it = True
+    run.pop('cores', None)
     prune_idx = len(run['tasks'])
     for idx, task in enumerate(run['tasks']):
       is_active = task['active']
