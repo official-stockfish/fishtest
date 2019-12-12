@@ -444,7 +444,8 @@ class RunDb:
     task['stats'] = stats
     task['nps'] = nps
     if num_games >= task['num_games']:
-      run['cores'] -= task['worker_info']['concurrency']
+      if 'cores' in run:
+        run['cores'] -= task['worker_info']['concurrency']
       task['pending'] = False # Make pending False before making active false to prevent race in request_task
       task['active'] = False
       flush = True
