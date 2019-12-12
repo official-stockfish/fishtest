@@ -572,7 +572,7 @@ class RunDb:
 
   def get_params(self, run_id, worker):
     run_id = str(run_id)
-    if not run_id in self.spsa_params:
+    if not run_id in self.spsa_params or not worker in self.spsa_params[run_id]:
       # Should only happen after server restart
       return self.generate_spsa(self.get_run(run_id))['w_params']
     return self.spsa_params[run_id][worker]
