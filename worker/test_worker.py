@@ -11,13 +11,13 @@ class workerTest(unittest.TestCase):
   def tearDown(self):
     if os.path.exists('foo.txt'):
       os.remove('foo.txt')
-    if os.path.exists('polyglot.ini'):
-      os.remove('polyglot.ini')
+    if os.path.exists('README.md'):
+      os.remove('README.md')
 
   def test_item_download(self):
     try:
-      games.setup('polyglot.ini', '.')
-      self.assertTrue(os.path.exists(os.path.join('.','polyglot.ini')))
+      games.setup('README.md', '.')
+      self.assertTrue(os.path.exists(os.path.join('.','README.md')))
     except KeyError:
       pass
 
