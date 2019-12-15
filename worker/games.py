@@ -41,7 +41,7 @@ def is_64bit():
 
 HTTP_TIMEOUT = 15.0
 
-FISHCOOKING_URL = 'https://github.com/mcostalba/FishCooking'
+REPO_URL = 'https://github.com/official-stockfish/books'
 ARCH = 'ARCH=x86-64-modern' if is_64bit() else 'ARCH=x86-32'
 EXE_SUFFIX = ''
 MAKE_CMD = 'make COMP=gcc ' + ARCH
@@ -95,7 +95,7 @@ def verify_signature(engine, signature, remote, payload, concurrency):
 
 def setup(item, testing_dir):
   """Download item from FishCooking to testing_dir"""
-  tree = requests.get(github_api(FISHCOOKING_URL) + '/git/trees/setup', timeout=HTTP_TIMEOUT).json()
+  tree = requests.get(github_api(REPO_URL) + '/git/trees/master', timeout=HTTP_TIMEOUT).json()
   for blob in tree['tree']:
     if blob['path'] == item:
       print('Downloading %s ...' % (item))
@@ -354,7 +354,7 @@ def run_games(worker_info, password, remote, run, task_id):
   base_options = run['args']['base_options']
   threads = int(run['args']['threads'])
   spsa_tuning = 'spsa' in run['args']
-  repo_url = run['args'].get('tests_repo', FISHCOOKING_URL)
+  repo_url = run['args'].get('tests_repo', REPO_URL)
   games_concurrency = int(worker_info['concurrency']) / threads
 
   # Format options according to cutechess syntax
@@ -410,7 +410,12 @@ def run_games(worker_info, password, remote, run, task_id):
 
   # Download book if not already existing
   if not os.path.exists(os.path.join(testing_dir, book)) or os.stat(os.path.join(testing_dir, book)).st_size == 0:
-    setup(book, testing_dir)
+    zipball = book + '.zip'
+    setup(zipball, testing_dir)
+    zip_file = ZipFile(zipball)
+    zip_file.extractall()
+    zip_file.close()
+    os.remove(zipball)
 
   # Download cutechess if not already existing
   if not os.path.exists(cutechess):
