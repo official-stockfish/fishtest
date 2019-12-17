@@ -36,11 +36,12 @@ def cached_flash(request, requestString):
   request.session.flash(requestString)
   return
 
-with open(os.path.join('fishtest', 'static', 'favicon.ico'), 'r') as f:
+_here = os.path.dirname(__file__)
+with open(os.path.join(_here, 'static', 'favicon.ico'), 'r') as f:
   _icon = f.read()
 _fi_response = Response(content_type='image/x-icon', body=_icon)
 
-with open(os.path.join('fishtest', 'static', 'robots.txt'), 'r') as f:
+with open(os.path.join(_here, 'static', 'robots.txt'), 'r') as f:
   _robots = f.read()
 _robots_response = Response(content_type='text/plain', body= _robots)
 
