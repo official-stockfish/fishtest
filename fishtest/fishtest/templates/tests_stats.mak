@@ -117,8 +117,8 @@
 	    LOS5=a5['LOS']
 	 else:                #assume fixed length test
 	    elo5,elo95_5,LOS5=fishtest.stats.stat_util.get_elo(results5_)
-	    elo5_l=elo5+elo95_5
-	    elo5_u=elo5-elo95_5
+	    elo5_l=elo5-elo95_5
+	    elo5_u=elo5+elo95_5
 	 %>
       <H4> Pentanomial statistics</H4>
       <H5> Basic statistics </H5>
@@ -203,8 +203,8 @@
 	 	 LOS3=a3['LOS']
 	 else:                #assume fixed length test
 	 	elo3,elo95_3,LOS3=fishtest.stats.stat_util.get_elo(results3_)
-		elo3_l=elo3+elo95_3
-		elo3_u=elo3-elo95_3
+		elo3_l=elo3-elo95_3
+		elo3_u=elo3+elo95_3
 	 %>
      <H5> Basic statistics</H5>
       <table class="table table-condensed">
