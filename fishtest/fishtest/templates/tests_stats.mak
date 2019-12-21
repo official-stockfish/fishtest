@@ -67,6 +67,7 @@
        	 results3=[run['results']['losses'],run['results']['draws'],run['results']['wins']]
 	 results3_=fishtest.stats.LLRcalc.regularize(results3)
 	 drawelo=fishtest.stats.stat_util.draw_elo_calc(results3_)
+	 draw_ratio=results3_[1]/float(sum(results3_))
 	 if has_sprt:
 	    	 lelo0,lelo1=[fishtest.stats.stat_util.bayeselo_to_elo(elo_, drawelo) for elo_ in (elo0,elo1)]
 		 score0,score1=[fishtest.stats.stat_util.L(elo_) for elo_ in (lelo0,lelo1)]
@@ -104,6 +105,8 @@
 	 sens5_per_game=sens5/sqrt2
 	 sens5_per_game_l=sens5_l/sqrt2
 	 sens5_per_game_u=sens5_u/sqrt2
+	 results5_DD_prob=draw_ratio-(results5_[1]+results5_[3])/(2*float(N5))
+	 results5_WL_prob=results5_[2]/float(N5)-results5_DD_prob
 	 if has_sprt:
 	    sp=fishtest.stats.sprt.sprt(alpha=alpha,beta=beta,elo0=lelo0,elo1=lelo1)
 	    sp.set_state(results5_)
@@ -134,6 +137,7 @@
 	<tr><td>Games</td><td>${int(games5)}</td></tr>
 	<tr><td>Results(0-2)</td><td>${results5}</td></tr>
 	<tr><td>Distribution</td><td>${pdf5_s}</td></tr>
+	<tr><td>(DD,WL) split</td><td>${"(%.5f, %.5f)"%(results5_DD_prob,results5_WL_prob)}</td></tr>
 	<tr><td>Expected value</td><td>${"%.5f"%avg5}</td></tr>
 	<tr><td>Variance</td><td>${"%.5f"%var5}</td></tr>
 	<tr><td>Skewness</td><td>${"%.5f"%skewness5}</td></tr>
