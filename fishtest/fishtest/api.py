@@ -65,15 +65,18 @@ def get_elo(request):
   results=run['results']
   if 'sprt' not in run['args']:
     return json.dumps({})
-  sprt=run['args'].get('sprt',{})
+  sprt=run['args'].get('sprt').copy()
+  elo_model=sprt.get('elo_model','BayesElo')
   alpha=sprt['alpha']
   beta=sprt['beta']
   elo0=sprt['elo0']
   elo1=sprt['elo1']
+  sprt['elo_model']=elo_model
   p=0.05
-  a=fishtest.stats.stat_util.SPRT_elo(results,alpha=alpha,beta=beta,elo0=elo0,elo1=elo1)
+  a=fishtest.stats.stat_util.SPRT_elo(results,alpha=alpha,beta=beta,elo0=elo0,elo1=elo1,elo_model=elo_model)
   run=strip_run(run)
   run['elo']=a
+  run['args']['sprt']=sprt
   return json.dumps(run)
 
 @view_config(route_name='api_request_task', renderer='string')
