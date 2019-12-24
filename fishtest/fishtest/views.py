@@ -421,7 +421,7 @@ def validate_form(request):
       'alpha': 0.05,
       'elo1': float(request.POST['sprt_elo1']),
       'beta': 0.05,
-      'drawelo': 240.0,
+      'elo_model': 'logistic'
     }
     # Limit on number of games played.  Shouldn't be hit in practice as long as it is larger than > ~200000
     # must scale with chunk_size to avoid overloading the server.
@@ -666,15 +666,19 @@ def format_results(run_results, run):
   if 'sprt' in run['args']:
     sprt = run['args']['sprt']
     state = sprt.get('state', '')
-
+    elo_model=sprt.get('elo_model','BayesElo')
     stats = fishtest.stats.stat_util.SPRT(run_results,
                                           elo0=sprt['elo0'],
                                           alpha=sprt['alpha'],
                                           elo1=sprt['elo1'],
                                           beta=sprt['beta'],
-                                          drawelo=sprt['drawelo'])
+                                          elo_model=elo_model
+                                          )
     result['llr'] = stats['llr']
-    result['info'].append('LLR: %.2f (%.2lf,%.2lf) [%.2f,%.2f]' % (stats['llr'], stats['lower_bound'], stats['upper_bound'], sprt['elo0'], sprt['elo1']))
+    if elo_model=='BayesElo':
+      result['info'].append('LLR: %.2f (%.2lf,%.2lf) [%.2f,%.2f]' % (stats['llr'], stats['lower_bound'], stats['upper_bound'], sprt['elo0'], sprt['elo1']))
+    else:
+      result['info'].append('LLR: %.2f (%.2lf,%.2lf) {%.2f,%.2f}' % (stats['llr'], stats['lower_bound'], stats['upper_bound'], sprt['elo0'], sprt['elo1']))
   else:
     if 'pentanomial' in run_results.keys():
       elo, elo95, los = fishtest.stats.stat_util.get_elo(run_results['pentanomial'])
@@ -878,9 +882,9 @@ def tests_view(request):
       value += '  (' + run['args']['msg_base'][:50] + ')'
 
     if name == 'sprt' and value != '-':
-      value = 'elo0: %.2f alpha: %.2f elo1: %.2f beta: %.2f state: %s' % \
+      value = 'elo0: %.2f alpha: %.2f elo1: %.2f beta: %.2f state: %s (%s)' % \
               (value['elo0'], value['alpha'], value['elo1'], value['beta'],
-               value.get('state', '-'))
+               value.get('state', '-'), value.get('elo_model','BayesElo'))
 
     if name == 'spsa' and value != '-':
       iter_local = value['iter'] + 1 # assume at least one completed, and avoid division by zero
@@ -1054,7 +1058,11 @@ def tests(request):
             info['info'][0] += ' (%.1f hrs)' % (eta)
           if 'sprt' in run['args']:
             sprt = run['args']['sprt']
-            info['info'].append(('[%.2f,%.2f]') % (sprt['elo0'], sprt['elo1']))
+            elo_model=sprt.get('elo_model','BayesElo')
+            if elo_model=='BayesElo':
+              info['info'].append(('[%.2f,%.2f]') % (sprt['elo0'], sprt['elo1']))
+            else:
+              info['info'].append(('{%.2f,%.2f}') % (sprt['elo0'], sprt['elo1']))
 
     else: # not full_info
       cores = 0

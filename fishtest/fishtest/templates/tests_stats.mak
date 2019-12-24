@@ -39,6 +39,7 @@
       </div>
       <div class="span8">
       <H3> Raw statistics for ${run['_id']}</H3>
+      <em> Unless otherwise specified, all Elo quantities below are logistic. </em>
       <H4> Context </H4>
       	   <table class="table table-condensed">
 	   	  <tr><td>TC</td><td>${run['args']['tc']}</td></tr>
@@ -54,30 +55,37 @@
       beta=run['args']['sprt']['beta']
       elo0=run['args']['sprt']['elo0']
       elo1=run['args']['sprt']['elo1']
+      elo_model=run['args']['sprt'].get('elo_model','BayesElo')
       %>
       <table class="table table-condensed">
 	<tr><td>Alpha</td><td>${alpha}</td></tr>
 	<tr><td>Beta</td><td>${beta}</td></tr>
-	<tr><td>Elo0</td><td>${elo0}</td></tr>
-	<tr><td>Elo1</td><td>${elo1}</td></tr>
+        <tr><td>Elo0 (${elo_model})</td><td>${elo0}</td></tr>
+	<tr><td>Elo1 (${elo_model})</td><td>${elo1}</td></tr>
       </table>
 % endif  ## has_sprt
-      <H4> Bayes/logistic elo</H4>
+      <H4> Logistic/BayesElo</H4>
       <%
        	 results3=[run['results']['losses'],run['results']['draws'],run['results']['wins']]
 	 results3_=fishtest.stats.LLRcalc.regularize(results3)
 	 drawelo=fishtest.stats.stat_util.draw_elo_calc(results3_)
 	 draw_ratio=results3_[1]/float(sum(results3_))
 	 if has_sprt:
+	    if elo_model=='BayesElo':
 	    	 lelo0,lelo1=[fishtest.stats.stat_util.bayeselo_to_elo(elo_, drawelo) for elo_ in (elo0,elo1)]
-		 score0,score1=[fishtest.stats.stat_util.L(elo_) for elo_ in (lelo0,lelo1)]
-
+		 belo0,belo1=elo0,elo1
+	    else:
+	         lelo0,lelo1=elo0,elo1
+		 belo0,belo1=[fishtest.stats.stat_util.elo_to_bayeselo(elo_, draw_ratio)[0] for elo_ in [elo0,elo1]]
+	    score0,score1=[fishtest.stats.stat_util.L(elo_) for elo_ in (lelo0,lelo1)]
       %>
       <table class="table table-condensed">	
-	<tr><td>Drawelo</td><td>${"%.2f"%drawelo}</td></tr>
+	<tr><td>DrawElo (BayesElo)</td><td>${"%.2f"%drawelo}</td></tr>
 % if has_sprt:
 	<tr><td>Elo0 (logistic)</td><td>${"%.3f"%lelo0}</td></tr>
+	<tr><td>Elo0 (BayesElo)</td><td>${"%.3f"%belo0}</td></tr>
 	<tr><td>Elo1 (logistic)</td><td>${"%.3f"%lelo1}</td></tr>
+	<tr><td>Elo1 (BayesElo)</td><td>${"%.3f"%belo1}</td></tr>
 	<tr><td>Score0</td><td>${"%.5f"%score0}</td></tr>
 	<tr><td>Score1</td><td>${"%.5f"%score1}</td></tr>
 % endif  ## has_sprt
@@ -194,7 +202,7 @@
 		 RMS_bias=var_diff**.5 if var_diff>=0 else 0
 		 RMS_bias_elo=fishtest.stats.stat_util.elo(0.5+RMS_bias)
 	 if has_sprt:
-	 	 sp_=fishtest.stats.stat_util.SPRT(R3_,elo0,alpha,elo1,beta,drawelo)
+	 	 sp_=fishtest.stats.stat_util.SPRT(R3_,elo0,alpha,elo1,beta,elo_model=elo_model)
 	 	 LLR3=sp_['llr']
 	 	 LLR3_l=sp_['lower_bound']
 		 LLR3_u=sp_['upper_bound']
@@ -246,7 +254,7 @@
 		<tr><td>Variance ratio (pentanomial/trinomial)</td><td>${"%.5f"%ratio}</td></tr>
 	   	<tr><td>Variance difference (trinomial-pentanomial)</td><td>${"%.5f"%var_diff}</td></tr>
 	   	<tr><td>RMS bias</td><td>${"%.5f"%RMS_bias}</td></tr>
-	   	<tr><td>RMS bias (elo)</td><td>${"%.3f"%RMS_bias_elo}</td></tr>
+	        <tr><td>RMS bias (Elo)</td><td>${"%.3f"%RMS_bias_elo}</td></tr>
 	   </table>
 % endif  ## has_pentanomial
       </div>

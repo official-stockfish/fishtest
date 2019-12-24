@@ -109,24 +109,39 @@ def draw_elo_calc(R):
   """
   N=sum(R)
   P=[p/N for p in R]
-  elo_, drawelo = proba_to_bayeselo(P)
+  _, drawelo = proba_to_bayeselo(P)
   return drawelo
 
 def bayeselo_to_elo(belo, drawelo):
   P = bayeselo_to_proba(belo, drawelo)
   return elo(P[2]+0.5*P[1])
 
-def SPRT_elo(R, alpha=0.05, beta=0.05, p=0.05, elo0=None, elo1=None):
+def elo_to_bayeselo(elo, draw_ratio):
+  assert(draw_ratio>=0)
+  s=L(elo)
+  P=3*[0]
+  P[2]=s-draw_ratio/2.0
+  P[1]=draw_ratio
+  P[0]=1-P[1]-P[2]
+  if P[0]<=0 or P[2]<=0:
+    return float('NaN'),float('NaN')
+  return proba_to_bayeselo(P)
+
+def SPRT_elo(R, alpha=0.05, beta=0.05, p=0.05, elo0=None, elo1=None, elo_model=None):
   """
   Calculate an elo estimate from an sprt test.
-  The elo inputs are expressed in BayesElo.
   """
+  assert(elo_model in ['BayesElo','logistic'])
+  
   # Estimate drawelo out of sample
   R3=regularize([R['losses'],R['draws'],R['wins']])
   drawelo=draw_elo_calc(R3)
   
-  # Convert the bounds to logistic elo
-  lelo0,lelo1=[bayeselo_to_elo(elo_, drawelo) for elo_ in (elo0,elo1)]
+  # Convert the bounds to logistic elo if necessary
+  if elo_model=='BayesElo':
+    lelo0,lelo1=[bayeselo_to_elo(elo_, drawelo) for elo_ in (elo0,elo1)]
+  else:
+    lelo0,lelo1=elo0,elo1
 
   # Make the elo estimation object
   sp=sprt.sprt(alpha=alpha,beta=beta,elo0=lelo0,elo1=lelo1)
@@ -144,12 +159,11 @@ def SPRT_elo(R, alpha=0.05, beta=0.05, p=0.05, elo0=None, elo1=None):
   # Override the LLR approximation with the exact one
   a['LLR']=LLRcalc.LLR_logistic(lelo0,lelo1,R_)[0]
   del a['clamped']
-
   # Now return the estimates
   return a
 
   
-def SPRT(R, elo0, alpha, elo1, beta, drawelo):
+def SPRT(R, elo0, alpha, elo1, beta, elo_model=None):
   """
   Sequential Probability Ratio Test
   H0: elo = elo0
@@ -158,8 +172,7 @@ def SPRT(R, elo0, alpha, elo1, beta, drawelo):
   beta = max typeII error for elo >= elo1 (reached on elo = elo1)
   R['wins'], R['losses'], R['draws'] contains the number of wins, losses and draws
   R['pentanomial'] contains the pentanomial frequencies
-
-  The drawelo parameter is a historical artifact and is not used.
+  elo_model can be either 'BayesElo' or 'logistic'
 
   Returns a dict:
   finished - bool, True means test is finished, False means continue sampling
@@ -167,6 +180,7 @@ def SPRT(R, elo0, alpha, elo1, beta, drawelo):
   llr - Log-likelihood ratio
   lower_bound/upper_bound - SPRT bounds
   """
+  assert(elo_model in ['BayesElo','logistic'])
 
   result = {
     'finished': False,
@@ -175,27 +189,37 @@ def SPRT(R, elo0, alpha, elo1, beta, drawelo):
     'lower_bound': math.log(beta/(1-alpha)),
     'upper_bound': math.log((1-beta)/alpha),
   }
-
-  # Estimate drawelo out of sample
   R3=regularize([R['losses'],R['draws'],R['wins']])
-  drawelo=draw_elo_calc(R3)
+  if elo_model=='BayesElo':
+    # Estimate drawelo out of sample
+    drawelo=draw_elo_calc(R3)
 
-  # Probability laws under H0 and H1
-  P0 = bayeselo_to_proba(elo0, drawelo)
-  P1 = bayeselo_to_proba(elo1, drawelo)
+    # Probability laws under H0 and H1
+    P0 = bayeselo_to_proba(elo0, drawelo)
+    P1 = bayeselo_to_proba(elo1, drawelo)
 
-  # Conversion of bounds to logistic elo for use with the pentanomial model
-  lelo0=elo(P0[2]+0.5*P0[1])
-  lelo1=elo(P1[2]+0.5*P1[1])
+    # Conversion of bounds to logistic elo
+    lelo0=elo(P0[2]+0.5*P0[1])
+    lelo1=elo(P1[2]+0.5*P1[1])
+  else:
+    lelo0=elo0
+    lelo1=elo1
 
   # Log-Likelihood Ratio
   if 'pentanomial' in R.keys():
     LLR_,overshoot=LLRcalc.LLR_logistic(lelo0,lelo1,R['pentanomial'])
-    overshoot=min((result['upper_bound']-result['lower_bound'])/20,overshoot)
     result['llr']=LLR_
   else:
-    result['llr']=sum([R3[i]*math.log(P1[i]/P0[i]) for i in range(0,len(R3))])
-    overshoot=0
+    if elo_model=='BayesElo': # legacy code, we keep it in order not to change
+                              # the LLR of prior tests
+      result['llr']=sum([R3[i]*math.log(P1[i]/P0[i]) for i in range(0,len(R3))])
+      overshoot=0
+    else:
+      LLR_,overshoot=LLRcalc.LLR_logistic(lelo0,lelo1,R3)
+      result['llr']=LLR_
+
+  # bound estimated overshoot for safety
+  overshoot=min((result['upper_bound']-result['lower_bound'])/20,overshoot)
 
   if result['llr'] < result['lower_bound']+overshoot:
     result['finished'] = True
@@ -209,28 +233,30 @@ def SPRT(R, elo0, alpha, elo1, beta, drawelo):
 if __name__ == "__main__":
   # unit tests
   print('SPRT tests')
-  print(SPRT({'wins': 0, 'losses': 0, 'draws': 0}, 0, 0.05, 5, 0.05, 200))
-  print(SPRT({'wins': 10, 'losses': 0, 'draws': 0}, 0, 0.05, 5, 0.05, 200))
-  print(SPRT({'wins': 100, 'losses': 0, 'draws': 0}, 0, 0.05, 5, 0.05, 200))
-  print(SPRT({'wins': 10, 'losses': 0, 'draws': 20}, 0, 0.05, 5, 0.05, 200))
-  print(SPRT({'wins': 10, 'losses': 1, 'draws': 20}, 0, 0.05, 5, 0.05, 200))
-  print(SPRT({'wins': 5019, 'losses': 5026, 'draws': 15699}, 0, 0.05, 5, 0.05, 200))
-  print(SPRT({'wins': 1450, 'losses': 1500, 'draws': 4000}, 0, 0.05, 6, 0.05, 200))
-  print(SPRT({'wins': 716, 'losses': 591, 'draws': 2163}, 0, 0.05, 6, 0.05, 200))
-  print(SPRT({'wins': 13543,'losses': 13624, 'draws': 34333}, -3, 0.05, 1, 0.05, 200))
-  print(SPRT({'wins': 13543,'losses': 13624, 'draws': 34333, 'pentanomial':[1187, 7410, 13475, 7378, 1164]}, -3, 0.05, 1, 0.05, 200))
-  print(SPRT({'wins': 65388,'losses': 65804, 'draws': 56553}, -3, 0.05, 1, 0.05, 200))
-  print(SPRT({'wins': 65388,'losses': 65804, 'draws': 56553, 'pentanomial':[10789, 19328, 33806, 19402, 10543]}, -3, 0.05, 1, 0.05, 200))
+  print(SPRT({'wins': 0, 'losses': 0, 'draws': 0}, 0, 0.05, 5, 0.05, elo_model='BayesElo'))
+  print(SPRT({'wins': 10, 'losses': 0, 'draws': 0}, 0, 0.05, 5, 0.05, elo_model='BayesElo'))
+  print(SPRT({'wins': 100, 'losses': 0, 'draws': 0}, 0, 0.05, 5, 0.05, elo_model='BayesElo'))
+  print(SPRT({'wins': 10, 'losses': 0, 'draws': 20}, 0, 0.05, 5, 0.05, elo_model='BayesElo'))
+  print(SPRT({'wins': 10, 'losses': 1, 'draws': 20}, 0, 0.05, 5, 0.05, elo_model='BayesElo'))
+  print(SPRT({'wins': 5019, 'losses': 5026, 'draws': 15699}, 0, 0.05, 5, 0.05, elo_model='BayesElo'))
+  print(SPRT({'wins': 1450, 'losses': 1500, 'draws': 4000}, 0, 0.05, 6, 0.05, elo_model='BayesElo'))
+  print(SPRT({'wins': 716, 'losses': 591, 'draws': 2163}, 0, 0.05, 6, 0.05, elo_model='BayesElo'))
+  print(SPRT({'wins': 13543,'losses': 13624, 'draws': 34333}, -3, 0.05, 1, 0.05, elo_model='BayesElo'))
+  print(SPRT({'wins': 13543,'losses': 13624, 'draws': 34333, 'pentanomial':[1187, 7410, 13475, 7378, 1164]}, -3, 0.05, 1, 0.05, elo_model='BayesElo'))
+  print(SPRT({'wins': 65388,'losses': 65804, 'draws': 56553}, -3, 0.05, 1, 0.05, elo_model='BayesElo'))
+  print(SPRT({'wins': 65388,'losses': 65804, 'draws': 56553, 'pentanomial':[10789, 19328, 33806, 19402, 10543]}, -3, 0.05, 1, 0.05, elo_model='BayesElo'))
+  print(SPRT({'wins': 65388,'losses': 65804, 'draws': 56553, 'pentanomial':[10789, 19328, 33806, 19402, 10543]}, -3, 0.05, 1, 0.05, elo_model='logistic'))
   print('elo tests')
-  print(SPRT_elo({'wins': 0, 'losses': 0, 'draws': 0}, elo0=0,  elo1=5))
-  print(SPRT_elo({'wins': 10, 'losses': 0, 'draws': 0}, elo0=0,  elo1=5))
-  print(SPRT_elo({'wins': 100, 'losses': 0, 'draws': 0}, elo0=0,  elo1=5))
-  print(SPRT_elo({'wins': 10, 'losses': 0, 'draws': 20}, elo0=0,  elo1=5))
-  print(SPRT_elo({'wins': 10, 'losses': 1, 'draws': 20}, elo0=0,  elo1=5))
-  print(SPRT_elo({'wins': 5019, 'losses': 5026, 'draws': 15699}, elo0=0,  elo1=5))
-  print(SPRT_elo({'wins': 1450, 'losses': 1500, 'draws': 4000}, elo0=0,  elo1=6))
-  print(SPRT_elo({'wins': 716, 'losses': 591, 'draws': 2163}, elo0=0,  elo1=6))
-  print(SPRT_elo({'wins': 13543,'losses': 13624, 'draws': 34333}, elo0=-3,  elo1=1))
-  print(SPRT_elo({'wins': 13543,'losses': 13624, 'draws': 34333, 'pentanomial':[1187, 7410, 13475, 7378, 1164]}, elo0=-3,  elo1=1))
-  print(SPRT_elo({'wins': 65388,'losses': 65804, 'draws': 56553}, elo0=-3,  elo1=1))
-  print(SPRT_elo({'wins': 65388,'losses': 65804, 'draws': 56553, 'pentanomial':[10789, 19328, 33806, 19402, 10543]}, elo0=-3,  elo1=1))
+  print(SPRT_elo({'wins': 0, 'losses': 0, 'draws': 0}, elo0=0,  elo1=5, elo_model='BayesElo'))
+  print(SPRT_elo({'wins': 10, 'losses': 0, 'draws': 0}, elo0=0,  elo1=5, elo_model='BayesElo'))
+  print(SPRT_elo({'wins': 100, 'losses': 0, 'draws': 0}, elo0=0,  elo1=5, elo_model='BayesElo'))
+  print(SPRT_elo({'wins': 10, 'losses': 0, 'draws': 20}, elo0=0,  elo1=5, elo_model='BayesElo'))
+  print(SPRT_elo({'wins': 10, 'losses': 1, 'draws': 20}, elo0=0,  elo1=5, elo_model='BayesElo'))
+  print(SPRT_elo({'wins': 5019, 'losses': 5026, 'draws': 15699}, elo0=0,  elo1=5, elo_model='BayesElo'))
+  print(SPRT_elo({'wins': 1450, 'losses': 1500, 'draws': 4000}, elo0=0,  elo1=6, elo_model='BayesElo'))
+  print(SPRT_elo({'wins': 716, 'losses': 591, 'draws': 2163}, elo0=0,  elo1=6, elo_model='BayesElo'))
+  print(SPRT_elo({'wins': 13543,'losses': 13624, 'draws': 34333}, elo0=-3,  elo1=1, elo_model='BayesElo'))
+  print(SPRT_elo({'wins': 13543,'losses': 13624, 'draws': 34333, 'pentanomial':[1187, 7410, 13475, 7378, 1164]}, elo0=-3,  elo1=1, elo_model='BayesElo'))
+  print(SPRT_elo({'wins': 65388,'losses': 65804, 'draws': 56553}, elo0=-3,  elo1=1, elo_model='BayesElo'))
+  print(SPRT_elo({'wins': 65388,'losses': 65804, 'draws': 56553, 'pentanomial':[10789, 19328, 33806, 19402, 10543]}, elo0=-3,  elo1=1, elo_model='BayesElo'))
+  print(SPRT_elo({'wins': 65388,'losses': 65804, 'draws': 56553, 'pentanomial':[10789, 19328, 33806, 19402, 10543]}, elo0=-3,  elo1=1, elo_model='logistic'))

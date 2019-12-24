@@ -472,11 +472,12 @@ class RunDb:
     if 'sprt' in run['args']:
       sprt = run['args']['sprt']
       sprt_stats = fishtest.stats.stat_util.SPRT(self.get_results(run, False),
-                                  elo0=sprt['elo0'],
-                                  alpha=sprt['alpha'],
-                                  elo1=sprt['elo1'],
-                                  beta=sprt['beta'],
-                                  drawelo=sprt['drawelo'])
+                                                 elo0=sprt['elo0'],
+                                                 alpha=sprt['alpha'],
+                                                 elo1=sprt['elo1'],
+                                                 beta=sprt['beta'],
+                                                 elo_model=sprt.get('elo_model','BayesElo')
+                                                 )
       if sprt_stats['finished']:
         run['args']['sprt']['state'] = sprt_stats['state']
         self.stop_run(run_id, run)
