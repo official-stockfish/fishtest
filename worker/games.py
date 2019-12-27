@@ -182,10 +182,10 @@ def adjust_tc(tc, base_nps, concurrency):
     time_tc = float(chunks[0])
 
   # Rebuild scaled_tc now
-  scaled_tc = '%.2f' % (time_tc * factor)
+  scaled_tc = '%.3f' % (time_tc * factor)
   tc_limit = time_tc * factor * 3
   if increment > 0.0:
-    scaled_tc += '+%.2f' % (increment * factor)
+    scaled_tc += '+%.3f' % (increment * factor)
     tc_limit += increment * factor * 200
   if num_moves > 0:
     scaled_tc = '%d/%s' % (num_moves, scaled_tc)
