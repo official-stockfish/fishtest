@@ -1,0 +1,102 @@
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Chess SPRT Calculator</title>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+        <style>
+            td {
+                text-align: right;
+            }
+            .axis text {
+              font: 10px sans-serif;
+            }
+
+            .axis path, .axis line {
+              fill: none;
+              stroke: #000;
+              shape-rendering: crispEdges;
+            }
+
+            .line {
+              fill: none;
+              stroke: #000;
+              stroke-width: 2px;
+            }
+
+            .elo {
+              fill: none;
+              stroke: #000;
+              shape-rendering: crispEdges;
+            }
+
+            .grid-background {
+              fill: #ddd;
+            }
+
+            .grid line {
+              stroke: #fff;
+              stroke-width: 1px;
+              shape-rendering: crispEdges;
+            }
+
+            .grid .minor {
+              stroke-opacity: 0.25;
+            }
+
+            .grid text {
+              display: none;
+            }
+
+            .grid path,
+            .axis path {
+              display: none;
+            }
+
+            .form-control.number {
+              width: 4em;
+              text-align: right;
+              margin-right: 0.5em;
+            }
+
+            .chart-tooltip circle {
+                fill: white;
+                stroke: black;
+                stroke-width: 2px;
+            }
+
+        </style>
+    </head>
+    <body>
+        <div class=container>
+            <h1 class=page-header>Chess SPRT Calculator</h1>
+            <form id=parameters class=form-inline>
+                <div class=form-group>
+                    <label for=elo-0>Elo 0</label>
+                    <input id=elo-0 name=elo-0 value=-1 class='form-control number'>
+                </div>
+                <div class=form-group>
+                    <label for=elo-1>Elo 1</label>
+                    <input id=elo-1 name=elo-1 value=3 class='form-control number'>
+                </div>
+                <div class=form-group>
+                    <label for=draw-ratio>Draw ratio</label>
+                    <input id=draw-ratio name=draw-ratio value=0.56 class='form-control number'>
+                </div>
+                <div class=form-group>
+                    <label for=rms-bias>RMS bias</label>
+                    <input id=rms-bias name=rms-bias value=0 class='form-control number'>
+                </div>
+                    <input class='btn btn-default' type=submit name=calculate value=Calculate>
+            </form>
+            <hr>
+            <svg id=pass-prob-chart style='float: left;'></svg>
+            <svg id=num-games-chart style='float: left;'></svg>
+        </div>
+        <script src=/js/sprt.js></script>
+        <script src=https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js></script>
+        <script src=https://cdnjs.cloudflare.com/ajax/libs/js-url/1.8.4/url.min.js></script>
+        <script src=/js/calc.js></script>
+        </div>
+    </body>
+</html>
