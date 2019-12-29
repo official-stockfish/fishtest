@@ -62,6 +62,7 @@
           <li><a href="/users/monthly">Top Month</a></li>
           <li><a href="/actions">Actions</a></li>
           <li><a href="https://github.com/glinscott/fishtest/wiki" target="_blank">Wiki</a></li>
+          <li><a href="/html/SPRTcalculator.html?elo-0=-1&elo-1=3&draw-ratio=0.61&rms-bias=0" target="_blank">SPRT calculator</a></li>
           <li class="nav-header">Links</li>
           <li><a href="https://github.com/glinscott/fishtest" target="_blank">Github</a></li>
           <li><a href="https://groups.google.com/forum/?fromgroups=#!forum/fishcooking" target="_blank">Forum</a></li>
