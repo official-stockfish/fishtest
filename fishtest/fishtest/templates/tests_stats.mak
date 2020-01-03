@@ -230,7 +230,7 @@
       <table class="table table-condensed">
 	<tr><td>Games</td><td>${int(games3)}</td></tr>
 	<tr><td>Results [losses, draws, wins]</td><td>${results3}</td></tr>
-	<tr><td>Distribution</td><td>${pdf3_s}</td></tr>
+	<tr><td>Distribution {loss ratio, draw ratio, win ratio}</td><td>${pdf3_s}</td></tr>
 	<tr><td>Expected value</td><td>${"%.5f"%avg3}</td></tr>
 	<tr><td>Variance</td><td>${"%.5f"%var3}</td></tr>
 	<tr><td>Skewness</td><td>${"%.5f"%skewness3}</td></tr>
