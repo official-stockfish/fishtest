@@ -23,7 +23,11 @@ def process_run(run, info, deltas=None):
     return
   if 'username' in run['args']:
     username = run['args']['username']
-    info[username]['tests'] += 1
+    if username not in info:
+      print('not in info: ', username)
+      return
+    else:
+      info[username]['tests'] += 1
 
   tc = parse_tc(run['args']['tc'])
   for task in run['tasks']:
@@ -31,6 +35,9 @@ def process_run(run, info, deltas=None):
       continue
     username = task['worker_info'].get('username', None)
     if username == None:
+      continue
+    if username not in info:
+      print('not in info: ', username)
       continue
 
     if 'stats' in task:
@@ -102,7 +109,10 @@ def update_users():
         info[username]['games_per_hour'] = 0.0
 
   for run in rundb.get_unfinished_runs():
-    process_run(run, top_month)
+    try:
+      process_run(run, top_month)
+    except:
+      print("Exception on run: ", run)
 
   # Step through these in small batches (step size 100) to save RAM
   current = 0
@@ -115,9 +125,15 @@ def update_users():
     if len(runs) == 0:
       break
     for run in runs:
-      process_run(run, info, deltas)
+      try:
+        process_run(run, info, deltas)
+      except:
+        print("Exception on run: ", run['_id'])
       if (now - run['start_time']).days < 30:
-        process_run(run, top_month)
+        try:
+          process_run(run, top_month)
+        except:
+          print("Exception on run: ", run['_id'])
       elif not clear_stats:
         more_days = False
     current += step_size
