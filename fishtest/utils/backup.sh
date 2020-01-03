@@ -1,6 +1,9 @@
 #!/bin/sh
-# Backup MongoDB to AWS S3, download a backup with:
-# ${VENV}/bin/fetch_file s3://fishtest/backup/archive/<YYYYMMDD>/dump.tar.gz -o dump.tar.gz
+# Backup MongoDB to AWS S3
+# List available backups with:
+# ${VENV}/bin/aws s3 ls s3://fishtest/backup/archive/
+# Download a backup with:
+# ${VENV}/bin/aws s3 cp s3://fishtest/backup/archive/<YYYYMMDD>/dump.tar.gz dump.tar.gz
 
 # Load the variables with the AWS keys, cron uses a limited environment
 . ${HOME}/.profile
@@ -13,8 +16,4 @@ tar -cv dump | gzip -1 > dump.tar.gz
 rm -rf dump
 
 date_utc=$(date +%Y%m%d --utc)
-mkdir -p archive/${date_utc}
-mv dump.tar.gz archive/${date_utc}
-${VENV}/bin/s3put -b fishtest -p ${HOME} archive/${date_utc}/dump.tar.gz
-# Keep only the latest archive locally
-mv archive/${date_utc}/dump.tar.gz .
+${VENV}/bin/aws s3 cp dump.tar.gz s3://fishtest/backup/archive/${date_utc}/dump.tar.gz
