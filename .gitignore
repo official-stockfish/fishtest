@@ -3,3 +3,8 @@
 *~
 fishtest/env
 fishtest/fishtest_server.egg-info
+worker/custom_make.txt
+worker/env
+worker/fish.exit
+worker/fishtest.cfg
+worker/testing
