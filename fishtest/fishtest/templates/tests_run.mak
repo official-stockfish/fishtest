@@ -234,8 +234,8 @@ $(function() {
 
   $('#fast_test').click(function() {
     $('input[name=tc]').val('10+0.1');
-    $('input[name=new-options]').val('Hash=8');
-    $('input[name=base-options]').val('Hash=8');
+    $('input[name=new-options]').val('Hash=16');
+    $('input[name=base-options]').val('Hash=16');
     if ($('input[name=sprt_elo0]').val() == '0.0' && $('input[name=sprt_elo1]').val() == '2.0')
       { $('select[name=bounds]').val('standard STC'); update_bounds(); }
   });
