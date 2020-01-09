@@ -11,6 +11,8 @@ class ActionDb:
     q = {}
     if action:
       q['action'] = action
+    else:
+      q['action'] = {"$ne" : 'update_stats' }
     if username:
       q['username'] = username
     return self.actions.find(q, sort=[('_id', DESCENDING)], limit=max_num)
