@@ -80,6 +80,7 @@
 	    score0,score1=[fishtest.stats.stat_util.L(elo_) for elo_ in (lelo0,lelo1)]
       %>
       <table class="table table-condensed">	
+	<tr><td>Draw ratio</td><td>${"%.5f"%draw_ratio}</td></tr>
 	<tr><td>DrawElo (BayesElo)</td><td>${"%.2f"%drawelo}</td></tr>
 % if has_sprt:
 	<tr><td>Elo0 (logistic)</td><td>${"%.3f"%lelo0}</td></tr>
