@@ -13,11 +13,11 @@ def get_flag(request):
 
   # Get country flag ip
   try:
-    FLAG_HOST = 'http://geoip.nekudo.com/api/'
+    FLAG_HOST = 'https://freegeoip.app/json/'
 
     r = requests.get(FLAG_HOST + request.remote_addr, timeout=1.0)
     if r.status_code == 200:
-      country_code = r.json()['country']['code']
+      country_code = r.json()['country_code']
 
       request.userdb.flag_cache.insert({
         'ip': ip,
