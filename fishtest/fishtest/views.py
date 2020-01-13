@@ -1014,6 +1014,7 @@ def tests(request):
 
               results = request.rundb.get_results(run, True)
               run['results_info'] = format_results(results, run)
+              request.rundb.buffer(run, True)
 
           if purged == 0:
             run['finished'] = True
