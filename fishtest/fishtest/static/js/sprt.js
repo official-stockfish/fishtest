@@ -25,13 +25,13 @@ function PT(LA,LB,h){
     return [P,T];
 }
 
-function Sprt(alpha,beta,elo0,elo1,draw_ratio,RMSbias) {
+function Sprt(alpha,beta,elo0,elo1,draw_ratio,rms_bias) {
     this.score0=L(elo0);
     this.score1=L(elo1);
-    var RMSbias_score=L(RMSbias)-0.5;
+    var rms_bias_score=L(rms_bias)-0.5;
     var variance3=(1-draw_ratio)/4.0;
-    var variance=variance3-Math.pow(RMSbias_score,2);
-    this.w2=Math.pow((this.score1-this.score0),2)/variance;
+    this.variance=variance3-Math.pow(rms_bias_score,2);
+    this.w2=Math.pow((this.score1-this.score0),2)/this.variance;
     this.LA=Math.log(beta/(1-alpha));
     this.LB=Math.log((1-beta)/alpha);
     this.characteristics=function(elo){
