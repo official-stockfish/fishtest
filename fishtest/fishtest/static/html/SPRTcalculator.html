@@ -1,5 +1,5 @@
 <!doctype html>
-<html>
+<html lang="en">
     <head>
         <meta charset="utf-8">
         <title>Chess SPRT Calculator</title>
@@ -11,7 +11,7 @@
               margin-right: 0.5em;
             }
             .chart-div {
-              display:inline-block;
+	      display:inline-block;
               width:560px;
               height:500px;
             }
@@ -38,12 +38,11 @@
                     <input id=rms-bias class='form-control number'>
                 </div>
                 <div class=form-group style="width:3em;"></div>
-                <input class='btn btn-success' type=button value=Calculate onclick="draw_charts();")>
+                <input class='btn btn-success' type=button value=Calculate onclick="draw_charts();">
             </form>
             <hr>
 	    <div id="mouse_screen">
-              <div id="pass_prob_chart_div" class="chart-div" style="float:left;"></div>
-              <div style="width:1em;"></div>
+              <div id="pass_prob_chart_div" class="chart-div"></div>
               <div id="expected_chart_div" class="chart-div"></div>
 	    </div>
             <ul>
@@ -96,7 +95,7 @@
             </ul>
         </div>
         <script src=https://cdnjs.cloudflare.com/ajax/libs/js-url/1.8.4/url.min.js></script>
-        <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+        <script src=https://www.gstatic.com/charts/loader.js></script>
         <script src=/js/sprt.js></script>
         <script src=/js/calc.js></script>
     </body>
