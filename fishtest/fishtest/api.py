@@ -36,6 +36,7 @@ def authenticate(request):
   return request.userdb.authenticate(get_username(request), request.json_body['password'])
 
 def strip_run(run):
+  run= run.copy()
   if 'tasks' in run:
     del run['tasks']
   if 'bad_tasks' in run:
@@ -57,7 +58,7 @@ def active_runs(request):
 @view_config(route_name='api_get_run', renderer='string')
 def get_run(request):
   run = request.rundb.get_run(request.matchdict['id'])
-  return json.dumps(strip_run(run.copy()))
+  return json.dumps(strip_run(run))
 
 @view_config(route_name='api_get_elo', renderer='string')
 def get_elo(request):

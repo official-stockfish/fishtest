@@ -580,10 +580,9 @@ def purge_run(rundb, run):
   for task in run['tasks']:
     if task['worker_key'] in chi2['bad_users']:
       purged = True
+      task['bad'] = True
       run['bad_tasks'].append(task)
-      if 'stats' in task:
-        del task['stats']
-      del task['worker_key']
+      run['tasks'].remove(task)
 
   if purged:
     # Generate new tasks if needed
