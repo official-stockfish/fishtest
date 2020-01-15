@@ -159,7 +159,7 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
   </tr>
  </thead>
  <tbody>
-  %for idx, task in enumerate(run['tasks']):
+  %for idx, task in enumerate(run['tasks'] + run.get('bad_tasks', [])):
   <%
     stats = task.get('stats', {})
     if 'stats' in task:
@@ -176,16 +176,24 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
   %>
   <tr class="${active_style}">
    <td><a href="/api/pgn/${'%s-%d'%(run['_id'],idx)}.pgn">${idx}</a></td>
+   %if 'bad' in task:
+     <td style="text-decoration:line-through; background-color:#ffebeb">
+   %else:
+     <td>
+   %endif
    %if approver and 'worker_info' in task and 'username' in task['worker_info']:
-     <td><a href="/user/${task['worker_info']['username']}">${task['worker_key']}</a></td>
+     <a href="/user/${task['worker_info']['username']}">${task['worker_key']}</a>
    %else:
-     <td>${task['worker_key']}</td>
+     ${task['worker_key']}
    %endif
+   </td>
+   <td>
    %if 'worker_info' in task:
-   <td>${task['worker_info']['uname']}</td>
+     ${task['worker_info']['uname']}
    %else:
-   <td>Unknown worker</td>
+     Unknown worker
    %endif
+   </td>
    <td>${str(task.get('last_updated', '-')).split('.')[0]}</td>
    <td>${total} / ${task['num_games']}</td>
    <td>${stats.get('wins', '-')}</td>
