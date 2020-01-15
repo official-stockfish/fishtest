@@ -109,6 +109,7 @@ function contains(rect,x,y){
 
 function handle_tooltips(e){
     // generic mouse events handler
+    e.stopPropagation();
     if(!ready()){
 	return;
     }
@@ -145,5 +146,4 @@ function handle_tooltips(e){
 	pass_chart.setSelection([]);
 	expected_chart.setSelection([]);
     }
-    e.stopPropagation();
 }
