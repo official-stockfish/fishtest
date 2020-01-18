@@ -9,6 +9,7 @@ import requests
 import time
 import threading
 import re
+import html
 
 from email.mime.text import MIMEText
 from collections import defaultdict
@@ -911,6 +912,7 @@ def tests_view(request):
       strval = str(value)
     except:
       strval = value.encode('ascii', 'replace')
+    strval = html.escape(strval)
     run_args.append((name, strval, url))
 
   active = 0
