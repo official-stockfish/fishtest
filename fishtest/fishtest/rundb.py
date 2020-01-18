@@ -151,11 +151,15 @@ class RunDb:
       if id in self.run_cache:
         self.run_cache[id]['rtime'] = time.time()
         return self.run_cache[id]['run']
-      run = self.runs.find_one({'_id': ObjectId(id)})
-      if not run:
-        run = self.old_runs.find_one({'_id': ObjectId(id)})
-      self.run_cache[id] = { 'rtime': time.time(), 'ftime': time.time(), 'run': run, 'dirty': False }
-      return run
+      try:
+        run = self.runs.find_one({'_id': ObjectId(id)})
+        if not run:
+          run = self.old_runs.find_one({'_id': ObjectId(id)})
+        if run:
+          self.run_cache[id] = { 'rtime': time.time(), 'ftime': time.time(), 'run': run, 'dirty': False }
+        return run
+      except:
+        return None
 
   def buffer(self, run, flush):
     with self.run_cache_lock:
