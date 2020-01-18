@@ -15,7 +15,7 @@ from email.mime.text import MIMEText
 from collections import defaultdict
 from pyramid.security import remember, forget, authenticated_userid, has_permission
 from pyramid.view import view_config, forbidden_view_config
-from pyramid.httpexceptions import HTTPFound, HTTPBadRequest
+from pyramid.httpexceptions import HTTPFound, exception_response
 from pyramid.response import Response
 
 import fishtest.stats.stat_util
@@ -860,6 +860,8 @@ def tests_view_spsa_history(request):
 @view_config(route_name='tests_view', renderer='tests_view.mak')
 def tests_view(request):
   run = request.rundb.get_run(request.matchdict['id'])
+  if run == None:
+    raise exception_response(404)
   results = request.rundb.get_results(run)
   run['results_info'] = format_results(results, run)
   run_args = [('id', str(run['_id']), '')]
