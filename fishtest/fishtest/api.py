@@ -1,14 +1,17 @@
-import json, sys
+import json
 import base64
 import requests
+
 import pyramid.httpexceptions as exc
 from pyramid.view import view_config
+
 import fishtest.stats.sprt
+
 
 def get_flag(request):
   ip = request.remote_addr
   result = request.userdb.flag_cache.find_one({'ip': ip})
-  if result != None:
+  if result is not None:
     return result['country_code']
 
   # Get country flag ip
@@ -28,15 +31,20 @@ def get_flag(request):
   except:
     return None
 
+
 def get_username(request):
-  if 'username' in request.json_body: return request.json_body['username']
+  if 'username' in request.json_body:
+    return request.json_body['username']
   return request.json_body['worker_info']['username']
 
+
 def authenticate(request):
-  return request.userdb.authenticate(get_username(request), request.json_body['password'])
+  return request.userdb.authenticate(get_username(request),
+                                     request.json_body['password'])
+
 
 def strip_run(run):
-  run= run.copy()
+  run = run.copy()
   if 'tasks' in run:
     del run['tasks']
   if 'bad_tasks' in run:
@@ -48,42 +56,49 @@ def strip_run(run):
   run['last_updated'] = str(run['last_updated'])
   return run
 
+
 @view_config(route_name='api_active_runs', renderer='string')
 def active_runs(request):
-  l = {}
+  active = {}
   for run in request.rundb.get_unfinished_runs():
-    l[run['_id']] = strip_run(run)
-  return json.dumps(l)
+    active[run['_id']] = strip_run(run)
+  return json.dumps(active)
+
 
 @view_config(route_name='api_get_run', renderer='string')
 def get_run(request):
   run = request.rundb.get_run(request.matchdict['id'])
   return json.dumps(strip_run(run))
 
+
 @view_config(route_name='api_get_elo', renderer='string')
 def get_elo(request):
   run = request.rundb.get_run(request.matchdict['id']).copy()
-  results=run['results']
+  results = run['results']
   if 'sprt' not in run['args']:
     return json.dumps({})
-  sprt=run['args'].get('sprt').copy()
-  elo_model=sprt.get('elo_model','BayesElo')
-  alpha=sprt['alpha']
-  beta=sprt['beta']
-  elo0=sprt['elo0']
-  elo1=sprt['elo1']
-  sprt['elo_model']=elo_model
-  p=0.05
-  a=fishtest.stats.stat_util.SPRT_elo(results,alpha=alpha,beta=beta,elo0=elo0,elo1=elo1,elo_model=elo_model)
-  run=strip_run(run)
-  run['elo']=a
-  run['args']['sprt']=sprt
+  sprt = run['args'].get('sprt').copy()
+  elo_model = sprt.get('elo_model', 'BayesElo')
+  alpha = sprt['alpha']
+  beta = sprt['beta']
+  elo0 = sprt['elo0']
+  elo1 = sprt['elo1']
+  sprt['elo_model'] = elo_model
+  a = fishtest.stats.stat_util.SPRT_elo(results,
+                                        alpha=alpha, beta=beta,
+                                        elo0=elo0, elo1=elo1,
+                                        elo_model=elo_model)
+  run = strip_run(run)
+  run['elo'] = a
+  run['args']['sprt'] = sprt
   return json.dumps(run)
+
 
 @view_config(route_name='api_request_task', renderer='string')
 def request_task(request):
   token = authenticate(request)
-  if 'error' in token: return json.dumps(token)
+  if 'error' in token:
+    return json.dumps(token)
 
   worker_info = request.json_body['worker_info']
   worker_info['remote_addr'] = request.remote_addr
@@ -120,10 +135,12 @@ def request_task(request):
   result['run'] = min_run
   return json.dumps(result)
 
+
 @view_config(route_name='api_update_task', renderer='string')
 def update_task(request):
   token = authenticate(request)
-  if 'error' in token: return json.dumps(token)
+  if 'error' in token:
+    return json.dumps(token)
 
   result = request.rundb.update_task(
     run_id=request.json_body['run_id'],
@@ -135,10 +152,12 @@ def update_task(request):
   )
   return json.dumps(result)
 
+
 @view_config(route_name='api_failed_task', renderer='string')
 def failed_task(request):
   token = authenticate(request)
-  if 'error' in token: return json.dumps(token)
+  if 'error' in token:
+    return json.dumps(token)
 
   result = request.rundb.failed_task(
     run_id=request.json_body['run_id'],
@@ -146,38 +165,45 @@ def failed_task(request):
   )
   return json.dumps(result)
 
+
 @view_config(route_name='api_upload_pgn', renderer='string')
 def upload_pgn(request):
   token = authenticate(request)
-  if 'error' in token: return json.dumps(token)
+  if 'error' in token:
+    return json.dumps(token)
 
   result = request.rundb.upload_pgn(
-    run_id=request.json_body['run_id'] + '-' + str(request.json_body['task_id']),
+    run_id=request.json_body['run_id'] + '-'
+      + str(request.json_body['task_id']),
     pgn_zip=base64.b64decode(request.json_body['pgn'])
   )
   return json.dumps(result)
 
+
 @view_config(route_name='api_download_pgn', renderer='string')
 def download_pgn(request):
   pgn = request.rundb.get_pgn(request.matchdict['id'])
-  if pgn == None:
+  if pgn is None:
     raise exc.exception_response(404)
   if '.pgn' in request.matchdict['id']:
     request.response.content_type = 'application/x-chess-pgn'
   return pgn
 
+
 @view_config(route_name='api_download_pgn_100', renderer='string')
 def download_pgn_100(request):
   skip = int(request.matchdict['skip'])
   urls = request.rundb.get_pgn_100(skip)
-  if urls == None:
+  if urls is None:
     raise exc.exception_response(404)
   return json.dumps(urls)
+
 
 @view_config(route_name='api_stop_run', renderer='string')
 def stop_run(request):
   token = authenticate(request)
-  if 'error' in token: return json.dumps(token)
+  if 'error' in token:
+    return json.dumps(token)
 
   username = get_username(request)
   user = request.userdb.user_cache.find_one({'username': username})
@@ -193,17 +219,21 @@ def stop_run(request):
     result = request.rundb.stop_run(request.json_body['run_id'])
   return json.dumps(result)
 
+
 @view_config(route_name='api_request_version', renderer='string')
 def request_version(request):
   token = authenticate(request)
-  if 'error' in token: return json.dumps(token)
+  if 'error' in token:
+    return json.dumps(token)
 
   return json.dumps({'version': 71})
+
 
 @view_config(route_name='api_request_spsa', renderer='string')
 def request_spsa(request):
   token = authenticate(request)
-  if 'error' in token: return json.dumps(token)
+  if 'error' in token:
+    return json.dumps(token)
 
   run_id = request.json_body['run_id']
   task_id = int(request.json_body['task_id'])

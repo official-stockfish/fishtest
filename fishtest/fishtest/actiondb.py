@@ -1,6 +1,6 @@
-import sys
 from datetime import datetime
-from pymongo import ASCENDING, DESCENDING
+from pymongo import DESCENDING
+
 
 class ActionDb:
   def __init__(self, db):
@@ -12,7 +12,7 @@ class ActionDb:
     if action:
       q['action'] = action
     else:
-      q['action'] = {"$ne" : 'update_stats' }
+      q['action'] = {"$ne": 'update_stats'}
     if username:
       q['username'] = username
     return self.actions.find(q, sort=[('_id', DESCENDING)], limit=max_num)
@@ -24,7 +24,8 @@ class ActionDb:
     self._new_action(username, 'new_run', run)
 
   def modify_run(self, username, before, after):
-    self._new_action(username, 'modify_run', {'before': before, 'after': after})
+    self._new_action(username, 'modify_run',
+                     {'before': before, 'after': after})
 
   def delete_run(self, username, run):
     self._new_action(username, 'delete_run', run)

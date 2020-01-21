@@ -18,10 +18,11 @@ from fishtest.views import format_results
 
 import fishtest.stats.stat_util
 
+
 class RunDb:
   def __init__(self, db_name='fishtest_new'):
-    # MongoDB server is assumed to be on the same machine, if not user should use
-    # ssh with port forwarding to access the remote host.
+    # MongoDB server is assumed to be on the same machine, if not user should
+    # use ssh with port forwarding to access the remote host.
     self.conn = MongoClient(os.getenv('FISHTEST_HOST') or 'localhost')
     self.db = self.conn[db_name]
     self.userdb = UserDb(self.db)
@@ -34,7 +35,8 @@ class RunDb:
     self.chunk_size = 250
 
   def build_indices(self):
-    self.runs.ensure_index([('finished', ASCENDING), ('last_updated', DESCENDING)])
+    self.runs.ensure_index([('finished', ASCENDING),
+                            ('last_updated', DESCENDING)])
     self.pgndb.ensure_index([('run_id', ASCENDING)])
 
   def generate_tasks(self, num_games):
@@ -50,7 +52,8 @@ class RunDb:
       remaining -= task_size
     return tasks
 
-  def new_run(self, base_tag, new_tag, num_games, tc, book, book_depth, threads, base_options, new_options,
+  def new_run(self, base_tag, new_tag, num_games, tc, book, book_depth,
+              threads, base_options, new_options,
               info='',
               resolved_base='',
               resolved_new='',
@@ -66,7 +69,7 @@ class RunDb:
               auto_purge=True,
               throughput=100,
               priority=0):
-    if start_time == None:
+    if start_time is None:
       start_time = datetime.utcnow()
 
     run_args = {
@@ -94,10 +97,10 @@ class RunDb:
       'priority': priority,
     }
 
-    if sprt != None:
+    if sprt is not None:
       run_args['sprt'] = sprt
 
-    if spsa != None:
+    if spsa is not None:
       run_args['spsa'] = spsa
 
     new_run = {
@@ -107,7 +110,7 @@ class RunDb:
       # Will be filled in by tasks, indexed by task-id
       'tasks': self.generate_tasks(num_games),
       # Aggregated results
-      'results': { 'wins': 0, 'losses': 0, 'draws': 0 },
+      'results': {'wins': 0, 'losses': 0, 'draws': 0},
       'results_stale': False,
       'finished': False,
       'approved': False,
@@ -118,7 +121,8 @@ class RunDb:
 
   def get_machines(self):
     machines = []
-    for run in self.runs.find({'finished': False, 'tasks': {'$elemMatch': {'active': True}}}):
+    for run in self.runs.find({'finished': False,
+                               'tasks': {'$elemMatch': {'active': True}}}):
       for task in run['tasks']:
         if task['active']:
           machine = copy.copy(task['worker_info'])
@@ -128,15 +132,16 @@ class RunDb:
           machines.append(machine)
     return machines
 
-  def get_pgn(self, id):
-    id = id.split('.')[0] # strip .pgn
-    pgn = self.pgndb.find_one({'run_id': id})
+  def get_pgn(self, pgn_id):
+    pgn_id = pgn_id.split('.')[0]  # strip .pgn
+    pgn = self.pgndb.find_one({'run_id': pgn_id})
     if pgn:
       return zlib.decompress(pgn['pgn_zip']).decode()
     return None
 
   def get_pgn_100(self, skip):
-    return [p['run_id'] for p in self.pgndb.find(skip=skip, limit=100, sort=[('_id',DESCENDING)])]
+    return [p['run_id'] for p in
+            self.pgndb.find(skip=skip, limit=100, sort=[('_id', DESCENDING)])]
 
   # Cache runs
   run_cache = {}
@@ -145,18 +150,19 @@ class RunDb:
 
   timer = None
 
-  def get_run(self, id):
+  def get_run(self, r_id):
     with self.run_cache_lock:
-      id = str(id)
-      if id in self.run_cache:
-        self.run_cache[id]['rtime'] = time.time()
-        return self.run_cache[id]['run']
+      r_id = str(r_id)
+      if r_id in self.run_cache:
+        self.run_cache[r_id]['rtime'] = time.time()
+        return self.run_cache[r_id]['run']
       try:
-        run = self.runs.find_one({'_id': ObjectId(id)})
+        run = self.runs.find_one({'_id': ObjectId(r_id)})
         if not run:
-          run = self.old_runs.find_one({'_id': ObjectId(id)})
+          run = self.old_runs.find_one({'_id': ObjectId(r_id)})
         if run:
-          self.run_cache[id] = { 'rtime': time.time(), 'ftime': time.time(), 'run': run, 'dirty': False }
+          self.run_cache[r_id] = {'rtime': time.time(), 'ftime': time.time(),
+                                'run': run, 'dirty': False}
         return run
       except:
         return None
@@ -166,17 +172,19 @@ class RunDb:
       if self.timer is None:
         self.timer = threading.Timer(1.0, self.flush_buffers)
         self.timer.start()
-      id = str(run['_id'])
+      r_id = str(run['_id'])
       if flush:
-        self.run_cache[id] = { 'dirty': False, 'rtime': time.time(), 'ftime': time.time(), 'run': run }
+        self.run_cache[r_id] = {'dirty': False, 'rtime': time.time(),
+                              'ftime': time.time(), 'run': run}
         with self.run_cache_write_lock:
           self.runs.save(run)
       else:
-        if id in self.run_cache:
-          ftime = self.run_cache[id]['ftime']
+        if r_id in self.run_cache:
+          ftime = self.run_cache[r_id]['ftime']
         else:
           ftime = time.time()
-        self.run_cache[id] = { 'dirty': True, 'rtime': time.time(), 'ftime': ftime, 'run': run }
+        self.run_cache[r_id] = {'dirty': True, 'rtime': time.time(),
+                              'ftime': ftime, 'run': run}
 
   def stop(self):
     with self.run_cache_lock:
@@ -190,14 +198,14 @@ class RunDb:
       now = time.time()
       old = now + 1
       oldest = None
-      for id in list(self.run_cache):
-        if not self.run_cache[id]['dirty']:
-          if self.run_cache[id]['rtime'] < now - 60:
-            del self.run_cache[id]
-        elif self.run_cache[id]['ftime'] < old:
-          old = self.run_cache[id]['ftime']
-          oldest = id
-      if not oldest is None:
+      for r_id in list(self.run_cache):
+        if not self.run_cache[r_id]['dirty']:
+          if self.run_cache[r_id]['rtime'] < now - 60:
+            del self.run_cache[r_id]
+        elif self.run_cache[r_id]['ftime'] < old:
+          old = self.run_cache[r_id]['ftime']
+          oldest = r_id
+      if oldest is not None:
         if int(now) % 60 == 0:
           self.scavenge(self.run_cache[oldest]['run'])
         with self.run_cache_write_lock:
@@ -219,20 +227,23 @@ class RunDb:
   def get_unfinished_runs(self):
     with self.run_cache_write_lock:
       return self.runs.find({'finished': False},
-                          sort=[('last_updated', DESCENDING), ('start_time', DESCENDING)])
+                            sort=[('last_updated', DESCENDING),
+                                  ('start_time', DESCENDING)])
 
-  def get_finished_runs(self, skip=0, limit=0, username='', success_only=False, ltc_only=False):
+  def get_finished_runs(self, skip=0, limit=0, username='',
+                        success_only=False, ltc_only=False):
     q = {'finished': True}
     if len(username) > 0:
       q['args.username'] = username
     if ltc_only:
-      q['args.tc'] = {'$regex':'^([4-9][0-9])|([1-9][0-9][0-9])'}
+      q['args.tc'] = {'$regex': '^([4-9][0-9])|([1-9][0-9][0-9])'}
     if success_only:
-      # This is unfortunate, but the only way we have of telling if a run was successful or
-      # not currently is the color!
+      # This is unfortunate, but the only way we have of telling if a run
+      # was successful or not currently is the color!
       q['results_info.style'] = '#44EB44'
 
-    c = self.runs.find(q, skip=skip, limit=limit, sort=[('last_updated', DESCENDING)])
+    c = self.runs.find(q, skip=skip, limit=limit,
+                       sort=[('last_updated', DESCENDING)])
     no_del = []
     del_count = 0
     for run in c:
@@ -245,7 +256,7 @@ class RunDb:
     if limit != 0 and len(result[0]) != limit - del_count:
       c = self.old_runs.find(q, skip=max(0, skip-c.count()),
                              limit=limit-len(result[0]),
-                             sort=[('_id',DESCENDING)])
+                             sort=[('_id', DESCENDING)])
       result[0] += list(c)
       result[1] += c.count()
     else:
@@ -257,10 +268,11 @@ class RunDb:
     if not run['results_stale']:
       return run['results']
 
-    results = { 'wins': 0, 'losses': 0, 'draws': 0, 'crashes': 0, 'time_losses':0 }
+    results = {'wins': 0, 'losses': 0, 'draws': 0,
+               'crashes': 0, 'time_losses': 0}
 
-    has_pentanomial=True
-    pentanomial=5*[0]
+    has_pentanomial = True
+    pentanomial = 5*[0]
     for task in run['tasks']:
       if 'stats' in task:
         stats = task['stats']
@@ -270,11 +282,12 @@ class RunDb:
         results['crashes'] += stats['crashes']
         results['time_losses'] += stats.get('time_losses', 0)
         if 'pentanomial' in stats.keys() and has_pentanomial:
-          pentanomial=[pentanomial[i]+stats['pentanomial'][i] for i in range(0,5)]
+          pentanomial = [pentanomial[i]+stats['pentanomial'][i]
+                         for i in range(0, 5)]
         else:
-          has_pentanomial=False
+          has_pentanomial = False
     if has_pentanomial:
-      results['pentanomial']=pentanomial
+      results['pentanomial'] = pentanomial
 
     if 'sprt' in run['args'] and 'state' in run['args']['sprt']:
       results['sprt'] = run['args']['sprt']['state']
@@ -339,7 +352,8 @@ class RunDb:
         r['args']['itp'] = run['args']['itp']
         self.task_runs.append(r)
       self.task_runs.sort(key=lambda r: (-r['args']['priority'],
-        r['cores'] / r['args']['itp'] * 100.0, -r['args']['itp'], r['_id']))
+                          r['cores'] / r['args']['itp'] * 100.0,
+                          -r['args']['itp'], r['_id']))
       self.task_time = time.time()
 
     max_threads = int(worker_info['concurrency'])
@@ -352,7 +366,9 @@ class RunDb:
     connections = 0
     for run in self.task_runs:
       for task in run['tasks']:
-        if task['active'] and task['worker_info']['remote_addr'] == worker_info['remote_addr']:
+        if (task['active']
+            and task['worker_info']['remote_addr']
+                == worker_info['remote_addr']):
           connections = connections + 1
 
     # Allow a few connections, for multiple computers on same IP
@@ -399,7 +415,8 @@ class RunDb:
         self.sum_cores(run)
         runt['cores'] = run['cores']
         self.task_runs.sort(key=lambda r: (-r['args']['priority'],
-          r['cores'] / r['args']['itp'] * 100.0, -r['args']['itp'], r['_id']))
+                            r['cores'] / r['args']['itp'] * 100.0,
+                            -r['args']['itp'], r['_id']))
         break
 
     self.buffer(run, False)
@@ -416,14 +433,15 @@ class RunDb:
       self.purge_count = self.purge_count + 1
       if self.purge_count > 100000:
         old = time.time() - 10000
-        self.active_runs = dict((k,v) for k, v in self.active_runs.items() if v['time'] >= old)
+        self.active_runs = dict(
+            (k, v) for k, v in self.active_runs.items() if v['time'] >= old)
         self.purge_count = 0
       if id in self.active_runs:
         active_lock = self.active_runs[id]['lock']
         self.active_runs[id]['time'] = time.time()
       else:
         active_lock = threading.Lock()
-        self.active_runs[id] = { 'time': time.time(), 'lock': active_lock }
+        self.active_runs[id] = {'time': time.time(), 'lock': active_lock}
       return active_lock
 
   def update_task(self, run_id, task_id, stats, nps, spsa, username):
@@ -449,9 +467,10 @@ class RunDb:
     num_games = count_games(stats)
     old_num_games = count_games(task['stats']) if 'stats' in task else num_games
     spsa_games = count_games(spsa) if 'spsa' in run['args'] else 0
-    if num_games < old_num_games \
-            or (spsa_games > 0 and num_games <= 0) \
-            or (spsa_games > 0 and 'stats' in task and num_games <= old_num_games):
+    if (num_games < old_num_games
+        or (spsa_games > 0 and num_games <= 0)
+        or (spsa_games > 0 and 'stats' in task and num_games <= old_num_games)
+        ):
       return {'task_alive': False}
 
     flush = False
@@ -460,7 +479,8 @@ class RunDb:
     if num_games >= task['num_games']:
       if 'cores' in run:
         run['cores'] -= task['worker_info']['concurrency']
-      task['pending'] = False # Make pending False before making active false to prevent race in request_task
+      task['pending'] = False  # Make pending False before making active false
+                               # to prevent race in request_task
       task['active'] = False
       flush = True
 
@@ -476,13 +496,14 @@ class RunDb:
     # Check if SPRT stopping is enabled
     if 'sprt' in run['args']:
       sprt = run['args']['sprt']
-      sprt_stats = fishtest.stats.stat_util.SPRT(self.get_results(run, False),
-                                                 elo0=sprt['elo0'],
-                                                 alpha=sprt['alpha'],
-                                                 elo1=sprt['elo1'],
-                                                 beta=sprt['beta'],
-                                                 elo_model=sprt.get('elo_model','BayesElo')
-                                                 )
+      sprt_stats = fishtest.stats.stat_util.SPRT(
+            self.get_results(run, False),
+            elo0=sprt['elo0'],
+            alpha=sprt['alpha'],
+            elo1=sprt['elo1'],
+            beta=sprt['beta'],
+            elo_model=sprt.get('elo_model', 'BayesElo')
+            )
       if sprt_stats['finished']:
         run['args']['sprt']['state'] = sprt_stats['state']
         self.stop_run(run_id, run)
@@ -523,7 +544,8 @@ class RunDb:
     prune_idx = len(run['tasks'])
     for idx, task in enumerate(run['tasks']):
       is_active = task['active']
-      task['pending'] = False # Make pending False before making active false to prevent race in request_task
+      task['pending'] = False  # Make pending False before making active false
+                               # to prevent race in request_task
       task['active'] = False
       if 'stats' not in task and not is_active:
         prune_idx = min(idx, prune_idx)
@@ -557,22 +579,24 @@ class RunDb:
         value = param['min']
       elif value > param['max']:
         value = param['max']
-    else: #clipping == 'careful':
-      inc = min(abs(increment), abs(param['theta'] - param['min']) / 2, abs(param['theta'] - param['max']) / 2)
+    else:  # clipping == 'careful':
+      inc = min(abs(increment), abs(param['theta'] - param['min']) / 2,
+                abs(param['theta'] - param['max']) / 2)
       if inc > 0:
           value = param['theta'] + inc * increment / abs(increment)
-      else: #revert to old behavior to bounce off boundary
+      else:  # revert to old behavior to bounce off boundary
           value = param['theta'] + increment
           if value < param['min']:
             value = param['min']
           elif value > param['max']:
             value = param['max']
 
-    #'deterministic' rounding calls round() inside the worker.
-    #'randomized' says 4.p should be 5 with probability p, 4 with probability 1-p,
-    #  and is continuous (albeit after expectation) unlike round().
+    # 'deterministic' rounding calls round() inside the worker.
+    # 'randomized' says 4.p should be 5 with probability p,
+    # 4 with probability 1-p,
+    # and is continuous (albeit after expectation) unlike round().
     if rounding == 'randomized':
-        value = math.floor(value + random.uniform(0,1))
+        value = math.floor(value + random.uniform(0, 1))
 
     return value
 
@@ -581,13 +605,13 @@ class RunDb:
 
   def store_params(self, run_id, worker, params):
     run_id = str(run_id)
-    if not run_id in self.spsa_params:
+    if run_id not in self.spsa_params:
       self.spsa_params[run_id] = {}
     self.spsa_params[run_id][worker] = params
 
   def get_params(self, run_id, worker):
     run_id = str(run_id)
-    if not run_id in self.spsa_params or not worker in self.spsa_params[run_id]:
+    if run_id not in self.spsa_params or worker not in self.spsa_params[run_id]:
       # Should only happen after server restart
       return self.generate_spsa(self.get_run(run_id))['w_params']
     return self.spsa_params[run_id][worker]
@@ -607,7 +631,8 @@ class RunDb:
       return {'task_alive': False}
 
     result = self.generate_spsa(run)
-    self.store_params(run['_id'], task['worker_info']['unique_key'], result['w_params'])
+    self.store_params(run['_id'], task['worker_info']['unique_key'],
+                      result['w_params'])
     return result
 
   def generate_spsa(self, run):
@@ -624,13 +649,15 @@ class RunDb:
         spsa['rounding'] = 'deterministic'
 
     # Generate the next set of tuning parameters
-    iter_local = spsa['iter'] + 1 #assume at least one completed, and avoid division by zero
+    iter_local = spsa['iter'] + 1  # assume at least one completed,
+                                   # and avoid division by zero
     for param in spsa['params']:
       c = param['c'] / iter_local ** spsa['gamma']
       flip = 1 if random.getrandbits(1) else -1
       result['w_params'].append({
         'name': param['name'],
-        'value': self.spsa_param_clip_round(param, c * flip, spsa['clipping'], spsa['rounding']),
+        'value': self.spsa_param_clip_round(param, c * flip,
+                                            spsa['clipping'], spsa['rounding']),
         'R': param['a'] / (spsa['A'] + iter_local) ** spsa['alpha'] / c ** 2,
         'c': c,
         'flip': flip,
@@ -670,7 +697,9 @@ class RunDb:
       R = w_params[idx]['R']
       c = w_params[idx]['c']
       flip = w_params[idx]['flip']
-      param['theta'] = self.spsa_param_clip_round(param, R * c * result * flip, spsa['clipping'], 'deterministic')
+      param['theta'] = self.spsa_param_clip_round(param, R * c * result * flip,
+                                                  spsa['clipping'],
+                                                  'deterministic')
       if grow_summary:
         summary.append({
           'theta': param['theta'],
