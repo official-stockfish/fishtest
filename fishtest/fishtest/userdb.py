@@ -3,7 +3,8 @@ import time
 import threading
 
 from datetime import datetime
-from pymongo import ASCENDING, DESCENDING
+from pymongo import ASCENDING
+
 
 class UserDb:
   def __init__(self, db):
@@ -29,7 +30,7 @@ class UserDb:
       user = self.users.find_one({'username': name})
       if not user:
         return None
-      self.cache[name] = { 'user': user, 'time': time.time() }
+      self.cache[name] = {'user': user, 'time': time.time()}
       return user
 
   def clear_cache(self):
@@ -58,7 +59,8 @@ class UserDb:
   def get_pending(self):
     with self.pending_lock:
       if time.time() > self.last_pending_time + 60:
-        self.last_pending = list(self.users.find({'blocked': True}, sort=[('_id', ASCENDING)]))
+        self.last_pending = list(self.users.find({'blocked': True},
+                                                 sort=[('_id', ASCENDING)]))
         self.last_pending_time = time.time()
       return self.last_pending
 
@@ -104,4 +106,3 @@ class UserDb:
     if user and 'machine_limit' in user:
       return user['machine_limit']
     return 4
-

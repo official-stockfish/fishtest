@@ -112,7 +112,7 @@ def brentq(f, xa, xb, xtol=EPS, epsilon=1e-6, max_iter=500):
             fblk = fpre
 
         # check bracket
-        sbis = (xblk - xcur) / 2;
+        sbis = (xblk - xcur) / 2
         if abs(sbis) < xtol:
             return result(xcur, fcur, i + 1, fcalls, False, "small bracket")
 
@@ -141,8 +141,8 @@ def brentq(f, xa, xb, xtol=EPS, epsilon=1e-6, max_iter=500):
             spre = sbis
             scur = sbis
 
-        xpre = xcur;
-        fpre = fcur;
+        xpre = xcur
+        fpre = fcur
         if (abs(scur) > xtol):
             xcur += scur
         else:

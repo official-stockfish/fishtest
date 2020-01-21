@@ -1,4 +1,6 @@
-import os, sys
+import os
+import sys
+
 from pyramid.authentication import AuthTktAuthenticationPolicy
 from pyramid.authorization import ACLAuthorizationPolicy
 from pyramid.config import Configurator
@@ -22,7 +24,8 @@ def main(global_config, **settings):
     secret = f.read()
   def groupfinder(username, request):
     return request.userdb.get_user_groups(username)
-  config.set_authentication_policy(AuthTktAuthenticationPolicy(secret, callback=groupfinder, hashalg='sha512'))
+  config.set_authentication_policy(AuthTktAuthenticationPolicy(
+    secret, callback=groupfinder, hashalg='sha512'))
   config.set_authorization_policy(ACLAuthorizationPolicy())
 
   rundb = RunDb()

@@ -1,11 +1,7 @@
 import copy
 import datetime
-import numpy
 import os
-import scipy
-import scipy.stats
 import smtplib
-import requests
 import time
 import threading
 import re
@@ -13,6 +9,13 @@ import html
 
 from email.mime.text import MIMEText
 from collections import defaultdict
+
+import requests
+
+import scipy
+import scipy.stats
+import numpy
+
 from pyramid.security import remember, forget, authenticated_userid, has_permission
 from pyramid.view import view_config, forbidden_view_config
 from pyramid.httpexceptions import HTTPFound, exception_response
@@ -20,10 +23,14 @@ from pyramid.response import Response
 
 import fishtest.stats.stat_util
 
+
+FISH_URL = 'https://tests.stockfishchess.org/tests/view/'
+
 # For caching the tests output
 cache_time = 2
 last_tests = None
 last_time = 0
+
 
 def clear_cache():
   global last_time, last_tests
@@ -32,31 +39,37 @@ def clear_cache():
   last_tests = None
   building.release()
 
+
 def cached_flash(request, requestString):
   clear_cache()
   request.session.flash(requestString)
   return
 
+
 _here = os.path.dirname(__file__)
-with open(os.path.join(_here, 'static', 'favicon.ico'), 'rb') as f:
-  _icon = f.read()
+with open(os.path.join(_here, 'static', 'favicon.ico'), 'rb') as icon_f:
+  _icon = icon_f.read()
 _fi_response = Response(content_type='image/x-icon', body=_icon)
 
-with open(os.path.join(_here, 'static', 'robots.txt'), 'r') as f:
-  _robots = f.read()
-_robots_response = Response(content_type='text/plain', body= _robots)
+with open(os.path.join(_here, 'static', 'robots.txt'), 'r') as robots_f:
+  _robots = robots_f.read()
+_robots_response = Response(content_type='text/plain', body=_robots)
+
 
 @view_config(name='favicon.ico')
-def favicon_view(context, request):
+def favicon_view(_context, _request):
   return _fi_response
 
+
 @view_config(name='robots.txt')
-def robotstxt_view(context, request):
+def robotstxt_view(_context, _request):
   return _robots_response
+
 
 @view_config(route_name='home', renderer='mainpage.mak')
 def mainpage(request):
   return HTTPFound(location=request.route_url('tests'))
+
 
 @view_config(route_name='login', renderer='mainpage.mak')
 @forbidden_view_config(renderer='mainpage.mak')
@@ -64,7 +77,7 @@ def login(request):
   login_url = request.route_url('login')
   referrer = request.url
   if referrer == login_url:
-    referrer = '/' # never use the login form itself as came_from
+    referrer = '/'  # never use the login form itself as came_from
   came_from = request.params.get('came_from', referrer)
 
   if 'form.submitted' in request.params:
@@ -75,9 +88,10 @@ def login(request):
       headers = remember(request, username)
       return HTTPFound(location=came_from, headers=headers)
 
-    request.session.flash(token['error']) # 'Incorrect password')
+    request.session.flash(token['error'])  # 'Incorrect password'
 
   return {}
+
 
 @view_config(route_name='logout')
 def logout(request):
@@ -85,6 +99,7 @@ def logout(request):
   headers = forget(request)
   session.invalidate()
   return HTTPFound(location=request.route_url('tests'), headers=headers)
+
 
 @view_config(route_name='signup', renderer='signup.mak')
 def signup(request):
@@ -95,7 +110,7 @@ def signup(request):
     if request.params.get('password') != request.params.get('password2', ''):
       request.session.flash('Matching verify password required')
       return {}
-    if not '@' in request.params.get('email', ''):
+    if '@' not in request.params.get('email', ''):
       request.session.flash('Email required')
       return {}
     if len(request.params.get('username', '')) == 0:
@@ -112,7 +127,9 @@ def signup(request):
         payload = {'secret': secret,
                    'response': request.params.get('g-recaptcha-response', ''),
                    'remoteip': request.remote_addr}
-        response= requests.post('https://www.google.com/recaptcha/api/siteverify', data=payload).json()
+        response = requests.post(
+            'https://www.google.com/recaptcha/api/siteverify',
+            data=payload).json()
         if 'success' not in response or not response['success']:
           if 'error-codes' in response:
             print(response['error-codes'])
@@ -128,10 +145,12 @@ def signup(request):
     if not result:
       request.session.flash('Invalid username')
     else:
-      request.session.flash('Your account will be activated by an administrator soon...')
+      request.session.flash(
+          'Your account will be activated by an administrator soon...')
       return HTTPFound(location=request.route_url('login'))
 
   return {}
+
 
 def delta_date(date):
   if date != datetime.datetime.min:
@@ -147,6 +166,7 @@ def delta_date(date):
   else:
     delta = 'Never'
   return delta
+
 
 def parse_tc(tc):
   # Total time for a game is assumed to be the double of tc for each player
@@ -183,12 +203,13 @@ def parse_tc(tc):
     time_tc = time_tc * (40.0 / num_moves)
   return (time_tc + (increment * 40.0)) * scale
 
+
 @view_config(route_name='actions', renderer='actions.mak')
 def actions(request):
   search_action = request.params.get('action', '')
   search_user = request.params.get('user', '')
 
-  actions = []
+  actions_list = []
   for action in request.actiondb.get_actions(100, search_action, search_user):
     item = {
       'action': action['action'],
@@ -199,7 +220,8 @@ def actions(request):
       item['user'] = ''
       item['description'] = 'Update user statistics'
     elif action['action'] == 'block_user':
-      item['description'] = ('blocked' if action['data']['blocked'] else 'unblocked')
+      item['description'] = (
+          'blocked' if action['data']['blocked'] else 'unblocked')
       item['user'] = action['data']['user']
     elif action['action'] == 'modify_run':
       item['run'] = action['data']['before']['args']['new_tag']
@@ -209,17 +231,20 @@ def actions(request):
       before = action['data']['before']['args']['priority']
       after = action['data']['after']['args']['priority']
       if before != after:
-        item['description'].append('priority changed from %s to %s' % (before, after))
+        item['description'].append(
+            'priority changed from %s to %s' % (before, after))
 
       before = action['data']['before']['args']['num_games']
       after = action['data']['after']['args']['num_games']
       if before != after:
-        item['description'].append('games changed from %s to %s' % (before, after))
+        item['description'].append(
+            'games changed from %s to %s' % (before, after))
 
       before = action['data']['before']['args']['throughput']
       after = action['data']['after']['args']['throughput']
       if before != after:
-        item['description'].append('throughput changed from %s to %s' % (before, after))
+        item['description'].append(
+            'throughput changed from %s to %s' % (before, after))
 
       item['description'] = 'modify: ' + ', '.join(item['description'])
     else:
@@ -227,11 +252,14 @@ def actions(request):
       item['_id'] = action['data']['_id']
       item['description'] = ' '.join(action['action'].split('_'))
       if action['action'] == 'stop_run':
-        item['description'] += ': %s' % (action['data'].get('stop_reason', 'User stop'))
+        item['description'] += ': %s' % (
+            action['data'].get('stop_reason', 'User stop'))
 
-    actions.append(item)
+    actions_list.append(item)
 
-  return {'actions': actions, 'approver': has_permission('approve_run', request.context, request)}
+  return {'actions': actions_list,
+          'approver': has_permission('approve_run', request.context, request)}
+
 
 def get_idle_users(request):
   idle = {}
@@ -239,8 +267,9 @@ def get_idle_users(request):
     idle[u['username']] = u
   for u in request.userdb.user_cache.find():
     del idle[u['username']]
-  idle= list(idle.values())
+  idle = list(idle.values())
   return idle
+
 
 @view_config(route_name='pending', renderer='pending.mak')
 def pending(request):
@@ -248,7 +277,9 @@ def pending(request):
     request.session.flash('You cannot view pending users')
     return HTTPFound(location=request.route_url('tests'))
 
-  return { 'users': request.userdb.get_pending(), 'idle': get_idle_users(request) }
+  return {'users': request.userdb.get_pending(),
+          'idle': get_idle_users(request)}
+
 
 @view_config(route_name='user', renderer='user.mak')
 @view_config(route_name='profile', renderer='user.mak')
@@ -257,47 +288,58 @@ def user(request):
   if not userid:
     request.session.flash('Please login')
     return HTTPFound(location=request.route_url('login'))
-  username = request.matchdict.get('username', userid)
-  profile = (username == userid)
-  if not profile and not has_permission('approve_run', request.context, request):
+  user_name = request.matchdict.get('username', userid)
+  profile = (user_name == userid)
+  if not profile and not has_permission(
+      'approve_run', request.context, request):
     request.session.flash('You cannot inspect users')
     return HTTPFound(location=request.route_url('tests'))
-  user = request.userdb.get_user(username)
+  user_data = request.userdb.get_user(user_name)
   if 'user' in request.POST:
     if profile:
       if len(request.params.get('password')) > 0:
-        if request.params.get('password') != request.params.get('password2', ''):
+        if (request.params.get('password')
+            != request.params.get('password2', '')):
           request.session.flash('Matching verify password required')
-          return {'user': user, 'profile': profile}
-        user['password'] = request.params.get('password')
+          return {'user': user_data, 'profile': profile}
+        user_data['password'] = request.params.get('password')
       if len(request.params.get('email')) > 0:
-        user['email'] = request.params.get('email')
+        user_data['email'] = request.params.get('email')
     else:
-      user['blocked'] = ('blocked' in request.POST)
+      user_data['blocked'] = ('blocked' in request.POST)
       request.userdb.last_pending_time = 0
-      request.actiondb.block_user(authenticated_userid(request), {'user': username, 'blocked': user['blocked']})
-      request.session.flash(('Blocked' if user['blocked'] else 'Unblocked') + ' user ' + username)
-    request.userdb.save_user(user)
+      request.actiondb.block_user(authenticated_userid(request),
+                              {'user': user_name, 'blocked': user_data['blocked']})
+      request.session.flash(('Blocked' if user_data['blocked'] else 'Unblocked')
+                            + ' user ' + user_name)
+    request.userdb.save_user(user_data)
     return HTTPFound(location=request.route_url('tests'))
-  userc = request.userdb.user_cache.find_one({'username': username})
+  userc = request.userdb.user_cache.find_one({'username': user_name})
   hours = int(userc['cpu_hours']) if userc is not None else 0
-  return {'user': user, 'limit': request.userdb.get_machine_limit(username), 'hours': hours, 'profile': profile}
+  return {'user': user_data, 'limit': request.userdb.get_machine_limit(user_name),
+          'hours': hours, 'profile': profile}
+
 
 @view_config(route_name='users', renderer='users.mak')
 def users(request):
-  users = list(request.userdb.user_cache.find())
-  users.sort(key=lambda k: k['cpu_hours'], reverse=True)
-  return {'users': users}
+  users_list = list(request.userdb.user_cache.find())
+  users_list.sort(key=lambda k: k['cpu_hours'], reverse=True)
+  return {'users': users_list}
+
+
 
 @view_config(route_name='users_monthly', renderer='users.mak')
 def users_monthly(request):
-  users = list(request.userdb.top_month.find())
-  users.sort(key=lambda k: k['cpu_hours'], reverse=True)
-  return {'users': users}
+  users_list = list(request.userdb.top_month.find())
+  users_list.sort(key=lambda k: k['cpu_hours'], reverse=True)
+  return {'users': users_list}
+
+
 
 def get_master_bench():
-  bs = re.compile('(^|\s)[Bb]ench[ :]+([0-9]{7})', re.MULTILINE)
-  for c in requests.get('https://api.github.com/repos/official-stockfish/Stockfish/commits').json():
+  bs = re.compile(r'(^|\s)[Bb]ench[ :]+([0-9]{7})', re.MULTILINE)
+  for c in requests.get(
+      'https://api.github.com/repos/official-stockfish/Stockfish/commits').json():
     if not 'commit' in c:
       return None
     m = bs.search(c['commit']['message'])
@@ -305,14 +347,17 @@ def get_master_bench():
       return m.group(2)
   return None
 
+
 def get_sha(branch, repo_url):
   """Resolves the git branch to sha commit"""
-  api_url = repo_url.replace('https://github.com', 'https://api.github.com/repos')
+  api_url = repo_url.replace('https://github.com',
+                             'https://api.github.com/repos')
   commit = requests.get(api_url + '/commits/' + branch).json()
   if 'sha' in commit:
     return commit['sha'], commit['commit']['message'].split('\n')[0]
   else:
     return '', ''
+
 
 def parse_spsa_params(raw, spsa):
   params = []
@@ -339,58 +384,63 @@ def parse_spsa_params(raw, spsa):
 
   return params
 
+
 def validate_form(request):
   data = {
-    'base_tag' : request.POST['base-branch'],
-    'new_tag' : request.POST['test-branch'],
-    'tc' : request.POST['tc'],
-    'book' : request.POST['book'],
-    'book_depth' : request.POST['book-depth'],
-    'base_signature' : request.POST['base-signature'],
-    'new_signature' : request.POST['test-signature'],
-    'base_options' : request.POST['base-options'],
-    'new_options' : request.POST['new-options'],
-    'username' : authenticated_userid(request),
-    'tests_repo' : request.POST['tests-repo'],
-    'info' : request.POST['run-info']
+    'base_tag': request.POST['base-branch'],
+    'new_tag': request.POST['test-branch'],
+    'tc': request.POST['tc'],
+    'book': request.POST['book'],
+    'book_depth': request.POST['book-depth'],
+    'base_signature': request.POST['base-signature'],
+    'new_signature': request.POST['test-signature'],
+    'base_options': request.POST['base-options'],
+    'new_options': request.POST['new-options'],
+    'username': authenticated_userid(request),
+    'tests_repo': request.POST['tests-repo'],
+    'info': request.POST['run-info'],
   }
 
   def strip_message(m):
-    s = re.sub("[Bb]ench[ :]+[0-9]{7}\s*", "", m)
-    s = re.sub("[ \t]+", " ", s)
-    s = re.sub("\n+", "\n", s)
+    s = re.sub(r"[Bb]ench[ :]+[0-9]{7}\s*", "", m)
+    s = re.sub(r"[ \t]+", " ", s)
+    s = re.sub(r"\n+", r"\n", s)
     return s.rstrip()
 
   # Fill new_signature/info from commit info if left blank
   if len(data['new_signature']) == 0 or len(data['info']) == 0:
-    api_url = data['tests_repo'].replace('https://github.com', 'https://api.github.com/repos')
+    api_url = data['tests_repo'].replace('https://github.com',
+                                         'https://api.github.com/repos')
     api_url += ('/commits' + '/' + data['new_tag'])
-    c= requests.get(api_url).json()
-    if not 'commit' in c:
+    c = requests.get(api_url).json()
+    if 'commit' not in c:
       raise Exception('Cannot find branch in developer repository')
     if len(data['new_signature']) == 0:
-      bs = re.compile('(^|\s)[Bb]ench[ :]+([0-9]{7})', re.MULTILINE)
+      bs = re.compile(r'(^|\s)[Bb]ench[ :]+([0-9]{7})', re.MULTILINE)
       m = bs.search(c['commit']['message'])
       if m:
-        data['new_signature']= m.group(2)
+        data['new_signature'] = m.group(2)
     if len(data['info']) == 0:
-        data['info'] = ('' if re.match('^[012]?[0-9][^0-9].*', data['tc']) else 'LTC: ') \
-          + strip_message(c['commit']['message'])
+        data['info'] = ('' if re.match('^[012]?[0-9][^0-9].*', data['tc'])
+                        else 'LTC: ') + strip_message(c['commit']['message'])
 
   if len([v for v in list(data.values()) if len(v) == 0]) > 0:
     raise Exception('Missing required option')
 
   data['auto_purge'] = request.POST.get('auto-purge') is not None
 
-  # In case of reschedule use old data, otherwise resolve sha and update user's tests_repo
+  # In case of reschedule use old data,
+  # otherwise resolve sha and update user's tests_repo
   if 'resolved_base' in request.POST:
     data['resolved_base'] = request.POST['resolved_base']
     data['resolved_new'] = request.POST['resolved_new']
     data['msg_base'] = request.POST['msg_base']
     data['msg_new'] = request.POST['msg_new']
   else:
-    data['resolved_base'], data['msg_base'] = get_sha(data['base_tag'], data['tests_repo'])
-    data['resolved_new'], data['msg_new'] = get_sha(data['new_tag'], data['tests_repo'])
+    data['resolved_base'], data['msg_base'] = get_sha(
+        data['base_tag'], data['tests_repo'])
+    data['resolved_new'], data['msg_new'] = get_sha(
+        data['new_tag'], data['tests_repo'])
     u = request.userdb.get_user(data['username'])
     if u.get('tests_repo', '') != data['tests_repo']:
       u['tests_repo'] = data['tests_repo']
@@ -402,16 +452,18 @@ def validate_form(request):
   # Check entered bench
   if data['base_tag'] == 'master':
     found = False
-    api_url = data['tests_repo'].replace('https://github.com', 'https://api.github.com/repos')
+    api_url = data['tests_repo'].replace('https://github.com',
+                                         'https://api.github.com/repos')
     api_url += '/commits'
-    bs = re.compile('(^|\s)[Bb]ench[ :]+([0-9]{7})', re.MULTILINE)
+    bs = re.compile(r'(^|\s)[Bb]ench[ :]+([0-9]{7})', re.MULTILINE)
     for c in requests.get(api_url).json():
       m = bs.search(c['commit']['message'])
       if m:
         found = True
         break
     if not found or m.group(2) != data['base_signature']:
-      raise Exception('Bench signature of Base master does not match, please "git pull upstream master" !')
+      raise Exception('Bench signature of Base master does not match, '
+                      + 'please "git pull upstream master" !')
 
   stop_rule = request.POST['stop_rule']
 
@@ -424,7 +476,8 @@ def validate_form(request):
       'beta': 0.05,
       'elo_model': 'logistic'
     }
-    # Limit on number of games played.  Shouldn't be hit in practice as long as it is larger than > ~200000
+    # Limit on number of games played.
+    # Shouldn't be hit in practice as long as it is larger than > ~200000
     # must scale with chunk_size to avoid overloading the server.
     data['num_games'] = 1000 * request.rundb.chunk_size
   elif stop_rule == 'spsa':
@@ -442,7 +495,8 @@ def validate_form(request):
       'clipping': request.POST['spsa_clipping'],
       'rounding': request.POST['spsa_rounding'],
     }
-    data['spsa']['params'] = parse_spsa_params(request.POST['spsa_raw_params'], data['spsa'])
+    data['spsa']['params'] = parse_spsa_params(
+        request.POST['spsa_raw_params'], data['spsa'])
   else:
     data['num_games'] = int(request.POST['num-games'])
     if data['num_games'] <= 0:
@@ -461,6 +515,7 @@ def validate_form(request):
 
   return data
 
+
 @view_config(route_name='tests_run', renderer='tests_run.mak')
 def tests_run(request):
   if not authenticated_userid(request):
@@ -471,7 +526,8 @@ def tests_run(request):
       data = validate_form(request)
       run_id = request.rundb.new_run(**data)
 
-      request.actiondb.new_run(authenticated_userid(request), request.rundb.get_run(run_id))
+      request.actiondb.new_run(authenticated_userid(request),
+                               request.rundb.get_run(run_id))
       cached_flash(request, 'Submitted test to the queue!')
       return HTTPFound(location='/tests/view/' + str(run_id))
     except Exception as e:
@@ -484,10 +540,15 @@ def tests_run(request):
   username = authenticated_userid(request)
   u = request.userdb.get_user(username)
 
-  return { 'args': run_args, 'tests_repo': u.get('tests_repo', ''), 'bench': get_master_bench() }
+  return {'args': run_args,
+          'tests_repo': u.get('tests_repo', ''),
+          'bench': get_master_bench()}
+
 
 def can_modify_run(request, run):
-  return run['args']['username'] == authenticated_userid(request) or has_permission('approve_run', request.context, request)
+  return (run['args']['username'] == authenticated_userid(request)
+          or has_permission('approve_run', request.context, request))
+
 
 @view_config(route_name='tests_modify')
 def tests_modify(request):
@@ -512,8 +573,11 @@ def tests_modify(request):
           chunk['pending'] = True
 
     num_games = int(request.POST['num-games'])
-    if num_games > run['args']['num_games'] and not ('sprt' in run['args'] or 'spsa' in run['args']):
-      request.session.flash('Unable to modify number of games in a fixed game test!')
+    if (num_games > run['args']['num_games']
+        and 'sprt' not in run['args']
+        and 'spsa' not in run['args']):
+      request.session.flash(
+          'Unable to modify number of games in a fixed game test!')
       return HTTPFound(location=request.route_url('tests'))
 
     max_games = 4000 * request.rundb.chunk_size
@@ -539,6 +603,7 @@ def tests_modify(request):
     cached_flash(request, 'Run successfully modified!')
   return HTTPFound(location=request.route_url('tests'))
 
+
 @view_config(route_name='tests_stop')
 def tests_stop(request):
   if not authenticated_userid(request):
@@ -557,6 +622,7 @@ def tests_stop(request):
     cached_flash(request, 'Stopped run')
   return HTTPFound(location=request.route_url('tests'))
 
+
 @view_config(route_name='tests_approve', permission='approve_run')
 def tests_approve(request):
   if 'run-id' in request.POST:
@@ -570,6 +636,7 @@ def tests_approve(request):
 
     cached_flash(request, 'Approved run')
   return HTTPFound(location=request.route_url('tests'))
+
 
 def purge_run(rundb, run):
   # Remove bad runs
@@ -590,7 +657,8 @@ def purge_run(rundb, run):
     results = rundb.get_results(run)
     played_games = results['wins'] + results['losses'] + results['draws']
     if played_games < run['args']['num_games']:
-      run['tasks'] += rundb.generate_tasks(run['args']['num_games'] - played_games)
+      run['tasks'] += rundb.generate_tasks(
+          run['args']['num_games'] - played_games)
 
     run['finished'] = False
     if 'sprt' in run['args'] and 'state' in run['args']['sprt']:
@@ -599,6 +667,7 @@ def purge_run(rundb, run):
     rundb.buffer(run, True)
 
   return purged
+
 
 @view_config(route_name='tests_purge')
 def tests_purge(request):
@@ -621,6 +690,7 @@ def tests_purge(request):
 
   cached_flash(request, 'Purged run')
   return HTTPFound(location=request.route_url('tests'))
+
 
 @view_config(route_name='tests_delete')
 def tests_delete(request):
@@ -645,6 +715,7 @@ def tests_delete(request):
     cached_flash(request, 'Deleted run')
   return HTTPFound(location=request.route_url('tests'))
 
+
 def format_results(run_results, run):
   result = {'style': '', 'info': []}
 
@@ -652,8 +723,12 @@ def format_results(run_results, run):
   WLD = [run_results['wins'], run_results['losses'], run_results['draws']]
 
   if 'spsa' in run['args']:
-    result['info'].append('%d/%d iterations' % (run['args']['spsa']['iter'], run['args']['spsa']['num_iter']))
-    result['info'].append('%d/%d games played' % (WLD[0] + WLD[1] + WLD[2], run['args']['num_games']))
+    result['info'].append('%d/%d iterations'
+                          % (run['args']['spsa']['iter'],
+                             run['args']['spsa']['num_iter']))
+    result['info'].append('%d/%d games played'
+                          % (WLD[0] + WLD[1] + WLD[2],
+                             run['args']['num_games']))
     return result
 
   # If the score is 0% or 100% the formulas will crash
@@ -666,7 +741,7 @@ def format_results(run_results, run):
   if 'sprt' in run['args']:
     sprt = run['args']['sprt']
     state = sprt.get('state', '')
-    elo_model=sprt.get('elo_model','BayesElo')
+    elo_model = sprt.get('elo_model', 'BayesElo')
     stats = fishtest.stats.stat_util.SPRT(run_results,
                                           elo0=sprt['elo0'],
                                           alpha=sprt['alpha'],
@@ -675,15 +750,23 @@ def format_results(run_results, run):
                                           elo_model=elo_model
                                           )
     result['llr'] = stats['llr']
-    if elo_model=='BayesElo':
-      result['info'].append('LLR: %.2f (%.2lf,%.2lf) [%.2f,%.2f]' % (stats['llr'], stats['lower_bound'], stats['upper_bound'], sprt['elo0'], sprt['elo1']))
+    if elo_model == 'BayesElo':
+      result['info'].append('LLR: %.2f (%.2lf,%.2lf) [%.2f,%.2f]'
+                            % (stats['llr'],
+                               stats['lower_bound'], stats['upper_bound'],
+                               sprt['elo0'], sprt['elo1']))
     else:
-      result['info'].append('LLR: %.2f (%.2lf,%.2lf) {%.2f,%.2f}' % (stats['llr'], stats['lower_bound'], stats['upper_bound'], sprt['elo0'], sprt['elo1']))
+      result['info'].append('LLR: %.2f (%.2lf,%.2lf) {%.2f,%.2f}'
+                            % (stats['llr'],
+                               stats['lower_bound'], stats['upper_bound'],
+                               sprt['elo0'], sprt['elo1']))
   else:
     if 'pentanomial' in run_results.keys():
-      elo, elo95, los = fishtest.stats.stat_util.get_elo(run_results['pentanomial'])
+      elo, elo95, los = fishtest.stats.stat_util.get_elo(
+          run_results['pentanomial'])
     else:
-      elo, elo95, los = fishtest.stats.stat_util.get_elo([WLD[1],WLD[2],WLD[0]])
+      elo, elo95, los = fishtest.stats.stat_util.get_elo(
+          [WLD[1], WLD[2], WLD[0]])
 
     # Display the results
     eloInfo = 'ELO: %.2f +-%.1f (95%%)' % (elo, elo95)
@@ -696,9 +779,11 @@ def format_results(run_results, run):
     elif los > 0.95:
       state = 'accepted'
 
-  result['info'].append('Total: %d W: %d L: %d D: %d' % (sum(WLD), WLD[0], WLD[1], WLD[2]))
+  result['info'].append('Total: %d W: %d L: %d D: %d'
+                        % (sum(WLD), WLD[0], WLD[1], WLD[2]))
   if 'pentanomial' in run_results.keys():
-    result['info'].append("Ptnml(0-2): "+", ".join(str(run_results['pentanomial'][i]) for i in range(0,5)))
+    result['info'].append("Ptnml(0-2): " + ", ".join(
+        str(run_results['pentanomial'][i]) for i in range(0, 5)))
 
   if state == 'rejected':
     if WLD[0] > WLD[1]:
@@ -706,14 +791,17 @@ def format_results(run_results, run):
     else:
       result['style'] = '#FF6A6A'
   elif state == 'accepted':
-    if 'sprt' in run['args'] and (float(sprt['elo0']) + float(sprt['elo1'])) < 0.0:
+    if ('sprt' in run['args']
+        and (float(sprt['elo0']) + float(sprt['elo1'])) < 0.0):
       result['style'] = '#66CCFF'
     else:
       result['style'] = '#44EB44'
   return result
 
+
 UUID_MAP = defaultdict(dict)
 key_lock = threading.Lock()
+
 
 def get_worker_key(task):
   global UUID_MAP
@@ -736,6 +824,7 @@ def get_worker_key(task):
 
   return worker_key
 
+
 def get_chi2(tasks, bad_users):
   """Perform chi^2 test on the stats from each worker"""
   results = {'chi2': 0.0, 'dof': 0, 'p': 0.0, 'residual': {}}
@@ -750,7 +839,8 @@ def get_chi2(tasks, bad_users):
     if key in bad_users:
       continue
     stats = task.get('stats', {})
-    wld = [float(stats.get('wins', 0)), float(stats.get('losses', 0)), float(stats.get('draws', 0))]
+    wld = [float(stats.get('wins', 0)),
+           float(stats.get('losses', 0)), float(stats.get('draws', 0))]
     if wld == [0.0, 0.0, 0.0]:
       continue
     if key in users:
@@ -763,10 +853,11 @@ def get_chi2(tasks, bad_users):
     return results
 
   observed = numpy.array(list(users.values()))
-  rows,columns = observed.shape
+  rows, columns = observed.shape
   # Results only from one worker: skip the test for workers homogeneity
   if rows == 1:
-    results = {'chi2': float('nan'), 'dof': 0, 'p': float('nan'), 'residual': {}}
+    results = {'chi2': float('nan'), 'dof': 0,
+               'p': float('nan'), 'residual': {}}
     return results
 
   column_sums = numpy.sum(observed, axis=0)
@@ -791,7 +882,9 @@ def get_chi2(tasks, bad_users):
 
   expected = numpy.outer(row_sums, column_sums) / grand_total
   raw_residual = observed - expected
-  std_error = numpy.sqrt(expected * numpy.outer((1 - row_sums / grand_total), (1 - column_sums / grand_total)))
+  std_error = numpy.sqrt(expected *
+                         numpy.outer((1 - row_sums / grand_total),
+                                     (1 - column_sums / grand_total)))
   adj_residual = raw_residual / std_error
   for idx in range(len(users)):
     users[list(users.keys())[idx]] = numpy.max(numpy.abs(adj_residual[idx]))
@@ -802,6 +895,7 @@ def get_chi2(tasks, bad_users):
     'p': 1 - scipy.stats.chi2.cdf(chi2, df),
     'residual': users,
   }
+
 
 def calculate_residuals(run):
   bad_users = set()
@@ -842,11 +936,13 @@ def calculate_residuals(run):
   chi2['bad_users'] = bad_users
   return chi2
 
+
 @view_config(route_name='tests_stats', renderer='tests_stats.mak')
 def tests_stats(request):
   run = request.rundb.get_run(request.matchdict['id'])
   request.rundb.get_results(run)
-  return {'run':run}
+  return {'run': run}
+
 
 @view_config(route_name='tests_view_spsa_history', renderer='json')
 def tests_view_spsa_history(request):
@@ -856,10 +952,11 @@ def tests_view_spsa_history(request):
 
   return run['args']['spsa']
 
+
 @view_config(route_name='tests_view', renderer='tests_view.mak')
 def tests_view(request):
   run = request.rundb.get_run(request.matchdict['id'])
-  if run == None:
+  if run is None:
     raise exception_response(404)
   results = request.rundb.get_results(run)
   run['results_info'] = format_results(results, run)
@@ -867,11 +964,11 @@ def tests_view(request):
 
   for name in ['new_tag', 'new_signature', 'new_options', 'resolved_new',
                'base_tag', 'base_signature', 'base_options', 'resolved_base',
-               'sprt', 'num_games', 'spsa', 'tc', 'threads', 'book', 'book_depth',
-               'auto_purge', 'priority', 'itp', 'username', 'tests_repo',
-               'info']:
+               'sprt', 'num_games', 'spsa', 'tc', 'threads', 'book',
+               'book_depth', 'auto_purge', 'priority', 'itp', 'username',
+               'tests_repo', 'info']:
 
-    if not name in run['args']:
+    if name not in run['args']:
       continue
 
     value = run['args'][name]
@@ -886,27 +983,28 @@ def tests_view(request):
     if name == 'sprt' and value != '-':
       value = 'elo0: %.2f alpha: %.2f elo1: %.2f beta: %.2f state: %s (%s)' % \
               (value['elo0'], value['alpha'], value['elo1'], value['beta'],
-               value.get('state', '-'), value.get('elo_model','BayesElo'))
+               value.get('state', '-'), value.get('elo_model', 'BayesElo'))
 
     if name == 'spsa' and value != '-':
-      iter_local = value['iter'] + 1 # assume at least one completed, and avoid division by zero
-      params = ['param: %s, best: %.2f, start: %.2f, min: %.2f, max: %.2f, c %f, a %f' % \
+      iter_local = value['iter'] + 1  # assume at least one completed,
+                                      # and avoid division by zero
+      params = ['param: %s, best: %.2f, start: %.2f, min: %.2f, max: %.2f, c %f, a %f' %
                 (p['name'], p['theta'], p['start'], p['min'], p['max'],
                  p['c'] / (iter_local ** value['gamma']),
                  p['a'] / (value['A'] + iter_local) ** value['alpha'])
                 for p in value['params']]
       value = 'Iter: %d, A: %d, alpha %f, gamma %f, clipping %s, rounding %s\n%s' \
               % (iter_local, value['A'], value['alpha'], value['gamma'],
-              value['clipping'] if 'clipping' in value else 'old',
-              value['rounding'] if 'rounding' in value else 'deterministic',
-              '\n'.join(params))
+                 value['clipping'] if 'clipping' in value else 'old',
+                 value['rounding'] if 'rounding' in value else 'deterministic',
+                 '\n'.join(params))
 
     if 'tests_repo' in run['args']:
       if name == 'new_tag':
         url = run['args']['tests_repo'] + '/commit/' + run['args']['resolved_new']
       elif name == 'base_tag':
         url = run['args']['tests_repo'] + '/commit/' + run['args']['resolved_base']
-      elif name == 'tests_repo' :
+      elif name == 'tests_repo':
         url = value
 
     try:
@@ -925,10 +1023,12 @@ def tests_view(request):
     last_updated = task.get('last_updated', datetime.datetime.min)
     task['last_updated'] = last_updated
 
-  return { 'run': run, 'run_args': run_args, 'chi2': calculate_residuals(run),
+  return {'run': run, 'run_args': run_args, 'chi2': calculate_residuals(run),
           'approver': has_permission('approve_run', request.context, request),
-          'totals': '(%s active worker%s with %s core%s)' % (active, ('s' if active != 1 else ''),
-                                                             cores, ('s' if cores != 1 else ''))}
+          'totals': '(%s active worker%s with %s core%s)'
+          % (active, ('s' if active != 1 else ''),
+             cores, ('s' if cores != 1 else ''))}
+
 
 def post_result(run):
   title = run['args']['new_tag'][:23]
@@ -936,15 +1036,18 @@ def post_result(run):
   if 'username' in run['args']:
     title += '  (' + run['args']['username'] + ')'
 
-  body = 'http://tests.stockfishchess.org/tests/view/%s\n\n' % (str(run['_id']))
+  body = FISH_URL + '%s\n\n' % (str(run['_id']))
 
   body += run['start_time'].strftime("%d-%m-%y") + ' from '
-  body += run['args'].get('username','') + '\n\n'
+  body += run['args'].get('username', '') + '\n\n'
 
-  body += run['args']['new_tag'] + ': ' + run['args'].get('msg_new', '') + '\n'
-  body += run['args']['base_tag'] + ': ' + run['args'].get('msg_base', '') + '\n\n'
+  body += run['args']['new_tag'] + ': ' + run['args'].get(
+      'msg_new', '') + '\n'
+  body += run['args']['base_tag'] + ': ' + run['args'].get(
+      'msg_base', '') + '\n\n'
 
-  body += 'TC: ' + run['args']['tc'] + ' th ' + str(run['args'].get('threads',1)) + '\n'
+  body += 'TC: ' + run['args']['tc'] + ' th ' + str(
+      run['args'].get('threads', 1)) + '\n'
   body += '\n'.join(run['results_info']['info']) + '\n\n'
 
   body += run['args'].get('info', '') + '\n\n'
@@ -958,8 +1061,10 @@ def post_result(run):
   s.sendmail(msg['From'], [msg['To']], msg.as_string())
   s.quit()
 
+
 # Guard against parallel builds of main page
 building = threading.Semaphore()
+
 
 @view_config(route_name='tests', renderer='tests.mak')
 @view_config(route_name='tests_user', renderer='tests.mak')
@@ -978,14 +1083,15 @@ def tests(request):
     if time.time() - last_time < cache_time:
       return last_tests
     if not building.acquire(last_tests is None):
-      # We have a current cache and another thread is rebuilding, so return the current cache
+      # We have a current cache and another thread is rebuilding,
+      # so return the current cache
       return last_tests
     elif time.time() - last_time < cache_time:
       # Another thread has built the cache for us, so we are done
       building.release()
       return last_tests
 
-  runs = { 'pending':[], 'failed':[], 'active':[], 'finished':[] }
+  runs = {'pending': [], 'failed': [], 'active': [], 'finished': []}
 
   try:
     if full_info:
@@ -1010,7 +1116,8 @@ def tests(request):
         # when the run was finished, not when it is first viewed)
         if state == 'finished':
           purged = 0
-          if run['args'].get('auto_purge', True) and 'spsa' not in run['args'] and run['args']['threads'] == 1:
+          if (run['args'].get('auto_purge', True)
+              and 'spsa' not in run['args'] and run['args']['threads'] == 1):
             while purge_run(request.rundb, run) and purged < 5:
               purged += 1
               run = request.rundb.get_run(run['_id'])
@@ -1028,16 +1135,24 @@ def tests(request):
           runs[state].append(run)
 
       runs['pending'].sort(key=lambda run: (run['args']['priority'],
-                                            run['args']['itp'] if 'itp' in run['args'] else 100))
-      runs['active'].sort(reverse=True, key=lambda run: ('sprt' in run['args'], run['results_info']['llr'] if 'llr' in run['results_info'] else 0,
-                                                       'spsa' not in run['args'], run['results']['wins'] + run['results']['draws'] + run['results']['losses']))
+                                            run['args']['itp']
+                                            if 'itp' in run['args'] else 100))
+      runs['active'].sort(reverse=True, key=lambda run: (
+          'sprt' in run['args'],
+          run['results_info']['llr'] if 'llr' in run['results_info'] else 0,
+          'spsa' not in run['args'],
+          run['results']['wins'] + run['results']['draws']
+          + run['results']['losses']))
 
       games_per_minute = 0.0
       machines = request.rundb.get_machines()
       for machine in machines:
         machine['last_updated'] = delta_date(machine['last_updated'])
         if machine['nps'] != 0:
-          games_per_minute += (machine['nps'] / 1200000.0) * (60.0 / parse_tc(machine['run']['args']['tc'])) * int(machine['concurrency'])
+          games_per_minute += (
+              (machine['nps'] / 1200000.0)
+              * (60.0 / parse_tc(machine['run']['args']['tc']))
+              * int(machine['concurrency']))
       machines.reverse()
 
       def remaining_hours(run):
@@ -1045,9 +1160,12 @@ def tests(request):
         expected_games = run['args']['num_games']
         if 'sprt' in run['args']:
           expected_games = 16000
-        remaining_games = max(0, expected_games - r['wins'] - r['losses'] - r['draws'])
+        remaining_games = max(0,
+                              expected_games
+                              - r['wins'] - r['losses'] - r['draws'])
         game_secs = parse_tc(run['args']['tc'])
-        return game_secs * remaining_games * int(run['args'].get('threads', 1)) / (60*60)
+        return game_secs * remaining_games * int(
+            run['args'].get('threads', 1)) / (60*60)
 
       cores = sum([int(m['concurrency']) for m in machines])
       nps = sum([int(m['concurrency']) * m['nps'] for m in machines])
@@ -1062,13 +1180,15 @@ def tests(request):
             info['info'][0] += ' (%.1f hrs)' % (eta)
           if 'sprt' in run['args']:
             sprt = run['args']['sprt']
-            elo_model=sprt.get('elo_model','BayesElo')
-            if elo_model=='BayesElo':
-              info['info'].append(('[%.2f,%.2f]') % (sprt['elo0'], sprt['elo1']))
+            elo_model = sprt.get('elo_model', 'BayesElo')
+            if elo_model == 'BayesElo':
+              info['info'].append(('[%.2f,%.2f]')
+                                  % (sprt['elo0'], sprt['elo1']))
             else:
-              info['info'].append(('{%.2f,%.2f}') % (sprt['elo0'], sprt['elo1']))
+              info['info'].append(('{%.2f,%.2f}')
+                                  % (sprt['elo0'], sprt['elo1']))
 
-    else: # not full_info
+    else:  # not full_info
       cores = 0
       nps = 0
       pending_hours = 0
@@ -1078,8 +1198,9 @@ def tests(request):
     # Pagination
     page = max(0, int(request.params.get('page', 1)) - 1)
     page_size = 50
-    finished, num_finished = request.rundb.get_finished_runs(skip=page*page_size, limit=page_size, username=username,
-                                                             success_only=success_only, ltc_only=ltc_only)
+    finished, num_finished = request.rundb.get_finished_runs(
+        skip=page*page_size, limit=page_size, username=username,
+        success_only=success_only, ltc_only=ltc_only)
     runs['finished'] += finished
 
     for run in finished:
@@ -1091,13 +1212,16 @@ def tests(request):
 
     runs['finished'] = [r for r in runs['finished'] if r not in runs['failed']]
 
-    pages = [{'idx': 'Prev', 'url': '?page=%d' % (page), 'state': 'disabled' if page == 0 else ''}]
-    for idx, page_idx in enumerate(range(0, num_finished, page_size)):
+    pages = [{'idx': 'Prev', 'url': '?page=%d' % (page),
+              'state': 'disabled' if page == 0 else ''}]
+    for idx, _ in enumerate(range(0, num_finished, page_size)):
       if idx < 5 or abs(page - idx) < 5 or idx > (num_finished / page_size) - 5:
-        pages.append({'idx': idx + 1, 'url': '?page=%d' % (idx + 1), 'state': 'active' if page == idx else ''})
+        pages.append({'idx': idx + 1, 'url': '?page=%d' % (idx + 1),
+                      'state': 'active' if page == idx else ''})
       elif pages[-1]['idx'] != '...':
         pages.append({'idx': '...', 'url': '', 'state': 'disabled'})
-    pages.append({'idx': 'Next', 'url': '?page=%d' % (page + 2), 'state': 'disabled' if page + 1 == len(pages) - 1 else ''})
+    pages.append({'idx': 'Next', 'url': '?page=%d' % (page + 2),
+                  'state': 'disabled' if page + 1 == len(pages) - 1 else ''})
 
     if success_only:
       for page in pages:
