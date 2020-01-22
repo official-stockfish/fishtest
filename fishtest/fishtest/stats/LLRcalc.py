@@ -16,7 +16,7 @@ that the ai are strictly ascending, a1<s<aN and p1>0, pN>0.
 The theory behind this function can be found in the online
 document
 
-http://hardy.uhasselt.be/Toga/computeLLR.pdf
+http://hardy.uhasselt.be/Fishtest/support_MLE_multinomial.pdf
 
 (see Proposition 1.1).
 
@@ -76,7 +76,7 @@ for s=s1 versus s=s0 where pdf is an empirical distribution and
 s is the expectation value of the true distribution.
 pdf is a list of pairs (value,probability). See
 
-http://hardy.uhasselt.be/Toga/computeLLR.pdf
+http://hardy.uhasselt.be/Fishtest/support_MLE_multinomial.pdf
 """
     r0,r1=[sum([prob*(value-s)**2 for value,prob in pdf]) for s in (s0,s1)]
     return 1/2*math.log(r0/r1)
@@ -88,7 +88,7 @@ for s=s1 versus s=s0 where pdf is an empirical distribution and
 s is the expectation value of the true distribution.
 pdf is a list of pairs (value,probability). See
 
-http://hardy.uhasselt.be/Toga/GSPRT_approximation.pdf
+http://hardy.uhasselt.be/Fishtest/GSPRT_approximation.pdf
 """
     s,var=stats(pdf)
     return (s1-s0)*(2*s-s0-s1)/var/2.0
@@ -119,7 +119,7 @@ the argument s. If s is not given
 the it is assumed that pdf is the true
 distribution. See
 
-http://hardy.uhasselt.be/Toga/GSPRT_approximation.pdf
+http://hardy.uhasselt.be/Fishtest/GSPRT_approximation.pdf
 """
     s_,v_=stats(pdf)
     # replace v_ by its MLE if requested
@@ -163,9 +163,6 @@ elo0,elo1 are in logistic elo.
     # The well-known universal constant 0.583 is for normal increments.
     # In practice it appears to work well in general.
     overshoot=0.583*(s1-s0)/math.sqrt(var)
-    # This division in cases (for safety) is probably not necessary.
-    if N<100:
-        return N*LLR(pdf,s0,s1),overshoot
-    else:
-        return N*LLR_alt(pdf,s0,s1),overshoot
+    return N*LLR(pdf,s0,s1),overshoot
+
 
