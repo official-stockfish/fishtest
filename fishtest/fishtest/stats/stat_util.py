@@ -4,27 +4,24 @@ import math,copy
 
 from fishtest.stats import LLRcalc
 from fishtest.stats import sprt
+from fishtest.stats import brownian
 
-def erf(x):
-  #Python 2.7 defines math.erf(), but we need to cater for older versions.
-  a = 8*(math.pi-3)/(3*math.pi*(4-math.pi))
-  x2 = x*x
-  y = -x2 * (4/math.pi + a*x2) / (1 + a*x2)
-  return math.copysign(math.sqrt(1 - math.exp(y)), x)
+def phi(q):
+  """
+Cumlative distribution function for the standard Gaussian law: quantile -> probability
+"""
+  return brownian.Phi(q)
 
 def erf_inv(x):
-  # Above erf formula inverted analytically
   a = 8*(math.pi-3)/(3*math.pi*(4-math.pi))
   y = math.log(1-x*x)
   z = 2/(math.pi*a) + y/2
   return math.copysign(math.sqrt(math.sqrt(z*z - y/a) - z), x)
 
-def phi(q):
-  # Cumlative distribution function for the standard Gaussian law: quantile -> probability
-  return 0.5*(1+erf(q/math.sqrt(2)))
-
 def phi_inv(p):
-  # Quantile function for the standard Gaussian law: probability -> quantile
+  """
+Quantile function for the standard Gaussian law: probability -> quantile
+"""
   assert(0 <= p and p <= 1)
   return math.sqrt(2)*erf_inv(2*p-1)
 
@@ -37,20 +34,11 @@ def elo(x):
 def L(x):
     return 1/(1+10**(-x/400.0))
 
-def regularize(results):
-  """
-Introduce a small prior to avoid division by zero
-"""
-  results=copy.copy(results)
-  l=len(results)
-  for i in range(0,l):
-    if results[i]==0:
-      results[i]=1e-3
-  return results
-
 def stats(results):
-# "results" is an array of length 2*n+1 with aggregated frequences
-# for n games
+  """
+"results" is an array of length 2*n+1 with aggregated frequences
+for n games.
+"""
   l=len(results)
   N=sum(results)
   games=N*(l-1)/2.0
@@ -65,10 +53,11 @@ def stats(results):
   return games,mu,var
 
 def get_elo(results):
-# "results" is an array of length 2*n+1 with aggregated frequences
-# for n games
-
-  results=regularize(results)
+  """
+"results" is an array of length 2*n+1 with aggregated frequences
+for n games.
+"""
+  results=LLRcalc.regularize(results)
   games,mu,var=stats(results)
   stdev = math.sqrt(var)
 
@@ -85,9 +74,9 @@ def get_elo(results):
 
 def bayeselo_to_proba(elo, drawelo):
   """
-  elo is expressed in BayesELO (relative to the choice drawelo).
-  Returns a probability, P[2], P[0], P[1] (win,loss,draw).
-  """
+elo is expressed in BayesELO (relative to the choice drawelo).
+Returns a probability, P[2], P[0], P[1] (win,loss,draw).
+"""
   P = 3*[0]
   P[2] = 1.0 / (1.0 + pow(10.0, (-elo + drawelo) / 400.0))
   P[0] = 1.0 / (1.0 + pow(10.0, (elo + drawelo) / 400.0))
@@ -96,9 +85,9 @@ def bayeselo_to_proba(elo, drawelo):
 
 def proba_to_bayeselo(P):
   """
-  Takes a probability: P[2], P[0]
-  Returns elo, drawelo
-  """
+Takes a probability: P[2], P[0]
+Returns elo, drawelo.
+"""
   assert(0 < P[2] and P[2] < 1 and 0 < P[0] and P[0] < 1)
   elo = 200 * math.log10(P[2]/P[0] * (1-P[0])/(1-P[2]))
   drawelo = 200 * math.log10((1-P[0])/P[0] * (1-P[2])/P[2])
@@ -106,10 +95,10 @@ def proba_to_bayeselo(P):
 
 def draw_elo_calc(R):
   """
-  Takes trinomial frequences R[0],R[1],R[2]
-  (loss,draw,win) and returns the corresponding
-  drawelo value.
-  """
+Takes trinomial frequences R[0],R[1],R[2]
+(loss,draw,win) and returns the corresponding
+drawelo value.
+"""
   N=sum(R)
   P=[p/N for p in R]
   _, drawelo = proba_to_bayeselo(P)
@@ -132,12 +121,12 @@ def elo_to_bayeselo(elo, draw_ratio):
 
 def SPRT_elo(R, alpha=0.05, beta=0.05, p=0.05, elo0=None, elo1=None, elo_model=None):
   """
-  Calculate an elo estimate from an sprt test.
-  """
+Calculate an elo estimate from an SPRT test.
+"""
   assert(elo_model in ['BayesElo','logistic'])
 
   # Estimate drawelo out of sample
-  R3=regularize([R['losses'],R['draws'],R['wins']])
+  R3=LLRcalc.regularize([R['losses'],R['draws'],R['wins']])
   drawelo=draw_elo_calc(R3)
 
   # Convert the bounds to logistic elo if necessary
@@ -165,24 +154,34 @@ def SPRT_elo(R, alpha=0.05, beta=0.05, p=0.05, elo0=None, elo1=None, elo_model=N
   # Now return the estimates
   return a
 
+def LLRlegacy(belo0,belo1,results):
+  """
+LLR calculation using the BayesElo model where
+drawelo is estimated "out of sample".
+"""
+  assert(len(results)==3)
+  drawelo=draw_elo_calc(results)
+  P0=bayeselo_to_proba(belo0,drawelo)
+  P1=bayeselo_to_proba(belo1,drawelo)
+  return sum([results[i]*math.log(P1[i]/P0[i]) for i in range(0,3)])
 
 def SPRT(R, elo0, alpha, elo1, beta, elo_model=None):
   """
-  Sequential Probability Ratio Test
-  H0: elo = elo0
-  H1: elo = elo1
-  alpha = max typeI error (reached on elo = elo0)
-  beta = max typeII error for elo >= elo1 (reached on elo = elo1)
-  R['wins'], R['losses'], R['draws'] contains the number of wins, losses and draws
-  R['pentanomial'] contains the pentanomial frequencies
-  elo_model can be either 'BayesElo' or 'logistic'
+Sequential Probability Ratio Test
+H0: elo = elo0
+H1: elo = elo1
+alpha = max typeI error (reached on elo = elo0)
+beta = max typeII error for elo >= elo1 (reached on elo = elo1)
+R['wins'], R['losses'], R['draws'] contains the number of wins, losses and draws
+R['pentanomial'] contains the pentanomial frequencies
+elo_model can be either 'BayesElo' or 'logistic'
 
-  Returns a dict:
-  finished - bool, True means test is finished, False means continue sampling
-  state - string, 'accepted', 'rejected' or ''
-  llr - Log-likelihood ratio
-  lower_bound/upper_bound - SPRT bounds
-  """
+Returns a dict:
+finished - bool, True means test is finished, False means continue sampling
+state - string, 'accepted', 'rejected' or ''
+llr - Log-likelihood ratio
+lower_bound/upper_bound - SPRT bounds
+"""
   assert(elo_model in ['BayesElo','logistic'])
 
   result = {
@@ -192,38 +191,26 @@ def SPRT(R, elo0, alpha, elo1, beta, elo_model=None):
     'lower_bound': math.log(beta/(1-alpha)),
     'upper_bound': math.log((1-beta)/alpha),
   }
-  R3=regularize([R['losses'],R['draws'],R['wins']])
+
+  # First deal with the legacy BayesElo/trinomial models
+  R3=LLRcalc.regularize([R['losses'],R['draws'],R['wins']])
   if elo_model=='BayesElo':
     # Estimate drawelo out of sample
     drawelo=draw_elo_calc(R3)
-
-    # Probability laws under H0 and H1
-    P0 = bayeselo_to_proba(elo0, drawelo)
-    P1 = bayeselo_to_proba(elo1, drawelo)
-
     # Conversion of bounds to logistic elo
-    lelo0=elo(P0[2]+0.5*P0[1])
-    lelo1=elo(P1[2]+0.5*P1[1])
+    lelo0,lelo1=[bayeselo_to_elo(elo,drawelo) for elo in (elo0,elo1)]
   else:
-    lelo0=elo0
-    lelo1=elo1
+    lelo0,lelo1=elo0,elo1
 
   # Log-Likelihood Ratio
-  if 'pentanomial' in R.keys():
-    LLR_,overshoot=LLRcalc.LLR_logistic(lelo0,lelo1,R['pentanomial'])
-    result['llr']=LLR_
-  else:
-    if elo_model=='BayesElo': # legacy code, we keep it in order not to change
-                              # the LLR of prior tests
-      result['llr']=sum([R3[i]*math.log(P1[i]/P0[i]) for i in range(0,len(R3))])
-      overshoot=0
-    else:
-      LLR_,overshoot=LLRcalc.LLR_logistic(lelo0,lelo1,R3)
-      result['llr']=LLR_
+  R_=R.get('pentanomial',R3)
+  LLR_,overshoot=LLRcalc.LLR_logistic(lelo0,lelo1,R_)
+  result['llr']=LLR_
 
   # bound estimated overshoot for safety
   overshoot=min((result['upper_bound']-result['lower_bound'])/20,overshoot)
 
+  # now check the stop condition
   if result['llr'] < result['lower_bound']+overshoot:
     result['finished'] = True
     result['state'] = 'rejected'

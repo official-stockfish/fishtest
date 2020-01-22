@@ -127,6 +127,10 @@
 	    elo5_u=a5['ci'][1]
 	    elo5=a5['elo']
 	    LOS5=a5['LOS']
+	    # auxilliary
+	    LLR5_exact=N5*fishtest.stats.LLRcalc.LLR(pdf5,score0,score1)
+	    LLR5_alt  =N5*fishtest.stats.LLRcalc.LLR_alt(pdf5,score0,score1)
+	    LLR5_alt2 =N5*fishtest.stats.LLRcalc.LLR_alt2(pdf5,score0,score1)
 	 else:                #assume fixed length test
 	    elo5,elo95_5,LOS5=fishtest.stats.stat_util.get_elo(results5_)
 	    elo5_l=elo5-elo95_5
@@ -141,6 +145,21 @@
 	<tr><td>LLR</td><td>${"%.4f [%.4f, %.4f]"%(LLR5,LLR5_l,LLR5_u)}</td></tr>
 % endif  ## has_sprt
       </table>
+% if has_sprt:
+      <H5> Generalized Log Likelihood Ratio </H5>
+      <em> The monikers Alt and Alt2 are from the source code. Alt (which is 
+      no longer used) is faster to compute than the exact LLR which requires
+      numerically solving a rational equation.
+      The simple Alt2 is used for Elo estimation.
+      Note that we are not aware of any literature
+      indicating that any of these LLR quantities is theoretically better than the others.
+      </em>
+      <table class="table table-condensed" style="margin-top:1em;">
+      	<tr><td>Exact</td><td>${"%.5f"%LLR5_exact}</td></tr>
+      	<tr><td>Alt</td><td>${"%.5f"%LLR5_alt}</td></tr>
+      	<tr><td>Alt2</td><td>${"%.5f"%LLR5_alt2}</td></tr>
+      </table>
+% endif ## has_sprt
       <H5> Auxilliary statistics </H5>	
       <table class="table table-condensed">	
 	<tr><td>Games</td><td>${int(games5)}</td></tr>
@@ -214,6 +233,11 @@
 	 	 elo3_u=a3['ci'][1]
 	 	 elo3=a3['elo']
 	 	 LOS3=a3['LOS']
+		 # auxilliary
+	         LLR3_exact=N3*fishtest.stats.LLRcalc.LLR(pdf3,score0,score1)
+	         LLR3_alt  =N3*fishtest.stats.LLRcalc.LLR_alt(pdf3,score0,score1)
+	         LLR3_alt2 =N3*fishtest.stats.LLRcalc.LLR_alt2(pdf3,score0,score1)
+		 LLR3_be   =fishtest.stats.stat_util.LLRlegacy(belo0,belo1,results3_)
 	 else:                #assume fixed length test
 	 	elo3,elo95_3,LOS3=fishtest.stats.stat_util.get_elo(results3_)
 		elo3_l=elo3-elo95_3
@@ -227,6 +251,17 @@
 	<tr><td>LLR</td><td>${"%.4f [%.4f, %.4f]"%(LLR3,LLR3_l,LLR3_u)}</td></tr>
 % endif  ## has_sprt
       </table>
+% if has_sprt:
+       <H5> Generalized Log Likelihood Ratio </H5>
+       <em> BayesElo is the LLR as computed using the BayesElo model. It is not clear how to
+       generalize it to the pentanomial case. </em>
+       <table class="table table-condensed" style="margin-top:1em;">
+       	<tr><td>Exact</td><td>${"%.5f"%LLR3_exact}</td></tr>
+       	<tr><td>Alt</td><td>${"%.5f"%LLR3_alt}</td></tr>
+      	<tr><td>Alt2</td><td>${"%.5f"%LLR3_alt2}</td></tr>
+	<tr><td>BayesElo</td><td>${"%.5f"%LLR3_be}</td></tr>	
+      </table>
+% endif  ## has_sprt
      <H5> Auxilliary statistics</H5>
       <table class="table table-condensed">
 	<tr><td>Games</td><td>${int(games3)}</td></tr>
