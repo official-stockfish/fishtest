@@ -155,11 +155,3 @@ def brentq(f, xa, xb, xtol=EPS, epsilon=1e-6, max_iter=500):
             return result(xcur, fcur, i, fcalls, True, "convergence")
 
     return result(xcur, fcur, i + 1, fcalls, False, "iterations")
-
-if __name__=='__main__':
-    import math
-    f=lambda x:math.cos(x)-x
-    print(brentq(f,0,math.pi/2))
-
-
-    

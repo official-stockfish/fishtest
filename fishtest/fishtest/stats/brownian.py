@@ -116,7 +116,3 @@ robust we use the asymptotic development of Phi.
         else:
             t3=math.exp(2*gamma*b)*Phi(zb)
         return t1+t2-t3
-
-    
-
-

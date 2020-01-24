@@ -3,9 +3,9 @@ from __future__ import division
 import math,copy
 import argparse
 
-from fishtest.stats.brownian import Brownian
-from fishtest.stats.brentq import brentq
-from fishtest.stats import LLRcalc
+from .brownian import Brownian
+from .brentq import brentq
+from . import LLRcalc
 
 class sprt:
     def __init__(self,alpha=0.05,beta=0.05,elo0=0,elo1=5):
@@ -84,38 +84,3 @@ less than p.
         ret['LOS']=self.outcome_prob(0)
         ret['LLR']=self.llr
         return ret
-
-if __name__=='__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--alpha",help="probability of a false positve",type=float,default=0.05)
-    parser.add_argument("--beta" ,help="probability of a false negative",type=float,default=0.05)
-    parser.add_argument("--elo0", help="H0 (expressed in LogisticElo)",type=float,default=0.0)
-    parser.add_argument("--elo1", help="H1 (expressed in LogisticElo)",type=float,default=5.0)
-    parser.add_argument("--level",help="confidence level",type=float,default=0.95)
-    parser.add_argument("--results", help="trinomial of pentanomial frequencies, low to high",nargs="*",type=int, required=True)
-    args=parser.parse_args()
-    results=args.results
-    if len(results)!=3 and len(results)!=5:
-        parser.error("argument --results: expected 3 or 5 arguments")
-    alpha=args.alpha
-    beta=args.beta
-    elo0=args.elo0
-    elo1=args.elo1
-    p=1-args.level
-    s=sprt(alpha=alpha,beta=beta,elo0=elo0,elo1=elo1)
-    s.set_state(results)
-    a=s.analytics(p)
-    print("Design parameters")
-    print("=================")
-    print("False positives             :  %4.2f%%" % (100*alpha,))
-    print("False negatives             :  %4.2f%%" % (100*beta,) )
-    print("[Elo0,Elo1]                 :  [%.2f,%.2f]"  % (elo0,elo1))
-    print("Confidence level            :  %4.2f%%" % (100*(1-p),))
-    print("Estimates")
-    print("=========")
-    print("Elo                         :  %.2f"    % a['elo'])
-    print("Confidence interval         :  [%.2f,%.2f] (%4.2f%%)"  % (a['ci'][0],a['ci'][1],100*(1-p)))
-    print("LOS                         :  %4.2f%%" % (100*a['LOS'],))
-    print("Context")
-    print("=======")
-    print("LLR [u,l]                   :  %.2f %s [%.2f,%.2f]"       % (a['LLR'], '(clamped)' if a['clamped'] else '',a['a'],a['b']))

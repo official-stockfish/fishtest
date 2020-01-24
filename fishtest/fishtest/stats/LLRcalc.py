@@ -2,7 +2,7 @@ from __future__ import division
 
 import math,sys,copy
 
-from fishtest.stats.brentq import brentq
+from .brentq import brentq
 
 def MLE(pdf,s):
     """
@@ -164,5 +164,3 @@ elo0,elo1 are in logistic elo.
     # In practice it appears to work well in general.
     overshoot=0.583*(s1-s0)/math.sqrt(var)
     return N*LLR(pdf,s0,s1),overshoot
-
-
