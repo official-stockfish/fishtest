@@ -316,11 +316,14 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
 
       validate_pentanomial(wld,rounds)
 
-      result['stats']['wins']   = wld[0] + old_stats['wins']
-      result['stats']['losses'] = wld[1] + old_stats['losses']
-      result['stats']['draws']  = wld[2] + old_stats['draws']
-
-      if spsa_tuning:
+      if not spsa_tuning:
+        result['stats']['wins']   = wld[0] - rounds['trinomial'][2] + old_stats['wins']
+        result['stats']['losses'] = wld[1] - rounds['trinomial'][0] + old_stats['losses']
+        result['stats']['draws']  = wld[2] - rounds['trinomial'][1] + old_stats['draws']
+      else:
+        result['stats']['wins']   = wld[0] + old_stats['wins']
+        result['stats']['losses'] = wld[1] + old_stats['losses']
+        result['stats']['draws']  = wld[2] + old_stats['draws']
         spsa['wins'] = wld[0]
         spsa['losses'] = wld[1]
         spsa['draws'] = wld[2]
