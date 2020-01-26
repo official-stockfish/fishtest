@@ -146,7 +146,7 @@ Cowardice,150,0,200,10,0.0020"""})['raw_params']}</textarea>
   <div class="control-group">
     <label class="control-label">Book:</label>
     <div class="controls">
-      <input name="book" value="${args.get('book', 'noob_3moves.epd')}">
+      <input name="book" value="${args.get('book', 'noob_3moves.pgn')}">
     </div>
   </div>
   <div class="control-group">
