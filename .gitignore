@@ -7,4 +7,5 @@ worker/custom_make.txt
 worker/env
 worker/fish.exit
 worker/fishtest.cfg
+worker/_testing_*
 worker/testing
