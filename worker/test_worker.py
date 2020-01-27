@@ -48,7 +48,7 @@ class workerTest(unittest.TestCase):
   def test_updater(self):
     file_list = updater.update(restart=False, test=True)
     print(file_list)
-    self.assertTrue('worker' in file_list)
+    self.assertTrue('worker.py' in file_list)
 
 if __name__ == "__main__":
   unittest.main()

@@ -1,5 +1,7 @@
 from __future__ import absolute_import
 
+import datetime
+import glob
 import os
 import shutil
 import sys
@@ -35,13 +37,40 @@ def update(restart=True, test=False):
   zip_file.extractall(update_dir)
   zip_file.close()
   prefix = os.path.commonprefix([n.filename for n in zip_file.infolist()])
-  fishtest_src = os.path.join(update_dir, prefix)
-  fishtest_dir = os.path.dirname(worker_dir) # fishtest_dir is assumed to be parent of worker_dir
+  worker_src = os.path.join(update_dir, prefix + 'worker')
   if not test:
-    copy_tree(fishtest_src, fishtest_dir)
+    copy_tree(worker_src, worker_dir)
   else:
-    file_list = os.listdir(fishtest_src)
+    file_list = os.listdir(worker_src)
   shutil.rmtree(update_dir)
+
+  # rename the testing_dir as backup
+  # and to trigger the download of update files
+  testing_dir = os.path.join(worker_dir, 'testing')
+  if os.path.exists(testing_dir):
+    time_stamp = str(datetime.datetime.timestamp(datetime.datetime.utcnow()))
+    bkp_testing_dir = os.path.join(worker_dir, '_testing_' + time_stamp)
+    shutil.move(testing_dir, bkp_testing_dir)
+    os.makedirs(testing_dir)
+    # delete the old engine binaries
+    engines = glob.glob(os.path.join(bkp_testing_dir, 'stockfish_*'))
+    for engine in engines:
+      try:
+        os.remove(engine)
+      except:
+        print('Note: failed to delete an engine binary ' + str(engine))
+        pass
+    # clean up old folder backups (keeping the num_bkps most recent)
+    bkp_dirs = glob.glob(os.path.join(worker_dir, '_testing_*'))
+    num_bkps = 3
+    if len(bkp_dirs) > num_bkps:
+      bkp_dirs.sort(key=os.path.getmtime)
+      for old_bkp_dir in bkp_dirs[:-num_bkps]:
+        try:
+          shutil.rmtree(old_bkp_dir)
+        except:
+          print('Note: failed to remove the old backup folder ' + str(old_bkp_dir))
+          pass
 
   print("start_dir: " + start_dir)
   if restart:
