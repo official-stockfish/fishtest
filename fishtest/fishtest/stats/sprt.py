@@ -3,8 +3,9 @@ from __future__ import division
 import math,copy
 import argparse
 
+import scipy.optimize
+
 from fishtest.stats.brownian import Brownian
-from fishtest.stats.brentq import brentq
 from fishtest.stats import LLRcalc
 
 class sprt:
@@ -60,8 +61,13 @@ less than p.
         while True:
             elo0=max(avg_elo-N*delta,-1000)
             elo1=min(avg_elo+N*delta,1000)
-            sol=brentq(lambda elo:self.outcome_prob(elo)-(1-p),elo0,elo1)
-            if sol['msg']=='no bracket':
+            try:
+                sol,res=scipy.optimize.brentq(lambda elo:self.outcome_prob(elo)-(1-p),
+                                              elo0,
+                                              elo1,
+                                              full_output=True,
+                                              disp=False)
+            except ValueError:
                 if elo0>-1000 or elo1<1000:
                     N*=2
                     continue
@@ -70,9 +76,9 @@ less than p.
                         return elo1
                     else:
                         return elo0
-            assert(sol['converged'])
+            assert(res.converged)
             break
-        return sol['x0']
+        return sol
 
     def analytics(self,p=0.05):
         ret={}

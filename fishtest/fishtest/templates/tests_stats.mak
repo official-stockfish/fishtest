@@ -19,7 +19,7 @@
       	 norm_var_sensitivity=0  
       return sensitivity,norm_var_sensitivity
 
-   z975=fishtest.stats.stat_util.phi_inv(0.975)
+   z975=fishtest.stats.stat_util.Phi_inv(0.975)
 %>
 <!DOCTYPE html>
 <html lang="en-us">

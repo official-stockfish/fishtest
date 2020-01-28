@@ -2,7 +2,9 @@ from __future__ import division
 
 import math,sys,copy
 
-from fishtest.stats.brentq import brentq
+import scipy
+
+import scipy.optimize
 
 def MLE(pdf,s):
     """
@@ -26,9 +28,12 @@ http://hardy.uhasselt.be/Fishtest/support_MLE_multinomial.pdf
     assert(v<s<w)
     l,u=-1/(w-s),1/(s-v)
     f=lambda x:sum([p*(a-s)/(1+x*(a-s)) for a,p in pdf])
-    res=brentq(f,l+epsilon,u-epsilon,epsilon=epsilon)
-    assert(res['converged'])
-    x=res['x0']
+    x,res=scipy.optimize.brentq(f,
+                                l+epsilon,
+                                u-epsilon,
+                                full_output=True,
+                                disp=False)
+    assert(res.converged)
     pdf_MLE=[(a,p/(1+x*(a-s))) for a,p in pdf]
     s_,var=stats(pdf_MLE) # for validation
     assert(abs(s-s_)<1e-6)
