@@ -2,28 +2,23 @@ from __future__ import division
 
 import math,copy
 
+import scipy.stats
+
 from fishtest.stats import LLRcalc
 from fishtest.stats import sprt
 from fishtest.stats import brownian
 
-def phi(q):
+def Phi(q):
   """
 Cumlative distribution function for the standard Gaussian law: quantile -> probability
 """
-  return brownian.Phi(q)
+  return scipy.stats.norm.cdf(q)
 
-def erf_inv(x):
-  a = 8*(math.pi-3)/(3*math.pi*(4-math.pi))
-  y = math.log(1-x*x)
-  z = 2/(math.pi*a) + y/2
-  return math.copysign(math.sqrt(math.sqrt(z*z - y/a) - z), x)
-
-def phi_inv(p):
+def Phi_inv(p):
   """
 Quantile function for the standard Gaussian law: probability -> quantile
 """
-  assert(0 <= p and p <= 1)
-  return math.sqrt(2)*erf_inv(2*p-1)
+  return scipy.stats.norm.ppf(p)
 
 def elo(x):
   epsilon=1e-3
@@ -62,12 +57,12 @@ for n games.
   stdev = math.sqrt(var)
 
 # 95% confidence interval for mu
-  mu_min=mu+phi_inv(0.025)*stdev/math.sqrt(games)
-  mu_max=mu+phi_inv(0.975)*stdev/math.sqrt(games)
+  mu_min=mu+Phi_inv(0.025)*stdev/math.sqrt(games)
+  mu_max=mu+Phi_inv(0.975)*stdev/math.sqrt(games)
 
   el=elo(mu)
   elo95=(elo(mu_max)-elo(mu_min))/2.0
-  los = phi((mu-0.5)/(stdev/math.sqrt(games)))
+  los = Phi((mu-0.5)/(stdev/math.sqrt(games)))
 
   return el,elo95,los
 
