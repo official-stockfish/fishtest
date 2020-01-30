@@ -167,11 +167,14 @@ class RunDb:
       except:
         return None
 
+  def start_timer(self):
+    self.timer = threading.Timer(1.0, self.flush_buffers)
+    self.timer.start()
+
   def buffer(self, run, flush):
     with self.run_cache_lock:
       if self.timer is None:
-        self.timer = threading.Timer(1.0, self.flush_buffers)
-        self.timer.start()
+        self.start_timer()
       r_id = str(run['_id'])
       if flush:
         self.run_cache[r_id] = {'dirty': False, 'rtime': time.time(),
@@ -192,28 +195,34 @@ class RunDb:
     time.sleep(1.1)
 
   def flush_buffers(self):
-    with self.run_cache_lock:
-      if self.timer is None:
-        return
-      now = time.time()
-      old = now + 1
-      oldest = None
-      for r_id in list(self.run_cache):
-        if not self.run_cache[r_id]['dirty']:
-          if self.run_cache[r_id]['rtime'] < now - 60:
-            del self.run_cache[r_id]
-        elif self.run_cache[r_id]['ftime'] < old:
-          old = self.run_cache[r_id]['ftime']
-          oldest = r_id
-      if oldest is not None:
-        if int(now) % 60 == 0:
-          self.scavenge(self.run_cache[oldest]['run'])
-        with self.run_cache_write_lock:
-          self.runs.save(self.run_cache[oldest]['run'])
-        self.run_cache[oldest]['dirty'] = False
-        self.run_cache[oldest]['ftime'] = time.time()
-      self.timer = threading.Timer(1.0, self.flush_buffers)
-      self.timer.start()
+    if self.timer is None:
+      return
+    self.run_cache_lock.acquire()
+    now = time.time()
+    old = now + 1
+    oldest = None
+    for r_id in list(self.run_cache):
+      if not self.run_cache[r_id]['dirty']:
+        if self.run_cache[r_id]['rtime'] < now - 60:
+          del self.run_cache[r_id]
+      elif self.run_cache[r_id]['ftime'] < old:
+        old = self.run_cache[r_id]['ftime']
+        oldest = r_id
+    if oldest is not None:
+      if int(now) % 60 == 0:
+        self.scavenge(self.run_cache[oldest]['run'])
+      self.run_cache[oldest]['dirty'] = False
+      self.run_cache[oldest]['ftime'] = time.time()
+      self.run_cache_lock.release()  # Release the lock while writing
+      print("SYNC")
+      with self.run_cache_write_lock:
+        self.runs.save(self.run_cache[oldest]['run'])
+      # start the timer when writing is done
+      self.start_timer()
+      return
+    # Nothing to flush, start timer:
+    self.start_timer()
+    self.run_cache_lock.release()
 
   def scavenge(self, run):
     old = datetime.utcnow() - timedelta(minutes=30)
