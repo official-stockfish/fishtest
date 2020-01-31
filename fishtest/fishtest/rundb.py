@@ -1,3 +1,5 @@
+import sys
+import signal
 import copy
 import os
 import random
@@ -18,6 +20,7 @@ from fishtest.views import format_results
 
 import fishtest.stats.stat_util
 
+last_rundb = None
 
 class RunDb:
   def __init__(self, db_name='fishtest_new'):
@@ -33,6 +36,9 @@ class RunDb:
     self.deltas = self.db['deltas']
 
     self.chunk_size = 250
+
+    global last_rundb
+    last_rundb = self
 
   def build_indices(self):
     self.runs.ensure_index([('finished', ASCENDING),
@@ -150,6 +156,16 @@ class RunDb:
 
   timer = None
 
+  # handle termination
+  def exit_run(signum, frame):
+      global last_rundb
+      if last_rundb:
+        last_rundb.flush_all()
+      sys.exit(0)
+
+  signal.signal(signal.SIGINT, exit_run)
+  signal.signal(signal.SIGTERM, exit_run)
+
   def get_run(self, r_id):
     with self.run_cache_lock:
       r_id = str(r_id)
@@ -190,9 +206,20 @@ class RunDb:
                               'ftime': ftime, 'run': run}
 
   def stop(self):
+    self.flush_all()
     with self.run_cache_lock:
       self.timer = None
     time.sleep(1.1)
+
+  def flush_all(self):
+    print("flush")
+    # Note that we do not grab locks because this method is
+    # called from a signal handler and grabbing locks might deadlock
+    for r_id in list(self.run_cache):
+      if self.run_cache[r_id]['dirty']:
+        self.runs.save(self.run_cache[r_id]['run'])
+        print(".", end='')
+    print("done")
 
   def flush_buffers(self):
     if self.timer is None:
@@ -214,7 +241,7 @@ class RunDb:
       self.run_cache[oldest]['dirty'] = False
       self.run_cache[oldest]['ftime'] = time.time()
       self.run_cache_lock.release()  # Release the lock while writing
-      print("SYNC")
+      # print("SYNC")
       with self.run_cache_write_lock:
         self.runs.save(self.run_cache[oldest]['run'])
       # start the timer when writing is done
@@ -491,7 +518,7 @@ class RunDb:
       task['pending'] = False  # Make pending False before making active false
                                # to prevent race in request_task
       task['active'] = False
-      flush = True
+      # flush = True
 
     update_time = datetime.utcnow()
     task['last_updated'] = update_time
