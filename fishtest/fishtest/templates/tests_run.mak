@@ -64,8 +64,8 @@
     <label class="control-label">SPRT bounds:</label>
     <div class="controls">
       <select name="bounds">
-        <option value="standard STC">Standard STC {-1,3}</option>
-        <option value="standard LTC">Standard LTC {0,2}</option>
+        <option value="standard STC">Standard STC {-0.5,1.5}</option>
+        <option value="standard LTC">Standard LTC {0.25,1.75}</option>
         <option value="regression">Non-regression {-1.5,0.5}</option>
         <option value="simplification">Simplification {-1.5,0.5}</option>
         <option value="custom">Custom bounds...</option>
@@ -210,8 +210,8 @@ Cowardice,150,0,200,10,0.0020"""})['raw_params']}</textarea>
 $(function() {
   var update_bounds = function() {
     var bounds = $('select[name=bounds]').val();
-    if (bounds == 'standard STC') { $('input[name=sprt_elo0]').val('-1.0'); $('input[name=sprt_elo1]').val('3.0'); }
-    if (bounds == 'standard LTC') { $('input[name=sprt_elo0]').val('0.0'); $('input[name=sprt_elo1]').val('2.0'); }
+    if (bounds == 'standard STC') { $('input[name=sprt_elo0]').val('-0.5'); $('input[name=sprt_elo1]').val('1.5'); }
+    if (bounds == 'standard LTC') { $('input[name=sprt_elo0]').val('0.25'); $('input[name=sprt_elo1]').val('1.75'); }
     if (bounds == 'regression') { $('input[name=sprt_elo0]').val('-1.5'); $('input[name=sprt_elo1]').val('0.5'); }
     if (bounds == 'simplification') { $('input[name=sprt_elo0]').val('-1.5'); $('input[name=sprt_elo1]').val('0.5'); }
     if (bounds == 'custom')
@@ -236,7 +236,7 @@ $(function() {
     $('input[name=tc]').val('10+0.1');
     $('input[name=new-options]').val('Hash=16');
     $('input[name=base-options]').val('Hash=16');
-    if ($('input[name=sprt_elo0]').val() == '0.0' && $('input[name=sprt_elo1]').val() == '2.0')
+    if ($('input[name=sprt_elo0]').val() == '0.25' && $('input[name=sprt_elo1]').val() == '1.75')
       { $('select[name=bounds]').val('standard STC'); update_bounds(); }
   });
 
@@ -244,7 +244,7 @@ $(function() {
     $('input[name=tc]').val('60+0.6');
     $('input[name=new-options]').val('Hash=64');
     $('input[name=base-options]').val('Hash=64');
-    if ($('input[name=sprt_elo0]').val() == '-1.0' && $('input[name=sprt_elo1]').val() == '3.0')
+    if ($('input[name=sprt_elo0]').val() == '-0.5' && $('input[name=sprt_elo1]').val() == '1.5')
       { $('select[name=bounds]').val('standard LTC'); update_bounds(); }
   });
 });
