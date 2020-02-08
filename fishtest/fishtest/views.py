@@ -474,7 +474,15 @@ def validate_form(request):
       'alpha': 0.05,
       'elo1': float(request.POST['sprt_elo1']),
       'beta': 0.05,
-      'elo_model': 'logistic'
+      'elo_model': 'logistic',
+      'overshoot': {'last_update'    :0,
+                    'skipped_updates':0,
+                    'ref0'           :0,
+                    'm0'             :0,
+                    'sq0'            :0,
+                    'ref1'           :0,
+                    'm1'             :0,
+                    'sq1'            :0}
     }
     # Limit on number of games played.
     # Shouldn't be hit in practice as long as it is larger than > ~200000
@@ -742,13 +750,7 @@ def format_results(run_results, run):
     sprt = run['args']['sprt']
     state = sprt.get('state', '')
     elo_model = sprt.get('elo_model', 'BayesElo')
-    stats = fishtest.stats.stat_util.SPRT(run_results,
-                                          elo0=sprt['elo0'],
-                                          alpha=sprt['alpha'],
-                                          elo1=sprt['elo1'],
-                                          beta=sprt['beta'],
-                                          elo_model=elo_model
-                                          )
+    stats = fishtest.stats.stat_util.SPRT(run_results,sprt)
     result['llr'] = stats['llr']
     if elo_model == 'BayesElo':
       result['info'].append('LLR: %.2f (%.2lf,%.2lf) [%.2f,%.2f]'

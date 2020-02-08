@@ -56,6 +56,7 @@
       elo0=run['args']['sprt']['elo0']
       elo1=run['args']['sprt']['elo1']
       elo_model=run['args']['sprt'].get('elo_model','BayesElo')
+      o=run['args']['sprt'].get('overshoot',None)
       %>
       <table class="table table-condensed">
 	<tr><td>Alpha</td><td>${alpha}</td></tr>
@@ -122,7 +123,12 @@
 	    a5=sp.analytics()
 	    LLR5_l=a5['a']
 	    LLR5_u=a5['b']
-	    LLR5,overshoot5=fishtest.stats.LLRcalc.LLR_logistic(lelo0,lelo1,results5_)
+	    LLR5=fishtest.stats.LLRcalc.LLR_logistic(lelo0,lelo1,results5_)
+	    o0=0
+	    o1=0
+	    if o!=None:
+	       o0=-o['sq0']/o['m0']/2 if o['m0']!=0 else 0
+	       o1=o['sq1']/o['m1']/2 if o['m1']!=0 else 0
 	    elo5_l=a5['ci'][0]
 	    elo5_u=a5['ci'][1]
 	    elo5=a5['elo']
@@ -183,7 +189,7 @@
 	<tr><td>Sensitivity ((score-0.5)/stdev)/game</td><td>${"%.5f [%.5f, %.5f]"%(sens5_per_game,sens5_per_game_l,sens5_per_game_u)}</td></tr>
 % endif  ## has_sprt
 % if has_sprt:
-	<tr><td>Expected overshoot</td><td>${"%.5f"%overshoot5}</td></tr>
+	<tr><td>Expected overshoot [H0,H1]</td><td>${"[%.5f, %.5f]"%(o0,o1)}</td></tr>
 % endif  ## has_sprt
       </table>
 % endif  ## has_pentanomial
@@ -222,13 +228,12 @@
 		 RMS_bias=var_diff**.5 if var_diff>=0 else 0
 		 RMS_bias_elo=fishtest.stats.stat_util.elo(0.5+RMS_bias)
 	 if has_sprt:
-	 	 sp_=fishtest.stats.stat_util.SPRT(R3_,elo0,alpha,elo1,beta,elo_model=elo_model)
-	 	 LLR3=sp_['llr']
-	 	 LLR3_l=sp_['lower_bound']
-		 LLR3_u=sp_['upper_bound']
-	 	 sp=fishtest.stats.sprt.sprt(alpha=alpha,beta=beta,elo0=lelo0,elo1=lelo1)
-	 	 sp.set_state(results3_)
-	 	 a3=sp.analytics()
+		 sp=fishtest.stats.sprt.sprt(alpha=alpha,beta=beta,elo0=lelo0,elo1=lelo1)
+		 sp.set_state(results3_)
+		 a3=sp.analytics()
+		 LLR3_l=a3['a']
+		 LLR3_u=a3['b']
+		 LLR3=fishtest.stats.LLRcalc.LLR_logistic(lelo0,lelo1,results3_)
 	 	 elo3_l=a3['ci'][0]
 	 	 elo3_u=a3['ci'][1]
 	 	 elo3=a3['elo']
