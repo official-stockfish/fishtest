@@ -144,7 +144,7 @@ Calculate an elo estimate from an SPRT test.
   a=sp.analytics(p)
 
   # Override the LLR approximation with the exact one
-  a['LLR']=LLRcalc.LLR_logistic(lelo0,lelo1,R_)[0]
+  a['LLR']=LLRcalc.LLR_logistic(lelo0,lelo1,R_)
   del a['clamped']
   # Now return the estimates
   return a
@@ -160,9 +160,23 @@ drawelo is estimated "out of sample".
   P1=bayeselo_to_proba(belo1,drawelo)
   return sum([results[i]*math.log(P1[i]/P0[i]) for i in range(0,3)])
 
-def SPRT(R, elo0, alpha, elo1, beta, elo_model=None):
-  """
-Sequential Probability Ratio Test
+def SPRT(R, sprt):
+  """Sequential Probability Ratio Test
+
+sprt is a dictionary with fields
+elo0, alpha, elo1, beta, elo_model
+
+sprt may optionally contain a dictionary with data for dynamic
+overshoot estimation. This will be updated in-place.  The theoretical
+basis for this is: Siegmund - Sequential Analysis - Corollary 8.33.
+The correctness can be verified by simulation
+
+https://github.com/vdbergh/simul
+
+Normally this function should be called after each finished game (trinomial) or
+game pair (pentanomial) but it is safe to call it multiple times with the same parameters.
+Skipped updates are also handled sensibly.
+
 H0: elo = elo0
 H1: elo = elo1
 alpha = max typeI error (reached on elo = elo0)
@@ -176,7 +190,15 @@ finished - bool, True means test is finished, False means continue sampling
 state - string, 'accepted', 'rejected' or ''
 llr - Log-likelihood ratio
 lower_bound/upper_bound - SPRT bounds
-"""
+
+  """
+
+  elo0=sprt['elo0']
+  alpha=sprt['alpha']
+  elo1=sprt['elo1']
+  beta=sprt['beta']
+  elo_model=sprt.get('elo_model', 'BayesElo')
+
   assert(elo_model in ['BayesElo','logistic'])
 
   result = {
@@ -187,29 +209,62 @@ lower_bound/upper_bound - SPRT bounds
     'upper_bound': math.log((1-beta)/alpha),
   }
 
-  # First deal with the legacy BayesElo/trinomial models
+  # first deal with the legacy BayesElo/trinomial models
   R3=LLRcalc.regularize([R['losses'],R['draws'],R['wins']])
   if elo_model=='BayesElo':
-    # Estimate drawelo out of sample
+    # estimate drawelo out of sample
     drawelo=draw_elo_calc(R3)
-    # Conversion of bounds to logistic elo
+    # conversion of bounds to logistic elo
     lelo0,lelo1=[bayeselo_to_elo(elo,drawelo) for elo in (elo0,elo1)]
   else:
     lelo0,lelo1=elo0,elo1
 
   # Log-Likelihood Ratio
   R_=R.get('pentanomial',R3)
-  LLR_,overshoot=LLRcalc.LLR_logistic(lelo0,lelo1,R_)
+  LLR_=LLRcalc.LLR_logistic(lelo0,lelo1,R_)
   result['llr']=LLR_
 
-  # bound estimated overshoot for safety
-  overshoot=min((result['upper_bound']-result['lower_bound'])/20,overshoot)
+  # update the overshoot data
+  if 'overshoot' in sprt:
+    o=sprt['overshoot']
+    num_samples=sum(R_)
+    if num_samples < o['last_update']: # purge?
+      sprt['lost_samples']=o['last_update']-num_samples   # audit
+      del sprt['overshoot'] # the contract is violated
+    else:
+      if num_samples==o['last_update']:  # same data
+        pass
+      elif num_samples==o['last_update']+1:  # the normal case
+        if LLR_<o['ref0']:
+          delta=LLR_-o['ref0']
+          o['m0']+=delta
+          o['sq0']+=delta**2
+          o['ref0']=LLR_
+        if LLR_>o['ref1']:
+          delta=LLR_-o['ref1']
+          o['m1']+=delta
+          o['sq1']+=delta**2
+          o['ref1']=LLR_
+      else:
+        # Be robust if some updates are lost: reset data collection.
+        # This should not be needed anymore, but just in case...
+        o['ref0']=LLR_
+        o['ref1']=LLR_
+        o['skipped_updates']+=(num_samples-o['last_update'])-1 # audit
+      o['last_update']=num_samples
+
+  o0=0
+  o1=0
+  if 'overshoot' in sprt:
+    o=sprt['overshoot']
+    o0=-o['sq0']/o['m0']/2 if o['m0']!=0 else 0
+    o1=o['sq1']/o['m1']/2 if o['m1']!=0 else 0
 
   # now check the stop condition
-  if result['llr'] < result['lower_bound']+overshoot:
+  if result['llr'] < result['lower_bound']+o0:
     result['finished'] = True
     result['state'] = 'rejected'
-  elif result['llr'] > result['upper_bound']-overshoot:
+  elif result['llr'] > result['upper_bound']-o1:
     result['finished'] = True
     result['state'] = 'accepted'
 
@@ -218,19 +273,8 @@ lower_bound/upper_bound - SPRT bounds
 if __name__ == "__main__":
   # unit tests
   print('SPRT tests')
-  print(SPRT({'wins': 0, 'losses': 0, 'draws': 0}, 0, 0.05, 5, 0.05, elo_model='BayesElo'))
-  print(SPRT({'wins': 10, 'losses': 0, 'draws': 0}, 0, 0.05, 5, 0.05, elo_model='BayesElo'))
-  print(SPRT({'wins': 100, 'losses': 0, 'draws': 0}, 0, 0.05, 5, 0.05, elo_model='BayesElo'))
-  print(SPRT({'wins': 10, 'losses': 0, 'draws': 20}, 0, 0.05, 5, 0.05, elo_model='BayesElo'))
-  print(SPRT({'wins': 10, 'losses': 1, 'draws': 20}, 0, 0.05, 5, 0.05, elo_model='BayesElo'))
-  print(SPRT({'wins': 5019, 'losses': 5026, 'draws': 15699}, 0, 0.05, 5, 0.05, elo_model='BayesElo'))
-  print(SPRT({'wins': 1450, 'losses': 1500, 'draws': 4000}, 0, 0.05, 6, 0.05, elo_model='BayesElo'))
-  print(SPRT({'wins': 716, 'losses': 591, 'draws': 2163}, 0, 0.05, 6, 0.05, elo_model='BayesElo'))
-  print(SPRT({'wins': 13543,'losses': 13624, 'draws': 34333}, -3, 0.05, 1, 0.05, elo_model='BayesElo'))
-  print(SPRT({'wins': 13543,'losses': 13624, 'draws': 34333, 'pentanomial':[1187, 7410, 13475, 7378, 1164]}, -3, 0.05, 1, 0.05, elo_model='BayesElo'))
-  print(SPRT({'wins': 65388,'losses': 65804, 'draws': 56553}, -3, 0.05, 1, 0.05, elo_model='BayesElo'))
-  print(SPRT({'wins': 65388,'losses': 65804, 'draws': 56553, 'pentanomial':[10789, 19328, 33806, 19402, 10543]}, -3, 0.05, 1, 0.05, elo_model='BayesElo'))
-  print(SPRT({'wins': 65388,'losses': 65804, 'draws': 56553, 'pentanomial':[10789, 19328, 33806, 19402, 10543]}, -3, 0.05, 1, 0.05, elo_model='logistic'))
+  print(SPRT({'wins': 65388,'losses': 65804, 'draws': 56553, 'pentanomial':[10789, 19328, 33806, 19402, 10543]},
+             {'elo0':-3, 'alpha':0.05, 'elo1':1, 'beta':0.05, 'elo_model':'logistic'}))
   print('elo tests')
   print(SPRT_elo({'wins': 0, 'losses': 0, 'draws': 0}, elo0=0,  elo1=5, elo_model='BayesElo'))
   print(SPRT_elo({'wins': 10, 'losses': 0, 'draws': 0}, elo0=0,  elo1=5, elo_model='BayesElo'))

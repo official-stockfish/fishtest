@@ -164,10 +164,6 @@ elo0,elo1 are in logistic elo.
 """
     s0,s1=[L_(elo) for elo in (elo0,elo1)]
     N,pdf=results_to_pdf(results)
-    s,var=stats(pdf)
-    # The well-known universal constant 0.583 is for normal increments.
-    # In practice it appears to work well in general.
-    overshoot=0.583*(s1-s0)/math.sqrt(var)
-    return N*LLR(pdf,s0,s1),overshoot
+    return N*LLR(pdf,s0,s1)
 
 
