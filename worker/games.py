@@ -272,8 +272,6 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
   global old_stats
   rounds={}
 
-  failed_updates = 0
-
   q = Queue()
   t = threading.Thread(target=enqueue_output, args=(p.stdout, q))
   t.daemon = True
@@ -328,27 +326,29 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
         spsa['losses'] = wld[1]
         spsa['draws'] = wld[2]
 
-      try:
-        t0 = datetime.datetime.utcnow()
-        req = requests.post(remote + '/api/update_task', data=json.dumps(result), headers={'Content-type': 'application/json'}, timeout=HTTP_TIMEOUT).json()
-        failed_updates = 0
-        print("Task updated successfully in %ss" % ((datetime.datetime.utcnow() - t0).total_seconds()))
-
-        if not req['task_alive']:
-          # This task is no longer neccesary
-          print('Server told us task is no longer needed')
-          kill_process(p)
-          return req
-
-      except:
-        sys.stderr.write('Exception from calling update_task:\n')
-        traceback.print_exc(file=sys.stderr)
-        failed_updates += 1
-        if failed_updates > 5:
-          print('Too many failed update attempts')
-          kill_process(p)
+      update_succeeded=False
+      for _ in range(0,5):
+        try:
+          t0 = datetime.datetime.utcnow()
+          req = requests.post(remote + '/api/update_task', data=json.dumps(result), headers={'Content-type': 'application/json'}, timeout=HTTP_TIMEOUT).json()
+          print("Task updated successfully in %ss" % ((datetime.datetime.utcnow() - t0).total_seconds()))
+          if not req['task_alive']:
+            # This task is no longer neccesary
+            print('Server told us task is no longer needed')
+            kill_process(p)
+            return req
+          update_succeeded=True
           break
+        except Exception as e:
+          sys.stderr.write('Exception from calling update_task:\n')
+          print(e)
+#          traceback.print_exc(file=sys.stderr)
         time.sleep(HTTP_TIMEOUT)
+
+      if not update_succeeded:
+        print('Too many failed update attempts')
+        kill_process(p)
+        break
 
     pentanomial=update_pentanomial(line,rounds)
     result['stats']['pentanomial']=pentanomial
@@ -393,7 +393,7 @@ def launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, tc_limit):
 
   try:
     return run_game(p, remote, result, spsa, spsa_tuning, tc_limit)
-  except:
+  except Exception as e:
     traceback.print_exc(file=sys.stderr)
     try:
       print('Exception running games')
