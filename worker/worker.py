@@ -107,9 +107,10 @@ def worker(worker_info, password, remote):
     t0 = datetime.utcnow()
     req = requests.post(remote + '/api/request_task', data=json.dumps(payload), headers={'Content-type': 'application/json'}, timeout=HTTP_TIMEOUT)
     req = json.loads(req.text)
-  except:
+  except Exception as e:
     sys.stderr.write('Exception accessing host:\n')
-    traceback.print_exc()
+    print(e)
+#    traceback.print_exc()
     time.sleep(random.randint(10,60))
     return
 
@@ -155,9 +156,10 @@ def worker(worker_info, password, remote):
           payload['pgn'] = base64.b64encode(zlib.compress(data.encode('utf-8'))).decode()
           print('Uploading compressed PGN of %d bytes' % (len(payload['pgn'])))
           requests.post(remote + '/api/upload_pgn', data=json.dumps(payload), headers={'Content-type': 'application/json'}, timeout=HTTP_TIMEOUT)
-        except:
+        except Exception as e:
           sys.stderr.write('\nException PGN upload:\n')
-          traceback.print_exc()
+          print(e)
+#          traceback.print_exc()
     try:
       os.remove(pgn_file)
     except:
