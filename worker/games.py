@@ -550,7 +550,7 @@ def run_games(worker_info, password, remote, run, task_id):
 
   while games_remaining > 0:
     # Run cutechess-cli binary
-    cmd = [ cutechess, '-repeat', '-rounds', str(int(games_to_play)), '-tournament', 'gauntlet'] + pgnout + \
+    cmd = [ cutechess, '-repeat', '-rounds', str(int(games_to_play/2)), '-games', ' 2', '-tournament', 'gauntlet'] + pgnout + \
           ['-site', 'https://tests.stockfishchess.org/tests/view/' + run['_id']] + \
           ['-event', 'Batch %d: %s vs %s' % (task_id, make_player('new_tag'), make_player('base_tag'))] + \
           ['-srand', "%d" % struct.unpack("<L", os.urandom(struct.calcsize("<L")))] + \
