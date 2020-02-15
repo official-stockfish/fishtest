@@ -226,7 +226,7 @@ def request_version(request):
   if 'error' in token:
     return json.dumps(token)
 
-  return json.dumps({'version': 71})
+  return json.dumps({'version': 72})
 
 
 @view_config(route_name='api_request_spsa', renderer='string')
