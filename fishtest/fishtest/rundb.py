@@ -532,12 +532,8 @@ class RunDb:
     # Check if SPRT stopping is enabled
     if 'sprt' in run['args']:
       sprt = run['args']['sprt']
-      sprt_stats = fishtest.stats.stat_util.SPRT(
-            self.get_results(run, False),
-            sprt
-            )
-      if sprt_stats['finished']:
-        run['args']['sprt']['state'] = sprt_stats['state']
+      fishtest.stats.stat_util.update_SPRT(self.get_results(run, False),sprt)
+      if sprt['state']!='':
         self.stop_run(run_id, run)
         flush = True
 

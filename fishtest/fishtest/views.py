@@ -469,21 +469,11 @@ def validate_form(request):
 
   # Integer parameters
   if stop_rule == 'sprt':
-    data['sprt'] = {
-      'elo0': float(request.POST['sprt_elo0']),
-      'alpha': 0.05,
-      'elo1': float(request.POST['sprt_elo1']),
-      'beta': 0.05,
-      'elo_model': 'logistic',
-      'overshoot': {'last_update'    :0,
-                    'skipped_updates':0,
-                    'ref0'           :0,
-                    'm0'             :0,
-                    'sq0'            :0,
-                    'ref1'           :0,
-                    'm1'             :0,
-                    'sq1'            :0}
-    }
+    data['sprt'] = fishtest.stats.stat_util.SPRT(alpha=0.05,
+                                                 beta=0.05,
+                                                 elo0=float(request.POST['sprt_elo0']),
+                                                 elo1=float(request.POST['sprt_elo1']),
+                                                 elo_model='logistic')
     # Limit on number of games played.
     # Shouldn't be hit in practice as long as it is larger than > ~200000
     # must scale with chunk_size to avoid overloading the server.
@@ -750,17 +740,18 @@ def format_results(run_results, run):
     sprt = run['args']['sprt']
     state = sprt.get('state', '')
     elo_model = sprt.get('elo_model', 'BayesElo')
-    stats = fishtest.stats.stat_util.SPRT(run_results,sprt)
-    result['llr'] = stats['llr']
+    if not 'llr' in sprt:  # legacy
+      fishtest.stats.stat_util.update_SPRT(run_results,sprt)
+    result['llr'] = sprt['llr']
     if elo_model == 'BayesElo':
       result['info'].append('LLR: %.2f (%.2lf,%.2lf) [%.2f,%.2f]'
-                            % (stats['llr'],
-                               stats['lower_bound'], stats['upper_bound'],
+                            % (sprt['llr'],
+                               sprt['lower_bound'], sprt['upper_bound'],
                                sprt['elo0'], sprt['elo1']))
     else:
       result['info'].append('LLR: %.2f (%.2lf,%.2lf) {%.2f,%.2f}'
-                            % (stats['llr'],
-                               stats['lower_bound'], stats['upper_bound'],
+                            % (sprt['llr'],
+                               sprt['lower_bound'], sprt['upper_bound'],
                                sprt['elo0'], sprt['elo1']))
   else:
     if 'pentanomial' in run_results.keys():

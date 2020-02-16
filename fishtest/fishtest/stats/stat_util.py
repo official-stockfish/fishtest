@@ -160,54 +160,71 @@ drawelo is estimated "out of sample".
   P1=bayeselo_to_proba(belo1,drawelo)
   return sum([results[i]*math.log(P1[i]/P0[i]) for i in range(0,3)])
 
-def SPRT(R, sprt):
+
+def SPRT(alpha=0.05,beta=0.05,elo0=None,elo1=None,elo_model='logistic'):
+  """ Constructuctor for the "sprt object" """
+  return {'alpha'       : alpha,
+          'beta'        : beta,
+          'elo0'        : elo0,
+          'elo1'        : elo1,
+          'elo_model'   : elo_model,
+          'state'       : '',
+          'llr'         : 0,
+          'lower_bound' : math.log(beta/(1-alpha)),
+          'upper_bound' : math.log((1-beta)/alpha),
+          'overshoot'   : {'last_update'    : 0,
+                           'skipped_updates': 0,
+                           'ref0'           : 0,
+                           'm0'             : 0,
+                           'sq0'            : 0,
+                           'ref1'           : 0,
+                           'm1'             : 0,
+                           'sq1'            : 0}
+        }
+
+def update_SPRT(R, sprt):
   """Sequential Probability Ratio Test
 
-sprt is a dictionary with fields
-elo0, alpha, elo1, beta, elo_model
+sprt is a dictionary with fixed fields
 
-sprt may optionally contain a dictionary with data for dynamic
-overshoot estimation. This will be updated in-place.  The theoretical
-basis for this is: Siegmund - Sequential Analysis - Corollary 8.33.
-The correctness can be verified by simulation
+'elo0', 'alpha', 'elo1', 'beta', 'elo_model', 'lower_bound', 'upper_bound'.
 
-https://github.com/vdbergh/simul
+It also has the following fields
+
+'llr', 'state', 'overshoot'
+
+which are updated by this function.
 
 Normally this function should be called after each finished game (trinomial) or
 game pair (pentanomial) but it is safe to call it multiple times with the same parameters.
 Skipped updates are also handled sensibly.
 
+The meaning of the inputs and the fields is as follows.
+
 H0: elo = elo0
 H1: elo = elo1
 alpha = max typeI error (reached on elo = elo0)
 beta = max typeII error for elo >= elo1 (reached on elo = elo1)
+'overshoot' is a dictionary with data for dynamic overshoot
+estimation. The theoretical basis for this is: Siegmund - Sequential
+Analysis - Corollary 8.33.  The correctness can be verified by
+simulation
+
+https://github.com/vdbergh/simul
+
 R['wins'], R['losses'], R['draws'] contains the number of wins, losses and draws
 R['pentanomial'] contains the pentanomial frequencies
 elo_model can be either 'BayesElo' or 'logistic'
+"""
 
-Returns a dict:
-finished - bool, True means test is finished, False means continue sampling
-state - string, 'accepted', 'rejected' or ''
-llr - Log-likelihood ratio
-lower_bound/upper_bound - SPRT bounds
-
-  """
-
-  elo0=sprt['elo0']
-  alpha=sprt['alpha']
-  elo1=sprt['elo1']
-  beta=sprt['beta']
+  # the next two lines are for backward compatibility
+  sprt['lower_bound']=math.log(sprt['beta']/(1-sprt['alpha']))
+  sprt['upper_bound']=math.log((1-sprt['beta'])/sprt['alpha'])
+  
   elo_model=sprt.get('elo_model', 'BayesElo')
-
   assert(elo_model in ['BayesElo','logistic'])
-
-  result = {
-    'finished': False,
-    'state': '',
-    'llr': 0.0,
-    'lower_bound': math.log(beta/(1-alpha)),
-    'upper_bound': math.log((1-beta)/alpha),
-  }
+  elo0=sprt['elo0']
+  elo1=sprt['elo1']
 
   # first deal with the legacy BayesElo/trinomial models
   R3=LLRcalc.regularize([R['losses'],R['draws'],R['wins']])
@@ -221,11 +238,11 @@ lower_bound/upper_bound - SPRT bounds
 
   # Log-Likelihood Ratio
   R_=R.get('pentanomial',R3)
-  LLR_=LLRcalc.LLR_logistic(lelo0,lelo1,R_)
-  result['llr']=LLR_
+  sprt['llr']=LLRcalc.LLR_logistic(lelo0,lelo1,R_)
 
   # update the overshoot data
   if 'overshoot' in sprt:
+    LLR_=sprt['llr']
     o=sprt['overshoot']
     num_samples=sum(R_)
     if num_samples < o['last_update']: # purge?
@@ -261,20 +278,20 @@ lower_bound/upper_bound - SPRT bounds
     o1=o['sq1']/o['m1']/2 if o['m1']!=0 else 0
 
   # now check the stop condition
-  if result['llr'] < result['lower_bound']+o0:
-    result['finished'] = True
-    result['state'] = 'rejected'
-  elif result['llr'] > result['upper_bound']-o1:
-    result['finished'] = True
-    result['state'] = 'accepted'
-
-  return result
+  sprt['state']=''
+  if sprt['llr'] < sprt['lower_bound']+o0:
+    sprt['state'] = 'rejected'
+  elif sprt['llr'] > sprt['upper_bound']-o1:
+    sprt['state'] = 'accepted'
 
 if __name__ == "__main__":
   # unit tests
   print('SPRT tests')
-  print(SPRT({'wins': 65388,'losses': 65804, 'draws': 56553, 'pentanomial':[10789, 19328, 33806, 19402, 10543]},
-             {'elo0':-3, 'alpha':0.05, 'elo1':1, 'beta':0.05, 'elo_model':'logistic'}))
+  R={'wins': 65388,'losses': 65804, 'draws': 56553, 'pentanomial':[10789, 19328, 33806, 19402, 10543]}
+  sprt_=SPRT(elo0=-3, alpha=0.05, elo1=1, beta=0.05, elo_model='logistic')
+  update_SPRT(R,sprt_)
+  print(sprt_)
+
   print('elo tests')
   print(SPRT_elo({'wins': 0, 'losses': 0, 'draws': 0}, elo0=0,  elo1=5, elo_model='BayesElo'))
   print(SPRT_elo({'wins': 10, 'losses': 0, 'draws': 0}, elo0=0,  elo1=5, elo_model='BayesElo'))
