@@ -162,7 +162,7 @@ drawelo is estimated "out of sample".
 
 
 def SPRT(alpha=0.05,beta=0.05,elo0=None,elo1=None,elo_model='logistic'):
-  """ Constructuctor for the "sprt object" """
+  """ Constructor for the "sprt object" """
   return {'alpha'       : alpha,
           'beta'        : beta,
           'elo0'        : elo0,
@@ -217,7 +217,7 @@ R['pentanomial'] contains the pentanomial frequencies
 elo_model can be either 'BayesElo' or 'logistic'
 """
 
-  # the next two lines are for backward compatibility
+  # the next two lines are superfluous, but necessary for backward compatibility
   sprt['lower_bound']=math.log(sprt['beta']/(1-sprt['alpha']))
   sprt['upper_bound']=math.log((1-sprt['beta'])/sprt['alpha'])
   
