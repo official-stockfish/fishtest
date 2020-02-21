@@ -325,9 +325,6 @@ class RunDb:
     if has_pentanomial:
       results['pentanomial'] = pentanomial
 
-    if 'sprt' in run['args'] and 'state' in run['args']['sprt']:
-      results['sprt'] = run['args']['sprt']['state']
-
     run['results_stale'] = False
     run['results'] = results
     if save_run:
@@ -346,11 +343,8 @@ class RunDb:
     if 'sprt' not in run['args']:
       itp *= 0.5
     else:
-      results = self.get_results(run)
-      run['results_info'] = format_results(results, run)
-      if 'llr' in run['results_info']:
-        llr = run['results_info']['llr']
-        itp *= (5 + llr) / 5
+      llr = run['args']['sprt'].get('llr',0)
+      itp *= (5 + llr) / 5
     run['args']['itp'] = itp
 
   def sum_cores(self, run):

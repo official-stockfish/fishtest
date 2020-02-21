@@ -660,7 +660,8 @@ def purge_run(rundb, run):
 
     run['finished'] = False
     if 'sprt' in run['args'] and 'state' in run['args']['sprt']:
-      del run['args']['sprt']['state']
+      fishtest.stats.stat_util.update_SPRT(results,run['args']['sprt'])
+      run['args']['sprt']['state']=''
 
     rundb.buffer(run, True)
 
@@ -742,7 +743,6 @@ def format_results(run_results, run):
     elo_model = sprt.get('elo_model', 'BayesElo')
     if not 'llr' in sprt:  # legacy
       fishtest.stats.stat_util.update_SPRT(run_results,sprt)
-    result['llr'] = sprt['llr']
     if elo_model == 'BayesElo':
       result['info'].append('LLR: %.2f (%.2lf,%.2lf) [%.2f,%.2f]'
                             % (sprt['llr'],
@@ -1132,7 +1132,7 @@ def tests(request):
                                             if 'itp' in run['args'] else 100))
       runs['active'].sort(reverse=True, key=lambda run: (
           'sprt' in run['args'],
-          run['results_info']['llr'] if 'llr' in run['results_info'] else 0,
+          run['args'].get('sprt',{}).get('llr',0),
           'spsa' not in run['args'],
           run['results']['wins'] + run['results']['draws']
           + run['results']['losses']))
