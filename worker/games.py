@@ -106,10 +106,16 @@ def setup(item, testing_dir):
   else:
     raise Exception('Item %s not found' % (item))
 
-def setup_engine(destination, worker_dir, sha, repo_url, concurrency):
-  if os.path.exists(destination): os.remove(destination)
+def setup_engine(engine_dir, sha, repo_url, concurrency):
+  new_engine_name = 'stockfish_' + sha
+  destination = os.path.join(engine_dir, new_engine_name)
+  if os.path.exists(engine_dir):
+      shutils.rmtree(engine_dir)
+
+  os.makedirs(engine_dir)
+
   """Download and build sources in a temporary directory then move exe to destination"""
-  tmp_dir = tempfile.mkdtemp(dir=worker_dir)
+  tmp_dir = tempfile.mkdtemp(dir=engine_dir)
 
   try:
     os.chdir(tmp_dir)
@@ -124,7 +130,7 @@ def setup_engine(destination, worker_dir, sha, repo_url, concurrency):
         src_dir = name
     os.chdir(src_dir)
 
-    custom_make = os.path.join(worker_dir, 'custom_make.txt')
+    custom_make = os.path.join(engine_dir, 'custom_make.txt')
     if os.path.exists(custom_make):
       with open(custom_make, 'r') as m:
         make_cmd = m.read().strip()
@@ -136,12 +142,22 @@ def setup_engine(destination, worker_dir, sha, repo_url, concurrency):
       except:
         pass
 
+    shutil.copy('stockfish'+ EXE_SUFFIX, destination)
 
-    shutil.move('stockfish'+ EXE_SUFFIX, destination)
+    # If this version includes an 'egtb' directory copy them over as well
+    egtb_dir_src = os.path.join(src_dir, 'egtb')
+
+    if os.path.exists(egtb_dir_src):
+      egtb_dir_dest = os.path.join(engine_dir, 'egtb')
+      if not os.path.exists(egtb_dir_dest):
+        os.makedirs(egtb_dir_dest)
+
+      shutil.copytree(egtb_dir_src, egtb_dir_dest)
+
   except:
     raise Exception('Failed to setup engine for %s' % (sha))
   finally:
-    os.chdir(worker_dir)
+    os.chdir(engine_dir)
     shutil.rmtree(tmp_dir)
 
 def kill_process(p):
@@ -461,26 +477,29 @@ def run_games(worker_info, password, remote, run, task_id):
     engines.sort(key=os.path.getmtime)
     for old_engine in engines[:len(engines)-25]:
       try:
-         os.remove(old_engine)
+         shutil.rmtree(old_engine)
       except:
          print('Note: failed to remove an old engine binary ' + str(old_engine))
          pass
 
   # create new engines
   sha_new = run['args']['resolved_new']
-  sha_base = run['args']['resolved_base']
   new_engine_name = 'stockfish_' + sha_new
-  base_engine_name = 'stockfish_' + sha_base
+  new_engine_dir = os.path.join(testing_dir, new_engine_name)
 
-  new_engine = os.path.join(testing_dir, new_engine_name + EXE_SUFFIX)
-  base_engine = os.path.join(testing_dir, base_engine_name + EXE_SUFFIX)
+  sha_base = run['args']['resolved_base']
+  base_engine_name = 'stockfish_' + sha_base
+  base_engine_dir = os.path.join(testing_dir, base_engine_name)
+
+  new_engine = os.path.join(new_engine_dir, new_engine_name + EXE_SUFFIX)
+  base_engine = os.path.join(base_engine_dir, base_engine_name + EXE_SUFFIX)
   cutechess = os.path.join(testing_dir, 'cutechess-cli' + EXE_SUFFIX)
 
   # Build from sources new and base engines as needed
   if not os.path.exists(new_engine):
-    setup_engine(new_engine, worker_dir, sha_new, repo_url, worker_info['concurrency'])
+    setup_engine(new_engine_dir, sha_new, repo_url, worker_info['concurrency'])
   if not os.path.exists(base_engine):
-    setup_engine(base_engine, worker_dir, sha_base, repo_url, worker_info['concurrency'])
+    setup_engine(base_engine_dir, sha_base, repo_url, worker_info['concurrency'])
 
   os.chdir(testing_dir)
 
@@ -559,8 +578,10 @@ def run_games(worker_info, password, remote, run, task_id):
           ['-srand', "%d" % struct.unpack("<L", os.urandom(struct.calcsize("<L")))] + \
           ['-resign', 'movecount=3', 'score=400', '-draw', 'movenumber=34',
            'movecount=8', 'score=20', '-concurrency', str(int(games_concurrency))] + pgn_cmd + \
-          ['-engine', 'name=New-'+run['args']['resolved_new'][:7], 'cmd=%s' % (new_engine_name)] + new_options + ['_spsa_'] + \
-          ['-engine', 'name=Base-'+run['args']['resolved_base'][:7], 'cmd=%s' % (base_engine_name)] + base_options + ['_spsa_'] + \
+          ['-engine', 'name=New-'+run['args']['resolved_new'][:7], 'cmd=%s' % (new_engine)] + new_options + ['_spsa_'] + \
+          ['dir=%s' % (new_engine_dir)] + \
+          ['-engine', 'name=Base-'+run['args']['resolved_base'][:7], 'cmd=%s' % (base_engine)] + base_options + ['_spsa_'] + \
+          ['dir=%s' % (base_engine_dir)] + \
           ['-each', 'proto=uci', 'tc=%s' % (scaled_tc)] + nodestime_cmd + threads_cmd + book_cmd
 
     task_status = launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, tc_limit * games_to_play / min(games_to_play, games_concurrency))
