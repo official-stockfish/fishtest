@@ -21,6 +21,12 @@
     </div>
   </div>
   <div class="control-group">
+    <label class="control-label">Test repo:</label>
+    <div class="controls">
+      <input name="tests-repo" value="${args.get('tests_repo', tests_repo)}" ${'readonly' if re_run else ''}>
+    </div>
+  </div>
+  <div class="control-group">
     <label class="control-label">Test options:</label>
     <div class="controls">
     <input name="new-options" value="${args.get('new_options', 'Hash=16')}">
@@ -179,12 +185,6 @@ Cowardice,150,0,200,10,0.0020"""})['raw_params']}</textarea>
         <option selected="selected" value="100">100%</option>
         <option style="color:red" value="200">200%</option>
       </select>
-    </div>
-  </div>
-  <div class="control-group">
-    <label class="control-label">Test Repo:</label>
-    <div class="controls">
-      <input name="tests-repo" value="${args.get('tests_repo', tests_repo)}" ${'readonly' if re_run else ''}>
     </div>
   </div>
   <div class="control-group">
