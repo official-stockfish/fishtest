@@ -12,6 +12,12 @@
     <label class="control-label">Test branch:</label>
     <div class="controls">
       <input name="test-branch" value="${args.get('new_tag', '')}" ${'readonly' if re_run else ''}>
+      <div class="btn-group">
+        <div class="btn" id="fast_test">short (STC)</div>
+        <div class="btn" id="slow_test">long (LTC)</div>
+        <div class="btn" id="fast_smp_test">SMP (STC)</div>
+        <div class="btn" id="slow_smp_test">SMP (LTC)</div>
+      </div>
     </div>
   </div>
   <div class="control-group">
@@ -131,10 +137,6 @@ Cowardice,150,0,200,10,0.0020"""})['raw_params']}</textarea>
     <label class="control-label">Time Control:</label>
     <div class="controls">
       <input name="tc" value="${args.get('tc', '10+0.1')}">
-      <div class="btn-group">
-        <div class="btn" id="fast_test">short (STC)</div>
-        <div class="btn" id="slow_test">long (LTC)</div>
-      </div>
     </div>
   </div>
   <div class="control-group">
@@ -234,6 +236,7 @@ $(function() {
 
   $('#fast_test').click(function() {
     $('input[name=tc]').val('10+0.1');
+    $('input[name=threads]').val('1');
     $('input[name=new-options]').val('Hash=16');
     $('input[name=base-options]').val('Hash=16');
     if ($('input[name=sprt_elo0]').val() == '0.25' && $('input[name=sprt_elo1]').val() == '1.75')
@@ -242,10 +245,30 @@ $(function() {
 
   $('#slow_test').click(function() {
     $('input[name=tc]').val('60+0.6');
+    $('input[name=threads]').val('1');
     $('input[name=new-options]').val('Hash=64');
     $('input[name=base-options]').val('Hash=64');
     if ($('input[name=sprt_elo0]').val() == '-0.5' && $('input[name=sprt_elo1]').val() == '1.5')
       { $('select[name=bounds]').val('standard LTC'); update_bounds(); }
   });
+
+  $('#fast_smp_test').click(function() {
+    $('input[name=tc]').val('5+0.05');
+    $('input[name=threads]').val('8');
+    $('input[name=new-options]').val('Hash=64');
+    $('input[name=base-options]').val('Hash=64');
+    if ($('input[name=sprt_elo0]').val() == '0.25' && $('input[name=sprt_elo1]').val() == '1.75')
+      { $('select[name=bounds]').val('standard STC'); update_bounds(); }
+  });
+
+  $('#slow_smp_test').click(function() {
+    $('input[name=tc]').val('20+0.2');
+    $('input[name=threads]').val('8');
+    $('input[name=new-options]').val('Hash=256');
+    $('input[name=base-options]').val('Hash=256');
+    if ($('input[name=sprt_elo0]').val() == '-0.5' && $('input[name=sprt_elo1]').val() == '1.5')
+      { $('select[name=bounds]').val('standard LTC'); update_bounds(); }
+  });
+
 });
 </script>
