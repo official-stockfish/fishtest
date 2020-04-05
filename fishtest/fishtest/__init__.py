@@ -25,6 +25,7 @@ def main(global_config, **settings):
     event.request.rundb = rundb
     event.request.userdb = rundb.userdb
     event.request.actiondb = rundb.actiondb
+    event.request.gendb = rundb.gendb
 
   def add_renderer_globals(event):
     event['h'] = helpers

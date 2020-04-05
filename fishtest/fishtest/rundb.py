@@ -14,6 +14,7 @@ from bson.objectid import ObjectId
 from bson.binary import Binary
 from pymongo import MongoClient, ASCENDING, DESCENDING
 
+from fishtest.gendb import GenDb
 from fishtest.userdb import UserDb
 from fishtest.actiondb import ActionDb
 
@@ -29,12 +30,14 @@ class RunDb:
     self.db = self.conn[db_name]
     self.userdb = UserDb(self.db)
     self.actiondb = ActionDb(self.db)
+    self.gendb = GenDb(self.db)
     self.pgndb = self.db['pgns']
     self.runs = self.db['runs']
     self.old_runs = self.db['old_runs']
     self.deltas = self.db['deltas']
 
     self.chunk_size = 250
+    self.game_count = [0] * 64;
 
     global last_rundb
     last_rundb = self
@@ -196,8 +199,10 @@ class RunDb:
       if flush:
         self.run_cache[r_id] = {'dirty': False, 'rtime': time.time(),
                               'ftime': time.time(), 'run': run}
+        games = sum(self.game_count)
         with self.run_cache_write_lock:
           self.runs.save(run)
+          self.general.update('gamesper64s', games)
       else:
         if r_id in self.run_cache:
           ftime = self.run_cache[r_id]['ftime']
@@ -531,6 +536,9 @@ class RunDb:
       if sprt['state']!='':
         self.stop_run(run_id, run)
         flush = True
+
+    seconds = int(time.time()) & 63
+    game_count[seconds] = game_count[seconds] + 1
 
     self.buffer(run, flush)
 

@@ -1154,15 +1154,11 @@ def tests(request):
           run['results']['wins'] + run['results']['draws']
           + run['results']['losses']))
 
-      games_per_minute = 0.0
       machines = request.rundb.get_machines()
+      games = request.gendb.get('gamesper64s')
+      games_per_minute = games * 60.0 / 64.0
       for machine in machines:
         machine['last_updated'] = delta_date(machine['last_updated'])
-        if machine['nps'] != 0:
-          games_per_minute += (
-              (machine['nps'] / 1200000.0)
-              * (60.0 / parse_tc(machine['run']['args']['tc']))
-              * int(machine['concurrency']))
       machines.reverse()
 
       def remaining_hours(run):
