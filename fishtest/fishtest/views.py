@@ -1154,9 +1154,11 @@ def tests(request):
           run['results']['wins'] + run['results']['draws']
           + run['results']['losses']))
 
+      games_per_minute = request.gendb.get('gamesperminute')
+      if !games_per_minute:
+          games_per_minute = 0
+
       machines = request.rundb.get_machines()
-      games = request.gendb.get('gamesper64s')
-      games_per_minute = games * 60.0 / 64.0
       for machine in machines:
         machine['last_updated'] = delta_date(machine['last_updated'])
       machines.reverse()

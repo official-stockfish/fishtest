@@ -37,7 +37,7 @@ class RunDb:
     self.deltas = self.db['deltas']
 
     self.chunk_size = 250
-    self.game_count = [0] * 64;
+    self.game_count = [0] * 60;
 
     global last_rundb
     last_rundb = self
@@ -202,7 +202,7 @@ class RunDb:
         games = sum(self.game_count)
         with self.run_cache_write_lock:
           self.runs.save(run)
-          self.general.update('gamesper64s', games)
+          self.general.update('gamesperminute', games)
       else:
         if r_id in self.run_cache:
           ftime = self.run_cache[r_id]['ftime']
@@ -537,7 +537,7 @@ class RunDb:
         self.stop_run(run_id, run)
         flush = True
 
-    seconds = int(time.time()) & 63
+    seconds = int(time.time()) % 60
     game_count[seconds] = game_count[seconds] + 1
 
     self.buffer(run, flush)
