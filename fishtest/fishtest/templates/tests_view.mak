@@ -138,6 +138,14 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
 <div id="div_spsa_history_plot"></div>
 %endif
 
+<section class="diff" style="display: none">
+  <h3>
+    Diff contents
+    <button id="diff-toggle" class="btn">Show</button>
+  </h3>
+  <pre class="diff-contents"></pre>
+</section>
+
 <h3>Tasks ${totals}</h3>
 <table class='table table-striped table-condensed'>
  <thead>
@@ -209,3 +217,38 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
   %endfor
  </tbody>
 </table>
+
+<script>
+  $(function() {
+    var apiUrlBase = "${base.repo(run)}".replace("//github.com/", "//api.github.com/repos/");
+    $.ajax({
+      url: apiUrlBase + "/compare/${run['args']['resolved_base'][:7]}...${run['args']['resolved_new'][:7]}",
+      headers: {
+        Accept: "application/vnd.github.v3.diff"
+      },
+      success: function(response) {
+        var numLines = response.split("\n").length;
+        var $toggleBtn = $("#diff-toggle");
+        var $diffContents = $(".diff-contents");
+        $diffContents.text(response);
+        $toggleBtn.on("click", function() {
+          $diffContents.toggle();
+          if ($toggleBtn.text() === "Hide") {
+            $toggleBtn.text("Show");
+          } else {
+            $toggleBtn.text("Hide");
+          }
+        });
+        // Hide large diffs by default
+        if (numLines < 50) {
+          $diffContents.show();
+          $toggleBtn.text("Hide");
+        } else {
+          $diffContents.hide();
+          $toggleBtn.text("Show");
+        }
+        $(".diff").show();
+      }
+    });
+  });
+</script>
