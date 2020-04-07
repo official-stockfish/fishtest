@@ -67,6 +67,7 @@ class RunDb:
               msg_new='',
               base_signature='',
               new_signature='',
+              base_same_as_master=None,
               start_time=None,
               sprt=None,
               spsa=None,
@@ -118,6 +119,7 @@ class RunDb:
       # Aggregated results
       'results': {'wins': 0, 'losses': 0, 'draws': 0},
       'results_stale': False,
+      'base_same_as_master': base_same_as_master,
       'finished': False,
       'approved': False,
       'approver': '',

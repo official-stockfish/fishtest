@@ -60,7 +60,8 @@ var spsa_history_url = '${run_args[0][1]}/spsa_history';
   <span>
     <form action="/tests/approve" method="POST" style="display:inline">
       <input type="hidden" name="run-id" value="${run['_id']}">
-      <button type="submit" id="approve-btn" class="btn btn-success">
+      <button type="submit" id="approve-btn"
+              class="btn ${'btn-success' if run['base_same_as_master'] else 'btn-warning'}">
         Approve
       </button>
     </form>
@@ -78,11 +79,16 @@ var spsa_history_url = '${run_args[0][1]}/spsa_history';
     <button class="btn">Reschedule</button>
   </a>
 
-%if not run['finished'] and not run.get('approved', False):
+%if run.get('base_same_as_master') is not None:
   <br/>
   <br/>
-  <div id="master-diff" class="alert">
-    Comparing base branch with master...
+  <div id="master-diff"
+       class="alert ${'alert-success' if run['base_same_as_master'] else 'alert-error'}">
+    %if run['base_same_as_master']:
+      Base branch same as Stockfish master
+    %else:
+      Base branch not same as Stockfish master
+    %endif
   </div>
   <a href="https://github.com/official-stockfish/Stockfish/compare/master...${run['args']['resolved_base'][:7]}" target="_blank">Master diff</a>
 %endif
@@ -268,22 +274,6 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
 	hljs.highlightBlock($diffText[0]);
       }
     );
-
-  %if not run['finished'] and not run.get('approved', False):
-    var apiUrlBaseMaster = "https://api.github.com/repos/official-stockfish/Stockfish";
-    fetchDiff(
-      apiUrlBaseMaster + "/compare/master...${run['args']['resolved_base'][:7]}",
-      function(response) {
-        var $masterDiff = $("#master-diff");
-        if (response.length === 0) {
-          $masterDiff.text("Base branch same as Stockfish master").addClass("alert-success");
-        } else {
-          $masterDiff.text("Base branch not same as Stockfish master").addClass("alert-error");
-          $("#approve-btn").removeClass("btn-success").addClass("btn-warning");
-        }
-      }
-    );
-  %endif
   });
 </script>
 <link rel="stylesheet" href="/css/highlight.github.css">
