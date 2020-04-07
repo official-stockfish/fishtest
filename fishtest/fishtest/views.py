@@ -424,6 +424,15 @@ def validate_form(request):
         data['info'] = ('' if re.match('^[012]?[0-9][^0-9].*', data['tc'])
                         else 'LTC: ') + strip_message(c['commit']['message'])
 
+  # Check that the book exists in the official books repo
+  if len(data['book']) > 0:
+    api_url = 'https://api.github.com/repos/official-stockfish/books/contents'
+    c = requests.get(api_url).json()
+    matcher = re.compile(r'\.(epd|pgn)\.zip$')
+    valid_book_filenames = [file['name'] for file in c if matcher.search(file['name'])]
+    if data['book'] + '.zip' not in valid_book_filenames:
+      raise Exception('Invalid book - ' + data['book'])
+
   if len([v for v in list(data.values()) if len(v) == 0]) > 0:
     raise Exception('Missing required option')
 
