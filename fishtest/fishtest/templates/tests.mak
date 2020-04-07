@@ -6,22 +6,8 @@
 
 %if page_idx == 0:
 
-<h3>Pending - ${len(runs['pending'])} tests ${pending_hours} hrs <button id="pending-button" class="btn" data-toggle="collapse" data-target="#pending">Show</button></h3>
-<div class="collapse" id="pending">
-%if len(runs['pending']) == 0:
-  None
-%else:
-  <%include file="run_table.mak" args="runs=runs['pending'], show_delete=True"/>
-%endif
-</div>
-
-%if len(runs['failed']) > 0:
-<h3>Failed</h3>
-<%include file="run_table.mak" args="runs=runs['failed'], show_delete=True"/>
-%endif
-
 %if show_machines:
- <h3>Active - ${len(machines)} machines ${cores}
+ <h3>${len(machines)} machines ${cores}
      cores ${'%.2fM' % (nps / (cores * 1000000.0 + 1))} nps
      (${'%.2fM' % (nps / (1000000.0 + 1))} total nps)
      ${games_per_minute} games/minute
@@ -62,9 +48,23 @@
    </tbody>
   </table>
  </div>
-%else:
- <h3>Active - ${len(runs['active'])} tests</h3>
 %endif
+
+<h3>Pending - ${len(runs['pending'])} tests ${pending_hours} hrs <button id="pending-button" class="btn" data-toggle="collapse" data-target="#pending">Show</button></h3>
+<div class="collapse" id="pending">
+%if len(runs['pending']) == 0:
+  None
+%else:
+  <%include file="run_table.mak" args="runs=runs['pending'], show_delete=True"/>
+%endif
+</div>
+
+%if len(runs['failed']) > 0:
+<h3>Failed</h3>
+<%include file="run_table.mak" args="runs=runs['failed'], show_delete=True"/>
+%endif
+
+<h3>Active - ${len(runs['active'])} tests</h3>
 <%include file="run_table.mak" args="runs=runs['active']"/>
 
 %endif
