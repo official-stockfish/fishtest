@@ -138,12 +138,12 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
 <div id="div_spsa_history_plot"></div>
 %endif
 
-<section class="diff" style="display: none">
+<section id="diff-section" style="display: none">
   <h3>
     Diff contents
     <button id="diff-toggle" class="btn">Show</button>
   </h3>
-  <pre class="diff-contents"></pre>
+  <pre id="diff-contents"><code class="diff"></code></pre>
 </section>
 
 <h3>Tasks ${totals}</h3>
@@ -218,6 +218,7 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
  </tbody>
 </table>
 
+<script type="text/javascript" src="/js/highlight.diff.min.js"></script>
 <script>
   $(function() {
     var apiUrlBase = "${base.repo(run)}".replace("//github.com/", "//api.github.com/repos/");
@@ -229,8 +230,9 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
       success: function(response) {
         var numLines = response.split("\n").length;
         var $toggleBtn = $("#diff-toggle");
-        var $diffContents = $(".diff-contents");
-        $diffContents.text(response);
+        var $diffContents = $("#diff-contents");
+	var $diffText = $diffContents.find("code");
+	$diffText.text(response);
         $toggleBtn.on("click", function() {
           $diffContents.toggle();
           if ($toggleBtn.text() === "Hide") {
@@ -247,8 +249,10 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
           $diffContents.hide();
           $toggleBtn.text("Show");
         }
-        $(".diff").show();
+        $("#diff-section").show();
+	hljs.highlightBlock($diffText[0]);
       }
     });
   });
 </script>
+<link rel="stylesheet" href="/css/highlight.github.css">
