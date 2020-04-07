@@ -476,6 +476,14 @@ def validate_form(request):
 
   stop_rule = request.POST['stop_rule']
 
+  # Check if the base branch of the test repo matches official master
+  api_url = 'https://api.github.com/repos/official-stockfish/Stockfish'
+  api_url += '/compare/master...' + data['resolved_base'][:7]
+  master_diff = requests.get(api_url, headers={
+    'Accept': 'application/vnd.github.v3.diff'
+  })
+  data['base_same_as_master'] = master_diff.text is ''
+
   # Integer parameters
   if stop_rule == 'sprt':
     data['sprt'] = fishtest.stats.stat_util.SPRT(alpha=0.05,
