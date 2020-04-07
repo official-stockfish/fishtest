@@ -78,7 +78,7 @@ var spsa_history_url = '${run_args[0][1]}/spsa_history';
     <button class="btn">Reschedule</button>
   </a>
 
-%if not run.get('approved', False):
+%if not run['finished'] and not run.get('approved', False):
   <br/>
   <br/>
   <div id="master-diff" class="alert">
@@ -269,7 +269,7 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
       }
     );
 
-  %if not run.get('approved', False):
+  %if not run['finished'] and not run.get('approved', False):
     var apiUrlBaseMaster = "https://api.github.com/repos/official-stockfish/Stockfish";
     fetchDiff(
       apiUrlBaseMaster + "/compare/master...${run['args']['resolved_base'][:7]}",
