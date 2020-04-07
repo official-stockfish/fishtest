@@ -11,7 +11,10 @@ var spsa_history_url = '${run_args[0][1]}/spsa_history';
 <script type="text/javascript" src="/js/spsa.js"></script>
 %endif
 
-<h3>${run['args']['new_tag']} vs ${run['args']['base_tag']} ${base.diff_url(run)}</h3>
+<h3>
+  ${run['args']['new_tag']} vs ${run['args']['base_tag']}
+  <a href="${base.diff_url(run)}" target="_blank">diff</a>
+</h3>
 
 <div class="row-fluid">
 <div style="display:inline-block;">
@@ -154,7 +157,9 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
 
 <section id="diff-section" style="display: none">
   <h3>
-    Diff contents
+    Diff
+    <span id="diff-num-comments" style="display: none"></span>
+    <a href="${base.diff_url(run)}" class="btn btn-link" target="_blank">view on Github</a>
     <button id="diff-toggle" class="btn">Show</button>
   </h3>
   <pre id="diff-contents"><code class="diff"></code></pre>
@@ -246,14 +251,15 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
     }
 
     var apiUrlBase = "${base.repo(run)}".replace("//github.com/", "//api.github.com/repos/");
+    var diffApiUrl = apiUrlBase + "/compare/${run['args']['resolved_base'][:7]}...${run['args']['resolved_new'][:7]}";
     fetchDiff(
-      apiUrlBase + "/compare/${run['args']['resolved_base'][:7]}...${run['args']['resolved_new'][:7]}",
+      diffApiUrl,
       function(response) {
         var numLines = response.split("\n").length;
         var $toggleBtn = $("#diff-toggle");
         var $diffContents = $("#diff-contents");
-	var $diffText = $diffContents.find("code");
-	$diffText.text(response);
+        var $diffText = $diffContents.find("code");
+        $diffText.text(response);
         $toggleBtn.on("click", function() {
           $diffContents.toggle();
           if ($toggleBtn.text() === "Hide") {
@@ -271,7 +277,19 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
           $toggleBtn.text("Show");
         }
         $("#diff-section").show();
-	hljs.highlightBlock($diffText[0]);
+        hljs.highlightBlock($diffText[0]);
+
+        // Show # of comments for this diff on Github
+        $.ajax({
+          url: diffApiUrl,
+          success: function(response) {
+            var numComments = 0;
+            response.commits.forEach(function(row) {
+              numComments += row.commit.comment_count;
+            });
+            $("#diff-num-comments").text("(" + numComments + " comments)").show();
+          }
+        });
       }
     );
   });

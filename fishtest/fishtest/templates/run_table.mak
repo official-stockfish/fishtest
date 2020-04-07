@@ -67,7 +67,7 @@
     <td style="width:6%">${run['start_time'].strftime("%y-%m-%d")}</td>
     <td style="width:2%"><a href="/tests/user/${run['args'].get('username','')}" title="${run['args'].get('username','')}">${run['args'].get('username','')[:3]}</td>
     <td style="width:16%"><a href="/tests/view/${run['_id']}">${run['args']['new_tag'][:23]}</a></td>
-    <td style="width:2%">${base.diff_url(run)}</td>
+    <td style="width:2%"><a href="${base.diff_url(run)}" target="_blank">diff</a></td>
     <td style="width:1%"><%include file="elo_results.mak" args="run=run, show_gauge=active" /></td>
     <td style="width:11%">
     %if 'sprt' in run['args']:
