@@ -58,10 +58,9 @@ var spsa_history_url = '${run_args[0][1]}/spsa_history';
   </form>
 %if not run.get('approved', False):
   <span>
-    <a href="https://github.com/official-stockfish/Stockfish/compare/master...${run['args']['resolved_base'][:7]}" target="_blank">Master diff</a>
     <form action="/tests/approve" method="POST" style="display:inline">
       <input type="hidden" name="run-id" value="${run['_id']}">
-      <button type="submit" class="btn btn-success">
+      <button type="submit" id="approve-btn" class="btn btn-success">
         Approve
       </button>
     </form>
@@ -78,6 +77,15 @@ var spsa_history_url = '${run_args[0][1]}/spsa_history';
   <a href="/tests/run?id=${run['_id']}">
     <button class="btn">Reschedule</button>
   </a>
+
+%if not run.get('approved', False):
+  <br/>
+  <br/>
+  <div id="master-diff" class="alert">
+    Comparing base branch with master...
+  </div>
+  <a href="https://github.com/official-stockfish/Stockfish/compare/master...${run['args']['resolved_base'][:7]}" target="_blank">Master diff</a>
+%endif
 
   <hr>
 
@@ -220,13 +228,20 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
 
 <script>
   $(function() {
+    function fetchDiff(url, callback) {
+      $.ajax({
+        url: url,
+        headers: {
+          Accept: "application/vnd.github.v3.diff"
+        },
+        success: callback
+      });
+    }
+
     var apiUrlBase = "${base.repo(run)}".replace("//github.com/", "//api.github.com/repos/");
-    $.ajax({
-      url: apiUrlBase + "/compare/${run['args']['resolved_base'][:7]}...${run['args']['resolved_new'][:7]}",
-      headers: {
-        Accept: "application/vnd.github.v3.diff"
-      },
-      success: function(response) {
+    fetchDiff(
+      apiUrlBase + "/compare/${run['args']['resolved_base'][:7]}...${run['args']['resolved_new'][:7]}",
+      function(response) {
         var numLines = response.split("\n").length;
         var $toggleBtn = $("#diff-toggle");
         var $diffContents = $(".diff-contents");
@@ -249,6 +264,22 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
         }
         $(".diff").show();
       }
-    });
+    );
+
+  %if not run.get('approved', False):
+    var apiUrlBaseMaster = "https://api.github.com/repos/official-stockfish/Stockfish";
+    fetchDiff(
+      apiUrlBaseMaster + "/compare/master...${run['args']['resolved_base'][:7]}",
+      function(response) {
+        var $masterDiff = $("#master-diff");
+        if (response.length === 0) {
+          $masterDiff.text("Base branch same as Stockfish master").addClass("alert-success");
+        } else {
+          $masterDiff.text("Base branch not same as Stockfish master").addClass("alert-error");
+          $("#approve-btn").removeClass("btn-success").addClass("btn-warning");
+        }
+      }
+    );
+  %endif
   });
 </script>
