@@ -23,18 +23,52 @@ runs = db['runs']
 pgns = db['pgns']
 
 
-indexList = { 'runs' : [ [(u'args.username', ASCENDING)],
-                         [(u'finished', ASCENDING), (u'last_updated', DESCENDING), (u'start_time', DESCENDING)] ],
-                         # [(u'finished', ASCENDING), (u'last_updated', DESCENDING)],
-                         # [(u'deleted', ASCENDING)],
-                         # [(u'deleted', ASCENDING), (u'finished', ASCENDING)],
-                         # [(u'last_updated', DESCENDING), (u'start_time', DESCENDING)],
-                         # [(u'tasks.pending', ASCENDING)],
-              'pgns' : [ [('run_id', ASCENDING)] ],
-              'users' : [ [('username', ASCENDING)] ],
-              'actions' : [ [('username', ASCENDING)] ],
-            }
-uniqueList = [ 'username' ]
+index_list = {
+  'runs' : [
+    [
+      # Index used for querying combos of username / Greens / LTC
+      ('finished', DESCENDING),
+      ('args.username', ASCENDING),
+      ('args.tc', ASCENDING),
+      ('results_info.style', ASCENDING),
+      ('last_updated', DESCENDING),
+    ],
+    [
+      # Index used for get_unfinished_runs()
+      ('finished', ASCENDING),
+      ('last_updated', DESCENDING),
+      ('start_time', DESCENDING),
+    ],
+    # [(u'deleted', ASCENDING)],
+    # [(u'deleted', ASCENDING), (u'finished', ASCENDING)],
+    # [(u'last_updated', DESCENDING), (u'start_time', DESCENDING)],
+    # [(u'tasks.pending', ASCENDING)],
+  ],
+  'old_runs' : [
+    [
+      # Index used for querying combos of username / Greens / LTC only
+      ('finished', DESCENDING),
+      ('args.username', ASCENDING),
+      ('args.tc', ASCENDING),
+      ('results_info.style', ASCENDING),
+      ('_id', DESCENDING),
+    ],
+  ],
+  'pgns' : [
+    [('run_id', ASCENDING)]
+  ],
+  'users' : [
+    [('username', ASCENDING)]
+  ],
+  'actions' : [
+    [
+      ('action', ASCENDING),
+      ('username', ASCENDING),
+      ('_id', DESCENDING)
+    ]
+  ],
+}
+unique_list = [ 'username' ]
 
 
 def printout(s):
@@ -42,9 +76,9 @@ def printout(s):
   sys.stdout.flush()
 
 
-# Loop through all collections and recreate indexes if given in indexList
+# Loop through all collections and recreate indexes if given in index_list
 for cn in db.list_collection_names():
-  if cn in indexList:
+  if cn in index_list:
     c = db[cn]
 
     # Drop all indexes on collections cn except _id_
@@ -54,12 +88,12 @@ for cn in db.list_collection_names():
         printout("Dropping " + cn + " index " + idx + " ...")
         c.drop_index(idx)
 
-    # Create indexes in indexList
+    # Create indexes in index_list
     printout("")
-    for flds in indexList[cn]:
+    for flds in index_list[cn]:
       printout("Creating " + cn + " index " + str(flds) + " ...")
       uniq = False
-      if cn != 'actions' and flds[0][0] in uniqueList:
+      if cn != 'actions' and flds[0][0] in unique_list:
           uniq = True
       c.create_index(flds, unique=uniq)
 
@@ -71,4 +105,3 @@ for cn in db.list_collection_names():
   pprint.pprint(c.index_information(), stream=None, indent=2, width=110, depth=None)
 
 printout("")
-
