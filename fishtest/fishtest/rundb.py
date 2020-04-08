@@ -16,7 +16,6 @@ from pymongo import MongoClient, ASCENDING, DESCENDING
 
 from fishtest.userdb import UserDb
 from fishtest.actiondb import ActionDb
-from fishtest.views import format_results
 
 import fishtest.stats.stat_util
 
