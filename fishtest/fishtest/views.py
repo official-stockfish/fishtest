@@ -526,6 +526,7 @@ def tests_run(request):
   u = request.userdb.get_user(username)
 
   return {'args': run_args,
+          'is_rerun': len(run_args) > 0,
           'tests_repo': u.get('tests_repo', ''),
           'bench': get_master_bench()}
 
