@@ -1,0 +1,15 @@
+.elo-results {
+  font-size: 12px;
+  margin: 2px;
+  padding: 1px;
+  line-height: 13px;
+}
+
+.checkbox.inline {
+  margin-left: 20px;
+  margin-right: 0;
+}
+
+th {
+  cursor: pointer;
+}

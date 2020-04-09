@@ -3,23 +3,23 @@
 <%namespace name="base" file="base.mak"/>
 
 %if 'spsa' in run['args']:
-<script type="text/javascript" src="https://www.google.com/jsapi"></script>
-<script type="text/javascript" src="/js/gkr.js"></script>
-<script>
-var spsa_history_url = '${run_args[0][1]}/spsa_history';
-</script>
-<script type="text/javascript" src="/js/spsa.js"></script>
+  <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+  <script type="text/javascript" src="/js/gkr.js"></script>
+  <script>
+    var spsa_history_url = '${run_args[0][1]}/spsa_history';
+  </script>
+  <script type="text/javascript" src="/js/spsa.js"></script>
 %endif
 
 <h3>
-  ${run['args']['new_tag']} vs ${run['args']['base_tag']}
-  <a href="${base.diff_url(run)}" target="_blank">diff</a>
+  <span>${run['args']['new_tag']} vs ${run['args']['base_tag']}</span>
+  <a href="${h.diff_url(run)}" target="_blank">diff</a>
 </h3>
 
 <div class="row-fluid">
-<div style="display:inline-block;">
-<%include file="elo_results.mak" args="run=run" />
-</div>
+  <div style="display:inline-block;">
+    <%include file="elo_results.mak" args="run=run" />
+  </div>
 </div>
 
 <div class="row-fluid">
@@ -52,49 +52,50 @@ var spsa_history_url = '${run_args[0][1]}/spsa_history';
 
 <div class="span4">
   <h4>Actions</h4>
-%if not run['finished']:
-  <form action="/tests/stop" method="POST" style="display:inline">
-    <input type="hidden" name="run-id" value="${run['_id']}">
-    <button type="submit" class="btn btn-danger">
-      Stop
-    </button>
-  </form>
-%if not run.get('approved', False):
-  <span>
-    <form action="/tests/approve" method="POST" style="display:inline">
+  %if not run['finished']:
+    <form action="/tests/stop" method="POST" style="display:inline">
       <input type="hidden" name="run-id" value="${run['_id']}">
-      <button type="submit" id="approve-btn"
-              class="btn ${'btn-success' if run['base_same_as_master'] else 'btn-warning'}">
-        Approve
+      <button type="submit" class="btn btn-danger">
+        Stop
       </button>
     </form>
-  </span>
-%endif
-%else:
-  <form action="/tests/purge" method="POST" style="display:inline">
-    <input type="hidden" name="run-id" value="${run['_id']}">
-    <button type="submit" class="btn btn-danger">
-      Purge
-    </button>
-  </form>
-%endif
+    %if not run.get('approved', False):
+      <span>
+        <form action="/tests/approve" method="POST" style="display:inline">
+          <input type="hidden" name="run-id" value="${run['_id']}">
+          <button type="submit" id="approve-btn"
+                  class="btn ${'btn-success' if run['base_same_as_master'] else 'btn-warning'}">
+            Approve
+          </button>
+        </form>
+      </span>
+    %endif
+  %else:
+    <form action="/tests/purge" method="POST" style="display:inline">
+      <input type="hidden" name="run-id" value="${run['_id']}">
+      <button type="submit" class="btn btn-danger">
+        Purge
+      </button>
+    </form>
+  %endif
   <a href="/tests/run?id=${run['_id']}">
     <button class="btn">Reschedule</button>
   </a>
 
-%if run.get('base_same_as_master') is not None:
   <br/>
   <br/>
-  <div id="master-diff"
-       class="alert ${'alert-success' if run['base_same_as_master'] else 'alert-error'}">
-    %if run['base_same_as_master']:
-      Base branch same as Stockfish master
-    %else:
-      Base branch not same as Stockfish master
-    %endif
-  </div>
-  <a href="https://github.com/official-stockfish/Stockfish/compare/master...${run['args']['resolved_base'][:7]}" target="_blank">Master diff</a>
-%endif
+  %if run.get('base_same_as_master') is not None:
+    <div id="master-diff"
+        class="alert ${'alert-success' if run['base_same_as_master'] else 'alert-error'}">
+      %if run['base_same_as_master']:
+        Base branch same as Stockfish master
+      %else:
+        Base branch not same as Stockfish master
+      %endif
+    </div>
+  %endif
+  <a href="https://github.com/official-stockfish/Stockfish/compare/master...${run['args']['resolved_base'][:7]}"
+     target="_blank">Master diff</a>
 
   <hr>
 
@@ -113,14 +114,14 @@ var spsa_history_url = '${run_args[0][1]}/spsa_history';
   </form>
 
   %if 'spsa' not in run['args']:
-  <hr>
+    <hr>
 
-  <h4>Stats</h4>
-  <table class="table table-condensed">
-    <tr><td>chi^2</td><td>${'%.2f' % (chi2['chi2'])}</td></tr>
-    <tr><td>dof</td><td>${chi2['dof']}</td></tr>
-    <tr><td>p-value</td><td>${'%.2f' % (chi2['p'] * 100)}%</td></tr>
-  </table>
+    <h4>Stats</h4>
+    <table class="table table-condensed">
+      <tr><td>chi^2</td><td>${'%.2f' % (chi2['chi2'])}</td></tr>
+      <tr><td>dof</td><td>${chi2['dof']}</td></tr>
+      <tr><td>p-value</td><td>${'%.2f' % (chi2['p'] * 100)}%</td></tr>
+    </table>
   %endif
 
   <hr>
@@ -159,7 +160,7 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
   <h3>
     Diff
     <span id="diff-num-comments" style="display: none"></span>
-    <a href="${base.diff_url(run)}" class="btn btn-link" target="_blank">view on Github</a>
+    <a href="${h.diff_url(run)}" class="btn btn-link" target="_blank">view on Github</a>
     <button id="diff-toggle" class="btn">Show</button>
   </h3>
   <pre id="diff-contents"><code class="diff"></code></pre>
@@ -181,7 +182,7 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
    <th>Time</th>
 
    %if 'spsa' not in run['args']:
-   <th>Residual</th>
+    <th>Residual</th>
 	 %endif
   </tr>
  </thead>
@@ -250,7 +251,7 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
       });
     }
 
-    var apiUrlBase = "${base.repo(run)}".replace("//github.com/", "//api.github.com/repos/");
+    var apiUrlBase = "${run['args']['tests_repo']}".replace("//github.com/", "//api.github.com/repos/");
     var diffApiUrl = apiUrlBase + "/compare/${run['args']['resolved_base'][:7]}...${run['args']['resolved_new'][:7]}";
     fetchDiff(
       diffApiUrl,

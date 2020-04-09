@@ -229,7 +229,10 @@ $(function() {
     if (stop_rule == 'spsa') $('.spsa').show();
   };
 
-  $('select[name=bounds]').val("${'custom' if re_run else 'standard'}");
+  %if re_run:
+    $('select[name=bounds]').val('custom');
+  %endif
+
   update_visibility();
   $('select[name=stop_rule]').change(update_visibility);
   $('select[name=bounds]').change(update_bounds);
@@ -269,6 +272,5 @@ $(function() {
     if ($('input[name=sprt_elo0]').val() == '-0.5' && $('input[name=sprt_elo1]').val() == '1.5')
       { $('select[name=bounds]').val('standard LTC'); update_bounds(); }
   });
-
 });
 </script>
