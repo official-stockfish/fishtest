@@ -1,5 +1,9 @@
 <%inherit file="base.mak"/>
 
+<%block name="head">
+  <script src='https://www.google.com/recaptcha/api.js'></script>
+</%block>
+
 <div>
 <p></p>
 <p>

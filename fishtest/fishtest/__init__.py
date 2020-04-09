@@ -4,10 +4,11 @@ import sys
 from pyramid.authentication import AuthTktAuthenticationPolicy
 from pyramid.authorization import ACLAuthorizationPolicy
 from pyramid.config import Configurator
-from pyramid.events import NewRequest
+from pyramid.events import NewRequest, BeforeRender
 from pyramid.session import UnencryptedCookieSessionFactoryConfig
 
 from fishtest.rundb import RunDb
+from fishtest import helpers
 
 def main(global_config, **settings):
   """ This function returns a Pyramid WSGI application.
@@ -16,29 +17,36 @@ def main(global_config, **settings):
   config = Configurator(settings=settings,
                         session_factory=session_factory,
                         root_factory='fishtest.models.RootFactory')
-
   config.include('pyramid_mako')
 
-  # Authentication
-  with open(os.path.expanduser('~/fishtest.secret'), 'r') as f:
-    secret = f.read()
-  def groupfinder(username, request):
-    return request.userdb.get_user_groups(username)
-  config.set_authentication_policy(AuthTktAuthenticationPolicy(
-    secret, callback=groupfinder, hashalg='sha512'))
-  config.set_authorization_policy(ACLAuthorizationPolicy())
-
   rundb = RunDb()
+
   def add_rundb(event):
     event.request.rundb = rundb
     event.request.userdb = rundb.userdb
     event.request.actiondb = rundb.actiondb
+
+  def add_renderer_globals(event):
+    event['h'] = helpers
+
   config.add_subscriber(add_rundb, NewRequest)
+  config.add_subscriber(add_renderer_globals, BeforeRender)
+
+  # Authentication
+  def group_finder(username, request):
+    return request.userdb.get_user_groups(username)
+
+  with open(os.path.expanduser('~/fishtest.secret'), 'r') as f:
+    secret = f.read()
+  config.set_authentication_policy(AuthTktAuthenticationPolicy(
+    secret, callback=group_finder, hashalg='sha512'))
+  config.set_authorization_policy(ACLAuthorizationPolicy())
 
   config.add_static_view('html', 'static/html', cache_max_age=3600)
   config.add_static_view('css', 'static/css', cache_max_age=3600)
   config.add_static_view('js', 'static/js', cache_max_age=3600)
   config.add_static_view('img', 'static/img', cache_max_age=3600)
+
   config.add_route('home', '/')
   config.add_route('login', '/login')
   config.add_route('logout', '/logout')
