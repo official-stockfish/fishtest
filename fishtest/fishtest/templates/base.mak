@@ -23,49 +23,57 @@
 </head>
 
 <body>
-  <div class="container-fluid">
-    <div class="row-fluid">
-      <div class="span1">
-        <ul class="nav nav-list">
+  <div class="clearfix"
+       style="width: 100px; float: left; padding: 12px 0;">
+    <ul class="nav nav-list">
 
-          <li class="nav-header">Tests</li>
-          <li><a href="/tests">Overview</a></li>
-          <li><a href="/tests?success_only=1">Greens</a></li>
-          <li><a href="/tests?ltc_only=1">Slow (LTC)</a></li>
-          <li><a href="/tests/run">New</a></li>
+      <li class="nav-header">Tests</li>
+      <li><a href="/tests">Overview</a></li>
+      <li><a href="/tests?success_only=1">Greens</a></li>
+      <li><a href="/tests?ltc_only=1">Slow (LTC)</a></li>
+      <li><a href="/tests/run">New</a></li>
 
-          <li class="nav-header">Misc</li>
-          <li><a href="/users">Users</a></li>
-          <li><a href="/users/monthly">Top Month</a></li>
-          <li><a href="/actions">Actions</a></li>
-          <li><a href="https://github.com/glinscott/fishtest/wiki" target="_blank" rel="noopener">Wiki</a></li>
-          <li><a href="/html/SPRTcalculator.html?elo-0=-0.5&elo-1=1.5&draw-ratio=0.61&rms-bias=0" target="_blank">SPRT Calc</a></li>
+      <li class="nav-header">Misc</li>
+      <li><a href="/users">Users</a></li>
+      <li><a href="/users/monthly">Top Month</a></li>
+      <li><a href="/actions">Actions</a></li>
+      <li><a href="/html/SPRTcalculator.html?elo-0=-0.5&elo-1=1.5&draw-ratio=0.61&rms-bias=0" target="_blank">SPRT Calc</a></li>
 
-          <li class="nav-header">Links</li>
-          <li><a href="https://github.com/glinscott/fishtest" target="_blank" rel="noopener">Github</a></li>
-          <li><a href="https://groups.google.com/forum/?fromgroups=#!forum/fishcooking" target="_blank" rel="noopener">Forum</a></li>
-          <li><a href="https://groups.google.com/forum/?fromgroups=#!forum/fishcooking_results" target="_blank" rel="noopener">History</a></li>
-          <li><a href="https://hxim.github.io/Stockfish-Evaluation-Guide/" target="_blank" rel="noopener">Eval&shy;Guide</a></li>
-          <li><a href="https://github.com/glinscott/fishtest/wiki/Regression-Tests" target="_blank" rel="noopener">Regres&shy;sion</a></li>
-          <li><a href="http://abrok.eu/stockfish/" target="_blank" rel="noopener">Compiles</a></li>
-          <li><a href="https://github.com/official-stockfish/Stockfish" target="_blank" rel="noopener">SF-github</a></li>
+      <li class="nav-header">Github</li>
+      <li><a href="https://github.com/glinscott/fishtest" target="_blank" rel="noopener">Fishtest</a></li>
+      <li><a href="https://github.com/official-stockfish/Stockfish" target="_blank" rel="noopener">Stockfish</a></li>
 
-          <li class="nav-header">Admin</li>
-          <li><a href="/signup">Register</a></li>
-          <li><a href="/user">Profile</a></li>
-          <li><a href="/login">Login</a></li>
-          <li><a href="/logout">Logout</a></li>
-          <li>
-            %if len(request.userdb.get_pending()) > 0:
-              <a href="/pending"
-                 style="color: red;">Pending (${len(request.userdb.get_pending())})</a>
-            %else:
-              <a href="/pending">Pending</a>
-            %endif
-          </li>
-        </ul>
-      </div>
-      <div class="span11">
+      <li class="nav-header">Links</li>
+      <li><a href="https://github.com/glinscott/fishtest/wiki" target="_blank" rel="noopener">Wiki</a></li>
+      <li><a href="https://groups.google.com/forum/?fromgroups=#!forum/fishcooking" target="_blank" rel="noopener">Forum</a></li>
+      <li><a href="https://groups.google.com/forum/?fromgroups=#!forum/fishcooking_results" target="_blank" rel="noopener">History</a></li>
+      <li><a href="https://hxim.github.io/Stockfish-Evaluation-Guide/" target="_blank" rel="noopener">Eval Guide</a></li>
+      <li><a href="https://github.com/glinscott/fishtest/wiki/Regression-Tests" target="_blank" rel="noopener">Regression</a></li>
+      <li><a href="http://abrok.eu/stockfish/" target="_blank" rel="noopener">Compiles</a></li>
+
+      <li class="nav-header">Admin</li>
+      %if request.authenticated_userid:
+        <li><a href="/user">Profile</a></li>
+        <li><a href="/logout">Logout</a></li>
+      %else:
+        <li><a href="/signup">Register</a></li>
+        <li><a href="/login">Login</a></li>
+      %endif
+      <li>
+        %if len(request.userdb.get_pending()) > 0:
+          <a href="/pending"
+              style="color: red;">Pending (${len(request.userdb.get_pending())})</a>
+        %else:
+          <a href="/pending">Pending</a>
+        %endif
+      </li>
+    </ul>
+  </div>
+
+  <div class="clearfix"
+       style="width: calc(100% - 100px); float: left;">
+    <div class="container-fluid">
+      <div class="row-fluid">
         %if request.session.peek_flash():
           <% flash = request.session.pop_flash() %>
           %for message in flash:
@@ -75,7 +83,7 @@
             </div>
           %endfor
         %endif
-        ${self.body()}
+        <main>${self.body()}</main>
       </div>
     </div>
   </div>
