@@ -12,6 +12,7 @@
         cores ${'%.2fM' % (nps / (cores * 1000000.0 + 1))} nps
         (${'%.2fM' % (nps / (1000000.0 + 1))} total nps)
         ${games_per_minute} games/minute
+        ${pending_hours} hours remaining
       </span>
       <button id="machines-button" class="btn">
         ${'Hide' if machines_shown else 'Show'}
@@ -62,7 +63,7 @@
   %endif
 
   <h3>
-    Pending - ${len(runs['pending'])} tests ${pending_hours} hrs
+    Pending - ${len(runs['pending'])} tests
     <button id="pending-button" class="btn">
       ${'Hide' if pending_shown else 'Show'}
     </button>
