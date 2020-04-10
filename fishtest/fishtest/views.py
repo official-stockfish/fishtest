@@ -1167,12 +1167,16 @@ def tests(request):
 
       def remaining_hours(run):
         r = run['results']
-        expected_games = run['args']['num_games']
         if 'sprt' in run['args']:
-          expected_games = 16000
-        remaining_games = max(0,
-                              expected_games
-                              - r['wins'] - r['losses'] - r['draws'])
+          # current average number of games. Regularly update / have server guess?
+          expected_games = 53000
+          # checking randomly, half the expected games needs still to be done
+          remaining_games = expected_games / 2
+        else:
+          expected_games = run['args']['num_games']
+          remaining_games = max(0,
+                                expected_games
+                                - r['wins'] - r['losses'] - r['draws'])
         game_secs = parse_tc(run['args']['tc'])
         return game_secs * remaining_games * int(
             run['args'].get('threads', 1)) / (60*60)
