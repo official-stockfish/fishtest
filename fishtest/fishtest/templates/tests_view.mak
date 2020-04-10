@@ -53,7 +53,7 @@
 <div class="span4">
   <h4>Actions</h4>
   %if not run['finished']:
-    <form action="/tests/stop" method="POST" style="display:inline">
+    <form action="/tests/stop" method="POST" style="display: inline;">
       <input type="hidden" name="run-id" value="${run['_id']}">
       <button type="submit" class="btn btn-danger">
         Stop
@@ -61,7 +61,7 @@
     </form>
     %if not run.get('approved', False):
       <span>
-        <form action="/tests/approve" method="POST" style="display:inline">
+        <form action="/tests/approve" method="POST" style="display: inline;">
           <input type="hidden" name="run-id" value="${run['_id']}">
           <button type="submit" id="approve-btn"
                   class="btn ${'btn-success' if run['base_same_as_master'] else 'btn-warning'}">
@@ -71,7 +71,7 @@
       </span>
     %endif
   %else:
-    <form action="/tests/purge" method="POST" style="display:inline">
+    <form action="/tests/purge" method="POST" style="display: inline;">
       <input type="hidden" name="run-id" value="${run['_id']}">
       <button type="submit" class="btn btn-danger">
         Purge

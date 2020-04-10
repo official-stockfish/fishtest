@@ -71,7 +71,8 @@ def mainpage(request):
   return HTTPFound(location=request.route_url('tests'))
 
 
-@view_config(route_name='login', renderer='mainpage.mak')
+@view_config(route_name='login', renderer='mainpage.mak',
+             require_csrf=True, request_method=('GET', 'POST'))
 @forbidden_view_config(renderer='mainpage.mak')
 def login(request):
   login_url = request.route_url('login')
@@ -80,20 +81,19 @@ def login(request):
     referrer = '/'  # never use the login form itself as came_from
   came_from = request.params.get('came_from', referrer)
 
-  if 'form.submitted' in request.params:
-    username = request.params['username']
-    password = request.params['password']
+  if request.method == 'POST':
+    username = request.POST.get('username')
+    password = request.POST.get('password')
     token = request.userdb.authenticate(username, password)
     if 'error' not in token:
       headers = remember(request, username)
       return HTTPFound(location=came_from, headers=headers)
 
     request.session.flash(token['error'])  # 'Incorrect password'
-
   return {}
 
 
-@view_config(route_name='logout')
+@view_config(route_name='logout', require_csrf=True, request_method='POST')
 def logout(request):
   session = request.session
   headers = forget(request)
@@ -101,54 +101,54 @@ def logout(request):
   return HTTPFound(location=request.route_url('tests'), headers=headers)
 
 
-@view_config(route_name='signup', renderer='signup.mak')
+@view_config(route_name='signup', renderer='signup.mak',
+             require_csrf=True, request_method=('GET', 'POST'))
 def signup(request):
-  if 'form.submitted' in request.params:
-    if len(request.params.get('password', '')) == 0:
-      request.session.flash('Non-empty password required')
-      return {}
-    if request.params.get('password') != request.params.get('password2', ''):
-      request.session.flash('Matching verify password required')
-      return {}
-    if '@' not in request.params.get('email', ''):
-      request.session.flash('Email required')
-      return {}
-    if len(request.params.get('username', '')) == 0:
-      request.session.flash('Username required')
-      return {}
-    if not request.params.get('username', '').isalnum():
-      request.session.flash('Alphanumeric username required')
-      return {}
+  if request.method != 'POST':
+    return {}
+  if len(request.POST.get('password', '')) == 0:
+    request.session.flash('Non-empty password required')
+    return {}
+  if request.POST.get('password') != request.POST.get('password2', ''):
+    request.session.flash('Matching verify password required')
+    return {}
+  if '@' not in request.POST.get('email', ''):
+    request.session.flash('Email required')
+    return {}
+  if len(request.POST.get('username', '')) == 0:
+    request.session.flash('Username required')
+    return {}
+  if not request.POST.get('username', '').isalnum():
+    request.session.flash('Alphanumeric username required')
+    return {}
 
-    path = os.path.expanduser('~/fishtest.captcha.secret')
-    if os.path.exists(path):
-      with open(path, 'r') as f:
-        secret = f.read()
-        payload = {'secret': secret,
-                   'response': request.params.get('g-recaptcha-response', ''),
-                   'remoteip': request.remote_addr}
-        response = requests.post(
-            'https://www.google.com/recaptcha/api/siteverify',
-            data=payload).json()
-        if 'success' not in response or not response['success']:
-          if 'error-codes' in response:
-            print(response['error-codes'])
-          request.session.flash('Captcha failed')
-          return {}
+  path = os.path.expanduser('~/fishtest.captcha.secret')
+  if os.path.exists(path):
+    with open(path, 'r') as f:
+      secret = f.read()
+      payload = {'secret': secret,
+                 'response': request.POST.get('g-recaptcha-response', ''),
+                 'remoteip': request.remote_addr}
+      response = requests.post(
+          'https://www.google.com/recaptcha/api/siteverify',
+          data=payload).json()
+      if 'success' not in response or not response['success']:
+        if 'error-codes' in response:
+          print(response['error-codes'])
+        request.session.flash('Captcha failed')
+        return {}
 
-    result = request.userdb.create_user(
-      username=request.params['username'],
-      password=request.params['password'],
-      email=request.params['email']
-    )
-
-    if not result:
-      request.session.flash('Invalid username')
-    else:
-      request.session.flash(
-          'Your account will be activated by an administrator soon...')
-      return HTTPFound(location=request.route_url('login'))
-
+  result = request.userdb.create_user(
+    username=request.POST.get('username', ''),
+    password=request.POST.get('password', ''),
+    email=request.POST.get('email', '')
+  )
+  if not result:
+    request.session.flash('Invalid username')
+  else:
+    request.session.flash(
+        'Your account will be activated by an administrator soon...')
+    return HTTPFound(location=request.route_url('login'))
   return {}
 
 
@@ -327,13 +327,11 @@ def users(request):
   return {'users': users_list}
 
 
-
 @view_config(route_name='users_monthly', renderer='users.mak')
 def users_monthly(request):
   users_list = list(request.userdb.top_month.find())
   users_list.sort(key=lambda k: k['cpu_hours'], reverse=True)
   return {'users': users_list}
-
 
 
 def get_master_bench():
@@ -349,7 +347,7 @@ def get_master_bench():
 
 
 def get_sha(branch, repo_url):
-  """Resolves the git branch to sha commit"""
+  """ Resolves the git branch to sha commit """
   api_url = repo_url.replace('https://github.com',
                              'https://api.github.com/repos')
   commit = requests.get(api_url + '/commits/' + branch).json()
@@ -379,9 +377,7 @@ def parse_spsa_params(raw, spsa):
     param['a_end'] = param['r_end'] * param['c_end'] ** 2
     param['a'] = param['a_end'] * (spsa['A'] + spsa['num_iter']) ** spsa['alpha']
     param['theta'] = param['start']
-
     params.append(param)
-
   return params
 
 
@@ -531,16 +527,15 @@ def validate_form(request):
   return data
 
 
-@view_config(route_name='tests_run', renderer='tests_run.mak')
+@view_config(route_name='tests_run', renderer='tests_run.mak', require_csrf=True)
 def tests_run(request):
   if not authenticated_userid(request):
     request.session.flash('Please login')
     return HTTPFound(location=request.route_url('login'))
-  if 'base-branch' in request.POST:
+  if request.method == 'POST':
     try:
       data = validate_form(request)
       run_id = request.rundb.new_run(**data)
-
       request.actiondb.new_run(authenticated_userid(request),
                                request.rundb.get_run(run_id))
       cached_flash(request, 'Submitted test to the queue!')
@@ -565,7 +560,7 @@ def can_modify_run(request, run):
           or has_permission('approve_run', request.context, request))
 
 
-@view_config(route_name='tests_modify')
+@view_config(route_name='tests_modify', require_csrf=True, request_method='POST')
 def tests_modify(request):
   if not authenticated_userid(request):
     request.session.flash('Please login')
@@ -575,7 +570,7 @@ def tests_modify(request):
     before = copy.deepcopy(run)
 
     if not can_modify_run(request, run):
-      request.session.flash('Unable to modify another users run!')
+      request.session.flash("Unable to modify another user's run!")
       return HTTPFound(location=request.route_url('tests'))
 
     existing_games = 0
@@ -619,7 +614,7 @@ def tests_modify(request):
   return HTTPFound(location=request.route_url('tests'))
 
 
-@view_config(route_name='tests_stop')
+@view_config(route_name='tests_stop', require_csrf=True, request_method='POST')
 def tests_stop(request):
   if not authenticated_userid(request):
     request.session.flash('Please login')
@@ -633,12 +628,12 @@ def tests_stop(request):
     run['finished'] = True
     request.rundb.stop_run(request.POST['run-id'])
     request.actiondb.stop_run(authenticated_userid(request), run)
-
     cached_flash(request, 'Stopped run')
   return HTTPFound(location=request.route_url('tests'))
 
 
-@view_config(route_name='tests_approve', permission='approve_run')
+@view_config(route_name='tests_approve', permission='approve_run',
+             require_csrf=True, request_method='POST')
 def tests_approve(request):
   if 'run-id' in request.POST:
     username = authenticated_userid(request)
@@ -685,7 +680,7 @@ def purge_run(rundb, run):
   return purged
 
 
-@view_config(route_name='tests_purge')
+@view_config(route_name='tests_purge', require_csrf=True, request_method='POST')
 def tests_purge(request):
   if not has_permission('approve_run', request.context, request):
     request.session.flash('Please login as approver')
@@ -708,7 +703,7 @@ def tests_purge(request):
   return HTTPFound(location=request.route_url('tests'))
 
 
-@view_config(route_name='tests_delete')
+@view_config(route_name='tests_delete', require_csrf=True, request_method='POST')
 def tests_delete(request):
   if not authenticated_userid(request):
     request.session.flash('Please login')

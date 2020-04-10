@@ -30,4 +30,26 @@ $(() => {
         $("#machines").toggle();
         $.cookie('machines_state', $(this).text().trim());
     });
+
+    // CSRF protection for links and forms
+    const csrfToken = $("meta[name='csrf-token']").attr('content');
+    $("#logout").on("click", (event) => {
+        event.preventDefault();
+        $.ajax({
+            url: "/logout",
+            method: "POST",
+            headers: {
+                'X-CSRF-Token': csrfToken
+            },
+            success: () => {
+                window.location = "/";
+            }
+        });
+    });
+    $("form[method='POST']").each((i, $form) => {
+        $("<input>")
+            .attr("type", "hidden")
+            .attr("name", "csrf_token").val(csrfToken)
+            .appendTo($form);
+    });
 });
