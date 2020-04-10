@@ -1,3 +1,11 @@
+
+/* Bootstrap responsive override */
+@media (max-width: 767px) {
+  body {
+    padding: 0;
+  }
+}
+
 .elo-results {
   font-size: 12px;
   margin: 2px;
