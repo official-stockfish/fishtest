@@ -38,17 +38,17 @@
           <li><a href="/users">Users</a></li>
           <li><a href="/users/monthly">Top Month</a></li>
           <li><a href="/actions">Actions</a></li>
-          <li><a href="https://github.com/glinscott/fishtest/wiki" target="_blank">Wiki</a></li>
+          <li><a href="https://github.com/glinscott/fishtest/wiki" target="_blank" rel="noopener">Wiki</a></li>
           <li><a href="/html/SPRTcalculator.html?elo-0=-0.5&elo-1=1.5&draw-ratio=0.61&rms-bias=0" target="_blank">SPRT Calc</a></li>
 
           <li class="nav-header">Links</li>
-          <li><a href="https://github.com/glinscott/fishtest" target="_blank">Github</a></li>
-          <li><a href="https://groups.google.com/forum/?fromgroups=#!forum/fishcooking" target="_blank">Forum</a></li>
-          <li><a href="https://groups.google.com/forum/?fromgroups=#!forum/fishcooking_results" target="_blank">History</a></li>
-          <li><a href="https://hxim.github.io/Stockfish-Evaluation-Guide/" target="_blank">Eval&shy;Guide</a></li>
-          <li><a href="https://github.com/glinscott/fishtest/wiki/Regression-Tests" target="_blank">Regres&shy;sion</a></li>
-          <li><a href="http://abrok.eu/stockfish/" target="_blank">Compiles</a></li>
-          <li><a href="https://github.com/official-stockfish/Stockfish" target="_blank">SF-github</a></li>
+          <li><a href="https://github.com/glinscott/fishtest" target="_blank" rel="noopener">Github</a></li>
+          <li><a href="https://groups.google.com/forum/?fromgroups=#!forum/fishcooking" target="_blank" rel="noopener">Forum</a></li>
+          <li><a href="https://groups.google.com/forum/?fromgroups=#!forum/fishcooking_results" target="_blank" rel="noopener">History</a></li>
+          <li><a href="https://hxim.github.io/Stockfish-Evaluation-Guide/" target="_blank" rel="noopener">Eval&shy;Guide</a></li>
+          <li><a href="https://github.com/glinscott/fishtest/wiki/Regression-Tests" target="_blank" rel="noopener">Regres&shy;sion</a></li>
+          <li><a href="http://abrok.eu/stockfish/" target="_blank" rel="noopener">Compiles</a></li>
+          <li><a href="https://github.com/official-stockfish/Stockfish" target="_blank" rel="noopener">SF-github</a></li>
 
           <li class="nav-header">Admin</li>
           <li><a href="/signup">Register</a></li>
