@@ -18,6 +18,7 @@ def main(global_config, **settings):
                         session_factory=session_factory,
                         root_factory='fishtest.models.RootFactory')
   config.include('pyramid_mako')
+  config.set_default_csrf_options(require_csrf=False)
 
   rundb = RunDb()
 

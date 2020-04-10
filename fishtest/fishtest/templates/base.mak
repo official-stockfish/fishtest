@@ -2,6 +2,7 @@
 <html>
 <head>
   <title>Stockfish Testing Framework</title>
+  <meta name="csrf-token" content="${request.session.get_csrf_token()}" />
 
   <link href="https://stackpath.bootstrapcdn.com/twitter-bootstrap/2.3.2/css/bootstrap-combined.min.css"
         integrity="sha384-4FeI0trTH/PCsLWrGCD1mScoFu9Jf2NdknFdFoJhXZFwsvzZ3Bo5sAh7+zL8Xgnd"
@@ -17,7 +18,7 @@
           crossorigin="anonymous"></script>
 
   <script src="/js/jquery.cookie.js" defer></script>
-  <script src="/js/application.js" defer></script>
+  <script src="/js/application.js?v=1" defer></script>
 
   <%block name="head"/>
 </head>
@@ -54,7 +55,7 @@
       <li class="nav-header">Admin</li>
       %if request.authenticated_userid:
         <li><a href="/user">Profile</a></li>
-        <li><a href="/logout">Logout</a></li>
+        <li><a href="/logout" id="logout">Logout</a></li>
       %else:
         <li><a href="/signup">Register</a></li>
         <li><a href="/login">Login</a></li>

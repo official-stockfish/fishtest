@@ -2,12 +2,15 @@
 
 <% re_run = len(args) > 0 %>
 
-<form class="form-horizontal" action="${request.url}" method="POST">
-  <legend>Create New Test</legend>
-  Please read the <a href="https://github.com/glinscott/fishtest/wiki/Creating-my-first-test">Testing Guidelines</a> before
-  creating your test.
+<legend>Create New Test</legend>
+<div>
+  Please read the
+  <a href="https://github.com/glinscott/fishtest/wiki/Creating-my-first-test">Testing Guidelines</a>
+  before creating your test.
+</div>
+<br><br>
 
-  <br><br>
+<form class="form-horizontal" action="${request.url}" method="POST">
   <div class="control-group">
     <label class="control-label">Test branch:</label>
     <div class="controls">
