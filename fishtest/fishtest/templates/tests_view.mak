@@ -13,7 +13,7 @@
 
 <h3>
   <span>${run['args']['new_tag']} vs ${run['args']['base_tag']}</span>
-  <a href="${h.diff_url(run)}" target="_blank">diff</a>
+  <a href="${h.diff_url(run)}" target="_blank" rel="noopener">diff</a>
 </h3>
 
 <div class="row-fluid">
@@ -41,7 +41,7 @@
         <tr><td>${arg[0]}</td><td>${str(markupsafe.Markup(arg[1])).replace('\n', '<br>') | n}</td></tr>
       %endif
     %else:
-    <tr><td>${arg[0]}</td><td><a href="${arg[2]}" target="_blank">${arg[1]}</a></td></tr>
+    <tr><td>${arg[0]}</td><td><a href="${arg[2]}" target="_blank" rel="noopener">${arg[1]}</a></td></tr>
     %endif
   %endfor
   <tr><td>raw statistics</td><td>
@@ -95,7 +95,7 @@
     </div>
   %endif
   <a href="https://github.com/official-stockfish/Stockfish/compare/master...${run['args']['resolved_base'][:7]}"
-     target="_blank">Master diff</a>
+     target="_blank" rel="noopener">Master diff</a>
 
   <hr>
 
@@ -160,7 +160,7 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
   <h3>
     Diff
     <span id="diff-num-comments" style="display: none"></span>
-    <a href="${h.diff_url(run)}" class="btn btn-link" target="_blank">view on Github</a>
+    <a href="${h.diff_url(run)}" class="btn btn-link" target="_blank" rel="noopener">view on Github</a>
     <button id="diff-toggle" class="btn">Show</button>
   </h3>
   <pre id="diff-contents"><code class="diff"></code></pre>
