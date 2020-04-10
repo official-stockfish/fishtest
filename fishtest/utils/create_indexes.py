@@ -2,10 +2,6 @@
 #
 # Run this script manually to create the indexes, it could take a few
 # seconds/minutes to run.
-#
-# If any indexes need to be removed, edit dropList as appropriate.
-
-from __future__ import print_function
 
 import os
 import sys
@@ -13,95 +9,87 @@ import pprint
 from pymongo import MongoClient, ASCENDING, DESCENDING
 
 
-db_name='fishtest_new'
+db_name = 'fishtest_new'
 
 # MongoDB server is assumed to be on the same machine, if not user should use
 # ssh with port forwarding to access the remote host.
 conn = MongoClient(os.getenv('FISHTEST_HOST') or 'localhost')
 db = conn[db_name]
-runs = db['runs']
-pgns = db['pgns']
 
 
-index_list = {
-  'runs' : [
-    [
-      # Index used for querying combos of username / Greens / LTC
-      ('finished', DESCENDING),
-      ('args.username', ASCENDING),
-      ('args.tc', ASCENDING),
-      ('results_info.style', ASCENDING),
-      ('last_updated', DESCENDING),
-    ],
-    [
-      # Index used for get_unfinished_runs()
-      ('finished', ASCENDING),
-      ('last_updated', DESCENDING),
-      ('start_time', DESCENDING),
-    ],
-    # [(u'deleted', ASCENDING)],
-    # [(u'deleted', ASCENDING), (u'finished', ASCENDING)],
-    # [(u'last_updated', DESCENDING), (u'start_time', DESCENDING)],
-    # [(u'tasks.pending', ASCENDING)],
-  ],
-  'old_runs' : [
-    [
-      # Index used for querying combos of username / Greens / LTC only
-      ('finished', DESCENDING),
-      ('args.username', ASCENDING),
-      ('args.tc', ASCENDING),
-      ('results_info.style', ASCENDING),
-      ('_id', DESCENDING),
-    ],
-  ],
-  'pgns' : [
-    [('run_id', ASCENDING)]
-  ],
-  'users' : [
-    [('username', ASCENDING)]
-  ],
-  'actions' : [
-    [
-      ('action', ASCENDING),
-      ('username', ASCENDING),
-      ('_id', DESCENDING)
-    ]
-  ],
-}
-unique_list = [ 'username' ]
+def create_runs_indexes():
+  db['runs'].create_index(
+    [('last_updated', ASCENDING)],
+    name='unfinished_runs',
+    partialFilterExpression={ 'finished': False }
+  )
+  db['runs'].create_index(
+    [('last_updated', DESCENDING)],
+    name='finished_runs',
+    partialFilterExpression={ 'finished': True }
+  )
+  db['runs'].create_index(
+    [('last_updated', DESCENDING), ('is_green', DESCENDING)],
+    name='finished_green_runs',
+    partialFilterExpression={ 'finished': True, 'is_green': True }
+  )
+  db['runs'].create_index(
+    [('last_updated', DESCENDING), ('is_yellow', DESCENDING)],
+    name='finished_yellow_runs',
+    partialFilterExpression={ 'finished': True, 'is_yellow': True }
+  )
+  db['runs'].create_index(
+    [('last_updated', DESCENDING), ('tc_base', DESCENDING)],
+    name='finished_ltc_runs',
+    partialFilterExpression={ 'finished': True, 'tc_base': { '$gte': 40 } }
+  )
+  db['runs'].create_index(
+    [('args.username', DESCENDING), ('last_updated', DESCENDING)],
+    name='user_runs'
+  )
+
+def create_pgn_indexes():
+  db['pgns'].create_index([('run_id', DESCENDING)])
+
+def create_users_indexes():
+  db['users'].create_index('username', unique=True)
+
+def create_actions_indexes():
+  db['actions'].create_index([
+    ('username', ASCENDING),
+    ('_id', DESCENDING),
+  ])
+
+  db['actions'].create_index([
+    ('action', ASCENDING),
+    ('_id', DESCENDING),
+  ])
 
 
-def printout(s):
-  print(s)
-  sys.stdout.flush()
-
+collection_names = ['users', 'actions', 'runs', 'pgns'] # db.collection_names()
 
 # Loop through all collections and recreate indexes if given in index_list
-for cn in db.list_collection_names():
-  if cn in index_list:
-    c = db[cn]
+for collection_name in collection_names:
+  c = db[collection_name]
 
-    # Drop all indexes on collections cn except _id_
-    printout("")
-    for idx in c.index_information().keys():
-      if idx != "_id_":
-        printout("Dropping " + cn + " index " + idx + " ...")
-        c.drop_index(idx)
+  # Drop all indexes on collections cn except _id_
+  index_keys = c.index_information().keys()
+  print("Dropping indexes on {} - {}".format(collection_name, index_keys))
+  for idx in index_keys:
+    if idx != "_id_":
+      print("Dropping " + collection_name + " index " + idx + " ...")
+      c.drop_index(idx)
 
-    # Create indexes in index_list
-    printout("")
-    for flds in index_list[cn]:
-      printout("Creating " + cn + " index " + str(flds) + " ...")
-      uniq = False
-      if cn != 'actions' and flds[0][0] in unique_list:
-          uniq = True
-      c.create_index(flds, unique=uniq)
-
+print("\nCreating indexes...")
+create_users_indexes()
+create_actions_indexes()
+create_runs_indexes()
+create_pgn_indexes()
+print("Finished creating indexes!\n")
 
 # Display current list of indexes
-for cn in db.list_collection_names():
-  c = db[cn]
-  printout("\nCurrent indexes on " + cn + ":")
+for collection_name in collection_names:
+  c = db[collection_name]
+  print("Current indexes on " + collection_name + ":")
   pprint.pprint(c.index_information(), stream=None, indent=2, width=110, depth=None)
-
-printout("")
+  print("")

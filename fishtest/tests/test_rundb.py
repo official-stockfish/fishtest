@@ -1,6 +1,8 @@
 import unittest
 import datetime
 
+from pymongo import DESCENDING
+
 import util
 
 run_id = None
@@ -9,6 +11,11 @@ class CreateRunDBTest(unittest.TestCase):
 
   def setUp(self):
     self.rundb = util.get_rundb()
+    self.rundb.runs.ensure_index(
+      [('last_updated', DESCENDING), ('tc_base', DESCENDING)],
+      name='finished_ltc_runs',
+      partialFilterExpression={ 'finished': True, 'tc_base': { '$gte': 40 } }
+    )
 
   def tearDown(self):
     self.rundb.runs.delete_many({ 'args.username': 'travis' })
@@ -66,7 +73,7 @@ class CreateRunDBTest(unittest.TestCase):
       print(run['args']['tc'])
 
   def test_90_delete_runs(self):
-    for run in self.rundb.get_runs():
+    for run in self.rundb.runs.find():
       if run['args']['username'] == 'travis' and not 'deleted' in run:
         print('del ')
         run['deleted'] = True
