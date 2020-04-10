@@ -31,18 +31,12 @@ class RunDb:
     self.actiondb = ActionDb(self.db)
     self.pgndb = self.db['pgns']
     self.runs = self.db['runs']
-    self.old_runs = self.db['old_runs']
     self.deltas = self.db['deltas']
 
     self.chunk_size = 250
 
     global last_rundb
     last_rundb = self
-
-  def build_indices(self):
-    self.runs.ensure_index([('finished', ASCENDING),
-                            ('last_updated', DESCENDING)])
-    self.pgndb.ensure_index([('run_id', ASCENDING)])
 
   def generate_tasks(self, num_games):
     tasks = []
@@ -109,16 +103,20 @@ class RunDb:
     if spsa is not None:
       run_args['spsa'] = spsa
 
+    tc_base = re.search('^(\d+(\.\d+)?)', tc)
+    if tc_base:
+      tc_base = float(tc_base[1])
     new_run = {
       'args': run_args,
       'start_time': start_time,
       'last_updated': start_time,
+      'tc_base': tc_base,
+      'base_same_as_master': base_same_as_master,
       # Will be filled in by tasks, indexed by task-id
       'tasks': self.generate_tasks(num_games),
       # Aggregated results
       'results': {'wins': 0, 'losses': 0, 'draws': 0},
       'results_stale': False,
-      'base_same_as_master': base_same_as_master,
       'finished': False,
       'approved': False,
       'approver': '',
@@ -128,8 +126,13 @@ class RunDb:
 
   def get_machines(self):
     machines = []
-    for run in self.runs.find({'finished': False,
-                               'tasks': {'$elemMatch': {'active': True}}}):
+    active_runs = self.runs.find({
+      'finished': False,
+      'tasks': {
+        '$elemMatch': {'active': True}
+       }
+    }, sort=[('last_updated', DESCENDING)])
+    for run in active_runs:
       for task in run['tasks']:
         if task['active']:
           machine = copy.copy(task['worker_info'])
@@ -175,8 +178,6 @@ class RunDb:
         return self.run_cache[r_id]['run']
       try:
         run = self.runs.find_one({'_id': ObjectId(r_id)})
-        if not run:
-          run = self.old_runs.find_one({'_id': ObjectId(r_id)})
         if run:
           self.run_cache[r_id] = {'rtime': time.time(), 'ftime': time.time(),
                                 'run': run, 'dirty': False}
@@ -258,48 +259,37 @@ class RunDb:
       if task['active'] and task['last_updated'] < old:
         task['active'] = False
 
-  def get_runs(self):
-    return list(self.get_unfinished_runs()) + self.get_finished_runs()[0]
-
   def get_unfinished_runs(self):
     with self.run_cache_write_lock:
       return self.runs.find({'finished': False},
-                            sort=[('last_updated', DESCENDING),
-                                  ('start_time', DESCENDING)])
+                            sort=[('last_updated', DESCENDING)])
 
   def get_finished_runs(self, skip=0, limit=0, username='',
                         success_only=False, ltc_only=False):
     q = {'finished': True}
+    idx_hint = 'finished_runs'
     if username:
       q['args.username'] = username
+      idx_hint = None
     if ltc_only:
-      q['args.tc'] = {'$regex': '^([4-9][0-9])|([1-9][0-9][0-9])'}
+      q['tc_base'] = {'$gte': 40}
+      idx_hint = 'finished_ltc_runs'
     if success_only:
-      # This is unfortunate, but the only way we have of telling if a run
-      # was successful or not currently is the color!
-      q['results_info.style'] = '#44EB44'
+      q['is_green'] = True
+      idx_hint = 'finished_green_runs'
 
     c = self.runs.find(q, skip=skip, limit=limit,
                        sort=[('last_updated', DESCENDING)])
-    no_del = []
-    del_count = 0
-    for run in c:
-      if 'deleted' in run:
-        del_count += 1
-        continue
-      no_del.append(run)
-    result = [no_del, c.count()]
 
-    if limit != 0 and len(result[0]) != limit - del_count:
-      c = self.old_runs.find(q, skip=max(0, skip-c.count()),
-                             limit=limit-len(result[0]),
-                             sort=[('_id', DESCENDING)])
-      result[0] += list(c)
-      result[1] += c.count()
+    if idx_hint:
+      # Use a fast COUNT_SCAN query when possible
+      count = self.runs.estimated_document_count(hint=idx_hint)
     else:
-      result[1] += self.old_runs.find().count()
-
-    return result
+      # Otherwise, the count is slow
+      count = c.count()
+    # Don't show runs that were deleted
+    runs_list = [run for run in c if not run.get('deleted')]
+    return [runs_list, count]
 
   def get_results(self, run, save_run=True):
     if not run['results_stale']:

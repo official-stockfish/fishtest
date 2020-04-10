@@ -1092,6 +1092,7 @@ def get_paginated_finished_runs(request):
     results = request.rundb.get_results(run)
     if 'results_info' not in run:
       run['results_info'] = format_results(results, run)
+
     # Look for failed runs
     if results['wins'] + results['losses'] + results['draws'] == 0:
       failed_runs.append(run)
@@ -1152,7 +1153,13 @@ def aggregate_and_update_unfinished_runs(unfinished_runs, rundb):
           run['results_info'] = format_results(results, run)
           rundb.buffer(run, True)
       if purged == 0:
+        # The run is finished and will no longer be updated after this
         run['finished'] = True
+        # Decouple the styling of the run from its finished status
+        if run['results_info']['style'] == '#44EB44':
+          run['is_green'] = True
+        elif run['results_info']['style'] == 'yellow':
+          run['is_yellow'] = True
         rundb.buffer(run, True)
         post_result(run)
     else:
