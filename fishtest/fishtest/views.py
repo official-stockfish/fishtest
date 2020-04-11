@@ -632,19 +632,23 @@ def tests_stop(request):
   return HTTPFound(location=request.route_url('tests'))
 
 
-@view_config(route_name='tests_approve', permission='approve_run',
+@view_config(route_name='tests_approve',
              require_csrf=True, request_method='POST')
 def tests_approve(request):
-  if 'run-id' in request.POST:
-    username = authenticated_userid(request)
-    if not request.rundb.approve_run(request.POST['run-id'], username):
-      request.session.flash('Unable to approve run!')
-      return HTTPFound(location=request.route_url('tests'))
-
-    run = request.rundb.get_run(request.POST['run-id'])
+  if not authenticated_userid(request):
+    request.session.flash('Please login')
+    return HTTPFound(location=request.route_url('login'))
+  if not has_permission('approve_run', request.context, request):
+    request.session.flash('Please login as approver')
+    return HTTPFound(location=request.route_url('login'))
+  username = authenticated_userid(request)
+  run_id = request.POST['run-id']
+  if request.rundb.approve_run(run_id, username):
+    run = request.rundb.get_run(run_id)
     request.actiondb.approve_run(username, run)
-
     cached_flash(request, 'Approved run')
+  else:
+    request.session.flash('Unable to approve run!')
   return HTTPFound(location=request.route_url('tests'))
 
 
