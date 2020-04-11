@@ -11,8 +11,6 @@
 
 <div>
   <form class="form-horizontal" action="" method="POST">
-    <input type="hidden" name="csrf_token"
-           value="${request.session.get_csrf_token()}" />
     <legend>Login</legend>
     <div class="control-group">
       <label class="control-label">Login:</label>

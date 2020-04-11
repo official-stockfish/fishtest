@@ -41,7 +41,8 @@
     </div>
     <div class="control-group">
       <div class="controls">
-        <div class="g-recaptcha" data-sitekey="6LePs8YUAAAAABMmqHZVyVjxat95Z1c_uHrkugZM"></div>
+        <div class="g-recaptcha"
+             data-sitekey="6LePs8YUAAAAABMmqHZVyVjxat95Z1c_uHrkugZM"></div>
       </div>
     </div>
     <div class="control-group">
