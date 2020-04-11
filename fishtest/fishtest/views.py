@@ -1155,7 +1155,7 @@ def tests(request):
           + run['results']['losses']))
 
       games_per_minute = request.gendb.get('gamesperminute')
-      if !games_per_minute:
+      if not games_per_minute:
           games_per_minute = 0
 
       machines = request.rundb.get_machines()

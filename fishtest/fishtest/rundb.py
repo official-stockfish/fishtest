@@ -199,7 +199,14 @@ class RunDb:
       if flush:
         self.run_cache[r_id] = {'dirty': False, 'rtime': time.time(),
                               'ftime': time.time(), 'run': run}
-        games = sum(self.game_count)
+
+        minute = (int(time.time()) % 3600) / 60
+        game_count[(minute + 1) % 60] = 0
+        games = 0
+        for x in range(1, 6):
+          games = games + game_count[(60 + minute - x) % 60]
+        games = games / 5
+
         with self.run_cache_write_lock:
           self.runs.save(run)
           self.general.update('gamesperminute', games)
@@ -537,8 +544,8 @@ class RunDb:
         self.stop_run(run_id, run)
         flush = True
 
-    seconds = int(time.time()) % 60
-    game_count[seconds] = game_count[seconds] + 1
+    minute = (int(time.time()) % 3600) / 60
+    game_count[minute] = game_count[minute] + 1
 
     self.buffer(run, flush)
 

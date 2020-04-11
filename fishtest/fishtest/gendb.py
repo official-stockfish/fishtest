@@ -6,11 +6,16 @@ class GenDb:
     self.general = self.db['general']
 
   def get(self, name):
+    q = {}
     q['name'] = name
-    return self.general.find(q, limit=1)
+    d = self.general.find_one(q, limit=1)
+    if d:
+        return d['value']
+    else:
+        return ''
 
   def delete(self, name):
-    self.general.delete_one({'name', name})
+    self.general.delete_one({'name': name})
 
   def update(self, name, value):
     result = self.general.update_one(
