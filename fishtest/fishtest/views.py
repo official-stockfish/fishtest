@@ -1087,18 +1087,23 @@ def tests(request):
 
   full_info = (len(username) != 0 or do_cache)
 
+  def set_show_hide(t):
+    t['machines_shown'] = request.cookies.get('machines_state') == 'Hide'
+    t['pending_shown'] = request.cookies.get('pending_state') == 'Hide'
+    return t
+
   global last_tests, last_time
   if do_cache:
     if time.time() - last_time < cache_time:
-      return last_tests
+      return set_show_hide(last_tests)
     if not building.acquire(last_tests is None):
       # We have a current cache and another thread is rebuilding,
       # so return the current cache
-      return last_tests
+      return set_show_hide(last_tests)
     elif time.time() - last_time < cache_time:
       # Another thread has built the cache for us, so we are done
       building.release()
-      return last_tests
+      return set_show_hide(last_tests)
 
   runs = {'pending': [], 'failed': [], 'active': [], 'finished': []}
 
@@ -1249,10 +1254,8 @@ def tests(request):
       'page_idx': page,
       'pages': pages,
       'machines': machines,
-      'machines_shown': request.cookies.get('machines_state') == 'Hide',
       'show_machines': len(username) == 0,
       'pending_hours': '%.1f' % (pending_hours),
-      'pending_shown': request.cookies.get('pending_state') == 'Hide',
       'cores': cores,
       'nps': nps,
       'games_per_minute': int(games_per_minute),
@@ -1263,11 +1266,11 @@ def tests(request):
       building.release()
     print('Overview exception: ' + str(e))
 
-    return last_tests
+    return set_show_hide(last_tests)
 
   if do_cache:
     last_tests = result
     last_time = time.time()
     building.release()
 
-  return result
+  return set_show_hide(result)
