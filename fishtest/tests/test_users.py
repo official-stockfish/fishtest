@@ -3,109 +3,117 @@ import datetime
 
 from pyramid import testing
 
-from fishtest.rundb import RunDb
-
-from fishtest.views import signup
-from fishtest.views import login
-
+from fishtest.views import login, signup
 from fishtest.api import stop_run
 
+import util
 
 class Create10UsersTest(unittest.TestCase):
 
   def setUp(self):
-    global rundb
-    rundb = RunDb()
-    self.request = testing.DummyRequest(
-        params={'form.submitted': True, 'username': 'JoeUser',
-                'password': 'secret', 'password2': 'secret', 'email': 'joe@user.net'},
-        userdb=rundb.userdb)
-
-    config = testing.setUp(request=self.request)
+    self.rundb = util.get_rundb()
+    self.config = testing.setUp()
+    self.config.add_route('login', '/login')
+    self.config.add_route('signup', '/signup')
 
   def tearDown(self):
+    self.rundb.userdb.users.delete_many({ 'username': 'JoeUser' })
+    self.rundb.userdb.user_cache.delete_many({ 'username': 'JoeUser' })
+    self.rundb.stop()
     testing.tearDown()
 
-  def test_create_users(self):
-    with testing.testConfig() as config:
-      config.add_route('login', '/login')
-      config.add_route('signup', '/signup')
-      print(signup(self.request))
-      userc = {}
-      userc['cpu_hours'] = 12345
-      userc['username'] = 'JoeUser'
-      self.request.userdb.user_cache.insert(userc)
+  def test_create_user(self):
+    request = testing.DummyRequest(
+      userdb=self.rundb.userdb,
+      method='POST',
+      params={
+        'username': 'JoeUser',
+        'password': 'secret',
+        'password2': 'secret',
+        'email': 'joe@user.net',
+      }
+    )
+    response = signup(request)
+    self.assertTrue('The resource was found at', response)
 
 
 class Create50LoginTest(unittest.TestCase):
 
   def setUp(self):
-    global rundb
-    rundb = RunDb()
-    self.params = {'form.submitted': True, 'username': 'JoeUser', 'password': 'badsecret'}
-    self.request = testing.DummyRequest(
-        params=self.params, userdb=rundb.userdb)
-
-    config = testing.setUp(request=self.request)
+    self.rundb = util.get_rundb()
+    self.rundb.userdb.create_user('JoeUser', 'secret', 'email@email.email')
+    self.config = testing.setUp()
+    self.config.add_route('login', '/login')
 
   def tearDown(self):
+    self.rundb.userdb.users.delete_many({ 'username': 'JoeUser' })
+    self.rundb.userdb.user_cache.delete_many({ 'username': 'JoeUser' })
+    self.rundb.stop()
     testing.tearDown()
 
-  def test_logins(self):
-    with testing.testConfig() as config:
-      config.add_route('login', '/login')
-      request = login(self.request)
-      self.assertFalse('found' in str(request))
+  def test_login(self):
+    request = testing.DummyRequest(
+      userdb=self.rundb.userdb,
+      method='POST',
+      params = {
+        'username': 'JoeUser',
+        'password': 'badsecret'
+      }
+    )
+    response = login(request)
+    self.assertTrue('Invalid password' in request.session.pop_flash())
 
-      self.params['password'] = 'secret'
-      request = login(self.request)
-      # Still blocked:
-      self.assertFalse('found' in str(request))
+    # Correct password, but still blocked from logging in
+    request.params['password'] = 'secret'
+    login(request)
+    self.assertTrue('Blocked' in request.session.pop_flash())
 
-      # Unblock:
-      user = self.request.userdb.get_user('JoeUser')
-      user['blocked'] = False
-      self.request.userdb.save_user(user)
-      request = login(self.request)
-      self.assertTrue('found' in str(request))
+    # Unblock, then user can log in successfully
+    user = self.rundb.userdb.get_user('JoeUser')
+    user['blocked'] = False
+    self.rundb.userdb.save_user(user)
+    response = login(request)
+    self.assertEqual(response.code, 302)
+    self.assertTrue('The resource was found at' in str(response))
 
-
-rundb = None
 
 class Create90APITest(unittest.TestCase):
   def setUp(self):
-    global rundb
-    rundb = RunDb()
-    run_id = rundb.new_run('master', 'master', 100000,
-                           '100+0.01', 'book', 10, 1, '', '',
-                           username='travis', tests_repo='travis',
-                           start_time=datetime.datetime.utcnow())
-    json_params = {'username': 'JoeUser', 'password': 'secret',
-                   'run_id': run_id, 'message': 'travis'}
-    self.request = testing.DummyRequest(
-        json_body=json_params,
-        method='POST',
-        rundb=rundb,
-        userdb=rundb.userdb,
-        actiondb=rundb.actiondb
-        )
-
-    config = testing.setUp(request=self.request)
+    self.rundb = util.get_rundb()
+    self.run_id = self.rundb.new_run('master', 'master', 100000,
+                               '100+0.01', 'book', 10, 1, '', '',
+                               username='travis', tests_repo='travis',
+                               start_time=datetime.datetime.utcnow())
+    self.rundb.userdb.user_cache.insert_one({
+      'username': 'JoeUser',
+      'cpu_hours': 12345
+    })
+    self.config = testing.setUp()
+    self.config.add_route('api_stop_run', '/api/stop_run')
 
   def tearDown(self):
-    self.request.userdb.users.delete_many({'username': 'JoeUser'})
-    self.request.userdb.user_cache.delete_many({'username': 'JoeUser'})
-    # Shutdown flush thread:
-    global rundb
-    rundb.stop()
+    self.rundb.userdb.users.delete_many({'username': 'JoeUser'})
+    self.rundb.userdb.user_cache.delete_many({'username': 'JoeUser'})
+    self.rundb.stop()
     testing.tearDown()
 
   def test_stop_run(self):
-    with testing.testConfig() as config:
-      config.add_route('api_stop_run', '/api/stop_run')
-      self.assertEqual(stop_run(self.request), '{}')
-      self.assertEqual(self.request.rundb.get_run(
-          self.request.json_body['run_id'])['stop_reason'], 'travis')
+    request = testing.DummyRequest(
+      rundb=self.rundb,
+      userdb=self.rundb.userdb,
+      actiondb=self.rundb.actiondb,
+      method='POST',
+      json_body={
+        'username': 'JoeUser',
+        'password': 'secret',
+        'run_id': self.run_id,
+        'message': 'travis'
+      }
+    )
+    response = stop_run(request)
+    self.assertEqual(response, '{}')
+    run = request.rundb.get_run(request.json_body['run_id'])
+    self.assertEqual(run['stop_reason'], 'travis')
 
 
 if __name__ == "__main__":
