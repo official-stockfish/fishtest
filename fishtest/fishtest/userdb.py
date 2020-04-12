@@ -51,14 +51,14 @@ class UserDb:
   def get_users(self):
     return self.users.find(sort=[('_id', ASCENDING)])
 
-  # Cache pending for 60s
+  # Cache pending for 1s
   last_pending_time = 0
   last_pending = None
   pending_lock = threading.Lock()
 
   def get_pending(self):
     with self.pending_lock:
-      if time.time() > self.last_pending_time + 60:
+      if time.time() > self.last_pending_time + 1:
         self.last_pending = list(self.users.find({'blocked': True},
                                                  sort=[('_id', ASCENDING)]))
         self.last_pending_time = time.time()
