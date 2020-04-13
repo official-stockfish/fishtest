@@ -6,14 +6,13 @@ const comparer = (idx, asc) => (a, b) => ((v1, v2) =>
 
 $(() => {
     // clicking on table headers sorts the rows
-    document.querySelectorAll('th').forEach(th => {
-        th.addEventListener('click', (() => {
-            const table = th.closest('table');
-            const body = table.querySelector('tbody');
-            Array.from(body.querySelectorAll('tr'))
-                .sort(comparer(Array.from(th.parentNode.children).indexOf(th), this.asc = !this.asc))
-                .forEach(tr => body.appendChild(tr));
-        }));
+    $(document).on('click', 'th', (event) => {
+        const th = $(event.currentTarget)[0];
+        const table = th.closest('table');
+        const body = table.querySelector('tbody');
+        Array.from(body.querySelectorAll('tr'))
+            .sort(comparer(Array.from(th.parentNode.children).indexOf(th), this.asc = !this.asc))
+            .forEach(tr => body.appendChild(tr));
     });
 
     // clicking Show/Hide on Pending tests and Machines sections toggles them

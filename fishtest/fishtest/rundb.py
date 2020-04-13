@@ -481,7 +481,6 @@ class RunDb:
       return self.sync_update_task(run_id, task_id, stats, nps, spsa, username)
 
   def sync_update_task(self, run_id, task_id, stats, nps, spsa, username):
-
     run = self.get_run(run_id)
     if task_id >= len(run['tasks']):
       return {'task_alive': False}
