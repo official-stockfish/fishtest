@@ -51,18 +51,5 @@
   <%include file="run_table.mak" args="runs=runs['active']"/>
 %endif
 
-<%def name="pagination()">
-  %if len(pages) > 3:
-    <span class="pagination pagination-small">
-      <ul>
-        %for page in pages:
-          <li class="${page['state']}"><a href="${page['url']}">${page['idx']}</a></li>
-        %endfor
-      </ul>
-    </span>
-  %endif
-</%def>
-
-<h3>Finished - ${finished_runs} tests ${pagination()}</h3>
-<%include file="run_table.mak" args="runs=runs['finished']"/>
-<h3>${pagination()}</h3>
+<h3>Finished - ${num_finished_runs} tests</h3>
+<%include file="run_table.mak" args="runs=runs['finished'], pages=finished_runs_pages"/>
