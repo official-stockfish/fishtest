@@ -270,7 +270,7 @@ class RunDb:
   def get_finished_runs(self, skip=0, limit=0, username='',
                         success_only=False, ltc_only=False):
     q = {'finished': True}
-    if len(username) > 0:
+    if username:
       q['args.username'] = username
     if ltc_only:
       q['args.tc'] = {'$regex': '^([4-9][0-9])|([1-9][0-9][0-9])'}

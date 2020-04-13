@@ -30,8 +30,8 @@
 
       <li class="nav-header">Tests</li>
       <li><a href="/tests">Overview</a></li>
-      <li><a href="/tests?success_only=1">Greens</a></li>
-      <li><a href="/tests?ltc_only=1">Slow (LTC)</a></li>
+      <li><a href="/tests/finished?success_only=1">Greens</a></li>
+      <li><a href="/tests/finished?ltc_only=1">LTC</a></li>
       <li><a href="/tests/run">New</a></li>
 
       <li class="nav-header">Misc</li>

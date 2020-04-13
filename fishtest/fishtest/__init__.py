@@ -61,16 +61,19 @@ def main(global_config, **settings):
 
   config.add_route('tests', '/tests')
   config.add_route('tests_machines', '/tests/machines')
+  config.add_route('tests_finished', '/tests/finished')
   config.add_route('tests_run', '/tests/run')
-  config.add_route('tests_modify', '/tests/modify')
   config.add_route('tests_view', '/tests/view/{id}')
   config.add_route('tests_view_spsa_history', '/tests/view/{id}/spsa_history')
+  config.add_route('tests_user', '/tests/user/{username}')
+  config.add_route('tests_stats', '/tests/stats/{id}')
+
+  # Tests - actions
+  config.add_route('tests_modify', '/tests/modify')
   config.add_route('tests_delete', '/tests/delete')
   config.add_route('tests_stop', '/tests/stop')
   config.add_route('tests_approve', '/tests/approve')
   config.add_route('tests_purge', '/tests/purge')
-  config.add_route('tests_user', '/tests/user/{username}')
-  config.add_route('tests_stats', '/tests/stats/{id}')
 
   # API
   config.add_route('api_request_task', '/api/request_task')

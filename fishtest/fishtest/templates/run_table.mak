@@ -1,4 +1,4 @@
-<%page args="runs, show_delete=False, active=False"/>
+<%page args="runs, pages=None, show_delete=False, active=False"/>
 
 <%namespace name="base" file="base.mak"/>
 
@@ -35,6 +35,22 @@
     }
   </script>
 %endif
+
+<%def name="pagination()">
+  %if pages and len(pages) > 3:
+    <h3>
+      <span class="pagination pagination-small">
+        <ul>
+          %for page in pages:
+            <li class="${page['state']}"><a href="${page['url']}">${page['idx']}</a></li>
+          %endfor
+        </ul>
+      </span>
+    </h3>
+  %endif
+</%def>
+
+${pagination()}
 
 <table class="table table-striped table-condensed">
   <tbody>
@@ -111,3 +127,5 @@
     %endfor
   </tbody>
 </table>
+
+${pagination()}
