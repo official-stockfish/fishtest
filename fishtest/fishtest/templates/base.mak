@@ -18,7 +18,7 @@
           crossorigin="anonymous"></script>
 
   <script src="/js/jquery.cookie.js" defer></script>
-  <script src="/js/application.js?v=1" defer></script>
+  <script src="/js/application.js?v=2" defer></script>
 
   <%block name="head"/>
 </head>

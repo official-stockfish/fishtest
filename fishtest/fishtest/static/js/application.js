@@ -24,9 +24,14 @@ $(() => {
         $.cookie('pending_state', $(this).text().trim());
     });
 
+    let fetchingMachines = false;
     $("#machines-button").click(function () {
-        var active = $(this).text().trim() === 'Hide';
+        const active = $(this).text().trim() === 'Hide';
         $(this).text(active ? 'Show' : 'Hide');
+        if (!active && !$("#machines table")[0] && !fetchingMachines) {
+            fetchingMachines = true;
+            $.get("/tests/machines", (html) => $("#machines").append(html));
+        }
         $("#machines").toggle();
         $.cookie('machines_state', $(this).text().trim());
     });

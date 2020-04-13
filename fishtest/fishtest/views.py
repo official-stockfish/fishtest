@@ -953,6 +953,16 @@ def tests_stats(request):
   return {'run': run}
 
 
+@view_config(route_name='tests_machines', renderer='machines_table.mak')
+def tests_machines(request):
+  machines = request.rundb.get_machines()
+  for machine in machines:
+    machine['last_updated'] = delta_date(machine['last_updated'])
+  return {
+    'machines': machines
+  }
+
+
 @view_config(route_name='tests_view_spsa_history', renderer='json')
 def tests_view_spsa_history(request):
   run = request.rundb.get_run(request.matchdict['id'])
@@ -1205,7 +1215,6 @@ def tests(request):
             else:
               info['info'].append(('{%.2f,%.2f}')
                                   % (sprt['elo0'], sprt['elo1']))
-
     else:  # not full_info
       cores = 0
       nps = 0
