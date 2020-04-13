@@ -420,7 +420,16 @@ class RunDb:
          and run['args']['threads'] >= min_threads \
          and need_tt <= max_memory:
         task_id = -1
+        cores = 0
+        if 'spsa' in run['args']:
+          limit = 40000 / math.sqrt(len(run['args']['spsa']['params']))
+        else:
+          limit = 1000000  # No limit for SPRT
         for task in run['tasks']:
+          if task['active']:
+            cores += task['worker_info']['concurrency']
+            if cores > limit:
+              break
           task_id = task_id + 1
           if not task['active'] and task['pending']:
             task['worker_info'] = worker_info
