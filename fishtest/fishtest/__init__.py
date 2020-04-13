@@ -60,6 +60,7 @@ def main(global_config, **settings):
   config.add_route('actions', '/actions')
 
   config.add_route('tests', '/tests')
+  config.add_route('tests_machines', '/tests/machines')
   config.add_route('tests_run', '/tests/run')
   config.add_route('tests_modify', '/tests/modify')
   config.add_route('tests_view', '/tests/view/{id}')
