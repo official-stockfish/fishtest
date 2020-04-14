@@ -17,7 +17,9 @@ class TestApi(unittest.TestCase):
     self.rundb = get_rundb()
 
     # Set up a run
-    run_id = self.rundb.new_run('master', 'master', 1000, '10+0.01',
+    num_tasks = 4
+    num_games = num_tasks * self.rundb.chunk_size
+    run_id = self.rundb.new_run('master', 'master', num_games, '10+0.01',
                                 'book', 10, 1, '', '',
                                 username='travis', tests_repo='travis',
                                 start_time=datetime.datetime.utcnow())
@@ -26,7 +28,7 @@ class TestApi(unittest.TestCase):
     run['approved'] = True
 
     # Set up a task
-    self.task_id = 3
+    self.task_id = 0
     for i, task in enumerate(run['tasks']):
       if i is not self.task_id:
         run['tasks'][i]['pending'] = False
@@ -65,9 +67,9 @@ class TestApi(unittest.TestCase):
   @classmethod
   def tearDownClass(self):
     self.rundb.runs.delete_one({ '_id': self.run_id })
-    self.rundb.userdb.users.delete_one({ 'username': self.username })
-    self.rundb.userdb.user_cache.delete_one({ 'username': self.username })
-    self.rundb.userdb.flag_cache.delete_one({ 'ip': self.remote_addr })
+    self.rundb.userdb.users.delete_many({ 'username': self.username })
+    self.rundb.userdb.user_cache.delete_many({ 'username': self.username })
+    self.rundb.userdb.flag_cache.delete_many({ 'ip': self.remote_addr })
     self.rundb.stop()
     self.rundb.runs.drop()
 
@@ -128,9 +130,10 @@ class TestApi(unittest.TestCase):
     self.assertEqual(run.get('cores'), None)
 
     run['tasks'][self.task_id] = {
-      'num_games': 250,
+      'num_games': self.rundb.chunk_size,
+      'stats': { 'wins': 0, 'draws': 0, 'losses': 0, 'crashes': 0 },
       'pending': True,
-      'active': False
+      'active': False,
     }
     self.rundb.buffer(run, True)
 
@@ -149,48 +152,59 @@ class TestApi(unittest.TestCase):
   def test_update_task(self):
     self.assertFalse(self.rundb.get_run(self.run_id)['results_stale'])
 
+    # Request fails if username/password is invalid
     with self.assertRaises(HTTPUnauthorized):
       response = ApiView(self.invalid_password_request()).update_task()
       self.assertTrue('error' in response)
 
+    # Prepare a pending task that will be assigned to this worker
     run = self.rundb.get_run(self.run_id)
     run['tasks'][self.task_id] = {
-      'num_games': 250,
+      'num_games': self.rundb.chunk_size,
       'pending': True,
       'active': False
     }
     if run['args'].get('spsa'):
       del run['args']['spsa']
     self.rundb.buffer(run, True)
-    request = self.correct_password_request({ 'worker_info': self.worker_info })
-    ApiView(request).request_task()
 
+    # Calling /api/request_task assigns this task to the worker
+    request = self.correct_password_request({ 'worker_info': self.worker_info })
+    response = ApiView(request).request_task()
+    self.assertEqual(response['run']['_id'], str(run['_id']))
+
+    # Task is active after calling /api/update_task with the first set of results
     request = self.correct_password_request({
       'worker_info': self.worker_info,
       'run_id': self.run_id,
       'task_id': self.task_id,
-      'stats': { 'wins': 1, 'draws': 0, 'losses': 0 }
+      'stats': { 'wins': 1, 'draws': 0, 'losses': 0, 'crashes': 0 }
     })
-
-    run = self.rundb.get_run(self.run_id)
-    run['tasks'][self.task_id]['pending'] = True
-    run['tasks'][self.task_id]['active'] = True
-    self.rundb.buffer(run, True)
-
     response = ApiView(request).update_task()
     self.assertTrue(response['task_alive'])
     self.assertTrue(self.rundb.get_run(self.run_id)['results_stale'])
 
-    request.json_body['stats'] = { 'wins': 120, 'draws': 100, 'losses': 0 }
+    # Task is still active
+    request.json_body['stats'] = {
+      'wins': 120, 'draws': 100, 'losses': 0, 'crashes': 0
+    }
     response = ApiView(request).update_task()
     self.assertTrue(response['task_alive'])
     self.assertTrue(self.rundb.get_run(self.run_id)['results_stale'])
 
+    # Task is finished when calling /api/update_task with results where the number of
+    # games played is the same as the number of games in the task
     task_num_games = run['tasks'][self.task_id]['num_games']
-    request.json_body['stats'] = { 'wins': task_num_games, 'draws': 0, 'losses': 0 }
+    request.json_body['stats'] = {
+      'wins': task_num_games, 'draws': 0, 'losses': 0, 'crashes': 0
+    }
     response = ApiView(request).update_task()
-    self.assertTrue(self.rundb.get_run(self.run_id)['results_stale'])
+    self.assertFalse(self.rundb.get_run(self.run_id)['results_stale'])
     self.assertFalse(response['task_alive'])
+    run = self.rundb.get_run(self.run_id)
+    task = run['tasks'][self.task_id]
+    self.assertFalse(task['pending'])
+    self.assertFalse(task['active'])
 
 
   def test_failed_task(self):
@@ -275,6 +289,7 @@ class TestApi(unittest.TestCase):
     run = self.rundb.get_run(self.run_id)
     run['args']['spsa'] = {
       'iter': 1,
+      'num_iter': 10,
       'alpha': 1,
       'gamma': 1,
       'A': 1,
@@ -307,6 +322,123 @@ class TestApi(unittest.TestCase):
 
     response = ApiView(self.correct_password_request()).request_version()
     self.assertEqual(WORKER_VERSION, response['version'])
+
+
+class TestRunFinished(unittest.TestCase):
+
+  @classmethod
+  def setUpClass(self):
+    self.rundb = get_rundb()
+
+    # Set up a run with 2 tasks
+    num_games = 2 * self.rundb.chunk_size
+    run_id = self.rundb.new_run('master', 'master', num_games, '10+0.01',
+                                'book', 10, 1, '', '',
+                                username='travis', tests_repo='travis',
+                                start_time=datetime.datetime.utcnow())
+    self.run_id = str(run_id)
+    run = self.rundb.get_run(self.run_id)
+    run['approved'] = True
+
+    # Set up a user
+    self.username = 'JoeUserWorker2'
+    self.password = 'secret'
+    self.remote_addr = '127.0.0.1'
+    self.concurrency = 7
+    self.worker_info = {
+      'username': self.username,
+      'password': self.password,
+      'remote_addr': self.remote_addr,
+      'concurrency': self.concurrency,
+      'unique_key': 'unique key',
+      'version': WORKER_VERSION
+    }
+
+    self.rundb.userdb.create_user(self.username, self.password, 'email@email.email')
+    user = self.rundb.userdb.get_user(self.username)
+    user['blocked'] = False
+    user['machine_limit'] = 50
+    self.rundb.userdb.save_user(user)
+    self.rundb.userdb.user_cache.insert_one({
+      'username': self.username,
+      'cpu_hours': 0,
+    })
+    self.rundb.userdb.flag_cache.insert_one({
+      'ip': self.remote_addr,
+      'country_code': '??'
+    })
+
+  @classmethod
+  def tearDownClass(self):
+    self.rundb.userdb.users.delete_many({ 'username': self.username })
+    self.rundb.userdb.user_cache.delete_many({ 'username': self.username })
+    self.rundb.stop()
+    self.rundb.runs.drop()
+
+  def build_json_request(self, json_body):
+    return DummyRequest(
+      rundb=self.rundb,
+      userdb=self.rundb.userdb,
+      actiondb=self.rundb.actiondb,
+      remote_addr=self.remote_addr,
+      json_body=json_body
+    )
+
+  def correct_password_request(self, json_body={}):
+    return self.build_json_request({
+      'username': self.username,
+      'password': self.password,
+      **json_body,
+    })
+
+
+  def test_auto_purge_runs(self):
+    run = self.rundb.get_run(self.run_id)
+
+    # Request task 1 of 2
+    request = self.correct_password_request({ 'worker_info': self.worker_info })
+    response = ApiView(request).request_task()
+    self.assertEqual(response['run']['_id'], str(run['_id']))
+    self.assertEqual(response['task_id'], 0)
+
+    # Request task 2 of 2
+    request = self.correct_password_request({ 'worker_info': self.worker_info })
+    response = ApiView(request).request_task()
+    self.assertEqual(response['run']['_id'], str(run['_id']))
+    self.assertEqual(response['task_id'], 1)
+
+    n_wins = self.rundb.chunk_size / 5
+    n_losses = self.rundb.chunk_size / 5
+    n_draws = self.rundb.chunk_size * 3/5
+
+    # Finish task 1 of 2
+    request = self.correct_password_request({
+      'worker_info': self.worker_info,
+      'run_id': self.run_id,
+      'task_id': 0,
+      'stats': { 'wins': n_wins, 'draws': n_draws, 'losses': n_losses, 'crashes': 0 }
+    })
+    response = ApiView(request).update_task()
+    self.assertFalse(response['task_alive'])
+    run = self.rundb.get_run(self.run_id)
+    self.assertFalse(run['finished'])
+
+    # Finish task 2 of 2
+    request = self.correct_password_request({
+      'worker_info': self.worker_info,
+      'run_id': self.run_id,
+      'task_id': 1,
+      'stats': { 'wins': n_wins, 'draws': n_draws, 'losses': n_losses, 'crashes': 0 }
+    })
+    response = ApiView(request).update_task()
+    self.assertFalse(response['task_alive'])
+
+    # The run should be marked as finished after the last task completes
+    run = self.rundb.get_run(self.run_id)
+    self.assertTrue(run['finished'])
+    self.assertFalse(run['results_stale'])
+    self.assertTrue(all([not t['pending'] and not t['active'] for t in run['tasks']]))
+    self.assertTrue('Total: {}'.format(self.rundb.chunk_size * 2) in run['results_info']['info'][1])
 
 
 if __name__ == '__main__':

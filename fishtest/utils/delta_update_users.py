@@ -9,7 +9,8 @@ from pymongo import DESCENDING
 # For tasks
 sys.path.append(os.path.expanduser('~/fishtest/fishtest'))
 from fishtest.rundb import RunDb
-from fishtest.views import estimate_game_duration, delta_date
+from fishtest.util import estimate_game_duration, delta_date
+
 
 new_deltas = {}
 skip = False
