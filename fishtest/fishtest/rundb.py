@@ -18,8 +18,15 @@ from fishtest.userdb import UserDb
 from fishtest.actiondb import ActionDb
 
 import fishtest.stats.stat_util
+from fishtest.util import (
+  calculate_residuals,
+  format_results,
+  post_in_fishcooking_results,
+  remaining_hours
+)
 
 last_rundb = None
+
 
 class RunDb:
   def __init__(self, db_name='fishtest_new'):
@@ -259,10 +266,58 @@ class RunDb:
       if task['active'] and task['last_updated'] < old:
         task['active'] = False
 
-  def get_unfinished_runs(self):
+  def get_unfinished_runs(self, username=None):
     with self.run_cache_write_lock:
-      return self.runs.find({'finished': False},
-                            sort=[('last_updated', DESCENDING)])
+      unfinished_runs = self.runs.find({'finished': False},
+                                       sort=[('last_updated', DESCENDING)])
+      if username:
+        unfinished_runs = [r for r in unfinished_runs if r['args'].get('username') == username]
+      return unfinished_runs
+
+  def aggregate_unfinished_runs(self, username=None):
+    unfinished_runs = self.get_unfinished_runs(username)
+    runs = {'pending': [], 'active': []}
+    for run in unfinished_runs:
+      state = 'active' if any(task['active'] for task in run['tasks']) else 'pending'
+      runs[state].append(run)
+    runs['pending'].sort(key=lambda run: (run['args']['priority'],
+                                          run['args']['itp']
+                                          if 'itp' in run['args'] else 100))
+    runs['active'].sort(reverse=True, key=lambda run: (
+        'sprt' in run['args'],
+        run['args'].get('sprt',{}).get('llr',0),
+        'spsa' not in run['args'],
+        run['results']['wins'] + run['results']['draws']
+        + run['results']['losses']))
+
+    # Calculate but don't save results_info on runs using info on current machines
+    cores = 0
+    nps = 0
+    for m in self.get_machines():
+      concurrency = int(m['concurrency'])
+      cores += concurrency
+      nps += concurrency * m['nps']
+    pending_hours = 0
+    for run in runs['pending'] + runs['active']:
+      if cores > 0:
+        eta = remaining_hours(run) / cores
+        pending_hours += eta
+      results = self.get_results(run, False)
+      run['results_info'] = format_results(results, run)
+      if 'Pending...' in run['results_info']['info']:
+        if cores > 0:
+          run['results_info']['info'][0] += ' (%.1f hrs)' % (eta)
+        if 'sprt' in run['args']:
+          sprt = run['args']['sprt']
+          elo_model = sprt.get('elo_model', 'BayesElo')
+          if elo_model == 'BayesElo':
+            run['results_info']['info'].append(('[%.2f,%.2f]')
+                                              % (sprt['elo0'], sprt['elo1']))
+          else:
+            run['results_info']['info'].append(('{%.2f,%.2f}')
+                                              % (sprt['elo0'], sprt['elo1']))
+    return (runs, pending_hours, cores, nps)
+
 
   def get_finished_runs(self, skip=0, limit=0, username='',
                         success_only=False, yellow_only=False, ltc_only=False):
@@ -505,36 +560,46 @@ class RunDb:
         ):
       return {'task_alive': False}
 
-    flush = False
+    all_tasks_finished = False
+
     task['stats'] = stats
     task['nps'] = nps
     if num_games >= task['num_games']:
+      # This task is now finished
       if 'cores' in run:
         run['cores'] -= task['worker_info']['concurrency']
       task['pending'] = False  # Make pending False before making active false
                                # to prevent race in request_task
       task['active'] = False
-      # flush = True
+      # Check if all tasks in the run have been finished
+      if not any([t['pending'] or t['active'] for t in run['tasks']]):
+        all_tasks_finished = True
 
     update_time = datetime.utcnow()
     task['last_updated'] = update_time
     run['last_updated'] = update_time
     run['results_stale'] = True
 
-    # Update spsa results
+    # Update SPSA results
     if 'spsa' in run['args'] and spsa_games == spsa['num_games']:
       self.update_spsa(task['worker_info']['unique_key'], run, spsa)
 
-    # Check if SPRT stopping is enabled
+    # Check SPRT state to decide whether to stop the run
     if 'sprt' in run['args']:
       sprt = run['args']['sprt']
       fishtest.stats.stat_util.update_SPRT(self.get_results(run, False), sprt)
       if sprt['state'] != '':
-        self.stop_run(run_id, run)
-        flush = True
+        # If SPRT is accepted or rejected, stop the run
+        self.buffer(run, True)
+        self.stop_run(run_id)
+        return {'task_alive': False}
 
-    self.buffer(run, flush)
-
+    if all_tasks_finished:
+      # If all tasks are finished, stop the run
+      self.buffer(run, True)
+      self.stop_run(run_id)
+    else:
+      self.buffer(run, False)
     return {'task_alive': task['active']}
 
   def upload_pgn(self, run_id, pgn_zip):
@@ -556,28 +621,47 @@ class RunDb:
     return {}
 
   def stop_run(self, run_id, run=None):
+    """ Stops a run and runs auto-purge if it was enabled
+        - Used by the website and API for manually stopping runs
+        - Called during /api/update_task:
+          - for stopping SPRT runs if the test is accepted or rejected
+          - for stopping a run after all games are finished
+    """
     self.clear_params(run_id)
     save_it = False
     if run is None:
       run = self.get_run(run_id)
       save_it = True
     run.pop('cores', None)
-    prune_idx = len(run['tasks'])
-    for idx, task in enumerate(run['tasks']):
-      is_active = task['active']
-      task['pending'] = False  # Make pending False before making active false
-                               # to prevent race in request_task
+    run['tasks'] = [task for task in run['tasks'] if 'stats' in task]
+    for task in run['tasks']:
+      task['pending'] = False
       task['active'] = False
-      if 'stats' not in task and not is_active:
-        prune_idx = min(idx, prune_idx)
-      else:
-        prune_idx = idx + 1
-    # Truncate the empty tasks
-    if prune_idx < len(run['tasks']):
-      del run['tasks'][prune_idx:]
     if save_it:
       self.buffer(run, True)
       self.task_time = 0
+      # Auto-purge runs here
+      purged = False
+      if run['args'].get('auto_purge', True) and 'spsa' not in run['args']:
+        if self.purge_run(run):
+          purged = True
+          run = self.get_run(run['_id'])
+          results = self.get_results(run, True)
+          run['results_info'] = format_results(results, run)
+          self.buffer(run, True)
+      if not purged:
+        # The run is now finished and will no longer be updated after this
+        run['finished'] = True
+        results = self.get_results(run, True)
+        run['results_info'] = format_results(results, run)
+        # De-couple the styling of the run from its finished status
+        if run['results_info']['style'] == '#44EB44':
+          run['is_green'] = True
+        elif run['results_info']['style'] == 'yellow':
+          run['is_yellow'] = True
+        self.buffer(run, True)
+        # Publish the results of the run to the Fishcooking forum
+        post_in_fishcooking_results(run)
 
   def approve_run(self, run_id, approver):
     run = self.get_run(run_id)
@@ -590,6 +674,33 @@ class RunDb:
     self.buffer(run, True)
     self.task_time = 0
     return True
+
+  def purge_run(self, run):
+    # Remove bad tasks
+    purged = False
+    chi2 = calculate_residuals(run)
+    if 'bad_tasks' not in run:
+      run['bad_tasks'] = []
+    for task in run['tasks']:
+      if task['worker_key'] in chi2['bad_users']:
+        purged = True
+        task['bad'] = True
+        run['bad_tasks'].append(task)
+        run['tasks'].remove(task)
+    if purged:
+      # Generate new tasks if needed
+      run['results_stale'] = True
+      results = self.get_results(run)
+      played_games = results['wins'] + results['losses'] + results['draws']
+      if played_games < run['args']['num_games']:
+        run['tasks'] += self.generate_tasks(
+            run['args']['num_games'] - played_games)
+      run['finished'] = False
+      if 'sprt' in run['args'] and 'state' in run['args']['sprt']:
+        fishtest.stats.stat_util.update_SPRT(results, run['args']['sprt'])
+        run['args']['sprt']['state'] = ''
+      self.buffer(run, True)
+    return purged
 
   def spsa_param_clip_round(self, param, increment, clipping, rounding):
     if clipping == 'old':

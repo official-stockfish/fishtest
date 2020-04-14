@@ -1,30 +1,19 @@
 import copy
 import datetime
 import os
-import smtplib
 import time
 import threading
 import re
 import html
 
-from email.mime.text import MIMEText
-from collections import defaultdict
-
 import requests
-
-import scipy
-import scipy.stats
-import numpy
-
 from pyramid.security import remember, forget, authenticated_userid, has_permission
 from pyramid.view import view_config, forbidden_view_config
 from pyramid.httpexceptions import HTTPFound, exception_response
 from pyramid.response import Response
 
 import fishtest.stats.stat_util
-
-
-FISH_URL = 'https://tests.stockfishchess.org/tests/view/'
+from fishtest.util import calculate_residuals, format_results, estimate_game_duration, delta_date
 
 
 def clear_cache():
@@ -131,51 +120,6 @@ def signup(request):
         'Your account will be activated by an administrator soon...')
     return HTTPFound(location=request.route_url('login'))
   return {}
-
-
-def delta_date(date):
-  if date != datetime.datetime.min:
-    diff = datetime.datetime.utcnow() - date
-    if diff.days != 0:
-      delta = '%d days ago' % (diff.days)
-    elif diff.seconds / 3600 > 1:
-      delta = '%d hours ago' % (diff.seconds / 3600)
-    elif diff.seconds / 60 > 1:
-      delta = '%d minutes ago' % (diff.seconds / 60)
-    else:
-      delta = 'seconds ago'
-  else:
-    delta = 'Never'
-  return delta
-
-def estimate_game_duration(tc):
-  # Total time for a game is assumed to be the double of tc for each player
-  # reduced for 92% because on average a game is stopped earlier (LTC fishtest result).
-  scale = 2 * 0.92
-  # estimated number of moves per game (LTC fishtest result)
-  game_moves = 68
-
-  chunks = tc.split('+')
-  increment = 0.0
-  if len(chunks) == 2:
-    increment = float(chunks[1])
-
-  chunks = chunks[0].split('/')
-  num_moves = 0
-  if len(chunks) == 2:
-    num_moves = int(chunks[0])
-
-  time_tc = chunks[-1]
-  chunks = time_tc.split(':')
-  if len(chunks) == 2:
-    time_tc = float(chunks[0]) * 60 + float(chunks[1])
-  else:
-    time_tc = float(chunks[0])
-
-  if num_moves > 0:
-    time_tc = time_tc * (game_moves / num_moves)
-
-  return (time_tc + (increment * game_moves)) * scale
 
 
 @view_config(route_name='actions', renderer='actions.mak')
@@ -630,38 +574,6 @@ def tests_approve(request):
   return HTTPFound(location=request.route_url('tests'))
 
 
-def purge_run(rundb, run):
-  # Remove bad runs
-  purged = False
-  chi2 = calculate_residuals(run)
-  if 'bad_tasks' not in run:
-    run['bad_tasks'] = []
-  for task in run['tasks']:
-    if task['worker_key'] in chi2['bad_users']:
-      purged = True
-      task['bad'] = True
-      run['bad_tasks'].append(task)
-      run['tasks'].remove(task)
-
-  if purged:
-    # Generate new tasks if needed
-    run['results_stale'] = True
-    results = rundb.get_results(run)
-    played_games = results['wins'] + results['losses'] + results['draws']
-    if played_games < run['args']['num_games']:
-      run['tasks'] += rundb.generate_tasks(
-          run['args']['num_games'] - played_games)
-
-    run['finished'] = False
-    if 'sprt' in run['args'] and 'state' in run['args']['sprt']:
-      fishtest.stats.stat_util.update_SPRT(results,run['args']['sprt'])
-      run['args']['sprt']['state']=''
-
-    rundb.buffer(run, True)
-
-  return purged
-
-
 @view_config(route_name='tests_purge', require_csrf=True, request_method='POST')
 def tests_purge(request):
   if not has_permission('approve_run', request.context, request):
@@ -674,7 +586,7 @@ def tests_purge(request):
     request.session.flash('Can only purge completed run', 'error')
     return HTTPFound(location=request.route_url('tests'))
 
-  purged = purge_run(request.rundb, run)
+  purged = request.rundb.purge_run(run)
   if not purged:
     request.session.flash('No bad workers!')
     return HTTPFound(location=request.route_url('tests'))
@@ -707,221 +619,6 @@ def tests_delete(request):
 
     cached_flash(request, 'Deleted run')
   return HTTPFound(location=request.route_url('tests'))
-
-
-def format_results(run_results, run):
-  result = {'style': '', 'info': []}
-
-  # win/loss/draw count
-  WLD = [run_results['wins'], run_results['losses'], run_results['draws']]
-
-  if 'spsa' in run['args']:
-    result['info'].append('%d/%d iterations'
-                          % (run['args']['spsa']['iter'],
-                             run['args']['spsa']['num_iter']))
-    result['info'].append('%d/%d games played'
-                          % (WLD[0] + WLD[1] + WLD[2],
-                             run['args']['num_games']))
-    return result
-
-  # If the score is 0% or 100% the formulas will crash
-  # anyway the statistics are only asymptotic
-  if WLD[0] == 0 or WLD[1] == 0:
-    result['info'].append('Pending...')
-    return result
-
-  state = 'unknown'
-  if 'sprt' in run['args']:
-    sprt = run['args']['sprt']
-    state = sprt.get('state', '')
-    elo_model = sprt.get('elo_model', 'BayesElo')
-    if not 'llr' in sprt:  # legacy
-      fishtest.stats.stat_util.update_SPRT(run_results,sprt)
-    if elo_model == 'BayesElo':
-      result['info'].append('LLR: %.2f (%.2lf,%.2lf) [%.2f,%.2f]'
-                            % (sprt['llr'],
-                               sprt['lower_bound'], sprt['upper_bound'],
-                               sprt['elo0'], sprt['elo1']))
-    else:
-      result['info'].append('LLR: %.2f (%.2lf,%.2lf) {%.2f,%.2f}'
-                            % (sprt['llr'],
-                               sprt['lower_bound'], sprt['upper_bound'],
-                               sprt['elo0'], sprt['elo1']))
-  else:
-    if 'pentanomial' in run_results.keys():
-      elo, elo95, los = fishtest.stats.stat_util.get_elo(
-          run_results['pentanomial'])
-    else:
-      elo, elo95, los = fishtest.stats.stat_util.get_elo(
-          [WLD[1], WLD[2], WLD[0]])
-
-    # Display the results
-    eloInfo = 'ELO: %.2f +-%.1f (95%%)' % (elo, elo95)
-    losInfo = 'LOS: %.1f%%' % (los * 100)
-
-    result['info'].append(eloInfo + ' ' + losInfo)
-
-    if los < 0.05:
-      state = 'rejected'
-    elif los > 0.95:
-      state = 'accepted'
-
-  result['info'].append('Total: %d W: %d L: %d D: %d'
-                        % (sum(WLD), WLD[0], WLD[1], WLD[2]))
-  if 'pentanomial' in run_results.keys():
-    result['info'].append("Ptnml(0-2): " + ", ".join(
-        str(run_results['pentanomial'][i]) for i in range(0, 5)))
-
-  if state == 'rejected':
-    if WLD[0] > WLD[1]:
-      result['style'] = 'yellow'
-    else:
-      result['style'] = '#FF6A6A'
-  elif state == 'accepted':
-    if ('sprt' in run['args']
-        and (float(sprt['elo0']) + float(sprt['elo1'])) < 0.0):
-      result['style'] = '#66CCFF'
-    else:
-      result['style'] = '#44EB44'
-  return result
-
-
-UUID_MAP = defaultdict(dict)
-key_lock = threading.Lock()
-
-
-def get_worker_key(task):
-  global UUID_MAP
-
-  if 'worker_info' not in task:
-    return '-'
-  username = task['worker_info'].get('username', '')
-  cores = str(task['worker_info']['concurrency'])
-
-  uuid = task['worker_info'].get('unique_key', '')
-  with key_lock:
-    if uuid not in UUID_MAP[username]:
-      next_idx = len(UUID_MAP[username])
-      UUID_MAP[username][uuid] = next_idx
-
-  worker_key = '%s-%scores' % (username, cores)
-  suffix = UUID_MAP[username][uuid]
-  if suffix != 0:
-    worker_key += "-" + str(suffix)
-
-  return worker_key
-
-
-def get_chi2(tasks, bad_users):
-  """Perform chi^2 test on the stats from each worker"""
-  results = {'chi2': 0.0, 'dof': 0, 'p': 0.0, 'residual': {}}
-
-  # Aggregate results by worker
-  users = {}
-  for task in tasks:
-    task['worker_key'] = get_worker_key(task)
-    if 'worker_info' not in task:
-      continue
-    key = get_worker_key(task)
-    if key in bad_users:
-      continue
-    stats = task.get('stats', {})
-    wld = [float(stats.get('wins', 0)),
-           float(stats.get('losses', 0)), float(stats.get('draws', 0))]
-    if wld == [0.0, 0.0, 0.0]:
-      continue
-    if key in users:
-      for idx in range(len(wld)):
-        users[key][idx] += wld[idx]
-    else:
-      users[key] = wld
-
-  if len(users) == 0:
-    return results
-
-  observed = numpy.array(list(users.values()))
-  rows, columns = observed.shape
-  # Results only from one worker: skip the test for workers homogeneity
-  if rows == 1:
-    results = {'chi2': float('nan'), 'dof': 0,
-               'p': float('nan'), 'residual': {}}
-    return results
-
-  column_sums = numpy.sum(observed, axis=0)
-  columns_not_zero = sum(i > 0 for i in column_sums)
-  df = (rows - 1) * (columns - 1)
-
-  if columns_not_zero == 0:
-    return results
-  # Results only of one type: workers are identical wrt the test
-  elif columns_not_zero == 1:
-    results = {'chi2': 0.0, 'dof': df, 'p': 1.0, 'residual': {}}
-    return results
-  # Results only of two types: workers are identical wrt the missing result type
-  # Change the data shape to avoid divide by zero
-  elif columns_not_zero == 2:
-    idx = numpy.argwhere(numpy.all(observed[..., :] == 0, axis=0))
-    observed = numpy.delete(observed, idx, axis=1)
-    column_sums = numpy.sum(observed, axis=0)
-
-  row_sums = numpy.sum(observed, axis=1)
-  grand_total = numpy.sum(column_sums)
-
-  expected = numpy.outer(row_sums, column_sums) / grand_total
-  raw_residual = observed - expected
-  std_error = numpy.sqrt(expected *
-                         numpy.outer((1 - row_sums / grand_total),
-                                     (1 - column_sums / grand_total)))
-  adj_residual = raw_residual / std_error
-  for idx in range(len(users)):
-    users[list(users.keys())[idx]] = numpy.max(numpy.abs(adj_residual[idx]))
-  chi2 = numpy.sum(raw_residual * raw_residual / expected)
-  return {
-    'chi2': chi2,
-    'dof': df,
-    'p': 1 - scipy.stats.chi2.cdf(chi2, df),
-    'residual': users,
-  }
-
-
-def calculate_residuals(run):
-  bad_users = set()
-  chi2 = get_chi2(run['tasks'], bad_users)
-  residuals = chi2['residual']
-
-  # Limit bad users to 1 for now
-  for _ in range(1):
-    worst_user = {}
-    for task in run['tasks']:
-      if task['worker_key'] in bad_users:
-        continue
-      task['residual'] = residuals.get(task['worker_key'], 0.0)
-
-      # Special case crashes or time losses
-      stats = task.get('stats', {})
-      crashes = stats.get('crashes', 0)
-      if crashes > 3:
-        task['residual'] = 8.0
-
-      if abs(task['residual']) < 2.0:
-        task['residual_color'] = '#44EB44'
-      elif abs(task['residual']) < 2.7:
-        task['residual_color'] = 'yellow'
-      else:
-        task['residual_color'] = '#FF6A6A'
-
-      if chi2['p'] < 0.001 or task['residual'] > 7.0:
-        if len(worst_user) == 0 or task['residual'] > worst_user['residual']:
-          worst_user['worker_key'] = task['worker_key']
-          worst_user['residual'] = task['residual']
-
-    if len(worst_user) == 0:
-      break
-    bad_users.add(worst_user['worker_key'])
-    residuals = get_chi2(run['tasks'], bad_users)['residual']
-
-  chi2['bad_users'] = bad_users
-  return chi2
 
 
 @view_config(route_name='tests_stats', renderer='tests_stats.mak')
@@ -1038,38 +735,6 @@ def tests_view(request):
              cores, ('s' if cores != 1 else ''))}
 
 
-def post_result(run):
-  title = run['args']['new_tag'][:23]
-
-  if 'username' in run['args']:
-    title += '  (' + run['args']['username'] + ')'
-
-  body = FISH_URL + '%s\n\n' % (str(run['_id']))
-
-  body += run['start_time'].strftime("%d-%m-%y") + ' from '
-  body += run['args'].get('username', '') + '\n\n'
-
-  body += run['args']['new_tag'] + ': ' + run['args'].get(
-      'msg_new', '') + '\n'
-  body += run['args']['base_tag'] + ': ' + run['args'].get(
-      'msg_base', '') + '\n\n'
-
-  body += 'TC: ' + run['args']['tc'] + ' th ' + str(
-      run['args'].get('threads', 1)) + '\n'
-  body += '\n'.join(run['results_info']['info']) + '\n\n'
-
-  body += run['args'].get('info', '') + '\n\n'
-
-  msg = MIMEText(body)
-  msg['Subject'] = title
-  msg['From'] = 'fishtest@noreply.github.com'
-  msg['To'] = 'fishcooking_results@googlegroups.com'
-
-  s = smtplib.SMTP('localhost')
-  s.sendmail(msg['From'], [msg['To']], msg.as_string())
-  s.quit()
-
-
 def get_paginated_finished_runs(request):
   username = request.matchdict.get('username', '')
   success_only = request.params.get('success_only', False)
@@ -1105,7 +770,6 @@ def get_paginated_finished_runs(request):
   failed_runs = []
   for run in finished_runs:
     # Ensure finished runs have results_info
-    # TODO do this when the run finishes, not when it's viewed
     results = request.rundb.get_results(run)
     if 'results_info' not in run:
       run['results_info'] = format_results(results, run)
@@ -1128,109 +792,17 @@ def tests_finished(request):
   return get_paginated_finished_runs(request)
 
 
-def remaining_hours(run):
-  r = run['results']
-  if 'sprt' in run['args']:
-    # current average number of games. Regularly update / have server guess?
-    expected_games = 53000
-    # checking randomly, half the expected games needs still to be done
-    remaining_games = expected_games / 2
-  else:
-    expected_games = run['args']['num_games']
-    remaining_games = max(0,
-                          expected_games
-                          - r['wins'] - r['losses'] - r['draws'])
-  game_secs = estimate_game_duration(run['args']['tc'])
-  return game_secs * remaining_games * int(
-      run['args'].get('threads', 1)) / (60*60)
-
-
-def aggregate_and_update_unfinished_runs(unfinished_runs, rundb):
-  runs = {'pending': [], 'failed': [], 'active': []}
-  for run in unfinished_runs:
-    results = rundb.get_results(run, False)
-    run['results_info'] = format_results(results, run)
-    state = 'finished'
-    for task in run['tasks']:
-      if task['active']:
-        state = 'active'
-      elif task['pending'] and not state == 'active':
-        state = 'pending'
-    if state == 'finished':
-      # Auto-purge runs here (this is hacky, ideally we would do it
-      # when the run was finished, not when it is first viewed)
-      # TODO auto-purge when a run finishes
-      purged = 0
-      if (run['args'].get('auto_purge', True)
-          and 'spsa' not in run['args'] and run['args']['threads'] == 1):
-        while purge_run(rundb, run) and purged < 5:
-          purged += 1
-          run = rundb.get_run(run['_id'])
-          results = rundb.get_results(run, True)
-          run['results_info'] = format_results(results, run)
-          rundb.buffer(run, True)
-      if purged == 0:
-        # The run is finished and will no longer be updated after this
-        run['finished'] = True
-        # Decouple the styling of the run from its finished status
-        if run['results_info']['style'] == '#44EB44':
-          run['is_green'] = True
-        elif run['results_info']['style'] == 'yellow':
-          run['is_yellow'] = True
-        rundb.buffer(run, True)
-        post_result(run)
-    else:
-      runs[state].append(run)
-  runs['pending'].sort(key=lambda run: (run['args']['priority'],
-                                        run['args']['itp']
-                                        if 'itp' in run['args'] else 100))
-  runs['active'].sort(reverse=True, key=lambda run: (
-      'sprt' in run['args'],
-      run['args'].get('sprt',{}).get('llr',0),
-      'spsa' not in run['args'],
-      run['results']['wins'] + run['results']['draws']
-      + run['results']['losses']))
-
-  # Update results_info on runs using machine info
-  machines = rundb.get_machines()
-  cores = sum([int(m['concurrency']) for m in machines])
-  nps = sum([int(m['concurrency']) * m['nps'] for m in machines])
-  pending_hours = 0
-  for run in runs['pending'] + runs['active']:
-    if cores > 0:
-      eta = remaining_hours(run) / cores
-      pending_hours += eta
-    info = run['results_info']
-    if 'Pending...' in info['info']:
-      if cores > 0:
-        info['info'][0] += ' (%.1f hrs)' % (eta)
-      if 'sprt' in run['args']:
-        sprt = run['args']['sprt']
-        elo_model = sprt.get('elo_model', 'BayesElo')
-        if elo_model == 'BayesElo':
-          info['info'].append(('[%.2f,%.2f]')
-                              % (sprt['elo0'], sprt['elo1']))
-        else:
-          info['info'].append(('{%.2f,%.2f}')
-                              % (sprt['elo0'], sprt['elo1']))
-  return (runs, pending_hours, cores, nps)
-
-
 @view_config(route_name='tests_user', renderer='tests_user.mak')
 def tests_user(request):
   username = request.matchdict.get('username', '')
-  result = {
+  response = {
     **get_paginated_finished_runs(request),
     'username': username
   }
-  if int(request.params.get('page', 1)) > 1:
-    # page 2 and beyond only show finished test results
-    return result
-  unfinished_runs = [
-    r for r in request.rundb.get_unfinished_runs() if r['args'].get('username') == username
-  ]
-  result['runs'] = aggregate_and_update_unfinished_runs(unfinished_runs, request.rundb)[0]
-  return result
+  if int(request.params.get('page', 1)) == 1:
+    response['runs'] = request.rundb.aggregate_unfinished_runs(username)[0]
+  # page 2 and beyond only show finished test results
+  return response
 
 
 def homepage_results(request):
@@ -1245,12 +817,8 @@ def homepage_results(request):
           * (60.0 / estimate_game_duration(machine['run']['args']['tc']))
           * (int(machine['concurrency']) // machine['run']['args'].get('threads', 1)))
   machines.reverse()
-
-  # Update unfinished_runs + fetch paginated finished_runs
-  unfinished_runs = request.rundb.get_unfinished_runs()
-  (runs, pending_hours, cores, nps) = aggregate_and_update_unfinished_runs(
-    unfinished_runs, request.rundb)
-
+  # Get updated results for unfinished runs + finished runs
+  (runs, pending_hours, cores, nps) = request.rundb.aggregate_unfinished_runs()
   return {
     **get_paginated_finished_runs(request),
     'runs': runs,
