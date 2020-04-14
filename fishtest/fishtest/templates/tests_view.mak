@@ -162,6 +162,10 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
     <span id="diff-num-comments" style="display: none"></span>
     <a href="${h.diff_url(run)}" class="btn btn-link" target="_blank" rel="noopener">view on Github</a>
     <button id="diff-toggle" class="btn">Show</button>
+    <a href="javascipt:" id="copy-diff" class="btn btn-link" style="margin-left: 10px; display: none">
+      <img src="/img/clipboard.png" width="20" height="20"/> Copy apply-diff command
+    </a>
+    <div class="btn btn-link copied" style="color: green; display: none">Copied command!</div>
   </h3>
   <pre id="diff-contents"><code class="diff"></code></pre>
 </section>
@@ -241,28 +245,45 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
 <script type="text/javascript" src="/js/highlight.diff.min.js"></script>
 <script>
   $(function() {
-    function fetchDiff(url, callback) {
-      $.ajax({
-        url: url,
-        headers: {
-          Accept: "application/vnd.github.v3.diff"
-        },
-        success: callback
+    let $copyDiffBtn = $("#copy-diff");
+    if (document.queryCommandSupported && document.queryCommandSupported("copy")) {
+      $copyDiffBtn.on("click", () => {
+        const textarea = document.createElement("textarea");
+        textarea.style.position = "fixed";
+        textarea.textContent = 'curl -s ${h.diff_url(run)}.diff | git apply';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+          document.execCommand("copy");
+          $(".copied").show();
+        } catch (ex) {
+          console.warn("Copy to clipboard failed.", ex);
+        } finally {
+          document.body.removeChild(textarea);
+        }
       });
+    } else {
+      $copyDiffBtn = null;
     }
 
-    var apiUrlBase = "${run['args']['tests_repo']}".replace("//github.com/", "//api.github.com/repos/");
-    var diffApiUrl = apiUrlBase + "/compare/${run['args']['resolved_base'][:7]}...${run['args']['resolved_new'][:7]}";
-    fetchDiff(
-      diffApiUrl,
-      function(response) {
-        var numLines = response.split("\n").length;
-        var $toggleBtn = $("#diff-toggle");
-        var $diffContents = $("#diff-contents");
-        var $diffText = $diffContents.find("code");
+    const apiUrlBase = "${run['args']['tests_repo']}".replace("//github.com/", "//api.github.com/repos/");
+    const diffApiUrl = apiUrlBase + "/compare/${run['args']['resolved_base'][:7]}...${run['args']['resolved_new'][:7]}";
+
+    // Fetch the diff and decide whether to render it
+    $.ajax({
+      url: diffApiUrl,
+      headers: {
+        Accept: "application/vnd.github.v3.diff"
+      },
+      success: function(response) {
+        const numLines = response.split("\n").length;
+        const $toggleBtn = $("#diff-toggle");
+        const $diffContents = $("#diff-contents");
+        const $diffText = $diffContents.find("code");
         $diffText.text(response);
         $toggleBtn.on("click", function() {
           $diffContents.toggle();
+          $copyDiffBtn && $copyDiffBtn.toggle();
           if ($toggleBtn.text() === "Hide") {
             $toggleBtn.text("Show");
           } else {
@@ -272,9 +293,11 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
         // Hide large diffs by default
         if (numLines < 50) {
           $diffContents.show();
+          $copyDiffBtn && $copyDiffBtn.show();
           $toggleBtn.text("Hide");
         } else {
           $diffContents.hide();
+          $copyDiffBtn && $copyDiffBtn.hide();
           $toggleBtn.text("Show");
         }
         $("#diff-section").show();
@@ -284,7 +307,7 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
         $.ajax({
           url: diffApiUrl,
           success: function(response) {
-            var numComments = 0;
+            let numComments = 0;
             response.commits.forEach(function(row) {
               numComments += row.commit.comment_count;
             });
@@ -292,7 +315,7 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
           }
         });
       }
-    );
+    });
   });
 </script>
 <link rel="stylesheet" href="/css/highlight.github.css">
