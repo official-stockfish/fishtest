@@ -579,8 +579,6 @@ class RunDb:
       self.buffer(run, True)
       self.task_time = 0
 
-    return {}
-
   def approve_run(self, run_id, approver):
     run = self.get_run(run_id)
     # Can't self approve
@@ -662,7 +660,6 @@ class RunDb:
       'w_params': [],
       'b_params': [],
     }
-
     spsa = run['args']['spsa']
     if 'clipping' not in spsa:
         spsa['clipping'] = 'old'

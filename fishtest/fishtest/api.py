@@ -1,52 +1,15 @@
-import json
 import base64
 
 import requests
-from pyramid.httpexceptions import exception_response
-from pyramid.view import view_config
+from pyramid.httpexceptions import HTTPUnauthorized, exception_response
+from pyramid.view import view_config, view_defaults, exception_view_config
+from pyramid.response import Response
 
-import fishtest.stats.sprt
+from fishtest.stats.stat_util import SPRT_elo
 
 WORKER_VERSION = 73
 
-
 flag_cache = {}
-
-def get_flag(request):
-  ip = request.remote_addr
-  if ip in flag_cache:
-    return flag_cache[ip]
-  result = request.userdb.flag_cache.find_one({'ip': ip})
-  if result is not None:
-    flag_cache[ip] = result['country_code']
-    return result['country_code']
-
-  # Get country flag ip
-  try:
-    FLAG_HOST = 'https://freegeoip.app/json/'
-    r = requests.get(FLAG_HOST + request.remote_addr, timeout=1.0)
-    if r.status_code == 200:
-      country_code = r.json()['country_code']
-      request.userdb.flag_cache.insert_one({
-        'ip': ip,
-        'country_code': country_code
-      })
-      flag_cache[ip] = country_code
-      return country_code
-  except:
-    flag_cache[ip] = None
-    return None
-
-
-def get_username(request):
-  if 'username' in request.json_body:
-    return request.json_body['username']
-  return request.json_body['worker_info']['username']
-
-
-def authenticate(request):
-  return request.userdb.authenticate(get_username(request),
-                                     request.json_body['password'])
 
 
 def strip_run(run):
@@ -63,184 +26,207 @@ def strip_run(run):
   return run
 
 
-@view_config(route_name='api_active_runs', renderer='string')
-def active_runs(request):
-  active = {}
-  for run in request.rundb.get_unfinished_runs():
-    active[str(run['_id'])] = strip_run(run)
-  return json.dumps(active)
+@exception_view_config(HTTPUnauthorized)
+def authentication_failed(error, request):
+  response = Response(json_body=error.detail)
+  response.status_int = 401
+  return response
 
 
-@view_config(route_name='api_get_run', renderer='string')
-def get_run(request):
-  run = request.rundb.get_run(request.matchdict['id'])
-  return json.dumps(strip_run(run))
+@view_defaults(renderer='json')
+class ApiView(object):
+  ''' All API endpoints that require authentication are used by workers '''
+
+  def __init__(self, request):
+    self.request = request
+
+  def require_authentication(self):
+    token = self.request.userdb.authenticate(self.get_username(),
+                                             self.request.json_body['password'])
+    if 'error' in token:
+      raise HTTPUnauthorized(token)
+
+  def get_username(self):
+    if 'username' in self.request.json_body:
+      return self.request.json_body['username']
+    return self.request.json_body['worker_info']['username']
+
+  def get_flag(self):
+    ip = self.request.remote_addr
+    if ip in flag_cache:
+      return flag_cache[ip]
+    result = self.request.userdb.flag_cache.find_one({'ip': ip})
+    if result:
+      flag_cache[ip] = result['country_code']
+      return result['country_code']
+    try:
+      # Get country flag from worker IP address
+      FLAG_HOST = 'https://freegeoip.app/json/'
+      r = requests.get(FLAG_HOST + self.request.remote_addr, timeout=1.0)
+      if r.status_code == 200:
+        country_code = r.json()['country_code']
+        self.request.userdb.flag_cache.insert({
+          'ip': ip,
+          'country_code': country_code
+        })
+        flag_cache[ip] = country_code
+        return country_code
+    except:
+      flag_cache[ip] = None
+      return None
+
+  def run_id(self):
+    return str(self.request.json_body['run_id'])
+
+  def task_id(self):
+    return int(self.request.json_body['task_id'])
 
 
-@view_config(route_name='api_get_elo', renderer='string')
-def get_elo(request):
-  run = request.rundb.get_run(request.matchdict['id']).copy()
-  results = run['results']
-  if 'sprt' not in run['args']:
-    return json.dumps({})
-  sprt = run['args'].get('sprt').copy()
-  elo_model = sprt.get('elo_model', 'BayesElo')
-  alpha = sprt['alpha']
-  beta = sprt['beta']
-  elo0 = sprt['elo0']
-  elo1 = sprt['elo1']
-  sprt['elo_model'] = elo_model
-  a = fishtest.stats.stat_util.SPRT_elo(results,
-                                        alpha=alpha, beta=beta,
-                                        elo0=elo0, elo1=elo1,
-                                        elo_model=elo_model)
-  run = strip_run(run)
-  run['elo'] = a
-  run['args']['sprt'] = sprt
-  return json.dumps(run)
+  @view_config(route_name='api_active_runs')
+  def active_runs(self):
+    active = {}
+    for run in self.request.rundb.get_unfinished_runs():
+      active[str(run['_id'])] = strip_run(run)
+    return active
 
 
-@view_config(route_name='api_request_task', renderer='string')
-def request_task(request):
-  token = authenticate(request)
-  if 'error' in token:
-    return json.dumps(token)
+  @view_config(route_name='api_get_run')
+  def get_run(self):
+    run = self.request.rundb.get_run(self.request.matchdict['id'])
+    return strip_run(run)
 
-  worker_info = request.json_body['worker_info']
-  worker_info['remote_addr'] = request.remote_addr
-  flag = get_flag(request)
-  if flag:
-    worker_info['country_code'] = flag
 
-  result = request.rundb.request_task(worker_info)
+  @view_config(route_name='api_get_elo')
+  def get_elo(self):
+    run = self.request.rundb.get_run(self.request.matchdict['id']).copy()
+    results = run['results']
+    if 'sprt' not in run['args']:
+      return {}
+    sprt = run['args'].get('sprt').copy()
+    elo_model = sprt.get('elo_model', 'BayesElo')
+    alpha = sprt['alpha']
+    beta = sprt['beta']
+    elo0 = sprt['elo0']
+    elo1 = sprt['elo1']
+    sprt['elo_model'] = elo_model
+    a = SPRT_elo(results,
+                 alpha=alpha, beta=beta,
+                 elo0=elo0, elo1=elo1,
+                 elo_model=elo_model)
+    run = strip_run(run)
+    run['elo'] = a
+    run['args']['sprt'] = sprt
+    return run
 
-  if 'task_waiting' in result:
-    return json.dumps(result)
 
-  # Strip the run of unneccesary information
-  run = result['run']
-  min_run = {
-    '_id': str(run['_id']),
-    'args': run['args'],
-    'tasks': [],
-  }
+  @view_config(route_name='api_request_task')
+  def request_task(self):
+    self.require_authentication()
 
-  if int(str(worker_info['version']).split(':')[0]) > 64:
-    task = run['tasks'][result['task_id']]
-    min_task = {'num_games': task['num_games']}
-    if 'stats' in task:
-      min_task['stats'] = task['stats']
-    min_run['my_task'] = min_task
-  else:
-    for task in run['tasks']:
+    worker_info = self.request.json_body['worker_info']
+    worker_info['remote_addr'] = self.request.remote_addr
+    flag = self.get_flag()
+    if flag:
+      worker_info['country_code'] = flag
+
+    result = self.request.rundb.request_task(worker_info)
+    if 'task_waiting' in result:
+      return result
+
+    # Strip the run of unneccesary information
+    run = result['run']
+    min_run = {
+      '_id': str(run['_id']),
+      'args': run['args'],
+      'tasks': [],
+    }
+    if int(str(worker_info['version']).split(':')[0]) > 64:
+      task = run['tasks'][result['task_id']]
       min_task = {'num_games': task['num_games']}
       if 'stats' in task:
         min_task['stats'] = task['stats']
-      min_run['tasks'].append(min_task)
+      min_run['my_task'] = min_task
+    else:
+      for task in run['tasks']:
+        min_task = {'num_games': task['num_games']}
+        if 'stats' in task:
+          min_task['stats'] = task['stats']
+        min_run['tasks'].append(min_task)
 
-  result['run'] = min_run
-  return json.dumps(result)
-
-
-@view_config(route_name='api_update_task', renderer='string')
-def update_task(request):
-  token = authenticate(request)
-  if 'error' in token:
-    return json.dumps(token)
-
-  result = request.rundb.update_task(
-    run_id=request.json_body['run_id'],
-    task_id=int(request.json_body['task_id']),
-    stats=request.json_body['stats'],
-    nps=request.json_body.get('nps', 0),
-    spsa=request.json_body.get('spsa', {}),
-    username=get_username(request)
-  )
-  return json.dumps(result)
+    result['run'] = min_run
+    return result
 
 
-@view_config(route_name='api_failed_task', renderer='string')
-def failed_task(request):
-  token = authenticate(request)
-  if 'error' in token:
-    return json.dumps(token)
-
-  result = request.rundb.failed_task(
-    run_id=request.json_body['run_id'],
-    task_id=int(request.json_body['task_id']),
-  )
-  return json.dumps(result)
-
-
-@view_config(route_name='api_upload_pgn', renderer='string')
-def upload_pgn(request):
-  token = authenticate(request)
-  if 'error' in token:
-    return json.dumps(token)
-
-  result = request.rundb.upload_pgn(
-    run_id=request.json_body['run_id'] + '-'
-      + str(request.json_body['task_id']),
-    pgn_zip=base64.b64decode(request.json_body['pgn'])
-  )
-  return json.dumps(result)
+  @view_config(route_name='api_update_task')
+  def update_task(self):
+    self.require_authentication()
+    return self.request.rundb.update_task(
+      run_id=self.run_id(),
+      task_id=self.task_id(),
+      stats=self.request.json_body['stats'],
+      nps=self.request.json_body.get('nps', 0),
+      spsa=self.request.json_body.get('spsa', {}),
+      username=self.get_username()
+    )
 
 
-@view_config(route_name='api_download_pgn', renderer='string')
-def download_pgn(request):
-  pgn = request.rundb.get_pgn(request.matchdict['id'])
-  if pgn is None:
-    raise exception_response(404)
-  if '.pgn' in request.matchdict['id']:
-    request.response.content_type = 'application/x-chess-pgn'
-  return pgn
+  @view_config(route_name='api_failed_task')
+  def failed_task(self):
+    self.require_authentication()
+    return self.request.rundb.failed_task(self.run_id(), self.task_id())
 
 
-@view_config(route_name='api_download_pgn_100', renderer='string')
-def download_pgn_100(request):
-  skip = int(request.matchdict['skip'])
-  urls = request.rundb.get_pgn_100(skip)
-  if urls is None:
-    raise exception_response(404)
-  return json.dumps(urls)
+  @view_config(route_name='api_upload_pgn')
+  def upload_pgn(self):
+    self.require_authentication()
+    return self.request.rundb.upload_pgn(
+      run_id='{}-{}'.format(self.run_id(), self.task_id()),
+      pgn_zip=base64.b64decode(self.request.json_body['pgn'])
+    )
 
 
-@view_config(route_name='api_stop_run', renderer='string')
-def stop_run(request):
-  token = authenticate(request)
-  if 'error' in token:
-    return json.dumps(token)
-
-  username = get_username(request)
-  user = request.userdb.user_cache.find_one({'username': username})
-  if not user or user['cpu_hours'] < 1000:
-    return ''
-
-  with request.rundb.active_run_lock(str(request.json_body['run_id'])):
-    run = request.rundb.get_run(request.json_body['run_id'])
-    run['finished'] = True
-    run['stop_reason'] = request.json_body.get('message', 'API request')
-    request.actiondb.stop_run(username, run)
-    result = request.rundb.stop_run(request.json_body['run_id'])
-
-  return json.dumps(result)
+  @view_config(route_name='api_download_pgn', renderer='string')
+  def download_pgn(self):
+    pgn = self.request.rundb.get_pgn(self.request.matchdict['id'])
+    if pgn is None:
+      raise exception_response(404)
+    if '.pgn' in self.request.matchdict['id']:
+      self.request.response.content_type = 'application/x-chess-pgn'
+    return pgn
 
 
-@view_config(route_name='api_request_version', renderer='string')
-def request_version(request):
-  token = authenticate(request)
-  if 'error' in token:
-    return json.dumps(token)
+  @view_config(route_name='api_download_pgn_100')
+  def download_pgn_100(self):
+    skip = int(self.request.matchdict['skip'])
+    urls = self.request.rundb.get_pgn_100(skip)
+    if urls is None:
+      raise exception_response(404)
+    return urls
 
-  return json.dumps({'version': WORKER_VERSION})
+
+  @view_config(route_name='api_stop_run')
+  def stop_run(self):
+    self.require_authentication()
+    username = self.get_username()
+    user = self.request.userdb.user_cache.find_one({'username': username})
+    if not user or user['cpu_hours'] < 1000:
+      return {}
+    with self.request.rundb.active_run_lock(self.run_id()):
+      run = self.request.rundb.get_run(self.run_id())
+      run['finished'] = True
+      run['stop_reason'] = self.request.json_body.get('message', 'API request')
+      self.request.actiondb.stop_run(username, run)
+      self.request.rundb.stop_run(self.run_id())
+    return {}
 
 
-@view_config(route_name='api_request_spsa', renderer='string')
-def request_spsa(request):
-  token = authenticate(request)
-  if 'error' in token:
-    return json.dumps(token)
+  @view_config(route_name='api_request_version')
+  def request_version(self):
+    self.require_authentication()
+    return {'version': WORKER_VERSION}
 
-  run_id = request.json_body['run_id']
-  task_id = int(request.json_body['task_id'])
-  return json.dumps(request.rundb.request_spsa(run_id, task_id))
+
+  @view_config(route_name='api_request_spsa')
+  def request_spsa(self):
+    self.require_authentication()
+    return self.request.rundb.request_spsa(self.run_id(), self.task_id())
