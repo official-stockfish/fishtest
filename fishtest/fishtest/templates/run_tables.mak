@@ -15,9 +15,9 @@
     %endif
   </div>
 
-  %if len(runs['failed']) > 0:
+  %if len(failed_runs) > 0:
     <h3>Failed</h3>
-    <%include file="run_table.mak" args="runs=runs['failed'], show_delete=True"/>
+    <%include file="run_table.mak" args="runs=failed_runs, show_delete=True"/>
   %endif
 
   <h3>Active - ${len(runs['active'])} tests</h3>

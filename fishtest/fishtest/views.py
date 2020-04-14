@@ -1085,19 +1085,22 @@ def get_paginated_finished_runs(request):
     for page in pages:
       page['url'] += '&ltc_only=1'
 
+  failed_runs = []
   for run in finished_runs:
     # Ensure finished runs have results_info
     # TODO do this when the run finishes, not when it's viewed
     results = request.rundb.get_results(run)
     if 'results_info' not in run:
       run['results_info'] = format_results(results, run)
+    # Look for failed runs
     if results['wins'] + results['losses'] + results['draws'] == 0:
-      runs['failed'].append(run)
+      failed_runs.append(run)
 
   return {
     'finished_runs': finished_runs,
     'finished_runs_pages': pages,
     'num_finished_runs': num_finished_runs,
+    'failed_runs': failed_runs,
     'page_idx': page_idx,
   }
 
@@ -1196,7 +1199,7 @@ def tests_user(request):
     **get_paginated_finished_runs(request),
     'username': username
   }
-  if not request.params.get('page', '1') == '1':
+  if int(request.params.get('page', 1)) > 1:
     # page 2 and beyond only show finished test results
     return result
   unfinished_runs = [
@@ -1245,7 +1248,7 @@ building = threading.Semaphore()
 
 @view_config(route_name='tests', renderer='tests.mak')
 def tests(request):
-  if not request.params.get('page', '1') == '1':
+  if int(request.params.get('page', 1)) > 1:
     # page 2 and beyond only show finished test results
     return get_paginated_finished_runs(request)
 
