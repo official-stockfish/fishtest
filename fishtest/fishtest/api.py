@@ -1,11 +1,13 @@
 import json
 import base64
-import requests
 
-import pyramid.httpexceptions as exc
+import requests
+from pyramid.httpexceptions import exception_response
 from pyramid.view import view_config
 
 import fishtest.stats.sprt
+
+WORKER_VERSION = 72
 
 
 def get_flag(request):
@@ -17,16 +19,13 @@ def get_flag(request):
   # Get country flag ip
   try:
     FLAG_HOST = 'https://freegeoip.app/json/'
-
     r = requests.get(FLAG_HOST + request.remote_addr, timeout=1.0)
     if r.status_code == 200:
       country_code = r.json()['country_code']
-
       request.userdb.flag_cache.insert({
         'ip': ip,
         'country_code': country_code
       })
-
       return country_code
   except:
     return None
@@ -61,7 +60,7 @@ def strip_run(run):
 def active_runs(request):
   active = {}
   for run in request.rundb.get_unfinished_runs():
-    active[run['_id']] = strip_run(run)
+    active[str(run['_id'])] = strip_run(run)
   return json.dumps(active)
 
 
@@ -184,7 +183,7 @@ def upload_pgn(request):
 def download_pgn(request):
   pgn = request.rundb.get_pgn(request.matchdict['id'])
   if pgn is None:
-    raise exc.exception_response(404)
+    raise exception_response(404)
   if '.pgn' in request.matchdict['id']:
     request.response.content_type = 'application/x-chess-pgn'
   return pgn
@@ -195,7 +194,7 @@ def download_pgn_100(request):
   skip = int(request.matchdict['skip'])
   urls = request.rundb.get_pgn_100(skip)
   if urls is None:
-    raise exc.exception_response(404)
+    raise exception_response(404)
   return json.dumps(urls)
 
 
@@ -215,8 +214,8 @@ def stop_run(request):
     run['finished'] = True
     run['stop_reason'] = request.json_body.get('message', 'API request')
     request.actiondb.stop_run(username, run)
-
     result = request.rundb.stop_run(request.json_body['run_id'])
+
   return json.dumps(result)
 
 
@@ -226,7 +225,7 @@ def request_version(request):
   if 'error' in token:
     return json.dumps(token)
 
-  return json.dumps({'version': 72})
+  return json.dumps({'version': WORKER_VERSION})
 
 
 @view_config(route_name='api_request_spsa', renderer='string')
@@ -237,5 +236,4 @@ def request_spsa(request):
 
   run_id = request.json_body['run_id']
   task_id = int(request.json_body['task_id'])
-
   return json.dumps(request.rundb.request_spsa(run_id, task_id))

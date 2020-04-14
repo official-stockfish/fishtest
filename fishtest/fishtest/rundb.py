@@ -526,8 +526,8 @@ class RunDb:
     # Check if SPRT stopping is enabled
     if 'sprt' in run['args']:
       sprt = run['args']['sprt']
-      fishtest.stats.stat_util.update_SPRT(self.get_results(run, False),sprt)
-      if sprt['state']!='':
+      fishtest.stats.stat_util.update_SPRT(self.get_results(run, False), sprt)
+      if sprt['state'] != '':
         self.stop_run(run_id, run)
         flush = True
 
@@ -536,9 +536,7 @@ class RunDb:
     return {'task_alive': task['active']}
 
   def upload_pgn(self, run_id, pgn_zip):
-
     self.pgndb.insert({'run_id': run_id, 'pgn_zip': Binary(pgn_zip)})
-
     return {}
 
   def failed_task(self, run_id, task_id):
@@ -553,7 +551,6 @@ class RunDb:
     # Mark the task as inactive: it will be rescheduled
     task['active'] = False
     self.buffer(run, True)
-
     return {}
 
   def stop_run(self, run_id, run=None):
