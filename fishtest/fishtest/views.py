@@ -26,11 +26,6 @@ import fishtest.stats.stat_util
 
 FISH_URL = 'https://tests.stockfishchess.org/tests/view/'
 
-# For caching the tests output
-cache_time = 2
-last_tests = None
-last_time = 0
-
 
 def clear_cache():
   global last_time, last_tests
@@ -44,26 +39,6 @@ def cached_flash(request, requestString):
   clear_cache()
   request.session.flash(requestString)
   return
-
-
-_here = os.path.dirname(__file__)
-with open(os.path.join(_here, 'static', 'favicon.ico'), 'rb') as icon_f:
-  _icon = icon_f.read()
-_fi_response = Response(content_type='image/x-icon', body=_icon)
-
-with open(os.path.join(_here, 'static', 'robots.txt'), 'r') as robots_f:
-  _robots = robots_f.read()
-_robots_response = Response(content_type='text/plain', body=_robots)
-
-
-@view_config(name='favicon.ico')
-def favicon_view(_context, _request):
-  return _fi_response
-
-
-@view_config(name='robots.txt')
-def robotstxt_view(_context, _request):
-  return _robots_response
 
 
 @view_config(route_name='home', renderer='mainpage.mak')
@@ -1110,6 +1085,15 @@ def get_paginated_finished_runs(request):
     for page in pages:
       page['url'] += '&ltc_only=1'
 
+  for run in finished_runs:
+    # Ensure finished runs have results_info
+    # TODO do this when the run finishes, not when it's viewed
+    results = request.rundb.get_results(run)
+    if 'results_info' not in run:
+      run['results_info'] = format_results(results, run)
+    if results['wins'] + results['losses'] + results['draws'] == 0:
+      runs['failed'].append(run)
+
   return {
     'finished_runs': finished_runs,
     'finished_runs_pages': pages,
@@ -1120,18 +1104,7 @@ def get_paginated_finished_runs(request):
 
 @view_config(route_name='tests_finished', renderer='tests_finished.mak')
 def tests_finished(request):
-  paginated_finished_runs = get_paginated_finished_runs(request)
-  # Ensure finished runs have results_info
-  # TODO do this when the run finishes, not when it's viewed
-  for run in paginated_finished_runs['finished_runs']:
-    results = request.rundb.get_results(run)
-    if 'results_info' not in run:
-      run['results_info'] = format_results(results, run)
-  return paginated_finished_runs
-
-
-# Guard against parallel builds of main page
-building = threading.Semaphore()
+  return get_paginated_finished_runs(request)
 
 
 def remaining_hours(run):
@@ -1151,145 +1124,152 @@ def remaining_hours(run):
       run['args'].get('threads', 1)) / (60*60)
 
 
-@view_config(route_name='tests', renderer='tests.mak')
-@view_config(route_name='tests_user', renderer='tests.mak')
-def tests(request):
-  username = request.matchdict.get('username', '')
-  do_cache = not username and request.params.get('page', '1') == '1'
-
-  def set_show_hide(t):
-    t['machines_shown'] = request.cookies.get('machines_state') == 'Hide'
-    t['pending_shown'] = request.cookies.get('pending_state') == 'Hide'
-    return t
-
-  global last_tests, last_time
-  if do_cache:
-    if time.time() - last_time < cache_time:
-      return set_show_hide(last_tests)
-    if not building.acquire(last_tests is None):
-      # We have a current cache and another thread is rebuilding,
-      # so return the current cache
-      return set_show_hide(last_tests)
-    elif time.time() - last_time < cache_time:
-      # Another thread has built the cache for us, so we are done
-      building.release()
-      return set_show_hide(last_tests)
-
-  runs = {'pending': [], 'failed': [], 'active': [], 'finished': []}
-  try:
-    unfinished_runs = request.rundb.get_unfinished_runs()
-    for run in unfinished_runs:
-      # Is username filtering on?  If so, match just runs from that user
-      if len(username) > 0 and run['args'].get('username', '') != username:
-        continue
-
-      results = request.rundb.get_results(run, False)
-      run['results_info'] = format_results(results, run)
-
-      state = 'finished'
-      for task in run['tasks']:
-        if task['active']:
-          state = 'active'
-        elif task['pending'] and not state == 'active':
-          state = 'pending'
-
+def aggregate_and_update_unfinished_runs(unfinished_runs, rundb):
+  runs = {'pending': [], 'failed': [], 'active': []}
+  for run in unfinished_runs:
+    results = rundb.get_results(run, False)
+    run['results_info'] = format_results(results, run)
+    state = 'finished'
+    for task in run['tasks']:
+      if task['active']:
+        state = 'active'
+      elif task['pending'] and not state == 'active':
+        state = 'pending'
+    if state == 'finished':
       # Auto-purge runs here (this is hacky, ideally we would do it
       # when the run was finished, not when it is first viewed)
       # TODO auto-purge when a run finishes
-      if state == 'finished':
-        purged = 0
-        if (run['args'].get('auto_purge', True)
-            and 'spsa' not in run['args'] and run['args']['threads'] == 1):
-          while purge_run(request.rundb, run) and purged < 5:
-            purged += 1
-            run = request.rundb.get_run(run['_id'])
+      purged = 0
+      if (run['args'].get('auto_purge', True)
+          and 'spsa' not in run['args'] and run['args']['threads'] == 1):
+        while purge_run(rundb, run) and purged < 5:
+          purged += 1
+          run = rundb.get_run(run['_id'])
+          results = rundb.get_results(run, True)
+          run['results_info'] = format_results(results, run)
+          rundb.buffer(run, True)
+      if purged == 0:
+        run['finished'] = True
+        rundb.buffer(run, True)
+        post_result(run)
+    else:
+      runs[state].append(run)
+  runs['pending'].sort(key=lambda run: (run['args']['priority'],
+                                        run['args']['itp']
+                                        if 'itp' in run['args'] else 100))
+  runs['active'].sort(reverse=True, key=lambda run: (
+      'sprt' in run['args'],
+      run['args'].get('sprt',{}).get('llr',0),
+      'spsa' not in run['args'],
+      run['results']['wins'] + run['results']['draws']
+      + run['results']['losses']))
 
-            results = request.rundb.get_results(run, True)
-            run['results_info'] = format_results(results, run)
-            request.rundb.buffer(run, True)
-
-        if purged == 0:
-          run['finished'] = True
-          request.rundb.buffer(run, True)
-          post_result(run)
-
-      else:
-        runs[state].append(run)
-
-    runs['pending'].sort(key=lambda run: (run['args']['priority'],
-                                          run['args']['itp']
-                                          if 'itp' in run['args'] else 100))
-    runs['active'].sort(reverse=True, key=lambda run: (
-        'sprt' in run['args'],
-        run['args'].get('sprt',{}).get('llr',0),
-        'spsa' not in run['args'],
-        run['results']['wins'] + run['results']['draws']
-        + run['results']['losses']))
-
-    games_per_minute = 0.0
-    machines = request.rundb.get_machines()
-    for machine in machines:
-      machine['last_updated'] = delta_date(machine['last_updated'])
-      if machine['nps'] != 0:
-        games_per_minute += (
-            (machine['nps'] / 1200000.0)
-            * (60.0 / parse_tc(machine['run']['args']['tc']))
-            * int(machine['concurrency']))
-    machines.reverse()
-
-    cores = sum([int(m['concurrency']) for m in machines])
-    nps = sum([int(m['concurrency']) * m['nps'] for m in machines])
-    pending_hours = 0
-    for run in runs['pending'] + runs['active']:
+  # Update results_info on runs using machine info
+  machines = rundb.get_machines()
+  cores = sum([int(m['concurrency']) for m in machines])
+  nps = sum([int(m['concurrency']) * m['nps'] for m in machines])
+  pending_hours = 0
+  for run in runs['pending'] + runs['active']:
+    if cores > 0:
+      eta = remaining_hours(run) / cores
+      pending_hours += eta
+    info = run['results_info']
+    if 'Pending...' in info['info']:
       if cores > 0:
-        eta = remaining_hours(run) / cores
-        pending_hours += eta
-      info = run['results_info']
-      if 'Pending...' in info['info']:
-        if cores > 0:
-          info['info'][0] += ' (%.1f hrs)' % (eta)
-        if 'sprt' in run['args']:
-          sprt = run['args']['sprt']
-          elo_model = sprt.get('elo_model', 'BayesElo')
-          if elo_model == 'BayesElo':
-            info['info'].append(('[%.2f,%.2f]')
-                                % (sprt['elo0'], sprt['elo1']))
-          else:
-            info['info'].append(('{%.2f,%.2f}')
-                                % (sprt['elo0'], sprt['elo1']))
+        info['info'][0] += ' (%.1f hrs)' % (eta)
+      if 'sprt' in run['args']:
+        sprt = run['args']['sprt']
+        elo_model = sprt.get('elo_model', 'BayesElo')
+        if elo_model == 'BayesElo':
+          info['info'].append(('[%.2f,%.2f]')
+                              % (sprt['elo0'], sprt['elo1']))
+        else:
+          info['info'].append(('{%.2f,%.2f}')
+                              % (sprt['elo0'], sprt['elo1']))
+  return (runs, pending_hours, cores, nps)
 
-    paginated_finished_runs = get_paginated_finished_runs(request)
-    finished_runs = paginated_finished_runs['finished_runs']
-    runs['finished'] += finished_runs
-    for run in finished_runs:
-      results = request.rundb.get_results(run)
-      # Ensure finished runs have results_info
-      # TODO do this when the run finishes, not when it's viewed
-      if 'results_info' not in run:
-        run['results_info'] = format_results(results, run)
-      if results['wins'] + results['losses'] + results['draws'] == 0:
-        runs['failed'].append(run)
 
-    result = paginated_finished_runs
-    result.update({
-      'runs': runs,
-      'machines': machines,
-      'show_machines': not username,
-      'pending_hours': '%.1f' % (pending_hours),
-      'cores': cores,
-      'nps': nps,
-      'games_per_minute': int(games_per_minute),
-    })
+@view_config(route_name='tests_user', renderer='tests_user.mak')
+def tests_user(request):
+  username = request.matchdict.get('username', '')
+  result = {
+    **get_paginated_finished_runs(request),
+    'username': username
+  }
+  if not request.params.get('page', '1') == '1':
+    # page 2 and beyond only show finished test results
+    return result
+  unfinished_runs = [
+    r for r in request.rundb.get_unfinished_runs() if r['args'].get('username') == username
+  ]
+  result['runs'] = aggregate_and_update_unfinished_runs(unfinished_runs, request.rundb)[0]
+  return result
 
-  except Exception as e:
-    if do_cache:
+
+def homepage_results(request):
+  # Calculate games_per_minute from current machines
+  games_per_minute = 0.0
+  machines = request.rundb.get_machines()
+  for machine in machines:
+    machine['last_updated'] = delta_date(machine['last_updated'])
+    if machine['nps'] != 0:
+      games_per_minute += (
+          (machine['nps'] / 1200000.0)
+          * (60.0 / parse_tc(machine['run']['args']['tc']))
+          * int(machine['concurrency']))
+  machines.reverse()
+
+  # Update unfinished_runs + fetch paginated finished_runs
+  unfinished_runs = request.rundb.get_unfinished_runs()
+  (runs, pending_hours, cores, nps) = aggregate_and_update_unfinished_runs(
+    unfinished_runs, request.rundb)
+
+  return {
+    **get_paginated_finished_runs(request),
+    'runs': runs,
+    'machines': machines,
+    'pending_hours': '%.1f' % (pending_hours),
+    'cores': cores,
+    'nps': nps,
+    'games_per_minute': int(games_per_minute),
+  }
+
+
+# For caching the homepage tests output
+cache_time = 2
+last_tests = None
+last_time = 0
+
+# Guard against parallel builds of main page
+building = threading.Semaphore()
+
+@view_config(route_name='tests', renderer='tests.mak')
+def tests(request):
+  if not request.params.get('page', '1') == '1':
+    # page 2 and beyond only show finished test results
+    return get_paginated_finished_runs(request)
+
+  global last_tests, last_time
+  if time.time() - last_time > cache_time:
+    acquired = building.acquire(last_tests is None)
+    if not acquired:
+      # We have a current cache and another thread is rebuilding,
+      # so return the current cache
+      pass
+    elif time.time() - last_time < cache_time:
+      # Another thread has built the cache for us, so we are done
       building.release()
-    print('Overview exception: ' + str(e))
-    return set_show_hide(last_tests)
-
-  if do_cache:
-    last_tests = result
-    last_time = time.time()
-    building.release()
-
-  return set_show_hide(result)
+    else:
+      # Not cached, so calculate and fetch homepage results
+      try:
+        last_tests = homepage_results(request)
+      except Exception as e:
+        print('Overview exception: ' + str(e))
+      finally:
+        last_time = time.time()
+        building.release()
+  return {
+    **last_tests,
+    'machines_shown': request.cookies.get('machines_state') == 'Hide',
+    'pending_shown': request.cookies.get('pending_state') == 'Hide'
+  }
