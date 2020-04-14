@@ -42,7 +42,13 @@
       <span class="pagination pagination-small">
         <ul>
           %for page in pages:
-            <li class="${page['state']}"><a href="${page['url']}">${page['idx']}</a></li>
+            <li class="${page['state']}">
+              %if page['state'] not in ['disabled', 'active']:
+                <a href="${page['url']}">${page['idx']}</a>
+              %else:
+                <a>${page['idx']}</a>
+              %endif
+            </li>
           %endfor
         </ul>
       </span>
