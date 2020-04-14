@@ -4,7 +4,7 @@ import datetime
 from pyramid import testing
 
 from fishtest.views import login, signup
-from fishtest.api import stop_run
+from fishtest.api import ApiView
 
 import util
 
@@ -61,12 +61,12 @@ class Create50LoginTest(unittest.TestCase):
       }
     )
     response = login(request)
-    self.assertTrue('Invalid password' in request.session.pop_flash())
+    self.assertTrue('Invalid password' in request.session.pop_flash('error'))
 
     # Correct password, but still blocked from logging in
     request.params['password'] = 'secret'
     login(request)
-    self.assertTrue('Blocked' in request.session.pop_flash())
+    self.assertTrue('Blocked' in request.session.pop_flash('error'))
 
     # Unblock, then user can log in successfully
     user = self.rundb.userdb.get_user('JoeUser')
@@ -110,8 +110,8 @@ class Create90APITest(unittest.TestCase):
         'message': 'travis'
       }
     )
-    response = stop_run(request)
-    self.assertEqual(response, '{}')
+    response = ApiView(request).stop_run()
+    self.assertEqual(response, {})
     run = request.rundb.get_run(request.json_body['run_id'])
     self.assertEqual(run['stop_reason'], 'travis')
 
