@@ -82,7 +82,7 @@ class UserDb:
     try:
       if self.find(username):
         return False
-      self.users.insert({
+      self.users.insert_one({
         'username': username,
         'password': password,
         'registration_time': datetime.utcnow(),
@@ -98,7 +98,7 @@ class UserDb:
       return False
 
   def save_user(self, user):
-    self.users.save(user)
+    self.users.replace_one({ 'username': user['username'] }, user)
     self.last_pending_time = 0
 
   def get_machine_limit(self, username):

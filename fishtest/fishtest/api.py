@@ -22,7 +22,7 @@ def get_flag(request):
     r = requests.get(FLAG_HOST + request.remote_addr, timeout=1.0)
     if r.status_code == 200:
       country_code = r.json()['country_code']
-      request.userdb.flag_cache.insert({
+      request.userdb.flag_cache.insert_one({
         'ip': ip,
         'country_code': country_code
       })
