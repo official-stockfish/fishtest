@@ -31,6 +31,7 @@
       <li class="nav-header">Tests</li>
       <li><a href="/tests">Overview</a></li>
       <li><a href="/tests/finished?success_only=1">Greens</a></li>
+      <li><a href="/tests/finished?yellow_only=1">Yellows</a></li>
       <li><a href="/tests/finished?ltc_only=1">LTC</a></li>
       <li><a href="/tests/run">New</a></li>
 

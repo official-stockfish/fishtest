@@ -265,7 +265,7 @@ class RunDb:
                             sort=[('last_updated', DESCENDING)])
 
   def get_finished_runs(self, skip=0, limit=0, username='',
-                        success_only=False, ltc_only=False):
+                        success_only=False, yellow_only=False, ltc_only=False):
     q = {'finished': True}
     idx_hint = 'finished_runs'
     if username:
@@ -277,6 +277,9 @@ class RunDb:
     if success_only:
       q['is_green'] = True
       idx_hint = 'finished_green_runs'
+    if yellow_only:
+      q['is_yellow'] = True
+      idx_hint = 'finished_yellow_runs'
 
     c = self.runs.find(q, skip=skip, limit=limit,
                        sort=[('last_updated', DESCENDING)])

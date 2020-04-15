@@ -4,6 +4,8 @@
   Finished Tests
   %if 'success_only' in request.url:
     - Greens
+  %elif 'yellow_only' in request.url:
+    - Yellows
   %elif 'ltc_only' in request.url:
     - LTC
   %endif
