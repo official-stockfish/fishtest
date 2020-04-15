@@ -11,7 +11,7 @@ class CreateRunDBTest(unittest.TestCase):
 
   def setUp(self):
     self.rundb = util.get_rundb()
-    self.rundb.runs.ensure_index(
+    self.rundb.runs.create_index(
       [('last_updated', DESCENDING), ('tc_base', DESCENDING)],
       name='finished_ltc_runs',
       partialFilterExpression={ 'finished': True, 'tc_base': { '$gte': 40 } }

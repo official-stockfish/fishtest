@@ -43,7 +43,7 @@ class ActionDb:
     self._new_action(username, 'block_user', data)
 
   def _new_action(self, username, action, data):
-    self.actions.insert({
+    self.actions.insert_one({
       'username': username,
       'action': action,
       'data': data,

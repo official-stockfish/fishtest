@@ -122,7 +122,7 @@ class RunDb:
       'approver': '',
     }
 
-    return self.runs.insert(new_run)
+    return self.runs.insert_one(new_run).inserted_id
 
   def get_machines(self):
     machines = []
@@ -180,7 +180,7 @@ class RunDb:
         run = self.runs.find_one({'_id': ObjectId(r_id)})
         if run:
           self.run_cache[r_id] = {'rtime': time.time(), 'ftime': time.time(),
-                                'run': run, 'dirty': False}
+                                  'run': run, 'dirty': False}
         return run
       except:
         return None
@@ -196,16 +196,16 @@ class RunDb:
       r_id = str(run['_id'])
       if flush:
         self.run_cache[r_id] = {'dirty': False, 'rtime': time.time(),
-                              'ftime': time.time(), 'run': run}
+                                'ftime': time.time(), 'run': run}
         with self.run_cache_write_lock:
-          self.runs.save(run)
+          self.runs.replace_one({ '_id': ObjectId(r_id) }, run)
       else:
         if r_id in self.run_cache:
           ftime = self.run_cache[r_id]['ftime']
         else:
           ftime = time.time()
         self.run_cache[r_id] = {'dirty': True, 'rtime': time.time(),
-                              'ftime': ftime, 'run': run}
+                                'ftime': ftime, 'run': run}
 
   def stop(self):
     self.flush_all()
@@ -219,7 +219,7 @@ class RunDb:
     # called from a signal handler and grabbing locks might deadlock
     for r_id in list(self.run_cache):
       if self.run_cache[r_id]['dirty']:
-        self.runs.save(self.run_cache[r_id]['run'])
+        self.runs.replace_one({ '_id': ObjectId(r_id) }, self.run_cache[r_id]['run'])
         print(".", end='')
     print("done")
 
@@ -526,7 +526,7 @@ class RunDb:
     return {'task_alive': task['active']}
 
   def upload_pgn(self, run_id, pgn_zip):
-    self.pgndb.insert({'run_id': run_id, 'pgn_zip': Binary(pgn_zip)})
+    self.pgndb.insert_one({'run_id': run_id, 'pgn_zip': Binary(pgn_zip)})
     return {}
 
   def failed_task(self, run_id, task_id):
