@@ -1059,12 +1059,14 @@ def post_result(run):
 def get_paginated_finished_runs(request):
   username = request.matchdict.get('username', '')
   success_only = request.params.get('success_only', False)
+  yellow_only = request.params.get('yellow_only', False)
   ltc_only = request.params.get('ltc_only', False)
 
   page_idx = max(0, int(request.params.get('page', 1)) - 1)
   page_size = 50
   finished_runs, num_finished_runs = request.rundb.get_finished_runs(
-    username=username, success_only=success_only, ltc_only=ltc_only,
+    username=username, success_only=success_only,
+    yellow_only=yellow_only, ltc_only=ltc_only,
     skip=page_idx * page_size, limit=page_size)
 
   pages = [{'idx': 'Prev', 'url': '?page={}'.format(page_idx),
@@ -1078,11 +1080,12 @@ def get_paginated_finished_runs(request):
   pages.append({'idx': 'Next', 'url': '?page={}'.format(page_idx + 2),
                 'state': 'disabled' if page_idx + 1 == len(pages) - 1 else ''})
 
-  if success_only:
-    for page in pages:
+  for page in pages:
+    if success_only:
       page['url'] += '&success_only=1'
-  if ltc_only:
-    for page in pages:
+    if yellow_only:
+      page['url'] += '&yellow_only=1'
+    if ltc_only:
       page['url'] += '&ltc_only=1'
 
   failed_runs = []
@@ -1275,6 +1278,8 @@ def tests(request):
         last_tests = homepage_results(request)
       except Exception as e:
         print('Overview exception: ' + str(e))
+        if not last_tests:
+          raise e
       finally:
         last_time = time.time()
         building.release()
