@@ -162,7 +162,7 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
     <span id="diff-num-comments" style="display: none"></span>
     <a href="${h.diff_url(run)}" class="btn btn-link" target="_blank" rel="noopener">view on Github</a>
     <button id="diff-toggle" class="btn">Show</button>
-    <a href="javascipt:" id="copy-diff" class="btn btn-link" style="margin-left: 10px; display: none">
+    <a href="javascript:" id="copy-diff" class="btn btn-link" style="margin-left: 10px; display: none">
       <img src="/img/clipboard.png" width="20" height="20"/> Copy apply-diff command
     </a>
     <div class="btn btn-link copied" style="color: green; display: none">Copied command!</div>
