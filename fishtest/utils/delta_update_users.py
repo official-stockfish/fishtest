@@ -2,8 +2,9 @@
 
 import os
 import sys
-
 from datetime import datetime, timedelta
+
+from pymongo import DESCENDING
 
 # For tasks
 sys.path.append(os.path.expanduser('~/fishtest/fishtest'))
@@ -115,13 +116,16 @@ def update_users():
       print("Exception on run: ", run)
 
   # Step through these in small batches (step size 100) to save RAM
-  current = 0
   step_size = 100
 
   now = datetime.utcnow()
   more_days = True
+  last_run_id = None
   while more_days:
-    runs = rundb.get_finished_runs(skip=current, limit=step_size)[0]
+    q = { 'finished': True }
+    if last_run_id:
+      q['_id'] = { '$lt': last_run_id }
+    runs = list(rundb.runs.find(q, sort=[('_id', DESCENDING)], limit=step_size))
     if len(runs) == 0:
       break
     for run in runs:
@@ -136,7 +140,7 @@ def update_users():
           print("Exception on run: ", run['_id'])
       elif not clear_stats:
         more_days = False
-    current += step_size
+    last_run_id = runs[-1]['_id']
 
   if new_deltas:
     new_deltas.update(deltas)

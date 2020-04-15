@@ -2,6 +2,8 @@
 
 import datetime, os, sys
 
+from pymongo import DESCENDING
+
 # For tasks
 sys.path.append(os.path.expanduser('~/fishtest/fishtest'))
 from fishtest.rundb import RunDb
@@ -74,18 +76,21 @@ def update_users():
     process_run(run, top_month)
 
   # Step through these 100 at a time to avoid using too much RAM
-  current = 0
   step_size = 100
+  last_run_id = None
   now = datetime.datetime.utcnow()
   while True:
-    runs = rundb.get_finished_runs(skip=current, limit=step_size)[0]
+    q = { 'finished': True }
+    if last_run_id:
+      q['_id'] = { '$lt': last_run_id }
+    runs = list(rundb.runs.find(q, sort=[('_id', DESCENDING)], limit=step_size))
     if len(runs) == 0:
       break
     for run in runs:
       process_run(run, info)
       if (now - run['start_time']).days < 31: 
         process_run(run, top_month)
-    current += step_size
+    last_run_id = runs[-1]['_id']
 
   machines = rundb.get_machines()
 
