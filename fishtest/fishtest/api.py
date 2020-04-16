@@ -7,7 +7,7 @@ from pyramid.view import view_config
 
 import fishtest.stats.sprt
 
-WORKER_VERSION = 72
+WORKER_VERSION = 73
 
 
 def get_flag(request):

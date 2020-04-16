@@ -27,7 +27,7 @@ from updater import update
 from datetime import datetime
 from os import path
 
-WORKER_VERSION = 72
+WORKER_VERSION = 73
 ALIVE = True
 HTTP_TIMEOUT = 15.0
 
@@ -208,17 +208,18 @@ def main():
   with open(config_file, 'w') as f:
     config.write(f)
 
-  if options.protocol.lower() not in ['http', 'https']:
+  protocol = options.protocol.lower()
+  if protocol not in ['http', 'https']:
     sys.stderr.write('Wrong protocol, use https or http\n')
     sys.exit(1)
-  elif options.protocol.lower() == 'http' and options.port == '443':
+  elif protocol == 'http' and options.port == '443':
     # Rewrite old port 443 to 80
     options.port = '80'
-  elif options.protocol.lower() == 'https' and options.port == '80':
+  elif protocol == 'https' and options.port == '80':
     # Rewrite old port 80 to 443
     options.port = '443'
-  remote = '%s://%s:%s' % (options.protocol.lower(), options.host, options.port)
-  print('Worker version %s connecting to %s' % (WORKER_VERSION, remote))
+  remote = '{}://{}:{}'.format(protocol, options.host, options.port)
+  print('Worker version {} connecting to {}'.format(WORKER_VERSION, remote))
 
   try:
     cpu_count = min(int(options.concurrency), multiprocessing.cpu_count() - 1)

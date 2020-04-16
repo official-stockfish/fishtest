@@ -50,6 +50,11 @@ if IS_WINDOWS:
   EXE_SUFFIX = '.exe'
   MAKE_CMD = 'make COMP=mingw ' + ARCH
 
+def send_api_post_request(api_url, payload):
+  return requests.post(api_url, data=json.dumps(payload), headers={
+    'Content-Type': 'application/json'
+  }, timeout=HTTP_TIMEOUT)
+
 def github_api(repo):
   """ Convert from https://github.com/<user>/<repo>
       To https://api.github.com/repos/<user>/<repo> """
@@ -83,7 +88,7 @@ def verify_signature(engine, signature, remote, payload, concurrency):
     if int(bench_sig) != int(signature):
       message = 'Wrong bench in %s Expected: %s Got: %s' % (os.path.basename(engine), signature, bench_sig)
       payload['message'] = message
-      requests.post(remote + '/api/stop_run', data=json.dumps(payload), headers={'Content-type': 'application/json'}, timeout=HTTP_TIMEOUT)
+      send_api_post_request(remote + '/api/stop_run', payload)
       raise Exception(message)
 
   finally:
@@ -257,20 +262,20 @@ def update_pentanomial(line,rounds):
   pentanomial=[rounds['pentanomial'][i]+old_stats['pentanomial'][i] for i in range(0,5)]
   return pentanomial
 
-def validate_pentanomial(wld,rounds):
+def validate_pentanomial(wld, rounds):
   def results_to_score(results):
-    return sum([results[i]*(i/2.0) for i in range(0,len(results))])
-  LDW=[wld[1],wld[2],wld[0]]
-  s3=results_to_score(LDW)
-  s5=results_to_score(rounds['pentanomial'])+results_to_score(rounds['trinomial'])
-  assert(sum(LDW)==2*sum(rounds['pentanomial'])+sum(rounds['trinomial']))
-  epsilon=1e-4
-  assert(abs(s5-s3)<epsilon)
+    return sum([results[i] * (i / 2.0) for i in range(0, len(results))])
+  LDW = [wld[1], wld[2], wld[0]]
+  s3 = results_to_score(LDW)
+  s5 = results_to_score(rounds['pentanomial']) + results_to_score(rounds['trinomial'])
+  assert(sum(LDW) == 2 * sum(rounds['pentanomial']) + sum(rounds['trinomial']))
+  epsilon = 1e-4
+  assert(abs(s5 - s3) < epsilon)
 
 
 def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
   global old_stats
-  rounds={}
+  rounds = {}
 
   q = Queue()
   t = threading.Thread(target=enqueue_output, args=(p.stdout, q))
@@ -278,12 +283,14 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
   t.start()
 
   end_time = datetime.datetime.now() + datetime.timedelta(seconds=tc_limit)
-  print('TC limit '+str(tc_limit)+' End time: '+str(end_time))
+  print('TC limit {} End time: {}'.format(tc_limit, end_time))
 
+  num_game_pairs_updated = 0
   while datetime.datetime.now() < end_time:
-    try: line = q.get_nowait()
+    try:
+      line = q.get_nowait()
     except Empty:
-      if p.poll() != None:
+      if p.poll():
         break
       time.sleep(1)
       continue
@@ -312,7 +319,7 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
       chunks = chunks[1].split()
       wld = [int(chunks[0]), int(chunks[2]), int(chunks[4])]
 
-      validate_pentanomial(wld,rounds)
+      validate_pentanomial(wld, rounds)
 
       if not spsa_tuning:
         result['stats']['wins']   = wld[0] - rounds['trinomial'][2] + old_stats['wins']
@@ -326,38 +333,41 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
         spsa['losses'] = wld[1]
         spsa['draws'] = wld[2]
 
-      update_succeeded=False
-      for _ in range(0,5):
-        try:
-          t0 = datetime.datetime.utcnow()
-          req = requests.post(remote + '/api/update_task', data=json.dumps(result), headers={'Content-type': 'application/json'}, timeout=HTTP_TIMEOUT).json()
-          print("Task updated successfully in %ss" % ((datetime.datetime.utcnow() - t0).total_seconds()))
-          if not req['task_alive']:
-            # This task is no longer neccesary
-            print('Server told us task is no longer needed')
-            kill_process(p)
-            return req
-          update_succeeded=True
+      num_game_pairs_finished = sum(rounds['pentanomial'])
+      # Send an update_task request after a game pair finishes, not after every game
+      if num_game_pairs_finished > num_game_pairs_updated:
+        # Attempt to send game results to the server. Retry a few times upon error
+        update_succeeded = False
+        for _ in range(0, 5):
+          try:
+            t0 = datetime.datetime.utcnow()
+            response = send_api_post_request(remote + '/api/update_task', result).json()
+            print("  Task updated successfully in %ss" % ((datetime.datetime.utcnow() - t0).total_seconds()))
+            if not response['task_alive']:
+              # This task is no longer neccesary
+              print('Server told us task is no longer needed')
+              kill_process(p)
+              return response
+            update_succeeded = True
+            break
+          except Exception as e:
+            sys.stderr.write('Exception from calling update_task:\n')
+            print(e)
+            # traceback.print_exc(file=sys.stderr)
+          time.sleep(HTTP_TIMEOUT)
+        if not update_succeeded:
+          print('Too many failed update attempts')
+          kill_process(p)
           break
-        except Exception as e:
-          sys.stderr.write('Exception from calling update_task:\n')
-          print(e)
-#          traceback.print_exc(file=sys.stderr)
-        time.sleep(HTTP_TIMEOUT)
+        num_game_pairs_updated = num_game_pairs_finished
 
-      if not update_succeeded:
-        print('Too many failed update attempts')
-        kill_process(p)
-        break
+    pentanomial = update_pentanomial(line, rounds)
+    result['stats']['pentanomial'] = pentanomial
 
-    pentanomial=update_pentanomial(line,rounds)
-    result['stats']['pentanomial']=pentanomial
-
-  if datetime.datetime.now() >= end_time:
-    print(str(datetime.datetime.now()) + ' is past end time ' + str(end_time))
-
+  now = datetime.datetime.now()
+  if now >= end_time:
+    print('{} is past end time {}'.format(now, end_time))
   kill_process(p)
-
   return { 'task_alive': True }
 
 def launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, tc_limit):
@@ -370,7 +380,7 @@ def launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, tc_limit):
   if spsa_tuning:
     # Request parameters for next game
     t0 = datetime.datetime.utcnow()
-    req = requests.post(remote + '/api/request_spsa', data=json.dumps(result), headers={'Content-type': 'application/json'}, timeout=HTTP_TIMEOUT).json()
+    req = send_api_post_request(remote + '/api/request_spsa', result).json()
     print("Fetched SPSA parameters successfully in %ss" % ((datetime.datetime.utcnow() - t0).total_seconds()))
 
     global w_params, b_params
@@ -563,7 +573,8 @@ def run_games(worker_info, password, remote, run, task_id):
           ['-engine', 'name=Base-'+run['args']['resolved_base'][:7], 'cmd=%s' % (base_engine_name)] + base_options + ['_spsa_'] + \
           ['-each', 'proto=uci', 'tc=%s' % (scaled_tc)] + nodestime_cmd + threads_cmd + book_cmd
 
-    task_status = launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, tc_limit * games_to_play / min(games_to_play, games_concurrency))
+    task_status = launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play,
+                                   tc_limit * games_to_play / min(games_to_play, games_concurrency))
     if not task_status.get('task_alive', False):
       break
 
