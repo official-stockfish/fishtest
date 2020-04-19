@@ -10,10 +10,15 @@ import fishtest.stats.sprt
 WORKER_VERSION = 73
 
 
+flag_cache = {}
+
 def get_flag(request):
   ip = request.remote_addr
+  if ip in flag_cache:
+    return flag_cache[ip]
   result = request.userdb.flag_cache.find_one({'ip': ip})
   if result is not None:
+    flag_cache[ip] = result['country_code']
     return result['country_code']
 
   # Get country flag ip
@@ -26,8 +31,10 @@ def get_flag(request):
         'ip': ip,
         'country_code': country_code
       })
+      flag_cache[ip] = country_code
       return country_code
   except:
+    flag_cache[ip] = None
     return None
 
 
