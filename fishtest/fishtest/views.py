@@ -64,7 +64,7 @@ def login(request):
       headers = remember(request, username)
       return HTTPFound(location=came_from, headers=headers)
 
-    request.session.flash(token['error'])  # 'Incorrect password'
+    request.session.flash(token['error'], 'error')  # 'Incorrect password'
   return {}
 
 
@@ -81,20 +81,20 @@ def logout(request):
 def signup(request):
   if request.method != 'POST':
     return {}
+  errors = []
   if len(request.POST.get('password', '')) == 0:
-    request.session.flash('Non-empty password required')
-    return {}
+    errors.append('Non-empty password required')
   if request.POST.get('password') != request.POST.get('password2', ''):
-    request.session.flash('Matching verify password required')
-    return {}
+    errors.append('Matching verify password required')
   if '@' not in request.POST.get('email', ''):
-    request.session.flash('Email required')
-    return {}
+    errors.append('Email required')
   if len(request.POST.get('username', '')) == 0:
-    request.session.flash('Username required')
-    return {}
+    errors.append('Username required')
   if not request.POST.get('username', '').isalnum():
-    request.session.flash('Alphanumeric username required')
+    errors.append('Alphanumeric username required')
+  if errors:
+    for error in errors:
+      request.session.flash(error, 'error')
     return {}
 
   path = os.path.expanduser('~/fishtest.captcha.secret')
@@ -110,7 +110,7 @@ def signup(request):
       if 'success' not in response or not response['success']:
         if 'error-codes' in response:
           print(response['error-codes'])
-        request.session.flash('Captcha failed')
+        request.session.flash('Captcha failed', 'error')
         return {}
 
   result = request.userdb.create_user(
@@ -119,7 +119,7 @@ def signup(request):
     email=request.POST.get('email', '')
   )
   if not result:
-    request.session.flash('Invalid username')
+    request.session.flash('Invalid username', 'error')
   else:
     request.session.flash(
         'Your account will be activated by an administrator soon...')
@@ -249,7 +249,7 @@ def get_idle_users(request):
 @view_config(route_name='pending', renderer='pending.mak')
 def pending(request):
   if not has_permission('approve_run', request.context, request):
-    request.session.flash('You cannot view pending users')
+    request.session.flash('You cannot view pending users', 'error')
     return HTTPFound(location=request.route_url('tests'))
 
   return {'users': request.userdb.get_pending(),
@@ -267,7 +267,7 @@ def user(request):
   profile = (user_name == userid)
   if not profile and not has_permission(
       'approve_run', request.context, request):
-    request.session.flash('You cannot inspect users')
+    request.session.flash('You cannot inspect users', 'error')
     return HTTPFound(location=request.route_url('tests'))
   user_data = request.userdb.get_user(user_name)
   if 'user' in request.POST:
@@ -275,7 +275,7 @@ def user(request):
       if len(request.params.get('password')) > 0:
         if (request.params.get('password')
             != request.params.get('password2', '')):
-          request.session.flash('Matching verify password required')
+          request.session.flash('Matching verify password required', 'error')
           return {'user': user_data, 'profile': profile}
         user_data['password'] = request.params.get('password')
       if len(request.params.get('email')) > 0:
@@ -516,7 +516,7 @@ def tests_run(request):
       cached_flash(request, 'Submitted test to the queue!')
       return HTTPFound(location='/tests/view/' + str(run_id))
     except Exception as e:
-      request.session.flash(str(e))
+      request.session.flash(str(e), 'error')
 
   run_args = {}
   if 'id' in request.params:
@@ -546,7 +546,7 @@ def tests_modify(request):
     before = copy.deepcopy(run)
 
     if not can_modify_run(request, run):
-      request.session.flash("Unable to modify another user's run!")
+      request.session.flash("Unable to modify another user's run!", 'error')
       return HTTPFound(location=request.route_url('tests'))
 
     existing_games = 0
@@ -563,12 +563,12 @@ def tests_modify(request):
         and 'sprt' not in run['args']
         and 'spsa' not in run['args']):
       request.session.flash(
-          'Unable to modify number of games in a fixed game test!')
+          'Unable to modify number of games in a fixed game test!', 'error')
       return HTTPFound(location=request.route_url('tests'))
 
     max_games = 4000 * request.rundb.chunk_size
     if num_games > max_games:
-      request.session.flash('Number of games must be <= ' + str(max_games))
+      request.session.flash('Number of games must be <= ' + str(max_games), 'error')
       return HTTPFound(location=request.route_url('tests'))
 
     if num_games > existing_games:
@@ -598,7 +598,7 @@ def tests_stop(request):
   if 'run-id' in request.POST:
     run = request.rundb.get_run(request.POST['run-id'])
     if not can_modify_run(request, run):
-      request.session.flash('Unable to modify another users run!')
+      request.session.flash('Unable to modify another users run!', 'error')
       return HTTPFound(location=request.route_url('tests'))
 
     run['finished'] = True
@@ -624,7 +624,7 @@ def tests_approve(request):
     request.actiondb.approve_run(username, run)
     cached_flash(request, 'Approved run')
   else:
-    request.session.flash('Unable to approve run!')
+    request.session.flash('Unable to approve run!', 'error')
   return HTTPFound(location=request.route_url('tests'))
 
 
@@ -669,7 +669,7 @@ def tests_purge(request):
 
   run = request.rundb.get_run(request.POST['run-id'])
   if not run['finished']:
-    request.session.flash('Can only purge completed run')
+    request.session.flash('Can only purge completed run', 'error')
     return HTTPFound(location=request.route_url('tests'))
 
   purged = purge_run(request.rundb, run)
@@ -691,7 +691,7 @@ def tests_delete(request):
   if 'run-id' in request.POST:
     run = request.rundb.get_run(request.POST['run-id'])
     if not can_modify_run(request, run):
-      request.session.flash('Unable to modify another users run!')
+      request.session.flash('Unable to modify another users run!', 'error')
       return HTTPFound(location=request.route_url('tests'))
 
     run['deleted'] = True

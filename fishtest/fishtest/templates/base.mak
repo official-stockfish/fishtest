@@ -76,6 +76,15 @@
        style="width: calc(100% - 100px); float: left;">
     <div class="container-fluid">
       <div class="row-fluid">
+        %if request.session.peek_flash('error'):
+          <% flash = request.session.pop_flash('error') %>
+          %for message in flash:
+            <div class="alert alert-error">
+              <button type="button" class="close" data-dismiss="alert">x</button>
+              ${message}
+            </div>
+          %endfor
+        %endif
         %if request.session.peek_flash():
           <% flash = request.session.pop_flash() %>
           %for message in flash:
