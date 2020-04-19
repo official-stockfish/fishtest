@@ -81,13 +81,15 @@
   }
 </style>
 
-<legend>Create New Test</legend>
+<header style="text-align: center; padding-top: 7px">
+  <legend>Create New Test</legend>
 
-<section class="instructions" style="margin-bottom: 35px">
-  Please read the
-  <a href="https://github.com/glinscott/fishtest/wiki/Creating-my-first-test">Testing Guidelines</a>
-  before creating your test.
-</section>
+  <section class="instructions" style="margin-bottom: 35px">
+    Please read the
+    <a href="https://github.com/glinscott/fishtest/wiki/Creating-my-first-test">Testing Guidelines</a>
+    before creating your test.
+  </section>
+</header>
 
 <form id="create-new-test" action="${request.url}" method="POST">
   <section class="test-settings" style="margin-bottom: 35px">
