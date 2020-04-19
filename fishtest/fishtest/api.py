@@ -1,4 +1,5 @@
 import base64
+from datetime import datetime
 
 import requests
 from pyramid.httpexceptions import HTTPUnauthorized, exception_response
@@ -8,8 +9,6 @@ from pyramid.response import Response
 from fishtest.stats.stat_util import SPRT_elo
 
 WORKER_VERSION = 73
-
-flag_cache = {}
 
 
 def strip_run(run):
@@ -53,11 +52,8 @@ class ApiView(object):
 
   def get_flag(self):
     ip = self.request.remote_addr
-    if ip in flag_cache:
-      return flag_cache[ip]
     result = self.request.userdb.flag_cache.find_one({'ip': ip})
     if result:
-      flag_cache[ip] = result['country_code']
       return result['country_code']
     try:
       # Get country flag from worker IP address
@@ -65,14 +61,14 @@ class ApiView(object):
       r = requests.get(FLAG_HOST + self.request.remote_addr, timeout=1.0)
       if r.status_code == 200:
         country_code = r.json()['country_code']
-        self.request.userdb.flag_cache.insert({
+        self.request.userdb.flag_cache.insert_one({
           'ip': ip,
-          'country_code': country_code
+          'country_code': country_code,
+          'geoip_checked_at': datetime.utcnow()
         })
-        flag_cache[ip] = country_code
         return country_code
     except:
-      flag_cache[ip] = None
+      print('Failed GeoIP check for {}'.format(ip))
       return None
 
   def run_id(self):

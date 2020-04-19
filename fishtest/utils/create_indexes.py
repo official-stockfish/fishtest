@@ -6,8 +6,8 @@
 import os
 import sys
 import pprint
-from pymongo import MongoClient, ASCENDING, DESCENDING
 
+from pymongo import MongoClient, ASCENDING, DESCENDING
 
 db_name = 'fishtest_new'
 
@@ -18,6 +18,7 @@ db = conn[db_name]
 
 
 def create_runs_indexes():
+  print('Creating indexes on runs collection')
   db['runs'].create_index(
     [('last_updated', ASCENDING)],
     name='unfinished_runs',
@@ -48,7 +49,8 @@ def create_runs_indexes():
     name='user_runs'
   )
 
-def create_pgn_indexes():
+def create_pgns_indexes():
+  print('Creating indexes on pgns collection')
   db['pgns'].create_index([('run_id', DESCENDING)])
 
 def create_users_indexes():
@@ -59,37 +61,60 @@ def create_actions_indexes():
     ('username', ASCENDING),
     ('_id', DESCENDING),
   ])
-
   db['actions'].create_index([
     ('action', ASCENDING),
     ('_id', DESCENDING),
   ])
 
+def create_flag_cache_indexes():
+  db['flag_cache'].create_index('ip')
+  db['flag_cache'].create_index('geoip_checked_at', expireAfterSeconds=60 * 60 * 24 * 7)
 
-collection_names = ['users', 'actions', 'runs', 'pgns'] # db.collection_names()
+def print_current_indexes():
+  for collection_name in db.collection_names():
+    c = db[collection_name]
+    print('Current indexes on ' + collection_name + ':')
+    pprint.pprint(c.index_information(), stream=None, indent=2, width=110, depth=None)
+    print('')
 
-# Loop through all collections and recreate indexes if given in index_list
-for collection_name in collection_names:
-  c = db[collection_name]
-
-  # Drop all indexes on collections cn except _id_
-  index_keys = c.index_information().keys()
-  print("Dropping indexes on {} - {}".format(collection_name, index_keys))
+def drop_indexes(collection_name):
+  # Drop all indexes on collection except _id_
+  print('\nDropping indexes on {}'.format(collection_name))
+  collection = db[collection_name]
+  index_keys = list(collection.index_information().keys())
+  print('Current indexes: {}'.format(index_keys))
   for idx in index_keys:
-    if idx != "_id_":
-      print("Dropping " + collection_name + " index " + idx + " ...")
-      c.drop_index(idx)
+    if idx != '_id_':
+      print('Dropping ' + collection_name + ' index ' + idx + ' ...')
+      collection.drop_index(idx)
 
-print("\nCreating indexes...")
-create_users_indexes()
-create_actions_indexes()
-create_runs_indexes()
-create_pgn_indexes()
-print("Finished creating indexes!\n")
 
-# Display current list of indexes
-for collection_name in collection_names:
-  c = db[collection_name]
-  print("Current indexes on " + collection_name + ":")
-  pprint.pprint(c.index_information(), stream=None, indent=2, width=110, depth=None)
-  print("")
+if __name__ == '__main__':
+  # Takes a list of collection names as arguments.
+  # For each collection name, this script drops indexes and re-creates them.
+  # With no argument, indexes are printed, but no indexes are re-created.
+  collection_names = sys.argv[1:]
+  if collection_names:
+    print('Re-creating indexes...')
+    for collection_name in collection_names:
+      if collection_name == 'users':
+        drop_indexes('users')
+        create_users_indexes()
+      elif collection_name == 'actions':
+        drop_indexes('actions')
+        create_actions_indexes()
+      elif collection_name == 'runs':
+        drop_indexes('runs')
+        create_runs_indexes()
+      elif collection_name == 'pgns':
+        drop_indexes('pgns')
+        create_pgns_indexes()
+      elif collection_name == 'flag_cache':
+        drop_indexes('flag_cache')
+        create_flag_cache_indexes()
+    print('Finished creating indexes!\n')
+  print_current_indexes()
+  if not collection_names:
+    print('Collections in {}: {}'.format(db_name, db.collection_names()))
+    print('Give a list of collection names as arguments to re-create indexes. For example:\n')
+    print('  python3 create_indexes.py users runs - drops and creates indexes for runs and users\n')
