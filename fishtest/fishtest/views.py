@@ -41,14 +41,14 @@ def cached_flash(request, requestString):
   return
 
 
-@view_config(route_name='home', renderer='mainpage.mak')
-def mainpage(request):
+@view_config(route_name='home')
+def home(request):
   return HTTPFound(location=request.route_url('tests'))
 
 
-@view_config(route_name='login', renderer='mainpage.mak',
+@view_config(route_name='login', renderer='login.mak',
              require_csrf=True, request_method=('GET', 'POST'))
-@forbidden_view_config(renderer='mainpage.mak')
+@forbidden_view_config(renderer='login.mak')
 def login(request):
   login_url = request.route_url('login')
   referrer = request.url
@@ -61,7 +61,12 @@ def login(request):
     password = request.POST.get('password')
     token = request.userdb.authenticate(username, password)
     if 'error' not in token:
-      headers = remember(request, username)
+      if request.POST.get('stay_logged_in'):
+        # Session persists for a year after login
+        headers = remember(request, username, max_age=60 * 60 * 24 * 365)
+      else:
+        # Session ends when the browser is closed
+        headers = remember(request, username)
       return HTTPFound(location=came_from, headers=headers)
 
     request.session.flash(token['error'], 'error')  # 'Incorrect password'

@@ -13,17 +13,26 @@
   <form class="form-horizontal" action="" method="POST">
     <legend>Login</legend>
     <div class="control-group">
-      <label class="control-label">Login:</label>
+      <label class="control-label">Username</label>
       <div class="controls">
-        <input name="username"/>
+        <input name="username" type="text" />
       </div>
     </div>
+
     <div class="control-group">
-      <label class="control-label">Password:</label>
+      <label class="control-label">Password</label>
       <div class="controls">
         <input name="password" type="password" />
       </div>
     </div>
+
+    <div class="control-group">
+      <label class="control-label">Stay logged in</label>
+      <div class="controls">
+        <input name="stay_logged_in" type="checkbox" />
+      </div>
+    </div>
+
     <div class="control-group">
       <div class="controls">
         <button type="submit" class="btn btn-primary">Login</button>
