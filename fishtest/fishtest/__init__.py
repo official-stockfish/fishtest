@@ -39,8 +39,9 @@ def main(global_config, **settings):
 
   with open(os.path.expanduser('~/fishtest.secret'), 'r') as f:
     secret = f.read()
-  config.set_authentication_policy(AuthTktAuthenticationPolicy(
-    secret, callback=group_finder, hashalg='sha512'))
+  config.set_authentication_policy(
+    AuthTktAuthenticationPolicy(
+      secret, callback=group_finder, hashalg='sha512', http_only=True))
   config.set_authorization_policy(ACLAuthorizationPolicy())
 
   config.add_static_view('html', 'static/html', cache_max_age=3600)
