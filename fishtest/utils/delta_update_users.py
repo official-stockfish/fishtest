@@ -152,6 +152,7 @@ def update_users():
   users = build_users(machines, info)
   rundb.userdb.user_cache.remove()
   rundb.userdb.user_cache.insert(users)
+  rundb.userdb.user_cache.create_index('username', unique=True)
 
   rundb.userdb.top_month.remove()
   rundb.userdb.top_month.insert(build_users(machines, top_month))

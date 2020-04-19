@@ -14,9 +14,6 @@ class UserDb:
     self.top_month = self.db['top_month']
     self.flag_cache = self.db['flag_cache']
 
-  def init_collection(self):
-    self.users.create_index('username', unique=True)
-
   # Cache user lookups for 60s
   user_lock = threading.Lock()
   cache = {}
