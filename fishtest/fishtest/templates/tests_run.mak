@@ -173,7 +173,8 @@
       <div class="rightmost" style="display: flex; align-items: center">
         <label class="field-label stop_rule spsa numgames"
                style="${'display: none' if (args.get('sprt') or not is_rerun) else ''}"># games</label>
-        <input type="number" name="num-games" min="1" class="stop_rule spsa numgames third-size"
+        <input type="number" name="num-games" min="10000" step="10000"
+               class="stop_rule spsa numgames third-size no-arrows"
                value="${args.get('num_games', 60000)}"
                style="${'display: none' if (args.get('sprt') or not is_rerun) else ''}" />
       </div>
@@ -207,16 +208,19 @@
     <div class="flex-row stop_rule spsa"
          style="${args.get('spsa') or 'display: none'}">
       <label class="field-label leftmost">SPSA A</label>
-      <input type="text" name="spsa_A" class="third-size"
-             value="${args.get('spsa', {'A': ''})['A']}" />
-
-      <label class="field-label" style="margin-left: 7px">SPSA Gamma</label>
-      <input type="text" name="spsa_gamma" class="third-size"
-             value="${args.get('spsa', {'gamma': ''})['gamma']}" />
+      <input type="number" min="0" step="1000" name="spsa_A"
+             class="third-size no-arrows"
+             value="${args.get('spsa', {'A': '3000'})['A']}" />
 
       <label class="field-label rightmost">SPSA Alpha</label>
-      <input type="text" name="spsa_alpha" class="third-size"
-             value="${args.get('spsa', {'alpha': ''})['alpha']}" />
+      <input type="number" min="0" step="0.001" name="spsa_alpha"
+             class="third-size no-arrows"
+             value="${args.get('spsa', {'alpha': '0.602'})['alpha']}" />
+
+      <label class="field-label" style="margin-left: 7px">SPSA Gamma</label>
+      <input type="number" min="0" step="0.001" name="spsa_gamma"
+             class="third-size no-arrows"
+             value="${args.get('spsa', {'gamma': '0.101'})['gamma']}" />
     </div>
 
     <div class="flex-row stop_rule spsa"
