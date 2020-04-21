@@ -105,7 +105,7 @@ class RunDb:
 
     tc_base = re.search('^(\d+(\.\d+)?)', tc)
     if tc_base:
-      tc_base = float(tc_base[1])
+      tc_base = float(tc_base.group(1))
     new_run = {
       'args': run_args,
       'start_time': start_time,
