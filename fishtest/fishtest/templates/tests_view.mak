@@ -266,7 +266,7 @@ Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smoot
       $copyDiffBtn = null;
     }
 
-    const apiUrlBase = "${run['args']['tests_repo']}".replace("//github.com/", "//api.github.com/repos/");
+    const apiUrlBase = "${h.tests_repo(run)}".replace("//github.com/", "//api.github.com/repos/");
     const diffApiUrl = apiUrlBase + "/compare/${run['args']['resolved_base'][:7]}...${run['args']['resolved_new'][:7]}";
 
     // Fetch the diff and decide whether to render it
