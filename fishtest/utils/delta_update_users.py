@@ -120,12 +120,12 @@ def update_users():
 
   now = datetime.utcnow()
   more_days = True
-  last_run_id = None
+  last_updated = None
   while more_days:
     q = { 'finished': True }
-    if last_run_id:
-      q['_id'] = { '$lt': last_run_id }
-    runs = list(rundb.runs.find(q, sort=[('_id', DESCENDING)], limit=step_size))
+    if last_updated:
+      q['last_updated'] = { '$lt': last_updated }
+    runs = list(rundb.runs.find(q, sort=[('last_updated', DESCENDING)], limit=step_size))
     if len(runs) == 0:
       break
     for run in runs:
@@ -140,7 +140,7 @@ def update_users():
           print("Exception on run: ", run['_id'])
       elif not clear_stats:
         more_days = False
-    last_run_id = runs[-1]['_id']
+    last_updated = runs[-1]['last_updated']
 
   if new_deltas:
     new_deltas.update(deltas)
