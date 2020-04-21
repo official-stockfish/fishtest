@@ -24,7 +24,7 @@
 
 <div class="row-fluid">
 
-<div class="span8">
+<div class="span8" style="min-width: 540px">
   <h4>Details</h4>
 
 	<%! import markupsafe %>
@@ -51,7 +51,7 @@
                 </thead>
                 <tbody>
                   %for row in arg[1][1:]:
-                    <tr>
+                    <tr class="spsa-param-row">
                       %for element in row:
                         <td>${element}</td>
                       %endfor
@@ -112,6 +112,7 @@
 
   <br/>
   <br/>
+
   %if run.get('base_same_as_master') is not None:
     <div id="master-diff"
         class="alert ${'alert-success' if run['base_same_as_master'] else 'alert-error'}">
@@ -129,13 +130,13 @@
 
   <form class="form" action="/tests/modify" method="POST">
     <label class="control-label">Number of games:</label>
-    <input name="num-games" value="${run['args']['num_games']}">
+    <input type="text" name="num-games" value="${run['args']['num_games']}">
 
     <label class="control-label">Adjust priority (higher is more urgent):</label>
-    <input name="priority" value="${run['args']['priority']}">
+    <input type="text" name="priority" value="${run['args']['priority']}">
 
     <label class="control-label">Adjust throughput%:</label>
-    <input name="throughput" value="${run['args'].get('throughput', 1000)}">
+    <input type="text" name="throughput" value="${run['args'].get('throughput', 1000)}">
 
     <input type="hidden" name="run" value="${run['_id']}" />
     <button type="submit" class="btn btn-primary">Modify</button>
@@ -164,24 +165,30 @@
 </div>
 
 %if 'spsa' in run['args']:
-<div id="div_spsa_preload" style="background-image:url('/img/preload.gif'); width: 256px; height: 32px; display: none;">
-<div style="height: 100%; width: 100%; text-align:center; padding-top: 5px;">
-Loading graph...
-</div></div>
-<div id="div_spsa_error" style="display: none; border: 1px solid red; color: red; width: 400px; "></div>
-<div id="chart_toolbar" style="display: none;">
-Gaussian Kernel Smoother&nbsp;&nbsp;<div class="btn-group"><button id="btn_smooth_plus" class="btn">&nbsp;&nbsp;&nbsp;+&nbsp;&nbsp;&nbsp;</button>
-<button id="btn_smooth_minus" class="btn">&nbsp;&nbsp;&nbsp;−&nbsp;&nbsp;&nbsp;</button>
-</div>
-<div class="btn-group">
-<button id="btn_view_individual" type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
-    View Individual Parameter<span class="caret"></span>
-  </button>
-  <ul class="dropdown-menu" role="menu" id="dropdown_individual"></ul>
-</div>
-<button id="btn_view_all" class="btn">View All</button>
-</div>
-<div id="div_spsa_history_plot"></div>
+  <div id="div_spsa_preload" style="background-image:url('/img/preload.gif'); width: 256px; height: 32px; display: none;">
+    <div style="height: 100%; width: 100%; text-align: center; padding-top: 5px;">
+    Loading graph...
+    </div>
+  </div>
+
+  <div id="div_spsa_error" style="display: none; border: 1px solid red; color: red; width: 400px"></div>
+  <div id="chart_toolbar" style="display: none">
+    Gaussian Kernel Smoother&nbsp;&nbsp;
+    <div class="btn-group">
+      <button id="btn_smooth_plus" class="btn">&nbsp;&nbsp;&nbsp;+&nbsp;&nbsp;&nbsp;</button>
+      <button id="btn_smooth_minus" class="btn">&nbsp;&nbsp;&nbsp;−&nbsp;&nbsp;&nbsp;</button>
+    </div>
+
+    <div class="btn-group">
+      <button id="btn_view_individual" type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+        View Individual Parameter<span class="caret"></span>
+      </button>
+      <ul class="dropdown-menu" role="menu" id="dropdown_individual"></ul>
+    </div>
+
+    <button id="btn_view_all" class="btn">View All</button>
+  </div>
+  <div id="div_spsa_history_plot"></div>
 %endif
 
 <section id="diff-section" style="display: none">

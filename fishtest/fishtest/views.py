@@ -1000,12 +1000,12 @@ def tests_view(request):
       for p in params:
         value.append([
           p['name'],
-          p['theta'],
-          p['start'],
-          p['min'],
-          p['max'],
-          '{:.6f}'.format(p['c'] / (iter_local ** gamma)),
-          '{:.6f}'.format(p['a'] / (A + iter_local) ** alpha)
+          '{:.2f}'.format(p['theta']),
+          int(p['start']),
+          int(p['min']),
+          int(p['max']),
+          '{:.3f}'.format(p['c'] / (iter_local ** gamma)),
+          '{:.3f}'.format(p['a'] / (A + iter_local) ** alpha)
         ])
     if 'tests_repo' in run['args']:
       if name == 'new_tag':
