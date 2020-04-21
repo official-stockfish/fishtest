@@ -30,23 +30,51 @@
 	<%! import markupsafe %>
 
   <table class="table table-condensed">
-  %for arg in run_args:
-    %if len(arg[2]) == 0:
-      %if arg[0] == 'username' and approver:
-        <%
-        username = arg[1]
-        %>
-        <tr><td>${arg[0]}</td><td><a href="/user/${arg[1]}">${arg[1]}</a></td></tr>
+    %for arg in run_args:
+      %if len(arg[2]) == 0:
+        <tr>
+          <td>${arg[0]}</td>
+          %if arg[0] == 'username' and approver:
+            <td><a href="/user/${arg[1]}">${arg[1]}</a></td>
+          %elif arg[0] == 'spsa':
+            <td>
+              ${arg[1][0]}<br />
+              <table>
+                <thead>
+                  <th>param</th>
+                  <th>best</th>
+                  <th>start</th>
+                  <th>min</th>
+                  <th>max</th>
+                  <th>c</th>
+                  <th>a</th>
+                </thead>
+                <tbody>
+                  %for row in arg[1][1:]:
+                    <tr>
+                      %for element in row:
+                        <td>${element}</td>
+                      %endfor
+                    </tr>
+                  %endfor
+                </tbody>
+              </table>
+            </td>
+          %else:
+            <td>${str(markupsafe.Markup(arg[1])).replace('\n', '<br>') | n}</td>
+          %endif
+        </tr>
       %else:
-        <tr><td>${arg[0]}</td><td>${str(markupsafe.Markup(arg[1])).replace('\n', '<br>') | n}</td></tr>
+        <tr>
+          <td>${arg[0]}</td>
+          <td><a href="${arg[2]}" target="_blank" rel="noopener">${arg[1]}</a></td>
+        </tr>
       %endif
-    %else:
-    <tr><td>${arg[0]}</td><td><a href="${arg[2]}" target="_blank" rel="noopener">${arg[1]}</a></td></tr>
-    %endif
-  %endfor
-  <tr><td>raw statistics</td><td>
-  <a href=/tests/stats/${run['_id']}>/tests/stats/${run['_id']}</a>
-  </td></tr>
+    %endfor
+    <tr>
+      <td>raw statistics</td>
+      <td><a href=/tests/stats/${run['_id']}>/tests/stats/${run['_id']}</a></td>
+    </tr>
   </table>
 </div>
 

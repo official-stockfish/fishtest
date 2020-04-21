@@ -988,17 +988,25 @@ def tests_view(request):
     if name == 'spsa' and value != '-':
       iter_local = value['iter'] + 1  # assume at least one completed,
                                       # and avoid division by zero
-      params = ['param: %s, best: %.2f, start: %.2f, min: %.2f, max: %.2f, c %f, a %f' %
-                (p['name'], p['theta'], p['start'], p['min'], p['max'],
-                 p['c'] / (iter_local ** value['gamma']),
-                 p['a'] / (value['A'] + iter_local) ** value['alpha'])
-                for p in value['params']]
-      value = 'Iter: %d, A: %d, alpha %f, gamma %f, clipping %s, rounding %s\n%s' \
-              % (iter_local, value['A'], value['alpha'], value['gamma'],
+      A = value['A']
+      alpha = value['alpha']
+      gamma = value['gamma']
+      summary = 'Iter: %d, A: %d, alpha %0.3f, gamma %0.3f, clipping %s, rounding %s' \
+              % (iter_local, A, alpha, gamma,
                  value['clipping'] if 'clipping' in value else 'old',
-                 value['rounding'] if 'rounding' in value else 'deterministic',
-                 '\n'.join(params))
-
+                 value['rounding'] if 'rounding' in value else 'deterministic')
+      params = value['params']
+      value = [summary]
+      for p in params:
+        value.append([
+          p['name'],
+          p['theta'],
+          p['start'],
+          p['min'],
+          p['max'],
+          '{:.6f}'.format(p['c'] / (iter_local ** gamma)),
+          '{:.6f}'.format(p['a'] / (A + iter_local) ** alpha)
+        ])
     if 'tests_repo' in run['args']:
       if name == 'new_tag':
         url = run['args']['tests_repo'] + '/commit/' + run['args']['resolved_new']
@@ -1007,12 +1015,15 @@ def tests_view(request):
       elif name == 'tests_repo':
         url = value
 
-    try:
-      strval = str(value)
-    except:
-      strval = value.encode('ascii', 'replace')
-    strval = html.escape(strval)
-    run_args.append((name, strval, url))
+    if name == 'spsa':
+      run_args.append(('spsa', value, ''))
+    else:
+      try:
+        strval = str(value)
+      except:
+        strval = value.encode('ascii', 'replace')
+      strval = html.escape(strval)
+      run_args.append((name, strval, url))
 
   active = 0
   cores = 0
