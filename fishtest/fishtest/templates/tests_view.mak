@@ -123,8 +123,11 @@
       %endif
     </div>
   %endif
-  <a href="https://github.com/official-stockfish/Stockfish/compare/master...${run['args']['resolved_base'][:7]}"
-     target="_blank" rel="noopener">Master diff</a>
+
+  %if not run.get('base_same_as_master'):
+    <a href="https://github.com/official-stockfish/Stockfish/compare/master...${run['args']['resolved_base'][:7]}"
+       target="_blank" rel="noopener">Master diff</a>
+  %endif
 
   <hr>
 
