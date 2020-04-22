@@ -405,16 +405,21 @@ def validate_form(request):
   data['base_same_as_master'] = master_diff.text is ''
 
   # Integer parameters
+
   if stop_rule == 'sprt':
+    sprt_batch_size_games=8
+    assert(sprt_batch_size_games%2==0)
+    assert(request.rundb.chunk_size%sprt_batch_size_games==0)
     data['sprt'] = fishtest.stats.stat_util.SPRT(alpha=0.05,
                                                  beta=0.05,
                                                  elo0=float(request.POST['sprt_elo0']),
                                                  elo1=float(request.POST['sprt_elo1']),
-                                                 elo_model='logistic')
+                                                 elo_model='logistic',
+                                                 batch_size=sprt_batch_size_games//2)  #game pairs
     # Limit on number of games played.
     # Shouldn't be hit in practice as long as it is larger than > ~200000
     # must scale with chunk_size to avoid overloading the server.
-    data['num_games'] = 1000 * request.rundb.chunk_size
+    data['num_games'] = 2000 * request.rundb.chunk_size
   elif stop_rule == 'spsa':
     data['num_games'] = int(request.POST['num-games'])
     if data['num_games'] <= 0:
