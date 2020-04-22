@@ -211,7 +211,7 @@
     <div class="flex-row stop_rule spsa"
          style="${args.get('spsa') or 'display: none'}">
       <label class="field-label leftmost">SPSA A</label>
-      <input type="number" min="0" step="1000" name="spsa_A"
+      <input type="number" min="0" step="500" name="spsa_A"
              class="third-size no-arrows"
              value="${args.get('spsa', {'A': '3000'})['A']}" />
 
@@ -322,6 +322,8 @@
     update_sprt_bounds($(this).val());
   });
 
+  const initial_base_branch = $('#base-branch').val();
+  const initial_base_signature = $('#base-signature').val();
   $('.btn-group .btn').on('click', function() {
     const $btn = $(this);
     $(this).parent().find('.btn').removeClass('btn-info');
@@ -347,22 +349,24 @@
       $('.stop_rule').hide();
       $('#stop_rule_field').val(stop_rule);
       $('.' + stop_rule).show();
-      if (stop_rule === 'spsa') {
-        // base branch and test branch should be the same for SPSA tests
-        $('#base-branch').attr('readonly', 'true').val($('#test-branch').val());
-        $('#test-branch').on('input', function() {
-          $('#base-branch').val($(this).val());
-        })
-        $('#base-signature').attr('readonly', 'true').val($('#test-signature').val());
-        $('#test-signature').on('input', function() {
-          $('#base-signature').val($(this).val());
-        })
-      } else {
-        $('#base-branch').removeAttr('readonly');
-        $('#base-signature').removeAttr('readonly');
-        $('#test-branch').off('input');
-        $('#test-signature').off('input');
-      }
+      %if not is_rerun:
+        if (stop_rule === 'spsa') {
+          // base branch and test branch should be the same for SPSA tests
+          $('#base-branch').attr('readonly', 'true').val($('#test-branch').val());
+          $('#test-branch').on('input', function() {
+            $('#base-branch').val($(this).val());
+          })
+          $('#base-signature').attr('readonly', 'true').val($('#test-signature').val());
+          $('#test-signature').on('input', function() {
+            $('#base-signature').val($(this).val());
+          })
+        } else {
+          $('#base-branch').removeAttr('readonly').val(initial_base_branch);
+          $('#base-signature').removeAttr('readonly').val(initial_base_signature);
+          $('#test-branch').off('input');
+          $('#test-signature').off('input');
+        }
+      %endif
       if (stop_rule === 'sprt') {
         update_sprt_bounds($('select[name=bounds]').val());
       }
