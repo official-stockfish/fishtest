@@ -8,7 +8,7 @@
         integrity="sha384-4FeI0trTH/PCsLWrGCD1mScoFu9Jf2NdknFdFoJhXZFwsvzZ3Bo5sAh7+zL8Xgnd"
         crossorigin="anonymous"
         rel="stylesheet">
-  <link href="/css/application.css?v=1" rel="stylesheet">
+  <link href="/css/application.css?v=2" rel="stylesheet">
 
   <script src="https://code.jquery.com/jquery-3.4.1.min.js"
           integrity="sha384-vk5WoKIaW/vJyUAd9n/wmopsmNhiy+L2Z+SBxGYnUkunIxVxAv/UtMOhba/xskxh"
@@ -76,24 +76,26 @@
        style="width: calc(100% - 100px); float: left;">
     <div class="container-fluid">
       <div class="row-fluid">
-        %if request.session.peek_flash('error'):
-          <% flash = request.session.pop_flash('error') %>
-          %for message in flash:
-            <div class="alert alert-error">
-              <button type="button" class="close" data-dismiss="alert">x</button>
-              ${message}
-            </div>
-          %endfor
-        %endif
-        %if request.session.peek_flash():
-          <% flash = request.session.pop_flash() %>
-          %for message in flash:
-            <div class="alert alert-success">
-              <button type="button" class="close" data-dismiss="alert">x</button>
-              ${message}
-            </div>
-          %endfor
-        %endif
+        <div class="flash-message">
+          %if request.session.peek_flash('error'):
+            <% flash = request.session.pop_flash('error') %>
+            %for message in flash:
+              <div class="alert alert-error">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                ${message}
+              </div>
+            %endfor
+          %endif
+          %if request.session.peek_flash():
+            <% flash = request.session.pop_flash() %>
+            %for message in flash:
+              <div class="alert alert-success">
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+                ${message}
+              </div>
+            %endfor
+          %endif
+        </div>
         <main>${self.body()}</main>
       </div>
     </div>

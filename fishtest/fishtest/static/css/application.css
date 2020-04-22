@@ -6,6 +6,10 @@
   }
 }
 
+.flash-message {
+  margin-top: 20px;
+}
+
 .elo-results {
   font-size: 12px;
   margin: 2px;
