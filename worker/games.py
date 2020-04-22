@@ -273,7 +273,7 @@ def validate_pentanomial(wld, rounds):
   assert(abs(s5 - s3) < epsilon)
 
 
-def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
+def run_game(p, remote, result, spsa, spsa_tuning, games_to_play, batch_size, tc_limit):
   global old_stats
   rounds = {}
 
@@ -285,7 +285,7 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
   end_time = datetime.datetime.now() + datetime.timedelta(seconds=tc_limit)
   print('TC limit {} End time: {}'.format(tc_limit, end_time))
 
-  num_game_pairs_updated = 0
+  num_games_updated = 0
   while datetime.datetime.now() < end_time:
     try:
       line = q.get_nowait()
@@ -300,6 +300,7 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
 
     # Have we reached the end of the match?  Then just exit
     if 'Finished match' in line:
+      assert(num_games_updated==games_to_play)
       print('Finished match cleanly')
       kill_process(p)
       return { 'task_alive': True }
@@ -325,6 +326,8 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
         result['stats']['wins']   = wld[0] - rounds['trinomial'][2] + old_stats['wins']
         result['stats']['losses'] = wld[1] - rounds['trinomial'][0] + old_stats['losses']
         result['stats']['draws']  = wld[2] - rounds['trinomial'][1] + old_stats['draws']
+        num_games_finished=2*sum(rounds['pentanomial'])
+        assert(batch_size%2==0)
       else:
         result['stats']['wins']   = wld[0] + old_stats['wins']
         result['stats']['losses'] = wld[1] + old_stats['losses']
@@ -332,10 +335,13 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
         spsa['wins'] = wld[0]
         spsa['losses'] = wld[1]
         spsa['draws'] = wld[2]
+        num_games_finished=sum(wld)
 
-      num_game_pairs_finished = sum(rounds['pentanomial'])
-      # Send an update_task request after a game pair finishes, not after every game
-      if num_game_pairs_finished > num_game_pairs_updated:
+      assert(num_games_finished <= num_games_updated+batch_size)
+      assert(num_games_finished <= games_to_play)
+
+      # Send an update_task request after a batch is full or if we have played all games
+      if (num_games_finished == num_games_updated+batch_size) or (num_games_finished==games_to_play):
         # Attempt to send game results to the server. Retry a few times upon error
         update_succeeded = False
         for _ in range(0, 5):
@@ -349,6 +355,7 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
               kill_process(p)
               return response
             update_succeeded = True
+            num_games_updated = num_games_finished
             break
           except Exception as e:
             sys.stderr.write('Exception from calling update_task:\n')
@@ -359,7 +366,6 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
           print('Too many failed update attempts')
           kill_process(p)
           break
-        num_game_pairs_updated = num_game_pairs_finished
 
     pentanomial = update_pentanomial(line, rounds)
     result['stats']['pentanomial'] = pentanomial
@@ -370,7 +376,7 @@ def run_game(p, remote, result, spsa, spsa_tuning, tc_limit):
   kill_process(p)
   return { 'task_alive': True }
 
-def launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, tc_limit):
+def launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, batch_size, tc_limit):
   spsa = {
     'w_params': [],
     'b_params': [],
@@ -402,7 +408,7 @@ def launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, tc_limit):
   p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True, bufsize=1, close_fds=not IS_WINDOWS)
 
   try:
-    return run_game(p, remote, result, spsa, spsa_tuning, tc_limit)
+    return run_game(p, remote, result, spsa, spsa_tuning, games_to_play, batch_size, tc_limit)
   except Exception as e:
     traceback.print_exc(file=sys.stderr)
     try:
@@ -441,7 +447,7 @@ def run_games(worker_info, password, remote, run, task_id):
   threads = int(run['args']['threads'])
   spsa_tuning = 'spsa' in run['args']
   repo_url = run['args'].get('tests_repo', REPO_URL)
-  games_concurrency = int(worker_info['concurrency']) / threads
+  games_concurrency = int(worker_info['concurrency']) // threads
 
   # Format options according to cutechess syntax
   def parse_options(s):
@@ -540,14 +546,6 @@ def run_games(worker_info, password, remote, run, task_id):
 
   print('Running %s vs %s' % (run['args']['new_tag'], run['args']['base_tag']))
 
-  if spsa_tuning:
-    games_to_play = games_concurrency * 2
-    tc_limit *= 2
-    pgnout = []
-  else:
-    games_to_play = games_remaining
-    pgnout = ['-pgnout', pgn_name]
-
   threads_cmd=[]
   if not any("Threads" in s for s in new_options + base_options):
     threads_cmd = ['option.Threads=%d' % (threads)]
@@ -562,6 +560,20 @@ def run_games(worker_info, password, remote, run, task_id):
     return run['args'][arg].split(' ')[0]
 
   while games_remaining > 0:
+    if spsa_tuning:
+      games_to_play = min(games_concurrency * 2, games_remaining)
+      tc_limit *= 2
+      pgnout = []
+    else:
+      games_to_play = games_remaining
+      pgnout = ['-pgnout', pgn_name]
+
+    batch_size=games_concurrency * 2  # update frequency
+
+    if 'sprt' in run['args']:
+      batch_size=2*run['args']['sprt'].get('batch_size',1)
+      assert(games_to_play%batch_size==0)
+
     # Run cutechess-cli binary
     cmd = [ cutechess, '-repeat', '-rounds', str(int(games_to_play/2)), '-games', ' 2', '-tournament', 'gauntlet'] + pgnout + \
           ['-site', 'https://tests.stockfishchess.org/tests/view/' + run['_id']] + \
@@ -573,7 +585,7 @@ def run_games(worker_info, password, remote, run, task_id):
           ['-engine', 'name=Base-'+run['args']['resolved_base'][:7], 'cmd=%s' % (base_engine_name)] + base_options + ['_spsa_'] + \
           ['-each', 'proto=uci', 'tc=%s' % (scaled_tc)] + nodestime_cmd + threads_cmd + book_cmd
 
-    task_status = launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play,
+    task_status = launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, batch_size,
                                    tc_limit * games_to_play / min(games_to_play, games_concurrency))
     if not task_status.get('task_alive', False):
       break
