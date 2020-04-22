@@ -122,18 +122,18 @@
              value="${args.get('new_tag', '')}" ${'readonly' if is_rerun else ''}>
 
       <label class="field-label">Base branch</label>
-      <input type="text" name="base-branch"
+      <input type="text" name="base-branch" id="base-branch"
              value="${args.get('base_tag', 'master')}" ${'readonly' if is_rerun else ''}>
     </div>
 
     <div class="flex-row">
       <label class="field-label leftmost">Test signature</label>
-      <input type="number" name="test-signature" class="no-arrows"
+      <input type="number" name="test-signature" class="no-arrows" id="test-signature"
              placeholder="Defaults to last commit message"
              value="${args.get('new_signature', '')}" ${'readonly' if is_rerun else ''}>
 
       <label class="field-label">Base signature</label>
-      <input type="number" name="base-signature" class="no-arrows"
+      <input type="number" name="base-signature" class="no-arrows" id="base-signature"
              value="${args.get('base_signature', bench)}" ${'readonly' if is_rerun else ''}>
     </div>
 
@@ -348,6 +348,22 @@
       $('.stop_rule').hide();
       $('#stop_rule_field').val(stop_rule);
       $('.' + stop_rule).show();
+      if (stop_rule === 'spsa') {
+        // base branch and test branch should be the same for SPSA tests
+        $('#base-branch').attr('readonly', 'true').val($('#test-branch').val());
+        $('#test-branch').on('input', function() {
+          $('#base-branch').val($(this).val());
+        })
+        $('#base-signature').attr('readonly', 'true').val($('#test-signature').val());
+        $('#test-signature').on('input', function() {
+          $('#base-signature').val($(this).val());
+        })
+      } else {
+        $('#base-branch').removeAttr('readonly');
+        $('#base-signature').removeAttr('readonly');
+        $('#test-branch').off('input');
+        $('#test-signature').off('input');
+      }
       if (stop_rule === 'sprt') {
         update_sprt_bounds($('select[name=bounds]').val());
       }
