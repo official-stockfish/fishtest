@@ -113,7 +113,10 @@
           SMP (LTC)
         </div>
       </div>
-      <button type="submit" class="btn btn-primary rightmost" style="width: 180px">Submit test</button>
+      <button type="submit" class="btn btn-primary rightmost" id="submit-test"
+              style="width: 180px">
+        Submit test
+      </button>
     </div>
 
     <div class="flex-row">
@@ -319,10 +322,6 @@
     update_sprt_bounds($(this).val());
   });
 
-  $('#book').on('input', function() {
-    update_book_depth_visibility($(this).val());
-  });
-
   $('.btn-group .btn').on('click', function() {
     const $btn = $(this);
     $(this).parent().find('.btn').removeClass('btn-info');
@@ -354,7 +353,23 @@
     }
   });
 
+  // Only .pgn book types have a book_depth field
   update_book_depth_visibility($("#book").val());
+  $('#book').on('input', function() {
+    update_book_depth_visibility($(this).val());
+  });
+
+  let form_submitted = false;
+  $('#create-new-test').on('submit', function(event) {
+    if (form_submitted) {
+      // Don't allow submitting the form more than once
+      $(event).preventDefault();
+      return;
+    }
+    form_submitted = true;
+    $('#submit-test').attr('disabled', true).text('Submitting test...');
+  });
+
   const is_rerun = ${'true' if is_rerun else 'false'};
   if (is_rerun) {
     // Select the correct fields by default for re-runs
