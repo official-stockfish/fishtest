@@ -161,7 +161,7 @@ drawelo is estimated "out of sample".
   return sum([results[i]*math.log(P1[i]/P0[i]) for i in range(0,3)])
 
 
-def SPRT(alpha=0.05,beta=0.05,elo0=None,elo1=None,elo_model='logistic'):
+def SPRT(alpha=0.05,beta=0.05,elo0=None,elo1=None,elo_model='logistic',batch_size=1):
   """ Constructor for the "sprt object" """
   return {'alpha'       : alpha,
           'beta'        : beta,
@@ -170,6 +170,7 @@ def SPRT(alpha=0.05,beta=0.05,elo0=None,elo1=None,elo_model='logistic'):
           'elo_model'   : elo_model,
           'state'       : '',
           'llr'         : 0,
+          'batch_size'  : batch_size,
           'lower_bound' : math.log(beta/(1-alpha)),
           'upper_bound' : math.log((1-beta)/alpha),
           'overshoot'   : {'last_update'    : 0,
@@ -187,7 +188,7 @@ def update_SPRT(R, sprt):
 
 sprt is a dictionary with fixed fields
 
-'elo0', 'alpha', 'elo1', 'beta', 'elo_model', 'lower_bound', 'upper_bound'.
+'elo0', 'alpha', 'elo1', 'beta', 'elo_model', 'lower_bound', 'upper_bound', 'batch_size'
 
 It also has the following fields
 
@@ -195,11 +196,15 @@ It also has the following fields
 
 which are updated by this function.
 
-Normally this function should be called after each finished game (trinomial) or
-game pair (pentanomial) but it is safe to call it multiple times with the same parameters.
-Skipped updates are also handled sensibly.
+Normally this function should be called each time 'batch_size' games (trinomial) or
+game pairs (pentanomial) have been completed but it is safe to call it multiple times
+with the same parameters. The main purpose of this is to be able to recalculate
+the LLR for old tests.
 
-The meaning of the inputs and the fields is as follows.
+In the unlikely event of a server crash it is possible that some updates may be missed
+but this situation is also handled sensibly.
+
+The meaning of the other inputs and the fields is as follows.
 
 H0: elo = elo0
 H1: elo = elo1
@@ -217,7 +222,8 @@ R['pentanomial'] contains the pentanomial frequencies
 elo_model can be either 'BayesElo' or 'logistic'
 """
 
-  # the next two lines are superfluous, but necessary for backward compatibility
+  # the next two lines are superfluous, but unfortunately necessary for backward
+  # compatibility with old tests
   sprt['lower_bound']=math.log(sprt['beta']/(1-sprt['alpha']))
   sprt['upper_bound']=math.log((1-sprt['beta'])/sprt['alpha'])
   
@@ -227,17 +233,27 @@ elo_model can be either 'BayesElo' or 'logistic'
   elo1=sprt['elo1']
 
   # first deal with the legacy BayesElo/trinomial models
-  R3=LLRcalc.regularize([R['losses'],R['draws'],R['wins']])
+  R3=[R['losses'],R['draws'],R['wins']]
   if elo_model=='BayesElo':
     # estimate drawelo out of sample
-    drawelo=draw_elo_calc(R3)
+    R3_=LLRcalc.regularize(R3)
+    drawelo=draw_elo_calc(R3_)
     # conversion of bounds to logistic elo
     lelo0,lelo1=[bayeselo_to_elo(elo,drawelo) for elo in (elo0,elo1)]
   else:
     lelo0,lelo1=elo0,elo1
 
-  # Log-Likelihood Ratio
   R_=R.get('pentanomial',R3)
+
+  batch_size=sprt.get('batch_size',1)
+
+  # sanity check on batch_size
+  if sum(R_)%batch_size!=0:
+    sprt['illegal_update']=sum(R_)  # audit
+    if 'overshoot' in sprt:
+      del sprt['overshoot'] # the contract is violated
+
+  # Log-Likelihood Ratio
   sprt['llr']=LLRcalc.LLR_logistic(lelo0,lelo1,R_)
 
   # update the overshoot data
@@ -251,7 +267,7 @@ elo_model can be either 'BayesElo' or 'logistic'
     else:
       if num_samples==o['last_update']:  # same data
         pass
-      elif num_samples==o['last_update']+1:  # the normal case
+      elif num_samples==o['last_update']+batch_size:  # the normal case
         if LLR_<o['ref0']:
           delta=LLR_-o['ref0']
           o['m0']+=delta

@@ -186,7 +186,7 @@ class TestApi(unittest.TestCase):
 
     # Task is still active
     request.json_body['stats'] = {
-      'wins': 120, 'draws': 100, 'losses': 0, 'crashes': 0
+      'wins': 90, 'draws': 100, 'losses': 0, 'crashes': 0
     }
     response = ApiView(request).update_task()
     self.assertTrue(response['task_alive'])

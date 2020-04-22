@@ -40,7 +40,7 @@ class RunDb:
     self.runs = self.db['runs']
     self.deltas = self.db['deltas']
 
-    self.chunk_size = 250
+    self.chunk_size = 200
 
     global last_rundb
     last_rundb = self
@@ -559,6 +559,10 @@ class RunDb:
         or (spsa_games > 0 and 'stats' in task and num_games <= old_num_games)
         ):
       return {'task_alive': False}
+    if 'sprt' in run['args']:
+      batch_size=2*run['args']['sprt'].get('batch_size',1)
+      if num_games%batch_size != 0:
+        return {'task_alive': False}
 
     all_tasks_finished = False
 
