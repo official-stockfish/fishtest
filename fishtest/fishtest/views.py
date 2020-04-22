@@ -67,7 +67,8 @@ def login(request):
       else:
         # Session ends when the browser is closed
         headers = remember(request, username)
-      return HTTPFound(location=came_from, headers=headers)
+      next_page = request.params.get('next') or came_from
+      return HTTPFound(location=next_page, headers=headers)
 
     request.session.flash(token['error'], 'error')  # 'Incorrect password'
   return {}
@@ -511,7 +512,10 @@ def validate_form(request):
 def tests_run(request):
   if not authenticated_userid(request):
     request.session.flash('Please login')
-    return HTTPFound(location=request.route_url('login'))
+    next_page = '/tests/run'
+    if 'id' in request.params:
+      next_page += '?id={}'.format(request.params['id'])
+    return HTTPFound(location='{}?next={}'.format(request.route_url('login'), next_page))
   if request.method == 'POST':
     try:
       data = validate_form(request)
