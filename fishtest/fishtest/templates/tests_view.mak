@@ -60,6 +60,8 @@
                 </tbody>
               </table>
             </td>
+          %elif arg[0] in ['resolved_new', 'resolved_base']:
+            <td>${arg[1][:7]}</td>
           %else:
             <td>${str(markupsafe.Markup(arg[1])).replace('\n', '<br>') | n}</td>
           %endif
