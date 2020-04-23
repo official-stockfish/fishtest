@@ -148,20 +148,12 @@ def delta_date(date):
     delta = 'Never'
   return delta
 
-
-def parse_tc(tc):
+def estimate_game_duration(tc):
   # Total time for a game is assumed to be the double of tc for each player
-  # reduced for 70% becuase on average game is stopped earlier. For instance
-  # in case of 60+0.05 time for each player is 62 secs, so the game duration
-  # is 62*2*70%
-  scale = 2 * 0.90
-
-  # Parse the time control in cutechess format
-  if tc == '15+0.05':
-    return 17.0 * scale
-
-  if tc == '60+0.05':
-    return 62.0 * scale
+  # reduced for 92% because on average a game is stopped earlier (LTC fishtest result).
+  scale = 2 * 0.92
+  # estimated number of moves per game (LTC fishtest result)
+  game_moves = 68
 
   chunks = tc.split('+')
   increment = 0.0
@@ -181,8 +173,9 @@ def parse_tc(tc):
     time_tc = float(chunks[0])
 
   if num_moves > 0:
-    time_tc = time_tc * (40.0 / num_moves)
-  return (time_tc + (increment * 40.0)) * scale
+    time_tc = time_tc * (game_moves / num_moves)
+
+  return (time_tc + (increment * game_moves)) * scale
 
 
 @view_config(route_name='actions', renderer='actions.mak')
@@ -1147,7 +1140,7 @@ def remaining_hours(run):
     remaining_games = max(0,
                           expected_games
                           - r['wins'] - r['losses'] - r['draws'])
-  game_secs = parse_tc(run['args']['tc'])
+  game_secs = estimate_game_duration(run['args']['tc'])
   return game_secs * remaining_games * int(
       run['args'].get('threads', 1)) / (60*60)
 
@@ -1248,9 +1241,9 @@ def homepage_results(request):
     machine['last_updated'] = delta_date(machine['last_updated'])
     if machine['nps'] != 0:
       games_per_minute += (
-          (machine['nps'] / 1200000.0)
-          * (60.0 / parse_tc(machine['run']['args']['tc']))
-          * int(machine['concurrency']))
+          (machine['nps'] / 1600000.0)
+          * (60.0 / estimate_game_duration(machine['run']['args']['tc']))
+          * (int(machine['concurrency']) // machine['run']['args'].get('threads', 1)))
   machines.reverse()
 
   # Update unfinished_runs + fetch paginated finished_runs

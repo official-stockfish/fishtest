@@ -163,7 +163,7 @@ def kill_process(p):
     pass
 
 def adjust_tc(tc, base_nps, concurrency):
-  factor = 1600000.0 / base_nps
+  factor = 1600000.0 / base_nps # 1.6Mnps is the reference core, also used in fishtest views.
   if base_nps < 700000:
     sys.stderr.write('This machine is too slow to run fishtest effectively - sorry!\n')
     sys.exit(1)
