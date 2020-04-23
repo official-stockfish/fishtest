@@ -284,6 +284,19 @@
 
 <script type="text/javascript" src="/js/highlight.diff.min.js"></script>
 <script>
+  %if run['args'].get('sprt'):
+    const test_type = 'SPRT';
+    const subtitle = '${run['args']['new_tag']} vs ${run['args']['base_tag']}';
+  %elif run['args'].get('spsa'):
+    const test_type = 'SPSA';
+    const subtitle = '${run['args']['new_tag']}';
+  %else:
+    const test_type = '${run['args']['num_games']} games';
+    const subtitle = '- ${run['args']['new_tag']} vs ${run['args']['base_tag']}';
+  %endif
+
+  document.title = test_type + ' ' + subtitle + ' | Stockfish Testing';
+
   $(function() {
     let $copyDiffBtn = $("#copy-diff");
     if (document.queryCommandSupported && document.queryCommandSupported("copy")) {
