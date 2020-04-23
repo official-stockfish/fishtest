@@ -9,7 +9,7 @@ from pymongo import DESCENDING
 # For tasks
 sys.path.append(os.path.expanduser('~/fishtest/fishtest'))
 from fishtest.rundb import RunDb
-from fishtest.views import parse_tc, delta_date
+from fishtest.views import estimate_game_duration, delta_date
 
 new_deltas = {}
 skip = False
@@ -30,7 +30,7 @@ def process_run(run, info, deltas=None):
     else:
       info[username]['tests'] += 1
 
-  tc = parse_tc(run['args']['tc'])
+  tc = estimate_game_duration(run['args']['tc'])
   for task in run['tasks']:
     if 'worker_info' not in task:
       continue
@@ -59,7 +59,7 @@ def process_run(run, info, deltas=None):
 
 def build_users(machines, info):
   for machine in machines:
-    games_per_hour = (machine['nps'] / 1200000.0) * (3600.0 / parse_tc(machine['run']['args']['tc'])) * int(machine['concurrency'])
+    games_per_hour = (machine['nps'] / 1600000.0) * (3600.0 / estimate_game_duration(machine['run']['args']['tc'])) * (int(machine['concurrency']) // machine['run']['args'].get('threads', 1))
     info[machine['username']]['games_per_hour'] += games_per_hour
 
   users = []
