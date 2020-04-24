@@ -12,7 +12,7 @@
 %endif
 
 <h3>
-  <span>${run['args']['new_tag']} vs ${run['args']['base_tag']}</span>
+  <span>${page_title}</span>
   <a href="${h.diff_url(run)}" target="_blank" rel="noopener">diff</a>
 </h3>
 
@@ -283,18 +283,7 @@
 
 <script type="text/javascript" src="/js/highlight.diff.min.js"></script>
 <script>
-  %if run['args'].get('sprt'):
-    const test_type = 'SPRT';
-    const subtitle = '${run['args']['new_tag']} vs ${run['args']['base_tag']}';
-  %elif run['args'].get('spsa'):
-    const test_type = 'SPSA';
-    const subtitle = '${run['args']['new_tag']}';
-  %else:
-    const test_type = '${run['args']['num_games']} games';
-    const subtitle = '- ${run['args']['new_tag']} vs ${run['args']['base_tag']}';
-  %endif
-
-  document.title = test_type + ' ' + subtitle + ' | Stockfish Testing';
+  document.title = '${page_title}';
 
   $(function() {
     let $copyDiffBtn = $("#copy-diff");
