@@ -127,8 +127,7 @@
   %endif
 
   %if not run.get('base_same_as_master'):
-    <a href="https://github.com/official-stockfish/Stockfish/compare/master...${run['args']['resolved_base'][:7]}"
-       target="_blank" rel="noopener">Master diff</a>
+    <a href="${h.master_diff_url(run)}" target="_blank" rel="noopener">Master diff</a>
   %endif
 
   <hr>
@@ -319,10 +318,8 @@
       $copyDiffBtn = null;
     }
 
-    const apiUrlBase = "${h.tests_repo(run)}".replace("//github.com/", "//api.github.com/repos/");
-    const diffApiUrl = apiUrlBase + "/compare/${run['args']['resolved_base'][:7]}...${run['args']['resolved_new'][:7]}";
-
-    // Fetch the diff and decide whether to render it
+    // Fetch the diff and decide whether to show it on the page
+    const diffApiUrl = "${h.diff_url(run)}".replace("//github.com/", "//api.github.com/repos/");
     $.ajax({
       url: diffApiUrl,
       headers: {
