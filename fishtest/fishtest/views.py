@@ -1031,8 +1031,19 @@ def tests_view(request):
     last_updated = task.get('last_updated', datetime.datetime.min)
     task['last_updated'] = last_updated
 
-  return {'run': run, 'run_args': run_args, 'chi2': calculate_residuals(run),
+  if run['args'].get('sprt'):
+    page_title = 'SPRT {} vs {}'.format(run['args']['new_tag'], run['args']['base_tag'])
+  elif run['args'].get('spsa'):
+    page_title = 'SPSA {}'.format(run['args']['new_tag'])
+  else:
+    page_title = '{} games - {} vs {}'.format(
+      run['args']['num_games'],
+      run['args']['new_tag'],
+      run['args']['base_tag']
+    )
+  return {'run': run, 'run_args': run_args, 'page_title': page_title,
           'approver': has_permission('approve_run', request.context, request),
+          'chi2': calculate_residuals(run),
           'totals': '(%s active worker%s with %s core%s)'
           % (active, ('s' if active != 1 else ''),
              cores, ('s' if cores != 1 else ''))}
