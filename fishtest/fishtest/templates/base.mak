@@ -33,6 +33,9 @@
       <li><a href="/tests/finished?success_only=1">Greens</a></li>
       <li><a href="/tests/finished?yellow_only=1">Yellows</a></li>
       <li><a href="/tests/finished?ltc_only=1">LTC</a></li>
+      %if request.authenticated_userid:
+        <li><a href="/tests/user/${request.authenticated_userid}">My tests</a></li>
+      %endif
       <li><a href="/tests/run">New</a></li>
 
       <li class="nav-header">Misc</li>
