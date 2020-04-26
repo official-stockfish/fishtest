@@ -150,19 +150,25 @@ def actions(request):
       after = action['data']['after']['args']['priority']
       if before != after:
         item['description'].append(
-            'priority changed from %s to %s' % (before, after))
+            'priority changed from {} to {}'.format(before, after))
 
       before = action['data']['before']['args']['num_games']
       after = action['data']['after']['args']['num_games']
       if before != after:
         item['description'].append(
-            'games changed from %s to %s' % (before, after))
+            'games changed from {} to {}'.format(before, after))
 
       before = action['data']['before']['args']['throughput']
       after = action['data']['after']['args']['throughput']
       if before != after:
         item['description'].append(
-            'throughput changed from %s to %s' % (before, after))
+            'throughput changed from {} to {}'.format(before, after))
+
+      before = action['data']['before']['args']['auto_purge']
+      after = action['data']['after']['args']['auto_purge']
+      if before != after:
+        item['description'].append(
+            'auto-purge changed from {} to {}'.format(before, after))
 
       item['description'] = 'modify: ' + ', '.join(item['description'])
     else:
@@ -170,7 +176,7 @@ def actions(request):
       item['_id'] = action['data']['_id']
       item['description'] = ' '.join(action['action'].split('_'))
       if action['action'] == 'stop_run':
-        item['description'] += ': %s' % (
+        item['description'] += ': {}'.format(
             action['data'].get('stop_reason', 'User stop'))
 
     actions_list.append(item)
@@ -526,6 +532,7 @@ def tests_modify(request):
     run['args']['num_games'] = num_games
     run['args']['priority'] = int(request.POST['priority'])
     run['args']['throughput'] = int(request.POST['throughput'])
+    run['args']['auto_purge'] = True if request.POST.get('auto_purge') else False
     request.rundb.calc_itp(run)
     request.rundb.buffer(run, True)
     request.rundb.task_time = 0

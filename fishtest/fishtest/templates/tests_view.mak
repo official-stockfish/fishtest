@@ -142,7 +142,16 @@
     <label class="control-label">Adjust throughput%:</label>
     <input type="text" name="throughput" value="${run['args'].get('throughput', 1000)}">
 
+    <div class="control-group">
+      <label class="checkbox">
+        Auto-purge
+        <input type="checkbox" name="auto_purge"
+               ${'checked' if run['args'].get('auto_purge') else ''} />
+      </label>
+    </div>
+
     <input type="hidden" name="run" value="${run['_id']}" />
+    <br />
     <button type="submit" class="btn btn-primary">Modify</button>
   </form>
 
