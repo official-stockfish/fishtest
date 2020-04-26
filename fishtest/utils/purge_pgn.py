@@ -6,6 +6,8 @@ import os, sys
 import re
 from datetime import datetime, timedelta
 
+from pymongo import DESCENDING
+
 from fishtest.rundb import RunDb
 
 rundb = RunDb()
@@ -20,7 +22,8 @@ def purge_pgn(days):
   now = datetime.utcnow()
 
   run_count = 0
-  for run in rundb.runs.find({'finished': True, 'deleted': {'$exists': False}}):
+  for run in rundb.runs.find({'finished': True, 'deleted': {'$exists': False}},
+                             sort=[('last_updated', DESCENDING)]):
 
     if (now - run['start_time']).days > 30:
       break
