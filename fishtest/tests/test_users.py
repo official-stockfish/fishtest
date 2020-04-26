@@ -26,6 +26,7 @@ class Create10UsersTest(unittest.TestCase):
     request = testing.DummyRequest(
       userdb=self.rundb.userdb,
       method='POST',
+      remote_addr="127.0.0.1",
       params={
         'username': 'JoeUser',
         'password': 'secret',
