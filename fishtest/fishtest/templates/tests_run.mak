@@ -292,6 +292,12 @@
 </form>
 
 <script type="text/javascript">
+  $(window).bind('pageshow', function() {
+    // If pressing the 'back' button to get back to this page, make sure
+    // the submit test button is enabled again.
+    $('#submit-test').removeAttr('disabled').text('Submit test');
+  });
+
   const preset_bounds = {
     'standard STC': [-0.5, 1.5],
     'standard LTC': [0.25, 1.75],
