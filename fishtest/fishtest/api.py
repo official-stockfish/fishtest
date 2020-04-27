@@ -10,6 +10,8 @@ from fishtest.stats.stat_util import SPRT_elo
 
 WORKER_VERSION = 73
 
+flag_cache = {}
+
 
 def strip_run(run):
   run = run.copy()
@@ -52,8 +54,13 @@ class ApiView(object):
 
   def get_flag(self):
     ip = self.request.remote_addr
+    if ip in flag_cache:
+      return flag_cache.get(ip, None)  # Handle race condition on "del"
+    # concurrent invocations get None, race condition is not an issue
+    flag_cache[ip] = None
     result = self.request.userdb.flag_cache.find_one({'ip': ip})
     if result:
+      flag_cache[ip] = result['country_code']
       return result['country_code']
     try:
       # Get country flag from worker IP address
@@ -66,8 +73,11 @@ class ApiView(object):
           'country_code': country_code,
           'geoip_checked_at': datetime.utcnow()
         })
+        flag_cache[ip] = country_code
         return country_code
+      raise Error("flag server failed")
     except:
+      del flag_cache[ip]
       print('Failed GeoIP check for {}'.format(ip))
       return None
 
