@@ -8,7 +8,7 @@ from pyramid.response import Response
 
 from fishtest.stats.stat_util import SPRT_elo
 
-WORKER_VERSION = 73
+WORKER_VERSION = 75
 
 flag_cache = {}
 
