@@ -20,6 +20,7 @@ from fishtest.actiondb import ActionDb
 import fishtest.stats.stat_util
 from fishtest.util import (
   calculate_residuals,
+  estimate_game_duration,
   format_results,
   post_in_fishcooking_results,
   remaining_hours
@@ -387,7 +388,7 @@ class RunDb:
       itp = 1
     elif itp > 500:
       itp = 500
-    itp *= math.sqrt(float(run['args']['tc'].split('+')[0]) / 10)
+    itp *= math.sqrt(estimate_game_duration(run['args']['tc'])/estimate_game_duration('10+0.1'))
     itp *= math.sqrt(run['args']['threads'])
     if 'sprt' not in run['args']:
       itp *= 0.5
