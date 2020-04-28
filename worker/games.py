@@ -339,6 +339,7 @@ def run_game(p, remote, result, spsa, spsa_tuning, games_to_play, batch_size, tc
 
       assert(num_games_finished <= num_games_updated+batch_size)
       assert(num_games_finished <= games_to_play)
+      print("num_games_finished=%s num_games_updated=%s batch_size=%s games_to_play=%s" % (num_games_finished,num_games_updated,batch_size,games_to_play))
 
       # Send an update_task request after a batch is full or if we have played all games
       if (num_games_finished == num_games_updated+batch_size) or (num_games_finished==games_to_play):
