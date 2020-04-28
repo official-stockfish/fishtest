@@ -357,6 +357,10 @@ def run_game(p, remote, result, spsa, spsa_tuning, games_to_play, batch_size, tc
               return response
             update_succeeded = True
             num_games_updated = num_games_finished
+            result_=result.copy()
+            del result_['password']
+            del result_['username']
+            print("Succesful update %s" % result_)
             break
           except Exception as e:
             sys.stderr.write('Exception from calling update_task:\n')
@@ -429,7 +433,7 @@ def run_games(worker_info, password, remote, run, task_id):
     'task_id': task_id,
     'stats': {'wins':0, 'losses':0, 'draws':0, 'crashes':0, 'time_losses':0, 'pentanomial':5*[0]},
   }
-
+  print("Requested to run task %s: %s"  % (task_id,task))
   # Have we run any games on this task yet?
   global old_stats
   old_stats = task.get('stats', {'wins':0, 'losses':0, 'draws':0, 'crashes':0, 'time_losses':0, 'pentanomial':5*[0]})
@@ -440,6 +444,7 @@ def run_games(worker_info, password, remote, run, task_id):
   games_remaining = task['num_games'] - (old_stats['wins'] + old_stats['losses'] + old_stats['draws'])
   if games_remaining <= 0:
     raise Exception('No games remaining')
+  assert(games_remaining%2==0)
 
   book = run['args']['book']
   book_depth = run['args']['book_depth']
