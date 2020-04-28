@@ -178,19 +178,42 @@ class TestApi(unittest.TestCase):
       'worker_info': self.worker_info,
       'run_id': self.run_id,
       'task_id': self.task_id,
-      'stats': { 'wins': 1, 'draws': 0, 'losses': 0, 'crashes': 0 }
+      'stats': { 'wins': 2, 'draws': 0, 'losses': 0, 'crashes': 0 }
     })
     response = ApiView(request).update_task()
     self.assertTrue(response['task_alive'])
     self.assertTrue(self.rundb.get_run(self.run_id)['results_stale'])
 
     # Task is still active
+    cs=self.rundb.chunk_size
+    w,d,l=cs/2-10,cs/2,0
     request.json_body['stats'] = {
-      'wins': 90, 'draws': 100, 'losses': 0, 'crashes': 0
+      'wins': w, 'draws': d, 'losses': l, 'crashes': 0
     }
     response = ApiView(request).update_task()
     self.assertTrue(response['task_alive'])
     self.assertTrue(self.rundb.get_run(self.run_id)['results_stale'])
+
+    # Task is still active. Odd update.
+    request.json_body['stats'] = {
+      'wins': w+1, 'draws': d, 'losses': 0, 'crashes': 0
+    }
+    response = ApiView(request).update_task()
+    self.assertFalse(response['task_alive'])
+
+    # Task_alive is a misnomer...
+    request.json_body['stats'] = {
+      'wins': w+2, 'draws': d, 'losses': 0, 'crashes': 0
+    }
+    response = ApiView(request).update_task()
+    self.assertTrue(response['task_alive'])
+
+    # Go back in time
+    request.json_body['stats'] = {
+      'wins': w, 'draws': d, 'losses': 0, 'crashes': 0
+    }
+    response = ApiView(request).update_task()
+    self.assertFalse(response['task_alive'])
 
     # Task is finished when calling /api/update_task with results where the number of
     # games played is the same as the number of games in the task

@@ -553,12 +553,14 @@ class RunDb:
     # Guard against incorrect results
     count_games = lambda d: d['wins'] + d['losses'] + d['draws']
     num_games = count_games(stats)
-    old_num_games = count_games(task['stats']) if 'stats' in task else num_games
+    old_num_games = count_games(task['stats']) if 'stats' in task else 0
     spsa_games = count_games(spsa) if 'spsa' in run['args'] else 0
     if (num_games < old_num_games
         or (spsa_games > 0 and num_games <= 0)
         or (spsa_games > 0 and 'stats' in task and num_games <= old_num_games)
         ):
+      return {'task_alive': False}
+    if (num_games-old_num_games)%2!=0: # the worker should only runs game pairs
       return {'task_alive': False}
     if 'sprt' in run['args']:
       batch_size=2*run['args']['sprt'].get('batch_size',1)
