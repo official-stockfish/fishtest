@@ -16,6 +16,7 @@ import traceback
 import platform
 import struct
 import requests
+import copy
 from base64 import b64decode
 from zipfile import ZipFile
 
@@ -23,9 +24,6 @@ try:
   from Queue import Queue, Empty
 except ImportError:
   from queue import Queue, Empty  # python 3.x
-
-# Global because is shared across threads
-old_stats = {'wins':0, 'losses':0, 'draws':0, 'crashes':0, 'time_losses':0, 'pentanomial':5*[0]}
 
 IS_WINDOWS = 'windows' in platform.system().lower()
 
@@ -225,12 +223,15 @@ def update_pentanomial(line,rounds):
     rounds['pentanomial']=5*[0]
   if not 'trinomial' in rounds.keys():
     rounds['trinomial']=3*[0]
+
+  saved_sum_trinomial=sum(rounds['trinomial'])
+  current={}
+
   # Parse line like this:
   # Finished game 4 (Base-5446e6f vs New-1a68b26): 1/2-1/2 {Draw by adjudication}
   line=line.split()
   if line[0]=='Finished' and line[1]=='game' and len(line)>=7:
     round_=int(line[2])
-    current={}
     rounds[round_]=current
     current['white']=line[3][1:]
     current['black']=line[5][:-2]
@@ -259,8 +260,9 @@ def update_pentanomial(line,rounds):
         rounds['trinomial'][2-j]-=1
         assert(rounds['trinomial'][i]>=0)
         assert(rounds['trinomial'][2-j]>=0)
-  pentanomial=[rounds['pentanomial'][i]+old_stats['pentanomial'][i] for i in range(0,5)]
-  return pentanomial
+
+  # make sure something happened, but not too much
+  assert(current.get('result',-1000)==-1 or abs(sum(rounds['trinomial'])-saved_sum_trinomial)==1)
 
 def validate_pentanomial(wld, rounds):
   def results_to_score(results):
@@ -273,8 +275,9 @@ def validate_pentanomial(wld, rounds):
   assert(abs(s5 - s3) < epsilon)
 
 
-def run_game(p, remote, result, spsa, spsa_tuning, games_to_play, batch_size, tc_limit):
-  global old_stats
+def parse_cutechess_output(p, remote, result, spsa, spsa_tuning, games_to_play, batch_size, tc_limit):
+
+  saved_stats=copy.deepcopy(result['stats'])
   rounds = {}
 
   q = Queue()
@@ -300,6 +303,8 @@ def run_game(p, remote, result, spsa, spsa_tuning, games_to_play, batch_size, tc
 
     # Have we reached the end of the match?  Then just exit
     if 'Finished match' in line:
+      # The following assertion will fail if there are games without result.
+      # Does this ever happen?
       assert(num_games_updated==games_to_play)
       print('Finished match cleanly')
       kill_process(p)
@@ -320,23 +325,32 @@ def run_game(p, remote, result, spsa, spsa_tuning, games_to_play, batch_size, tc
       chunks = chunks[1].split()
       wld = [int(chunks[0]), int(chunks[2]), int(chunks[4])]
 
-      validate_pentanomial(wld, rounds)
+      validate_pentanomial(wld, rounds) # check if cutechess-cli result is compatible with
+                                        # our own bookkeeping
 
-      if not spsa_tuning:
-        result['stats']['wins']   = wld[0] - rounds['trinomial'][2] + old_stats['wins']
-        result['stats']['losses'] = wld[1] - rounds['trinomial'][0] + old_stats['losses']
-        result['stats']['draws']  = wld[2] - rounds['trinomial'][1] + old_stats['draws']
-        num_games_finished=2*sum(rounds['pentanomial'])
-        assert(batch_size%2==0)
-      else:
-        result['stats']['wins']   = wld[0] + old_stats['wins']
-        result['stats']['losses'] = wld[1] + old_stats['losses']
-        result['stats']['draws']  = wld[2] + old_stats['draws']
-        spsa['wins'] = wld[0]
-        spsa['losses'] = wld[1]
-        spsa['draws'] = wld[2]
-        num_games_finished=sum(wld)
+      pentanomial=[rounds['pentanomial'][i]+saved_stats['pentanomial'][i] for i in range(0,5)]
+      result['stats']['pentanomial'] = pentanomial
 
+      wld_pairs={} # trinomial frequencies of completed game pairs
+
+      # rounds['trinomial'] is ordered ldw
+      wld_pairs['wins']   = wld[0] - rounds['trinomial'][2]
+      wld_pairs['losses'] = wld[1] - rounds['trinomial'][0]
+      wld_pairs['draws']  = wld[2] - rounds['trinomial'][1]
+
+      result['stats']['wins']   = wld_pairs['wins']   + saved_stats['wins']
+      result['stats']['losses'] = wld_pairs['losses'] + saved_stats['losses']
+      result['stats']['draws']  = wld_pairs['draws']  + saved_stats['draws']
+
+      if spsa_tuning:
+        spsa['wins']   = wld_pairs['wins']
+        spsa['losses'] = wld_pairs['losses']
+        spsa['draws']  = wld_pairs['draws']
+
+      num_games_finished=wld_pairs['wins']+wld_pairs['losses']+wld_pairs['draws']
+
+      assert(2*sum(result['stats']['pentanomial'])==result['stats']['wins']+result['stats']['losses']+result['stats']['draws'])
+      assert(num_games_finished==2*sum(rounds['pentanomial']))
       assert(num_games_finished <= num_games_updated+batch_size)
       assert(num_games_finished <= games_to_play)
 
@@ -367,8 +381,10 @@ def run_game(p, remote, result, spsa, spsa_tuning, games_to_play, batch_size, tc
           kill_process(p)
           break
 
-    pentanomial = update_pentanomial(line, rounds)
-    result['stats']['pentanomial'] = pentanomial
+    # act on line like this
+    # Finished game 4 (Base-5446e6f vs New-1a68b26): 1/2-1/2 {Draw by adjudication}
+    if 'Finished game' in line:
+      update_pentanomial(line, rounds)
 
   now = datetime.datetime.now()
   if now >= end_time:
@@ -408,7 +424,7 @@ def launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, batch_size
   p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True, bufsize=1, close_fds=not IS_WINDOWS)
 
   try:
-    return run_game(p, remote, result, spsa, spsa_tuning, games_to_play, batch_size, tc_limit)
+    return parse_cutechess_output(p, remote, result, spsa, spsa_tuning, games_to_play, batch_size, tc_limit)
   except Exception as e:
     traceback.print_exc(file=sys.stderr)
     try:
@@ -421,24 +437,30 @@ def launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, batch_size
 
 def run_games(worker_info, password, remote, run, task_id):
   task = run['my_task']
+
+  # Have we run any games on this task yet?
+
+  input_stats = task.get('stats', {'wins':0, 'losses':0, 'draws':0, 'crashes':0, 'time_losses':0, 'pentanomial':5*[0]})
+  if not 'pentanomial' in input_stats:
+    input_stats['pentanomial']=5*[0]
+
+  assert(2*sum(input_stats['pentanomial'])==input_stats['wins']+input_stats['losses']+input_stats['draws'])
+
+  input_stats['crashes']=input_stats.get('crashes', 0)
+  input_stats['time_losses']=input_stats.get('time_losses', 0)
+
   result = {
     'username': worker_info['username'],
     'password': password,
     'run_id': str(run['_id']),
     'task_id': task_id,
-    'stats': {'wins':0, 'losses':0, 'draws':0, 'crashes':0, 'time_losses':0, 'pentanomial':5*[0]},
+    'stats': input_stats
   }
 
-  # Have we run any games on this task yet?
-  global old_stats
-  old_stats = task.get('stats', {'wins':0, 'losses':0, 'draws':0, 'crashes':0, 'time_losses':0, 'pentanomial':5*[0]})
-  if not 'pentanomial' in old_stats.keys():
-    old_stats['pentanomial']=5*[0]
-  result['stats']['crashes'] = old_stats.get('crashes', 0)
-  result['stats']['time_losses'] = old_stats.get('time_losses', 0)
-  games_remaining = task['num_games'] - (old_stats['wins'] + old_stats['losses'] + old_stats['draws'])
-  if games_remaining <= 0:
-    raise Exception('No games remaining')
+  games_remaining = task['num_games'] - (input_stats['wins'] + input_stats['losses'] + input_stats['draws'])
+
+  assert(games_remaining>0)
+  assert(games_remaining%2==0)
 
   book = run['args']['book']
   book_depth = run['args']['book_depth']
@@ -574,6 +596,9 @@ def run_games(worker_info, password, remote, run, task_id):
       batch_size=2*run['args']['sprt'].get('batch_size',1)
       assert(games_to_play%batch_size==0)
 
+    assert(batch_size%2==0)
+    assert(games_to_play%2==0)
+
     # Run cutechess-cli binary
     cmd = [ cutechess, '-repeat', '-rounds', str(int(games_to_play/2)), '-games', ' 2', '-tournament', 'gauntlet'] + pgnout + \
           ['-site', 'https://tests.stockfishchess.org/tests/view/' + run['_id']] + \
@@ -590,7 +615,6 @@ def run_games(worker_info, password, remote, run, task_id):
     if not task_status.get('task_alive', False):
       break
 
-    old_stats = result['stats'].copy()
     games_remaining -= games_to_play
 
   return pgnfile
