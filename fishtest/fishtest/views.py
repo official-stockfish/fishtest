@@ -274,7 +274,10 @@ def get_sha(branch, repo_url):
   """ Resolves the git branch to sha commit """
   api_url = repo_url.replace('https://github.com',
                              'https://api.github.com/repos')
-  commit = requests.get(api_url + '/commits/' + branch).json()
+  try:
+    commit = requests.get(api_url + '/commits/' + branch).json()
+  except:
+    raise Exception("Unable to access developer repository")
   if 'sha' in commit:
     return commit['sha'], commit['commit']['message'].split('\n')[0]
   else:
@@ -332,7 +335,10 @@ def validate_form(request):
     api_url = data['tests_repo'].replace('https://github.com',
                                          'https://api.github.com/repos')
     api_url += ('/commits' + '/' + data['new_tag'])
-    c = requests.get(api_url).json()
+    try:
+      c = requests.get(api_url).json()
+    except:
+      raise Exception("Unable to access developer repository")
     if 'commit' not in c:
       raise Exception('Cannot find branch in developer repository')
     if len(data['new_signature']) == 0:
@@ -340,6 +346,8 @@ def validate_form(request):
       m = bs.search(c['commit']['message'])
       if m:
         data['new_signature'] = m.group(2)
+      else:
+        raise Exception("This commit has no signature: please supply it manually.")
     if len(data['info']) == 0:
         data['info'] = ('' if re.match('^[012]?[0-9][^0-9].*', data['tc'])
                         else 'LTC: ') + strip_message(c['commit']['message'])
@@ -353,8 +361,12 @@ def validate_form(request):
     if data['book'] + '.zip' not in valid_book_filenames:
       raise Exception('Invalid book - ' + data['book'])
 
-  if len([v for v in list(data.values()) if len(v) == 0]) > 0:
-    raise Exception('Missing required option')
+  if request.POST['stop_rule']=='spsa':
+    data['base_signature']=data['new_signature']
+
+  for k,v in data.items():
+    if len(v)==0:
+      raise Exception('Missing required option: %s' % k)
 
   data['auto_purge'] = request.POST.get('auto-purge') is not None
 
