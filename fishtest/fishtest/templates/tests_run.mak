@@ -328,9 +328,14 @@
     update_sprt_bounds($(this).val());
   });
 
-  const initial_base_branch = $('#base-branch').val();
-  const initial_base_signature = $('#base-signature').val();
+  var initial_base_branch = $('#base-branch').val();
+  var initial_base_signature = $('#base-signature').val();
+  var spsa_do_not_save = false;
   $('.btn-group .btn').on('click', function() {
+    if(!spsa_do_not_save){
+      initial_base_branch = $('#base-branch').val();
+      initial_base_signature = $('#base-signature').val();
+    }
     const $btn = $(this);
     $(this).parent().find('.btn').removeClass('btn-info');
     $(this).addClass('btn-info');
@@ -366,11 +371,13 @@
           $('#test-signature').on('input', function() {
             $('#base-signature').val($(this).val());
           })
+	  spsa_do_not_save = true;
         } else {
           $('#base-branch').removeAttr('readonly').val(initial_base_branch);
           $('#base-signature').removeAttr('readonly').val(initial_base_signature);
           $('#test-branch').off('input');
           $('#test-signature').off('input');
+	  spsa_do_not_save = false;
         }
       %endif
       if (stop_rule === 'sprt') {
