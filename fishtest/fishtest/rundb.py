@@ -439,7 +439,6 @@ class RunDb:
     max_threads = int(worker_info['concurrency'])
     min_threads = int(worker_info.get('min_threads', 1))
     max_memory = int(worker_info.get('max_memory', 0))
-    exclusion_list = []
 
     # We need to allocate a new task, but first check we don't have the same
     # machine already running because multiple connections are not allowed.
@@ -471,7 +470,7 @@ class RunDb:
         need_tt += get_hash(run['args']['base_options'])
         need_tt *= max_threads // run['args']['threads']
 
-      if run['_id'] not in exclusion_list and run['approved'] \
+      if run['approved'] \
          and run['args']['threads'] <= max_threads \
          and run['args']['threads'] >= min_threads \
          and need_tt <= max_memory:
