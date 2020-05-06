@@ -1,6 +1,7 @@
 #!/usr/bin/python
 from __future__ import print_function
 
+import math
 import json
 import multiprocessing
 import os
@@ -27,7 +28,7 @@ from updater import update
 from datetime import datetime
 from os import path
 
-WORKER_VERSION = 76
+WORKER_VERSION = 77
 ALIVE = True
 HTTP_TIMEOUT = 15.0
 
@@ -80,6 +81,15 @@ def on_sigint(signal, frame):
   ALIVE = False
   raise Exception('Terminated by signal')
 
+rate = None
+
+def get_rate():
+  global rate
+  rate = requests.get('https://api.github.com/rate_limit', timeout=HTTP_TIMEOUT).json()['rate']
+  remaining = rate['remaining']
+  print("API call rate limits:", rate)
+  return remaining >= math.sqrt(rate['limit'])
+
 def worker(worker_info, password, remote):
   global ALIVE
 
@@ -90,6 +100,9 @@ def worker(worker_info, password, remote):
 
   try:
     print('Fetch task...')
+    if not get_rate():
+      raise Exception('Near API limit')
+
     t0 = datetime.utcnow()
     req = requests.post(remote + '/api/request_version', data=json.dumps(payload), headers={'Content-type': 'application/json'}, timeout=HTTP_TIMEOUT)
     req = json.loads(req.text)
@@ -105,7 +118,11 @@ def worker(worker_info, password, remote):
     print("Worker version checked successfully in %ss" % ((datetime.utcnow() - t0).total_seconds()))
 
     t0 = datetime.utcnow()
-    req = requests.post(remote + '/api/request_task', data=json.dumps(payload), headers={'Content-type': 'application/json'}, timeout=HTTP_TIMEOUT)
+    worker_info['rate'] = rate
+    req = requests.post(remote + '/api/request_task',
+                        data=json.dumps(payload),
+                        headers={'Content-type': 'application/json'},
+                        timeout=HTTP_TIMEOUT)
     req = json.loads(req.text)
   except Exception as e:
     sys.stderr.write('Exception accessing host:\n')
