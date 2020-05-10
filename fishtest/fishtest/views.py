@@ -324,6 +324,9 @@ def validate_form(request):
     'info': request.POST['run-info'],
   }
 
+  if request.POST.get('rescheduled_from'):
+    data['rescheduled_from'] = request.POST['rescheduled_from']
+
   def strip_message(m):
     s = re.sub(r"[Bb]ench[ :]+[0-9]{7}\s*", "", m)
     s = re.sub(r"[ \t]+", " ", s)
@@ -496,6 +499,7 @@ def tests_run(request):
 
   return {'args': run_args,
           'is_rerun': len(run_args) > 0,
+          'rescheduled_from': request.params['id'] if 'id' in request.params else None,
           'tests_repo': u.get('tests_repo', ''),
           'bench': get_master_bench()}
 
@@ -679,6 +683,8 @@ def tests_view(request):
   results = request.rundb.get_results(run)
   run['results_info'] = format_results(results, run)
   run_args = [('id', str(run['_id']), '')]
+  if run.get('rescheduled_from'):
+    run_args.append(('rescheduled_from', run['rescheduled_from'], ''))
 
   for name in ['new_tag', 'new_signature', 'new_options', 'resolved_new',
                'base_tag', 'base_signature', 'base_options', 'resolved_base',
