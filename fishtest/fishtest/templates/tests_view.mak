@@ -292,7 +292,7 @@
 
 <script type="text/javascript" src="/js/highlight.diff.min.js"></script>
 <script>
-  document.title = '${page_title}';
+  document.title = '${page_title} | Stockfish Testing';
 
   $(function() {
     let $copyDiffBtn = $("#copy-diff");
