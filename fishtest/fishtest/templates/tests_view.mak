@@ -62,6 +62,8 @@
             </td>
           %elif arg[0] in ['resolved_new', 'resolved_base']:
             <td>${arg[1][:7]}</td>
+          %elif arg[0] == 'rescheduled_from':
+            <td><a href="/tests/view/${arg[1]}">${arg[1]}</a></td>
           %else:
             <td>${str(markupsafe.Markup(arg[1])).replace('\n', '<br>') | n}</td>
           %endif

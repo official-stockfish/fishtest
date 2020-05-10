@@ -289,6 +289,10 @@
     <input type="hidden" name="msg_base" value="${args.get('msg_base', '')}">
     <input type="hidden" name="msg_new" value="${args.get('msg_new', '')}">
   %endif
+
+  %if is_rerun:
+    <input type="hidden" name="rescheduled_from" value="${rescheduled_from}">
+  %endif
 </form>
 
 <script type="text/javascript">

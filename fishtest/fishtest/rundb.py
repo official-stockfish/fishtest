@@ -68,6 +68,7 @@ class RunDb:
               msg_new='',
               base_signature='',
               new_signature='',
+              rescheduled_from=None,
               base_same_as_master=None,
               start_time=None,
               sprt=None,
@@ -129,6 +130,9 @@ class RunDb:
       'approved': False,
       'approver': '',
     }
+
+    if rescheduled_from:
+      new_run['rescheduled_from'] = rescheduled_from
 
     return self.runs.insert_one(new_run).inserted_id
 
