@@ -71,7 +71,11 @@
       %else:
         <tr>
           <td>${arg[0]}</td>
-          <td><a href="${arg[2]}" target="_blank" rel="noopener">${arg[1]}</a></td>
+          <td>
+            <a href="${arg[2]}" target="_blank" rel="noopener">
+              ${str(markupsafe.Markup(arg[1]))}
+            </a>
+          </td>
         </tr>
       %endif
     %endfor

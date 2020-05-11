@@ -746,7 +746,8 @@ def tests_view(request):
         strval = str(value)
       except:
         strval = value.encode('ascii', 'replace')
-      strval = html.escape(strval)
+      if name not in ['new_tag', 'base_tag']:
+        strval = html.escape(strval)
       run_args.append((name, strval, url))
 
   active = 0
