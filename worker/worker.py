@@ -28,7 +28,7 @@ from updater import update
 from datetime import datetime
 from os import path
 
-WORKER_VERSION = 77
+WORKER_VERSION = 78
 ALIVE = True
 HTTP_TIMEOUT = 15.0
 
@@ -85,7 +85,13 @@ rate = None
 
 def get_rate():
   global rate
-  rate = requests.get('https://api.github.com/rate_limit', timeout=HTTP_TIMEOUT).json()['rate']
+  try:
+    rate = requests.get('https://api.github.com/rate_limit', timeout=HTTP_TIMEOUT).json()['rate']
+  except Exception as e:
+    sys.stderr.write('Exception fetching rate_limit:\n')
+    print(e)
+    rate = { 'remaining': 0, 'limit': 5000 }
+    return True
   remaining = rate['remaining']
   print("API call rate limits:", rate)
   return remaining >= math.sqrt(rate['limit'])

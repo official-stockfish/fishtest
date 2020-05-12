@@ -493,11 +493,11 @@ def run_games(worker_info, password, remote, run, task_id):
   if not os.path.exists(testing_dir):
     os.makedirs(testing_dir)
 
-  # clean up old engines (keeping the 25 most recent)
+  # clean up old engines (keeping the 50 most recent)
   engines = glob.glob(os.path.join(testing_dir, 'stockfish_*' + EXE_SUFFIX))
-  if len(engines) > 25:
+  if len(engines) > 50:
     engines.sort(key=os.path.getmtime)
-    for old_engine in engines[:len(engines)-25]:
+    for old_engine in engines[:-50]:
       try:
          os.remove(old_engine)
       except:
