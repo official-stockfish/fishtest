@@ -102,4 +102,4 @@ class UserDb:
     user = self.find(username)
     if user and 'machine_limit' in user:
       return user['machine_limit']
-    return 4
+    return 16
