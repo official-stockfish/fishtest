@@ -271,6 +271,13 @@ class RunDb:
       if task['active'] and task['last_updated'] < old:
         task['active'] = False
 
+  def get_unfinished_runs_id(self):
+    with self.run_cache_write_lock:
+      unfinished_runs = self.runs.find({'finished': False},
+                                       {'_id': 1},
+                                       sort=[('last_updated', DESCENDING)])
+      return unfinished_runs
+
   def get_unfinished_runs(self, username=None):
     with self.run_cache_write_lock:
       unfinished_runs = self.runs.find({'finished': False},
@@ -425,18 +432,17 @@ class RunDb:
       finally:
         self.task_semaphore.release()
     else:
+      print("request_task too busy")
       return {'task_waiting': False}
 
   def sync_request_task(self, worker_info):
     if time.time() > self.task_time + 60:
       self.task_runs = []
-      for r in self.get_unfinished_runs():
+      for r in self.get_unfinished_runs_id():
         run = self.get_run(r['_id'])
         self.sum_cores(run)
-        r['cores'] = run['cores']
         self.calc_itp(run)
-        r['args']['itp'] = run['args']['itp']
-        self.task_runs.append(r)
+        self.task_runs.append(run)
       self.task_runs.sort(key=lambda r: (-r['args']['priority'],
                           r['cores'] / r['args']['itp'] * 100.0,
                           -r['args']['itp'], r['_id']))
@@ -470,8 +476,7 @@ class RunDb:
 
     # Get a new task that matches the worker requirements
     run_found = False
-    for runt in self.task_runs:
-      run = self.get_run(runt['_id'])
+    for run in self.task_runs:
       # compute required TT memory
       need_tt = 0
       if max_memory > 0:
@@ -514,14 +519,10 @@ class RunDb:
     if not run_found:
       return {'task_waiting': False}
 
-    for runt in self.task_runs:
-      if runt['_id'] == run['_id']:
-        self.sum_cores(run)
-        runt['cores'] = run['cores']
-        self.task_runs.sort(key=lambda r: (-r['args']['priority'],
-                            r['cores'] / r['args']['itp'] * 100.0,
-                            -r['args']['itp'], r['_id']))
-        break
+    self.sum_cores(run)
+    self.task_runs.sort(key=lambda r: (-r['args']['priority'],
+                        r['cores'] / r['args']['itp'] * 100.0,
+                        -r['args']['itp'], r['_id']))
 
     self.buffer(run, False)
 
