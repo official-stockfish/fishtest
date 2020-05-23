@@ -661,7 +661,6 @@ class RunDb:
     if run is None:
       run = self.get_run(run_id)
       save_it = True
-    run.pop('cores', None)
     run['tasks'] = [task for task in run['tasks'] if 'stats' in task]
     for task in run['tasks']:
       task['pending'] = False
