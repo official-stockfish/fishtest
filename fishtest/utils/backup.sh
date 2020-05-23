@@ -10,7 +10,7 @@
 
 cd ${HOME}/backup
 for db_name in "fishtest_new" "admin" "fishtest" "fishtest_testing"; do
-  mongodump --db=${db_name} --excludeCollection="pgns" --gzip
+  mongodump --db=${db_name} --numParallelCollections=1 --excludeCollection="pgns" --gzip
 done
 tar -cv dump | gzip -1 > dump.tar.gz
 rm -rf dump
