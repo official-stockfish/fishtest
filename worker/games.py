@@ -421,7 +421,9 @@ def launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, batch_size
   cmd = cmd[:idx] + ['option.%s=%d'%(x['name'], round(x['value'])) for x in b_params] + cmd[idx+1:]
 
   print(cmd)
-  p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True, bufsize=1, close_fds=not IS_WINDOWS)
+  my_env = os.environ.copy()
+  my_env['LC_ALL'] = 'C'
+  p = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True, bufsize=1, close_fds=not IS_WINDOWS, env=my_env)
 
   try:
     return parse_cutechess_output(p, remote, result, spsa, spsa_tuning, games_to_play, batch_size, tc_limit)
