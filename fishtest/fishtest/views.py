@@ -413,7 +413,7 @@ def validate_form(request):
 
   # Check if the base branch of the test repo matches official master
   api_url = 'https://api.github.com/repos/official-stockfish/Stockfish'
-  api_url += '/compare/master...' + data['resolved_base'][:7]
+  api_url += '/compare/master...' + data['resolved_base'][:10]
   master_diff = requests.get(api_url, headers={
     'Accept': 'application/vnd.github.v3.diff'
   })

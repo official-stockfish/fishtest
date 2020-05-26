@@ -606,8 +606,8 @@ def run_games(worker_info, password, remote, run, task_id):
           ['-srand', "%d" % struct.unpack("<L", os.urandom(struct.calcsize("<L")))] + \
           ['-resign', 'movecount=3', 'score=400', '-draw', 'movenumber=34',
            'movecount=8', 'score=20', '-concurrency', str(int(games_concurrency))] + pgn_cmd + \
-          ['-engine', 'name=New-'+run['args']['resolved_new'][:7], 'cmd=%s' % (new_engine_name)] + new_options + ['_spsa_'] + \
-          ['-engine', 'name=Base-'+run['args']['resolved_base'][:7], 'cmd=%s' % (base_engine_name)] + base_options + ['_spsa_'] + \
+          ['-engine', 'name=New-'+run['args']['resolved_new'][:10], 'cmd=%s' % (new_engine_name)] + new_options + ['_spsa_'] + \
+          ['-engine', 'name=Base-'+run['args']['resolved_base'][:10], 'cmd=%s' % (base_engine_name)] + base_options + ['_spsa_'] + \
           ['-each', 'proto=uci', 'tc=%s' % (scaled_tc)] + nodestime_cmd + threads_cmd + book_cmd
 
     task_status = launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, batch_size,
