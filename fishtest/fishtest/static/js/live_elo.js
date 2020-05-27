@@ -81,7 +81,7 @@ function set_gauges(LLR,a,b,LOS,elo,ci_lower,ci_upper){
         width: 500, height: 150,
         yellowFrom: a, yellowTo: b,
         max:b, min: a,
-        minorTicks: 5
+        minorTicks: 3
     };
     LLR_chart.draw(LLR_chart_data, LLR_chart_options);
 
@@ -91,8 +91,8 @@ function set_gauges(LLR,a,b,LOS,elo,ci_lower,ci_upper){
     ]);
     var ELO_chart_options = {
         width: 500, height: 150,
-        max:6, min: -6,
-        minorTicks: 5
+        max:4, min: -4,
+        minorTicks: 4
     };
     if(ci_lower<0 && ci_upper>0){
         ELO_chart_options.redFrom=ci_lower;
