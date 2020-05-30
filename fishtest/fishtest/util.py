@@ -231,33 +231,37 @@ def format_results(run_results, run):
 
 
 def estimate_game_duration(tc):
-  # Total time for a game is assumed to be the double of tc for each player
-  # reduced for 92% because on average a game is stopped earlier (LTC fishtest result).
-  scale = 2 * 0.92
-  # estimated number of moves per game (LTC fishtest result)
-  game_moves = 68
+  try:
+     # Total time for a game is assumed to be the double of tc for each player
+     # reduced for 92% because on average a game is stopped earlier (LTC fishtest result).
+     scale = 2 * 0.92
+     # estimated number of moves per game (LTC fishtest result)
+     game_moves = 68
 
-  chunks = tc.split('+')
-  increment = 0.0
-  if len(chunks) == 2:
-    increment = float(chunks[1])
+     chunks = tc.split('+')
+     increment = 0.0
+     if len(chunks) == 2:
+       increment = float(chunks[1])
 
-  chunks = chunks[0].split('/')
-  num_moves = 0
-  if len(chunks) == 2:
-    num_moves = int(chunks[0])
+     chunks = chunks[0].split('/')
+     num_moves = 0
+     if len(chunks) == 2:
+       num_moves = int(chunks[0])
 
-  time_tc = chunks[-1]
-  chunks = time_tc.split(':')
-  if len(chunks) == 2:
-    time_tc = float(chunks[0]) * 60 + float(chunks[1])
-  else:
-    time_tc = float(chunks[0])
+     time_tc = chunks[-1]
+     chunks = time_tc.split(':')
+     if len(chunks) == 2:
+       time_tc = float(chunks[0]) * 60 + float(chunks[1])
+     else:
+       time_tc = float(chunks[0])
 
-  if num_moves > 0:
-    time_tc = time_tc * (game_moves / num_moves)
+     if num_moves > 0:
+       time_tc = time_tc * (game_moves / num_moves)
 
-  return (time_tc + (increment * game_moves)) * scale
+     return (time_tc + (increment * game_moves)) * scale
+  except:
+     print('Unable to parse tc : ' , tc)
+     return 120
 
 
 def remaining_hours(run):
