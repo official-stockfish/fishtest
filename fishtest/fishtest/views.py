@@ -324,6 +324,9 @@ def validate_form(request):
     'info': request.POST['run-info'],
   }
 
+  if not re.match('^([1-9]\d*/)?\d+(\.\d+)?(\+\d+(\.\d+)?)?$', data['tc']):
+    raise Exception('Bad time control format')
+
   if request.POST.get('rescheduled_from'):
     data['rescheduled_from'] = request.POST['rescheduled_from']
 
