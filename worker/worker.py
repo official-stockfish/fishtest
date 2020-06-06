@@ -28,7 +28,7 @@ from updater import update
 from datetime import datetime
 from os import path
 
-WORKER_VERSION = 79
+WORKER_VERSION = 80
 ALIVE = True
 HTTP_TIMEOUT = 15.0
 
@@ -134,7 +134,7 @@ def worker(worker_info, password, remote):
     sys.stderr.write('Exception accessing host:\n')
     print(e)
 #    traceback.print_exc()
-    time.sleep(random.randint(10,60))
+    time.sleep(random.randint(10, 60))
     return
 
   print("Task requested in %ss" % ((datetime.utcnow() - t0).total_seconds()))
@@ -145,7 +145,7 @@ def worker(worker_info, password, remote):
   if 'task_waiting' in req:
     print('No tasks available at this time, waiting...\n')
     # Note that after this sleep we have another ALIVE HTTP_TIMEOUT...
-    time.sleep(random.randint(1,10))
+    time.sleep(random.randint(1, 10))
     return
 
   success = True
@@ -164,21 +164,31 @@ def worker(worker_info, password, remote):
       'task_id': task_id
     }
     try:
-      requests.post(remote + '/api/failed_task', data=json.dumps(payload), headers={'Content-type': 'application/json'}, timeout=HTTP_TIMEOUT)
+      requests.post(remote + '/api/failed_task', data=json.dumps(payload),
+                    headers={'Content-type': 'application/json'},
+                    timeout=HTTP_TIMEOUT)
     except:
       pass
 
     if success and ALIVE:
-      sleep = random.randint(1,10)
+      sleep = random.randint(1, 10)
       print('Wait %d seconds before upload of PGN...' % (sleep))
       time.sleep(sleep)
       if not 'spsa' in run['args']:
         try:
           with open(pgn_file, 'r') as f:
             data = f.read()
-          payload['pgn'] = base64.b64encode(zlib.compress(data.encode('utf-8'))).decode()
+          # Ignore non utf-8 characters in PGN file
+          if sys.version_info[0] == 2:
+            data = data.decode('utf-8', 'ignore').encode('utf-8')  # Python 2
+          else:
+            data = bytes(data, 'utf-8').decode('utf-8', 'ignore')  # Python 3
+          payload['pgn'] = base64.b64encode(zlib.compress(
+              data.encode('utf-8'))).decode()
           print('Uploading compressed PGN of %d bytes' % (len(payload['pgn'])))
-          requests.post(remote + '/api/upload_pgn', data=json.dumps(payload), headers={'Content-type': 'application/json'}, timeout=HTTP_TIMEOUT)
+          requests.post(remote + '/api/upload_pgn', data=json.dumps(payload),
+                        headers={'Content-type': 'application/json'},
+                        timeout=HTTP_TIMEOUT)
         except Exception as e:
           sys.stderr.write('\nException PGN upload:\n')
           print(e)
