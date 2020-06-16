@@ -117,7 +117,7 @@ def signup(request):
     request.session.flash('Invalid username', 'error')
   else:
     request.session.flash(
-        'Your account will be activated by an administrator soon...')
+        'Your account has been created, but will be activated by a human. This might take a few hours. Thank you for contributing!')
     return HTTPFound(location=request.route_url('login'))
   return {}
 
