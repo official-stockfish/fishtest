@@ -143,11 +143,11 @@
     <div class="flex-row">
       <label class="field-label leftmost">Test options</label>
       <input type="text" name="new-options"
-             value="${args.get('new_options', 'Hash=16')}">
+             value="${args.get('new_options', 'Hash=16 Contempt=24')}">
 
       <label class="field-label">Base options</label>
       <input type="text" name="base-options"
-             value="${args.get('base_options', 'Hash=16')}">
+             value="${args.get('base_options', 'Hash=16 Contempt=24')}">
     </div>
 
     <div class="flex-row">
