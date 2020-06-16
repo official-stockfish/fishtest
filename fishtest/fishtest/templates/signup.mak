@@ -6,8 +6,9 @@
 
 <div>
   <p></p>
-  <p>Note that many modern browsers can generate/remember a strong password for you.</p>
-  <p>If it is not suggested by default you can try right-clicking on the password entry field.</p>
+  <p>Signing up to fishtest allows you to contribute with CPU time or with patches to test. </p>
+  <p>Your contribution is much appreciated.</p>
+  <p>Once a new user account is created, a human needs to manually activate it. This is usually quick, but sometimes takes a few hours.</p>
 
   <form class="form-horizontal" action="" method="POST">
     <input type="hidden" name="csrf_token"
