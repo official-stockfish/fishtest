@@ -97,19 +97,19 @@
       <label class="field-label leftmost">Test type</label>
       <div class="btn-group choose-test-type">
         <div class="btn" id="fast_test"
-             data-options='{"tc": "10+0.1", "threads": 1, "options": "Hash=16", "bounds": "standard STC"}'>
+             data-options='{"tc": "10+0.1", "threads": 1, "options": "Hash=16 Contempt=24", "bounds": "standard STC"}'>
           short (STC)
         </div>
         <div class="btn" id="slow_test"
-             data-options='{"tc": "60+0.6", "threads": 1, "options": "Hash=64", "bounds": "standard LTC"}'>
+             data-options='{"tc": "60+0.6", "threads": 1, "options": "Hash=64 Contempt=24", "bounds": "standard LTC"}'>
           long (LTC)
         </div>
         <div class="btn" id="fast_smp_test"
-             data-options='{"tc": "5+0.05", "threads": 8, "options": "Hash=64", "bounds": "standard STC"}'>
+             data-options='{"tc": "5+0.05", "threads": 8, "options": "Hash=64 Contempt=24", "bounds": "standard STC"}'>
           SMP (STC)
         </div>
         <div class="btn" id="slow_smp_test"
-             data-options='{"tc": "20+0.2", "threads": 8, "options": "Hash=256", "bounds": "standard LTC"}'>
+             data-options='{"tc": "20+0.2", "threads": 8, "options": "Hash=256 Contempt=24", "bounds": "standard LTC"}'>
           SMP (LTC)
         </div>
       </div>
