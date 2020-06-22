@@ -474,6 +474,12 @@ def validate_form(request):
   return data
 
 
+def del_tasks(run):
+  if 'tasks' in run:
+    run = copy.deepcopy(run)
+    del run['tasks']
+  return run
+
 @view_config(route_name='tests_run', renderer='tests_run.mak', require_csrf=True)
 def tests_run(request):
   if not authenticated_userid(request):
@@ -486,8 +492,8 @@ def tests_run(request):
     try:
       data = validate_form(request)
       run_id = request.rundb.new_run(**data)
-      request.actiondb.new_run(authenticated_userid(request),
-                               request.rundb.get_run(run_id))
+      run = del_tasks(request.rundb.get_run(run_id))
+      request.actiondb.new_run(authenticated_userid(request), run)
       cached_flash(request, 'Submitted test to the queue!')
       return HTTPFound(location='/tests/view/' + str(run_id))
     except Exception as e:
@@ -519,7 +525,7 @@ def tests_modify(request):
     return HTTPFound(location=request.route_url('login'))
   if 'num-games' in request.POST:
     run = request.rundb.get_run(request.POST['run'])
-    before = copy.deepcopy(run)
+    before = del_tasks(run)
 
     if not can_modify_run(request, run):
       request.session.flash("Unable to modify another user's run!", 'error')
@@ -561,7 +567,8 @@ def tests_modify(request):
     request.rundb.buffer(run, True)
     request.rundb.task_time = 0
 
-    request.actiondb.modify_run(authenticated_userid(request), before, run)
+    after = del_tasks(run)
+    request.actiondb.modify_run(authenticated_userid(request), before, after)
 
     cached_flash(request, 'Run successfully modified!')
   return HTTPFound(location=request.route_url('tests'))
@@ -580,6 +587,7 @@ def tests_stop(request):
 
     run['finished'] = True
     request.rundb.stop_run(request.POST['run-id'])
+    run = del_tasks(run)
     request.actiondb.stop_run(authenticated_userid(request), run)
     cached_flash(request, 'Stopped run')
   return HTTPFound(location=request.route_url('tests'))
@@ -598,6 +606,7 @@ def tests_approve(request):
   run_id = request.POST['run-id']
   if request.rundb.approve_run(run_id, username):
     run = request.rundb.get_run(run_id)
+    run = del_tasks(run)
     request.actiondb.approve_run(username, run)
     cached_flash(request, 'Approved run')
   else:
@@ -622,6 +631,7 @@ def tests_purge(request):
     request.session.flash('No bad workers!')
     return HTTPFound(location=request.route_url('tests'))
 
+  run = del_tasks(run)
   request.actiondb.purge_run(username, run)
 
   cached_flash(request, 'Purged run')
@@ -646,6 +656,7 @@ def tests_delete(request):
     request.rundb.buffer(run, True)
     request.rundb.task_time = 0
 
+    run = del_tasks(run)
     request.actiondb.delete_run(authenticated_userid(request), run)
 
     cached_flash(request, 'Deleted run')
