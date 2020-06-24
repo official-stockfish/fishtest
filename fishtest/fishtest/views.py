@@ -259,7 +259,7 @@ def users_monthly(request):
 
 
 def get_master_bench():
-  bs = re.compile(r'(^|\s)[Bb]ench[ :]+([0-9]{7})', re.MULTILINE)
+  bs = re.compile(r'(^|\s)[Bb]ench[ :]+([0-9]+)', re.MULTILINE)
   for c in requests.get(
       'https://api.github.com/repos/official-stockfish/Stockfish/commits').json():
     if not 'commit' in c:
@@ -331,7 +331,7 @@ def validate_form(request):
     data['rescheduled_from'] = request.POST['rescheduled_from']
 
   def strip_message(m):
-    s = re.sub(r"[Bb]ench[ :]+[0-9]{7}\s*", "", m)
+    s = re.sub(r"[Bb]ench[ :]+[0-9]+\s*", "", m)
     s = re.sub(r"[ \t]+", " ", s)
     s = re.sub(r"\n+", r"\n", s)
     return s.rstrip()
@@ -348,7 +348,7 @@ def validate_form(request):
     if 'commit' not in c:
       raise Exception('Cannot find branch in developer repository')
     if len(data['new_signature']) == 0:
-      bs = re.compile(r'(^|\s)[Bb]ench[ :]+([0-9]{7})', re.MULTILINE)
+      bs = re.compile(r'(^|\s)[Bb]ench[ :]+([0-9]+)', re.MULTILINE)
       m = bs.search(c['commit']['message'])
       if m:
         data['new_signature'] = m.group(2)
@@ -402,7 +402,7 @@ def validate_form(request):
     api_url = data['tests_repo'].replace('https://github.com',
                                          'https://api.github.com/repos')
     api_url += '/commits'
-    bs = re.compile(r'(^|\s)[Bb]ench[ :]+([0-9]{7})', re.MULTILINE)
+    bs = re.compile(r'(^|\s)[Bb]ench[ :]+([0-9]+)', re.MULTILINE)
     for c in requests.get(api_url).json():
       m = bs.search(c['commit']['message'])
       if m:
