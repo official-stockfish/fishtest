@@ -288,10 +288,10 @@ def parse_spsa_params(raw, spsa):
   params = []
   for line in raw.split('\n'):
     chunks = line.strip().split(',')
-    if len(chunks) == 0:
+    if len(chunks)==1 and chunks[0]=="": # blank line
       continue
     if len(chunks) != 6:
-      raise Exception('"%s" needs 6 parameters"' % (line))
+      raise Exception('the line %s does not have 6 entries' % (chunks))
     param = {
       'name': chunks[0],
       'start': float(chunks[1]),
