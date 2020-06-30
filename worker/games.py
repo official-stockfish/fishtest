@@ -293,7 +293,7 @@ def parse_cutechess_output(p, remote, result, spsa, spsa_tuning, games_to_play, 
     try:
       line = q.get_nowait()
     except Empty:
-      if p.poll():
+      if p.poll() is not None:
         break
       time.sleep(1)
       continue
