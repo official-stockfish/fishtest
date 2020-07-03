@@ -154,11 +154,11 @@ def kill_process(p):
       subprocess.call(['taskkill', '/F', '/T', '/PID', str(p.pid)])
     else:
       p.kill()
-    p.wait()
-    p.stdout.close()
   except:
     print('Note: ' + str(sys.exc_info()[0]) + ' killing the process pid: ' + str(p.pid) + ', possibly already terminated')
-    pass
+  finally:
+    p.wait()
+    p.stdout.close()
 
 def adjust_tc(tc, base_nps, concurrency):
   factor = 1600000.0 / base_nps # 1.6Mnps is the reference core, also used in fishtest views.
@@ -266,7 +266,7 @@ def update_pentanomial(line,rounds):
 
 def validate_pentanomial(wld, rounds):
   def results_to_score(results):
-    return sum([results[i] * (i / 2.0) for i in range(0, len(results))])
+    return sum([results[i] * (i / 2.0) for i in range(len(results))])
   LDW = [wld[1], wld[2], wld[0]]
   s3 = results_to_score(LDW)
   s5 = results_to_score(rounds['pentanomial']) + results_to_score(rounds['trinomial'])
@@ -307,12 +307,10 @@ def parse_cutechess_output(p, remote, result, spsa, spsa_tuning, games_to_play, 
       # Does this ever happen?
       assert(num_games_updated==games_to_play)
       print('Finished match cleanly')
-      kill_process(p)
-      return { 'task_alive': True }
 
     # Parse line like this:
     # Warning: New-eb6a21875e doesn't have option ThreatBySafePawn
-    if "Warning:" in line and "doesn't have option" in line:
+    if 'Warning:' in line and "doesn't have option" in line:
       message = r'Cutechess-cli says: "%s"' % line.strip()
       result['message']=message
       send_api_post_request(remote + '/api/stop_run', result)
@@ -336,7 +334,7 @@ def parse_cutechess_output(p, remote, result, spsa, spsa_tuning, games_to_play, 
       validate_pentanomial(wld, rounds) # check if cutechess-cli result is compatible with
                                         # our own bookkeeping
 
-      pentanomial=[rounds['pentanomial'][i]+saved_stats['pentanomial'][i] for i in range(0,5)]
+      pentanomial=[rounds['pentanomial'][i]+saved_stats['pentanomial'][i] for i in range(5)]
       result['stats']['pentanomial'] = pentanomial
 
       wld_pairs={} # trinomial frequencies of completed game pairs
@@ -366,15 +364,14 @@ def parse_cutechess_output(p, remote, result, spsa, spsa_tuning, games_to_play, 
       if (num_games_finished == num_games_updated+batch_size) or (num_games_finished==games_to_play):
         # Attempt to send game results to the server. Retry a few times upon error
         update_succeeded = False
-        for _ in range(0, 5):
+        for _ in range(5):
           try:
             t0 = datetime.datetime.utcnow()
             response = send_api_post_request(remote + '/api/update_task', result).json()
             print("  Task updated successfully in %ss" % ((datetime.datetime.utcnow() - t0).total_seconds()))
             if not response['task_alive']:
-              # This task is no longer neccesary
+              # This task is no longer necessary
               print('Server told us task is no longer needed')
-              kill_process(p)
               return response
             update_succeeded = True
             num_games_updated = num_games_finished
@@ -386,7 +383,6 @@ def parse_cutechess_output(p, remote, result, spsa, spsa_tuning, games_to_play, 
           time.sleep(HTTP_TIMEOUT)
         if not update_succeeded:
           print('Too many failed update attempts')
-          kill_process(p)
           break
 
     # act on line like this
@@ -397,7 +393,7 @@ def parse_cutechess_output(p, remote, result, spsa, spsa_tuning, games_to_play, 
   now = datetime.datetime.now()
   if now >= end_time:
     print('{} is past end time {}'.format(now, end_time))
-  kill_process(p)
+ 
   return { 'task_alive': True }
 
 def launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, batch_size, tc_limit):
@@ -431,17 +427,15 @@ def launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, batch_size
   print(cmd)
   p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True, bufsize=1, close_fds=not IS_WINDOWS)
 
+  task_state = { 'task_alive': False }
   try:
-    return parse_cutechess_output(p, remote, result, spsa, spsa_tuning, games_to_play, batch_size, tc_limit)
+    task_state = parse_cutechess_output(p, remote, result, spsa, spsa_tuning, games_to_play, batch_size, tc_limit) 
   except Exception as e:
+    print('Exception running games')
     traceback.print_exc(file=sys.stderr)
-    try:
-      print('Exception running games')
-      kill_process(p)
-    except:
-      pass
 
-  return { 'task_alive': False }
+  kill_process(p)
+  return task_state
 
 def run_games(worker_info, password, remote, run, task_id):
   task = run['my_task']
