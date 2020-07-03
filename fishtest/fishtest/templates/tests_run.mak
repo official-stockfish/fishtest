@@ -232,6 +232,39 @@
       <textarea name="spsa_raw_params"
                 rows="2">${args.get('spsa', {'raw_params': ''})['raw_params']}</textarea>
     </div>
+    <div class="flex-row stop_rule spsa"
+         style="${args.get('spsa') or 'display: none'}">
+    <label class="field-label leftmost">Autoselect</label>
+    <input type="checkbox" id="enable"/>
+
+   &nbsp; &nbsp;
+   <input type="button" class="btn btn-info" id="info" value="Info"/>
+    </div>
+    <div class="flex-row stop_rule spsa">
+         <label class="field-label leftmost"></label>
+    	 <div  id="info_display" style="border-style:solid;">
+	 <i>
+    	 Checking this option will rewrite the hyperparameters furnished by
+    	 the tuning code in Stockfish in such a way that the SPSA tune will finish
+    	 within 0.5 Elo from the optimum (with 95% probability) assuming
+    	 the function <span style="white-space:
+    	 nowrap;">'parameters-&gt;Elo'</span> is quadratic and varies 2 Elo
+    	 per parameter over each specified parameter interval. The
+    	 hyperparameters are relatively conservative and their performance
+    	 will degrade gracefully if the actual variation is different.  The
+    	 theoretical basis for choosing the hyperparameters is given in
+    	 this document:
+    	 <a href=https://github.com/vdbergh/spsa_simul/blob/master/doc/theoretical_basis.pdf target=_blank>
+	 https://github.com/vdbergh/spsa_simul/blob/master/doc/theoretical_basis.pdf</a>. The
+    	 formulas can be checked by simulation which is done here:
+    	 <a href=https://github.com/vdbergh/spsa_simul target=_blank>
+	 https://github.com/vdbergh/spsa_simul</a>.
+	 Currently this option
+    	 should be used with the book 'noob_3moves.epd' and contempt should be left at its default value 24
+	 and in addition the option should not be used with nodestime or with more than one thread.
+	 </i>
+	 </div>
+    </div>
     <input type="hidden" name="spsa_clipping" value="old" />
     <input type="hidden" name="spsa_rounding" value="deterministic" />
   </section>
@@ -355,6 +388,7 @@
         $('input[name=base-options]').val(options);
         $('select[name=bounds]').val(bounds);
         update_sprt_bounds(bounds);
+	do_spsa_work();
       }
     }
 
@@ -398,6 +432,10 @@
 
   let form_submitted = false;
   $('#create-new-test').on('submit', function(event) {
+    var ret=do_spsa_work();   // Last check that all spsa data are consistent.
+    if(!ret){
+	return false;
+    }
     if (form_submitted) {
       // Don't allow submitting the form more than once
       $(event).preventDefault();
@@ -435,4 +473,86 @@
     // Focus the "Test branch" field on page load for new tests
     $('#test-branch').focus();
   }
+</script>
+
+
+<script type="text/javascript" src="/js/spsa_new.js?5"></script>
+<script type="text/javascript">
+
+	function do_spsa_work(){
+		/* parsing/computing */
+		if(!$('#enable').prop("checked")){
+			return true;
+		}
+		var params=$("textarea[name='spsa_raw_params']").val();
+		var s=fishtest_to_spsa(params);
+			if(s==null){
+			alert("Unable to parse spsa parameters.");
+			return false;
+		}
+		/* estimate the draw ratio */
+		var tc=$("input[name='tc']").val();
+		var dr=draw_ratio(tc);
+		if(dr==null){
+			alert("Unable to parse time control.");
+			return false;
+		}
+		s.draw_ratio=dr;
+		s=spsa_compute(s);
+		var fs=spsa_to_fishtest(s);
+		/* Let's go */
+		$("input[name='spsa_A']").val(0);
+		$("input[name='spsa_alpha']").val(0.0);
+		$("input[name='spsa_gamma']").val(0.0);
+		$("input[name='num-games']").val(10000*Math.round(s.num_games/10000));
+		$("textarea[name='spsa_raw_params']").val(fs.trim());
+		return true;
+	}
+	var saved_A=null;
+	var saved_alpha=null;
+	var saved_gamma=null;
+	var saved_games=null;
+	var saved_params=null;
+	function do_spsa_events(){
+		if($('#enable').prop("checked")){
+			/* save old stuff */
+			saved_A=$("input[name='spsa_A']").val();
+			saved_alpha=$("input[name='spsa_alpha']").val();
+			saved_gamma=$("input[name='spsa_gamma']").val();
+			saved_games=$("input[name='num-games']").val();
+			saved_params=$("textarea[name='spsa_raw_params']").val();
+			var ret=do_spsa_work();
+			if(!ret){
+				$('#enable').prop("checked",false);
+			}
+		}else{
+			$("input[name='spsa_A']").val(saved_A);
+			$("input[name='spsa_alpha']").val(saved_alpha);
+			$("input[name='spsa_gamma']").val(saved_gamma);
+			$("input[name='num-games']").val(saved_games);
+			$("textarea[name='spsa_raw_params']").val(saved_params);
+		}
+	}
+	$('#info_display').hide();
+	$('#info').click(function(){
+		if($('#info').val()=="Info"){
+			$('#info').val("Hide");
+		}else{
+			$('#info').val("Info");
+		}
+		$('#info_display').toggle(400);
+
+	});
+	$('#enable').change(do_spsa_events);
+	$("input[name='tc']").on("input",function(){
+		if(!$('#enable').prop("checked")){
+			return;
+		}
+		var tc=$("input[name='tc']").val();
+		var tc_seconds=tc_to_seconds(tc);
+		if(tc_seconds!=null){
+			do_spsa_work();
+		}
+	});
+
 </script>
