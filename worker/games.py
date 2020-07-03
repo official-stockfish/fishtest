@@ -312,7 +312,7 @@ def parse_cutechess_output(p, remote, result, spsa, spsa_tuning, games_to_play, 
 
     # Parse line like this:
     # Warning: New-eb6a21875e doesn't have option ThreatBySafePawn
-    if line.split()[0]=='Warning:' and 'doesn\'t have option' in line:
+    if "Warning:" in line and "doesn't have option" in line:
       message = r'Cutechess-cli says: "%s"' % line.strip()
       result['message']=message
       send_api_post_request(remote + '/api/stop_run', result)
