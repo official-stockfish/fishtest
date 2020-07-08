@@ -145,7 +145,7 @@
     <label class="control-label">Adjust priority (higher is more urgent):</label>
     <input type="text" name="priority" value="${run['args']['priority']}">
 
-    <label class="control-label">Adjust throughput%:</label>
+    <label class="control-label">Adjust throughput (%):</label>
     <input type="text" name="throughput" value="${run['args'].get('throughput', 1000)}">
 
     <div class="control-group">
