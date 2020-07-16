@@ -1,3 +1,4 @@
+import copy
 import base64
 from datetime import datetime
 
@@ -14,7 +15,7 @@ flag_cache = {}
 
 
 def strip_run(run):
-  run = run.copy()
+  run = copy.deepcopy(run)
   if 'tasks' in run:
     del run['tasks']
   if 'bad_tasks' in run:
