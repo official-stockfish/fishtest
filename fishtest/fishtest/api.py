@@ -220,6 +220,7 @@ class ApiView(object):
     with self.request.rundb.active_run_lock(self.run_id()):
       run = self.request.rundb.get_run(self.run_id())
       run['finished'] = True
+      run['failed'] = True
       run['stop_reason'] = self.request.json_body.get('message', 'API request')
       self.request.actiondb.stop_run(username, run)
       self.request.rundb.stop_run(self.run_id())

@@ -831,7 +831,7 @@ def get_paginated_finished_runs(request):
       run['results_info'] = format_results(results, run)
 
     # Look for failed runs
-    if results['wins'] + results['losses'] + results['draws'] == 0:
+    if 'failed' in run:
       failed_runs.append(run)
 
   return {
