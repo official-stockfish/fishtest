@@ -5,6 +5,7 @@ import datetime
 import json
 import os
 import glob
+import hashlib
 import stat
 import subprocess
 import shutil
@@ -40,13 +41,8 @@ def is_64bit():
 HTTP_TIMEOUT = 15.0
 
 REPO_URL = 'https://github.com/official-stockfish/books'
-ARCH = 'ARCH=x86-64-modern' if is_64bit() else 'ARCH=x86-32'
-EXE_SUFFIX = ''
-MAKE_CMD = 'make COMP=gcc ' + ARCH
-
-if IS_WINDOWS:
-  EXE_SUFFIX = '.exe'
-  MAKE_CMD = 'make COMP=mingw ' + ARCH
+EXE_SUFFIX = '.exe' if IS_WINDOWS else ''
+MAKE_CMD = 'make COMP=mingw ' if IS_WINDOWS else 'make COMP=gcc '
 
 def send_api_post_request(api_url, payload):
   return requests.post(api_url, data=json.dumps(payload), headers={
@@ -60,6 +56,34 @@ def github_api(repo):
 
 def enc(s):
   return s.encode('utf-8')
+
+def required_net(engine):
+  net = None
+  print('Obtaining EvalFile of %s ...' % (os.path.basename(engine)))
+  p = subprocess.Popen([engine, 'uci'], stdout=subprocess.PIPE, universal_newlines=True, bufsize=1, close_fds=not IS_WINDOWS)
+
+  for line in iter(p.stdout.readline,''):
+    if 'EvalFile' in line:
+      net = line.split(' ')[6].strip()
+
+  p.wait()
+  p.stdout.close()
+
+  if p.returncode != 0:
+     raise Exception('uci exited with non-zero code %d' % (p.returncode))
+
+  return net
+
+def download_net(testing_dir, net):
+  NETWORKS_REPO_URL = 'https://tests.stockfishchess.org/api/nn/'
+  url = NETWORKS_REPO_URL + net
+  r = requests.get(url, allow_redirects=True)
+  open(os.path.join(testing_dir, net), 'wb').write(r.content)
+
+def validate_net(testing_dir, net):
+  content = open(os.path.join(testing_dir, net), "rb").read()
+  hash = hashlib.sha256(content).hexdigest()
+  return hash[:12] == net[3:15]
 
 def verify_signature(engine, signature, remote, payload, concurrency):
   if concurrency > 1:
@@ -109,6 +133,89 @@ def setup(item, testing_dir):
   else:
     raise Exception('Item %s not found' % (item))
 
+def gcc_props():
+  """Parse the output of g++ -Q -march=native --help=target and extract the available properties"""
+  p = subprocess.Popen(['g++', '-Q', '-march=native', '--help=target'], stdout=subprocess.PIPE, universal_newlines=True, bufsize=1, close_fds=not IS_WINDOWS)
+
+
+  flags=[]
+  arch="None"
+  for line in iter(p.stdout.readline,''):
+      if '[enabled]' in line:
+         flags.append(line.split()[0])
+      if '-march' in line and len(line.split()) == 2:
+         arch = line.split()[1]
+
+  p.wait()
+  p.stdout.close()
+
+  if p.returncode != 0:
+     raise Exception('g++ target query failed with return code %d' % (p.returncode))
+
+  return {'flags' : flags, 'arch' : arch}
+
+
+def make_targets():
+  """Parse the output of make help and extract the available targets"""
+  p = subprocess.Popen(['make', 'help'], stdout=subprocess.PIPE, universal_newlines=True, bufsize=1, close_fds=not IS_WINDOWS)
+
+  targets=[]
+  read_targets = False
+
+  for line in iter(p.stdout.readline,''):
+      if 'Supported compilers:' in line:
+         read_targets = False
+      if read_targets and len(line.split())>1:
+         targets.append(line.split()[0])
+      if 'Supported archs:' in line:
+         read_targets = True
+
+  p.wait()
+  p.stdout.close()
+
+  if p.returncode != 0:
+     raise Exception('make help failed with return code %d' % (p.returncode))
+
+  return targets
+
+def find_arch_string():
+  """Find the best ARCH=... string based on the cpu/g++ capabilities and Makefile targets"""
+
+  targets = make_targets()
+
+  props = gcc_props()
+
+  if is_64bit():
+     if '-mavx512bw' in props['flags'] and 'x86-64-avx512' in targets:
+        res='x86-64-avx512'
+     elif '-mbmi2' in props['flags'] and 'x86-64-bmi2' in targets \
+          and not props['arch'] in ['znver1', 'znver2']:
+        res='x86-64-bmi2'
+     elif '-mavx2' in props['flags'] and 'x86-64-avx2' in targets:
+        res='x86-64-avx2'
+     elif '-msse4.2' in props['flags'] and 'x86-64-sse42' in targets:
+        res='x86-64-sse42'
+     elif '-mpopcnt' in props['flags'] and '-msse4.1' in props['flags'] and 'x86-64-modern' in targets:
+        res='x86-64-modern'
+     elif '-msse4.1' in props['flags'] and 'x86-64-sse41' in targets:
+        res='x86-64-sse41'
+     elif '-mssse3' in props['flags'] and 'x86-64-ssse3' in targets:
+        res='x86-64-ssse3'
+     elif '-mpopcnt' in props['flags'] and '-msse3' in props['flags'] and 'x86-64-sse3-popcnt' in targets:
+        res='x86-64-sse3-popcnt'
+     elif '-msse3' in props['flags'] and 'x86-64-sse3' in targets:
+        res='x86-64-sse3'
+     else:
+        res='x86-64'
+  else:
+     res='x86-32'
+
+  print("Available Makefile architecture targets: ", targets)
+  print("Available g++/cpu properties : ", props)
+  print("Determined the best architecture to be ", res)
+
+  return 'ARCH=' + res
+
 def setup_engine(destination, worker_dir, sha, repo_url, concurrency):
   if os.path.exists(destination): os.remove(destination)
   """Download and build sources in a temporary directory then move exe to destination"""
@@ -127,18 +234,13 @@ def setup_engine(destination, worker_dir, sha, repo_url, concurrency):
         src_dir = name
     os.chdir(src_dir)
 
-    custom_make = os.path.join(worker_dir, 'custom_make.txt')
-    if os.path.exists(custom_make):
-      with open(custom_make, 'r') as m:
-        make_cmd = m.read().strip()
-      subprocess.check_call(make_cmd, shell=True)
-    else:
-      subprocess.check_call(MAKE_CMD + ' -j %s' % (concurrency) + ' profile-build', shell=True)
-      try: # try/pass needed for backwards compatibility with older stockfish, where 'make strip' fails under mingw.
-        subprocess.check_call(MAKE_CMD + ' -j %s' % (concurrency) + ' strip', shell=True)
-      except:
-        pass
+    ARCH = find_arch_string()
 
+    subprocess.check_call(MAKE_CMD + ARCH + ' -j %s' % (concurrency) + ' profile-build', shell=True)
+    try: # try/pass needed for backwards compatibility with older stockfish, where 'make strip' fails under mingw.
+      subprocess.check_call(MAKE_CMD + ARCH + ' -j %s' % (concurrency) + ' strip', shell=True)
+    except:
+      pass
 
     shutil.move('stockfish'+ EXE_SUFFIX, destination)
   except:
@@ -544,6 +646,33 @@ def run_games(worker_info, password, remote, run, task_id):
     os.remove(zipball)
     os.chmod(cutechess, os.stat(cutechess).st_mode | stat.S_IEXEC)
 
+  # clean up old networks (keeping the 20 most recent)
+  networks = glob.glob(os.path.join(testing_dir, 'nn-*.nnue'))
+  if len(networks) > 20:
+    networks.sort(key=os.path.getmtime)
+    for old_net in networks[:-20]:
+      try:
+         os.remove(old_net)
+      except:
+         print('Note: failed to remove an old network ' + str(old_net))
+         pass
+
+  # Add EvalFile with full path to cutechess options, and download networks if not already existing
+  net_base = required_net(base_engine)
+  if net_base:
+     base_options = base_options + ["option.EvalFile=%s"%(os.path.join(testing_dir, net_base))]
+  net_new = required_net(new_engine)
+  if net_new:
+     new_options = new_options + ["option.EvalFile=%s"%(os.path.join(testing_dir, net_new))]
+
+  for net in [net_base, net_new]:
+    if net:
+      if not os.path.exists(os.path.join(testing_dir, net)) or not validate_net(testing_dir, net):
+         download_net(testing_dir, net)
+         if not validate_net(testing_dir, net):
+            raise Exception('Failed to validate the network: %s ' % (net))
+
+  # pgn output setup
   pgn_name = 'results-' + worker_info['unique_key'] + '.pgn'
   if os.path.exists(pgn_name):
     os.remove(pgn_name)
