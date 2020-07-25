@@ -61,6 +61,34 @@ def github_api(repo):
 def enc(s):
   return s.encode('utf-8')
 
+def required_net(engine):
+  net = None
+  print('Obtaining EvalFile of %s ...' % (os.path.basename(engine)))
+  p = subprocess.Popen([engine, 'uci'], stdout=subprocess.PIPE, universal_newlines=True, bufsize=1, close_fds=not IS_WINDOWS)
+
+  for line in iter(p.stdout.readline,''):
+    if 'EvalFile' in line:
+      net = line.split(' ')[6].strip()
+
+  p.wait()
+  p.stderr.close()
+
+  if p.returncode != 0:
+     raise Exception('uci exited with non-zero code %d' % (p.returncode))
+
+  return net
+
+def download_net(testing_dir, net):
+  NETWORKS_REPO_URL = 'https://dfts-0.pigazzini.it/api/nn/'
+  url = NETWORKS_REPO_URL + net
+  r = requests.get(url, allow_redirects=True)
+  open(os.path.join(testing_dir, net), 'wb').write(r.content)
+
+def validate_net(testing_dir, net):
+  content = open(os.path.join(testing_dir, net), "rb").read()
+  hash = hashlib.sha256(content).hexdigest()
+  return hash[:12] == net[3:15]
+
 def verify_signature(engine, signature, remote, payload, concurrency):
   if concurrency > 1:
     busy_process = subprocess.Popen([engine], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
@@ -544,6 +572,22 @@ def run_games(worker_info, password, remote, run, task_id):
     os.remove(zipball)
     os.chmod(cutechess, os.stat(cutechess).st_mode | stat.S_IEXEC)
 
+  # Download networks if not already existing
+  net_base = required_net(base_engine)
+  net_new = required_net(new_engine)
+
+  for net in [net_base, net_test]:
+    if net:
+      try:
+        if not os.path.exists(os.path.join(testing_dir, net)) or not validate_net(testing_dir, net):
+           download_net(testing_dir, net)
+           if not validate_net(testing_dir, net):
+              raise Exception('Failed to validate the network: %s ' % (net))
+      except Exception as e:
+        sys.stderr.write('Exception from downloading network: %s \n' % (net))
+        print(e)
+
+  # pgn output setup
   pgn_name = 'results-' + worker_info['unique_key'] + '.pgn'
   if os.path.exists(pgn_name):
     os.remove(pgn_name)
