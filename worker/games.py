@@ -198,12 +198,9 @@ def adjust_tc(tc, base_nps, concurrency):
   return scaled_tc, tc_limit
 
 def enqueue_output(out, queue):
-  try:
-    for line in iter(out.readline, b''):
-      queue.put(line)
-    out.close()
-  except: # Happens on closed file/killed process
-    return
+  for line in iter(out.readline, ''):
+    queue.put(line)
+
 
 w_params = None
 b_params = None
