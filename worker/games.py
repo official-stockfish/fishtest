@@ -184,7 +184,7 @@ def adjust_tc(tc, base_nps, concurrency):
   else:
     time_tc = float(chunks[0])
 
-  # Rebuild scaled_tc now
+  # Rebuild scaled_tc now: cutechess-cli and stockfish parse 3 decimal places
   scaled_tc = '%.3f' % (time_tc * factor)
   tc_limit = time_tc * factor * 3
   if increment > 0.0:
@@ -583,19 +583,21 @@ def run_games(worker_info, password, remote, run, task_id):
   def make_player(arg):
     return run['args'][arg].split(' ')[0]
 
+  if spsa_tuning:
+    tc_limit *= 2
+
   while games_remaining > 0:
     if spsa_tuning:
       games_to_play = min(games_concurrency * 2, games_remaining)
-      tc_limit *= 2
       pgnout = []
     else:
       games_to_play = games_remaining
       pgnout = ['-pgnout', pgn_name]
 
-    batch_size=games_concurrency * 2  # update frequency
+    batch_size = games_concurrency * 2  # update frequency
 
     if 'sprt' in run['args']:
-      batch_size=2*run['args']['sprt'].get('batch_size',1)
+      batch_size = 2 * run['args']['sprt'].get('batch_size',1)
       assert(games_to_play%batch_size==0)
 
     assert(batch_size%2==0)
