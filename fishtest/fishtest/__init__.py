@@ -51,6 +51,7 @@ def main(global_config, **settings):
 
   config.add_route('home', '/')
   config.add_route('login', '/login')
+  config.add_route('nn_upload', '/upload')
   config.add_route('logout', '/logout')
   config.add_route('signup', '/signup')
   config.add_route('user', '/user/{username}')
@@ -59,6 +60,7 @@ def main(global_config, **settings):
   config.add_route('users', '/users')
   config.add_route('users_monthly', '/users/monthly')
   config.add_route('actions', '/actions')
+  config.add_route('nns', '/nns')
 
   config.add_route('tests', '/tests')
   config.add_route('tests_machines', '/tests/machines')
@@ -88,6 +90,7 @@ def main(global_config, **settings):
   config.add_route('api_upload_pgn', '/api/upload_pgn')
   config.add_route('api_download_pgn', '/api/pgn/{id}')
   config.add_route('api_download_pgn_100', '/api/pgn_100/{skip}')
+  config.add_route('api_download_nn', '/api/nn/{id}')
   config.add_route('api_get_elo', '/api/get_elo/{id}')
 
   config.scan()

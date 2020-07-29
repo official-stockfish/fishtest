@@ -37,11 +37,15 @@
         <li><a href="/tests/user/${request.authenticated_userid}">My tests</a></li>
       %endif
       <li><a href="/tests/run">New</a></li>
+      %if request.authenticated_userid:
+        <li><a href="/upload">Upload NN</a></li>
+      %endif
 
       <li class="nav-header">Misc</li>
       <li><a href="/users">Users</a></li>
       <li><a href="/users/monthly">Top Month</a></li>
       <li><a href="/actions">Actions</a></li>
+      <li><a href="/nns">NN stats</a></li>
       <li><a href="/html/SPRTcalculator.html?elo-0=-0.5&elo-1=1.5&draw-ratio=0.61&rms-bias=0" target="_blank">SPRT Calc</a></li>
 
       <li class="nav-header">Github</li>

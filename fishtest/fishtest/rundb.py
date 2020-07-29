@@ -38,6 +38,7 @@ class RunDb:
     self.userdb = UserDb(self.db)
     self.actiondb = ActionDb(self.db)
     self.pgndb = self.db['pgns']
+    self.nndb = self.db['nns']
     self.runs = self.db['runs']
     self.deltas = self.db['deltas']
 
@@ -164,6 +165,25 @@ class RunDb:
   def get_pgn_100(self, skip):
     return [p['run_id'] for p in
             self.pgndb.find(skip=skip, limit=100, sort=[('_id', DESCENDING)])]
+
+  def upload_nn(self, userid, name, nn):
+    self.nndb.insert_one({'user': userid, 'name': name, 'downloads': 0})
+                          # 'nn': Binary(zlib.compress(nn))})
+    return {}
+
+  def get_nn(self, name):
+    # nn = self.nndb.find_one({'name': name})
+    nn = self.nndb.find_one({'name': name}, {'nn': 0})
+    if nn:
+      self.nndb.update_one({'name': name}, {'$inc': { 'downloads': 1 }})
+      return nn
+    return None
+
+  def get_nns(self, limit):
+    return [dict(n, time=n['_id'].generation_time) for n in
+            self.nndb.find({}, {'nn': 0},
+                           limit=limit, sort=[('_id', DESCENDING)])]
+
 
   # Cache runs
   run_cache = {}

@@ -1,9 +1,11 @@
 import copy
 import base64
+import zlib
 from datetime import datetime
 
 import requests
 from pyramid.httpexceptions import HTTPUnauthorized, exception_response
+from pyramid.httpexceptions import HTTPFound
 from pyramid.view import view_config, view_defaults, exception_view_config
 from pyramid.response import Response
 
@@ -209,6 +211,18 @@ class ApiView(object):
     if urls is None:
       raise exception_response(404)
     return urls
+
+
+  @view_config(route_name='api_download_nn')
+  def download_nn(self):
+    nn = self.request.rundb.get_nn(self.request.matchdict['id'])
+    if nn is None:
+      raise exception_response(404)
+    #self.request.response.content_type = 'application/x-chess-nnue'
+    #self.request.response.body = zlib.decompress(nn['nn'])
+    #return self.request.response
+    return HTTPFound("https://data.stockfishchess.org/nn/"
+                    + self.request.matchdict['id'])
 
 
   @view_config(route_name='api_stop_run')

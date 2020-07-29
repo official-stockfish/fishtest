@@ -5,6 +5,7 @@ import time
 import threading
 import re
 import html
+import hashlib
 
 import requests
 from pyramid.security import remember, forget, authenticated_userid, has_permission
@@ -62,6 +63,56 @@ def login(request):
     request.session.flash(token['error'], 'error')  # 'Incorrect password'
   return {}
 
+
+@view_config(route_name='nn_upload', renderer='nn_upload.mak',
+             require_csrf=True)
+def upload(request):
+  userid = authenticated_userid(request)
+  if not userid:
+    request.session.flash('Please login')
+    return HTTPFound(location=request.route_url('login'))
+  if request.method != 'POST':
+    return {}
+  try:
+    filename = request.POST['network'].filename
+    input_file = request.POST['network'].file
+    network = input_file.read()
+    errors = []
+    if len(network) >= 100000000:
+      errors.append('Network must be < 100MB')
+    if not re.match(r"^nn-[0-9a-f]{12}\.nnue$", filename):
+      errors.append('Name must match "nn-[SHA256 first 12 digits].nnue"')
+    hash = hashlib.sha256(network).hexdigest()
+    if hash[:12] != filename[3:15]:
+      errors.append('Wrong SHA256 hash: ' + hash[:12]
+                    + ' Filename: ' + filename[3:15])
+    if request.rundb.get_nn(filename):
+      errors.append('Network already exists')
+    if errors:
+      for error in errors:
+        request.session.flash(error, 'error')
+      return {}
+  except:
+    request.session.flash('You must specify a network filename', 'error')
+    return {}
+
+  try:
+    with open(os.path.expanduser('~/fishtest.upload'), 'r') as f:
+      upload_server = f.read().replace('\n', '')
+      upload_server = upload_server + '/' + filename
+      response = requests.post(upload_server, data=network)
+      if response.status_code != 200:
+        print('Network upload failed: ' + str(response.status_code))
+        request.session.flash('Network upload failed: '
+                              + str(response.status_code), 'error')
+        return {}
+  except Exception as e:
+    print("NN Upload fails or not configured: " + str(e))
+
+  request.actiondb.upload_nn(authenticated_userid(request), filename)
+  request.rundb.upload_nn(userid, filename, network)
+
+  return HTTPFound(location=request.route_url('nns'))
 
 @view_config(route_name='logout', require_csrf=True, request_method='POST')
 def logout(request):
@@ -122,6 +173,16 @@ def signup(request):
   return {}
 
 
+@view_config(route_name='nns', renderer='nns.mak')
+def nns(request):
+
+  nns_list = []
+
+  for nn in request.rundb.get_nns(100):
+    nns_list.append(nn)
+  return {'nns': nns_list}
+
+
 @view_config(route_name='actions', renderer='actions.mak')
 def actions(request):
   search_action = request.params.get('action', '')
@@ -137,6 +198,9 @@ def actions(request):
     if action['action'] == 'update_stats':
       item['user'] = ''
       item['description'] = 'Update user statistics'
+    elif action['action'] == 'upload_nn':
+      item['user'] = ''
+      item['description'] = 'Upload ' + action['data']
     elif action['action'] == 'block_user':
       item['description'] = (
           'blocked' if action['data']['blocked'] else 'unblocked')
@@ -259,7 +323,7 @@ def users_monthly(request):
 
 
 def get_master_bench():
-  bs = re.compile(r'(^|\s)[Bb]ench[ :]+([0-9]+)', re.MULTILINE)
+  bs = re.compile(r"(^|\s)[Bb]ench[ :]+([0-9]+)", re.MULTILINE)
   for c in requests.get(
       'https://api.github.com/repos/official-stockfish/Stockfish/commits').json():
     if not 'commit' in c:
@@ -324,7 +388,7 @@ def validate_form(request):
     'info': request.POST['run-info'],
   }
 
-  if not re.match('^([1-9]\d*/)?\d+(\.\d+)?(\+\d+(\.\d+)?)?$', data['tc']):
+  if not re.match(r"^([1-9]\d*/)?\d+(\.\d+)?(\+\d+(\.\d+)?)?$", data['tc']):
     raise Exception('Bad time control format')
 
   if request.POST.get('rescheduled_from'):
@@ -348,21 +412,21 @@ def validate_form(request):
     if 'commit' not in c:
       raise Exception('Cannot find branch in developer repository')
     if len(data['new_signature']) == 0:
-      bs = re.compile(r'(^|\s)[Bb]ench[ :]+([0-9]+)', re.MULTILINE)
+      bs = re.compile(r"(^|\s)[Bb]ench[ :]+([0-9]+)", re.MULTILINE)
       m = bs.search(c['commit']['message'])
       if m:
         data['new_signature'] = m.group(2)
       else:
         raise Exception("This commit has no signature: please supply it manually.")
     if len(data['info']) == 0:
-        data['info'] = ('' if re.match('^[012]?[0-9][^0-9].*', data['tc'])
+        data['info'] = ('' if re.match(r"^[012]?[0-9][^0-9].*", data['tc'])
                         else 'LTC: ') + strip_message(c['commit']['message'])
 
   # Check that the book exists in the official books repo
   if len(data['book']) > 0:
     api_url = 'https://api.github.com/repos/official-stockfish/books/contents'
     c = requests.get(api_url).json()
-    matcher = re.compile(r'\.(epd|pgn)\.zip$')
+    matcher = re.compile(r"\.(epd|pgn)\.zip$")
     valid_book_filenames = [file['name'] for file in c if matcher.search(file['name'])]
     if data['book'] + '.zip' not in valid_book_filenames:
       raise Exception('Invalid book - ' + data['book'])
@@ -402,7 +466,7 @@ def validate_form(request):
     api_url = data['tests_repo'].replace('https://github.com',
                                          'https://api.github.com/repos')
     api_url += '/commits'
-    bs = re.compile(r'(^|\s)[Bb]ench[ :]+([0-9]+)', re.MULTILINE)
+    bs = re.compile(r"(^|\s)[Bb]ench[ :]+([0-9]+)", re.MULTILINE)
     for c in requests.get(api_url).json():
       m = bs.search(c['commit']['message'])
       if m:

@@ -13,6 +13,7 @@ Show only:
   <option value="purge_run">Purge Run</option>
   <option value="block_user">Block/Unblock User</option>
   <option value="update_stats">System Events</option>
+  <option value="upload_nn">Upload NN file</option>
 </select>
 &nbsp;From user:
 <input id="user" type="text" name="user" class="submit_on_enter">
