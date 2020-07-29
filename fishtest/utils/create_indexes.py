@@ -53,6 +53,10 @@ def create_pgns_indexes():
   print('Creating indexes on pgns collection')
   db['pgns'].create_index([('run_id', DESCENDING)])
 
+def create_nns_indexes():
+  print('Creating indexes on nns collection')
+  db['nns'].create_index([('name', DESCENDING)])
+
 def create_users_indexes():
   db['users'].create_index('username', unique=True)
 
@@ -109,6 +113,9 @@ if __name__ == '__main__':
       elif collection_name == 'pgns':
         drop_indexes('pgns')
         create_pgns_indexes()
+      elif collection_name == 'nns':
+        drop_indexes('nns')
+        create_nns_indexes()
       elif collection_name == 'flag_cache':
         drop_indexes('flag_cache')
         create_flag_cache_indexes()

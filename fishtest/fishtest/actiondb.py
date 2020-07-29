@@ -23,6 +23,9 @@ class ActionDb:
   def new_run(self, username, run):
     self._new_action(username, 'new_run', run)
 
+  def upload_nn(self, username, network):
+    self._new_action(username, 'upload_nn', network)
+
   def modify_run(self, username, before, after):
     self._new_action(username, 'modify_run',
                      {'before': before, 'after': after})
