@@ -71,7 +71,7 @@ def required_net(engine):
       net = line.split(' ')[6].strip()
 
   p.wait()
-  p.stderr.close()
+  p.stdout.close()
 
   if p.returncode != 0:
      raise Exception('uci exited with non-zero code %d' % (p.returncode))
