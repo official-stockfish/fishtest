@@ -573,9 +573,13 @@ def run_games(worker_info, password, remote, run, task_id):
     os.remove(zipball)
     os.chmod(cutechess, os.stat(cutechess).st_mode | stat.S_IEXEC)
 
-  # Download networks if not already existing
+  # Add EvalFile with full path to cutechess options, and download networks if not already existing
   net_base = required_net(base_engine)
+  if net_base:
+     base_options = base_options + ["option.EvalFile=%s"%(os.path.join(testing_dir, net_base))]
   net_new = required_net(new_engine)
+  if net_new:
+     new_options = new_options + ["option.EvalFile=%s"%(os.path.join(testing_dir, net_new))]
 
   for net in [net_base, net_new]:
     if net:
