@@ -5,6 +5,7 @@ import datetime
 import json
 import os
 import glob
+import hashlib
 import stat
 import subprocess
 import shutil
