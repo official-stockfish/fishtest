@@ -576,7 +576,7 @@ def run_games(worker_info, password, remote, run, task_id):
   net_base = required_net(base_engine)
   net_new = required_net(new_engine)
 
-  for net in [net_base, net_test]:
+  for net in [net_base, net_new]:
     if net:
       try:
         if not os.path.exists(os.path.join(testing_dir, net)) or not validate_net(testing_dir, net):
