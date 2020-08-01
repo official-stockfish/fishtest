@@ -573,6 +573,17 @@ def run_games(worker_info, password, remote, run, task_id):
     os.remove(zipball)
     os.chmod(cutechess, os.stat(cutechess).st_mode | stat.S_IEXEC)
 
+  # clean up old networks (keeping the 20 most recent)
+  networks = glob.glob(os.path.join(testing_dir, 'nn-*.nnue'))
+  if len(networks) > 20:
+    networks.sort(key=os.path.getmtime)
+    for old_net in networks[:-20]:
+      try:
+         os.remove(old_net)
+      except:
+         print('Note: failed to remove an old network ' + str(old_net))
+         pass
+
   # Add EvalFile with full path to cutechess options, and download networks if not already existing
   net_base = required_net(base_engine)
   if net_base:
