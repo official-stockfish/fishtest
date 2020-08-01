@@ -594,14 +594,10 @@ def run_games(worker_info, password, remote, run, task_id):
 
   for net in [net_base, net_new]:
     if net:
-      try:
-        if not os.path.exists(os.path.join(testing_dir, net)) or not validate_net(testing_dir, net):
-           download_net(testing_dir, net)
-           if not validate_net(testing_dir, net):
-              raise Exception('Failed to validate the network: %s ' % (net))
-      except Exception as e:
-        sys.stderr.write('Exception from downloading network: %s \n' % (net))
-        print(e)
+      if not os.path.exists(os.path.join(testing_dir, net)) or not validate_net(testing_dir, net):
+         download_net(testing_dir, net)
+         if not validate_net(testing_dir, net):
+            raise Exception('Failed to validate the network: %s ' % (net))
 
   # pgn output setup
   pgn_name = 'results-' + worker_info['unique_key'] + '.pgn'
