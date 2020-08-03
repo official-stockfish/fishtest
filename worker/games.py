@@ -54,9 +54,6 @@ def github_api(repo):
       To https://api.github.com/repos/<user>/<repo> """
   return repo.replace('https://github.com', 'https://api.github.com/repos')
 
-def enc(s):
-  return s.encode('utf-8')
-
 def required_net(engine):
   net = None
   print('Obtaining EvalFile of %s ...' % (os.path.basename(engine)))
@@ -87,24 +84,28 @@ def validate_net(testing_dir, net):
 
 def verify_signature(engine, signature, remote, payload, concurrency):
   if concurrency > 1:
-    busy_process = subprocess.Popen([engine], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-    busy_process.stdin.write(enc('setoption name Threads value %d\n' % (concurrency-1)))
-    busy_process.stdin.write(enc('go infinite\n'))
+    with open(os.devnull, 'wb') as dev_null:
+      busy_process = subprocess.Popen([engine], stdin=subprocess.PIPE, stdout=dev_null, universal_newlines=True, bufsize=1, close_fds=not IS_WINDOWS)
+    busy_process.stdin.write('setoption name Threads value {:.0f}\n'.format(concurrency-1))
+    busy_process.stdin.write('go infinite\n')
     busy_process.stdin.flush()
 
   try:
     bench_sig = ''
     print('Verifying signature of %s ...' % (os.path.basename(engine)))
-    with open(os.devnull, 'wb') as f:
-      p = subprocess.Popen([engine, 'bench'], stderr=subprocess.PIPE, stdout=f, universal_newlines=True)
-    for line in iter(p.stderr.readline,''):
+    with open(os.devnull, 'wb') as dev_null:
+      p = subprocess.Popen([engine, 'bench'], stderr=subprocess.PIPE, stdout=dev_null, universal_newlines=True, bufsize=1, close_fds=not IS_WINDOWS)
+   
+    for line in iter(p.stderr.readline, ''):
       if 'Nodes searched' in line:
         bench_sig = line.split(': ')[1].strip()
       if 'Nodes/second' in line:
         bench_nps = float(line.split(': ')[1].strip())
 
     p.wait()
-    if p.returncode != 0:
+    p.stderr.close()
+
+    if p.returncode:
       raise Exception('Bench exited with non-zero code %d' % (p.returncode))
 
     if int(bench_sig) != int(signature):
@@ -115,7 +116,7 @@ def verify_signature(engine, signature, remote, payload, concurrency):
 
   finally:
     if concurrency > 1:
-      busy_process.communicate(enc('quit\n'))
+      busy_process.communicate('quit\n')
       busy_process.stdin.close()
 
   return bench_nps
