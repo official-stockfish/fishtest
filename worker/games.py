@@ -74,9 +74,8 @@ def required_net(engine):
 
   return net
 
-def download_net(testing_dir, net):
-  NETWORKS_REPO_URL = 'https://tests.stockfishchess.org/api/nn/'
-  url = NETWORKS_REPO_URL + net
+def download_net(remote, testing_dir, net):
+  url = remote + '/api/nn/' + net
   r = requests.get(url, allow_redirects=True)
   open(os.path.join(testing_dir, net), 'wb').write(r.content)
 
@@ -665,7 +664,7 @@ def run_games(worker_info, password, remote, run, task_id):
   for net in [net_base, net_new]:
     if net:
       if not os.path.exists(os.path.join(testing_dir, net)) or not validate_net(testing_dir, net):
-         download_net(testing_dir, net)
+         download_net(remote, testing_dir, net)
          if not validate_net(testing_dir, net):
             raise Exception('Failed to validate the network: %s ' % (net))
 
