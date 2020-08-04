@@ -12,16 +12,16 @@ These networks are available for download under
    <th>Time</th>
    <th>Network</th>
    <th>Username</th>
-   <th>Downloads</th>
+   <th style="text-align:right">Downloads</th>
   </tr>
  </thead>
  <tbody>
  %for nn in nns:
   <tr>
    <td>${nn['time'].strftime("%y-%m-%d %H:%M:%S")}</td>
-   <td><a href="api/nn/${nn['name']}">${nn['name']}</a></td>
+   <td><a href="api/nn/${nn['name']}" style="font-family:monospace">${nn['name']}</a></td>
    <td>${nn['user']}</td>
-   <td>${nn.get('downloads', 0)}</td>
+   <td style="text-align:right">${nn.get('downloads', 0)}</td>
   </tr>
  %endfor
  </tbody>

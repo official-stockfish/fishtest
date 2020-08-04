@@ -97,19 +97,19 @@
       <label class="field-label leftmost">Test type</label>
       <div class="btn-group choose-test-type">
         <div class="btn" id="fast_test"
-             data-options='{"tc": "10+0.1", "threads": 1, "options": "Hash=16 Contempt=24", "bounds": "standard STC"}'>
+             data-options='{"tc": "10+0.1", "threads": 1, "options": "Hash=16 Use NNUE=true", "bounds": "standard STC"}'>
           short (STC)
         </div>
         <div class="btn" id="slow_test"
-             data-options='{"tc": "60+0.6", "threads": 1, "options": "Hash=64 Contempt=24", "bounds": "standard LTC"}'>
+             data-options='{"tc": "60+0.6", "threads": 1, "options": "Hash=64 Use NNUE=true", "bounds": "standard LTC"}'>
           long (LTC)
         </div>
         <div class="btn" id="fast_smp_test"
-             data-options='{"tc": "5+0.05", "threads": 8, "options": "Hash=64 Contempt=24", "bounds": "standard STC"}'>
+             data-options='{"tc": "5+0.05", "threads": 8, "options": "Hash=64 Use NNUE=true", "bounds": "standard STC"}'>
           SMP (STC)
         </div>
         <div class="btn" id="slow_smp_test"
-             data-options='{"tc": "20+0.2", "threads": 8, "options": "Hash=256 Contempt=24", "bounds": "standard LTC"}'>
+             data-options='{"tc": "20+0.2", "threads": 8, "options": "Hash=256 Use NNUE=true", "bounds": "standard LTC"}'>
           SMP (LTC)
         </div>
       </div>
@@ -143,11 +143,11 @@
     <div class="flex-row">
       <label class="field-label leftmost">Test options</label>
       <input type="text" name="new-options"
-             value="${args.get('new_options', 'Hash=16 Contempt=24')}">
+             value="${args.get('new_options', 'Hash=16 Use NNUE=true')}">
 
       <label class="field-label">Base options</label>
       <input type="text" name="base-options"
-             value="${args.get('base_options', 'Hash=16 Contempt=24')}">
+             value="${args.get('base_options', 'Hash=16 Use NNUE=true')}">
     </div>
 
     <div class="flex-row">
@@ -384,8 +384,14 @@
       if (test_options) {
         $('input[name=tc]').val(tc);
         $('input[name=threads]').val(threads);
-        $('input[name=new-options]').val(options);
-        $('input[name=base-options]').val(options);
+        $('input[name=new-options]').val((
+		options.replace(' Use NNUE=true', '')
+		+ ' ' + $('input[name=new-options]').val()
+		.replace(/Hash=[0-9]+ ?/, '')).replace(/ $/, ''));
+        $('input[name=base-options]').val((
+		options.replace(' Use NNUE=true', '')
+		+ ' ' + $('input[name=base-options]').val()
+		.replace(/Hash=[0-9]+ ?/, '')).replace(/ $/, ''));
         $('select[name=bounds]').val(bounds);
         update_sprt_bounds(bounds);
 	do_spsa_work();
