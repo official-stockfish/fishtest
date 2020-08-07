@@ -575,12 +575,12 @@ class RunDb:
         self.active_runs[id] = {'time': time.time(), 'lock': active_lock}
       return active_lock
 
-  def update_task(self, run_id, task_id, stats, nps, spsa, username):
+  def update_task(self, run_id, task_id, stats, nps, ARCH, spsa, username):
     lock = self.active_run_lock(str(run_id))
     with lock:
-      return self.sync_update_task(run_id, task_id, stats, nps, spsa, username)
+      return self.sync_update_task(run_id, task_id, stats, nps, ARCH, spsa, username)
 
-  def sync_update_task(self, run_id, task_id, stats, nps, spsa, username):
+  def sync_update_task(self, run_id, task_id, stats, nps, ARCH, spsa, username):
     run = self.get_run(run_id)
     if task_id >= len(run['tasks']):
       return {'task_alive': False}
@@ -613,6 +613,7 @@ class RunDb:
 
     task['stats'] = stats
     task['nps'] = nps
+    task['ARCH'] = ARCH
     if num_games >= task['num_games']:
       # This task is now finished
       if 'cores' in run:

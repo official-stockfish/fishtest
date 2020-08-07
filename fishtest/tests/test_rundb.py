@@ -52,13 +52,16 @@ class CreateRunDBTest(unittest.TestCase):
 
   def test_20_update_task(self):
     run = self.rundb.update_task(run_id, 0, {'wins': 1, 'losses': 1, 'draws': self.rundb.chunk_size-3,
-                                             'crashes': 0, 'time_losses': 0}, 1000000, '', 'worker2')
+                                             'crashes': 0, 'time_losses': 0},
+                                             1000000, '?', '', 'worker2')
     self.assertEqual(run, {'task_alive': False})
     run = self.rundb.update_task(run_id, 0, {'wins': 1, 'losses': 1, 'draws': self.rundb.chunk_size-4,
-                                             'crashes': 0, 'time_losses': 0}, 1000000, '', 'worker1')
+                                             'crashes': 0, 'time_losses': 0},
+                                             1000000, '?', '', 'worker1')
     self.assertEqual(run, {'task_alive': True})
     run = self.rundb.update_task(run_id, 0, {'wins': 1, 'losses': 1, 'draws': self.rundb.chunk_size-2,
-                                             'crashes': 0, 'time_losses': 0}, 1000000, '', 'worker1')
+                                             'crashes': 0, 'time_losses': 0},
+                                             1000000, '?', '', 'worker1')
     self.assertEqual(run, {'task_alive': False})
 
   def test_30_finish(self):

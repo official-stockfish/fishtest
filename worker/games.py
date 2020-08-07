@@ -28,6 +28,8 @@ except ImportError:
 
 IS_WINDOWS = 'windows' in platform.system().lower()
 
+ARCH = '?'
+
 def is_windows_64bit():
   if 'PROCESSOR_ARCHITEW6432' in os.environ:
     return True
@@ -82,6 +84,7 @@ def validate_net(testing_dir, net):
   return hash[:12] == net[3:15]
 
 def verify_signature(engine, signature, remote, payload, concurrency):
+  global ARCH
   if concurrency > 1:
     with open(os.devnull, 'wb') as dev_null:
       busy_process = subprocess.Popen([engine], stdin=subprocess.PIPE, stdout=dev_null, universal_newlines=True, bufsize=1, close_fds=not IS_WINDOWS)
@@ -94,18 +97,26 @@ def verify_signature(engine, signature, remote, payload, concurrency):
     print('Verifying signature of %s ...' % (os.path.basename(engine)))
     with open(os.devnull, 'wb') as dev_null:
       p = subprocess.Popen([engine, 'bench'], stderr=subprocess.PIPE, stdout=dev_null, universal_newlines=True, bufsize=1, close_fds=not IS_WINDOWS)
-   
+      p2 = subprocess.Popen([engine, 'compiler'], stdout=subprocess.PIPE, stderr=dev_null, universal_newlines=True, bufsize=1, close_fds=not IS_WINDOWS)
+
     for line in iter(p.stderr.readline, ''):
       if 'Nodes searched' in line:
         bench_sig = line.split(': ')[1].strip()
       if 'Nodes/second' in line:
         bench_nps = float(line.split(': ')[1].strip())
-
     p.wait()
     p.stderr.close()
 
+    for line in iter(p2.stdout.readline, ''):
+      if 'settings' in line:
+        ARCH = line.split(': ')[1].strip()
+    p2.wait()
+    p2.stdout.close()
+
     if p.returncode:
       raise Exception('Bench exited with non-zero code %d' % (p.returncode))
+    if p2.returncode:
+      raise Exception('Compiler info exited with non-zero code %d' % (p2.returncode))
 
     if int(bench_sig) != int(signature):
       message = 'Wrong bench in %s Expected: %s Got: %s' % (os.path.basename(engine), signature, bench_sig)
@@ -492,7 +503,7 @@ def parse_cutechess_output(p, remote, result, spsa, spsa_tuning, games_to_play, 
   now = datetime.datetime.now()
   if now >= end_time:
     print('{} is past end time {}'.format(now, end_time))
- 
+
   return { 'task_alive': True }
 
 def launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, batch_size, tc_limit):
@@ -528,7 +539,7 @@ def launch_cutechess(cmd, remote, result, spsa_tuning, games_to_play, batch_size
 
   task_state = { 'task_alive': False }
   try:
-    task_state = parse_cutechess_output(p, remote, result, spsa, spsa_tuning, games_to_play, batch_size, tc_limit) 
+    task_state = parse_cutechess_output(p, remote, result, spsa, spsa_tuning, games_to_play, batch_size, tc_limit)
   except Exception as e:
     print('Exception running games')
     traceback.print_exc(file=sys.stderr)
@@ -682,6 +693,7 @@ def run_games(worker_info, password, remote, run, task_id):
   # Benchmark to adjust cpu scaling
   scaled_tc, tc_limit = adjust_tc(run['args']['tc'], base_nps, int(worker_info['concurrency']))
   result['nps'] = base_nps
+  result['ARCH'] = ARCH
 
   # Handle book or pgn file
   pgn_cmd = []

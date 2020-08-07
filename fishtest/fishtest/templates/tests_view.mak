@@ -276,6 +276,7 @@
    <td>
    %if 'worker_info' in task:
      ${task['worker_info']['uname']}
+     ARCH=${task.get('ARCH', '?')}
    %else:
      Unknown worker
    %endif
