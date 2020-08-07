@@ -174,6 +174,7 @@ class ApiView(object):
       task_id=self.task_id(),
       stats=self.request.json_body['stats'],
       nps=self.request.json_body.get('nps', 0),
+      ARCH=self.request.json_body.get('ARCH', '?'),
       spsa=self.request.json_body.get('spsa', {}),
       username=self.get_username()
     )
