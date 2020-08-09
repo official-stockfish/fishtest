@@ -43,7 +43,7 @@ class workerTest(unittest.TestCase):
   def test_setup_exception(self):
     cwd = os.getcwd()
     with self.assertRaises(Exception):
-      games.setup_engine('foo', cwd, 'foo', 'https://foo', 1)
+      games.setup_engine('foo', cwd, cwd, 'https://foo', 'foo', 'https://foo', 1)
 
   def test_updater(self):
     file_list = updater.update(restart=False, test=True)
