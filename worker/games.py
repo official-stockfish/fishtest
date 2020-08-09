@@ -16,6 +16,7 @@ import time
 import traceback
 import platform
 import struct
+import re
 import requests
 import copy
 from base64 import b64decode
@@ -72,6 +73,20 @@ def required_net(engine):
      raise Exception('uci exited with non-zero code %d' % (p.returncode))
 
   return net
+
+def required_net_from_source():
+  """ Parse ucioption.cpp to find default net"""
+  net = None
+  with open('ucioption.cpp','r') as srcfile:
+    for line in srcfile.readlines():
+       if 'EvalFile' in line and 'Option' in line:
+          p = re.compile('nn-[a-z0-9]{12}.nnue')
+          m = p.search(line)
+          if m:
+             net = m.group(0)
+
+  return net
+
 
 def download_net(remote, testing_dir, net):
   url = remote + '/api/nn/' + net
@@ -221,7 +236,7 @@ def find_arch_string():
 
   return 'ARCH=' + res
 
-def setup_engine(destination, worker_dir, sha, repo_url, concurrency):
+def setup_engine(destination, worker_dir, testing_dir, remote, sha, repo_url, concurrency):
   if os.path.exists(destination): os.remove(destination)
   """Download and build sources in a temporary directory then move exe to destination"""
   tmp_dir = tempfile.mkdtemp(dir=worker_dir)
@@ -238,6 +253,15 @@ def setup_engine(destination, worker_dir, sha, repo_url, concurrency):
       if name.endswith('/src/'):
         src_dir = name
     os.chdir(src_dir)
+
+    net = required_net_from_source()
+    if net:
+      print("Build uses default net: ", net)
+      if not os.path.exists(os.path.join(testing_dir, net)) or not validate_net(testing_dir, net):
+         download_net(remote, testing_dir, net)
+         if not validate_net(testing_dir, net):
+            raise Exception('Failed to validate the network: %s ' % (net))
+      shutil.copyfile(os.path.join(testing_dir, net), net)
 
     ARCH = find_arch_string()
 
@@ -622,9 +646,9 @@ def run_games(worker_info, password, remote, run, task_id):
 
   # Build from sources new and base engines as needed
   if not os.path.exists(new_engine):
-    setup_engine(new_engine, worker_dir, sha_new, repo_url, worker_info['concurrency'])
+    setup_engine(new_engine, worker_dir, testing_dir, remote, sha_new, repo_url, worker_info['concurrency'])
   if not os.path.exists(base_engine):
-    setup_engine(base_engine, worker_dir, sha_base, repo_url, worker_info['concurrency'])
+    setup_engine(base_engine, worker_dir, testing_dir, remote, sha_base, repo_url, worker_info['concurrency'])
 
   os.chdir(testing_dir)
 
