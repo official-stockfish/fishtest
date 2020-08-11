@@ -519,6 +519,8 @@ def validate_form(request):
     }
     data['spsa']['params'] = parse_spsa_params(
         request.POST['spsa_raw_params'], data['spsa'])
+    if len(data['spsa']['params']) == 0:
+      raise Exception('Number of params must be > 0')
   else:
     data['num_games'] = int(request.POST['num-games'])
     if data['num_games'] <= 0:
