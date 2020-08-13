@@ -64,9 +64,21 @@ def login(request):
   return {}
 
 
+# Guard against upload timeouts/retries
+uploading = threading.Semaphore()
+
 @view_config(route_name='nn_upload', renderer='nn_upload.mak',
              require_csrf=True)
 def upload(request):
+  if not uploading.acquire(False):
+    request.session.flash(
+      'An other upload is in progress, please try again later', 'error')
+    return {}
+  result = sync_upload(request)
+  uploading.release()
+  return result
+
+def sync_upload(request):
   userid = authenticated_userid(request)
   if not userid:
     request.session.flash('Please login')
