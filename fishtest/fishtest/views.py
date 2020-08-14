@@ -360,6 +360,24 @@ def get_sha(branch, repo_url):
     return '', ''
 
 
+def get_net(branch, repo_url):
+  """ Get the net from ucioption.cpp in the repo """
+  api_url = repo_url.replace('https://github.com',
+                             'https://raw.githubusercontent.com')
+  try:
+    api_url = api_url + '/' + branch +  '/src/ucioption.cpp'
+    options = requests.get(api_url).content.decode('utf-8')
+    net = None
+    for line in options.splitlines():
+      if 'EvalFile' in line and 'Option' in line:
+        p = re.compile('nn-[a-z0-9]{12}.nnue')
+        m = p.search(line)
+        if m:
+          net = m.group(0)
+    return net
+  except:
+    raise Exception("Unable to access developer repository: " + api_url)
+
 def parse_spsa_params(raw, spsa):
   params = []
   for line in raw.split('\n'):
@@ -498,6 +516,12 @@ def validate_form(request):
   })
   data['base_same_as_master'] = master_diff.text is ''
 
+  # Test existence of net
+  new_net = get_net(data['new_tag'], data['tests_repo'])
+  if new_net:
+    if not request.rundb.get_nn(new_net):
+      raise Exception("Net not in repository: " + new_net)
+
   # Integer parameters
 
   if stop_rule == 'sprt':
@@ -557,6 +581,31 @@ def del_tasks(run):
     run = copy.deepcopy(run)
     del run['tasks']
   return run
+
+
+def update_nets(request, run):
+  run_id = str(run['_id'])
+  data = run['args']
+  if run['base_same_as_master']:
+    base_net = get_net(data['base_tag'], data['tests_repo'])
+    if base_net:
+      net = request.rundb.get_nn(base_net)
+      if not net:
+        # Should never happen:
+        raise Exception("Net not in repository: " + base_net)
+      if 'is_master' not in net:
+        net['is_master'] = True
+        request.rundb.update_nn(net)
+  new_net = get_net(data['new_tag'], data['tests_repo'])
+  if new_net:
+    net = request.rundb.get_nn(new_net)
+    if not net:
+      return
+    if 'first_test' not in net:
+      net['first_test'] = { 'id': run_id, 'date': datetime.datetime.utcnow() }
+    net['last_test'] = { 'id': run_id, 'date': datetime.datetime.utcnow() }
+    request.rundb.update_nn(net)
+
 
 @view_config(route_name='tests_run', renderer='tests_run.mak', require_csrf=True)
 def tests_run(request):
@@ -685,6 +734,7 @@ def tests_approve(request):
   if request.rundb.approve_run(run_id, username):
     run = request.rundb.get_run(run_id)
     run = del_tasks(run)
+    update_nets(request, run)
     request.actiondb.approve_run(username, run)
     cached_flash(request, 'Approved run')
   else:
