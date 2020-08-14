@@ -171,6 +171,9 @@ class RunDb:
                           # 'nn': Binary(zlib.compress(nn))})
     return {}
 
+  def update_nn(self, net):
+    self.nndb.replace_one({'_id': ObjectId(str(net['_id']))}, net)
+
   def get_nn(self, name):
     # nn = self.nndb.find_one({'name': name})
     nn = self.nndb.find_one({'name': name}, {'nn': 0})
