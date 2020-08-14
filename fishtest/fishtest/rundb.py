@@ -76,7 +76,7 @@ class RunDb:
               spsa=None,
               username=None,
               tests_repo=None,
-              auto_purge=True,
+              auto_purge=False,
               throughput=100,
               priority=0):
     if start_time is None:
