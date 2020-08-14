@@ -310,8 +310,7 @@
 
     <div class="flex-row">
       <label class="field-label leftmost">Advanced</label>
-      <input type="checkbox" name="auto-purge" checked="checked"
-             value="True" />
+      <input type="checkbox" name="auto-purge" value="False" />
       <span style="margin-left: 10px">Auto-purge</span>
     </div>
   </section>
