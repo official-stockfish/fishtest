@@ -172,13 +172,14 @@ class RunDb:
     return {}
 
   def update_nn(self, net):
-    self.nndb.replace_one({'_id': ObjectId(str(net['_id']))}, net)
+    net.pop('downloads', None)
+    self.nndb.update_one({'name': net['name']}, {'$set': net})
 
   def get_nn(self, name):
     # nn = self.nndb.find_one({'name': name})
     nn = self.nndb.find_one({'name': name}, {'nn': 0})
     if nn:
-      self.nndb.update_one({'name': name}, {'$inc': { 'downloads': 1 }})
+      self.nndb.update_one({'name': name}, {'$inc': {'downloads': 1}})
       return nn
     return None
 
