@@ -2,8 +2,11 @@
 <h3>Neural Net download and statistics</h3>
 
 <p>
-These networks are available for download under
+These networks are freely available for download and sharing under a
 <a href="https://creativecommons.org/share-your-work/public-domain/cc0/">CC0</a> license.
+Nets colored green in the table have passed fishtest testing
+and achieved the status of <i>default net</i> during the development of Stockfish.
+The recommended net for a given Stockfish executable can be found as the default value of the EvalFile UCI option.
 </p>
 
 <table class="table table-striped table-condensed" style="max-width: 900px;">
