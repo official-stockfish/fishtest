@@ -228,7 +228,12 @@ def find_arch_string():
      else:
         res='x86-64'
   else:
-     res='x86-32'
+     if '-mpopcnt' in props['flags'] and '-msse4.1' in props['flags'] and 'x86-32-sse41-popcnt' in targets:
+        res='x86-32-sse41-popcnt'
+     elif '-msse2' in props['flags'] and 'x86-32-sse2' in targets:
+        res='x86-32-sse2'
+     else:
+        res='x86-32'
 
   print("Available Makefile architecture targets: ", targets)
   print("Available g++/cpu properties : ", props)
