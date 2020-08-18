@@ -50,6 +50,7 @@ def process_run(run, info, deltas=None):
 
     try:
       info[username]['last_updated'] = max(task['last_updated'], info[username]['last_updated'])
+      info[username]['task_last_updated'] = max(task['last_updated'], info[username]['last_updated'])
     except:
       info[username]['last_updated'] = task['last_updated']
 
@@ -67,7 +68,10 @@ def build_users(machines, info):
   for u in info.keys():
     user = info[u]
     try:
-      user['last_updated'] = delta_date(user['last_updated'])
+      if isinstance(user['last_updated'], str):
+        user['last_updated'] = delta_date(user['task_last_updated'])
+      else:
+        user['last_updated'] = delta_date(user['last_updated'])
     except:
       pass
     users.append(user)
