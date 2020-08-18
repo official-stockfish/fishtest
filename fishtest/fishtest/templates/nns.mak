@@ -3,9 +3,9 @@
 
 <p>
 These networks are freely available for download and sharing under a
-<a href="https://creativecommons.org/share-your-work/public-domain/cc0/">CC0</a> license.
-Nets colored green in the table have passed fishtest testing
-and achieved the status of <i>default net</i> during the development of Stockfish.
+<a href="https://creativecommons.org/share-your-work/public-domain/cc0/">CC0</a> license.<br><br>
+Nets colored <span style="background-color:palegreen">green</span> in the table have passed fishtest testing
+and achieved the status of <i>default net</i> during the development of Stockfish.<br><br>
 The recommended net for a given Stockfish executable can be found as the default value of the EvalFile UCI option.
 </p>
 
