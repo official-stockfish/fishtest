@@ -69,6 +69,8 @@ class RunDb:
               msg_new='',
               base_signature='',
               new_signature='',
+              base_net=None,
+              new_net=None,
               rescheduled_from=None,
               base_same_as_master=None,
               start_time=None,
@@ -85,6 +87,8 @@ class RunDb:
     run_args = {
       'base_tag': base_tag,
       'new_tag': new_tag,
+      'base_net': base_net,
+      'new_net': new_net,
       'num_games': num_games,
       'tc': tc,
       'book': book,

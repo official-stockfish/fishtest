@@ -522,6 +522,10 @@ def validate_form(request):
     if not request.rundb.get_nn(new_net):
       raise Exception("Net not in repository: " + new_net)
 
+  # Store net info
+  data['new_net'] = new_net
+  data['base_net'] = get_net(data['base_tag'], data['tests_repo'])
+
   # Integer parameters
 
   if stop_rule == 'sprt':
@@ -587,7 +591,7 @@ def update_nets(request, run):
   run_id = str(run['_id'])
   data = run['args']
   if run['base_same_as_master']:
-    base_net = get_net(data['base_tag'], data['tests_repo'])
+    base_net = data['base_net']
     if base_net:
       net = request.rundb.get_nn(base_net)
       if not net:
@@ -596,7 +600,7 @@ def update_nets(request, run):
       if 'is_master' not in net:
         net['is_master'] = True
         request.rundb.update_nn(net)
-  new_net = get_net(data['new_tag'], data['tests_repo'])
+  new_net = data['new_net']
   if new_net:
     net = request.rundb.get_nn(new_net)
     if not net:
@@ -829,7 +833,9 @@ def tests_view(request):
     run_args.append(('rescheduled_from', run['rescheduled_from'], ''))
 
   for name in ['new_tag', 'new_signature', 'new_options', 'resolved_new',
+               'new_net',
                'base_tag', 'base_signature', 'base_options', 'resolved_base',
+               'base_net',
                'sprt', 'num_games', 'spsa', 'tc', 'threads', 'book',
                'book_depth', 'auto_purge', 'priority', 'itp', 'username',
                'tests_repo', 'info']:
