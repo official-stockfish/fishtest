@@ -75,8 +75,21 @@ def required_net(engine):
   return net
 
 def required_net_from_source():
-  """ Parse ucioption.cpp to find default net"""
+  """ Parse evaluate.h and ucioption.cpp to find default net"""
   net = None
+
+  # NNUE code after binary embedding (Aug 2020)
+  with open('evaluate.h','r') as srcfile:
+    for line in srcfile.readlines():
+       if 'EvalFileDefaultName' in line and 'define' in line:
+          p = re.compile('nn-[a-z0-9]{12}.nnue')
+          m = p.search(line)
+          if m:
+             net = m.group(0)
+  if net:
+     return net
+
+  # NNUE code before binary embedding (Aug 2020)
   with open('ucioption.cpp','r') as srcfile:
     for line in srcfile.readlines():
        if 'EvalFile' in line and 'Option' in line:
