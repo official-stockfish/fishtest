@@ -361,13 +361,26 @@ def get_sha(branch, repo_url):
 
 
 def get_net(branch, repo_url):
-  """ Get the net from ucioption.cpp in the repo """
+  """ Get the net from evaluate.h or ucioption.cpp in the repo """
   api_url = repo_url.replace('https://github.com',
                              'https://raw.githubusercontent.com')
   try:
-    api_url = api_url + '/' + branch +  '/src/ucioption.cpp'
-    options = requests.get(api_url).content.decode('utf-8')
     net = None
+
+    url1 = api_url + '/' + branch +  '/src/evaluate.h'
+    options = requests.get(url1).content.decode('utf-8')
+    for line in options.splitlines():
+      if 'EvalFileDefaultName' in line and 'define' in line:
+        p = re.compile('nn-[a-z0-9]{12}.nnue')
+        m = p.search(line)
+        if m:
+          net = m.group(0)
+
+    if net:
+       return net
+
+    url2 = api_url + '/' + branch +  '/src/ucioption.cpp'
+    options = requests.get(url2).content.decode('utf-8')
     for line in options.splitlines():
       if 'EvalFile' in line and 'Option' in line:
         p = re.compile('nn-[a-z0-9]{12}.nnue')
