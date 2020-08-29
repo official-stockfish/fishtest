@@ -7,16 +7,14 @@ import scipy.stats
 
 def Phi(x):
     """
-Cumulative standard normal distribution.
-"""
+    Cumulative standard normal distribution."""
     return scipy.stats.norm.cdf(x)
 
 
 def U(n, gamma, A, y):
-    """ 
-This is a primitive function of e^(gamma y)sin ((n pi y)/A),
-multiplied by 2/A*exp(-gamma*y).
-"""
+    """
+    This is a primitive function of e^(gamma y)sin ((n pi y)/A),
+    multiplied by 2/A*exp(-gamma*y)."""
     return (
         2 * A * gamma * math.sin(math.pi * n * y / A)
         - 2 * math.pi * n * math.cos(math.pi * n * y / A)
@@ -46,12 +44,11 @@ class Brownian:
         return ret
 
     def outcome_cdf_alt1(self, T=None, y=None):
-        """ 
-Computes the probability that the particle passes to the
-right of (T,y), the time axis being vertically oriented.
-This may give a numerical exception if math.pi**2*sigma2*T/(2*A**2) 
-is small.
-"""
+        """
+        Computes the probability that the particle passes to the
+        right of (T,y), the time axis being vertically oriented.
+        This may give a numerical exception if math.pi**2*sigma2*T/(2*A**2)
+        is small."""
         mu = self.mu
         sigma2 = self.sigma2
         A = self.b - self.a
@@ -81,10 +78,9 @@ is small.
 
     def outcome_cdf_alt2(self, T=None, y=None):
         """
-Siegmund's approximation. We use it as backup if our
-exact formula converges too slowly. To make the evaluation
-robust we use the asymptotic development of Phi.
-"""
+        Siegmund's approximation. We use it as backup if our
+        exact formula converges too slowly. To make the evaluation
+        robust we use the asymptotic development of Phi."""
         denom = math.sqrt(T * self.sigma2)
         offset = self.mu * T
         gamma = self.mu / self.sigma2
@@ -96,7 +92,7 @@ robust we use the asymptotic development of Phi.
         t1 = Phi(z)
         if gamma * a >= 5:
             t2 = (
-                -math.exp(-za ** 2 / 2 + 2 * gamma * a)
+                -math.exp(-(za ** 2) / 2 + 2 * gamma * a)
                 / math.sqrt(2 * math.pi)
                 * (1 / za - 1 / za ** 3)
             )
@@ -104,7 +100,7 @@ robust we use the asymptotic development of Phi.
             t2 = math.exp(2 * gamma * a) * Phi(za)
         if gamma * b >= 5:
             t3 = (
-                -math.exp(-zb ** 2 / 2 + 2 * gamma * b)
+                -math.exp(-(zb ** 2) / 2 + 2 * gamma * b)
                 / math.sqrt(2 * math.pi)
                 * (1 / zb - 1 / zb ** 3)
             )

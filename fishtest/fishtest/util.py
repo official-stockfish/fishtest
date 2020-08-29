@@ -287,9 +287,9 @@ def remaining_hours(run):
 
 
 def post_in_fishcooking_results(run):
-    """ Posts the results of the run to the fishcooking forum:
-      https://groups.google.com/forum/?fromgroups=#!forum/fishcooking
-  """
+    """Posts the results of the run to the fishcooking forum:
+    https://groups.google.com/forum/?fromgroups=#!forum/fishcooking
+    """
     title = run["args"]["new_tag"][:23]
 
     if "username" in run["args"]:

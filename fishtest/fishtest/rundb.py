@@ -750,12 +750,12 @@ class RunDb:
         return {}
 
     def stop_run(self, run_id, run=None):
-        """ Stops a run and runs auto-purge if it was enabled
+        """Stops a run and runs auto-purge if it was enabled
         - Used by the website and API for manually stopping runs
         - Called during /api/update_task:
           - for stopping SPRT runs if the test is accepted or rejected
           - for stopping a run after all games are finished
-    """
+        """
         self.clear_params(run_id)
         save_it = False
         if run is None:

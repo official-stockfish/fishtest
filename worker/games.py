@@ -61,8 +61,8 @@ def send_api_post_request(api_url, payload):
 
 
 def github_api(repo):
-    """ Convert from https://github.com/<user>/<repo>
-      To https://api.github.com/repos/<user>/<repo> """
+    """Convert from https://github.com/<user>/<repo>
+    To https://api.github.com/repos/<user>/<repo>"""
     return repo.replace("https://github.com", "https://api.github.com/repos")
 
 
