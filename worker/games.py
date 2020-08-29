@@ -212,8 +212,10 @@ def find_arch_string():
   props = gcc_props()
 
   if is_64bit():
-     if '-mavx512bw' in props['flags'] and 'x86-64-avx512' in targets:
-        res='x86-64-avx512'
+     if '-mavx512vnni' in props['flags'] and '-mavx512dq' in props['flags'] and \
+        '-mavx512f' in props['flags'] and '-mavx512bw' in props['flags'] and \
+        '-mavx512vl' in props['flags'] and 'x86-64-vnni256' in targets:
+        res='x86-64-vnni256'
      elif '-mbmi2' in props['flags'] and 'x86-64-bmi2' in targets \
           and not props['arch'] in ['znver1', 'znver2']:
         res='x86-64-bmi2'
