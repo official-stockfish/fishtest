@@ -12,8 +12,7 @@ from fishtest.rundb import RunDb
 
 
 def main(global_config, **settings):
-    """ This function returns a Pyramid WSGI application.
-  """
+    """This function returns a Pyramid WSGI application."""
     session_factory = UnencryptedCookieSessionFactoryConfig("fishtest")
     config = Configurator(
         settings=settings,

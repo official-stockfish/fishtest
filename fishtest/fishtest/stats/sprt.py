@@ -43,9 +43,8 @@ class sprt:
 
     def outcome_prob(self, elo):
         """
-The probability of a test with the given elo with worse outcome
-(faster fail, slower pass or a pass changed into a fail).
-"""
+        The probability of a test with the given elo with worse outcome
+        (faster fail, slower pass or a pass changed into a fail)."""
         s = LLRcalc.L_(elo)
         mu_LLR, var_LLR = self.LLR_drift_variance(self.pdf, self.s0, self.s1, s)
         sigma_LLR = math.sqrt(var_LLR)
@@ -55,9 +54,8 @@ The probability of a test with the given elo with worse outcome
 
     def lower_cb(self, p):
         """
-Maximal elo value such that the observed outcome of the test has probability
-less than p.
-"""
+        Maximal elo value such that the observed outcome of the test has probability
+        less than p."""
         avg_elo = (self.elo0 + self.elo1) / 2
         delta = self.elo1 - self.elo0
         N = 30

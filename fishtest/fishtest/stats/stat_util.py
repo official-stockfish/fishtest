@@ -10,15 +10,13 @@ from fishtest.stats import LLRcalc, brownian, sprt
 
 def Phi(q):
     """
-Cumlative distribution function for the standard Gaussian law: quantile -> probability
-"""
+    Cumlative distribution function for the standard Gaussian law: quantile -> probability"""
     return scipy.stats.norm.cdf(q)
 
 
 def Phi_inv(p):
     """
-Quantile function for the standard Gaussian law: probability -> quantile
-"""
+    Quantile function for the standard Gaussian law: probability -> quantile"""
     return scipy.stats.norm.ppf(p)
 
 
@@ -35,9 +33,8 @@ def L(x):
 
 def stats(results):
     """
-"results" is an array of length 2*n+1 with aggregated frequences
-for n games.
-"""
+    "results" is an array of length 2*n+1 with aggregated frequences
+    for n games."""
     l = len(results)
     N = sum(results)
     games = N * (l - 1) / 2.0
@@ -54,9 +51,8 @@ for n games.
 
 def get_elo(results):
     """
-"results" is an array of length 2*n+1 with aggregated frequences
-for n games.
-"""
+    "results" is an array of length 2*n+1 with aggregated frequences
+    for n games."""
     results = LLRcalc.regularize(results)
     games, mu, var = stats(results)
     stdev = math.sqrt(var)
@@ -74,9 +70,8 @@ for n games.
 
 def bayeselo_to_proba(elo, drawelo):
     """
-elo is expressed in BayesELO (relative to the choice drawelo).
-Returns a probability, P[2], P[0], P[1] (win,loss,draw).
-"""
+    elo is expressed in BayesELO (relative to the choice drawelo).
+    Returns a probability, P[2], P[0], P[1] (win,loss,draw)."""
     P = 3 * [0]
     P[2] = 1.0 / (1.0 + pow(10.0, (-elo + drawelo) / 400.0))
     P[0] = 1.0 / (1.0 + pow(10.0, (elo + drawelo) / 400.0))
@@ -86,9 +81,8 @@ Returns a probability, P[2], P[0], P[1] (win,loss,draw).
 
 def proba_to_bayeselo(P):
     """
-Takes a probability: P[2], P[0]
-Returns elo, drawelo.
-"""
+    Takes a probability: P[2], P[0]
+    Returns elo, drawelo."""
     assert 0 < P[2] and P[2] < 1 and 0 < P[0] and P[0] < 1
     elo = 200 * math.log10(P[2] / P[0] * (1 - P[0]) / (1 - P[2]))
     drawelo = 200 * math.log10((1 - P[0]) / P[0] * (1 - P[2]) / P[2])
@@ -97,10 +91,9 @@ Returns elo, drawelo.
 
 def draw_elo_calc(R):
     """
-Takes trinomial frequences R[0],R[1],R[2]
-(loss,draw,win) and returns the corresponding
-drawelo value.
-"""
+    Takes trinomial frequences R[0],R[1],R[2]
+    (loss,draw,win) and returns the corresponding
+    drawelo value."""
     N = sum(R)
     P = [p / N for p in R]
     _, drawelo = proba_to_bayeselo(P)
@@ -126,8 +119,7 @@ def elo_to_bayeselo(elo, draw_ratio):
 
 def SPRT_elo(R, alpha=0.05, beta=0.05, p=0.05, elo0=None, elo1=None, elo_model=None):
     """
-Calculate an elo estimate from an SPRT test.
-"""
+    Calculate an elo estimate from an SPRT test."""
     assert elo_model in ["BayesElo", "logistic"]
 
     # Estimate drawelo out of sample
@@ -162,9 +154,8 @@ Calculate an elo estimate from an SPRT test.
 
 def LLRlegacy(belo0, belo1, results):
     """
-LLR calculation using the BayesElo model where
-drawelo is estimated "out of sample".
-"""
+    LLR calculation using the BayesElo model where
+    drawelo is estimated "out of sample"."""
     assert len(results) == 3
     drawelo = draw_elo_calc(results)
     P0 = bayeselo_to_proba(belo0, drawelo)
@@ -203,41 +194,40 @@ def SPRT(
 def update_SPRT(R, sprt):
     """Sequential Probability Ratio Test
 
-sprt is a dictionary with fixed fields
+    sprt is a dictionary with fixed fields
 
-'elo0', 'alpha', 'elo1', 'beta', 'elo_model', 'lower_bound', 'upper_bound', 'batch_size'
+    'elo0', 'alpha', 'elo1', 'beta', 'elo_model', 'lower_bound', 'upper_bound', 'batch_size'
 
-It also has the following fields
+    It also has the following fields
 
-'llr', 'state', 'overshoot'
+    'llr', 'state', 'overshoot'
 
-which are updated by this function.
+    which are updated by this function.
 
-Normally this function should be called each time 'batch_size' games (trinomial) or
-game pairs (pentanomial) have been completed but it is safe to call it multiple times
-with the same parameters. The main purpose of this is to be able to recalculate
-the LLR for old tests.
+    Normally this function should be called each time 'batch_size' games (trinomial) or
+    game pairs (pentanomial) have been completed but it is safe to call it multiple times
+    with the same parameters. The main purpose of this is to be able to recalculate
+    the LLR for old tests.
 
-In the unlikely event of a server crash it is possible that some updates may be missed
-but this situation is also handled sensibly.
+    In the unlikely event of a server crash it is possible that some updates may be missed
+    but this situation is also handled sensibly.
 
-The meaning of the other inputs and the fields is as follows.
+    The meaning of the other inputs and the fields is as follows.
 
-H0: elo = elo0
-H1: elo = elo1
-alpha = max typeI error (reached on elo = elo0)
-beta = max typeII error for elo >= elo1 (reached on elo = elo1)
-'overshoot' is a dictionary with data for dynamic overshoot
-estimation. The theoretical basis for this is: Siegmund - Sequential
-Analysis - Corollary 8.33.  The correctness can be verified by
-simulation
+    H0: elo = elo0
+    H1: elo = elo1
+    alpha = max typeI error (reached on elo = elo0)
+    beta = max typeII error for elo >= elo1 (reached on elo = elo1)
+    'overshoot' is a dictionary with data for dynamic overshoot
+    estimation. The theoretical basis for this is: Siegmund - Sequential
+    Analysis - Corollary 8.33.  The correctness can be verified by
+    simulation
 
-https://github.com/vdbergh/simul
+    https://github.com/vdbergh/simul
 
-R['wins'], R['losses'], R['draws'] contains the number of wins, losses and draws
-R['pentanomial'] contains the pentanomial frequencies
-elo_model can be either 'BayesElo' or 'logistic'
-"""
+    R['wins'], R['losses'], R['draws'] contains the number of wins, losses and draws
+    R['pentanomial'] contains the pentanomial frequencies
+    elo_model can be either 'BayesElo' or 'logistic'"""
 
     # the next two lines are superfluous, but unfortunately necessary for backward
     # compatibility with old tests
