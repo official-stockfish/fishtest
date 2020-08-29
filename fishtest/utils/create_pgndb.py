@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
-from pymongo import MongoClient, ASCENDING, DESCENDING
+from pymongo import ASCENDING, DESCENDING, MongoClient
 
-conn = MongoClient('localhost')
+conn = MongoClient("localhost")
 
-db = conn['fishtest_new']
+db = conn["fishtest_new"]
 
-db.drop_collection('pgns')
+db.drop_collection("pgns")
 
-db.create_collection('pgns', capped=True, size=50000)
+db.create_collection("pgns", capped=True, size=50000)
