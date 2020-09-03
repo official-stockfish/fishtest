@@ -1137,7 +1137,7 @@ def homepage_results(request):
         machine["last_updated"] = delta_date(machine["last_updated"])
         if machine["nps"] != 0:
             games_per_minute += (
-                (machine["nps"] / 1600000.0)
+                (machine["nps"] / 1200000.0)
                 * (60.0 / estimate_game_duration(machine["run"]["args"]["tc"]))
                 * (
                     int(machine["concurrency"])
