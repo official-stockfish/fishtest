@@ -89,6 +89,35 @@ def required_net(engine):
 
     return net
 
+def verify_required_cutechess(cutechess):
+    print("Obtaining version info for %s ..." % (os.path.basename(cutechess)))
+
+    p = subprocess.Popen(
+        [cutechess, "--version"],
+        stdout=subprocess.PIPE,
+        universal_newlines=True,
+        bufsize=1,
+        close_fds=not IS_WINDOWS,
+    )
+
+    pattern = re.compile("cutechess-cli ([0-9]*).([0-9]*).([0-9]*)")
+    for line in iter(p.stdout.readline, ""):
+        m = pattern.search(line)
+        if m:
+           print("Found: ",line)
+           major = int(m.group(1))
+           minor = int(m.group(2))
+           patch = int(m.group(3))
+
+    p.wait()
+    p.stdout.close()
+
+    if p.returncode != 0:
+        raise Exception("Failed to find cutechess version info" % (p.returncode))
+
+    if major < 1 or (major == 1 and minor < 2):
+       raise Exception("Requires cutechess 1.2 or higher, found version doesn't match")
+
 
 def required_net_from_source():
     """ Parse evaluate.h and ucioption.cpp to find default net"""
@@ -761,10 +790,11 @@ def run_games(worker_info, password, remote, run, task_id):
     if not "pentanomial" in input_stats:
         input_stats["pentanomial"] = 5 * [0]
 
-    assert (
-        2 * sum(input_stats["pentanomial"])
-        == input_stats["wins"] + input_stats["losses"] + input_stats["draws"]
+    input_total_games = (
+        input_stats["wins"] + input_stats["losses"] + input_stats["draws"]
     )
+
+    assert 2 * sum(input_stats["pentanomial"]) == input_total_games
 
     input_stats["crashes"] = input_stats.get("crashes", 0)
     input_stats["time_losses"] = input_stats.get("time_losses", 0)
@@ -777,9 +807,7 @@ def run_games(worker_info, password, remote, run, task_id):
         "stats": input_stats,
     }
 
-    games_remaining = task["num_games"] - (
-        input_stats["wins"] + input_stats["losses"] + input_stats["draws"]
-    )
+    games_remaining = task["num_games"] - input_total_games
 
     assert games_remaining > 0
     assert games_remaining % 2 == 0
@@ -792,6 +820,9 @@ def run_games(worker_info, password, remote, run, task_id):
     spsa_tuning = "spsa" in run["args"]
     repo_url = run["args"].get("tests_repo", REPO_URL)
     games_concurrency = int(worker_info["concurrency"]) // threads
+
+    start_game_index = task_id * task["num_games"] + input_total_games
+    run_seed = int(hashlib.sha1(run["_id"].encode("utf-8")).hexdigest(), 16) % (2 ** 30)
 
     # Format options according to cutechess syntax
     def parse_options(s):
@@ -885,6 +916,9 @@ def run_games(worker_info, password, remote, run, task_id):
         os.remove(zipball)
         os.chmod(cutechess, os.stat(cutechess).st_mode | stat.S_IEXEC)
 
+    # verify that an available cutechess matches the required minimum version
+    verify_required_cutechess(cutechess)
+
     # clean up old networks (keeping the 20 most recent)
     networks = glob.glob(os.path.join(testing_dir, "nn-*.nnue"))
     if len(networks) > 20:
@@ -946,23 +980,6 @@ def run_games(worker_info, password, remote, run, task_id):
     result["nps"] = base_nps
     result["ARCH"] = ARCH
 
-    # Handle book or pgn file
-    pgn_cmd = []
-    book_cmd = []
-    if int(book_depth) <= 0:
-        pass
-    elif book.endswith(".pgn") or book.endswith(".epd"):
-        plies = 2 * int(book_depth)
-        pgn_cmd = [
-            "-openings",
-            "file=%s" % (book),
-            "format=%s" % (book[-3:]),
-            "order=random",
-            "plies=%d" % (plies),
-        ]
-    else:
-        book_cmd = ["book=%s" % (book), "bookdepth=%s" % (book_depth)]
-
     print("Running %s vs %s" % (run["args"]["new_tag"], run["args"]["base_tag"]))
 
     threads_cmd = []
@@ -998,6 +1015,24 @@ def run_games(worker_info, password, remote, run, task_id):
         assert batch_size % 2 == 0
         assert games_to_play % 2 == 0
 
+        # Handle book or pgn file
+        pgn_cmd = []
+        book_cmd = []
+        if int(book_depth) <= 0:
+            pass
+        elif book.endswith(".pgn") or book.endswith(".epd"):
+            plies = 2 * int(book_depth)
+            pgn_cmd = [
+                "-openings",
+                "file=%s" % (book),
+                "format=%s" % (book[-3:]),
+                "order=random",
+                "plies=%d" % (plies),
+                "start=%d" % (1 + start_game_index // 2),
+            ]
+        else:
+            assert False
+
         # Run cutechess-cli binary
         cmd = (
             [
@@ -1017,7 +1052,7 @@ def run_games(worker_info, password, remote, run, task_id):
                 "Batch %d: %s vs %s"
                 % (task_id, make_player("new_tag"), make_player("base_tag")),
             ]
-            + ["-srand", "%d" % struct.unpack("<L", os.urandom(struct.calcsize("<L")))]
+            + ["-srand", "%d" % run_seed]
             + [
                 "-resign",
                 "movecount=3",
@@ -1063,5 +1098,6 @@ def run_games(worker_info, password, remote, run, task_id):
             break
 
         games_remaining -= games_to_play
+        start_game_index += games_to_play
 
     return pgnfile
