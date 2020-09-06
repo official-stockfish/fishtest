@@ -1198,4 +1198,5 @@ def tests(request):
         **last_tests,
         "machines_shown": request.cookies.get("machines_state") == "Hide",
         "pending_shown": request.cookies.get("pending_state") == "Hide",
+        "paused_shown": request.cookies.get("paused_state") == "Hide",
     }
