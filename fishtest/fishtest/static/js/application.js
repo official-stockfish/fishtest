@@ -15,12 +15,19 @@ $(() => {
             .forEach(tr => body.appendChild(tr));
     });
 
-    // clicking Show/Hide on Pending tests and Machines sections toggles them
+    // clicking Show/Hide on Pending + Paused tests and Machines sections toggles them
     $("#pending-button").click(function () {
         var active = $(this).text().trim() === 'Hide';
         $(this).text(active ? 'Show' : 'Hide');
         $("#pending").slideToggle(150);
         $.cookie('pending_state', $(this).text().trim());
+    });
+
+    $("#paused-button").click(function () {
+        var active = $(this).text().trim() === 'Hide';
+        $(this).text(active ? 'Show' : 'Hide');
+        $("#paused").slideToggle(150);
+        $.cookie('paused_state', $(this).text().trim());
     });
 
     let fetchingMachines = false;

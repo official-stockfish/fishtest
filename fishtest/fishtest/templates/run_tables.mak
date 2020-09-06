@@ -1,6 +1,9 @@
 %if page_idx == 0:
+  <% pending_approval_runs = [run for run in runs['pending'] if not run['approved']] %>
+  <% paused_runs = [run for run in runs['pending'] if run['approved']] %>
+
   <h3>
-    Pending - ${len(runs['pending'])} tests
+    Pending approval - ${len(pending_approval_runs)} tests
     <button id="pending-button" class="btn">
       ${'Hide' if pending_shown else 'Show'}
     </button>
@@ -8,10 +11,26 @@
 
   <div id="pending"
        style="${'' if pending_shown else 'display: none;'}">
-    %if len(runs['pending']) == 0:
-      No pending runs
+    %if pending_approval_runs:
+      <%include file="run_table.mak" args="runs=pending_approval_runs, show_delete=True"/>
     %else:
-      <%include file="run_table.mak" args="runs=runs['pending'], show_delete=True"/>
+      No tests pending approval
+    %endif
+  </div>
+
+  <h3>
+    Paused - ${len(paused_runs)} tests
+    <button id="paused-button" class="btn">
+      ${'Hide' if paused_shown else 'Show'}
+    </button>
+  </h3>
+
+  <div id="paused"
+       style="${'' if paused_shown else 'display: none;'}">
+    %if paused_runs:
+      <%include file="run_table.mak" args="runs=paused_runs, show_delete=True"/>
+    %else:
+      No paused tests
     %endif
   </div>
 
