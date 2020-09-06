@@ -34,8 +34,13 @@
       %if len(arg[2]) == 0:
         <tr>
           <td>${arg[0]}</td>
-          %if arg[0] == 'username' and approver:
-            <td><a href="/user/${arg[1]}">${arg[1]}</a></td>
+          %if arg[0] == 'username':
+            <td>
+              <a href="/tests/user/${arg[1]}">${arg[1]}</a>
+              %if approver:
+                (<a href="/user/${arg[1]}">user admin</a>)
+              %endif
+            </td>
           %elif arg[0] == 'spsa':
             <td>
               ${arg[1][0]}<br />
