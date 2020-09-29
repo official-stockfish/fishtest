@@ -999,14 +999,15 @@ def run_games(worker_info, password, remote, run, task_id):
         tc_limit *= 2
 
     while games_remaining > 0:
+
+        batch_size = games_concurrency * 32  # update frequency
+
         if spsa_tuning:
-            games_to_play = min(games_concurrency * 2, games_remaining)
+            games_to_play = min(batch_size, games_remaining)
             pgnout = []
         else:
             games_to_play = games_remaining
             pgnout = ["-pgnout", pgn_name]
-
-        batch_size = games_concurrency * 2  # update frequency
 
         if "sprt" in run["args"]:
             batch_size = 2 * run["args"]["sprt"].get("batch_size", 1)
