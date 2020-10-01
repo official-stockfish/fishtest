@@ -10,7 +10,6 @@ import platform
 import re
 import shutil
 import stat
-import struct
 import subprocess
 import sys
 import tempfile
@@ -104,7 +103,7 @@ def verify_required_cutechess(cutechess):
     for line in iter(p.stdout.readline, ""):
         m = pattern.search(line)
         if m:
-           print("Found: ",line)
+           print("Found: ", line)
            major = int(m.group(1))
            minor = int(m.group(2))
            patch = int(m.group(3))
@@ -507,9 +506,9 @@ def update_pentanomial(line, rounds):
         else:
             return -1
 
-    if not "pentanomial" in rounds.keys():
+    if "pentanomial" not in rounds.keys():
         rounds["pentanomial"] = 5 * [0]
-    if not "trinomial" in rounds.keys():
+    if "trinomial" not in rounds.keys():
         rounds["trinomial"] = 3 * [0]
 
     saved_sum_trinomial = sum(rounds["trinomial"])
@@ -787,7 +786,7 @@ def run_games(worker_info, password, remote, run, task_id):
             "pentanomial": 5 * [0],
         },
     )
-    if not "pentanomial" in input_stats:
+    if "pentanomial" not in input_stats:
         input_stats["pentanomial"] = 5 * [0]
 
     input_total_games = (

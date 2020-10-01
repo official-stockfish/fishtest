@@ -197,7 +197,7 @@ def worker(worker_info, password, remote):
             sleep = random.randint(1, 10)
             print("Wait %d seconds before upload of PGN..." % (sleep))
             time.sleep(sleep)
-            if not "spsa" in run["args"]:
+            if "spsa" not in run["args"]:
                 try:
                     with open(pgn_file, "r") as f:
                         data = f.read()
