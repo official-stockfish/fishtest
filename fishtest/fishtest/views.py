@@ -577,7 +577,7 @@ def validate_form(request):
     master_diff = requests.get(
         api_url, headers={"Accept": "application/vnd.github.v3.diff"}
     )
-    data["base_same_as_master"] = master_diff.text is ""
+    data["base_same_as_master"] = master_diff.text == ""
 
     # Test existence of net
     new_net = get_net(data["new_tag"], data["tests_repo"])
