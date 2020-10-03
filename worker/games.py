@@ -67,7 +67,7 @@ def github_api(repo):
 
 def required_net(engine):
     net = None
-    print("Obtaining EvalFile of %s ..." % (os.path.basename(engine)))
+    print("Obtaining EvalFile of {} ...".format(os.path.basename(engine)))
     p = subprocess.Popen(
         [engine, "uci"],
         stdout=subprocess.PIPE,
@@ -84,12 +84,13 @@ def required_net(engine):
     p.stdout.close()
 
     if p.returncode != 0:
-        raise Exception("uci exited with non-zero code %d" % (p.returncode))
+        raise Exception("uci exited with non-zero code {}".format(p.returncode))
 
     return net
 
+
 def verify_required_cutechess(cutechess):
-    print("Obtaining version info for %s ..." % (os.path.basename(cutechess)))
+    print("Obtaining version info for {} ...".format(os.path.basename(cutechess)))
 
     p = subprocess.Popen(
         [cutechess, "--version"],
@@ -103,19 +104,19 @@ def verify_required_cutechess(cutechess):
     for line in iter(p.stdout.readline, ""):
         m = pattern.search(line)
         if m:
-           print("Found: ", line)
-           major = int(m.group(1))
-           minor = int(m.group(2))
-           patch = int(m.group(3))
+            print("Found: ", line)
+            major = int(m.group(1))
+            minor = int(m.group(2))
+            patch = int(m.group(3))
 
     p.wait()
     p.stdout.close()
 
     if p.returncode != 0:
-        raise Exception("Failed to find cutechess version info" % (p.returncode))
+        raise Exception("Failed to find cutechess version info")
 
     if major < 1 or (major == 1 and minor < 2):
-       raise Exception("Requires cutechess 1.2 or higher, found version doesn't match")
+        raise Exception("Requires cutechess 1.2 or higher, found version doesn't match")
 
 
 def required_net_from_source():
@@ -170,14 +171,14 @@ def verify_signature(engine, signature, remote, payload, concurrency):
                 close_fds=not IS_WINDOWS,
             )
         busy_process.stdin.write(
-            "setoption name Threads value {:.0f}\n".format(concurrency - 1)
+            "setoption name Threads value {}\n".format(concurrency - 1)
         )
         busy_process.stdin.write("go infinite\n")
         busy_process.stdin.flush()
 
     try:
         bench_sig = ""
-        print("Verifying signature of %s ..." % (os.path.basename(engine)))
+        print("Verifying signature of {} ...".format(os.path.basename(engine)))
         with open(os.devnull, "wb") as dev_null:
             p = subprocess.Popen(
                 [engine, "bench"],
@@ -211,14 +212,14 @@ def verify_signature(engine, signature, remote, payload, concurrency):
         p2.stdout.close()
 
         if p.returncode:
-            raise Exception("Bench exited with non-zero code %d" % (p.returncode))
+            raise Exception("Bench exited with non-zero code {}".format(p.returncode))
         if p2.returncode:
             raise Exception(
-                "Compiler info exited with non-zero code %d" % (p2.returncode)
+                "Compiler info exited with non-zero code {}".format(p2.returncode)
             )
 
         if int(bench_sig) != int(signature):
-            message = "Wrong bench in %s Expected: %s Got: %s" % (
+            message = "Wrong bench in {} Expected: {} Got: {}".format(
                 os.path.basename(engine),
                 signature,
                 bench_sig,
@@ -242,13 +243,13 @@ def setup(item, testing_dir):
     ).json()
     for blob in tree["tree"]:
         if blob["path"] == item:
-            print("Downloading %s ..." % (item))
+            print("Downloading {} ...".format(item))
             blob_json = requests.get(blob["url"], timeout=HTTP_TIMEOUT).json()
             with open(os.path.join(testing_dir, item), "wb+") as f:
                 f.write(b64decode(blob_json["content"]))
             break
     else:
-        raise Exception("Item %s not found" % (item))
+        raise Exception("Item {} not found".format(item))
 
 
 def gcc_props():
@@ -273,7 +274,9 @@ def gcc_props():
     p.stdout.close()
 
     if p.returncode != 0:
-        raise Exception("g++ target query failed with return code %d" % (p.returncode))
+        raise Exception(
+            "g++ target query failed with return code {}".format(p.returncode)
+        )
 
     return {"flags": flags, "arch": arch}
 
@@ -303,7 +306,7 @@ def make_targets():
     p.stdout.close()
 
     if p.returncode != 0:
-        raise Exception("make help failed with return code %d" % (p.returncode))
+        raise Exception("make help failed with return code {}".format(p.returncode))
 
     return targets
 
@@ -328,7 +331,7 @@ def find_arch_string():
         elif (
             "-mbmi2" in props["flags"]
             and "x86-64-bmi2" in targets
-            and not props["arch"] in ["znver1", "znver2"]
+            and props["arch"] not in ["znver1", "znver2"]
         ):
             res = "x86-64-bmi2"
         elif "-mavx2" in props["flags"] and "x86-64-avx2" in targets:
@@ -362,7 +365,7 @@ def find_arch_string():
             res = "x86-32"
 
     print("Available Makefile architecture targets: ", targets)
-    print("Available g++/cpu properties : ", props)
+    print("Available g++/cpu properties: ", props)
     print("Determined the best architecture to be ", res)
 
     return "ARCH=" + res
@@ -401,24 +404,25 @@ def setup_engine(
             ):
                 download_net(remote, testing_dir, net)
                 if not validate_net(testing_dir, net):
-                    raise Exception("Failed to validate the network: %s " % (net))
+                    raise Exception("Failed to validate the network: {}".format(net))
             shutil.copyfile(os.path.join(testing_dir, net), net)
 
         ARCH = find_arch_string()
 
         subprocess.check_call(
-            MAKE_CMD + ARCH + " -j %s" % (concurrency) + " profile-build", shell=True
+            MAKE_CMD + ARCH + " -j {}".format(concurrency) + " profile-build",
+            shell=True,
         )
         try:  # try/pass needed for backwards compatibility with older stockfish, where 'make strip' fails under mingw.
             subprocess.check_call(
-                MAKE_CMD + ARCH + " -j %s" % (concurrency) + " strip", shell=True
+                MAKE_CMD + ARCH + " -j {}".format(concurrency) + " strip", shell=True
             )
         except:
             pass
 
         shutil.move("stockfish" + EXE_SUFFIX, destination)
     except:
-        raise Exception("Failed to setup engine for %s" % (sha))
+        raise Exception("Failed to setup engine for {}".format(sha))
     finally:
         os.chdir(worker_dir)
         shutil.rmtree(tmp_dir)
@@ -473,16 +477,16 @@ def adjust_tc(tc, base_nps, concurrency):
         time_tc = float(chunks[0])
 
     # Rebuild scaled_tc now: cutechess-cli and stockfish parse 3 decimal places
-    scaled_tc = "%.3f" % (time_tc * factor)
+    scaled_tc = "{:.3f}".format(time_tc * factor)
     tc_limit = time_tc * factor * 3
     if increment > 0.0:
-        scaled_tc += "+%.3f" % (increment * factor)
+        scaled_tc += "+{:.3f}".format(increment * factor)
         tc_limit += increment * factor * 200
     if num_moves > 0:
-        scaled_tc = "%d/%s" % (num_moves, scaled_tc)
+        scaled_tc = "{}/{}".format(num_moves, scaled_tc)
         tc_limit *= 100.0 / num_moves
 
-    print("CPU factor : %f - tc adjusted to %s" % (factor, scaled_tc))
+    print("CPU factor : {} - tc adjusted to {}".format(factor, scaled_tc))
     return scaled_tc, tc_limit
 
 
@@ -605,7 +609,7 @@ def parse_cutechess_output(
         # Parse line like this:
         # Warning: New-eb6a21875e doesn't have option ThreatBySafePawn
         if "Warning:" in line and "doesn't have option" in line:
-            message = r'Cutechess-cli says: "%s"' % line.strip()
+            message = r'Cutechess-cli says: "{}"'.format(line.strip())
             result["message"] = message
             send_api_post_request(remote + "/api/stop_run", result)
             raise Exception(message)
@@ -679,8 +683,9 @@ def parse_cutechess_output(
                             remote + "/api/update_task", result
                         ).json()
                         print(
-                            "  Task updated successfully in %ss"
-                            % ((datetime.datetime.utcnow() - t0).total_seconds())
+                            "  Task updated successfully in {}s".format(
+                                (datetime.datetime.utcnow() - t0).total_seconds()
+                            )
                         )
                         if not response["task_alive"]:
                             # This task is no longer necessary
@@ -720,8 +725,9 @@ def launch_cutechess(
         t0 = datetime.datetime.utcnow()
         req = send_api_post_request(remote + "/api/request_spsa", result).json()
         print(
-            "Fetched SPSA parameters successfully in %ss"
-            % ((datetime.datetime.utcnow() - t0).total_seconds())
+            "Fetched SPSA parameters successfully in {}s".format(
+                (datetime.datetime.utcnow() - t0).total_seconds()
+            )
         )
 
         global w_params, b_params
@@ -737,13 +743,13 @@ def launch_cutechess(
     idx = cmd.index("_spsa_")
     cmd = (
         cmd[:idx]
-        + ["option.%s=%d" % (x["name"], round(x["value"])) for x in w_params]
+        + ["option.{}={}".format(x["name"], round(x["value"])) for x in w_params]
         + cmd[idx + 1 :]
     )
     idx = cmd.index("_spsa_")
     cmd = (
         cmd[:idx]
-        + ["option.%s=%d" % (x["name"], round(x["value"])) for x in b_params]
+        + ["option.{}={}".format(x["name"], round(x["value"])) for x in b_params]
         + cmd[idx + 1 :]
     )
 
@@ -832,7 +838,7 @@ def run_games(worker_info, password, remote, run, task_id):
         param = chunks[0]
         for c in chunks[1:]:
             val = c.split()
-            results.append("option.%s=%s" % (param, val[0]))
+            results.append("option.{}={}".format(param, val[0]))
             param = " ".join(val[1:])
         return results
 
@@ -907,7 +913,7 @@ def run_games(worker_info, password, remote, run, task_id):
         if len(EXE_SUFFIX) > 0:
             zipball = "cutechess-cli-win.zip"
         else:
-            zipball = "cutechess-cli-linux-%s.zip" % (platform.architecture()[0])
+            zipball = "cutechess-cli-linux-{}.zip".format(platform.architecture()[0])
         setup(zipball, testing_dir)
         zip_file = ZipFile(zipball)
         zip_file.extractall()
@@ -933,12 +939,12 @@ def run_games(worker_info, password, remote, run, task_id):
     net_base = required_net(base_engine)
     if net_base:
         base_options = base_options + [
-            "option.EvalFile=%s" % (os.path.join(testing_dir, net_base))
+            "option.EvalFile={}".format(os.path.join(testing_dir, net_base))
         ]
     net_new = required_net(new_engine)
     if net_new:
         new_options = new_options + [
-            "option.EvalFile=%s" % (os.path.join(testing_dir, net_new))
+            "option.EvalFile={}".format(os.path.join(testing_dir, net_new))
         ]
 
     for net in [net_base, net_new]:
@@ -948,7 +954,7 @@ def run_games(worker_info, password, remote, run, task_id):
             ):
                 download_net(remote, testing_dir, net)
                 if not validate_net(testing_dir, net):
-                    raise Exception("Failed to validate the network: %s " % (net))
+                    raise Exception("Failed to validate the network: {}".format(net))
 
     # pgn output setup
     pgn_name = "results-" + worker_info["unique_key"] + ".pgn"
@@ -979,11 +985,11 @@ def run_games(worker_info, password, remote, run, task_id):
     result["nps"] = base_nps
     result["ARCH"] = ARCH
 
-    print("Running %s vs %s" % (run["args"]["new_tag"], run["args"]["base_tag"]))
+    print("Running {} vs {}".format(run["args"]["new_tag"], run["args"]["base_tag"]))
 
     threads_cmd = []
     if not any("Threads" in s for s in new_options + base_options):
-        threads_cmd = ["option.Threads=%d" % (threads)]
+        threads_cmd = ["option.Threads={}".format(threads)]
 
     # If nodestime is being used, give engines extra grace time to
     # make time losses virtually impossible
@@ -1024,11 +1030,11 @@ def run_games(worker_info, password, remote, run, task_id):
             plies = 2 * int(book_depth)
             pgn_cmd = [
                 "-openings",
-                "file=%s" % (book),
-                "format=%s" % (book[-3:]),
+                "file={}".format(book),
+                "format={}".format(book[-3:]),
                 "order=random",
-                "plies=%d" % (plies),
-                "start=%d" % (1 + start_game_index // 2),
+                "plies={}".format(plies),
+                "start={}".format(1 + start_game_index // 2),
             ]
         else:
             assert False
@@ -1049,10 +1055,11 @@ def run_games(worker_info, password, remote, run, task_id):
             + ["-site", "https://tests.stockfishchess.org/tests/view/" + run["_id"]]
             + [
                 "-event",
-                "Batch %d: %s vs %s"
-                % (task_id, make_player("new_tag"), make_player("base_tag")),
+                "Batch {}: {} vs {}".format(
+                    task_id, make_player("new_tag"), make_player("base_tag")
+                ),
             ]
-            + ["-srand", "%d" % run_seed]
+            + ["-srand", "{}".format(run_seed)]
             + [
                 "-resign",
                 "movecount=3",
@@ -1068,18 +1075,18 @@ def run_games(worker_info, password, remote, run, task_id):
             + [
                 "-engine",
                 "name=New-" + run["args"]["resolved_new"][:10],
-                "cmd=%s" % (new_engine_name),
+                "cmd={}".format(new_engine_name),
             ]
             + new_options
             + ["_spsa_"]
             + [
                 "-engine",
                 "name=Base-" + run["args"]["resolved_base"][:10],
-                "cmd=%s" % (base_engine_name),
+                "cmd={}".format(base_engine_name),
             ]
             + base_options
             + ["_spsa_"]
-            + ["-each", "proto=uci", "tc=%s" % (scaled_tc)]
+            + ["-each", "proto=uci", "tc={}".format(scaled_tc)]
             + nodestime_cmd
             + threads_cmd
             + book_cmd
