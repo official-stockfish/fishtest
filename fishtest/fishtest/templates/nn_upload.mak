@@ -101,7 +101,7 @@
     <div class="control-group">
       <label class="control-label">Select your Network file (nn-[SHA256 first 12 digits].nnue):</label>
       <div class="controls">
-        <input id="network" name="network" type="file" value="" />
+        <input id="network" name="network" type="file" accept=".nnue" value="" />
       </div>
     </div>
 
