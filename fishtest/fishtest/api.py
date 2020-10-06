@@ -10,7 +10,7 @@ from pyramid.view import exception_view_config, view_config, view_defaults
 
 from fishtest.stats.stat_util import SPRT_elo
 
-WORKER_VERSION = 86
+WORKER_VERSION = 87
 
 flag_cache = {}
 
