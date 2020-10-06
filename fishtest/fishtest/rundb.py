@@ -345,6 +345,8 @@ class RunDb:
             state = (
                 "active" if any(task["active"] for task in run["tasks"]) else "pending"
             )
+            if state == "pending":
+                run["cores"] = 0
             runs[state].append(run)
         runs["pending"].sort(
             key=lambda run: (
