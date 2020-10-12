@@ -8,7 +8,10 @@
         integrity="sha384-4FeI0trTH/PCsLWrGCD1mScoFu9Jf2NdknFdFoJhXZFwsvzZ3Bo5sAh7+zL8Xgnd"
         crossorigin="anonymous"
         rel="stylesheet">
-  <link href="/css/application.css?v=2" rel="stylesheet">
+  <link href="/css/application.css?v=3" rel="stylesheet">
+  %if request.cookies.get('theme') == 'dark':
+    <link href="/css/theme.dark.css" rel="stylesheet">
+  %endif
 
   <script src="https://code.jquery.com/jquery-3.4.1.min.js"
           integrity="sha384-vk5WoKIaW/vJyUAd9n/wmopsmNhiy+L2Z+SBxGYnUkunIxVxAv/UtMOhba/xskxh"
@@ -75,6 +78,15 @@
         %else:
           <a href="/pending">Pending</a>
         %endif
+      </li>
+      <li>
+        <br>
+        <svg id="change-color-theme" viewBox="0 0 8 8" style="width: 20px; height: 20px; background: none;">
+          <path id="sun" style="fill: black; ${'display: none;' if request.cookies.get('theme') == 'dark' else ''}"
+                d="M4 0c-.276 0-.5.224-.5.5s.224.5.5.5.5-.224.5-.5-.224-.5-.5-.5zm-2.5 1c-.276 0-.5.224-.5.5s.224.5.5.5.5-.224.5-.5-.224-.5-.5-.5zm5 0c-.276 0-.5.224-.5.5s.224.5.5.5.5-.224.5-.5-.224-.5-.5-.5zm-2.5 1c-1.105 0-2 .895-2 2s.895 2 2 2 2-.895 2-2-.895-2-2-2zm-3.5 1.5c-.276 0-.5.224-.5.5s.224.5.5.5.5-.224.5-.5-.224-.5-.5-.5zm7 0c-.276 0-.5.224-.5.5s.224.5.5.5.5-.224.5-.5-.224-.5-.5-.5zm-6 2.5c-.276 0-.5.224-.5.5s.224.5.5.5.5-.224.5-.5-.224-.5-.5-.5zm5 0c-.276 0-.5.224-.5.5s.224.5.5.5.5-.224.5-.5-.224-.5-.5-.5zm-2.5 1c-.276 0-.5.224-.5.5s.224.5.5.5.5-.224.5-.5-.224-.5-.5-.5z"></path>
+          <path id="moon" style="fill: white; ${'display: none;' if request.cookies.get('theme') != 'dark' else ''}"
+                d="M2.719 0c-1.58.53-2.719 2.021-2.719 3.781 0 2.21 1.79 4 4 4 1.76 0 3.251-1.17 3.781-2.75-.4.14-.831.25-1.281.25-2.21 0-4-1.79-4-4 0-.44.079-.881.219-1.281z"></path>
+        </svg>
       </li>
     </ul>
   </div>

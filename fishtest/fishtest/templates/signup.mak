@@ -6,7 +6,7 @@
 
 <div>
   <p></p>
-  <p>Signing up to fishtest allows you to contribute with CPU time or with patches to test. </p>
+  <p>Signing up to fishtest allows you to contribute with CPU time or with patches to test.</p>
   <p>Your contribution is much appreciated.</p>
   <p>Once a new user account is created, a human needs to manually activate it. This is usually quick, but sometimes takes a few hours.</p>
 
@@ -17,7 +17,7 @@
     <div class="control-group">
       <label class="control-label">Username:</label>
       <div class="controls">
-        <input name="username" pattern="[A-Za-z0-9]{2,}"
+        <input name="username" pattern="[A-Za-z0-9]{2,}" type="text"
                title="Only letters and digits and at least 2 long" required="required"/>
       </div>
     </div>
