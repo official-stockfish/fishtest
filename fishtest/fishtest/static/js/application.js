@@ -16,14 +16,14 @@ $(() => {
     });
 
     // clicking Show/Hide on Pending + Paused tests and Machines sections toggles them
-    $("#pending-button").click(function () {
+    $("#pending-button").click(function() {
         var active = $(this).text().trim() === 'Hide';
         $(this).text(active ? 'Show' : 'Hide');
         $("#pending").slideToggle(150);
         $.cookie('pending_state', $(this).text().trim());
     });
 
-    $("#paused-button").click(function () {
+    $("#paused-button").click(function() {
         var active = $(this).text().trim() === 'Hide';
         $(this).text(active ? 'Show' : 'Hide');
         $("#paused").slideToggle(150);
@@ -31,7 +31,7 @@ $(() => {
     });
 
     let fetchingMachines = false;
-    $("#machines-button").click(function () {
+    $("#machines-button").click(function() {
         const active = $(this).text().trim() === 'Hide';
         $(this).text(active ? 'Show' : 'Hide');
         if (!active && !$("#machines table")[0] && !fetchingMachines) {
@@ -40,6 +40,29 @@ $(() => {
         }
         $("#machines").toggle();
         $.cookie('machines_state', $(this).text().trim());
+    });
+
+    // Click the sun/moon icons to change the color theme of the site
+    let theme = $.cookie('theme') || 'light';
+    $("#change-color-theme").click(function() {
+      if (theme === 'light') {
+        $("#sun").hide();
+        $("#moon").show();
+        $("<link>")
+          .attr("href", "/css/theme.dark.css")
+          .attr("rel", "stylesheet")
+          .attr("integrity", "sha256-UAj9GRYDzOc97Pf4kC10t9FR1xjPLDCgu0Z4GLusexg=")
+          .appendTo($("head"));
+        theme = 'dark';
+      } else {
+        $("#sun").show();
+        $("#moon").hide();
+        $('head link[href*="/css/theme.dark.css"]').remove();
+        theme = 'light';
+      }
+      $.cookie('theme', theme, {
+        path: '/',
+      });
     });
 
     // CSRF protection for links and forms

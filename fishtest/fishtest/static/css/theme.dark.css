@@ -1,0 +1,127 @@
+/* A custom dark color theme for overriding bootstrap 2.3.2 css rules */
+
+body {
+  background: #111;
+  color: #fafafa;
+}
+
+a {
+  color: #63daff;
+}
+
+a:hover, a:focus {
+  color: #e1ffff;
+}
+
+.btn-link {
+  color: #63daff;
+}
+
+.btn {
+  text-shadow: none;
+}
+
+.btn:focus {
+  outline: none;
+}
+
+legend {
+  color: #fafafa;
+}
+
+hr {
+  border-top: 1px solid #444;
+  border-bottom: 1px solid #333;
+}
+
+/* Left-side main navigation sidebar */
+.nav-header {
+  color: #ccc;
+}
+
+.nav-list>li>a, .nav-list .nav-header {
+  text-shadow: 0 1px 0 rgba(10, 10, 10, 0.5);
+}
+
+.nav>li>a:hover, .nav>li>a:focus {
+  background: #222;
+}
+
+/* Tables */
+.table {
+  color: #fafafa;
+}
+
+.table-striped tbody>tr:nth-child(odd)>td, .table-striped tbody>tr:nth-child(odd)>th {
+  background-color: #222;
+}
+
+.table th, .table td {
+  border-top: 1px solid #444;
+}
+
+/* Text inputs and selects */
+textarea, input[type="text"], input[type="password"],
+input[type="datetime"], input[type="datetime-local"], input[type="date"],
+input[type="month"], input[type="time"], input[type="week"], input[type="number"],
+input[type="email"], input[type="url"], input[type="search"], input[type="tel"],
+input[type="color"], .uneditable-input {
+  background: #444;
+  border: 1px solid #101010;
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.5);
+}
+
+textarea:focus, input[type="text"]:focus, input[type="password"]:focus,
+input[type="datetime"]:focus, input[type="datetime-local"]:focus, input[type="date"]:focus,
+input[type="month"]:focus, input[type="time"]:focus, input[type="week"]:focus,
+input[type="number"]:focus, input[type="email"]:focus, input[type="url"]:focus,
+input[type="search"]:focus, input[type="tel"]:focus, input[type="color"]:focus,
+.uneditable-input:focus {
+  box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgb(106 216 241 / 60%);
+}
+
+select, textarea, input[type="text"], input[type="password"],
+input[type="datetime"], input[type="datetime-local"], input[type="date"],
+input[type="month"], input[type="time"], input[type="week"], input[type="number"],
+input[type="email"], input[type="url"], input[type="search"], input[type="tel"],
+input[type="color"], .uneditable-input {
+  color: white;
+}
+
+select {
+  border: 1px solid #555;
+  background-color: #333;
+}
+
+select:focus, input[type="file"]:focus,
+input[type="radio"]:focus, input[type="checkbox"]:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Button groups */
+.btn-group>.btn:not(.btn-info) {
+  background: #2f2f2f;
+  border-color: #333;
+  color: white;
+}
+
+/* Pagination links */
+.pagination ul>li>a, .pagination ul>li>span {
+  background-color: #111;
+  border-color: #292929;
+}
+
+.pagination ul>li>a:hover, .pagination ul>li>a:focus, .pagination ul>.active>a, .pagination ul>.active>span {
+  background-color: #333;
+}
+
+/* Overrides a color that's way too light on test tasks pages */
+td[style*="background-color:#ffebeb"] {
+  background: #5f1c1c !important;
+}
+
+/* Overrides "green" description text in /nns page */
+span[style*="background-color:palegreen"] {
+  color: #111;
+}

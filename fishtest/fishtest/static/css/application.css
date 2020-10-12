@@ -6,6 +6,10 @@
   }
 }
 
+body {
+  transition: background 0.2s ease-in-out;
+}
+
 .flash-message {
   margin-top: 20px;
 }
@@ -34,4 +38,8 @@ th {
 
 .spsa-param-row td:first-child {
   text-align: left;
+}
+
+#change-color-theme:hover {
+  cursor: pointer;
 }

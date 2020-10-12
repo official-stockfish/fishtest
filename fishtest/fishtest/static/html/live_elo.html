@@ -6,7 +6,19 @@
     <title>Elo estimates from SPRT tests</title>
     <link rel="stylesheet" type="text/css" href="/css/live_elo.css?2">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css"
+          integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk"
+          rel="stylesheet"
+          crossorigin="anonymous">
+    <script>
+      if (document.cookie.match(/theme=dark/)) {
+        const linkEl = document.createElement('link');
+        linkEl.href = "/css/theme.dark.css";
+        linkEl.rel = "stylesheet";
+        linkEl.integrity = "UAj9GRYDzOc97Pf4kC10t9FR1xjPLDCgu0Z4GLusexg=";
+        document.querySelector("head").appendChild(linkEl);
+      }
+    </script>
   </head>
   <body>
     <div class="container">

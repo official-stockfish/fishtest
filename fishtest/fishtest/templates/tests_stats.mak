@@ -25,15 +25,18 @@
 <html lang="en-us">
   <head>
     <title>Raw statistics for ${run['_id']}</title>
-	<link href="https://stackpath.bootstrapcdn.com/twitter-bootstrap/2.3.2/css/bootstrap-combined.min.css"
-	      integrity="sha384-4FeI0trTH/PCsLWrGCD1mScoFu9Jf2NdknFdFoJhXZFwsvzZ3Bo5sAh7+zL8Xgnd"
-	      crossorigin="anonymous"
-	      rel="stylesheet">
+    <link href="https://stackpath.bootstrapcdn.com/twitter-bootstrap/2.3.2/css/bootstrap-combined.min.css"
+          integrity="sha384-4FeI0trTH/PCsLWrGCD1mScoFu9Jf2NdknFdFoJhXZFwsvzZ3Bo5sAh7+zL8Xgnd"
+          crossorigin="anonymous"
+          rel="stylesheet">
     <style>
       td {
         width: 20%;
       }
     </style>
+    %if request.cookies.get('theme') == 'dark':
+      <link href="/css/theme.dark.css" rel="stylesheet">
+    %endif
   </head>
   <body>
 % if not has_spsa:
