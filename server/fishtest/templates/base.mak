@@ -4,10 +4,11 @@
     <title>Stockfish Testing Framework</title>
     <meta name="csrf-token" content="${request.session.get_csrf_token()}" />
 
-    <link href="https://stackpath.bootstrapcdn.com/twitter-bootstrap/2.3.2/css/bootstrap-combined.min.css"
-          integrity="sha384-4FeI0trTH/PCsLWrGCD1mScoFu9Jf2NdknFdFoJhXZFwsvzZ3Bo5sAh7+zL8Xgnd"
-          crossorigin="anonymous"
-          rel="stylesheet">
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css"
+          integrity="sha384-F3w7mX95PdgyTmZZMECAngseQB83DfGTowi0iMjiWaeVhAn4FJkqJByhZMI3AhiU"
+          crossorigin="anonymous">
+
     <link href="/css/application.css?v=3" rel="stylesheet">
     % if request.cookies.get('theme') == 'dark':
         <link href="/css/theme.dark.css" rel="stylesheet">
@@ -16,8 +17,9 @@
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"
             integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0="
             crossorigin="anonymous"></script>
-    <script src="https://stackpath.bootstrapcdn.com/twitter-bootstrap/2.3.2/js/bootstrap.min.js"
-            integrity="sha384-vOWIrgFbxIPzY09VArRHMsxned7WiY6hzIPtAIIeTFuii9y3Cr6HE6fcHXy5CFhc"
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-/bQdsTh/da6pkI1MST/rWKFNjaCP5gBSY4sEBT38Q/9RBh9AH40zEOg7Hlq2THRZ"
             crossorigin="anonymous"></script>
 
     <script src="/js/jquery.cookie.js" defer></script>
@@ -28,8 +30,8 @@
 
   <body>
     <div class="clearfix"
-         style="width: 100px; float: left; padding: 12px 0;">
-      <ul class="nav nav-list">
+         style="width: 100px; float: left; padding: 16px 0;">
+      <ul class="nav nav-list flex-column">
 
         <li class="nav-header">Tests</li>
         <li><a href="/tests">Overview</a></li>
@@ -102,18 +104,20 @@
             % if request.session.peek_flash('error'):
                 <% flash = request.session.pop_flash('error') %>
                 % for message in flash:
-                    <div class="alert alert-error">
-                    <button type="button" class="close" data-dismiss="alert">&times;</button>
-                    ${message}
+                    <div class="alert alert-error alert-dismissible">
+                      ${message}
+                      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">
+                      </button>
                     </div>
                 % endfor
             % endif
             % if request.session.peek_flash():
                 <% flash = request.session.pop_flash() %>
                 % for message in flash:
-                    <div class="alert alert-success">
-                    <button type="button" class="close" data-dismiss="alert">&times;</button>
-                    ${message}
+                    <div class="alert alert-success alert-dismissible">
+                      ${message}
+                      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">
+                      </button>
                     </div>
                 % endfor
             % endif

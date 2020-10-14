@@ -21,7 +21,7 @@
 <button type="submit" class="btn btn-success">Select</button>
 </form>
 
-<table class="table table-striped table-condensed">
+<table class="table table-striped table-sm">
   <thead>
     <tr>
       <th>Time</th>

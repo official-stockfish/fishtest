@@ -1,27 +1,54 @@
 <%inherit file="base.mak"/>
 <h4> </h4>
-<ul class="inline">
-  <li><dl class="dl-horizontal">
-    <dt>Testers</dt>
-    <dd>${sum(u['last_updated'] != 'Never' for u in users)}</dd>
-    <dt>Developers</dt>
-    <dd>${sum(u['tests'] > 0 for u in users)}</dd>
-  </dl></li>
-  <li><dl class="dl-horizontal">
-    <dt>Active testers</dt>
-    <dd>${sum(u['games_per_hour'] > 0 for u in users)}</dd>
-    <dt>Tests submitted</dt>
-    <dd>${sum(u['tests'] for u in users)}</dd>
-  </li></dl>
-  <li><dl class="dl-horizontal">
-    <dt>Games played</dt>
-    <dd>${sum(u['games'] for u in users)}</dd>
-    <dt>CPU time</dt>
-    <dd>${f"{sum(u['cpu_hours'] for u in users)/(24*365):.2f} years"}</dd>
-  </li></dl>
-</ul>
 
-<table class="table table-striped table-condensed">
+<div class="row" style="margin: 2em 0">
+  <div class="col-sm">
+    <div class="row">
+      <div class="col text-end"><b>Testers</b></div>
+      <div class="col text-start">
+        ${sum(u['last_updated'] != 'Never' for u in users)}
+      </div>
+    </div>
+    <div class="row">
+      <div class="col text-end"><b>Developers</b></div>
+      <div class="col text-start">
+        ${sum(u['tests'] > 0 for u in users)}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-sm">
+    <div class="row">
+      <div class="col text-end"><b>Active testers</b></div>
+      <div class="col text-start">
+        ${sum(u['games_per_hour'] > 0 for u in users)}
+      </div>
+    </div>
+    <div class="row">
+      <div class="col text-end"><b>Tests submitted</b></div>
+      <div class="col text-start">
+        ${sum(u['tests'] for u in users)}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-sm">
+    <div class="row">
+      <div class="col text-end"><b>Games played</b></div>
+      <div class="col text-start">
+        ${sum(u['games'] for u in users)}
+      </div>
+    </div>
+    <div class="row">
+      <div class="col text-end"><b>CPU time</b></div>
+      <div class="col text-start">
+        ${f"{sum(u['cpu_hours'] for u in users)/(24*365):.2f} years"}
+      </div>
+    </div>
+  </div>
+</div>
+
+<table class="table table-striped table-sm">
   <thead>
     <tr>
       <th>Username</th>

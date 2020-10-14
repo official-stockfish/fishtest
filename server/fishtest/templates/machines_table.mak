@@ -1,4 +1,4 @@
-<table class="table table-striped table-condensed"
+<table class="table table-striped table-sm"
        style="max-width: 960px;">
   <thead>
     <tr>

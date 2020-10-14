@@ -1,7 +1,7 @@
 <%inherit file="base.mak"/>
 <h3>Pending Users</h3>
 
-<table class="table table-striped table-condensed">
+<table class="table table-striped table-sm">
   <thead>
     <tr>
       <th>Username</th>
@@ -22,7 +22,7 @@
 
 <h3>Idle Users</h3>
 
-<table class="table table-striped table-condensed">
+<table class="table table-striped table-sm">
   <thead>
     <tr>
       <th>Username</th>

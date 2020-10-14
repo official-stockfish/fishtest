@@ -9,11 +9,11 @@ and achieved the status of <i>default net</i> during the development of Stockfis
 The recommended net for a given Stockfish executable can be found as the default value of the EvalFile UCI option.
 </p>
 
-<button id="non_default-button" class="btn">
-      ${'Hide non default nets' if non_default_shown else 'Show non default nets'}
+<button id="non_default-button" class="btn btn-sm btn-light border">
+  ${'Hide non default nets' if non_default_shown else 'Show non default nets'}
 </button>
 
-<table class="table table-striped table-condensed" style="max-width: 900px;">
+<table class="table table-striped table-sm" style="max-width: 900px;">
   <thead>
     <tr>
       <th>Time</th>

@@ -3,10 +3,12 @@
   <head>
     <meta charset="utf-8">
     <title>Chess SPRT Calculator</title>
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css"
-          integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu"
-          crossorigin="anonymous"
-          rel="stylesheet">
+
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css"
+          integrity="sha384-F3w7mX95PdgyTmZZMECAngseQB83DfGTowi0iMjiWaeVhAn4FJkqJByhZMI3AhiU"
+          crossorigin="anonymous">
+
     <script>
       if (document.cookie.match(/theme=dark/)) {
         const linkEl = document.createElement('link');
@@ -31,35 +33,37 @@
   <body>
     <div class=container>
       <h1 class=page-header>Chess SPRT Calculator</h1>
-      <form id=parameters class=form-inline>
-	<div class=form-group>
-	  <label for=elo-model>Elo model</label>
-	  <select id=elo-model class='form-control'>
-	    <option>Normalized</option>
-	    <option>Logistic</option>
-	  </select>
-	</div>
-        <div class=form-group>
+      <form id=parameters class="form-inline row">
+        <div class="col-auto form-group">
+          <label for="elo-model">Elo model</label>
+          <select id="elo-model" class='form-select'>
+            <option>Normalized</option>
+            <option>Logistic</option>
+          </select>
+        </div>
+        <div class="col-auto form-group">
           <label for=elo-0>Elo0</label>
           <input id=elo-0 class='form-control number'>
         </div>
-        <div class=form-group>
+        <div class="col-auto form-group">
           <label for=elo-1>Elo1</label>
           <input id=elo-1 class='form-control number'>
         </div>
-        <div class=form-group>
+        <div class="col-auto form-group">
           <label for=draw-ratio>Draw ratio</label>
           <input id=draw-ratio class='form-control number'>
         </div>
-        <div class=form-group>
+        <div class="col-auto form-group">
           <label for=rms-bias>RMS bias</label>
           <input id=rms-bias class='form-control number'>
         </div>
-        <div class=form-group style="width:3em;"></div>
-        <input class='btn btn-success' type=button value=Calculate onclick="draw_charts();">
+        <div class="col-auto form-group" style="position: relative">
+          <input class='btn btn-success' style="position: absolute; bottom: 0"
+                 type=button value=Calculate onclick="draw_charts();">
+        </div>
       </form>
       <hr>
-      <div id="mouse_screen">
+      <div id="mouse_screen" style="display: flex;">
         <div id="pass_prob_chart_div" class="chart-div"></div>
         <div id="expected_chart_div" class="chart-div"></div>
       </div>

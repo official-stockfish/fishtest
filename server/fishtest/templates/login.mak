@@ -12,29 +12,30 @@
 <div>
   <form class="form-horizontal" action="" method="POST">
     <legend>Login</legend>
-    <div class="control-group">
-      <label class="control-label">Username</label>
-      <div class="controls">
-        <input name="username" type="text" />
+    <div class="form-group row mb-3">
+      <label class="col-form-label col-sm-2 text-end">Username</label>
+      <div class="col-sm-3">
+        <input name="username" type="text" class="form-control" />
       </div>
     </div>
 
-    <div class="control-group">
-      <label class="control-label">Password</label>
-      <div class="controls">
-        <input name="password" type="password" />
+    <div class="form-group row mb-3">
+      <label class="col-form-label col-sm-2 text-end">Password</label>
+      <div class="col-sm-3">
+        <input name="password" type="password" class="form-control" />
       </div>
     </div>
 
-    <div class="control-group">
-      <label class="control-label">Stay logged in</label>
-      <div class="controls">
-        <input name="stay_logged_in" type="checkbox" />
+    <div class="form-group row mb-3">
+      <label class="col-form-label col-sm-2 form-check-label text-end">Stay logged in</label>
+      <div class="col-sm-3">
+        <input name="stay_logged_in" type="checkbox" class="form-check-input" />
       </div>
     </div>
 
-    <div class="control-group">
-      <div class="controls">
+    <div class="form-group row">
+      <div class="col-sm-2"></div>
+      <div class="col-sm-4">
         <button type="submit" class="btn btn-primary">Login</button>
       </div>
     </div>

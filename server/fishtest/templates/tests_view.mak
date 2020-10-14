@@ -21,19 +21,18 @@ from fishtest.util import worker_name
 </h3>
 
 <div class="row-fluid">
-  <div style="display:inline-block;">
+  <div style="display: inline-block;">
     <%include file="elo_results.mak" args="run=run" />
   </div>
 </div>
 
-<div class="row-fluid">
-
-  <div class="span8" style="min-width: 540px">
+<div class="row row-fluid">
+  <div class="col-8" style="min-width: 540px">
     <h4>Details</h4>
 
     <%! import markupsafe %>
 
-    <table class="table table-condensed">
+    <table class="table table-sm">
       % for arg in run_args:
           % if len(arg[2]) == 0:
               <tr>
@@ -95,7 +94,7 @@ from fishtest.util import worker_name
     </table>
   </div>
 
-  <div class="span4">
+  <div class="col-4">
     <h4>Actions</h4>
     % if not run['finished']:
         <form action="/tests/stop" method="POST" style="display: inline;">
@@ -104,6 +103,7 @@ from fishtest.util import worker_name
             Stop
           </button>
         </form>
+
         % if not run.get('approved', False):
             <span>
               <form action="/tests/approve" method="POST" style="display: inline;">
@@ -124,7 +124,7 @@ from fishtest.util import worker_name
         </form>
     % endif
     <a href="/tests/run?id=${run['_id']}">
-      <button class="btn">Reschedule</button>
+      <button class="btn btn-light border">Reschedule</button>
     </a>
 
     <br>
@@ -149,19 +149,28 @@ from fishtest.util import worker_name
 
     <form class="form" action="/tests/modify" method="POST">
       <label class="control-label">Number of games:</label>
-      <input type="text" name="num-games" value="${run['args']['num_games']}">
-
+      <div class="input-group mb-3" style="width: 220px">
+        <input type="text" name="num-games" value="${run['args']['num_games']}"
+               class="form-control">
+      </div>
+  
       <label class="control-label">Adjust priority (higher is more urgent):</label>
-      <input type="text" name="priority" value="${run['args']['priority']}">
+      <div class="input-group mb-3" style="width: 220px">
+        <input type="text" name="priority" value="${run['args']['priority']}"
+               class="form-control">
+      </div>
 
       <label class="control-label">Adjust throughput (%):</label>
-      <input type="text" name="throughput" value="${run['args'].get('throughput', 1000)}">
-
+      <div class="input-group mb-3" style="width: 220px">
+        <input type="text" name="throughput" value="${run['args'].get('throughput', 1000)}"
+               class="form-control">
+      </div>
+  
       <div class="control-group">
         <label class="checkbox">
-          Auto-purge
           <input type="checkbox" name="auto_purge"
                  ${'checked' if run['args'].get('auto_purge') else ''} />
+          Auto-purge
         </label>
       </div>
 
@@ -174,7 +183,7 @@ from fishtest.util import worker_name
         <hr>
 
         <h4>Stats</h4>
-        <table class="table table-condensed">
+        <table class="table table-sm">
           <tr><td>chi^2</td><td>${f"{chi2['chi2']:.2f}"}</td></tr>
           <tr><td>dof</td><td>${chi2['dof']}</td></tr>
           <tr><td>p-value</td><td>${f"{chi2['p'] * 100:.2f}"}%</td></tr>
@@ -184,7 +193,7 @@ from fishtest.util import worker_name
     <hr>
 
     <h4>Time</h4>
-    <table class="table table-condensed">
+    <table class="table table-sm">
       <tr><td>start time</td><td>${run['start_time'].strftime("%Y-%m-%d %H:%M:%S")}</td></tr>
       <tr><td>last updated</td><td>${run['last_updated'].strftime("%Y-%m-%d %H:%M:%S")}</td></tr>
     </table>
@@ -223,7 +232,7 @@ from fishtest.util import worker_name
     Diff
     <span id="diff-num-comments" style="display: none"></span>
     <a href="${h.diff_url(run)}" class="btn btn-link" target="_blank" rel="noopener">view on Github</a>
-    <button id="diff-toggle" class="btn">Show</button>
+    <button id="diff-toggle" class="btn btn-sm btn-light border">Show</button>
     <a href="javascript:" id="copy-diff" class="btn btn-link" style="margin-left: 10px; display: none">
       <img src="/img/clipboard.png" width="20" height="20"/> Copy apply-diff command
     </a>
@@ -233,7 +242,7 @@ from fishtest.util import worker_name
 </section>
 
 <h3>Tasks ${totals}</h3>
-<table class='table table-striped table-condensed'>
+<table class='table table-striped table-sm'>
   <thead>
     <tr>
       <th>Idx</th>
