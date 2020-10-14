@@ -41,7 +41,7 @@ else:
   }
 
   .field-label.leftmost {
-    width: 75px;
+    width: 100px;
     flex-shrink: 0;
   }
 
@@ -76,7 +76,7 @@ else:
   }
 
   .choose-test-type .btn {
-    width: 75px;
+    width: 98px;
   }
 
   #create-new-test label:hover {
@@ -108,25 +108,25 @@ else:
   <section class="test-settings" style="margin-bottom: 35px">
     <div class="flex-row">
       <label class="field-label leftmost">Test type</label>
-      <div class="btn-group choose-test-type">
-        <div class="btn" id="fast_test"
+      <div class="btn-group btn-group-sm text-nowrap choose-test-type">
+        <div class="btn border" id="fast_test"
              data-options='{"tc": "10+0.1", "new_tc": "10+0.1", "threads": 1, "options": "Hash=16 Use NNUE=true", "bounds": "standard STC"}'>
           short (STC)
         </div>
-        <div class="btn" id="slow_test"
+        <div class="btn border" id="slow_test"
              data-options='{"tc": "60+0.6", "new_tc": "60+0.6", "threads": 1, "options": "Hash=64 Use NNUE=true", "bounds": "standard LTC"}'>
           long (LTC)
         </div>
-        <div class="btn" id="fast_smp_test"
+        <div class="btn border" id="fast_smp_test"
              data-options='{"tc": "5+0.05", "new_tc": "5+0.05", "threads": 8, "options": "Hash=64 Use NNUE=true", "bounds": "standard STC"}'>
           SMP (STC)
         </div>
-        <div class="btn" id="slow_smp_test"
+        <div class="btn border" id="slow_smp_test"
              data-options='{"tc": "20+0.2", "new_tc": "20+0.2", "threads": 8, "options": "Hash=256 Use NNUE=true", "bounds": "standard LTC"}'>
           SMP (LTC)
         </div>
       </div>
-      <button type="submit" class="btn btn-primary rightmost" id="submit-test"
+      <button type="submit" class="btn btn-primary btn-sm rightmost" id="submit-test"
               style="width: 180px">
         Submit test
       </button>
@@ -179,10 +179,10 @@ else:
   <section id="stop-rule" style="min-height: 130px">
     <div class="flex-row">
       <label class="field-label leftmost">Stop rule</label>
-      <div class="btn-group">
-        <div class="btn btn-info" data-stop-rule="sprt" style="width: 94px">SPRT</div>
-        <div class="btn" data-stop-rule="numgames" style="width: 100px">Num games</div>
-        <div class="btn" data-stop-rule="spsa" style="width: 94px">SPSA</div>
+      <div class="btn-group btn-group-sm">
+        <div class="btn btn-info border" data-stop-rule="sprt" style="width: 94px">SPRT</div>
+        <div class="btn border" data-stop-rule="numgames" style="width: 100px">Num games</div>
+        <div class="btn border" data-stop-rule="spsa" style="width: 94px">SPSA</div>
       </div>
       <input type="hidden" name="stop_rule" id="stop_rule_field" value="sprt" />
 

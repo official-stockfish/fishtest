@@ -14,42 +14,53 @@
     <input type="hidden" name="csrf_token"
            value="${request.session.get_csrf_token()}" />
     <legend>Create new user</legend>
-    <div class="control-group">
-      <label class="control-label">Username:</label>
-      <div class="controls">
+
+    <div class="form-group row mb-3">
+      <label class="col-form-label col-sm-2 text-end">Username</label>
+      <div class="col-sm-3">
         <input name="username" pattern="[A-Za-z0-9]{2,}" type="text"
-               title="Only letters and digits and at least 2 long" required="required"/>
+               title="Only letters and digits and at least 2 long" required="required"
+               class="form-control" />
       </div>
     </div>
-    <div class="control-group">
-      <label class="control-label">Password:</label>
-      <div class="controls">
+
+    <div class="form-group row mb-3">
+      <label class="col-form-label col-sm-2 text-end">Password</label>
+      <div class="col-sm-3">
         <input name="password" type="password" pattern=".{8,}"
-               title="Eight or more characters: a password too simple or trivial to guess will be rejected" required="required"/>
+               title="Eight or more characters: a password too simple or trivial to guess will be rejected"
+               required="required"
+               class="form-control" />
       </div>
     </div>
-    <div class="control-group">
-      <label class="control-label">Verify password:</label>
-      <div class="controls">
-        <input name="password2" type="password" required="required"/>
+
+    <div class="form-group row mb-3">
+      <label class="col-form-label col-sm-2 text-end">Verify password</label>
+      <div class="col-sm-3">
+        <input name="password2" type="password" required="required" class="form-control" />
       </div>
     </div>
-    <div class="control-group">
-      <label class="control-label">E-mail:</label>
-      <div class="controls">
-        <input name="email" type="email" required="required"/>
+
+    <div class="form-group row mb-3">
+      <label class="col-form-label col-sm-2 text-end">E-mail</label>
+      <div class="col-sm-3">
+        <input name="email" type="email" required="required" class="form-control" />
       </div>
     </div>
-    <div class="control-group">
-      <div class="controls">
+
+    <div class="form-group mb-3">
+      <div class="col-sm-4 offset-sm-2">
         <div class="g-recaptcha"
              data-sitekey="6LePs8YUAAAAABMmqHZVyVjxat95Z1c_uHrkugZM"></div>
       </div>
     </div>
-    <div class="control-group">
-      <div class="controls">
+
+    <div class="form-group row">
+      <div class="col-sm-2"></div>
+      <div class="col-sm-4">
         <button type="submit" class="btn btn-primary">Create User</button>
       </div>
     </div>
+
   </form>
 </div>

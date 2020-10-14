@@ -41,8 +41,8 @@
     padding-right: 30px;
   }
 
-  #upload-nn input, #upload-nn select {
-    margin: 0;
+  #upload-nn input {
+    margin: 15px 0;
   }
 
   .quarter-size {

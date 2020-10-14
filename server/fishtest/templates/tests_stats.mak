@@ -213,10 +213,10 @@
 <html lang="en-us">
   <head>
     <title>Raw statistics for ${run['_id']}</title>
-    <link href="https://stackpath.bootstrapcdn.com/twitter-bootstrap/2.3.2/css/bootstrap-combined.min.css"
-          integrity="sha384-4FeI0trTH/PCsLWrGCD1mScoFu9Jf2NdknFdFoJhXZFwsvzZ3Bo5sAh7+zL8Xgnd"
-          crossorigin="anonymous"
-          rel="stylesheet">
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css"
+          integrity="sha384-F3w7mX95PdgyTmZZMECAngseQB83DfGTowi0iMjiWaeVhAn4FJkqJByhZMI3AhiU"
+          crossorigin="anonymous">
     <style>
       td {
         width: 20%;
@@ -228,14 +228,15 @@
   </head>
   <body>
     % if not has_spsa:
-        <div class="row-fluid">
-          <div class="span2">
-          </div>
-          <div class="span8">
-            <H3> Raw statistics for ${run['_id']}</H3>
-            <em> Unless otherwise specified, all Elo quantities below are logistic. </em>
+        <div class="row justify-content-md-center">
+          <div class="col-8">
+            <header style="margin: 12px 0">
+              <h4>Raw statistics for ${run['_id']}</h4>
+              <em>Unless otherwise specified, all Elo quantities below are logistic.</em>
+            </header>
+
             <H4> Context </H4>
-            <table class="table table-condensed">
+            <table class="table table-sm">
               <tr><td>Base TC</td><td>${run['args'].get('tc','?')}</td></tr>
               <tr><td>Test TC</td><td>${run['args'].get('new_tc',run['args'].get('tc','?'))}</td></tr>
               <tr><td>Book</td><td>${run['args'].get('book','?')}</td></tr>
@@ -245,7 +246,7 @@
             </table>
             % if has_sprt:
                 <H4> SPRT parameters</H4>
-                <table class="table table-condensed">
+                <table class="table table-sm">
                   <tr><td>Alpha</td><td>${alpha}</td></tr>
                   <tr><td>Beta</td><td>${beta}</td></tr>
                   <tr><td>Elo0 (${elo_model})</td><td>${elo0}</td></tr>
@@ -254,13 +255,13 @@
                 </table>
             % endif  ## has_sprt
             <H4>Draws</H4>
-            <table class="table table-condensed" style="margin-top:1em;">
+            <table class="table table-sm" style="margin-top:1em;">
               <tr><td>Draw ratio</td><td>${f"{draw_ratio:.5f}"}</td></tr>
               <tr><td>DrawElo (BayesElo)</td><td>${f"{drawelo:.2f}"}</td></tr>
             </table>
             % if has_sprt:
                 <H4> SPRT bounds </H4>
-                <table class="table table-condensed" style="margin-top:1em;margin-bottom:0.5em;">
+                <table class="table table-sm" style="margin-top:1em;margin-bottom:0.5em;">
                   <tr>
                   <td></td></td><td>Logistic</td><td>Normalized</td><td>BayesElo</td><td>Score</td>
                   </tr>
@@ -281,7 +282,7 @@
             % if has_pentanomial:
                 <H4> Pentanomial statistics</H4>
                 <H5> Basic statistics </H5>
-                <table class="table table-condensed">
+                <table class="table table-sm">
                   <tr><td>Elo</td><td>${f"{elo5:.4f} [{elo5_l:.4f}, {elo5_u:.4f}]"}</td></tr>
                   <tr><td>LOS(1-p)</td><td>${f"{LOS5:.5f}"}</td></tr>
                   % if has_sprt:
@@ -290,7 +291,7 @@
                 </table>
                 % if has_sprt:
                     <H5> Generalized Log Likelihood Ratio </H5>
-                    <table class="table table-condensed" style="margin-top:1em;margin-bottom:0.5em;">
+                    <table class="table table-sm" style="margin-top:1em;margin-bottom:0.5em;">
                       <tr><td>Logistic (exact)</td><td>${f"{LLR5_exact:.5f}"}</td></tr>
                       <tr><td>Logistic (alt)</td><td>${f"{LLR5_alt:.5f}"}</td></tr>
                       <tr><td>Logistic (alt2)</td><td>${f"{LLR5_alt2:.5f}"}</td></tr>
@@ -304,7 +305,7 @@
                     </em>
                 % endif ## has_sprt
                 <H5> Auxilliary statistics </H5>
-                <table class="table table-condensed">
+                <table class="table table-sm">
                   <tr><td>Games</td><td>${int(games5)}</td></tr>
                   <tr><td>Results [0-2]</td><td>${results5}</td></tr>
                   <tr><td>Distribution</td><td>${pdf5_s}</td></tr>
@@ -343,7 +344,7 @@
                 </p>
             % endif  ## has_pentanomial
             <H5> Basic statistics</H5>
-            <table class="table table-condensed">
+            <table class="table table-sm">
               <tr><td>Elo</td><td>${f"{elo3:.4f} [{elo3_l:.4f}, {elo3_u:.4f}]"}</td></tr>
               <tr><td>LOS(1-p)</td><td>${f"{LOS3:.5f}"}</td></tr>
               % if has_sprt:
@@ -352,7 +353,7 @@
             </table>
             % if has_sprt:
                 <H5>Generalized Log Likelihood Ratio</H5>
-                <table class="table table-condensed" style="margin-top:1em;margin-bottom:0.5em;">
+                <table class="table table-sm" style="margin-top:1em;margin-bottom:0.5em;">
                   <tr><td>Logistic (exact)</td><td>${f"{LLR3_exact:.5f}"}</td></tr>
                   <tr><td>Logistic (alt)</td><td>${f"{LLR3_alt:.5f}"}</td></tr>
                   <tr><td>Logistic (alt2)</td><td>${f"{LLR3_alt2:.5f}"}</td></tr>
@@ -366,7 +367,7 @@
                 </em>
             % endif  ## has_sprt
             <H5>Auxilliary statistics</H5>
-            <table class="table table-condensed">
+            <table class="table table-sm">
               <tr><td>Games</td><td>${int(games3)}</td></tr>
               <tr><td>Results [losses, draws, wins]</td><td>${results3}</td></tr>
               <tr><td>Distribution {loss ratio, draw ratio, win ratio}</td><td>${pdf3_s}</td></tr>
@@ -392,15 +393,13 @@
             </table>
             % if has_pentanomial:
                 <H4>Comparison</H4>
-                <table class="table table-condensed">
+                <table class="table table-sm">
                   <tr><td>Variance ratio (pentanomial/trinomial)</td><td>${f"{ratio:.5f}"}</td></tr>
                   <tr><td>Variance difference (trinomial-pentanomial)</td><td>${f"{var_diff:.5f}"}</td></tr>
                   <tr><td>RMS bias</td><td>${f"{RMS_bias:.5f}"}</td></tr>
                   <tr><td>RMS bias (Elo)</td><td>${f"{RMS_bias_elo:.3f}"}</td></tr>
                 </table>
             % endif  ## has_pentanomial
-          </div>
-          <div class="span2">
           </div>
         </div>
     % else:  ## not has_spsa / has_spsa

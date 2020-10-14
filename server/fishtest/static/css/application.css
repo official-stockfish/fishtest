@@ -7,7 +7,27 @@
 }
 
 body {
+  font-size: 14px;
   transition: background 0.2s ease-in-out;
+}
+
+a {
+  color: #0088cc;
+  text-decoration: none;
+}
+
+a:hover {
+  color: #0088cc;
+}
+
+h2, h3, h4 {
+  font-weight: bold;
+}
+
+legend {
+  padding-bottom: 5px;
+  border-bottom: 1px solid #e5e5e5;
+  margin-bottom: 20px;
 }
 
 .flash-message {
@@ -15,15 +35,45 @@ body {
 }
 
 .elo-results {
+  background: #f5f5f5;
   font-size: 12px;
   margin: 2px;
   padding: 1px;
   line-height: 13px;
+  padding: 3px;
 }
 
 .checkbox.inline {
   margin-left: 20px;
   margin-right: 0;
+}
+
+/** Left navigation */
+.nav-list {
+  margin-bottom: 0;
+}
+
+.nav-header {
+  color: #999999;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+  padding-left: 15px;
+}
+
+.nav li + .nav-header {
+  margin-top: 12px;
+}
+
+/* Links in the left navigation */
+.nav li a {
+  display: block;
+  padding: 3px 15px;
+}
+
+.nav li a:hover {
+  background: #eeeeee;
 }
 
 th {
@@ -40,6 +90,28 @@ th {
   text-align: left;
 }
 
+#change-color-theme {
+  margin-left: 15px;
+}
+
 #change-color-theme:hover {
   cursor: pointer;
+}
+
+/* Pagination links */
+.page-link {
+  color: #0088cc;
+}
+
+.pagination li.disabled .page-link {
+  color: rgb(153, 153, 153);
+}
+
+.pagination li.active .page-link {
+  color: rgb(153, 153, 153);
+  background: rgb(245, 245, 245);
+}
+
+.pagination li:not(.active) .page-link:hover {
+  background-color: #f5f5f5;
 }
