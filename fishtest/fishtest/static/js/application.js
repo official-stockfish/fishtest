@@ -46,8 +46,8 @@ $(() => {
     let theme = $.cookie('theme') || 'light';
     $("#change-color-theme").click(function() {
       if (theme === 'light') {
-        $("#sun").hide();
-        $("#moon").show();
+        $("#sun").show();
+        $("#moon").hide();
         $("<link>")
           .attr("href", "/css/theme.dark.css")
           .attr("rel", "stylesheet")
@@ -55,8 +55,8 @@ $(() => {
           .appendTo($("head"));
         theme = 'dark';
       } else {
-        $("#sun").show();
-        $("#moon").hide();
+        $("#sun").hide();
+        $("#moon").show();
         $('head link[href*="/css/theme.dark.css"]').remove();
         theme = 'light';
       }
