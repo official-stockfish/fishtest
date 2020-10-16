@@ -315,7 +315,7 @@ class RunDb:
         self.run_cache_lock.release()
 
     def scavenge(self, run):
-        old = datetime.utcnow() - timedelta(minutes=30)
+        old = datetime.utcnow() - timedelta(minutes=110)
         for task in run["tasks"]:
             if task["active"] and task["last_updated"] < old:
                 task["active"] = False
