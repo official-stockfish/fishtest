@@ -33,7 +33,7 @@ from os import path
 from games import run_games
 from updater import update
 
-WORKER_VERSION = 87
+WORKER_VERSION = 88
 ALIVE = True
 HTTP_TIMEOUT = 15.0
 
