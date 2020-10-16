@@ -13,7 +13,7 @@ from fishtest.rundb import RunDb
 rundb = RunDb()
 
 
-def scavenge_tasks(scavenge=True, minutes=60):
+def scavenge_tasks(scavenge=True, minutes=120):
     """Check for tasks that have not been updated recently"""
     for run in rundb.runs.find({"tasks": {"$elemMatch": {"active": True}}}):
         changed = False
@@ -25,7 +25,7 @@ def scavenge_tasks(scavenge=True, minutes=60):
                 task["active"] = False
                 changed = True
         if changed and scavenge:
-            rundb.runs.save(run)
+            rundb.runs.replace_one({"_id": run["_id"]}, run)
 
 
 def main():

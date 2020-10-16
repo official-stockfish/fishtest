@@ -1005,7 +1005,7 @@ def run_games(worker_info, password, remote, run, task_id):
 
     while games_remaining > 0:
 
-        batch_size = games_concurrency * 32  # update frequency
+        batch_size = games_concurrency * 4  # update frequency
 
         if spsa_tuning:
             games_to_play = min(batch_size, games_remaining)
