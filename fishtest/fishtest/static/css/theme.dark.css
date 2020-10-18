@@ -60,6 +60,11 @@ hr {
   border-top: 1px solid #444;
 }
 
+/* Background colors for running tasks on test run pages */
+.table tbody tr.info>td {
+  background-color: #0f3373;
+}
+
 /* Text inputs and selects */
 textarea, input[type="text"], input[type="password"],
 input[type="datetime"], input[type="datetime-local"], input[type="date"],
@@ -116,12 +121,27 @@ input[type="radio"]:focus, input[type="checkbox"]:focus {
   background-color: #333;
 }
 
-/* Overrides a color that's way too light on test tasks pages */
+/* Override - test tasks table - purged tasks red background */
 td[style*="background-color:#ffebeb"] {
   background: #5f1c1c !important;
 }
 
-/* Overrides "green" description text in /nns page */
+/* Override - test tasks table - residuals green */
+td[style*="background-color:#44EB44"] {
+  background: #108e10 !important;
+}
+
+/* Override - test tasks table - residuals yellow */
+td[style*="background-color:yellow"] {
+  background: #acb700 !important;
+}
+
+/* Override - test tasks table - residuals red */
+td[style*="background-color:#FF6A6A"] {
+  background: #d65252 !important;
+}
+
+/* Override - "green" description text in /nns page */
 span[style*="background-color:palegreen"] {
   color: #111;
 }
