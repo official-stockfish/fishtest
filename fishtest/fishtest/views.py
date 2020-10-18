@@ -211,7 +211,7 @@ def nns(request):
 
     nns_list = []
 
-    for nn in request.rundb.get_nns(100):
+    for nn in request.rundb.get_nns(500):
         nns_list.append(nn)
     return {"nns": nns_list}
 
