@@ -123,7 +123,8 @@ ${pagination()}
           %endif
           @ ${run['args']['tc']} th ${str(run['args'].get('threads',1))}
           <br>
-          ${('cores: '+str(run['cores'])) if not run['finished'] and 'cores' in run else ''}
+          ${('cores: '+("~" if (datetime.utcnow() - run["last_updated"] > timedelta(hours=1)) else "")
+                      +str(run['cores'])) if not run['finished'] and 'cores' in run else ''}
         </td>
 
         <td style="word-break: break-word;">
