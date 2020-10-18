@@ -209,11 +209,27 @@ def signup(request):
 @view_config(route_name="nns", renderer="nns.mak")
 def nns(request):
 
+    page_size = 250
+    page = int(request.params.get("page", 1))
+    skip = max(0, page - 1) * page_size
     nns_list = []
 
-    for nn in request.rundb.get_nns(500):
+    for nn in request.rundb.get_nns(page_size, skip=skip):
         nns_list.append(nn)
-    return {"nns": nns_list}
+    if len(nns_list) == page_size:
+        next_page = (skip // page_size) + 2
+    else:
+        next_page = None
+    if page > 1:
+        prev_page = page - 1
+    else:
+        prev_page = None
+    return {
+        "nns": nns_list,
+        "next_page": next_page,
+        "prev_page": prev_page,
+        "non_default_shown": request.cookies.get("non_default_state", "Show") == "Show",
+    }
 
 
 @view_config(route_name="actions", renderer="actions.mak")

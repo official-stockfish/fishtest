@@ -9,6 +9,10 @@ and achieved the status of <i>default net</i> during the development of Stockfis
 The recommended net for a given Stockfish executable can be found as the default value of the EvalFile UCI option.
 </p>
 
+<button id="non_default-button" class="btn">
+      ${'Hide non default nets' if non_default_shown else 'Show non default nets'}
+</button>
+
 <table class="table table-striped table-condensed" style="max-width: 900px;">
  <thead>
   <tr>
@@ -23,6 +27,7 @@ The recommended net for a given Stockfish executable can be found as the default
  <tbody>
  %for nn in nns:
   %if request.authenticated_userid or 'first_test' in nn:
+  %if non_default_shown or 'is_master' in nn:
   <tr>
    <td>${nn['time'].strftime("%y-%m-%d %H:%M:%S")}</td>
    %if 'is_master' in nn:
@@ -45,6 +50,18 @@ The recommended net for a given Stockfish executable can be found as the default
    <td style="text-align:right">${nn.get('downloads', 0)}</td>
   </tr>
   %endif
+  %endif
  %endfor
  </tbody>
 </table>
+<p>
+ %if prev_page:
+  <a href="nns?page=${prev_page}">&lt; Later networks</a>
+ %endif
+ %if prev_page and next_page:
+  <span>&#8209;</span>
+ %endif
+ %if next_page:
+  <a href="nns?page=${next_page}">Earlier networks &gt;</a>
+ %endif
+</p>

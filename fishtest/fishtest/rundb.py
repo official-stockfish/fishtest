@@ -192,11 +192,11 @@ class RunDb:
             return nn
         return None
 
-    def get_nns(self, limit):
+    def get_nns(self, limit, skip=0):
         return [
             dict(n, time=n["_id"].generation_time)
             for n in self.nndb.find(
-                {}, {"nn": 0}, limit=limit, sort=[("_id", DESCENDING)]
+                {}, {"nn": 0}, limit=limit, skip=skip, sort=[("_id", DESCENDING)]
             )
         ]
 
