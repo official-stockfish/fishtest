@@ -329,6 +329,17 @@ class TestApi(unittest.TestCase):
         response = ApiView(self.correct_password_request()).request_version()
         self.assertEqual(WORKER_VERSION, response["version"])
 
+    def test_beat(self):
+        with self.assertRaises(HTTPUnauthorized):
+            response = ApiView(self.invalid_password_request()).beat()
+            self.assertTrue("error" in response)
+
+        request = self.correct_password_request(
+            {"run_id": self.run_id, "task_id": self.task_id}
+        )
+        response = ApiView(request).beat()
+        self.assertEqual("Pleased to hear from you...", response)
+
 
 class TestRunFinished(unittest.TestCase):
     @classmethod

@@ -696,7 +696,7 @@ def parse_cutechess_output(
                         break
                     except Exception as e:
                         sys.stderr.write("Exception from calling update_task:\n")
-                        print(e)
+                        print(e, file=sys.stderr)
                         # traceback.print_exc(file=sys.stderr)
                     time.sleep(HTTP_TIMEOUT)
                 if not update_succeeded:
