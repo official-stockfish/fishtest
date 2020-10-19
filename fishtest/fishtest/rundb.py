@@ -293,14 +293,23 @@ class RunDb:
         oldest = None
         for r_id in list(self.run_cache):
             if not self.run_cache[r_id]["dirty"]:
+                if not self.run_cache[r_id]["run"].get("finished", False) and (
+                    "scavenge" not in self.run_cache[r_id]
+                    or self.run_cache[r_id]["scavenge"] < now - 60
+                ):
+                    self.run_cache[r_id]["scavenge"] = now
+                    if self.scavenge(self.run_cache[r_id]["run"]):
+                        with self.run_cache_write_lock:
+                            self.runs.save(self.run_cache[r_id]["run"])
                 if self.run_cache[r_id]["rtime"] < now - 60:
                     del self.run_cache[r_id]
             elif self.run_cache[r_id]["ftime"] < old:
                 old = self.run_cache[r_id]["ftime"]
                 oldest = r_id
+        # print(oldest)
         if oldest is not None:
-            if int(now) % 60 == 0:
-                self.scavenge(self.run_cache[oldest]["run"])
+            self.scavenge(self.run_cache[oldest]["run"])
+            self.run_cache[oldest]["scavenge"] = now
             self.run_cache[oldest]["dirty"] = False
             self.run_cache[oldest]["ftime"] = time.time()
             self.run_cache_lock.release()  # Release the lock while writing
@@ -315,10 +324,15 @@ class RunDb:
         self.run_cache_lock.release()
 
     def scavenge(self, run):
-        old = datetime.utcnow() - timedelta(minutes=110)
+        # print("scavenge ", run["_id"])
+        dead_task = False
+        old = datetime.utcnow() - timedelta(minutes=3)
         for task in run["tasks"]:
             if task["active"] and task["last_updated"] < old:
                 task["active"] = False
+                dead_task = True
+                print("dead task")
+        return dead_task
 
     def get_unfinished_runs_id(self):
         with self.run_cache_write_lock:
@@ -448,7 +462,7 @@ class RunDb:
                 results["wins"] += stats["wins"]
                 results["losses"] += stats["losses"]
                 results["draws"] += stats["draws"]
-                results["crashes"] += stats["crashes"]
+                results["crashes"] += stats.get("crashes", 0)
                 results["time_losses"] += stats.get("time_losses", 0)
                 if "pentanomial" in stats.keys() and has_pentanomial:
                     pentanomial = [
@@ -627,6 +641,8 @@ class RunDb:
         if run["_id"] not in self.worker_runs[worker_key]:
             self.worker_runs[worker_key][run["_id"]] = True
 
+        if "stats" not in run["tasks"][task_id]:
+            run["tasks"][task_id]["stats"] = {"wins": 0, "losses": 0, "draws": 0}
         return {"run": run, "task_id": task_id}
 
     # Create a lock for each active run

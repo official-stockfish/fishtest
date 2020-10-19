@@ -10,6 +10,7 @@ import random
 import re
 import signal
 import sys
+import threading
 import time
 import traceback
 import uuid
@@ -33,7 +34,7 @@ from os import path
 from games import run_games
 from updater import update
 
-WORKER_VERSION = 88
+WORKER_VERSION = 89
 ALIVE = True
 HTTP_TIMEOUT = 15.0
 
@@ -101,12 +102,42 @@ def get_rate():
         ).json()["rate"]
     except Exception as e:
         sys.stderr.write("Exception fetching rate_limit:\n")
-        print(e)
+        print(e, file=sys.stderr)
         rate = {"remaining": 0, "limit": 5000}
         return True
     remaining = rate["remaining"]
     print("API call rate limits:", rate)
     return remaining >= math.sqrt(rate["limit"])
+
+
+RUN = None
+TASK_ID = None
+
+def heartbeat(worker_info, password, remote):
+    global ALIVE, RUN, TASK_ID
+    print("Start heartbeat")
+    payload = {"username": worker_info["username"], "password": password}
+    count = 0
+    while ALIVE:
+        time.sleep(1)
+        count += 1
+        if count == 60:
+            count = 0
+            print("Send heartbeat... ", end='')
+            payload["run_id"] = str(RUN["_id"]) if RUN else None
+            payload["task_id"] = TASK_ID
+            req = requests.post(
+                remote + "/api/beat",
+                data=json.dumps(payload),
+                headers={"Content-type": "application/json"},
+                timeout=HTTP_TIMEOUT,
+            )
+            try:
+                req = json.loads(req.text)
+                print(req)
+            except Exception as e:
+                sys.stderr.write("Exception from calling heartbeat:\n")
+                print(e, file=sys.stderr)
 
 
 def worker(worker_info, password, remote):
@@ -153,7 +184,7 @@ def worker(worker_info, password, remote):
         req = json.loads(req.text)
     except Exception as e:
         sys.stderr.write("Exception accessing host:\n")
-        print(e)
+        print(e, file=sys.stderr)
         #    traceback.print_exc()
         time.sleep(random.randint(10, 60))
         return
@@ -170,9 +201,10 @@ def worker(worker_info, password, remote):
         return
 
     success = True
-    run, task_id = req["run"], req["task_id"]
+    global RUN, TASK_ID
+    RUN, TASK_ID = req["run"], req["task_id"]
     try:
-        pgn_file = run_games(worker_info, password, remote, run, task_id)
+        pgn_file = run_games(worker_info, password, remote, RUN, TASK_ID)
     except:
         sys.stderr.write("\nException running games:\n")
         traceback.print_exc()
@@ -181,8 +213,8 @@ def worker(worker_info, password, remote):
         payload = {
             "username": worker_info["username"],
             "password": password,
-            "run_id": str(run["_id"]),
-            "task_id": task_id,
+            "run_id": str(RUN["_id"]),
+            "task_id": TASK_ID,
         }
         try:
             requests.post(
@@ -194,11 +226,12 @@ def worker(worker_info, password, remote):
         except:
             pass
 
+        TASK_ID = None
         if success and ALIVE:
             sleep = random.randint(1, 10)
             print("Wait {} seconds before upload of PGN...".format(sleep))
             time.sleep(sleep)
-            if "spsa" not in run["args"]:
+            if "spsa" not in RUN["args"]:
                 try:
                     with open(pgn_file, "r") as f:
                         data = f.read()
@@ -227,7 +260,7 @@ def worker(worker_info, password, remote):
                     )
                 except Exception as e:
                     sys.stderr.write("\nException PGN upload:\n")
-                    print(e)
+                    print(e, file=sys.stderr)
         #          traceback.print_exc()
         try:
             os.remove(pgn_file)
@@ -335,6 +368,9 @@ def main():
         "version": "{}:{}".format(WORKER_VERSION, sys.version_info[0]),
         "unique_key": str(uuid.uuid4()),
     }
+
+    # Start heartbeat
+    threading.Thread(target=heartbeat, args=(worker_info, args[1], remote)).start()
 
     success = True
     global ALIVE

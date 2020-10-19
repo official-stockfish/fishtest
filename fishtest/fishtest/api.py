@@ -90,7 +90,10 @@ class ApiView(object):
         return str(self.request.json_body["run_id"])
 
     def task_id(self):
-        return int(self.request.json_body["task_id"])
+        tid = self.request.json_body["task_id"]
+        if tid is not None:
+            return int(tid)
+        return tid
 
     @view_config(route_name="api_active_runs")
     def active_runs(self):
@@ -233,6 +236,16 @@ class ApiView(object):
     def request_version(self):
         self.require_authentication()
         return {"version": WORKER_VERSION}
+
+    @view_config(route_name="api_beat")
+    def beat(self):
+        self.require_authentication()
+        if self.task_id() is not None:
+            run = self.request.rundb.get_run(self.run_id())
+            task = run["tasks"][self.task_id()]
+            task["last_updated"] = datetime.utcnow()
+            self.request.rundb.buffer(run, False)
+        return "Pleased to hear from you..."
 
     @view_config(route_name="api_request_spsa")
     def request_spsa(self):
