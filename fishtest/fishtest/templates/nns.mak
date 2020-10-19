@@ -56,12 +56,12 @@ The recommended net for a given Stockfish executable can be found as the default
 </table>
 <p>
  %if prev_page:
-  <a href="nns?page=${prev_page}">&lt; Later networks</a>
+  <a href="nns?page=${prev_page}">&laquo; Newer nets</a>
  %endif
  %if prev_page and next_page:
-  <span>&#8209;</span>
+  <span>-</span>
  %endif
  %if next_page:
-  <a href="nns?page=${next_page}">Earlier networks &gt;</a>
+  <a href="nns?page=${next_page}">Older nets &raquo;</a>
  %endif
 </p>
