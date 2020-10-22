@@ -642,7 +642,12 @@ class RunDb:
             self.worker_runs[worker_key][run["_id"]] = True
 
         if "stats" not in run["tasks"][task_id]:
-            run["tasks"][task_id]["stats"] = {"wins": 0, "losses": 0, "draws": 0}
+            run["tasks"][task_id]["stats"] = {
+                "wins": 0,
+                "losses": 0,
+                "draws": 0,
+                "pentanomial": 5 * [0],
+            }
         return {"run": run, "task_id": task_id}
 
     # Create a lock for each active run
