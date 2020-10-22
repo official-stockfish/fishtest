@@ -277,7 +277,7 @@ class RunDb:
         # Note that we do not grab locks because this method is
         # called from a signal handler and grabbing locks might deadlock
         for r_id in list(self.run_cache):
-            if self.run_cache[r_id]["dirty"]:
+            if r_id in self.run_cache and self.run_cache[r_id]["dirty"]:
                 self.runs.replace_one(
                     {"_id": ObjectId(r_id)}, self.run_cache[r_id]["run"]
                 )
