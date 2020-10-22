@@ -277,10 +277,9 @@ class RunDb:
         # Note that we do not grab locks because this method is
         # called from a signal handler and grabbing locks might deadlock
         for r_id in list(self.run_cache):
-            if r_id in self.run_cache and self.run_cache[r_id]["dirty"]:
-                self.runs.replace_one(
-                    {"_id": ObjectId(r_id)}, self.run_cache[r_id]["run"]
-                )
+            entry = self.run_cache.get(r_id, None)
+            if entry is not None and entry["dirty"]:
+                self.runs.replace_one({"_id": ObjectId(r_id)}, entry["run"])
                 print(".", end="")
         print("done")
 
@@ -300,8 +299,10 @@ class RunDb:
                     self.run_cache[r_id]["scavenge"] = now
                     if self.scavenge(self.run_cache[r_id]["run"]):
                         with self.run_cache_write_lock:
-                            self.runs.save(self.run_cache[r_id]["run"])
-                if self.run_cache[r_id]["rtime"] < now - 60:
+                            self.runs.replace_one(
+                                {"_id": ObjectId(r_id)}, self.run_cache[r_id]["run"]
+                            )
+                if self.run_cache[r_id]["rtime"] < now - 300:
                     del self.run_cache[r_id]
             elif self.run_cache[r_id]["ftime"] < old:
                 old = self.run_cache[r_id]["ftime"]
@@ -315,7 +316,9 @@ class RunDb:
             self.run_cache_lock.release()  # Release the lock while writing
             # print("SYNC")
             with self.run_cache_write_lock:
-                self.runs.save(self.run_cache[oldest]["run"])
+                self.runs.replace_one(
+                    {"_id": ObjectId(oldest)}, self.run_cache[oldest]["run"]
+                )
             # start the timer when writing is done
             self.start_timer()
             return
