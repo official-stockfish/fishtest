@@ -411,7 +411,7 @@ def setup_engine(
 
         subprocess.check_call(
             MAKE_CMD + ARCH + " -j {}".format(concurrency) + " profile-build",
-            shell=True,
+            shell=True, env=dict(os.environ, CXXFLAGS="-DNNUE_EMBEDDING_OFF")
         )
         try:  # try/pass needed for backwards compatibility with older stockfish, where 'make strip' fails under mingw.
             subprocess.check_call(
@@ -924,11 +924,11 @@ def run_games(worker_info, password, remote, run, task_id):
     # verify that an available cutechess matches the required minimum version
     verify_required_cutechess(cutechess)
 
-    # clean up old networks (keeping the 20 most recent)
+    # clean up old networks (keeping the 10 most recent)
     networks = glob.glob(os.path.join(testing_dir, "nn-*.nnue"))
-    if len(networks) > 20:
+    if len(networks) > 10:
         networks.sort(key=os.path.getmtime)
-        for old_net in networks[:-20]:
+        for old_net in networks[:-10]:
             try:
                 os.remove(old_net)
             except:
