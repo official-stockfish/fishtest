@@ -25,6 +25,8 @@ from fishtest.util import (
     remaining_hours,
 )
 
+boot_time = datetime.utcnow()
+
 last_rundb = None
 
 
@@ -327,6 +329,8 @@ class RunDb:
         self.run_cache_lock.release()
 
     def scavenge(self, run):
+        if datetime.utcnow() < boot_time + timedelta(seconds=150):
+            return False
         # print("scavenge ", run["_id"])
         dead_task = False
         old = datetime.utcnow() - timedelta(minutes=3)
