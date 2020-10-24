@@ -601,6 +601,15 @@ class RunDb:
                 and run["args"]["threads"] <= max_threads
                 and run["args"]["threads"] >= min_threads
                 and need_tt <= max_memory
+                # To avoid time losses in the case of large concurrency and short TC,
+                # probably due to cutechess-cli as discussed in issue #822,
+                # assign those workers to LTC or multi-threaded jobs.
+                and (
+                    max_threads < 32
+                    or estimate_game_duration(run["args"]["tc"])
+                    * run["args"]["threads"]
+                    > estimate_game_duration("30+0.3")
+                )
             ):
                 task_id = -1
                 cores = 0
