@@ -90,6 +90,9 @@ def on_sigint(signal, frame):
     ALIVE = False
     raise Exception("Terminated by signal")
 
+def worker_exit():
+    os._exit(1)
+
 
 rate = None
 
@@ -162,7 +165,7 @@ def worker(worker_info, password, remote):
         if "version" not in req:
             print("Incorrect username/password")
             time.sleep(5)
-            sys.exit(1)
+            worker_exit()
 
         if req["version"] > WORKER_VERSION:
             print("Updating worker version to {}".format(req["version"]))
@@ -321,7 +324,7 @@ def main():
             args.extend([username, password])
         else:
             sys.stderr.write("{} [username] [password]\n".format(sys.argv[0]))
-            sys.exit(1)
+            worker_exit()
 
     # Write command line parameters to the config file
     config.set("login", "username", args[0])
@@ -338,7 +341,7 @@ def main():
     protocol = options.protocol.lower()
     if protocol not in ["http", "https"]:
         sys.stderr.write("Wrong protocol, use https or http\n")
-        sys.exit(1)
+        worker_exit()
     elif protocol == "http" and options.port == "443":
         # Rewrite old port 443 to 80
         options.port = "80"
@@ -355,7 +358,7 @@ def main():
 
     if cpu_count <= 0:
         sys.stderr.write("Not enough CPUs to run fishtest (it requires at least two)\n")
-        sys.exit(1)
+        worker_exit()
 
     uname = platform.uname()
     worker_info = {
