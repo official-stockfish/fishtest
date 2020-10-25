@@ -84,7 +84,7 @@ def required_net(engine):
     p.stdout.close()
 
     if p.returncode != 0:
-        raise Exception("uci exited with non-zero code {}".format(p.returncode))
+        raise Exception("UCI exited with non-zero code {}".format(p.returncode))
 
     return net
 
@@ -860,8 +860,7 @@ def run_games(worker_info, password, remote, run, task_id):
             try:
                 os.remove(old_engine)
             except:
-                print("Note: failed to remove an old engine binary " + str(old_engine))
-                pass
+                print("Failed to remove an old engine binary " + str(old_engine))
 
     # create new engines
     sha_new = run["args"]["resolved_new"]
@@ -933,8 +932,7 @@ def run_games(worker_info, password, remote, run, task_id):
             try:
                 os.remove(old_net)
             except:
-                print("Note: failed to remove an old network " + str(old_net))
-                pass
+                print("Failed to remove an old network " + str(old_net))
 
     # Add EvalFile with full path to cutechess options, and download networks if not already existing
     net_base = required_net(base_engine)

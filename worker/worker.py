@@ -34,7 +34,7 @@ from os import path
 from games import run_games
 from updater import update
 
-WORKER_VERSION = 90
+WORKER_VERSION = 91
 ALIVE = True
 HTTP_TIMEOUT = 15.0
 
@@ -380,6 +380,7 @@ def main():
     while ALIVE:
         if path.isfile(path.join(worker_dir, "fish.exit")):
             ALIVE = False
+            print("Stopped by 'fish.exit' file")
             break
         if not success:
             time.sleep(HTTP_TIMEOUT)
