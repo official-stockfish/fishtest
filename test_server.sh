@@ -1,3 +1,4 @@
 #!/bin/sh
-cd fishtest
+
+cd server
 python setup.py test
