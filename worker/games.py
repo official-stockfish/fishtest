@@ -456,7 +456,8 @@ def adjust_tc(tc, base_nps, concurrency):
         sys.stderr.write(
             "This machine is too slow to run fishtest effectively - sorry!\n"
         )
-        sys.exit(1)
+        from worker import worker_exit
+        worker_exit()
 
     # Parse the time control in cutechess format
     chunks = tc.split("+")
