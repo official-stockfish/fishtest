@@ -34,13 +34,10 @@ class workerTest(unittest.TestCase):
         self.assertTrue(config.has_option("parameters", "port"))
         self.assertTrue(config.has_option("parameters", "concurrency"))
 
-    def test_worker_script(self):
-        p = subprocess.Popen(["python", "worker.py"], stderr=subprocess.PIPE)
-        result = p.stderr.readline()
-        if not isinstance(result, str):
-            result = result.decode("utf-8")
-        self.assertEqual(result, "worker.py [username] [password]\n")
-        p.stderr.close()
+    def test_worker_script_with_no_args(self):
+        with subprocess.Popen(["python", "worker.py"]) as p:
+            p.communicate()
+            self.assertEqual(p.returncode, 1)
 
     def test_setup_exception(self):
         cwd = os.getcwd()
