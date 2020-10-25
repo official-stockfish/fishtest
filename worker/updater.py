@@ -48,7 +48,7 @@ def update(restart=True, test=False):
         file_list = os.listdir(worker_src)
     shutil.rmtree(update_dir)
 
-    # rename the testing_dir as backup
+    # rename the testing_dir to backup possible user custom files
     # and to trigger the download of update files
     testing_dir = os.path.join(worker_dir, "testing")
     if os.path.exists(testing_dir):
@@ -61,14 +61,20 @@ def update(restart=True, test=False):
         bkp_testing_dir = os.path.join(worker_dir, "_testing_" + time_stamp)
         shutil.move(testing_dir, bkp_testing_dir)
         os.makedirs(testing_dir)
-        # delete the old engine binaries
+        # delete old engine binaries
         engines = glob.glob(os.path.join(bkp_testing_dir, "stockfish_*"))
         for engine in engines:
             try:
                 os.remove(engine)
             except:
-                print("Note: failed to delete an engine binary " + str(engine))
-                pass
+                print("Failed to delete the engine binary " + str(engine))
+        # delete old networks
+        networks = glob.glob(os.path.join(bkp_testing_dir, "nn-*.nnue"))
+        for network in networks:
+            try:
+                os.remove(network)
+            except:
+                print("Failed to delete the network file " + str(network))
         # clean up old folder backups (keeping the num_bkps most recent)
         bkp_dirs = glob.glob(os.path.join(worker_dir, "_testing_*"))
         num_bkps = 3
@@ -78,11 +84,7 @@ def update(restart=True, test=False):
                 try:
                     shutil.rmtree(old_bkp_dir)
                 except:
-                    print(
-                        "Note: failed to remove the old backup folder "
-                        + str(old_bkp_dir)
-                    )
-                    pass
+                    print("Failed to remove the old backup folder " + str(old_bkp_dir))
 
     print("start_dir: " + start_dir)
     if restart:
