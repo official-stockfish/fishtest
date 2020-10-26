@@ -38,6 +38,8 @@ WORKER_VERSION = 91
 ALIVE = True
 HTTP_TIMEOUT = 15.0
 
+FLEET = False
+
 
 def setup_config_file(config_file):
     """ Config file setup, adds defaults if not existing """
@@ -72,6 +74,8 @@ def setup_config_file(config_file):
         ("parameters", "concurrency", "3"),
         ("parameters", "max_memory", str(int(mem / 2 / 1024 / 1024))),
         ("parameters", "min_threads", "1"),
+        ("parameters", "fleet", "False"),
+        ("parameters", "use_all_cores", "False"),
     ]
 
     for v in defaults:
@@ -90,8 +94,9 @@ def on_sigint(signal, frame):
     ALIVE = False
     raise Exception("Terminated by signal")
 
-def worker_exit():
-    os._exit(1)
+
+def worker_exit(val=1):
+    os._exit(val)
 
 
 rate = None
@@ -116,6 +121,7 @@ def get_rate():
 RUN = None
 TASK_ID = None
 
+
 def heartbeat(worker_info, password, remote):
     global ALIVE, RUN, TASK_ID
     print("Start heartbeat")
@@ -126,7 +132,7 @@ def heartbeat(worker_info, password, remote):
         count += 1
         if count == 60:
             count = 0
-            print("Send heartbeat... ", end='')
+            print("Send heartbeat... ", end="")
             payload["run_id"] = str(RUN["_id"]) if RUN else None
             payload["task_id"] = TASK_ID
             req = requests.post(
@@ -144,7 +150,7 @@ def heartbeat(worker_info, password, remote):
 
 
 def worker(worker_info, password, remote):
-    global ALIVE
+    global ALIVE, FLEET
 
     payload = {"worker_info": worker_info, "password": password}
 
@@ -189,6 +195,8 @@ def worker(worker_info, password, remote):
         sys.stderr.write("Exception accessing host:\n")
         print(e, file=sys.stderr)
         #    traceback.print_exc()
+        if FLEET:
+            worker_exit()
         time.sleep(random.randint(10, 60))
         return
 
@@ -199,6 +207,8 @@ def worker(worker_info, password, remote):
     # No tasks ready for us yet, just wait...
     if "task_waiting" in req:
         print("No tasks available at this time, waiting...\n")
+        if FLEET:
+            worker_exit()
         # Note that after this sleep we have another ALIVE HTTP_TIMEOUT...
         time.sleep(random.randint(1, 10))
         return
@@ -314,6 +324,24 @@ def main():
         dest="min_threads",
         default=config.get("parameters", "min_threads"),
     )
+    parser.add_option(
+        "-f",
+        "--fleet",
+        dest="fleet",
+        default=config.get("parameters", "fleet"),
+    )
+    parser.add_option(
+        "-a",
+        "--use_all_cores",
+        dest="use_all_cores",
+        default=config.get("parameters", "use_all_cores"),
+    )
+    parser.add_option(
+        "-w",
+        "--only_config",
+        dest="only_config",
+        default=False,
+    )
     (options, args) = parser.parse_args()
 
     if len(args) != 2:
@@ -335,8 +363,11 @@ def main():
     config.set("parameters", "concurrency", options.concurrency)
     config.set("parameters", "max_memory", options.max_memory)
     config.set("parameters", "min_threads", options.min_threads)
-    with open(config_file, "w") as f:
-        config.write(f)
+    config.set("parameters", "fleet", options.fleet)
+    config.set("parameters", "use_all_cores", options.use_all_cores)
+
+    global FLEET
+    FLEET = options.fleet == "True"
 
     protocol = options.protocol.lower()
     if protocol not in ["http", "https"]:
@@ -349,16 +380,40 @@ def main():
         # Rewrite old port 80 to 443
         options.port = "443"
     remote = "{}://{}:{}".format(protocol, options.host, options.port)
-    print("Worker version {} connecting to {}".format(WORKER_VERSION, remote))
 
     try:
-        cpu_count = min(int(options.concurrency), multiprocessing.cpu_count() - 1)
-    except:
+        if options.use_all_cores == "True":
+            cpu_count = multiprocessing.cpu_count()
+        else:
+            cpu_count = int(options.concurrency)
+            if cpu_count > multiprocessing.cpu_count() - 1:
+                print(
+                    (
+                        "\nYou cannot have concurrency {} but at most:\n"
+                        "{} with option --concurrency\n"
+                        "{} with option --use_all_cores\n"
+                    ).format(
+                        options.concurrency,
+                        multiprocessing.cpu_count() - 1,
+                        multiprocessing.cpu_count(),
+                    ),
+                    file=sys.stderr,
+                )
+                worker_exit()
+    except Exception as e:
+        print(e, file=sys.stderr)
         cpu_count = int(options.concurrency)
 
     if cpu_count <= 0:
         sys.stderr.write("Not enough CPUs to run fishtest (it requires at least two)\n")
         worker_exit()
+
+    with open(config_file, "w") as f:
+        config.write(f)
+    if options.only_config == "True":
+        worker_exit(0)
+
+    print("Worker version {} connecting to {}".format(WORKER_VERSION, remote))
 
     uname = platform.uname()
     worker_info = {
@@ -383,6 +438,8 @@ def main():
             print("Stopped by 'fish.exit' file")
             break
         if not success:
+            if FLEET:
+                worker_exit()
             time.sleep(HTTP_TIMEOUT)
         success = worker(worker_info, args[1], remote)
 
