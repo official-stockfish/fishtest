@@ -34,7 +34,7 @@ from os import path
 from games import run_games
 from updater import update
 
-WORKER_VERSION = 91
+WORKER_VERSION = 92
 ALIVE = True
 HTTP_TIMEOUT = 15.0
 
@@ -344,19 +344,20 @@ def main():
     )
     (options, args) = parser.parse_args()
 
-    if len(args) != 2:
-        # Try to read parameters from the the config file
-        username = config.get("login", "username")
-        password = config.get("login", "password", raw=True)
-        if len(username) != 0 and len(password) != 0:
-            args.extend([username, password])
-        else:
-            sys.stderr.write("{} [username] [password]\n".format(sys.argv[0]))
-            worker_exit()
+    username = config.get("login", "username")
+    password = config.get("login", "password", raw=True)
+
+    if len(args) == 2:
+        username = args[0]
+        password = args[1]
+    elif len(args) != 0 or len(username) == 0 or len(password) == 0:
+        sys.stderr.write("{} [username] [password]\n".format(sys.argv[0]))
+        worker_exit()
+
 
     # Write command line parameters to the config file
-    config.set("login", "username", args[0])
-    config.set("login", "password", args[1])
+    config.set("login", "username", username)
+    config.set("login", "password", password)
     config.set("parameters", "protocol", options.protocol)
     config.set("parameters", "host", options.host)
     config.set("parameters", "port", options.port)
@@ -422,13 +423,13 @@ def main():
         "concurrency": cpu_count,
         "max_memory": int(options.max_memory),
         "min_threads": int(options.min_threads),
-        "username": args[0],
+        "username": username,
         "version": "{}:{}".format(WORKER_VERSION, sys.version_info[0]),
         "unique_key": str(uuid.uuid4()),
     }
 
     # Start heartbeat
-    threading.Thread(target=heartbeat, args=(worker_info, args[1], remote)).start()
+    threading.Thread(target=heartbeat, args=(worker_info, password, remote)).start()
 
     success = True
     global ALIVE
@@ -441,7 +442,7 @@ def main():
             if FLEET:
                 worker_exit()
             time.sleep(HTTP_TIMEOUT)
-        success = worker(worker_info, args[1], remote)
+        success = worker(worker_info, password, remote)
 
 
 if __name__ == "__main__":
