@@ -329,7 +329,7 @@ class RunDb:
             self.start_timer()
 
     def scavenge(self, run):
-        if datetime.utcnow() < boot_time + timedelta(seconds=150):
+        if run["finished"] or datetime.utcnow() < boot_time + timedelta(seconds=150):
             return False
         # print("scavenge ", run["_id"])
         dead_task = False
