@@ -334,11 +334,20 @@ class RunDb:
         # print("scavenge ", run["_id"])
         dead_task = False
         old = datetime.utcnow() - timedelta(minutes=3)
+        task_id = -1
         for task in run["tasks"]:
+            task_id += 1
             if task["active"] and task["last_updated"] < old:
                 task["active"] = False
                 dead_task = True
-                print("dead task", task["worker_key"], flush=True)
+                print(
+                    "dead task: run: https://tests.stockfishchess.org/tests/view/{} task_id: {} worker: {}".format(
+                        run["_id"],
+                        task_id,
+                        task["worker_key"],
+                    ),
+                    flush=True,
+                )
         return dead_task
 
     def get_unfinished_runs_id(self):
@@ -704,7 +713,13 @@ class RunDb:
         if not task["active"] or not task["pending"]:
             return {"task_alive": False}
         if task["worker_info"]["username"] != username:
-            print("Update_task: Non matching username: " + username, flush=True)
+            print(
+                "Update_task: Non matching username: {} run_id: "
+                "https://tests.stockfishchess.org/tests/view/{} task_id: {}".format(
+                    username, run_id, task_id
+                ),
+                flush=True,
+            )
             return {"task_alive": False}
 
         # Guard against incorrect results
