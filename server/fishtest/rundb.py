@@ -23,7 +23,10 @@ from fishtest.util import (
     format_results,
     post_in_fishcooking_results,
     remaining_hours,
+    get_worker_key,
 )
+
+DEBUG = False
 
 boot_time = datetime.utcnow()
 
@@ -227,6 +230,8 @@ class RunDb:
                 return self.run_cache[r_id]["run"]
             try:
                 run = self.runs.find_one({"_id": ObjectId(r_id)})
+                if DEBUG:
+                    print("Load", r_id, flush=True)
                 if run:
                     self.run_cache[r_id] = {
                         "rtime": time.time(),
@@ -275,15 +280,15 @@ class RunDb:
         time.sleep(1.1)
 
     def flush_all(self):
-        print("flush")
+        print("flush", flush=True)
         # Note that we do not grab locks because this method is
         # called from a signal handler and grabbing locks might deadlock
         for r_id in list(self.run_cache):
             entry = self.run_cache.get(r_id, None)
             if entry is not None and entry["dirty"]:
                 self.runs.replace_one({"_id": ObjectId(r_id)}, entry["run"])
-                print(".", end="")
-        print("done")
+                print(".", end="", flush=True)
+        print("done", flush=True)
 
     def flush_buffers(self):
         if self.timer is None:
@@ -322,9 +327,9 @@ class RunDb:
                         {"_id": ObjectId(oldest)}, self.run_cache[oldest]["run"]
                     )
         except:
-            print("Flush exception")
+            print("Flush exception", flush=True)
         finally:
-            # Nothing to flush, start timer:
+            # Restart timer:
             self.run_cache_lock.release()
             self.start_timer()
 
@@ -344,7 +349,7 @@ class RunDb:
                     "dead task: run: https://tests.stockfishchess.org/tests/view/{} task_id: {} worker: {}".format(
                         run["_id"],
                         task_id,
-                        task["worker_key"],
+                        get_worker_key(task),
                     ),
                     flush=True,
                 )
@@ -537,11 +542,13 @@ class RunDb:
             finally:
                 self.task_semaphore.release()
         else:
-            print("request_task too busy")
+            print("request_task too busy", flush=True)
             return {"task_waiting": False}
 
     def sync_request_task(self, worker_info):
         if time.time() > self.task_time + 60:
+            if DEBUG:
+                print("Refresh queue", flush=True)
             self.task_runs = []
             for r in self.get_unfinished_runs_id():
                 run = self.get_run(r["_id"])
@@ -673,6 +680,17 @@ class RunDb:
                 "draws": 0,
                 "pentanomial": 5 * [0],
             }
+        if DEBUG:
+            print(
+                "Allocate run: https://tests.stockfishchess.org/tests/view/{} task_id: {} to {}/{} Stats: {}".format(
+                    run["_id"],
+                    task_id,
+                    worker_info["username"],
+                    worker_key,
+                    run["tasks"][task_id]["stats"],
+                ),
+                flush=True,
+            )
         return {"run": run, "task_id": task_id}
 
     # Create a lock for each active run
@@ -697,14 +715,18 @@ class RunDb:
                 self.active_runs[id] = {"time": time.time(), "lock": active_lock}
             return active_lock
 
-    def update_task(self, run_id, task_id, stats, nps, ARCH, spsa, username):
+    def update_task(
+        self, run_id, task_id, stats, nps, ARCH, spsa, username, unique_key
+    ):
         lock = self.active_run_lock(str(run_id))
         with lock:
             return self.sync_update_task(
-                run_id, task_id, stats, nps, ARCH, spsa, username
+                run_id, task_id, stats, nps, ARCH, spsa, username, unique_key
             )
 
-    def sync_update_task(self, run_id, task_id, stats, nps, ARCH, spsa, username):
+    def sync_update_task(
+        self, run_id, task_id, stats, nps, ARCH, spsa, username, unique_key
+    ):
         run = self.get_run(run_id)
         if task_id >= len(run["tasks"]):
             return {"task_alive": False}
@@ -712,11 +734,21 @@ class RunDb:
         task = run["tasks"][task_id]
         if not task["active"] or not task["pending"]:
             return {"task_alive": False}
+
+        if task["worker_info"]["unique_key"] != unique_key:
+            print(
+                "Update_task: Non matching unique_key: {} {} run_id: "
+                "https://tests.stockfishchess.org/tests/view/{} task_id: {}".format(
+                    unique_key, task["worker_info"]["unique_key"], run_id, task_id
+                ),
+                flush=True,
+            )
+            return {"task_alive": False}
         if task["worker_info"]["username"] != username:
             print(
-                "Update_task: Non matching username: {} run_id: "
+                "Update_task: Non matching username: {} {} run_id: "
                 "https://tests.stockfishchess.org/tests/view/{} task_id: {}".format(
-                    username, run_id, task_id
+                    username, task["worker_info"]["username"], run_id, task_id
                 ),
                 flush=True,
             )
@@ -789,16 +821,33 @@ class RunDb:
         self.pgndb.insert_one({"run_id": run_id, "pgn_zip": Binary(pgn_zip)})
         return {}
 
-    def failed_task(self, run_id, task_id):
+    def failed_task(self, run_id, task_id, unique_key):
         run = self.get_run(run_id)
+        task = run["tasks"][task_id]
+        if DEBUG:
+            print(
+                "Failed: https://tests.stockfishchess.org/tests/view/{} {} {}".format(
+                    run_id, task if DEBUG else task_id, get_worker_key(task)
+                ),
+                flush=True,
+            )
         if task_id >= len(run["tasks"]):
             return {"task_alive": False}
 
-        task = run["tasks"][task_id]
         if not task["active"] or not task["pending"]:
             return {"task_alive": False}
 
+        # Test if the task is reallocated to a different worker.
+        if task["worker_info"]["unique_key"] != unique_key:
+            return {"task_alive": False}
+
         # Mark the task as inactive: it will be rescheduled
+        print(
+            "Inactive: https://tests.stockfishchess.org/tests/view/{} {} {}".format(
+                run_id, task if DEBUG else task_id, get_worker_key(task)
+            ),
+            flush=True,
+        )
         task["active"] = False
         self.buffer(run, True)
         return {}
