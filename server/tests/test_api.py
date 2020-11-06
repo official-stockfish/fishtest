@@ -47,6 +47,7 @@ class TestApi(unittest.TestCase):
         # Set up an API user (a worker)
         self.username = "JoeUserWorker"
         self.password = "secret"
+        self.unique_key = "unique key"
         self.remote_addr = "127.0.0.1"
         self.concurrency = 7
 
@@ -96,7 +97,12 @@ class TestApi(unittest.TestCase):
 
     def correct_password_request(self, json_body={}):
         return self.build_json_request(
-            {"username": self.username, "password": self.password, **json_body}
+            {
+                "username": self.username,
+                "password": self.password,
+                "unique_key": "unique key",
+                **json_body,
+            }
         )
 
     def test_get_active_runs(self):
@@ -338,7 +344,8 @@ class TestApi(unittest.TestCase):
             {"run_id": self.run_id, "task_id": self.task_id}
         )
         response = ApiView(request).beat()
-        self.assertEqual("Pleased to hear from you...", response)
+        print(response)
+        self.assertEqual("-", response)
 
 
 class TestRunFinished(unittest.TestCase):

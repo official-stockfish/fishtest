@@ -9,6 +9,7 @@ from pyramid.response import Response
 from pyramid.view import exception_view_config, view_config, view_defaults
 
 from fishtest.stats.stat_util import SPRT_elo
+from fishtest.util import get_worker_key
 
 WORKER_VERSION = 94
 
@@ -54,6 +55,11 @@ class ApiView(object):
         if "username" in self.request.json_body:
             return self.request.json_body["username"]
         return self.request.json_body["worker_info"]["username"]
+    
+    def get_unique_key(self):
+        if "unique_key" in self.request.json_body:
+            return self.request.json_body["unique_key"]
+        return self.request.json_body["worker_info"]["unique_key"]
 
     def get_flag(self):
         ip = self.request.remote_addr
@@ -172,12 +178,13 @@ class ApiView(object):
             ARCH=self.request.json_body.get("ARCH", "?"),
             spsa=self.request.json_body.get("spsa", {}),
             username=self.get_username(),
+            unique_key=self.get_unique_key()
         )
 
     @view_config(route_name="api_failed_task")
     def failed_task(self):
         self.require_authentication()
-        return self.request.rundb.failed_task(self.run_id(), self.task_id())
+        return self.request.rundb.failed_task(self.run_id(), self.task_id(), self.get_unique_key())
 
     @view_config(route_name="api_upload_pgn")
     def upload_pgn(self):
@@ -245,6 +252,7 @@ class ApiView(object):
             task = run["tasks"][self.task_id()]
             task["last_updated"] = datetime.utcnow()
             self.request.rundb.buffer(run, False)
+            return get_worker_key(task)
         return "Pleased to hear from you..."
 
     @view_config(route_name="api_request_spsa")
