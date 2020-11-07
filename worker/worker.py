@@ -14,8 +14,12 @@ import threading
 import time
 import traceback
 import uuid
+import subprocess
+import platform
 
 import requests
+
+IS_WINDOWS = "windows" in platform.system().lower()
 
 try:
     from ConfigParser import SafeConfigParser
@@ -285,6 +289,48 @@ def worker(worker_info, password, remote):
     return success
 
 
+def gcc_version():
+    """Parse the output of g++ -E -dM -"""
+    p = subprocess.Popen(
+        ["g++", "-E", "-dM", "-"],
+        stdout=subprocess.PIPE,
+        stdin=subprocess.PIPE,
+        universal_newlines=True,
+        bufsize=1,
+        close_fds=not IS_WINDOWS,
+    )
+
+    p.stdin.close()
+    for line in iter(p.stdout.readline, ""):
+        if "__GNUC__" in line:
+            major = line.split()[2]
+        if "__GNUC_MINOR__" in line:
+            minor = line.split()[2]
+
+    p.wait()
+    p.stdout.close()
+
+    if p.returncode != 0:
+        raise Exception(
+            "g++ version query failed with return code {}".format(p.returncode)
+        )
+
+    try:
+        major = int(major)
+        minor = int(minor)
+    except:
+        raise Exception("Failed to parse g++ version.")
+
+    if not (major > 7 or (major == 7 and minor >= 3)):
+        raise Exception(
+            "Found g++ version {}.{}: please update to g++ version 7.3 or later.".format(
+                major, minor
+            )
+        )
+
+    print("Found g++ version {}.{}".format(major, minor))
+
+
 def main():
     worker_dir = path.dirname(path.realpath(__file__))
     print("Worker started in " + worker_dir + " ...\n")
@@ -407,6 +453,12 @@ def main():
 
     if cpu_count <= 0:
         sys.stderr.write("Not enough CPUs to run fishtest (it requires at least two)\n")
+        worker_exit()
+
+    try:
+        gcc_version()
+    except Exception as e:
+        print(e, file=sys.stderr)
         worker_exit()
 
     with open(config_file, "w") as f:
