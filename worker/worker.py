@@ -228,6 +228,7 @@ def worker(worker_info, password, remote):
             "password": password,
             "run_id": str(RUN["_id"]),
             "task_id": TASK_ID,
+            "unique_key": worker_info["unique_key"],
         }
         try:
             requests.post(
