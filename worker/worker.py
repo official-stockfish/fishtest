@@ -38,7 +38,7 @@ from os import path
 from games import run_games
 from updater import update
 
-WORKER_VERSION = 93
+WORKER_VERSION = 94
 ALIVE = True
 HTTP_TIMEOUT = 15.0
 
@@ -129,23 +129,27 @@ TASK_ID = None
 def heartbeat(worker_info, password, remote):
     global ALIVE, RUN, TASK_ID
     print("Start heartbeat")
-    payload = {"username": worker_info["username"], "password": password}
+    payload = {
+        "username": worker_info["username"],
+        "password": password,
+        "unique_key": worker_info["unique_key"],
+    }
     count = 0
     while ALIVE:
         time.sleep(1)
         count += 1
         if count == 60:
             count = 0
-            print("Send heartbeat... ", end="")
+            print("  Send heartbeat for", worker_info["unique_key"], end=" ... ")
             payload["run_id"] = str(RUN["_id"]) if RUN else None
             payload["task_id"] = TASK_ID
-            req = requests.post(
-                remote + "/api/beat",
-                data=json.dumps(payload),
-                headers={"Content-type": "application/json"},
-                timeout=HTTP_TIMEOUT,
-            )
             try:
+                req = requests.post(
+                    remote + "/api/beat",
+                    data=json.dumps(payload),
+                    headers={"Content-type": "application/json"},
+                    timeout=HTTP_TIMEOUT,
+                )
                 req = json.loads(req.text)
                 print(req)
             except Exception as e:
@@ -479,6 +483,9 @@ def main():
         "version": "{}:{}".format(WORKER_VERSION, sys.version_info[0]),
         "unique_key": str(uuid.uuid4()),
     }
+    print("UUID:", worker_info["unique_key"])
+    with open('uuid.txt', 'w') as f:
+        print(worker_info["unique_key"], file=f)
 
     # Start heartbeat
     threading.Thread(target=heartbeat, args=(worker_info, password, remote)).start()
