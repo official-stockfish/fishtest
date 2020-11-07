@@ -329,6 +329,12 @@ def find_arch_string():
         ):
             res = "x86-64-vnni256"
         elif (
+            "-mavx512f" in props["flags"]
+            and "-mavx512bw" in props["flags"]
+            and "x86-64-avx512" in targets
+        ):
+            res = "x86-64-avx512"
+        elif (
             "-mbmi2" in props["flags"]
             and "x86-64-bmi2" in targets
             and props["arch"] not in ["znver1", "znver2"]
@@ -411,7 +417,8 @@ def setup_engine(
 
         subprocess.check_call(
             MAKE_CMD + ARCH + " -j {}".format(concurrency) + " profile-build",
-            shell=True, env=dict(os.environ, CXXFLAGS="-DNNUE_EMBEDDING_OFF")
+            shell=True,
+            env=dict(os.environ, CXXFLAGS="-DNNUE_EMBEDDING_OFF"),
         )
         try:  # try/pass needed for backwards compatibility with older stockfish, where 'make strip' fails under mingw.
             subprocess.check_call(
@@ -457,6 +464,7 @@ def adjust_tc(tc, base_nps, concurrency):
             "This machine is too slow to run fishtest effectively - sorry!\n"
         )
         from worker import worker_exit
+
         worker_exit()
 
     # Parse the time control in cutechess format
