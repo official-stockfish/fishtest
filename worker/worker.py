@@ -34,7 +34,7 @@ from os import path
 from games import run_games
 from updater import update
 
-WORKER_VERSION = 92
+WORKER_VERSION = 93
 ALIVE = True
 HTTP_TIMEOUT = 15.0
 
@@ -354,7 +354,6 @@ def main():
     elif len(args) != 0 or len(username) == 0 or len(password) == 0:
         sys.stderr.write("{} [username] [password]\n".format(sys.argv[0]))
         worker_exit()
-
 
     # Write command line parameters to the config file
     config.set("login", "username", username)
