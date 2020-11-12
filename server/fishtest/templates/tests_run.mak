@@ -176,7 +176,7 @@
       <div class="rightmost" style="display: flex; align-items: center">
         <label class="field-label stop_rule spsa numgames"
                style="${'display: none' if (args.get('sprt') or not is_rerun) else ''}"># games</label>
-        <input type="number" name="num-games" min="10000" step="10000"
+        <input type="number" name="num-games" min="1000" step="1000"
                class="stop_rule spsa numgames third-size no-arrows"
                value="${args.get('num_games', 60000)}"
                style="${'display: none' if (args.get('sprt') or not is_rerun) else ''}" />
@@ -509,7 +509,7 @@
 		$("input[name='spsa_A']").val(0);
 		$("input[name='spsa_alpha']").val(0.0);
 		$("input[name='spsa_gamma']").val(0.0);
-		$("input[name='num-games']").val(10000*Math.round(s.num_games/10000));
+		$("input[name='num-games']").val(1000*Math.round(s.num_games/1000));
 		$("textarea[name='spsa_raw_params']").val(fs.trim());
 		return true;
 	}
