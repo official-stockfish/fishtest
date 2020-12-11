@@ -21,7 +21,6 @@ from fishtest.util import (
     format_results,
 )
 
-
 def clear_cache():
     global last_time, last_tests
     building.acquire()
@@ -599,7 +598,11 @@ def validate_form(request):
     new_net = get_net(data["new_tag"], data["tests_repo"])
     if new_net:
         if not request.rundb.get_nn(new_net):
-            raise Exception("Net not in repository: " + new_net)
+            raise Exception("The net %s, used by %s, is not "
+                            "known to Fishtest. Please upload it to: "
+                            "%s/upload." % (new_net,
+                                            data["new_tag"],
+                                            request.host_url))
 
     # Store net info
     data["new_net"] = new_net
@@ -678,7 +681,11 @@ def update_nets(request, run):
             net = request.rundb.get_nn(base_net)
             if not net:
                 # Should never happen:
-                raise Exception("Net not in repository: " + base_net)
+                raise Exception("The net %s, used by %s, is not "
+                                "known to Fishtest. Please upload it to: "
+                                "%s/upload." % (base_net,
+                                                data["base_tag"],
+                                                request.host_url))
             if "is_master" not in net:
                 net["is_master"] = True
                 request.rundb.update_nn(net)
