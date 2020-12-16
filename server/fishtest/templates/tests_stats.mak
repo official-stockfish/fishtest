@@ -9,7 +9,11 @@
 
    def pdf_to_string(pdf,decimals=(2,5)):
       format="%."+str(decimals[0])+"f"+": "+"%."+str(decimals[1])+"f"
-      return "{"+", ".join([(format % (prob,value)) for prob,value in pdf])+"}"
+      return "{"+", ".join([(format % (value,prob)) for value,prob in pdf])+"}"
+
+   def list_to_string(l,decimals=6):
+       format="%."+str(decimals)+"f"
+       return "["+", ".join([format % value for value in l])+"]"
 
    def sensitivity_conf(avg,var,skewness,exkurt):
       sensitivity=(avg-0.5)/var**.5
@@ -48,11 +52,11 @@
       <em> Unless otherwise specified, all Elo quantities below are logistic. </em>
       <H4> Context </H4>
       	   <table class="table table-condensed">
-	   	  <tr><td>TC</td><td>${run['args']['tc']}</td></tr>
-		  <tr><td>Book</td><td>${run['args']['book']}</td></tr>
-		  <tr><td>Threads</td><td>${run['args']['threads']}</td></tr>
-		  <tr><td>Base options</td><td>${run['args']['base_options']}</td></tr>
-		  <tr><td>New options</td><td>${run['args']['new_options']}</td></tr>
+	   	  <tr><td>TC</td><td>${run['args'].get('tc','?')}</td></tr>
+		  <tr><td>Book</td><td>${run['args'].get('book','?')}</td></tr>
+		  <tr><td>Threads</td><td>${run['args'].get('threads','?')}</td></tr>
+		  <tr><td>Base options</td><td>${run['args'].get('base_options','?')}</td></tr>
+		  <tr><td>New options</td><td>${run['args'].get('new_options','?')}</td></tr>
 	</table>
 % if has_sprt:
       <H4> SPRT parameters</H4>
@@ -62,6 +66,8 @@
       elo0=run['args']['sprt']['elo0']
       elo1=run['args']['sprt']['elo1']
       elo_model=run['args']['sprt'].get('elo_model','BayesElo')
+      batch_size_units=run['args']['sprt'].get('batch_size',1)
+      batch_size_games=2*batch_size_units if has_pentanomial else 1
       o=run['args']['sprt'].get('overshoot',None)
       %>
       <table class="table table-condensed">
@@ -69,6 +75,7 @@
 	<tr><td>Beta</td><td>${beta}</td></tr>
         <tr><td>Elo0 (${elo_model})</td><td>${elo0}</td></tr>
 	<tr><td>Elo1 (${elo_model})</td><td>${elo1}</td></tr>
+	<tr><td>Batch size (games) </td><td>${batch_size_games}</td></tr>
       </table>
 % endif  ## has_sprt
       <H4> Logistic/BayesElo</H4>
@@ -124,6 +131,7 @@
 	 results5_DD_prob=draw_ratio-(results5_[1]+results5_[3])/(2*float(N5))
 	 results5_WL_prob=results5_[2]/float(N5)-results5_DD_prob
 	 if has_sprt:
+	    LLRjumps5=list_to_string([i[0] for i in fishtest.stats.LLRcalc.LLRjumps(pdf5,score0,score1)])
 	    sp=fishtest.stats.sprt.sprt(alpha=alpha,beta=beta,elo0=lelo0,elo1=lelo1)
 	    sp.set_state(results5_)
 	    a5=sp.analytics()
@@ -175,7 +183,7 @@
       <H5> Auxilliary statistics </H5>	
       <table class="table table-condensed">	
 	<tr><td>Games</td><td>${int(games5)}</td></tr>
-	<tr><td>Results(0-2)</td><td>${results5}</td></tr>
+	<tr><td>Results [0-2]</td><td>${results5}</td></tr>
 	<tr><td>Distribution</td><td>${pdf5_s}</td></tr>
 	<tr><td>(DD,WL) split</td><td>${"(%.5f, %.5f)"%(results5_DD_prob,results5_WL_prob)}</td></tr>
 	<tr><td>Expected value</td><td>${"%.5f"%avg5}</td></tr>
@@ -195,6 +203,7 @@
 	<tr><td>Sensitivity ((score-0.5)/stdev)/game</td><td>${"%.5f [%.5f, %.5f]"%(sens5_per_game,sens5_per_game_l,sens5_per_game_u)}</td></tr>
 % endif  ## has_sprt
 % if has_sprt:
+	<tr><td>LLR jumps [0-2]</td><td>${LLRjumps5}</td></tr>	
 	<tr><td>Expected overshoot [H0,H1]</td><td>${"[%.5f, %.5f]"%(o0,o1)}</td></tr>
 % endif  ## has_sprt
       </table>
@@ -234,6 +243,7 @@
 		 RMS_bias=var_diff**.5 if var_diff>=0 else 0
 		 RMS_bias_elo=fishtest.stats.stat_util.elo(0.5+RMS_bias)
 	 if has_sprt:
+	 	 LLRjumps3=list_to_string([i[0] for i in fishtest.stats.LLRcalc.LLRjumps(pdf3,score0,score1)])
 		 sp=fishtest.stats.sprt.sprt(alpha=alpha,beta=beta,elo0=lelo0,elo1=lelo1)
 		 sp.set_state(results3_)
 		 a3=sp.analytics()
@@ -271,7 +281,7 @@
        	<tr><td>Alt</td><td>${"%.5f"%LLR3_alt}</td></tr>
       	<tr><td>Alt2</td><td>${"%.5f"%LLR3_alt2}</td></tr>
 	<tr><td>BayesElo</td><td>${"%.5f"%LLR3_be}</td></tr>	
-      </table>
+	</table>
 % endif  ## has_sprt
      <H5> Auxilliary statistics</H5>
       <table class="table table-condensed">
@@ -293,6 +303,9 @@
 	<tr><td>Sensitivity ((score-0.5)/stdev)/game</td><td>${"%.5f"%(sens3_per_game)}</td></tr>
 % else:
 	<tr><td>Sensitivity ((score-0.5)/stdev)/game</td><td>${"%.5f [%.5f, %.5f]"%(sens3_per_game,sens3_per_game_l,sens3_per_game_u)}</td></tr>
+% endif  ## has_sprt
+% if has_sprt:
+	<tr><td>LLR jumps [loss, draw, win]</td><td>${LLRjumps3}</td></tr>
 % endif  ## has_sprt
       </table>
 % if has_pentanomial:
