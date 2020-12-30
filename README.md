@@ -1,5 +1,5 @@
 ### Overview
-[![Build Status](https://travis-ci.org/glinscott/fishtest.svg?branch=master)](https://travis-ci.org/glinscott/fishtest)
+![Actions Workflow Status](https://github.com/glinscott/fishtest/workflows/CI/badge.svg)
 
 Fishtest is a distributed task queue for testing chess engines. The main instance
 for testing the chess engine [Stockfish](https://github.com/official-stockfish/Stockfish) is at this web page https://tests.stockfishchess.org
