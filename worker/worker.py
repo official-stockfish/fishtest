@@ -9,13 +9,12 @@ import platform
 import random
 import re
 import signal
+import subprocess
 import sys
 import threading
 import time
 import traceback
 import uuid
-import subprocess
-import platform
 
 import requests
 
@@ -484,7 +483,7 @@ def main():
         "unique_key": str(uuid.uuid4()),
     }
     print("UUID:", worker_info["unique_key"])
-    with open('uuid.txt', 'w') as f:
+    with open("uuid.txt", "w") as f:
         print(worker_info["unique_key"], file=f)
 
     # Start heartbeat

@@ -3,11 +3,10 @@ import datetime
 import unittest
 import zlib
 
+from fishtest.api import WORKER_VERSION, ApiView
 from pyramid.httpexceptions import HTTPUnauthorized
 from pyramid.testing import DummyRequest
 from util import get_rundb
-
-from fishtest.api import WORKER_VERSION, ApiView
 
 
 class TestApi(unittest.TestCase):

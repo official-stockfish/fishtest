@@ -5,7 +5,6 @@ import copy
 import math
 
 import scipy.optimize
-
 from fishtest.stats import LLRcalc
 from fishtest.stats.brownian import Brownian
 

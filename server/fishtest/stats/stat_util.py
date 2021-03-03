@@ -4,7 +4,6 @@ import copy
 import math
 
 import scipy.stats
-
 from fishtest.stats import LLRcalc, brownian, sprt
 
 
