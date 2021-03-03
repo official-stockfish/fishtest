@@ -10,21 +10,20 @@ import time
 import zlib
 from datetime import datetime, timedelta
 
+import fishtest.stats.stat_util
 from bson.binary import Binary
 from bson.objectid import ObjectId
-from pymongo import ASCENDING, DESCENDING, MongoClient
-
-import fishtest.stats.stat_util
 from fishtest.actiondb import ActionDb
 from fishtest.userdb import UserDb
 from fishtest.util import (
     calculate_residuals,
     estimate_game_duration,
     format_results,
+    get_worker_key,
     post_in_fishcooking_results,
     remaining_hours,
-    get_worker_key,
 )
+from pymongo import ASCENDING, DESCENDING, MongoClient
 
 DEBUG = False
 

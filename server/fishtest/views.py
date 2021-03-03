@@ -7,19 +7,19 @@ import re
 import threading
 import time
 
-import requests
-from pyramid.httpexceptions import HTTPFound, exception_response
-from pyramid.response import Response
-from pyramid.security import authenticated_userid, forget, has_permission, remember
-from pyramid.view import forbidden_view_config, view_config
-
 import fishtest.stats.stat_util
+import requests
 from fishtest.util import (
     calculate_residuals,
     delta_date,
     estimate_game_duration,
     format_results,
 )
+from pyramid.httpexceptions import HTTPFound, exception_response
+from pyramid.response import Response
+from pyramid.security import authenticated_userid, forget, has_permission, remember
+from pyramid.view import forbidden_view_config, view_config
+
 
 def clear_cache():
     global last_time, last_tests
@@ -598,11 +598,11 @@ def validate_form(request):
     new_net = get_net(data["new_tag"], data["tests_repo"])
     if new_net:
         if not request.rundb.get_nn(new_net):
-            raise Exception("The net %s, used by %s, is not "
-                            "known to Fishtest. Please upload it to: "
-                            "%s/upload." % (new_net,
-                                            data["new_tag"],
-                                            request.host_url))
+            raise Exception(
+                "The net %s, used by %s, is not "
+                "known to Fishtest. Please upload it to: "
+                "%s/upload." % (new_net, data["new_tag"], request.host_url)
+            )
 
     # Store net info
     data["new_net"] = new_net
@@ -681,11 +681,11 @@ def update_nets(request, run):
             net = request.rundb.get_nn(base_net)
             if not net:
                 # Should never happen:
-                raise Exception("The net %s, used by %s, is not "
-                                "known to Fishtest. Please upload it to: "
-                                "%s/upload." % (base_net,
-                                                data["base_tag"],
-                                                request.host_url))
+                raise Exception(
+                    "The net %s, used by %s, is not "
+                    "known to Fishtest. Please upload it to: "
+                    "%s/upload." % (base_net, data["base_tag"], request.host_url)
+                )
             if "is_master" not in net:
                 net["is_master"] = True
                 request.rundb.update_nn(net)
