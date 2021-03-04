@@ -483,7 +483,7 @@ def main():
         "unique_key": str(uuid.uuid4()),
     }
     print("UUID:", worker_info["unique_key"])
-    with open("uuid.txt", "w") as f:
+    with open(path.join(worker_dir, "uuid.txt"), "w") as f:
         print(worker_info["unique_key"], file=f)
 
     # Start heartbeat
