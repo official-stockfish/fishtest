@@ -397,10 +397,7 @@ def setup_engine(
         zip_file.extractall()
         zip_file.close()
 
-        for name in zip_file.namelist():
-            if name.endswith("/src/"):
-                src_dir = name
-        os.chdir(src_dir)
+        os.chdir(glob.glob(os.path.join(tmp_dir, "*/src/"))[0])
 
         net = required_net_from_source()
         if net:
