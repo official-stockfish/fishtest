@@ -37,7 +37,7 @@ from os import path
 from games import run_games
 from updater import update
 
-WORKER_VERSION = 94
+WORKER_VERSION = 95
 ALIVE = True
 HTTP_TIMEOUT = 15.0
 
@@ -479,7 +479,12 @@ def main():
         "max_memory": int(options.max_memory),
         "min_threads": int(options.min_threads),
         "username": username,
-        "version": "{}:{}".format(WORKER_VERSION, sys.version_info[0]),
+        "version": "{}:{}.{}.{}".format(
+            WORKER_VERSION,
+            sys.version_info.major,
+            sys.version_info.minor,
+            sys.version_info.micro,
+        ),
         "unique_key": str(uuid.uuid4()),
     }
     print("UUID:", worker_info["unique_key"])
