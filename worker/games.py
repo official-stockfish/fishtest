@@ -149,11 +149,13 @@ def required_net_from_source():
 def download_net(remote, testing_dir, net):
     url = remote + "/api/nn/" + net
     r = requests.get(url, allow_redirects=True)
-    open(os.path.join(testing_dir, net), "wb").write(r.content)
+    with open(os.path.join(testing_dir, net), "wb") as f:
+        f.write(r.content)
 
 
 def validate_net(testing_dir, net):
-    content = open(os.path.join(testing_dir, net), "rb").read()
+    with open(os.path.join(testing_dir, net), "rb") as f:
+        content = f.read()
     hash = hashlib.sha256(content).hexdigest()
     return hash[:12] == net[3:15]
 
