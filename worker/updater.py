@@ -50,6 +50,8 @@ def update(restart=True, test=False):
 
     # rename the testing_dir to backup possible user custom files
     # and to trigger the download of update files
+    # the worker runs games from the "testing" folder so change the folder
+    os.chdir(worker_dir)
     testing_dir = os.path.join(worker_dir, "testing")
     if os.path.exists(testing_dir):
         try:
