@@ -9,7 +9,7 @@ from pymongo import DESCENDING
 # For tasks
 sys.path.append(os.path.expanduser("~/fishtest/fishtest"))
 from fishtest.rundb import RunDb
-from fishtest.util import delta_date, estimate_game_duration
+from fishtest.util import delta_date, estimate_game_duration, diff_date
 
 new_deltas = {}
 skip = False
@@ -80,9 +80,13 @@ def build_users(machines, info):
         user = info[u]
         try:
             if isinstance(user["last_updated"], str):
-                user["last_updated"] = delta_date(user["task_last_updated"])
+                diff = diff_date(user["task_last_updated"])
+                user["diff"] = diff.total_seconds()
+                user["last_updated"] = delta_date(diff)
             else:
-                user["last_updated"] = delta_date(user["last_updated"])
+                diff = diff_date(user["last_updated"])
+                user["diff"] = diff.total_seconds()
+                user["last_updated"] = delta_date(diff)
         except:
             pass
         users.append(user)

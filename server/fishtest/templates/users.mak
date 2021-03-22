@@ -37,7 +37,7 @@
  %for user in users:
   <tr>
    <td>${user['username']}</td>
-   <td style="text-align:right">${user['last_updated']}</td>
+   <td data-diff="${user['diff']}" style="text-align:right">${user['last_updated']}</td>
    <td style="text-align:right">${int(user['games_per_hour'])}</td>
    <td style="text-align:right">${int(user['cpu_hours'])}</td>
    <td style="text-align:right">${int(user['games'])}</td>

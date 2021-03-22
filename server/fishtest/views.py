@@ -11,6 +11,7 @@ import fishtest.stats.stat_util
 import requests
 from fishtest.util import (
     calculate_residuals,
+    diff_date,
     delta_date,
     estimate_game_duration,
     format_results,
@@ -904,7 +905,8 @@ def tests_stats(request):
 def tests_machines(request):
     machines = request.rundb.get_machines()
     for machine in machines:
-        machine["last_updated"] = delta_date(machine["last_updated"])
+        diff = diff_date(machine["last_updated"])
+        machine["last_updated"] = delta_date(diff)
     return {"machines": machines}
 
 
@@ -1157,7 +1159,8 @@ def homepage_results(request):
     games_per_minute = 0.0
     machines = request.rundb.get_machines()
     for machine in machines:
-        machine["last_updated"] = delta_date(machine["last_updated"])
+        diff = diff_date(machine["last_updated"])
+        machine["last_updated"] = delta_date(diff)
         if machine["nps"] != 0:
             games_per_minute += (
                 (machine["nps"] / 1200000.0)
