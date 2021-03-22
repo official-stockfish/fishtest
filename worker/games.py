@@ -685,11 +685,16 @@ def parse_cutechess_output(
                 # Attempt to send game results to the server. Retry a few times upon error
                 update_succeeded = False
                 for _ in range(5):
+                    t0 = datetime.datetime.utcnow()
                     try:
-                        t0 = datetime.datetime.utcnow()
                         response = send_api_post_request(
                             remote + "/api/update_task", result
                         ).json()
+                    except Exception as e:
+                        sys.stderr.write("Exception from calling update_task:\n")
+                        print(e, file=sys.stderr)
+                        # traceback.print_exc(file=sys.stderr)
+                    else:
                         print(
                             "  Task updated successfully in {}s".format(
                                 (datetime.datetime.utcnow() - t0).total_seconds()
@@ -702,10 +707,6 @@ def parse_cutechess_output(
                         update_succeeded = True
                         num_games_updated = num_games_finished
                         break
-                    except Exception as e:
-                        sys.stderr.write("Exception from calling update_task:\n")
-                        print(e, file=sys.stderr)
-                        # traceback.print_exc(file=sys.stderr)
                     time.sleep(HTTP_TIMEOUT)
                 if not update_succeeded:
                     print("Too many failed update attempts")
