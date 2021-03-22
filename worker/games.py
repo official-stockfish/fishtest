@@ -779,8 +779,8 @@ def launch_cutechess(
     except Exception as e:
         print("Exception running games")
         traceback.print_exc(file=sys.stderr)
-
-    kill_process(p)
+    finally:
+        kill_process(p)
     return task_state
 
 
