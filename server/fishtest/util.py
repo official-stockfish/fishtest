@@ -1,7 +1,7 @@
 import smtplib
 import threading
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 
 import fishtest.stats.stat_util
@@ -322,17 +322,23 @@ def post_in_fishcooking_results(run):
         print("Unable to post results to fishcooking forum")
 
 
-def delta_date(date):
+def diff_date(date):
     if date != datetime.min:
         diff = datetime.utcnow() - date
-        if diff.days != 0:
-            delta = "%d days ago" % (diff.days)
-        elif diff.seconds / 3600 > 1:
-            delta = "%d hours ago" % (diff.seconds / 3600)
-        elif diff.seconds / 60 > 1:
-            delta = "%d minutes ago" % (diff.seconds / 60)
-        else:
-            delta = "seconds ago"
     else:
+        diff = timedelta.max
+    return diff
+
+
+def delta_date(diff):
+    if diff == timedelta.max:
         delta = "Never"
+    elif diff.days != 0:
+        delta = "%d days ago" % (diff.days)
+    elif diff.seconds / 3600 > 1:
+        delta = "%d hours ago" % (diff.seconds / 3600)
+    elif diff.seconds / 60 > 1:
+        delta = "%d minutes ago" % (diff.seconds / 60)
+    else:
+        delta = "seconds ago"
     return delta
