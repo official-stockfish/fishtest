@@ -1052,10 +1052,8 @@ def run_games(worker_info, password, remote, run, task_id):
             [
                 cutechess,
                 "-repeat",
-                "-rounds",
-                str(int(games_to_play / 2)),
                 "-games",
-                " 2",
+                str(int(games_to_play)),
                 "-tournament",
                 "gauntlet",
             ]
