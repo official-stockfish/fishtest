@@ -82,6 +82,89 @@ worker_info_default = {
 
 worker_dict = {}
 
+<<<<<<< HEAD
+=======
+def convert_task_list(run, tasks):
+    newtt = []
+    task_id = -1
+    game_count = 0
+    for task in tasks:
+        task_id += 1
+        task = copy.deepcopy(task)
+
+        # Workaround for bug in my local db
+        if "residual" in task and isinstance(task["residual"], dict):
+            game_count += task["num_games"]
+            continue
+
+        if not "stats" in task:  # dummy task
+            game_count += task["num_games"]
+            continue
+
+        if "pending" in task:
+            del task["pending"]
+
+        if "start" not in task:
+            task["start"] = game_count
+
+        if "stats" in task:
+            stats = task["stats"]
+            if "crashes" not in stats:
+                stats["crashes"] = 0
+            if "time_losses" not in stats:
+                stats["time_losses"] = 0
+
+        if "last_updated" not in task:
+            if "last_updated" in run:
+                task["last_updated"] = run["last_updated"]
+            elif "start_time" in run:
+                task["last_updated"] = run["start_time"]
+            else:
+                task["last_updated"] = datetime.datetime.min
+
+        if "worker_info" not in task:
+            task["worker_info"] = copy.deepcopy(worker_info_default)
+
+        worker_info = task["worker_info"]
+        # in old tests concurrency was a string
+        worker_info["concurrency"] = int(worker_info["concurrency"])
+
+        if (
+            "uname" in worker_info
+            and isinstance(worker_info["uname"], list)
+            and len(worker_info["uname"]) >= 3
+        ):
+            uname = worker_info["uname"]
+            worker_info["uname"] = uname[0] + " " + uname[2]
+
+        # A bunch of things that changed at the same time
+        if "gcc_version" in worker_info:
+            gcc_version_ = worker_info["gcc_version"]
+            if isinstance(gcc_version_, str):
+                gcc_version = [int(k) for k in gcc_version_.split(".")]
+                worker_info["gcc_version"] = gcc_version
+
+        if "python_version" not in worker_info:
+            if "version" in worker_info:
+                if ":" in str(worker_info["version"]):
+                    version_ = worker_info["version"].split(":")
+                    version = int(version_[0])
+                    python_version = [int(k) for k in version_[1].split(".")]
+                    worker_info["python_version"] = python_version
+                    worker_info["version"] = version
+                else:
+                    version = int(worker_info["version"])
+                    worker_info["version"] = version
+
+        # Two other things that changed
+        if "ARCH" not in worker_info:
+            if "ARCH" in task:
+                worker_info["ARCH"] = task["ARCH"]
+                del task["ARCH"]
+            if "nps" in task:
+                worker_info["nps"] = task["nps"]
+                del task["nps"]
+>>>>>>> 1f00e05... Clean up utils scripts and update to pymongo 4.x
 
 def convert_task_list(tasks):
     for task in tasks:

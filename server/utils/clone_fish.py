@@ -1,10 +1,10 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import bz2
 
 import requests
 from bson.binary import Binary
-from pymongo import ASCENDING, DESCENDING, MongoClient
+from pymongo import ASCENDING, MongoClient
 
 # fish_host = 'http://localhost:6543'
 fish_host = "http://94.198.98.239"  # 'http://tests.stockfishchess.org'
@@ -33,8 +33,8 @@ def main():
         for pgn_file in pgn_list:
             print(pgn_file)
             if pgndb.find_one({"run_id": pgn_file}):
-                print("Already copied: %s" % (pgn_file))
-                if not pgn_file in loaded:
+                print("Already copied: {}".format(pgn_file))
+                if pgn_file not in loaded:
                     in_sync = True
                     break
             else:
@@ -53,11 +53,11 @@ def main():
         if in_sync or len(pgn_list) < 100:
             break
 
-    print("Copied:  %6d PGN files (~ %8d games)" % (count, 250 * count))
+    print("Copied:  {:6d} PGN files (~ {:8d} games)".format(count, 250 * count))
     count = pgndb.count()
-    print("Database:%6d PGN files (~ %8d games)" % (count, 250 * count))
+    print("Database:{:6d} PGN files (~ {:8d} games)".format(count, 250 * count))
     count = runs.count()
-    print("Database:%6d runs" % (count))
+    print("Database:{:6d} runs".formt(count))
 
 
 if __name__ == "__main__":

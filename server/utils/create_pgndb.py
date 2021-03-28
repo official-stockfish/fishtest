@@ -1,6 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-from pymongo import ASCENDING, DESCENDING, MongoClient
+from pymongo import MongoClient
 
 conn = MongoClient("localhost")
 

@@ -1,10 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-from __future__ import print_function
-
-import os
 import re
-import sys
 from datetime import datetime, timedelta
 
 from fishtest.rundb import RunDb
@@ -33,7 +29,7 @@ def purge_pgn(days):
 
         run_count += 1
         if run_count % 10 == 0:
-            print("Run: %05d" % (run_count), end="\r")
+            print("Run: {:05d}".format(run_count), end="\r")
 
         skip = False
         if (
@@ -56,8 +52,8 @@ def purge_pgn(days):
                     rundb.pgndb.delete_one({"_id": pgn["_id"]})
                     deleted_tasks += 1
 
-    print("PGN runs/tasks saved:  %5d/%7d" % (saved_runs, saved_tasks))
-    print("PGN runs/tasks purged: %5d/%7d" % (deleted_runs, deleted_tasks))
+    print("PGN runs/tasks saved:  {:5d}/{:7d}".format(saved_runs, saved_tasks))
+    print("PGN runs/tasks purged: {:5d}/{:7d}".format(deleted_runs, deleted_tasks))
 
 
 def main():

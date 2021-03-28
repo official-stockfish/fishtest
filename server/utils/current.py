@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # current.py - list slow database queres currently running
 #
@@ -7,14 +7,12 @@
 # system currently is.
 #
 
-from __future__ import print_function
-
 import os
 import pprint
 import subprocess
 import sys
 
-from pymongo import ASCENDING, DESCENDING, MongoClient
+from pymongo import MongoClient
 
 db_name = "fishtest_new"
 
@@ -24,22 +22,16 @@ conn = MongoClient(os.getenv("FISHTEST_HOST") or "localhost")
 db = conn[db_name]
 runs = db["runs"]
 
-
-def printout(s):
-    print(s)
-    sys.stdout.flush()
-
-
 # display current list of indexes
-printout("Current Indexes:")
+print("Current Indexes:")
 pprint.pprint(runs.index_information(), stream=None, indent=1, width=80, depth=None)
 
 # display current uptime command
-printout("\nRun 'uptime':\n")
-printout(subprocess.check_call(["uptime"]))
+print("\nRun 'uptime':\n")
+print(subprocess.check_call(["uptime"]))
 
 # display current operations
-printout("\nCurrent operations:")
+print("\nCurrent operations:")
 t = 0.3
 if len(sys.argv) > 1:
     t = float(sys.argv[1])
