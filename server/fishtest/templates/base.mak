@@ -49,7 +49,7 @@
       <li><a href="/users/monthly">Top Month</a></li>
       <li><a href="/actions">Actions</a></li>
       <li><a href="/nns">NN stats</a></li>
-      <li><a href="/html/SPRTcalculator.html?elo-0=-0.25&elo-1=1.25&draw-ratio=0.78&rms-bias=30" target="_blank">SPRT Calc</a></li>
+      <li><a href="/html/SPRTcalculator.html?elo-0=-0.2&elo-1=1.1&draw-ratio=0.82&rms-bias=30" target="_blank">SPRT Calc</a></li>
 
       <li class="nav-header">Github</li>
       <li><a href="https://github.com/glinscott/fishtest" target="_blank" rel="noopener">Fishtest</a></li>
