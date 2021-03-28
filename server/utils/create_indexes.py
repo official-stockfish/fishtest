@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # create_indexes.py - (re-)create indexes
 #
 # Run this script manually to create the indexes, it could take a few

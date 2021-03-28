@@ -1,11 +1,7 @@
-#!/usr/bin/env python
-
-import os
-import sys
-from datetime import datetime, timedelta
+#!/usr/bin/env python3
 
 from fishtest.actiondb import ActionDb
-from pymongo import DESCENDING, MongoClient
+from pymongo import MongoClient
 
 conn = MongoClient()
 db = conn["fishtest_new"]

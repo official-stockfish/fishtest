@@ -1,17 +1,14 @@
+#!/usr/bin/env python3
+
 # test_queries.py - run some sample queries to check db speed
 #
 
-from __future__ import print_function
-
 import os
 import pprint
-import sys
 import time
 
-from pymongo import ASCENDING, DESCENDING, MongoClient
-
-sys.path.append(os.path.expanduser("~/fishtest/fishtest"))
 from fishtest.rundb import RunDb
+from pymongo import DESCENDING, MongoClient
 
 db_name = "fishtest_new"
 rundb = RunDb()
