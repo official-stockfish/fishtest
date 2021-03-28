@@ -186,10 +186,10 @@
     <div class="flex-row stop_rule sprt">
       <label class="field-label leftmost stop_rule sprt">SPRT bounds</label>
       <select name="bounds" class="stop_rule sprt" style="width: 246px">
-        <option value="standard STC">Standard STC {-0.25, 1.25}</option>
-        <option value="standard LTC">Standard LTC {0.25, 1.25}</option>
-        <option value="regression STC">Non-regression STC {-1.25, 0.25}</option>
-        <option value="regression LTC">Non-regression LTC {-0.75, 0.25}</option>
+        <option value="standard STC">Standard STC {-0.2, 1.1}</option>
+        <option value="standard LTC">Standard LTC {0.2, 0.9}</option>
+        <option value="regression STC">Non-regression STC {-1, 0.2}</option>
+        <option value="regression LTC">Non-regression LTC {-0.7, 0.2}</option>
         <option value="custom" ${is_rerun and 'selected'}>Custom bounds...</option>
       </select>
 
@@ -197,14 +197,14 @@
              style="${args.get('sprt') or 'display: none'}">SPRT Elo0</label>
       <input type="number" step="0.05" name="sprt_elo0"
              class="sprt custom_bounds no-arrows"
-             value="${args.get('sprt', {'elo0': -0.25})['elo0']}"
+             value="${args.get('sprt', {'elo0': -0.2})['elo0']}"
              style="width: 90px; ${args.get('sprt') or 'display: none'}" />
 
       <label class="field-label sprt custom_bounds rightmost"
              style="${args.get('sprt') or 'display: none'}">SPRT Elo1</label>
       <input type="number" step="0.05" name="sprt_elo1"
              class="sprt custom_bounds no-arrows"
-             value="${args.get('sprt', {'elo1': 1.25})['elo1']}"
+             value="${args.get('sprt', {'elo1': 1.1})['elo1']}"
              style="width: 90px; ${args.get('sprt') or 'display: none'}" />
     </div>
 
@@ -334,11 +334,15 @@
     $('#submit-test').removeAttr('disabled').text('Submit test');
   });
 
+## In the future, this should be changed to normalized Elo,
+## and converted within fishtest to logistic Elo whenever needed.
+## See also https://github.com/glinscott/fishtest/issues/865#issuecomment-808808220
+
   const preset_bounds = {
-    'standard STC': [-0.25, 1.25],
-    'standard LTC': [0.25, 1.25],
-    'regression STC': [-1.25, 0.25],
-    'regression LTC': [-0.75, 0.25],
+    'standard STC': [-0.2, 1.1],
+    'standard LTC': [ 0.2, 0.9],
+    'regression STC': [-1.0, 0.2],
+    'regression LTC': [-0.7, 0.2],
   };
 
   function update_sprt_bounds(selected_bounds_name) {
