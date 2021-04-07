@@ -188,6 +188,8 @@
       <select name="bounds" class="stop_rule sprt" style="width: 246px">
         <option value="standard STC">Standard STC {-0.2, 1.1}</option>
         <option value="standard LTC">Standard LTC {0.2, 0.9}</option>
+	<option value="classical STC">Classical STC {-0.3, 1.6}</option>
+	<option value="classical LTC">Classical LTC {0.4, 1.7}</option>
         <option value="regression STC">Non-regression STC {-1, 0.2}</option>
         <option value="regression LTC">Non-regression LTC {-0.7, 0.2}</option>
         <option value="custom" ${is_rerun and 'selected'}>Custom bounds...</option>
@@ -341,6 +343,8 @@
   const preset_bounds = {
     'standard STC': [-0.2, 1.1],
     'standard LTC': [ 0.2, 0.9],
+    'classical STC': [-0.3, 1.6],
+    'classical LTC': [ 0.4, 1.7],
     'regression STC': [-1.0, 0.2],
     'regression LTC': [-0.7, 0.2],
   };
