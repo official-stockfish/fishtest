@@ -5,8 +5,14 @@
   See http://hardy.uhasselt.be/Fishtest/sprta.pdf for more information.
 */
 
+const nelo_divided_by_nt=800/Math.log(10);
+
 function L(x) {
     return 1/(1+Math.pow(10,-x/400));
+}
+
+function Linv(x) {
+    return -400*Math.log10(1/x-1);
 }
 
 function PT(LA,LB,h){
@@ -25,12 +31,27 @@ function PT(LA,LB,h){
     return [P,T];
 }
 
-function Sprt(alpha,beta,elo0,elo1,draw_ratio,rms_bias) {
-    this.score0=L(elo0);
-    this.score1=L(elo1);
+function Sprt(alpha,beta,elo0,elo1,draw_ratio,rms_bias,elo_model) {
     var rms_bias_score=L(rms_bias)-0.5;
     var variance3=(1-draw_ratio)/4.0;
     this.variance=variance3-Math.pow(rms_bias_score,2);
+    if(this.variance<=0){
+	return;
+    }
+    if(elo_model=="Logistic"){
+	this.elo0=elo0;
+	this.elo1=elo1;
+	this.score0=L(elo0);
+	this.score1=L(elo1);
+    }else{  // Assume "Normalized"
+	var nt0=elo0/nelo_divided_by_nt;
+	var nt1=elo1/nelo_divided_by_nt;
+	var sigma=Math.sqrt(this.variance);
+	this.score0=nt0*sigma+0.5;
+	this.score1=nt1*sigma+0.5;
+	this.elo0=Linv(this.score0);
+	this.elo1=Linv(this.score1);
+    }
     this.w2=Math.pow((this.score1-this.score0),2)/this.variance;
     this.LA=Math.log(beta/(1-alpha));
     this.LB=Math.log((1-beta)/alpha);

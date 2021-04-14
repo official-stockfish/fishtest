@@ -32,6 +32,13 @@
     <div class=container>
       <h1 class=page-header>Chess SPRT Calculator</h1>
       <form id=parameters class=form-inline>
+	<div class=form-group>
+	  <label for=elo-model>Elo model</label>
+	  <select id=elo-model class='form-control'>
+	    <option>Normalized</option>
+	    <option>Logistic</option>
+	  </select>
+	</div>
         <div class=form-group>
           <label for=elo-0>Elo0</label>
           <input id=elo-0 class='form-control number'>
@@ -66,9 +73,12 @@
           true Elo is more than Elo1 then the pass probablility
           is more than&nbsp;95%.
         </li>
-        <li> The <b>Draw ratio</b> influences the expected
-          length of the test but not the pass probability. Assuming
-          small Elo differences, the draw ratio is mainly a
+	<li> If the Elo model is <b>Logistic</b> then the pass/fail
+	  probabilities are independent of the auxilliary data <em>Draw
+	  ratio</em> and <em>RMS bias</em>.  On the other hand if the Elo model
+	  is <b>Normalized</b> then it is the expected duration of the
+	  test that is independent of the auxilliary data.
+        <li> The <b>Draw ratio</b> is mainly a
           function of the opening book and the time control. The
           draw ratio can be found on the <em>live_elo page</em>
           of a test with typical URL
@@ -76,9 +86,7 @@
           or the <em>raw statistics page</em> with typical URL
           <a href=http://tests.stockfishchess.org/tests/stats/5e15b3e061fe5f83a67dd926>http://tests.stockfishchess.org/tests/stats/5e15b3e061fe5f83a67dd926</a>.
         </li>
-        <li> The <b>RMS bias</b> influences the expected length
-          of a test but not the pass probability. The RMS bias
-          is the Root Mean Square of the biases of the openings in the
+        <li> The <b>RMS bias</b> is the Root Mean Square of the biases of the openings in the
           book where the <em>bias of an opening</em> is defined
           as the conversion to Elo (using the standard logistic
           formula) of the expected score for white between
