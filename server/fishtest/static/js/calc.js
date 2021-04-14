@@ -34,6 +34,7 @@ function set_field_from_url(name, defaultValue) {
 }
 
 function set_fields(){
+    set_field_from_url('elo-model','Normalized');
     set_field_from_url('elo-0','-1');
     set_field_from_url('elo-1','3');
     set_field_from_url('draw-ratio','0.61');
@@ -41,6 +42,7 @@ function set_fields(){
 }
 
 function draw_charts(){
+    var elo_model=document.getElementById('elo-model').value;
     var elo0=parseFloat(document.getElementById('elo-0').value);
     var elo1=parseFloat(document.getElementById('elo-1').value);
     var draw_ratio=parseFloat(document.getElementById('draw-ratio').value);
@@ -57,7 +59,7 @@ function draw_charts(){
     }else if(rms_bias<0){
 	val="The RMS bias must be positive.";
     }else{
-	var sprt=new Sprt(0.05,0.05,elo0,elo1,draw_ratio,rms_bias);
+	var sprt=new Sprt(0.05,0.05,elo0,elo1,draw_ratio,rms_bias,elo_model);
 	if(sprt.variance<=0){
 	    val="The draw ratio and the RMS bias are not compatible.";
 	}
@@ -66,10 +68,12 @@ function draw_charts(){
 	alert(val);
 	return;
     }
+    elo0=sprt.elo0;
+    elo1=sprt.elo1;
     pass_chart.loaded=false;
     expected_chart.loaded=false;
-    var data_pass=[['Elo','Pass Probability']];
-    var data_expected=[['Elo','Expected Number of Games']];
+    var data_pass=[['Elo',{role:'annotation'},'Pass Probability']];
+    var data_expected=[['Elo',{role:'annotation'},'Expected Number of Games']];
     var d=elo1-elo0;
     var elo_start=Math.floor(elo0-d/3);
     var elo_end=Math.ceil(elo1+d/3);
@@ -78,19 +82,31 @@ function draw_charts(){
     pass_chart.elo_start=elo_start;
     pass_chart.elo_end=elo_end;
     pass_chart.N=N;
+    const specials=[0.05,0.95];
     for (var i=elo_start*N; i<=elo_end*N; i+=1) {
         var elo=i/N;
+	var elo_next=(i+1)/N;
 	var c=sprt.characteristics(elo);
-	data_pass.push([elo,{v:c[0],f:(c[0]*100).toFixed(1)+'%'}]);
-	data_expected.push([elo,{v:c[1],f:(c[1]/1000).toFixed(1)+'K'}]);
+	var c_next=sprt.characteristics(elo_next);
+	data_pass.push([elo,null,{v:c[0],f:(c[0]*100).toFixed(1)+'%'}]);
+	data_expected.push([elo,null,{v:c[1],f:(c[1]/1000).toFixed(1)+'K'}]);
+	for(const s of specials){
+	    if((c[0]<s && c_next[0]>=s) || (c[0]<=s && c_next[0]>s)){
+		var elo_middle=elo+(s-c[0])/(c_next[0]-c[0])*(elo_next-elo);
+		var c_middle=sprt.characteristics(elo_middle);
+		data_pass.push([elo_middle,elo_middle,{v:c_middle[0],f:(c_middle[0]*100).toFixed(1)+'%'}]);
+		data_expected.push([elo_middle,elo_middle,{v:c_middle[1],f:(c_middle[1]/1000).toFixed(1)+'K'}]);
+	    }
+	}
     }
     var options={
 	legend: {position: 'none'},
 	curveType: 'function',
-	hAxis: {title: 'Elo', gridlines: {count:elo_end-elo_start}},
+	hAxis: {title: 'Logistic Elo', gridlines: {count:elo_end-elo_start}},
 	vAxis: {title: 'Pass Probability', format:'percent'},
 	tooltip: {trigger: 'selection'},
-	chartArea: {backgroundColor: '#F0F0F0', left:'15%',top:'5%',width:'80%',height:'80%'} 
+	chartArea: {backgroundColor: '#F0F0F0', left:'15%',top:'5%',width:'80%',height:'80%'},
+	annotations: {style : 'line', stem: {color: 'orange'}}
     };
     var data_table=google.visualization.arrayToDataTable(data_pass);
     pass_chart.draw(data_table,options);
@@ -140,8 +156,8 @@ function handle_tooltips(e){
     if((elo>=elo_start-d) && (elo<=elo_end+d)){
 	row=Math.max(row,0);
 	row=Math.min(row,max_rows);
-	pass_chart.setSelection([{'row':row, 'column':1}]);
-	expected_chart.setSelection([{'row':row, 'column':1}]);
+	pass_chart.setSelection([{'row':row, 'column':2}]);
+	expected_chart.setSelection([{'row':row, 'column':2}]);
     }else{
 	pass_chart.setSelection([]);
 	expected_chart.setSelection([]);
