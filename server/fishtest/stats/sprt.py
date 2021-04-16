@@ -10,18 +10,47 @@ from fishtest.stats.brownian import Brownian
 
 
 class sprt:
-    def __init__(self, alpha=0.05, beta=0.05, elo0=0, elo1=5):
+    def __init__(self, alpha=0.05, beta=0.05, elo0=0, elo1=5, elo_model="logistic"):
+        assert elo_model in ("logistic", "normalized")
+        self.elo_model = elo_model
         self.a = math.log(beta / (1 - alpha))
         self.b = math.log((1 - beta) / alpha)
         self.elo0 = elo0
         self.elo1 = elo1
-        self.s0 = LLRcalc.L_(elo0)
-        self.s1 = LLRcalc.L_(elo1)
         self.clamped = False
         self.LLR_drift_variance = LLRcalc.LLR_drift_variance_alt2
 
+    def elo_to_score(self, elo):
+        """
+        "elo" is expressed in our current elo_model."""
+        if self.elo_model == "normalized":
+            nt = elo / LLRcalc.nelo_divided_by_nt
+            return nt * self.sigma_pg + 0.5
+        else:
+            return LLRcalc.L_(elo)
+
+    def lelo_to_elo(self, lelo):
+        """
+        For external use. "elo" is expressed in our current elo_model.
+        "lelo" is logistic. """
+        if self.elo_model == "logistic":
+            return lelo
+        score = LLRcalc.L_(lelo)
+        nt = (score - 0.5) / self.sigma_pg
+        return nt * LLRcalc.nelo_divided_by_nt
+
     def set_state(self, results):
         N, self.pdf = LLRcalc.results_to_pdf(results)
+        if self.elo_model == "normalized":
+            mu, var = LLRcalc.stats(self.pdf)  # code duplication with LLRcalc
+            if len(results) == 5:
+                self.sigma_pg = (2 * var) ** 0.5
+            elif len(results) == 3:
+                self.sigma_pg = var ** 0.5
+            else:
+                assert False
+        self.s0, self.s1 = [self.elo_to_score(elo) for elo in (self.elo0, self.elo1)]
+
         mu_LLR, var_LLR = self.LLR_drift_variance(self.pdf, self.s0, self.s1, None)
 
         # llr estimate
@@ -111,6 +140,12 @@ if __name__ == "__main__":
     )
     parser.add_argument("--level", help="confidence level", type=float, default=0.95)
     parser.add_argument(
+        "--elo-model",
+        help="logistic or normalized",
+        choices=['logistic', 'normalized'],
+        default='logistic',
+    )
+    parser.add_argument(
         "--results",
         help="trinomial of pentanomial frequencies, low to high",
         nargs="*",
@@ -125,8 +160,9 @@ if __name__ == "__main__":
     beta = args.beta
     elo0 = args.elo0
     elo1 = args.elo1
+    elo_model = args.elo_model
     p = 1 - args.level
-    s = sprt(alpha=alpha, beta=beta, elo0=elo0, elo1=elo1)
+    s = sprt(alpha=alpha, beta=beta, elo0=elo0, elo1=elo1, elo_model=elo_model)
     s.set_state(results)
     a = s.analytics(p)
     print("Design parameters")
@@ -135,6 +171,7 @@ if __name__ == "__main__":
     print("False negatives             :  %4.2f%%" % (100 * beta,))
     print("[Elo0,Elo1]                 :  [%.2f,%.2f]" % (elo0, elo1))
     print("Confidence level            :  %4.2f%%" % (100 * (1 - p),))
+    print("Elo model                   :  %s" % elo_model)
     print("Estimates")
     print("=========")
     print("Elo                         :  %.2f" % a["elo"])

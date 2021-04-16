@@ -7,6 +7,8 @@ import sys
 import scipy
 import scipy.optimize
 
+nelo_divided_by_nt = 800 / math.log(10)  # 347.43558552260146
+
 
 def MLE(pdf, s):
     """
@@ -171,3 +173,24 @@ def LLR_logistic(elo0, elo1, results):
     s0, s1 = [L_(elo) for elo in (elo0, elo1)]
     N, pdf = results_to_pdf(results)
     return N * LLR(pdf, s0, s1)
+
+
+def LLR_normalized(nelo0, nelo1, results):
+    """
+    See
+    http://hardy.uhasselt.be/Fishtest/normalized_elo_practical.pdf"""
+    count, pdf = results_to_pdf(results)
+    mu, var = stats(pdf)
+    if len(results) == 5:
+        sigma_pg = (2 * var) ** 0.5
+        games = 2 * count
+    elif len(results) == 3:
+        sigma_pg = var ** 0.5
+        games = count
+    else:
+        assert False
+    nt0, nt1 = [nelo / nelo_divided_by_nt for nelo in (nelo0, nelo1)]
+    nt = (mu - 0.5) / sigma_pg
+    return (games / 2.0) * math.log(
+        (1 + (nt - nt0) * (nt - nt0)) / (1 + (nt - nt1) * (nt - nt1))
+    )

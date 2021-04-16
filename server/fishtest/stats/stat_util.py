@@ -119,20 +119,19 @@ def elo_to_bayeselo(elo, draw_ratio):
 def SPRT_elo(R, alpha=0.05, beta=0.05, p=0.05, elo0=None, elo1=None, elo_model=None):
     """
     Calculate an elo estimate from an SPRT test."""
-    assert elo_model in ["BayesElo", "logistic"]
+    assert elo_model in ["BayesElo", "logistic", "normalized"]
 
     # Estimate drawelo out of sample
-    R3 = LLRcalc.regularize([R["losses"], R["draws"], R["wins"]])
+    R3 = LLRcalc.regularize([R.get("losses", 0), R.get("draws", 0), R.get("wins", 0)])
     drawelo = draw_elo_calc(R3)
 
     # Convert the bounds to logistic elo if necessary
     if elo_model == "BayesElo":
-        lelo0, lelo1 = [bayeselo_to_elo(elo_, drawelo) for elo_ in (elo0, elo1)]
-    else:
-        lelo0, lelo1 = elo0, elo1
+        elo0, elo1 = [bayeselo_to_elo(elo_, drawelo) for elo_ in (elo0, elo1)]
+        elo_model = "logistic"
 
     # Make the elo estimation object
-    sp = sprt.sprt(alpha=alpha, beta=beta, elo0=lelo0, elo1=lelo1)
+    sp = sprt.sprt(alpha=alpha, beta=beta, elo0=elo0, elo1=elo1, elo_model=elo_model)
 
     # Feed the results
     if "pentanomial" in R.keys():
@@ -144,8 +143,11 @@ def SPRT_elo(R, alpha=0.05, beta=0.05, p=0.05, elo0=None, elo1=None, elo_model=N
     # Get the elo estimates
     a = sp.analytics(p)
 
-    # Override the LLR approximation with the exact one
-    a["LLR"] = LLRcalc.LLR_logistic(lelo0, lelo1, R_)
+    # Override the LLR approximation with the one we actually use
+    if elo_model == "logistic":
+        a["LLR"] = LLRcalc.LLR_logistic(elo0, elo1, R_)
+    else:
+        a["LLR"] = LLRcalc.LLR_normalized(elo0, elo1, R_)
     del a["clamped"]
     # Now return the estimates
     return a
@@ -226,7 +228,7 @@ def update_SPRT(R, sprt):
 
     R['wins'], R['losses'], R['draws'] contains the number of wins, losses and draws
     R['pentanomial'] contains the pentanomial frequencies
-    elo_model can be either 'BayesElo' or 'logistic'"""
+    elo_model can be either 'BayesElo', 'logistic' or 'normalized'"""
 
     # the next two lines are superfluous, but unfortunately necessary for backward
     # compatibility with old tests
@@ -234,20 +236,19 @@ def update_SPRT(R, sprt):
     sprt["upper_bound"] = math.log((1 - sprt["beta"]) / sprt["alpha"])
 
     elo_model = sprt.get("elo_model", "BayesElo")
-    assert elo_model in ["BayesElo", "logistic"]
+    assert elo_model in ["BayesElo", "logistic", "normalized"]
     elo0 = sprt["elo0"]
     elo1 = sprt["elo1"]
 
     # first deal with the legacy BayesElo/trinomial models
-    R3 = [R["losses"], R["draws"], R["wins"]]
+    R3 = [R.get("losses", 0), R.get("draws", 0), R.get("wins", 0)]
     if elo_model == "BayesElo":
         # estimate drawelo out of sample
         R3_ = LLRcalc.regularize(R3)
         drawelo = draw_elo_calc(R3_)
         # conversion of bounds to logistic elo
-        lelo0, lelo1 = [bayeselo_to_elo(elo, drawelo) for elo in (elo0, elo1)]
-    else:
-        lelo0, lelo1 = elo0, elo1
+        elo0, elo1 = [bayeselo_to_elo(elo, drawelo) for elo in (elo0, elo1)]
+        elo_model = "logistic"
 
     R_ = R.get("pentanomial", R3)
 
@@ -260,7 +261,11 @@ def update_SPRT(R, sprt):
             del sprt["overshoot"]  # the contract is violated
 
     # Log-Likelihood Ratio
-    sprt["llr"] = LLRcalc.LLR_logistic(lelo0, lelo1, R_)
+    assert elo_model in ["logistic", "normalized"]
+    if elo_model == "logistic":
+        sprt["llr"] = LLRcalc.LLR_logistic(elo0, elo1, R_)
+    else:
+        sprt["llr"] = LLRcalc.LLR_normalized(elo0, elo1, R_)
 
     # update the overshoot data
     if "overshoot" in sprt:
@@ -423,5 +428,21 @@ if __name__ == "__main__":
             elo0=-3,
             elo1=1,
             elo_model="logistic",
+        )
+    )
+    print(
+        SPRT_elo(
+            {"pentanomial": [39, 2226, 31451, 2412, 40]},
+            elo0=0.2,
+            elo1=0.9,
+            elo_model="logistic",
+        )
+    )
+    print(
+        SPRT_elo(
+            {"pentanomial": [39, 2226, 31451, 2412, 40]},
+            elo0=0.764,
+            elo1=3.439,
+            elo_model="normalized",
         )
     )

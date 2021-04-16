@@ -149,6 +149,10 @@ def calculate_residuals(run):
     return chi2
 
 
+def format_bounds(elo_model,elo0,elo1):
+    seps={'BayesElo':r'[]','logistic':r'{}','normalized':r'<>'}
+    return "%s%.2f,%.2f%s" % (seps[elo_model][0],elo0,elo1,seps[elo_model][1])
+
 def format_results(run_results, run):
     result = {"style": "", "info": []}
 
@@ -178,28 +182,15 @@ def format_results(run_results, run):
         elo_model = sprt.get("elo_model", "BayesElo")
         if not "llr" in sprt:  # legacy
             fishtest.stats.stat_util.update_SPRT(run_results, sprt)
-        if elo_model == "BayesElo":
-            result["info"].append(
-                "LLR: %.2f (%.2lf,%.2lf) [%.2f,%.2f]"
-                % (
-                    sprt["llr"],
-                    sprt["lower_bound"],
-                    sprt["upper_bound"],
-                    sprt["elo0"],
-                    sprt["elo1"],
-                )
+        result["info"].append(
+            "LLR: %.2f (%.2lf,%.2lf) %s"
+            % (
+                sprt["llr"],
+                sprt["lower_bound"],
+                sprt["upper_bound"],
+                format_bounds(elo_model,sprt["elo0"],sprt["elo1"])
             )
-        else:
-            result["info"].append(
-                "LLR: %.2f (%.2lf,%.2lf) {%.2f,%.2f}"
-                % (
-                    sprt["llr"],
-                    sprt["lower_bound"],
-                    sprt["upper_bound"],
-                    sprt["elo0"],
-                    sprt["elo1"],
-                )
-            )
+        )
     else:
         if "pentanomial" in run_results.keys():
             elo, elo95, los = fishtest.stats.stat_util.get_elo(

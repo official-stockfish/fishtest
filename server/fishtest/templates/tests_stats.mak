@@ -15,25 +15,80 @@
        format="%."+str(decimals)+"f"
        return "["+", ".join([format % value for value in l])+"]"
 
-   def sensitivity_conf(avg,var,skewness,exkurt):
-      sensitivity=(avg-0.5)/var**.5
-      norm_var_sensitivity=1-sensitivity*skewness+0.25*sensitivity**2*(exkurt+2)
-      if norm_var_sensitivity<0: # in principle this cannot happen except (perhaps)
-                                 # for rounding errors
-      	 norm_var_sensitivity=0  
-      return sensitivity,norm_var_sensitivity
+   def t_conf(avg,var,skewness,exkurt):
+      t=(avg-0.5)/var**.5
+      var_t=1-t*skewness+0.25*t**2*(exkurt+2)
+      if var_t<0: # in principle this cannot happen except (perhaps)
+                  # for rounding errors
+      	 var_t=0  
+      return t,var_t
 
    z975=fishtest.stats.stat_util.Phi_inv(0.975)
 
-   beta=(math.log(10)/400)/4
-   conv_sens_elo=1/(2*beta)  ## conversion sensitivity<->normalized Elo
-
-   reference_draw_ratio=0.0
+   nelo_divided_by_nt=800/math.log(10)  ## 347.43558552260146 
 
    results3=[run['results']['losses'],run['results']['draws'],run['results']['wins']]
    results3_=fishtest.stats.LLRcalc.regularize(results3)
-   drawelo=fishtest.stats.stat_util.draw_elo_calc(results3_)
    draw_ratio=results3_[1]/float(sum(results3_))
+   N3,pdf3=fishtest.stats.LLRcalc.results_to_pdf(results3)
+   games3=N3
+   avg3,var3,skewness3,exkurt3=fishtest.stats.LLRcalc.stats_ex(pdf3)
+   stdev3=var3**.5
+   games=games3
+   sigma=stdev3
+   pdf3_s=pdf_to_string(pdf3)
+   avg3_l=avg3-z975*(var3/N3)**.5
+   avg3_u=avg3+z975*(var3/N3)**.5
+   var3_l=var3*(1-z975*((exkurt3+2)/N3)**.5)
+   var3_u=var3*(1+z975*((exkurt3+2)/N3)**.5)
+   stdev3_l=var3_l**.5 if var3_l>=0 else 0.0
+   stdev3_u=var3_u**.5
+   t3,var_t3=t_conf(avg3,var3,skewness3,exkurt3)
+   t3_l=t3-z975*(var_t3/N3)**.5
+   t3_u=t3+z975*(var_t3/N3)**.5
+   nt3=t3
+   nt3_l=t3_l
+   nt3_u=t3_u
+   nelo3=nelo_divided_by_nt*nt3
+   nelo3_u=nelo_divided_by_nt*nt3_u
+   nelo3_l=nelo_divided_by_nt*nt3_l
+   if has_pentanomial:
+      results5=run['results']['pentanomial']
+      results5_=fishtest.stats.LLRcalc.regularize(results5)
+      N5,pdf5=fishtest.stats.LLRcalc.results_to_pdf(results5)
+      games5=2*N5
+      avg5,var5,skewness5,exkurt5=fishtest.stats.LLRcalc.stats_ex(pdf5)
+      var5_per_game=2*var5
+      stdev5_per_game=var5_per_game**.5
+      games=games5
+      sigma=stdev5_per_game
+      pdf5_s=pdf_to_string(pdf5)
+      avg5_l=avg5-z975*(var5/N5)**.5
+      avg5_u=avg5+z975*(var5/N5)**.5
+      var5_per_game_l=var5_per_game*(1-z975*((exkurt5+2)/N5)**.5)
+      var5_per_game_u=var5_per_game*(1+z975*((exkurt5+2)/N5)**.5)
+      stdev5_per_game_l=var5_per_game_l**.5 if var5_per_game_l>=0 else 0.0
+      stdev5_per_game_u=var5_per_game_u**.5
+      t5,var_t5=t_conf(avg5,var5,skewness5,exkurt5)
+      t5_l=t5-z975*(var_t5/N5)**.5
+      t5_u=t5+z975*(var_t5/N5)**.5
+      sqrt2=2**.5
+      nt5=t5/sqrt2
+      nt5_l=t5_l/sqrt2
+      nt5_u=t5_u/sqrt2
+      nelo5=nelo_divided_by_nt*nt5
+      nelo5_u=nelo_divided_by_nt*nt5_u
+      nelo5_l=nelo_divided_by_nt*nt5_l
+      results5_DD_prob=draw_ratio-(results5_[1]+results5_[3])/(2*float(N5))
+      results5_WL_prob=results5_[2]/float(N5)-results5_DD_prob
+      R3_=copy.deepcopy(run['results'])
+      del R3_['pentanomial']
+      ratio=var5_per_game/var3
+      var_diff=var3-var5_per_game
+      RMS_bias=var_diff**.5 if var_diff>=0 else 0
+      RMS_bias_elo=fishtest.stats.stat_util.elo(0.5+RMS_bias)
+
+   drawelo=fishtest.stats.stat_util.draw_elo_calc(results3_)
    if has_sprt:
       elo_model=run['args']['sprt'].get('elo_model','BayesElo')
       alpha=run['args']['sprt']['alpha']
@@ -43,50 +98,62 @@
       batch_size_units=run['args']['sprt'].get('batch_size',1)
       batch_size_games=2*batch_size_units if has_pentanomial else 1
       o=run['args']['sprt'].get('overshoot',None)
+      assert elo_model in ['BayesElo','logistic','normalized']
+      belo0,belo1=None,None
       if elo_model=='BayesElo':
-      	 lelo0,lelo1=[fishtest.stats.stat_util.bayeselo_to_elo(elo_, drawelo) for elo_ in (elo0,elo1)]
-	 belo0,belo1=elo0,elo1
+         belo0,belo1=elo0,elo1
+      	 elo0_,elo1_=[fishtest.stats.stat_util.bayeselo_to_elo(belo_, drawelo) for belo_ in (belo0,belo1)]
+	 elo_model_='logistic'
       else:
-	 lelo0,lelo1=elo0,elo1
-	 belo0,belo1=[fishtest.stats.stat_util.elo_to_bayeselo(elo_, draw_ratio)[0] for elo_ in [elo0,elo1]]
-      score0,score1=[fishtest.stats.stat_util.L(elo_) for elo_ in (lelo0,lelo1)]
-   
+         elo0_,elo1_=elo0,elo1
+         elo_model_=elo_model
+      assert elo_model_ in ['logistic','normalized']
+      if elo_model_=='logistic':
+	 lelo03,lelo13=lelo0,lelo1=elo0_,elo1_
+         score03,score13=score0,score1=[fishtest.stats.stat_util.L(lelo_) for lelo_ in (lelo0,lelo1)]
+         nelo0,nelo1=[nelo_divided_by_nt*(score_-0.5)/sigma for score_ in (score0,score1)]
+         nelo03,nelo13=[nelo_divided_by_nt*(score_-0.5)/stdev3 for score_ in (score0,score1)]
+      else:  ## normalized
+         nelo03,nelo13=nelo0,nelo1=elo0_,elo1_
+      	 score0,score1=[nelo_/nelo_divided_by_nt*sigma+0.5 for nelo_ in (nelo0,nelo1)]
+      	 score03,score13=[nelo_/nelo_divided_by_nt*stdev3+0.5 for nelo_ in (nelo03,nelo13)]
+	 lelo0,lelo1=[fishtest.stats.stat_util.elo(score_) for score_ in (score0,score1)]
+	 lelo03,lelo13=[fishtest.stats.stat_util.elo(score_) for score_ in (score03,score13)]
 
-   if has_pentanomial:
-      results5=run['results']['pentanomial']
-      results5_=fishtest.stats.LLRcalc.regularize(results5)
-      N5,pdf5=fishtest.stats.LLRcalc.results_to_pdf(results5)
-      pdf5_s=pdf_to_string(pdf5)
-      games5=2*N5
-      avg5,var5,skewness5,exkurt5=fishtest.stats.LLRcalc.stats_ex(pdf5)
-      avg5_l=avg5-z975*(var5/N5)**.5
-      avg5_u=avg5+z975*(var5/N5)**.5
-      var5_per_game=2*var5
-      var5_per_game_l=var5_per_game*(1-z975*((exkurt5+2)/N5)**.5)
-      var5_per_game_u=var5_per_game*(1+z975*((exkurt5+2)/N5)**.5)
-      stdev5_per_game=var5_per_game**.5
-      stdev5_per_game_l=var5_per_game_l**.5 if var5_per_game_l>=0 else 0.0
-      stdev5_per_game_u=var5_per_game_u**.5
-      sens5,norm_var_sens5=sensitivity_conf(avg5,var5,skewness5,exkurt5)
-      sens5_l=sens5-z975*(norm_var_sens5/N5)**.5
-      sens5_u=sens5+z975*(norm_var_sens5/N5)**.5
-      sqrt2=2**.5
-      sens5_per_game=sens5/sqrt2
-      sens5_per_game_l=sens5_l/sqrt2
-      sens5_per_game_u=sens5_u/sqrt2
-      nelo5=conv_sens_elo*sens5/sqrt2
-      nelo5_u=conv_sens_elo*sens5_u/sqrt2
-      nelo5_l=conv_sens_elo*sens5_l/sqrt2
-      results5_DD_prob=draw_ratio-(results5_[1]+results5_[3])/(2*float(N5))
-      results5_WL_prob=results5_[2]/float(N5)-results5_DD_prob
-      if has_sprt:
+      if belo0 is None:
+         belo0,belo1=[fishtest.stats.stat_util.elo_to_bayeselo(lelo_, draw_ratio)[0] for lelo_ in (lelo03,lelo13)]	
+   
+      LLRjumps3=list_to_string([i[0] for i in fishtest.stats.LLRcalc.LLRjumps(pdf3,score0,score1)])
+      sp=fishtest.stats.sprt.sprt(alpha=alpha,beta=beta,elo0=lelo0,elo1=lelo1)
+      sp.set_state(results3_)
+      a3=sp.analytics()
+      LLR3_l=a3['a']
+      LLR3_u=a3['b']
+      if elo_model_=='logistic':
+         LLR3=fishtest.stats.LLRcalc.LLR_logistic(lelo03,lelo13,results3_)
+      else: # normalized
+         LLR3=fishtest.stats.LLRcalc.LLR_normalized(nelo03,nelo13,results3_)
+      elo3_l=a3['ci'][0]
+      elo3_u=a3['ci'][1]
+      elo3=a3['elo']
+      LOS3=a3['LOS']
+      # auxilliary
+      LLR3_exact=N3*fishtest.stats.LLRcalc.LLR(pdf3,score03,score13)
+      LLR3_alt  =N3*fishtest.stats.LLRcalc.LLR_alt(pdf3,score03,score13)
+      LLR3_alt2 =N3*fishtest.stats.LLRcalc.LLR_alt2(pdf3,score03,score13)
+      LLR3_normalized=fishtest.stats.LLRcalc.LLR_normalized(nelo03,nelo13,results3_)
+      LLR3_be   =fishtest.stats.stat_util.LLRlegacy(belo0,belo1,results3_)
+      if has_pentanomial:	
       	 LLRjumps5=list_to_string([i[0] for i in fishtest.stats.LLRcalc.LLRjumps(pdf5,score0,score1)])
 	 sp=fishtest.stats.sprt.sprt(alpha=alpha,beta=beta,elo0=lelo0,elo1=lelo1)
 	 sp.set_state(results5_)
 	 a5=sp.analytics()
 	 LLR5_l=a5['a']
 	 LLR5_u=a5['b']
-	 LLR5=fishtest.stats.LLRcalc.LLR_logistic(lelo0,lelo1,results5_)
+	 if elo_model_=='logistic':
+	   LLR5=fishtest.stats.LLRcalc.LLR_logistic(lelo0,lelo1,results5_)
+	 else: # normalized
+	   LLR5=fishtest.stats.LLRcalc.LLR_normalized(nelo0,nelo1,results5_)
 	 o0=0
 	 o1=0
 	 if o!=None:
@@ -100,64 +167,17 @@
 	 LLR5_exact=N5*fishtest.stats.LLRcalc.LLR(pdf5,score0,score1)
 	 LLR5_alt  =N5*fishtest.stats.LLRcalc.LLR_alt(pdf5,score0,score1)
 	 LLR5_alt2 =N5*fishtest.stats.LLRcalc.LLR_alt2(pdf5,score0,score1)
-      else:                #assume fixed length test
-      	 elo5,elo95_5,LOS5=fishtest.stats.stat_util.get_elo(results5_)
-	 elo5_l=elo5-elo95_5
-	 elo5_u=elo5+elo95_5
+	 LLR5_normalized=fishtest.stats.LLRcalc.LLR_normalized(nelo0,nelo1,results5_)
 
-   N3,pdf3=fishtest.stats.LLRcalc.results_to_pdf(results3)
-   pdf3_s=pdf_to_string(pdf3)
-   games3=N3
-   avg3,var3,skewness3,exkurt3=fishtest.stats.LLRcalc.stats_ex(pdf3)
-   avg3_l=avg3-z975*(var3/N3)**.5
-   avg3_u=avg3+z975*(var3/N3)**.5
-   var3_l=var3*(1-z975*((exkurt3+2)/N3)**.5)
-   var3_u=var3*(1+z975*((exkurt3+2)/N3)**.5)
-   stdev3=var3**.5
-   stdev3_l=var3_l**.5 if var3_l>=0 else 0.0
-   stdev3_u=var3_u**.5
-   sens3,norm_var_sens3=sensitivity_conf(avg3,var3,skewness3,exkurt3)
-   sens3_l=sens3-z975*(norm_var_sens3/N3)**.5
-   sens3_u=sens3+z975*(norm_var_sens3/N3)**.5
-   sens3_per_game=sens3
-   sens3_per_game_l=sens3_l
-   sens3_per_game_u=sens3_u
-   nelo3=conv_sens_elo*sens3
-   nelo3_u=conv_sens_elo*sens3_u
-   nelo3_l=conv_sens_elo*sens3_l
-   R3_=copy.deepcopy(run['results'])
-   if has_pentanomial:
-      del R3_['pentanomial']
-      ratio=var5_per_game/var3
-      var_diff=var3-var5_per_game
-      RMS_bias=var_diff**.5 if var_diff>=0 else 0
-      RMS_bias_elo=fishtest.stats.stat_util.elo(0.5+RMS_bias)
-   if has_sprt:
-      LLRjumps3=list_to_string([i[0] for i in fishtest.stats.LLRcalc.LLRjumps(pdf3,score0,score1)])
-      sp=fishtest.stats.sprt.sprt(alpha=alpha,beta=beta,elo0=lelo0,elo1=lelo1)
-      sp.set_state(results3_)
-      a3=sp.analytics()
-      LLR3_l=a3['a']
-      LLR3_u=a3['b']
-      LLR3=fishtest.stats.LLRcalc.LLR_logistic(lelo0,lelo1,results3_)
-      elo3_l=a3['ci'][0]
-      elo3_u=a3['ci'][1]
-      elo3=a3['elo']
-      LOS3=a3['LOS']
-      # auxilliary
-      LLR3_exact=N3*fishtest.stats.LLRcalc.LLR(pdf3,score0,score1)
-      LLR3_alt  =N3*fishtest.stats.LLRcalc.LLR_alt(pdf3,score0,score1)
-      LLR3_alt2 =N3*fishtest.stats.LLRcalc.LLR_alt2(pdf3,score0,score1)
-      LLR3_be   =fishtest.stats.stat_util.LLRlegacy(belo0,belo1,results3_)
    else:  #assume fixed length test
       elo3,elo95_3,LOS3=fishtest.stats.stat_util.get_elo(results3_)
       elo3_l=elo3-elo95_3
       elo3_u=elo3+elo95_3
-      
-   if has_sprt:
-      var_per_game=var5_per_game if has_pentanomial else var3
-      nelo0=lelo0*((1-reference_draw_ratio)/4/var_per_game)**.5
-      nelo1=lelo1*((1-reference_draw_ratio)/4/var_per_game)**.5
+      if has_pentanomial:
+         elo5,elo95_5,LOS5=fishtest.stats.stat_util.get_elo(results5_)
+	 elo5_l=elo5-elo95_5
+	 elo5_u=elo5+elo95_5
+
 %>
 <!DOCTYPE html>
 <html lang="en-us">
@@ -239,14 +259,17 @@
 % if has_sprt:
       <H5> Generalized Log Likelihood Ratio </H5>
       <table class="table table-condensed" style="margin-top:1em;margin-bottom:0.5em;">
-      	<tr><td>Exact</td><td>${"%.5f"%LLR5_exact}</td></tr>
+      	<tr><td>Multinomial</td><td>${"%.5f"%LLR5_exact}</td></tr>
       	<tr><td>Alt</td><td>${"%.5f"%LLR5_alt}</td></tr>
       	<tr><td>Alt2</td><td>${"%.5f"%LLR5_alt2}</td></tr>
+	<tr><td>Normalized</td><td>${"%.5f"%LLR5_normalized}</td></tr>
       </table>
       <em> Note: the monikers Alt and Alt2 are from the source code. Alt (which is 
-      no longer used) is faster to compute than the exact LLR which requires
+      no longer used) is faster to compute than the multinomial LLR
+      which requires
       numerically solving a rational equation.
-      The simple Alt2 is used for Elo estimation.
+      The simple Alt2 is used for Elo estimation. The normalized LLR is a variant
+      of Alt which is well adapted to the normalized Elo model.
       Note that we are not aware of any literature
       indicating that any of these LLR quantities is theoretically better than the others.
       </em>
@@ -299,9 +322,10 @@
 % if has_sprt:
        <H5> Generalized Log Likelihood Ratio </H5>
        <table class="table table-condensed" style="margin-top:1em;margin-bottom:0.5em;">
-       	<tr><td>Exact</td><td>${"%.5f"%LLR3_exact}</td></tr>
+       	<tr><td>Multinomial</td><td>${"%.5f"%LLR3_exact}</td></tr>
        	<tr><td>Alt</td><td>${"%.5f"%LLR3_alt}</td></tr>
       	<tr><td>Alt2</td><td>${"%.5f"%LLR3_alt2}</td></tr>
+      	<tr><td>Normalized</td><td>${"%.5f"%LLR3_normalized}</td></tr>
 	<tr><td>BayesElo</td><td>${"%.5f"%LLR3_be}</td></tr>	
 	</table>
        <em> Note: BayesElo is the LLR as computed using the BayesElo model. It is not clear how to

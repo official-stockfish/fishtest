@@ -18,6 +18,7 @@ from fishtest.userdb import UserDb
 from fishtest.util import (
     calculate_residuals,
     estimate_game_duration,
+    format_bounds,
     format_results,
     get_worker_key,
     post_in_fishcooking_results,
@@ -420,14 +421,9 @@ class RunDb:
                 if "sprt" in run["args"]:
                     sprt = run["args"]["sprt"]
                     elo_model = sprt.get("elo_model", "BayesElo")
-                    if elo_model == "BayesElo":
-                        run["results_info"]["info"].append(
-                            ("[%.2f,%.2f]") % (sprt["elo0"], sprt["elo1"])
-                        )
-                    else:
-                        run["results_info"]["info"].append(
-                            ("{%.2f,%.2f}") % (sprt["elo0"], sprt["elo1"])
-                        )
+                    run["results_info"]["info"].append(
+                        format_bounds(elo_model,sprt["elo0"],sprt["elo1"])
+                    )
         return (runs, pending_hours, cores, nps)
 
     def get_finished_runs(
