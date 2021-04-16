@@ -81,21 +81,22 @@ function draw_charts(){
     // pseudo globals
     pass_chart.elo_start=elo_start;
     pass_chart.elo_end=elo_end;
-    pass_chart.N=N;
-    const specials=[0.05,0.95];
+    const specials=[elo0,elo1];
+    var anchors=[];
+    pass_chart.anchors=anchors;
     for (var i=elo_start*N; i<=elo_end*N; i+=1) {
-        var elo=i/N;
+	var elo=i/N;
+	anchors.push(elo);
 	var elo_next=(i+1)/N;
 	var c=sprt.characteristics(elo);
-	var c_next=sprt.characteristics(elo_next);
 	data_pass.push([elo,null,{v:c[0],f:(c[0]*100).toFixed(1)+'%'}]);
 	data_expected.push([elo,null,{v:c[1],f:(c[1]/1000).toFixed(1)+'K'}]);
-	for(const s of specials){
-	    if((c[0]<s && c_next[0]>=s) || (c[0]<=s && c_next[0]>s)){
-		var elo_middle=elo+(s-c[0])/(c_next[0]-c[0])*(elo_next-elo);
-		var c_middle=sprt.characteristics(elo_middle);
-		data_pass.push([elo_middle,elo_middle,{v:c_middle[0],f:(c_middle[0]*100).toFixed(1)+'%'}]);
-		data_expected.push([elo_middle,elo_middle,{v:c_middle[1],f:(c_middle[1]/1000).toFixed(1)+'K'}]);
+	for(const elo_ of specials){
+	    if(elo<elo_ && elo_next>=elo_){
+		anchors.push(elo_);
+		var c_=sprt.characteristics(elo_);
+		data_pass.push([elo_,elo_,{v:c_[0],f:(c_[0]*100).toFixed(1)+'%'}]);
+		data_expected.push([elo_,elo_,{v:c_[1],f:(c_[1]/1000).toFixed(1)+'K'}]);
 	    }
 	}
     }
@@ -147,15 +148,21 @@ function handle_tooltips(e){
 	return;
     }
     var elo=chart.getChartLayoutInterface().getHAxisValue(x-rect.left);
-    var N=pass_chart.N;
+    var anchors=pass_chart.anchors;
+    var last_dist=null;
+    for(var row=0;row<anchors.length; row++){
+	var dist=Math.abs(anchors[row]-elo);
+	if(last_dist!=null && dist>last_dist){
+	    break;
+	}else{
+	    last_dist=dist;
+	}
+    }
+    row--;
     var elo_start=pass_chart.elo_start;
     var elo_end=pass_chart.elo_end;
-    var row=Math.round(N*(elo-elo_start));
-    var max_rows=Math.round(N*(elo_end-elo_start));
     var d=(elo_end-elo_start)/20;
     if((elo>=elo_start-d) && (elo<=elo_end+d)){
-	row=Math.max(row,0);
-	row=Math.min(row,max_rows);
 	pass_chart.setSelection([{'row':row, 'column':2}]);
 	expected_chart.setSelection([{'row':row, 'column':2}]);
     }else{

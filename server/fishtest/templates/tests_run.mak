@@ -1,5 +1,11 @@
 <%inherit file="base.mak"/>
 
+<%
+from fishtest.util import format_bounds
+elo_model="normalized" 
+fb=lambda e0,e1:format_bounds(elo_model,e0,e1)
+%>
+
 <style>
   input[type=number].no-arrows::-webkit-inner-spin-button,
   input[type=number].no-arrows::-webkit-outer-spin-button {
@@ -184,14 +190,14 @@
     </div>
 
     <div class="flex-row stop_rule sprt">
+      <input type="hidden" name="elo_model" id="elo_model_field" value=${elo_model} />
       <label class="field-label leftmost stop_rule sprt">SPRT bounds</label>
+
       <select name="bounds" class="stop_rule sprt" style="width: 246px">
-        <option value="standard STC">Standard STC {-0.2, 1.1}</option>
-        <option value="standard LTC">Standard LTC {0.2, 0.9}</option>
-	<option value="classical STC">Classical STC {-0.3, 1.6}</option>
-	<option value="classical LTC">Classical LTC {0.4, 1.7}</option>
-        <option value="regression STC">Non-regression STC {-1, 0.2}</option>
-        <option value="regression LTC">Non-regression LTC {-0.7, 0.2}</option>
+        <option value="standard STC">Standard STC ${fb(-0.5, 2.5)}</option>
+        <option value="standard LTC">Standard LTC ${fb(0.5, 3.5)}</option>
+        <option value="regression STC">Non-regression STC ${fb(-2.5, 0.5)}</option>
+        <option value="regression LTC">Non-regression LTC ${fb(-2.5, 0.5)}</option>
         <option value="custom" ${is_rerun and 'selected'}>Custom bounds...</option>
       </select>
 
@@ -199,14 +205,15 @@
              style="${args.get('sprt') or 'display: none'}">SPRT Elo0</label>
       <input type="number" step="0.05" name="sprt_elo0"
              class="sprt custom_bounds no-arrows"
-             value="${args.get('sprt', {'elo0': -0.2})['elo0']}"
+	     ## The bounds handling should be cleaned up...
+             value="${args.get('sprt', {'elo0': -0.5})['elo0']}"
              style="width: 90px; ${args.get('sprt') or 'display: none'}" />
 
       <label class="field-label sprt custom_bounds rightmost"
              style="${args.get('sprt') or 'display: none'}">SPRT Elo1</label>
       <input type="number" step="0.05" name="sprt_elo1"
              class="sprt custom_bounds no-arrows"
-             value="${args.get('sprt', {'elo1': 1.1})['elo1']}"
+             value="${args.get('sprt', {'elo1': 2.5})['elo1']}"
              style="width: 90px; ${args.get('sprt') or 'display: none'}" />
     </div>
 
@@ -341,12 +348,10 @@
 ## See also https://github.com/glinscott/fishtest/issues/865#issuecomment-808808220
 
   const preset_bounds = {
-    'standard STC': [-0.2, 1.1],
-    'standard LTC': [ 0.2, 0.9],
-    'classical STC': [-0.3, 1.6],
-    'classical LTC': [ 0.4, 1.7],
-    'regression STC': [-1.0, 0.2],
-    'regression LTC': [-0.7, 0.2],
+    'standard STC': [-0.5, 2.5],
+    'standard LTC': [ 0.5, 3.5],
+    'regression STC': [-2.5, 0.5],
+    'regression LTC': [-2.5, 0.5],
   };
 
   function update_sprt_bounds(selected_bounds_name) {

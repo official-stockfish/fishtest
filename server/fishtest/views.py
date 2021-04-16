@@ -615,12 +615,15 @@ def validate_form(request):
         sprt_batch_size_games = 8
         assert sprt_batch_size_games % 2 == 0
         assert request.rundb.chunk_size % sprt_batch_size_games == 0
+        elo_model=request.POST["elo_model"]
+        if elo_model not in ['BayesElo','logistic','normalized']:
+            raise Exception("Unknown Elo model")
         data["sprt"] = fishtest.stats.stat_util.SPRT(
             alpha=0.05,
             beta=0.05,
             elo0=float(request.POST["sprt_elo0"]),
             elo1=float(request.POST["sprt_elo1"]),
-            elo_model="logistic",
+            elo_model=elo_model,
             batch_size=sprt_batch_size_games // 2,
         )  # game pairs
         # Limit on number of games played.
