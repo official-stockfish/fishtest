@@ -101,8 +101,8 @@ def sync_upload(request):
         input_file = request.POST["network"].file
         network = input_file.read()
         errors = []
-        if len(network) >= 100000000:
-            errors.append("Network must be < 100MB")
+        if len(network) >= 120000000:
+            errors.append("Network must be < 120MB")
         if not re.match(r"^nn-[0-9a-f]{12}\.nnue$", filename):
             errors.append('Name must match "nn-[SHA256 first 12 digits].nnue"')
         hash = hashlib.sha256(network).hexdigest()
