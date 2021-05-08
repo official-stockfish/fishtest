@@ -413,7 +413,7 @@ def get_sha(branch, repo_url):
         return "", ""
 
 
-def get_net(branch, repo_url):
+def get_net(commit_sha, repo_url):
     """ Get the net from evaluate.h or ucioption.cpp in the repo """
     api_url = repo_url.replace(
         "https://github.com", "https://raw.githubusercontent.com"
@@ -421,7 +421,7 @@ def get_net(branch, repo_url):
     try:
         net = None
 
-        url1 = api_url + "/" + branch + "/src/evaluate.h"
+        url1 = api_url + "/" + commit_sha + "/src/evaluate.h"
         options = requests.get(url1).content.decode("utf-8")
         for line in options.splitlines():
             if "EvalFileDefaultName" in line and "define" in line:
@@ -433,7 +433,7 @@ def get_net(branch, repo_url):
         if net:
             return net
 
-        url2 = api_url + "/" + branch + "/src/ucioption.cpp"
+        url2 = api_url + "/" + commit_sha + "/src/ucioption.cpp"
         options = requests.get(url2).content.decode("utf-8")
         for line in options.splitlines():
             if "EvalFile" in line and "Option" in line:
@@ -596,7 +596,7 @@ def validate_form(request):
     data["base_same_as_master"] = master_diff.text == ""
 
     # Test existence of net
-    new_net = get_net(data["new_tag"], data["tests_repo"])
+    new_net = get_net(data["resolved_new"], data["tests_repo"])
     if new_net:
         if not request.rundb.get_nn(new_net):
             raise Exception(
@@ -607,7 +607,7 @@ def validate_form(request):
 
     # Store net info
     data["new_net"] = new_net
-    data["base_net"] = get_net(data["base_tag"], data["tests_repo"])
+    data["base_net"] = get_net(data["resolved_base"], data["tests_repo"])
 
     # Integer parameters
 
