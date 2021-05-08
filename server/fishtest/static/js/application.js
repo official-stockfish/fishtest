@@ -67,8 +67,12 @@ $(() => {
         $('head link[href*="/css/theme.dark.css"]').remove();
         theme = 'light';
       }
+      let cookieExpireDate = new Date();
+      // Remember the theme for 30 days
+      cookieExpireDate.setTime(cookieExpireDate.getTime() + 30 * 24 * 60 * 60 * 1000);
       $.cookie('theme', theme, {
         path: '/',
+        expires: cookieExpireDate,
       });
     });
 
