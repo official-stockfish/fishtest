@@ -329,7 +329,7 @@
     }
 
     // Fetch the diff and decide whether to show it on the page
-    const diffApiUrl = "${h.diff_url(run)}".replace("//github.com/", "//api.github.com/repos/");
+    const diffApiUrl = "${h.diff_url(run, api_url=True)}";
     $.ajax({
       url: diffApiUrl,
       headers: {
