@@ -3,12 +3,12 @@ import copy
 import zlib
 from datetime import datetime
 
-import requests
 from fishtest.stats.stat_util import SPRT_elo
 from fishtest.util import get_worker_key
 from pyramid.httpexceptions import HTTPFound, HTTPUnauthorized, exception_response
 from pyramid.response import Response
 from pyramid.view import exception_view_config, view_config, view_defaults
+from utils.fastip import query_by_ip
 
 WORKER_VERSION = 98
 
@@ -71,24 +71,22 @@ class ApiView(object):
             flag_cache[ip] = result["country_code"]
             return result["country_code"]
         try:
-            # Get country flag from worker IP address
-            FLAG_HOST = "https://freegeoip.app/json/"
-            r = requests.get(FLAG_HOST + self.request.remote_addr, timeout=1.0)
-            if r.status_code == 200:
-                country_code = r.json()["country_code"]
-                self.request.userdb.flag_cache.insert_one(
-                    {
-                        "ip": ip,
-                        "country_code": country_code,
-                        "geoip_checked_at": datetime.utcnow(),
-                    }
-                )
-                flag_cache[ip] = country_code
-                return country_code
-            raise Error("flag server failed")
+            # Get country flag from fastip database by the worker's IP address
+            entry = query_by_ip(ip)
+            if entry.country_code is None:
+                raise Error("No country code for ip {}".format(ip))
+            self.request.userdb.flag_cache.insert_one(
+                {
+                    "ip": ip,
+                    "country_code": entry.country_code,
+                    "geoip_checked_at": datetime.utcnow(),
+                }
+            )
+            flag_cache[ip] = entry.country_code
+            return entry.country_code
         except:
             del flag_cache[ip]
-            print("Failed GeoIP check for {}".format(ip))
+            print("Failed fastip query for {}".format(ip))
             return None
 
     def run_id(self):
