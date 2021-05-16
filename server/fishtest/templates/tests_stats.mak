@@ -142,6 +142,7 @@
       LLR3_alt  =N3*fishtest.stats.LLRcalc.LLR_alt(pdf3,score03,score13)
       LLR3_alt2 =N3*fishtest.stats.LLRcalc.LLR_alt2(pdf3,score03,score13)
       LLR3_normalized=fishtest.stats.LLRcalc.LLR_normalized(nelo03,nelo13,results3_)
+      LLR3_normalized_alt=fishtest.stats.LLRcalc.LLR_normalized_alt(nelo03,nelo13,results3_)
       LLR3_be   =fishtest.stats.stat_util.LLRlegacy(belo0,belo1,results3_)
       if has_pentanomial:	
       	 LLRjumps5=list_to_string([i[0] for i in fishtest.stats.LLRcalc.LLRjumps(pdf5,score0,score1)])
@@ -168,6 +169,7 @@
 	 LLR5_alt  =N5*fishtest.stats.LLRcalc.LLR_alt(pdf5,score0,score1)
 	 LLR5_alt2 =N5*fishtest.stats.LLRcalc.LLR_alt2(pdf5,score0,score1)
 	 LLR5_normalized=fishtest.stats.LLRcalc.LLR_normalized(nelo0,nelo1,results5_)
+	 LLR5_normalized_alt=fishtest.stats.LLRcalc.LLR_normalized_alt(nelo0,nelo1,results5_)
 
    else:  #assume fixed length test
       elo3,elo95_3,LOS3=fishtest.stats.stat_util.get_elo(results3_)
@@ -259,19 +261,15 @@
 % if has_sprt:
       <H5> Generalized Log Likelihood Ratio </H5>
       <table class="table table-condensed" style="margin-top:1em;margin-bottom:0.5em;">
-      	<tr><td>Multinomial</td><td>${"%.5f"%LLR5_exact}</td></tr>
-      	<tr><td>Alt</td><td>${"%.5f"%LLR5_alt}</td></tr>
-      	<tr><td>Alt2</td><td>${"%.5f"%LLR5_alt2}</td></tr>
-	<tr><td>Normalized</td><td>${"%.5f"%LLR5_normalized}</td></tr>
+      	<tr><td>Logistic (exact)</td><td>${"%.5f"%LLR5_exact}</td></tr>
+      	<tr><td>Logistic (alt)</td><td>${"%.5f"%LLR5_alt}</td></tr>
+      	<tr><td>Logistic (alt2)</td><td>${"%.5f"%LLR5_alt2}</td></tr>
+	<tr><td>Normalized (exact)</td><td>${"%.5f"%LLR5_normalized}</td></tr>
+	<tr><td>Normalized (alt)</td><td>${"%.5f"%LLR5_normalized_alt}</td></tr>
       </table>
-      <em> Note: the monikers Alt and Alt2 are from the source code. Alt (which is 
-      no longer used) is faster to compute than the multinomial LLR
-      which requires
-      numerically solving a rational equation.
-      The simple Alt2 is used for Elo estimation. The normalized LLR is a variant
-      of Alt which is well adapted to the normalized Elo model.
-      Note that we are not aware of any literature
-      indicating that any of these LLR quantities is theoretically better than the others.
+      <em> The quantities labeled alt and alt2 are various approximations for the
+      exact quantities. Simulations indicate that the exact quantities perform
+      better under extreme conditions.
       </em>
 % endif ## has_sprt
       <H5> Auxilliary statistics </H5>	
@@ -322,10 +320,11 @@
 % if has_sprt:
        <H5> Generalized Log Likelihood Ratio </H5>
        <table class="table table-condensed" style="margin-top:1em;margin-bottom:0.5em;">
-       	<tr><td>Multinomial</td><td>${"%.5f"%LLR3_exact}</td></tr>
-       	<tr><td>Alt</td><td>${"%.5f"%LLR3_alt}</td></tr>
-      	<tr><td>Alt2</td><td>${"%.5f"%LLR3_alt2}</td></tr>
-      	<tr><td>Normalized</td><td>${"%.5f"%LLR3_normalized}</td></tr>
+       	<tr><td>Logistic (exact)</td><td>${"%.5f"%LLR3_exact}</td></tr>
+       	<tr><td>Logistic (alt)</td><td>${"%.5f"%LLR3_alt}</td></tr>
+      	<tr><td>Logistic (alt2)</td><td>${"%.5f"%LLR3_alt2}</td></tr>
+      	<tr><td>Normalized (exact)</td><td>${"%.5f"%LLR3_normalized}</td></tr>
+      	<tr><td>Normalized (alt)</td><td>${"%.5f"%LLR3_normalized_alt}</td></tr>
 	<tr><td>BayesElo</td><td>${"%.5f"%LLR3_be}</td></tr>	
 	</table>
        <em> Note: BayesElo is the LLR as computed using the BayesElo model. It is not clear how to
