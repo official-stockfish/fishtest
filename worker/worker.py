@@ -99,6 +99,8 @@ def on_sigint(signal, frame):
 
 
 def worker_exit(val=1):
+    global ALIVE
+    ALIVE = False
     os._exit(val)
 
 
