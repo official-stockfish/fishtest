@@ -115,7 +115,7 @@ def verify_required_cutechess(cutechess):
     if p.returncode != 0:
         raise Exception("Failed to find cutechess version info")
 
-    if major < 1 or (major == 1 and minor < 2):
+    if (major, minor) < (1, 2):
         raise Exception("Requires cutechess 1.2 or higher, found version doesn't match")
 
 
