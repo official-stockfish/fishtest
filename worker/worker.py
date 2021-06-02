@@ -326,7 +326,7 @@ def gcc_version():
     except:
         raise Exception("Failed to parse g++ version.")
 
-    if not (major > 7 or (major == 7 and minor >= 3)):
+    if (major, minor) < (7, 3):
         raise Exception(
             "Found g++ version {}.{}: please update to g++ version 7.3 or later.".format(
                 major, minor
