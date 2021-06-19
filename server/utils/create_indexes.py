@@ -76,7 +76,7 @@ def create_flag_cache_indexes():
 
 
 def print_current_indexes():
-    for collection_name in db.collection_names():
+    for collection_name in db.list_collection_names():
         c = db[collection_name]
         print("Current indexes on " + collection_name + ":")
         pprint.pprint(
