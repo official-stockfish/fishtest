@@ -1,5 +1,5 @@
 ### Overview
-![Actions Workflow Status](https://github.com/glinscott/fishtest/workflows/CI/badge.svg)
+![main workflow](https://github.com/glinscott/fishtest/actions/workflows/main.yaml/badge.svg)
 
 Fishtest is a distributed task queue for testing chess engines. The main instance
 for testing the chess engine [Stockfish](https://github.com/official-stockfish/Stockfish) is at this web page https://tests.stockfishchess.org
