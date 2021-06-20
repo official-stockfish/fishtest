@@ -158,15 +158,21 @@ def signup(request):
     if request.method != "POST":
         return {}
     errors = []
-    if len(request.POST.get("password", "")) == 0:
+    
+    signup_username = request.POST.get("username", "")
+    signup_password = request.POST.get("password", "")
+    signup_password_verify = request.POST.get("password2", "")
+    signup_email = request.POST.get("email", "")
+    
+    if len(signup_password) == 0:
         errors.append("Non-empty password required")
-    if request.POST.get("password") != request.POST.get("password2", ""):
+    if signup_password != signup_password_verify:
         errors.append("Matching verify password required")
-    if "@" not in request.POST.get("email", ""):
+    if "@" not in signup_email:
         errors.append("Email required")
-    if len(request.POST.get("username", "")) == 0:
+    if len(signup_username) == 0:
         errors.append("Username required")
-    if not request.POST.get("username", "").isalnum():
+    if not signup_username.isalnum():
         errors.append("Alphanumeric username required")
     if errors:
         for error in errors:
@@ -192,9 +198,9 @@ def signup(request):
                 return {}
 
     result = request.userdb.create_user(
-        username=request.POST.get("username", ""),
-        password=request.POST.get("password", ""),
-        email=request.POST.get("email", ""),
+        username = signup_username,
+        password = signup_password,
+        email = signup_email,
     )
     if not result:
         request.session.flash("Invalid username", "error")
