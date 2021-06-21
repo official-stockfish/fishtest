@@ -330,12 +330,14 @@ def find_arch_string():
             and "x86-64-vnni256" in targets
         ):
             res = "x86-64-vnni256"
+        """
         elif (
             "-mavx512f" in props["flags"]
             and "-mavx512bw" in props["flags"]
             and "x86-64-avx512" in targets
         ):
             res = "x86-64-avx512"
+        """
         elif (
             "-mbmi2" in props["flags"]
             and "x86-64-bmi2" in targets
