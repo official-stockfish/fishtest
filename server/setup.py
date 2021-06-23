@@ -15,6 +15,7 @@ requires = [
     "scipy",
     "requests",
     "awscli",
+    "zxcvbn",
 ]
 
 setup(
