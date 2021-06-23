@@ -302,8 +302,8 @@ def post_in_fishcooking_results(run):
 
     msg = MIMEText(body)
     msg["Subject"] = title
-    msg["From"] = "fishtest@noreply.github.com"
-    msg["To"] = "fishcooking_results@googlegroups.com"
+    msg["From"] = "fishtest@noreply.stockfishchess.org"
+    msg["To"] = "fishcooking-results@googlegroups.com"
 
     try:
         s = smtplib.SMTP("localhost")
