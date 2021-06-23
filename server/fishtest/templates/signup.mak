@@ -25,11 +25,11 @@
       <label class="control-label">Password:</label>
       <div class="controls">
         <input name="password" type="password" pattern=".{8,}"
-               title="Eight or more characters" required="required"/>
+               title="Eight or more characters: a password too simple or trivial to guess will be rejected" required="required"/>
       </div>
     </div>
     <div class="control-group">
-      <label class="control-label">Repeat password:</label>
+      <label class="control-label">Verify password:</label>
       <div class="controls">
         <input name="password2" type="password" required="required"/>
       </div>

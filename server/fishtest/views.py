@@ -15,6 +15,7 @@ from fishtest.util import (
     delta_date,
     estimate_game_duration,
     format_results,
+    password_strength,
 )
 from pyramid.httpexceptions import HTTPFound, exception_response
 from pyramid.response import Response
@@ -164,16 +165,18 @@ def signup(request):
     signup_password_verify = request.POST.get("password2", "")
     signup_email = request.POST.get("email", "")
     
-    if len(signup_password) == 0:
-        errors.append("Non-empty password required")
+    strong_password, password_err = password_strength(
+        signup_password, signup_username, signup_email)
+    if not strong_password:
+        errors.append("Error! Weak password: " + password_err)
     if signup_password != signup_password_verify:
-        errors.append("Matching verify password required")
+        errors.append("Error! Matching verify password required")
     if "@" not in signup_email:
-        errors.append("Email required")
+        errors.append("Error! Email required")
     if len(signup_username) == 0:
-        errors.append("Username required")
+        errors.append("Error! Username required")
     if not signup_username.isalnum():
-        errors.append("Alphanumeric username required")
+        errors.append("Error! Alphanumeric username required")
     if errors:
         for error in errors:
             request.session.flash(error, "error")
@@ -203,7 +206,7 @@ def signup(request):
         email = signup_email,
     )
     if not result:
-        request.session.flash("Invalid username", "error")
+        request.session.flash("Error! Invalid username or password", "error")
     else:
         request.session.flash(
             "Your account has been created, but will be activated by a human. This might take a few hours. Thank you for contributing!"
@@ -346,15 +349,34 @@ def user(request):
     user_data = request.userdb.get_user(user_name)
     if "user" in request.POST:
         if profile:
-            if len(request.params.get("password")) > 0:
-                if request.params.get("password") != request.params.get(
-                    "password2", ""
-                ):
-                    request.session.flash("Matching verify password required", "error")
-                    return {"user": user_data, "profile": profile}
-                user_data["password"] = request.params.get("password")
-            if len(request.params.get("email")) > 0:
-                user_data["email"] = request.params.get("email")
+
+            new_password = request.params.get("password")
+            new_password_verify = request.params.get("password2", "")
+            new_email = request.params.get("email")
+
+            if len(new_password) > 0:
+                if new_password == new_password_verify:
+                    strong_password, password_err = password_strength(
+                        new_password, user_name, user_data["email"],
+                        (new_email if len(new_email) > 0 else None))
+                    if strong_password:
+                        user_data["password"] = new_password
+                        request.session.flash("Success! Password updated")
+                    else:
+                        request.session.flash("Error! Weak password: " + password_err, "error")
+                        return HTTPFound(location=request.route_url("tests"))
+                else:
+                    request.session.flash("Error! Matching verify password required", "error")
+                    return HTTPFound(location=request.route_url("tests"))
+
+            if len(new_email) > 0 and user_data["email"] != new_email:
+                if "@" not in new_email:
+                    request.session.flash("Error! Valid email required", "error")
+                    return HTTPFound(location=request.route_url("tests"))
+                else:
+                    user_data["email"] = new_email
+                    request.session.flash("Success! Email updated")
+
         else:
             user_data["blocked"] = "blocked" in request.POST
             request.userdb.last_pending_time = 0

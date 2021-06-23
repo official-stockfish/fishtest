@@ -20,7 +20,7 @@
   <div class="control-group">
     <label class="control-label">New password:</label>
     <div class="controls">
-      <input name="password" type="password"/>
+      <input name="password" type="password" pattern=".{8,}" title="Eight or more characters: a password too simple or trivial to guess will be rejected"/>
     </div>
   </div>
   <div class="control-group">

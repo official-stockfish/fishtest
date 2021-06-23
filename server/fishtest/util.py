@@ -7,6 +7,7 @@ from email.mime.text import MIMEText
 import fishtest.stats.stat_util
 import numpy
 import scipy.stats
+from zxcvbn import zxcvbn
 
 UUID_MAP = defaultdict(dict)
 key_lock = threading.Lock()
@@ -333,3 +334,20 @@ def delta_date(diff):
     else:
         delta = "seconds ago"
     return delta
+
+
+def password_strength(password, *args):
+    if len(password) > 0:
+        # add given username and email to user_inputs
+        # such that the chosen password isn't similar to either
+        password_analysis = zxcvbn(password, user_inputs=[i for i in args])
+        # strength scale: [0-weakest <-> 4-strongest]
+        # values below 3 will give suggestions and an (optional) warning
+        if password_analysis['score'] > 2:
+            return True, ""
+        else:
+            suggestions = password_analysis['feedback']['suggestions'][0]
+            warning = password_analysis['feedback']['warning']
+            return False, suggestions+" "+warning
+    else:
+        return False, "Non-empty password required"
