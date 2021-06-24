@@ -58,7 +58,7 @@ $(() => {
         $("<link>")
           .attr("href", "/css/theme.dark.css")
           .attr("rel", "stylesheet")
-          .attr("integrity", "sha256-fCZfch3W6doEzUX7ElFTKQdXEojfSl8uO/xeECjeZWs=")
+          .attr("integrity", "sha256-WFxVJNG9I1uWvECw+/yhluslrs+3XTTfN/j9j0+ViMk=")
           .appendTo($("head"));
         theme = 'dark';
       } else {

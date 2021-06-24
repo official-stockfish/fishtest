@@ -2,11 +2,11 @@
 
 body {
   background: #111;
-  color: #fafafa;
+  color: #b1ada7;
 }
 
 a {
-  color: #63daff;
+  color: #3ba9e0;
 }
 
 a:hover, a:focus {
@@ -19,10 +19,15 @@ a:hover, a:focus {
 
 .btn {
   text-shadow: none;
+  filter: contrast(0.6);
 }
 
 .btn:focus {
   outline: none;
+}
+
+.hljs {
+  filter: contrast(0.7);
 }
 
 legend {
@@ -36,7 +41,7 @@ hr {
 
 /* Left-side main navigation sidebar */
 .nav-header {
-  color: #ccc;
+  color: #b1ada7;
 }
 
 .nav-list>li>a, .nav-list .nav-header {
@@ -49,7 +54,7 @@ hr {
 
 /* Tables */
 .table {
-  color: #fafafa;
+  color: #b1ada7;
 }
 
 .table-striped tbody>tr:nth-child(odd)>td, .table-striped tbody>tr:nth-child(odd)>th {
@@ -133,7 +138,7 @@ td[style*="background-color:#44EB44"] {
 
 /* Override - test tasks table - residuals yellow */
 td[style*="background-color:yellow"] {
-  background: #acb700 !important;
+  background: #828a04 !important;
 }
 
 /* Override - test tasks table - residuals red */
@@ -144,4 +149,29 @@ td[style*="background-color:#FF6A6A"] {
 /* Override - "green" description text in /nns page */
 span[style*="background-color:palegreen"] {
   color: #111;
+}
+
+/* Darken white box */
+pre[style*="background-color:"] {
+  background: #b1ada7 !important;
+}
+
+/* Darker yellow */
+pre[style*="background-color:yellow"] {
+  background: #ffff00cc !important;
+}
+
+/* Darker red */
+pre[style*="background-color:#FF6A6A"] {
+  background: #ff6a6acc !important;
+}
+
+/* Darker green */
+pre[style*="background-color:#44EB44"] {
+  background: #42eb42cc !important;
+}
+
+/* Darker blue */
+pre[style*="background-color:#66CCFF"] {
+  background: #66ccffcc !important;
 }
