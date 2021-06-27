@@ -27,7 +27,7 @@ try:
 except ImportError:
     from configparser import ConfigParser  # Python3
 
-    config = ConfigParser()
+    config = ConfigParser(interpolation=None)
 import base64
 import zlib
 from datetime import datetime
