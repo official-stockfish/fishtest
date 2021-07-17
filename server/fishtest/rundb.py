@@ -592,6 +592,7 @@ class RunDb:
         for run in self.task_runs:
             # compute required TT memory
             need_tt = 0
+            need_base = 0
             if max_memory > 0:
 
                 def get_hash(s):
@@ -603,6 +604,8 @@ class RunDb:
                 need_tt += get_hash(run["args"]["new_options"])
                 need_tt += get_hash(run["args"]["base_options"])
                 need_tt *= max_threads // run["args"]["threads"]
+                # estime another 70MB per process for net (40) and other things besides hash
+                need_base = 2 * 70 * (max_threads // run["args"]["threads"])
 
             if (
                 run["approved"]
@@ -615,7 +618,7 @@ class RunDb:
                 )
                 and run["args"]["threads"] <= max_threads
                 and run["args"]["threads"] >= min_threads
-                and need_tt <= max_memory
+                and need_base + need_tt <= max_memory
                 # To avoid time losses in the case of large concurrency and short TC,
                 # probably due to cutechess-cli as discussed in issue #822,
                 # assign those workers to LTC or multi-threaded jobs.
