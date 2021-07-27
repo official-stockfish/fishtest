@@ -133,7 +133,9 @@ def sync_upload(request):
                 )
                 return {}
     except Exception as e:
-        print("NN Upload fails or not configured: " + str(e))
+        print("Network upload fails or not configured: " + str(e))
+        request.session.flash("Network upload fails or not configured", "error")
+        return {}
 
     request.actiondb.upload_nn(authenticated_userid(request), filename)
     request.rundb.upload_nn(userid, filename, network)
