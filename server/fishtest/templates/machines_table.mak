@@ -3,6 +3,7 @@
   <thead>
     <tr>
       <th>Machine</th>
+      <th>UUID</th>
       <th>Cores</th>
       <th>MNps</th>
       <th>System</th>
@@ -15,6 +16,7 @@
     %for machine in machines:
       <tr>
         <td>${machine['username']}</td>
+        <td>${machine['unique_key'].split('-')[0]}</td>
         <td>
           %if 'country_code' in machine:
             <div class="flag flag-${machine['country_code'].lower()}"
