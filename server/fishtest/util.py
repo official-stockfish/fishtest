@@ -33,6 +33,8 @@ def get_worker_key(task):
     suffix = UUID_MAP[username][uuid]
     if suffix != 0:
         worker_key += "-" + str(suffix)
+    if len(uuid) != 0:
+        worker_key += "-" + uuid.split("-")[0]
 
     return worker_key
 
@@ -154,6 +156,7 @@ def format_bounds(elo_model,elo0,elo1):
     seps={'BayesElo':r'[]','logistic':r'{}','normalized':r'<>'}
     return "%s%.2f,%.2f%s" % (seps[elo_model][0],elo0,elo1,seps[elo_model][1])
 
+
 def format_results(run_results, run):
     result = {"style": "", "info": []}
 
@@ -181,7 +184,7 @@ def format_results(run_results, run):
         sprt = run["args"]["sprt"]
         state = sprt.get("state", "")
         elo_model = sprt.get("elo_model", "BayesElo")
-        if not "llr" in sprt:  # legacy
+        if "llr" not in sprt:  # legacy
             fishtest.stats.stat_util.update_SPRT(run_results, sprt)
         result["info"].append(
             "LLR: %.2f (%.2lf,%.2lf) %s"
