@@ -4,6 +4,7 @@ import copy
 import math
 
 import scipy.stats
+
 from fishtest.stats import LLRcalc, brownian, sprt
 
 
@@ -167,7 +168,7 @@ def LLRlegacy(belo0, belo1, results):
 def SPRT(
     alpha=0.05, beta=0.05, elo0=None, elo1=None, elo_model="logistic", batch_size=1
 ):
-    """ Constructor for the "sprt object" """
+    """Constructor for the "sprt object" """
     return {
         "alpha": alpha,
         "beta": beta,

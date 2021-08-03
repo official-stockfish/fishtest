@@ -1,5 +1,9 @@
 from __future__ import division
-import math, sys, copy
+
+import copy
+import math
+import sys
+
 import scipy.optimize
 
 """
@@ -20,9 +24,8 @@ nelo_divided_by_nt = 800 / math.log(10)  # 347.43558552260146
 
 def secular(pdf):
     """
-Solves the secular equation sum_i pi*ai/(1+x*ai)=0.
-
-"""
+    Solves the secular equation sum_i pi*ai/(1+x*ai)=0.
+    """
     epsilon = 1e-9
     v, w = pdf[0][0], pdf[-1][0]
     values = [ai for ai, pi in pdf]
@@ -46,17 +49,16 @@ def uniform(pdf):
 
 def MLE_expected(pdfhat, s):
     """
-This function computes the maximum likelood estimate for
-a discrete distribution with expectation value s,
-given an observed (i.e. empirical) distribution pdfhat.
+    This function computes the maximum likelood estimate for
+    a discrete distribution with expectation value s,
+    given an observed (i.e. empirical) distribution pdfhat.
 
-The theory behind this function can be found in the online
-document
+    The theory behind this function can be found in the online
+    document
 
-http://hardy.uhasselt.be/Fishtest/support_MLE_multinomial.pdf
+    http://hardy.uhasselt.be/Fishtest/support_MLE_multinomial.pdf
 
-(see Proposition 1.1).
-"""
+    (see Proposition 1.1)."""
     pdf1 = [(ai - s, pi) for ai, pi in pdfhat]
     x = secular(pdf1)
     pdf_MLE = [(ai, pi / (1 + x * (ai - s))) for ai, pi in pdfhat]
@@ -67,17 +69,16 @@ http://hardy.uhasselt.be/Fishtest/support_MLE_multinomial.pdf
 
 def MLE_t_value(pdfhat, ref, s):
     """
-This function computes the maximum likelood estimate for
-a discrete distribution with t-value ((mu-ref)/sigma),
-given an observed (i.e. empirical) distribution pdfhat.
+    This function computes the maximum likelood estimate for
+    a discrete distribution with t-value ((mu-ref)/sigma),
+    given an observed (i.e. empirical) distribution pdfhat.
 
-The theory behind this function can be found in the online
-document
+    The theory behind this function can be found in the online
+    document
 
-https://hardy.uhasselt.be/Fishtest/normalized_elo_practical.pdf
+    https://hardy.uhasselt.be/Fishtest/normalized_elo_practical.pdf
 
-(see Section 4.1).
-"""
+    (see Section 4.1)."""
     N = len(pdfhat)
     pdf_MLE = uniform(pdfhat)
     for i in range(10):
@@ -112,9 +113,8 @@ def stats(pdf):
 
 def stats_ex(pdf):
     """
-Computes expectation value, variance, skewness and excess
-kurtosis for a discrete distribution.
-"""
+    Computes expectation value, variance, skewness and excess
+    kurtosis for a discrete distribution."""
     s, var = stats(pdf)
     m3 = sum([prob * (value - s) ** 3 for value, prob in pdf])
     m4 = sum([prob * (value - s) ** 4 for value, prob in pdf])
@@ -138,49 +138,45 @@ def LLRjumps(pdf, s0, s1, ref=None, statistic="expectation"):
 
 def LLR(pdf, s0, s1, ref=None, statistic="expectation"):
     """
-This function computes the generalized log likelihood ratio
-(divided by N) for s=s1 versus s=s0 where pdf is an empirical
-distribution and s is score of the true distribution.
-
-"""
+    This function computes the generalized log likelihood ratio
+    (divided by N) for s=s1 versus s=s0 where pdf is an empirical
+    distribution and s is score of the true distribution.
+    """
     return stats(LLRjumps(pdf, s0, s1, ref=ref, statistic=statistic))[0]
 
 
 def LLR_alt(pdf, s0, s1):
     """
-This function computes the approximate generalized log likelihood
-ratio (divided by N) for s=s1 versus s=s0 where pdf is an empirical
-distribution and s is the expectation value of the true
-distribution. See
+    This function computes the approximate generalized log likelihood
+    ratio (divided by N) for s=s1 versus s=s0 where pdf is an empirical
+    distribution and s is the expectation value of the true
+    distribution. See
 
-http://hardy.uhasselt.be/Fishtest/support_MLE_multinomial.pdf
-
-"""
+    http://hardy.uhasselt.be/Fishtest/support_MLE_multinomial.pdf
+    """
     r0, r1 = [sum([prob * (value - s) ** 2 for value, prob in pdf]) for s in (s0, s1)]
     return 1 / 2 * math.log(r0 / r1)
 
 
 def LLR_alt2(pdf, s0, s1):
     """
-This function computes the approximate generalized log likelihood
-ratio (divided by N) for s=s1 versus s=s0 where pdf is an empirical
-distribution and s is the expectation value of the true
-distribution. See
+    This function computes the approximate generalized log likelihood
+    ratio (divided by N) for s=s1 versus s=s0 where pdf is an empirical
+    distribution and s is the expectation value of the true
+    distribution. See
 
-http://hardy.uhasselt.be/Fishtest/GSPRT_approximation.pdf
-
-"""
+    http://hardy.uhasselt.be/Fishtest/GSPRT_approximation.pdf
+    """
     s, var = stats(pdf)
     return (s1 - s0) * (2 * s - s0 - s1) / var / 2.0
 
 
 def LLR_drift_variance(pdf, s0, s1, s=None):
     """
-Computes the drift and variance of the LLR for a test s=s0 against
-s=s0 when the empirical distribution is pdf, but the true value of s
-is as given by the argument s. If s is not given then it is assumed
-that pdf is the true distribution.
-"""
+    Computes the drift and variance of the LLR for a test s=s0 against
+    s=s0 when the empirical distribution is pdf, but the true value of s
+    is as given by the argument s. If s is not given then it is assumed
+    that pdf is the true distribution."""
     if s != None:
         pdf = MLE_expected(pdf, s)
     jumps = LLRjumps(pdf, s0, s1)
@@ -189,15 +185,14 @@ that pdf is the true distribution.
 
 def LLR_drift_variance_alt2(pdf, s0, s1, s=None):
     """
-Computes the approximated drift and variance of the LLR for a test
-s=s0 against s=s0 approximated by a Brownian motion, when the
-empirical distribution is pdf, but the true value of s is as given by
-the argument s. If s is not given the it is assumed that pdf is the
-true distribution. See
+    Computes the approximated drift and variance of the LLR for a test
+    s=s0 against s=s0 approximated by a Brownian motion, when the
+    empirical distribution is pdf, but the true value of s is as given by
+    the argument s. If s is not given the it is assumed that pdf is the
+    true distribution. See
 
-http://hardy.uhasselt.be/Fishtest/GSPRT_approximation.pdf
-
-"""
+    http://hardy.uhasselt.be/Fishtest/GSPRT_approximation.pdf
+    """
     s_, v_ = stats(pdf)
     # replace v_ by its MLE if requested
     s, v = (s_, v_) if s == None else (s, v_ + (s - s_) ** 2)
@@ -211,9 +206,8 @@ def L_(x):
 
 
 def regularize(l):
-    """ 
-If necessary mix in a small prior for regularization.
-"""
+    """
+    If necessary mix in a small prior for regularization."""
     epsilon = 1e-3
     l = copy.copy(l)
     for i in range(0, len(l)):
@@ -230,10 +224,9 @@ def results_to_pdf(results):
 
 
 def LLR_logistic(elo0, elo1, results):
-    """ 
-This function computes the generalized log-likelihood ratio for "results"
-using the statistic "expectation". elo0,elo1 are in logistic elo.
-"""
+    """
+    This function computes the generalized log-likelihood ratio for "results"
+    using the statistic "expectation". elo0,elo1 are in logistic elo."""
     s0, s1 = [L_(elo) for elo in (elo0, elo1)]
     N, pdf = results_to_pdf(results)
     return N * LLR(pdf, s0, s1, statistic="expectation")
@@ -241,15 +234,14 @@ using the statistic "expectation". elo0,elo1 are in logistic elo.
 
 def LLR_normalized_alt(nelo0, nelo1, results):
     """
-This function computes the generalized log-likelihood ratio for "results"
-using the approximation in
+    This function computes the generalized log-likelihood ratio for "results"
+    using the approximation in
 
-https://hardy.uhasselt.be/Fishtest/normalized_elo_practical.pdf
+    https://hardy.uhasselt.be/Fishtest/normalized_elo_practical.pdf
 
-(see Section 4.2).
+    (see Section 4.2).
 
-nelo0,nelo1 are in normalized Elo.
-"""
+    nelo0,nelo1 are in normalized Elo."""
     count, pdf = results_to_pdf(results)
     mu, var = stats(pdf)
     if len(results) == 5:
@@ -270,9 +262,8 @@ nelo0,nelo1 are in normalized Elo.
 
 def LLR_normalized(nelo0, nelo1, results):
     """
-This function computes the generalized log-likelihood ratio for "results"
-using the statistic "t_value". nelo0,nelo1 are in normalized elo.
-"""
+    This function computes the generalized log-likelihood ratio for "results"
+    using the statistic "t_value". nelo0,nelo1 are in normalized elo."""
     nt0, nt1 = [nelo / nelo_divided_by_nt for nelo in (nelo0, nelo1)]
     sqrt2 = 2 ** 0.5
     t0, t1 = (

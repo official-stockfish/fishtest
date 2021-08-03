@@ -4,10 +4,11 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 
-import fishtest.stats.stat_util
 import numpy
 import scipy.stats
 from zxcvbn import zxcvbn
+
+import fishtest.stats.stat_util
 
 UUID_MAP = defaultdict(dict)
 key_lock = threading.Lock()
@@ -40,7 +41,7 @@ def get_worker_key(task):
 
 
 def get_chi2(tasks, bad_users):
-    """ Perform chi^2 test on the stats from each worker """
+    """Perform chi^2 test on the stats from each worker"""
     results = {"chi2": 0.0, "dof": 0, "p": 0.0, "residual": {}}
 
     # Aggregate results by worker
@@ -152,9 +153,9 @@ def calculate_residuals(run):
     return chi2
 
 
-def format_bounds(elo_model,elo0,elo1):
-    seps={'BayesElo':r'[]','logistic':r'{}','normalized':r'<>'}
-    return "%s%.2f,%.2f%s" % (seps[elo_model][0],elo0,elo1,seps[elo_model][1])
+def format_bounds(elo_model, elo0, elo1):
+    seps = {"BayesElo": r"[]", "logistic": r"{}", "normalized": r"<>"}
+    return "%s%.2f,%.2f%s" % (seps[elo_model][0], elo0, elo1, seps[elo_model][1])
 
 
 def format_results(run_results, run):
@@ -192,7 +193,7 @@ def format_results(run_results, run):
                 sprt["llr"],
                 sprt["lower_bound"],
                 sprt["upper_bound"],
-                format_bounds(elo_model,sprt["elo0"],sprt["elo1"])
+                format_bounds(elo_model, sprt["elo0"], sprt["elo1"]),
             )
         )
     else:
@@ -346,11 +347,11 @@ def password_strength(password, *args):
         password_analysis = zxcvbn(password, user_inputs=[i for i in args])
         # strength scale: [0-weakest <-> 4-strongest]
         # values below 3 will give suggestions and an (optional) warning
-        if password_analysis['score'] > 2:
+        if password_analysis["score"] > 2:
             return True, ""
         else:
-            suggestions = password_analysis['feedback']['suggestions'][0]
-            warning = password_analysis['feedback']['warning']
-            return False, suggestions+" "+warning
+            suggestions = password_analysis["feedback"]["suggestions"][0]
+            warning = password_analysis["feedback"]["warning"]
+            return False, suggestions + " " + warning
     else:
         return False, "Non-empty password required"
