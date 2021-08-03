@@ -1,15 +1,13 @@
 import base64
 import copy
-import zlib
 from datetime import datetime
 
 import requests
+from fishtest.stats.stat_util import SPRT_elo
+from fishtest.util import get_worker_key
 from pyramid.httpexceptions import HTTPFound, HTTPUnauthorized, exception_response
 from pyramid.response import Response
 from pyramid.view import exception_view_config, view_config, view_defaults
-
-from fishtest.stats.stat_util import SPRT_elo
-from fishtest.util import get_worker_key
 
 WORKER_VERSION = 101
 
@@ -86,7 +84,7 @@ class ApiView(object):
                 )
                 flag_cache[ip] = country_code
                 return country_code
-            raise Error("flag server failed")
+            raise ConnectionError("flag server failed")
         except:
             del flag_cache[ip]
             print("Failed GeoIP check for {}".format(ip))

@@ -28,7 +28,6 @@ class Brownian:
         self.mu = mu
         self.sigma = sigma
         self.sigma2 = sigma ** 2
-        gamma = self.mu / self.sigma2
 
     def outcome_cdf(self, T=None, y=None):
         # in case of slow convergence use Siegmund approximation.

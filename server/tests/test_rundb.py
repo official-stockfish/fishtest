@@ -157,7 +157,7 @@ class CreateRunDBTest(unittest.TestCase):
 
     def test_90_delete_runs(self):
         for run in self.rundb.runs.find():
-            if run["args"]["username"] == "travis" and not "deleted" in run:
+            if run["args"]["username"] == "travis" and "deleted" not in run:
                 print("del ")
                 run["deleted"] = True
                 run["finished"] = True

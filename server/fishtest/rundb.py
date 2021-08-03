@@ -10,11 +10,9 @@ import time
 import zlib
 from datetime import datetime, timedelta
 
+import fishtest.stats.stat_util
 from bson.binary import Binary
 from bson.objectid import ObjectId
-from pymongo import ASCENDING, DESCENDING, MongoClient
-
-import fishtest.stats.stat_util
 from fishtest.actiondb import ActionDb
 from fishtest.userdb import UserDb
 from fishtest.util import (
@@ -26,6 +24,7 @@ from fishtest.util import (
     post_in_fishcooking_results,
     remaining_hours,
 )
+from pymongo import DESCENDING, MongoClient
 
 DEBUG = False
 
@@ -754,7 +753,9 @@ class RunDb:
             return {"task_alive": False}
 
         # Guard against incorrect results
-        count_games = lambda d: d["wins"] + d["losses"] + d["draws"]
+        def count_games(d):
+            return d["wins"] + d["losses"] + d["draws"]
+
         num_games = count_games(stats)
         old_num_games = count_games(task["stats"]) if "stats" in task else 0
         spsa_games = count_games(spsa) if "spsa" in run["args"] else 0
