@@ -5,6 +5,7 @@ import copy
 import math
 
 import scipy.optimize
+
 from fishtest.stats import LLRcalc
 from fishtest.stats.brownian import Brownian
 
@@ -32,7 +33,7 @@ class sprt:
     def lelo_to_elo(self, lelo):
         """
         For external use. "elo" is expressed in our current elo_model.
-        "lelo" is logistic. """
+        "lelo" is logistic."""
         if self.elo_model == "logistic":
             return lelo
         score = LLRcalc.L_(lelo)
@@ -142,8 +143,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--elo-model",
         help="logistic or normalized",
-        choices=['logistic', 'normalized'],
-        default='logistic',
+        choices=["logistic", "normalized"],
+        default="logistic",
     )
     parser.add_argument(
         "--results",

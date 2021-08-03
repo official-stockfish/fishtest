@@ -7,8 +7,9 @@ import re
 import sys
 from datetime import datetime, timedelta
 
-from fishtest.rundb import RunDb
 from pymongo import DESCENDING
+
+from fishtest.rundb import RunDb
 
 rundb = RunDb()
 

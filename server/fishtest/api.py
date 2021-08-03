@@ -4,11 +4,12 @@ import zlib
 from datetime import datetime
 
 import requests
-from fishtest.stats.stat_util import SPRT_elo
-from fishtest.util import get_worker_key
 from pyramid.httpexceptions import HTTPFound, HTTPUnauthorized, exception_response
 from pyramid.response import Response
 from pyramid.view import exception_view_config, view_config, view_defaults
+
+from fishtest.stats.stat_util import SPRT_elo
+from fishtest.util import get_worker_key
 
 WORKER_VERSION = 101
 
@@ -38,7 +39,7 @@ def authentication_failed(error, request):
 
 @view_defaults(renderer="json")
 class ApiView(object):
-    """ All API endpoints that require authentication are used by workers """
+    """All API endpoints that require authentication are used by workers"""
 
     def __init__(self, request):
         self.request = request

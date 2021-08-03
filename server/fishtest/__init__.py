@@ -1,7 +1,6 @@
 import os
 import sys
 
-from fishtest.rundb import RunDb
 from pyramid.authentication import AuthTktAuthenticationPolicy
 from pyramid.authorization import ACLAuthorizationPolicy
 from pyramid.config import Configurator
@@ -9,6 +8,7 @@ from pyramid.events import BeforeRender, NewRequest
 from pyramid.session import UnencryptedCookieSessionFactoryConfig
 
 from fishtest import helpers
+from fishtest.rundb import RunDb
 
 
 def main(global_config, **settings):

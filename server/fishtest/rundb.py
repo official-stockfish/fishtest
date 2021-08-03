@@ -10,9 +10,11 @@ import time
 import zlib
 from datetime import datetime, timedelta
 
-import fishtest.stats.stat_util
 from bson.binary import Binary
 from bson.objectid import ObjectId
+from pymongo import ASCENDING, DESCENDING, MongoClient
+
+import fishtest.stats.stat_util
 from fishtest.actiondb import ActionDb
 from fishtest.userdb import UserDb
 from fishtest.util import (
@@ -24,7 +26,6 @@ from fishtest.util import (
     post_in_fishcooking_results,
     remaining_hours,
 )
-from pymongo import ASCENDING, DESCENDING, MongoClient
 
 DEBUG = False
 
@@ -422,7 +423,7 @@ class RunDb:
                     sprt = run["args"]["sprt"]
                     elo_model = sprt.get("elo_model", "BayesElo")
                     run["results_info"]["info"].append(
-                        format_bounds(elo_model,sprt["elo0"],sprt["elo1"])
+                        format_bounds(elo_model, sprt["elo0"], sprt["elo1"])
                     )
         return (runs, pending_hours, cores, nps)
 

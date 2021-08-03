@@ -7,20 +7,21 @@ import re
 import threading
 import time
 
-import fishtest.stats.stat_util
 import requests
-from fishtest.util import (
-    calculate_residuals,
-    diff_date,
-    delta_date,
-    estimate_game_duration,
-    format_results,
-    password_strength,
-)
 from pyramid.httpexceptions import HTTPFound, exception_response
 from pyramid.response import Response
 from pyramid.security import authenticated_userid, forget, has_permission, remember
 from pyramid.view import forbidden_view_config, view_config
+
+import fishtest.stats.stat_util
+from fishtest.util import (
+    calculate_residuals,
+    delta_date,
+    diff_date,
+    estimate_game_duration,
+    format_results,
+    password_strength,
+)
 
 
 def clear_cache():
@@ -161,14 +162,15 @@ def signup(request):
     if request.method != "POST":
         return {}
     errors = []
-    
+
     signup_username = request.POST.get("username", "")
     signup_password = request.POST.get("password", "")
     signup_password_verify = request.POST.get("password2", "")
     signup_email = request.POST.get("email", "")
-    
+
     strong_password, password_err = password_strength(
-        signup_password, signup_username, signup_email)
+        signup_password, signup_username, signup_email
+    )
     if not strong_password:
         errors.append("Error! Weak password: " + password_err)
     if signup_password != signup_password_verify:
@@ -203,9 +205,9 @@ def signup(request):
                 return {}
 
     result = request.userdb.create_user(
-        username = signup_username,
-        password = signup_password,
-        email = signup_email,
+        username=signup_username,
+        password=signup_password,
+        email=signup_email,
     )
     if not result:
         request.session.flash("Error! Invalid username or password", "error")
@@ -359,16 +361,23 @@ def user(request):
             if len(new_password) > 0:
                 if new_password == new_password_verify:
                     strong_password, password_err = password_strength(
-                        new_password, user_name, user_data["email"],
-                        (new_email if len(new_email) > 0 else None))
+                        new_password,
+                        user_name,
+                        user_data["email"],
+                        (new_email if len(new_email) > 0 else None),
+                    )
                     if strong_password:
                         user_data["password"] = new_password
                         request.session.flash("Success! Password updated")
                     else:
-                        request.session.flash("Error! Weak password: " + password_err, "error")
+                        request.session.flash(
+                            "Error! Weak password: " + password_err, "error"
+                        )
                         return HTTPFound(location=request.route_url("tests"))
                 else:
-                    request.session.flash("Error! Matching verify password required", "error")
+                    request.session.flash(
+                        "Error! Matching verify password required", "error"
+                    )
                     return HTTPFound(location=request.route_url("tests"))
 
             if len(new_email) > 0 and user_data["email"] != new_email:
@@ -431,7 +440,7 @@ def get_master_bench():
 
 
 def get_sha(branch, repo_url):
-    """ Resolves the git branch to sha commit """
+    """Resolves the git branch to sha commit"""
     api_url = repo_url.replace("https://github.com", "https://api.github.com/repos")
     try:
         commit = requests.get(api_url + "/commits/" + branch).json()
@@ -444,7 +453,7 @@ def get_sha(branch, repo_url):
 
 
 def get_net(commit_sha, repo_url):
-    """ Get the net from evaluate.h or ucioption.cpp in the repo """
+    """Get the net from evaluate.h or ucioption.cpp in the repo"""
     api_url = repo_url.replace(
         "https://github.com", "https://raw.githubusercontent.com"
     )
@@ -645,8 +654,8 @@ def validate_form(request):
         sprt_batch_size_games = 8
         assert sprt_batch_size_games % 2 == 0
         assert request.rundb.chunk_size % sprt_batch_size_games == 0
-        elo_model=request.POST["elo_model"]
-        if elo_model not in ['BayesElo','logistic','normalized']:
+        elo_model = request.POST["elo_model"]
+        if elo_model not in ["BayesElo", "logistic", "normalized"]:
             raise Exception("Unknown Elo model")
         data["sprt"] = fishtest.stats.stat_util.SPRT(
             alpha=0.05,
