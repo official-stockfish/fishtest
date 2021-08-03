@@ -3,8 +3,8 @@
   <thead>
     <tr>
       <th>Machine</th>
-      <th>UUID</th>
       <th>Cores</th>
+      <th>UUID</th>
       <th>MNps</th>
       <th>System</th>
       <th>Version</th>
@@ -16,7 +16,6 @@
     %for machine in machines:
       <tr>
         <td>${machine['username']}</td>
-        <td>${machine['unique_key'].split('-')[0]}</td>
         <td>
           %if 'country_code' in machine:
             <div class="flag flag-${machine['country_code'].lower()}"
@@ -24,6 +23,7 @@
           %endif
           ${machine['concurrency']}
         </td>
+        <td>${machine['unique_key'].split('-')[0]}</td>
         <td>${'%.2f' % (machine['nps'] / 1000000.0)}</td>
         <td>${machine['uname']}</td>
         <td>${machine['version']}</td>
