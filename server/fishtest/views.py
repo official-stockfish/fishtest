@@ -7,13 +7,8 @@ import re
 import threading
 import time
 
-import requests
-from pyramid.httpexceptions import HTTPFound, exception_response
-from pyramid.response import Response
-from pyramid.security import authenticated_userid, forget, has_permission, remember
-from pyramid.view import forbidden_view_config, view_config
-
 import fishtest.stats.stat_util
+import requests
 from fishtest.util import (
     calculate_residuals,
     delta_date,
@@ -22,6 +17,9 @@ from fishtest.util import (
     format_results,
     password_strength,
 )
+from pyramid.httpexceptions import HTTPFound, exception_response
+from pyramid.security import authenticated_userid, forget, has_permission, remember
+from pyramid.view import forbidden_view_config, view_config
 
 
 def clear_cache():
@@ -431,7 +429,7 @@ def get_master_bench():
     for c in requests.get(
         "https://api.github.com/repos/official-stockfish/Stockfish/commits"
     ).json():
-        if not "commit" in c:
+        if "commit" not in c:
             return None
         m = bs.search(c["commit"]["message"])
         if m:

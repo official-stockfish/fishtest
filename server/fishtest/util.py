@@ -4,11 +4,10 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 
+import fishtest.stats.stat_util
 import numpy
 import scipy.stats
 from zxcvbn import zxcvbn
-
-import fishtest.stats.stat_util
 
 UUID_MAP = defaultdict(dict)
 key_lock = threading.Lock()

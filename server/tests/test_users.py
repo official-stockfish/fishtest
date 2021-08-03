@@ -2,10 +2,9 @@ import datetime
 import unittest
 
 import util
-from pyramid import testing
-
 from fishtest.api import ApiView
 from fishtest.views import login, signup
+from pyramid import testing
 
 
 class Create10UsersTest(unittest.TestCase):

@@ -1,11 +1,9 @@
 from __future__ import division
 
 import argparse
-import copy
 import math
 
 import scipy.optimize
-
 from fishtest.stats import LLRcalc
 from fishtest.stats.brownian import Brownian
 

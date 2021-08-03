@@ -4,9 +4,8 @@ import os
 import sys
 from datetime import datetime, timedelta
 
-from pymongo import DESCENDING, MongoClient
-
 from fishtest.actiondb import ActionDb
+from pymongo import DESCENDING, MongoClient
 
 conn = MongoClient()
 db = conn["fishtest_new"]

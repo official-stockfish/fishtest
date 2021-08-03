@@ -2,7 +2,6 @@ from __future__ import division
 
 import copy
 import math
-import sys
 
 import scipy.optimize
 
@@ -34,7 +33,10 @@ def secular(pdf):
     assert v * w < 0
     l = -1 / w
     u = -1 / v
-    f = lambda x: sum([pi * ai / (1 + x * ai) for ai, pi in pdf])
+
+    def f(x):
+        return sum([pi * ai / (1 + x * ai) for ai, pi in pdf])
+
     x, res = scipy.optimize.brentq(
         f, l + epsilon, u - epsilon, full_output=True, disp=False
     )
@@ -177,7 +179,7 @@ def LLR_drift_variance(pdf, s0, s1, s=None):
     s=s0 when the empirical distribution is pdf, but the true value of s
     is as given by the argument s. If s is not given then it is assumed
     that pdf is the true distribution."""
-    if s != None:
+    if s is not None:
         pdf = MLE_expected(pdf, s)
     jumps = LLRjumps(pdf, s0, s1)
     return stats(jumps)
@@ -195,7 +197,7 @@ def LLR_drift_variance_alt2(pdf, s0, s1, s=None):
     """
     s_, v_ = stats(pdf)
     # replace v_ by its MLE if requested
-    s, v = (s_, v_) if s == None else (s, v_ + (s - s_) ** 2)
+    s, v = (s_, v_) if s is None else (s, v_ + (s - s_) ** 2)
     mu = (s - (s0 + s1) / 2) * (s1 - s0) / v
     var = (s1 - s0) ** 2 / v
     return mu, var

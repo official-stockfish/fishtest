@@ -1,11 +1,9 @@
 from __future__ import division
 
-import copy
 import math
 
 import scipy.stats
-
-from fishtest.stats import LLRcalc, brownian, sprt
+from fishtest.stats import LLRcalc, sprt
 
 
 def Phi(q):
