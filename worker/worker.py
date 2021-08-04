@@ -457,7 +457,7 @@ def main():
         cpu_count = int(options.concurrency)
 
     if cpu_count <= 0:
-        sys.stderr.write("Not enough CPUs to run fishtest: set --concurrency at least one\n")
+        sys.stderr.write("Not enough CPUs to run fishtest: set '--concurrency' to at least one\n")
         worker_exit()
 
     try:
