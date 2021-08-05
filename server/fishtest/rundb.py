@@ -46,7 +46,7 @@ class RunDb:
         self.runs = self.db["runs"]
         self.deltas = self.db["deltas"]
 
-        self.chunk_size = 200
+        self.chunk_size = 1000
 
         global last_rundb
         last_rundb = self
