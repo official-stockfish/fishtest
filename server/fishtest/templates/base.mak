@@ -53,7 +53,8 @@
 
       <li class="nav-header">Github</li>
       <li><a href="https://github.com/glinscott/fishtest" target="_blank" rel="noopener">Fishtest</a></li>
-      <li><a href="https://github.com/glinscott/nnue-pytorch" target="_blank" rel="noopener">NNUE PyTorch</a></li>
+      <li><a href="https://github.com/glinscott/nnue-pytorch" target="_blank" rel="noopener">NN trainer</a></li>
+      <li><a href="https://github.com/official-stockfish/books" target="_blank" rel="noopener">Books</a></li>
       <li><a href="https://github.com/official-stockfish/Stockfish" target="_blank" rel="noopener">Stockfish</a></li>
 
       <li class="nav-header">Links</li>
