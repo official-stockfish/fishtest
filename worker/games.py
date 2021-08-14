@@ -883,37 +883,26 @@ def run_games(worker_info, password, remote, run, task_id):
     cutechess = os.path.join(testing_dir, "cutechess-cli" + EXE_SUFFIX)
 
     # Build from sources new and base engines as needed
-    try:
-        if not os.path.exists(new_engine):
-            setup_engine(
-                new_engine,
-                worker_dir,
-                testing_dir,
-                remote,
-                sha_new,
-                repo_url,
-                worker_info["concurrency"],
-            )
-
-        if not os.path.exists(base_engine):
-            setup_engine(
-                base_engine,
-                worker_dir,
-                testing_dir,
-                remote,
-                sha_base,
-                repo_url,
-                worker_info["concurrency"],
-            )
-    except Exception as e:
-        result["message"] = "{}-{}cores-{}: {}".format(
-            worker_info["username"],
+    if not os.path.exists(new_engine):
+        setup_engine(
+            new_engine,
+            worker_dir,
+            testing_dir,
+            remote,
+            sha_new,
+            repo_url,
             worker_info["concurrency"],
-            worker_info["unique_key"].split("-")[0],
-            str(e),
         )
-        send_api_post_request(remote + "/api/stop_run", result)
-        raise
+    if not os.path.exists(base_engine):
+        setup_engine(
+            base_engine,
+            worker_dir,
+            testing_dir,
+            remote,
+            sha_base,
+            repo_url,
+            worker_info["concurrency"],
+        )
 
     os.chdir(testing_dir)
 
