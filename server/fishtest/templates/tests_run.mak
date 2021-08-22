@@ -307,7 +307,7 @@ fb=lambda e0,e1:format_bounds(elo_model,e0,e1)
       <label class="field-label leftmost">Book</label>
       <input type="text" name="book" id="book"
              style="width: 229px"
-             value="${args.get('book', 'noob_3moves.epd')}" />
+             value="${args.get('book', 'UHO_XXL_+0.90_+1.19.epd')}" />
 
       <label class="field-label book-depth"
              style="width: 87px; display: none">Book depth</label>
