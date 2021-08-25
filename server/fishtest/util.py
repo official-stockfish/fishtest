@@ -45,6 +45,7 @@ def get_chi2(tasks, bad_users):
 
     # Aggregate results by worker
     users = {}
+    has_pentanomial = None
     for task in tasks:
         task["worker_key"] = get_worker_key(task)
         if "worker_info" not in task:
@@ -53,11 +54,21 @@ def get_chi2(tasks, bad_users):
         if key in bad_users:
             continue
         stats = task.get("stats", {})
-        wld = [
-            float(stats.get("wins", 0)),
-            float(stats.get("losses", 0)),
-            float(stats.get("draws", 0)),
-        ]
+        if has_pentanomial is None:
+            has_pentanomial = "pentanomial" in stats
+        if not has_pentanomial:
+            wld = [
+                float(stats.get("wins", 0)),
+                float(stats.get("losses", 0)),
+                float(stats.get("draws", 0)),
+            ]
+        else:
+            p = stats["pentanomial"]
+            # The ww and ll frequencies will typically be too small for
+            # the full pentanomial chi2 test to be valid. See e.g. the last page of
+            # https://www.open.ac.uk/socialsciences/spsstutorial/files/tutorials/chi-square.pdf.
+            # So we combine the ww and ll frequencies with the wd and ld frequencies.
+            wld = [float(p[4] + p[3]), float(p[0] + p[1]), float(p[2])]
         if wld == [0.0, 0.0, 0.0]:
             continue
         if key in users:
