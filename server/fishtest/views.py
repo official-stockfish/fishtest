@@ -512,6 +512,7 @@ def validate_form(request):
         "base_tag": request.POST["base-branch"],
         "new_tag": request.POST["test-branch"],
         "tc": request.POST["tc"],
+        "new_tc":request.POST["new_tc"],
         "book": request.POST["book"],
         "book_depth": request.POST["book-depth"],
         "base_signature": request.POST["base-signature"],
@@ -522,9 +523,15 @@ def validate_form(request):
         "tests_repo": request.POST["tests-repo"],
         "info": request.POST["run-info"],
     }
+    odds=request.POST.get("odds","off") # off checkboxes are not posted
+    if odds=="off":
+        data["new_tc"]=data["tc"]
 
     if not re.match(r"^([1-9]\d*/)?\d+(\.\d+)?(\+\d+(\.\d+)?)?$", data["tc"]):
-        raise Exception("Bad time control format")
+        raise Exception("Bad time control format (base TC)")
+
+    if not re.match(r"^([1-9]\d*/)?\d+(\.\d+)?(\+\d+(\.\d+)?)?$", data["new_tc"]):
+        raise Exception("Bad time control format (new TC)")
 
     if request.POST.get("rescheduled_from"):
         data["rescheduled_from"] = request.POST["rescheduled_from"]
@@ -985,6 +992,7 @@ def tests_view(request):
         "num_games",
         "spsa",
         "tc",
+        "new_tc",
         "threads",
         "book",
         "book_depth",

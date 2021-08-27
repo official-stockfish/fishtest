@@ -4,8 +4,15 @@
 from fishtest.util import format_bounds
 elo_model="normalized" 
 fb=lambda e0,e1:format_bounds(elo_model,e0,e1)
-%>
 
+tc=args.get('tc','10+0.1')
+new_tc=args.get('new_tc',tc)
+
+if new_tc!=tc:
+   is_odds=True
+else:
+   is_odds=False
+%>
 <style>
   input[type=number].no-arrows::-webkit-inner-spin-button,
   input[type=number].no-arrows::-webkit-outer-spin-button {
@@ -103,19 +110,19 @@ fb=lambda e0,e1:format_bounds(elo_model,e0,e1)
       <label class="field-label leftmost">Test type</label>
       <div class="btn-group choose-test-type">
         <div class="btn" id="fast_test"
-             data-options='{"tc": "10+0.1", "threads": 1, "options": "Hash=16 Use NNUE=true", "bounds": "standard STC"}'>
+             data-options='{"tc": "10+0.1", "new_tc": "10+0.1", "threads": 1, "options": "Hash=16 Use NNUE=true", "bounds": "standard STC"}'>
           short (STC)
         </div>
         <div class="btn" id="slow_test"
-             data-options='{"tc": "60+0.6", "threads": 1, "options": "Hash=64 Use NNUE=true", "bounds": "standard LTC"}'>
+             data-options='{"tc": "60+0.6", "new_tc": "60+0.6", "threads": 1, "options": "Hash=64 Use NNUE=true", "bounds": "standard LTC"}'>
           long (LTC)
         </div>
         <div class="btn" id="fast_smp_test"
-             data-options='{"tc": "5+0.05", "threads": 8, "options": "Hash=64 Use NNUE=true", "bounds": "standard STC"}'>
+             data-options='{"tc": "5+0.05", "new_tc": "5+0.05", "threads": 8, "options": "Hash=64 Use NNUE=true", "bounds": "standard STC"}'>
           SMP (STC)
         </div>
         <div class="btn" id="slow_smp_test"
-             data-options='{"tc": "20+0.2", "threads": 8, "options": "Hash=256 Use NNUE=true", "bounds": "standard LTC"}'>
+             data-options='{"tc": "20+0.2", "new_tc": "20+0.2", "threads": 8, "options": "Hash=256 Use NNUE=true", "bounds": "standard LTC"}'>
           SMP (LTC)
         </div>
       </div>
@@ -285,10 +292,12 @@ fb=lambda e0,e1:format_bounds(elo_model,e0,e1)
              class="quarter-size no-arrows"
              value="${args.get('threads', 1)}" />
 
-      <label class="field-label" style="width: 70px">TC</label>
+      <label class="field-label" name="tc_label" style="width: 70px">TC</label>
       <input type="text" name="tc" class="quarter-size"
              value="${args.get('tc', '10+0.1')}" />
-
+      <label class="field-label" name=new_tc_label style="width: 70px; display: none">Test&nbsp;TC</label>
+      <input type="text" name="new_tc" class="quarter-size" style="display: none"
+             value="${args.get('new_tc', '10+0.1')}" />
       <label class="field-label">Priority</label>
       <input type="number" name="priority" class="quarter-size no-arrows"
              value="${args.get('priority', 0)}" />
@@ -302,7 +311,6 @@ fb=lambda e0,e1:format_bounds(elo_model,e0,e1)
         <option style="color:red" value="200">200%</option>
       </select>
     </div>
-
     <div class="flex-row">
       <label class="field-label leftmost">Book</label>
       <input type="text" name="book" id="book"
@@ -320,7 +328,9 @@ fb=lambda e0,e1:format_bounds(elo_model,e0,e1)
     <div class="flex-row">
       <label class="field-label leftmost">Advanced</label>
       <input type="checkbox" name="auto-purge" value="False" />
-      <span style="margin-left: 10px">Auto-purge</span>
+      <span style="margin-left: 10px;margin-right: 10px">Auto-purge</span>
+      <input type="checkbox" name="odds" ${'checked' if is_odds else ''}>
+      <span style="margin-left: 10px">Time odds</span>
     </div>
   </section>
 
@@ -341,11 +351,9 @@ fb=lambda e0,e1:format_bounds(elo_model,e0,e1)
     // If pressing the 'back' button to get back to this page, make sure
     // the submit test button is enabled again.
     $('#submit-test').removeAttr('disabled').text('Submit test');
+    // Also make sure that the odds TC fields have the right visibility.
+    update_odds($('input[name=odds]')[0]);
   });
-
-## In the future, this should be changed to normalized Elo,
-## and converted within fishtest to logistic Elo whenever needed.
-## See also https://github.com/glinscott/fishtest/issues/865#issuecomment-808808220
 
   const preset_bounds = {
     'standard STC': [-0.5, 2.5],
@@ -392,9 +400,10 @@ fb=lambda e0,e1:format_bounds(elo_model,e0,e1)
     // choose test type - STC, LTC - sets preset values
     const test_options = $btn.data('options');
     if (test_options) {
-      const { tc, threads, options, bounds } = test_options;
+      const { tc, new_tc, threads, options, bounds } = test_options;
       if (test_options) {
         $('input[name=tc]').val(tc);
+        $('input[name=new_tc]').val(new_tc);
         $('input[name=threads]').val(threads);
         $('input[name=new-options]').val((
 		options.replace(' Use NNUE=true', '')
@@ -491,6 +500,28 @@ fb=lambda e0,e1:format_bounds(elo_model,e0,e1)
     // Focus the "Test branch" field on page load for new tests
     $('#test-branch').focus();
   }
+
+function update_odds(elt){
+    if(elt.checked){
+	$('input[name=new_tc]').show();
+	$('label[name=new_tc_label]').show();
+	$('label[name=tc_label]').html("Base&nbsp;TC");
+    }else{
+	$('input[name=new_tc]').hide();
+	$('label[name=new_tc_label]').hide();
+	$('input[name=new_tc]').val($('input[name=tc]').val());
+	$('label[name=tc_label]').html("TC");
+    }
+}
+
+$('input[name=odds]').change(function (){
+    update_odds(this);
+  });
+
+
+
+
+
 </script>
 
 

@@ -2,9 +2,15 @@
 
 <%
   def get_run_style(run):
-    if 'style' in run['results_info']:
-      return 'background-color:' + run['results_info']['style']
-    return ''
+    ret='white-space:nowrap;'      
+    style= run['results_info'].get('style','')
+    if style!='':
+      ret+='background-color:' + style+';'
+    tc=run['args']['tc']
+    new_tc=run['args'].get('new_tc',tc)
+    if tc!=new_tc:
+       ret+='border-style:solid;border-color:Pink;border-width:medium;border-radius:0px;'
+    return ret
 %>
 <%def name="list_info(run)">
 <%
@@ -30,7 +36,7 @@
 <div style="margin-left:90px;">
 %endif
 %endif
-<pre style="${get_run_style(run)};white-space:nowrap;" class="elo-results">
+<pre style="${get_run_style(run)}" class="elo-results">
 ${list_info(run)}
 </pre>
 %if show_gauge:

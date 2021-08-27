@@ -80,6 +80,7 @@ class Create90APITest(unittest.TestCase):
             "master",
             100000,
             "100+0.01",
+            "100+0.01",
             "book",
             10,
             1,
