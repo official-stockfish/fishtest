@@ -222,9 +222,7 @@ def verify_signature(engine, signature, remote, payload, concurrency):
 
         if int(bench_sig) != int(signature):
             message = "Wrong bench in {} Expected: {} Got: {}".format(
-                os.path.basename(engine),
-                signature,
-                bench_sig,
+                os.path.basename(engine), signature, bench_sig
             )
             payload["message"] = message
             send_api_post_request(remote + "/api/stop_run", payload)
@@ -336,7 +334,9 @@ def find_arch_string():
             and "x86-64-avx512" in targets
         ):
             res = "x86-64-avx512"
-            res = "x86-64-bmi2"  # use bmi2 until avx512 performance becomes actually better
+            res = (
+                "x86-64-bmi2"
+            )  # use bmi2 until avx512 performance becomes actually better
         elif (
             "-mbmi2" in props["flags"]
             and "x86-64-bmi2" in targets
@@ -991,6 +991,13 @@ def run_games(worker_info, password, remote, run, task_id):
     scaled_tc, tc_limit = adjust_tc(
         run["args"]["tc"], base_nps, int(worker_info["concurrency"])
     )
+    scaled_new_tc = scaled_tc
+    if "new_tc" in run["args"]:
+        scaled_new_tc, new_tc_limit = adjust_tc(
+            run["args"]["new_tc"], base_nps, int(worker_info["concurrency"])
+        )
+        tc_limit = (tc_limit + new_tc_limit) / 2
+
     result["nps"] = base_nps
     result["ARCH"] = ARCH
 
@@ -1082,6 +1089,7 @@ def run_games(worker_info, password, remote, run, task_id):
             + [
                 "-engine",
                 "name=New-" + run["args"]["resolved_new"][:10],
+                "tc={}".format(scaled_new_tc),
                 "cmd={}".format(new_engine_name),
             ]
             + new_options
@@ -1089,11 +1097,12 @@ def run_games(worker_info, password, remote, run, task_id):
             + [
                 "-engine",
                 "name=Base-" + run["args"]["resolved_base"][:10],
+                "tc={}".format(scaled_tc),
                 "cmd={}".format(base_engine_name),
             ]
             + base_options
             + ["_spsa_"]
-            + ["-each", "proto=uci", "tc={}".format(scaled_tc)]
+            + ["-each", "proto=uci"]
             + nodestime_cmd
             + threads_cmd
             + book_cmd
