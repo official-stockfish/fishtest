@@ -208,7 +208,8 @@
       <em> Unless otherwise specified, all Elo quantities below are logistic. </em>
       <H4> Context </H4>
       	   <table class="table table-condensed">
-	   	  <tr><td>TC</td><td>${run['args'].get('tc','?')}</td></tr>
+	   	  <tr><td>Base TC</td><td>${run['args'].get('tc','?')}</td></tr>
+	   	  <tr><td>Test TC</td><td>${run['args'].get('new_tc',run['args'].get('tc','?'))}</td></tr>
 		  <tr><td>Book</td><td>${run['args'].get('book','?')}</td></tr>
 		  <tr><td>Threads</td><td>${run['args'].get('threads','?')}</td></tr>
 		  <tr><td>Base options</td><td>${run['args'].get('base_options','?')}</td></tr>

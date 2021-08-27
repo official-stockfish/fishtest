@@ -66,6 +66,7 @@ class RunDb:
         new_tag,
         num_games,
         tc,
+        new_tc,
         book,
         book_depth,
         threads,
@@ -101,6 +102,7 @@ class RunDb:
             "new_net": new_net,
             "num_games": num_games,
             "tc": tc,
+            "new_tc": new_tc,
             "book": book,
             "book_depth": book_depth,
             "threads": threads,
@@ -130,11 +132,15 @@ class RunDb:
         tc_base = re.search("^(\d+(\.\d+)?)", tc)
         if tc_base:
             tc_base = float(tc_base.group(1))
+        new_tc_ = re.search("^(\d+(\.\d+)?)", new_tc)
+        if new_tc_:
+            new_tc_ = float(new_tc_.group(1))
         new_run = {
             "args": run_args,
             "start_time": start_time,
             "last_updated": start_time,
             "tc_base": tc_base,
+            "new_tc": new_tc_,
             "base_same_as_master": base_same_as_master,
             # Will be filled in by tasks, indexed by task-id
             "tasks": self.generate_tasks(num_games),
@@ -347,9 +353,7 @@ class RunDb:
                 dead_task = True
                 print(
                     "dead task: run: https://tests.stockfishchess.org/tests/view/{} task_id: {} worker: {}".format(
-                        run["_id"],
-                        task_id,
-                        get_worker_key(task),
+                        run["_id"], task_id, get_worker_key(task)
                     ),
                     flush=True,
                 )
