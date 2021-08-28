@@ -120,21 +120,22 @@ def sync_upload(request):
         request.session.flash("You must specify a network filename", "error")
         return {}
 
-    try:
-        with open(os.path.expanduser("~/fishtest.upload"), "r") as f:
-            upload_server = f.read().replace("\n", "")
-            upload_server = upload_server + "/" + filename
-            response = requests.post(upload_server, data=network)
-            if response.status_code != 200:
-                print("Network upload failed: " + str(response.status_code))
-                request.session.flash(
-                    "Network upload failed: " + str(response.status_code), "error"
-                )
-                return {}
-    except Exception as e:
-        print("Network upload fails or not configured: " + str(e))
-        request.session.flash("Network upload fails or not configured", "error")
-        return {}
+    if not os.path.exists(os.path.expanduser("~/fake_net_upload")):
+        try:
+            with open(os.path.expanduser("~/fishtest.upload"), "r") as f:
+                upload_server = f.read().replace("\n", "")
+                upload_server = upload_server + "/" + filename
+                response = requests.post(upload_server, data=network)
+                if response.status_code != 200:
+                    print("Network upload failed: " + str(response.status_code))
+                    request.session.flash(
+                        "Network upload failed: " + str(response.status_code), "error"
+                    )
+                    return {}
+        except Exception as e:
+            print("Network upload fails or not configured: " + str(e))
+            request.session.flash("Network upload fails or not configured", "error")
+            return {}
 
     request.actiondb.upload_nn(authenticated_userid(request), filename)
     request.rundb.upload_nn(userid, filename, network)
