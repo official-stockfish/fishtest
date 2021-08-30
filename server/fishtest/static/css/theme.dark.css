@@ -26,12 +26,16 @@ a:hover, a:focus {
   outline: none;
 }
 
+.form-control {
+  background-color: #b1ada7;
+}
+
 .hljs {
   filter: contrast(0.7);
 }
 
 legend {
-  color: #fafafa;
+  color: #b1ada7;
 }
 
 hr {
@@ -95,7 +99,7 @@ input[type="datetime"], input[type="datetime-local"], input[type="date"],
 input[type="month"], input[type="time"], input[type="week"], input[type="number"],
 input[type="email"], input[type="url"], input[type="search"], input[type="tel"],
 input[type="color"], .uneditable-input {
-  color: white;
+  color: #b1ada7;
 }
 
 select {
@@ -152,26 +156,36 @@ span[style*="background-color:palegreen"] {
 }
 
 /* Darken white box */
-pre[style*="background-color:"] {
-  background: #b1ada7 !important;
+pre[style*="white-space:nowrap"] {
+  background: #333333 !important;
+  color: #b1ada7 !important;
 }
 
 /* Darker yellow */
 pre[style*="background-color:yellow"] {
   background: #ffff00cc !important;
+  color: #333333 !important;
 }
 
 /* Darker red */
 pre[style*="background-color:#FF6A6A"] {
   background: #ff6a6acc !important;
+  color: #333333 !important;
 }
 
 /* Darker green */
 pre[style*="background-color:#44EB44"] {
   background: #42eb42cc !important;
+  color: #333333 !important;
 }
 
 /* Darker blue */
 pre[style*="background-color:#66CCFF"] {
   background: #66ccffcc !important;
+  color: #333333 !important;
+}
+
+/* Darken pink border */
+pre[style*="border-color:Pink"] {
+  border-color: #ffc0cb6e !important;
 }

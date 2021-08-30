@@ -9,7 +9,7 @@
     tc=run['args']['tc']
     new_tc=run['args'].get('new_tc',tc)
     if tc!=new_tc:
-       ret+='border-style:solid;border-color:Pink;border-width:medium;border-radius:0px;'
+       ret+='border-style:solid;border-color:Pink;border-width:medium;'
     return ret
 %>
 <%def name="list_info(run)">
