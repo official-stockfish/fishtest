@@ -86,20 +86,17 @@ def get_chi2(tasks, bad_users):
     if rows == 1:
         return {"chi2": float("nan"), "dof": 0, "p": float("nan"), "residual": {}}
     column_sums = numpy.sum(observed, axis=0)
-    columns_not_zero = sum(i > 0 for i in column_sums)
+    columns_not_zero = numpy.count_nonzero(column_sums)
     df = (rows - 1) * (columns - 1)
 
     if columns_not_zero == 0:
         return results
-    # Results only of one type: workers are identical wrt the test
+    # Results only of one type: workers are homogeneous
     elif columns_not_zero == 1:
-        results = {"chi2": 0.0, "dof": df, "p": 1.0, "residual": {}}
-        return results
-    # Results only of two types: workers are identical wrt the missing result type
-    # Change the data shape to avoid divide by zero
+        return {"chi2": 0.0, "dof": df, "p": 1.0, "residual": {}}
+    # Results only of two types: drop the column of zeros to avoid divide by zero
     elif columns_not_zero == 2:
-        idx = numpy.argwhere(numpy.all(observed[..., :] == 0, axis=0))
-        observed = numpy.delete(observed, idx, axis=1)
+        observed = observed[:, ~numpy.all(observed == 0, axis=0)]
         column_sums = numpy.sum(observed, axis=0)
 
     row_sums = numpy.sum(observed, axis=1)
