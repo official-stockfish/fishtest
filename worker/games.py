@@ -160,7 +160,7 @@ def validate_net(testing_dir, net):
     return hash[:12] == net[3:15]
 
 
-def verify_signature(engine, signature, remote, payload, concurrency):
+def verify_signature(engine, signature, remote, payload, concurrency, worker_info):
     global ARCH
     if concurrency > 1:
         with open(os.devnull, "wb") as dev_null:
@@ -221,8 +221,13 @@ def verify_signature(engine, signature, remote, payload, concurrency):
             )
 
         if int(bench_sig) != int(signature):
-            message = "Wrong bench in {} Expected: {} Got: {}".format(
-                os.path.basename(engine), signature, bench_sig
+            message = "{}-{}cores-{}: Wrong bench in {} Expected: {} Got: {}".format(
+                worker_info["username"],
+                worker_info["concurrency"],
+                worker_info["unique_key"].split("-")[0],
+                os.path.basename(engine),
+                signature,
+                bench_sig,
             )
             payload["message"] = message
             send_api_post_request(remote + "/api/stop_run", payload)
@@ -334,9 +339,7 @@ def find_arch_string():
             and "x86-64-avx512" in targets
         ):
             res = "x86-64-avx512"
-            res = (
-                "x86-64-bmi2"
-            )  # use bmi2 until avx512 performance becomes actually better
+            res = "x86-64-bmi2"  # use bmi2 until avx512 performance becomes actually better
         elif (
             "-mbmi2" in props["flags"]
             and "x86-64-bmi2" in targets
@@ -978,6 +981,7 @@ def run_games(worker_info, password, remote, run, task_id):
         remote,
         result,
         games_concurrency * threads,
+        worker_info,
     )
     base_nps = verify_signature(
         base_engine,
@@ -985,6 +989,7 @@ def run_games(worker_info, password, remote, run, task_id):
         remote,
         result,
         games_concurrency * threads,
+        worker_info,
     )
 
     # Benchmark to adjust cpu scaling
