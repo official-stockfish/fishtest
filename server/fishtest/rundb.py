@@ -145,7 +145,7 @@ class RunDb:
             # Will be filled in by tasks, indexed by task-id
             "tasks": self.generate_tasks(num_games),
             # Aggregated results
-            "results": {"wins": 0, "losses": 0, "draws": 0},
+            "results": {"wins": 0, "losses": 0, "draws": 0, "pentanomial": 5 * [0]},
             "results_stale": False,
             "finished": False,
             "approved": False,
