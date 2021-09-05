@@ -16,8 +16,6 @@ import time
 import traceback
 import uuid
 
-import requests
-
 IS_WINDOWS = "windows" in platform.system().lower()
 
 try:
@@ -33,6 +31,12 @@ import zlib
 from datetime import datetime
 from optparse import OptionParser
 from os import path
+
+try:
+    import requests
+except ImportError:
+    sys.path.append(path.join(path.dirname(path.realpath(__file__)), "packages"))
+    import requests
 
 from games import run_games
 from updater import update
