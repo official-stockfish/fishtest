@@ -1061,7 +1061,7 @@ class RunDb:
 
         # adjust freq to multiples of 100 that divide exactly into freq_max
         freq_div = (i for i in range(100, freq_max + 1, 100) if not freq_max % i)
-        freq = [i for i in freq_div if i <= freq][-1]
+        freq = max(i for i in freq_div if i <= freq)
 
         maxlen = freq_max / freq
         grow_summary = len(spsa["param_history"]) < min(maxlen, spsa["iter"] / freq)
