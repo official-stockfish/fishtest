@@ -47,18 +47,13 @@ class RunDb:
         self.deltas = self.db["deltas"]
 
         self.chunk_size = 200
+        self.task_duration = 900 # 15 minutes
 
         global last_rundb
         last_rundb = self
 
     def generate_tasks(self, num_games):
-        tasks = []
-        remaining = num_games
-        while remaining > 0:
-            task_size = min(self.chunk_size, remaining)
-            tasks.append({"num_games": task_size, "pending": True, "active": False})
-            remaining -= task_size
-        return tasks
+        return []
 
     def new_run(
         self,
@@ -142,7 +137,9 @@ class RunDb:
             "tc_base": tc_base,
             "new_tc": new_tc_,
             "base_same_as_master": base_same_as_master,
-            # Will be filled in by tasks, indexed by task-id
+            # Will be filled in by tasks, indexed by task-id.
+            # Starts as an empty list.
+            # generate_tasks() is currently a dummy
             "tasks": self.generate_tasks(num_games),
             # Aggregated results
             "results": {"wins": 0, "losses": 0, "draws": 0, "pentanomial": 5 * [0]},
@@ -533,6 +530,18 @@ class RunDb:
 
     worker_runs = {}
 
+    def worker_cap(self, run, worker_info):
+        game_time = estimate_game_duration(run["args"]["tc"])
+        concurrency = worker_info["concurrency"] // run["args"]["threads"]
+        assert concurrency >= 1
+        games = self.task_duration / game_time * concurrency
+        if "sprt" in run["args"]:
+            batch_size = 2 * run["args"]["sprt"].get("batch_size", 1)
+            games = max(batch_size, batch_size * int(games / batch_size + 1 / 2))
+        else:
+            games = max(2, 2 * int(games / 2 + 1 / 2))
+        return games
+
     def request_task(self, worker_info):
         if self.task_semaphore.acquire(False):
             try:
@@ -635,38 +644,63 @@ class RunDb:
             ):
                 task_id = -1
                 cores = 0
+
+                committed_games = 0
+                run_size = 0
+                for task in run["tasks"]:
+                    run_size += task["num_games"]
+                    if not task["active"]:
+                        if "stats" in task:
+                            stats = task["stats"]
+                            committed_games += (
+                                stats["wins"] + stats["losses"] + stats["draws"]
+                            )
+                    else:
+                        committed_games += task["num_games"]
+
+                remaining = run["args"]["num_games"] - committed_games
+                if remaining <= 0:
+                    continue
+
                 if "spsa" in run["args"]:
                     limit_cores = 40000 / math.sqrt(len(run["args"]["spsa"]["params"]))
                 else:
-                    limit_cores = 1000000  # No limit for SPRT
+                    limit_cores = 1000000  # No limit for SPRT and num_games.
+
+                run_found = True
                 for task in run["tasks"]:
                     if task["active"]:
                         cores += task["worker_info"]["concurrency"]
                         if cores > limit_cores:
+                            run_found = False
                             break
-                    task_id = task_id + 1
-                    if not task["active"] and task["pending"]:
-                        task["worker_info"] = worker_info
-                        task["last_updated"] = datetime.utcnow()
-                        task["active"] = True
-                        run_found = True
-                        break
+
             if run_found:
                 break
 
         if not run_found:
             return {"task_waiting": False}
 
-        self.sum_cores(run)
-        self.task_runs.sort(
-            key=lambda r: (
-                -r["args"]["priority"],
-                r["cores"] / r["args"]["itp"] * 100.0,
-                -r["args"]["itp"],
-                r["_id"],
-            )
+        task_size = min(self.worker_cap(run, worker_info), remaining)
+        run["tasks"].append(
+            {
+                "num_games": task_size,
+                "pending": True,
+                "active": True,
+                "worker_info": worker_info,
+                "last_updated": datetime.utcnow(),
+                "start": run_size,
+            }
         )
+        task_id = len(run["tasks"]) - 1
+        run["tasks"][task_id]["stats"] = {
+            "wins": 0,
+            "losses": 0,
+            "draws": 0,
+            "pentanomial": 5 * [0],
+        }
 
+        self.sum_cores(run)
         self.buffer(run, False)
 
         # Update worker_runs (compiled tests)
@@ -675,13 +709,6 @@ class RunDb:
         if run["_id"] not in self.worker_runs[worker_key]:
             self.worker_runs[worker_key][run["_id"]] = True
 
-        if "stats" not in run["tasks"][task_id]:
-            run["tasks"][task_id]["stats"] = {
-                "wins": 0,
-                "losses": 0,
-                "draws": 0,
-                "pentanomial": 5 * [0],
-            }
         if DEBUG:
             print(
                 "Allocate run: https://tests.stockfishchess.org/tests/view/{} task_id: {} to {}/{} Stats: {}".format(
@@ -730,11 +757,31 @@ class RunDb:
         self, run_id, task_id, stats, nps, ARCH, spsa, username, unique_key
     ):
         run = self.get_run(run_id)
+        update_time = datetime.utcnow()
+
+        # First some sanity checks on the update
+        # If something is wrong we return early.
         if task_id >= len(run["tasks"]):
+            print("Update_task: task_id {} is invalid".format(task_id), flush=True)
             return {"task_alive": False}
 
         task = run["tasks"][task_id]
-        if not task["active"] or not task["pending"]:
+
+        # "pending": the task is not finished;
+        # "active" : a worker is working on this task.
+        # Currently tasks are created "pending" and "active"
+        # since they are created as a result of a worker request.
+        # If the worker walks away before the task is finished
+        # then the task becomes "pending" and "not active".
+        # It is possible to migrate such tasks to a different worker,
+        # but currently we do not do this.
+        if not task["pending"]:
+            print("Update_task: task {} is finished".format(task_id), flush=True)
+            task["active"] = False  # should be true already
+            return {"task_alive": False}
+
+        if not task["active"]:
+            print("Update_task: task {} is not active".format(task_id), flush=True)
             return {"task_alive": False}
 
         if task["worker_info"]["unique_key"] != unique_key:
@@ -745,6 +792,7 @@ class RunDb:
                 ),
                 flush=True,
             )
+            task["active"] = False
             return {"task_alive": False}
         if task["worker_info"]["username"] != username:
             print(
@@ -754,6 +802,7 @@ class RunDb:
                 ),
                 flush=True,
             )
+            task["active"] = False
             return {"task_alive": False}
 
         # Guard against incorrect results
@@ -768,58 +817,88 @@ class RunDb:
             or (spsa_games > 0 and num_games <= 0)
             or (spsa_games > 0 and "stats" in task and num_games <= old_num_games)
         ):
+            print("Update_task: task {} has incompatible stats".format(task_id))
+            print(
+                "Before {}. Now {}. SPSA_games {}.".format(
+                    old_num_games, num_games, spsa_games
+                ),
+                flush=True,
+            )
+            task["active"] = False
             return {"task_alive": False}
         if (
             num_games - old_num_games
-        ) % 2 != 0:  # the worker should only runs game pairs
+        ) % 2 != 0:  # the worker should only return game pairs
+            print(
+                "Update_task: odd number of games received for task {}. Before {}. Now {}.".format(
+                    task_id, old_num_games, num_games
+                )
+            )
+            task["active"] = False
             return {"task_alive": False}
         if "sprt" in run["args"]:
             batch_size = 2 * run["args"]["sprt"].get("batch_size", 1)
             if num_games % batch_size != 0:
+                print(
+                    "Update_task: the number of games received for task {} is incompatible with the SPRT batch size"
+                ).format(task_id)
+                task["active"] = False
                 return {"task_alive": False}
 
-        all_tasks_finished = False
+        # The update seems fine. Update run["tasks"][task_id] (=task).
 
         task["stats"] = stats
         task["nps"] = nps
         task["ARCH"] = ARCH
+        task["last_updated"] = update_time
+
+        task_finished = False
         if num_games >= task["num_games"]:
             # This task is now finished
-            if "cores" in run:
-                run["cores"] -= task["worker_info"]["concurrency"]
+            task_finished = True
             task["pending"] = False  # Make pending False before making active false
             # to prevent race in request_task
             task["active"] = False
-            # Check if all tasks in the run have been finished
-            if not any([t["pending"] or t["active"] for t in run["tasks"]]):
-                all_tasks_finished = True
 
-        update_time = datetime.utcnow()
-        task["last_updated"] = update_time
+        # Now update the current run.
+
         run["last_updated"] = update_time
-        run["results_stale"] = True
 
-        # Update SPSA results
+        if task_finished:
+            run["cores"] -= task["worker_info"]["concurrency"]
+
+        run["results_stale"] = True  # force recalculation of results
+        updated_results = self.get_results(
+            run, False
+        )  # computed from run["tasks"] which
+        # has just been updated. Sets run["results_stale"]=False.
+
+        if "sprt" in run["args"]:
+            sprt = run["args"]["sprt"]
+            fishtest.stats.stat_util.update_SPRT(updated_results, sprt)
+
         if "spsa" in run["args"] and spsa_games == spsa["num_games"]:
             self.update_spsa(task["worker_info"]["unique_key"], run, spsa)
 
-        # Check SPRT state to decide whether to stop the run
-        if "sprt" in run["args"]:
-            sprt = run["args"]["sprt"]
-            fishtest.stats.stat_util.update_SPRT(self.get_results(run, False), sprt)
-            if sprt["state"] != "":
-                # If SPRT is accepted or rejected, stop the run
-                self.buffer(run, True)
-                self.stop_run(run_id)
-                return {"task_alive": False}
+        # Check if the run is finished.
 
-        if all_tasks_finished:
-            # If all tasks are finished, stop the run
+        run_finished = False
+        if count_games(updated_results) >= run["args"]["num_games"]:
+            run_finished = True
+        elif "sprt" in run["args"] and sprt["state"] != "":
+            run_finished = True
+
+        # Return.
+
+        if run_finished:
             self.buffer(run, True)
             self.stop_run(run_id)
+            ret = {"task_alive": False}
         else:
             self.buffer(run, False)
-        return {"task_alive": task["active"]}
+            ret = {"task_alive": task["active"]}
+
+        return ret
 
     def upload_pgn(self, run_id, pgn_zip):
         self.pgndb.insert_one({"run_id": run_id, "pgn_zip": Binary(pgn_zip)})
@@ -837,14 +916,11 @@ class RunDb:
             )
         if task_id >= len(run["tasks"]):
             return {"task_alive": False}
-
         if not task["active"] or not task["pending"]:
             return {"task_alive": False}
-
         # Test if the task is reallocated to a different worker.
         if task["worker_info"]["unique_key"] != unique_key:
             return {"task_alive": False}
-
         # Mark the task as inactive: it will be rescheduled
         print(
             "Inactive: https://tests.stockfishchess.org/tests/view/{} {} {}".format(
