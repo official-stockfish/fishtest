@@ -306,7 +306,12 @@
    <td>${stats.get('time_losses', '-')}</td>
 
    %if 'spsa' not in run['args']:
-   <td style="background-color:${task['residual_color']}">${'%.3f' % (task['residual'])}</td>
+   %if task['residual']!=float("inf"):
+       <td style="background-color:${task['residual_color']}">${'%.3f' % (task['residual'])}</td>
+   %else:
+##       <td>${'%.3f' % (task['residual'])}</td>
+         <td>-</td>
+   %endif
    %endif
   </tr>
   %endfor

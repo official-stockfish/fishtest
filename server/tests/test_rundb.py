@@ -41,6 +41,14 @@ class CreateRunDBTest(unittest.TestCase):
         )
         run = self.rundb.get_run(run_id_stc)
         run["finished"] = True
+        task={
+	    "num_games": self.rundb.chunk_size,
+            "stats": {"wins": 0, "draws": 0, "losses": 0, "crashes": 0},
+            "pending": True,
+            "active": True,
+	}
+        run["tasks"].append(task)
+
         self.rundb.buffer(run, True)
 
         # LTC
@@ -62,8 +70,16 @@ class CreateRunDBTest(unittest.TestCase):
         print(" ")
         print(run_id)
         run = self.rundb.get_run(run_id)
+        task={
+            "num_games": self.rundb.chunk_size,
+            "stats": {"wins": 0, "draws": 0, "losses": 0, "crashes": 0},
+            "pending": True,
+            "active": True,
+        }
+        run["tasks"].append(task)
+        
         print(run["tasks"][0])
-        self.assertFalse(run["tasks"][0][u"active"])
+        self.assertTrue(run["tasks"][0][u"active"])
         run["tasks"][0][u"active"] = True
         run["tasks"][0][u"worker_info"] = {
             "username": "worker1",
@@ -77,6 +93,15 @@ class CreateRunDBTest(unittest.TestCase):
                 print(run["args"])
 
     def test_20_update_task(self):
+        run = self.rundb.get_run(run_id)
+        run["tasks"][0][u"active"] = True
+        run["tasks"][0][u"worker_info"] = {
+            "username": "worker1",
+            "unique_key": "travis",
+            "concurrency": 1,
+	}
+        run["cores"] = 1
+        self.rundb.buffer(run, True)
         run = self.rundb.update_task(
             run_id,
             0,
@@ -111,6 +136,10 @@ class CreateRunDBTest(unittest.TestCase):
             "travis2",
         )
         self.assertEqual(run, {"task_alive": False})
+        # revive task
+        run_=self.rundb.get_run(run_id)
+        run_["tasks"][0]["active"]=True
+        self.rundb.buffer(run_,True)
         run = self.rundb.update_task(
             run_id,
             0,

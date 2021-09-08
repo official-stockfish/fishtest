@@ -41,16 +41,22 @@ def get_worker_key(task):
 
 def get_chi2(tasks, bad_users):
     """Perform chi^2 test on the stats from each worker"""
-    results = {"chi2": 0.0, "dof": 0, "p": 0.0, "residual": {}}
+
+    default_results = {
+        "chi2": float("nan"),
+        "dof": 0,
+        "p": float("nan"),
+        "residual": {},
+    }
 
     # Aggregate results by worker
     users = {}
     has_pentanomial = None
     for task in tasks:
-        task["worker_key"] = get_worker_key(task)
         if "worker_info" not in task:
             continue
         key = get_worker_key(task)
+        task["worker_key"] = key
         if key in bad_users:
             continue
         stats = task.get("stats", {})
@@ -63,61 +69,63 @@ def get_chi2(tasks, bad_users):
                 float(stats.get("draws", 0)),
             ]
         else:
-            p = stats["pentanomial"]
+            p = stats.get("pentanomial", 5 * [0])  # there was a small window
+            # in time where we could have both trinomial and pentanomial
+            # workers
+
             # The ww and ll frequencies will typically be too small for
             # the full pentanomial chi2 test to be valid. See e.g. the last page of
             # https://www.open.ac.uk/socialsciences/spsstutorial/files/tutorials/chi-square.pdf.
             # So we combine the ww and ll frequencies with the wd and ld frequencies.
             wld = [float(p[4] + p[3]), float(p[0] + p[1]), float(p[2])]
-        if wld == [0.0, 0.0, 0.0]:
-            continue
         if key in users:
             for idx in range(len(wld)):
                 users[key][idx] += wld[idx]
         else:
             users[key] = wld
 
-    if len(users) == 0:
-        return results
-
-    observed = numpy.array(list(users.values()))
-    rows, columns = observed.shape
-    # Results only from one worker: skip the test for workers homogeneity
-    if rows == 1:
-        return {"chi2": float("nan"), "dof": 0, "p": float("nan"), "residual": {}}
-    column_sums = numpy.sum(observed, axis=0)
-    columns_not_zero = numpy.count_nonzero(column_sums)
-    df = (rows - 1) * (columns - 1)
-
-    if columns_not_zero == 0:
-        return results
-    # Results only of one type: workers are homogeneous
-    elif columns_not_zero == 1:
-        return {"chi2": 0.0, "dof": df, "p": 1.0, "residual": {}}
-    # Results only of two types: drop the column of zeros to avoid divide by zero
-    elif columns_not_zero == 2:
-        observed = observed[:, ~numpy.all(observed == 0, axis=0)]
+    # We filter out the workers whose expected frequences are <= 5 as
+    # they break the chi2 test.
+    filtering_done = False
+    while not filtering_done:
+        # Wheneve less than two qualifying workers are left,
+        # we bail out and just return "something".
+        if len(users) <= 1:
+            return default_results
+        # Now do the matrix computations with numpy.
+        observed = numpy.array(list(users.values()))
+        rows, columns = observed.shape
         column_sums = numpy.sum(observed, axis=0)
+        row_sums = numpy.sum(observed, axis=1)
+        grand_total = numpy.sum(column_sums)
+        # if no games have been received, we cannot continue
+        if grand_total == 0:
+            return default_results
+        expected = numpy.outer(row_sums, column_sums) / grand_total
+        keys = list(users)
+        filtering_done = True
+        for idx in range(len(keys)):
+            if min(expected[idx]) <= 5:
+                del users[keys[idx]]
+                filtering_done = False
 
-    row_sums = numpy.sum(observed, axis=1)
-    grand_total = numpy.sum(column_sums)
-
-    expected = numpy.outer(row_sums, column_sums) / grand_total
+    # Now we do the basic chi2 computation.
+    df = (rows - 1) * (columns - 1)
     raw_residual = observed - expected
+    chi2 = numpy.sum(raw_residual * raw_residual / expected)
+    p_value = 1 - scipy.stats.chi2.cdf(chi2, df)
+
+    # Finally we also compute for each qualifying worker a residual
+    # indicating how badly it deviates from the norm.
     std_error = numpy.sqrt(
         expected
         * numpy.outer((1 - row_sums / grand_total), (1 - column_sums / grand_total))
     )
     adj_residual = raw_residual / std_error
-    for idx in range(len(users)):
-        users[list(users.keys())[idx]] = numpy.max(numpy.abs(adj_residual[idx]))
-    chi2 = numpy.sum(raw_residual * raw_residual / expected)
-    return {
-        "chi2": chi2,
-        "dof": df,
-        "p": 1 - scipy.stats.chi2.cdf(chi2, df),
-        "residual": users,
-    }
+    for idx in range(len(keys)):
+        users[keys[idx]] = numpy.max(numpy.abs(adj_residual[idx]))
+
+    return {"chi2": chi2, "dof": df, "p": p_value, "residual": users}
 
 
 def calculate_residuals(run):
@@ -131,7 +139,7 @@ def calculate_residuals(run):
         for task in run["tasks"]:
             if task["worker_key"] in bad_users:
                 continue
-            task["residual"] = residuals.get(task["worker_key"], 0.0)
+            task["residual"] = residuals.get(task["worker_key"], float("inf"))
 
             # Special case crashes or time losses
             stats = task.get("stats", {})

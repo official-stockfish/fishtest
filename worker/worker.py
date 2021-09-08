@@ -37,7 +37,7 @@ from os import path
 from games import run_games
 from updater import update
 
-WORKER_VERSION = 106
+WORKER_VERSION = 107
 ALIVE = True
 HTTP_TIMEOUT = 15.0
 
@@ -377,10 +377,7 @@ def main():
         default=config.get("parameters", "min_threads"),
     )
     parser.add_option(
-        "-f",
-        "--fleet",
-        dest="fleet",
-        default=config.get("parameters", "fleet"),
+        "-f", "--fleet", dest="fleet", default=config.get("parameters", "fleet")
     )
     parser.add_option(
         "-a",
@@ -388,12 +385,7 @@ def main():
         dest="use_all_cores",
         default=config.get("parameters", "use_all_cores"),
     )
-    parser.add_option(
-        "-w",
-        "--only_config",
-        dest="only_config",
-        default=False,
-    )
+    parser.add_option("-w", "--only_config", dest="only_config", default=False)
     (options, args) = parser.parse_args()
 
     username = config.get("login", "username")
@@ -508,7 +500,10 @@ def main():
         if not success:
             if FLEET:
                 worker_exit()
-            time.sleep(HTTP_TIMEOUT)
+            time.sleep(delay)
+            delay = delay * 2
+        else:
+            delay = HTTP_TIMEOUT
         success = worker(worker_info, password, remote)
 
 

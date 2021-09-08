@@ -38,6 +38,16 @@ class TestApi(unittest.TestCase):
 
         # Set up a task
         self.task_id = 0
+
+        task = {
+            "num_games": self.rundb.chunk_size,
+            "stats": {"wins": 0, "draws": 0, "losses": 0, "crashes": 0},
+            "pending": True,
+            "active": True,
+        }
+
+        run["tasks"].append(task)
+
         for i, task in enumerate(run["tasks"]):
             if i is not self.task_id:
                 run["tasks"][i]["pending"] = False
@@ -59,6 +69,7 @@ class TestApi(unittest.TestCase):
             "unique_key": "unique key",
             "version": WORKER_VERSION,
         }
+        run["tasks"][0]["worker_info"] = self.worker_info
         self.rundb.userdb.create_user(self.username, self.password, "email@email.email")
         user = self.rundb.userdb.get_user(self.username)
         user["blocked"] = False
@@ -139,11 +150,11 @@ class TestApi(unittest.TestCase):
         request = self.correct_password_request({"worker_info": self.worker_info})
         response = ApiView(request).request_task()
         self.assertEqual(self.run_id, response["run"]["_id"])
-        self.assertEqual(self.task_id, response["task_id"])
+        self.assertNotEqual(self.task_id, response["task_id"])
 
         run = self.rundb.get_run(self.run_id)
         self.assertEqual(run["cores"], self.concurrency)
-        task = run["tasks"][self.task_id]
+        task = run["tasks"][response["task_id"]]
         self.assertTrue(task["pending"])
         self.assertTrue(task["active"])
 
@@ -155,13 +166,23 @@ class TestApi(unittest.TestCase):
             response = ApiView(self.invalid_password_request()).update_task()
             self.assertTrue("error" in response)
 
-        # Prepare a pending task that will be assigned to this worker
+        # Prepare a pending task that will be updated
         run = self.rundb.get_run(self.run_id)
         run["tasks"][self.task_id] = {
             "num_games": self.rundb.chunk_size,
             "pending": True,
-            "active": False,
+            "active": True,
         }
+        self.worker_info = {
+            "username": self.username,
+            "password": self.password,
+            "remote_addr": self.remote_addr,
+            "concurrency": self.concurrency,
+            "unique_key": "unique key",
+            "version": WORKER_VERSION,
+        }
+        run["tasks"][self.task_id]["worker_info"] = self.worker_info
+
         if run["args"].get("spsa"):
             del run["args"]["spsa"]
         self.rundb.buffer(run, True)
@@ -182,15 +203,15 @@ class TestApi(unittest.TestCase):
         )
         response = ApiView(request).update_task()
         self.assertTrue(response["task_alive"])
-        self.assertTrue(self.rundb.get_run(self.run_id)["results_stale"])
+        self.assertFalse(self.rundb.get_run(self.run_id)["results_stale"])
 
         # Task is still active
         cs = self.rundb.chunk_size
-        w, d, l = cs / 2 - 10, cs / 2, 0
+        w, d, l = cs // 2 - 10, cs // 2, 0
         request.json_body["stats"] = {"wins": w, "draws": d, "losses": l, "crashes": 0}
         response = ApiView(request).update_task()
         self.assertTrue(response["task_alive"])
-        self.assertTrue(self.rundb.get_run(self.run_id)["results_stale"])
+        self.assertFalse(self.rundb.get_run(self.run_id)["results_stale"])
 
         # Task is still active. Odd update.
         request.json_body["stats"] = {
@@ -202,7 +223,18 @@ class TestApi(unittest.TestCase):
         response = ApiView(request).update_task()
         self.assertFalse(response["task_alive"])
 
-        # Task_alive is a misnomer...
+        request.json_body["stats"] = {
+            "wins": w + 2,
+            "draws": d,
+            "losses": 0,
+            "crashes": 0,
+        }
+        response = ApiView(request).update_task()
+        self.assertFalse(response["task_alive"])
+        # revive the task
+        run["tasks"][self.task_id]["active"] = True
+        self.rundb.buffer(run, True)
+
         request.json_body["stats"] = {
             "wins": w + 2,
             "draws": d,
@@ -211,11 +243,14 @@ class TestApi(unittest.TestCase):
         }
         response = ApiView(request).update_task()
         self.assertTrue(response["task_alive"])
-
         # Go back in time
         request.json_body["stats"] = {"wins": w, "draws": d, "losses": 0, "crashes": 0}
         response = ApiView(request).update_task()
         self.assertFalse(response["task_alive"])
+
+        # revive the task
+        run["tasks"][self.task_id]["active"] = True
+        self.rundb.buffer(run, True)
 
         # Task is finished when calling /api/update_task with results where the number of
         # games played is the same as the number of games in the task
@@ -237,7 +272,7 @@ class TestApi(unittest.TestCase):
     def test_failed_task(self):
         request = self.correct_password_request({"run_id": self.run_id, "task_id": 0})
         response = ApiView(request).failed_task()
-        self.assertFalse(response["task_alive"])
+        self.assertTrue(not response)
 
         run = self.rundb.get_run(self.run_id)
         run["tasks"][self.task_id]["active"] = True
@@ -345,7 +380,7 @@ class TestApi(unittest.TestCase):
         )
         response = ApiView(request).beat()
         print(response)
-        self.assertEqual("-", response)
+        self.assertEqual("JoeUserWorker-7cores-unique key", response)
 
 
 class TestRunFinished(unittest.TestCase):
@@ -423,24 +458,34 @@ class TestRunFinished(unittest.TestCase):
 
     def test_auto_purge_runs(self):
         run = self.rundb.get_run(self.run_id)
+        num_games = 600
+        run["args"]["num_games"] = num_games
+        self.rundb.buffer(run, True)
 
         # Request task 1 of 2
         request = self.correct_password_request({"worker_info": self.worker_info})
         response = ApiView(request).request_task()
         self.assertEqual(response["run"]["_id"], str(run["_id"]))
         self.assertEqual(response["task_id"], 0)
+        task1 = self.rundb.get_run(self.run_id)["tasks"][0]
+        task_size1 = task1["num_games"]
 
         # Request task 2 of 2
         request = self.correct_password_request({"worker_info": self.worker_info})
         response = ApiView(request).request_task()
         self.assertEqual(response["run"]["_id"], str(run["_id"]))
         self.assertEqual(response["task_id"], 1)
+        task2 = self.rundb.get_run(self.run_id)["tasks"][1]
+        task_size2 = task2["num_games"]
+        task_start2 = task2["start"]
 
-        n_wins = self.rundb.chunk_size / 5
-        n_losses = self.rundb.chunk_size / 5
-        n_draws = self.rundb.chunk_size * 3 / 5
+        self.assertEqual(task_start2, task_size1)
 
         # Finish task 1 of 2
+        n_wins = task_size1 // 5
+        n_losses = task_size1 // 5
+        n_draws = task_size1 - n_wins - n_losses
+
         request = self.correct_password_request(
             {
                 "worker_info": self.worker_info,
@@ -460,6 +505,10 @@ class TestRunFinished(unittest.TestCase):
         self.assertFalse(run["finished"])
 
         # Finish task 2 of 2
+        n_wins = task_size2 // 5
+        n_losses = task_size2 // 5
+        n_draws = task_size2 - n_wins - n_losses
+
         request = self.correct_password_request(
             {
                 "worker_info": self.worker_info,
@@ -483,10 +532,7 @@ class TestRunFinished(unittest.TestCase):
         self.assertTrue(
             all([not t["pending"] and not t["active"] for t in run["tasks"]])
         )
-        self.assertTrue(
-            "Total: {}".format(self.rundb.chunk_size * 2)
-            in run["results_info"]["info"][1]
-        )
+        self.assertTrue("Total: {}".format(num_games) in run["results_info"]["info"][1])
 
 
 if __name__ == "__main__":

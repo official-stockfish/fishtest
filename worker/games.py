@@ -339,7 +339,9 @@ def find_arch_string():
             and "x86-64-avx512" in targets
         ):
             res = "x86-64-avx512"
-            res = "x86-64-bmi2"  # use bmi2 until avx512 performance becomes actually better
+            res = (
+                "x86-64-bmi2"
+            )  # use bmi2 until avx512 performance becomes actually better
         elif (
             "-mbmi2" in props["flags"]
             and "x86-64-bmi2" in targets
@@ -840,7 +842,10 @@ def run_games(worker_info, password, remote, run, task_id):
     repo_url = run["args"].get("tests_repo", REPO_URL)
     games_concurrency = int(worker_info["concurrency"]) // threads
 
-    start_game_index = task_id * task["num_games"] + input_total_games
+    opening_offset = task.get("start", task_id * task["num_games"])
+    if "start" in task:
+        print("Variable task sizes used. Opening offset = {}".format(opening_offset))
+    start_game_index = opening_offset + input_total_games
     run_seed = int(hashlib.sha1(run["_id"].encode("utf-8")).hexdigest(), 16) % (2 ** 30)
 
     # Format options according to cutechess syntax
