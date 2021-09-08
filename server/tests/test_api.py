@@ -182,15 +182,15 @@ class TestApi(unittest.TestCase):
         )
         response = ApiView(request).update_task()
         self.assertTrue(response["task_alive"])
-        self.assertTrue(self.rundb.get_run(self.run_id)["results_stale"])
+        self.assertFalse(self.rundb.get_run(self.run_id)["results_stale"])
 
         # Task is still active
         cs = self.rundb.chunk_size
-        w, d, l = cs / 2 - 10, cs / 2, 0
+        w, d, l = cs // 2 - 10, cs // 2, 0
         request.json_body["stats"] = {"wins": w, "draws": d, "losses": l, "crashes": 0}
         response = ApiView(request).update_task()
         self.assertTrue(response["task_alive"])
-        self.assertTrue(self.rundb.get_run(self.run_id)["results_stale"])
+        self.assertFalse(self.rundb.get_run(self.run_id)["results_stale"])
 
         # Task is still active. Odd update.
         request.json_body["stats"] = {
@@ -436,9 +436,9 @@ class TestRunFinished(unittest.TestCase):
         self.assertEqual(response["run"]["_id"], str(run["_id"]))
         self.assertEqual(response["task_id"], 1)
 
-        n_wins = self.rundb.chunk_size / 5
-        n_losses = self.rundb.chunk_size / 5
-        n_draws = self.rundb.chunk_size * 3 / 5
+        n_wins = self.rundb.chunk_size // 5
+        n_losses = self.rundb.chunk_size // 5
+        n_draws = self.rundb.chunk_size * 3 // 5
 
         # Finish task 1 of 2
         request = self.correct_password_request(
