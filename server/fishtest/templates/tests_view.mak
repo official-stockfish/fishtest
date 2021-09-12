@@ -27,7 +27,7 @@
 <div class="span8" style="min-width: 540px">
   <h4>Details</h4>
 
-	<%! import markupsafe %>
+  <%! import markupsafe %>
 
   <table class="table table-condensed">
     %for arg in run_args:
@@ -171,9 +171,9 @@
 
     <h4>Stats</h4>
     <table class="table table-condensed">
-      <tr><td>chi^2</td><td>${'%.2f' % (chi2['chi2'])}</td></tr>
+      <tr><td>chi^2</td><td>${f"{chi2['chi2']:.2f}"}</td></tr>
       <tr><td>dof</td><td>${chi2['dof']}</td></tr>
-      <tr><td>p-value</td><td>${'%.2f' % (chi2['p'] * 100)}%</td></tr>
+      <tr><td>p-value</td><td>${f"{chi2['p'] * 100:.2f}"}%</td></tr>
     </table>
   %endif
 
@@ -231,91 +231,90 @@
 
 <h3>Tasks ${totals}</h3>
 <table class='table table-striped table-condensed'>
- <thead>
-  <tr>
-   <th>Idx</th>
-   <th>Worker</th>
-   <th>Info</th>
-   <th>Last Updated</th>
-   <th>Played</th>
-%if not 'pentanomial' in run['results'].keys():
-   <th>Wins</th>
-   <th>Losses</th>
-   <th>Draws</th>
-%else:
-   <th>Pentanomial&nbsp;[0&#8209;2]</th>
-%endif
-   <th>Crashes</th>
-   <th>Time</th>
+  <thead>
+    <tr>
+      <th>Idx</th>
+      <th>Worker</th>
+      <th>Info</th>
+      <th>Last Updated</th>
+      <th>Played</th>
+      %if not 'pentanomial' in run['results'].keys():
+        <th>Wins</th>
+        <th>Losses</th>
+        <th>Draws</th>
+      %else:
+        <th>Pentanomial&nbsp;[0&#8209;2]</th>
+      %endif
+      <th>Crashes</th>
+      <th>Time</th>
 
-   %if 'spsa' not in run['args']:
-    <th>Residual</th>
-	 %endif
-  </tr>
- </thead>
- <tbody>
-  %for idx, task in enumerate(run['tasks'] + run.get('bad_tasks', [])):
-  <%
-    stats = task.get('stats', {})
-    if 'stats' in task:
-      total = str(stats['wins'] + stats['losses'] + stats['draws']).zfill(3)
-    else:
-      continue
+      %if 'spsa' not in run['args']:
+        <th>Residual</th>
+      %endif
+    </tr>
+  </thead>
+  <tbody>
+    %for idx, task in enumerate(run['tasks'] + run.get('bad_tasks', [])):
+      <%
+        stats = task.get('stats', {})
+        if 'stats' in task:
+          total = stats['wins'] + stats['losses'] + stats['draws']
+        else:
+          continue
 
-    if task['active'] and task['pending']:
-      active_style = 'info'
-    elif task['active'] and not task['pending']:
-      active_style = 'error'
-    else:
-      active_style = ''
-  %>
-  <tr class="${active_style}">
-   <td><a href="/api/pgn/${'%s-%d'%(run['_id'],idx)}.pgn">${idx}</a></td>
-   %if 'bad' in task:
-     <td style="text-decoration:line-through; background-color:#ffebeb">
-   %else:
-     <td>
-   %endif
-   %if approver and 'worker_info' in task and 'username' in task['worker_info']:
-     <a href="/user/${task['worker_info']['username']}">${task['worker_key']}</a>
-   %else:
-     ${task['worker_key']}
-   %endif
-   </td>
-   <td>
-   %if 'worker_info' in task:
-     ${task['worker_info']['uname']}
-     ARCH=${task.get('ARCH', '?')}
-   %else:
-     Unknown worker
-   %endif
-   </td>
-   <td>${str(task.get('last_updated', '-')).split('.')[0]}</td>
-   <td>${total} / ${task['num_games']}</td>
-%if not 'pentanomial' in run['results'].keys():
-   <td>${stats.get('wins', '-')}</td>
-   <td>${stats.get('losses', '-')}</td>
-   <td>${stats.get('draws', '-')}</td>
-%else:
-<%
-   p=stats.get('pentanomial',5*[0])
-%>
-   <td>[${p[0]},&nbsp;${p[1]},&nbsp;${p[2]},&nbsp;${p[3]},&nbsp;${p[4]}]</td>
-%endif
-   <td>${stats.get('crashes', '-')}</td>
-   <td>${stats.get('time_losses', '-')}</td>
-
-   %if 'spsa' not in run['args']:
-   %if task['residual']!=float("inf"):
-       <td style="background-color:${task['residual_color']}">${'%.3f' % (task['residual'])}</td>
-   %else:
-##       <td>${'%.3f' % (task['residual'])}</td>
-         <td>-</td>
-   %endif
-   %endif
-  </tr>
-  %endfor
- </tbody>
+        if task['active'] and task['pending']:
+          active_style = 'info'
+        elif task['active'] and not task['pending']:
+          active_style = 'error'
+        else:
+          active_style = ''
+      %>
+      <tr class="${active_style}">
+        <td><a href=${f"/api/pgn/{run['_id']}-{idx:d}.pgn"}>${idx}</a></td>
+        %if 'bad' in task:
+          <td style="text-decoration:line-through; background-color:#ffebeb">
+        %else:
+          <td>
+        %endif
+        %if approver and 'worker_info' in task and 'username' in task['worker_info']:
+          <a href="/user/${task['worker_info']['username']}">${task['worker_key']}</a>
+        %else:
+          ${task['worker_key']}
+        %endif
+        </td>
+        <td>
+        %if 'worker_info' in task:
+          ${task['worker_info']['uname']}
+          ARCH=${task.get('ARCH', '?')}
+        %else:
+          Unknown worker
+        %endif
+        </td>
+        <td>${str(task.get('last_updated', '-')).split('.')[0]}</td>
+        <td>${f"{total:03d} / {task['num_games']:03d}"}</td>
+        %if not 'pentanomial' in run['results'].keys():
+          <td>${stats.get('wins', '-')}</td>
+          <td>${stats.get('losses', '-')}</td>
+          <td>${stats.get('draws', '-')}</td>
+        %else:
+          <%
+            p=stats.get('pentanomial',5*[0])
+          %>
+          <td>[${p[0]},&nbsp;${p[1]},&nbsp;${p[2]},&nbsp;${p[3]},&nbsp;${p[4]}]</td>
+        %endif
+        <td>${stats.get('crashes', '-')}</td>
+        <td>${stats.get('time_losses', '-')}</td>
+ 
+        %if 'spsa' not in run['args']:
+          %if task['residual']!=float("inf"):
+            <td style="background-color:${task['residual_color']}">${f"{task['residual']:.3f}"}</td>
+          %else:
+            <td>-</td>
+          %endif
+        %endif
+      </tr>
+    %endfor
+  </tbody>
 </table>
 
 <script type="text/javascript" src="/js/highlight.diff.min.js"></script>
