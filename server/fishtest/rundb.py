@@ -47,7 +47,7 @@ class RunDb:
         self.deltas = self.db["deltas"]
 
         self.chunk_size = 200
-        self.task_duration = 900 # 15 minutes
+        self.task_duration = 900  # 15 minutes
 
         global last_rundb
         last_rundb = self
@@ -554,6 +554,13 @@ class RunDb:
             return {"task_waiting": False}
 
     def sync_request_task(self, worker_info):
+        priority = lambda r: (
+            -r["args"]["priority"],
+            r["cores"] / r["args"]["itp"] * 100.0,
+            -r["args"]["itp"],
+            r["_id"],
+        )
+
         if time.time() > self.task_time + 60:
             if DEBUG:
                 print("Refresh queue", flush=True)
@@ -563,14 +570,7 @@ class RunDb:
                 self.sum_cores(run)
                 self.calc_itp(run)
                 self.task_runs.append(run)
-            self.task_runs.sort(
-                key=lambda r: (
-                    -r["args"]["priority"],
-                    r["cores"] / r["args"]["itp"] * 100.0,
-                    -r["args"]["itp"],
-                    r["_id"],
-                )
-            )
+            self.task_runs.sort(key=priority)
             self.task_time = time.time()
 
         max_threads = int(worker_info["concurrency"])
@@ -693,14 +693,18 @@ class RunDb:
             }
         )
         task_id = len(run["tasks"]) - 1
-        run["tasks"][task_id]["stats"] = {
-            "wins": 0,
-            "losses": 0,
-            "draws": 0,
-            "pentanomial": 5 * [0],
-        }
+        task = run["tasks"][task_id]
+        task["stats"] = {"wins": 0, "losses": 0, "draws": 0, "pentanomial": 5 * [0]}
 
         self.sum_cores(run)
+
+        # Resort the queue to take into account
+        # the alterned number of cores of "run".
+        # Resorting is important since the queue
+        # is only regenerated every 60 seconds.
+
+        self.task_runs.sort(key=priority)
+
         self.buffer(run, False)
 
         # Update worker_runs (compiled tests)
