@@ -1,6 +1,7 @@
 #!/usr/bin/python
 from __future__ import print_function
 
+import hashlib
 import json
 import math
 import multiprocessing
@@ -340,6 +341,19 @@ def gcc_version():
     print("Found g++ version {}.{}".format(major, minor))
 
 
+def config_to_dict(config):
+    dictionary = {}
+    for section in config.sections():
+        dictionary[section] = {}
+        for option in config.options(section):
+            dictionary[section][option] = config.get(section, option)
+    return dictionary
+
+
+def hash_string(s):
+    return hashlib.md5(s.encode("utf-8")).hexdigest()[:8]
+
+
 def main():
     worker_dir = path.dirname(path.realpath(__file__))
     print("Worker started in " + worker_dir + " ...\n")
@@ -490,6 +504,28 @@ def main():
     print("UUID:", worker_info["unique_key"])
     with open(path.join(worker_dir, "uuid.txt"), "w") as f:
         print(worker_info["unique_key"], file=f)
+
+    fingerprint_node = hash_string(str(uuid.getnode()))
+    path_worker = os.path.abspath(sys.argv[0])
+    fingerprint_path = hash_string(str(path_worker))
+    config_dict = config_to_dict(config)
+    del config_dict["login"]["password"]
+    fingerprint_config = hash_string(str(config_dict))
+    fingerprint_uuid = worker_info["unique_key"].split("-")[0]
+    fingerprint_worker = (
+        fingerprint_node
+        + "-"
+        + fingerprint_path
+        + "-"
+        + fingerprint_config
+        + "-"
+        + fingerprint_uuid
+    )
+    worker_info["fingerprint"] = fingerprint_worker
+
+    print("Fingerprint:", worker_info["fingerprint"])
+    with open(path.join(worker_dir, "fingerprint.txt"), "w") as f:
+        print(worker_info["fingerprint"], file=f)
 
     # Start heartbeat
     threading.Thread(target=heartbeat, args=(worker_info, password, remote)).start()

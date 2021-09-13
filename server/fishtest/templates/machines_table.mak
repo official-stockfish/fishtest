@@ -2,9 +2,9 @@
        style="max-width: 960px;">
   <thead>
     <tr>
-      <th>Machine</th>
+      <th>User</th>
       <th>Cores</th>
-      <th>UUID</th>
+      <th>Fingerprint (machine-path-config-key)</th>
       <th>MNps</th>
       <th>System</th>
       <th>Version</th>
@@ -23,7 +23,7 @@
             % endif
             ${machine['concurrency']}
           </td>
-          <td>${machine['unique_key'].split('-')[0]}</td>
+	  <td>${machine.get('fingerprint',machine['unique_key'].split('-')[0])}</td>
           <td>${f"{machine['nps'] / 1000000:.2f}"}</td>
           <td>${machine['uname']}</td>
           <td>${machine['version']}</td>
