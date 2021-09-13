@@ -554,12 +554,13 @@ class RunDb:
             return {"task_waiting": False}
 
     def sync_request_task(self, worker_info):
-        priority = lambda r: (
-            -r["args"]["priority"],
-            r["cores"] / r["args"]["itp"] * 100.0,
-            -r["args"]["itp"],
-            r["_id"],
-        )
+        def priority(run):
+            return (
+                -run["args"]["priority"],
+                run["cores"] / run["args"]["itp"] * 100.0,
+                -run["args"]["itp"],
+                run["_id"],
+            )
 
         if time.time() > self.task_time + 60:
             if DEBUG:
