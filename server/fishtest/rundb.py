@@ -571,8 +571,16 @@ class RunDb:
                 self.sum_cores(run)
                 self.calc_itp(run)
                 self.task_runs.append(run)
-            self.task_runs.sort(key=priority)
             self.task_time = time.time()
+
+        # Note that a cached task_run may have runs with
+        # a changed number of cores.
+        # Either by the code below or else by finished tasks
+        # detected in update_task().
+        # Note that update_task() uses the same objects as here
+        # (they are not copies).
+
+        self.task_runs.sort(key=priority)
 
         max_threads = int(worker_info["concurrency"])
         min_threads = int(worker_info.get("min_threads", 1))
@@ -683,29 +691,20 @@ class RunDb:
             return {"task_waiting": False}
 
         task_size = min(self.worker_cap(run, worker_info), remaining)
-        run["tasks"].append(
-            {
-                "num_games": task_size,
-                "pending": True,
-                "active": True,
-                "worker_info": worker_info,
-                "last_updated": datetime.utcnow(),
-                "start": run_size,
-            }
-        )
+        task = {
+            "num_games": task_size,
+            "pending": True,
+            "active": True,
+            "worker_info": worker_info,
+            "last_updated": datetime.utcnow(),
+            "start": run_size,
+            "stats": {"wins": 0, "losses": 0, "draws": 0, "pentanomial": 5 * [0]},
+        }
+        run["tasks"].append(task)
+
         task_id = len(run["tasks"]) - 1
-        task = run["tasks"][task_id]
-        task["stats"] = {"wins": 0, "losses": 0, "draws": 0, "pentanomial": 5 * [0]}
 
-        self.sum_cores(run)
-
-        # Resort the queue to take into account
-        # the alterned number of cores of "run".
-        # Resorting is important since the queue
-        # is only regenerated every 60 seconds.
-
-        self.task_runs.sort(key=priority)
-
+        run["cores"] += task["worker_info"]["concurrency"]
         self.buffer(run, False)
 
         # Update worker_runs (compiled tests)
@@ -766,11 +765,32 @@ class RunDb:
 
         # First some sanity checks on the update
         # If something is wrong we return early.
+        # Does the task exist?
         if task_id >= len(run["tasks"]):
             print("Update_task: task_id {} is invalid".format(task_id), flush=True)
             return {"task_alive": False}
 
         task = run["tasks"][task_id]
+
+        # Is the worker allowed to update this task?
+        if task["worker_info"]["unique_key"] != unique_key:
+            print(
+                "Update_task: Non matching unique_key: {} {} run_id: "
+                "https://tests.stockfishchess.org/tests/view/{} task_id: {}".format(
+                    unique_key, task["worker_info"]["unique_key"], run_id, task_id
+                ),
+                flush=True,
+            )
+            return {"task_alive": False}
+        if task["worker_info"]["username"] != username:
+            print(
+                "Update_task: Non matching username: {} {} run_id: "
+                "https://tests.stockfishchess.org/tests/view/{} task_id: {}".format(
+                    username, task["worker_info"]["username"], run_id, task_id
+                ),
+                flush=True,
+            )
+            return {"task_alive": False}
 
         # "pending": the task is not finished;
         # "active" : a worker is working on this task.
@@ -787,27 +807,6 @@ class RunDb:
 
         if not task["active"]:
             print("Update_task: task {} is not active".format(task_id), flush=True)
-            return {"task_alive": False}
-
-        if task["worker_info"]["unique_key"] != unique_key:
-            print(
-                "Update_task: Non matching unique_key: {} {} run_id: "
-                "https://tests.stockfishchess.org/tests/view/{} task_id: {}".format(
-                    unique_key, task["worker_info"]["unique_key"], run_id, task_id
-                ),
-                flush=True,
-            )
-            task["active"] = False
-            return {"task_alive": False}
-        if task["worker_info"]["username"] != username:
-            print(
-                "Update_task: Non matching username: {} {} run_id: "
-                "https://tests.stockfishchess.org/tests/view/{} task_id: {}".format(
-                    username, task["worker_info"]["username"], run_id, task_id
-                ),
-                flush=True,
-            )
-            task["active"] = False
             return {"task_alive": False}
 
         # Guard against incorrect results
@@ -870,7 +869,11 @@ class RunDb:
         run["last_updated"] = update_time
 
         if task_finished:
-            run["cores"] -= task["worker_info"]["concurrency"]
+            # run["cores"] is also updated in request_task().
+            # We use the same lock.
+            with self.task_lock:
+                run["cores"] -= task["worker_info"]["concurrency"]
+                assert run["cores"] >= 0
 
         run["results_stale"] = True  # force recalculation of results
         updated_results = self.get_results(
