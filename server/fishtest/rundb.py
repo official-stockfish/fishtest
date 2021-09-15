@@ -554,9 +554,14 @@ class RunDb:
             return {"task_waiting": False}
 
     def sync_request_task(self, worker_info):
-        def priority(run):
+        worker_key = worker_info["unique_key"]
+        last_run_id = self.worker_runs.get(worker_key, {}).get("last_run", None)
+
+        def priority(run):  # lower is better
             return (
                 -run["args"]["priority"],
+                # Try to find a new run for this worker.
+                run["_id"] == last_run_id,
                 run["cores"] / run["args"]["itp"] * 100.0,
                 -run["args"]["itp"],
                 run["_id"],
@@ -607,7 +612,6 @@ class RunDb:
             limit = rate["remaining"] <= 2 * math.sqrt(rate["limit"])
         else:
             limit = False
-        worker_key = worker_info["unique_key"]
 
         # Get a new task that matches the worker requirements
         run_found = False
@@ -631,6 +635,8 @@ class RunDb:
 
             if (
                 run["approved"]
+                and not run["finished"]  # because of the caching of task_runs
+                # the run may be finished in the meantime
                 and (
                     not limit
                     or (
@@ -710,8 +716,11 @@ class RunDb:
         # Update worker_runs (compiled tests)
         if worker_key not in self.worker_runs:
             self.worker_runs[worker_key] = {}
+
         if run["_id"] not in self.worker_runs[worker_key]:
             self.worker_runs[worker_key][run["_id"]] = True
+
+        self.worker_runs[worker_key]["last_run"] = run["_id"]
 
         if DEBUG:
             print(
