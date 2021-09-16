@@ -9,8 +9,6 @@ import numpy
 import scipy.stats
 from zxcvbn import zxcvbn
 
-UUID_MAP = defaultdict(dict)
-key_lock = threading.Lock()
 
 FISH_URL = "https://tests.stockfishchess.org/tests/view/"
 
@@ -22,17 +20,8 @@ def get_worker_key(task):
         return "-"
     username = task["worker_info"].get("username", "")
     cores = str(task["worker_info"]["concurrency"])
-
     uuid = task["worker_info"].get("unique_key", "")
-    with key_lock:
-        if uuid not in UUID_MAP[username]:
-            next_idx = len(UUID_MAP[username])
-            UUID_MAP[username][uuid] = next_idx
-
     worker_key = "%s-%scores" % (username, cores)
-    suffix = UUID_MAP[username][uuid]
-    if suffix != 0:
-        worker_key += "-" + str(suffix)
     if len(uuid) != 0:
         worker_key += "-" + uuid.split("-")[0]
 
