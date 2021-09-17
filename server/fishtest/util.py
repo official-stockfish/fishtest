@@ -13,19 +13,24 @@ from zxcvbn import zxcvbn
 FISH_URL = "https://tests.stockfishchess.org/tests/view/"
 
 
-def get_worker_key(task):
-    global UUID_MAP
+def unique_key(worker_info):
+    if unique_key in worker_info:
+        return worker_info["unique_key"]
+    else:
+        # provide a mock unique key for very old tests
+        # which did not have a unique_key
+        return worker_name(worker_info)
 
-    if "worker_info" not in task:
-        return "-"
-    username = task["worker_info"].get("username", "")
-    cores = str(task["worker_info"]["concurrency"])
-    uuid = task["worker_info"].get("unique_key", "")
-    worker_key = "%s-%scores" % (username, cores)
+
+def worker_name(worker_info):
+    # A user friendly name for the worker.
+    username = worker_info.get("username", "")
+    cores = str(worker_info["concurrency"])
+    uuid = worker_info.get("unique_key", "")
+    name = "%s-%scores" % (username, cores)
     if len(uuid) != 0:
-        worker_key += "-" + uuid.split("-")[0]
-
-    return worker_key
+        name += "-" + uuid.split("-")[0]
+    return name
 
 
 def get_chi2(tasks, bad_users):
@@ -44,8 +49,7 @@ def get_chi2(tasks, bad_users):
     for task in tasks:
         if "worker_info" not in task:
             continue
-        key = get_worker_key(task)
-        task["worker_key"] = key
+        key = unique_key(task["worker_info"])
         if key in bad_users:
             continue
         stats = task.get("stats", {})
@@ -126,9 +130,11 @@ def calculate_residuals(run):
     for _ in range(1):
         worst_user = {}
         for task in run["tasks"]:
-            if task["worker_key"] in bad_users:
+            if "worker_info" not in task:
                 continue
-            task["residual"] = residuals.get(task["worker_key"], float("inf"))
+            if unique_key(task["worker_info"]) in bad_users:
+                continue
+            task["residual"] = residuals.get(unique_key(task["worker_info"]), float("inf"))
 
             # Special case crashes or time losses
             stats = task.get("stats", {})
@@ -145,12 +151,12 @@ def calculate_residuals(run):
 
             if chi2["p"] < 0.001 or task["residual"] > 7.0:
                 if len(worst_user) == 0 or task["residual"] > worst_user["residual"]:
-                    worst_user["worker_key"] = task["worker_key"]
+                    worst_user["unique_key"] = unique_key(task["worker_info"])
                     worst_user["residual"] = task["residual"]
 
         if len(worst_user) == 0:
             break
-        bad_users.add(worst_user["worker_key"])
+        bad_users.add(worst_user["unique_key"])
         residuals = get_chi2(run["tasks"], bad_users)["residual"]
 
     chi2["bad_users"] = bad_users

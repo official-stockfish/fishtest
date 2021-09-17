@@ -4,7 +4,7 @@ from datetime import datetime
 
 import requests
 from fishtest.stats.stat_util import SPRT_elo
-from fishtest.util import get_worker_key
+from fishtest.util import worker_name
 from pyramid.httpexceptions import HTTPFound, HTTPUnauthorized, exception_response
 from pyramid.response import Response
 from pyramid.view import exception_view_config, view_config, view_defaults
@@ -253,7 +253,7 @@ class ApiView(object):
             task = run["tasks"][self.task_id()]
             task["last_updated"] = datetime.utcnow()
             self.request.rundb.buffer(run, False)
-            return get_worker_key(task)
+            return worker_name(task["worker_info"])
         return "Pleased to hear from you..."
 
     @view_config(route_name="api_request_spsa")

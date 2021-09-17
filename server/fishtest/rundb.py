@@ -20,9 +20,10 @@ from fishtest.util import (
     estimate_game_duration,
     format_bounds,
     format_results,
-    get_worker_key,
     post_in_fishcooking_results,
     remaining_hours,
+    unique_key,
+    worker_name,
 )
 from pymongo import DESCENDING, MongoClient
 
@@ -350,7 +351,7 @@ class RunDb:
                 dead_task = True
                 print(
                     "dead task: run: https://tests.stockfishchess.org/tests/view/{} task_id: {} worker: {}".format(
-                        run["_id"], task_id, get_worker_key(task)
+                        run["_id"], task_id, worker_name(task["worker_info"])
                     ),
                     flush=True,
                 )
@@ -927,7 +928,7 @@ class RunDb:
         if DEBUG:
             print(
                 "Failed: https://tests.stockfishchess.org/tests/view/{} {} {}".format(
-                    run_id, task if DEBUG else task_id, get_worker_key(task)
+                    run_id, task if DEBUG else task_id, worker_name(task["worker_info"])
                 ),
                 flush=True,
             )
@@ -941,7 +942,7 @@ class RunDb:
         # Mark the task as inactive: it will be rescheduled
         print(
             "Inactive: https://tests.stockfishchess.org/tests/view/{} {} {}".format(
-                run_id, task if DEBUG else task_id, get_worker_key(task)
+                run_id, task if DEBUG else task_id, worker_name(task["worker_info"])
             ),
             flush=True,
         )
@@ -1010,7 +1011,7 @@ class RunDb:
         if "bad_tasks" not in run:
             run["bad_tasks"] = []
         for task in run["tasks"]:
-            if task["worker_key"] in chi2["bad_users"]:
+            if unique_key(task["worker_info"]) in chi2["bad_users"]:
                 purged = True
                 task["bad"] = True
                 run["bad_tasks"].append(task)
