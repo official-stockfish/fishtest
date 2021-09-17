@@ -1,7 +1,6 @@
 <%inherit file="base.mak"/>
 
 <style>
-
   .flex-row {
     display: flex;
     align-items: center;
@@ -72,7 +71,6 @@
 
 <header style="text-align: center; padding-top: 7px">
   <legend>Neural Network Upload</legend>
-
   <section class="instructions" style="margin-bottom: 35px">
     <p>
     Please read the
@@ -83,11 +81,9 @@
     By uploading you license your network under a
     <a href="https://creativecommons.org/share-your-work/public-domain/cc0/">CC0</a> license.
     </p>
-    <p>
-    <b>
+    <p>  
     <input type="checkbox" id="enable"/ onclick="doLicense()">
-    You are the author of this network or have obtained the network with a CC0 license.
-    </b>
+    <b>You are the author of this network or have obtained the network with a CC0 license.</b>
     </p>
     <p>
     Your uploaded network will be available for public download and listed on the
@@ -114,7 +110,7 @@
 </form>
 
 <script type="text/javascript">
-function doLicense() {
-  var btn = document.getElementById("upload").disabled = ! document.getElementById("enable").checked;
-}
+  function doLicense() {
+    var btn = document.getElementById("upload").disabled = ! document.getElementById("enable").checked;
+  }
 </script>
