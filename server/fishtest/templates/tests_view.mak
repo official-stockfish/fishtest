@@ -1,5 +1,9 @@
 <%inherit file="base.mak"/>
 
+<%
+from fishtest.util import worker_name
+%>
+
 <%namespace name="base" file="base.mak"/>
 
 %if 'spsa' in run['args']:
@@ -256,6 +260,8 @@
   <tbody>
     %for idx, task in enumerate(run['tasks'] + run.get('bad_tasks', [])):
       <%
+        if not "worker_info" in task:
+	   continue
         stats = task.get('stats', {})
         if 'stats' in task:
           total = stats['wins'] + stats['losses'] + stats['draws']
@@ -277,9 +283,9 @@
           <td>
         %endif
         %if approver and 'worker_info' in task and 'username' in task['worker_info']:
-          <a href="/user/${task['worker_info']['username']}">${task['worker_key']}</a>
+          <a href="/user/${task['worker_info']['username']}">${worker_name(task['worker_info'])}</a>
         %else:
-          ${task['worker_key']}
+          ${worker_name(task['worker_info'])}
         %endif
         </td>
         <td>
