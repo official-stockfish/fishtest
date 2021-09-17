@@ -9,9 +9,9 @@ tc=args.get('tc','10+0.1')
 new_tc=args.get('new_tc',tc)
 
 if new_tc!=tc:
-   is_odds=True
+  is_odds=True
 else:
-   is_odds=False
+  is_odds=False
 %>
 <style>
   input[type=number].no-arrows::-webkit-inner-spin-button,
@@ -212,7 +212,7 @@ else:
              style="${args.get('sprt') or 'display: none'}">SPRT Elo0</label>
       <input type="number" step="0.05" name="sprt_elo0"
              class="sprt custom_bounds no-arrows"
-	     ## The bounds handling should be cleaned up...
+             ## The bounds handling should be cleaned up...
              value="${args.get('sprt', {'elo0': -0.5})['elo0']}"
              style="width: 90px; ${args.get('sprt') or 'display: none'}" />
 
@@ -250,36 +250,36 @@ else:
     </div>
     <div class="flex-row stop_rule spsa"
          style="${args.get('spsa') or 'display: none'}">
-    <label class="field-label leftmost">Autoselect</label>
-    <input type="checkbox" id="enable"/>
+      <label class="field-label leftmost">Autoselect</label>
+      <input type="checkbox" id="enable"/>
 
-   &nbsp; &nbsp;
-   <input type="button" class="btn btn-info" id="info" value="Info"/>
+      &nbsp; &nbsp;
+      <input type="button" class="btn btn-info" id="info" value="Info"/>
     </div>
     <div class="flex-row stop_rule spsa">
-         <label class="field-label leftmost"></label>
-    	 <div  id="info_display" style="border-style:solid;">
-	 <i>
-    	 Checking this option will rewrite the hyperparameters furnished by
-    	 the tuning code in Stockfish in such a way that the SPSA tune will finish
-    	 within 0.5 Elo from the optimum (with 95% probability) assuming
-    	 the function <span style="white-space:
-    	 nowrap;">'parameters-&gt;Elo'</span> is quadratic and varies 2 Elo
-    	 per parameter over each specified parameter interval. The
-    	 hyperparameters are relatively conservative and their performance
-    	 will degrade gracefully if the actual variation is different.  The
-    	 theoretical basis for choosing the hyperparameters is given in
-    	 this document:
-    	 <a href=https://github.com/vdbergh/spsa_simul/blob/master/doc/theoretical_basis.pdf target=_blank>
-	 https://github.com/vdbergh/spsa_simul/blob/master/doc/theoretical_basis.pdf</a>. The
-    	 formulas can be checked by simulation which is done here:
-    	 <a href=https://github.com/vdbergh/spsa_simul target=_blank>
-	 https://github.com/vdbergh/spsa_simul</a>.
-	 Currently this option
-    	 should be used with the book 'noob_3moves.epd' and contempt should be left at its default value 24
-	 and in addition the option should not be used with nodestime or with more than one thread.
-	 </i>
-	 </div>
+      <label class="field-label leftmost"></label>
+    	<div  id="info_display" style="border-style:solid;">
+        <i>
+        Checking this option will rewrite the hyperparameters furnished by
+        the tuning code in Stockfish in such a way that the SPSA tune will finish
+        within 0.5 Elo from the optimum (with 95% probability) assuming
+        the function <span style="white-space:
+        nowrap;">'parameters-&gt;Elo'</span> is quadratic and varies 2 Elo
+        per parameter over each specified parameter interval. The
+        hyperparameters are relatively conservative and their performance
+        will degrade gracefully if the actual variation is different.  The
+        theoretical basis for choosing the hyperparameters is given in
+        this document:
+        <a href=https://github.com/vdbergh/spsa_simul/blob/master/doc/theoretical_basis.pdf target=_blank>
+        https://github.com/vdbergh/spsa_simul/blob/master/doc/theoretical_basis.pdf</a>. The
+        formulas can be checked by simulation which is done here:
+        <a href=https://github.com/vdbergh/spsa_simul target=_blank>
+        https://github.com/vdbergh/spsa_simul</a>.
+        Currently this option
+        should be used with the book 'noob_3moves.epd' and contempt should be left at its default value 24
+        and in addition the option should not be used with nodestime or with more than one thread.
+        </i>
+      </div>
     </div>
     <input type="hidden" name="spsa_clipping" value="old" />
     <input type="hidden" name="spsa_rounding" value="deterministic" />
@@ -334,16 +334,16 @@ else:
     </div>
   </section>
 
-  %if 'resolved_base' in args:
-    <input type="hidden" name="resolved_base" value="${args['resolved_base']}">
-    <input type="hidden" name="resolved_new" value="${args['resolved_new']}">
-    <input type="hidden" name="msg_base" value="${args.get('msg_base', '')}">
-    <input type="hidden" name="msg_new" value="${args.get('msg_new', '')}">
-  %endif
+  % if 'resolved_base' in args:
+      <input type="hidden" name="resolved_base" value="${args['resolved_base']}">
+      <input type="hidden" name="resolved_new" value="${args['resolved_new']}">
+      <input type="hidden" name="msg_base" value="${args.get('msg_base', '')}">
+      <input type="hidden" name="msg_new" value="${args.get('msg_new', '')}">
+  % endif
 
-  %if is_rerun:
-    <input type="hidden" name="rescheduled_from" value="${rescheduled_from}">
-  %endif
+  % if is_rerun:
+      <input type="hidden" name="rescheduled_from" value="${rescheduled_from}">
+  % endif
 </form>
 
 <script type="text/javascript">
@@ -406,16 +406,16 @@ else:
         $('input[name=new_tc]').val(new_tc);
         $('input[name=threads]').val(threads);
         $('input[name=new-options]').val((
-		options.replace(' Use NNUE=true', '')
-		+ ' ' + $('input[name=new-options]').val()
-		.replace(/Hash=[0-9]+ ?/, '')).replace(/ $/, ''));
+          options.replace(' Use NNUE=true', '')
+          + ' ' + $('input[name=new-options]').val()
+          .replace(/Hash=[0-9]+ ?/, '')).replace(/ $/, ''));
         $('input[name=base-options]').val((
-		options.replace(' Use NNUE=true', '')
-		+ ' ' + $('input[name=base-options]').val()
-		.replace(/Hash=[0-9]+ ?/, '')).replace(/ $/, ''));
+          options.replace(' Use NNUE=true', '')
+          + ' ' + $('input[name=base-options]').val()
+          .replace(/Hash=[0-9]+ ?/, '')).replace(/ $/, ''));
         $('select[name=bounds]').val(bounds);
         update_sprt_bounds(bounds);
-	do_spsa_work();
+        do_spsa_work();
       }
     }
 
@@ -425,26 +425,26 @@ else:
       $('.stop_rule').hide();
       $('#stop_rule_field').val(stop_rule);
       $('.' + stop_rule).show();
-      %if not is_rerun:
-        if (stop_rule === 'spsa') {
-          // base branch and test branch should be the same for SPSA tests
-          $('#base-branch').attr('readonly', 'true').val($('#test-branch').val());
-          $('#test-branch').on('input', function() {
-            $('#base-branch').val($(this).val());
-          })
-          $('#base-signature').attr('readonly', 'true').val($('#test-signature').val());
-          $('#test-signature').on('input', function() {
-            $('#base-signature').val($(this).val());
-          })
-	  spsa_do_not_save = true;
-        } else {
-          $('#base-branch').removeAttr('readonly').val(initial_base_branch);
-          $('#base-signature').removeAttr('readonly').val(initial_base_signature);
-          $('#test-branch').off('input');
-          $('#test-signature').off('input');
-	  spsa_do_not_save = false;
-        }
-      %endif
+      % if not is_rerun:
+          if (stop_rule === 'spsa') {
+            // base branch and test branch should be the same for SPSA tests
+            $('#base-branch').attr('readonly', 'true').val($('#test-branch').val());
+            $('#test-branch').on('input', function() {
+              $('#base-branch').val($(this).val());
+            })
+            $('#base-signature').attr('readonly', 'true').val($('#test-signature').val());
+            $('#test-signature').on('input', function() {
+              $('#base-signature').val($(this).val());
+            })
+            spsa_do_not_save = true;
+          } else {
+            $('#base-branch').removeAttr('readonly').val(initial_base_branch);
+            $('#base-signature').removeAttr('readonly').val(initial_base_signature);
+            $('#test-branch').off('input');
+            $('#test-signature').off('input');
+            spsa_do_not_save = false;
+          }
+      % endif
       if (stop_rule === 'sprt') {
         update_sprt_bounds($('select[name=bounds]').val());
       }
@@ -461,7 +461,7 @@ else:
   $('#create-new-test').on('submit', function(event) {
     var ret=do_spsa_work();   // Last check that all spsa data are consistent.
     if(!ret){
-	return false;
+      return false;
     }
     if (form_submitted) {
       // Don't allow submitting the form more than once
@@ -489,11 +489,11 @@ else:
       $('.choose-test-type .btn').removeClass('btn-info');
       $('.btn#slow_smp_test').addClass('btn-info');
     }
-    %if args.get('spsa'):
-      $('.btn[data-stop-rule="spsa"]').trigger('click');
-    %elif not args.get('sprt'):
-      $('.btn[data-stop-rule="numgames"]').trigger('click');
-    %endif
+    % if args.get('spsa'):
+        $('.btn[data-stop-rule="spsa"]').trigger('click');
+    % elif not args.get('sprt'):
+        $('.btn[data-stop-rule="numgames"]').trigger('click');
+    % endif
   } else {
     // short STC test by default for new tests
     $('.btn#fast_test').addClass('btn-info');
@@ -501,26 +501,22 @@ else:
     $('#test-branch').focus();
   }
 
-function update_odds(elt){
-    if(elt.checked){
-	$('input[name=new_tc]').show();
-	$('label[name=new_tc_label]').show();
-	$('label[name=tc_label]').html("Base&nbsp;TC");
-    }else{
-	$('input[name=new_tc]').hide();
-	$('label[name=new_tc_label]').hide();
-	$('input[name=new_tc]').val($('input[name=tc]').val());
-	$('label[name=tc_label]').html("TC");
-    }
-}
+  function update_odds(elt){
+      if(elt.checked){
+        $('input[name=new_tc]').show();
+        $('label[name=new_tc_label]').show();
+        $('label[name=tc_label]').html("Base&nbsp;TC");
+      }else{
+        $('input[name=new_tc]').hide();
+        $('label[name=new_tc_label]').hide();
+        $('input[name=new_tc]').val($('input[name=tc]').val());
+        $('label[name=tc_label]').html("TC");
+      }
+  }
 
-$('input[name=odds]').change(function (){
-    update_odds(this);
+  $('input[name=odds]').change(function (){
+      update_odds(this);
   });
-
-
-
-
 
 </script>
 
@@ -528,80 +524,79 @@ $('input[name=odds]').change(function (){
 <script type="text/javascript" src="/js/spsa_new.js?5"></script>
 <script type="text/javascript">
 
-	function do_spsa_work(){
-		/* parsing/computing */
-		if(!$('#enable').prop("checked")){
-			return true;
-		}
-		var params=$("textarea[name='spsa_raw_params']").val();
-		var s=fishtest_to_spsa(params);
-			if(s==null){
-			alert("Unable to parse spsa parameters.");
-			return false;
-		}
-		/* estimate the draw ratio */
-		var tc=$("input[name='tc']").val();
-		var dr=draw_ratio(tc);
-		if(dr==null){
-			alert("Unable to parse time control.");
-			return false;
-		}
-		s.draw_ratio=dr;
-		s=spsa_compute(s);
-		var fs=spsa_to_fishtest(s);
-		/* Let's go */
-		$("input[name='spsa_A']").val(0);
-		$("input[name='spsa_alpha']").val(0.0);
-		$("input[name='spsa_gamma']").val(0.0);
-		$("input[name='num-games']").val(1000*Math.round(s.num_games/1000));
-		$("textarea[name='spsa_raw_params']").val(fs.trim());
-		return true;
-	}
-	var saved_A=null;
-	var saved_alpha=null;
-	var saved_gamma=null;
-	var saved_games=null;
-	var saved_params=null;
-	function do_spsa_events(){
-		if($('#enable').prop("checked")){
-			/* save old stuff */
-			saved_A=$("input[name='spsa_A']").val();
-			saved_alpha=$("input[name='spsa_alpha']").val();
-			saved_gamma=$("input[name='spsa_gamma']").val();
-			saved_games=$("input[name='num-games']").val();
-			saved_params=$("textarea[name='spsa_raw_params']").val();
-			var ret=do_spsa_work();
-			if(!ret){
-				$('#enable').prop("checked",false);
-			}
-		}else{
-			$("input[name='spsa_A']").val(saved_A);
-			$("input[name='spsa_alpha']").val(saved_alpha);
-			$("input[name='spsa_gamma']").val(saved_gamma);
-			$("input[name='num-games']").val(saved_games);
-			$("textarea[name='spsa_raw_params']").val(saved_params);
-		}
-	}
-	$('#info_display').hide();
-	$('#info').click(function(){
-		if($('#info').val()=="Info"){
-			$('#info').val("Hide");
-		}else{
-			$('#info').val("Info");
-		}
-		$('#info_display').toggle(400);
-
-	});
-	$('#enable').change(do_spsa_events);
-	$("input[name='tc']").on("input",function(){
-		if(!$('#enable').prop("checked")){
-			return;
-		}
-		var tc=$("input[name='tc']").val();
-		var tc_seconds=tc_to_seconds(tc);
-		if(tc_seconds!=null){
-			do_spsa_work();
-		}
-	});
+  function do_spsa_work(){
+    /* parsing/computing */
+    if(!$('#enable').prop("checked")){
+      return true;
+    }
+    var params=$("textarea[name='spsa_raw_params']").val();
+    var s=fishtest_to_spsa(params);
+      if(s==null){
+      alert("Unable to parse spsa parameters.");
+      return false;
+    }
+    /* estimate the draw ratio */
+    var tc=$("input[name='tc']").val();
+    var dr=draw_ratio(tc);
+    if(dr==null){
+      alert("Unable to parse time control.");
+      return false;
+    }
+    s.draw_ratio=dr;
+    s=spsa_compute(s);
+    var fs=spsa_to_fishtest(s);
+    /* Let's go */
+    $("input[name='spsa_A']").val(0);
+    $("input[name='spsa_alpha']").val(0.0);
+    $("input[name='spsa_gamma']").val(0.0);
+    $("input[name='num-games']").val(1000*Math.round(s.num_games/1000));
+    $("textarea[name='spsa_raw_params']").val(fs.trim());
+    return true;
+  }
+  var saved_A=null;
+  var saved_alpha=null;
+  var saved_gamma=null;
+  var saved_games=null;
+  var saved_params=null;
+  function do_spsa_events(){
+    if($('#enable').prop("checked")){
+      /* save old stuff */
+      saved_A=$("input[name='spsa_A']").val();
+      saved_alpha=$("input[name='spsa_alpha']").val();
+      saved_gamma=$("input[name='spsa_gamma']").val();
+      saved_games=$("input[name='num-games']").val();
+      saved_params=$("textarea[name='spsa_raw_params']").val();
+      var ret=do_spsa_work();
+      if(!ret){
+      	$('#enable').prop("checked",false);
+      }
+    }else{
+      $("input[name='spsa_A']").val(saved_A);
+      $("input[name='spsa_alpha']").val(saved_alpha);
+      $("input[name='spsa_gamma']").val(saved_gamma);
+      $("input[name='num-games']").val(saved_games);
+      $("textarea[name='spsa_raw_params']").val(saved_params);
+    }
+  }
+  $('#info_display').hide();
+  $('#info').click(function(){
+    if($('#info').val()=="Info"){
+      $('#info').val("Hide");
+    }else{
+      $('#info').val("Info");
+    }
+    $('#info_display').toggle(400);
+  });
+  $('#enable').change(do_spsa_events);
+  $("input[name='tc']").on("input",function(){
+    if(!$('#enable').prop("checked")){
+      return;
+    }
+    var tc=$("input[name='tc']").val();
+    var tc_seconds=tc_to_seconds(tc);
+    if(tc_seconds!=null){
+      do_spsa_work();
+    }
+  });
 
 </script>
