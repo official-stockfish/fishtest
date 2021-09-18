@@ -8,28 +8,28 @@
   </div>
   <div class="control-group">
     <label class="control-label">eMail:</label>
-    %if profile:
-      <div class="controls">
-        <input name="email" type="email" value="${user['email']}" required="required"/>
+    % if profile:
+        <div class="controls">
+          <input name="email" type="email" value="${user['email']}" required="required"/>
+        </div>
+    % else:
+        <label class="control-label">&nbsp;<a href="mailto:${user['email']}?Subject=Fishtest%20Account">${user['email']}</a></label>
+    % endif
+  </div>
+  % if profile:
+      <div class="control-group">
+        <label class="control-label">New password:</label>
+        <div class="controls">
+          <input name="password" type="password" pattern=".{8,}" title="Eight or more characters: a password too simple or trivial to guess will be rejected"/>
+        </div>
       </div>
-    %else:
-      <label class="control-label">&nbsp;<a href="mailto:${user['email']}?Subject=Fishtest%20Account">${user['email']}</a></label>
-    %endif
-  </div>
-  %if profile:
-  <div class="control-group">
-    <label class="control-label">New password:</label>
-    <div class="controls">
-      <input name="password" type="password" pattern=".{8,}" title="Eight or more characters: a password too simple or trivial to guess will be rejected"/>
-    </div>
-  </div>
-  <div class="control-group">
-    <label class="control-label">Verify password:</label>
-    <div class="controls">
-      <input name="password2" type="password"/>
-    </div>
-  </div>
-  %endif
+      <div class="control-group">
+        <label class="control-label">Verify password:</label>
+        <div class="controls">
+          <input name="password2" type="password"/>
+        </div>
+      </div>
+  % endif
   <div class="control-group">
     <label class="control-label">Registration Time:</label>
     <label class="control-label">${user['registration_time'] if 'registration_time' in user else 'Unknown'}</label>
@@ -42,16 +42,16 @@
     <label class="control-label">CPU-Hours:</label>
     <label class="control-label">${hours}</label>
   </div>
-  %if not profile:
-  <%
-  blocked = user['blocked'] if 'blocked' in user else False
-  checked = 'checked' if blocked else ''
-  %>
-  <div class="control-group">
-    <label class="control-label">Blocked:</label>
-    <label class="control-label"><input name="blocked" type="checkbox" ${checked} value="True"></label>
-  </div>
-  %endif
+  % if not profile:
+      <%
+      blocked = user['blocked'] if 'blocked' in user else False
+      checked = 'checked' if blocked else ''
+      %>
+      <div class="control-group">
+        <label class="control-label">Blocked:</label>
+        <label class="control-label"><input name="blocked" type="checkbox" ${checked} value="True"></label>
+      </div>
+  % endif
   <p>
   <div class="control-group">
     <div class="controls">
