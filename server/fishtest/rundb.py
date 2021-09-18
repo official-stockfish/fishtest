@@ -531,6 +531,10 @@ class RunDb:
     worker_runs = {}
 
     def worker_cap(self, run, worker_info):
+        # Estimate how many games a worker will be able to run
+        # during the time interval determined by "self.task_duration".
+        # Make sure the result is properly quantized and not zero.
+
         game_time = estimate_game_duration(run["args"]["tc"])
         concurrency = worker_info["concurrency"] // run["args"]["threads"]
         assert concurrency >= 1
@@ -554,18 +558,12 @@ class RunDb:
             return {"task_waiting": False}
 
     def sync_request_task(self, worker_info):
-        worker_key = worker_info["unique_key"]
-        last_run_id = self.worker_runs.get(worker_key, {}).get("last_run", None)
 
-        def priority(run):  # lower is better
-            return (
-                -run["args"]["priority"],
-                # Try to find a new run for this worker.
-                run["_id"] == last_run_id,
-                run["cores"] / run["args"]["itp"] * 100.0,
-                -run["args"]["itp"],
-                run["_id"],
-            )
+        unique_key = worker_info["unique_key"]
+
+        # We get the list of unfinished runs.
+        # To limit db access the list is cached for
+        # 60 seconds.
 
         if time.time() > self.task_time + 60:
             if DEBUG:
@@ -578,21 +576,31 @@ class RunDb:
                 self.task_runs.append(run)
             self.task_time = time.time()
 
-        # Note that a cached task_run may have runs with
-        # a changed number of cores.
-        # Either by the code below or else by finished tasks
-        # detected in update_task().
+        # We sort the list of finished runs according to priority.
+        # Note that because of the caching, the properties of the
+        # runs may have changed, so resorting is necessary.
+        # Changes can be created by the code below or else in update_task().
         # Note that update_task() uses the same objects as here
         # (they are not copies).
 
+        last_run_id = self.worker_runs.get(unique_key, {}).get("last_run", None)
+
+        def priority(run):  # lower is better
+            return (
+                -run["args"]["priority"],
+                # Try to find a new run for this worker.
+                run["_id"] == last_run_id,
+                run["cores"] / run["args"]["itp"] * 100.0,
+                -run["args"]["itp"],
+                run["_id"],
+            )
+
         self.task_runs.sort(key=priority)
 
-        max_threads = int(worker_info["concurrency"])
-        min_threads = int(worker_info.get("min_threads", 1))
-        max_memory = int(worker_info.get("max_memory", 0))
+        # We go through the list of unfinished runs to see if the worker
+        # has reached the number of allowed connection from the same ip
+        # address.
 
-        # We need to allocate a new task, but first check we don't have the same
-        # machine already running because multiple connections are not allowed.
         connections = 0
         for run in self.task_runs:
             for task in run["tasks"]:
@@ -602,21 +610,59 @@ class RunDb:
                 ):
                     connections = connections + 1
 
-        # Allow a few connections, for multiple computers on same IP
         if connections >= self.userdb.get_machine_limit(worker_info["username"]):
             return {"task_waiting": False, "hit_machine_limit": True}
 
-        # Limit worker Github API calls
+        # Collect some data about the worker that will be used below.
+
+        # Memory
+        max_threads = int(worker_info["concurrency"])
+        min_threads = int(worker_info.get("min_threads", 1))
+        max_memory = int(worker_info.get("max_memory", 0))
+
+        # Is the worker near the github api limit?
         if "rate" in worker_info:
             rate = worker_info["rate"]
-            limit = rate["remaining"] <= 2 * math.sqrt(rate["limit"])
+            near_github_api_limit = rate["remaining"] <= 2 * math.sqrt(rate["limit"])
         else:
-            limit = False
+            near_github_api_limit = False
 
-        # Get a new task that matches the worker requirements
+        # Now go through the sorted list of unfinished runs.
+        # We will add a task to the first run that is suitable.
+
         run_found = False
+
         for run in self.task_runs:
-            # compute required TT memory
+            if run["finished"]:
+                continue
+
+            if not run["approved"]:
+                continue
+
+            if run["args"]["threads"] > max_threads:
+                continue
+
+            if run["args"]["threads"] < min_threads:
+                continue
+
+            # Check if there aren't already enough workers
+            # working on this run.
+            committed_games = 0
+            for task in run["tasks"]:
+                if not task["active"]:
+                    if "stats" in task:
+                        stats = task["stats"]
+                        committed_games += (
+                            stats["wins"] + stats["losses"] + stats["draws"]
+                        )
+                else:
+                    committed_games += task["num_games"]
+
+            remaining = run["args"]["num_games"] - committed_games
+            if remaining <= 0:
+                continue
+
+            # We check if the worker has reserved enough memory
             need_tt = 0
             need_base = 0
             if max_memory > 0:
@@ -633,68 +679,60 @@ class RunDb:
                 # estime another 70MB per process for net (40) and other things besides hash
                 need_base = 2 * 70 * (max_threads // run["args"]["threads"])
 
-            if (
-                run["approved"]
-                and not run["finished"]  # because of the caching of task_runs
-                # the run may be finished in the meantime
-                and (
-                    not limit
-                    or (
-                        worker_key in self.worker_runs
-                        and run["_id"] in self.worker_runs[worker_key]
-                    )
-                )
-                and run["args"]["threads"] <= max_threads
-                and run["args"]["threads"] >= min_threads
-                and need_base + need_tt <= max_memory
-                # To avoid time losses in the case of large concurrency and short TC,
-                # probably due to cutechess-cli as discussed in issue #822,
-                # assign those workers to LTC or multi-threaded jobs.
-                and (
-                    max_threads < 32
-                    or estimate_game_duration(run["args"]["tc"])
-                    * run["args"]["threads"]
-                    > estimate_game_duration("30+0.3")
-                )
-            ):
-                task_id = -1
-                cores = 0
+            if need_base + need_tt > max_memory:
+                continue
 
-                committed_games = 0
-                run_size = 0
-                for task in run["tasks"]:
-                    run_size += task["num_games"]
-                    if not task["active"]:
-                        if "stats" in task:
-                            stats = task["stats"]
-                            committed_games += (
-                                stats["wins"] + stats["losses"] + stats["draws"]
-                            )
-                    else:
-                        committed_games += task["num_games"]
-
-                remaining = run["args"]["num_games"] - committed_games
-                if remaining <= 0:
+            # Github API limit...
+            if near_github_api_limit:
+                have_binary = (
+                    unique_key in self.worker_runs
+                    and run["_id"] in self.worker_runs[unique_key]
+                )
+                if not have_binary:
                     continue
 
-                if "spsa" in run["args"]:
-                    limit_cores = 40000 / math.sqrt(len(run["args"]["spsa"]["params"]))
-                else:
-                    limit_cores = 1000000  # No limit for SPRT and num_games.
+            # To avoid time losses in the case of large concurrency and short TC,
+            # probably due to cutechess-cli as discussed in issue #822,
+            # assign those workers to LTC or multi-threaded jobs.
+            if max_threads >= 32:
+                short_tc = estimate_game_duration(run["args"]["tc"]) * run["args"][
+                    "threads"
+                ] <= estimate_game_duration("30+0.3")
+                if short_tc:
+                    continue
 
-                run_found = True
-                for task in run["tasks"]:
-                    if task["active"]:
-                        cores += task["worker_info"]["concurrency"]
-                        if cores > limit_cores:
-                            run_found = False
-                            break
+            # Limit the number of cores.
+            # Currently this is only done for spsa.
+            if "spsa" in run["args"]:
+                limit_cores = 40000 / math.sqrt(len(run["args"]["spsa"]["params"]))
+            else:
+                limit_cores = 1000000  # infinity
 
-            if run_found:
-                break
+            cores=0
+            core_limit_reached = False
+            for task in run["tasks"]:
+                if task["active"]:
+                    cores += task["worker_info"]["concurrency"]
+                    if cores > limit_cores:
+                        core_limit_reached = True
+                        break
 
+            if core_limit_reached:
+                continue
+
+            # If we make it here, it means we have found a run
+            # suitable for a new task.
+            run_found = True
+            break
+
+        # If there is no suitable run, tell the worker.
         if not run_found:
             return {"task_waiting": False}
+
+        # Now we create a new task for this run.
+        opening_offset = 0
+        for task in run["tasks"]:
+            opening_offset += task["num_games"]
 
         task_size = min(self.worker_cap(run, worker_info), remaining)
         task = {
@@ -703,7 +741,7 @@ class RunDb:
             "active": True,
             "worker_info": worker_info,
             "last_updated": datetime.utcnow(),
-            "start": run_size,
+            "start": opening_offset,
             "stats": {"wins": 0, "losses": 0, "draws": 0, "pentanomial": 5 * [0]},
         }
         run["tasks"].append(task)
@@ -713,14 +751,17 @@ class RunDb:
         run["cores"] += task["worker_info"]["concurrency"]
         self.buffer(run, False)
 
-        # Update worker_runs (compiled tests)
-        if worker_key not in self.worker_runs:
-            self.worker_runs[worker_key] = {}
+        # Cache some data. Currently we record the id's
+        # the worker has seen, as well as the last id that was seen.
+        # Note that "worker_runs" is empty after a server restart.
 
-        if run["_id"] not in self.worker_runs[worker_key]:
-            self.worker_runs[worker_key][run["_id"]] = True
+        if unique_key not in self.worker_runs:
+            self.worker_runs[unique_key] = {}
 
-        self.worker_runs[worker_key]["last_run"] = run["_id"]
+        if run["_id"] not in self.worker_runs[unique_key]:
+            self.worker_runs[unique_key][run["_id"]] = True
+
+        self.worker_runs[unique_key]["last_run"] = run["_id"]
 
         if DEBUG:
             print(
@@ -728,7 +769,7 @@ class RunDb:
                     run["_id"],
                     task_id,
                     worker_info["username"],
-                    worker_key,
+                    unique_key,
                     run["tasks"][task_id]["stats"],
                 ),
                 flush=True,
@@ -804,11 +845,12 @@ class RunDb:
         # "pending": the task is not finished;
         # "active" : a worker is working on this task.
         # Currently tasks are created "pending" and "active"
-        # since they are created as a result of a worker request.
+        # since they are created as the result of a worker request.
         # If the worker walks away before the task is finished
         # then the task becomes "pending" and "not active".
-        # It is possible to migrate such tasks to a different worker,
-        # but currently we do not do this.
+        # In the past such tasks would be migrated to a different worker,
+        # but now we don't do this anymore. This means "pending"
+        # has become redundant and probably should go away.
         if not task["pending"]:
             print("Update_task: task {} is finished".format(task_id), flush=True)
             task["active"] = False  # should be true already
