@@ -259,8 +259,6 @@ from fishtest.util import worker_name
   <tbody>
     % for idx, task in enumerate(run['tasks'] + run.get('bad_tasks', [])):
         <%
-          if not "worker_info" in task:
-            continue
           stats = task.get('stats', {})
           if 'stats' in task:
             total = stats['wins'] + stats['losses'] + stats['draws']
@@ -283,8 +281,10 @@ from fishtest.util import worker_name
           % endif
           % if approver and 'worker_info' in task and 'username' in task['worker_info']:
               <a href="/user/${task['worker_info']['username']}">${worker_name(task['worker_info'])}</a>
-          % else:
-              ${worker_name(task['worker_info'])}
+          % elif 'worker_info' in task:
+              ${worker_name(task["worker_info"])}
+	  % else:
+	      -
           % endif
           </td>
           <td>
@@ -311,7 +311,7 @@ from fishtest.util import worker_name
           <td>${stats.get('time_losses', '-')}</td>
    
           % if 'spsa' not in run['args']:
-              % if task['residual']!=float("inf"):
+              % if 'residual' in task and task['residual']!=float("inf"):
                   <td style="background-color:${task['residual_color']}">${f"{task['residual']:.3f}"}</td>
               % else:
                   <td>-</td>
