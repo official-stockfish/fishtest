@@ -22,7 +22,7 @@ from fishtest.util import (
     format_results,
     post_in_fishcooking_results,
     remaining_hours,
-    unique_key,
+    unique_key as unique_key_,
     worker_name,
 )
 from pymongo import DESCENDING, MongoClient
@@ -577,7 +577,7 @@ class RunDb:
                 self.task_runs.append(run)
             self.task_time = time.time()
 
-        # We sort the list of finished runs according to priority.
+        # We sort the list of unfinished runs according to priority.
         # Note that because of the caching, the properties of the
         # runs may have changed, so resorting is necessary.
         # Changes can be created by the code below or else in update_task().
@@ -599,7 +599,7 @@ class RunDb:
         self.task_runs.sort(key=priority)
 
         # We go through the list of unfinished runs to see if the worker
-        # has reached the number of allowed connection from the same ip
+        # has reached the number of allowed connections from the same ip
         # address.
 
         connections = 0
@@ -709,7 +709,7 @@ class RunDb:
             else:
                 limit_cores = 1000000  # infinity
 
-            cores=0
+            cores = 0
             core_limit_reached = False
             for task in run["tasks"]:
                 if task["active"]:
@@ -738,7 +738,6 @@ class RunDb:
         task_size = min(self.worker_cap(run, worker_info), remaining)
         task = {
             "num_games": task_size,
-            "pending": True,
             "active": True,
             "worker_info": worker_info,
             "last_updated": datetime.utcnow(),
@@ -833,29 +832,10 @@ class RunDb:
                 flush=True,
             )
             return {"task_alive": False}
-        if task["worker_info"]["username"] != username:
-            print(
-                "Update_task: Non matching username: {} {} run_id: "
-                "https://tests.stockfishchess.org/tests/view/{} task_id: {}".format(
-                    username, task["worker_info"]["username"], run_id, task_id
-                ),
-                flush=True,
-            )
-            return {"task_alive": False}
 
-        # "pending": the task is not finished;
-        # "active" : a worker is working on this task.
-        # Currently tasks are created "pending" and "active"
-        # since they are created as the result of a worker request.
-        # If the worker walks away before the task is finished
-        # then the task becomes "pending" and "not active".
-        # In the past such tasks would be migrated to a different worker,
-        # but now we don't do this anymore. This means "pending"
-        # has become redundant and probably should go away.
-        if not task["pending"]:
-            print("Update_task: task {} is finished".format(task_id), flush=True)
-            task["active"] = False  # should be true already
-            return {"task_alive": False}
+        # task["active"]=True means that a worker should be working on this task.
+        # Tasks are created as "active" and become "not active" when they
+        # are finished, or when the worker goes offline.
 
         if not task["active"]:
             print("Update_task: task {} is not active".format(task_id), flush=True)
@@ -912,8 +892,6 @@ class RunDb:
         if num_games >= task["num_games"]:
             # This task is now finished
             task_finished = True
-            task["pending"] = False  # Make pending False before making active false
-            # to prevent race in request_task
             task["active"] = False
 
         # Now update the current run.
@@ -966,30 +944,42 @@ class RunDb:
 
     def failed_task(self, run_id, task_id, unique_key):
         run = self.get_run(run_id)
-        task = run["tasks"][task_id]
         if DEBUG:
             print(
                 "Failed: https://tests.stockfishchess.org/tests/view/{} {} {}".format(
-                    run_id, task if DEBUG else task_id, worker_name(task["worker_info"])
+                    run_id, task_id, worker_name(task["worker_info"])
                 ),
                 flush=True,
             )
+        # Check if the task exists.
         if task_id >= len(run["tasks"]):
+            print("Failed_task: task_id {} is invalid".format(task_id), flush=True)
             return {"task_alive": False}
-        if not task["active"] or not task["pending"]:
-            return {"task_alive": False}
-        # Test if the task is reallocated to a different worker.
+        # Test if the worker can change this task.
+        task = run["tasks"][task_id]
         if task["worker_info"]["unique_key"] != unique_key:
+            print(
+                "Failed_task: Non matching unique_key: {} {} run_id: "
+                "https://tests.stockfishchess.org/tests/view/{} task_id: {}".format(
+                    unique_key, task["worker_info"]["unique_key"], run_id, task_id
+                ),
+                flush=True,
+            )
             return {"task_alive": False}
-        # Mark the task as inactive: it will be rescheduled
+        # Check if the worker is still working on this task.
+        if not task["active"]:
+            print("Failed_task: task {} is not active".format(task_id), flush=True)
+            return {"task_alive": False}
+        # Mark the task as inactive.
+        task["active"] = False
+        self.buffer(run, True)
+
         print(
             "Inactive: https://tests.stockfishchess.org/tests/view/{} {} {}".format(
                 run_id, task if DEBUG else task_id, worker_name(task["worker_info"])
             ),
             flush=True,
         )
-        task["active"] = False
-        self.buffer(run, True)
         return {}
 
     def stop_run(self, run_id, run=None):
@@ -1006,7 +996,6 @@ class RunDb:
             save_it = True
         run["tasks"] = [task for task in run["tasks"] if "stats" in task]
         for task in run["tasks"]:
-            task["pending"] = False
             task["active"] = False
         if save_it:
             self.buffer(run, True)
@@ -1053,7 +1042,7 @@ class RunDb:
         if "bad_tasks" not in run:
             run["bad_tasks"] = []
         for task in run["tasks"]:
-            if unique_key(task["worker_info"]) in chi2["bad_users"]:
+            if unique_key_(task["worker_info"]) in chi2["bad_users"]:
                 purged = True
                 task["bad"] = True
                 run["bad_tasks"].append(task)
@@ -1128,11 +1117,16 @@ class RunDb:
 
     def request_spsa(self, run_id, task_id):
         run = self.get_run(run_id)
-
+        # Check if the task exists.
         if task_id >= len(run["tasks"]):
+            print("Request_spsa: task_id {} is invalid".format(task_id), flush=True)
             return {"task_alive": False}
+        # Worker authentication with unique_key should be here (but we don't have it)
+        # ...
         task = run["tasks"][task_id]
-        if not task["active"] or not task["pending"]:
+        # Check if the worker is still working on this task.
+        if not task["active"]:
+            print("Request_spsa: task {} is not active".format(task_id), flush=True)
             return {"task_alive": False}
 
         result = self.generate_spsa(run)

@@ -265,10 +265,8 @@ from fishtest.util import worker_name
           else:
             continue
 
-          if task['active'] and task['pending']:
+          if task['active']:
             active_style = 'info'
-          elif task['active'] and not task['pending']:
-            active_style = 'error'
           else:
             active_style = ''
         %>
