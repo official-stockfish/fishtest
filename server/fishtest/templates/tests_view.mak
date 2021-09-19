@@ -283,8 +283,8 @@ from fishtest.util import worker_name
               <a href="/user/${task['worker_info']['username']}">${worker_name(task['worker_info'])}</a>
           % elif 'worker_info' in task:
               ${worker_name(task["worker_info"])}
-	  % else:
-	      -
+          % else:
+              -
           % endif
           </td>
           <td>
