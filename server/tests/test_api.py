@@ -42,15 +42,10 @@ class TestApi(unittest.TestCase):
         task = {
             "num_games": self.rundb.chunk_size,
             "stats": {"wins": 0, "draws": 0, "losses": 0, "crashes": 0},
-            "pending": True,
             "active": True,
         }
 
         run["tasks"].append(task)
-
-        for i, task in enumerate(run["tasks"]):
-            if i is not self.task_id:
-                run["tasks"][i]["pending"] = False
 
         self.rundb.buffer(run, True)
 
@@ -142,7 +137,6 @@ class TestApi(unittest.TestCase):
         run["tasks"][self.task_id] = {
             "num_games": self.rundb.chunk_size,
             "stats": {"wins": 0, "draws": 0, "losses": 0, "crashes": 0},
-            "pending": True,
             "active": False,
         }
         self.rundb.buffer(run, True)
@@ -155,7 +149,6 @@ class TestApi(unittest.TestCase):
         run = self.rundb.get_run(self.run_id)
         self.assertEqual(run["cores"], self.concurrency)
         task = run["tasks"][response["task_id"]]
-        self.assertTrue(task["pending"])
         self.assertTrue(task["active"])
 
     def test_update_task(self):
@@ -170,7 +163,6 @@ class TestApi(unittest.TestCase):
         run = self.rundb.get_run(self.run_id)
         run["tasks"][self.task_id] = {
             "num_games": self.rundb.chunk_size,
-            "pending": True,
             "active": True,
         }
         self.worker_info = {
@@ -266,7 +258,6 @@ class TestApi(unittest.TestCase):
         self.assertFalse(response["task_alive"])
         run = self.rundb.get_run(self.run_id)
         task = run["tasks"][self.task_id]
-        self.assertFalse(task["pending"])
         self.assertFalse(task["active"])
 
     def test_failed_task(self):
@@ -351,7 +342,6 @@ class TestApi(unittest.TestCase):
                 {"name": "param name", "a": 1, "c": 1, "theta": 1, "min": 0, "max": 100}
             ],
         }
-        run["tasks"][self.task_id]["pending"] = True
         run["tasks"][self.task_id]["active"] = True
         self.rundb.buffer(run, True)
         request = self.correct_password_request(
@@ -530,7 +520,7 @@ class TestRunFinished(unittest.TestCase):
         self.assertTrue(run["finished"])
         self.assertFalse(run["results_stale"])
         self.assertTrue(
-            all([not t["pending"] and not t["active"] for t in run["tasks"]])
+            all([not t["active"] for t in run["tasks"]])
         )
         self.assertTrue("Total: {}".format(num_games) in run["results_info"]["info"][1])
 
