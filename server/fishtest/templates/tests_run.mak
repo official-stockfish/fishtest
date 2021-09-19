@@ -258,7 +258,7 @@ else:
     </div>
     <div class="flex-row stop_rule spsa">
       <label class="field-label leftmost"></label>
-    	<div  id="info_display" style="border-style:solid;">
+      <div  id="info_display" style="border-style:solid;">
         <i>
         Checking this option will rewrite the hyperparameters furnished by
         the tuning code in Stockfish in such a way that the SPSA tune will finish
