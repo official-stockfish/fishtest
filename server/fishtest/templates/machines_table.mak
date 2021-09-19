@@ -24,7 +24,7 @@
             ${machine['concurrency']}
           </td>
           <td>${machine['unique_key'].split('-')[0]}</td>
-          <td>${'%.2f' % (machine['nps'] / 1000000.0)}</td>
+          <td>${f"{machine['nps'] / 1000000:.2f}"}</td>
           <td>${machine['uname']}</td>
           <td>${machine['version']}</td>
           <td>

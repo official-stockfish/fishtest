@@ -17,7 +17,7 @@
     <dt>Games played</dt>
     <dd>${sum(u['games'] for u in users)}</dd>
     <dt>CPU time</dt>
-    <dd>${'%.2f years' % (sum(u['cpu_hours'] for u in users)/(24*365))}</dd>
+    <dd>${f"{sum(u['cpu_hours'] for u in users)/(24*365):.2f} years"}</dd>
   </li></dl>
 </ul>
 

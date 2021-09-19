@@ -8,8 +8,8 @@
     <h3>
       <span>
         ${len(machines)} machines ${cores}
-        cores ${'%.2fM' % (nps / (cores * 1000000.0 + 1))} nps
-        (${'%.2fM' % (nps / (1000000.0 + 1))} total nps)
+        cores ${f"{nps / (cores * 1000000 + 1):.2f}"} MNps
+        (${f"{nps / (1000000 + 1):.2f}"} total MNps)
         ${games_per_minute} games/minute
         ${pending_hours} hours remaining
       </span>
