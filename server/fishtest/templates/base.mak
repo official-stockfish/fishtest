@@ -25,7 +25,7 @@
 
     <%block name="head"/>
   </head>
-  
+
   <body>
     <div class="clearfix"
          style="width: 100px; float: left; padding: 12px 0;">

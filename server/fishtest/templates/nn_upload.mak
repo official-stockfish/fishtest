@@ -81,7 +81,7 @@
     By uploading you license your network under a
     <a href="https://creativecommons.org/share-your-work/public-domain/cc0/">CC0</a> license.
     </p>
-    <p>  
+    <p>
     <input type="checkbox" id="enable"/ onclick="doLicense()">
     <b>You are the author of this network or have obtained the network with a CC0 license.</b>
     </p>
