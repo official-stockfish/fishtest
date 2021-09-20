@@ -3,20 +3,18 @@
   import fishtest.stats.stat_util
   import fishtest.stats.LLRcalc
   import math
-  
+
   has_sprt = "sprt" in run["args"].keys()
   has_pentanomial = "pentanomial" in run["results"].keys()
   has_spsa = "spsa" in run["args"].keys()
 
 
   def pdf_to_string(pdf, decimals=(2, 5)):
-      format = "%." + str(decimals[0]) + "f" + ": " + "%." + str(decimals[1]) + "f"
-      return "{" + ", ".join([(format % (value, prob)) for value, prob in pdf]) + "}"
+      return "{" + ", ".join(f"{value:.{decimals[0]}f}: {prob:.{decimals[1]}f}" for value, prob in pdf) + "}"
 
 
   def list_to_string(l, decimals=6):
-      format = "%." + str(decimals) + "f"
-      return "[" + ", ".join([format % value for value in l]) + "]"
+      return "[" + ", ".join(f"{value:.{decimals}f}" for value in l) + "]"
 
 
   def t_conf(avg, var, skewness, exkurt):
@@ -256,21 +254,21 @@
                 </table>
             % endif  ## has_sprt
             <H4>Draws</H4>
-            <table class="table table-condensed" style="margin-top:1em;">	
-              <tr><td>Draw ratio</td><td>${"%.5f"%draw_ratio}</td></tr>
-              <tr><td>DrawElo (BayesElo)</td><td>${"%.2f"%drawelo}</td></tr>
+            <table class="table table-condensed" style="margin-top:1em;">
+              <tr><td>Draw ratio</td><td>${f"{draw_ratio:.5f}"}</td></tr>
+              <tr><td>DrawElo (BayesElo)</td><td>${f"{drawelo:.2f}"}</td></tr>
             </table>
             % if has_sprt:
                 <H4> SPRT bounds </H4>
-                <table class="table table-condensed" style="margin-top:1em;margin-bottom:0.5em;">	
+                <table class="table table-condensed" style="margin-top:1em;margin-bottom:0.5em;">
                   <tr>
                   <td></td></td><td>Logistic</td><td>Normalized</td><td>BayesElo</td><td>Score</td>
                   </tr>
                   <tr>
-                  <td>H0</td><td>${"%.3f"%lelo0}</td><td>${"%.3f"%nelo0}</td><td>${"%.3f"%belo0}</td><td>${"%.5f"%score0}</td>
+                  <td>H0</td><td>${f"{lelo0:.3f}"}</td><td>${f"{nelo0:.3f}"}</td><td>${f"{belo0:.3f}"}</td><td>${f"{score0:.5f}"}</td>
                   </tr>
                   <tr>
-                  <td>H1</td><td>${"%.3f"%lelo1}</td><td>${"%.3f"%nelo1}</td><td>${"%.3f"%belo1}</td><td>${"%.5f"%score1}</td>
+                  <td>H1</td><td>${f"{lelo1:.3f}"}</td><td>${f"{nelo1:.3f}"}</td><td>${f"{belo1:.3f}"}</td><td>${f"{score1:.5f}"}</td>
                   </tr>
                 </table>
                 <em>
@@ -284,20 +282,20 @@
                 <H4> Pentanomial statistics</H4>
                 <H5> Basic statistics </H5>
                 <table class="table table-condensed">
-                  <tr><td>Elo</td><td>${"%.4f [%.4f, %.4f]"%(elo5,elo5_l,elo5_u)}</td></tr>
-                  <tr><td>LOS(1-p)</td><td>${"%.5f"%LOS5}</td></tr>
+                  <tr><td>Elo</td><td>${f"{elo5:.4f} [{elo5_l:.4f}, {elo5_u:.4f}]"}</td></tr>
+                  <tr><td>LOS(1-p)</td><td>${f"{LOS5:.5f}"}</td></tr>
                   % if has_sprt:
-                      <tr><td>LLR</td><td>${"%.4f [%.4f, %.4f]"%(LLR5,LLR5_l,LLR5_u)}</td></tr>
+                      <tr><td>LLR</td><td>${f"{LLR5:.4f} [{LLR5_l:.4f}, {LLR5_u:.4f}]"}</td></tr>
                   % endif  ## has_sprt
                 </table>
                 % if has_sprt:
                     <H5> Generalized Log Likelihood Ratio </H5>
                     <table class="table table-condensed" style="margin-top:1em;margin-bottom:0.5em;">
-                      <tr><td>Logistic (exact)</td><td>${"%.5f"%LLR5_exact}</td></tr>
-                      <tr><td>Logistic (alt)</td><td>${"%.5f"%LLR5_alt}</td></tr>
-                      <tr><td>Logistic (alt2)</td><td>${"%.5f"%LLR5_alt2}</td></tr>
-                      <tr><td>Normalized (exact)</td><td>${"%.5f"%LLR5_normalized}</td></tr>
-                      <tr><td>Normalized (alt)</td><td>${"%.5f"%LLR5_normalized_alt}</td></tr>
+                      <tr><td>Logistic (exact)</td><td>${f"{LLR5_exact:.5f}"}</td></tr>
+                      <tr><td>Logistic (alt)</td><td>${f"{LLR5_alt:.5f}"}</td></tr>
+                      <tr><td>Logistic (alt2)</td><td>${f"{LLR5_alt2:.5f}"}</td></tr>
+                      <tr><td>Normalized (exact)</td><td>${f"{LLR5_normalized:.5f}"}</td></tr>
+                      <tr><td>Normalized (alt)</td><td>${f"{LLR5_normalized_alt:.5f}"}</td></tr>
                     </table>
                     <em>
                     The quantities labeled alt and alt2 are various approximations for the
@@ -305,31 +303,31 @@
                     better under extreme conditions.
                     </em>
                 % endif ## has_sprt
-                <H5> Auxilliary statistics </H5>	
-                <table class="table table-condensed">	
+                <H5> Auxilliary statistics </H5>
+                <table class="table table-condensed">
                   <tr><td>Games</td><td>${int(games5)}</td></tr>
                   <tr><td>Results [0-2]</td><td>${results5}</td></tr>
                   <tr><td>Distribution</td><td>${pdf5_s}</td></tr>
-                  <tr><td>(DD,WL) split</td><td>${"(%.5f, %.5f)"%(results5_DD_prob,results5_WL_prob)}</td></tr>
-                  <tr><td>Expected value</td><td>${"%.5f"%avg5}</td></tr>
-                  <tr><td>Variance</td><td>${"%.5f"%var5}</td></tr>
-                  <tr><td>Skewness</td><td>${"%.5f"%skewness5}</td></tr>
-                  <tr><td>Excess kurtosis</td><td>${"%.5f"%exkurt5}</td></tr>
+                  <tr><td>(DD,WL) split</td><td>${f"({results5_DD_prob:.5f}, {results5_WL_prob:.5f})"}</td></tr>
+                  <tr><td>Expected value</td><td>${f"{avg5:.5f}"}</td></tr>
+                  <tr><td>Variance</td><td>${f"{var5:.5f}"}</td></tr>
+                  <tr><td>Skewness</td><td>${f"{skewness5:.5f}"}</td></tr>
+                  <tr><td>Excess kurtosis</td><td>${f"{exkurt5:.5f}"}</td></tr>
                   % if has_sprt:
-                      <tr><td>Score</td><td>${"%.5f"%(avg5)}</td></tr>
-                  % else:  
-                      <tr><td>Score</td><td>${"%.5f [%.5f, %.5f]"%(avg5,avg5_l,avg5_u)}</td></tr>
-                  % endif ## has_sprt
-                  <tr><td>Variance/game</td><td>${"%.5f [%.5f, %.5f]"%(var5_per_game,var5_per_game_l,var5_per_game_u)}</td></tr>
-                  <tr><td>Stdev/game</td><td>${"%.5f [%.5f, %.5f]"%(stdev5_per_game,stdev5_per_game_l,stdev5_per_game_u)}</td></tr>
-                  % if has_sprt:
-                      <tr><td>Normalized Elo</td><td>${"%.2f"%(nelo5)}</td></tr>
+                      <tr><td>Score</td><td>${f"{avg5:.5f}"}</td></tr>
                   % else:
-                      <tr><td>Normalized Elo</td><td>${"%.2f [%.2f, %.2f]"%(nelo5,nelo5_l,nelo5_u)}</td></tr>
+                      <tr><td>Score</td><td>${f"{avg5:.5f} [{avg5_l:.5f}, {avg5_u:.5f}]"}</td></tr>
+                  % endif ## has_sprt
+                  <tr><td>Variance/game</td><td>${f"{var5_per_game:.5f} [{var5_per_game_l:.5f}, {var5_per_game_u:.5f}]"}</td></tr>
+                  <tr><td>Stdev/game</td><td>${f"{stdev5_per_game:.5f} [{stdev5_per_game_l:.5f}, {stdev5_per_game_u:.5f}]"}</td></tr>
+                  % if has_sprt:
+                      <tr><td>Normalized Elo</td><td>${f"{nelo5:.2f}"}</td></tr>
+                  % else:
+                      <tr><td>Normalized Elo</td><td>${f"{nelo5:.2f} [{nelo5_l:.2f}, {nelo5_u:.2f}]"}</td></tr>
                   % endif  ## has_sprt
                   % if has_sprt:
-                      <tr><td>LLR jumps [0-2]</td><td>${LLRjumps5}</td></tr>	
-                      <tr><td>Expected overshoot [H0,H1]</td><td>${"[%.5f, %.5f]"%(o0,o1)}</td></tr>
+                      <tr><td>LLR jumps [0-2]</td><td>${LLRjumps5}</td></tr>
+                      <tr><td>Expected overshoot [H0,H1]</td><td>${f"[{o0:.5f}, {o1:.5f}]"}</td></tr>
                   % endif  ## has_sprt
                 </table>
             % endif  ## has_pentanomial
@@ -346,21 +344,21 @@
             % endif  ## has_pentanomial
             <H5> Basic statistics</H5>
             <table class="table table-condensed">
-              <tr><td>Elo</td><td>${"%.4f [%.4f, %.4f]"%(elo3,elo3_l,elo3_u)}</td></tr>
-              <tr><td>LOS(1-p)</td><td>${"%.5f"%LOS3}</td></tr>
+              <tr><td>Elo</td><td>${f"{elo3:.4f} [{elo3_l:.4f}, {elo3_u:.4f}]"}</td></tr>
+              <tr><td>LOS(1-p)</td><td>${f"{LOS3:.5f}"}</td></tr>
               % if has_sprt:
-                  <tr><td>LLR</td><td>${"%.4f [%.4f, %.4f]"%(LLR3,LLR3_l,LLR3_u)}</td></tr>
+                  <tr><td>LLR</td><td>${f"{LLR3:.4f} [{LLR3_l:.4f}, {LLR3_u:.4f}]"}</td></tr>
               % endif  ## has_sprt
             </table>
             % if has_sprt:
                 <H5>Generalized Log Likelihood Ratio</H5>
                 <table class="table table-condensed" style="margin-top:1em;margin-bottom:0.5em;">
-                  <tr><td>Logistic (exact)</td><td>${"%.5f"%LLR3_exact}</td></tr>
-                  <tr><td>Logistic (alt)</td><td>${"%.5f"%LLR3_alt}</td></tr>
-                  <tr><td>Logistic (alt2)</td><td>${"%.5f"%LLR3_alt2}</td></tr>
-                  <tr><td>Normalized (exact)</td><td>${"%.5f"%LLR3_normalized}</td></tr>
-                  <tr><td>Normalized (alt)</td><td>${"%.5f"%LLR3_normalized_alt}</td></tr>
-                  <tr><td>BayesElo</td><td>${"%.5f"%LLR3_be}</td></tr>	
+                  <tr><td>Logistic (exact)</td><td>${f"{LLR3_exact:.5f}"}</td></tr>
+                  <tr><td>Logistic (alt)</td><td>${f"{LLR3_alt:.5f}"}</td></tr>
+                  <tr><td>Logistic (alt2)</td><td>${f"{LLR3_alt2:.5f}"}</td></tr>
+                  <tr><td>Normalized (exact)</td><td>${f"{LLR3_normalized:.5f}"}</td></tr>
+                  <tr><td>Normalized (alt)</td><td>${f"{LLR3_normalized_alt:.5f}"}</td></tr>
+                  <tr><td>BayesElo</td><td>${f"{LLR3_be:.5f}"}</td></tr>
                 </table>
                 <em>
                 Note: BayesElo is the LLR as computed using the BayesElo model. It is not clear how to
@@ -372,21 +370,21 @@
               <tr><td>Games</td><td>${int(games3)}</td></tr>
               <tr><td>Results [losses, draws, wins]</td><td>${results3}</td></tr>
               <tr><td>Distribution {loss ratio, draw ratio, win ratio}</td><td>${pdf3_s}</td></tr>
-              <tr><td>Expected value</td><td>${"%.5f"%avg3}</td></tr>
-              <tr><td>Variance</td><td>${"%.5f"%var3}</td></tr>
-              <tr><td>Skewness</td><td>${"%.5f"%skewness3}</td></tr>
-              <tr><td>Excess kurtosis</td><td>${"%.5f"%exkurt3}</td></tr>
+              <tr><td>Expected value</td><td>${f"{avg3:.5f}"}</td></tr>
+              <tr><td>Variance</td><td>${f"{var3:.5f}"}</td></tr>
+              <tr><td>Skewness</td><td>${f"{skewness3:.5f}"}</td></tr>
+              <tr><td>Excess kurtosis</td><td>${f"{exkurt3:.5f}"}</td></tr>
               % if has_sprt:
-                  <tr><td>Score</td><td>${"%.5f"%(avg3)}</td></tr>
+                  <tr><td>Score</td><td>${f"{avg3:.5f}"}</td></tr>
               % else:
-                  <tr><td>Score</td><td>${"%.5f [%.5f, %.5f]"%(avg3,avg3_l,avg3_u)}</td></tr>
+                  <tr><td>Score</td><td>${f"{avg3:.5f} [{avg3_l:.5f}, {avg3_u:.5f}]"}</td></tr>
               % endif  ## has_sprt
-              <tr><td>Variance/game</td><td>${"%.5f [%.5f, %.5f]"%(var3,var3_l,var3_u)}</td></tr>
-              <tr><td>Stdev/game</td><td>${"%.5f [%.5f, %.5f]"%(stdev3,stdev3_l,stdev3_u)}</td></tr>
+              <tr><td>Variance/game</td><td>${f"{var3:.5f} [{var3_l:.5f}, {var3_u:.5f}]"}</td></tr>
+              <tr><td>Stdev/game</td><td>${f"{stdev3:.5f} [{stdev3_l:.5f}, {stdev3_u:.5f}]"}</td></tr>
               % if has_sprt:
-                  <tr><td>Normalized Elo</td><td>${"%.2f"%(nelo3)}</td></tr>
+                  <tr><td>Normalized Elo</td><td>${f"{nelo3:.2f}"}</td></tr>
               % else:
-                  <tr><td>Normalized Elo</td><td>${"%.2f [%.2f, %.2f]"%(nelo3,nelo3_l,nelo3_u)}</td></tr>
+                  <tr><td>Normalized Elo</td><td>${f"{nelo3:.2f} [{nelo3_l:.2f}, {nelo3_u:.2f}]"}</td></tr>
               % endif  ## has_sprt
               % if has_sprt:
                   <tr><td>LLR jumps [loss, draw, win]</td><td>${LLRjumps3}</td></tr>
@@ -395,10 +393,10 @@
             % if has_pentanomial:
                 <H4>Comparison</H4>
                 <table class="table table-condensed">
-                  <tr><td>Variance ratio (pentanomial/trinomial)</td><td>${"%.5f"%ratio}</td></tr>
-                  <tr><td>Variance difference (trinomial-pentanomial)</td><td>${"%.5f"%var_diff}</td></tr>
-                  <tr><td>RMS bias</td><td>${"%.5f"%RMS_bias}</td></tr>
-                  <tr><td>RMS bias (Elo)</td><td>${"%.3f"%RMS_bias_elo}</td></tr>
+                  <tr><td>Variance ratio (pentanomial/trinomial)</td><td>${f"{ratio:.5f}"}</td></tr>
+                  <tr><td>Variance difference (trinomial-pentanomial)</td><td>${f"{var_diff:.5f}"}</td></tr>
+                  <tr><td>RMS bias</td><td>${f"{RMS_bias:.5f}"}</td></tr>
+                  <tr><td>RMS bias (Elo)</td><td>${f"{RMS_bias_elo:.3f}"}</td></tr>
                 </table>
             % endif  ## has_pentanomial
           </div>
