@@ -19,7 +19,7 @@
         max: b,
         minorTicks: 5
       };
-      
+
       % for run in runs:
           % if 'sprt' in run['args']:
               var data = google.visualization.arrayToDataTable([
@@ -91,11 +91,11 @@ ${pagination()}
                 % endif
               </td>
           % endif
-  
+
           <td style="width: 6%;">
             ${run['start_time'].strftime("%y-%m-%d")}
           </td>
-  
+
           <td style="width: 2%;">
             <a href="/tests/user/${run['args'].get('username', '')}"
                title="${run['args'].get('username', '')}">

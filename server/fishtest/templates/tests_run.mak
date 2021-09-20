@@ -2,7 +2,7 @@
 
 <%
 from fishtest.util import format_bounds
-elo_model="normalized" 
+elo_model="normalized"
 fb=lambda e0,e1:format_bounds(elo_model,e0,e1)
 
 tc=args.get('tc','10+0.1')

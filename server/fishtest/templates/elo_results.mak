@@ -2,7 +2,7 @@
 
 <%
   def get_run_style(run):
-    ret = 'white-space:nowrap;'      
+    ret = 'white-space:nowrap;'
     style = run['results_info'].get('style','')
     if style != '':
       ret += 'background-color:' + style+';'

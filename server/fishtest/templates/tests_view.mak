@@ -150,13 +150,13 @@ from fishtest.util import worker_name
     <form class="form" action="/tests/modify" method="POST">
       <label class="control-label">Number of games:</label>
       <input type="text" name="num-games" value="${run['args']['num_games']}">
-  
+
       <label class="control-label">Adjust priority (higher is more urgent):</label>
       <input type="text" name="priority" value="${run['args']['priority']}">
 
       <label class="control-label">Adjust throughput (%):</label>
       <input type="text" name="throughput" value="${run['args'].get('throughput', 1000)}">
-  
+
       <div class="control-group">
         <label class="checkbox">
           Auto-purge
@@ -307,7 +307,7 @@ from fishtest.util import worker_name
           % endif
           <td>${stats.get('crashes', '-')}</td>
           <td>${stats.get('time_losses', '-')}</td>
-   
+
           % if 'spsa' not in run['args']:
               % if 'residual' in task and task['residual']!=float("inf"):
                   <td style="background-color:${task['residual_color']}">${f"{task['residual']:.3f}"}</td>
