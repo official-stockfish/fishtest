@@ -311,12 +311,12 @@ from fishtest.util import worker_name
 
           % if 'spsa' not in run['args']:
               % if 'residual' in task and task['residual']['res_draw']!=float("inf"):
-                  <td style="background-color:${task['residual_color']['res_draw']}">${f"{task['residual']['res_draw']:.3f}"}</td>
+                  <td data-diff=${abs(task['residual']['res_draw'])} style="background-color:${task['residual_color']['res_draw']}">${f"{task['residual']['res_draw']:.3f}"}</td>
               % else:
                   <td>-</td>
               % endif
               % if 'residual' in task and task['residual']['res_elo']!=float("inf"):
-                  <td style="background-color:${task['residual_color']['res_elo']}">${f"{task['residual']['res_elo']:.3f}"}</td>
+                  <td data-diff=${abs(task['residual']['res_elo'])} style="background-color:${task['residual_color']['res_elo']}">${f"{task['residual']['res_elo']:.3f}"}</td>
               % else:
                   <td>-</td>
               % endif
