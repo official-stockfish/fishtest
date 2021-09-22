@@ -155,9 +155,10 @@ def calculate_residuals(run):
                     task["residual_color"][res] = "#FF6A6A"
 
             if chi2["p"] < 0.05 or abs(task["residual"]["res_elo"]) > 3.0:
-                if (
-                    len(worst_user) == 0
-                    or abs(task["residual"]["res_elo"]) > abs(worst_user["residual"]["res_elo"])
+                if len(worst_user) == 0 or (
+                    abs(task["residual"]["res_elo"])
+                    > abs(worst_user["residual"]["res_elo"])
+                    and task["residual"]["res_elo"] != float("inf")
                 ):
                     worst_user["unique_key"] = unique_key(task["worker_info"])
                     worst_user["residual"] = task["residual"]
