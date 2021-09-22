@@ -251,9 +251,10 @@ from fishtest.util import worker_name
       <th>Crashes</th>
       <th>Time</th>
 
-      % if 'spsa' not in run['args']:
-          <th>Residual</th>
-      % endif
+      % if 'spsa' not in run['args']: 
+          <th>Residual (draws)</th>
+          <th>Residual (Elo)</th>
+     % endif
     </tr>
   </thead>
   <tbody>
@@ -309,8 +310,13 @@ from fishtest.util import worker_name
           <td>${stats.get('time_losses', '-')}</td>
 
           % if 'spsa' not in run['args']:
-              % if 'residual' in task and task['residual']!=float("inf"):
-                  <td style="background-color:${task['residual_color']}">${f"{task['residual']:.3f}"}</td>
+              % if 'residual' in task and task['residual']['res_draw']!=float("inf"):
+                  <td style="background-color:${task['residual_color']['res_draw']}">${f"{task['residual']['res_draw']:.3f}"}</td>
+              % else:
+                  <td>-</td>
+              % endif
+              % if 'residual' in task and task['residual']['res_elo']!=float("inf"):
+                  <td style="background-color:${task['residual_color']['res_elo']}">${f"{task['residual']['res_elo']:.3f}"}</td>
               % else:
                   <td>-</td>
               % endif

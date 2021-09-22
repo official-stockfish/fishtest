@@ -108,15 +108,14 @@ def get_chi2(tasks, bad_users):
     chi2 = numpy.sum(raw_residual * raw_residual / expected)
     p_value = 1 - scipy.stats.chi2.cdf(chi2, df)
 
-    # Finally we also compute for each qualifying worker a residual
+    # Finally we also compute for each qualifying worker two residuals
     # indicating how badly it deviates from the norm.
-    std_error = numpy.sqrt(
-        expected
-        * numpy.outer((1 - row_sums / grand_total), (1 - column_sums / grand_total))
-    )
-    adj_residual = raw_residual / std_error
+
+    res_draw = fishtest.stats.stat_util.residuals(numpy.array([0, 1, 0]), observed)
+    res_elo = fishtest.stats.stat_util.residuals(numpy.array([-1, 0, 1]), observed)
+
     for idx in range(len(keys)):
-        users[keys[idx]] = numpy.max(numpy.abs(adj_residual[idx]))
+        users[keys[idx]] = {"res_draw": res_draw[idx], "res_elo": res_elo[idx]}
 
     return {"chi2": chi2, "dof": df, "p": p_value, "residual": users}
 
@@ -134,23 +133,32 @@ def calculate_residuals(run):
                 continue
             if unique_key(task["worker_info"]) in bad_users:
                 continue
-            task["residual"] = residuals.get(unique_key(task["worker_info"]), float("inf"))
+            task["residual"] = residuals.get(
+                unique_key(task["worker_info"]),
+                {"res_draw": float("inf"), "res_elo": float("inf")},
+            )
 
             # Special case crashes or time losses
             stats = task.get("stats", {})
             crashes = stats.get("crashes", 0)
             if crashes > 3:
-                task["residual"] = 8.0
+                task["residual"]["res_draw"] = 8.0
+                task["residual"]["res_elo"] = 8.0
 
-            if abs(task["residual"]) < 2.0:
-                task["residual_color"] = "#44EB44"
-            elif abs(task["residual"]) < 2.7:
-                task["residual_color"] = "yellow"
-            else:
-                task["residual_color"] = "#FF6A6A"
+            task["residual_color"] = {}
+            for res in ("res_draw", "res_elo"):
+                if abs(task["residual"][res]) < 2.0:
+                    task["residual_color"][res] = "#44EB44"
+                elif abs(task["residual"][res]) < 2.7:
+                    task["residual_color"][res] = "yellow"
+                else:
+                    task["residual_color"][res] = "#FF6A6A"
 
-            if chi2["p"] < 0.001 or task["residual"] > 7.0:
-                if len(worst_user) == 0 or task["residual"] > worst_user["residual"]:
+            if chi2["p"] < 0.001 or task["residual"]["res_elo"] > 7.0:
+                if (
+                    len(worst_user) == 0
+                    or task["residual"]["res_elo"] > worst_user["residual"]["res_elo"]
+                ):
                     worst_user["unique_key"] = unique_key(task["worker_info"])
                     worst_user["residual"] = task["residual"]
 

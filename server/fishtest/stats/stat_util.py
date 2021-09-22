@@ -2,6 +2,7 @@ from __future__ import division
 
 import math
 
+import numpy
 import scipy.stats
 from fishtest.stats import LLRcalc, sprt
 
@@ -309,6 +310,44 @@ def update_SPRT(R, sprt):
         sprt["state"] = "rejected"
     elif sprt["llr"] > sprt["upper_bound"] - o1:
         sprt["state"] = "accepted"
+
+def residuals(coeffs, table):
+    # If k1j,..,ktj is a row in a contingency table
+    # then we associate a statistic to the sum of ai*kij
+    # which is standard normal under the null hypothesis
+    # which states that the rows of the contingency table are
+    # obtained by sampling from the same distribution.
+    #
+    # Let Ki be the column sums, let nj be the sum of the
+    # kij and let N be the grand total. Then after conditioning
+    # on nj and K1,..,Kt, (k1j,...,ktj) follows a multivariate
+    # hypergeometric distribution. See
+    # https://en.wikipedia.org/wiki/Hypergeometric_distribution
+    # We assume that the hypergeometric distribution is
+    # asymptotically normal (reference needed).
+    # According to the formulas in loc cit the covariance matrix
+    # (k1j,...,ktj) is obtained by multiplying by (N-nj)/(N-1) the
+    # covariance matrix from a multinomial distribution with
+    # probabilities Ki/N.
+    #
+    # It follows that sum_i ai*kij is asymptotically normal
+    # with expected value mu=sum_i ai*(Ki/N) per draw, expected
+    # value nj*mu and variance
+    # nj*(N-nj)/(N-1)*sum_i (ai-mu)^2*(Ki/N)
+
+    Ki = numpy.sum(table, axis=0)
+    nj = numpy.sum(table, axis=1)
+    N = numpy.sum(Ki)
+    pi = Ki / N
+    mu = numpy.sum(coeffs * pi)  # expected value per draw
+    mj = nj * mu  # expected values per row
+    varj = (
+        numpy.sum((coeffs - mu) * (coeffs - mu) * pi) * nj * (N - nj) / (N - 1)
+    )  # variances per row
+    mmj = numpy.matmul(table, coeffs)
+    residuals = (mmj - mj) / numpy.sqrt(varj)
+    return residuals
+
 
 
 if __name__ == "__main__":
