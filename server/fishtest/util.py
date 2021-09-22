@@ -154,7 +154,7 @@ def calculate_residuals(run):
                 else:
                     task["residual_color"][res] = "#FF6A6A"
 
-            if chi2["p"] < 0.001 or abs(task["residual"]["res_elo"]) > 7.0:
+            if chi2["p"] < 0.05 or abs(task["residual"]["res_elo"]) > 3.0:
                 if (
                     len(worst_user) == 0
                     or abs(task["residual"]["res_elo"]) > abs(worst_user["residual"]["res_elo"])
