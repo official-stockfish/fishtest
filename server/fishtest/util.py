@@ -111,8 +111,8 @@ def get_chi2(tasks, bad_users):
     # Finally we also compute for each qualifying worker two residuals
     # indicating how badly it deviates from the norm.
 
-    res_draw = fishtest.stats.stat_util.residuals(numpy.array([0, 1, 0]), observed)
-    res_elo = fishtest.stats.stat_util.residuals(numpy.array([-1, 0, 1]), observed)
+    res_draw = fishtest.stats.stat_util.residuals(numpy.array([0, 0, 1]), observed)
+    res_elo = fishtest.stats.stat_util.residuals(numpy.array([1, -1, 0]), observed)
 
     for idx in range(len(keys)):
         users[keys[idx]] = {"res_draw": res_draw[idx], "res_elo": res_elo[idx]}
