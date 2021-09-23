@@ -121,6 +121,26 @@ def get_chi2(tasks, bad_users):
 
 
 def calculate_residuals(run):
+    # This function does multiple things:
+    # (1) It calculates residuals and puts them in
+    #     the list run["tasks"]. These are displayed on
+    #     the main test page.
+    # (2) It computes at most one "bad_user" (=bad_task), i.e.
+    #     subject to some other restrictions, the user
+    #     with the worst residual.
+    # (3) It returns chi2 and residuals recomputed _after
+    #     excluding bad_user_. So the returned residuals
+    #     do not have to agree with those already in run["tasks"].
+    #     OTOH: the returned "cleaned" chi2 value is the one displayed
+    #     on the main test page.
+    #
+    # Note: when a run is purged (in rundb.py:purge_run()),
+    # the bad_users are moved to another list run["bad_tasks"].
+    #
+    # Maybe it would be better if identifying bad_users and recomputing
+    # would be moved to purge_run() instead of including it in this
+    # function.
+
     bad_users = set()
     chi2 = get_chi2(run["tasks"], bad_users)
     residuals = chi2["residual"]
@@ -155,10 +175,10 @@ def calculate_residuals(run):
                     task["residual_color"][res] = "#FF6A6A"
 
             if chi2["p"] < 0.05 or abs(task["residual"]["res_draw"]) > 3.0:
-                if len(worst_user) == 0 or (
-                    abs(task["residual"]["res_draw"])
+                if task["residual"]["res_draw"] != float("inf") and (
+                    len(worst_user) == 0
+                    or abs(task["residual"]["res_draw"])
                     > abs(worst_user["residual"]["res_draw"])
-                    and task["residual"]["res_draw"] != float("inf")
                 ):
                     worst_user["unique_key"] = unique_key(task["worker_info"])
                     worst_user["residual"] = task["residual"]
