@@ -1045,7 +1045,10 @@ class RunDb:
         if "bad_tasks" not in run:
             run["bad_tasks"] = []
         for task in run["tasks"]:
-            if unique_key_(task["worker_info"]) in chi2["bad_users"]:
+            if (
+                "worker_info" in task
+                and unique_key_(task["worker_info"]) in chi2["bad_users"]
+            ):
                 purged = True
                 task["bad"] = True
                 run["bad_tasks"].append(task)
