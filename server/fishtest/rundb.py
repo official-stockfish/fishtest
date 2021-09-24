@@ -1036,6 +1036,9 @@ class RunDb:
         return True
 
     def purge_run(self, run):
+        now = datetime.utcnow()
+        if "start_time" not in run or (now - run["start_time"]).days > 30:
+            return False
         # Remove bad tasks
         purged = False
         chi2 = calculate_residuals(run)
