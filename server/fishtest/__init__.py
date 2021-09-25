@@ -5,14 +5,14 @@ from pyramid.authentication import AuthTktAuthenticationPolicy
 from pyramid.authorization import ACLAuthorizationPolicy
 from pyramid.config import Configurator
 from pyramid.events import BeforeRender, NewRequest
-from pyramid.session import UnencryptedCookieSessionFactoryConfig
+from pyramid.session import SignedCookieSessionFactory
 
 from fishtest import helpers
 
 
 def main(global_config, **settings):
     """This function returns a Pyramid WSGI application."""
-    session_factory = UnencryptedCookieSessionFactoryConfig("fishtest")
+    session_factory = SignedCookieSessionFactory("fishtest")
     config = Configurator(
         settings=settings,
         session_factory=session_factory,
