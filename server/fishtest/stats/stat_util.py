@@ -311,43 +311,41 @@ def update_SPRT(R, sprt):
     elif sprt["llr"] > sprt["upper_bound"] - o1:
         sprt["state"] = "accepted"
 
-def residuals(coeffs, table):
-    # If k1j,..,ktj is a row in a contingency table
-    # then we associate a statistic to the sum of ai*kij
-    # which is standard normal under the null hypothesis
-    # which states that the rows of the contingency table are
-    # obtained by sampling from the same distribution.
+
+def residuals(a, k):
+    # Let a_1,...,a_t be a fixed set of numbers and let k
+    # be a contingency table. We assume that all rows of
+    # k are drawn from the same discrete probability
+    # distribution. Let k_i1,..,k_it be the i'th row in k.
+    # and let  X_i be the random variable sum_j k_ij*a_j,
+    # conditioned on the column sums of k.
     #
-    # Let Ki be the column sums, let nj be the sum of the
-    # kij and let N be the grand total. Then after conditioning
-    # on nj and K1,..,Kt, (k1j,...,ktj) follows a multivariate
-    # hypergeometric distribution. See
+    # In this function we compute (E(X_i)/StDev(X_i))_i.
+    # This calculation depends on knowing E(k_ij) and
+    # Cov(k_ij,k_ij') (conditioned on the column sums).
+    # To this end we observe that (k_ij)_j follows a
+    # multivariate hypergeometric distribrution
     # https://en.wikipedia.org/wiki/Hypergeometric_distribution
-    # We assume that the hypergeometric distribution is
-    # asymptotically normal (reference needed).
-    # According to the formulas in loc cit the covariance matrix
-    # (k1j,...,ktj) is obtained by multiplying by (N-nj)/(N-1) the
-    # covariance matrix from a multinomial distribution with
-    # probabilities Ki/N.
-    #
-    # It follows that sum_i ai*kij is asymptotically normal
-    # with expected value mu=sum_i ai*(Ki/N) per draw, expected
-    # value nj*mu and variance
-    # nj*(N-nj)/(N-1)*sum_i (ai-mu)^2*(Ki/N)
+    # and we use the expectation value and covariance
+    # matrix given in loc. cit.
 
-    Ki = numpy.sum(table, axis=0)
-    nj = numpy.sum(table, axis=1)
-    N = numpy.sum(Ki)
-    pi = Ki / N
-    mu = numpy.sum(coeffs * pi)  # expected value per draw
-    mj = nj * mu  # expected values per row
-    varj = (
-        numpy.sum((coeffs - mu) * (coeffs - mu) * pi) * nj * (N - nj) / (N - 1)
-    )  # variances per row
-    mmj = numpy.matmul(table, coeffs)
-    residuals = (mmj - mj) / numpy.sqrt(varj)
-    return residuals
+    # i=row index, j=column_index
 
+    k_dot_j = numpy.sum(k, axis=0)  # column sums
+    k_i_dot = numpy.sum(k, axis=1)  # row sums
+    k_dot_dot = numpy.sum(k_dot_j)  # grand total
+    p_j = k_dot_j / k_dot_dot  # row independent part of the expression for the
+    # expectation value of (k_ij)_j
+    cov_j_j = -numpy.outer(p_j, p_j) + numpy.diag(p_j)  # row independent part
+    # of the expression for the covariance matrix of (k_ij)_j.
+    E = a.dot(p_j)  # row independent part of the expectation
+    # value of X_i.
+    Var = a.dot(numpy.matmul(cov_j_j, a))  # row independent part of the variance of
+    # X_i
+    E_i = E * k_i_dot
+    Var_i = Var * k_i_dot * (k_dot_dot - k_i_dot) / (k_dot_dot - 1)
+    observed_i = numpy.matmul(k, a)
+    return (observed_i - E_i) / numpy.sqrt(Var_i)
 
 
 if __name__ == "__main__":
