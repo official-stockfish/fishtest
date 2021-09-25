@@ -4,7 +4,7 @@ README = ""
 CHANGES = ""
 
 requires = [
-    "pyramid==1.10",
+    "pyramid",
     "pyramid_debugtoolbar",
     "pyramid_mako",
     "waitress",

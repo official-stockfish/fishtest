@@ -18,7 +18,7 @@ from fishtest.util import (
     password_strength,
 )
 from pyramid.httpexceptions import HTTPFound, exception_response
-from pyramid.security import authenticated_userid, forget, has_permission, remember
+from pyramid.security import forget, remember
 from pyramid.view import forbidden_view_config, view_config
 
 
@@ -90,7 +90,7 @@ def upload(request):
 
 
 def sync_upload(request):
-    userid = authenticated_userid(request)
+    userid = request.authenticated_userid
     if not userid:
         request.session.flash("Please login")
         return HTTPFound(location=request.route_url("login"))
@@ -136,7 +136,7 @@ def sync_upload(request):
         request.session.flash("Network upload fails or not configured", "error")
         return {}
 
-    request.actiondb.upload_nn(authenticated_userid(request), filename)
+    request.actiondb.upload_nn(request.authenticated_userid, filename)
     request.rundb.upload_nn(userid, filename, network)
 
     return HTTPFound(location=request.route_url("nns"))
@@ -313,7 +313,7 @@ def actions(request):
 
     return {
         "actions": actions_list,
-        "approver": has_permission("approve_run", request.context, request),
+        "approver": request.has_permission("approve_run")
     }
 
 
@@ -329,7 +329,7 @@ def get_idle_users(request):
 
 @view_config(route_name="pending", renderer="pending.mak")
 def pending(request):
-    if not has_permission("approve_run", request.context, request):
+    if not request.has_permission("approve_run"):
         request.session.flash("You cannot view pending users", "error")
         return HTTPFound(location=request.route_url("tests"))
 
@@ -339,13 +339,13 @@ def pending(request):
 @view_config(route_name="user", renderer="user.mak")
 @view_config(route_name="profile", renderer="user.mak")
 def user(request):
-    userid = authenticated_userid(request)
+    userid = request.authenticated_userid
     if not userid:
         request.session.flash("Please login")
         return HTTPFound(location=request.route_url("login"))
     user_name = request.matchdict.get("username", userid)
     profile = user_name == userid
-    if not profile and not has_permission("approve_run", request.context, request):
+    if not profile and not request.has_permission("approve_run"):
         request.session.flash("You cannot inspect users", "error")
         return HTTPFound(location=request.route_url("tests"))
     user_data = request.userdb.get_user(user_name)
@@ -390,7 +390,7 @@ def user(request):
             user_data["blocked"] = "blocked" in request.POST
             request.userdb.last_pending_time = 0
             request.actiondb.block_user(
-                authenticated_userid(request),
+                request.authenticated_userid,
                 {"user": user_name, "blocked": user_data["blocked"]},
             )
             request.session.flash(
@@ -519,7 +519,7 @@ def validate_form(request):
         "new_signature": request.POST["test-signature"],
         "base_options": request.POST["base-options"],
         "new_options": request.POST["new-options"],
-        "username": authenticated_userid(request),
+        "username": request.authenticated_userid,
         "tests_repo": request.POST["tests-repo"],
         "info": request.POST["run-info"],
     }
@@ -750,7 +750,7 @@ def update_nets(request, run):
 
 @view_config(route_name="tests_run", renderer="tests_run.mak", require_csrf=True)
 def tests_run(request):
-    if not authenticated_userid(request):
+    if not request.authenticated_userid:
         request.session.flash("Please login")
         next_page = "/tests/run"
         if "id" in request.params:
@@ -763,7 +763,7 @@ def tests_run(request):
             data = validate_form(request)
             run_id = request.rundb.new_run(**data)
             run = del_tasks(request.rundb.get_run(run_id))
-            request.actiondb.new_run(authenticated_userid(request), run)
+            request.actiondb.new_run(request.authenticated_userid, run)
             cached_flash(request, "Submitted test to the queue!")
             return HTTPFound(location="/tests/view/" + str(run_id))
         except Exception as e:
@@ -773,7 +773,7 @@ def tests_run(request):
     if "id" in request.params:
         run_args = request.rundb.get_run(request.params["id"])["args"]
 
-    username = authenticated_userid(request)
+    username = request.authenticated_userid
     u = request.userdb.get_user(username)
 
     return {
@@ -786,14 +786,12 @@ def tests_run(request):
 
 
 def can_modify_run(request, run):
-    return run["args"]["username"] == authenticated_userid(request) or has_permission(
-        "approve_run", request.context, request
-    )
+    return run["args"]["username"] == request.authenticated_userid or request.has_permission("approve_run")
 
 
 @view_config(route_name="tests_modify", require_csrf=True, request_method="POST")
 def tests_modify(request):
-    if not authenticated_userid(request):
+    if not request.authenticated_userid:
         request.session.flash("Please login")
         return HTTPFound(location=request.route_url("login"))
     if "num-games" in request.POST:
@@ -846,7 +844,7 @@ def tests_modify(request):
         request.rundb.task_time = 0
 
         after = del_tasks(run)
-        request.actiondb.modify_run(authenticated_userid(request), before, after)
+        request.actiondb.modify_run(request.authenticated_userid, before, after)
 
         cached_flash(request, "Run successfully modified!")
     return HTTPFound(location=request.route_url("tests"))
@@ -854,7 +852,7 @@ def tests_modify(request):
 
 @view_config(route_name="tests_stop", require_csrf=True, request_method="POST")
 def tests_stop(request):
-    if not authenticated_userid(request):
+    if not request.authenticated_userid:
         request.session.flash("Please login")
         return HTTPFound(location=request.route_url("login"))
     if "run-id" in request.POST:
@@ -866,20 +864,20 @@ def tests_stop(request):
         run["finished"] = True
         request.rundb.stop_run(request.POST["run-id"])
         run = del_tasks(run)
-        request.actiondb.stop_run(authenticated_userid(request), run)
+        request.actiondb.stop_run(request.authenticated_userid, run)
         cached_flash(request, "Stopped run")
     return HTTPFound(location=request.route_url("tests"))
 
 
 @view_config(route_name="tests_approve", require_csrf=True, request_method="POST")
 def tests_approve(request):
-    if not authenticated_userid(request):
+    if not request.authenticated_userid:
         request.session.flash("Please login")
         return HTTPFound(location=request.route_url("login"))
-    if not has_permission("approve_run", request.context, request):
+    if not request.has_permission("approve_run"):
         request.session.flash("Please login as approver")
         return HTTPFound(location=request.route_url("login"))
-    username = authenticated_userid(request)
+    username = request.authenticated_userid
     run_id = request.POST["run-id"]
     if request.rundb.approve_run(run_id, username):
         run = request.rundb.get_run(run_id)
@@ -894,10 +892,10 @@ def tests_approve(request):
 
 @view_config(route_name="tests_purge", require_csrf=True, request_method="POST")
 def tests_purge(request):
-    if not has_permission("approve_run", request.context, request):
+    if not request.has_permission("approve_run"):
         request.session.flash("Please login as approver")
         return HTTPFound(location=request.route_url("login"))
-    username = authenticated_userid(request)
+    username = request.authenticated_userid
 
     run = request.rundb.get_run(request.POST["run-id"])
     if not run["finished"]:
@@ -918,7 +916,7 @@ def tests_purge(request):
 
 @view_config(route_name="tests_delete", require_csrf=True, request_method="POST")
 def tests_delete(request):
-    if not authenticated_userid(request):
+    if not request.authenticated_userid:
         request.session.flash("Please login")
         return HTTPFound(location=request.route_url("login"))
     if "run-id" in request.POST:
@@ -935,7 +933,7 @@ def tests_delete(request):
         request.rundb.task_time = 0
 
         run = del_tasks(run)
-        request.actiondb.delete_run(authenticated_userid(request), run)
+        request.actiondb.delete_run(request.authenticated_userid, run)
 
         cached_flash(request, "Deleted run")
     return HTTPFound(location=request.route_url("tests"))
@@ -1105,7 +1103,7 @@ def tests_view(request):
         "run": run,
         "run_args": run_args,
         "page_title": page_title,
-        "approver": has_permission("approve_run", request.context, request),
+        "approver": request.has_permission("approve_run"),
         "chi2": calculate_residuals(run),
         "totals": "(%s active worker%s with %s core%s)"
         % (active, ("s" if active != 1 else ""), cores, ("s" if cores != 1 else "")),
