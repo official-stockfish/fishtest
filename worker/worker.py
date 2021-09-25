@@ -41,7 +41,7 @@ except ImportError:
 from games import run_games
 from updater import update
 
-WORKER_VERSION = 107
+WORKER_VERSION = 108
 ALIVE = True
 HTTP_TIMEOUT = 15.0
 
