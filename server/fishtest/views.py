@@ -10,12 +10,13 @@ import time
 import fishtest.stats.stat_util
 import requests
 from fishtest.util import (
-    calculate_residuals,
     delta_date,
     diff_date,
     estimate_game_duration,
     format_results,
+    get_chi2,
     password_strength,
+    update_residuals,
 )
 from pyramid.httpexceptions import HTTPFound, exception_response
 from pyramid.security import forget, remember
@@ -203,9 +204,7 @@ def signup(request):
                 return {}
 
     result = request.userdb.create_user(
-        username=signup_username,
-        password=signup_password,
-        email=signup_email,
+        username=signup_username, password=signup_password, email=signup_email
     )
     if not result:
         request.session.flash("Error! Invalid username or password", "error")
@@ -512,7 +511,7 @@ def validate_form(request):
         "base_tag": request.POST["base-branch"],
         "new_tag": request.POST["test-branch"],
         "tc": request.POST["tc"],
-        "new_tc":request.POST["new_tc"],
+        "new_tc": request.POST["new_tc"],
         "book": request.POST["book"],
         "book_depth": request.POST["book-depth"],
         "base_signature": request.POST["base-signature"],
@@ -523,9 +522,9 @@ def validate_form(request):
         "tests_repo": request.POST["tests-repo"],
         "info": request.POST["run-info"],
     }
-    odds=request.POST.get("odds","off") # off checkboxes are not posted
-    if odds=="off":
-        data["new_tc"]=data["tc"]
+    odds = request.POST.get("odds", "off")  # off checkboxes are not posted
+    if odds == "off":
+        data["new_tc"] = data["tc"]
 
     if not re.match(r"^([1-9]\d*/)?\d+(\.\d+)?(\+\d+(\.\d+)?)?$", data["tc"]):
         raise Exception("Bad time control format (base TC)")
@@ -902,7 +901,8 @@ def tests_purge(request):
         request.session.flash("Can only purge completed run", "error")
         return HTTPFound(location=request.route_url("tests"))
 
-    purged = request.rundb.purge_run(run)
+    # More relaxed conditions than with auto purge.
+    purged = request.rundb.purge_run(run, p=0.01, res=4.5)
     if not purged:
         request.session.flash("No bad workers!")
         return HTTPFound(location=request.route_url("tests"))
@@ -1099,12 +1099,14 @@ def tests_view(request):
         page_title = "{} games - {} vs {}".format(
             run["args"]["num_games"], run["args"]["new_tag"], run["args"]["base_tag"]
         )
+    chi2 = get_chi2(run["tasks"])
+    update_residuals(run["tasks"], cached_chi2=chi2)
     return {
         "run": run,
         "run_args": run_args,
         "page_title": page_title,
         "approver": request.has_permission("approve_run"),
-        "chi2": calculate_residuals(run),
+        "chi2": chi2,
         "totals": "(%s active worker%s with %s core%s)"
         % (active, ("s" if active != 1 else ""), cores, ("s" if cores != 1 else "")),
     }

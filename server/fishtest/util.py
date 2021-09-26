@@ -14,7 +14,7 @@ FISH_URL = "https://tests.stockfishchess.org/tests/view/"
 
 
 def unique_key(worker_info):
-    if unique_key in worker_info:
+    if "unique_key" in worker_info:
         return worker_info["unique_key"]
     else:
         # provide a mock unique key for very old tests
@@ -33,7 +33,7 @@ def worker_name(worker_info):
     return name
 
 
-def get_chi2(tasks, bad_users):
+def get_chi2(tasks, exclude_workers=set()):
     """Perform chi^2 test on the stats from each worker"""
 
     default_results = {
@@ -41,6 +41,8 @@ def get_chi2(tasks, bad_users):
         "dof": 0,
         "p": float("nan"),
         "residual": {},
+        "z_95": float("nan"),
+        "z_99": float("nan"),
     }
 
     # Aggregate results by worker
@@ -50,7 +52,7 @@ def get_chi2(tasks, bad_users):
         if "worker_info" not in task:
             continue
         key = unique_key(task["worker_info"])
-        if key in bad_users:
+        if key in exclude_workers:
             continue
         stats = task.get("stats", {})
         if has_pentanomial is None:
@@ -81,7 +83,7 @@ def get_chi2(tasks, bad_users):
     # they break the chi2 test.
     filtering_done = False
     while not filtering_done:
-        # Wheneve less than two qualifying workers are left,
+        # Whenever less than two qualifying workers are left,
         # we bail out and just return "something".
         if len(users) <= 1:
             return default_results
@@ -105,62 +107,84 @@ def get_chi2(tasks, bad_users):
     # Now we do the basic chi2 computation.
     df = (rows - 1) * (columns - 1)
     raw_residual = observed - expected
-    chi2 = numpy.sum(raw_residual * raw_residual / expected)
+    ratio = raw_residual ** 2 / expected
+    row_chi2 = numpy.sum(ratio, axis=1)
+    chi2 = numpy.sum(row_chi2)
     p_value = 1 - scipy.stats.chi2.cdf(chi2, df)
 
     # Finally we also compute for each qualifying worker a residual
     # indicating how badly it deviates from the norm.
-    std_error = numpy.sqrt(
-        expected
-        * numpy.outer((1 - row_sums / grand_total), (1 - column_sums / grand_total))
-    )
-    adj_residual = raw_residual / std_error
+    adj_row_chi2 = row_chi2 / (1 - row_sums / grand_total)
+    res_z = scipy.stats.norm.isf(scipy.stats.chi2.sf(adj_row_chi2, columns - 1))
     for idx in range(len(keys)):
-        users[keys[idx]] = numpy.max(numpy.abs(adj_residual[idx]))
+        users[keys[idx]] = max(0, res_z[idx])
 
-    return {"chi2": chi2, "dof": df, "p": p_value, "residual": users}
+    # We compute 95% and 99% thresholds using the Bonferroni correction.
+
+    z_95, z_99 = [scipy.stats.norm.ppf(1 - p / rows) for p in (0.05, 0.01)]
+
+    return {
+        "chi2": chi2,
+        "dof": df,
+        "p": p_value,
+        "residual": users,
+        "z_95": z_95,
+        "z_99": z_99,
+    }
 
 
-def calculate_residuals(run):
-    bad_users = set()
-    chi2 = get_chi2(run["tasks"], bad_users)
+def get_bad_workers(tasks, cached_chi2=None, p=0.001, res=7.0, iters=1):
+    # If we have an up-to-date result of get_chi2() we can pass
+    # it as cached_chi2 to avoid needless recomputation.
+    bad_workers = set()
+    for _ in range(iters):
+        if cached_chi2 is None:
+            chi2 = get_chi2(tasks, exclude_workers=bad_workers)
+        else:
+            chi2 = cached_chi2
+            cached_chi2 = None
+        worst_user = {}
+        residuals = chi2["residual"]
+        for worker_key in residuals:
+            if worker_key in bad_workers:
+                continue
+            if chi2["p"] < p or residuals[worker_key] > res:
+                if worst_user == {} or residuals[worker_key] > worst_user["residual"]:
+                    worst_user["unique_key"] = worker_key
+                    worst_user["residual"] = residuals[worker_key]
+        if worst_user == {}:
+            break
+        bad_workers.add(worst_user["unique_key"])
+
+    return bad_workers
+
+
+def update_residuals(tasks, cached_chi2=None):
+    # If we have an up-to-date result of get_chi2() we can pass
+    # it as cached_chi2 to avoid needless recomputation.
+    if cached_chi2 is None:
+        chi2 = get_chi2(tasks)
+    else:
+        chi2 = cached_chi2
     residuals = chi2["residual"]
 
-    # Limit bad users to 1 for now
-    for _ in range(1):
-        worst_user = {}
-        for task in run["tasks"]:
-            if "worker_info" not in task:
-                continue
-            if unique_key(task["worker_info"]) in bad_users:
-                continue
-            task["residual"] = residuals.get(unique_key(task["worker_info"]), float("inf"))
+    for task in tasks:
+        if "worker_info" not in task:
+            continue
+        task["residual"] = residuals.get(unique_key(task["worker_info"]), float("inf"))
 
-            # Special case crashes or time losses
-            stats = task.get("stats", {})
-            crashes = stats.get("crashes", 0)
-            if crashes > 3:
-                task["residual"] = 8.0
+        # Special case crashes or time losses
+        stats = task.get("stats", {})
+        crashes = stats.get("crashes", 0)
+        if crashes > 3:
+            task["residual"] = 8.0
 
-            if abs(task["residual"]) < 2.0:
-                task["residual_color"] = "#44EB44"
-            elif abs(task["residual"]) < 2.7:
-                task["residual_color"] = "yellow"
-            else:
-                task["residual_color"] = "#FF6A6A"
-
-            if chi2["p"] < 0.001 or task["residual"] > 7.0:
-                if len(worst_user) == 0 or task["residual"] > worst_user["residual"]:
-                    worst_user["unique_key"] = unique_key(task["worker_info"])
-                    worst_user["residual"] = task["residual"]
-
-        if len(worst_user) == 0:
-            break
-        bad_users.add(worst_user["unique_key"])
-        residuals = get_chi2(run["tasks"], bad_users)["residual"]
-
-    chi2["bad_users"] = bad_users
-    return chi2
+        if abs(task["residual"]) < chi2["z_95"]:
+            task["residual_color"] = "#44EB44"
+        elif abs(task["residual"]) < chi2["z_99"]:
+            task["residual_color"] = "yellow"
+        else:
+            task["residual_color"] = "#FF6A6A"
 
 
 def format_bounds(elo_model, elo0, elo1):
