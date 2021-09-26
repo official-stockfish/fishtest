@@ -16,10 +16,12 @@ from bson.objectid import ObjectId
 from fishtest.actiondb import ActionDb
 from fishtest.userdb import UserDb
 from fishtest.util import (
-    calculate_residuals,
+    update_residuals,
     estimate_game_duration,
     format_bounds,
     format_results,
+    get_bad_workers,
+    get_chi2,
     post_in_fishcooking_results,
     remaining_hours,
     unique_key as unique_key_,
@@ -1035,30 +1037,32 @@ class RunDb:
         self.task_time = 0
         return True
 
-    def purge_run(self, run):
+    def purge_run(self, run, p=0.001, res=7.0, iters=1):
         now = datetime.utcnow()
         if "start_time" not in run or (now - run["start_time"]).days > 30:
             return False
         # Remove bad tasks
         purged = False
-        chi2 = calculate_residuals(run)
         if "bad_tasks" not in run:
             run["bad_tasks"] = []
+
+        chi2 = get_chi2(run["tasks"])
+        # Make sure the residuals are up to date.
+        # Once a task is moved to run["bad_tasks"] its
+        # residual will no longer change.
+        update_residuals(run["tasks"], cached_chi2=chi2)
+        bad_workers = get_bad_workers(
+            run["tasks"], cached_chi2=chi2, p=p, res=res, iters=iters
+        )
         for task in run["tasks"]:
-            if unique_key_(task["worker_info"]) in chi2["bad_users"]:
+            if unique_key_(task["worker_info"]) in bad_workers:
                 purged = True
                 task["bad"] = True
                 run["bad_tasks"].append(task)
                 run["tasks"].remove(task)
         if purged:
-            # Generate new tasks if needed
             run["results_stale"] = True
             results = self.get_results(run)
-            played_games = results["wins"] + results["losses"] + results["draws"]
-            if played_games < run["args"]["num_games"]:
-                run["tasks"] += self.generate_tasks(
-                    run["args"]["num_games"] - played_games
-                )
             run["finished"] = False
             if "sprt" in run["args"] and "state" in run["args"]["sprt"]:
                 fishtest.stats.stat_util.update_SPRT(results, run["args"]["sprt"])
