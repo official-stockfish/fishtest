@@ -9,9 +9,9 @@
           integrity="sha384-F3w7mX95PdgyTmZZMECAngseQB83DfGTowi0iMjiWaeVhAn4FJkqJByhZMI3AhiU"
           crossorigin="anonymous">
 
-    <link href="/css/application.css?v=3" rel="stylesheet">
+    <link href="/css/application.css?v=${cache_busters['css/application.css']}" rel="stylesheet">
     % if request.cookies.get('theme') == 'dark':
-        <link href="/css/theme.dark.css" rel="stylesheet">
+        <link href="/css/theme.dark.css?v=${cache_busters['css/theme.dark.css']}" rel="stylesheet">
     % endif
 
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"
@@ -23,7 +23,7 @@
             crossorigin="anonymous"></script>
 
     <script src="/js/jquery.cookie.js" defer></script>
-    <script src="/js/application.js?v=6" defer></script>
+    <script src="/js/application.js?v=${cache_busters['js/application.js']}" defer></script>
 
     <%block name="head"/>
   </head>
