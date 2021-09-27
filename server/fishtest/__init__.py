@@ -1,4 +1,6 @@
+import hashlib
 import os
+from pathlib import Path
 
 from fishtest.rundb import RunDb
 from pyramid.authentication import AuthTktAuthenticationPolicy
@@ -21,6 +23,17 @@ def main(global_config, **settings):
     config.include("pyramid_mako")
     config.set_default_csrf_options(require_csrf=False)
 
+    def static_file_hash(filepath):
+        full_path = Path(__file__).parent / "./static/{}".format(filepath)
+        with open(full_path, "r") as f:
+            return hashlib.md5(f.read().encode("utf-8")).hexdigest()
+
+    cache_busters = {
+        "css/application.css": static_file_hash("css/application.css"),
+        "css/theme.dark.css": static_file_hash("css/theme.dark.css"),
+        "js/application.js": static_file_hash("js/application.js")
+    }
+
     rundb = RunDb()
 
     def add_rundb(event):
@@ -30,6 +43,7 @@ def main(global_config, **settings):
 
     def add_renderer_globals(event):
         event["h"] = helpers
+        event["cache_busters"] = cache_busters
 
     config.add_subscriber(add_rundb, NewRequest)
     config.add_subscriber(add_renderer_globals, BeforeRender)
