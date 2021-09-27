@@ -216,7 +216,7 @@ from fishtest.util import worker_name
       </div>
 
       <div class="btn-group">
-        <button id="btn_view_individual" type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+        <button id="btn_view_individual" type="button" class="btn btn-default dropdown-toggle" data-bs-toggle="dropdown">
           View Individual Parameter<span class="caret"></span>
         </button>
         <ul class="dropdown-menu" role="menu" id="dropdown_individual"></ul>
