@@ -161,7 +161,7 @@ $(document).ready(function(){
       }
 
       for (j = 0; j < spsa_params.length; j++) { 
-        $("#dropdown_individual").append("<li><a param_id=\"" + (j+1) + "\" >" + spsa_params[j].name + "</a></li>");
+        $("#dropdown_individual").append("<li><a class=\"dropdown-item\" href=\"javascript:\" param_id=\"" + (j+1) + "\" >" + spsa_params[j].name + "</a></li>");
       }
 
       $("#dropdown_individual").find('a').on('click', function() {
