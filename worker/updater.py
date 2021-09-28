@@ -88,6 +88,20 @@ def update(restart=True, test=False):
                 except:
                     print("Failed to remove the old backup folder " + str(old_bkp_dir))
 
+    # to be dropped when all workers will use the new requests packages
+    requests_dir = os.path.join(worker_dir, "requests")
+    requests_bkp = os.path.join(worker_dir, "_requests")
+    if os.path.exists(requests_bkp):
+        try:
+            shutil.rmtree(requests_bkp)
+        except:
+            print("Failed to delete the old requests folder " + str(requests_bkp))
+    if os.path.exists(requests_dir):
+        try:
+            shutil.move(requests_dir, requests_bkp)
+        except:
+            print("Failed to rename the old requests folder " + str(requests_dir))
+
     print("start_dir: " + start_dir)
     if restart:
         do_restart()
