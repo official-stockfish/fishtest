@@ -98,6 +98,10 @@ th {
   cursor: pointer;
 }
 
+/* Background colors for running tasks on test run pages */
+.table tbody tr.info>td {
+  background-color: #ccfbff;
+
 /* Pagination links */
 .page-link {
   color: #0088cc;
