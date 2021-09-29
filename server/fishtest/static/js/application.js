@@ -50,6 +50,8 @@ $(() => {
     });
 
     // Click the sun/moon icons to change the color theme of the site
+    // SRI hash for "fishtest/server/fishtest/static/css/theme.dark.css":
+    // sha256sum theme.dark.css | head -c 96 | xxd -r -p | base64
     let theme = $.cookie('theme') || 'light';
     $("#change-color-theme").click(function() {
       if (theme === 'light') {
@@ -58,7 +60,7 @@ $(() => {
         $("<link>")
           .attr("href", "/css/theme.dark.css")
           .attr("rel", "stylesheet")
-          .attr("integrity", "sha256-289tThSsKTG6H2LsvaJuWzMPansls8Ac+Dojfrx4KDs=")
+          .attr("integrity", "sha256-MWSktvLLEzZq1ATtOtXXDNVQ+DrHHBgb55uXy9GByoo=")
           .appendTo($("head"));
         theme = 'dark';
       } else {
