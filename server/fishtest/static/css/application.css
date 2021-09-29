@@ -100,7 +100,7 @@ th {
 
 /* Background colors for running tasks on test run pages */
 .table tbody tr.info>td {
-  background-color: #ccfbff;
+  background-color: #cff4fc;
 
 /* Pagination links */
 .page-link {
