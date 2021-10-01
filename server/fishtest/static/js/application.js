@@ -51,16 +51,17 @@ $(() => {
 
     // Click the sun/moon icons to change the color theme of the site
     // SRI hash for "fishtest/server/fishtest/static/css/theme.dark.css":
-    // sha256sum theme.dark.css | head -c 96 | xxd -r -p | base64
+    // openssl dgst -sha256 -binary theme.dark.css | openssl base64 -A
     let theme = $.cookie('theme') || 'light';
     $("#change-color-theme").click(function() {
       if (theme === 'light') {
+        const darkThemeSha256 = $("meta[name='dark-theme-sha256']").attr("content");
         $("#sun").show();
         $("#moon").hide();
         $("<link>")
-          .attr("href", "/css/theme.dark.css")
+          .attr("href", "/css/theme.dark.css?v=" + darkThemeSha256)
           .attr("rel", "stylesheet")
-          .attr("integrity", "sha256-MWSktvLLEzZq1ATtOtXXDNVQ+DrHHBgb55uXy9GByoo=")
+          .attr("integrity", "sha256-" + darkThemeSha256)
           .appendTo($("head"));
         theme = 'dark';
       } else {
