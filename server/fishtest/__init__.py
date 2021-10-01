@@ -1,6 +1,7 @@
 import hashlib
 import os
 from pathlib import Path
+import subprocess
 
 from fishtest.rundb import RunDb
 from pyramid.authentication import AuthTktAuthenticationPolicy
@@ -23,15 +24,25 @@ def main(global_config, **settings):
     config.include("pyramid_mako")
     config.set_default_csrf_options(require_csrf=False)
 
-    def static_file_hash(filepath):
-        full_path = Path(__file__).parent / "./static/{}".format(filepath)
-        with open(full_path, "r") as f:
+    def static_file_full_path(static_file_path):
+        return Path(__file__).parent / "./static/{}".format(static_file_path)
+
+    def static_file_hash(static_file_path):
+        with open(static_file_full_path(static_file_path), "r") as f:
             return hashlib.md5(f.read().encode("utf-8")).hexdigest()
+
+    # the same hash calculated by browser for sub-resource integrity checks:
+    # https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity
+    dark_theme_sha256_integrity = subprocess.run(
+        "openssl dgst -sha256 -binary {} | openssl base64 -A".format(
+            str(static_file_full_path(("css/theme.dark.css")))
+        )
+    , shell=True, check=True, stdout=subprocess.PIPE).stdout.strip().decode("utf-8")
 
     cache_busters = {
         "css/application.css": static_file_hash("css/application.css"),
-        "css/theme.dark.css": static_file_hash("css/theme.dark.css"),
-        "js/application.js": static_file_hash("js/application.js")
+        "css/theme.dark.css": dark_theme_sha256_integrity,
+        "js/application.js": static_file_hash("js/application.js"),
     }
 
     rundb = RunDb()

@@ -3,6 +3,7 @@
   <head>
     <title>Stockfish Testing Framework</title>
     <meta name="csrf-token" content="${request.session.get_csrf_token()}" />
+    <meta name="dark-theme-sha256" content="${cache_busters['css/theme.dark.css']}" />
 
     <link rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css"
