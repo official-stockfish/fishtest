@@ -16,7 +16,7 @@ from bson.objectid import ObjectId
 from fishtest.actiondb import ActionDb
 from fishtest.userdb import UserDb
 from fishtest.util import (
-    update_residuals,
+    crash_or_time,
     estimate_game_duration,
     format_bounds,
     format_results,
@@ -25,6 +25,7 @@ from fishtest.util import (
     post_in_fishcooking_results,
     remaining_hours,
     unique_key as unique_key_,
+    update_residuals,
     worker_name,
 )
 from pymongo import DESCENDING, MongoClient
@@ -1046,15 +1047,34 @@ class RunDb:
         if "bad_tasks" not in run:
             run["bad_tasks"] = []
 
+        tasks = copy.copy(run["tasks"])
+        for task in tasks:
+            # Special cases: crashes or time losses.
+            if crash_or_time(task):
+                purged = True
+                # The next two lines are a bit hacky but
+                # the correct residual and color may not have
+                # been set yet.
+                task["residual"] = 10.0
+                task["residual_color"] = "#FF6A6A"
+                task["bad"] = True
+                run["bad_tasks"].append(task)
+                run["tasks"].remove(task)
+
         chi2 = get_chi2(run["tasks"])
         # Make sure the residuals are up to date.
         # Once a task is moved to run["bad_tasks"] its
         # residual will no longer change.
         update_residuals(run["tasks"], cached_chi2=chi2)
         bad_workers = get_bad_workers(
-            run["tasks"], cached_chi2=chi2, p=p, res=res, iters=iters
+            run["tasks"],
+            cached_chi2=chi2,
+            p=p,
+            res=res,
+            iters=iters - 1 if purged else iters,
         )
-        for task in run["tasks"]:
+        tasks = copy.copy(run["tasks"])
+        for task in tasks:
             if unique_key_(task["worker_info"]) in bad_workers:
                 purged = True
                 task["bad"] = True
