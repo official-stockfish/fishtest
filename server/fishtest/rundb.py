@@ -697,11 +697,17 @@ class RunDb:
 
             # To avoid time losses in the case of large concurrency and short TC,
             # probably due to cutechess-cli as discussed in issue #822,
-            # assign those workers to LTC or multi-threaded jobs.
+            # assign linux workers to LTC or multi-threaded jobs
+            # and windows workers only to LTC jobs
             if max_threads >= 32:
-                short_tc = estimate_game_duration(run["args"]["tc"]) * run["args"][
-                    "threads"
-                ] <= estimate_game_duration("30+0.3")
+                if "windows" in worker_info["uname"].lower():
+                    short_tc = estimate_game_duration(
+                        run["args"]["tc"]
+                    ) <= estimate_game_duration("55+0.5")
+                else:
+                    short_tc = estimate_game_duration(run["args"]["tc"]) * run["args"][
+                        "threads"
+                    ] <= estimate_game_duration("30+0.3")
                 if short_tc:
                     continue
 
