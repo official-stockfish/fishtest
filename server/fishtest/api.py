@@ -9,7 +9,7 @@ from pyramid.httpexceptions import HTTPFound, HTTPUnauthorized, exception_respon
 from pyramid.response import Response
 from pyramid.view import exception_view_config, view_config, view_defaults
 
-WORKER_VERSION = 110
+WORKER_VERSION = 111
 
 flag_cache = {}
 
