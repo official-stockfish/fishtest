@@ -43,13 +43,20 @@ def update(restart=True, test=False):
     prefix = os.path.commonprefix([n.filename for n in zip_file.infolist()])
     worker_src = os.path.join(update_dir, os.path.join(prefix, "worker"))
     if not test:
+        # delete the "packages" folder to only have new files after an upgrade
+        packages_dir = os.path.join(worker_dir, "packages")
+        if os.path.exists(packages_dir):
+            try:
+                shutil.rmtree(packages_dir)
+            except:
+                print("Failed to delete the folder " + str(packages_dir))
         copy_tree(worker_src, worker_dir)
     else:
         file_list = os.listdir(worker_src)
     shutil.rmtree(update_dir)
 
     # rename the testing_dir to backup possible user custom files
-    # and to trigger the download of update files
+    # and to trigger the download of updated files
     # the worker runs games from the "testing" folder so change the folder
     os.chdir(worker_dir)
     testing_dir = os.path.join(worker_dir, "testing")
@@ -88,19 +95,24 @@ def update(restart=True, test=False):
                 except:
                     print("Failed to remove the old backup folder " + str(old_bkp_dir))
 
-    # to be dropped when all workers will use the new requests packages
+    # to be dropped when all workers will use the new "requests" packages
+    # delete the "requests" folder with the old "requests" package because
+    # it has the higher precedence during import
+    # note: the switch was problem free, skip the backup step
     requests_dir = os.path.join(worker_dir, "requests")
     requests_bkp = os.path.join(worker_dir, "_requests")
     if os.path.exists(requests_bkp):
         try:
             shutil.rmtree(requests_bkp)
         except:
-            print("Failed to delete the old requests folder " + str(requests_bkp))
+            print(
+                "Failed to delete the old requests backup folder " + str(requests_bkp)
+            )
     if os.path.exists(requests_dir):
         try:
-            shutil.move(requests_dir, requests_bkp)
+            shutil.rmtree(requests_dir)
         except:
-            print("Failed to rename the old requests folder " + str(requests_dir))
+            print("Failed to delete the old requests folder " + str(requests_dir))
 
     print("start_dir: " + start_dir)
     if restart:
