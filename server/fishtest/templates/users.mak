@@ -63,13 +63,13 @@
   <tbody>
     % for user in users:
         <tr>
-         <td>${user['username']}</td>
-         <td data-diff="${user['diff']}" style="text-align:right">${user['last_updated']}</td>
-         <td style="text-align:right">${int(user['games_per_hour'])}</td>
-         <td style="text-align:right">${int(user['cpu_hours'])}</td>
-         <td style="text-align:right">${int(user['games'])}</td>
-         <td style="text-align:right"><a href="/tests/user/${user['username']}">${user['tests']}</td>
-         <td><a href="${user['tests_repo']}" target="_blank" rel="noopener">${user['tests_repo']}</a></td>
+          <td>${user['username']}</td>
+          <td data-diff="${user['diff']}" style="text-align:right">${user['last_updated']}</td>
+          <td style="text-align:right">${int(user['games_per_hour'])}</td>
+          <td style="text-align:right">${int(user['cpu_hours'])}</td>
+          <td style="text-align:right">${int(user['games'])}</td>
+          <td style="text-align:right"><a href="/tests/user/${user['username']}">${user['tests']}</td>
+          <td><a href="${user['tests_repo']}" target="_blank" rel="noopener">${user['tests_repo']}</a></td>
         </tr>
     % endfor
   </tbody>

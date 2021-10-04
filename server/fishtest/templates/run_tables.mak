@@ -8,14 +8,14 @@
         ${'Hide' if pending_shown else 'Show'}
       </button>
     </h4>
-  
+
     <div id="pending"
          style="${'' if pending_shown else 'display: none;'}">
       % if pending_approval_runs:
           <%include file="run_table.mak" args="runs=pending_approval_runs, show_delete=True"/>
       % else:
           No tests pending approval
-      %endif
+      % endif
     </div>
 
     <h4>
