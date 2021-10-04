@@ -212,3 +212,19 @@ pre[style*="background-color:#66CCFF"] {
 pre[style*="border-color:Pink"] {
   border-color: #ffc0cb6e !important;
 }
+
+.input-group-lg>.form-select, .input-group-sm>.form-select {
+  background: #2f2f2f;
+  color: rgb(177, 173, 167);
+}
+
+#create-new-test textarea {
+  background: rgb(68, 68, 68);
+  border-color: rgb(16, 16, 16);
+  color: rgb(177, 173, 167);
+}
+
+.form-control[readonly] {
+  background: rgb(68, 68, 68);
+  color: rgb(177, 173, 167);
+}
