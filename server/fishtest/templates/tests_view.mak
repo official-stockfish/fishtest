@@ -153,7 +153,7 @@ from fishtest.util import worker_name
         <input type="text" name="num-games" value="${run['args']['num_games']}"
                class="form-control">
       </div>
-  
+
       <label class="control-label">Adjust priority (higher is more urgent):</label>
       <div class="input-group mb-3" style="width: 220px">
         <input type="text" name="priority" value="${run['args']['priority']}"
@@ -165,7 +165,7 @@ from fishtest.util import worker_name
         <input type="text" name="throughput" value="${run['args'].get('throughput', 1000)}"
                class="form-control">
       </div>
-  
+
       <div class="control-group">
         <label class="checkbox">
           <input type="checkbox" name="auto_purge"

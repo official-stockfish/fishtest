@@ -2,39 +2,39 @@
 
 <%namespace name="base" file="base.mak"/>
 
-%if active:
-  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-  <script type="text/javascript">
-    google.charts.load('current', {'packages':['gauge']});
-    google.charts.setOnLoadCallback(drawCharts);
+% if active:
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script type="text/javascript">
+      google.charts.load('current', {'packages':['gauge']});
+      google.charts.setOnLoadCallback(drawCharts);
 
-    function drawCharts() {
-      var a = -2.94, b = 2.94;
-      var options = {
-        redFrom: a,
-        redTo: 0,
-        greenFrom: 0,
-        greenTo: b,
-        min: a,
-        max: b,
-        minorTicks: 5
-      };
+      function drawCharts() {
+        var a = -2.94, b = 2.94;
+        var options = {
+          redFrom: a,
+          redTo: 0,
+          greenFrom: 0,
+          greenTo: b,
+          min: a,
+          max: b,
+          minorTicks: 5
+        };
 
-      % for run in runs:
-          % if 'sprt' in run['args']:
-              var data = google.visualization.arrayToDataTable([
-                ['Label', 'Value'],
-                ['LLR', ${run['results_info']['info'][0].split(' ')[1]}]
-              ]);
-              var chart = new google.visualization.Gauge(
-                document.getElementById('chart_div_${str(run['_id'])}')
-              );
-              chart.draw(data, options);
-          % endif
-      % endfor
-    }
-  </script>
-%endif
+        % for run in runs:
+            % if 'sprt' in run['args']:
+                var data = google.visualization.arrayToDataTable([
+                  ['Label', 'Value'],
+                  ['LLR', ${run['results_info']['info'][0].split(' ')[1]}]
+                ]);
+                var chart = new google.visualization.Gauge(
+                  document.getElementById('chart_div_${str(run['_id'])}')
+                );
+                chart.draw(data, options);
+            % endif
+        % endfor
+      }
+    </script>
+% endif
 
 <%def name="pagination()">
   % if pages and len(pages) > 3:
@@ -80,21 +80,21 @@ ${pagination()}
               </td>
 
               <td style="width: 1%;">
-                %if run.get('approved', False):
-                   <button class="btn btn-success btn-sm">
-                     ## thumbs up
-                     <svg viewBox="0 0 8 8" style="width: 12px; height: 12px; fill: white; background: none;">
-                       <path d="M4.438 0c-.19.021-.34.149-.438.344-.13.26-1.101 2.185-1.281 2.375-.19.18-.439.281-.719.281v4.001h3.5c.21 0 .389-.133.469-.313 0 0 1.031-2.908 1.031-3.188 0-.28-.22-.5-.5-.5h-1.5c-.28 0-.5-.25-.5-.5s.389-1.574.469-1.844c.08-.27-.053-.545-.313-.625l-.219-.031zm-4.438 3v4h1v-4h-1z" data-id="thumb-up"></path>
-                     </svg>
-                   </button>
-                %else:
-                   <button class="btn btn-warning btn-sm">
-                     ## question mark
-                     <svg viewBox="0 0 8 8" style="width: 12px; height: 12px; fill: white; background: none;">
-                       <path d="M4.469 0c-.854 0-1.48.256-1.875.656s-.54.901-.594 1.281l1 .125c.036-.26.125-.497.313-.688.188-.19.491-.375 1.156-.375.664 0 1.019.163 1.219.344.199.181.281.405.281.656 0 .833-.313 1.063-.813 1.5-.5.438-1.188 1.083-1.188 2.25v.25h1v-.25c0-.833.344-1.063.844-1.5.5-.438 1.156-1.083 1.156-2.25 0-.479-.168-1.02-.594-1.406-.426-.387-1.071-.594-1.906-.594zm-.5 7v1h1v-1h-1z" data-id="question-mark"></path>
-                     </svg>
-                   </button>
-                %endif
+                % if run.get('approved', False):
+                    <button class="btn btn-success btn-sm">
+                      ## thumbs up
+                      <svg viewBox="0 0 8 8" style="width: 12px; height: 12px; fill: white; background: none;">
+                        <path d="M4.438 0c-.19.021-.34.149-.438.344-.13.26-1.101 2.185-1.281 2.375-.19.18-.439.281-.719.281v4.001h3.5c.21 0 .389-.133.469-.313 0 0 1.031-2.908 1.031-3.188 0-.28-.22-.5-.5-.5h-1.5c-.28 0-.5-.25-.5-.5s.389-1.574.469-1.844c.08-.27-.053-.545-.313-.625l-.219-.031zm-4.438 3v4h1v-4h-1z" data-id="thumb-up"></path>
+                      </svg>
+                    </button>
+                % else:
+                    <button class="btn btn-warning btn-sm">
+                      ## question mark
+                      <svg viewBox="0 0 8 8" style="width: 12px; height: 12px; fill: white; background: none;">
+                        <path d="M4.469 0c-.854 0-1.48.256-1.875.656s-.54.901-.594 1.281l1 .125c.036-.26.125-.497.313-.688.188-.19.491-.375 1.156-.375.664 0 1.019.163 1.219.344.199.181.281.405.281.656 0 .833-.313 1.063-.813 1.5-.5.438-1.188 1.083-1.188 2.25v.25h1v-.25c0-.833.344-1.063.844-1.5.5-.438 1.156-1.083 1.156-2.25 0-.479-.168-1.02-.594-1.406-.426-.387-1.071-.594-1.906-.594zm-.5 7v1h1v-1h-1z" data-id="question-mark"></path>
+                      </svg>
+                    </button>
+                % endif
               </td>
           % endif
 
