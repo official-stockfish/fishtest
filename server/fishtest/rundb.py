@@ -24,10 +24,9 @@ from fishtest.util import (
     get_chi2,
     post_in_fishcooking_results,
     remaining_hours,
-    unique_key as unique_key_,
-    update_residuals,
-    worker_name,
 )
+from fishtest.util import unique_key as unique_key_
+from fishtest.util import update_residuals, worker_name
 from pymongo import DESCENDING, MongoClient
 
 DEBUG = False

@@ -339,9 +339,7 @@ def find_arch_string():
             and "x86-64-avx512" in targets
         ):
             res = "x86-64-avx512"
-            res = (
-                "x86-64-bmi2"
-            )  # use bmi2 until avx512 performance becomes actually better
+            res = "x86-64-bmi2"  # use bmi2 until avx512 performance becomes actually better
         elif (
             "-mbmi2" in props["flags"]
             and "x86-64-bmi2" in targets
