@@ -166,22 +166,24 @@ if __name__ == "__main__":
     a = s.analytics(p)
     print("Design parameters")
     print("=================")
-    print("False positives             :  %4.2f%%" % (100 * alpha,))
-    print("False negatives             :  %4.2f%%" % (100 * beta,))
-    print("[Elo0,Elo1]                 :  [%.2f,%.2f]" % (elo0, elo1))
-    print("Confidence level            :  %4.2f%%" % (100 * (1 - p),))
-    print("Elo model                   :  %s" % elo_model)
+    print("False positives             :  {:4.2%}".formt(alpha))
+    print("False negatives             :  {:4.2%}".format(beta))
+    print("[Elo0,Elo1]                 :  [{:.2f},{:.2f}]".format(elo0, elo1))
+    print("Confidence level            :  {:4.2%}".format(1 - p))
+    print("Elo model                   :  {}".format(elo_model))
     print("Estimates")
     print("=========")
-    print("Elo                         :  %.2f" % a["elo"])
+    print("Elo                         :  {:.2f}".format(a["elo"]))
     print(
-        "Confidence interval         :  [%.2f,%.2f] (%4.2f%%)"
-        % (a["ci"][0], a["ci"][1], 100 * (1 - p))
+        "Confidence interval         :  [{:.2f},{:.2f}] ({:4.2%})".format(
+            a["ci"][0], a["ci"][1], 1 - p
+        )
     )
-    print("LOS                         :  %4.2f%%" % (100 * a["LOS"],))
+    print("LOS                         :  {:4.2%}".format(a["LOS"]))
     print("Context")
     print("=======")
     print(
-        "LLR [u,l]                   :  %.2f %s [%.2f,%.2f]"
-        % (a["LLR"], "(clamped)" if a["clamped"] else "", a["a"], a["b"])
+        "LLR [u,l]                   :  {:.2f} {} [{:.2f},{:.2f}]".format(
+            a["LLR"], "(clamped)" if a["clamped"] else "", a["a"], a["b"]
+        )
     )

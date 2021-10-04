@@ -486,7 +486,7 @@ def parse_spsa_params(raw, spsa):
         if len(chunks) == 1 and chunks[0] == "":  # blank line
             continue
         if len(chunks) != 6:
-            raise Exception("the line %s does not have 6 entries" % (chunks))
+            raise Exception("the line {} does not have 6 entries".format(chunks))
         param = {
             "name": chunks[0],
             "start": float(chunks[1]),
@@ -580,7 +580,7 @@ def validate_form(request):
 
     for k, v in data.items():
         if len(v) == 0:
-            raise Exception("Missing required option: %s" % k)
+            raise Exception("Missing required option: {}".format(k))
 
     data["auto_purge"] = request.POST.get("auto-purge") is not None
 
@@ -640,9 +640,9 @@ def validate_form(request):
     if new_net:
         if not request.rundb.get_nn(new_net):
             raise Exception(
-                "The net %s, used by %s, is not "
+                "The net {}, used by {}, is not "
                 "known to Fishtest. Please upload it to: "
-                "%s/upload." % (new_net, data["new_tag"], request.host_url)
+                "{}/upload.".format(new_net, data["new_tag"], request.host_url)
             )
 
     # Store net info
@@ -726,9 +726,9 @@ def update_nets(request, run):
             if not net:
                 # Should never happen:
                 raise Exception(
-                    "The net %s, used by %s, is not "
+                    "The net {}, used by {}, is not "
                     "known to Fishtest. Please upload it to: "
-                    "%s/upload." % (base_net, data["base_tag"], request.host_url)
+                    "{}/upload.".format(base_net, data["base_tag"], request.host_url)
                 )
             if "is_master" not in net:
                 net["is_master"] = True
@@ -1014,7 +1014,7 @@ def tests_view(request):
             value += "  (" + run["args"]["msg_base"][:50] + ")"
 
         if name == "sprt" and value != "-":
-            value = "elo0: %.2f alpha: %.2f elo1: %.2f beta: %.2f state: %s (%s)" % (
+            value = "elo0: {:.2f} alpha: {:.2f} elo1: {:.2f} beta: {:.2f} state: {} ({})".format(
                 value["elo0"],
                 value["alpha"],
                 value["elo1"],
@@ -1029,16 +1029,13 @@ def tests_view(request):
             A = value["A"]
             alpha = value["alpha"]
             gamma = value["gamma"]
-            summary = (
-                "Iter: %d, A: %d, alpha %0.3f, gamma %0.3f, clipping %s, rounding %s"
-                % (
-                    iter_local,
-                    A,
-                    alpha,
-                    gamma,
-                    value["clipping"] if "clipping" in value else "old",
-                    value["rounding"] if "rounding" in value else "deterministic",
-                )
+            summary = "Iter: {:d}, A: {:d}, alpha {:0.3f}, gamma {:0.3f}, clipping {}, rounding {}".format(
+                iter_local,
+                A,
+                alpha,
+                gamma,
+                value["clipping"] if "clipping" in value else "old",
+                value["rounding"] if "rounding" in value else "deterministic",
             )
             params = value["params"]
             value = [summary]
@@ -1106,8 +1103,9 @@ def tests_view(request):
         "page_title": page_title,
         "approver": request.has_permission("approve_run"),
         "chi2": chi2,
-        "totals": "(%s active worker%s with %s core%s)"
-        % (active, ("s" if active != 1 else ""), cores, ("s" if cores != 1 else "")),
+        "totals": "({} active worker{} with {} core{})".format(
+            active, ("s" if active != 1 else ""), cores, ("s" if cores != 1 else "")
+        ),
     }
 
 
@@ -1224,7 +1222,7 @@ def homepage_results(request):
         **get_paginated_finished_runs(request),
         "runs": runs,
         "machines": machines,
-        "pending_hours": "%.1f" % (pending_hours),
+        "pending_hours": "{:.1f}".format(pending_hours),
         "cores": cores,
         "nps": nps,
         "games_per_minute": int(games_per_minute),
