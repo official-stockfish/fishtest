@@ -1,6 +1,4 @@
 import smtplib
-import threading
-from collections import defaultdict
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 
@@ -26,7 +24,7 @@ def worker_name(worker_info):
     username = worker_info.get("username", "")
     cores = str(worker_info["concurrency"])
     uuid = worker_info.get("unique_key", "")
-    name = "%s-%scores" % (username, cores)
+    name = "{}-{}cores".format(username, cores)
     if len(uuid) != 0:
         name += "-" + uuid.split("-")[0]
     return name
@@ -193,7 +191,9 @@ def update_residuals(tasks, cached_chi2=None):
 
 def format_bounds(elo_model, elo0, elo1):
     seps = {"BayesElo": r"[]", "logistic": r"{}", "normalized": r"<>"}
-    return "%s%.2f,%.2f%s" % (seps[elo_model][0], elo0, elo1, seps[elo_model][1])
+    return "{}{:.2f},{:.2f}{}".format(
+        seps[elo_model][0], elo0, elo1, seps[elo_model][1]
+    )
 
 
 def format_results(run_results, run):
@@ -204,11 +204,12 @@ def format_results(run_results, run):
 
     if "spsa" in run["args"]:
         result["info"].append(
-            "%d/%d iterations"
-            % (run["args"]["spsa"]["iter"], run["args"]["spsa"]["num_iter"])
+            "{:d}/{:d} iterations".format(
+                run["args"]["spsa"]["iter"], run["args"]["spsa"]["num_iter"]
+            )
         )
         result["info"].append(
-            "%d/%d games played" % (WLD[0] + WLD[1] + WLD[2], run["args"]["num_games"])
+            "{:d}/{:d} games played".format(sum(WLD), run["args"]["num_games"])
         )
         return result
 
@@ -226,8 +227,7 @@ def format_results(run_results, run):
         if "llr" not in sprt:  # legacy
             fishtest.stats.stat_util.update_SPRT(run_results, sprt)
         result["info"].append(
-            "LLR: %.2f (%.2lf,%.2lf) %s"
-            % (
+            "LLR: {:.2f} ({:.2f},{:.2f}) {}".format(
                 sprt["llr"],
                 sprt["lower_bound"],
                 sprt["upper_bound"],
@@ -243,8 +243,8 @@ def format_results(run_results, run):
             elo, elo95, los = fishtest.stats.stat_util.get_elo([WLD[1], WLD[2], WLD[0]])
 
         # Display the results
-        eloInfo = "ELO: %.2f +-%.1f (95%%)" % (elo, elo95)
-        losInfo = "LOS: %.1f%%" % (los * 100)
+        eloInfo = "ELO: {:.2f} +-{:.1f} (95%)".format(elo, elo95)
+        losInfo = "LOS: {:.1%}".format(los)
 
         result["info"].append(eloInfo + " " + losInfo)
 
@@ -254,7 +254,7 @@ def format_results(run_results, run):
             state = "accepted"
 
     result["info"].append(
-        "Total: %d W: %d L: %d D: %d" % (sum(WLD), WLD[0], WLD[1], WLD[2])
+        "Total: {:d} W: {:d} L: {:d} D: {:d}".format(sum(WLD), WLD[0], WLD[1], WLD[2])
     )
     if "pentanomial" in run_results.keys():
         result["info"].append(
@@ -321,14 +321,14 @@ def remaining_hours(run):
 
 def post_in_fishcooking_results(run):
     """Posts the results of the run to the fishcooking forum:
-    https://groups.google.com/forum/?fromgroups=#!forum/fishcooking
+    https://groups.google.com/g/fishcooking-results
     """
     title = run["args"]["new_tag"][:23]
 
     if "username" in run["args"]:
         title += "  (" + run["args"]["username"] + ")"
 
-    body = FISH_URL + "%s\n\n" % (str(run["_id"]))
+    body = FISH_URL + "{}\n\n".format(str(run["_id"]))
 
     body += run["start_time"].strftime("%d-%m-%y") + " from "
     body += run["args"].get("username", "") + "\n\n"
@@ -368,11 +368,11 @@ def delta_date(diff):
     if diff == timedelta.max:
         delta = "Never"
     elif diff.days != 0:
-        delta = "%d days ago" % (diff.days)
+        delta = "{:d} days ago".format(diff.days)
     elif diff.seconds / 3600 > 1:
-        delta = "%d hours ago" % (diff.seconds / 3600)
+        delta = "{:d} hours ago".format(diff.seconds // 3600)
     elif diff.seconds / 60 > 1:
-        delta = "%d minutes ago" % (diff.seconds / 60)
+        delta = "{:d} minutes ago".format(diff.seconds // 60)
     else:
         delta = "seconds ago"
     return delta

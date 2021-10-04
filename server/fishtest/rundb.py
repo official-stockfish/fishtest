@@ -421,7 +421,7 @@ class RunDb:
             run["results_info"] = format_results(results, run)
             if "Pending..." in run["results_info"]["info"]:
                 if cores > 0:
-                    run["results_info"]["info"][0] += " (%.1f hrs)" % (eta)
+                    run["results_info"]["info"][0] += " ({:.1f} hrs)".format(eta)
                 if "sprt" in run["args"]:
                     sprt = run["args"]["sprt"]
                     elo_model = sprt.get("elo_model", "BayesElo")

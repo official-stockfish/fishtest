@@ -186,7 +186,7 @@ from fishtest.util import worker_name
         <table class="table table-sm">
           <tr><td>chi^2</td><td>${f"{chi2['chi2']:.2f}"}</td></tr>
           <tr><td>dof</td><td>${chi2['dof']}</td></tr>
-          <tr><td>p-value</td><td>${f"{chi2['p'] * 100:.2f}"}%</td></tr>
+          <tr><td>p-value</td><td>${f"{chi2['p']:.2%}"}</td></tr>
         </table>
     % endif
 
