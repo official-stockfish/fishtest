@@ -9,7 +9,6 @@ import numpy
 import scipy.stats
 from zxcvbn import zxcvbn
 
-
 FISH_URL = "https://tests.stockfishchess.org/tests/view/"
 
 
@@ -132,14 +131,14 @@ def get_chi2(tasks, exclude_workers=set()):
         "z_99": z_99,
     }
 
+
 def crash_or_time(task):
     stats = task.get("stats", {})
-    total = (
-        stats.get("wins", 0) + stats.get("losses", 0) + stats.get("draws", 0)
-    )
+    total = stats.get("wins", 0) + stats.get("losses", 0) + stats.get("draws", 0)
     crashes = stats.get("crashes", 0)
     time_losses = stats.get("time_losses", 0)
     return crashes > 3 or (total > 20 and time_losses / total > 0.1)
+
 
 def get_bad_workers(tasks, cached_chi2=None, p=0.001, res=7.0, iters=1):
     # If we have an up-to-date result of get_chi2() we can pass

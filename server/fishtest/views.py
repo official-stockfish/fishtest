@@ -310,10 +310,7 @@ def actions(request):
 
         actions_list.append(item)
 
-    return {
-        "actions": actions_list,
-        "approver": request.has_permission("approve_run")
-    }
+    return {"actions": actions_list, "approver": request.has_permission("approve_run")}
 
 
 def get_idle_users(request):
@@ -785,7 +782,9 @@ def tests_run(request):
 
 
 def can_modify_run(request, run):
-    return run["args"]["username"] == request.authenticated_userid or request.has_permission("approve_run")
+    return run["args"][
+        "username"
+    ] == request.authenticated_userid or request.has_permission("approve_run")
 
 
 @view_config(route_name="tests_modify", require_csrf=True, request_method="POST")

@@ -1,7 +1,7 @@
 import hashlib
 import os
-from pathlib import Path
 import subprocess
+from pathlib import Path
 
 from fishtest.rundb import RunDb
 from pyramid.authentication import AuthTktAuthenticationPolicy
@@ -33,11 +33,18 @@ def main(global_config, **settings):
 
     # the same hash calculated by browser for sub-resource integrity checks:
     # https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity
-    dark_theme_sha256_integrity = subprocess.run(
-        "openssl dgst -sha256 -binary {} | openssl base64 -A".format(
-            str(static_file_full_path(("css/theme.dark.css")))
+    dark_theme_sha256_integrity = (
+        subprocess.run(
+            "openssl dgst -sha256 -binary {} | openssl base64 -A".format(
+                str(static_file_full_path(("css/theme.dark.css")))
+            ),
+            shell=True,
+            check=True,
+            stdout=subprocess.PIPE,
         )
-    , shell=True, check=True, stdout=subprocess.PIPE).stdout.strip().decode("utf-8")
+        .stdout.strip()
+        .decode("utf-8")
+    )
 
     cache_busters = {
         "css/application.css": static_file_hash("css/application.css"),
