@@ -166,7 +166,7 @@ if __name__ == "__main__":
     a = s.analytics(p)
     print("Design parameters")
     print("=================")
-    print("False positives             :  {:4.2%}".formt(alpha))
+    print("False positives             :  {:4.2%}".format(alpha))
     print("False negatives             :  {:4.2%}".format(beta))
     print("[Elo0,Elo1]                 :  [{:.2f},{:.2f}]".format(elo0, elo1))
     print("Confidence level            :  {:4.2%}".format(1 - p))
