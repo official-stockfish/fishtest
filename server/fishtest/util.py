@@ -109,15 +109,33 @@ def get_chi2(tasks, exclude_workers=set()):
     chi2 = numpy.sum(row_chi2)
     p_value = 1 - scipy.stats.chi2.cdf(chi2, df)
 
-    # Finally we also compute for each qualifying worker a residual
-    # indicating how badly it deviates from the norm.
+    # Finally we also compute for each qualifying worker a "residual"
+    # indicating how badly it deviates from the average worker.
+
+    # The entries of adj_row_chi2 below associate with each row the
+    # chi2 value of the 2xcolumns table obtained by collapsing
+    # all other rows. This can be checked by a simple algebraic
+    # manipulation.
+    # As such, under the null hypothesis that all rows are drawn
+    # from the same distribution, these "adjusted chi2 values"
+    # follow a chi2 distribution with columns-1 degrees of freedom.
     adj_row_chi2 = row_chi2 / (1 - row_sums / grand_total)
+
+    # Most people will not be familiar with the chi2 distribution,
+    # so we convert the adjusted chi2 values to standard normal
+    # values. As a cosmetic tweak we use isf/sf rather than ppf/cdf
+    # in order to be able to deal accurately with very low p-values.
     res_z = scipy.stats.norm.isf(scipy.stats.chi2.sf(adj_row_chi2, columns - 1))
+    
     for idx in range(len(keys)):
+        # We cap the standard normal "residuals" at zero since negative values
+        # do not look very nice and moreover they do not convey any
+        # information.
         users[keys[idx]] = max(0, res_z[idx])
 
     # We compute 95% and 99% thresholds using the Bonferroni correction.
-
+    # Under the null hypothesis, yellow and red residuals should appear
+    # in approximately 4% and 1% of the tests.
     z_95, z_99 = [scipy.stats.norm.ppf(1 - p / rows) for p in (0.05, 0.01)]
 
     return {
