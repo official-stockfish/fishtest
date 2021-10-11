@@ -108,11 +108,7 @@ def worker_exit(val=1):
     os._exit(val)
 
 
-rate = None
-
-
 def get_rate():
-    global rate
     try:
         rate = requests.get(
             "https://api.github.com/rate_limit", timeout=HTTP_TIMEOUT
@@ -121,10 +117,10 @@ def get_rate():
         sys.stderr.write("Exception fetching rate_limit:\n")
         print(e, file=sys.stderr)
         rate = {"remaining": 0, "limit": 5000}
-        return True
+        return rate, False
     remaining = rate["remaining"]
     print("API call rate limits:", rate)
-    return remaining >= math.sqrt(rate["limit"])
+    return rate, remaining < math.sqrt(rate["limit"])
 
 
 RUN = None
@@ -168,11 +164,13 @@ def worker(worker_info, password, remote):
     payload = {"worker_info": worker_info, "password": password}
 
     try:
-        print("Fetch task...")
-        if not get_rate():
+        rate, near_api_limit = get_rate()
+        if near_api_limit:
             raise Exception("Near API limit")
 
         t0 = datetime.utcnow()
+
+        print("Verify worker version...")
         req = requests.post(
             remote + "/api/request_version",
             data=json.dumps(payload),
@@ -196,6 +194,7 @@ def worker(worker_info, password, remote):
         )
 
         t0 = datetime.utcnow()
+        print("Fetch task...")
         worker_info["rate"] = rate
         req = requests.post(
             remote + "/api/request_task",
