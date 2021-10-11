@@ -13,9 +13,7 @@ import subprocess
 import sys
 import threading
 import time
-import traceback
 import uuid
-
 from functools import partial
 
 IS_WINDOWS = "windows" in platform.system().lower()
@@ -67,9 +65,8 @@ def setup_config_file(config_file):
             mem_str = str(proc.readlines())
         mem = int(re.search(r"\d+", mem_str).group())
         print("Memory: " + str(mem))
-    except:
-        traceback.print_exc()
-        pass
+    except Exception as e:
+        print("Exception checking HW info:\n", e, sep="", file=sys.stderr)
 
     defaults = [
         ("login", "username", ""),
@@ -110,8 +107,7 @@ def get_rate():
             "https://api.github.com/rate_limit", timeout=HTTP_TIMEOUT
         ).json()["rate"]
     except Exception as e:
-        sys.stderr.write("Exception fetching rate_limit:\n")
-        print(e, file=sys.stderr)
+        print("Exception fetching rate_limit:\n", e, sep="", file=sys.stderr)
         rate = {"remaining": 0, "limit": 5000}
         return rate, False
     remaining = rate["remaining"]
@@ -143,12 +139,13 @@ def heartbeat(worker_info, password, remote, current_state):
                     data=json.dumps(payload),
                     headers={"Content-type": "application/json"},
                     timeout=HTTP_TIMEOUT,
-                )
-                req = json.loads(req.text)
-                print(req)
+                ).json()
             except Exception as e:
-                sys.stderr.write("Exception from calling heartbeat:\n")
-                print(e, file=sys.stderr)
+                print("Exception calling heartbeat:\n", e, sep="", file=sys.stderr)
+            else:
+                print(req)
+    else:
+        print("Stop heartbeat")
 
 
 def fetch_and_handle_task(worker_info, password, remote, current_state):
@@ -168,8 +165,7 @@ def fetch_and_handle_task(worker_info, password, remote, current_state):
             data=json.dumps(payload),
             headers={"Content-type": "application/json"},
             timeout=HTTP_TIMEOUT,
-        )
-        req = json.loads(req.text)
+        ).json()
 
         if "version" not in req:
             print("Incorrect username/password")
@@ -193,12 +189,9 @@ def fetch_and_handle_task(worker_info, password, remote, current_state):
             data=json.dumps(payload),
             headers={"Content-type": "application/json"},
             timeout=HTTP_TIMEOUT,
-        )
-        req = json.loads(req.text)
+        ).json()
     except Exception as e:
-        sys.stderr.write("Exception accessing host:\n")
-        print(e, file=sys.stderr)
-        #    traceback.print_exc()
+        print("Exception accessing host:\n", e, sep="", file=sys.stderr)
         return False
 
     print("Task requested in {}s".format((datetime.utcnow() - t0).total_seconds()))
@@ -216,9 +209,8 @@ def fetch_and_handle_task(worker_info, password, remote, current_state):
     current_state["task_id"] = task_id
     try:
         pgn_file = run_games(worker_info, password, remote, run, task_id)
-    except:
-        sys.stderr.write("\nException running games:\n")
-        traceback.print_exc()
+    except Exception as e:
+        print("\nException running games:\n", e, sep="", file=sys.stderr)
         success = False
     finally:
         payload = {
@@ -235,8 +227,8 @@ def fetch_and_handle_task(worker_info, password, remote, current_state):
                 headers={"Content-type": "application/json"},
                 timeout=HTTP_TIMEOUT,
             )
-        except:
-            pass
+        except Exception as e:
+            print("Exception posting failed_task:\n", e, sep="", file=sys.stderr)
 
         current_state["task_id"] = None
         current_state["run"] = None
@@ -272,14 +264,14 @@ def fetch_and_handle_task(worker_info, password, remote, current_state):
                         timeout=HTTP_TIMEOUT,
                     )
                 except Exception as e:
-                    sys.stderr.write("\nException PGN upload:\n")
-                    print(e, file=sys.stderr)
-        #          traceback.print_exc()
+                    print(
+                        "\nException uploading PGN file:\n", e, sep="", file=sys.stderr
+                    )
         try:
             os.remove(pgn_file)
-        except:
-            pass
-        sys.stderr.write("Task exited\n")
+        except Exception as e:
+            print("Exception deleting PGN file:\n", e, sep="", file=sys.stderr)
+        print("Task exited")
 
     return success
 
@@ -328,7 +320,7 @@ def gcc_version():
 
 def main():
     worker_dir = path.dirname(path.realpath(__file__))
-    print("Worker started in " + worker_dir + " ...\n")
+    print("Worker started in {} ...\n".format(worker_dir))
 
     # We record some state that is shared by the three
     # parallel event handling mechanisms:
@@ -399,7 +391,7 @@ def main():
         username = args[0]
         password = args[1]
     elif len(args) != 0 or len(username) == 0 or len(password) == 0:
-        sys.stderr.write("{} [username] [password]\n".format(sys.argv[0]))
+        print("{} [username] [password]".format(sys.argv[0]))
         worker_exit()
 
     # Write command line parameters to the config file
@@ -416,7 +408,7 @@ def main():
 
     protocol = options.protocol.lower()
     if protocol not in ["http", "https"]:
-        sys.stderr.write("Wrong protocol, use https or http\n")
+        print("Wrong protocol, use https or http")
         worker_exit()
     elif protocol == "http" and options.port == "443":
         # Rewrite old port 443 to 80
@@ -441,8 +433,7 @@ def main():
                         options.concurrency,
                         multiprocessing.cpu_count() - 1,
                         multiprocessing.cpu_count(),
-                    ),
-                    file=sys.stderr,
+                    )
                 )
                 worker_exit()
     except Exception as e:
@@ -450,9 +441,7 @@ def main():
         cpu_count = int(options.concurrency)
 
     if cpu_count <= 0:
-        sys.stderr.write(
-            "Not enough CPUs to run fishtest: set '--concurrency' to at least one\n"
-        )
+        print("Not enough CPUs to run fishtest: set '--concurrency' to at least one")
         worker_exit()
 
     with open(config_file, "w") as f:
@@ -482,13 +471,13 @@ def main():
     }
     print("UUID:", worker_info["unique_key"])
     with open(path.join(worker_dir, "uuid.txt"), "w") as f:
-        print(worker_info["unique_key"], file=f)
+        f.write(worker_info["unique_key"])
 
     # Make sure a suitable version of gcc is present
     try:
         gcc_version()
     except Exception as e:
-        print(e, file=sys.stderr)
+        print("Exception checking gcc version:\n", e, sep="", file=sys.stderr)
         worker_exit()
 
     # All seems to be well...
@@ -506,7 +495,7 @@ def main():
     # The reason for the existence of this parameter is that it allows
     # a fleet of workers to quickly quit as soon as the queue is empty
     # or the server down.
-    
+
     fleet = config.get("parameters", "fleet").lower() == "true"
 
     # Start the main loop
@@ -518,7 +507,7 @@ def main():
             print("Stopped by 'fish.exit' file")
             break
         success = fetch_and_handle_task(worker_info, password, remote, current_state)
-        if not current_state["alive"]: # the user may have pressed Ctrl-C...
+        if not current_state["alive"]:  # the user may have pressed Ctrl-C...
             break
         elif not success:
             if fleet:
@@ -534,6 +523,7 @@ def main():
     print("Waiting for the heartbeat thread to finish...")
     heartbeat_thread.join()
     print("Finishing the worker normally")
+
 
 if __name__ == "__main__":
     main()
