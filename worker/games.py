@@ -15,7 +15,6 @@ import sys
 import tempfile
 import threading
 import time
-import traceback
 from base64 import b64decode
 from zipfile import ZipFile
 
@@ -125,7 +124,7 @@ def required_net_from_source():
 
     # NNUE code after binary embedding (Aug 2020)
     with open("evaluate.h", "r") as srcfile:
-        for line in srcfile.readlines():
+        for line in srcfile:
             if "EvalFileDefaultName" in line and "define" in line:
                 p = re.compile("nn-[a-z0-9]{12}.nnue")
                 m = p.search(line)
@@ -136,7 +135,7 @@ def required_net_from_source():
 
     # NNUE code before binary embedding (Aug 2020)
     with open("ucioption.cpp", "r") as srcfile:
-        for line in srcfile.readlines():
+        for line in srcfile:
             if "EvalFile" in line and "Option" in line:
                 p = re.compile("nn-[a-z0-9]{12}.nnue")
                 m = p.search(line)
@@ -423,12 +422,14 @@ def setup_engine(
             shell=True,
             env=dict(os.environ, CXXFLAGS="-DNNUE_EMBEDDING_OFF"),
         )
-        try:  # try/pass needed for backwards compatibility with older stockfish, where 'make strip' fails under mingw.
+        # try/pass needed for backwards compatibility with older stockfish,
+        # where 'make strip' fails under mingw. TODO: check if still needed
+        try:
             subprocess.check_call(
                 MAKE_CMD + ARCH + " -j {}".format(concurrency) + " strip", shell=True
             )
-        except:
-            pass
+        except Exception as e:
+            print("Exception striping binary:\n", e, sep="", file=sys.stderr)
 
         shutil.move("stockfish" + EXE_SUFFIX, destination)
     except:
@@ -445,13 +446,14 @@ def kill_process(p):
             subprocess.call(["taskkill", "/F", "/T", "/PID", str(p.pid)])
         else:
             p.kill()
-    except:
+    except Exception as e:
         print(
-            "Note: "
-            + str(sys.exc_info()[0])
-            + " killing the process pid: "
-            + str(p.pid)
-            + ", possibly already terminated"
+            "Exception killing the process pid {}, possibly already terminated:\n".format(
+                p.pid
+            ),
+            e,
+            sep="",
+            file=sys.stderr,
         )
     finally:
         p.wait()
@@ -463,9 +465,7 @@ def adjust_tc(tc, base_nps, concurrency):
         1080000.0 / base_nps
     )  # 1.6Mnps is the reference core, also used in fishtest views.
     if base_nps < 450000:
-        sys.stderr.write(
-            "This machine is too slow to run fishtest effectively - sorry!\n"
-        )
+        print("This machine is too slow to run fishtest effectively - sorry!")
         from worker import worker_exit
 
         worker_exit()
@@ -601,15 +601,14 @@ def parse_cutechess_output(
     num_games_updated = 0
     while datetime.datetime.now() < end_time:
         try:
-            line = q.get_nowait()
+            line = q.get_nowait().strip()
         except Empty:
             if p.poll() is not None:
                 break
             time.sleep(1)
             continue
 
-        sys.stdout.write(line)
-        sys.stdout.flush()
+        print(line, flush=True)
 
         # Have we reached the end of the match?  Then just exit
         if "Finished match" in line:
@@ -621,7 +620,7 @@ def parse_cutechess_output(
         # Parse line like this:
         # Warning: New-eb6a21875e doesn't have option ThreatBySafePawn
         if "Warning:" in line and "doesn't have option" in line:
-            message = r'Cutechess-cli says: "{}"'.format(line.strip())
+            message = r'Cutechess-cli says: "{}"'.format(line)
             result["message"] = message
             send_api_post_request(remote + "/api/stop_run", result)
             raise Exception(message)
@@ -695,9 +694,12 @@ def parse_cutechess_output(
                             remote + "/api/update_task", result
                         ).json()
                     except Exception as e:
-                        sys.stderr.write("Exception from calling update_task:\n")
-                        print(e, file=sys.stderr)
-                        # traceback.print_exc(file=sys.stderr)
+                        print(
+                            "Exception calling update_task:\n",
+                            e,
+                            sep="",
+                            file=sys.stderr,
+                        )
                     else:
                         print(
                             "  Task updated successfully in {}s".format(
@@ -782,8 +784,7 @@ def launch_cutechess(
             p, remote, result, spsa, spsa_tuning, games_to_play, batch_size, tc_limit
         )
     except Exception as e:
-        print("Exception running games")
-        traceback.print_exc(file=sys.stderr)
+        print("Exception running games:\n", e, sep="", file=sys.stderr)
     finally:
         kill_process(p)
     return task_state
@@ -875,8 +876,13 @@ def run_games(worker_info, password, remote, run, task_id):
         for old_engine in engines[:-50]:
             try:
                 os.remove(old_engine)
-            except:
-                print("Failed to remove an old engine binary " + str(old_engine))
+            except Exception as e:
+                print(
+                    "Failed to remove an old engine binary {}:\n".format(old_engine),
+                    e,
+                    sep="",
+                    file=sys.stderr,
+                )
 
     # create new engines
     sha_new = run["args"]["resolved_new"]
@@ -947,8 +953,13 @@ def run_games(worker_info, password, remote, run, task_id):
         for old_net in networks[:-10]:
             try:
                 os.remove(old_net)
-            except:
-                print("Failed to remove an old network " + str(old_net))
+            except Exception as e:
+                print(
+                    "Failed to remove an old network {}:\n".format(old_net),
+                    e,
+                    sep="",
+                    file=sys.stderr,
+                )
 
     # Add EvalFile with full path to cutechess options, and download networks if not already existing
     net_base = required_net(base_engine)

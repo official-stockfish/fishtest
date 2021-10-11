@@ -48,8 +48,13 @@ def update(restart=True, test=False):
         if os.path.exists(packages_dir):
             try:
                 shutil.rmtree(packages_dir)
-            except:
-                print("Failed to delete the folder " + str(packages_dir))
+            except Exception as e:
+                print(
+                    "Failed to delete the folder {}:\n".folder(packages_dir),
+                    e,
+                    sep="",
+                    file=sys.stderr,
+                )
         copy_tree(worker_src, worker_dir)
     else:
         file_list = os.listdir(worker_src)
@@ -75,15 +80,25 @@ def update(restart=True, test=False):
         for engine in engines:
             try:
                 os.remove(engine)
-            except:
-                print("Failed to delete the engine binary " + str(engine))
+            except Exception as e:
+                print(
+                    "Failed to delete the engine binary {}:\n".format(engine),
+                    e,
+                    sep="",
+                    file=sys.stderr,
+                )
         # delete old networks
         networks = glob.glob(os.path.join(bkp_testing_dir, "nn-*.nnue"))
         for network in networks:
             try:
                 os.remove(network)
-            except:
-                print("Failed to delete the network file " + str(network))
+            except Exception as e:
+                print(
+                    "Failed to delete the network file {}:\n".format(network),
+                    e,
+                    sep="",
+                    file=sys.stderr,
+                )
         # clean up old folder backups (keeping the num_bkps most recent)
         bkp_dirs = glob.glob(os.path.join(worker_dir, "_testing_*"))
         num_bkps = 3
@@ -92,8 +107,15 @@ def update(restart=True, test=False):
             for old_bkp_dir in bkp_dirs[:-num_bkps]:
                 try:
                     shutil.rmtree(old_bkp_dir)
-                except:
-                    print("Failed to remove the old backup folder " + str(old_bkp_dir))
+                except Exception as e:
+                    print(
+                        "Failed to remove the old backup folder {}:\n".format(
+                            old_bkp_dir
+                        ),
+                        e,
+                        sep="",
+                        file=sys.stderr,
+                    )
 
     # to be dropped when all workers will use the new "requests" packages
     # delete the "requests" folder with the old "requests" package because
@@ -104,17 +126,27 @@ def update(restart=True, test=False):
     if os.path.exists(requests_bkp):
         try:
             shutil.rmtree(requests_bkp)
-        except:
+        except Exception as e:
             print(
-                "Failed to delete the old requests backup folder " + str(requests_bkp)
+                "Failed to delete the old requests backup folder {}:\n".format(
+                    requests_bkp
+                ),
+                e,
+                sep="",
+                file=sys.stderr,
             )
     if os.path.exists(requests_dir):
         try:
             shutil.rmtree(requests_dir)
-        except:
-            print("Failed to delete the old requests folder " + str(requests_dir))
+        except Exception as e:
+            print(
+                "Failed to delete the old requests folder {}:\n".format(requests_dir),
+                e,
+                sep="",
+                file=sys.stderr,
+            )
 
-    print("start_dir: " + start_dir)
+    print("start_dir: {}".format(start_dir))
     if restart:
         do_restart()
 
