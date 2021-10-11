@@ -16,6 +16,8 @@ import time
 import traceback
 import uuid
 
+from functools import partial
+
 IS_WINDOWS = "windows" in platform.system().lower()
 
 try:
@@ -42,10 +44,7 @@ from games import run_games
 from updater import update
 
 WORKER_VERSION = 111
-ALIVE = True
 HTTP_TIMEOUT = 15.0
-
-FLEET = False
 
 
 def setup_config_file(config_file):
@@ -96,15 +95,12 @@ def setup_config_file(config_file):
     return config
 
 
-def on_sigint(signal, frame):
-    global ALIVE
-    ALIVE = False
+def on_sigint(current_state, signal, frame):
+    current_state["alive"] = False
     raise Exception("Terminated by signal")
 
 
 def worker_exit(val=1):
-    global ALIVE
-    ALIVE = False
     os._exit(val)
 
 
@@ -123,12 +119,7 @@ def get_rate():
     return rate, remaining < math.sqrt(rate["limit"])
 
 
-RUN = None
-TASK_ID = None
-
-
-def heartbeat(worker_info, password, remote):
-    global ALIVE, RUN, TASK_ID
+def heartbeat(worker_info, password, remote, current_state):
     print("Start heartbeat")
     payload = {
         "username": worker_info["username"],
@@ -136,14 +127,16 @@ def heartbeat(worker_info, password, remote):
         "unique_key": worker_info["unique_key"],
     }
     count = 0
-    while ALIVE:
+    while current_state["alive"]:
         time.sleep(1)
         count += 1
         if count == 60:
             count = 0
             print("  Send heartbeat for", worker_info["unique_key"], end=" ... ")
-            payload["run_id"] = str(RUN["_id"]) if RUN else None
-            payload["task_id"] = TASK_ID
+            run = current_state["run"]
+            payload["run_id"] = str(run["_id"]) if run else None
+            task_id = current_state["task_id"]
+            payload["task_id"] = task_id
             try:
                 req = requests.post(
                     remote + "/api/beat",
@@ -158,8 +151,7 @@ def heartbeat(worker_info, password, remote):
                 print(e, file=sys.stderr)
 
 
-def worker(worker_info, password, remote):
-    global ALIVE, FLEET
+def worker(worker_info, password, remote, fleet, current_state):
 
     payload = {"worker_info": worker_info, "password": password}
 
@@ -207,10 +199,10 @@ def worker(worker_info, password, remote):
         sys.stderr.write("Exception accessing host:\n")
         print(e, file=sys.stderr)
         #    traceback.print_exc()
-        if FLEET:
+        if fleet:
             worker_exit()
         time.sleep(random.randint(10, 60))
-        return
+        return False
 
     print("Task requested in {}s".format((datetime.utcnow() - t0).total_seconds()))
     if "error" in req:
@@ -219,17 +211,18 @@ def worker(worker_info, password, remote):
     # No tasks ready for us yet, just wait...
     if "task_waiting" in req:
         print("No tasks available at this time, waiting...\n")
-        if FLEET:
+        if fleet:
             worker_exit()
         # Note that after this sleep we have another ALIVE HTTP_TIMEOUT...
         time.sleep(random.randint(1, 10))
-        return
+        return False
 
     success = True
-    global RUN, TASK_ID
-    RUN, TASK_ID = req["run"], req["task_id"]
+    run, task_id = req["run"], req["task_id"]
+    current_state["run"] = run
+    current_state["task_id"] = task_id
     try:
-        pgn_file = run_games(worker_info, password, remote, RUN, TASK_ID)
+        pgn_file = run_games(worker_info, password, remote, run, task_id)
     except:
         sys.stderr.write("\nException running games:\n")
         traceback.print_exc()
@@ -238,8 +231,8 @@ def worker(worker_info, password, remote):
         payload = {
             "username": worker_info["username"],
             "password": password,
-            "run_id": str(RUN["_id"]),
-            "task_id": TASK_ID,
+            "run_id": str(run["_id"]),
+            "task_id": task_id,
             "unique_key": worker_info["unique_key"],
         }
         try:
@@ -252,12 +245,13 @@ def worker(worker_info, password, remote):
         except:
             pass
 
-        TASK_ID = None
-        if success and ALIVE:
+        current_state["task_id"] = None
+        current_state["run"] = None
+        if success and current_state["alive"]:
             sleep = random.randint(1, 10)
             print("Wait {} seconds before upload of PGN...".format(sleep))
             time.sleep(sleep)
-            if "spsa" not in RUN["args"]:
+            if "spsa" not in run["args"]:
                 try:
                     with open(pgn_file, "r") as f:
                         data = f.read()
@@ -343,9 +337,23 @@ def main():
     worker_dir = path.dirname(path.realpath(__file__))
     print("Worker started in " + worker_dir + " ...\n")
 
-    signal.signal(signal.SIGINT, on_sigint)
-    signal.signal(signal.SIGTERM, on_sigint)
+    # We record some state that is shared by the three
+    # parallel event handling mechanisms:
+    # - the main loop;
+    # - the heartbeat loop;
+    # - the signal handler.
+    current_state = {
+        "run": None,  # the current run
+        "task_id": None,  # the id of the current task
+        "alive": True,  # controls the main loop and
+        # the heartbeat loop
+    }
 
+    # Install signal handlers
+    signal.signal(signal.SIGINT, partial(on_sigint, current_state))
+    signal.signal(signal.SIGTERM, partial(on_sigint, current_state))
+
+    # Handle command line parameters and the config file
     config_file = path.join(worker_dir, "fishtest.cfg")
     config = setup_config_file(config_file)
     parser = OptionParser()
@@ -413,9 +421,6 @@ def main():
     config.set("parameters", "fleet", options.fleet)
     config.set("parameters", "use_all_cores", options.use_all_cores)
 
-    global FLEET
-    FLEET = options.fleet == "True"
-
     protocol = options.protocol.lower()
     if protocol not in ["http", "https"]:
         sys.stderr.write("Wrong protocol, use https or http\n")
@@ -457,19 +462,15 @@ def main():
         )
         worker_exit()
 
-    try:
-        gcc_version()
-    except Exception as e:
-        print(e, file=sys.stderr)
-        worker_exit()
-
     with open(config_file, "w") as f:
         config.write(f)
     if options.only_config == "True":
         worker_exit(0)
+    # We are now finished with handling command line parameters and the config file
 
-    print("Worker version {} connecting to {}".format(WORKER_VERSION, remote))
-
+    # Assemble the config/options data as well as some other data in a
+    # "worker_info" dictionary.
+    # This data will be sent to the server when a new task is requested.
     uname = platform.uname()
     worker_info = {
         "uname": uname[0] + " " + uname[2],
@@ -490,24 +491,41 @@ def main():
     with open(path.join(worker_dir, "uuid.txt"), "w") as f:
         print(worker_info["unique_key"], file=f)
 
-    # Start heartbeat
-    threading.Thread(target=heartbeat, args=(worker_info, password, remote)).start()
+    # Make sure a suitable version of gcc is present
+    try:
+        gcc_version()
+    except Exception as e:
+        print(e, file=sys.stderr)
+        worker_exit()
 
+    # All seems to be well...
+    print("Worker version {} connecting to {}".format(WORKER_VERSION, remote))
+
+    # Start heartbeat
+    threading.Thread(
+        target=heartbeat, args=(worker_info, password, remote, current_state)
+    ).start()
+
+    # If fleet==True then the worker will quit if it is unable to obtain
+    # or execute a task. If fleet==False then the worker will go to the
+    # next iteration of the main loop.
+    fleet = config.get("parameters", "fleet").lower() == "true"
+
+    # Start the main loop
     success = True
-    global ALIVE
-    while ALIVE:
+    while current_state["alive"]:
         if path.isfile(path.join(worker_dir, "fish.exit")):
-            ALIVE = False
+            current_state["alive"] = False
             print("Stopped by 'fish.exit' file")
             break
         if not success:
-            if FLEET:
+            if fleet:
                 worker_exit()
             time.sleep(delay)
             delay = delay * 2
         else:
             delay = HTTP_TIMEOUT
-        success = worker(worker_info, password, remote)
+        success = worker(worker_info, password, remote, fleet, current_state)
 
 
 if __name__ == "__main__":
