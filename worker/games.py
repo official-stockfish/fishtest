@@ -30,6 +30,10 @@ IS_WINDOWS = "windows" in platform.system().lower()
 ARCH = "?"
 
 
+class FatalException(Exception):
+    pass
+
+
 def is_windows_64bit():
     if "PROCESSOR_ARCHITEW6432" in os.environ:
         return True
@@ -103,7 +107,7 @@ def verify_required_cutechess(cutechess):
     for line in iter(p.stdout.readline, ""):
         m = pattern.search(line)
         if m:
-            print("Found: ", line)
+            print("Found: ", line.strip())
             major = int(m.group(1))
             minor = int(m.group(2))
             patch = int(m.group(3))
@@ -338,7 +342,9 @@ def find_arch_string():
             and "x86-64-avx512" in targets
         ):
             res = "x86-64-avx512"
-            res = "x86-64-bmi2"  # use bmi2 until avx512 performance becomes actually better
+            res = (
+                "x86-64-bmi2"
+            )  # use bmi2 until avx512 performance becomes actually better
         elif (
             "-mbmi2" in props["flags"]
             and "x86-64-bmi2" in targets
@@ -460,16 +466,7 @@ def kill_process(p):
         p.stdout.close()
 
 
-def adjust_tc(tc, base_nps, concurrency):
-    factor = (
-        1080000.0 / base_nps
-    )  # 1.6Mnps is the reference core, also used in fishtest views.
-    if base_nps < 450000:
-        print("This machine is too slow to run fishtest effectively - sorry!")
-        from worker import worker_exit
-
-        worker_exit()
-
+def adjust_tc(tc, factor, concurrency):
     # Parse the time control in cutechess format
     chunks = tc.split("+")
     increment = 0.0
@@ -791,6 +788,16 @@ def launch_cutechess(
 
 
 def run_games(worker_info, password, remote, run, task_id):
+    # This is the main cutechess-cli driver.
+    # It is ok, and even expected, for this function to
+    # raise exceptions, implicitly or explicitly, if a
+    # task cannot be completed.
+    # Exceptions will be caught by the caller
+    # and handled appropriately.
+    # If an immediate exit is necessary then one should
+    # raise "FatalException". Currently this is only
+    # done when the worker is too slow.
+
     task = run["my_task"]
 
     # Have we run any games on this task yet?
@@ -1006,14 +1013,23 @@ def run_games(worker_info, password, remote, run, task_id):
         worker_info,
     )
 
+    if base_nps < 450000:
+        raise FatalException(
+            "This machine is too slow to run fishtest effectively - sorry!"
+        )
+
+    factor = (
+        1080000.0 / base_nps
+    )  # 1080000nps is the reference core, also used in fishtest views.
+
     # Benchmark to adjust cpu scaling
     scaled_tc, tc_limit = adjust_tc(
-        run["args"]["tc"], base_nps, int(worker_info["concurrency"])
+        run["args"]["tc"], factor, int(worker_info["concurrency"])
     )
     scaled_new_tc = scaled_tc
     if "new_tc" in run["args"]:
         scaled_new_tc, new_tc_limit = adjust_tc(
-            run["args"]["new_tc"], base_nps, int(worker_info["concurrency"])
+            run["args"]["new_tc"], factor, int(worker_info["concurrency"])
         )
         tc_limit = (tc_limit + new_tc_limit) / 2
 
