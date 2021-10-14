@@ -98,7 +98,7 @@ def on_sigint(current_state, signal, frame):
 
 
 def worker_exit(val=1):
-    os._exit(val)
+    sys.exit(val)
 
 
 def get_rate():
@@ -487,6 +487,7 @@ def main():
     heartbeat_thread = threading.Thread(
         target=heartbeat, args=(worker_info, password, remote, current_state)
     )
+    heartbeat_thread.daemon = True
     heartbeat_thread.start()
 
     # If fleet==True then the worker will quit if it is unable to obtain
