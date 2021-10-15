@@ -126,7 +126,7 @@ def get_chi2(tasks, exclude_workers=set()):
     # values. As a cosmetic tweak we use isf/sf rather than ppf/cdf
     # in order to be able to deal accurately with very low p-values.
     res_z = scipy.stats.norm.isf(scipy.stats.chi2.sf(adj_row_chi2, columns - 1))
-    
+
     for idx in range(len(keys)):
         # We cap the standard normal "residuals" at zero since negative values
         # do not look very nice and moreover they do not convey any
