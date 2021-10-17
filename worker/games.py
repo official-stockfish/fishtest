@@ -96,25 +96,29 @@ def required_net(engine):
 def verify_required_cutechess(cutechess):
     print("Obtaining version info for {} ...".format(os.path.basename(cutechess)))
 
-    p = subprocess.Popen(
-        [cutechess, "--version"],
-        stdout=subprocess.PIPE,
-        universal_newlines=True,
-        bufsize=1,
-        close_fds=not IS_WINDOWS,
-    )
+    try:
+        p = subprocess.Popen(
+            [cutechess, "--version"],
+            stdout=subprocess.PIPE,
+            universal_newlines=True,
+            bufsize=1,
+            close_fds=not IS_WINDOWS,
+        )
+    except Exception as e:
+        print("Exception running cutechess-cli:\n", e, sep="", file=sys.stderr)
+        raise FatalException("Not working cutechess-cli - sorry!")
+    else:
+        pattern = re.compile("cutechess-cli ([0-9]*).([0-9]*).([0-9]*)")
+        for line in iter(p.stdout.readline, ""):
+            m = pattern.search(line)
+            if m:
+                print("Found: ", line.strip())
+                major = int(m.group(1))
+                minor = int(m.group(2))
+                patch = int(m.group(3))
 
-    pattern = re.compile("cutechess-cli ([0-9]*).([0-9]*).([0-9]*)")
-    for line in iter(p.stdout.readline, ""):
-        m = pattern.search(line)
-        if m:
-            print("Found: ", line.strip())
-            major = int(m.group(1))
-            minor = int(m.group(2))
-            patch = int(m.group(3))
-
-    p.wait()
-    p.stdout.close()
+        p.wait()
+        p.stdout.close()
 
     if p.returncode != 0:
         raise WorkerException("Failed to find cutechess version info")
@@ -805,8 +809,7 @@ def run_games(worker_info, password, remote, run, task_id):
     # Exceptions will be caught by the caller
     # and handled appropriately.
     # If an immediate exit is necessary then one should
-    # raise "FatalException". Currently this is only
-    # done when the worker is too slow.
+    # raise "FatalException".
     # Explicit exceptions should be raised as
     # "WorkerException". Then they will be recorded
     # on the server.
@@ -1028,7 +1031,7 @@ def run_games(worker_info, password, remote, run, task_id):
         worker_info,
     )
 
-    if base_nps < 450000:
+    if base_nps < 350000: # lowered from 450000 - dirty fix for some slow workers
         raise FatalException(
             "This machine is too slow to run fishtest effectively - sorry!"
         )
