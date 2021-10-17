@@ -14,6 +14,7 @@
     <option value="block_user">Block/Unblock User</option>
     <option value="update_stats">System Events</option>
     <option value="upload_nn">Upload NN file</option>
+    <option value="failed_task">Failed Task</option>
   </select>
   &nbsp;From user:
   <input id="user" type="text" name="user" class="submit_on_enter">

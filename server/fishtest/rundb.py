@@ -27,6 +27,7 @@ from fishtest.util import (
 )
 from fishtest.util import unique_key as unique_key_
 from fishtest.util import update_residuals, worker_name
+from fishtest.views import del_tasks
 from pymongo import DESCENDING, MongoClient
 
 DEBUG = False
@@ -950,7 +951,7 @@ class RunDb:
         self.pgndb.insert_one({"run_id": run_id, "pgn_zip": Binary(pgn_zip)})
         return {}
 
-    def failed_task(self, run_id, task_id, unique_key):
+    def failed_task(self, run_id, task_id, unique_key, message="Unknown reason"):
         run = self.get_run(run_id)
         if DEBUG:
             print(
@@ -981,13 +982,21 @@ class RunDb:
         # Mark the task as inactive.
         task["active"] = False
         self.buffer(run, True)
-
         print(
-            "Inactive: https://tests.stockfishchess.org/tests/view/{} {} {}".format(
-                run_id, task if DEBUG else task_id, worker_name(task["worker_info"])
+            "Failed_task: failure for: https://tests.stockfishchess.org/tests/view/{}, "
+            "task_id: {}, worker: {}, reason: '{}'".format(
+                run_id, task_id, worker_name(task["worker_info"]), message
             ),
             flush=True,
         )
+        with self.active_run_lock(str(run_id)):
+            run[
+                "failure_reason"
+            ] = "task_id: {}, worker: {}, reason: '{}'".format(
+                task_id, worker_name(task["worker_info"]), message
+            )
+            run = del_tasks(run)
+            self.actiondb.failed_task(task["worker_info"]["username"], run)
         return {}
 
     def stop_run(self, run_id, run=None):

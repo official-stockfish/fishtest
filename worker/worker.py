@@ -1,5 +1,4 @@
 #!/usr/bin/python
-
 import json
 import math
 import multiprocessing
@@ -12,6 +11,7 @@ import subprocess
 import sys
 import threading
 import time
+import traceback
 import uuid
 from functools import partial
 
@@ -34,7 +34,7 @@ except ImportError:
     sys.path.append(path.join(path.dirname(path.realpath(__file__)), "packages"))
     import requests
 
-from games import run_games, FatalException
+from games import FatalException, WorkerException, run_games
 from updater import update
 
 WORKER_VERSION = 113
@@ -211,7 +211,7 @@ def setup_parameters(config_file):
 
 def on_sigint(current_state, signal, frame):
     current_state["alive"] = False
-    raise Exception("Terminated by signal")
+    raise WorkerException("Terminated by signal")
 
 
 def get_rate():
@@ -270,6 +270,21 @@ def gcc_version():
 
     print("Found g++ version {}.{}".format(major, minor))
     return True
+
+
+def get_exception(files):
+    i = 0
+    exc_type, exc_obj, tb = sys.exc_info()
+    filename, lineno, name, line = traceback.extract_tb(tb)[i]
+    message = "Exception at {}: {}".format(os.path.basename(filename), lineno)
+    while os.path.basename(filename) in files:
+        message = "Exception at {}: {}".format(os.path.basename(filename), lineno)
+        i += 1
+        try:
+            filename, lineno, name, line = traceback.extract_tb(tb)[i]
+        except:
+            break
+    return message
 
 
 def heartbeat(worker_info, password, remote, current_state):
@@ -371,26 +386,37 @@ def fetch_and_handle_task(worker_info, password, remote, current_state):
     current_state["task_id"] = task_id
 
     success = False
+    message = None
+    server_message = None
     try:
         pgn_file = run_games(worker_info, password, remote, run, task_id)
         success = True
     except FatalException as e:
-        print("\nException running games:\n", e, sep="", file=sys.stderr)
+        message = str(e)
+        server_message = message
         current_state["alive"] = False
+    except WorkerException as e:
+        message = str(e)
+        server_message = message
     except Exception as e:
-        print("\nException running games:\n", e, sep="", file=sys.stderr)
-    finally:
-        current_state["task_id"] = None
-        current_state["run"] = None
+        message = str(e)
+        server_message = get_exception(["worker.py", "games.py"])
+
+    current_state["task_id"] = None
+    current_state["run"] = None
+
+    payload = {
+        "username": worker_info["username"],
+        "password": password,
+        "run_id": str(run["_id"]),
+        "task_id": task_id,
+        "unique_key": worker_info["unique_key"],
+        "message": server_message,
+    }
 
     if not success:
-        payload = {
-            "username": worker_info["username"],
-            "password": password,
-            "run_id": str(run["_id"]),
-            "task_id": task_id,
-            "unique_key": worker_info["unique_key"],
-        }
+        print("\nException running games:\n", message, sep="", file=sys.stderr)
+        print("Informing the server")
         try:
             requests.post(
                 remote + "/api/failed_task",
