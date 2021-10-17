@@ -37,7 +37,7 @@ except ImportError:
 from games import FatalException, WorkerException, run_games
 from updater import update
 
-WORKER_VERSION = 113
+WORKER_VERSION = 114
 HTTP_TIMEOUT = 15.0
 
 """
