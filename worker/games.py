@@ -32,6 +32,10 @@ class FatalException(Exception):
     pass
 
 
+class WorkerException(Exception):
+    pass
+
+
 def is_windows_64bit():
     if "PROCESSOR_ARCHITEW6432" in os.environ:
         return True
@@ -83,9 +87,8 @@ def required_net(engine):
 
     p.wait()
     p.stdout.close()
-
     if p.returncode != 0:
-        raise Exception("UCI exited with non-zero code {}".format(p.returncode))
+        raise WorkerException("UCI exited with non-zero code {}".format(p.returncode))
 
     return net
 
@@ -114,10 +117,12 @@ def verify_required_cutechess(cutechess):
     p.stdout.close()
 
     if p.returncode != 0:
-        raise Exception("Failed to find cutechess version info")
+        raise WorkerException("Failed to find cutechess version info")
 
     if (major, minor) < (1, 2):
-        raise Exception("Requires cutechess 1.2 or higher, found version doesn't match")
+        raise WorkerException(
+            "Requires cutechess 1.2 or higher, found version doesn't match"
+        )
 
 
 def required_net_from_source():
@@ -215,12 +220,13 @@ def verify_signature(engine, signature, remote, payload, concurrency, worker_inf
         p2.stdout.close()
 
         if p.returncode:
-            raise Exception("Bench exited with non-zero code {}".format(p.returncode))
+            raise WorkerException(
+                "Bench exited with non-zero code {}".format(p.returncode)
+            )
         if p2.returncode:
-            raise Exception(
+            raise WorkerException(
                 "Compiler info exited with non-zero code {}".format(p2.returncode)
             )
-
         if int(bench_sig) != int(signature):
             message = "{}-{}cores-{}: Wrong bench in {} Expected: {} Got: {}".format(
                 worker_info["username"],
@@ -232,7 +238,11 @@ def verify_signature(engine, signature, remote, payload, concurrency, worker_inf
             )
             payload["message"] = message
             send_api_post_request(remote + "/api/stop_run", payload)
-            raise Exception(message)
+            # more compact message for "/api/failed_task"
+            message = "Wrong bench in {}... Expected: {} Got: {}".format(
+                os.path.basename(engine)[:16], signature, bench_sig
+            )
+            raise WorkerException(message)
 
     finally:
         if concurrency > 1:
@@ -255,7 +265,7 @@ def setup(item, testing_dir):
                 f.write(b64decode(blob_json["content"]))
             break
     else:
-        raise Exception("Item {} not found".format(item))
+        raise WorkerException("Item {} not found".format(item))
 
 
 def gcc_props():
@@ -280,7 +290,7 @@ def gcc_props():
     p.stdout.close()
 
     if p.returncode != 0:
-        raise Exception(
+        raise WorkerException(
             "g++ target query failed with return code {}".format(p.returncode)
         )
 
@@ -312,7 +322,9 @@ def make_targets():
     p.stdout.close()
 
     if p.returncode != 0:
-        raise Exception("make help failed with return code {}".format(p.returncode))
+        raise WorkerException(
+            "make help failed with return code {}".format(p.returncode)
+        )
 
     return targets
 
@@ -340,9 +352,7 @@ def find_arch_string():
             and "x86-64-avx512" in targets
         ):
             res = "x86-64-avx512"
-            res = (
-                "x86-64-bmi2"
-            )  # use bmi2 until avx512 performance becomes actually better
+            res = "x86-64-bmi2"  # use bmi2 until avx512 performance becomes actually better
         elif (
             "-mbmi2" in props["flags"]
             and "x86-64-bmi2" in targets
@@ -416,7 +426,9 @@ def setup_engine(
             ):
                 download_net(remote, testing_dir, net)
                 if not validate_net(testing_dir, net):
-                    raise Exception("Failed to validate the network: {}".format(net))
+                    raise WorkerException(
+                        "Failed to validate the network: {}".format(net)
+                    )
             shutil.copyfile(os.path.join(testing_dir, net), net)
 
         ARCH = find_arch_string()
@@ -434,10 +446,12 @@ def setup_engine(
             )
         except Exception as e:
             print("Exception striping binary:\n", e, sep="", file=sys.stderr)
-
-        shutil.move("stockfish" + EXE_SUFFIX, destination)
-    except:
-        raise Exception("Failed to setup engine for {}".format(sha))
+        try:
+            shutil.move("stockfish" + EXE_SUFFIX, destination)
+        except Exception:
+            raise WorkerException(
+                "Unable to move the stockfish binary to its destination"
+            )
     finally:
         os.chdir(worker_dir)
         shutil.rmtree(tmp_dir)
@@ -581,7 +595,6 @@ def validate_pentanomial(wld, rounds):
 def parse_cutechess_output(
     p, remote, result, spsa, spsa_tuning, games_to_play, batch_size, tc_limit
 ):
-
     saved_stats = copy.deepcopy(result["stats"])
     rounds = {}
 
@@ -618,7 +631,8 @@ def parse_cutechess_output(
             message = r'Cutechess-cli says: "{}"'.format(line)
             result["message"] = message
             send_api_post_request(remote + "/api/stop_run", result)
-            raise Exception(message)
+            message = r'Cutechess-cli says: "{}"'.format(line)
+            raise WorkerException(message)
 
         # Parse line like this:
         # Finished game 1 (stockfish vs base): 0-1 {White disconnects}
@@ -704,13 +718,13 @@ def parse_cutechess_output(
                         if not response["task_alive"]:
                             # This task is no longer necessary
                             print("Server told us task is no longer needed")
-                            return response
+                            return False
                         update_succeeded = True
                         num_games_updated = num_games_finished
                         break
                     time.sleep(HTTP_TIMEOUT)
                 if not update_succeeded:
-                    print("Too many failed update attempts")
+                    raise WorkerException("Too many failed update attempts")
                     break
 
         # act on line like this
@@ -720,9 +734,9 @@ def parse_cutechess_output(
 
     now = datetime.datetime.now()
     if now >= end_time:
-        print("{} is past end time {}".format(now, end_time))
+        raise WorkerException("{} is past end time {}".format(now, end_time))
 
-    return {"task_alive": True}
+    return True
 
 
 def launch_cutechess(
@@ -773,16 +787,14 @@ def launch_cutechess(
         close_fds=not IS_WINDOWS,
     )
 
-    task_state = {"task_alive": False}
     try:
-        task_state = parse_cutechess_output(
+        task_alive = parse_cutechess_output(
             p, remote, result, spsa, spsa_tuning, games_to_play, batch_size, tc_limit
         )
-    except Exception as e:
-        print("Exception running games:\n", e, sep="", file=sys.stderr)
     finally:
         kill_process(p)
-    return task_state
+
+    return task_alive
 
 
 def run_games(worker_info, password, remote, run, task_id):
@@ -795,6 +807,9 @@ def run_games(worker_info, password, remote, run, task_id):
     # If an immediate exit is necessary then one should
     # raise "FatalException". Currently this is only
     # done when the worker is too slow.
+    # Explicit exceptions should be raised as
+    # "WorkerException". Then they will be recorded
+    # on the server.
 
     task = run["my_task"]
 
@@ -985,7 +1000,9 @@ def run_games(worker_info, password, remote, run, task_id):
             ):
                 download_net(remote, testing_dir, net)
                 if not validate_net(testing_dir, net):
-                    raise Exception("Failed to validate the network: {}".format(net))
+                    raise WorkerException(
+                        "Failed to validate the network: {}".format(net)
+                    )
 
     # pgn output setup
     pgn_name = "results-" + worker_info["unique_key"] + ".pgn"
@@ -1141,7 +1158,7 @@ def run_games(worker_info, password, remote, run, task_id):
             + book_cmd
         )
 
-        task_status = launch_cutechess(
+        task_alive = launch_cutechess(
             cmd,
             remote,
             result,
@@ -1150,10 +1167,11 @@ def run_games(worker_info, password, remote, run, task_id):
             batch_size,
             tc_limit * games_to_play / min(games_to_play, games_concurrency),
         )
-        if not task_status.get("task_alive", False):
-            break
 
         games_remaining -= games_to_play
         start_game_index += games_to_play
+
+        if not task_alive:
+            break
 
     return pgnfile

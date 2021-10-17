@@ -1,12 +1,11 @@
 import os
 import os.path
-import sys
 import subprocess
+import sys
 import unittest
 
 import games
 import updater
-
 import worker
 
 
@@ -25,9 +24,10 @@ class workerTest(unittest.TestCase):
             pass
 
     def test_config_setup(self):
-        sys.argv = [sys.argv[0], 'user', 'pass']
+        sys.argv = [sys.argv[0], "user", "pass"]
         worker.setup_parameters("foo.txt")
         from configparser import ConfigParser
+
         config = ConfigParser()
         config.read("foo.txt")
         self.assertTrue(config.has_section("login"))

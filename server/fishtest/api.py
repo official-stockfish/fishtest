@@ -5,6 +5,7 @@ from datetime import datetime
 import requests
 from fishtest.stats.stat_util import SPRT_elo
 from fishtest.util import worker_name
+from fishtest.views import del_tasks
 from pyramid.httpexceptions import HTTPFound, HTTPUnauthorized, exception_response
 from pyramid.response import Response
 from pyramid.view import exception_view_config, view_config, view_defaults
@@ -183,8 +184,9 @@ class ApiView(object):
     @view_config(route_name="api_failed_task")
     def failed_task(self):
         self.require_authentication()
+        message = self.request.json_body.get("message", "Unknown reason")
         return self.request.rundb.failed_task(
-            self.run_id(), self.task_id(), self.get_unique_key()
+            self.run_id(), self.task_id(), self.get_unique_key(), message
         )
 
     @view_config(route_name="api_upload_pgn")
@@ -236,6 +238,7 @@ class ApiView(object):
             run["finished"] = True
             run["failed"] = True
             run["stop_reason"] = self.request.json_body.get("message", "API request")
+            run = del_tasks(run)
             self.request.actiondb.stop_run(username, run)
             self.request.rundb.stop_run(self.run_id())
         return {}

@@ -303,6 +303,10 @@ def actions(request):
             item["run"] = action["data"]["args"]["new_tag"]
             item["_id"] = action["data"]["_id"]
             item["description"] = " ".join(action["action"].split("_"))
+            if action["action"] == "failed_task":
+                item["description"] += ": {}".format(
+                    action["data"].get("failure_reason", "Unknown reason")
+                )
             if action["action"] == "stop_run":
                 item["description"] += ": {}".format(
                     action["data"].get("stop_reason", "User stop")
