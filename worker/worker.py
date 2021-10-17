@@ -40,6 +40,20 @@ from updater import update
 WORKER_VERSION = 113
 HTTP_TIMEOUT = 15.0
 
+"""
+Bird's eye view of the worker
+=============================
+
+The main control flow of the worker
+is as follows:
+
+worker.py : worker()
+worker.py :    fetch_and_handle_task()            [in loop]
+games.py  :       run_games()
+games.py  :          launch_cutechess()           [in loop for spsa]
+games.py  :             parse_cutechess_output()
+"""
+
 
 def setup_parameters(config_file):
 
