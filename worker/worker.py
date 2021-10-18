@@ -39,6 +39,7 @@ from updater import update
 
 WORKER_VERSION = 115
 HTTP_TIMEOUT = 15.0
+MAX_RETRY_TIME = 14400.0  # four hours
 
 """
 Bird's eye view of the worker
@@ -571,8 +572,9 @@ def worker():
                 print("Exiting the worker since fleet==True and an error occurred")
                 break
             else:
+                print("Waiting {} seconds before retrying".format(delay))
                 time.sleep(delay)
-                delay = min(16 * HTTP_TIMEOUT, delay * 2)
+                delay = min(MAX_RETRY_TIME, delay * 2)
         else:
             delay = HTTP_TIMEOUT
 
