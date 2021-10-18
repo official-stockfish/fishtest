@@ -990,9 +990,7 @@ class RunDb:
             flush=True,
         )
         with self.active_run_lock(str(run_id)):
-            run[
-                "failure_reason"
-            ] = "task_id: {}, worker: {}, reason: '{}'".format(
+            run["failure_reason"] = "task_id: {}, worker: {}, reason: '{}'".format(
                 task_id, worker_name(task["worker_info"]), message
             )
             run = del_tasks(run)
