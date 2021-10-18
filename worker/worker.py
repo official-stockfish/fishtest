@@ -291,9 +291,9 @@ def get_exception(files):
     i = 0
     exc_type, exc_obj, tb = sys.exc_info()
     filename, lineno, name, line = traceback.extract_tb(tb)[i]
-    message = "Exception at {}: {}".format(os.path.basename(filename), lineno)
+    message = "Exception at {}:{}".format(os.path.basename(filename), lineno)
     while os.path.basename(filename) in files:
-        message = "Exception at {}: {}".format(os.path.basename(filename), lineno)
+        message = "Exception at {}:{}".format(os.path.basename(filename), lineno)
         i += 1
         try:
             filename, lineno, name, line = traceback.extract_tb(tb)[i]
@@ -414,8 +414,9 @@ def fetch_and_handle_task(worker_info, password, remote, current_state):
         message = str(e)
         server_message = message
     except Exception as e:
-        message = str(e)
         server_message = get_exception(["worker.py", "games.py"])
+        message = "{} ({})".format(server_message,str(e))
+        current_state["alive"] = False
 
     current_state["task_id"] = None
     current_state["run"] = None
