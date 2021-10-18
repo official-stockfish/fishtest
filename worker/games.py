@@ -449,11 +449,19 @@ def setup_engine(
                 MAKE_CMD + ARCH + " -j {}".format(concurrency) + " strip", shell=True
             )
         except Exception as e:
-            print("Exception striping binary:\n", e, sep="", file=sys.stderr)
+            print("Exception stripping binary:\n", e, sep="", file=sys.stderr)
+
+        stockfish_binary = "stockfish" + EXE_SUFFIX
         try:
-            shutil.move("stockfish" + EXE_SUFFIX, destination)
-        except Exception:
-            raise WorkerException(
+            shutil.move(stockfish_binary, destination)
+        except Exception as e:
+            print(
+                "Exception moving the stockfish binary:\n",
+                e,
+                sep="",
+                file=sys.stderr,
+            )
+            raise FatalException(
                 "Unable to move the stockfish binary to its destination"
             )
     finally:
