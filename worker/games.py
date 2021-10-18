@@ -264,7 +264,11 @@ def setup(item, testing_dir):
     for blob in tree["tree"]:
         if blob["path"] == item:
             print("Downloading {} ...".format(item))
-            blob_json = requests.get(blob["url"], timeout=HTTP_TIMEOUT).json()
+            try:
+                blob_json = requests.get(blob["url"], timeout=HTTP_TIMEOUT).json()
+            except Exception as e:
+                print("Exception downloading an item:\n", e, sep="", file=sys.stderr)
+                raise WorkerException("Unable to download {}".format(item))
             with open(os.path.join(testing_dir, item), "wb+") as f:
                 f.write(b64decode(blob_json["content"]))
             break
