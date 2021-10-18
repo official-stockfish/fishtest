@@ -38,7 +38,7 @@ def update(restart=True, test=False):
     zip_file.extractall(update_dir)
     zip_file.close()
     prefix = os.path.commonprefix([n.filename for n in zip_file.infolist()])
-    worker_src = os.path.join(update_dir, os.path.join(prefix, "worker"))
+    worker_src = os.path.join(update_dir, prefix, "worker")
     if not test:
         # delete the "packages" folder to only have new files after an upgrade
         packages_dir = os.path.join(worker_dir, "packages")
