@@ -55,8 +55,40 @@ EXE_SUFFIX = ".exe" if IS_WINDOWS else ""
 MAKE_CMD = "make COMP=mingw " if IS_WINDOWS else "make COMP=gcc "
 
 
+def requests_get(remote, *args, **kw):
+    # A lightweight wrapper around requests.get()
+    try:
+        result = requests.get(remote, *args, **kw)
+    except Exception as e:
+        print(
+            "Exception in requests.get():\n",
+            e,
+            sep="",
+            file=sys.stderr,
+        )
+        raise WorkerException("Get request to {} failed".format(remote))
+
+    return result
+
+
+def requests_post(remote, *args, **kw):
+    # A lightweight wrapper around requests.post()
+    try:
+        result = requests.post(remote, *args, **kw)
+    except Exception as e:
+        print(
+            "Exception in requests.post():\n",
+            e,
+            sep="",
+            file=sys.stderr,
+        )
+        raise WorkerException("Post request to {} failed".format(remote))
+
+    return result
+
+
 def send_api_post_request(api_url, payload):
-    return requests.post(
+    return requests_post(
         api_url,
         data=json.dumps(payload),
         headers={"Content-Type": "application/json"},
@@ -158,7 +190,7 @@ def required_net_from_source():
 
 def download_net(remote, testing_dir, net):
     url = remote + "/api/nn/" + net
-    r = requests.get(url, allow_redirects=True)
+    r = requests_get(url, allow_redirects=True)
     with open(os.path.join(testing_dir, net), "wb") as f:
         f.write(r.content)
 
@@ -258,13 +290,13 @@ def verify_signature(engine, signature, remote, payload, concurrency, worker_inf
 
 def setup(item, testing_dir):
     """Download item from FishCooking to testing_dir"""
-    tree = requests.get(
+    tree = requests_get(
         github_api(REPO_URL) + "/git/trees/master", timeout=HTTP_TIMEOUT
     ).json()
     for blob in tree["tree"]:
         if blob["path"] == item:
             print("Downloading {} ...".format(item))
-            blob_json = requests.get(blob["url"], timeout=HTTP_TIMEOUT).json()
+            blob_json = requests_get(blob["url"], timeout=HTTP_TIMEOUT).json()
             with open(os.path.join(testing_dir, item), "wb+") as f:
                 f.write(b64decode(blob_json["content"]))
             break
@@ -412,7 +444,7 @@ def setup_engine(
         os.chdir(tmp_dir)
         with open("sf.gz", "wb+") as f:
             f.write(
-                requests.get(
+                requests_get(
                     github_api(repo_url) + "/zipball/" + sha, timeout=HTTP_TIMEOUT
                 ).content
             )
