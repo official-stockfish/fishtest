@@ -242,7 +242,11 @@ def verify_signature(engine, signature, remote, payload, concurrency, worker_inf
             )
             payload["message"] = message
             send_api_post_request(remote + "/api/stop_run", payload)
-            # more compact message for "/api/failed_task"
+            # Use a more compact message for "/api/failed_task".
+            # Note that if the previous /api/stop_run succeeded
+            # (i.e. if the user has sufficient CPU hours) then
+            # /api/failed_task will have no effect since the current
+            # task has already been set to inactive.
             message = "Wrong bench in {}... Expected: {} Got: {}".format(
                 os.path.basename(engine)[:16], signature, bench_sig
             )
