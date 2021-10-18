@@ -403,8 +403,6 @@ def find_arch_string():
 def setup_engine(
     destination, worker_dir, testing_dir, remote, sha, repo_url, concurrency
 ):
-    if os.path.exists(destination):
-        os.remove(destination)
     """Download and build sources in a temporary directory then move exe to destination"""
     tmp_dir = tempfile.mkdtemp(dir=worker_dir)
 
@@ -419,8 +417,8 @@ def setup_engine(
         zip_file = ZipFile("sf.gz")
         zip_file.extractall()
         zip_file.close()
-
-        os.chdir(glob.glob(os.path.join(tmp_dir, "*/src/"))[0])
+        prefix = os.path.commonprefix([n.filename for n in zip_file.infolist()])
+        os.chdir(os.path.join(tmp_dir, prefix, "src"))
 
         net = required_net_from_source()
         if net:
@@ -449,13 +447,16 @@ def setup_engine(
                 MAKE_CMD + ARCH + " -j {}".format(concurrency) + " strip", shell=True
             )
         except Exception as e:
-            print("Exception striping binary:\n", e, sep="", file=sys.stderr)
-        try:
-            shutil.move("stockfish" + EXE_SUFFIX, destination)
-        except Exception:
-            raise WorkerException(
-                "Unable to move the stockfish binary to its destination"
+            print("Exception stripping binary:\n", e, sep="", file=sys.stderr)
+
+        # We called setup_engine() because the engine was not cached.
+        # Only another worker running in the same folder can have built the engine.
+        if os.path.exists(destination):
+            raise FatalException(
+                "Another worker is running in the same directory!"
             )
+        else:
+            shutil.move("stockfish" + EXE_SUFFIX, destination)
     finally:
         os.chdir(worker_dir)
         shutil.rmtree(tmp_dir)
