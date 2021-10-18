@@ -628,10 +628,10 @@ def parse_cutechess_output(
 
         # Have we reached the end of the match?  Then just exit
         if "Finished match" in line:
-            # The following assertion will fail if there are games without result.
-            # Does this ever happen?
-            assert num_games_updated == games_to_play
-            print("Finished match cleanly")
+            if num_games_updated == games_to_play:
+                print("Finished match cleanly")
+            else:
+                raise WorkerException("Finished match uncleanly")
 
         # Parse line like this:
         # Warning: New-eb6a21875e doesn't have option ThreatBySafePawn
@@ -1035,7 +1035,7 @@ def run_games(worker_info, password, remote, run, task_id):
         worker_info,
     )
 
-    if base_nps < 350000: # lowered from 450000 - dirty fix for some slow workers
+    if base_nps < 350000:  # lowered from 450000 - dirty fix for some slow workers
         raise FatalException(
             "This machine is too slow to run fishtest effectively - sorry!"
         )
