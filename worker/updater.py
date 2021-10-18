@@ -3,7 +3,6 @@ import glob
 import os
 import shutil
 import sys
-import time
 from distutils.dir_util import copy_tree
 from zipfile import ZipFile
 
@@ -64,12 +63,7 @@ def update(restart=True, test=False):
     os.chdir(worker_dir)
     testing_dir = os.path.join(worker_dir, "testing")
     if os.path.exists(testing_dir):
-        try:
-            time_stamp = str(datetime.datetime.timestamp(datetime.datetime.utcnow()))
-        except AttributeError:  # python2
-            dt_utc = datetime.datetime.utcnow()
-            time_stamp = str(time.mktime(dt_utc.timetuple()) + dt_utc.microsecond / 1e6)
-
+        time_stamp = str(datetime.datetime.timestamp(datetime.datetime.utcnow()))
         bkp_testing_dir = os.path.join(worker_dir, "_testing_" + time_stamp)
         shutil.move(testing_dir, bkp_testing_dir)
         os.makedirs(testing_dir)

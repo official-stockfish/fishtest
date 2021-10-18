@@ -1,4 +1,5 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
+import base64
 import json
 import math
 import multiprocessing
@@ -13,21 +14,15 @@ import threading
 import time
 import traceback
 import uuid
-from functools import partial
-
-IS_WINDOWS = "windows" in platform.system().lower()
-
-try:
-    from ConfigParser import SafeConfigParser as ConfigParser
-except ImportError:
-    from configparser import ConfigParser  # Python 3
-
-import base64
 import zlib
+from configparser import ConfigParser
 from datetime import datetime
+from functools import partial
 from optparse import OptionParser
 from os import path
 
+# try to import an user installed package
+# fall back to the local one in case of error
 try:
     import requests
 except ImportError:
@@ -40,6 +35,7 @@ from updater import update
 WORKER_VERSION = 115
 HTTP_TIMEOUT = 15.0
 MAX_RETRY_TIME = 14400.0  # four hours
+IS_WINDOWS = "windows" in platform.system().lower()
 
 """
 Bird's eye view of the worker
@@ -415,7 +411,7 @@ def fetch_and_handle_task(worker_info, password, remote, current_state):
         server_message = message
     except Exception as e:
         server_message = get_exception(["worker.py", "games.py"])
-        message = "{} ({})".format(server_message,str(e))
+        message = "{} ({})".format(server_message, str(e))
         current_state["alive"] = False
 
     current_state["task_id"] = None
@@ -453,10 +449,7 @@ def fetch_and_handle_task(worker_info, password, remote, current_state):
             with open(pgn_file, "r") as f:
                 data = f.read()
             # Ignore non utf-8 characters in PGN file
-            if sys.version_info[0] == 2:
-                data = data.decode("utf-8", "ignore").encode("utf-8")  # Python 2
-            else:
-                data = bytes(data, "utf-8").decode("utf-8", "ignore")  # Python 3
+            data = bytes(data, "utf-8").decode("utf-8", "ignore")
             payload["pgn"] = base64.b64encode(
                 zlib.compress(data.encode("utf-8"))
             ).decode()

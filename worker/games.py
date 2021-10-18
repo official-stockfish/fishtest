@@ -14,14 +14,10 @@ import tempfile
 import threading
 import time
 from base64 import b64decode
+from queue import Empty, Queue
 from zipfile import ZipFile
 
 import requests
-
-try:
-    from Queue import Empty, Queue
-except ImportError:
-    from queue import Empty, Queue  # python 3.x
 
 IS_WINDOWS = "windows" in platform.system().lower()
 
@@ -456,9 +452,7 @@ def setup_engine(
         # We called setup_engine() because the engine was not cached.
         # Only another worker running in the same folder can have built the engine.
         if os.path.exists(destination):
-            raise FatalException(
-                "Another worker is running in the same directory!"
-            )
+            raise FatalException("Another worker is running in the same directory!")
         else:
             shutil.move("stockfish" + EXE_SUFFIX, destination)
     finally:
