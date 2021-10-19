@@ -1,6 +1,6 @@
 <%inherit file="base.mak"/>
-<h3> </h3>
-
+<h2>Actions Log</h2>
+<p></p>
 <form>
   Show only:
   <select id="restrict" name="action">

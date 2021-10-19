@@ -1,5 +1,5 @@
 <%inherit file="base.mak"/>
-<h3>Pending Users</h3>
+<h2>Pending Users</h2>
 
 <table class="table table-striped table-sm">
   <thead>

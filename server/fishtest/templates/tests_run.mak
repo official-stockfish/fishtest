@@ -95,8 +95,7 @@ else:
 </style>
 
 <header style="text-align: center; padding-top: 7px">
-  <legend>Create New Test</legend>
-
+  <h2>Create New Test</h2>
   <section class="instructions" style="margin-bottom: 35px">
     Please read the
     <a href="https://github.com/glinscott/fishtest/wiki/Creating-my-first-test">Testing Guidelines</a>

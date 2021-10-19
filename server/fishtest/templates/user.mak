@@ -1,5 +1,5 @@
 <%inherit file="base.mak"/>
-<h2>User administration</h2>
+<h2>User Administration</h2>
 
 <form class="form-horizontal" action="${request.url}" method="POST">
   <div class="control-group">
