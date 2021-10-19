@@ -1,6 +1,5 @@
 <%inherit file="base.mak"/>
-
-<h3>Stockfish testing</h3>
+<h2>Login</h2>
 
 <div class="alert alert-info alert-block">
   <h4>Permission Required</h4>
@@ -11,7 +10,6 @@
 
 <div>
   <form class="form-horizontal" action="" method="POST">
-    <legend>Login</legend>
     <div class="form-group row mb-3">
       <label class="col-form-label col-sm-2 text-end">Username</label>
       <div class="col-sm-3">

@@ -4,16 +4,16 @@
   <script src='https://www.google.com/recaptcha/api.js'></script>
 </%block>
 
+<h2>Register</h2>
+
 <div>
   <p></p>
-  <p>Signing up to fishtest allows you to contribute with CPU time or with patches to test.</p>
-  <p>Your contribution is much appreciated.</p>
-  <p>Once a new user account is created, a human needs to manually activate it. This is usually quick, but sometimes takes a few hours.</p>
+  <p>Thank you! Sign up to fishtest to contribute either CPU time and patches to test.</p>
+  <p>Once a new user account is created, an approver needs to manually activate it. This is usually quick, but sometimes takes a few hours.</p>
 
   <form class="form-horizontal" action="" method="POST">
     <input type="hidden" name="csrf_token"
            value="${request.session.get_csrf_token()}" />
-    <legend>Create new user</legend>
 
     <div class="form-group row mb-3">
       <label class="col-form-label col-sm-2 text-end">Username</label>

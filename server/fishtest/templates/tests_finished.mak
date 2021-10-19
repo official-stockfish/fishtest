@@ -1,5 +1,4 @@
 <%inherit file="base.mak"/>
-
 <h2>
   Finished Tests
   % if 'success_only' in request.url:

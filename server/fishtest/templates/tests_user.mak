@@ -1,6 +1,5 @@
 <%inherit file="base.mak"/>
-
-<h2>${username}</h2>
+<h2>${username} - Info</h2>
 
 <%include file="run_tables.mak"/>
 

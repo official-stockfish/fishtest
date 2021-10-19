@@ -1,5 +1,5 @@
 <%inherit file="base.mak"/>
-<h3>Neural Net download and statistics</h3>
+<h2>Neural Net Repository</h2>
 
 <p>
 These networks are freely available for download and sharing under a

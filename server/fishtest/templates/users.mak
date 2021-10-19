@@ -1,5 +1,10 @@
 <%inherit file="base.mak"/>
-<h4> </h4>
+<h2>
+  Users
+  % if 'monthly' in request.url:
+      - Top Month
+  % endif
+</h2>
 
 <div class="row" style="margin: 2em 0">
   <div class="col-sm">
