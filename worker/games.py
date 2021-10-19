@@ -51,18 +51,17 @@ EXE_SUFFIX = ".exe" if IS_WINDOWS else ""
 MAKE_CMD = "make COMP=mingw " if IS_WINDOWS else "make COMP=gcc "
 
 
+# See https://stackoverflow.com/questions/16511337/correct-way-to-try-except-using-python-requests-module
+# for background.
+# It may be useful to introduce more refined http exception handling in the future.
+
 def requests_get(remote, *args, **kw):
     # A lightweight wrapper around requests.get()
     try:
         result = requests.get(remote, *args, **kw)
+        result.raise_for_status()  # also catch return codes >= 400
     except Exception as e:
-        print(
-            "Exception in requests.get():\n",
-            e,
-            sep="",
-            file=sys.stderr,
-        )
-        raise WorkerException("Get request to {} failed".format(remote))
+        raise WorkerException("Get request failed. Reason: {}".format(e))
 
     return result
 
@@ -71,6 +70,7 @@ def requests_post(remote, *args, **kw):
     # A lightweight wrapper around requests.post()
     try:
         result = requests.post(remote, *args, **kw)
+        result.raise_for_status()  # also catch return codes >= 400
     except Exception as e:
         print(
             "Exception in requests.post():\n",
