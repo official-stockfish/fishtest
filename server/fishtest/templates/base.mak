@@ -44,19 +44,19 @@
         % endif
         <li><a href="/tests/run">New</a></li>
         % if request.authenticated_userid:
-            <li><a href="/upload">Upload NN</a></li>
+            <li><a href="/upload">NN Upload</a></li>
         % endif
 
         <li class="nav-header">Misc</li>
         <li><a href="/users">Users</a></li>
         <li><a href="/users/monthly">Top Month</a></li>
         <li><a href="/actions">Actions</a></li>
-        <li><a href="/nns">NN stats</a></li>
+        <li><a href="/nns">NN Repo</a></li>
         <li><a href="/html/SPRTcalculator.html?elo-model=Normalized&elo-0=-0.5&elo-1=2.5&draw-ratio=0.49&rms-bias=191" target="_blank">SPRT Calc</a></li>
 
         <li class="nav-header">Github</li>
         <li><a href="https://github.com/glinscott/fishtest" target="_blank" rel="noopener">Fishtest</a></li>
-        <li><a href="https://github.com/glinscott/nnue-pytorch" target="_blank" rel="noopener">NN trainer</a></li>
+        <li><a href="https://github.com/glinscott/nnue-pytorch" target="_blank" rel="noopener">NN Trainer</a></li>
         <li><a href="https://github.com/official-stockfish/books" target="_blank" rel="noopener">Books</a></li>
         <li><a href="https://github.com/official-stockfish/Stockfish" target="_blank" rel="noopener">Stockfish</a></li>
 
