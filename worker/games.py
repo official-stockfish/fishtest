@@ -186,7 +186,8 @@ def required_net_from_source():
 
 def download_net(remote, testing_dir, net):
     url = remote + "/api/nn/" + net
-    r = requests_get(url, allow_redirects=True)
+    print("Downloading {}".format(net))
+    r = requests_get(url, allow_redirects=True, timeout=HTTP_TIMEOUT)
     with open(os.path.join(testing_dir, net), "wb") as f:
         f.write(r.content)
 
