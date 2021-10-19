@@ -229,7 +229,7 @@ def get_rate():
     try:
         rate = requests.get(
             "https://api.github.com/rate_limit", timeout=HTTP_TIMEOUT
-        ).json()["rate"]
+        ).json()["resources"]["core"]
     except Exception as e:
         print("Exception fetching rate_limit:\n", e, sep="", file=sys.stderr)
         rate = {"remaining": 0, "limit": 5000}
