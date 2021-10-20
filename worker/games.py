@@ -494,24 +494,32 @@ def setup_engine(
 
 
 def kill_process(p):
-    try:
-        if IS_WINDOWS:
-            # Kill doesn't kill subprocesses on Windows
-            subprocess.call(["taskkill", "/F", "/T", "/PID", str(p.pid)])
+    if p.poll() is None:
+        p_name = os.path.basename(p.args[0])
+        print("Killing {} with pid {} ... ".format(p_name, p.pid), end="")
+        try:
+            if IS_WINDOWS:
+                # Kill doesn't kill subprocesses on Windows
+                subprocess.call(
+                    ["taskkill", "/F", "/T", "/PID", str(p.pid)],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.STDOUT,
+                )
+            else:
+                p.kill()
+        except Exception as e:
+            print(
+                "\nException killing {} with pid {}, possibly already terminated:\n".format(
+                    p_name, p.pid
+                ),
+                e,
+                sep="",
+                file=sys.stderr,
+            )
         else:
-            p.kill()
-    except Exception as e:
-        print(
-            "Exception killing the process pid {}, possibly already terminated:\n".format(
-                p.pid
-            ),
-            e,
-            sep="",
-            file=sys.stderr,
-        )
-    finally:
-        p.wait()
-        p.stdout.close()
+            print("killed")
+    p.wait()
+    p.stdout.close()
 
 
 def adjust_tc(tc, factor, concurrency):
