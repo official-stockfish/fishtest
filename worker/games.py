@@ -24,11 +24,21 @@ IS_WINDOWS = "windows" in platform.system().lower()
 ARCH = "?"
 
 
-class FatalException(Exception):
-    pass
-
-
 class WorkerException(Exception):
+    def __new__(cls, msg, e=None):
+        if e is not None and isinstance(e, WorkerException):
+            # Note that this forwards also instances of
+            # subclasses of WorkerException, e.g.
+            # FatalException.
+            return e
+        else:
+            return super().__new__(cls,msg)
+
+    def __init__(self,*args,**kw):
+        pass
+
+
+class FatalException(WorkerException):
     pass
 
 
@@ -61,7 +71,7 @@ def requests_get(remote, *args, **kw):
         result = requests.get(remote, *args, **kw)
         result.raise_for_status()  # also catch return codes >= 400
     except Exception as e:
-        raise WorkerException("Get request failed. Reason: {}".format(e))
+        raise WorkerException("Get request failed. Reason: {}".format(e), e=e)
 
     return result
 
@@ -78,7 +88,7 @@ def requests_post(remote, *args, **kw):
             sep="",
             file=sys.stderr,
         )
-        raise WorkerException("Post request to {} failed".format(remote))
+        raise WorkerException("Post request to {} failed".format(remote), e=e)
 
     return result
 
@@ -149,10 +159,10 @@ def verify_required_cutechess(cutechess):
         p.stdout.close()
 
     if p.returncode != 0:
-        raise WorkerException("Failed to find cutechess version info")
+        raise FatalException("Failed to find cutechess version info")
 
     if (major, minor) < (1, 2):
-        raise WorkerException(
+        raise FatalException(
             "Requires cutechess 1.2 or higher, found version doesn't match"
         )
 
@@ -468,11 +478,18 @@ def setup_engine(
 
         ARCH = find_arch_string()
 
-        subprocess.check_call(
-            MAKE_CMD + ARCH + " -j {}".format(concurrency) + " profile-build",
-            shell=True,
-            env=dict(os.environ, CXXFLAGS="-DNNUE_EMBEDDING_OFF"),
-        )
+        cmd = MAKE_CMD + ARCH + " -j {}".format(concurrency) + " profile-build"
+        env = dict(os.environ, CXXFLAGS="-DNNUE_EMBEDDING_OFF")
+        try:
+            subprocess.check_call(
+                cmd,
+                shell=True,
+                env=env,
+            )
+        except Exception as e:
+            print("Exception during main make command:\n", e, sep="", file=sys.stderr)
+            raise WorkerException("Executing {} failed".format(cmd), e=e)
+
         # try/pass needed for backwards compatibility with older stockfish,
         # where 'make strip' fails under mingw. TODO: check if still needed
         try:
