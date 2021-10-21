@@ -1,5 +1,4 @@
 *.pyc
-.*
 *~
 */env
 server/fishtest_server.egg-info
