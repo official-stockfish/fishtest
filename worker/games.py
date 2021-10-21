@@ -14,6 +14,7 @@ import tempfile
 import threading
 import time
 from base64 import b64decode
+from contextlib import ExitStack
 from queue import Empty, Queue
 from zipfile import ZipFile
 
@@ -119,20 +120,17 @@ def github_api(repo):
 def required_net(engine):
     net = None
     print("Obtaining EvalFile of {} ...".format(os.path.basename(engine)))
-    p = subprocess.Popen(
+    with subprocess.Popen(
         [engine, "uci"],
         stdout=subprocess.PIPE,
         universal_newlines=True,
         bufsize=1,
         close_fds=not IS_WINDOWS,
-    )
+    ) as p:
+        for line in iter(p.stdout.readline, ""):
+            if "EvalFile" in line:
+                net = line.split(" ")[6].strip()
 
-    for line in iter(p.stdout.readline, ""):
-        if "EvalFile" in line:
-            net = line.split(" ")[6].strip()
-
-    p.wait()
-    p.stdout.close()
     if p.returncode != 0:
         raise WorkerException("UCI exited with non-zero code {}".format(p.returncode))
 
@@ -141,30 +139,25 @@ def required_net(engine):
 
 def verify_required_cutechess(cutechess):
     print("Obtaining version info for {} ...".format(os.path.basename(cutechess)))
-
     try:
-        p = subprocess.Popen(
+        with subprocess.Popen(
             [cutechess, "--version"],
             stdout=subprocess.PIPE,
             universal_newlines=True,
             bufsize=1,
             close_fds=not IS_WINDOWS,
-        )
-    except Exception as e:
+        ) as p:
+            pattern = re.compile("cutechess-cli ([0-9]*).([0-9]*).([0-9]*)")
+            for line in iter(p.stdout.readline, ""):
+                m = pattern.search(line)
+                if m:
+                    print("Found: ", line.strip())
+                    major = int(m.group(1))
+                    minor = int(m.group(2))
+                    patch = int(m.group(3))
+    except (OSError, subprocess.SubprocessError) as e:
         print("Exception running cutechess-cli:\n", e, sep="", file=sys.stderr)
         raise FatalException("Not working cutechess-cli - sorry!")
-    else:
-        pattern = re.compile("cutechess-cli ([0-9]*).([0-9]*).([0-9]*)")
-        for line in iter(p.stdout.readline, ""):
-            m = pattern.search(line)
-            if m:
-                print("Found: ", line.strip())
-                major = int(m.group(1))
-                minor = int(m.group(2))
-                patch = int(m.group(3))
-
-        p.wait()
-        p.stdout.close()
 
     if p.returncode != 0:
         raise FatalException("Failed to find cutechess version info")
@@ -219,65 +212,63 @@ def validate_net(testing_dir, net):
 
 def verify_signature(engine, signature, remote, payload, concurrency, worker_info):
     global ARCH
-    if concurrency > 1:
-        with open(os.devnull, "wb") as dev_null:
-            busy_process = subprocess.Popen(
-                [engine],
-                stdin=subprocess.PIPE,
-                stdout=dev_null,
-                universal_newlines=True,
-                bufsize=1,
-                close_fds=not IS_WINDOWS,
-            )
-        busy_process.stdin.write(
-            "setoption name Threads value {}\n".format(concurrency - 1)
+    with subprocess.Popen(
+        [engine, "compiler"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        universal_newlines=True,
+        bufsize=1,
+        close_fds=not IS_WINDOWS,
+    ) as p:
+        for line in iter(p.stdout.readline, ""):
+            if "settings" in line:
+                ARCH = line.split(": ")[1].strip()
+    if p.returncode:
+        raise WorkerException(
+            "Compiler info exited with non-zero code {}".format(p.returncode)
         )
-        busy_process.stdin.write("go infinite\n")
-        busy_process.stdin.flush()
 
-    try:
+    with ExitStack() as stack:
+        if concurrency > 1:
+            busy_process = stack.enter_context(
+                subprocess.Popen(
+                    [engine],
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.DEVNULL,
+                    universal_newlines=True,
+                    bufsize=1,
+                    close_fds=not IS_WINDOWS,
+                )
+            )
+            busy_process.stdin.write(
+                "setoption name Threads value {}\n".format(concurrency - 1)
+            )
+            busy_process.stdin.write("go infinite\n")
+            busy_process.stdin.flush()
+
         bench_sig = ""
         print("Verifying signature of {} ...".format(os.path.basename(engine)))
-        with open(os.devnull, "wb") as dev_null:
-            p = subprocess.Popen(
+        p = stack.enter_context(
+            subprocess.Popen(
                 [engine, "bench"],
                 stderr=subprocess.PIPE,
-                stdout=dev_null,
+                stdout=subprocess.DEVNULL,
                 universal_newlines=True,
                 bufsize=1,
                 close_fds=not IS_WINDOWS,
             )
-            p2 = subprocess.Popen(
-                [engine, "compiler"],
-                stdout=subprocess.PIPE,
-                stderr=dev_null,
-                universal_newlines=True,
-                bufsize=1,
-                close_fds=not IS_WINDOWS,
-            )
-
+        )
         for line in iter(p.stderr.readline, ""):
             if "Nodes searched" in line:
                 bench_sig = line.split(": ")[1].strip()
             if "Nodes/second" in line:
                 bench_nps = float(line.split(": ")[1].strip())
-        p.wait()
-        p.stderr.close()
-
-        for line in iter(p2.stdout.readline, ""):
-            if "settings" in line:
-                ARCH = line.split(": ")[1].strip()
-        p2.wait()
-        p2.stdout.close()
 
         if p.returncode:
             raise WorkerException(
                 "Bench exited with non-zero code {}".format(p.returncode)
             )
-        if p2.returncode:
-            raise WorkerException(
-                "Compiler info exited with non-zero code {}".format(p2.returncode)
-            )
+
         if int(bench_sig) != int(signature):
             message = "{}-{}cores-{}: Wrong bench in {} Expected: {} Got: {}".format(
                 worker_info["username"],
@@ -299,7 +290,6 @@ def verify_signature(engine, signature, remote, payload, concurrency, worker_inf
             )
             raise WorkerException(message)
 
-    finally:
         if concurrency > 1:
             busy_process.communicate("quit\n")
             busy_process.stdin.close()
@@ -325,24 +315,20 @@ def setup(item, testing_dir):
 
 def gcc_props():
     """Parse the output of g++ -Q -march=native --help=target and extract the available properties"""
-    p = subprocess.Popen(
+    with subprocess.Popen(
         ["g++", "-Q", "-march=native", "--help=target"],
         stdout=subprocess.PIPE,
         universal_newlines=True,
         bufsize=1,
         close_fds=not IS_WINDOWS,
-    )
-
-    flags = []
-    arch = "None"
-    for line in iter(p.stdout.readline, ""):
-        if "[enabled]" in line:
-            flags.append(line.split()[0])
-        if "-march" in line and len(line.split()) == 2:
-            arch = line.split()[1]
-
-    p.wait()
-    p.stdout.close()
+    ) as p:
+        flags = []
+        arch = "None"
+        for line in iter(p.stdout.readline, ""):
+            if "[enabled]" in line:
+                flags.append(line.split()[0])
+            if "-march" in line and len(line.split()) == 2:
+                arch = line.split()[1]
 
     if p.returncode != 0:
         raise WorkerException(
@@ -354,27 +340,23 @@ def gcc_props():
 
 def make_targets():
     """Parse the output of make help and extract the available targets"""
-    p = subprocess.Popen(
+    with subprocess.Popen(
         ["make", "help"],
         stdout=subprocess.PIPE,
         universal_newlines=True,
         bufsize=1,
         close_fds=not IS_WINDOWS,
-    )
+    ) as p:
+        targets = []
+        read_targets = False
 
-    targets = []
-    read_targets = False
-
-    for line in iter(p.stdout.readline, ""):
-        if "Supported compilers:" in line:
-            read_targets = False
-        if read_targets and len(line.split()) > 1:
-            targets.append(line.split()[0])
-        if "Supported archs:" in line:
-            read_targets = True
-
-    p.wait()
-    p.stdout.close()
+        for line in iter(p.stdout.readline, ""):
+            if "Supported compilers:" in line:
+                read_targets = False
+            if read_targets and len(line.split()) > 1:
+                targets.append(line.split()[0])
+            if "Supported archs:" in line:
+                read_targets = True
 
     if p.returncode != 0:
         raise WorkerException(
@@ -519,32 +501,29 @@ def setup_engine(
 
 
 def kill_process(p):
-    if p.poll() is None:
-        p_name = os.path.basename(p.args[0])
-        print("Killing {} with pid {} ... ".format(p_name, p.pid), end="")
-        try:
-            if IS_WINDOWS:
-                # Kill doesn't kill subprocesses on Windows
-                subprocess.call(
-                    ["taskkill", "/F", "/T", "/PID", str(p.pid)],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.STDOUT,
-                )
-            else:
-                p.kill()
-        except Exception as e:
-            print(
-                "\nException killing {} with pid {}, possibly already terminated:\n".format(
-                    p_name, p.pid
-                ),
-                e,
-                sep="",
-                file=sys.stderr,
+    p_name = os.path.basename(p.args[0])
+    print("\nKilling {} with pid {} ... ".format(p_name, p.pid), end="")
+    try:
+        if IS_WINDOWS:
+            # Kill doesn't kill subprocesses on Windows
+            subprocess.call(
+                ["taskkill", "/F", "/T", "/PID", str(p.pid)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.STDOUT,
             )
         else:
-            print("killed")
-    p.wait()
-    p.stdout.close()
+            p.kill()
+    except Exception as e:
+        print(
+            "\nException killing {} with pid {}, possibly already terminated:\n".format(
+                p_name, p.pid
+            ),
+            e,
+            sep="",
+            file=sys.stderr,
+        )
+    else:
+        print("killed")
 
 
 def adjust_tc(tc, factor, concurrency):
@@ -847,21 +826,28 @@ def launch_cutechess(
     )
 
     print(cmd)
-    p = subprocess.Popen(
+    with subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         universal_newlines=True,
         bufsize=1,
         close_fds=not IS_WINDOWS,
-    )
-
-    try:
-        task_alive = parse_cutechess_output(
-            p, remote, result, spsa, spsa_tuning, games_to_play, batch_size, tc_limit
-        )
-    finally:
-        kill_process(p)
+    ) as p:
+        try:
+            task_alive = parse_cutechess_output(
+                p,
+                remote,
+                result,
+                spsa,
+                spsa_tuning,
+                games_to_play,
+                batch_size,
+                tc_limit,
+            )
+        finally:
+            if p.poll() is None:
+                kill_process(p)
 
     return task_alive
 
