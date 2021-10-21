@@ -71,7 +71,14 @@ def requests_get(remote, *args, **kw):
         result = requests.get(remote, *args, **kw)
         result.raise_for_status()  # also catch return codes >= 400
     except Exception as e:
-        raise WorkerException("Get request failed. Reason: {}".format(e), e=e)
+        print(
+            "Exception in requests.get():\n",
+            e,
+            sep="",
+            file=sys.stderr,
+        )
+        raise WorkerException("Get request to {} failed".format(remote), e=e)
+
 
     return result
 
