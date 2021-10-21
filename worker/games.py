@@ -32,9 +32,9 @@ class WorkerException(Exception):
             # FatalException.
             return e
         else:
-            return super().__new__(cls,msg)
+            return super().__new__(cls, msg)
 
-    def __init__(self,*args,**kw):
+    def __init__(self, *args, **kw):
         pass
 
 
@@ -64,6 +64,7 @@ MAKE_CMD = "make COMP=mingw " if IS_WINDOWS else "make COMP=gcc "
 # See https://stackoverflow.com/questions/16511337/correct-way-to-try-except-using-python-requests-module
 # for background.
 # It may be useful to introduce more refined http exception handling in the future.
+
 
 def requests_get(remote, *args, **kw):
     # A lightweight wrapper around requests.get()
@@ -858,7 +859,7 @@ def launch_cutechess(
     return task_alive
 
 
-def run_games(worker_info, password, remote, run, task_id):
+def run_games(worker_info, password, remote, run, task_id, pgn_file):
     # This is the main cutechess-cli driver.
     # It is ok, and even expected, for this function to
     # raise exceptions, implicitly or explicitly, if a
@@ -1066,9 +1067,10 @@ def run_games(worker_info, password, remote, run, task_id):
 
     # pgn output setup
     pgn_name = "results-" + worker_info["unique_key"] + ".pgn"
-    if os.path.exists(pgn_name):
-        os.remove(pgn_name)
-    pgnfile = os.path.join(testing_dir, pgn_name)
+    pgn_file[0] = os.path.join(testing_dir, pgn_name)
+    pgn_file = pgn_file[0]
+    if os.path.exists(pgn_file):
+        os.remove(pgn_file)
 
     # Verify signatures are correct
     verify_signature(
@@ -1234,4 +1236,4 @@ def run_games(worker_info, password, remote, run, task_id):
         if not task_alive:
             break
 
-    return pgnfile
+    return
