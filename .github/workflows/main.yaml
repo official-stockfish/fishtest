@@ -30,6 +30,8 @@ jobs:
       # Use Python
       - name: Set up Python
         uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
 
       # And run the tests
       - name: Install setuptools
