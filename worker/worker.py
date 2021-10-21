@@ -399,8 +399,9 @@ def fetch_and_handle_task(worker_info, password, remote, current_state):
     success = False
     message = None
     server_message = None
+    pgn_file = [None]
     try:
-        pgn_file = run_games(worker_info, password, remote, run, task_id)
+        run_games(worker_info, password, remote, run, task_id, pgn_file)
         success = True
     except FatalException as e:
         message = str(e)
@@ -440,10 +441,17 @@ def fetch_and_handle_task(worker_info, password, remote, current_state):
             print("Exception posting failed_task:\n", e, sep="", file=sys.stderr)
 
     # Upload pgn file
-    if success and current_state["alive"] and "spsa" not in run["args"]:
-        sleep = random.randint(1, 10)
-        print("Wait {} seconds before upload of PGN...".format(sleep))
-        time.sleep(sleep)
+    pgn_file = pgn_file[0]
+    if pgn_file is not None and os.path.exists(pgn_file) and "spsa" not in run["args"]:
+
+        # The delay below is mainly to help with finished SPRT runs.
+        # In that case many tasks may potentially finish at the same time.
+        if success:
+            sleep = random.randint(1, 10)
+            print("Wait {} seconds before uploading PGN...".format(sleep))
+            time.sleep(sleep)
+
+        print("Uploading PGN...")
 
         try:
             with open(pgn_file, "r") as f:
@@ -462,6 +470,8 @@ def fetch_and_handle_task(worker_info, password, remote, current_state):
             )
         except Exception as e:
             print("\nException uploading PGN file:\n", e, sep="", file=sys.stderr)
+
+    if pgn_file is not None and os.path.exists(pgn_file):
         try:
             os.remove(pgn_file)
         except Exception as e:
