@@ -241,24 +241,19 @@ def get_rate():
 
 def gcc_version():
     """Parse the output of g++ -E -dM -"""
-    p = subprocess.Popen(
+    with subprocess.Popen(
         ["g++", "-E", "-dM", "-"],
+        stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
-        stdin=subprocess.PIPE,
         universal_newlines=True,
         bufsize=1,
         close_fds=not IS_WINDOWS,
-    )
-
-    p.stdin.close()
-    for line in iter(p.stdout.readline, ""):
-        if "__GNUC__" in line:
-            major = line.split()[2]
-        if "__GNUC_MINOR__" in line:
-            minor = line.split()[2]
-
-    p.wait()
-    p.stdout.close()
+    ) as p:
+        for line in iter(p.stdout.readline, ""):
+            if "__GNUC__" in line:
+                major = line.split()[2]
+            if "__GNUC_MINOR__" in line:
+                minor = line.split()[2]
 
     if p.returncode != 0:
         print("g++ version query failed with return code {}".format(p.returncode))
