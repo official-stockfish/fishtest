@@ -21,8 +21,8 @@ from functools import partial
 from optparse import OptionParser
 from os import path
 
-# try to import an user installed package
-# fall back to the local one in case of error
+# Try to import an user installed package,
+# fall back to the local one in case of error.
 try:
     import requests
 except ImportError:
@@ -58,8 +58,7 @@ def setup_parameters(config_file):
     config = ConfigParser()
     config.read(config_file)
 
-    # Step 2: replace missing config options
-    # by defaults,
+    # Step 2: replace missing config options by defaults.
     mem = 0
     system_type = platform.system().lower()
     try:
@@ -101,8 +100,7 @@ def setup_parameters(config_file):
         if not config.has_option(v[0], v[1]):
             config.set(*v)
 
-    # Step 3: parse the command line. Use the current config options
-    # as defaults.
+    # Step 3: parse the command line. Use the current config options as defaults.
     parser = OptionParser()
     parser.add_option(
         "-P",
@@ -200,7 +198,7 @@ def setup_parameters(config_file):
 
     options.concurrency = str(cpu_count)
 
-    # Step 5: write command line parameters to the config file
+    # Step 5: write command line parameters to the config file.
     config.set("login", "username", options.username)
     config.set("login", "password", options.password)
     config.set("parameters", "protocol", options.protocol)
@@ -435,7 +433,7 @@ def fetch_and_handle_task(worker_info, password, remote, current_state):
         except Exception as e:
             print("Exception posting failed_task:\n", e, sep="", file=sys.stderr)
 
-    # Upload pgn file
+    # Upload PGN file.
     pgn_file = pgn_file[0]
     if pgn_file is not None and os.path.exists(pgn_file) and "spsa" not in run["args"]:
 
@@ -451,7 +449,7 @@ def fetch_and_handle_task(worker_info, password, remote, current_state):
         try:
             with open(pgn_file, "r") as f:
                 data = f.read()
-            # Ignore non utf-8 characters in PGN file
+            # Ignore non utf-8 characters in PGN file.
             data = bytes(data, "utf-8").decode("utf-8", "ignore")
             payload["pgn"] = base64.b64encode(
                 zlib.compress(data.encode("utf-8"))
@@ -493,11 +491,11 @@ def worker():
         # the heartbeat loop
     }
 
-    # Install signal handlers
+    # Install signal handlers.
     signal.signal(signal.SIGINT, partial(on_sigint, current_state))
     signal.signal(signal.SIGTERM, partial(on_sigint, current_state))
 
-    # Handle command line parameters and the config file
+    # Handle command line parameters and the config file.
     config_file = path.join(worker_dir, "fishtest.cfg")
     options = setup_parameters(config_file)
     if options is None:
@@ -528,7 +526,7 @@ def worker():
     with open(path.join(worker_dir, "uuid.txt"), "w") as f:
         f.write(worker_info["unique_key"])
 
-    # Make sure a suitable version of gcc is present
+    # Make sure a suitable version of gcc is present.
     if not gcc_version():
         return 1
 
@@ -536,7 +534,7 @@ def worker():
     remote = "{}://{}:{}".format(options.protocol, options.host, options.port)
     print("Worker version {} connecting to {}".format(WORKER_VERSION, remote))
 
-    # Start heartbeat
+    # Start heartbeat.
     heartbeat_thread = threading.Thread(
         target=heartbeat, args=(worker_info, options.password, remote, current_state)
     )
@@ -551,7 +549,7 @@ def worker():
 
     fleet = options.fleet.lower() == "true"
 
-    # Start the main loop
+    # Start the main loop.
     delay = HTTP_TIMEOUT
     fish_exit = False
     while current_state["alive"]:

@@ -291,12 +291,11 @@ def verify_signature(engine, signature, remote, payload, concurrency, worker_inf
 
         if concurrency > 1:
             busy_process.communicate("quit\n")
-            busy_process.stdin.close()
 
     return bench_nps
 
 
-def setup(item, testing_dir):
+def download_from_github(item, testing_dir):
     """Download item from FishCooking to testing_dir"""
     tree = requests_get(
         github_api(REPO_URL) + "/git/trees/master", timeout=HTTP_TIMEOUT
@@ -479,8 +478,8 @@ def setup_engine(
             print("Exception during main make command:\n", e, sep="", file=sys.stderr)
             raise WorkerException("Executing {} failed".format(cmd), e=e)
 
-        # try/pass needed for backwards compatibility with older stockfish,
-        # where 'make strip' fails under mingw. TODO: check if still needed
+        # Try needed for backwards compatibility with older stockfish,
+        # where 'make strip' fails under mingw. TODO: check if still needed.
         try:
             subprocess.check_call(
                 MAKE_CMD + ARCH + " -j {}".format(concurrency) + " strip", shell=True
@@ -504,7 +503,7 @@ def kill_process(p):
     print("\nKilling {} with pid {} ... ".format(p_name, p.pid), end="")
     try:
         if IS_WINDOWS:
-            # Kill doesn't kill subprocesses on Windows
+            # p.kill() doesn't kill subprocesses on Windows.
             subprocess.call(
                 ["taskkill", "/F", "/T", "/PID", str(p.pid)],
                 stdout=subprocess.DEVNULL,
@@ -526,7 +525,7 @@ def kill_process(p):
 
 
 def adjust_tc(tc, factor, concurrency):
-    # Parse the time control in cutechess format
+    # Parse the time control in cutechess format.
     chunks = tc.split("+")
     increment = 0.0
     if len(chunks) == 2:
@@ -544,7 +543,7 @@ def adjust_tc(tc, factor, concurrency):
     else:
         time_tc = float(chunks[0])
 
-    # Rebuild scaled_tc now: cutechess-cli and stockfish parse 3 decimal places
+    # Rebuild scaled_tc now: cutechess-cli and stockfish parse 3 decimal places.
     scaled_tc = "{:.3f}".format(time_tc * factor)
     tc_limit = time_tc * factor * 3
     if increment > 0.0:
@@ -665,7 +664,7 @@ def parse_cutechess_output(
 
         print(line, flush=True)
 
-        # Have we reached the end of the match?  Then just exit
+        # Have we reached the end of the match? Then just exit.
         if "Finished match" in line:
             if num_games_updated == games_to_play:
                 print("Finished match cleanly")
@@ -737,11 +736,11 @@ def parse_cutechess_output(
             assert num_games_finished <= num_games_updated + batch_size
             assert num_games_finished <= games_to_play
 
-            # Send an update_task request after a batch is full or if we have played all games
+            # Send an update_task request after a batch is full or if we have played all games.
             if (num_games_finished == num_games_updated + batch_size) or (
                 num_games_finished == games_to_play
             ):
-                # Attempt to send game results to the server. Retry a few times upon error
+                # Attempt to send game results to the server. Retry a few times upon error.
                 update_succeeded = False
                 for _ in range(5):
                     t0 = datetime.datetime.utcnow()
@@ -774,7 +773,7 @@ def parse_cutechess_output(
                     raise WorkerException("Too many failed update attempts")
                     break
 
-        # act on line like this
+        # Act on line like this:
         # Finished game 4 (Base-5446e6f vs New-1a68b26): 1/2-1/2 {Draw by adjudication}
         if "Finished game" in line:
             update_pentanomial(line, rounds)
@@ -792,7 +791,7 @@ def launch_cutechess(
     spsa = {"w_params": [], "b_params": [], "num_games": games_to_play}
 
     if spsa_tuning:
-        # Request parameters for next game
+        # Request parameters for next game.
         t0 = datetime.datetime.utcnow()
         req = send_api_post_request(remote + "/api/request_spsa", result).json()
         print(
@@ -810,7 +809,7 @@ def launch_cutechess(
         w_params = []
         b_params = []
 
-    # Run cutechess-cli binary
+    # Run cutechess-cli binary.
     idx = cmd.index("_spsa_")
     cmd = (
         cmd[:idx]
@@ -920,7 +919,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
     start_game_index = opening_offset + input_total_games
     run_seed = int(hashlib.sha1(run["_id"].encode("utf-8")).hexdigest(), 16) % (2 ** 30)
 
-    # Format options according to cutechess syntax
+    # Format options according to cutechess syntax.
     def parse_options(s):
         results = []
         chunks = s.split("=")
@@ -936,17 +935,18 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
     new_options = parse_options(new_options)
     base_options = parse_options(base_options)
 
-    # Setup testing directory if not already exsisting
+    # Create the testing directory if missing.
     worker_dir = os.path.dirname(os.path.realpath(__file__))
     testing_dir = os.path.join(worker_dir, "testing")
     if not os.path.exists(testing_dir):
         os.makedirs(testing_dir)
 
-    # clean up old engines (keeping the 50 most recent)
+    # Clean up old engines (keeping the num_bkps most recent).
     engines = glob.glob(os.path.join(testing_dir, "stockfish_*" + EXE_SUFFIX))
-    if len(engines) > 50:
+    num_bkps = 50
+    if len(engines) > num_bkps:
         engines.sort(key=os.path.getmtime)
-        for old_engine in engines[:-50]:
+        for old_engine in engines[:-num_bkps]:
             try:
                 os.remove(old_engine)
             except Exception as e:
@@ -957,7 +957,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
                     file=sys.stderr,
                 )
 
-    # create new engines
+    # Create new engines.
     sha_new = run["args"]["resolved_new"]
     sha_base = run["args"]["resolved_base"]
     new_engine_name = "stockfish_" + sha_new
@@ -967,7 +967,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
     base_engine = os.path.join(testing_dir, base_engine_name + EXE_SUFFIX)
     cutechess = os.path.join(testing_dir, "cutechess-cli" + EXE_SUFFIX)
 
-    # Build from sources new and base engines as needed
+    # Build from sources new and base engines as needed.
     if not os.path.exists(new_engine):
         setup_engine(
             new_engine,
@@ -991,39 +991,40 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
 
     os.chdir(testing_dir)
 
-    # Download book if not already existing
+    # Download the opening book if missing in the directory.
     if (
         not os.path.exists(os.path.join(testing_dir, book))
         or os.stat(os.path.join(testing_dir, book)).st_size == 0
     ):
         zipball = book + ".zip"
-        setup(zipball, testing_dir)
+        download_from_github(zipball, testing_dir)
         zip_file = ZipFile(zipball)
         zip_file.extractall()
         zip_file.close()
         os.remove(zipball)
 
-    # Download cutechess if not already existing
+    # Download cutechess if missing in the directory.
     if not os.path.exists(cutechess):
         if len(EXE_SUFFIX) > 0:
             zipball = "cutechess-cli-win.zip"
         else:
             zipball = "cutechess-cli-linux-{}.zip".format(platform.architecture()[0])
-        setup(zipball, testing_dir)
+        download_from_github(zipball, testing_dir)
         zip_file = ZipFile(zipball)
         zip_file.extractall()
         zip_file.close()
         os.remove(zipball)
         os.chmod(cutechess, os.stat(cutechess).st_mode | stat.S_IEXEC)
 
-    # verify that an available cutechess matches the required minimum version
+    # Verify that an available cutechess matches the required minimum version.
     verify_required_cutechess(cutechess)
 
-    # clean up old networks (keeping the 10 most recent)
+    # Clean up the old networks (keeping the num_bkps most recent)
     networks = glob.glob(os.path.join(testing_dir, "nn-*.nnue"))
-    if len(networks) > 10:
+    num_bkps = 10
+    if len(networks) > num_bkps:
         networks.sort(key=os.path.getmtime)
-        for old_net in networks[:-10]:
+        for old_net in networks[:-num_bkps]:
             try:
                 os.remove(old_net)
             except Exception as e:
@@ -1034,7 +1035,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
                     file=sys.stderr,
                 )
 
-    # Add EvalFile with full path to cutechess options, and download networks if not already existing
+    # Add EvalFile with full path to cutechess options, and download the networks if missimg.
     net_base = required_net(base_engine)
     if net_base:
         base_options = base_options + [
@@ -1057,14 +1058,14 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
                         "Failed to validate the network: {}".format(net)
                     )
 
-    # pgn output setup
+    # PGN files output setup.
     pgn_name = "results-" + worker_info["unique_key"] + ".pgn"
     pgn_file[0] = os.path.join(testing_dir, pgn_name)
     pgn_file = pgn_file[0]
     if os.path.exists(pgn_file):
         os.remove(pgn_file)
 
-    # Verify signatures are correct
+    # Verify that the signatures are correct.
     verify_signature(
         new_engine,
         run["args"]["new_signature"],
@@ -1088,8 +1089,8 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
         )
 
     factor = (
-        1080000.0 / base_nps
-    )  # 1080000nps is the reference core, also used in fishtest views.
+        1080000 / base_nps
+    )  # 1080000 nps is the reference core, also used in fishtest views.
 
     # Benchmark to adjust cpu scaling
     scaled_tc, tc_limit = adjust_tc(
@@ -1141,7 +1142,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
         assert batch_size % 2 == 0
         assert games_to_play % 2 == 0
 
-        # Handle book or pgn file
+        # Handle book or PGN file.
         pgn_cmd = []
         book_cmd = []
         if int(book_depth) <= 0:
@@ -1159,7 +1160,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
         else:
             assert False
 
-        # Run cutechess-cli binary
+        # Run cutechess binary.
         cmd = (
             [
                 cutechess,
