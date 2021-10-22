@@ -19,7 +19,7 @@ class workerTest(unittest.TestCase):
 
     def test_item_download(self):
         try:
-            games.setup("README.md", ".")
+            games.download_from_github("README.md", ".")
             self.assertTrue(os.path.exists(os.path.join(".", "README.md")))
         except KeyError:
             pass

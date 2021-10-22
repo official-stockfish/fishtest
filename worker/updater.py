@@ -21,7 +21,7 @@ def do_restart():
         args = ['"{}"'.format(arg) for arg in args]
 
     os.chdir(start_dir)
-    os.execv(sys.executable, args)  # This does not return !
+    os.execv(sys.executable, args)  # This does not return!
 
 
 def update(restart=True, test=False):
@@ -40,7 +40,7 @@ def update(restart=True, test=False):
     prefix = os.path.commonprefix([n.filename for n in zip_file.infolist()])
     worker_src = os.path.join(update_dir, prefix, "worker")
     if not test:
-        # delete the "packages" folder to only have new files after an upgrade
+        # Delete the "packages" folder to only have new files after an upgrade.
         packages_dir = os.path.join(worker_dir, "packages")
         if os.path.exists(packages_dir):
             try:
@@ -57,9 +57,9 @@ def update(restart=True, test=False):
         file_list = os.listdir(worker_src)
     shutil.rmtree(update_dir)
 
-    # rename the testing_dir to backup possible user custom files
-    # and to trigger the download of updated files
-    # the worker runs games from the "testing" folder so change the folder
+    # Rename the testing_dir to backup possible user custom files
+    # and to trigger the download of updated files.
+    # The worker runs games from the "testing" folder so change the folder.
     os.chdir(worker_dir)
     testing_dir = os.path.join(worker_dir, "testing")
     if os.path.exists(testing_dir):
@@ -79,7 +79,7 @@ def update(restart=True, test=False):
                     sep="",
                     file=sys.stderr,
                 )
-        # delete old networks
+        # Delete old networks.
         networks = glob.glob(os.path.join(bkp_testing_dir, "nn-*.nnue"))
         for network in networks:
             try:
@@ -91,7 +91,7 @@ def update(restart=True, test=False):
                     sep="",
                     file=sys.stderr,
                 )
-        # clean up old folder backups (keeping the num_bkps most recent)
+        # Clean up old folder backups (keeping the num_bkps most recent).
         bkp_dirs = glob.glob(os.path.join(worker_dir, "_testing_*"))
         num_bkps = 3
         if len(bkp_dirs) > num_bkps:
@@ -109,10 +109,10 @@ def update(restart=True, test=False):
                         file=sys.stderr,
                     )
 
-    # to be dropped when all workers will use the new "requests" packages
-    # delete the "requests" folder with the old "requests" package because
-    # it has the higher precedence during import
-    # note: the switch was problem free, skip the backup step
+    # To be dropped when all workers will use the new "requests" packages.
+    # Delete the "requests" folder with the old "requests" package because
+    # it has the higher precedence during import.
+    # Note: the switch was problem free, skip the backup step.
     requests_dir = os.path.join(worker_dir, "requests")
     requests_bkp = os.path.join(worker_dir, "_requests")
     if os.path.exists(requests_bkp):
