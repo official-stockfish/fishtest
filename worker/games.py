@@ -81,7 +81,6 @@ def requests_get(remote, *args, **kw):
         )
         raise WorkerException("Get request to {} failed".format(remote), e=e)
 
-
     return result
 
 
