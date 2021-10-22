@@ -1,6 +1,7 @@
 *.pyc
 *~
 */env
+*/venv
 server/fishtest_server.egg-info
 worker/fish.exit
 worker/fishtest.cfg
