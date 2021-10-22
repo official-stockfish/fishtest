@@ -1,8 +1,9 @@
-*.pyc
 *~
-*/env
-*/venv
-server/fishtest_server.egg-info
+*.egg-info
+*.pyc
+.python-version
+env/
+venv/
 worker/fish.exit
 worker/fishtest.cfg
 worker/uuid.txt
