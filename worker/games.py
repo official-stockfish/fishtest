@@ -1092,7 +1092,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
         1080000 / base_nps
     )  # 1080000 nps is the reference core, also used in fishtest views.
 
-    # Benchmark to adjust cpu scaling
+    # Adjust CPU scaling.
     scaled_tc, tc_limit = adjust_tc(
         run["args"]["tc"], factor, int(worker_info["concurrency"])
     )
@@ -1113,7 +1113,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
         threads_cmd = ["option.Threads={}".format(threads)]
 
     # If nodestime is being used, give engines extra grace time to
-    # make time losses virtually impossible
+    # make time losses virtually impossible.
     nodestime_cmd = []
     if any("nodestime" in s for s in new_options + base_options):
         nodestime_cmd = ["timemargin=10000"]
