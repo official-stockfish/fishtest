@@ -1,6 +1,5 @@
-<table class="table table-striped table-sm"
-       style="max-width: 960px;">
-  <thead>
+<table class="table table-striped table-sm">
+  <thead class="sticky-top">
     <tr>
       <th>Machine</th>
       <th>Cores</th>

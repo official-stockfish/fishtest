@@ -1,23 +1,119 @@
 
 /* Bootstrap responsive override */
-@media (max-width: 767px) {
+@media (max-width: 850px) {
   body {
     padding: 0;
+  }
+
+  .mainnavbar .nav li {
+    margin-right: 4px
+  }
+
+  .mainnavbar .nav li a {
+    font-size: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  .mainnavbar .nav li a::before {
+    font-size: 14px
+  }
+
+  .mainnavbar {
+    min-width: 50px !important;
+    width: 56px !important;
+  }
+
+  .mainnavbar a {
+    line-height: 30px;
+  }
+
+  .btn-group-sm>.btn, .btn-sm {
+    padding: 0 .25rem;
+  }
+
+  .nav-header,
+  .mainnavbar::-webkit-scrollbar {
+    display: none !important
+  }
+
+  .nav .nav-header:not(:first-child) + li {
+    border-top: 1px solid #65656540;
   }
 }
 
 body {
   font-size: 14px;
   transition: background 0.2s ease-in-out;
+  display: inline-flex;
+  width: 100%;
+}
+
+::-webkit-scrollbar {
+  width: 16px;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent
+}
+
+::-webkit-scrollbar-thumb {
+  min-height: 50px;
+  border-radius: 20px;
+  background-color: #adadad;
+  border: 4px solid var(--bs-white);
+}
+
+.contentbase {
+  overflow: hidden scroll;
+  height: 100vh;
+  width: 100%;
+}
+
+.contentbase main > h2 {
+  top: 0;
+  background: var(--bs-body-bg);
+  z-index: 1000;
+  padding: 5px 0;
+  box-shadow: 0px 3px 10px var(--bs-body-bg);
+}
+
+.contentbase > .container-fluid {
+  padding-right: 0;
+}
+
+.overflow-auto {
+  max-height: 80vh;
+}
+
+.sticky-top {
+  top: -1px;
+  background: var(--bs-body-bg);
+}
+
+.btn.btn-sm.btn-light {
+  min-width: 53px;
 }
 
 a {
-  color: #0088cc;
+  color: #409e42;
   text-decoration: none;
 }
 
 a:hover {
-  color: #0088cc;
+  color: #5f9960;
+}
+
+a:focus {
+  color: #497449;
+}
+
+.contentbase .default-net {
+  background-color: palegreen !important;
+}
+
+.contentbase .default-net a {
+  color: black;
 }
 
 h2, h3, h4 {
@@ -43,41 +139,256 @@ legend {
   padding: 3px;
 }
 
+h3 + .row-fluid .rounded.elo-results {
+  font-size: 14px;
+  line-height: normal;
+}
+
 .checkbox.inline {
   margin-left: 20px;
   margin-right: 0;
 }
 
-/** Left navigation */
+#non_default-button {
+  margin-bottom: 8px;
+}
+
+.run-date, .run-diff {
+  text-align: center;
+}
+
+/* Left navigation */
+.mainnavbar {
+  min-width: 180px;
+  padding: 20px 0 0 0;
+  overflow: hidden scroll;
+  height: 100vh;
+  background-color: var(--bs-gray-300);
+  transition: width 0.3s;
+  user-select: none;
+}
+
+.mainnavbar::-webkit-scrollbar-thumb {
+  border: 6px solid var(--bs-gray-300);
+}
+
+.mainnavbar::-webkit-scrollbar-track {
+  background-color: var(--bs-gray-300);
+}
+
+.contentbase::-webkit-scrollbar-thumb {
+  border: 4px solid var(--bs-body-bg);
+}
+
+.contentbase::-webkit-scrollbar-track {
+  background-color: var(--bs-body-bg);
+}
+
 .nav-list {
   margin-bottom: 0;
 }
 
-.nav-header {
-  color: #999999;
-  font-size: 11px;
+.nav li.nav-header {
+  color: #2e2e2e;
+  font-size: 14px;
   font-weight: bold;
   text-transform: uppercase;
   margin-bottom: 3px;
-  padding-left: 15px;
+  padding-top: 4px;
+  padding-left: 8px;
+  margin-top: 4px;
 }
 
-.nav li + .nav-header {
-  margin-top: 12px;
+.nav-header:not(:first-child) {
+  border-top: 1px solid #65656540;
+}
+
+.nav li {
+  margin-left: 4px;
+  margin-right: 0;
+}
+
+#change-color-theme path {
+  fill: var(--bs-gray-800) !important;
+}
+
+/* Icons */
+.mainnavbar a::before,
+#diff-num-comments + a::before,
+#copy-diff::before {
+  display: inline-block;
+  font-style: normal;
+  font-variant: normal;
+  text-rendering: auto;
+  -webkit-font-smoothing: antialiased;
+  width: 18px;
+  text-align: center;
+  margin-right: 4px;
+  font-weight: 900;
+  font-family: "Font Awesome 5 Free";
+}
+
+.mainnavbar [href="/tests"]::before {
+  content: "\f00b";
+}
+
+.mainnavbar [href="/tests/finished?success_only=1"]::before {
+  content: "\f14a";
+}
+
+.mainnavbar [href="/tests/finished?yellow_only=1"]::before {
+  content: "\f3fd";
+}
+
+.mainnavbar [href="/tests/finished?ltc_only=1"]::before {
+  content: "\f017";
+}
+
+.mainnavbar [href^="/tests/user/"]::before {
+  content: "\f0c3";
+}
+
+.mainnavbar [href="/tests/run"]::before {
+  content: "\f0a3";
+}
+
+.mainnavbar [href="/upload"]::before {
+  content: "\f093";
+}
+
+.mainnavbar [href="/users"]::before {
+  content: "\f0c0";
+}
+
+.mainnavbar [href="/users/monthly"]::before {
+  content: "\f091";
+}
+
+.mainnavbar [href="/actions"]::before {
+  content: "\f46d";
+}
+
+.mainnavbar [href="/nns"]::before {
+  content: "\f5dc";
+}
+
+.mainnavbar [href="/html/SPRTcalculator.html?elo-model=Normalized&elo-0=-0.5&elo-1=2.5&draw-ratio=0.49&rms-bias=191"]::before {
+  content: "\f1ec";
+}
+
+.mainnavbar [href="https://github.com/glinscott/fishtest"]::before {
+  content: "\f441";
+}
+
+.mainnavbar [href="https://github.com/glinscott/nnue-pytorch"]::before {
+  content: "\f3e2";
+  font-family: "Font Awesome 5 Brands";
+  font-weight: 400;
+}
+
+.mainnavbar [href="https://github.com/official-stockfish/books"]::before {
+  content: "\f02d";
+}
+
+.mainnavbar [href="https://github.com/official-stockfish/Stockfish"]::before {
+  content: "\f578";
+}
+
+.mainnavbar [href="https://github.com/glinscott/fishtest/wiki"]::before {
+  content: "\f266";
+  font-family: "Font Awesome 5 Brands";
+  font-weight: 400;
+}
+
+.mainnavbar [href="https://groups.google.com/g/fishcooking"]::before {
+  content: "\f086";
+}
+
+.mainnavbar [href="https://groups.google.com/g/fishcooking-results"]::before {
+  content: "\f1da";
+}
+
+.mainnavbar [href="https://hxim.github.io/Stockfish-Evaluation-Guide/"]::before {
+  content: "\f518";
+}
+
+.mainnavbar [href="https://github.com/glinscott/fishtest/wiki/Regression-Tests"]::before {
+  content: "\f201";
+}
+
+.mainnavbar [href="https://abrok.eu/stockfish/"]::before {
+  content: "\f019";
+}
+
+.mainnavbar [href="https://discord.gg/nv8gDtt"]::before {
+  content: "\f392";
+  font-family: "Font Awesome 5 Brands";
+  font-weight: 400;
+}
+
+.mainnavbar [href="/signup"]::before {
+  content: "\f234";
+}
+
+.mainnavbar [href="/login"]::before {
+  content: "\f2f6";
+}
+
+.mainnavbar [href="/user"]::before {
+  content: "\f007";
+}
+
+.mainnavbar [href="/logout"]::before {
+  content: "\f2f5";
+}
+
+.mainnavbar [href="/pending"]::before {
+  content: "\f252";
+}
+
+#diff-num-comments + a::before {
+  content: "\f09b";
+  font-family: "Font Awesome 5 Brands";
+  font-weight: 400;
+}
+
+#copy-diff::before {
+  content: "\f328";
 }
 
 /* Links in the left navigation */
 .nav li a {
-  display: block;
-  padding: 3px 15px;
+  display: flex;
+  padding: 3px 4px 3px 12px;
+  white-space: nowrap;
+  color: var(--bs-gray-800);
+  border-radius: .25rem;
 }
 
 .nav li a:hover {
-  background: #eeeeee;
+  background: var(--bs-light);
+  color: var(--bs-body-color);
+}
+
+.nav li a:focus {
+  background: var(--bs-white);
+}
+
+.nav li [href="/logout"]:hover {
+  color: var(--bs-danger);
 }
 
 th {
   cursor: pointer;
+}
+
+td {
+  border-color: transparent
+}
+
+.run-view {
+  word-break: break-word;
+  min-width: 100px;
 }
 
 /* tests_view page */
@@ -91,24 +402,48 @@ th {
 }
 
 #change-color-theme {
-  margin-left: 15px;
+  margin: 8px 0 20px 11px;
 }
 
 #change-color-theme:hover {
   cursor: pointer;
 }
 
+#machines {
+  max-height: 45vh;
+}
+
+#diff-contents {
+  max-height: 70vh;
+}
+
+#tasks {
+  max-height: 60vh;
+  margin-bottom: 12px;
+}
+
 /* Background colors for running tasks on test run pages */
 .table tbody tr.info>td {
   background-color: #cff4fc;
+}
 
 /* Pagination links */
 .page-link {
-  color: #0088cc;
+  color: var(--bs-gray-700);
+  transition: .1s;
+  user-select: none;
 }
 
-.pagination li.disabled .page-link {
-  color: rgb(153, 153, 153);
+.page-link:hover,
+.page-link:focus {
+  color: var(--bs-gray-900);
+  transition: .1s;
+}
+
+.pagination li.disabled .page-link,
+.pagination li.disabled .page-link:hover {
+  color: rgb(153, 153, 153) !important;
+  background: transparent !important;
 }
 
 .pagination li.active .page-link {
@@ -118,4 +453,12 @@ th {
 
 .pagination li:not(.active) .page-link:hover {
   background-color: #f5f5f5;
+}
+
+.pagination > li:first-child a {
+  border-radius: .25rem 0 0 .25rem
+}
+
+.pagination > li:last-child a {
+  border-radius: 0 .25rem .25rem 0
 }
