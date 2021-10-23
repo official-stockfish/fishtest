@@ -3,13 +3,14 @@
     <% paused_runs = [run for run in runs['pending'] if run['approved']] %>
 
     <h4>
-      Pending approval - ${len(pending_approval_runs)} tests
       <button id="pending-button" class="btn btn-sm btn-light border">
         ${'Hide' if pending_shown else 'Show'}
       </button>
+      Pending approval - ${len(pending_approval_runs)} tests
     </h4>
 
     <div id="pending"
+         class="overflow-auto"
          style="${'' if pending_shown else 'display: none;'}">
       % if pending_approval_runs:
           <%include file="run_table.mak" args="runs=pending_approval_runs, show_delete=True"/>
@@ -19,13 +20,14 @@
     </div>
 
     <h4>
-      Paused - ${len(paused_runs)} tests
       <button id="paused-button" class="btn btn-sm btn-light border">
         ${'Hide' if paused_shown else 'Show'}
       </button>
+      Paused - ${len(paused_runs)} tests
     </h4>
 
     <div id="paused"
+         class="overflow-auto"
          style="${'' if paused_shown else 'display: none;'}">
       % if paused_runs:
           <%include file="run_table.mak" args="runs=paused_runs, show_delete=True"/>

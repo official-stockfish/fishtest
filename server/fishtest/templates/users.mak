@@ -6,7 +6,7 @@
   % endif
 </h2>
 
-<div class="row" style="margin: 2em 0">
+<div class="row" style="padding: 1em 0">
   <div class="col-sm">
     <div class="row">
       <div class="col text-end"><b>Testers</b></div>
@@ -53,29 +53,31 @@
   </div>
 </div>
 
-<table class="table table-striped table-sm">
-  <thead>
-    <tr>
-      <th>Username</th>
-      <th style="text-align:right">Last active</th>
-      <th style="text-align:right">Games/Hour</th>
-      <th style="text-align:right">CPU Hours</th>
-      <th style="text-align:right">Games played</th>
-      <th style="text-align:right">Tests submitted</th>
-      <th>Tests repository</th>
-    </tr>
-  </thead>
-  <tbody>
-    % for user in users:
-        <tr>
-          <td>${user['username']}</td>
-          <td data-diff="${user['diff']}" style="text-align:right">${user['last_updated']}</td>
-          <td style="text-align:right">${int(user['games_per_hour'])}</td>
-          <td style="text-align:right">${int(user['cpu_hours'])}</td>
-          <td style="text-align:right">${int(user['games'])}</td>
-          <td style="text-align:right"><a href="/tests/user/${user['username']}">${user['tests']}</td>
-          <td><a href="${user['tests_repo']}" target="_blank" rel="noopener">${user['tests_repo']}</a></td>
-        </tr>
-    % endfor
-  </tbody>
-</table>
+<div class="overflow-auto">
+  <table class="table table-striped table-sm">
+    <thead class="sticky-top">
+      <tr>
+        <th>Username</th>
+        <th style="text-align:right">Last active</th>
+        <th style="text-align:right">Games/Hour</th>
+        <th style="text-align:right">CPU Hours</th>
+        <th style="text-align:right">Games played</th>
+        <th style="text-align:right">Tests submitted</th>
+        <th>Tests repository</th>
+      </tr>
+    </thead>
+    <tbody>
+      % for user in users:
+          <tr>
+            <td>${user['username']}</td>
+            <td data-diff="${user['diff']}" style="text-align:right">${user['last_updated']}</td>
+            <td style="text-align:right">${int(user['games_per_hour'])}</td>
+            <td style="text-align:right">${int(user['cpu_hours'])}</td>
+            <td style="text-align:right">${int(user['games'])}</td>
+            <td style="text-align:right"><a href="/tests/user/${user['username']}">${user['tests']}</td>
+            <td><a href="${user['tests_repo']}" target="_blank" rel="noopener">${user['tests_repo']}</a></td>
+          </tr>
+      % endfor
+    </tbody>
+  </table>
+</div>

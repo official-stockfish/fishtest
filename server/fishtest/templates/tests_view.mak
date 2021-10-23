@@ -231,103 +231,103 @@ from fishtest.util import worker_name
   <h3>
     Diff
     <span id="diff-num-comments" style="display: none"></span>
-    <a href="${h.diff_url(run)}" class="btn btn-link" target="_blank" rel="noopener">view on Github</a>
+    <a href="${h.diff_url(run)}" class="btn btn-link" target="_blank" rel="noopener">View on Github</a>
     <button id="diff-toggle" class="btn btn-sm btn-light border">Show</button>
-    <a href="javascript:" id="copy-diff" class="btn btn-link" style="margin-left: 10px; display: none">
-      <img src="/img/clipboard.png" width="20" height="20"/> Copy apply-diff command
-    </a>
+    <a href="javascript:" id="copy-diff" class="btn btn-link" style="margin-left: 10px; display: none">Copy apply-diff command</a>
     <div class="btn btn-link copied" style="color: green; display: none">Copied command!</div>
   </h3>
   <pre id="diff-contents"><code class="diff"></code></pre>
 </section>
 
 <h3>Tasks ${totals}</h3>
-<table class='table table-striped table-sm'>
-  <thead>
-    <tr>
-      <th>Idx</th>
-      <th>Worker</th>
-      <th>Info</th>
-      <th>Last Updated</th>
-      <th>Played</th>
-      % if not 'pentanomial' in run['results'].keys():
-          <th>Wins</th>
-          <th>Losses</th>
-          <th>Draws</th>
-      % else:
-          <th>Pentanomial&nbsp;[0&#8209;2]</th>
-      % endif
-      <th>Crashes</th>
-      <th>Time</th>
+<div id="tasks" class="overflow-auto">
+  <table class='table table-striped table-sm'>
+    <thead class="sticky-top">
+      <tr>
+        <th>Idx</th>
+        <th>Worker</th>
+        <th>Info</th>
+        <th>Last Updated</th>
+        <th>Played</th>
+        % if not 'pentanomial' in run['results'].keys():
+            <th>Wins</th>
+            <th>Losses</th>
+            <th>Draws</th>
+        % else:
+            <th>Pentanomial&nbsp;[0&#8209;2]</th>
+        % endif
+        <th>Crashes</th>
+        <th>Time</th>
+  
+        % if 'spsa' not in run['args']:
+            <th>Residual</th>
+        % endif
+      </tr>
+    </thead>
+    <tbody>
+      % for idx, task in enumerate(run['tasks'] + run.get('bad_tasks', [])):
+          <%
+            stats = task.get('stats', {})
+            if 'stats' in task:
+              total = stats['wins'] + stats['losses'] + stats['draws']
+            else:
+              continue
 
-      % if 'spsa' not in run['args']:
-          <th>Residual</th>
-      % endif
-    </tr>
-  </thead>
-  <tbody>
-    % for idx, task in enumerate(run['tasks'] + run.get('bad_tasks', [])):
-        <%
-          stats = task.get('stats', {})
-          if 'stats' in task:
-            total = stats['wins'] + stats['losses'] + stats['draws']
-          else:
-            continue
+            if task['active']:
+              active_style = 'info'
+            else:
+              active_style = ''
+          %>
+          <tr class="${active_style}">
+            <td><a href=${f"/api/pgn/{run['_id']}-{idx:d}.pgn"}>${idx}</a></td>
+            % if 'bad' in task:
+                <td style="text-decoration:line-through; background-color:#ffebeb">
+            % else:
+                <td>
+            % endif
+            % if approver and 'worker_info' in task and 'username' in task['worker_info']:
+                <a href="/user/${task['worker_info']['username']}">${worker_name(task['worker_info'])}</a>
+            % elif 'worker_info' in task:
+                ${worker_name(task["worker_info"])}
+            % else:
+                -
+            % endif
+            </td>
+            <td>
+            % if 'worker_info' in task:
+                ${task['worker_info']['uname']}
+                ARCH=${task.get('ARCH', '?')}
+            % else:
+                Unknown worker
+            % endif
+            </td>
+            <td>${str(task.get('last_updated', '-')).split('.')[0]}</td>
+            <td>${f"{total:03d} / {task['num_games']:03d}"}</td>
+            % if not 'pentanomial' in run['results'].keys():
+                <td>${stats.get('wins', '-')}</td>
+                <td>${stats.get('losses', '-')}</td>
+                <td>${stats.get('draws', '-')}</td>
+            % else:
+                <%
+                  p=stats.get('pentanomial',5*[0])
+                %>
+                <td>[${p[0]},&nbsp;${p[1]},&nbsp;${p[2]},&nbsp;${p[3]},&nbsp;${p[4]}]</td>
+            % endif
+            <td>${stats.get('crashes', '-')}</td>
+            <td>${stats.get('time_losses', '-')}</td>
 
-          if task['active']:
-            active_style = 'info'
-          else:
-            active_style = ''
-        %>
-        <tr class="${active_style}">
-          <td><a href=${f"/api/pgn/{run['_id']}-{idx:d}.pgn"}>${idx}</a></td>
-          % if 'bad' in task:
-              <td style="text-decoration:line-through; background-color:#ffebeb">
-          % else:
-              <td>
-          % endif
-          % if approver and 'worker_info' in task and 'username' in task['worker_info']:
-              <a href="/user/${task['worker_info']['username']}">${worker_name(task['worker_info'])}</a>
-          % elif 'worker_info' in task:
-              ${worker_name(task["worker_info"])}
-          % else:
-              -
-          % endif
-          </td>
-          <td>
-          % if 'worker_info' in task:
-              ${task['worker_info']['uname']}
-              ARCH=${task.get('ARCH', '?')}
-          % else:
-              Unknown worker
-          % endif
-          </td>
-          <td>${str(task.get('last_updated', '-')).split('.')[0]}</td>
-          <td>${f"{total:03d} / {task['num_games']:03d}"}</td>
-          % if not 'pentanomial' in run['results'].keys():
-              <td>${stats.get('wins', '-')}</td>
-              <td>${stats.get('losses', '-')}</td>
-              <td>${stats.get('draws', '-')}</td>
-          % else:
-              <%
-                p=stats.get('pentanomial',5*[0])
-              %>
-              <td>[${p[0]},&nbsp;${p[1]},&nbsp;${p[2]},&nbsp;${p[3]},&nbsp;${p[4]}]</td>
-          % endif
-          <td>${stats.get('crashes', '-')}</td>
-          <td>${stats.get('time_losses', '-')}</td>
-
-          % if 'spsa' not in run['args']:
-              % if 'residual' in task and task['residual']!=float("inf"):
-                  <td style="background-color:${task['residual_color']}">${f"{task['residual']:.3f}"}</td>
-              % else:
-                  <td>-</td>
-              % endif
-          % endif
-        </tr>
-    % endfor
-  </tbody>
-</table>
+            % if 'spsa' not in run['args']:
+                % if 'residual' in task and task['residual']!=float("inf"):
+                    <td style="background-color:${task['residual_color']}">${f"{task['residual']:.3f}"}</td>
+                % else:
+                    <td>-</td>
+                % endif
+            % endif
+          </tr>
+      % endfor
+    </tbody>
+  </table>
+</div>
 
 <script type="text/javascript" src="/js/highlight.diff.min.js"></script>
 <script>
