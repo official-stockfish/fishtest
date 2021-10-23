@@ -1164,6 +1164,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
         cmd = (
             [
                 cutechess,
+                "-recover",
                 "-repeat",
                 "-games",
                 str(int(games_to_play)),
