@@ -500,7 +500,7 @@ def setup_engine(
 
 def kill_process(p):
     p_name = os.path.basename(p.args[0])
-    print("\nKilling {} with pid {} ... ".format(p_name, p.pid), end="")
+    print("\Killing {} with pid {} ... ".format(p_name, p.pid), end="", flush=True)
     try:
         if IS_WINDOWS:
             # p.kill() doesn't kill subprocesses on Windows.
@@ -521,7 +521,7 @@ def kill_process(p):
             file=sys.stderr,
         )
     else:
-        print("killed")
+        print("killed", flush=True)
 
 
 def adjust_tc(tc, factor, concurrency):
@@ -649,11 +649,11 @@ def parse_cutechess_output(
     t.daemon = True
     t.start()
 
-    end_time = datetime.datetime.now() + datetime.timedelta(seconds=tc_limit)
+    end_time = datetime.datetime.utcnow() + datetime.timedelta(seconds=tc_limit)
     print("TC limit {} End time: {}".format(tc_limit, end_time))
 
     num_games_updated = 0
-    while datetime.datetime.now() < end_time:
+    while datetime.datetime.utcnow() < end_time:
         try:
             line = q.get_nowait().strip()
         except Empty:
@@ -677,7 +677,6 @@ def parse_cutechess_output(
             message = r'Cutechess-cli says: "{}"'.format(line)
             result["message"] = message
             send_api_post_request(remote + "/api/stop_run", result)
-            message = r'Cutechess-cli says: "{}"'.format(line)
             raise WorkerException(message)
 
         # Parse line like this:
@@ -771,16 +770,15 @@ def parse_cutechess_output(
                     time.sleep(HTTP_TIMEOUT)
                 if not update_succeeded:
                     raise WorkerException("Too many failed update attempts")
-                    break
 
         # Act on line like this:
         # Finished game 4 (Base-5446e6f vs New-1a68b26): 1/2-1/2 {Draw by adjudication}
         if "Finished game" in line:
             update_pentanomial(line, rounds)
-
-    now = datetime.datetime.now()
-    if now >= end_time:
-        raise WorkerException("{} is past end time {}".format(now, end_time))
+    else:
+        raise WorkerException(
+            "{} is past end time {}".format(datetime.datetime.utcnow(), end_time)
+        )
 
     return True
 
