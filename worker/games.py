@@ -844,8 +844,14 @@ def launch_cutechess(
                 tc_limit,
             )
         finally:
-            if p.poll() is None:
+            print("\nWaiting for cutechess-cli to finish ... ", end="", flush=True)
+            try:
+                p.wait(timeout=HTTP_TIMEOUT)
+            except:
+                print("timeout")
                 kill_process(p)
+            else:
+                print("done", flush=True)
 
     return task_alive
 
