@@ -846,7 +846,7 @@ def launch_cutechess(
             try:
                 p.wait(timeout=HTTP_TIMEOUT)
             except:
-                print("timeout")
+                print("timeout", flush=True)
                 kill_process(p)
             else:
                 print("done", flush=True)
