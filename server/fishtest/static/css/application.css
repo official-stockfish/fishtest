@@ -249,7 +249,7 @@ h3 + .row-fluid .rounded.elo-results {
 }
 
 .mainnavbar [href="/tests/run"]::before {
-  content: "\f0a3";
+  content: "\f067";
 }
 
 .mainnavbar [href="/upload"]::before {
@@ -318,6 +318,14 @@ h3 + .row-fluid .rounded.elo-results {
 
 .mainnavbar [href="https://abrok.eu/stockfish/"]::before {
   content: "\f019";
+}
+
+.mainnavbar [href="https://stockfishchess.org/download/"]::before {
+  content: "\f019";
+}
+
+.mainnavbar [href="https://stockfishchess.org/get-involved/"]::before {
+  content: "\f4c4";
 }
 
 .mainnavbar [href="https://discord.gg/nv8gDtt"]::before {
