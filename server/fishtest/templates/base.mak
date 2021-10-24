@@ -41,47 +41,22 @@
 
         <li class="nav-header">Tests</li>
         <li><a href="/tests">Overview</a></li>
-        <li><a href="/tests/finished?success_only=1">Greens</a></li>
-        <li><a href="/tests/finished?yellow_only=1">Yellows</a></li>
-        <li><a href="/tests/finished?ltc_only=1">LTC</a></li>
+        <li><a href="/tests/run">New Test</a></li>
         % if request.authenticated_userid:
             <li><a href="/tests/user/${request.authenticated_userid}">My Tests</a></li>
         % endif
-        <li><a href="/tests/run">New</a></li>
+        <li><a href="/tests/finished?ltc_only=1">LTC</a></li>
+        <li><a href="/tests/finished?success_only=1">Greens</a></li>
+        <li><a href="/tests/finished?yellow_only=1">Yellows</a></li>
+        <li><a href="https://groups.google.com/g/fishcooking-results" target="_blank" rel="noopener">History</a></li>
         % if request.authenticated_userid:
             <li><a href="/upload">NN Upload</a></li>
         % endif
 
-        <li class="nav-header">Misc</li>
-        <li><a href="/users">Users</a></li>
+        <li class="nav-header">Fishtest</li>
+        <li><a href="/users">Contributors</a></li>
         <li><a href="/users/monthly">Top Month</a></li>
         <li><a href="/actions">Actions</a></li>
-        <li><a href="/nns">NN Repo</a></li>
-        <li><a href="/html/SPRTcalculator.html?elo-model=Normalized&elo-0=-0.5&elo-1=2.5&draw-ratio=0.49&rms-bias=191" target="_blank">SPRT Calc</a></li>
-
-        <li class="nav-header">Github</li>
-        <li><a href="https://github.com/glinscott/fishtest" target="_blank" rel="noopener">Fishtest</a></li>
-        <li><a href="https://github.com/glinscott/nnue-pytorch" target="_blank" rel="noopener">NN Trainer</a></li>
-        <li><a href="https://github.com/official-stockfish/books" target="_blank" rel="noopener">Books</a></li>
-        <li><a href="https://github.com/official-stockfish/Stockfish" target="_blank" rel="noopener">Stockfish</a></li>
-
-        <li class="nav-header">Links</li>
-        <li><a href="https://github.com/glinscott/fishtest/wiki" target="_blank" rel="noopener">Wiki</a></li>
-        <li><a href="https://groups.google.com/g/fishcooking" target="_blank" rel="noopener">Forum</a></li>
-        <li><a href="https://groups.google.com/g/fishcooking-results" target="_blank" rel="noopener">History</a></li>
-        <li><a href="https://hxim.github.io/Stockfish-Evaluation-Guide/" target="_blank" rel="noopener">Eval Guide</a></li>
-        <li><a href="https://github.com/glinscott/fishtest/wiki/Regression-Tests" target="_blank" rel="noopener">Regression</a></li>
-        <li><a href="https://abrok.eu/stockfish/" target="_blank" rel="noopener">Compiles</a></li>
-        <li><a href="https://discord.gg/nv8gDtt" target="_blank" rel="noopener">Discord</a></li>
-
-        <li class="nav-header">Admin</li>
-        % if request.authenticated_userid:
-            <li><a href="/user">Profile</a></li>
-            <li><a href="/logout" id="logout">Logout</a></li>
-        % else:
-            <li><a href="/signup">Register</a></li>
-            <li><a href="/login">Login</a></li>
-        % endif
         <li>
           % if len(request.userdb.get_pending()) > 0:
               <a href="/pending"
@@ -90,6 +65,13 @@
               <a href="/pending">Pending</a>
           % endif
         </li>
+        % if request.authenticated_userid:
+            <li><a href="/user">My Profile</a></li>
+            <li><a href="/logout" id="logout">Logout</a></li>
+        % else:
+            <li><a href="/signup">Register</a></li>
+            <li><a href="/login">Login</a></li>
+        % endif
         <li>
           <svg id="change-color-theme" viewBox="0 0 8 8" style="width: 20px; height: 20px; background: none;">
             <path id="sun" style="${'display: none;' if request.cookies.get('theme') != 'dark' else ''}"
@@ -98,6 +80,27 @@
                   d="M2.719 0c-1.58.53-2.719 2.021-2.719 3.781 0 2.21 1.79 4 4 4 1.76 0 3.251-1.17 3.781-2.75-.4.14-.831.25-1.281.25-2.21 0-4-1.79-4-4 0-.44.079-.881.219-1.281z"></path>
           </svg>
         </li>
+
+        <li class="nav-header">Stockfish</li>
+        <li><a href="https://stockfishchess.org/download/" target="_blank" rel="noopener">Official Releases</a></li>
+        <li><a href="https://abrok.eu/stockfish/" target="_blank" rel="noopener">Dev Builds</a></li>
+        <li><a href="https://stockfishchess.org/get-involved/" target="_blank" rel="noopener">Contribute</a></li>
+        <li><a href="https://github.com/glinscott/fishtest/wiki/Regression-Tests" target="_blank" rel="noopener">Progress</a></li>
+        <li><a href="/nns">NN Repo</a></li>
+
+        <li class="nav-header">Resources</li>
+        <li><a href="https://discord.gg/nv8gDtt" target="_blank" rel="noopener">Discord</a></li>
+        <li><a href="https://groups.google.com/g/fishcooking" target="_blank" rel="noopener">Forum</a></li>
+        <li><a href="https://github.com/glinscott/fishtest/wiki" target="_blank" rel="noopener">Wiki</a></li>
+        <li><a href="/html/SPRTcalculator.html?elo-model=Normalized&elo-0=-0.5&elo-1=2.5&draw-ratio=0.49&rms-bias=191" target="_blank">SPRT Calc</a></li>
+        <li><a href="https://hxim.github.io/Stockfish-Evaluation-Guide/" target="_blank" rel="noopener">Eval Guide</a></li>
+
+        <li class="nav-header">Development</li>
+        <li><a href="https://github.com/official-stockfish/Stockfish" target="_blank" rel="noopener">Stockfish</a></li>
+        <li><a href="https://github.com/glinscott/fishtest" target="_blank" rel="noopener">Fishtest</a></li>
+        <li><a href="https://github.com/glinscott/nnue-pytorch" target="_blank" rel="noopener">NN Trainer</a></li>
+        <li><a href="https://github.com/official-stockfish/books" target="_blank" rel="noopener">Books</a></li>
+
       </ul>
     </div>
 
