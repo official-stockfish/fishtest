@@ -3,6 +3,7 @@ import datetime
 import glob
 import hashlib
 import json
+import math
 import os
 import platform
 import re
@@ -244,6 +245,7 @@ def verify_signature(engine, signature, remote, payload, concurrency, worker_inf
             )
             busy_process.stdin.write("go infinite\n")
             busy_process.stdin.flush()
+            time.sleep(1)  # wait CPU loading
 
         bench_sig = ""
         print("Verifying signature of {} ...".format(os.path.basename(engine)))
@@ -500,7 +502,7 @@ def setup_engine(
 
 def kill_process(p):
     p_name = os.path.basename(p.args[0])
-    print("\Killing {} with pid {} ... ".format(p_name, p.pid), end="", flush=True)
+    print("Killing {} with pid {} ... ".format(p_name, p.pid), end="", flush=True)
     try:
         if IS_WINDOWS:
             # p.kill() doesn't kill subprocesses on Windows.
@@ -524,7 +526,7 @@ def kill_process(p):
         print("killed", flush=True)
 
 
-def adjust_tc(tc, factor, concurrency):
+def adjust_tc(tc, factor):
     # Parse the time control in cutechess format.
     chunks = tc.split("+")
     increment = 0.0
@@ -915,7 +917,8 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
     threads = int(run["args"]["threads"])
     spsa_tuning = "spsa" in run["args"]
     repo_url = run["args"].get("tests_repo", REPO_URL)
-    games_concurrency = int(worker_info["concurrency"]) // threads
+    worker_concurrency = int(worker_info["concurrency"])
+    games_concurrency = worker_concurrency // threads
 
     opening_offset = task.get("start", task_id * task["num_games"])
     if "start" in task:
@@ -1087,24 +1090,20 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
         worker_info,
     )
 
-    if base_nps < 350000:  # lowered from 450000 - dirty fix for some slow workers
+    if base_nps < 500000 / (1 + math.tanh((worker_concurrency - 1) / 8)):
         raise FatalException(
             "This machine is too slow to run fishtest effectively - sorry!"
         )
 
     factor = (
-        1080000 / base_nps
-    )  # 1080000 nps is the reference core, also used in fishtest views.
+        1280000 / base_nps
+    )  # 1280000 nps is the reference core, also used in fishtest views.
 
     # Adjust CPU scaling.
-    scaled_tc, tc_limit = adjust_tc(
-        run["args"]["tc"], factor, int(worker_info["concurrency"])
-    )
+    scaled_tc, tc_limit = adjust_tc(run["args"]["tc"], factor)
     scaled_new_tc = scaled_tc
     if "new_tc" in run["args"]:
-        scaled_new_tc, new_tc_limit = adjust_tc(
-            run["args"]["new_tc"], factor, int(worker_info["concurrency"])
-        )
+        scaled_new_tc, new_tc_limit = adjust_tc(run["args"]["new_tc"], factor)
         tc_limit = (tc_limit + new_tc_limit) / 2
 
     result["nps"] = base_nps
