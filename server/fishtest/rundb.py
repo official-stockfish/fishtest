@@ -601,21 +601,26 @@ class RunDb:
 
         self.task_runs.sort(key=priority)
 
-        # We go through the list of unfinished runs to see if the worker
-        # has reached the number of allowed connections from the same ip
-        # address.
+        # We go through the list of unfinished runs to see if
+        # (1) the worker is already connected;
+        # (2) the user has reached the number of allowed connections
+        # from the same ip address.
 
         connections = 0
         for run in self.task_runs:
             for task in run["tasks"]:
-                if (
-                    task["active"]
-                    and task["worker_info"]["remote_addr"] == worker_info["remote_addr"]
-                ):
-                    connections = connections + 1
+                if (task["active"]):
+                    if task["worker_info"]["unique_key"] == worker_info["unique_key"]:
+                        now = datetime.utcnow()
+                        if (now - task["last_updated"]).seconds < 90:
+                            return {"task_waiting": False, "error": "worker_already_running"}
+                        else:
+                            task["active"] = False
+                    elif task["worker_info"]["remote_addr"] == worker_info["remote_addr"]:
+                        connections = connections + 1
 
         if connections >= self.userdb.get_machine_limit(worker_info["username"]):
-            return {"task_waiting": False, "hit_machine_limit": True}
+            return {"task_waiting": False, "error": "hit_machine_limit"}
 
         # Collect some data about the worker that will be used below.
 

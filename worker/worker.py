@@ -92,6 +92,7 @@ def setup_parameters(config_file):
         ("parameters", "min_threads", "1"),
         ("parameters", "fleet", "False"),
         ("parameters", "use_all_cores", "False"),
+        ("parameters", "unique_key", str(uuid.uuid4())),
     ]
 
     for v in defaults:
@@ -156,6 +157,8 @@ def setup_parameters(config_file):
 
     options.username = username
     options.password = password
+
+    options.unique_key = config.get("parameters", "unique_key")
 
     # Step 4: fix inconsistencies in the config options.
     protocol = options.protocol.lower()
@@ -520,7 +523,7 @@ def worker():
             sys.version_info.minor,
             sys.version_info.micro,
         ),
-        "unique_key": str(uuid.uuid4()),
+        "unique_key": options.unique_key,
     }
     print("UUID:", worker_info["unique_key"])
     with open(path.join(worker_dir, "uuid.txt"), "w") as f:
