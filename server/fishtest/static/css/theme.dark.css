@@ -92,23 +92,29 @@ hr {
   color: var(--color-dark-1);
 }
 
-.nav li a {
+.nav li a,
+.nav li div {
   color: var(--color-dark-1);
 }
 
-.nav li a:hover {
+.nav li a:hover,
+.nav li div:hover {
   color: #e7e7e7;
 }
 
-.nav-list>li>a, .nav-list .nav-header {
+.nav li a,
+.nav .nav-header,
+.nav li div {
   text-shadow: 0 1px 0 rgba(10, 10, 10, 0.5);
 }
 
-.nav>li>a:hover {
+.nav li a:hover,
+.nav li div:hover {
   background: var(--bg-dark-3);
 }
 
-.nav>li>a:focus {
+.nav li a:focus,
+.nav li div:focus {
   background: var(--bg-dark-4);
 }
 

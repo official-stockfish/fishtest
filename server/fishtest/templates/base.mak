@@ -72,13 +72,9 @@
             <li><a href="/signup">Register</a></li>
             <li><a href="/login">Login</a></li>
         % endif
-        <li>
-          <svg id="change-color-theme" viewBox="0 0 8 8" style="width: 20px; height: 20px; background: none;">
-            <path id="sun" style="${'display: none;' if request.cookies.get('theme') != 'dark' else ''}"
-                  d="M4 0c-.276 0-.5.224-.5.5s.224.5.5.5.5-.224.5-.5-.224-.5-.5-.5zm-2.5 1c-.276 0-.5.224-.5.5s.224.5.5.5.5-.224.5-.5-.224-.5-.5-.5zm5 0c-.276 0-.5.224-.5.5s.224.5.5.5.5-.224.5-.5-.224-.5-.5-.5zm-2.5 1c-1.105 0-2 .895-2 2s.895 2 2 2 2-.895 2-2-.895-2-2-2zm-3.5 1.5c-.276 0-.5.224-.5.5s.224.5.5.5.5-.224.5-.5-.224-.5-.5-.5zm7 0c-.276 0-.5.224-.5.5s.224.5.5.5.5-.224.5-.5-.224-.5-.5-.5zm-6 2.5c-.276 0-.5.224-.5.5s.224.5.5.5.5-.224.5-.5-.224-.5-.5-.5zm5 0c-.276 0-.5.224-.5.5s.224.5.5.5.5-.224.5-.5-.224-.5-.5-.5zm-2.5 1c-.276 0-.5.224-.5.5s.224.5.5.5.5-.224.5-.5-.224-.5-.5-.5z"></path>
-            <path id="moon" style="${'display: none;' if request.cookies.get('theme') == 'dark' else ''}"
-                  d="M2.719 0c-1.58.53-2.719 2.021-2.719 3.781 0 2.21 1.79 4 4 4 1.76 0 3.251-1.17 3.781-2.75-.4.14-.831.25-1.281.25-2.21 0-4-1.79-4-4 0-.44.079-.881.219-1.281z"></path>
-          </svg>
+        <li id="change-color-theme">
+          <div id="sun" style="${'display: none;' if request.cookies.get('theme') != 'dark' else ''}">Light Mode</div>
+          <div id="moon" style="${'display: none;' if request.cookies.get('theme') == 'dark' else ''}">Dark Mode</div>
         </li>
 
         <li class="nav-header">Stockfish</li>

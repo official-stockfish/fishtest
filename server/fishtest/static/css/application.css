@@ -9,23 +9,22 @@
     margin-right: 4px
   }
 
-  .mainnavbar .nav li a {
+  .mainnavbar .nav li a,
+  .mainnavbar .nav li div {
     font-size: 0;
     padding-top: 0;
     padding-bottom: 0;
+    line-height: 30px;
   }
 
-  .mainnavbar .nav li a::before {
+  .mainnavbar .nav li a::before,
+  .mainnavbar .nav li div::before {
     font-size: 14px
   }
 
   .mainnavbar {
     min-width: 50px !important;
     width: 56px !important;
-  }
-
-  .mainnavbar a {
-    line-height: 30px;
   }
 
   .btn-group-sm>.btn, .btn-sm {
@@ -185,7 +184,7 @@ h3 + .row-fluid .rounded.elo-results {
 }
 
 .nav-list {
-  margin-bottom: 0;
+  margin-bottom: 8px;
 }
 
 .nav li.nav-header {
@@ -208,14 +207,15 @@ h3 + .row-fluid .rounded.elo-results {
   margin-right: 0;
 }
 
-#change-color-theme path {
-  fill: var(--bs-gray-800) !important;
+#change-color-theme:hover {
+  cursor: pointer;
 }
 
 /* Icons */
 .mainnavbar a::before,
 #diff-num-comments + a::before,
-#copy-diff::before {
+#copy-diff::before,
+.mainnavbar #change-color-theme > div::before {
   display: inline-block;
   font-style: normal;
   font-variant: normal;
@@ -354,6 +354,14 @@ h3 + .row-fluid .rounded.elo-results {
   content: "\f252";
 }
 
+.mainnavbar #change-color-theme #sun::before {
+  content: "\f185";
+}
+
+.mainnavbar #change-color-theme #moon::before {
+  content: "\f186";
+}
+
 #diff-num-comments + a::before {
   content: "\f09b";
   font-family: "Font Awesome 5 Brands";
@@ -365,7 +373,8 @@ h3 + .row-fluid .rounded.elo-results {
 }
 
 /* Links in the left navigation */
-.nav li a {
+.nav li a,
+.nav li div {
   display: flex;
   padding: 3px 4px 3px 12px;
   white-space: nowrap;
@@ -373,12 +382,14 @@ h3 + .row-fluid .rounded.elo-results {
   border-radius: .25rem;
 }
 
-.nav li a:hover {
+.nav li a:hover,
+.nav li div:hover {
   background: var(--bs-light);
   color: var(--bs-body-color);
 }
 
-.nav li a:focus {
+.nav li a:focus,
+.nav li div:focus {
   background: var(--bs-white);
 }
 
@@ -407,14 +418,6 @@ td {
 
 .spsa-param-row td:first-child {
   text-align: left;
-}
-
-#change-color-theme {
-  margin: 8px 0 20px 11px;
-}
-
-#change-color-theme:hover {
-  cursor: pointer;
 }
 
 #machines {
