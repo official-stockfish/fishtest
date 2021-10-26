@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import atexit
 import base64
 import json
 import math
@@ -36,6 +37,15 @@ WORKER_VERSION = 121
 HTTP_TIMEOUT = 15.0
 MAX_RETRY_TIME = 14400.0  # four hours
 IS_WINDOWS = "windows" in platform.system().lower()
+lock_file = path.join(path.dirname(path.realpath(__file__)), "worker.lock")
+lock_message = """**
+** A lock file {} exists.
+** This most likely means that another copy of the worker
+** is running in this directory. This is not allowed!
+** If you are sure this is not the case then you may delete the lock file.
+**""".format(
+        lock_file,
+)
 
 """
 Bird's eye view of the worker
@@ -323,12 +333,38 @@ def heartbeat(worker_info, password, remote, current_state):
     else:
         print("Heartbeat stopped")
 
+def create_lock_file():
+    print("Creating lock file {}".format(lock_file))
+    with open(lock_file, "w") as f:
+        f.write("{}\n".format(os.getpid()))
+    atexit.register(delete_lock_file)
+
+def delete_lock_file():
+    if os.path.exists(lock_file):
+        with open(lock_file, "r") as f:
+            pid = int(f.read())
+        if pid == os.getpid():
+            print("Deleting lock file {}".format(lock_file))
+            os.remove(lock_file)
+
+def check_lock_file():
+    if path.exists(lock_file):
+        with open(lock_file, "r") as f:
+            pid = int(f.read())
+            if pid != os.getpid():
+                return False
+    return True
 
 def fetch_and_handle_task(worker_info, password, remote, current_state):
     # This function should normally not raise exceptions.
     # Unusual conditions are handled by returning False.
     # If an immediate exit is necessary then one can set
     # current_state["alive"] to False.
+
+    if not check_lock_file():
+        print(lock_message)
+        current_state["alive"] = False
+        return False
 
     payload = {"worker_info": worker_info, "password": password}
 
@@ -474,10 +510,17 @@ def fetch_and_handle_task(worker_info, password, remote, current_state):
 
     return success
 
-
 def worker():
     worker_dir = path.dirname(path.realpath(__file__))
     print("Worker started in {} ...".format(worker_dir))
+    # Python doesn't have cross platform file locking api.
+    # So we check periodically for the existence
+    # of a lock file.
+    if not check_lock_file():
+        print(lock_message)
+        return 1
+
+    create_lock_file()
 
     # We record some state that is shared by the three
     # parallel event handling mechanisms:
@@ -577,7 +620,6 @@ def worker():
 
     print("Waiting for the heartbeat thread to finish...")
     heartbeat_thread.join()
-    print("Done")
 
     return 0 if fish_exit else 1
 
