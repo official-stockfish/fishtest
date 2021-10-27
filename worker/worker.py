@@ -17,6 +17,7 @@ import traceback
 import uuid
 import zlib
 from configparser import ConfigParser
+from contextlib import ExitStack
 from datetime import datetime
 from functools import partial
 from optparse import OptionParser
@@ -38,14 +39,6 @@ HTTP_TIMEOUT = 15.0
 MAX_RETRY_TIME = 14400.0  # four hours
 IS_WINDOWS = "windows" in platform.system().lower()
 lock_file = path.join(path.dirname(path.realpath(__file__)), "worker.lock")
-lock_message = """**
-** A lock file {} exists.
-** This most likely means that another copy of the worker
-** is running in this directory. This is not allowed!
-** If you are sure this is not the case then you may delete the lock file.
-**""".format(
-        lock_file,
-)
 
 """
 Bird's eye view of the worker
@@ -333,11 +326,13 @@ def heartbeat(worker_info, password, remote, current_state):
     else:
         print("Heartbeat stopped")
 
+
 def create_lock_file():
     print("Creating lock file {}".format(lock_file))
     with open(lock_file, "w") as f:
         f.write("{}\n".format(os.getpid()))
     atexit.register(delete_lock_file)
+
 
 def delete_lock_file():
     if os.path.exists(lock_file):
@@ -347,13 +342,57 @@ def delete_lock_file():
             print("Deleting lock file {}".format(lock_file))
             os.remove(lock_file)
 
-def check_lock_file():
+
+def is_other_pid_valid(pid):
+    with ExitStack() as stack:
+        if IS_WINDOWS:
+            p = stack.enter_context(
+                subprocess.Popen(
+                    [
+                        "wmic",
+                        "path",
+                        "Win32_Process",
+                        "where",
+                        "handle={}".format(pid),
+                        "get",
+                        "commandline",
+                    ],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,
+                    universal_newlines=True,
+                    bufsize=1,
+                    close_fds=not IS_WINDOWS,
+                )
+            )
+        else:
+            p = stack.enter_context(
+                subprocess.Popen(
+                    ["ps", "-f", "-p", str(pid)],
+                    stdout=subprocess.PIPE,
+                    universal_newlines=True,
+                    bufsize=1,
+                    close_fds=not IS_WINDOWS,
+                )
+            )
+        for line in iter(p.stdout.readline, ""):
+            if "worker.py" in line:
+                print(
+                    "\nWorker stopped!\nThe worker with PID={} "
+                    "is already running in this directory, "
+                    "using the lock file:\n{}".format(pid, lock_file)
+                )
+                return True
+    return False
+
+
+def is_locked_by_others():
     if path.exists(lock_file):
         with open(lock_file, "r") as f:
             pid = int(f.read())
             if pid != os.getpid():
-                return False
-    return True
+                return is_other_pid_valid(pid)
+    return False
+
 
 def fetch_and_handle_task(worker_info, password, remote, current_state):
     # This function should normally not raise exceptions.
@@ -361,8 +400,7 @@ def fetch_and_handle_task(worker_info, password, remote, current_state):
     # If an immediate exit is necessary then one can set
     # current_state["alive"] to False.
 
-    if not check_lock_file():
-        print(lock_message)
+    if is_locked_by_others():
         current_state["alive"] = False
         return False
 
@@ -510,14 +548,18 @@ def fetch_and_handle_task(worker_info, password, remote, current_state):
 
     return success
 
+
 def worker():
+    if os.path.basename(__file__) != "worker.py":
+        print("The script must be named 'worker.py'!")
+        return 1
+
     worker_dir = path.dirname(path.realpath(__file__))
     print("Worker started in {} ...".format(worker_dir))
     # Python doesn't have cross platform file locking api.
     # So we check periodically for the existence
     # of a lock file.
-    if not check_lock_file():
-        print(lock_message)
+    if is_locked_by_others():
         return 1
 
     create_lock_file()
