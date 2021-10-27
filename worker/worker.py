@@ -33,7 +33,7 @@ except ImportError:
 from games import FatalException, WorkerException, run_games
 from updater import update
 
-WORKER_VERSION = 121
+WORKER_VERSION = 122
 HTTP_TIMEOUT = 15.0
 MAX_RETRY_TIME = 14400.0  # four hours
 IS_WINDOWS = "windows" in platform.system().lower()
