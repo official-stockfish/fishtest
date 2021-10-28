@@ -343,7 +343,7 @@ def delete_lock_file():
             os.remove(lock_file)
 
 
-def is_other_pid_valid(pid):
+def pid_valid(pid, name):
     with ExitStack() as stack:
         if IS_WINDOWS:
             p = stack.enter_context(
@@ -375,22 +375,24 @@ def is_other_pid_valid(pid):
                 )
             )
         for line in iter(p.stdout.readline, ""):
-            if "worker.py" in line:
-                print(
-                    "\nWorker stopped!\nThe worker with PID={} "
-                    "is already running in this directory, "
-                    "using the lock file:\n{}".format(pid, lock_file)
-                )
+            if name in line:
                 return True
     return False
 
 
-def is_locked_by_others():
+def locked_by_others(check_stale=False):
     if path.exists(lock_file):
         with open(lock_file, "r") as f:
             pid = int(f.read())
-            if pid != os.getpid():
-                return is_other_pid_valid(pid)
+            if pid != os.getpid() and (
+                not check_stale or pid_valid(pid, "worker.py")
+            ):
+                print(
+                    "\n*** Current worker (PID={}) stopped! ***\nA worker with PID={} "
+                    "is already running in this directory, "
+                    "using the lock file:\n{}".format(os.getpid(), pid, lock_file)
+                )
+                return True
     return False
 
 
@@ -400,7 +402,7 @@ def fetch_and_handle_task(worker_info, password, remote, current_state):
     # If an immediate exit is necessary then one can set
     # current_state["alive"] to False.
 
-    if is_locked_by_others():
+    if locked_by_others():
         current_state["alive"] = False
         return False
 
@@ -556,10 +558,10 @@ def worker():
 
     worker_dir = path.dirname(path.realpath(__file__))
     print("Worker started in {} ...".format(worker_dir))
-    # Python doesn't have cross platform file locking api.
+    # Python doesn't have a cross platform file locking api.
     # So we check periodically for the existence
     # of a lock file.
-    if is_locked_by_others():
+    if locked_by_others(check_stale=True):
         return 1
 
     create_lock_file()
