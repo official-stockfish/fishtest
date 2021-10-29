@@ -169,7 +169,7 @@ else:
     </div>
 
     <div class="flex-row">
-      <label class="field-label leftmost">Notes</label>
+      <label class="field-label leftmost">Info</label>
       <div class="input-group input-group-sm">
         <textarea name="run-info" placeholder="Defaults to commit message"
                   class="form-control"
