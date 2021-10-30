@@ -1,15 +1,28 @@
 div.error{
-    display: none;
-    color: black;
-    text-align:center;
+  display: none;
+  color: black;
+  text-align:center;
 }
 
 span.pointer {
-    cursor: default;
-    -webkit-user-select: none;
-    -khtml-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    -o-user-select: none;
-    user-select: none;
+  cursor: default;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  -o-user-select: none;
+  user-select: none;
+}
+
+a {
+  color: #409e42;
+  text-decoration: none;
+}
+
+a:hover {
+  color: #5f9960;
+}
+
+a:focus {
+  color: #497449;
 }
