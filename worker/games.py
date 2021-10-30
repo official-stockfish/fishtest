@@ -470,15 +470,18 @@ def setup_engine(
 
         cmd = MAKE_CMD + ARCH + " -j {}".format(concurrency) + " profile-build"
         env = dict(os.environ, CXXFLAGS="-DNNUE_EMBEDDING_OFF")
-        try:
-            subprocess.check_call(
-                cmd,
-                shell=True,
-                env=env,
-            )
-        except Exception as e:
-            print("Exception during main make command:\n", e, sep="", file=sys.stderr)
-            raise WorkerException("Executing {} failed".format(cmd), e=e)
+        with subprocess.Popen(
+            cmd,
+            shell=True,
+            env=env,
+            stderr=subprocess.PIPE,
+            universal_newlines=True,
+            bufsize=1,
+            close_fds=not IS_WINDOWS,
+        ) as p:
+            errors = p.stderr.readlines()
+        if p.returncode:
+            raise WorkerException("Executing {} failed. Error: {}".format(cmd, errors))
 
         # Try needed for backwards compatibility with older stockfish,
         # where 'make strip' fails under mingw. TODO: check if still needed.
