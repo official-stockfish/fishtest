@@ -3,10 +3,11 @@
     <tr>
       <th>Machine</th>
       <th>Cores</th>
+      <th>RAM</th>
       <th>UUID</th>
       <th>MNps</th>
       <th>System</th>
-      <th>Version</th>
+      <th>Versions</th>
       <th>Running on</th>
       <th>Last updated</th>
     </tr>
@@ -22,6 +23,7 @@
             % endif
             ${machine['concurrency']}
           </td>
+          <td>${machine['max_memory']}</td>
           <td>${machine['unique_key'].split('-')[0]}</td>
           <td>${f"{machine['nps'] / 1000000:.2f}"}</td>
           <td>${machine['uname']}</td>

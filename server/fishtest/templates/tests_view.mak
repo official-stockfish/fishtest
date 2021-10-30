@@ -258,7 +258,7 @@ from fishtest.util import worker_name
         % endif
         <th>Crashes</th>
         <th>Time</th>
-  
+
         % if 'spsa' not in run['args']:
             <th>Residual</th>
         % endif
@@ -295,8 +295,9 @@ from fishtest.util import worker_name
             </td>
             <td>
             % if 'worker_info' in task:
-                ${task['worker_info']['uname']}
-                ARCH=${task.get('ARCH', '?')}
+                os: ${task['worker_info']['uname']};
+                ram: ${task['worker_info'].get('max_memory', '?')}MiB;
+                arch: ${task.get('ARCH', '?')}
             % else:
                 Unknown worker
             % endif
