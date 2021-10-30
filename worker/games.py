@@ -331,7 +331,7 @@ def gcc_props():
                 arch = line.split()[1]
 
     if p.returncode != 0:
-        raise WorkerException(
+        raise FatalException(
             "g++ target query failed with return code {}".format(p.returncode)
         )
 
