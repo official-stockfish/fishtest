@@ -272,7 +272,7 @@ h3 + .row-fluid .rounded.elo-results {
   content: "\f5dc";
 }
 
-.mainnavbar [href="/html/SPRTcalculator.html?elo-model=Normalized&elo-0=-0.5&elo-1=2.5&draw-ratio=0.49&rms-bias=191"]::before {
+.mainnavbar [href^="/html/SPRTcalculator.html"]::before {
   content: "\f1ec";
 }
 
