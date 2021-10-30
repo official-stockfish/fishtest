@@ -216,10 +216,10 @@ else:
 
       <div class="input-group input-group-sm">
         <select name="bounds" class="form-select stop_rule sprt" style="width: 246px">
-          <option value="standard STC">Standard STC ${fb(-0.5, 2.5)}</option>
-          <option value="standard LTC">Standard LTC ${fb(0.5, 3.5)}</option>
-          <option value="regression STC">Non-regression STC ${fb(-2.5, 0.5)}</option>
-          <option value="regression LTC">Non-regression LTC ${fb(-2.5, 0.5)}</option>
+          <option value="standard STC">Standard STC ${fb(0.0, 2.5)}</option>
+          <option value="standard LTC">Standard LTC ${fb(0.5, 3.0)}</option>
+          <option value="regression STC">Non-regression STC ${fb(-2.25, 0.25)}</option>
+          <option value="regression LTC">Non-regression LTC ${fb(-2.25, 0.25)}</option>
           <option value="custom" ${is_rerun and 'selected'}>Custom bounds...</option>
         </select>
       </div>
@@ -229,7 +229,7 @@ else:
       <input type="number" step="0.05" name="sprt_elo0"
              class="sprt custom_bounds no-arrows form-control"
              ## The bounds handling should be cleaned up...
-             value="${args.get('sprt', {'elo0': -0.5})['elo0']}"
+             value="${args.get('sprt', {'elo0': 0.0})['elo0']}"
              style="width: 90px; ${args.get('sprt') or 'display: none'}" />
 
       <label class="field-label sprt custom_bounds rightmost"
@@ -390,10 +390,10 @@ else:
   });
 
   const preset_bounds = {
-    'standard STC': [-0.5, 2.5],
-    'standard LTC': [ 0.5, 3.5],
-    'regression STC': [-2.5, 0.5],
-    'regression LTC': [-2.5, 0.5],
+    'standard STC': [ 0.0, 2.5],
+    'standard LTC': [ 0.5, 3.0],
+    'regression STC': [-2.25, 0.25],
+    'regression LTC': [-2.25, 0.25],
   };
 
   function update_sprt_bounds(selected_bounds_name) {
