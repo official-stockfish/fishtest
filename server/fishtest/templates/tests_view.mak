@@ -297,6 +297,7 @@ from fishtest.util import worker_name
             % if 'worker_info' in task:
                 os: ${task['worker_info']['uname']};
                 ram: ${task['worker_info'].get('max_memory', '?')}MiB;
+                gcc: ${task['worker_info'].get('gcc_version', '?')};
                 arch: ${task.get('ARCH', '?')}
             % else:
                 Unknown worker

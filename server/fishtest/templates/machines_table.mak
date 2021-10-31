@@ -3,11 +3,13 @@
     <tr>
       <th>Machine</th>
       <th>Cores</th>
-      <th>RAM</th>
       <th>UUID</th>
       <th>MNps</th>
+      <th>RAM</th>
       <th>System</th>
-      <th>Versions</th>
+      <th>GCC</th>
+      <th>Python</th>
+      <th>Worker</th>
       <th>Running on</th>
       <th>Last updated</th>
     </tr>
@@ -23,11 +25,13 @@
             % endif
             ${machine['concurrency']}
           </td>
-          <td>${machine['max_memory']}</td>
           <td>${machine['unique_key'].split('-')[0]}</td>
           <td>${f"{machine['nps'] / 1000000:.2f}"}</td>
+          <td>${machine['max_memory']}</td>
           <td>${machine['uname']}</td>
-          <td>${machine['version']}</td>
+          <td>${machine['gcc_version']}</td>
+          <td>${machine['version'].split(':')[1]}</td>
+          <td>${machine['version'].split(':')[0]}</td>
           <td>
             <a href="/tests/view/${machine['run']['_id']}">${machine['run']['args']['new_tag']}</a>
           </td>
