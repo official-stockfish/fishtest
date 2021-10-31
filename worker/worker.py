@@ -255,28 +255,23 @@ def gcc_version():
                 major = line.split()[2]
             if "__GNUC_MINOR__" in line:
                 minor = line.split()[2]
+            if "__GNUC_PATCHLEVEL__" in line:
+                patchlevel = line.split()[2]
 
     if p.returncode != 0:
         print("g++ version query failed with return code {}".format(p.returncode))
-        return False
+        return None
 
     try:
         major = int(major)
         minor = int(minor)
+        patchlevel = int(patchlevel)
     except:
         print("Failed to parse g++ version.")
-        return False
+        return None
 
-    if (major, minor) < (7, 3):
-        print(
-            "Found g++ version {}.{}: please update to g++ version 7.3 or later.".format(
-                major, minor
-            )
-        )
-        return False
-
-    print("Found g++ version {}.{}".format(major, minor))
-    return True
+    print("Found g++ version {}.{}.{}".format(major, minor, patchlevel))
+    return (major, minor, patchlevel)
 
 
 def get_exception(files):
@@ -588,6 +583,15 @@ def worker():
     if options.only_config:
         return 0
 
+    # Make sure a suitable version of gcc is present.
+    gcc_version_ = gcc_version()
+    if gcc_version_ is None:
+        return 1
+    major, minor, patchlevel = gcc_version_
+    if (major, minor) < (7, 3):
+        print("Please update to g++ version 7.3 or later".format(major, minor))
+        return 1
+
     # Assemble the config/options data as well as some other data in a
     # "worker_info" dictionary.
     # This data will be sent to the server when a new task is requested.
@@ -605,15 +609,12 @@ def worker():
             sys.version_info.minor,
             sys.version_info.micro,
         ),
+        "gcc_version": "{}.{}.{}".format(major, minor, patchlevel),
         "unique_key": str(uuid.uuid4()),
     }
     print("UUID:", worker_info["unique_key"])
     with open(path.join(worker_dir, "uuid.txt"), "w") as f:
         f.write(worker_info["unique_key"])
-
-    # Make sure a suitable version of gcc is present.
-    if not gcc_version():
-        return 1
 
     # All seems to be well...
     remote = "{}://{}:{}".format(options.protocol, options.host, options.port)
