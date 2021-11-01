@@ -951,6 +951,24 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
     if not os.path.exists(testing_dir):
         os.makedirs(testing_dir)
 
+    # Download cutechess if missing in the directory.
+    cutechess = os.path.join(testing_dir, "cutechess-cli" + EXE_SUFFIX)
+    if not os.path.exists(cutechess):
+        if len(EXE_SUFFIX) > 0:
+            zipball = "cutechess-cli-win.zip"
+        else:
+            zipball = "cutechess-cli-linux-{}.zip".format(platform.architecture()[0])
+        download_from_github(zipball, testing_dir)
+        os.chdir(testing_dir)
+        zip_file = ZipFile(zipball)
+        zip_file.extractall()
+        zip_file.close()
+        os.remove(zipball)
+        os.chmod(cutechess, os.stat(cutechess).st_mode | stat.S_IEXEC)
+
+    # Verify that cutechess is working and has the required minimum version.
+    verify_required_cutechess(cutechess)
+
     # Clean up old engines (keeping the num_bkps most recent).
     engines = glob.glob(os.path.join(testing_dir, "stockfish_*" + EXE_SUFFIX))
     num_bkps = 50
@@ -975,7 +993,6 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
 
     new_engine = os.path.join(testing_dir, new_engine_name + EXE_SUFFIX)
     base_engine = os.path.join(testing_dir, base_engine_name + EXE_SUFFIX)
-    cutechess = os.path.join(testing_dir, "cutechess-cli" + EXE_SUFFIX)
 
     # Build from sources new and base engines as needed.
     if not os.path.exists(new_engine):
@@ -1012,22 +1029,6 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
         zip_file.extractall()
         zip_file.close()
         os.remove(zipball)
-
-    # Download cutechess if missing in the directory.
-    if not os.path.exists(cutechess):
-        if len(EXE_SUFFIX) > 0:
-            zipball = "cutechess-cli-win.zip"
-        else:
-            zipball = "cutechess-cli-linux-{}.zip".format(platform.architecture()[0])
-        download_from_github(zipball, testing_dir)
-        zip_file = ZipFile(zipball)
-        zip_file.extractall()
-        zip_file.close()
-        os.remove(zipball)
-        os.chmod(cutechess, os.stat(cutechess).st_mode | stat.S_IEXEC)
-
-    # Verify that an available cutechess matches the required minimum version.
-    verify_required_cutechess(cutechess)
 
     # Clean up the old networks (keeping the num_bkps most recent)
     networks = glob.glob(os.path.join(testing_dir, "nn-*.nnue"))
