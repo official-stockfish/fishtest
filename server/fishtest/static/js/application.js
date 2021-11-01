@@ -1,7 +1,14 @@
+// https://stackoverflow.com/questions/14267781/sorting-html-table-with-javascript
+// https://stackoverflow.com/questions/40201533/sort-version-dotted-number-strings-in-javascript
 const getCellValue = (tr, idx) => tr.children[idx].dataset.diff || tr.children[idx].innerText || tr.children[idx].textContent;
+const padDotVersion = (dn) => dn.split('.').map(n => +n+1000).join('')
 
 const comparer = (idx, asc) => (a, b) => ((v1, v2) =>
-    v1 !== '' && v2 !== '' && !isNaN(v1) && !isNaN(v2) ? v1 - v2 : v1.toString().localeCompare(v2)
+    v1 !== '' && v2 !== '' && !isNaN(v1) && !isNaN(v2)
+    ? v1 - v2
+    : v1 !== '' && v2 !== '' && !isNaN(padDotVersion(v1)) && !isNaN(padDotVersion(v2))
+    ? padDotVersion(v1) - padDotVersion(v2)
+    : v1.toString().localeCompare(v2)
 )(getCellValue(asc ? a : b, idx), getCellValue(asc ? b : a, idx));
 
 $(() => {
