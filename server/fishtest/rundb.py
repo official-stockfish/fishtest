@@ -991,7 +991,7 @@ class RunDb:
         )
         with self.active_run_lock(str(run_id)):
             run["failure_reason"] = "task_id: {}, worker: {}, reason: '{}'".format(
-                task_id, worker_name(task["worker_info"]), message[:256]
+                task_id, worker_name(task["worker_info"]), message[:1024]
             )
             run = del_tasks(run)
             self.actiondb.failed_task(task["worker_info"]["username"], run)
