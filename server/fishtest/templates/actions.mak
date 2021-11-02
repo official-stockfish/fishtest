@@ -1,5 +1,5 @@
 <%inherit file="base.mak"/>
-<h2>Actions Log</h2>
+<h2>Event Log</h2>
 <p></p>
 <form>
   Show only:
@@ -29,7 +29,7 @@
         <th>Time</th>
         <th>Username</th>
         <th>Run/User</th>
-        <th>Action</th>
+        <th>Event</th>
       </tr>
     </thead>
     <tbody>
