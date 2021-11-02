@@ -1,7 +1,17 @@
 <%inherit file="base.mak"/>
+<%
+  import datetime
+%>
 <h2>Event Log</h2>
 <p></p>
-<form>
+<script>
+function timestamp(){
+  $('#before').val(Date.now()/1000);
+  return true;
+}
+</script>
+
+<form onsubmit="timestamp();">
   Show only:
   <select id="restrict" name="action">
     <option value="">All</option>
@@ -19,6 +29,8 @@
   &nbsp;From user:
   <input id="user" type="text" name="user" class="submit_on_enter">
   <br/>
+  <input type="hidden" id="before" name="before" value=-1>
+  <input type="hidden" id="count" name="count" value=100>
 <button type="submit" class="btn btn-success">Select</button>
 </form>
 
@@ -35,7 +47,9 @@
     <tbody>
       % for action in actions:
           <tr>
-            <td>${action['time'].strftime("%y-%m-%d %H:%M:%S")}</td>
+## Dates in mongodb have millisecond precision. So they fit comfortably in a float without precision loss.
+            <td><a href=/actions?count=1&before=${action['time'].replace(tzinfo=datetime.timezone.utc).timestamp()}>
+	           ${action['time'].strftime(r"%y&#8209;%m&#8209;%d %H:%M:%S")|n}</a></td>
             % if approver and 'fishtest.' not in action['username']:
                 <td><a href="/user/${action['username']}">${action['username']}</a></td>
             % else:
@@ -46,9 +60,9 @@
             % elif approver:
                 <td><a href="/user/${action['user']}">${action['user']}</a></td>
             % else:
-                <td>${action['user']}</td>
+                <td>${action.get('user','?')}</td>
             % endif
-            <td>${action['description']}</td>
+            <td>${action.get('description','?')}</td>
           </tr>
       % endfor
     </tbody>

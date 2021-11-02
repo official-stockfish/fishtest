@@ -246,9 +246,20 @@ def nns(request):
 def actions(request):
     search_action = request.params.get("action", "")
     search_user = request.params.get("user", "")
+    search_before = request.params.get("before", None)
+    try:
+        search_before = datetime.datetime.utcfromtimestamp(float(search_before))
+    except:
+        search_before = datetime.datetime.utcnow()
+    count = request.params.get("count", "100")
+    try:
+        count = int(count)
+    except:
+        count = 100
+    count = min(count, 100)
 
     actions_list = []
-    for action in request.actiondb.get_actions(100, search_action, search_user):
+    for action in request.actiondb.get_actions(count, search_action, search_user, search_before):
         item = {
             "action": action["action"],
             "time": action["time"],
