@@ -8,7 +8,7 @@ class ActionDb:
         self.db = db
         self.actions = self.db["actions"]
 
-    def get_actions(self, max_num, action=None, username=None):
+    def get_actions(self, max_num, action=None, username=None, before=None):
         q = {}
         if action:
             q["action"] = action
@@ -16,6 +16,8 @@ class ActionDb:
             q["action"] = {"$ne": "update_stats"}
         if username:
             q["username"] = username
+        if before:
+            q["time"] = {"$lte": before}
         return self.actions.find(q, sort=[("_id", DESCENDING)], limit=max_num)
 
     def update_stats(self):
