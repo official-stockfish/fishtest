@@ -56,7 +56,7 @@
         <li class="nav-header">Fishtest</li>
         <li><a href="/users">Contributors</a></li>
         <li><a href="/users/monthly">Top Month</a></li>
-        <li><a href="/actions">Actions</a></li>
+        <li><a href="/actions">Events</a></li>
         <li>
           % if len(request.userdb.get_pending()) > 0:
               <a href="/pending"
