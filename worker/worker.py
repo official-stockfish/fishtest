@@ -381,8 +381,8 @@ def locked_by_others(check_stale=False):
             pid = int(f.read())
             if pid != os.getpid() and (not check_stale or pid_valid(pid, "worker.py")):
                 print(
-                    "\n*** Current worker (PID={}) stopped! ***\n"
-                    "A worker (PID={}) is already running in this directory, "
+                    "\n*** Worker (PID={}) stopped! ***\n"
+                    "Another worker (PID={}) is already running in this directory, "
                     "using the lock file:\n{}".format(os.getpid(), pid, lock_file)
                 )
                 return True
@@ -395,6 +395,8 @@ def fetch_and_handle_task(worker_info, password, remote, current_state):
     # If an immediate exit is necessary then one can set
     # current_state["alive"] to False.
 
+    # The following check can be triggered theoretically
+    # but probably not in practice.
     if locked_by_others():
         current_state["alive"] = False
         return False
@@ -550,14 +552,22 @@ def worker():
         return 1
 
     worker_dir = path.dirname(path.realpath(__file__))
-    print("Worker started in {} ...".format(worker_dir))
+    print("Worker started in {} ... (PID={})".format(worker_dir,os.getpid()))
+
     # Python doesn't have a cross platform file locking api.
     # So we check periodically for the existence
     # of a lock file.
     if locked_by_others(check_stale=True):
         return 1
-
     create_lock_file()
+    # The start of the worker is racy so after a small
+    # delay we check that the lock file has not been
+    # overwritten.
+    # This will stop duplicate workers right here,
+    # except on extremely slow systems.
+    time.sleep(0.5)
+    if locked_by_others():
+        return 1
 
     # We record some state that is shared by the three
     # parallel event handling mechanisms:
