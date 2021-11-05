@@ -31,7 +31,7 @@ except ImportError:
     sys.path.append(path.join(path.dirname(path.realpath(__file__)), "packages"))
     import requests
 
-from games import FatalException, WorkerException, run_games
+from games import FatalException, WorkerException, run_games, str_signal
 from updater import update
 
 WORKER_VERSION = 129
@@ -223,7 +223,7 @@ def setup_parameters(config_file):
 
 def on_sigint(current_state, signal, frame):
     current_state["alive"] = False
-    raise WorkerException("Terminated by signal")
+    raise WorkerException("Terminated by signal {}".format(str_signal(signal)))
 
 
 def get_rate():
@@ -552,7 +552,7 @@ def worker():
         return 1
 
     worker_dir = path.dirname(path.realpath(__file__))
-    print("Worker started in {} ... (PID={})".format(worker_dir,os.getpid()))
+    print("Worker started in {} ... (PID={})".format(worker_dir, os.getpid()))
 
     # Python doesn't have a cross platform file locking api.
     # So we check periodically for the existence
@@ -584,6 +584,16 @@ def worker():
     # Install signal handlers.
     signal.signal(signal.SIGINT, partial(on_sigint, current_state))
     signal.signal(signal.SIGTERM, partial(on_sigint, current_state))
+    try:
+        signal.signal(signal.SIGQUIT, partial(on_sigint, current_state))
+    except:
+        # Windows does not have SIGQUIT.
+        pass
+    try:
+        signal.signal(signal.SIGBREAK, partial(on_sigint, current_state))
+    except:
+        # Linux does not have SIGBREAK.
+        pass
 
     # Handle command line parameters and the config file.
     config_file = path.join(worker_dir, "fishtest.cfg")
