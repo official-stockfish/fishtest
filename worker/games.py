@@ -8,6 +8,7 @@ import os
 import platform
 import re
 import shutil
+import signal
 import stat
 import subprocess
 import sys
@@ -61,6 +62,20 @@ HTTP_TIMEOUT = 15.0
 REPO_URL = "https://github.com/official-stockfish/books"
 EXE_SUFFIX = ".exe" if IS_WINDOWS else ""
 MAKE_CMD = "make COMP=mingw " if IS_WINDOWS else "make COMP=gcc "
+
+
+def str_signal(signal_):
+    try:
+        return str(signal.Signals(signal_)).split(".")[-1]
+    except ValueError:
+        return "SIG<{}>".format(signal_)
+
+
+def format_return_code(r):
+    if r < 0:
+        return str_signal(-r)
+    else:
+        return str(r)
 
 
 # See https://stackoverflow.com/questions/16511337/correct-way-to-try-except-using-python-requests-module
@@ -137,17 +152,23 @@ def required_net(engine):
     return net
 
 
-def verify_required_cutechess(cutechess):
-    print("Obtaining version info for {} ...".format(os.path.basename(cutechess)))
+def verify_required_cutechess(testing_dir, cutechess):
+    print(
+        "Obtaining version info for {} ...".format(os.path.join(testing_dir, cutechess))
+    )
+    os.chdir(testing_dir)
     try:
         with subprocess.Popen(
-            [cutechess, "--version"],
+            [os.path.join(".", cutechess), "--version"],
             stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             universal_newlines=True,
             bufsize=1,
             close_fds=not IS_WINDOWS,
         ) as p:
+            errors = p.stderr.read()
             pattern = re.compile("cutechess-cli ([0-9]*).([0-9]*).([0-9]*)")
+            major, minor, patch = 0, 0, 0
             for line in iter(p.stdout.readline, ""):
                 m = pattern.search(line)
                 if m:
@@ -156,11 +177,17 @@ def verify_required_cutechess(cutechess):
                     minor = int(m.group(2))
                     patch = int(m.group(3))
     except (OSError, subprocess.SubprocessError) as e:
-        print("Exception running cutechess-cli:\n", e, sep="", file=sys.stderr)
-        raise FatalException("Not working cutechess-cli - sorry!")
+        raise FatalException("Unable to run cutechess-cl. Error: {}".format(str(e)))
 
     if p.returncode != 0:
-        raise FatalException("Failed to find cutechess version info")
+        raise FatalException(
+            "Unable to run cutechess-cli. Return code: {}. Error: {}".format(
+                format_return_code(p.returncode), errors
+            )
+        )
+
+    if major + minor + patch == 0:
+        raise FatalException("Unable to find the version of cutechess-cli.")
 
     if (major, minor) < (1, 2):
         raise FatalException(
@@ -952,14 +979,14 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
         os.makedirs(testing_dir)
 
     # Download cutechess if missing in the directory.
-    cutechess = os.path.join(testing_dir, "cutechess-cli" + EXE_SUFFIX)
+    cutechess = "cutechess-cli" + EXE_SUFFIX
+    os.chdir(testing_dir)
     if not os.path.exists(cutechess):
         if len(EXE_SUFFIX) > 0:
             zipball = "cutechess-cli-win.zip"
         else:
             zipball = "cutechess-cli-linux-{}.zip".format(platform.architecture()[0])
         download_from_github(zipball, testing_dir)
-        os.chdir(testing_dir)
         zip_file = ZipFile(zipball)
         zip_file.extractall()
         zip_file.close()
@@ -967,7 +994,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
         os.chmod(cutechess, os.stat(cutechess).st_mode | stat.S_IEXEC)
 
     # Verify that cutechess is working and has the required minimum version.
-    verify_required_cutechess(cutechess)
+    verify_required_cutechess(testing_dir, cutechess)
 
     # Clean up old engines (keeping the num_bkps most recent).
     engines = glob.glob(os.path.join(testing_dir, "stockfish_*" + EXE_SUFFIX))
@@ -1170,7 +1197,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
         # Run cutechess binary.
         cmd = (
             [
-                cutechess,
+                os.path.join(testing_dir, cutechess),
                 "-recover",
                 "-repeat",
                 "-games",
