@@ -365,6 +365,11 @@ else:
              ${'checked' if is_odds else ''}>
       <label style="margin-left: 10px"
              for="checkbox-time-odds">Time odds</label>
+      <input type="checkbox" name="adjudication"
+             id="checkbox-adjudication" class="form-check-input" style="margin-left: 27px"
+             ${'checked' if not args.get("adjudication", True) else ''}>
+      <label style="margin-left: 10px"
+             for="checkbox-adjudication">Disable adjudication</label>
     </div>
   </section>
 

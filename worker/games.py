@@ -1214,7 +1214,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
                 ),
             ]
             + ["-srand", "{}".format(run_seed)]
-            + [
+            + ([
                 "-resign",
                 "movecount=3",
                 "score=400",
@@ -1222,6 +1222,8 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
                 "movenumber=34",
                 "movecount=8",
                 "score=20",
+            ] if run["args"].get("adjudication", True) else [])
+            + [
                 "-concurrency",
                 str(int(games_concurrency)),
             ]

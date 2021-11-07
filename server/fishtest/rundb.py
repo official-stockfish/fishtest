@@ -90,6 +90,7 @@ class RunDb:
         auto_purge=False,
         throughput=100,
         priority=0,
+        adjudication=True,
     ):
         if start_time is None:
             start_time = datetime.utcnow()
@@ -120,6 +121,7 @@ class RunDb:
             "throughput": throughput,
             "itp": 100,  # internal throughput
             "priority": priority,
+            "adjudication": adjudication,
         }
 
         if sprt is not None:

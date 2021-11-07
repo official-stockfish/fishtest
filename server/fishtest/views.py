@@ -597,7 +597,10 @@ def validate_form(request):
         if len(v) == 0:
             raise Exception("Missing required option: {}".format(k))
 
+    # Handle boolean options
     data["auto_purge"] = request.POST.get("auto-purge") is not None
+    # checkbox is to _disable_ adjudication
+    data["adjudication"] = request.POST.get("adjudication") is None
 
     # In case of reschedule use old data,
     # otherwise resolve sha and update user's tests_repo
@@ -1013,6 +1016,7 @@ def tests_view(request):
         "itp",
         "username",
         "tests_repo",
+        "adjudication",
         "info",
     ]:
 
