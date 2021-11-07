@@ -552,7 +552,7 @@ def worker():
         return 1
 
     worker_dir = path.dirname(path.realpath(__file__))
-    print("Worker started in {} ... (PID={})".format(worker_dir,os.getpid()))
+    print("Worker started in {} ... (PID={})".format(worker_dir, os.getpid()))
 
     # Python doesn't have a cross platform file locking api.
     # So we check periodically for the existence
