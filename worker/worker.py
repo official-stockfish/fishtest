@@ -38,7 +38,6 @@ WORKER_VERSION = 129
 HTTP_TIMEOUT = 15.0
 MAX_RETRY_TIME = 14400.0  # four hours
 IS_WINDOWS = "windows" in platform.system().lower()
-lock_file = path.join(path.dirname(path.realpath(__file__)), "worker.lock")
 
 """
 Bird's eye view of the worker
@@ -322,20 +321,37 @@ def heartbeat(worker_info, password, remote, current_state):
         print("Heartbeat stopped")
 
 
-def create_lock_file():
+def read_int(file):
+    try:
+        with open(file, "r") as f:
+            return int(f.read())
+    except:
+        return None
+
+
+def write_int(file, n):
+    try:
+        with open(file, "w") as f:
+            f.write("{}\n".format(n))
+        return True
+    except:
+        return False
+
+
+def create_lock_file(lock_file):
     print("Creating lock file {}".format(lock_file))
-    with open(lock_file, "w") as f:
-        f.write("{}\n".format(os.getpid()))
-    atexit.register(delete_lock_file)
+    atexit.register(delete_lock_file, lock_file)
+    return write_int(lock_file, os.getpid())
 
 
-def delete_lock_file():
-    if os.path.exists(lock_file):
-        with open(lock_file, "r") as f:
-            pid = int(f.read())
-        if pid == os.getpid():
-            print("Deleting lock file {}".format(lock_file))
+def delete_lock_file(lock_file):
+    pid = read_int(lock_file)
+    if pid is None or pid == os.getpid():
+        print("Deleting lock file {}".format(lock_file))
+        try:
             os.remove(lock_file)
+        except:
+            print("Unable to delete lock file")
 
 
 def pid_valid(pid, name):
@@ -364,6 +380,7 @@ def pid_valid(pid, name):
                 subprocess.Popen(
                     ["ps", "-f", "-p", str(pid)],
                     stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,
                     universal_newlines=True,
                     bufsize=1,
                     close_fds=not IS_WINDOWS,
@@ -375,21 +392,31 @@ def pid_valid(pid, name):
     return False
 
 
-def locked_by_others(check_stale=False):
-    if path.exists(lock_file):
-        with open(lock_file, "r") as f:
-            pid = int(f.read())
-            if pid != os.getpid() and (not check_stale or pid_valid(pid, "worker.py")):
-                print(
-                    "\n*** Worker (PID={}) stopped! ***\n"
-                    "Another worker (PID={}) is already running in this directory, "
-                    "using the lock file:\n{}".format(os.getpid(), pid, lock_file)
-                )
-                return True
+def locked_by_others(lock_file, require_valid=True):
+    # At the start of the worker we tolerate an
+    # invalid or non existing lock file since we
+    # intend to replace it with one of our own.
+    # Once we have started, we only accept a
+    # valid lock file containing our own PID.
+    pid = read_int(lock_file)
+    if pid is None:
+        if require_valid:
+            print(
+                "\n*** Worker (PID={}) stopped! ***\n"
+                "Unable to read the lock file:\n{}.".format(os.getpid(), lock_file)
+            )
+        return require_valid
+    if pid != os.getpid() and (require_valid or pid_valid(pid, "worker.py")):
+        print(
+            "\n*** Worker (PID={}) stopped! ***\n"
+            "Another worker (PID={}) is already running in this directory, "
+            "using the lock file:\n{}".format(os.getpid(), pid, lock_file)
+        )
+        return True
     return False
 
 
-def fetch_and_handle_task(worker_info, password, remote, current_state):
+def fetch_and_handle_task(worker_info, password, remote, lock_file, current_state):
     # This function should normally not raise exceptions.
     # Unusual conditions are handled by returning False.
     # If an immediate exit is necessary then one can set
@@ -397,7 +424,7 @@ def fetch_and_handle_task(worker_info, password, remote, current_state):
 
     # The following check can be triggered theoretically
     # but probably not in practice.
-    if locked_by_others():
+    if locked_by_others(lock_file):
         current_state["alive"] = False
         return False
 
@@ -557,16 +584,19 @@ def worker():
     # Python doesn't have a cross platform file locking api.
     # So we check periodically for the existence
     # of a lock file.
-    if locked_by_others(check_stale=True):
+    lock_file = path.join(worker_dir, "worker.lock")
+    if locked_by_others(lock_file, require_valid=False):
         return 1
-    create_lock_file()
+    if not create_lock_file(lock_file):
+        print("Creating lock file failed")
+        return 1
     # The start of the worker is racy so after a small
-    # delay we check that the lock file has not been
-    # overwritten.
+    # delay we check that we still have a valid
+    # lock file containing our own PID.
     # This will stop duplicate workers right here,
     # except on extremely slow systems.
     time.sleep(0.5)
-    if locked_by_others():
+    if locked_by_others(lock_file):
         return 1
 
     # We record some state that is shared by the three
@@ -665,7 +695,7 @@ def worker():
             fish_exit = True
             break
         success = fetch_and_handle_task(
-            worker_info, options.password, remote, current_state
+            worker_info, options.password, remote, lock_file, current_state
         )
         if not current_state["alive"]:  # the user may have pressed Ctrl-C...
             break
