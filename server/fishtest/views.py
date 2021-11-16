@@ -259,7 +259,9 @@ def actions(request):
     count = min(count, 100)
 
     actions_list = []
-    for action in request.actiondb.get_actions(count, search_action, search_user, search_before):
+    for action in request.actiondb.get_actions(
+        count, search_action, search_user, search_before
+    ):
         item = {
             "action": action["action"],
             "time": action["time"],

@@ -116,9 +116,9 @@ class Create90APITest(unittest.TestCase):
             },
         )
         response = ApiView(request).stop_run()
-        self.assertEqual(response, {})
+        self.assertTrue("error" in response)
         run = request.rundb.get_run(request.json_body["run_id"])
-        self.assertEqual(run["stop_reason"], "travis")
+        self.assertTrue("stop_reason" not in run)
 
 
 if __name__ == "__main__":

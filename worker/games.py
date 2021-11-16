@@ -45,6 +45,10 @@ class FatalException(WorkerException):
     pass
 
 
+class RunException(WorkerException):
+    pass
+
+
 def is_windows_64bit():
     if "PROCESSOR_ARCHITEW6432" in os.environ:
         return True
@@ -147,7 +151,9 @@ def required_net(engine):
                 net = line.split(" ")[6].strip()
 
     if p.returncode != 0:
-        raise WorkerException("UCI exited with non-zero code {}".format(p.returncode))
+        raise WorkerException(
+            "UCI exited with non-zero code {}".format(format_return_code(p.returncode))
+        )
 
     return net
 
@@ -252,7 +258,9 @@ def verify_signature(engine, signature, remote, payload, concurrency, worker_inf
                 ARCH = line.split(": ")[1].strip()
     if p.returncode:
         raise WorkerException(
-            "Compiler info exited with non-zero code {}".format(p.returncode)
+            "Compiler info exited with non-zero code {}".format(
+                format_return_code(p.returncode)
+            )
         )
 
     with ExitStack() as stack:
@@ -274,7 +282,8 @@ def verify_signature(engine, signature, remote, payload, concurrency, worker_inf
             busy_process.stdin.flush()
             time.sleep(1)  # wait CPU loading
 
-        bench_sig = ""
+        bench_sig = None
+        bench_nps = None
         print("Verifying signature of {} ...".format(os.path.basename(engine)))
         p = stack.enter_context(
             subprocess.Popen(
@@ -292,34 +301,36 @@ def verify_signature(engine, signature, remote, payload, concurrency, worker_inf
             if "Nodes/second" in line:
                 bench_nps = float(line.split(": ")[1].strip())
 
-        if p.returncode:
-            raise WorkerException(
-                "Bench exited with non-zero code {}".format(p.returncode)
-            )
-
-        if int(bench_sig) != int(signature):
-            message = "{}-{}cores-{}: Wrong bench in {} Expected: {} Got: {}".format(
-                worker_info["username"],
-                worker_info["concurrency"],
-                worker_info["unique_key"].split("-")[0],
-                os.path.basename(engine),
-                signature,
-                bench_sig,
-            )
-            payload["message"] = message
-            send_api_post_request(remote + "/api/stop_run", payload)
-            # Use a more compact message for "/api/failed_task".
-            # Note that if the previous /api/stop_run succeeded
-            # (i.e. if the user has sufficient CPU hours) then
-            # /api/failed_task will have no effect since the current
-            # task has already been set to inactive.
-            message = "Wrong bench in {}... Expected: {} Got: {}".format(
-                os.path.basename(engine)[:16], signature, bench_sig
-            )
-            raise WorkerException(message)
-
         if concurrency > 1:
             busy_process.communicate("quit\n")
+
+    if p.returncode != 0:
+        if p.returncode == 1:  # EXIT_FAILURE
+            raise RunException(
+                "Bench of {} exited with EXIT_FAILURE".format(os.path.basename(engine))
+            )
+        else:  # Signal? It could be user generated so be careful.
+            raise WorkerException(
+                "Bench of {} exited with error code {}".format(
+                    os.path.basename(engine), format_return_code(p.returncode)
+                )
+            )
+
+    # Now we know that bench finished without error we check that its
+    # output is correct.
+
+    if bench_sig is None or bench_nps is None:
+        raise RunException(
+            "Unable to parse bench output of {}".format(os.path.basename(engine))
+        )
+
+    if int(bench_sig) != int(signature):
+        message = "Wrong bench in {} Expected: {} Got: {}".format(
+            os.path.basename(engine),
+            signature,
+            bench_sig,
+        )
+        raise RunException(message)
 
     return bench_nps
 
@@ -359,7 +370,9 @@ def gcc_props():
 
     if p.returncode != 0:
         raise FatalException(
-            "g++ target query failed with return code {}".format(p.returncode)
+            "g++ target query failed with return code {}".format(
+                format_return_code(p.returncode)
+            )
         )
 
     return {"flags": flags, "arch": arch}
@@ -387,7 +400,9 @@ def make_targets():
 
     if p.returncode != 0:
         raise WorkerException(
-            "make help failed with return code {}".format(p.returncode)
+            "make help failed with return code {}".format(
+                format_return_code(p.returncode)
+            )
         )
 
     return targets
@@ -707,9 +722,7 @@ def parse_cutechess_output(
         # Warning: New-eb6a21875e doesn't have option ThreatBySafePawn
         if "Warning:" in line and "doesn't have option" in line:
             message = r'Cutechess-cli says: "{}"'.format(line)
-            result["message"] = message
-            send_api_post_request(remote + "/api/stop_run", result)
-            raise WorkerException(message)
+            raise RunException(message)
 
         # Parse line like this:
         # Finished game 1 (stockfish vs base): 0-1 {White disconnects}
@@ -1214,15 +1227,19 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
                 ),
             ]
             + ["-srand", "{}".format(run_seed)]
-            + ([
-                "-resign",
-                "movecount=3",
-                "score=400",
-                "-draw",
-                "movenumber=34",
-                "movecount=8",
-                "score=20",
-            ] if run["args"].get("adjudication", True) else [])
+            + (
+                [
+                    "-resign",
+                    "movecount=3",
+                    "score=400",
+                    "-draw",
+                    "movenumber=34",
+                    "movecount=8",
+                    "score=20",
+                ]
+                if run["args"].get("adjudication", True)
+                else []
+            )
             + [
                 "-concurrency",
                 str(int(games_concurrency)),

@@ -286,10 +286,14 @@ class TestApi(unittest.TestCase):
 
         run = self.rundb.get_run(self.run_id)
         self.assertFalse(run["finished"])
+        run["tasks"][self.task_id]["worker_info"] = self.worker_info
+        self.rundb.buffer(run, True)
 
-        request = self.correct_password_request({"run_id": self.run_id})
+        request = self.correct_password_request(
+            {"run_id": self.run_id, "task_id": self.task_id}
+        )
         response = ApiView(request).stop_run()
-        self.assertTrue(not response)
+        self.assertTrue("error" in response)
 
         self.rundb.userdb.user_cache.update_one(
             {"username": self.username}, {"$set": {"cpu_hours": 10000}}
@@ -302,7 +306,7 @@ class TestApi(unittest.TestCase):
 
         run = self.rundb.get_run(self.run_id)
         self.assertTrue(run["finished"])
-        self.assertEqual(run["stop_reason"], "API request")
+        self.assertEqual(run["stop_reason"][-13:-2], "API request")
 
         run["finished"] = False
         self.rundb.buffer(run, True)

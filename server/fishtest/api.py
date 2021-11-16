@@ -95,7 +95,7 @@ class ApiView(object):
         return str(self.request.json_body["run_id"])
 
     def task_id(self):
-        tid = self.request.json_body["task_id"]
+        tid = self.request.json_body.get("task_id", None)
         if tid is not None:
             return int(tid)
         return tid
@@ -229,19 +229,58 @@ class ApiView(object):
     @view_config(route_name="api_stop_run")
     def stop_run(self):
         self.require_authentication()
-        username = self.get_username()
-        user = self.request.userdb.user_cache.find_one({"username": username})
-        if not user or user["cpu_hours"] < 1000:
+        for _ in range(1):  # trick to allow break after errors
+            error = ""
+            if self.task_id() is None:
+                error = "api_stop_run: no task_id"
+                break
+            username = self.get_username()
+            user = self.request.userdb.user_cache.find_one({"username": username})
+            authorized = True
+            if not user:
+                error = "api_stop_run: Warning: user {} is not in the db 'user_cache'".format(
+                    username
+                )
+                authorized = False
+            elif user["cpu_hours"] < 1000:
+                error = "api_stop_run: User {} has too few games to stop a run".format(
+                    username
+                )
+                authorized = False
+            with self.request.rundb.active_run_lock(self.run_id()):
+                run = self.request.rundb.get_run(self.run_id())
+                if run is None:
+                    error = "api_stop_run: run_id {} does not exist".format(
+                        self.run_id()
+                    )
+                    break
+                if self.task_id() >= len(run["tasks"]) or self.task_id() < 0:
+                    error = "api_stop_run: invalid task_id: {}".format(self.task_id())
+                    break
+                task = run["tasks"][self.task_id()]
+                message = self.request.json_body.get("message", "API request")
+                run["stop_reason"] = "task_id: {}, worker: {}, reason: '{}' {}".format(
+                    self.task_id(),
+                    worker_name(task["worker_info"]),
+                    message[:1024],
+                    " (not authorized)" if not authorized else "",
+                )
+                run_ = del_tasks(run)
+                self.request.actiondb.stop_run(username, run_)
+                if authorized:
+                    run["finished"] = True
+                    run["failed"] = True
+                    self.request.rundb.stop_run(self.run_id())
+                else:
+                    # TODO: invoke "failed_task()"
+                    task["active"] = False
+                    self.request.rundb.buffer(run, True)
+
+        if error != "":
+            print(error, flush=True)
+            return {"error": error}
+        else:
             return {}
-        with self.request.rundb.active_run_lock(self.run_id()):
-            run = self.request.rundb.get_run(self.run_id())
-            run["finished"] = True
-            run["failed"] = True
-            run["stop_reason"] = self.request.json_body.get("message", "API request")
-            run = del_tasks(run)
-            self.request.actiondb.stop_run(username, run)
-            self.request.rundb.stop_run(self.run_id())
-        return {}
 
     @view_config(route_name="api_request_version")
     def request_version(self):
