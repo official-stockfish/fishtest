@@ -31,7 +31,7 @@ except ImportError:
     sys.path.append(path.join(path.dirname(path.realpath(__file__)), "packages"))
     import requests
 
-from games import FatalException, WorkerException, run_games, str_signal
+from games import FatalException, RunException, WorkerException, run_games, str_signal
 from updater import update
 
 WORKER_VERSION = 130
@@ -53,6 +53,11 @@ games.py  :          launch_cutechess()           [in loop for spsa]
 games.py  :             parse_cutechess_output()
 """
 
+def safe_sleep(f):
+    try:
+        time.sleep(f)
+    except:
+        print("\nSleep interrupted...")
 
 def setup_parameters(config_file):
 
@@ -490,6 +495,7 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
     success = False
     message = None
     server_message = None
+    api = remote + "/api/failed_task"
     pgn_file = [None]
     try:
         run_games(worker_info, password, remote, run, task_id, pgn_file)
@@ -498,6 +504,10 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
         message = str(e)
         server_message = message
         current_state["alive"] = False
+    except RunException as e:
+        message = str(e)
+        server_message = message
+        api = remote + "/api/stop_run"
     except WorkerException as e:
         message = str(e)
         server_message = message
@@ -512,9 +522,9 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
     payload = {
         "username": worker_info["username"],
         "password": password,
+        "unique_key": worker_info["unique_key"],
         "run_id": str(run["_id"]),
         "task_id": task_id,
-        "unique_key": worker_info["unique_key"],
         "message": server_message,
     }
 
@@ -522,12 +532,14 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
         print("\nException running games:\n", message, sep="", file=sys.stderr)
         print("Informing the server")
         try:
-            requests.post(
-                remote + "/api/failed_task",
+            req = requests.post(
+                api,
                 data=json.dumps(payload),
                 headers={"Content-type": "application/json"},
                 timeout=HTTP_TIMEOUT,
-            )
+            ).json()
+            if "error" in req:
+                print(req["error"])
         except Exception as e:
             print("Exception posting failed_task:\n", e, sep="", file=sys.stderr)
 
@@ -540,7 +552,7 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
         if success:
             sleep = random.randint(1, 10)
             print("Wait {} seconds before uploading PGN...".format(sleep))
-            time.sleep(sleep)
+            safe_sleep(sleep)
 
         print("Uploading PGN...")
 
@@ -706,7 +718,7 @@ def worker():
                 break
             else:
                 print("Waiting {} seconds before retrying".format(delay))
-                time.sleep(delay)
+                safe_sleep(delay)
                 delay = min(MAX_RETRY_TIME, delay * 2)
         else:
             delay = HTTP_TIMEOUT
