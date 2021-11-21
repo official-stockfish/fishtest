@@ -936,12 +936,11 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
     input_stats["time_losses"] = input_stats.get("time_losses", 0)
 
     result = {
-        "username": worker_info["username"],
         "password": password,
-        "unique_key": worker_info["unique_key"],
         "run_id": str(run["_id"]),
         "task_id": task_id,
         "stats": input_stats,
+        "worker_info" : worker_info,
     }
 
     games_remaining = task["num_games"] - input_total_games

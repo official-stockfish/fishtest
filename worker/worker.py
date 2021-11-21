@@ -51,6 +51,38 @@ worker.py :    fetch_and_handle_task()            [in loop]
 games.py  :       run_games()
 games.py  :          launch_cutechess()           [in loop for spsa]
 games.py  :             parse_cutechess_output()
+
+Api's used by the worker
+========================
+
+<fishtest>     = https://tests.stockfishchess.org
+<github>       = https://api.github.com
+<github-books> = <github>/repos/official-stockfish/books
+
+Heartbeat           <fishtest>/api/beat                                         POST
+
+Setup task          <github>/rate_limit                                         GET
+                    <fishtest>/api/request_version                              POST
+                    <fishtest>/api/request_task                                 POST
+                    <fishtest>/api/nn/<nnue>                                    GET
+                    <github-books>/git/trees/master                             GET
+                    <github-books>/git/trees/master/blobs/<sha-cutechess-cli>   GET
+                    <github-books>/git/trees/master/blobs/<sha-book>            GET
+                    <github>/repos/<user-repo>/zipball/<sha>                    GET
+
+Main loop           <fishtest>/api/update_task                                  POST
+                    <fishtest>/api/request_spsa                                 POST
+
+Finish task         <fishtest>/api/failed_task                                  POST
+                    <fishtest>/api/stop_run                                     POST
+                    <fishtest>/api/upload_pgn                                   POST
+
+
+The POST requests are json encoded. For the shape of a valid request, consult
+"api.py" in the Fishtest source.
+
+The POST requests return a json encoded dictionary. It may contain a key "error".
+In that case the corresponding value is an error message.
 """
 
 
@@ -298,9 +330,8 @@ def get_exception(files):
 def heartbeat(worker_info, password, remote, current_state):
     print("Start heartbeat")
     payload = {
-        "username": worker_info["username"],
         "password": password,
-        "unique_key": worker_info["unique_key"],
+        "worker_info": worker_info,
     }
     count = 0
     while current_state["alive"]:
@@ -314,7 +345,7 @@ def heartbeat(worker_info, password, remote, current_state):
             task_id = current_state["task_id"]
             payload["task_id"] = task_id
             if payload["run_id"] is None or payload["task_id"] is None:
-                print("Skipping heartbeat...")
+                print("Skipping heartbeat ...")
                 continue
             try:
                 req = requests.post(
@@ -326,6 +357,7 @@ def heartbeat(worker_info, password, remote, current_state):
             except Exception as e:
                 print("Exception calling heartbeat:\n", e, sep="", file=sys.stderr)
             else:
+                # TODO: make this follow the normal api rules
                 print(req)
     else:
         print("Heartbeat stopped")
@@ -527,12 +559,11 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
     current_state["run"] = None
 
     payload = {
-        "username": worker_info["username"],
         "password": password,
-        "unique_key": worker_info["unique_key"],
         "run_id": str(run["_id"]),
         "task_id": task_id,
         "message": server_message,
+        "worker_info": worker_info,
     }
 
     if not success:
@@ -545,11 +576,10 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
                 headers={"Content-type": "application/json"},
                 timeout=HTTP_TIMEOUT,
             ).json()
-            if "error" in req:
-                print("Error from remote: {}".format(req["error"]))
         except Exception as e:
             print("Exception posting failed_task:\n", e, sep="", file=sys.stderr)
-
+        if "error" in req:
+            print("Error from remote: {}".format(req["error"]))
     # Upload PGN file.
     pgn_file = pgn_file[0]
     if pgn_file is not None and os.path.exists(pgn_file) and "spsa" not in run["args"]:
@@ -572,14 +602,17 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
                 zlib.compress(data.encode("utf-8"))
             ).decode()
             print("Uploading compressed PGN of {} bytes".format(len(payload["pgn"])))
-            requests.post(
+            req = requests.post(
                 remote + "/api/upload_pgn",
                 data=json.dumps(payload),
                 headers={"Content-type": "application/json"},
                 timeout=HTTP_TIMEOUT,
-            )
+            ).json()
         except Exception as e:
             print("\nException uploading PGN file:\n", e, sep="", file=sys.stderr)
+
+        if "error" in req:
+            print("Error from remote: {}".format(req["error"]))
 
     if pgn_file is not None and os.path.exists(pgn_file):
         try:
