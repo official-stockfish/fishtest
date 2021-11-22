@@ -2,7 +2,7 @@
 <%
   import datetime
 %>
-<h2>Event Log</h2>
+<h2>Events Log</h2>
 <p></p>
 <script>
 function timestamp(){
