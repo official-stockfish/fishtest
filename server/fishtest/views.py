@@ -22,6 +22,8 @@ from pyramid.httpexceptions import HTTPFound, exception_response
 from pyramid.security import forget, remember
 from pyramid.view import forbidden_view_config, view_config
 
+HTTP_TIMEOUT = 15.0
+
 
 def clear_cache():
     global last_time, last_tests
@@ -125,7 +127,7 @@ def sync_upload(request):
         with open(os.path.expanduser("~/fishtest.upload"), "r") as f:
             upload_server = f.read().replace("\n", "")
             upload_server = upload_server + "/" + filename
-            response = requests.post(upload_server, data=network)
+            response = requests.post(upload_server, data=network, timeout=HTTP_TIMEOUT)
             if response.status_code != 200:
                 print("Network upload failed: " + str(response.status_code))
                 request.session.flash(
@@ -195,7 +197,9 @@ def signup(request):
                 "remoteip": request.remote_addr,
             }
             response = requests.post(
-                "https://www.google.com/recaptcha/api/siteverify", data=payload
+                "https://www.google.com/recaptcha/api/siteverify",
+                data=payload,
+                timeout=HTTP_TIMEOUT,
             ).json()
             if "success" not in response or not response["success"]:
                 if "error-codes" in response:
