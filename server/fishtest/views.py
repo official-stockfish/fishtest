@@ -103,42 +103,48 @@ def sync_upload(request):
         filename = request.POST["network"].filename
         input_file = request.POST["network"].file
         network = input_file.read()
-        errors = []
-        if len(network) >= 120000000:
-            errors.append("Network must be < 120MB")
-        if not re.match(r"^nn-[0-9a-f]{12}\.nnue$", filename):
-            errors.append('Name must match "nn-[SHA256 first 12 digits].nnue"')
-        hash = hashlib.sha256(network).hexdigest()
-        if hash[:12] != filename[3:15]:
-            errors.append(
-                "Wrong SHA256 hash: " + hash[:12] + " Filename: " + filename[3:15]
-            )
-        if request.rundb.get_nn(filename):
-            errors.append("Network already exists")
-        if errors:
-            for error in errors:
-                request.session.flash(error, "error")
-            return {}
-    except:
-        request.session.flash("You must specify a network filename", "error")
+    except AttributeError:
+        request.session.flash(
+            "Specify a network file with the 'Choose File' button", "error"
+        )
         return {}
-
+    except Exception as e:
+        print("Error reading the network file: " + str(e))
+        request.session.flash("Error reading the network file", "error")
+        return {}
+    if request.rundb.get_nn(filename):
+        request.session.flash("Network already exists", "error")
+        return {}
+    errors = []
+    if len(network) >= 120000000:
+        errors.append("Network must be < 120MB")
+    if not re.match(r"^nn-[0-9a-f]{12}\.nnue$", filename):
+        errors.append('Name must match "nn-[SHA256 first 12 digits].nnue"')
+    hash = hashlib.sha256(network).hexdigest()
+    if hash[:12] != filename[3:15]:
+        errors.append(
+            "Wrong SHA256 hash: " + hash[:12] + " Filename: " + filename[3:15]
+        )
+    if errors:
+        for error in errors:
+            request.session.flash(error, "error")
+        return {}
     try:
         with open(os.path.expanduser("~/fishtest.upload"), "r") as f:
             upload_server = f.read().replace("\n", "")
             upload_server = upload_server + "/" + filename
-            response = requests.post(
-                upload_server, data=network, timeout=HTTP_TIMEOUT * 20
-            )
-            if response.status_code != 200:
-                print("Network upload failed: " + str(response.status_code))
-                request.session.flash(
-                    "Network upload failed: " + str(response.status_code), "error"
-                )
-                return {}
     except Exception as e:
-        print("Network upload fails or not configured: " + str(e))
-        request.session.flash("Network upload fails or not configured", "error")
+        print("Network upload not configured: " + str(e))
+        request.session.flash("Network upload not configured", "error")
+        return {}
+    try:
+        response = requests.post(upload_server, data=network, timeout=HTTP_TIMEOUT * 20)
+        response.raise_for_status()
+    except Exception as e:
+        print("Network upload failed: " + str(e))
+        request.session.flash(
+            "Network upload failed: " + str(response.status_code), "error"
+        )
         return {}
 
     request.actiondb.upload_nn(request.authenticated_userid, filename)
