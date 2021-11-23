@@ -822,27 +822,8 @@ class RunDb:
         self, run_id, task_id, stats, nps, ARCH, spsa, username, unique_key
     ):
         run = self.get_run(run_id)
-        update_time = datetime.utcnow()
-
-        # First some sanity checks on the update
-        # If something is wrong we return early.
-        # Does the task exist?
-        if task_id >= len(run["tasks"]):
-            print("Update_task: task_id {} is invalid".format(task_id), flush=True)
-            return {"task_alive": False}
-
         task = run["tasks"][task_id]
-
-        # Is the worker allowed to update this task?
-        if task["worker_info"]["unique_key"] != unique_key:
-            print(
-                "Update_task: Non matching unique_key: {} {} run_id: "
-                "https://tests.stockfishchess.org/tests/view/{} task_id: {}".format(
-                    unique_key, task["worker_info"]["unique_key"], run_id, task_id
-                ),
-                flush=True,
-            )
-            return {"task_alive": False}
+        update_time = datetime.utcnow()
 
         # task["active"]=True means that a worker should be working on this task.
         # Tasks are created as "active" and become "not active" when they
@@ -851,6 +832,9 @@ class RunDb:
         if not task["active"]:
             print("Update_task: task {} is not active".format(task_id), flush=True)
             return {"task_alive": False}
+
+        # First some sanity checks on the update
+        # If something is wrong we return early.
 
         # Guard against incorrect results
         def count_games(d):
@@ -953,30 +937,9 @@ class RunDb:
         self.pgndb.insert_one({"run_id": run_id, "pgn_zip": Binary(pgn_zip)})
         return {}
 
-    def failed_task(self, run_id, task_id, unique_key, message="Unknown reason"):
+    def failed_task(self, run_id, task_id, message="Unknown reason"):
         run = self.get_run(run_id)
-        if DEBUG:
-            print(
-                "Failed: https://tests.stockfishchess.org/tests/view/{} {} {}".format(
-                    run_id, task_id, worker_name(task["worker_info"])
-                ),
-                flush=True,
-            )
-        # Check if the task exists.
-        if task_id >= len(run["tasks"]):
-            print("Failed_task: task_id {} is invalid".format(task_id), flush=True)
-            return {"task_alive": False}
-        # Test if the worker can change this task.
         task = run["tasks"][task_id]
-        if task["worker_info"]["unique_key"] != unique_key:
-            print(
-                "Failed_task: Non matching unique_key: {} {} run_id: "
-                "https://tests.stockfishchess.org/tests/view/{} task_id: {}".format(
-                    unique_key, task["worker_info"]["unique_key"], run_id, task_id
-                ),
-                flush=True,
-            )
-            return {"task_alive": False}
         # Check if the worker is still working on this task.
         if not task["active"]:
             print("Failed_task: task {} is not active".format(task_id), flush=True)
@@ -1158,12 +1121,6 @@ class RunDb:
 
     def request_spsa(self, run_id, task_id):
         run = self.get_run(run_id)
-        # Check if the task exists.
-        if task_id >= len(run["tasks"]):
-            print("Request_spsa: task_id {} is invalid".format(task_id), flush=True)
-            return {"task_alive": False}
-        # Worker authentication with unique_key should be here (but we don't have it)
-        # ...
         task = run["tasks"][task_id]
         # Check if the worker is still working on this task.
         if not task["active"]:
