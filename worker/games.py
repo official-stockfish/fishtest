@@ -866,7 +866,7 @@ def launch_cutechess(
         + cmd[idx + 1 :]
     )
 
-    print(cmd)
+#    print(cmd)
     with subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,
@@ -1150,7 +1150,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
         scaled_new_tc, new_tc_limit = adjust_tc(run["args"]["new_tc"], factor)
         tc_limit = (tc_limit + new_tc_limit) / 2
 
-    result["nps"] = base_nps
+    result["nps"] = float(base_nps)
     result["ARCH"] = ARCH
 
     print("Running {} vs {}".format(run["args"]["new_tag"], run["args"]["base_tag"]))

@@ -411,3 +411,45 @@ def password_strength(password, *args):
             return False, suggestions + " " + warning
     else:
         return False, "Non-empty password required"
+
+
+class optional_key:
+    def __init__(self,key):
+        self.key = key
+
+
+def validate(schema, object, name):
+    if isinstance(schema, type):
+        if not isinstance(object, schema):
+            return "{} is not of type {}".format(name, schema)
+        else:
+            return ""
+    if type(schema) != type(object):
+        return "{} is not of type {}".format(name, type(schema))
+    elif isinstance(schema, list) or isinstance(schema, tuple):
+        l = len(object)
+        for i in range(len(schema)):
+            name_ = "{}[{}]".format(name, i)
+            if i >= l:
+                return "{} does not exist".format(name_)
+            else:
+                ret = validate(schema[i], object[i], name_)
+                if ret != "":
+                    return ret
+        return ""
+    elif isinstance(schema, dict):
+        for k in schema:
+            k_ = k
+            if isinstance(k, optional_key):
+                k_ = k.key
+                if k_ not in object:
+                    continue
+            name_ = "{}['{}']".format(name, k_)
+            if k_ not in object:
+                return "{} is missing".format(name_)
+            else:
+                ret = validate(schema[k], object[k_], name_)
+                if ret != "":
+                    return ret
+        return ""
+    return "Type {} is not supported".format(type(schema))

@@ -1,5 +1,6 @@
 import base64
 import datetime
+import sys
 import unittest
 import zlib
 
@@ -57,12 +58,21 @@ class TestApi(unittest.TestCase):
         self.concurrency = 7
 
         self.worker_info = {
-            "username": self.username,
-            "password": self.password,
-            "remote_addr": self.remote_addr,
-            "concurrency": self.concurrency,
-            "unique_key": "unique key",
-            "version": WORKER_VERSION,
+            'uname': 'Linux 5.11.0-40-generic',
+            'architecture': ['64bit', 'ELF'],
+            'concurrency': self.concurrency,
+            'max_memory': 5702,
+            'min_threads': 1,
+            'username': self.username,
+            'version': "{}:{}.{}.{}".format(
+                WORKER_VERSION,
+                sys.version_info.major,
+                sys.version_info.minor,
+                sys.version_info.micro,
+            ),
+            'gcc_version': '9.3.0',
+            'unique_key': 'unique key',
+            'rate' : { 'limit' : 5000, 'remaining' : 5000}
         }
         run["tasks"][0]["worker_info"] = self.worker_info
         self.rundb.userdb.create_user(self.username, self.password, "email@email.email")
@@ -140,7 +150,6 @@ class TestApi(unittest.TestCase):
             "active": False,
         }
         self.rundb.buffer(run, True)
-
         request = self.correct_password_request({"worker_info": self.worker_info})
         response = ApiView(request).request_task()
         self.assertEqual(self.run_id, response["run"]["_id"])
@@ -165,14 +174,7 @@ class TestApi(unittest.TestCase):
             "num_games": self.rundb.chunk_size,
             "active": True,
         }
-        self.worker_info = {
-            "username": self.username,
-            "password": self.password,
-            "remote_addr": self.remote_addr,
-            "concurrency": self.concurrency,
-            "unique_key": "unique key",
-            "version": WORKER_VERSION,
-        }
+        run["finished"]=False
         run["tasks"][self.task_id]["worker_info"] = self.worker_info
 
         if run["args"].get("spsa"):
@@ -190,7 +192,14 @@ class TestApi(unittest.TestCase):
                 "worker_info": self.worker_info,
                 "run_id": self.run_id,
                 "task_id": self.task_id,
-                "stats": {"wins": 2, "draws": 0, "losses": 0, "crashes": 0},
+                "stats": {
+                    "wins": 2,
+                    "draws": 0,
+                    "losses": 0,
+                    "crashes": 0,
+                    "time_losses": 0,
+                    "pentanomial": [0, 0, 0, 0, 1],
+                },
             }
         )
         response = ApiView(request).update_task()
@@ -200,7 +209,14 @@ class TestApi(unittest.TestCase):
         # Task is still active
         cs = self.rundb.chunk_size
         w, d, l = cs // 2 - 10, cs // 2, 0
-        request.json_body["stats"] = {"wins": w, "draws": d, "losses": l, "crashes": 0}
+        request.json_body["stats"] = {
+            "wins": w,
+            "draws": d,
+            "losses": 0,
+            "crashes": 0,
+            "time_losses": 0,
+            "pentanomial" : [0, 0, d//2, 0, w//2]
+        }
         response = ApiView(request).update_task()
         self.assertTrue(response["task_alive"])
         self.assertFalse(self.rundb.get_run(self.run_id)["results_stale"])
@@ -211,6 +227,8 @@ class TestApi(unittest.TestCase):
             "draws": d,
             "losses": 0,
             "crashes": 0,
+            "time_losses": 0,
+            "pentanomial" : [0, 0, d//2, 0, w//2]
         }
         response = ApiView(request).update_task()
         self.assertFalse(response["task_alive"])
@@ -220,6 +238,8 @@ class TestApi(unittest.TestCase):
             "draws": d,
             "losses": 0,
             "crashes": 0,
+            "time_losses": 0,
+            "pentanomial" : [0, 0, d//2, 0, w//2 + 1]
         }
         response = ApiView(request).update_task()
         self.assertFalse(response["task_alive"])
@@ -232,11 +252,20 @@ class TestApi(unittest.TestCase):
             "draws": d,
             "losses": 0,
             "crashes": 0,
+            "time_losses": 0,
+            "pentanomial" : [0, 0, d//2, 0, w//2 + 1]
         }
         response = ApiView(request).update_task()
         self.assertTrue(response["task_alive"])
         # Go back in time
-        request.json_body["stats"] = {"wins": w, "draws": d, "losses": 0, "crashes": 0}
+        request.json_body["stats"] = {
+            "wins": w,
+            "draws": d,
+            "losses": 0,
+            "crashes": 0,
+            "time_losses": 0,
+            "pentanomial" : [0, 0, d//2, 0, w//2]
+        }
         response = ApiView(request).update_task()
         self.assertFalse(response["task_alive"])
 
@@ -252,6 +281,8 @@ class TestApi(unittest.TestCase):
             "draws": 0,
             "losses": 0,
             "crashes": 0,
+            "time_losses": 0,
+            "pentanomial" : [0, 0, 0, 0, task_num_games//2]
         }
         response = ApiView(request).update_task()
         self.assertFalse(self.rundb.get_run(self.run_id)["results_stale"])
@@ -290,7 +321,7 @@ class TestApi(unittest.TestCase):
         self.rundb.buffer(run, True)
 
         request = self.correct_password_request(
-            {"run_id": self.run_id, "task_id": self.task_id}
+            {"run_id": self.run_id, "task_id": self.task_id, "message": "API request"}
         )
         response = ApiView(request).stop_run()
         self.assertTrue("error" in response)
@@ -409,12 +440,21 @@ class TestRunFinished(unittest.TestCase):
         self.remote_addr = "127.0.0.1"
         self.concurrency = 7
         self.worker_info = {
-            "username": self.username,
-            "password": self.password,
-            "remote_addr": self.remote_addr,
-            "concurrency": self.concurrency,
-            "unique_key": "unique key",
-            "version": WORKER_VERSION,
+            'uname': 'Linux 5.11.0-40-generic',
+            'architecture': ['64bit', 'ELF'],
+            'concurrency': self.concurrency,
+            'max_memory': 5702,
+            'min_threads': 1,
+            'username': self.username,
+            'version': "{}:{}.{}.{}".format(
+                WORKER_VERSION,
+                sys.version_info.major,
+                sys.version_info.minor,
+                sys.version_info.micro,
+            ),
+            'gcc_version': '9.3.0',
+            'unique_key': 'unique key',
+            'rate' : { 'limit' : 5000, 'remaining' : 5000}
         }
 
         self.rundb.userdb.create_user(self.username, self.password, "email@email.email")
@@ -490,6 +530,8 @@ class TestRunFinished(unittest.TestCase):
                     "draws": n_draws,
                     "losses": n_losses,
                     "crashes": 0,
+                    "time_losses": 0,
+                    "pentanomial" : [n_losses//2, 0, n_draws//2, 0, n_wins//2]
                 },
             }
         )
@@ -513,6 +555,8 @@ class TestRunFinished(unittest.TestCase):
                     "draws": n_draws,
                     "losses": n_losses,
                     "crashes": 0,
+                    "time_losses": 0,
+                    "pentanomial" : [n_losses//2, 0, n_draws//2, 0, n_wins//2]
                 },
             }
         )

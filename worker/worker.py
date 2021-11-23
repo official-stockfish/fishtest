@@ -313,6 +313,9 @@ def heartbeat(worker_info, password, remote, current_state):
             payload["run_id"] = str(run["_id"]) if run else None
             task_id = current_state["task_id"]
             payload["task_id"] = task_id
+            if payload["run_id"] is None or payload["task_id"] is None:
+                print("Skipping heartbeat...")
+                continue
             try:
                 req = requests.post(
                     remote + "/api/beat",
@@ -443,6 +446,9 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
             print("Near API limit")
             return False
 
+        worker_info["rate"] = rate
+
+
         t0 = datetime.utcnow()
 
         print("Verify worker version...")
@@ -469,7 +475,7 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
 
         t0 = datetime.utcnow()
         print("Fetch task...")
-        worker_info["rate"] = rate
+
         req = requests.post(
             remote + "/api/request_task",
             data=json.dumps(payload),
@@ -495,8 +501,8 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
     current_state["task_id"] = task_id
 
     success = False
-    message = None
-    server_message = None
+    message = ""
+    server_message = ""
     api = remote + "/api/failed_task"
     pgn_file = [None]
     try:
@@ -541,7 +547,7 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
                 timeout=HTTP_TIMEOUT,
             ).json()
             if "error" in req:
-                print(req["error"])
+                print("Error from remote: {}".format(req["error"]))
         except Exception as e:
             print("Exception posting failed_task:\n", e, sep="", file=sys.stderr)
 
@@ -676,6 +682,7 @@ def worker():
         "gcc_version": "{}.{}.{}".format(major, minor, patchlevel),
         "unique_key": str(uuid.uuid4()),
     }
+
     print("UUID:", worker_info["unique_key"])
     with open(path.join(worker_dir, "uuid.txt"), "w") as f:
         f.write(worker_info["unique_key"])

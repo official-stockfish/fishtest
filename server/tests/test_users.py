@@ -102,24 +102,5 @@ class Create90APITest(unittest.TestCase):
         self.rundb.stop()
         testing.tearDown()
 
-    def test_stop_run(self):
-        request = testing.DummyRequest(
-            rundb=self.rundb,
-            userdb=self.rundb.userdb,
-            actiondb=self.rundb.actiondb,
-            method="POST",
-            json_body={
-                "username": "JoeUser",
-                "password": "secret",
-                "run_id": self.run_id,
-                "message": "travis",
-            },
-        )
-        response = ApiView(request).stop_run()
-        self.assertTrue("error" in response)
-        run = request.rundb.get_run(request.json_body["run_id"])
-        self.assertTrue("stop_reason" not in run)
-
-
 if __name__ == "__main__":
     unittest.main()
