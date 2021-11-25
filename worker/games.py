@@ -609,10 +609,6 @@ def enqueue_output(out, queue):
         queue.put(line)
 
 
-w_params = None
-b_params = None
-
-
 def update_pentanomial(line, rounds):
     def result_to_score(_result):
         if _result == "1-0":
@@ -843,7 +839,6 @@ def launch_cutechess(
             )
         )
 
-        global w_params, b_params
         w_params = req["w_params"]
         b_params = req["b_params"]
 
