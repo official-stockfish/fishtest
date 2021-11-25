@@ -682,7 +682,7 @@ def validate_pentanomial(wld, rounds):
 
 
 def parse_cutechess_output(
-    p, remote, result, spsa, spsa_tuning, games_to_play, batch_size, tc_limit
+    p, remote, result, spsa_tuning, games_to_play, batch_size, tc_limit
 ):
     saved_stats = copy.deepcopy(result["stats"])
     rounds = {}
@@ -758,6 +758,7 @@ def parse_cutechess_output(
             result["stats"]["draws"] = wld_pairs["draws"] + saved_stats["draws"]
 
             if spsa_tuning:
+                spsa = result["spsa"]
                 spsa["wins"] = wld_pairs["wins"]
                 spsa["losses"] = wld_pairs["losses"]
                 spsa["draws"] = wld_pairs["draws"]
@@ -827,9 +828,9 @@ def parse_cutechess_output(
 def launch_cutechess(
     cmd, remote, result, spsa_tuning, games_to_play, batch_size, tc_limit
 ):
-    spsa = {"num_games": games_to_play}
 
     if spsa_tuning:
+
         # Request parameters for next game.
         t0 = datetime.datetime.utcnow()
         req = send_api_post_request(remote + "/api/request_spsa", result).json()
@@ -839,10 +840,11 @@ def launch_cutechess(
             )
         )
 
+        result["spsa"] = {"num_games": games_to_play}
+
         w_params = req["w_params"]
         b_params = req["b_params"]
 
-        result["spsa"] = spsa
     else:
         w_params = []
         b_params = []
@@ -875,7 +877,6 @@ def launch_cutechess(
                 p,
                 remote,
                 result,
-                spsa,
                 spsa_tuning,
                 games_to_play,
                 batch_size,
