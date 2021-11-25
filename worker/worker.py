@@ -34,7 +34,7 @@ except ImportError:
 from games import FatalException, RunException, WorkerException, run_games, str_signal
 from updater import update
 
-WORKER_VERSION = 131
+WORKER_VERSION = 132
 HTTP_TIMEOUT = 15.0
 MAX_RETRY_TIME = 14400.0  # four hours
 IS_WINDOWS = "windows" in platform.system().lower()
@@ -447,7 +447,6 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
             return False
 
         worker_info["rate"] = rate
-
 
         t0 = datetime.utcnow()
 

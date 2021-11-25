@@ -58,21 +58,21 @@ class TestApi(unittest.TestCase):
         self.concurrency = 7
 
         self.worker_info = {
-            'uname': 'Linux 5.11.0-40-generic',
-            'architecture': ['64bit', 'ELF'],
-            'concurrency': self.concurrency,
-            'max_memory': 5702,
-            'min_threads': 1,
-            'username': self.username,
-            'version': "{}:{}.{}.{}".format(
+            "uname": "Linux 5.11.0-40-generic",
+            "architecture": ["64bit", "ELF"],
+            "concurrency": self.concurrency,
+            "max_memory": 5702,
+            "min_threads": 1,
+            "username": self.username,
+            "version": "{}:{}.{}.{}".format(
                 WORKER_VERSION,
                 sys.version_info.major,
                 sys.version_info.minor,
                 sys.version_info.micro,
             ),
-            'gcc_version': '9.3.0',
-            'unique_key': 'unique key',
-            'rate' : { 'limit' : 5000, 'remaining' : 5000}
+            "gcc_version": "9.3.0",
+            "unique_key": "unique key",
+            "rate": {"limit": 5000, "remaining": 5000},
         }
         run["tasks"][0]["worker_info"] = self.worker_info
         self.rundb.userdb.create_user(self.username, self.password, "email@email.email")
@@ -174,7 +174,7 @@ class TestApi(unittest.TestCase):
             "num_games": self.rundb.chunk_size,
             "active": True,
         }
-        run["finished"]=False
+        run["finished"] = False
         run["tasks"][self.task_id]["worker_info"] = self.worker_info
 
         if run["args"].get("spsa"):
@@ -215,7 +215,7 @@ class TestApi(unittest.TestCase):
             "losses": 0,
             "crashes": 0,
             "time_losses": 0,
-            "pentanomial" : [0, 0, d//2, 0, w//2]
+            "pentanomial": [0, 0, d // 2, 0, w // 2],
         }
         response = ApiView(request).update_task()
         self.assertTrue(response["task_alive"])
@@ -228,7 +228,7 @@ class TestApi(unittest.TestCase):
             "losses": 0,
             "crashes": 0,
             "time_losses": 0,
-            "pentanomial" : [0, 0, d//2, 0, w//2]
+            "pentanomial": [0, 0, d // 2, 0, w // 2],
         }
         response = ApiView(request).update_task()
         self.assertFalse(response["task_alive"])
@@ -239,7 +239,7 @@ class TestApi(unittest.TestCase):
             "losses": 0,
             "crashes": 0,
             "time_losses": 0,
-            "pentanomial" : [0, 0, d//2, 0, w//2 + 1]
+            "pentanomial": [0, 0, d // 2, 0, w // 2 + 1],
         }
         response = ApiView(request).update_task()
         self.assertFalse(response["task_alive"])
@@ -253,7 +253,7 @@ class TestApi(unittest.TestCase):
             "losses": 0,
             "crashes": 0,
             "time_losses": 0,
-            "pentanomial" : [0, 0, d//2, 0, w//2 + 1]
+            "pentanomial": [0, 0, d // 2, 0, w // 2 + 1],
         }
         response = ApiView(request).update_task()
         self.assertTrue(response["task_alive"])
@@ -264,7 +264,7 @@ class TestApi(unittest.TestCase):
             "losses": 0,
             "crashes": 0,
             "time_losses": 0,
-            "pentanomial" : [0, 0, d//2, 0, w//2]
+            "pentanomial": [0, 0, d // 2, 0, w // 2],
         }
         response = ApiView(request).update_task()
         self.assertFalse(response["task_alive"])
@@ -282,7 +282,7 @@ class TestApi(unittest.TestCase):
             "losses": 0,
             "crashes": 0,
             "time_losses": 0,
-            "pentanomial" : [0, 0, 0, 0, task_num_games//2]
+            "pentanomial": [0, 0, 0, 0, task_num_games // 2],
         }
         response = ApiView(request).update_task()
         self.assertFalse(self.rundb.get_run(self.run_id)["results_stale"])
@@ -440,21 +440,21 @@ class TestRunFinished(unittest.TestCase):
         self.remote_addr = "127.0.0.1"
         self.concurrency = 7
         self.worker_info = {
-            'uname': 'Linux 5.11.0-40-generic',
-            'architecture': ['64bit', 'ELF'],
-            'concurrency': self.concurrency,
-            'max_memory': 5702,
-            'min_threads': 1,
-            'username': self.username,
-            'version': "{}:{}.{}.{}".format(
+            "uname": "Linux 5.11.0-40-generic",
+            "architecture": ["64bit", "ELF"],
+            "concurrency": self.concurrency,
+            "max_memory": 5702,
+            "min_threads": 1,
+            "username": self.username,
+            "version": "{}:{}.{}.{}".format(
                 WORKER_VERSION,
                 sys.version_info.major,
                 sys.version_info.minor,
                 sys.version_info.micro,
             ),
-            'gcc_version': '9.3.0',
-            'unique_key': 'unique key',
-            'rate' : { 'limit' : 5000, 'remaining' : 5000}
+            "gcc_version": "9.3.0",
+            "unique_key": "unique key",
+            "rate": {"limit": 5000, "remaining": 5000},
         }
 
         self.rundb.userdb.create_user(self.username, self.password, "email@email.email")
@@ -531,7 +531,7 @@ class TestRunFinished(unittest.TestCase):
                     "losses": n_losses,
                     "crashes": 0,
                     "time_losses": 0,
-                    "pentanomial" : [n_losses//2, 0, n_draws//2, 0, n_wins//2]
+                    "pentanomial": [n_losses // 2, 0, n_draws // 2, 0, n_wins // 2],
                 },
             }
         )
@@ -556,7 +556,7 @@ class TestRunFinished(unittest.TestCase):
                     "losses": n_losses,
                     "crashes": 0,
                     "time_losses": 0,
-                    "pentanomial" : [n_losses//2, 0, n_draws//2, 0, n_wins//2]
+                    "pentanomial": [n_losses // 2, 0, n_draws // 2, 0, n_wins // 2],
                 },
             }
         )

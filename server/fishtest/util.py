@@ -414,7 +414,7 @@ def password_strength(password, *args):
 
 
 class optional_key:
-    def __init__(self,key):
+    def __init__(self, key):
         self.key = key
 
 

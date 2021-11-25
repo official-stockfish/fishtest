@@ -863,7 +863,7 @@ def launch_cutechess(
         + cmd[idx + 1 :]
     )
 
-#    print(cmd)
+    #    print(cmd)
     with subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,

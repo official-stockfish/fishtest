@@ -15,22 +15,23 @@ from pyramid.httpexceptions import (
 from pyramid.response import Response
 from pyramid.view import exception_view_config, view_config, view_defaults
 
-WORKER_VERSION = 131
+WORKER_VERSION = 132
 
 flag_cache = {}
 
+
 def validate_request(request):
     schema = {
-        "password" : str,
-        optional_key("username") : str,
-        optional_key("run_id") : str,
-        optional_key("task_id") : int,
-        optional_key("unique_key") : str,
-        optional_key("pgn") : str,
-        optional_key("message") : str,
-        optional_key("ARCH") : str,
-        optional_key("nps") : float,
-        optional_key("worker_info") : {
+        "password": str,
+        optional_key("username"): str,
+        optional_key("run_id"): str,
+        optional_key("task_id"): int,
+        optional_key("unique_key"): str,
+        optional_key("pgn"): str,
+        optional_key("message"): str,
+        optional_key("ARCH"): str,
+        optional_key("nps"): float,
+        optional_key("worker_info"): {
             "uname": str,
             "architecture": [str, str],
             "concurrency": int,
@@ -40,21 +41,21 @@ def validate_request(request):
             "version": str,
             "gcc_version": str,
             "unique_key": str,
-            "rate": {'limit': int, 'remaining': int}
+            "rate": {"limit": int, "remaining": int},
         },
-        optional_key("spsa") : {
-            "wins" : int,
-            "losses" : int,
-            "draws" : int,
-            "num_games" : int,
+        optional_key("spsa"): {
+            "wins": int,
+            "losses": int,
+            "draws": int,
+            "num_games": int,
         },
-        optional_key("stats") : {
-            "wins" : int,
-            "losses" : int,
-            "draws" : int,
-            "crashes" : int,
-            "time_losses" : int,
-            "pentanomial" : [int, int, int, int, int],
+        optional_key("stats"): {
+            "wins": int,
+            "losses": int,
+            "draws": int,
+            "crashes": int,
+            "time_losses": int,
+            "pentanomial": [int, int, int, int, int],
         },
     }
     error = validate(schema, request, "request")
@@ -285,7 +286,7 @@ class ApiView(object):
         return message
 
     def stats(self):
-        stats=self.request.json_body.get("stats", {})
+        stats = self.request.json_body.get("stats", {})
         return stats
 
     def spsa(self):
