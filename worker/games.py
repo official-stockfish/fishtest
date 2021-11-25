@@ -831,7 +831,7 @@ def parse_cutechess_output(
 def launch_cutechess(
     cmd, remote, result, spsa_tuning, games_to_play, batch_size, tc_limit
 ):
-    spsa = {"w_params": [], "b_params": [], "num_games": games_to_play}
+    spsa = {"num_games": games_to_play}
 
     if spsa_tuning:
         # Request parameters for next game.
