@@ -108,15 +108,17 @@ class TestApi(unittest.TestCase):
 
     def invalid_password_request(self):
         return self.build_json_request(
-            {"username": self.username, "password": "wrong password"}
+            {
+                "password": "wrong password",
+                "worker_info": self.worker_info,
+            }
         )
 
     def correct_password_request(self, json_body={}):
         return self.build_json_request(
             {
-                "username": self.username,
                 "password": self.password,
-                "unique_key": "unique key",
+                "worker_info": self.worker_info,
                 **json_body,
             }
         )
@@ -150,7 +152,7 @@ class TestApi(unittest.TestCase):
             "active": False,
         }
         self.rundb.buffer(run, True)
-        request = self.correct_password_request({"worker_info": self.worker_info})
+        request = self.correct_password_request()
         response = ApiView(request).request_task()
         self.assertEqual(self.run_id, response["run"]["_id"])
         self.assertNotEqual(self.task_id, response["task_id"])
@@ -182,14 +184,13 @@ class TestApi(unittest.TestCase):
         self.rundb.buffer(run, True)
 
         # Calling /api/request_task assigns this task to the worker
-        request = self.correct_password_request({"worker_info": self.worker_info})
+        request = self.correct_password_request()
         response = ApiView(request).request_task()
         self.assertEqual(response["run"]["_id"], str(run["_id"]))
 
         # Task is active after calling /api/update_task with the first set of results
         request = self.correct_password_request(
             {
-                "worker_info": self.worker_info,
                 "run_id": self.run_id,
                 "task_id": self.task_id,
                 "stats": {
@@ -401,7 +402,10 @@ class TestApi(unittest.TestCase):
             self.assertTrue("error" in response)
 
         request = self.correct_password_request(
-            {"run_id": self.run_id, "task_id": self.task_id}
+            {
+                "run_id": self.run_id,
+                "task_id": self.task_id,
+            }
         )
         response = ApiView(request).beat()
         print(response)
@@ -487,7 +491,7 @@ class TestRunFinished(unittest.TestCase):
 
     def correct_password_request(self, json_body={}):
         return self.build_json_request(
-            {"username": self.username, "password": self.password, **json_body}
+            {"password": self.password, "worker_info": self.worker_info, **json_body}
         )
 
     def test_auto_purge_runs(self):
@@ -497,7 +501,7 @@ class TestRunFinished(unittest.TestCase):
         self.rundb.buffer(run, True)
 
         # Request task 1 of 2
-        request = self.correct_password_request({"worker_info": self.worker_info})
+        request = self.correct_password_request()
         response = ApiView(request).request_task()
         self.assertEqual(response["run"]["_id"], str(run["_id"]))
         self.assertEqual(response["task_id"], 0)
@@ -505,7 +509,7 @@ class TestRunFinished(unittest.TestCase):
         task_size1 = task1["num_games"]
 
         # Request task 2 of 2
-        request = self.correct_password_request({"worker_info": self.worker_info})
+        request = self.correct_password_request()
         response = ApiView(request).request_task()
         self.assertEqual(response["run"]["_id"], str(run["_id"]))
         self.assertEqual(response["task_id"], 1)
@@ -522,7 +526,6 @@ class TestRunFinished(unittest.TestCase):
 
         request = self.correct_password_request(
             {
-                "worker_info": self.worker_info,
                 "run_id": self.run_id,
                 "task_id": 0,
                 "stats": {
@@ -547,7 +550,6 @@ class TestRunFinished(unittest.TestCase):
 
         request = self.correct_password_request(
             {
-                "worker_info": self.worker_info,
                 "run_id": self.run_id,
                 "task_id": 1,
                 "stats": {

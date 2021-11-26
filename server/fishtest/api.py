@@ -23,15 +23,13 @@ flag_cache = {}
 def validate_request(request):
     schema = {
         "password": str,
-        optional_key("username"): str,
         optional_key("run_id"): str,
         optional_key("task_id"): int,
-        optional_key("unique_key"): str,
         optional_key("pgn"): str,
         optional_key("message"): str,
         optional_key("ARCH"): str,
         optional_key("nps"): float,
-        optional_key("worker_info"): {
+        "worker_info": {
             "uname": str,
             "architecture": [str, str],
             "concurrency": int,
@@ -99,59 +97,140 @@ class ApiView(object):
     def __init__(self, request):
         self.request = request
 
-    def require_authentication(self):
-        token = self.request.userdb.authenticate(
-            self.get_username(), self.request.json_body["password"]
-        )
-        if "error" in token:
-            raise HTTPUnauthorized(token)
+    def validate_request(self, api):
+        error = ""
+        exception = HTTPBadRequest
+        for _ in range(1):  # trick to be able to use break
+            # is the request valid json?
+            try:
+                self.request_body = self.request.json_body
+            except:
+                error = "request is not json encoded"
+                break
 
-    def validate_request(self):
-        try:
-            request = self.request.json_body
-        except:
-            raise HTTPBadRequest({"error": "request is not json encoded"})
-        validate_request(request)
+            # Is the request syntactically correct?
+            # Raises HTTPBadRequest() in case of error.
+            validate_request(self.request_body)
+
+            # is the supplied password correct?
+            token = self.request.userdb.authenticate(
+                self.request_body["worker_info"]["username"],
+                self.request_body["password"],
+            )
+            if "error" in token:
+                error = "Invalid password for user: {}".format(
+                    self.request_body["worker_info"]["username"],
+                )
+                exception = HTTPUnauthorized
+                break
+
+            # is a supplied run_id correct?
+            self.__run = None
+            if "run_id" in self.request_body:
+                run_id = self.request_body["run_id"]
+                run = self.request.rundb.get_run(run_id)
+                if run is None:
+                    error = "Invalid run_id: {}".format(run_id)
+                    break
+
+                self.__run = run
+
+            # if a task_id is present then there should be a run_id, and
+            # the unique_key should correspond to the unique_key of the
+            # task
+            self.__task = None
+            if "task_id" in self.request_body:
+                task_id = self.request_body["task_id"]
+                if "run_id" not in self.request_body:
+                    error = "The request has a task_id but no run_id"
+                    break
+
+                if task_id < 0 or task_id >= len(run["tasks"]):
+                    error = "Invalid task_id {} for run_id {}".format(task_id, run_id)
+                    break
+
+                task = run["tasks"][task_id]
+                unique_key = self.request_body["worker_info"]["unique_key"]
+                if unique_key != task["worker_info"]["unique_key"]:
+                    error = "Invalid unique key {} for task_id {} for run_id {}".format(
+                        unique_key, task_id, run_id
+                    )
+                    break
+
+                self.__task = task
+
+        if error != "":
+            error = "{}: {}".format(api, error)
+            print(error, flush=True)
+            raise exception({"error": error})
 
     def get_username(self):
-        try:
-            return self.__username
-        except:
-            pass
-        try:
-            if "username" in self.request.json_body:
-                username = str(self.request.json_body["username"])
-            else:
-                username = str(self.request.json_body["worker_info"]["username"])
-        except:
-            error = "No username"
-            print(error, flush=True)
-            raise HTTPBadRequest({"error": error})
-        self.__username = username
-        return username
+        return self.request_body["worker_info"]["username"]
 
     def get_unique_key(self):
-        try:
-            return self.__unique_key
-        except:
-            pass
-        try:
-            if "unique_key" in self.request.json_body:
-                unique_key = str(self.request.json_body["unique_key"])
-            else:
-                unique_key = str(self.request.json_body["worker_info"]["unique_key"])
-        except:
-            error = "No unique key"
-            print(error, flush=True)
-            raise HTTPBadRequest({"error": error})
+        return self.request_body["worker_info"]["unique_key"]
 
-        task = self.task()
-        if unique_key != task["worker_info"]["unique_key"]:
-            error = "Invalid unique key: {}".format(unique_key)
-            print(error, flush=True)
-            raise HTTPBadRequest({"error": error})
-        self.__unique_key = unique_key
-        return unique_key
+    def run(self):
+        if self.__run is not None:
+            return self.__run
+
+        error = "Missing run_id"
+        print(error, flush=True)
+        raise HTTPBadRequest({"error": error})
+
+    def run_id(self):
+        if "run_id" in self.request_body:
+            return self.request_body["run_id"]
+
+        error = "Missing run_id"
+        print(error, flush=True)
+        raise HTTPBadRequest({"error": error})
+
+    def task(self):
+        if self.__task is not None:
+            return self.__task
+
+        error = "Missing task_id"
+        print(error, flush=True)
+        raise HTTPBadRequest({"error": error})
+
+    def task_id(self):
+        if "task_id" in self.request_body:
+            return self.request_body["task_id"]
+
+        error = "Missing task_id"
+        print(error, flush=True)
+        raise HTTPBadRequest({"error": error})
+
+    def worker_info(self):
+        worker_info = self.request_body["worker_info"]
+        worker_info["remote_addr"] = self.request.remote_addr
+        flag = self.get_flag()
+        if flag:
+            worker_info["country_code"] = flag
+        return worker_info
+
+    def worker_name(self):
+        return worker_name(self.worker_info())
+
+    def cpu_hours(self):
+        username = self.get_username()
+        user = self.request.userdb.user_cache.find_one({"username": username})
+        if not user:
+            return -1
+        else:
+            return user["cpu_hours"]
+
+    def message(self):
+        return self.request_body.get("message", "")
+
+    def stats(self):
+        stats = self.request.json_body.get("stats", {})
+        return stats
+
+    def spsa(self):
+        spsa = self.request_body.get("spsa", {})
+        return spsa
 
     def get_flag(self):
         ip = self.request.remote_addr
@@ -183,115 +262,6 @@ class ApiView(object):
             del flag_cache[ip]
             print("Failed GeoIP check for {}".format(ip))
             return None
-
-    def __run_(self):
-        try:
-            return self.__run_id, self.__run
-        except:
-            pass
-
-        run_id = self.request.json_body["run_id"]
-        if run_id is None:
-            error = "No run_id"
-            print(error, flush=True)
-            raise HTTPBadRequest({"error": error})
-        run = self.request.rundb.get_run(run_id)
-        if run is None:
-            error = "Invalid run_id: {}".format(run_id)
-            print(error, flush=True)
-            raise HTTPBadRequest({"error": error})
-        self.__run_id, self.__run = run_id, run
-        return run_id, run
-
-    def run(self):
-        return self.__run_()[1]
-
-    def run_id(self):
-        return self.__run_()[0]
-
-    def __task_(self):
-        try:
-            return self.__task_id, self.__task
-        except:
-            pass
-        task_id = self.request.json_body.get("task_id")
-        if task_id is None:
-            error = "No task_id"
-            print(error, flush=True)
-            raise HTTPBadRequest({"error": error})
-
-        run = self.run()
-        if task_id < 0 or task_id >= len(run["tasks"]):
-            error = "Invalid task_id: {}".format(task_id)
-            print(error, flush=True)
-            raise HTTPBadRequest({"error": error})
-
-        task = run["tasks"][task_id]
-
-        self.__task_id, self.__task = task_id, task
-        return task_id, task
-
-    def task(self):
-        return self.__task_()[1]
-
-    def task_id(self, allow_none=False):
-        return self.__task_()[0]
-
-    def worker_info(self, allow_server=False):
-        try:
-            return self.__worker_info
-        except:
-            pass
-        if "worker_info" in self.request.json_body:
-            worker_info = self.request.json_body["worker_info"]
-            worker_info["remote_addr"] = self.request.remote_addr
-            flag = self.get_flag()
-            if flag:
-                worker_info["country_code"] = flag
-            self.__worker_info = worker_info
-        elif allow_server:
-            worker_info = self.task().get("worker_info")
-        else:
-            error = "No worker_info"
-            print(error, flush=True)
-            raise HTTPBadRequest({"error": error})
-
-        return worker_info
-
-    def worker_name(self):
-        try:
-            return self.__worker_name
-        except:
-            pass
-        worker_info = self.worker_info(allow_server=True)
-        try:
-            worker_name_ = worker_name(worker_info)
-        except:
-            error = "Unable to construct worker name"
-            print(error, flush=True)
-            raise HTTPBadRequest({"error": error})
-        self.__worker_name = worker_name_
-        return worker_name_
-
-    def cpu_hours(self):
-        username = self.get_username()
-        user = self.request.userdb.user_cache.find_one({"username": username})
-        if not user:
-            return -1
-        else:
-            return user["cpu_hours"]
-
-    def message(self):
-        message = str(self.request.json_body.get("message"))
-        return message
-
-    def stats(self):
-        stats = self.request.json_body.get("stats", {})
-        return stats
-
-    def spsa(self):
-        spsa = self.request.json_body.get("spsa", {})
-        return spsa
 
     @view_config(route_name="api_active_runs")
     def active_runs(self):
@@ -328,8 +298,7 @@ class ApiView(object):
 
     @view_config(route_name="api_request_task")
     def request_task(self):
-        self.validate_request()
-        self.require_authentication()
+        self.validate_request("/api/request_task")
         worker_info = self.worker_info()
         result = self.request.rundb.request_task(worker_info)
         if "task_waiting" in result:
@@ -357,14 +326,13 @@ class ApiView(object):
 
     @view_config(route_name="api_update_task")
     def update_task(self):
-        self.validate_request()
-        self.require_authentication()
+        self.validate_request("/api/update_task")
         return self.request.rundb.update_task(
             run_id=self.run_id(),
             task_id=self.task_id(),
             stats=self.stats(),
-            nps=self.request.json_body.get("nps", 0),
-            ARCH=self.request.json_body.get("ARCH", "?"),
+            nps=self.request_body.get("nps", 0),
+            ARCH=self.request_body.get("ARCH", "?"),
             spsa=self.spsa(),
             username=self.get_username(),
             unique_key=self.get_unique_key(),
@@ -372,20 +340,17 @@ class ApiView(object):
 
     @view_config(route_name="api_failed_task")
     def failed_task(self):
-        self.validate_request()
-        self.require_authentication()
-        self.get_unique_key()  # validation
+        self.validate_request("/api/failed_task")
         return self.request.rundb.failed_task(
             self.run_id(), self.task_id(), self.message()
         )
 
     @view_config(route_name="api_upload_pgn")
     def upload_pgn(self):
-        self.validate_request()
-        self.require_authentication()
+        self.validate_request("/api/upload_pgn")
         return self.request.rundb.upload_pgn(
             run_id="{}-{}".format(self.run_id(), self.task_id()),
-            pgn_zip=base64.b64decode(self.request.json_body["pgn"]),
+            pgn_zip=base64.b64decode(self.request_body["pgn"]),
         )
 
     @view_config(route_name="api_download_pgn", renderer="string")
@@ -419,12 +384,11 @@ class ApiView(object):
 
     @view_config(route_name="api_stop_run")
     def stop_run(self):
-        self.validate_request()
-        self.require_authentication()
-        self.get_unique_key()  # validation
+        api = "/api/stop_run"
+        self.validate_request(api)
         error = ""
         if self.cpu_hours() < 1000:
-            error = "api_stop_run: User {} has too few games to stop a run".format(
+            error = "User {} has too few games to stop a run".format(
                 self.get_username()
             )
         with self.request.rundb.active_run_lock(self.run_id()):
@@ -447,20 +411,19 @@ class ApiView(object):
                 self.request.rundb.buffer(run, True)
 
         if error != "":
+            error = "{}: {}".format(api, error)
             print(error, flush=True)
             return {"error": error}
         return {}
 
     @view_config(route_name="api_request_version")
     def request_version(self):
-        self.validate_request()
-        self.require_authentication()
+        self.validate_request("/api/request_version")
         return {"version": WORKER_VERSION}
 
     @view_config(route_name="api_beat")
     def beat(self):
-        self.validate_request()
-        self.require_authentication()
+        self.validate_request("/api/beat")
         run = self.run()
         task = self.task()
         task["last_updated"] = datetime.utcnow()
@@ -469,7 +432,5 @@ class ApiView(object):
 
     @view_config(route_name="api_request_spsa")
     def request_spsa(self):
-        self.validate_request()
-        self.require_authentication()
-        self.get_unique_key()  # validation
+        self.validate_request("/api/request_spsa")
         return self.request.rundb.request_spsa(self.run_id(), self.task_id())
