@@ -41,7 +41,7 @@ def validate_request(request):
             "version": str,
             "gcc_version": str,
             "unique_key": str,
-            "rate": {"limit": int, "remaining": int},
+            optional_key("rate"): {"limit": int, "remaining": int},
         },
         optional_key("spsa"): {
             "wins": int,
