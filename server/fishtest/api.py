@@ -15,7 +15,7 @@ from pyramid.httpexceptions import (
 from pyramid.response import Response
 from pyramid.view import exception_view_config, view_config, view_defaults
 
-WORKER_VERSION = 132
+WORKER_VERSION = 133
 
 flag_cache = {}
 
