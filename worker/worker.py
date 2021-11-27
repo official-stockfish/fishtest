@@ -531,6 +531,8 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
     current_state["run"] = run
     current_state["task_id"] = task_id
 
+    print("Working on task {} from {}/tests/view/{}".format(task_id, remote, str(run["_id"])))
+
     success = False
     message = ""
     server_message = ""
