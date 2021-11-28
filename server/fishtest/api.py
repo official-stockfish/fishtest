@@ -15,6 +15,18 @@ from pyramid.httpexceptions import (
 from pyramid.response import Response
 from pyramid.view import exception_view_config, view_config, view_defaults
 
+"""
+Important note
+==============
+
+All apis that are relying on get_run() should be served from a single
+Fishtest instance.
+
+If other instances need information about runs they should query the
+db directly. However this information may be slightly outdated, depending
+on how frequently the main instance flushes its run cache.
+"""
+
 WORKER_VERSION = 133
 
 flag_cache = {}
@@ -39,7 +51,7 @@ def validate_request(request):
             "version": str,
             "gcc_version": str,
             "unique_key": str,
-            optional_key("rate"): {"limit": int, "remaining": int},
+            "rate": {"limit": int, "remaining": int},
         },
         optional_key("spsa"): {
             "wins": int,
@@ -56,10 +68,7 @@ def validate_request(request):
             "pentanomial": [int, int, int, int, int],
         },
     }
-    error = validate(schema, request, "request")
-    if error != "":
-        print(error, flush=True)
-        raise HTTPBadRequest({"error": error})
+    return validate(schema, request, "request")
 
 
 def strip_run(run):
@@ -76,17 +85,17 @@ def strip_run(run):
     return run
 
 
-@exception_view_config(HTTPUnauthorized)
-def authentication_failed(error, request):
-    response = Response(json_body=error.detail)
-    response.status_int = 401
-    return response
-
-
 @exception_view_config(HTTPBadRequest)
 def badrequest_failed(error, request):
     response = Response(json_body=error.detail)
     response.status_int = 400
+    return response
+
+
+@exception_view_config(HTTPUnauthorized)
+def authentication_failed(error, request):
+    response = Response(json_body=error.detail)
+    response.status_int = 401
     return response
 
 
@@ -97,72 +106,77 @@ class ApiView(object):
     def __init__(self, request):
         self.request = request
 
-    def validate_request(self, api):
-        error = ""
-        exception = HTTPBadRequest
-        for _ in range(1):  # trick to be able to use break
-            # is the request valid json?
-            try:
-                self.request_body = self.request.json_body
-            except:
-                error = "request is not json encoded"
-                break
-
-            # Is the request syntactically correct?
-            # Raises HTTPBadRequest() in case of error.
-            validate_request(self.request_body)
-
-            # is the supplied password correct?
-            token = self.request.userdb.authenticate(
-                self.request_body["worker_info"]["username"],
-                self.request_body["password"],
-            )
-            if "error" in token:
-                error = "Invalid password for user: {}".format(
-                    self.request_body["worker_info"]["username"],
-                )
-                exception = HTTPUnauthorized
-                break
-
-            # is a supplied run_id correct?
-            self.__run = None
-            if "run_id" in self.request_body:
-                run_id = self.request_body["run_id"]
-                run = self.request.rundb.get_run(run_id)
-                if run is None:
-                    error = "Invalid run_id: {}".format(run_id)
-                    break
-
-                self.__run = run
-
-            # if a task_id is present then there should be a run_id, and
-            # the unique_key should correspond to the unique_key of the
-            # task
-            self.__task = None
-            if "task_id" in self.request_body:
-                task_id = self.request_body["task_id"]
-                if "run_id" not in self.request_body:
-                    error = "The request has a task_id but no run_id"
-                    break
-
-                if task_id < 0 or task_id >= len(run["tasks"]):
-                    error = "Invalid task_id {} for run_id {}".format(task_id, run_id)
-                    break
-
-                task = run["tasks"][task_id]
-                unique_key = self.request_body["worker_info"]["unique_key"]
-                if unique_key != task["worker_info"]["unique_key"]:
-                    error = "Invalid unique key {} for task_id {} for run_id {}".format(
-                        unique_key, task_id, run_id
-                    )
-                    break
-
-                self.__task = task
-
+    def handle_error(self, error, exception=HTTPBadRequest):
         if error != "":
-            error = "{}: {}".format(api, error)
+            error = "{}: {}".format(self.__api, error)
             print(error, flush=True)
             raise exception({"error": error})
+
+    def validate_username_password(self, api):
+        self.__api = api
+        # is the request valid json?
+        try:
+            self.request_body = self.request.json_body
+        except:
+            self.handle_error("request is not json encoded")
+
+        # Is the request syntactically correct?
+        schema = {"password": str, "worker_info": {"username": str}}
+        self.handle_error(validate(schema, self.request_body, "request"))
+
+        # is the supplied password correct?
+        token = self.request.userdb.authenticate(
+            self.request_body["worker_info"]["username"],
+            self.request_body["password"],
+        )
+        if "error" in token:
+            self.handle_error(
+                "Invalid password for user: {}".format(
+                    self.request_body["worker_info"]["username"],
+                ),
+                exception=HTTPUnauthorized,
+            )
+
+    def validate_request(self, api):
+        self.__run = None
+        self.__task = None
+
+        # Preliminary validation.
+        self.validate_username_password(api)
+
+        # Is the request syntactically correct?
+        self.handle_error(validate_request(self.request_body))
+
+        # is a supplied run_id correct?
+        if "run_id" in self.request_body:
+            run_id = self.request_body["run_id"]
+            run = self.request.rundb.get_run(run_id)
+            if run is None:
+                self.handle_error("Invalid run_id: {}".format(run_id))
+            self.__run = run
+
+        # if a task_id is present then there should be a run_id, and
+        # the unique_key should correspond to the unique_key of the
+        # task
+        if "task_id" in self.request_body:
+            task_id = self.request_body["task_id"]
+            if "run_id" not in self.request_body:
+                self.handle_error("The request has a task_id but no run_id")
+
+            if task_id < 0 or task_id >= len(run["tasks"]):
+                self.handle_error(
+                    "Invalid task_id {} for run_id {}".format(task_id, run_id)
+                )
+
+            task = run["tasks"][task_id]
+            unique_key = self.request_body["worker_info"]["unique_key"]
+            if unique_key != task["worker_info"]["unique_key"]:
+                self.handle_error(
+                    "Invalid unique key {} for task_id {} for run_id {}".format(
+                        unique_key, task_id, run_id
+                    )
+                )
+            self.__task = task
 
     def get_username(self):
         return self.request_body["worker_info"]["username"]
@@ -174,33 +188,31 @@ class ApiView(object):
         if self.__run is not None:
             return self.__run
 
-        error = "Missing run_id"
-        print(error, flush=True)
-        raise HTTPBadRequest({"error": error})
+        self.handle_error("Missing run_id")
 
     def run_id(self):
         if "run_id" in self.request_body:
             return self.request_body["run_id"]
 
-        error = "Missing run_id"
-        print(error, flush=True)
-        raise HTTPBadRequest({"error": error})
+        self.handle_error("Missing run_id")
 
     def task(self):
         if self.__task is not None:
             return self.__task
 
-        error = "Missing task_id"
-        print(error, flush=True)
-        raise HTTPBadRequest({"error": error})
+        self.handle_error("Missing task_id")
 
     def task_id(self):
         if "task_id" in self.request_body:
             return self.request_body["task_id"]
 
-        error = "Missing task_id"
-        print(error, flush=True)
-        raise HTTPBadRequest({"error": error})
+        self.handle_error("Missing task_id")
+
+    def pgn(self):
+        if "pgn" in self.request_body:
+            return self.request_body["pgn"]
+
+        self.handle_error("Missing pgn content")
 
     def worker_info(self):
         worker_info = self.request_body["worker_info"]
@@ -225,12 +237,10 @@ class ApiView(object):
         return self.request_body.get("message", "")
 
     def stats(self):
-        stats = self.request.json_body.get("stats", {})
-        return stats
+        return self.request_body.get("stats", {})
 
     def spsa(self):
-        spsa = self.request_body.get("spsa", {})
-        return spsa
+        return self.request_body.get("spsa", {})
 
     def get_flag(self):
         ip = self.request.remote_addr
@@ -350,7 +360,7 @@ class ApiView(object):
         self.validate_request("/api/upload_pgn")
         return self.request.rundb.upload_pgn(
             run_id="{}-{}".format(self.run_id(), self.task_id()),
-            pgn_zip=base64.b64decode(self.request_body["pgn"]),
+            pgn_zip=base64.b64decode(self.pgn()),
         )
 
     @view_config(route_name="api_download_pgn", renderer="string")
@@ -410,15 +420,14 @@ class ApiView(object):
                 task["active"] = False
                 self.request.rundb.buffer(run, True)
 
-        if error != "":
-            error = "{}: {}".format(api, error)
-            print(error, flush=True)
-            return {"error": error}
+        self.handle_error(error, exception=HTTPUnauthorized)
         return {}
 
     @view_config(route_name="api_request_version")
     def request_version(self):
-        self.validate_request("/api/request_version")
+        # By being mor lax here we can be more strict
+        # elsewhere since the worker will upgrade.
+        self.validate_username_password("/api/request_version")
         return {"version": WORKER_VERSION}
 
     @view_config(route_name="api_beat")
@@ -428,7 +437,7 @@ class ApiView(object):
         task = self.task()
         task["last_updated"] = datetime.utcnow()
         self.request.rundb.buffer(run, False)
-        return self.worker_name()
+        return {}
 
     @view_config(route_name="api_request_spsa")
     def request_spsa(self):

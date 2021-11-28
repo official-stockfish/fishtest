@@ -49,6 +49,7 @@ class RunDb:
         self.nndb = self.db["nns"]
         self.runs = self.db["runs"]
         self.deltas = self.db["deltas"]
+        self.task_runs = []
 
         self.chunk_size = 200
         self.task_duration = 900  # 15 minutes
@@ -571,9 +572,17 @@ class RunDb:
         # To limit db access the list is cached for
         # 60 seconds.
 
-        if time.time() > self.task_time + 60:
-            if DEBUG:
-                print("Refresh queue", flush=True)
+        runs_finished = True
+        for run in self.task_runs:
+            if not run["finished"]:
+                runs_finished = False
+                break
+
+        if runs_finished:
+            print("Request_task: no useful cached runs left", flush=True)
+
+        if runs_finished or time.time() > self.task_time + 60:
+            print("Request_task: refresh queue", flush=True)
             self.task_runs = []
             for r in self.get_unfinished_runs_id():
                 run = self.get_run(r["_id"])
@@ -617,7 +626,11 @@ class RunDb:
                     connections = connections + 1
 
         if connections >= self.userdb.get_machine_limit(worker_info["username"]):
-            return {"task_waiting": False, "hit_machine_limit": True}
+            error = "Request_task: Machine limit reached for user {}".format(
+                worker_info["username"]
+            )
+            print(error, flush=True)
+            return {"task_waiting": False, "error": error}
 
         # Collect some data about the worker that will be used below.
 
@@ -825,56 +838,57 @@ class RunDb:
         task = run["tasks"][task_id]
         update_time = datetime.utcnow()
 
-        # task["active"]=True means that a worker should be working on this task.
-        # Tasks are created as "active" and become "not active" when they
-        # are finished, or when the worker goes offline.
+        error = ""
 
-        if not task["active"]:
-            print("Update_task: task {} is not active".format(task_id), flush=True)
-            return {"task_alive": False}
-
-        # First some sanity checks on the update
-        # If something is wrong we return early.
-
-        # Guard against incorrect results
         def count_games(d):
             return d["wins"] + d["losses"] + d["draws"]
 
         num_games = count_games(stats)
         old_num_games = count_games(task["stats"]) if "stats" in task else 0
         spsa_games = count_games(spsa) if "spsa" in run["args"] else 0
+
+        # First some sanity checks on the update
+        # If something is wrong we return early.
+
+        # task["active"]=True means that a worker should be working on this task.
+        # Tasks are created as "active" and become "not active" when they
+        # are finished, or when the worker goes offline.
+
+        if not task["active"]:
+            info = "Update_task: task {}/{} is not active".format(run_id, task_id)
+            print(info, flush=True)
+            task["active"] = False
+            return {"task_alive": False, "info": info}
+
+        # Guard against incorrect results
+
         if (
             num_games < old_num_games
             or (spsa_games > 0 and num_games <= 0)
             or (spsa_games > 0 and "stats" in task and num_games <= old_num_games)
-        ):
-            print("Update_task: task {} has incompatible stats".format(task_id))
-            print(
-                "Before {}. Now {}. SPSA_games {}.".format(
-                    old_num_games, num_games, spsa_games
-                ),
-                flush=True,
+        ) and error == "":
+            error = "Update_task: task {}/{} has incompatible stats. ".format(
+                run_id, task_id
+            ) + "Before {}. Now {}. SPSA_games {}.".format(
+                old_num_games, num_games, spsa_games
             )
-            task["active"] = False
-            return {"task_alive": False}
-        if (
+        elif (
             num_games - old_num_games
-        ) % 2 != 0:  # the worker should only return game pairs
-            print(
-                "Update_task: odd number of games received for task {}. Before {}. Now {}.".format(
-                    task_id, old_num_games, num_games
-                )
+        ) % 2 != 0 and error == "":  # the worker should only return game pairs
+            error = "Update_task: odd number of games received for task {}/{}. Before {}. Now {}.".format(
+                run_id, task_id, old_num_games, num_games
             )
-            task["active"] = False
-            return {"task_alive": False}
-        if "sprt" in run["args"]:
+        elif "sprt" in run["args"] and error == "":
             batch_size = 2 * run["args"]["sprt"].get("batch_size", 1)
             if num_games % batch_size != 0:
-                print(
-                    "Update_task: the number of games received for task {} is incompatible with the SPRT batch size"
-                ).format(task_id)
-                task["active"] = False
-                return {"task_alive": False}
+                error = "Update_task: the number of games received for task {}/{} is incompatible with the SPRT batch size".format(
+                    run_id, task_id
+                )
+
+        if error != "":
+            print(error, flush=True)
+            task["active"] = False
+            return {"task_alive": False, "error": error}
 
         # The update seems fine. Update run["tasks"][task_id] (=task).
 
@@ -942,8 +956,9 @@ class RunDb:
         task = run["tasks"][task_id]
         # Check if the worker is still working on this task.
         if not task["active"]:
-            print("Failed_task: task {} is not active".format(task_id), flush=True)
-            return {"task_alive": False}
+            info = "Failed_task: task {}/{} is not active".format(run_id, task_id)
+            print(info, flush=True)
+            return {"task_alive": False, "info": info}
         # Mark the task as inactive.
         task["active"] = False
         self.buffer(run, True)
@@ -1124,8 +1139,9 @@ class RunDb:
         task = run["tasks"][task_id]
         # Check if the worker is still working on this task.
         if not task["active"]:
-            print("Request_spsa: task {} is not active".format(task_id), flush=True)
-            return {"task_alive": False}
+            info = "Request_spsa: task {}/{} is not active".format(run_id, task_id)
+            print(info, flush=True)
+            return {"task_alive": False, "info": info}
 
         result = self.generate_spsa(run)
         self.store_params(

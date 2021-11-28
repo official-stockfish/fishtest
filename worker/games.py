@@ -108,7 +108,6 @@ def requests_post(remote, *args, **kw):
     # A lightweight wrapper around requests.post()
     try:
         result = requests.post(remote, *args, **kw)
-        result.raise_for_status()  # also catch return codes >= 400
     except Exception as e:
         print(
             "Exception in requests.post():\n",
@@ -122,12 +121,17 @@ def requests_post(remote, *args, **kw):
 
 
 def send_api_post_request(api_url, payload):
-    return requests_post(
+    response = requests_post(
         api_url,
         data=json.dumps(payload),
         headers={"Content-Type": "application/json"},
         timeout=HTTP_TIMEOUT,
-    )
+    ).json()
+    if "error" in response:
+        print("Error from remote: {}".format(response["error"]))
+    if "info" in response:
+        print("Info from remote: {}".format(response["info"]))
+    return response
 
 
 def github_api(repo):
@@ -788,7 +792,9 @@ def parse_cutechess_output(
                     try:
                         response = send_api_post_request(
                             remote + "/api/update_task", result
-                        ).json()
+                        )
+                        if "error" in response:
+                            break
                     except Exception as e:
                         print(
                             "Exception calling update_task:\n",
@@ -833,7 +839,9 @@ def launch_cutechess(
 
         # Request parameters for next game.
         t0 = datetime.datetime.utcnow()
-        req = send_api_post_request(remote + "/api/request_spsa", result).json()
+        req = send_api_post_request(remote + "/api/request_spsa", result)
+        if "error" in req:
+            raise WorkerException(req["error"])
         print(
             "Fetched SPSA parameters successfully in {}s".format(
                 (datetime.datetime.utcnow() - t0).total_seconds()
@@ -1147,8 +1155,6 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
 
     result["nps"] = float(base_nps)
     result["ARCH"] = ARCH
-
-    print("Running {} vs {}".format(run["args"]["new_tag"], run["args"]["base_tag"]))
 
     threads_cmd = []
     if not any("Threads" in s for s in new_options + base_options):

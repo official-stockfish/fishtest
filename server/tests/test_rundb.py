@@ -118,7 +118,8 @@ class CreateRunDBTest(unittest.TestCase):
             "worker2",
             "travis",
         )
-        self.assertEqual(run, {"task_alive": False})
+        self.assertFalse(run["task_alive"])
+        self.assertTrue("error" in run)
         run = self.rundb.update_task(
             run_id,
             0,
@@ -135,7 +136,8 @@ class CreateRunDBTest(unittest.TestCase):
             "worker1",
             "travis2",
         )
-        self.assertEqual(run, {"task_alive": False})
+        self.assertFalse(run["task_alive"])
+        self.assertTrue("info" in run)
         # revive task
         run_ = self.rundb.get_run(run_id)
         run_["tasks"][0]["active"] = True

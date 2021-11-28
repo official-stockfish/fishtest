@@ -31,7 +31,14 @@ except ImportError:
     sys.path.append(path.join(path.dirname(path.realpath(__file__)), "packages"))
     import requests
 
-from games import FatalException, RunException, WorkerException, run_games, str_signal
+from games import (
+    FatalException,
+    RunException,
+    WorkerException,
+    run_games,
+    send_api_post_request,
+    str_signal,
+)
 from updater import update
 
 WORKER_VERSION = 133
@@ -52,8 +59,8 @@ games.py  :       run_games()
 games.py  :          launch_cutechess()           [in loop for spsa]
 games.py  :             parse_cutechess_output()
 
-Api's used by the worker
-========================
+Apis used by the worker
+=======================
 
 <fishtest>     = https://tests.stockfishchess.org
 <github>       = https://api.github.com
@@ -348,17 +355,12 @@ def heartbeat(worker_info, password, remote, current_state):
                 print("Skipping heartbeat ...")
                 continue
             try:
-                req = requests.post(
-                    remote + "/api/beat",
-                    data=json.dumps(payload),
-                    headers={"Content-type": "application/json"},
-                    timeout=HTTP_TIMEOUT,
-                ).json()
+                req = send_api_post_request(remote + "/api/beat", payload)
             except Exception as e:
                 print("Exception calling heartbeat:\n", e, sep="", file=sys.stderr)
             else:
-                # TODO: make this follow the normal api rules
-                print(req)
+                if "error" not in req:
+                    print("(received)")
     else:
         print("Heartbeat stopped")
 
@@ -483,15 +485,9 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
         t0 = datetime.utcnow()
 
         print("Verify worker version...")
-        req = requests.post(
-            remote + "/api/request_version",
-            data=json.dumps(payload),
-            headers={"Content-type": "application/json"},
-            timeout=HTTP_TIMEOUT,
-        ).json()
+        req = send_api_post_request(remote + "/api/request_version", payload)
 
-        if "version" not in req:
-            print("Incorrect username/password")
+        if "error" in req:
             current_state["alive"] = False
             return False
 
@@ -506,20 +502,13 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
 
         t0 = datetime.utcnow()
         print("Fetch task...")
-
-        req = requests.post(
-            remote + "/api/request_task",
-            data=json.dumps(payload),
-            headers={"Content-type": "application/json"},
-            timeout=HTTP_TIMEOUT,
-        ).json()
+        req = send_api_post_request(remote + "/api/request_task", payload)
     except Exception as e:
         print("Exception accessing host:\n", e, sep="", file=sys.stderr)
         return False
 
     print("Task requested in {}s".format((datetime.utcnow() - t0).total_seconds()))
     if "error" in req:
-        print("Error from remote: {}".format(req["error"]))
         return False
 
     # No tasks ready for us yet, just wait...
@@ -530,6 +519,11 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
     run, task_id = req["run"], req["task_id"]
     current_state["run"] = run
     current_state["task_id"] = task_id
+
+    print(
+        "Working on task {} from {}/tests/view/{}".format(task_id, remote, run["_id"])
+    )
+    print("Running {} vs {}".format(run["args"]["new_tag"], run["args"]["base_tag"]))
 
     success = False
     message = ""
@@ -570,16 +564,9 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
         print("\nException running games:\n", message, sep="", file=sys.stderr)
         print("Informing the server")
         try:
-            req = requests.post(
-                api,
-                data=json.dumps(payload),
-                headers={"Content-type": "application/json"},
-                timeout=HTTP_TIMEOUT,
-            ).json()
+            req = send_api_post_request(api, payload)
         except Exception as e:
             print("Exception posting failed_task:\n", e, sep="", file=sys.stderr)
-        if "error" in req:
-            print("Error from remote: {}".format(req["error"]))
     # Upload PGN file.
     pgn_file = pgn_file[0]
     if pgn_file is not None and os.path.exists(pgn_file) and "spsa" not in run["args"]:
@@ -602,17 +589,9 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
                 zlib.compress(data.encode("utf-8"))
             ).decode()
             print("Uploading compressed PGN of {} bytes".format(len(payload["pgn"])))
-            req = requests.post(
-                remote + "/api/upload_pgn",
-                data=json.dumps(payload),
-                headers={"Content-type": "application/json"},
-                timeout=HTTP_TIMEOUT,
-            ).json()
+            req = send_api_post_request(remote + "/api/upload_pgn", payload)
         except Exception as e:
             print("\nException uploading PGN file:\n", e, sep="", file=sys.stderr)
-
-        if "error" in req:
-            print("Error from remote: {}".format(req["error"]))
 
     if pgn_file is not None and os.path.exists(pgn_file):
         try:
@@ -727,6 +706,8 @@ def worker():
     heartbeat_thread = threading.Thread(
         target=heartbeat, args=(worker_info, options.password, remote, current_state)
     )
+    heartbeat_thread.setDaemon(True)  # This should not be necessary,
+    # but there might be bugs ...
     heartbeat_thread.start()
 
     # If fleet==True then the worker will quit if it is unable to obtain
@@ -765,7 +746,7 @@ def worker():
             delay = HTTP_TIMEOUT
 
     print("Waiting for the heartbeat thread to finish...")
-    heartbeat_thread.join()
+    heartbeat_thread.join(HTTP_TIMEOUT)
 
     return 0 if fish_exit else 1
 
