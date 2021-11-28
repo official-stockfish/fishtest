@@ -146,13 +146,13 @@ else:
     <div class="flex-row input-group input-group-sm">
       <label class="field-label leftmost">Test signature</label>
       <input type="number" name="test-signature"
-             id="test-signature" class="no-arrows form-control"
+             id="test-signature" class="no-arrows form-control" onwheel="this.blur()"
              placeholder="Defaults to last commit message"
              value="${args.get('new_signature', '')}" ${'readonly' if is_rerun else ''}>
 
       <label class="field-label">Base signature</label>
       <input type="number" name="base-signature"
-             id="base-signature" class="no-arrows form-control"
+             id="base-signature" class="no-arrows form-control" onwheel="this.blur()"
              value="${args.get('base_signature', bench)}" ${'readonly' if is_rerun else ''}>
     </div>
 
