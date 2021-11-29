@@ -127,7 +127,9 @@ def sync_upload(request):
         with open(os.path.expanduser("~/fishtest.upload"), "r") as f:
             upload_server = f.read().replace("\n", "")
             upload_server = upload_server + "/" + filename
-            response = requests.post(upload_server, data=network, timeout=HTTP_TIMEOUT)
+            response = requests.post(
+                upload_server, data=network, timeout=HTTP_TIMEOUT * 20
+            )
             if response.status_code != 200:
                 print("Network upload failed: " + str(response.status_code))
                 request.session.flash(
