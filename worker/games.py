@@ -721,6 +721,12 @@ def parse_cutechess_output(
             raise RunException(message)
 
         # Parse line like this:
+        # Warning: Invalid value for option P: -354
+        if "Warning:" in line and "Invalid value" in line:
+            message = r'Cutechess-cli says: "{}"'.format(line)
+            raise RunException(message)
+
+        # Parse line like this:
         # Finished game 1 (stockfish vs base): 0-1 {White disconnects}
         if "disconnects" in line or "connection stalls" in line:
             result["stats"]["crashes"] += 1
