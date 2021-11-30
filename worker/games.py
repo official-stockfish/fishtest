@@ -82,6 +82,14 @@ def format_return_code(r):
         return str(r)
 
 
+def send_sigint(p):
+    if IS_WINDOWS:
+        # patches welcome...
+        pass
+    else:
+        p.send_signal(signal.SIGINT)
+
+
 # See https://stackoverflow.com/questions/16511337/correct-way-to-try-except-using-python-requests-module
 # for background.
 # It may be useful to introduce more refined http exception handling in the future.
@@ -897,6 +905,9 @@ def launch_cutechess(
                 tc_limit,
             )
         finally:
+            # We nicely ask cutechess-cli to stop.
+            # Unfortunately this only works under Linux right now.
+            send_sigint(p)
             print("\nWaiting for cutechess-cli to finish ... ", end="", flush=True)
             try:
                 p.wait(timeout=HTTP_TIMEOUT)
