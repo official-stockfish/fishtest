@@ -8,7 +8,7 @@ requires = [
     "pyramid_debugtoolbar",
     "pyramid_mako",
     "waitress",
-    "pymongo",
+    "pymongo < 4",
     "numpy",
     "scipy",
     "requests",
