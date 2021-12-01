@@ -131,9 +131,7 @@ class ApiView(object):
         )
         if "error" in token:
             self.handle_error(
-                "Invalid password for user: {}".format(
-                    self.request_body["worker_info"]["username"],
-                ),
+                token["error"],
                 exception=HTTPUnauthorized,
             )
 
