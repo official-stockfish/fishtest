@@ -8,8 +8,9 @@
 
 <div>
   <p></p>
-  <p>Thank you! Sign up to fishtest to contribute either CPU time and patches to test.</p>
-  <p>Once a new user account is created, an approver needs to manually activate it. This is usually quick, but sometimes takes a few hours.</p>
+  <p>Sign up to fishtest to contribute either CPU time or test patches you have coded.</p>
+  <p>A person will manually approve your new account, to avoid spam. This is usually quick, but sometimes takes a few hours.</p>
+  <p>Thank you!</p>
 
   <form class="form-horizontal" action="" method="POST">
     <input type="hidden" name="csrf_token"

@@ -38,10 +38,10 @@ class UserDb:
         user = self.find(username)
         if not user or user["password"] != password:
             sys.stderr.write("Invalid login: '{}' '{}'\n".format(username, password))
-            return {"error": "Invalid password for user {}".format(username)}
+            return {"error": "Invalid password for user: {}".format(username)}
         if "blocked" in user and user["blocked"]:
             sys.stderr.write("Blocked login: '{}' '{}'\n".format(username, password))
-            return {"error": "User {} is blocked".format(username)}
+            return {"error": "Account blocked for user: {}".format(username)}
 
         return {"username": username, "authenticated": True}
 

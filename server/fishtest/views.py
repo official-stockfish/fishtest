@@ -71,8 +71,15 @@ def login(request):
                 headers = remember(request, username)
             next_page = request.params.get("next") or came_from
             return HTTPFound(location=next_page, headers=headers)
-
-        request.session.flash(token["error"], "error")  # 'Incorrect password'
+        message = token["error"]
+        if "Account blocked for user:" in message:
+            message += (
+                " . If you recently registered to fishtest, "
+                "a person will now manually approve your new account, to avoid spam. "
+                "This is usually quick, but sometimes takes a few hours. "
+                "Thank you!"
+            )
+        request.session.flash(message, "error")
     return {}
 
 
@@ -222,7 +229,10 @@ def signup(request):
         request.session.flash("Error! Invalid username or password", "error")
     else:
         request.session.flash(
-            "Your account has been created, but will be activated by a human. This might take a few hours. Thank you for contributing!"
+            "Account created! "
+            "A person will now manually approve your new account, to avoid spam. "
+            "This is usually quick, but sometimes takes a few hours. "
+            "Thank you for contributing!"
         )
         return HTTPFound(location=request.route_url("login"))
     return {}
