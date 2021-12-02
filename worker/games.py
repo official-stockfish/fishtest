@@ -78,6 +78,8 @@ def str_signal(signal_):
 def format_return_code(r):
     if r < 0:
         return str_signal(-r)
+    elif r >= 256:
+        return str(hex(r))
     else:
         return str(r)
 
