@@ -447,6 +447,11 @@ def find_arch_string():
             res = "x86-64-avx512"
             res = "x86-64-bmi2"  # use bmi2 until avx512 performance becomes actually better
         elif (
+            "-mavxvnni" in props["flags"]
+            and "x86-64-avxvnni" in targets
+        ):
+            res = "x86-64-avxvnni"
+        elif (
             "-mbmi2" in props["flags"]
             and "x86-64-bmi2" in targets
             and props["arch"] not in ["znver1", "znver2"]
