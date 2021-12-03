@@ -907,11 +907,15 @@ def launch_cutechess(
                 tc_limit,
             )
         finally:
-            # We nicely ask cutechess-cli to stop.
-            # Unfortunately this only works under Linux right now.
-            send_sigint(p)
-            print("\nWaiting for cutechess-cli to finish ... ", end="", flush=True)
             try:
+                # We nicely ask cutechess-cli to stop.
+                # Unfortunately this only works under Linux right now.
+                try:
+                    send_sigint(p)
+                except Exception as e:
+                    print("\nException in send_sigint:\n", e, sep="", file=sys.stderr)
+                # now wait...
+                print("\nWaiting for cutechess-cli to finish ... ", end="", flush=True)
                 p.wait(timeout=HTTP_TIMEOUT)
             except:
                 print("timeout", flush=True)
