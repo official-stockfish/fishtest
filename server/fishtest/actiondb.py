@@ -50,6 +50,9 @@ class ActionDb:
     def failed_task(self, username, run):
         self._new_action(username, "failed_task", run)
 
+    def dead_task(self, username, run):
+        self._new_action(username, "dead_task", run)
+
     def _new_action(self, username, action, data):
         self.actions.insert_one(
             {

@@ -25,6 +25,7 @@ function timestamp(){
     <option value="update_stats">System Events</option>
     <option value="upload_nn">Upload NN file</option>
     <option value="failed_task">Failed Task</option>
+    <option value="dead_task">Dead Task</option>
   </select>
   &nbsp;From user:
   <input id="user" type="text" name="user" class="submit_on_enter">
