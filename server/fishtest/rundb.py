@@ -350,6 +350,7 @@ class RunDb:
         dead_task = False
         old = datetime.utcnow() - timedelta(minutes=3)
         task_id = -1
+        run_id = str(run["_id"])
         for task in run["tasks"]:
             task_id += 1
             if task["active"] and task["last_updated"] < old:
@@ -361,6 +362,12 @@ class RunDb:
                     ),
                     flush=True,
                 )
+                with self.active_run_lock(str(run_id)):
+                    run["dead_task"] = "task_id: {}, worker: {}".format(
+                        task_id, worker_name(task["worker_info"])
+                    )
+                    run = del_tasks(run)
+                    self.actiondb.dead_task(task["worker_info"]["username"], run)
         return dead_task
 
     def get_unfinished_runs_id(self):
