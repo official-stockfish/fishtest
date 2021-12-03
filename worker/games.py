@@ -23,6 +23,9 @@ from zipfile import ZipFile
 import requests
 
 IS_WINDOWS = "windows" in platform.system().lower()
+if IS_WINDOWS:
+    import ctypes
+    from multiprocessing import Process
 
 ARCH = "?"
 
@@ -84,10 +87,22 @@ def format_return_code(r):
         return str(r)
 
 
+def send_ctrl_c(pid):
+    kernel = ctypes.windll.kernel32
+    _ = (
+        kernel.FreeConsole()
+        and kernel.SetConsoleCtrlHandler(None, True)
+        and kernel.AttachConsole(pid)
+        and kernel.GenerateConsoleCtrlEvent(0, 0)
+    )
+
+
 def send_sigint(p):
     if IS_WINDOWS:
-        # patches welcome...
-        pass
+        if p.poll() is None:
+            proc = Process(target=send_ctrl_c, args=(p.pid,))
+            proc.start()
+            proc.join()
     else:
         p.send_signal(signal.SIGINT)
 
@@ -896,6 +911,14 @@ def launch_cutechess(
         stderr=subprocess.STDOUT,
         universal_newlines=True,
         bufsize=1,
+        # The next options are necessary to be able to send a CTRL_C_EVENT to this process.
+        # https://stackoverflow.com/questions/7085604/sending-c-to-python-subprocess-objects-on-windows
+        startupinfo=subprocess.STARTUPINFO(
+            dwFlags=subprocess.STARTF_USESHOWWINDOW, wShowWindow=subprocess.SW_HIDE
+        )
+        if IS_WINDOWS
+        else None,
+        creationflags=subprocess.CREATE_NEW_CONSOLE if IS_WINDOWS else 0,
         close_fds=not IS_WINDOWS,
     ) as p:
         try:
@@ -911,7 +934,6 @@ def launch_cutechess(
         finally:
             try:
                 # We nicely ask cutechess-cli to stop.
-                # Unfortunately this only works under Linux right now.
                 try:
                     send_sigint(p)
                 except Exception as e:
