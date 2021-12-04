@@ -22,10 +22,10 @@ function timestamp(){
     <option value="delete_run">Delete Run</option>
     <option value="purge_run">Purge Run</option>
     <option value="block_user">Block/Unblock User</option>
-    <option value="update_stats">System Events</option>
     <option value="upload_nn">Upload NN file</option>
-    <option value="failed_task">Failed Task</option>
-    <option value="dead_task">Dead Task</option>
+    <option value="failed_task">Failed Tasks</option>
+    <option class=grayedoutoption value="dead_task">Dead Tasks</option>
+    <option class=grayedoutoption value="update_stats">System Events</option>
   </select>
   &nbsp;From user:
   <input id="user" type="text" name="user" class="submit_on_enter">

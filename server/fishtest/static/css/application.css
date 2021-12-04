@@ -473,3 +473,7 @@ td {
 .pagination > li:last-child a {
   border-radius: 0 .25rem .25rem 0
 }
+
+option.grayedoutoption {
+    background-color: LightGray;
+}
