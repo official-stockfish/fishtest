@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import atexit
 import base64
-import json
 import math
 import multiprocessing
 import os
@@ -21,14 +20,15 @@ from contextlib import ExitStack
 from datetime import datetime
 from functools import partial
 from optparse import OptionParser
-from os import path
 
 # Try to import an user installed package,
 # fall back to the local one in case of error.
 try:
     import requests
 except ImportError:
-    sys.path.append(path.join(path.dirname(path.realpath(__file__)), "packages"))
+    sys.path.append(
+        os.path.join(os.path.dirname(os.path.realpath(__file__)), "packages")
+    )
     import requests
 
 from games import (
@@ -127,7 +127,13 @@ def setup_parameters(config_file):
         print("Exception checking HW info:\n", e, sep="", file=sys.stderr)
         return None
 
-    cpu_count = min(3, max(1, multiprocessing.cpu_count() - 1))
+    max_cpu_count = 0
+    try:
+        max_cpu_count = multiprocessing.cpu_count()
+    except Exception as e:
+        print("Exception checking the CPU cores count:\n", e, sep="", file=sys.stderr)
+
+    cpu_count = min(3, max(1, max_cpu_count - 1))
 
     defaults = [
         ("login", "username", ""),
@@ -218,12 +224,12 @@ def setup_parameters(config_file):
         # Rewrite old port 80 to 443
         options.port = "443"
 
-    try:
+    if max_cpu_count > 0:
         if options.use_all_cores == "True":
-            cpu_count = multiprocessing.cpu_count()
+            cpu_count = max_cpu_count
         else:
             cpu_count = int(options.concurrency)
-            if cpu_count > multiprocessing.cpu_count() - 1:
+            if cpu_count > max_cpu_count - 1:
                 print(
                     (
                         "\nYou cannot have concurrency {} but at most:\n"
@@ -231,13 +237,12 @@ def setup_parameters(config_file):
                         "{} with option --use_all_cores\n"
                     ).format(
                         options.concurrency,
-                        multiprocessing.cpu_count() - 1,
-                        multiprocessing.cpu_count(),
+                        max_cpu_count - 1,
+                        max_cpu_count,
                     )
                 )
                 return None
-    except Exception as e:
-        print(e, file=sys.stderr)
+    else:
         cpu_count = int(options.concurrency)
 
     if cpu_count <= 0:
@@ -609,13 +614,13 @@ def worker():
         print("The script must be named 'worker.py'!")
         return 1
 
-    worker_dir = path.dirname(path.realpath(__file__))
+    worker_dir = os.path.dirname(os.path.realpath(__file__))
     print("Worker started in {} ... (PID={})".format(worker_dir, os.getpid()))
 
     # Python doesn't have a cross platform file locking api.
     # So we check periodically for the existence
     # of a lock file.
-    lock_file = path.join(worker_dir, "worker.lock")
+    lock_file = os.path.join(worker_dir, "worker.lock")
     if locked_by_others(lock_file, require_valid=False):
         return 1
     if not create_lock_file(lock_file):
@@ -657,7 +662,7 @@ def worker():
         pass
 
     # Handle command line parameters and the config file.
-    config_file = path.join(worker_dir, "fishtest.cfg")
+    config_file = os.path.join(worker_dir, "fishtest.cfg")
     options = setup_parameters(config_file)
     if options is None:
         return 1
@@ -670,7 +675,11 @@ def worker():
         return 1
     major, minor, patchlevel = gcc_version_
     if (major, minor) < (7, 3):
-        print("Please update to g++ version 7.3 or later".format(major, minor))
+        print(
+            "Found g++ version {}.{}. Please update to g++ version 7.3 or later".format(
+                major, minor
+            )
+        )
         return 1
 
     # Assemble the config/options data as well as some other data in a
@@ -695,19 +704,19 @@ def worker():
     }
 
     print("UUID:", worker_info["unique_key"])
-    with open(path.join(worker_dir, "uuid.txt"), "w") as f:
+    with open(os.path.join(worker_dir, "uuid.txt"), "w") as f:
         f.write(worker_info["unique_key"])
 
     # All seems to be well...
     remote = "{}://{}:{}".format(options.protocol, options.host, options.port)
     print("Worker version {} connecting to {}".format(WORKER_VERSION, remote))
 
-    # Start heartbeat.
+    # Start heartbeat thread as a daemon (not strictly necessary, but there might be bugs)
     heartbeat_thread = threading.Thread(
-        target=heartbeat, args=(worker_info, options.password, remote, current_state)
+        target=heartbeat,
+        args=(worker_info, options.password, remote, current_state),
+        daemon=True,
     )
-    heartbeat_thread.setDaemon(True)  # This should not be necessary,
-    # but there might be bugs ...
     heartbeat_thread.start()
 
     # If fleet==True then the worker will quit if it is unable to obtain
@@ -723,7 +732,7 @@ def worker():
     delay = HTTP_TIMEOUT
     fish_exit = False
     while current_state["alive"]:
-        if path.isfile(path.join(worker_dir, "fish.exit")):
+        if os.path.isfile(os.path.join(worker_dir, "fish.exit")):
             current_state["alive"] = False
             print("Stopped by 'fish.exit' file")
             fish_exit = True

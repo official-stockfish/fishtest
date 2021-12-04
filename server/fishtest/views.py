@@ -343,9 +343,7 @@ def actions(request):
                     action["data"].get("failure_reason", "Unknown reason")
                 )
             if action["action"] == "dead_task":
-                item["description"] += ": {}".format(
-                    action["data"].get("dead_task")
-                )
+                item["description"] += ": {}".format(action["data"].get("dead_task"))
             if action["action"] == "stop_run":
                 item["description"] += ": {}".format(
                     action["data"].get("stop_reason", "User stop")

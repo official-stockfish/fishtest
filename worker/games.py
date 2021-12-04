@@ -1,9 +1,11 @@
 import copy
+import ctypes
 import datetime
 import glob
 import hashlib
 import json
 import math
+import multiprocessing
 import os
 import platform
 import re
@@ -23,9 +25,6 @@ from zipfile import ZipFile
 import requests
 
 IS_WINDOWS = "windows" in platform.system().lower()
-if IS_WINDOWS:
-    import ctypes
-    from multiprocessing import Process
 
 ARCH = "?"
 
@@ -100,7 +99,7 @@ def send_ctrl_c(pid):
 def send_sigint(p):
     if IS_WINDOWS:
         if p.poll() is None:
-            proc = Process(target=send_ctrl_c, args=(p.pid,))
+            proc = multiprocessing.Process(target=send_ctrl_c, args=(p.pid,))
             proc.start()
             proc.join()
     else:
