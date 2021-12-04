@@ -326,3 +326,7 @@ pre[style*="border-color:Pink"] {
   background: rgb(68, 68, 68);
   color: rgb(177, 173, 167);
 }
+
+option.grayedoutoption {
+    background-color: Gray;
+}

@@ -13,7 +13,7 @@ class ActionDb:
         if action:
             q["action"] = action
         else:
-            q["action"] = {"$ne": "update_stats"}
+            q["action"] = {"$nin": ["update_stats", "dead_task"]}
         if username:
             q["username"] = username
         if before:
