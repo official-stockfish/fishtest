@@ -217,6 +217,12 @@ def setup_parameters(config_file):
     elif protocol == "https" and options.port == "80":
         # Rewrite old port 80 to 443
         options.port = "443"
+    # If we are not going to use all cores, then unset that option.
+    # Note that if we used that option previously, we'd have set
+    # concurrency to the maximum value in the config file, so this will
+    # (only) apply when overruling concurrency via the command line.
+    if cpu_count < multiprocessing.cpu_count():
+        options.use_all_cores = "False"
 
     try:
         if options.use_all_cores == "True":
