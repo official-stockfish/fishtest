@@ -150,7 +150,23 @@ def send_api_post_request(api_url, payload):
         data=json.dumps(payload),
         headers={"Content-Type": "application/json"},
         timeout=HTTP_TIMEOUT,
-    ).json()
+    )
+    valid_response = True
+    try:
+        response = response.json()
+    except Exception as e:
+        valid_response = False
+    if valid_response and not isinstance(response, dict):
+        valid_response = False
+    if not valid_response:
+        message = "The reply to post request {} was not a json encoded dictionary".format(api_url)
+        print(
+            "Exception in send_api_post_request():\n",
+            message,
+            sep="",
+            file=sys.stderr,
+        )
+        raise WorkerException(message, e=e)
     if "error" in response:
         print("Error from remote: {}".format(response["error"]))
     if "info" in response:
