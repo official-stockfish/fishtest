@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import atexit
 import base64
+import getpass
 import math
 import multiprocessing
 import os
@@ -15,11 +16,11 @@ import time
 import traceback
 import uuid
 import zlib
-from configparser import ConfigParser
+from argparse import ArgumentParser
+from configparser import ConfigParser, NoOptionError, NoSectionError
 from contextlib import ExitStack
 from datetime import datetime
 from functools import partial
-from optparse import OptionParser
 
 # Try to import an user installed package,
 # fall back to the local one in case of error.
@@ -45,6 +46,7 @@ WORKER_VERSION = 137
 HTTP_TIMEOUT = 15.0
 MAX_RETRY_TIME = 14400.0  # four hours
 IS_WINDOWS = "windows" in platform.system().lower()
+CONFIGFILE = "fishtest.cfg"
 
 """
 Bird's eye view of the worker
@@ -93,6 +95,50 @@ In that case the corresponding value is an error message.
 """
 
 
+def _bool(x):
+    x = x.strip().lower()
+    if x in {"true", "1"}:
+        return True
+    if x in {"false", "0"}:
+        return False
+    raise ValueError(x)
+
+
+_bool.__name__ = "bool"
+
+
+def _cores(max_cpu_count, x):
+    x = x.strip()
+    if x == "max":
+        return max_cpu_count
+    try:
+        x = int(x)
+    except ValueError:
+        raise ValueError(x)
+
+    if x <= 0:
+        raise ValueError(x)
+
+    if x >= max_cpu_count:
+        print(
+            (
+                "\nYou cannot have concurrency {} but at most:\n"
+                "  a) {} with '--concurrency max';\n"
+                "  b) {} otherwise.\n"
+                "Please use option a) only if your computer is very lightly loaded.\n"
+            ).format(
+                x,
+                max_cpu_count,
+                max_cpu_count - 1,
+            )
+        )
+        raise ValueError(x)
+    return x
+
+
+_cores.__name__ = "concurrency"
+
+
 def safe_sleep(f):
     try:
         time.sleep(f)
@@ -100,11 +146,122 @@ def safe_sleep(f):
         print("\nSleep interrupted...")
 
 
-def setup_parameters(config_file):
+def verify_credentials(remote, username, password, cached):
+    # Returns:
+    # True  : username/password are ok
+    # False : username/password are not ok
+    # None  : network error: unable to determine the status of
+    #         username/password
+    req = {}
+    if username != "" and password != "":
+        print(
+            "Confirming {} credentials with {}".format(
+                "cached" if cached else "supplied", remote
+            )
+        )
+        payload = {"worker_info": {"username": username}, "password": password}
+        try:
+            req = send_api_post_request(remote + "/api/request_version", payload)
+        except Exception as e:
+            return None  # network problem (unrecoverable)
+        if "error" in req:
+            return False  # invalid username/password
+    else:
+        return False  # empty username or password
+    print("Credentials ok!")
+    return True
+
+
+def get_credentials(config, options, args):
+
+    remote = "{}://{}:{}".format(options.protocol, options.host, options.port)
+    print("Worker version {} connecting to {}".format(WORKER_VERSION, remote))
+
+    username = config.get("login", "username")
+    password = config.get("login", "password", raw=True)
+    cached = True
+    if len(args) == 2:
+        username = args[0]
+        password = args[1]
+        cached = False
+    if not options.validate:
+        return username, password
+
+    ret = verify_credentials(remote, username, password, cached)
+    if ret is None:
+        return "", ""
+    elif not ret:
+        try:
+            username = input("Username: ")
+            if username != "":
+                password = getpass.getpass()
+        except:
+            print("")
+            return "", ""
+        else:
+            if not verify_credentials(remote, username, password, False):
+                return "", ""
+
+    return username, password
+
+
+def set_defaults(config, defaults):
+    for v in defaults:
+        if not config.has_section(v[0]):
+            config.add_section(v[0])
+        if not config.has_option(v[0], v[1]):
+            config.set(*v[:3])
+        else:
+            o = config.get(v[0], v[1])
+            t = v[3]
+            if callable(t):
+                try:
+                    _ = t(o)
+                except:
+                    print(
+                        "The value '{}' of config option '{}' is not of type {}.\n"
+                        "Replacing it by the default value {}".format(
+                            o, v[1], v[3].__name__, v[2]
+                        )
+                    )
+                    config.set(*v[:3])
+            elif o not in t:
+                print(
+                    "The value '{}' of config option '{}' is not in {}.\n"
+                    "Replacing it by the default value {}".format(o, v[1], v[3], v[2])
+                )
+                config.set(*v[:3])
+
+    # cleanup
+    defaults_ = [v[:2] for v in defaults]
+    defaults__ = [v[0] for v in defaults]
+    for section in config.sections():
+        if section not in defaults__:
+            print("Removing unknown config section '{}'".format(section))
+            config.remove_section(section)
+            continue
+        for option in config.options(section):
+            if (section, option) not in defaults_:
+                print("Removing unknown config option '{}'".format(option))
+                config.remove_option(section, option)
+
+
+def setup_parameters(worker_dir):
 
     # Step 1: read the config file if it exists.
     config = ConfigParser()
-    config.read(config_file)
+    config_file = os.path.join(worker_dir, CONFIGFILE)
+    try:
+        config.read(config_file)
+    except Exception as e:
+        print(
+            "Exception reading configfile {}:\n".format(config_file),
+            e,
+            sep="",
+            file=sys.stderr,
+        )
+        print("Initializing configfile")
+        config = ConfigParser()
 
     # Step 2: replace missing config options by defaults.
     mem = 0
@@ -122,7 +279,6 @@ def setup_parameters(config_file):
         with os.popen(cmd) as proc:
             mem_str = str(proc.readlines())
         mem = int(re.search(r"\d+", mem_str).group())
-        print("Memory: " + str(mem))
     except Exception as e:
         print("Exception checking HW info:\n", e, sep="", file=sys.stderr)
         return None
@@ -133,139 +289,185 @@ def setup_parameters(config_file):
     except Exception as e:
         print("Exception checking the CPU cores count:\n", e, sep="", file=sys.stderr)
 
+    __cores = lambda x: _cores(max_cpu_count, x)
+    __cores.__name__ = _cores.__name__
+
     cpu_count = min(3, max(1, max_cpu_count - 1))
 
+    # For backward compatibility. Will be removed.
+    try:
+        if config.getboolean("parameters", "use_all_cores"):
+            config.set("parameters", "concurrency", "max")
+    except (NoOptionError, NoSectionError, ValueError):
+        pass
+
     defaults = [
-        ("login", "username", ""),
-        ("login", "password", ""),
-        ("parameters", "protocol", "https"),
-        ("parameters", "host", "tests.stockfishchess.org"),
-        ("parameters", "port", "443"),
-        ("parameters", "concurrency", str(cpu_count)),
-        ("parameters", "max_memory", str(int(mem / 2 / 1024 / 1024))),
-        ("parameters", "min_threads", "1"),
-        ("parameters", "fleet", "False"),
-        ("parameters", "use_all_cores", "False"),
+        ("login", "username", "", str),
+        ("login", "password", "", str),
+        ("parameters", "protocol", "https", ["http", "https"]),
+        ("parameters", "host", "tests.stockfishchess.org", str),
+        ("parameters", "port", "443", int),
+        ("parameters", "concurrency", str(cpu_count), __cores),
+        ("parameters", "max_memory", str(int(mem / 2 / 1024 / 1024)), int),
+        ("parameters", "min_threads", "1", int),
+        ("parameters", "fleet", "False", _bool),
     ]
 
-    for v in defaults:
-        if not config.has_section(v[0]):
-            config.add_section(v[0])
-        if not config.has_option(v[0], v[1]):
-            config.set(*v)
+    set_defaults(config, defaults)
 
-    # Step 3: parse the command line. Use the current config options as defaults.
-    parser = OptionParser()
-    parser.add_option(
+    # Step 3: parse the command line. Use the current config options mostly as defaults.
+
+    parser = ArgumentParser(
+        usage="python worker.py [USERNAME PASSWORD] [OPTIONS]",
+    )
+    parser.add_argument(
         "-P",
         "--protocol",
         dest="protocol",
         default=config.get("parameters", "protocol"),
+        choices=["http", "https"],
+        help="the protocol used by the server",
     )
-    parser.add_option(
-        "-n", "--host", dest="host", default=config.get("parameters", "host")
+    parser.add_argument(
+        "-n",
+        "--host",
+        dest="host",
+        default=config.get("parameters", "host"),
+        help="the hostname of the fishtest server",
     )
-    parser.add_option(
-        "-p", "--port", dest="port", default=config.get("parameters", "port")
+    parser.add_argument(
+        "-p",
+        "--port",
+        dest="port",
+        default=config.getint("parameters", "port"),
+        type=int,
+        help="the port of the fishtest server",
     )
-    parser.add_option(
+    parser.add_argument(
         "-c",
         "--concurrency",
         dest="concurrency",
         default=config.get("parameters", "concurrency"),
+        type=__cores,
+        help="the maximum amount of cores that the worker will use",
     )
-    parser.add_option(
+    parser.add_argument(
         "-m",
         "--max_memory",
         dest="max_memory",
-        default=config.get("parameters", "max_memory"),
+        default=config.getint("parameters", "max_memory"),
+        type=int,
+        help="the maximum amount of memory (in MiB) that the worker will use",
     )
-    parser.add_option(
+    parser.add_argument(
         "-t",
         "--min_threads",
         dest="min_threads",
-        default=config.get("parameters", "min_threads"),
+        default=config.getint("parameters", "min_threads"),
+        type=int,
+        help="do not accept tasks with fewer threads than MIN_THREADS",
     )
-    parser.add_option(
-        "-f", "--fleet", dest="fleet", default=config.get("parameters", "fleet")
+    parser.add_argument(
+        "-f",
+        "--fleet",
+        dest="fleet",
+        default=config.getboolean("parameters", "fleet"),
+        type=_bool,
+        choices=[False, True],  # useful for usage message
+        help="quit in case of errors or if no task is available",
     )
-    parser.add_option(
+    parser.add_argument(
         "-a",
         "--use_all_cores",
         dest="use_all_cores",
-        default=config.get("parameters", "use_all_cores"),
+        type=_bool,
+        choices=[False, True],
+        help="deprecated",
     )
-    parser.add_option("-w", "--only_config", dest="only_config", default=False)
-    (options, args) = parser.parse_args()
+    parser.add_argument(
+        "-w",
+        "--only_config",
+        dest="only_config",
+        action="store_true",
+        help="just write the configfile and quit",
+    )
+    parser.add_argument(
+        "-v",
+        "--no_validation",
+        dest="validate",
+        action="store_false",
+        help="do not validate username/password with server",
+    )
 
-    username = config.get("login", "username")
-    password = config.get("login", "password", raw=True)
+    def my_error(e):
+        raise Exception(e)
 
-    if len(args) == 2:
-        username = args[0]
-        password = args[1]
-    elif len(args) != 0 or len(username) == 0 or len(password) == 0:
-        print("{} [username] [password]\n".format(sys.argv[0]))
+    parser.error = my_error
+    try:
+        (options, args) = parser.parse_known_args()
+    except Exception as e:
+        print(str(e))
+        return None
+
+    if len(args) not in [0, 2]:
+        parser.print_usage()
+        return None
+
+    # Step 4: fix inconsistencies in the config options.
+    if options.protocol == "http" and options.port == 443:
+        # Rewrite old port 443 to 80
+        print("Changing port to 80")
+        options.port = 80
+    elif options.protocol == "https" and options.port == 80:
+        # Rewrite old port 80 to 443
+        print("Changing port to 443")
+        options.port = 443
+
+    # For backward compatibility. Will be removed.
+    if options.use_all_cores is not None:
+        print("")
+        print("Warning: --use_all_cores is deprecated and will be removed")
+        if options.use_all_cores:
+            print("Use '--concurrency max' instead of '--use_all_cores True'")
+            options.concurrency = max_cpu_count
+        print("")
+
+    # Step 6: determine credentials
+
+    username, password = get_credentials(config, options, args)
+
+    if username == "":
+        print("Invalid or missing credentials")
         return None
 
     options.username = username
     options.password = password
 
-    # Step 4: fix inconsistencies in the config options.
-    protocol = options.protocol.lower()
-    options.protocol = protocol
-    if protocol not in ["http", "https"]:
-        print("Wrong protocol, use https or http\n")
-        return None
-    elif protocol == "http" and options.port == "443":
-        # Rewrite old port 443 to 80
-        options.port = "80"
-    elif protocol == "https" and options.port == "80":
-        # Rewrite old port 80 to 443
-        options.port = "443"
-
-    if max_cpu_count > 0:
-        if options.use_all_cores == "True":
-            cpu_count = max_cpu_count
-        else:
-            cpu_count = int(options.concurrency)
-            if cpu_count > max_cpu_count - 1:
-                print(
-                    (
-                        "\nYou cannot have concurrency {} but at most:\n"
-                        "{} with option --concurrency\n"
-                        "{} with option --use_all_cores\n"
-                    ).format(
-                        options.concurrency,
-                        max_cpu_count - 1,
-                        max_cpu_count,
-                    )
-                )
-                return None
-    else:
-        cpu_count = int(options.concurrency)
-
-    if cpu_count <= 0:
-        print("Not enough CPUs to run fishtest: set '--concurrency' to at least one")
-        return None
-
-    options.concurrency = str(cpu_count)
-
-    # Step 5: write command line parameters to the config file.
+    # Step 7: write command line parameters to the config file.
     config.set("login", "username", options.username)
     config.set("login", "password", options.password)
     config.set("parameters", "protocol", options.protocol)
     config.set("parameters", "host", options.host)
-    config.set("parameters", "port", options.port)
-    config.set("parameters", "concurrency", options.concurrency)
-    config.set("parameters", "max_memory", options.max_memory)
-    config.set("parameters", "min_threads", options.min_threads)
-    config.set("parameters", "fleet", options.fleet)
-    config.set("parameters", "use_all_cores", options.use_all_cores)
+    config.set("parameters", "port", str(options.port))
+    if options.concurrency < max_cpu_count:
+        config.set("parameters", "concurrency", str(options.concurrency))
+    else:
+        config.set("parameters", "concurrency", "max")
+    config.set("parameters", "max_memory", str(options.max_memory))
+    config.set("parameters", "min_threads", str(options.min_threads))
+    config.set("parameters", "fleet", str(options.fleet))
 
     with open(config_file, "w") as f:
         config.write(f)
 
+    print(
+        "System memory determined to be: {:.3f}GiB".format(mem / (1024 * 1024 * 1024))
+    )
+    print(
+        "Worker constraints: {{'concurrency': {}, 'max_memory': {}, 'min_threads': {}}}".format(
+            options.concurrency, options.max_memory, options.min_threads
+        )
+    )
     print("Config file {} written".format(config_file))
 
     return options
@@ -662,9 +864,9 @@ def worker():
         pass
 
     # Handle command line parameters and the config file.
-    config_file = os.path.join(worker_dir, "fishtest.cfg")
-    options = setup_parameters(config_file)
+    options = setup_parameters(worker_dir)
     if options is None:
+        print("Error parsing options. Config file not written.")
         return 1
     if options.only_config:
         return 0
@@ -689,9 +891,9 @@ def worker():
     worker_info = {
         "uname": uname[0] + " " + uname[2],
         "architecture": platform.architecture(),
-        "concurrency": int(options.concurrency),
-        "max_memory": int(options.max_memory),
-        "min_threads": int(options.min_threads),
+        "concurrency": options.concurrency,
+        "max_memory": options.max_memory,
+        "min_threads": options.min_threads,
         "username": options.username,
         "version": "{}:{}.{}.{}".format(
             WORKER_VERSION,
@@ -709,7 +911,6 @@ def worker():
 
     # All seems to be well...
     remote = "{}://{}:{}".format(options.protocol, options.host, options.port)
-    print("Worker version {} connecting to {}".format(WORKER_VERSION, remote))
 
     # Start heartbeat thread as a daemon (not strictly necessary, but there might be bugs)
     heartbeat_thread = threading.Thread(
@@ -726,8 +927,6 @@ def worker():
     # a fleet of workers to quickly quit as soon as the queue is empty
     # or the server down.
 
-    fleet = options.fleet.lower() == "true"
-
     # Start the main loop.
     delay = HTTP_TIMEOUT
     fish_exit = False
@@ -743,7 +942,7 @@ def worker():
         if not current_state["alive"]:  # the user may have pressed Ctrl-C...
             break
         elif not success:
-            if fleet:
+            if options.fleet:
                 current_state["alive"] = False
                 print("Exiting the worker since fleet==True and an error occurred")
                 break
