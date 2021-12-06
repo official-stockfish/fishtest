@@ -25,8 +25,11 @@ class workerTest(unittest.TestCase):
             pass
 
     def test_config_setup(self):
-        sys.argv = [sys.argv[0], "user", "pass"]
-        worker.setup_parameters("foo.txt")
+        sys.argv = [sys.argv[0], "user", "pass", "--validate", "false"]
+        if os.path.exists("foo.txt"):
+            os.remove("foo.txt")
+        worker.CONFIGFILE = "foo.txt"
+        worker.setup_parameters(".")
         from configparser import ConfigParser
 
         config = ConfigParser()
@@ -40,7 +43,11 @@ class workerTest(unittest.TestCase):
         self.assertTrue(config.has_option("parameters", "concurrency"))
 
     def test_worker_script_with_no_args(self):
-        with subprocess.Popen(["python", "worker.py"]) as p:
+        assert not os.path.exists("fishtest.cfg")
+        with subprocess.Popen(
+            ["python", "worker.py"],
+            stdin=subprocess.PIPE,
+        ) as p:
             p.communicate()
             self.assertEqual(p.returncode, 1)
 

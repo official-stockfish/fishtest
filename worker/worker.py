@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import atexit
 import base64
+import getpass
 import math
 import multiprocessing
 import os
@@ -45,6 +46,7 @@ WORKER_VERSION = 137
 HTTP_TIMEOUT = 15.0
 MAX_RETRY_TIME = 14400.0  # four hours
 IS_WINDOWS = "windows" in platform.system().lower()
+CONFIGFILE = "fishtest.cfg"
 
 """
 Bird's eye view of the worker
@@ -101,6 +103,7 @@ def _bool(x):
         return False
     raise ValueError(x)
 
+
 _bool.__name__ = "bool"
 
 
@@ -111,10 +114,70 @@ def safe_sleep(f):
         print("\nSleep interrupted...")
 
 
-def setup_parameters(config_file):
+def verify_credentials(remote, username, password, cached):
+    # Returns:
+    # True  : username/password are ok
+    # False : username/password are not ok
+    # None  : network error: unable to determine the status of
+    #         username/password
+    req = {}
+    if username != "" and password != "":
+        print(
+            "Confirming {} credentials with {}".format(
+                "cached" if cached else "supplied", remote
+            )
+        )
+        payload = {"worker_info": {"username": username}, "password": password}
+        try:
+            req = send_api_post_request(remote + "/api/request_version", payload)
+        except:
+            return None  # network problem (unrecoverable)
+        if "error" in req:
+            return False  # invalid username/password
+    else:
+        return False  # empty username or password
+    print("Credentials ok!")
+    return True
+
+
+def get_credentials(config, options, args):
+
+    remote = "{}://{}:{}".format(options.protocol, options.host, options.port)
+    print("Worker version {} connecting to {}".format(WORKER_VERSION, remote))
+
+    username = config.get("login", "username")
+    password = config.get("login", "password", raw=True)
+    cached = True
+    if len(args) == 2:
+        username = args[0]
+        password = args[1]
+        cached = False
+    if not options.validate:
+        return username, password
+
+    ret = verify_credentials(remote, username, password, cached)
+    if ret is None:
+        return "", ""
+    elif not ret:
+        try:
+            username = input("Username: ")
+            if username != "":
+                password = getpass.getpass()
+        except:
+            print("")
+            return "", ""
+        else:
+            if not verify_credentials(remote, username, password, False):
+                return "", ""
+
+    return username, password
+
+
+def setup_parameters(worker_dir):
 
     # Step 1: read the config file if it exists.
     config = ConfigParser()
+    config_file = os.path.join(worker_dir, CONFIGFILE)
     try:
         config.read(config_file)
     except Exception as e:
@@ -124,7 +187,8 @@ def setup_parameters(config_file):
             sep="",
             file=sys.stderr,
         )
-        return None
+        print("Initializing configfile")
+        config = ConfigParser()
 
     # Step 2: replace missing config options by defaults.
     mem = 0
@@ -152,7 +216,8 @@ def setup_parameters(config_file):
     except Exception as e:
         print("Exception checking the CPU cores count:\n", e, sep="", file=sys.stderr)
 
-    cpu_count = min(3, max(1, max_cpu_count - 1))
+    default_cpu_count = min(3, max(1, max_cpu_count - 1))
+    cpu_count = default_cpu_count
 
     try:
         if config.getboolean("parameters", "use_all_cores"):
@@ -205,8 +270,8 @@ def setup_parameters(config_file):
     # Step 3: parse the command line. Use the current config options mostly as defaults.
 
     parser = ArgumentParser(
-        description="usage (long version):"
-        " worker.py USERNAME PASSWORD [OPTIONS]"
+        description="usage (long version):" " worker.py USERNAME PASSWORD [OPTIONS]",
+        usage="python worker.py [USERNAME PASSWORD] [OPTIONS]",
     )
     parser.add_argument(
         "-P",
@@ -280,6 +345,15 @@ def setup_parameters(config_file):
         choices=[False, True],
         help="just write the configfile and quit",
     )
+    parser.add_argument(
+        "-v",
+        "--validate",
+        dest="validate",
+        default=True,
+        type=_bool,
+        choices=[False, True],
+        help="validate username/password with server",
+    )
 
     def my_error(e):
         raise Exception(e)
@@ -291,18 +365,9 @@ def setup_parameters(config_file):
         print(str(e))
         return None
 
-    username = config.get("login", "username")
-    password = config.get("login", "password", raw=True)
-
-    if len(args) == 2:
-        username = args[0]
-        password = args[1]
-    elif len(args) != 0 or len(username) == 0 or len(password) == 0:
-        print("{} [username] [password]\n".format(sys.argv[0]))
+    if len(args) not in [0, 2]:
+        parser.print_usage()
         return None
-
-    options.username = username
-    options.password = password
 
     # Step 4: fix inconsistencies in the config options.
     if options.protocol == "http" and options.port == 443:
@@ -322,6 +387,10 @@ def setup_parameters(config_file):
 
     # "--use_all_cores False" disallows the use of all cores.
 
+    # When using --use_all_cores False when --use_all_cores True
+    # is in effect, we reset concurrency to the default
+    # value.
+
     # We first want to look at the option --use_all_cores on
     # the command line, before replacing it by the value from
     # the config file.
@@ -331,6 +400,14 @@ def setup_parameters(config_file):
         and options.concurrency is None
     ):
         options.concurrency = max_cpu_count
+    if (
+        options.use_all_cores is not None
+        and not options.use_all_cores
+        and options.concurrency is None
+        and config.getint("parameters", "concurrency") >= max_cpu_count
+    ):
+        print("Resetting concurrency to the default value {}".format(default_cpu_count))
+        options.concurrency = default_cpu_count
     if options.use_all_cores is None:
         options.use_all_cores = config.getboolean("parameters", "use_all_cores")
     if options.concurrency is None:
@@ -357,13 +434,28 @@ def setup_parameters(config_file):
         print("Not enough CPUs to run fishtest: set '--concurrency' to at least one")
         return None
 
-    # Step 5: write command line parameters to the config file.
+    # Step 6: determine credentials
+
+    username, password = get_credentials(config, options, args)
+
+    if username == "":
+        print("Invalid or missing credentials")
+        return None
+
+    options.username = username
+    options.password = password
+
+    # Step 7: write command line parameters to the config file.
     config.set("login", "username", options.username)
     config.set("login", "password", options.password)
     config.set("parameters", "protocol", options.protocol)
     config.set("parameters", "host", options.host)
     config.set("parameters", "port", str(options.port))
-    config.set("parameters", "concurrency", str(options.concurrency))
+    if options.concurrency != max_cpu_count:
+        config.set("parameters", "concurrency", str(options.concurrency))
+    else:
+        assert options.use_all_cores
+        config.remove_option("parameters", "concurrency")
     config.set("parameters", "max_memory", str(options.max_memory))
     config.set("parameters", "min_threads", str(options.min_threads))
     config.set("parameters", "fleet", str(options.fleet))
@@ -373,9 +465,7 @@ def setup_parameters(config_file):
         config.write(f)
 
     print(
-        "System memory determined to be: {:.3f}GiB".format(
-            mem / (1024 * 1024 * 1024)
-        )
+        "System memory determined to be: {:.3f}GiB".format(mem / (1024 * 1024 * 1024))
     )
     print(
         "Worker constraints: {{'concurrency': {}, 'max_memory': {}, 'min_threads': {}}}".format(
@@ -778,8 +868,7 @@ def worker():
         pass
 
     # Handle command line parameters and the config file.
-    config_file = os.path.join(worker_dir, "fishtest.cfg")
-    options = setup_parameters(config_file)
+    options = setup_parameters(worker_dir)
     if options is None:
         print("Error parsing options. Config file not written.")
         return 1
@@ -826,7 +915,6 @@ def worker():
 
     # All seems to be well...
     remote = "{}://{}:{}".format(options.protocol, options.host, options.port)
-    print("Worker version {} connecting to {}".format(WORKER_VERSION, remote))
 
     # Start heartbeat thread as a daemon (not strictly necessary, but there might be bugs)
     heartbeat_thread = threading.Thread(
