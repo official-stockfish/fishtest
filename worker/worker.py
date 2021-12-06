@@ -93,35 +93,15 @@ In that case the corresponding value is an error message.
 """
 
 
-bool_list = ["true", "1", "false", "0"]
+def _bool(x):
+    x = x.strip().lower()
+    if x in {"true", "1"}:
+        return True
+    if x in {"false", "0"}:
+        return False
+    raise ValueError(x)
 
-# A custom boolean type that can be instantiated
-# from a string.
-class BOOL(object):
-    def __init__(self, x):
-        y = x.lower().strip()
-        if y not in bool_list:
-            raise ValueError(x)
-        self.x = y
-
-    def __bool__(self):
-        if self.x in ["0", "1"]:
-            return self.x == "1"
-        else:
-            return self.x.lower() == "true"
-
-    def __eq__(self, w):
-        if not isinstance(w, BOOL) and not isinstance(w, bool):
-            return False
-        return self.__bool__() == w.__bool__()
-
-    def __str__(self):
-        return str(self.__bool__())
-
-    __repr__ = __str__
-
-
-BOOL.__name__ = "bool"
+_bool.__name__ = "bool"
 
 
 def safe_sleep(f):
@@ -162,11 +142,6 @@ def setup_parameters(config_file):
         with os.popen(cmd) as proc:
             mem_str = str(proc.readlines())
         mem = int(re.search(r"\d+", mem_str).group())
-        print(
-            "System memory determined to be: {:.3f}GiB".format(
-                mem / (1024 * 1024 * 1024)
-            )
-        )
     except Exception as e:
         print("Exception checking HW info:\n", e, sep="", file=sys.stderr)
         return None
@@ -197,8 +172,8 @@ def setup_parameters(config_file):
         ("parameters", "concurrency", str(cpu_count), int),
         ("parameters", "max_memory", str(int(mem / 2 / 1024 / 1024)), int),
         ("parameters", "min_threads", "1", int),
-        ("parameters", "fleet", "False", BOOL),
-        ("parameters", "use_all_cores", "False", BOOL),
+        ("parameters", "fleet", "False", _bool),
+        ("parameters", "use_all_cores", "False", _bool),
     ]
 
     for v in defaults:
@@ -209,7 +184,7 @@ def setup_parameters(config_file):
         else:
             o = config.get(v[0], v[1])
             t = v[3]
-            if isinstance(t, type):
+            if callable(t):
                 try:
                     _ = t(o)
                 except:
@@ -229,7 +204,10 @@ def setup_parameters(config_file):
 
     # Step 3: parse the command line. Use the current config options mostly as defaults.
 
-    parser = ArgumentParser()
+    parser = ArgumentParser(
+        description="usage (long version):"
+        " worker.py USERNAME PASSWORD [OPTIONS]"
+    )
     parser.add_argument(
         "-P",
         "--protocol",
@@ -280,17 +258,17 @@ def setup_parameters(config_file):
         "-f",
         "--fleet",
         dest="fleet",
-        default=BOOL(config.get("parameters", "fleet")),
-        type=BOOL,
-        choices=[BOOL("False"), BOOL("True")],  # useful for usage message
+        default=config.getboolean("parameters", "fleet"),
+        type=_bool,
+        choices=[False, True],  # useful for usage message
         help="quit in case of errors or if no task is available",
     )
     parser.add_argument(
         "-a",
         "--use_all_cores",
         dest="use_all_cores",
-        type=BOOL,
-        choices=[BOOL("False"), BOOL("True")],
+        type=_bool,
+        choices=[False, True],
         help="allow the worker to use all cores",
     )
     parser.add_argument(
@@ -298,8 +276,8 @@ def setup_parameters(config_file):
         "--only_config",
         dest="only_config",
         default=False,
-        type=BOOL,
-        choices=[BOOL("False"), BOOL("True")],
+        type=_bool,
+        choices=[False, True],
         help="just write the configfile and quit",
     )
 
@@ -354,7 +332,7 @@ def setup_parameters(config_file):
     ):
         options.concurrency = max_cpu_count
     if options.use_all_cores is None:
-        options.use_all_cores = BOOL(config.get("parameters", "use_all_cores"))
+        options.use_all_cores = config.getboolean("parameters", "use_all_cores")
     if options.concurrency is None:
         options.concurrency = config.getint("parameters", "concurrency")
 
@@ -394,6 +372,11 @@ def setup_parameters(config_file):
     with open(config_file, "w") as f:
         config.write(f)
 
+    print(
+        "System memory determined to be: {:.3f}GiB".format(
+            mem / (1024 * 1024 * 1024)
+        )
+    )
     print(
         "Worker constraints: {{'concurrency': {}, 'max_memory': {}, 'min_threads': {}}}".format(
             options.concurrency, options.max_memory, options.min_threads
