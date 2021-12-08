@@ -162,14 +162,13 @@ def verify_credentials(remote, username, password, cached):
         payload = {"worker_info": {"username": username}, "password": password}
         try:
             req = send_api_post_request(remote + "/api/request_version", payload)
-        except Exception as e:
+        except:
             return None  # network problem (unrecoverable)
         if "error" in req:
             return False  # invalid username/password
-    else:
-        return False  # empty username or password
-    print("Credentials ok!")
-    return True
+        print("Credentials ok!")
+        return True
+    return False  # empty username or password
 
 
 def get_credentials(config, options, args):
