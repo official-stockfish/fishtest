@@ -170,7 +170,7 @@ def send_api_post_request(api_url, payload):
             sep="",
             file=sys.stderr,
         )
-        raise WorkerException(message, e=e)
+        raise WorkerException(message)
     if "error" in response:
         print("Error from remote: {}".format(response["error"]))
     if "info" in response:
