@@ -154,7 +154,7 @@ def send_api_post_request(api_url, payload):
     valid_response = True
     try:
         response = response.json()
-    except Exception as e:
+    except:
         valid_response = False
     if valid_response and not isinstance(response, dict):
         valid_response = False
