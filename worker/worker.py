@@ -48,6 +48,15 @@ MAX_RETRY_TIME = 14400.0  # four hours
 IS_WINDOWS = "windows" in platform.system().lower()
 CONFIGFILE = "fishtest.cfg"
 
+LOGO = r"""
+______ _     _     _            _                        _             
+|  ___(_)   | |   | |          | |                      | |            
+| |_   _ ___| |__ | |_ ___  ___| |_  __      _____  _ __| | _____ _ __ 
+|  _| | / __| '_ \| __/ _ \/ __| __| \ \ /\ / / _ \| '__| |/ / _ \ '__|
+| |   | \__ \ | | | ||  __/\__ \ |_   \ V  V / (_) | |  |   <  __/ |   
+\_|   |_|___/_| |_|\__\___||___/\__|   \_/\_/ \___/|_|  |_|\_\___|_|   
+"""
+
 """
 Bird's eye view of the worker
 =============================
@@ -191,11 +200,13 @@ def get_credentials(config, options, args):
         return "", ""
     elif not ret:
         try:
+            print("")
             username = input("Username: ")
             if username != "":
                 password = getpass.getpass()
-        except:
             print("")
+        except:
+            print("\n")
             return "", ""
         else:
             if not verify_credentials(remote, username, password, False):
@@ -814,6 +825,8 @@ def worker():
     if os.path.basename(__file__) != "worker.py":
         print("The script must be named 'worker.py'!")
         return 1
+
+    print(LOGO)
 
     worker_dir = os.path.dirname(os.path.realpath(__file__))
     print("Worker started in {} ... (PID={})".format(worker_dir, os.getpid()))
