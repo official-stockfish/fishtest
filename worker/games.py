@@ -25,7 +25,7 @@ from zipfile import ZipFile
 import requests
 
 IS_WINDOWS = "windows" in platform.system().lower()
-
+GHPROXY_URL = ""  # set with --ghproxy/--ghproxy_url
 ARCH = "?"
 
 
@@ -68,6 +68,11 @@ HTTP_TIMEOUT = 30.0
 REPO_URL = "https://github.com/official-stockfish/books"
 EXE_SUFFIX = ".exe" if IS_WINDOWS else ""
 MAKE_CMD = "make COMP=mingw " if IS_WINDOWS else "make COMP=gcc "
+
+
+def set_ghproxy_url(ghproxy_url):
+    global GHPROXY_URL
+    GHPROXY_URL = ghproxy_url
 
 
 def str_signal(signal_):
@@ -181,7 +186,8 @@ def send_api_post_request(api_url, payload):
 def github_api(repo):
     """Convert from https://github.com/<user>/<repo>
     To https://api.github.com/repos/<user>/<repo>"""
-    return repo.replace("https://github.com", "https://api.github.com/repos")
+    repo = repo.replace("https://github.com", "https://api.github.com/repos")
+    return GHPROXY_URL + repo
 
 
 def required_net(engine):

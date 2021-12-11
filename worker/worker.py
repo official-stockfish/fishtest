@@ -38,6 +38,7 @@ from games import (
     WorkerException,
     run_games,
     send_api_post_request,
+    set_ghproxy_url,
     str_signal,
 )
 from updater import update
@@ -321,6 +322,8 @@ def setup_parameters(worker_dir):
         ("parameters", "max_memory", str(int(mem / 2 / 1024 / 1024)), int),
         ("parameters", "min_threads", "1", int),
         ("parameters", "fleet", "False", _bool),
+        ("parameters", "ghproxy_url", "https://ghproxy.com/", str),
+        ("parameters", "ghproxy", "False", _bool),
     ]
 
     set_defaults(config, defaults)
@@ -395,6 +398,22 @@ def setup_parameters(worker_dir):
         help="deprecated",
     )
     parser.add_argument(
+        "-x",
+        "--ghproxy_url",
+        dest="ghproxy_url",
+        default=config.get("parameters", "ghproxy_url"),
+        help="URL of github proxy (e.g. https://ghproxy.com/)",
+    )
+    parser.add_argument(
+        "-g",
+        "--ghproxy",
+        dest="ghproxy",
+        type=_bool,
+        default=config.getboolean("parameters", "ghproxy"),
+        choices=[False, True],
+        help="use a github proxy",
+    )
+    parser.add_argument(
         "-w",
         "--only_config",
         dest="only_config",
@@ -466,6 +485,8 @@ def setup_parameters(worker_dir):
     config.set("parameters", "max_memory", str(options.max_memory))
     config.set("parameters", "min_threads", str(options.min_threads))
     config.set("parameters", "fleet", str(options.fleet))
+    config.set("parameters", "ghproxy_url", options.ghproxy_url)
+    config.set("parameters", "ghproxy", str(options.ghproxy))
 
     with open(config_file, "w") as f:
         config.write(f)
@@ -882,6 +903,10 @@ def worker():
         return 1
     if options.only_config:
         return 0
+
+    if options.ghproxy:
+        print("GHPROXY_URL set to '{}'".format(options.ghproxy_url))
+        set_ghproxy_url(options.ghproxy_url)
 
     # Make sure a suitable version of gcc is present.
     gcc_version_ = gcc_version()
