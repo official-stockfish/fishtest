@@ -63,7 +63,7 @@ def is_64bit():
     return "64" in platform.architecture()[0]
 
 
-HTTP_TIMEOUT = 15.0
+HTTP_TIMEOUT = 30.0
 
 REPO_URL = "https://github.com/official-stockfish/books"
 EXE_SUFFIX = ".exe" if IS_WINDOWS else ""
