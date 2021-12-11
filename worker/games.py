@@ -26,8 +26,6 @@ import requests
 
 IS_WINDOWS = "windows" in platform.system().lower()
 
-ARCH = "?"
-
 
 class WorkerException(Exception):
     def __new__(cls, msg, e=None):
@@ -291,8 +289,8 @@ def validate_net(testing_dir, net):
     return hash[:12] == net[3:15]
 
 
-def verify_signature(engine, signature, remote, payload, concurrency, worker_info):
-    global ARCH
+def verify_signature(engine, signature, active_cores):
+    cpu_features = "?"
     with subprocess.Popen(
         [engine, "compiler"],
         stdout=subprocess.PIPE,
@@ -303,7 +301,7 @@ def verify_signature(engine, signature, remote, payload, concurrency, worker_inf
     ) as p:
         for line in iter(p.stdout.readline, ""):
             if "settings" in line:
-                ARCH = line.split(": ")[1].strip()
+                cpu_features = line.split(": ")[1].strip()
     if p.returncode:
         raise WorkerException(
             "Compiler info exited with non-zero code {}".format(
@@ -312,7 +310,7 @@ def verify_signature(engine, signature, remote, payload, concurrency, worker_inf
         )
 
     with ExitStack() as stack:
-        if concurrency > 1:
+        if active_cores > 1:
             busy_process = stack.enter_context(
                 subprocess.Popen(
                     [engine],
@@ -324,7 +322,7 @@ def verify_signature(engine, signature, remote, payload, concurrency, worker_inf
                 )
             )
             busy_process.stdin.write(
-                "setoption name Threads value {}\n".format(concurrency - 1)
+                "setoption name Threads value {}\n".format(active_cores - 1)
             )
             busy_process.stdin.write("go infinite\n")
             busy_process.stdin.flush()
@@ -349,7 +347,7 @@ def verify_signature(engine, signature, remote, payload, concurrency, worker_inf
             if "Nodes/second" in line:
                 bench_nps = float(line.split(": ")[1].strip())
 
-        if concurrency > 1:
+        if active_cores > 1:
             busy_process.communicate("quit\n")
 
     if p.returncode != 0:
@@ -380,7 +378,7 @@ def verify_signature(engine, signature, remote, payload, concurrency, worker_inf
         )
         raise RunException(message)
 
-    return bench_nps
+    return bench_nps, cpu_features
 
 
 def download_from_github(item, testing_dir):
@@ -456,8 +454,8 @@ def make_targets():
     return targets
 
 
-def find_arch_string():
-    """Find the best ARCH=... string based on the cpu/g++ capabilities and Makefile targets"""
+def find_arch():
+    """Find the best arch string based on the cpu/g++ capabilities and Makefile targets"""
 
     targets = make_targets()
 
@@ -472,57 +470,57 @@ def find_arch_string():
             and "-mavx512vl" in props["flags"]
             and "x86-64-vnni256" in targets
         ):
-            res = "x86-64-vnni256"
+            arch = "x86-64-vnni256"
         elif (
             "-mavx512f" in props["flags"]
             and "-mavx512bw" in props["flags"]
             and "x86-64-avx512" in targets
         ):
-            res = "x86-64-avx512"
-            res = "x86-64-bmi2"  # use bmi2 until avx512 performance becomes actually better
+            arch = "x86-64-avx512"
+            arch = "x86-64-bmi2"  # use bmi2 until avx512 performance becomes actually better
         elif "-mavxvnni" in props["flags"] and "x86-64-avxvnni" in targets:
-            res = "x86-64-avxvnni"
+            arch = "x86-64-avxvnni"
         elif (
             "-mbmi2" in props["flags"]
             and "x86-64-bmi2" in targets
             and props["arch"] not in ["znver1", "znver2"]
         ):
-            res = "x86-64-bmi2"
+            arch = "x86-64-bmi2"
         elif "-mavx2" in props["flags"] and "x86-64-avx2" in targets:
-            res = "x86-64-avx2"
+            arch = "x86-64-avx2"
         elif (
             "-mpopcnt" in props["flags"]
             and "-msse4.1" in props["flags"]
             and "x86-64-modern" in targets
         ):
-            res = "x86-64-modern"
+            arch = "x86-64-modern"
         elif "-mssse3" in props["flags"] and "x86-64-ssse3" in targets:
-            res = "x86-64-ssse3"
+            arch = "x86-64-ssse3"
         elif (
             "-mpopcnt" in props["flags"]
             and "-msse3" in props["flags"]
             and "x86-64-sse3-popcnt" in targets
         ):
-            res = "x86-64-sse3-popcnt"
+            arch = "x86-64-sse3-popcnt"
         else:
-            res = "x86-64"
+            arch = "x86-64"
     else:
         if (
             "-mpopcnt" in props["flags"]
             and "-msse4.1" in props["flags"]
             and "x86-32-sse41-popcnt" in targets
         ):
-            res = "x86-32-sse41-popcnt"
+            arch = "x86-32-sse41-popcnt"
         elif "-msse2" in props["flags"] and "x86-32-sse2" in targets:
-            res = "x86-32-sse2"
+            arch = "x86-32-sse2"
         else:
-            res = "x86-32"
+            arch = "x86-32"
 
     print("Available Makefile architecture targets: ", targets)
     print("Available g++/cpu properties: ", props)
-    print("Determined the best architecture to be ", res)
+    print("Determined the best architecture to be ", arch)
 
-    return "ARCH=" + res
+    return arch
 
 
 def setup_engine(
@@ -558,9 +556,9 @@ def setup_engine(
                     )
             shutil.copyfile(os.path.join(testing_dir, net), net)
 
-        ARCH = find_arch_string()
+        arch = find_arch()
 
-        cmd = MAKE_CMD + ARCH + " -j {}".format(concurrency) + " profile-build"
+        cmd = MAKE_CMD + "ARCH=" + arch + " -j {}".format(concurrency) + " profile-build"
         env = dict(os.environ, CXXFLAGS="-DNNUE_EMBEDDING_OFF")
         with subprocess.Popen(
             cmd,
@@ -579,7 +577,7 @@ def setup_engine(
         # where 'make strip' fails under mingw. TODO: check if still needed.
         try:
             subprocess.check_call(
-                MAKE_CMD + ARCH + " -j {}".format(concurrency) + " strip", shell=True
+                MAKE_CMD + "ARCH=" + arch + " -j {}".format(concurrency) + " strip", shell=True
             )
         except Exception as e:
             print("Exception stripping binary:\n", e, sep="", file=sys.stderr)
@@ -1189,18 +1187,12 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
     verify_signature(
         new_engine,
         run["args"]["new_signature"],
-        remote,
-        result,
         games_concurrency * threads,
-        worker_info,
     )
-    base_nps = verify_signature(
+    base_nps, cpu_features = verify_signature(
         base_engine,
         run["args"]["base_signature"],
-        remote,
-        result,
         games_concurrency * threads,
-        worker_info,
     )
 
     if base_nps < 500000 / (1 + math.tanh((worker_concurrency - 1) / 8)):
@@ -1220,7 +1212,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
         tc_limit = (tc_limit + new_tc_limit) / 2
 
     result["nps"] = float(base_nps)
-    result["ARCH"] = ARCH
+    result["ARCH"] = cpu_features
 
     threads_cmd = []
     if not any("Threads" in s for s in new_options + base_options):
