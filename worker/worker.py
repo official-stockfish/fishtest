@@ -42,7 +42,7 @@ from games import (
 )
 from updater import update
 
-WORKER_VERSION = 138
+WORKER_VERSION = 139
 HTTP_TIMEOUT = 15.0
 MAX_RETRY_TIME = 14400.0  # four hours
 IS_WINDOWS = "windows" in platform.system().lower()
