@@ -44,6 +44,8 @@ from updater import update
 
 WORKER_VERSION = 140
 HTTP_TIMEOUT = 30.0
+INITIAL_RETRY_TIME = 15.0
+THREAD_JOIN_TIMEOUT = 15.0
 MAX_RETRY_TIME = 900.0  # 15 minutes
 IS_WINDOWS = "windows" in platform.system().lower()
 CONFIGFILE = "fishtest.cfg"
@@ -940,7 +942,7 @@ def worker():
     # or the server down.
 
     # Start the main loop.
-    delay = HTTP_TIMEOUT
+    delay = INITIAL_RETRY_TIME
     fish_exit = False
     while current_state["alive"]:
         if os.path.isfile(os.path.join(worker_dir, "fish.exit")):
@@ -963,10 +965,10 @@ def worker():
                 safe_sleep(delay)
                 delay = min(MAX_RETRY_TIME, delay * 2)
         else:
-            delay = HTTP_TIMEOUT
+            delay = INITIAL_RETRY_TIME
 
     print("Waiting for the heartbeat thread to finish...")
-    heartbeat_thread.join(HTTP_TIMEOUT)
+    heartbeat_thread.join(THREAD_JOIN_TIMEOUT)
 
     return 0 if fish_exit else 1
 

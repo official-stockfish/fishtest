@@ -64,6 +64,8 @@ def is_64bit():
 
 
 HTTP_TIMEOUT = 30.0
+CUTECHESS_KILL_TIMEOUT = 15.0
+UPDATE_RETRY_TIME = 15.0
 
 REPO_URL = "https://github.com/official-stockfish/books"
 EXE_SUFFIX = ".exe" if IS_WINDOWS else ""
@@ -867,7 +869,7 @@ def parse_cutechess_output(
                         update_succeeded = True
                         num_games_updated = num_games_finished
                         break
-                    time.sleep(HTTP_TIMEOUT)
+                    time.sleep(UPDATE_RETRY_TIME)
                 if not update_succeeded:
                     raise WorkerException("Too many failed update attempts")
 
@@ -959,7 +961,7 @@ def launch_cutechess(
                     print("\nException in send_sigint:\n", e, sep="", file=sys.stderr)
                 # now wait...
                 print("\nWaiting for cutechess-cli to finish ... ", end="", flush=True)
-                p.wait(timeout=HTTP_TIMEOUT)
+                p.wait(timeout=CUTECHESS_KILL_TIMEOUT)
             except:
                 print("timeout", flush=True)
                 kill_process(p)
