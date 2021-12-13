@@ -974,8 +974,7 @@ def worker():
     # always end with a little delay.
     # The exception is when connecting to the dev server, to aid testing
     print("Thank you for contributing, please wait as the worker finalizes!")
-    if options.host != "dfts-0.pigazzini.it":
-        safe_sleep(STARTUP_TIMEOUT)
+    safe_sleep(STARTUP_TIMEOUT)
 
     return 0 if fish_exit else 1
 
