@@ -44,6 +44,7 @@ from updater import update
 
 WORKER_VERSION = 140
 HTTP_TIMEOUT = 30.0
+STARTUP_TIMEOUT = 15.0
 MAX_RETRY_TIME = 900.0  # 15 minutes
 IS_WINDOWS = "windows" in platform.system().lower()
 CONFIGFILE = "fishtest.cfg"
@@ -924,6 +925,7 @@ def worker():
     # All seems to be well...
     remote = "{}://{}:{}".format(options.protocol, options.host, options.port)
 
+
     # Start heartbeat thread as a daemon (not strictly necessary, but there might be bugs)
     heartbeat_thread = threading.Thread(
         target=heartbeat,
@@ -967,6 +969,13 @@ def worker():
 
     print("Waiting for the heartbeat thread to finish...")
     heartbeat_thread.join(HTTP_TIMEOUT)
+
+    # To avoid flooding the server for a failing worker in a loop,
+    # always end with a little delay.
+    # The exception is when connecting to the dev server, to aid testing
+    print("Thank you for contributing, please wait as the worker finalizes!")
+    if options.host != "dfts-0.pigazzini.it":
+        safe_sleep(STARTUP_TIMEOUT)
 
     return 0 if fish_exit else 1
 
