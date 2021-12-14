@@ -355,21 +355,27 @@
     <tbody>
       % for idx, task in enumerate(run['tasks'] + run.get('bad_tasks', [])):
           <%
+            if task in run["tasks"] and "bad" in task:
+              continue
+            if "task_id" in task:
+              task_id = task["task_id"]
+            else:
+	      task_id = idx
             stats = task.get('stats', {})
             if 'stats' in task:
               total = stats['wins'] + stats['losses'] + stats['draws']
             else:
               continue
 
-            if idx==show_task:
+            if task_id == show_task:
               active_style = 'highlight'
             elif task['active']:
               active_style = 'info'
             else:
               active_style = ''
           %>
-          <tr class="${active_style}" id=task${idx}>
-            <td><a href=${f"/api/pgn/{run['_id']}-{idx:d}.pgn"}>${idx}</a></td>
+          <tr class="${active_style}" id=task${task_id}>
+            <td><a href=${f"/api/pgn/{run['_id']}-{task_id:d}.pgn"}>${task_id}</a></td>
             % if 'bad' in task:
                 <td style="text-decoration:line-through; background-color:#ffebeb">
             % else:

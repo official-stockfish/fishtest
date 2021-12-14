@@ -516,6 +516,8 @@ class RunDb:
         has_pentanomial = True
         pentanomial = 5 * [0]
         for task in run["tasks"]:
+            if "bad" in task:
+                continue
             if "stats" in task:
                 stats = task["stats"]
                 results["wins"] += stats["wins"]
@@ -1078,18 +1080,39 @@ class RunDb:
             run["bad_tasks"] = []
 
         tasks = copy.copy(run["tasks"])
-        for task in tasks:
+        zero_stats = {
+            "wins": 0,
+            "losses": 0,
+            "draws": 0,
+            "crashes": 0,
+            "time_losses": 0,
+            "pentanomial": 5 * [0],
+        }
+
+        for task_id, task in enumerate(tasks):
+            if "bad" in task:
+                continue
             # Special cases: crashes or time losses.
             if crash_or_time(task):
                 message = ""
+                bad_task = copy.deepcopy(task)
                 # The next two lines are a bit hacky but
                 # the correct residual and color may not have
                 # been set yet.
-                task["residual"] = 10.0
-                task["residual_color"] = "#FF6A6A"
+                bad_task["residual"] = 10.0
+                bad_task["residual_color"] = "#FF6A6A"
+                bad_task["task_id"] = task_id
+                bad_task["bad"] = True
+                run["bad_tasks"].append(bad_task)
+                # Rather than removing the task, we mark
+                # it as bad.
+                # In this way the numbering of tasks
+                # does not change.
+                # For safety we also set the stats
+                # to zero.
                 task["bad"] = True
-                run["bad_tasks"].append(task)
-                run["tasks"].remove(task)
+                task["active"] = False
+                task["stats"] = copy.deepcopy(zero_stats)
 
         chi2 = get_chi2(run["tasks"])
         # Make sure the residuals are up to date.
@@ -1104,12 +1127,20 @@ class RunDb:
             iters=iters - 1 if message == "" else iters,
         )
         tasks = copy.copy(run["tasks"])
-        for task in tasks:
+        for task_id, task in enumerate(tasks):
+            if "bad" in task:
+                continue
             if task["worker_info"]["unique_key"] in bad_workers:
                 message = ""
+                purged = True
+                bad_task = copy.deepcopy(task)
+                bad_task["task_id"] = task_id
+                bad_task["bad"] = True
+                run["bad_tasks"].append(bad_task)
                 task["bad"] = True
-                run["bad_tasks"].append(task)
-                run["tasks"].remove(task)
+                task["active"] = False
+                task["stats"] = copy.deepcopy(zero_stats)
+
         if message == "":
             run["results_stale"] = True
             results = self.get_results(run)
