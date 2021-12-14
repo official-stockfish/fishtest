@@ -45,6 +45,8 @@ def get_chi2(tasks, exclude_workers=set()):
     users = {}
     has_pentanomial = None
     for task in tasks:
+        if "bad" in task:
+            continue
         if "worker_info" not in task:
             continue
         key = task["worker_info"]["unique_key"]
@@ -191,6 +193,8 @@ def update_residuals(tasks, cached_chi2=None):
     residuals = chi2["residual"]
 
     for task in tasks:
+        if "bad" in task:
+            continue
         if "worker_info" not in task:
             continue
         task["residual"] = residuals.get(
