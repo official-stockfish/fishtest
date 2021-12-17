@@ -909,13 +909,17 @@ def worker():
         "max_memory": options.max_memory,
         "min_threads": options.min_threads,
         "username": options.username,
-        "version": "{}:{}.{}.{}".format(
-            WORKER_VERSION,
+        "version" : WORKER_VERSION,
+        "python_version"  : (
             sys.version_info.major,
             sys.version_info.minor,
             sys.version_info.micro,
         ),
-        "gcc_version": "{}.{}.{}".format(major, minor, patchlevel),
+        "gcc_version": (
+            major,
+            minor,
+            patchlevel,
+        ),
         "unique_key": str(uuid.uuid4()),
     }
 

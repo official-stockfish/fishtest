@@ -76,13 +76,17 @@ class TestApi(unittest.TestCase):
             "max_memory": 5702,
             "min_threads": 1,
             "username": self.username,
-            "version": "{}:{}.{}.{}".format(
-                WORKER_VERSION,
+            "version" : WORKER_VERSION,
+            "python_version" : [
                 sys.version_info.major,
                 sys.version_info.minor,
                 sys.version_info.micro,
-            ),
-            "gcc_version": "9.3.0",
+            ],
+            "gcc_version": [
+                9,
+                3,
+                0,
+            ],
             "unique_key": "unique key",
             "rate": {"limit": 5000, "remaining": 5000},
         }
@@ -443,13 +447,17 @@ class TestRunFinished(unittest.TestCase):
             "max_memory": 5702,
             "min_threads": 1,
             "username": self.username,
-            "version": "{}:{}.{}.{}".format(
-                WORKER_VERSION,
+            "version" : WORKER_VERSION,
+            "python_version" : [
                 sys.version_info.major,
                 sys.version_info.minor,
                 sys.version_info.micro,
-            ),
-            "gcc_version": "9.3.0",
+            ],
+            "gcc_version": [
+                9,
+                3,
+                0,
+            ],
             "unique_key": "unique key",
             "rate": {"limit": 5000, "remaining": 5000},
         }
