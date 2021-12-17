@@ -421,11 +421,11 @@ class optional_key:
 def validate(schema, object, name):
     if isinstance(schema, type):
         if not isinstance(object, schema):
-            return "{} is not of type {}".format(name, schema)
+            return "{} is not of type {}".format(name, schema.__name__)
         else:
             return ""
     if type(schema) != type(object):
-        return "{} is not of type {}".format(name, type(schema))
+        return "{} is not of type {}".format(name, type(schema).__name__)
     elif isinstance(schema, list) or isinstance(schema, tuple):
         l = len(object)
         for i in range(len(schema)):

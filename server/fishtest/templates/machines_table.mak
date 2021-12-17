@@ -16,6 +16,17 @@
   </thead>
   <tbody>
     % for machine in machines:
+        <%
+          if 'python_version' in machine:
+            gcc_version = ".".join([str(m) for m in machine['gcc_version']])
+            python_version = ".".join([str(m) for m in machine['python_version']])
+            version = machine['version']
+          # This code may be deleted when all connected workers have upgraded.
+          else:
+            gcc_version = machine['gcc_version']
+            python_version = machine['version'].split(":")[1]
+            version = machine['version'].split(":")[0]
+        %>
         <tr>
           <td>${machine['username']}</td>
           <td>
@@ -29,9 +40,9 @@
           <td>${f"{machine['nps'] / 1000000:.2f}"}</td>
           <td>${machine['max_memory']}</td>
           <td>${machine['uname']}</td>
-          <td>${machine['gcc_version']}</td>
-          <td>${machine['version'].split(':')[1]}</td>
-          <td>${machine['version'].split(':')[0]}</td>
+          <td>${gcc_version}</td>
+          <td>${python_version}</td>
+          <td>${version}</td>
           <td>
             <a href="/tests/view/${machine['run']['_id']}">${machine['run']['args']['new_tag']}</a>
           </td>
