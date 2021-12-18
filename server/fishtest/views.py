@@ -754,9 +754,9 @@ def validate_form(request):
 
 
 def del_tasks(run):
-    if "tasks" in run:
-        run = copy.deepcopy(run)
-        del run["tasks"]
+    run = copy.copy(run)
+    run.pop("tasks", None)
+    run = copy.deepcopy(run)
     return run
 
 
