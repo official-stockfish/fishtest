@@ -362,12 +362,11 @@ class RunDb:
                     ),
                     flush=True,
                 )
-                with self.active_run_lock(str(run_id)):
-                    run["dead_task"] = "task_id: {}, worker: {}".format(
-                        task_id, worker_name(task["worker_info"])
-                    )
-                    run = del_tasks(run)
-                    self.actiondb.dead_task(task["worker_info"]["username"], run)
+                run = del_tasks(run)
+                run["dead_task"] = "task_id: {}, worker: {}".format(
+                    task_id, worker_name(task["worker_info"])
+                )
+                self.actiondb.dead_task(task["worker_info"]["username"], run)
         return dead_task
 
     def get_unfinished_runs_id(self):
@@ -968,7 +967,7 @@ class RunDb:
             return {"task_alive": False, "info": info}
         # Mark the task as inactive.
         task["active"] = False
-        self.buffer(run, True)
+        self.buffer(run, False)
         print(
             "Failed_task: failure for: https://tests.stockfishchess.org/tests/view/{}, "
             "task_id: {}, worker: {}, reason: '{}'".format(
@@ -976,12 +975,11 @@ class RunDb:
             ),
             flush=True,
         )
-        with self.active_run_lock(str(run_id)):
-            run["failure_reason"] = "task_id: {}, worker: {}, reason: '{}'".format(
-                task_id, worker_name(task["worker_info"]), message[:1024]
-            )
-            run = del_tasks(run)
-            self.actiondb.failed_task(task["worker_info"]["username"], run)
+        run = del_tasks(run)
+        run["failure_reason"] = "task_id: {}, worker: {}, reason: '{}'".format(
+            task_id, worker_name(task["worker_info"]), message[:1024]
+        )
+        self.actiondb.failed_task(task["worker_info"]["username"], run)
         return {}
 
     def stop_run(self, run_id, run=None):
