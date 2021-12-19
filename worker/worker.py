@@ -170,7 +170,9 @@ def verify_credentials(remote, username, password, cached):
         )
         payload = {"worker_info": {"username": username}, "password": password}
         try:
-            req = send_api_post_request(remote + "/api/request_version", payload)
+            req = send_api_post_request(
+                remote + "/api/request_version", payload, benchmark=False
+            )
         except:
             return None  # network problem (unrecoverable)
         if "error" in req:
@@ -572,7 +574,9 @@ def heartbeat(worker_info, password, remote, current_state):
                 print("Skipping heartbeat ...")
                 continue
             try:
-                req = send_api_post_request(remote + "/api/beat", payload)
+                req = send_api_post_request(
+                    remote + "/api/beat", payload, benchmark=False
+                )
             except Exception as e:
                 print("Exception calling heartbeat:\n", e, sep="", file=sys.stderr)
             else:
@@ -699,8 +703,6 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
 
         worker_info["rate"] = rate
 
-        t0 = datetime.utcnow()
-
         print("Verify worker version...")
         req = send_api_post_request(remote + "/api/request_version", payload)
 
@@ -711,20 +713,12 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
         if req["version"] > WORKER_VERSION:
             print("Updating worker version to {}".format(req["version"]))
             update()
-        print(
-            "Worker version checked successfully in {}s".format(
-                (datetime.utcnow() - t0).total_seconds()
-            )
-        )
-
-        t0 = datetime.utcnow()
         print("Fetch task...")
         req = send_api_post_request(remote + "/api/request_task", payload)
     except Exception as e:
         print("Exception accessing host:\n", e, sep="", file=sys.stderr)
         return False
 
-    print("Task requested in {}s".format((datetime.utcnow() - t0).total_seconds()))
     if "error" in req:
         return False
 

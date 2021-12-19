@@ -110,9 +110,10 @@ class ApiView(object):
         if error != "":
             error = "{}: {}".format(self.__api, error)
             print(error, flush=True)
-            raise exception({"error": error})
+            raise exception(self.add_time({"error": error}))
 
     def validate_username_password(self, api):
+        self.__t0 = datetime.utcnow()
         self.__api = api
         # is the request valid json?
         try:
@@ -175,6 +176,10 @@ class ApiView(object):
                     )
                 )
             self.__task = task
+
+    def add_time(self, result):
+        result["duration"] = (datetime.utcnow() - self.__t0).total_seconds()
+        return result
 
     def get_username(self):
         return self.request_body["worker_info"]["username"]
@@ -310,7 +315,7 @@ class ApiView(object):
         worker_info = self.worker_info()
         result = self.request.rundb.request_task(worker_info)
         if "task_waiting" in result:
-            return result
+            return self.add_time(result)
 
         # Strip the run of unneccesary information
         run = result["run"]
@@ -330,12 +335,12 @@ class ApiView(object):
                 min_run["tasks"].append(min_task)
 
         result["run"] = min_run
-        return result
+        return self.add_time(result)
 
     @view_config(route_name="api_update_task")
     def update_task(self):
         self.validate_request("/api/update_task")
-        return self.request.rundb.update_task(
+        result = self.request.rundb.update_task(
             run_id=self.run_id(),
             task_id=self.task_id(),
             stats=self.stats(),
@@ -345,21 +350,24 @@ class ApiView(object):
             username=self.get_username(),
             unique_key=self.get_unique_key(),
         )
+        return self.add_time(result)
 
     @view_config(route_name="api_failed_task")
     def failed_task(self):
         self.validate_request("/api/failed_task")
-        return self.request.rundb.failed_task(
+        result = self.request.rundb.failed_task(
             self.run_id(), self.task_id(), self.message()
         )
+        return self.add_time(result)
 
     @view_config(route_name="api_upload_pgn")
     def upload_pgn(self):
         self.validate_request("/api/upload_pgn")
-        return self.request.rundb.upload_pgn(
+        result = self.request.rundb.upload_pgn(
             run_id="{}-{}".format(self.run_id(), self.task_id()),
             pgn_zip=base64.b64decode(self.pgn()),
         )
+        return self.add_time(result)
 
     @view_config(route_name="api_download_pgn", renderer="string")
     def download_pgn(self):
@@ -419,14 +427,14 @@ class ApiView(object):
                 self.request.rundb.buffer(run, True)
 
         self.handle_error(error, exception=HTTPUnauthorized)
-        return {}
+        return self.add_time({})
 
     @view_config(route_name="api_request_version")
     def request_version(self):
         # By being mor lax here we can be more strict
         # elsewhere since the worker will upgrade.
         self.validate_username_password("/api/request_version")
-        return {"version": WORKER_VERSION}
+        return self.add_time({"version": WORKER_VERSION})
 
     @view_config(route_name="api_beat")
     def beat(self):
@@ -435,9 +443,10 @@ class ApiView(object):
         task = self.task()
         task["last_updated"] = datetime.utcnow()
         self.request.rundb.buffer(run, False)
-        return {}
+        return self.add_time({})
 
     @view_config(route_name="api_request_spsa")
     def request_spsa(self):
         self.validate_request("/api/request_spsa")
-        return self.request.rundb.request_spsa(self.run_id(), self.task_id())
+        result = self.request.rundb.request_spsa(self.run_id(), self.task_id())
+        return self.add_time(result)
