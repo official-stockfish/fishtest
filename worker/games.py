@@ -144,7 +144,8 @@ def requests_post(remote, *args, **kw):
     return result
 
 
-def send_api_post_request(api_url, payload):
+def send_api_post_request(api_url, payload, benchmark=True):
+    t0 = datetime.datetime.utcnow()
     response = requests_post(
         api_url,
         data=json.dumps(payload),
@@ -175,6 +176,14 @@ def send_api_post_request(api_url, payload):
         print("Error from remote: {}".format(response["error"]))
     if "info" in response:
         print("Info from remote: {}".format(response["info"]))
+    if benchmark:
+        print(
+            "Post request {} handled in {}s {}".format(
+                api_url,
+                (datetime.datetime.utcnow() - t0).total_seconds(),
+                "(server: {}s)".format(response["duration"]) if "duration" in response else "",
+            )
+        )
     return response
 
 
@@ -840,7 +849,6 @@ def parse_cutechess_output(
                 # Attempt to send game results to the server. Retry a few times upon error.
                 update_succeeded = False
                 for _ in range(5):
-                    t0 = datetime.datetime.utcnow()
                     try:
                         response = send_api_post_request(
                             remote + "/api/update_task", result
@@ -855,11 +863,6 @@ def parse_cutechess_output(
                             file=sys.stderr,
                         )
                     else:
-                        print(
-                            "  Task updated successfully in {}s".format(
-                                (datetime.datetime.utcnow() - t0).total_seconds()
-                            )
-                        )
                         if not response["task_alive"]:
                             # This task is no longer necessary
                             print("Server told us task is no longer needed")
@@ -890,15 +893,9 @@ def launch_cutechess(
     if spsa_tuning:
 
         # Request parameters for next game.
-        t0 = datetime.datetime.utcnow()
         req = send_api_post_request(remote + "/api/request_spsa", result)
         if "error" in req:
             raise WorkerException(req["error"])
-        print(
-            "Fetched SPSA parameters successfully in {}s".format(
-                (datetime.datetime.utcnow() - t0).total_seconds()
-            )
-        )
 
         result["spsa"] = {"num_games": games_to_play}
 

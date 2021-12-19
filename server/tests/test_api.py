@@ -319,6 +319,7 @@ class TestApi(unittest.TestCase):
             {"run_id": run_id, "task_id": 0, "message": message}
         )
         response = ApiView(request).failed_task()
+        response.pop("duration", None)
         self.assertEqual(response, {})
         self.assertFalse(run["tasks"][0]["active"])
 
@@ -335,6 +336,7 @@ class TestApi(unittest.TestCase):
             {"run_id": run_id, "task_id": 0, "message": message}
         )
         response = ApiView(request).failed_task()
+        response.pop("duration", None)
         self.assertTrue(response == {})
         self.assertFalse(run["tasks"][0]["active"])
 
@@ -362,6 +364,7 @@ class TestApi(unittest.TestCase):
         )
 
         response = ApiView(request).stop_run()
+        response.pop("duration", None)
         self.assertTrue(response == {})
 
         #        run = self.rundb.get_run(run_id)
@@ -381,6 +384,7 @@ class TestApi(unittest.TestCase):
             }
         )
         response = ApiView(request).upload_pgn()
+        response.pop("duration", None)
         self.assertTrue(response == {})
 
         pgn_filename_prefix = "{}-{}".format(run_id, 0)
@@ -426,6 +430,7 @@ class TestApi(unittest.TestCase):
 
         request = self.correct_password_request({"run_id": run_id, "task_id": 0})
         response = ApiView(request).beat()
+        response.pop("duration", None)
         self.assertEqual(response, {})
 
 
