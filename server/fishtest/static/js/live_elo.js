@@ -106,7 +106,7 @@ function set_gauges(LLR,a,b,LOS,elo,ci_lower,ci_upper){
         ELO_chart_options.redFrom=ci_lower;
         ELO_chart_options.redTo=ci_upper;
     }
-    ELO_chart.draw(ELO_chart_data, ELO_chart_options); 
+    ELO_chart.draw(ELO_chart_data, ELO_chart_options);
     elo=Math.round(100*elo)/100;
     ELO_chart_data.setValue(0, 1, elo);
     ELO_chart.draw(ELO_chart_data, ELO_chart_options); // 2nd draw to get animation

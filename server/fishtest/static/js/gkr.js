@@ -34,7 +34,7 @@ function guassian_kernel_regression (y_, b){
   }
 
   ////////////////////////////////////////
-  //    Compute bandwith 
+  //    Compute bandwith
   ////////////////////////////////////////
 
   var x_median = Math.round(L/2.0);
@@ -61,7 +61,6 @@ function guassian_kernel_regression (y_, b){
     var zt = 0;
 
     for (var j = 0; j < L ; j++) {
-     
       var p =  ( i - x[j] ) / h;
       var z=  Math.exp(p * -1 * p/ 2.0)/t
       zt = zt + z;
