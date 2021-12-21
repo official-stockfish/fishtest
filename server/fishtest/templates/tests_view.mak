@@ -132,7 +132,7 @@ from fishtest.util import worker_name
 
     % if run.get('base_same_as_master') is not None:
         <div id="master-diff"
-            class="alert ${'alert-success' if run['base_same_as_master'] else 'alert-error'}">
+            class="alert ${'alert-success' if run['base_same_as_master'] else 'alert-danger'}">
           % if run['base_same_as_master']:
               Base branch same as Stockfish master
           % else:
