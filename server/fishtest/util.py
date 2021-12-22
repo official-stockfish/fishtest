@@ -327,7 +327,7 @@ def remaining_hours(run):
     r = run["results"]
     if "sprt" in run["args"]:
         # current average number of games. Regularly update / have server guess?
-        expected_games = 53000
+        expected_games = 58000
         # checking randomly, half the expected games needs still to be done
         remaining_games = expected_games / 2
     else:
