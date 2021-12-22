@@ -181,7 +181,9 @@ def send_api_post_request(api_url, payload, benchmark=True):
             "Post request {} handled in {}s {}".format(
                 api_url,
                 (datetime.datetime.utcnow() - t0).total_seconds(),
-                "(server: {}s)".format(response["duration"]) if "duration" in response else "",
+                "(server: {}s)".format(response["duration"])
+                if "duration" in response
+                else "",
             )
         )
     return response
@@ -569,7 +571,9 @@ def setup_engine(
 
         arch = find_arch()
 
-        cmd = MAKE_CMD + "ARCH=" + arch + " -j {}".format(concurrency) + " profile-build"
+        cmd = (
+            MAKE_CMD + "ARCH=" + arch + " -j {}".format(concurrency) + " profile-build"
+        )
         env = dict(os.environ, CXXFLAGS="-DNNUE_EMBEDDING_OFF")
         with subprocess.Popen(
             cmd,
@@ -588,7 +592,8 @@ def setup_engine(
         # where 'make strip' fails under mingw. TODO: check if still needed.
         try:
             subprocess.check_call(
-                MAKE_CMD + "ARCH=" + arch + " -j {}".format(concurrency) + " strip", shell=True
+                MAKE_CMD + "ARCH=" + arch + " -j {}".format(concurrency) + " strip",
+                shell=True,
             )
         except Exception as e:
             print("Exception stripping binary:\n", e, sep="", file=sys.stderr)

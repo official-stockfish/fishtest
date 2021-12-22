@@ -76,8 +76,8 @@ class TestApi(unittest.TestCase):
             "max_memory": 5702,
             "min_threads": 1,
             "username": self.username,
-            "version" : WORKER_VERSION,
-            "python_version" : [
+            "version": WORKER_VERSION,
+            "python_version": [
                 sys.version_info.major,
                 sys.version_info.minor,
                 sys.version_info.micro,
@@ -452,8 +452,8 @@ class TestRunFinished(unittest.TestCase):
             "max_memory": 5702,
             "min_threads": 1,
             "username": self.username,
-            "version" : WORKER_VERSION,
-            "python_version" : [
+            "version": WORKER_VERSION,
+            "python_version": [
                 sys.version_info.major,
                 sys.version_info.minor,
                 sys.version_info.micro,

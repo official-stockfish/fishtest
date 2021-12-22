@@ -42,7 +42,7 @@ from games import (
 )
 from updater import update
 
-WORKER_VERSION = 140
+WORKER_VERSION = 141
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
 THREAD_JOIN_TIMEOUT = 15.0
@@ -51,12 +51,12 @@ IS_WINDOWS = "windows" in platform.system().lower()
 CONFIGFILE = "fishtest.cfg"
 
 LOGO = r"""
-______ _     _     _            _                        _             
-|  ___(_)   | |   | |          | |                      | |            
-| |_   _ ___| |__ | |_ ___  ___| |_  __      _____  _ __| | _____ _ __ 
+______ _     _     _            _                        _
+|  ___(_)   | |   | |          | |                      | |
+| |_   _ ___| |__ | |_ ___  ___| |_  __      _____  _ __| | _____ _ __
 |  _| | / __| '_ \| __/ _ \/ __| __| \ \ /\ / / _ \| '__| |/ / _ \ '__|
-| |   | \__ \ | | | ||  __/\__ \ |_   \ V  V / (_) | |  |   <  __/ |   
-\_|   |_|___/_| |_|\__\___||___/\__|   \_/\_/ \___/|_|  |_|\_\___|_|   
+| |   | \__ \ | | | ||  __/\__ \ |_   \ V  V / (_) | |  |   <  __/ |
+\_|   |_|___/_| |_|\__\___||___/\__|   \_/\_/ \___/|_|  |_|\_\___|_|
 """
 
 """
@@ -903,8 +903,8 @@ def worker():
         "max_memory": options.max_memory,
         "min_threads": options.min_threads,
         "username": options.username,
-        "version" : WORKER_VERSION,
-        "python_version"  : (
+        "version": WORKER_VERSION,
+        "python_version": (
             sys.version_info.major,
             sys.version_info.minor,
             sys.version_info.micro,
