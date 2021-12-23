@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import atexit
 import base64
+import datetime
 import getpass
 import math
 import multiprocessing
@@ -35,6 +36,8 @@ from games import (
     FatalException,
     RunException,
     WorkerException,
+    backup_log,
+    log,
     run_games,
     send_api_post_request,
     str_signal,
@@ -172,7 +175,7 @@ def verify_credentials(remote, username, password, cached):
         payload = {"worker_info": {"username": username}, "password": password}
         try:
             req = send_api_post_request(
-                remote + "/api/request_version", payload, benchmark=False
+                remote + "/api/request_version", payload, quiet=True
             )
         except:
             return None  # network problem (unrecoverable)
@@ -575,9 +578,7 @@ def heartbeat(worker_info, password, remote, current_state):
                 print("Skipping heartbeat ...")
                 continue
             try:
-                req = send_api_post_request(
-                    remote + "/api/beat", payload, benchmark=False
-                )
+                req = send_api_post_request(remote + "/api/beat", payload, quiet=True)
             except Exception as e:
                 print("Exception calling heartbeat:\n", e, sep="", file=sys.stderr)
             else:
@@ -682,6 +683,14 @@ def locked_by_others(lock_file, require_valid=True):
     return False
 
 
+def utcoffset():
+    dst = time.localtime().tm_isdst == 1 and time.daylight != 0
+    utcoffset = -time.altzone if dst else -time.timezone
+    abs_utcoffset_min = abs(utcoffset // 60)
+    hh, mm = divmod(abs_utcoffset_min, 60)
+    return "{}{:02d}:{:02d}".format("+" if utcoffset >= 0 else "-", hh, mm)
+
+
 def fetch_and_handle_task(worker_info, password, remote, lock_file, current_state):
     # This function should normally not raise exceptions.
     # Unusual conditions are handled by returning False.
@@ -713,8 +722,14 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
 
         if req["version"] > WORKER_VERSION:
             print("Updating worker version to {}".format(req["version"]))
+            backup_log()
             update()
-        print("Fetch task...")
+        print(
+            "Current time is {} UTC (offset: {}) ".format(
+                datetime.datetime.utcnow(), utcoffset()
+            )
+        )
+        print("Fetching task...")
         req = send_api_post_request(remote + "/api/request_task", payload)
     except Exception as e:
         print("Exception accessing host:\n", e, sep="", file=sys.stderr)
@@ -734,6 +749,24 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
 
     print(
         "Working on task {} from {}/tests/view/{}".format(task_id, remote, run["_id"])
+    )
+    if "sprt" in run["args"]:
+        type = "sprt"
+    elif "spsa" in run["args"]:
+        type = "spsa"
+    else:
+        type = "num_games"
+    log(
+        "run: {} task: {} size: {} tc: {} concurrency: {} threads: {} [ {} : {} ]".format(
+            run["_id"],
+            task_id,
+            run["my_task"]["num_games"],
+            run["args"]["tc"],
+            worker_info["concurrency"],
+            run["args"]["threads"],
+            type,
+            run["args"]["num_games"],
+        )
     )
     print("Running {} vs {}".format(run["args"]["new_tag"], run["args"]["base_tag"]))
 

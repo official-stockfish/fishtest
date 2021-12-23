@@ -25,6 +25,9 @@ from zipfile import ZipFile
 import requests
 
 IS_WINDOWS = "windows" in platform.system().lower()
+LOGFILE = "api.log"
+
+LOG_LOCK = threading.Lock()
 
 
 class WorkerException(Exception):
@@ -68,6 +71,30 @@ UPDATE_RETRY_TIME = 15.0
 REPO_URL = "https://github.com/official-stockfish/books"
 EXE_SUFFIX = ".exe" if IS_WINDOWS else ""
 MAKE_CMD = "make COMP=mingw " if IS_WINDOWS else "make COMP=gcc "
+
+
+def log(s):
+    logfile = os.path.join(os.path.dirname(os.path.realpath(__file__)), LOGFILE)
+    with LOG_LOCK:
+        with open(logfile, "a") as f:
+            f.write("{} : {}\n".format(datetime.datetime.utcnow(), s))
+
+
+def backup_log():
+    try:
+        logfile = os.path.join(os.path.dirname(os.path.realpath(__file__)), LOGFILE)
+        logfile_previous = logfile + ".previous"
+        if os.path.exists(logfile):
+            print("Moving logfile {} to {}".format(logfile, logfile_previous))
+            with LOG_LOCK:
+                os.replace(logfile, logfile_previous)
+    except Exception as e:
+        print(
+            "Exception moving log:\n",
+            e,
+            sep="",
+            file=sys.stderr,
+        )
 
 
 def str_signal(signal_):
@@ -144,8 +171,7 @@ def requests_post(remote, *args, **kw):
     return result
 
 
-def send_api_post_request(api_url, payload, benchmark=True):
-    logfile = os.path.join(os.path.dirname(os.path.realpath(__file__)), "api.log")
+def send_api_post_request(api_url, payload, quiet=False):
     t0 = datetime.datetime.utcnow()
     response = requests_post(
         api_url,
@@ -175,19 +201,25 @@ def send_api_post_request(api_url, payload, benchmark=True):
         raise WorkerException(message)
     if "error" in response:
         print("Error from remote: {}".format(response["error"]))
-    if "info" in response:
-        print("Info from remote: {}".format(response["info"]))
-    if benchmark:
-        t1 = datetime.datetime.utcnow()
-        message = "{}: {}: s:{:.2f}ms, w:{:.2f}ms".format(
-            t1,
+
+    t1 = datetime.datetime.utcnow()
+    w = 1000 * (t1 - t0).total_seconds()
+    s = 1000 * response["duration"]
+    log(
+        "{:6.2f} ms (s)  {:7.2f} ms (w)  {}".format(
+            s,
+            w,
             api_url,
-            1000 * response["duration"],
-            1000 * (t1 - t0).total_seconds(),
         )
-        print(message)
-        with open(logfile, "a") as f:
-            f.write(message + "\n")
+    )
+    if not quiet:
+        if "info" in response:
+            print("Info from remote: {}".format(response["info"]))
+        print(
+            "Post request {} handled in {:.2f}ms (server: {:.2f}ms)".format(
+                api_url, w, s
+            )
+        )
     return response
 
 
