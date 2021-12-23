@@ -1,7 +1,7 @@
-div.error{
+div.error {
   display: none;
   color: black;
-  text-align:center;
+  text-align: center;
 }
 
 span.pointer {

@@ -1,21 +1,29 @@
 <!DOCTYPE html>
 <html lang="en-us">
   <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
     <title>Elo estimates from SPRT tests</title>
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link
+      href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet"
+    />
 
-    <link rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css"
-          integrity="sha384-F3w7mX95PdgyTmZZMECAngseQB83DfGTowi0iMjiWaeVhAn4FJkqJByhZMI3AhiU"
-          crossorigin="anonymous">
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css"
+      integrity="sha384-F3w7mX95PdgyTmZZMECAngseQB83DfGTowi0iMjiWaeVhAn4FJkqJByhZMI3AhiU"
+      crossorigin="anonymous"
+    />
 
-    <link rel="stylesheet" type="text/css" href="/css/live_elo.css?2">
+    <link rel="stylesheet" type="text/css" href="/css/live_elo.css?2" />
 
     <script>
       if (document.cookie.match(/theme=dark/)) {
-        const linkEl = document.createElement('link');
+        const linkEl = document.createElement("link");
         linkEl.href = "/css/theme.dark.css";
         linkEl.rel = "stylesheet";
         document.querySelector("head").appendChild(linkEl);
@@ -24,31 +32,67 @@
   </head>
   <body>
     <div class="container">
-      <br>
+      <br />
       <div class="d-flex justify-content-center">
-        <div id="LLR_chart_div" style="display:inline-block;"></div>
-        <div style="width:1em;"></div>
-        <div id="LOS_chart_div" style="display:inline-block;"></div>
-        <div style="width:1em;"></div>
-        <div id="ELO_chart_div" style="display:inline-block;"></div>
+        <div id="LLR_chart_div" style="display: inline-block"></div>
+        <div style="width: 1em"></div>
+        <div id="LOS_chart_div" style="display: inline-block"></div>
+        <div style="width: 1em"></div>
+        <div id="ELO_chart_div" style="display: inline-block"></div>
       </div>
-      <br>
-      <div class="error" id="error">
-      </div>
-      <table id="data" class="table table-striped table-sm" style="visibility:hidden;">
-        <tr><td>Commit</td><td id="commit"></td></tr>
-        <tr><td>Info</td><td id="info"></td></tr>
-        <tr><td>Submitter</td><td id="username"></td></tr>
-        <tr><td>TC</td><td id="tc"></td></tr>
-        <tr><td>SPRT</td><td id="sprt"></td></tr>
-        <tr><td>LLR</td><td id="LLR"></td></tr>
-        <tr><td>Elo</td><td id="elo"></td></tr>
-        <tr><td>LOS</td><td id="LOS"></td></tr>
-        <tr><td>Games</td><td id="games"></td></tr>
-        <tr><td>Link</td><td id="link"></td></tr>
+      <br />
+      <div class="error" id="error"></div>
+      <table
+        id="data"
+        class="table table-striped table-sm"
+        style="visibility: hidden"
+      >
+        <tr>
+          <td>Commit</td>
+          <td id="commit"></td>
+        </tr>
+        <tr>
+          <td>Info</td>
+          <td id="info"></td>
+        </tr>
+        <tr>
+          <td>Submitter</td>
+          <td id="username"></td>
+        </tr>
+        <tr>
+          <td>TC</td>
+          <td id="tc"></td>
+        </tr>
+        <tr>
+          <td>SPRT</td>
+          <td id="sprt"></td>
+        </tr>
+        <tr>
+          <td>LLR</td>
+          <td id="LLR"></td>
+        </tr>
+        <tr>
+          <td>Elo</td>
+          <td id="elo"></td>
+        </tr>
+        <tr>
+          <td>LOS</td>
+          <td id="LOS"></td>
+        </tr>
+        <tr>
+          <td>Games</td>
+          <td id="games"></td>
+        </tr>
+        <tr>
+          <td>Link</td>
+          <td id="link"></td>
+        </tr>
       </table>
     </div>
-    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script
+      type="text/javascript"
+      src="https://www.gstatic.com/charts/loader.js"
+    ></script>
     <script type="text/javascript" src="/js/live_elo.js?1"></script>
   </body>
 </html>

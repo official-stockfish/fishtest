@@ -123,32 +123,66 @@ hr {
 }
 
 /* Text inputs and selects */
-textarea, input[type="text"], input[type="password"],
-input[type="datetime"], input[type="datetime-local"], input[type="date"],
-input[type="month"], input[type="time"], input[type="week"], input[type="number"],
-input[type="email"], input[type="url"], input[type="search"], input[type="tel"],
-input[type="color"], .uneditable-input {
+textarea,
+input[type="text"],
+input[type="password"],
+input[type="datetime"],
+input[type="datetime-local"],
+input[type="date"],
+input[type="month"],
+input[type="time"],
+input[type="week"],
+input[type="number"],
+input[type="email"],
+input[type="url"],
+input[type="search"],
+input[type="tel"],
+input[type="color"],
+.uneditable-input {
   background: var(--bg-dark-4);
   border: 1px solid #101010;
   box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.5);
 }
 
-textarea:focus, input[type="text"]:focus, input[type="password"]:focus,
-input[type="datetime"]:focus, input[type="datetime-local"]:focus, input[type="date"]:focus,
-input[type="month"]:focus, input[type="time"]:focus, input[type="week"]:focus,
-input[type="number"]:focus, input[type="email"]:focus, input[type="url"]:focus,
-input[type="search"]:focus, input[type="tel"]:focus, input[type="color"]:focus,
+textarea:focus,
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="datetime"]:focus,
+input[type="datetime-local"]:focus,
+input[type="date"]:focus,
+input[type="month"]:focus,
+input[type="time"]:focus,
+input[type="week"]:focus,
+input[type="number"]:focus,
+input[type="email"]:focus,
+input[type="url"]:focus,
+input[type="search"]:focus,
+input[type="tel"]:focus,
+input[type="color"]:focus,
 .uneditable-input:focus {
   color: var(--color-dark-1);
   background: var(--bg-dark-4);
-  box-shadow: inset 0 1px 1px rgba(0,0,0,.075), 0 0 8px rgb(106 216 241 / 60%);
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075),
+    0 0 8px rgb(106 216 241 / 60%);
 }
 
-select, textarea, input[type="text"], input[type="password"],
-input[type="datetime"], input[type="datetime-local"], input[type="date"],
-input[type="month"], input[type="time"], input[type="week"], input[type="number"],
-input[type="email"], input[type="url"], input[type="search"], input[type="tel"],
-input[type="color"], .uneditable-input {
+select,
+textarea,
+input[type="text"],
+input[type="password"],
+input[type="datetime"],
+input[type="datetime-local"],
+input[type="date"],
+input[type="month"],
+input[type="time"],
+input[type="week"],
+input[type="number"],
+input[type="email"],
+input[type="url"],
+input[type="search"],
+input[type="tel"],
+input[type="color"],
+.uneditable-input {
   color: var(--color-dark-1);
 }
 
@@ -157,8 +191,10 @@ select {
   background-color: var(--bg-dark-3);
 }
 
-select:focus, input[type="file"]:focus,
-input[type="radio"]:focus, input[type="checkbox"]:focus {
+select:focus,
+input[type="file"]:focus,
+input[type="radio"]:focus,
+input[type="checkbox"]:focus {
   outline: none;
   border-color: rgba(255, 255, 255, 0.5);
 }
@@ -173,7 +209,7 @@ input[type="radio"]:focus, input[type="checkbox"]:focus {
   outline: none;
 }
 
-.btn-group>.btn:not(.btn-info) {
+.btn-group > .btn:not(.btn-info) {
   background: #2f2f2f;
   border-color: var(--bg-dark-3);
   color: var(--bs-white);
@@ -224,11 +260,13 @@ input[type="radio"]:focus, input[type="checkbox"]:focus {
   color: var(--color-dark-1);
 }
 
-.table-striped tbody>tr:nth-child(odd)>td, .table-striped tbody>tr:nth-child(odd)>th {
+.table-striped tbody > tr:nth-child(odd) > td,
+.table-striped tbody > tr:nth-child(odd) > th {
   background-color: var(--bg-dark-2);
 }
 
-.table th, .table td {
+.table th,
+.table td {
   color: var(--color-dark-1);
   border-top: 1px solid var(--bg-dark-4);
 }
@@ -237,7 +275,11 @@ input[type="radio"]:focus, input[type="checkbox"]:focus {
   border-bottom-color: var(--bg-dark-4) !important;
 }
 
-tbody, tfoot, th, thead, tr {
+tbody,
+tfoot,
+th,
+thead,
+tr {
   border-color: var(--bg-dark-4);
 }
 
@@ -247,7 +289,7 @@ div#tasks thead {
 }
 
 /* Background colors for running tasks on test run pages */
-.table tbody tr.info>td {
+.table tbody tr.info > td {
   background-color: #0f3373;
 }
 
@@ -311,7 +353,8 @@ pre[style*="border-color:Pink"] {
   border-color: #ffffffcc !important;
 }
 
-.input-group-lg>.form-select, .input-group-sm>.form-select {
+.input-group-lg > .form-select,
+.input-group-sm > .form-select {
   background: #2f2f2f;
   color: rgb(177, 173, 167);
 }
@@ -328,5 +371,5 @@ pre[style*="border-color:Pink"] {
 }
 
 option.grayedoutoption {
-    background-color: Gray;
+  background-color: Gray;
 }
