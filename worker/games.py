@@ -869,6 +869,8 @@ def parse_cutechess_output(
                             sep="",
                             file=sys.stderr,
                         )
+                        if isinstance(e, FatalException): # signal
+                            raise e
                     else:
                         if not response["task_alive"]:
                             # This task is no longer necessary
