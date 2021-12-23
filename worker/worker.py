@@ -19,7 +19,6 @@ import zlib
 from argparse import ArgumentParser
 from configparser import ConfigParser, NoOptionError, NoSectionError
 from contextlib import ExitStack
-from datetime import datetime
 from functools import partial
 
 # Try to import an user installed package,
@@ -42,7 +41,7 @@ from games import (
 )
 from updater import update
 
-WORKER_VERSION = 141
+WORKER_VERSION = 142
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
 THREAD_JOIN_TIMEOUT = 15.0
