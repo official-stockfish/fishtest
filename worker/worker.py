@@ -491,7 +491,7 @@ def setup_parameters(worker_dir):
 
 def on_sigint(current_state, signal, frame):
     current_state["alive"] = False
-    raise WorkerException("Terminated by signal {}".format(str_signal(signal)))
+    raise FatalException("Terminated by signal {}".format(str_signal(signal)))
 
 
 def get_rate():
