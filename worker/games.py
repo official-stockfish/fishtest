@@ -145,6 +145,7 @@ def requests_post(remote, *args, **kw):
 
 
 def send_api_post_request(api_url, payload, benchmark=True):
+    logfile = os.path.join(os.path.dirname(os.path.realpath(__file__)), "api.log")
     t0 = datetime.datetime.utcnow()
     response = requests_post(
         api_url,
@@ -177,15 +178,16 @@ def send_api_post_request(api_url, payload, benchmark=True):
     if "info" in response:
         print("Info from remote: {}".format(response["info"]))
     if benchmark:
-        print(
-            "Post request {} handled in {}s {}".format(
-                api_url,
-                (datetime.datetime.utcnow() - t0).total_seconds(),
-                "(server: {}s)".format(response["duration"])
-                if "duration" in response
-                else "",
-            )
+        t1 = datetime.datetime.utcnow()
+        message = "{}: {}: s:{:.2f}ms, w:{:.2f}ms".format(
+            t1,
+            api_url,
+            1000 * response["duration"],
+            1000 * (t1 - t0).total_seconds(),
         )
+        print(message)
+        with open(logfile, "a") as f:
+            f.write(message + "\n")
     return response
 
 
