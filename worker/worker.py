@@ -782,16 +782,6 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
     # Upload PGN file.
     pgn_file = pgn_file[0]
     if pgn_file is not None and os.path.exists(pgn_file) and "spsa" not in run["args"]:
-
-        # The delay below is mainly to help with finished SPRT runs.
-        # In that case many tasks may potentially finish at the same time.
-        if success:
-            sleep = random.randint(1, 10)
-            print("Wait {} seconds before uploading PGN...".format(sleep))
-            safe_sleep(sleep)
-
-        print("Uploading PGN...")
-
         try:
             with open(pgn_file, "r") as f:
                 data = f.read()
