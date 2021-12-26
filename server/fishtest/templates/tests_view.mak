@@ -311,6 +311,11 @@ from fishtest.util import worker_name
                   version = str(task['worker_info'].get('version','?:?')).split(":")
                   python_version = "?" if len(version) == 1 else version[1]
                   version = version[0]
+                if 'ARCH' in task['worker_info']:
+                  ARCH = task['worker_info']['ARCH']
+                # Glue code, to be deleted after conversion
+                else:
+                  ARCH = task.get('ARCH', '?')
             %>
             % if 'worker_info' in task:
                 os: ${task['worker_info']['uname']};
@@ -318,7 +323,7 @@ from fishtest.util import worker_name
                 gcc: ${gcc_version};
                 python: ${python_version};
                 worker: ${version};
-                arch: ${task.get('ARCH', '?')}
+                arch: ${ARCH}
             % else:
                 Unknown worker
             % endif

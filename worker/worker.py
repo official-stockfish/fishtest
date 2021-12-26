@@ -937,6 +937,8 @@ def worker():
             patchlevel,
         ),
         "unique_key": str(uuid.uuid4()),
+        "ARCH": "?",
+        "nps": 0.0,
     }
 
     print("UUID:", worker_info["unique_key"])

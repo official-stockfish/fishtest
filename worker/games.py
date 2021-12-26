@@ -1251,8 +1251,8 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
         scaled_new_tc, new_tc_limit = adjust_tc(run["args"]["new_tc"], factor)
         tc_limit = (tc_limit + new_tc_limit) / 2
 
-    result["nps"] = float(base_nps)
-    result["ARCH"] = cpu_features
+    result["worker_info"]["nps"] = float(base_nps)
+    result["worker_info"]["ARCH"] = cpu_features
 
     threads_cmd = []
     if not any("Threads" in s for s in new_options + base_options):
