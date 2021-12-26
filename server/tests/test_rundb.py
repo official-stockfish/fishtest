@@ -1,8 +1,11 @@
 import datetime
+import sys
 import unittest
 
 import util
 from pymongo import DESCENDING
+
+from fishtest.api import WORKER_VERSION
 
 run_id = None
 
@@ -15,6 +18,30 @@ class CreateRunDBTest(unittest.TestCase):
             name="finished_ltc_runs",
             partialFilterExpression={"finished": True, "tc_base": {"$gte": 40}},
         )
+        self.worker_info = {
+            "uname": "Linux 5.11.0-40-generic",
+            "architecture": ["64bit", "ELF"],
+            "concurrency": 1,
+            "max_memory": 5702,
+            "min_threads": 1,
+            "username": "JoeUserWorker",
+            "version": WORKER_VERSION,
+            "python_version": [
+	        sys.version_info.major,
+                sys.version_info.minor,
+	        sys.version_info.micro,
+            ],
+            "gcc_version": [
+                9,
+                3,
+                0,
+            ],
+            "unique_key": "unique key",
+            "rate": {"limit": 5000, "remaining": 5000},
+            "ARCH": "?",
+            "nps": 0.0,
+        }
+
 
     def tearDown(self):
         self.rundb.runs.delete_many({"args.username": "travis"})
@@ -81,11 +108,7 @@ class CreateRunDBTest(unittest.TestCase):
         print(run["tasks"][0])
         self.assertTrue(run["tasks"][0][u"active"])
         run["tasks"][0][u"active"] = True
-        run["tasks"][0][u"worker_info"] = {
-            "username": "worker1",
-            "unique_key": "travis",
-            "concurrency": 1,
-        }
+        run["tasks"][0][u"worker_info"] = self.worker_info
         run["cores"] = 1
 
         for run in self.rundb.get_unfinished_runs():
@@ -95,14 +118,11 @@ class CreateRunDBTest(unittest.TestCase):
     def test_20_update_task(self):
         run = self.rundb.get_run(run_id)
         run["tasks"][0][u"active"] = True
-        run["tasks"][0][u"worker_info"] = {
-            "username": "worker1",
-            "unique_key": "travis",
-            "concurrency": 1,
-        }
+        run["tasks"][0][u"worker_info"] = self.worker_info
         run["cores"] = 1
         self.rundb.buffer(run, True)
         run = self.rundb.update_task(
+            self.worker_info,
             run_id,
             0,
             {
@@ -112,15 +132,12 @@ class CreateRunDBTest(unittest.TestCase):
                 "crashes": 0,
                 "time_losses": 0,
             },
-            1000000,
-            "?",
-            "",
-            "worker2",
-            "travis",
+            {},
         )
         self.assertFalse(run["task_alive"])
         self.assertTrue("error" in run)
         run = self.rundb.update_task(
+            self.worker_info,
             run_id,
             0,
             {
@@ -130,11 +147,7 @@ class CreateRunDBTest(unittest.TestCase):
                 "crashes": 0,
                 "time_losses": 0,
             },
-            1000000,
-            "?",
-            "",
-            "worker1",
-            "travis2",
+            {},
         )
         self.assertFalse(run["task_alive"])
         self.assertTrue("info" in run)
@@ -143,6 +156,7 @@ class CreateRunDBTest(unittest.TestCase):
         run_["tasks"][0]["active"] = True
         self.rundb.buffer(run_, True)
         run = self.rundb.update_task(
+            self.worker_info,
             run_id,
             0,
             {
@@ -152,14 +166,11 @@ class CreateRunDBTest(unittest.TestCase):
                 "crashes": 0,
                 "time_losses": 0,
             },
-            1000000,
-            "?",
-            "",
-            "worker1",
-            "travis",
+            {},
         )
         self.assertEqual(run, {"task_alive": True})
         run = self.rundb.update_task(
+            self.worker_info,
             run_id,
             0,
             {
@@ -169,11 +180,7 @@ class CreateRunDBTest(unittest.TestCase):
                 "crashes": 0,
                 "time_losses": 0,
             },
-            1000000,
-            "?",
-            "",
-            "worker1",
-            "travis",
+            {},
         )
         self.assertEqual(run, {"task_alive": False})
 

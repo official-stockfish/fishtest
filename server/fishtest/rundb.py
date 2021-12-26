@@ -173,7 +173,6 @@ class RunDb:
                     machine = copy.copy(task["worker_info"])
                     machine["last_updated"] = task.get("last_updated", None)
                     machine["run"] = run
-                    machine["nps"] = task.get("nps", 0)
                     machines.append(machine)
         return machines
 
@@ -828,18 +827,12 @@ class RunDb:
                 self.active_runs[id] = {"time": time.time(), "lock": active_lock}
             return active_lock
 
-    def update_task(
-        self, run_id, task_id, stats, nps, ARCH, spsa, username, unique_key
-    ):
+    def update_task(self, worker_info, run_id, task_id, stats, spsa):
         lock = self.active_run_lock(str(run_id))
         with lock:
-            return self.sync_update_task(
-                run_id, task_id, stats, nps, ARCH, spsa, username, unique_key
-            )
+            return self.sync_update_task(worker_info, run_id, task_id, stats, spsa)
 
-    def sync_update_task(
-        self, run_id, task_id, stats, nps, ARCH, spsa, username, unique_key
-    ):
+    def sync_update_task(self, worker_info, run_id, task_id, stats, spsa):
         run = self.get_run(run_id)
         task = run["tasks"][task_id]
         update_time = datetime.utcnow()
@@ -899,9 +892,8 @@ class RunDb:
         # The update seems fine. Update run["tasks"][task_id] (=task).
 
         task["stats"] = stats
-        task["nps"] = nps
-        task["ARCH"] = ARCH
         task["last_updated"] = update_time
+        task["worker_info"] = worker_info  # updates rate, ARCH, nps
 
         task_finished = False
         if num_games >= task["num_games"]:

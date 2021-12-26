@@ -39,8 +39,6 @@ def validate_request(request):
         optional_key("task_id"): int,
         optional_key("pgn"): str,
         optional_key("message"): str,
-        optional_key("ARCH"): str,
-        optional_key("nps"): float,
         "worker_info": {
             "uname": str,
             "architecture": [str, str],
@@ -53,6 +51,8 @@ def validate_request(request):
             "gcc_version": [int, int, int],
             "unique_key": str,
             "rate": {"limit": int, "remaining": int},
+            "ARCH": str,
+            "nps": float,
         },
         optional_key("spsa"): {
             "wins": int,
@@ -184,9 +184,6 @@ class ApiView(object):
 
     def get_username(self):
         return self.request_body["worker_info"]["username"]
-
-    def get_unique_key(self):
-        return self.request_body["worker_info"]["unique_key"]
 
     def run(self):
         if self.__run is not None:
@@ -342,14 +339,11 @@ class ApiView(object):
     def update_task(self):
         self.validate_request("/api/update_task")
         result = self.request.rundb.update_task(
+            worker_info=self.worker_info(),
             run_id=self.run_id(),
             task_id=self.task_id(),
             stats=self.stats(),
-            nps=self.request_body.get("nps", 0),
-            ARCH=self.request_body.get("ARCH", "?"),
             spsa=self.spsa(),
-            username=self.get_username(),
-            unique_key=self.get_unique_key(),
         )
         return self.add_time(result)
 
