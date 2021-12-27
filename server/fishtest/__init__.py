@@ -123,6 +123,7 @@ def main(global_config, **settings):
     config.add_route("api_request_spsa", "/api/request_spsa")
     config.add_route("api_active_runs", "/api/active_runs")
     config.add_route("api_get_run", "/api/get_run/{id}")
+    config.add_route("api_get_task", "/api/get_task/{id}/{task_id}")
     config.add_route("api_upload_pgn", "/api/upload_pgn")
     config.add_route("api_download_pgn", "/api/pgn/{id}")
     config.add_route("api_download_pgn_100", "/api/pgn_100/{skip}")
