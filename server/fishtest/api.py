@@ -75,11 +75,11 @@ def validate_request(request):
 def strip_run(run):
     run = copy.deepcopy(run)
     if "tasks" in run:
-        del run["tasks"]
+        run["tasks"] = []
     if "bad_tasks" in run:
-        del run["bad_tasks"]
+        run["bad_tasks"] = []
     if "spsa" in run["args"] and "param_history" in run["args"]["spsa"]:
-        del run["args"]["spsa"]["param_history"]
+        run["args"]["spsa"]["param_history"] = []
     run["_id"] = str(run["_id"])
     run["start_time"] = str(run["start_time"])
     run["last_updated"] = str(run["last_updated"])
@@ -284,11 +284,46 @@ class ApiView(object):
     @view_config(route_name="api_get_run")
     def get_run(self):
         run = self.request.rundb.get_run(self.request.matchdict["id"])
+        if run is None:
+            raise exception_response(404)
         return strip_run(run)
+
+    @view_config(route_name="api_get_task")
+    def get_task(self):
+        try:
+            run = self.request.rundb.get_run(self.request.matchdict["id"])
+            task_id = self.request.matchdict["task_id"]
+            if task_id.endswith("bad"):
+                task_id = int(task_id[:-3])
+                task = copy.deepcopy(run["bad_tasks"][task_id])
+            else:
+                task_id = int(task_id)
+                task = copy.deepcopy(run["tasks"][task_id])
+        except:
+            raise exception_response(404)
+        if "worker_info" in task:
+            worker_info = task["worker_info"]
+            # Do not reveal the unique_key.
+            if "unique_key" in worker_info:
+                unique_key = worker_info["unique_key"]
+                worker_info["unique_key"] = unique_key[0:8] + "..."
+            # Do not reveal remote_addr.
+            if "remote_addr" in worker_info:
+                worker_info["remote_addr"] = "?.?.?.?"
+        if "last_updated" in task:
+            # json does not know about datetime
+            task["last_updated"] = str(task["last_updated"])
+        if "residual" in task:
+            # json does not know about infinity
+            if task["residual"] == float("inf"):
+                task["residual"] = "inf"
+        return task
 
     @view_config(route_name="api_get_elo")
     def get_elo(self):
         run = self.request.rundb.get_run(self.request.matchdict["id"])
+        if run is None:
+            raise exception_response(404)
         results = run["results"]
         if "sprt" not in run["args"]:
             return {}
