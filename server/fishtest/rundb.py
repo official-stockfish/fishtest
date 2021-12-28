@@ -134,22 +134,27 @@ class RunDb:
         tc_base = re.search("^(\d+(\.\d+)?)", tc)
         if tc_base:
             tc_base = float(tc_base.group(1))
-        new_tc_ = re.search("^(\d+(\.\d+)?)", new_tc)
-        if new_tc_:
-            new_tc_ = float(new_tc_.group(1))
         new_run = {
             "args": run_args,
             "start_time": start_time,
             "last_updated": start_time,
+            # This tc_base is redundant,
+            # but it is used for an index.
             "tc_base": tc_base,
-            "new_tc": new_tc_,
             "base_same_as_master": base_same_as_master,
             # Will be filled in by tasks, indexed by task-id.
             # Starts as an empty list.
             # generate_tasks() is currently a dummy
             "tasks": self.generate_tasks(num_games),
             # Aggregated results
-            "results": {"wins": 0, "losses": 0, "draws": 0, "pentanomial": 5 * [0]},
+            "results": {
+                "wins": 0,
+                "losses": 0,
+                "draws": 0,
+                "crashes": 0,
+                "time_losses": 0,
+                "pentanomial": 5 * [0],
+            },
             "results_stale": False,
             "finished": False,
             "approved": False,
@@ -771,7 +776,14 @@ class RunDb:
             "worker_info": worker_info,
             "last_updated": datetime.utcnow(),
             "start": opening_offset,
-            "stats": {"wins": 0, "losses": 0, "draws": 0, "pentanomial": 5 * [0]},
+            "stats": {
+                "wins": 0,
+                "losses": 0,
+                "draws": 0,
+                "crashes": 0,
+                "time_losses": 0,
+                "pentanomial": 5 * [0],
+            },
         }
         run["tasks"].append(task)
 

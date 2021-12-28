@@ -221,6 +221,8 @@ class ApiView(object):
         flag = self.get_flag()
         if flag:
             worker_info["country_code"] = flag
+        else:
+            worker_info["country_code"] = "?"
         return worker_info
 
     def worker_name(self):
