@@ -59,11 +59,11 @@ run_default = {
 worker_info_default = {
     "uname": "?",
     "architecture": ["?", "?"],
-    "concurrency": -1,
-    "max_memory": -1,
+    "concurrency": 0,
+    "max_memory": 0,
     "min_threads": 1,
-    "username": "Unknown worker",
-    "version": -1,
+    "username": "Unknown_worker",
+    "version": 0,
     "python_version": [],
     "gcc_version": [],
     "unique_key": "xxxxxxxxx",
@@ -86,18 +86,8 @@ def convert_task_list(run, tasks):
         if not "stats" in task:  # dummy task
             continue
 
-        # DELETE IN FINAL VERSION
-        if "residual" in task and isinstance(task["residual"], dict):
-            continue
-        # DELETE IN FINAL VERSION
-
         if "pending" in task:
             del task["pending"]
-
-        # IT MAY BE THAT WE NEED THIS TO EXTRACT
-        # CORES AND USERNAME
-        if "worker_key" in task:
-            del task["worker_key"]
 
         if "stats" in task:
             stats = task["stats"]
@@ -164,6 +154,12 @@ def convert_run(run):
             results["crashes"] = 0
         if "time_losses" not in results:
             results["time_losses"] = 0
+
+    # This is present in very old test,
+    # but duplicated in the task list.
+    # Another db conversion?
+    if "worker_results" in run:
+        del run["worker_results"]
 
     if "args" in run:
         args = run["args"]
