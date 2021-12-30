@@ -44,7 +44,7 @@ from games import (
 )
 from updater import update
 
-WORKER_VERSION = 144
+WORKER_VERSION = 145
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
 THREAD_JOIN_TIMEOUT = 15.0

@@ -3,9 +3,8 @@ import sys
 import unittest
 
 import util
-from pymongo import DESCENDING
-
 from fishtest.api import WORKER_VERSION
+from pymongo import DESCENDING
 
 run_id = None
 
@@ -27,9 +26,9 @@ class CreateRunDBTest(unittest.TestCase):
             "username": "JoeUserWorker",
             "version": WORKER_VERSION,
             "python_version": [
-	        sys.version_info.major,
+                sys.version_info.major,
                 sys.version_info.minor,
-	        sys.version_info.micro,
+                sys.version_info.micro,
             ],
             "gcc_version": [
                 9,
@@ -41,7 +40,6 @@ class CreateRunDBTest(unittest.TestCase):
             "ARCH": "?",
             "nps": 0.0,
         }
-
 
     def tearDown(self):
         self.rundb.runs.delete_many({"args.username": "travis"})
