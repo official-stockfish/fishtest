@@ -66,7 +66,7 @@ worker_info_default = {
     "version": 0,
     "python_version": [],
     "gcc_version": [],
-    "unique_key": "xxxxxxxxx",
+    "unique_key": "xxxxxxxx",
     "rate": {"limit": 5000, "remaining": 5000},
     "ARCH": "?",
     "nps": 0.0,
@@ -103,6 +103,10 @@ def convert_task_list(run, tasks):
         worker_info = task["worker_info"]
         # in old tests concurrency was a string
         worker_info["concurrency"] = int(worker_info["concurrency"])
+
+        if "uname" in worker_info and isinstance(worker_info["uname"], list) and len(worker_info["uname"])>=3:
+            uname=worker_info["uname"]
+            worker_info["uname"]=uname[0]+" "+uname[2]
 
         if "gcc_version" in worker_info:
             gcc_version_ = worker_info["gcc_version"]
