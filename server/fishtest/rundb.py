@@ -47,7 +47,7 @@ class RunDb:
         self.actiondb = ActionDb(self.db)
         self.pgndb = self.db["pgns"]
         self.nndb = self.db["nns"]
-        self.runs = self.db["runs"]
+        self.runs = self.db["runs_new"]
         self.deltas = self.db["deltas"]
         self.task_runs = []
 
