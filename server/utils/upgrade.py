@@ -66,7 +66,7 @@ worker_info_default = {
     "version": -1,
     "python_version": [],
     "gcc_version": [],
-    "unique_key": "?",
+    "unique_key": "xxxxxxxxx",
     "rate": {"limit": 5000, "remaining": 5000},
     "ARCH": "?",
     "nps": 0.0,
@@ -111,6 +111,9 @@ def convert_task_list(run, tasks):
 
         # A bunch of things that changed at the same time
         worker_info = task["worker_info"]
+        # in old tests concurrency was a string
+        worker_info["concurrency"] = int(worker_info["concurrency"])
+
         if "gcc_version" in worker_info:
             gcc_version_ = worker_info["gcc_version"]
             if isinstance(gcc_version_, str):
@@ -217,7 +220,7 @@ if __name__ == "__main__":
     cmd = (
         "mongodump --archive --db=fishtest_new --collection=runs"
         "|"
-	"mongorestore --archive  --nsFrom=fishtest_new.runs --nsTo=fishtest_new.runs_new"
+        "mongorestore --archive  --nsFrom=fishtest_new.runs --nsTo=fishtest_new.runs_new"
     )
     os.system(cmd)
     client = pymongo.MongoClient()
