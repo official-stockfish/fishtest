@@ -1,4 +1,4 @@
-import copy, datetime, math, pprint
+import copy, datetime, math, pprint, os
 
 import pymongo
 
@@ -209,10 +209,23 @@ def convert_run(run):
 
 
 if __name__ == "__main__":
+    print('Copying "runs" to "runs_new"...')
+    client = pymongo.MongoClient()
+    client["fishtest_new"]["runs_new"].drop()
+    client.close()
+    # copy indexes
+    cmd = (
+        "mongodump --archive --db=fishtest_new --collection=runs"
+        "|"
+	"mongorestore --archive  --nsFrom=fishtest_new.runs --nsTo=fishtest_new.runs_new"
+    )
+    os.system(cmd)
     client = pymongo.MongoClient()
     runs_collection = client["fishtest_new"]["runs"]
+    runs_collection_new = client["fishtest_new"]["runs_new"]
     runs = runs_collection.find({})
     count = 0
+    print("Starting conversion...")
     t0 = datetime.datetime.utcnow()
     for r in runs:
         count += 1
@@ -221,7 +234,7 @@ if __name__ == "__main__":
         if "bad_tasks" in r:
             r["bad_tasks"] = convert_task_list(r, r["bad_tasks"])
         convert_run(r)
-        runs_collection.replace_one({"_id": r_id}, r)
+        runs_collection_new.replace_one({"_id": r_id}, r)
         print("Runs converted: {}.".format(count), end="\r")
     t1 = datetime.datetime.utcnow()
     duration = (t1 - t0).total_seconds()
