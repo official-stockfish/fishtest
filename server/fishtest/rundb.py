@@ -47,7 +47,12 @@ class RunDb:
         self.actiondb = ActionDb(self.db)
         self.pgndb = self.db["pgns"]
         self.nndb = self.db["nns"]
-        self.runs = self.db["runs_new"]
+        if "runs_new" in self.db.list_collection_names():
+            print('Using "runs_new"')
+            self.runs = self.db["runs_new"]
+        else:
+            print('Not using "runs_new"')
+            self.runs = self.db["runs"]
         self.deltas = self.db["deltas"]
         self.task_runs = []
 
