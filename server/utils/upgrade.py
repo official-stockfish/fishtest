@@ -97,6 +97,9 @@ def convert_task_list(run, tasks):
             if "time_losses" not in stats:
                 stats["time_losses"] = 0
 
+        if "last_updated" not in task:
+            task["last_updated"] = datetime.datetime.min
+
         if "worker_info" not in task:
             task["worker_info"] = copy.deepcopy(worker_info_default)
 
