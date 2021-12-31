@@ -231,12 +231,6 @@ def format_results(run_results, run):
         )
         return result
 
-    # If the score is 0% or 100% the formulas will crash
-    # anyway the statistics are only asymptotic
-    if WLD[0] == 0 or WLD[1] == 0:
-        result["info"].append("Pending...")
-        return result
-
     state = "unknown"
     if "sprt" in run["args"]:
         sprt = run["args"]["sprt"]

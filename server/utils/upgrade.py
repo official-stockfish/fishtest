@@ -3,6 +3,7 @@ import copy, datetime, math, pprint, os
 import pymongo
 
 from fishtest.stats import stat_util
+from fishtest.util import format_results
 
 
 def show(p):
@@ -99,15 +100,19 @@ def convert_task_list(run, tasks):
         if "worker_info" not in task:
             task["worker_info"] = copy.deepcopy(worker_info_default)
 
-        # A bunch of things that changed at the same time
         worker_info = task["worker_info"]
         # in old tests concurrency was a string
         worker_info["concurrency"] = int(worker_info["concurrency"])
 
-        if "uname" in worker_info and isinstance(worker_info["uname"], list) and len(worker_info["uname"])>=3:
-            uname=worker_info["uname"]
-            worker_info["uname"]=uname[0]+" "+uname[2]
+        if (
+            "uname" in worker_info
+            and isinstance(worker_info["uname"], list)
+            and len(worker_info["uname"]) >= 3
+        ):
+            uname = worker_info["uname"]
+            worker_info["uname"] = uname[0] + " " + uname[2]
 
+        # A bunch of things that changed at the same time
         if "gcc_version" in worker_info:
             gcc_version_ = worker_info["gcc_version"]
             if isinstance(gcc_version_, str):
@@ -180,16 +185,7 @@ def convert_run(run):
 
             if "llr" not in sprt:
                 state = sprt.get("state", "")
-                if (
-                    "results_info" in run
-                    and "info" in run["results_info"]
-                    and "ending" not in run["results_info"]["info"][0]
-                ):
-                    info = run["results_info"]["info"]
-                    chunks = info[0].split()
-                    assert chunks[0] == "LLR:"
-                    sprt["llr"] = float(chunks[1])
-                elif "results" in run:
+                if "results" in run:
                     stat_util.update_SPRT(run["results"], sprt)
                     # The LLR computation has changed slightly.
                     # This may change the state.
@@ -205,6 +201,8 @@ def convert_run(run):
         for k, v in run_default["args"].items():
             if k not in args:
                 args[k] = v
+
+    run["results_info"] = format_results(run["results"], run)
 
     for k, v in run_default.items():
         if k not in run:
