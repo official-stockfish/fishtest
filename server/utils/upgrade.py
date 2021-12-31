@@ -81,6 +81,7 @@ def convert_task_list(run, tasks):
     task_id = -1
     game_count = 0
     for task in tasks:
+        task_id += 1
         task = copy.deepcopy(task)
 
         # Workaround for bug in my local db
@@ -91,8 +92,6 @@ def convert_task_list(run, tasks):
         if not "stats" in task:  # dummy task
             game_count+=task["num_games"]
             continue
-
-        task_id += 1
 
         if "pending" in task:
             del task["pending"]
@@ -108,7 +107,12 @@ def convert_task_list(run, tasks):
                 stats["time_losses"] = 0
 
         if "last_updated" not in task:
-            task["last_updated"] = datetime.datetime.min
+            if "last_updated" in run:
+                task["last_updated"] = run["last_updated"]
+            elif "start_time" in run:
+                task["last_updated"] = run["start_time"]
+            else:
+                task["last_updated"] = datetime.datetime.min
 
         if "worker_info" not in task:
             task["worker_info"] = copy.deepcopy(worker_info_default)
