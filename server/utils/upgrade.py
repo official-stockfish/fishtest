@@ -79,16 +79,26 @@ worker_info_default = {
 def convert_task_list(run, tasks):
     newtt = []
     task_id = -1
+    game_count = 0
     for task in tasks:
         task = copy.deepcopy(task)
 
-        task_id += 1
+        # Workaround for bug in my local db
+        if "residual" in task and isinstance(task["residual"], dict):
+            game_count+=task["num_games"]
+            continue
 
         if not "stats" in task:  # dummy task
+            game_count+=task["num_games"]
             continue
+
+        task_id += 1
 
         if "pending" in task:
             del task["pending"]
+
+        if "start" not in task:
+            task["start"] = game_count
 
         if "stats" in task:
             stats = task["stats"]
@@ -146,6 +156,8 @@ def convert_task_list(run, tasks):
         for k, v in worker_info_default.items():
             if k not in worker_info:
                 worker_info[k] = v
+
+        game_count += task["num_games"]
 
         newtt.append(task)
     return newtt
