@@ -183,6 +183,9 @@ def convert_run(run):
         if "time_losses" not in results:
             results["time_losses"] = 0
 
+    if "start_time" in run and "last_updated" not in run:
+        run["last_updated"] = run["start_time"]
+
     # This is present in very old test,
     # but duplicated in the task list.
     # Another db conversion?
