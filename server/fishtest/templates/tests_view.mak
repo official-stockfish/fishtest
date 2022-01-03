@@ -285,7 +285,7 @@ from fishtest.util import worker_name
             % else:
                 <td>
             % endif
-            % if approver and 'worker_info' in task and 'username' in task['worker_info']:
+            % if approver and 'worker_info' in task and 'username' in task['worker_info'] and task['worker_info']['username'] != "Unknown_worker":
                 <a href="/user/${task['worker_info']['username']}">${worker_name(task['worker_info'])}</a>
             % elif 'worker_info' in task:
                 ${worker_name(task["worker_info"])}
