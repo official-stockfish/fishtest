@@ -1,3 +1,6 @@
+<%
+  monitoring = request.rundb.conn["admin"].command("getFreeMonitoringStatus")
+%>
 <!DOCTYPE html>
 <html>
   <head>
@@ -57,7 +60,9 @@
         <li><a href="/users">Contributors</a></li>
         <li><a href="/users/monthly">Top Month</a></li>
         <li><a href="/actions">Events</a></li>
-        <li><a href="https://cloud.mongodb.com/freemonitoring/cluster/V726YST63VGLDMUUVB4GT34WZHIY6L4D" target="_blank" rel="noopener">Monitoring</a></li>
+%if monitoring["state"] == 'enabled':
+       <li><a href=${monitoring["url"]} target="_blank" rel="noopener">Monitoring</a></li>
+%endif
         <li>
           % if len(request.userdb.get_pending()) > 0:
               <a href="/pending"
