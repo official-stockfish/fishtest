@@ -57,6 +57,7 @@
         <li><a href="/users">Contributors</a></li>
         <li><a href="/users/monthly">Top Month</a></li>
         <li><a href="/actions">Events</a></li>
+        <li><a href="https://cloud.mongodb.com/freemonitoring/cluster/V726YST63VGLDMUUVB4GT34WZHIY6L4D" target="_blank" rel="noopener">Monitoring</a></li>
         <li>
           % if len(request.userdb.get_pending()) > 0:
               <a href="/pending"
