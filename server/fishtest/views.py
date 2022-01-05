@@ -711,9 +711,9 @@ def validate_form(request):
             batch_size=sprt_batch_size_games // 2,
         )  # game pairs
         # Limit on number of games played.
-        # Shouldn't be hit in practice as long as it is larger than > ~200000
+        # Shouldn't be hit in practice as long as it is larger than > ~400000
         # must scale with chunk_size to avoid overloading the server.
-        data["num_games"] = 2000 * request.rundb.chunk_size
+        data["num_games"] = 4000 * request.rundb.chunk_size
     elif stop_rule == "spsa":
         data["num_games"] = int(request.POST["num-games"])
         if data["num_games"] <= 0:
@@ -739,7 +739,7 @@ def validate_form(request):
         if data["num_games"] <= 0:
             raise Exception("Number of games must be >= 0")
 
-    max_games = 4000 * request.rundb.chunk_size
+    max_games = 16000 * request.rundb.chunk_size
     if data["num_games"] > max_games:
         raise Exception("Number of games must be <= " + str(max_games))
 
@@ -864,7 +864,7 @@ def tests_modify(request):
             )
             return HTTPFound(location=request.route_url("tests"))
 
-        max_games = 4000 * request.rundb.chunk_size
+        max_games = 16000 * request.rundb.chunk_size
         if num_games > max_games:
             request.session.flash(
                 "Number of games must be <= " + str(max_games), "error"
