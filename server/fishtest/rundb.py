@@ -477,12 +477,18 @@ class RunDb:
             q, skip=skip, limit=limit, sort=[("last_updated", DESCENDING)]
         )
 
-        if idx_hint:
+        if idx_hint == "finished_runs":
             # Use a fast COUNT_SCAN query when possible
-            count = self.runs.estimated_document_count(hint=idx_hint)
-        else:
+            count = self.runs.estimated_document_count()
+            q = {"finished" : False}
+            uf = self.runs.count_documents(q, hint="unfinished_runs")
+            count -= uf
             # Otherwise, the count is slow
-            count = c.count()
+        elif idx_hint is not None:
+            count = self.runs.count_documents(q, hint=idx_hint)
+        else:
+            count = self.runs.count_documents(q)
+
         # Don't show runs that were deleted
         runs_list = [run for run in c if not run.get("deleted")]
         return [runs_list, count]
