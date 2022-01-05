@@ -1162,13 +1162,14 @@ def get_paginated_finished_runs(request):
 
     page_idx = max(0, int(request.params.get("page", 1)) - 1)
     page_size = 25
-    finished_runs, num_finished_runs = request.rundb.get_finished_runs(
+    finished_runs, num_finished_runs = request.rundb.get_runs(
         username=username,
         success_only=success_only,
         yellow_only=yellow_only,
         ltc_only=ltc_only,
         skip=page_idx * page_size,
         limit=page_size,
+        finished=True,
     )
 
     pages = [

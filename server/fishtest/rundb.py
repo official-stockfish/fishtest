@@ -449,7 +449,7 @@ class RunDb:
                     )
         return (runs, pending_hours, cores, nps)
 
-    def get_finished_runs(
+    def get_runs(
         self,
         skip=0,
         limit=0,
@@ -457,35 +457,39 @@ class RunDb:
         success_only=False,
         yellow_only=False,
         ltc_only=False,
+        finished=True,
     ):
-        q = {"finished": True}
-        idx_hint = "finished_runs"
+        fast_count = True
+        q = {}
+        if finished:
+            q["finished"] = finished
+            fast_count = False
         if username:
             q["args.username"] = username
-            idx_hint = None
+            fast_count = False
         if ltc_only:
             q["tc_base"] = {"$gte": 40}
-            idx_hint = "finished_ltc_runs"
+            fast_count = False
         if success_only:
             q["is_green"] = True
-            idx_hint = "finished_green_runs"
+            fast_count = False
         if yellow_only:
             q["is_yellow"] = True
-            idx_hint = "finished_yellow_runs"
+            fast_count = False
 
         c = self.runs.find(
             q, skip=skip, limit=limit, sort=[("last_updated", DESCENDING)]
         )
 
-        if idx_hint:
+        if fast_count:
             # Use a fast COUNT_SCAN query when possible
-            count = self.runs.estimated_document_count(hint=idx_hint)
+            count = self.runs.estimated_document_count()
         else:
             # Otherwise, the count is slow
-            count = c.count()
+            count = self.runs.count_documents(q)
         # Don't show runs that were deleted
         runs_list = [run for run in c if not run.get("deleted")]
-        return [runs_list, count]
+        return runs_list, count
 
     def get_results(self, run, save_run=True):
         if not run["results_stale"]:
