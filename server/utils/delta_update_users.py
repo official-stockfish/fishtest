@@ -174,7 +174,7 @@ def update_users():
         last_updated = runs[-1]["last_updated"]
 
     if new_deltas:
-        new_deltas.update(deltas)
+        new_deltas.insert_many(deltas)
         rundb.deltas.delete_many({})
         rundb.deltas.insert_many(new_deltas)
 
