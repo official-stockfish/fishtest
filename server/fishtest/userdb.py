@@ -74,7 +74,7 @@ class UserDb:
     def add_user_group(self, username, group):
         user = self.find(username)
         user["groups"].append(group)
-        self.users.save(user)
+        self.users.replace_one({"_id": user["_id"]}, user)
 
     def create_user(self, username, password, email):
         try:
@@ -98,7 +98,7 @@ class UserDb:
             return False
 
     def save_user(self, user):
-        self.users.replace_one({"username": user["username"]}, user)
+        self.users.replace_one({"_id": user["_id"]}, user)
         self.last_pending_time = 0
 
     def get_machine_limit(self, username):
