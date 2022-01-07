@@ -1306,6 +1306,11 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
         else:
             assert False
 
+        # Check for an FRC/Chess960 opening book
+        variant = "standard"
+        if any(substring in book.upper() for substring in ["FRC", "960"]):
+            variant = "fischerandom"
+
         # Run cutechess binary.
         cmd = (
             [
@@ -1339,6 +1344,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
                 if run["args"].get("adjudication", True)
                 else []
             )
+            + ["-variant", "{}".format(variant)]
             + [
                 "-concurrency",
                 str(int(games_concurrency)),
