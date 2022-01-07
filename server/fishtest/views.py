@@ -877,6 +877,9 @@ def tests_modify(request):
             run["tasks"] += new_chunks
 
         run["finished"] = False
+        run["failed"] = False
+        run["is_green"] = False
+        run["is_yellow"] = False
         run["args"]["num_games"] = num_games
         run["args"]["priority"] = int(request.POST["priority"])
         run["args"]["throughput"] = int(request.POST["throughput"])
@@ -970,8 +973,8 @@ def tests_delete(request):
 
         run["deleted"] = True
         run["finished"] = True
-        for w in run["tasks"]:
-            w["pending"] = False
+        for task in run["tasks"]:
+            task["active"] = False
         request.rundb.buffer(run, True)
         request.rundb.task_time = 0
 
@@ -1217,7 +1220,7 @@ def get_paginated_finished_runs(request):
             run["results_info"] = format_results(results, run)
 
         # Look for failed runs
-        if "failed" in run:
+        if "failed" in run and run["failed"]:
             failed_runs.append(run)
 
     return {
