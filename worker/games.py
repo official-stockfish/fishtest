@@ -1196,14 +1196,10 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
     # Add EvalFile with full path to cutechess options, and download the networks if missimg.
     net_base = required_net(base_engine)
     if net_base:
-        base_options = base_options + [
-            "option.EvalFile={}".format(os.path.join(testing_dir, net_base))
-        ]
+        base_options = base_options + ["option.EvalFile={}".format(net_base)]
     net_new = required_net(new_engine)
     if net_new:
-        new_options = new_options + [
-            "option.EvalFile={}".format(os.path.join(testing_dir, net_new))
-        ]
+        new_options = new_options + ["option.EvalFile={}".format(net_new)]
 
     for net in [net_base, net_new]:
         if net:
@@ -1349,6 +1345,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
                 "name=New-" + run["args"]["resolved_new"][:10],
                 "tc={}".format(scaled_new_tc),
                 "cmd={}".format(new_engine_name),
+                'dir=.',
             ]
             + new_options
             + ["_spsa_"]
@@ -1357,6 +1354,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
                 "name=Base-" + run["args"]["resolved_base"][:10],
                 "tc={}".format(scaled_tc),
                 "cmd={}".format(base_engine_name),
+                'dir=.',
             ]
             + base_options
             + ["_spsa_"]
