@@ -161,10 +161,35 @@ class RunDb:
                 "pentanomial": 5 * [0],
             },
             "results_stale": False,
-            "finished": False,
             "approved": False,
             "approver": "",
         }
+
+        # administrative flags
+
+        # "finished"
+        # set in stop_run(), /api/stop_run
+        # cleared in purge_run(), /tests/modify
+        new_run["finished"] = False
+
+        # "deleted"
+        # set in /tests/delete
+        new_run["deleted"] = False
+
+        # "failed"
+        # set in /api/stop_run
+        # cleared in /tests/modify
+        new_run["failed"] = False
+
+        # "is_green"
+        # set in stop_run()
+        # cleared in purge_run(), /tests/modify
+        new_run["is_green"] = False
+
+        # "is_yellow"
+        # set in stop_run()
+        # cleared in purge_run(), /tests/modify
+        new_run["is_yellow"] = False
 
         if rescheduled_from:
             new_run["rescheduled_from"] = rescheduled_from
@@ -480,7 +505,7 @@ class RunDb:
         if idx_hint == "finished_runs":
             # Use a fast COUNT_SCAN query when possible
             count = self.runs.estimated_document_count()
-            q = {"finished" : False}
+            q = {"finished": False}
             uf = self.runs.count_documents(q, hint="unfinished_runs")
             count -= uf
             # Otherwise, the count is slow
@@ -1054,6 +1079,9 @@ class RunDb:
         now = datetime.utcnow()
         if "start_time" not in run or (now - run["start_time"]).days > 30:
             return False
+        # Do not revive failed runs
+        if run.get("failed", False):
+            return False
         # Remove bad tasks
         purged = False
         if "bad_tasks" not in run:
@@ -1096,6 +1124,8 @@ class RunDb:
             run["results_stale"] = True
             results = self.get_results(run)
             run["finished"] = False
+            run["is_green"] = False
+            run["is_yellow"] = False
             if "sprt" in run["args"] and "state" in run["args"]["sprt"]:
                 fishtest.stats.stat_util.update_SPRT(results, run["args"]["sprt"])
                 run["args"]["sprt"]["state"] = ""
