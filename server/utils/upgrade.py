@@ -1,7 +1,10 @@
-import copy, datetime, math, pprint, os
+import copy
+import datetime
+import math
+import os
+import pprint
 
 import pymongo
-
 from fishtest.stats import stat_util
 from fishtest.util import format_results
 
@@ -86,11 +89,11 @@ def convert_task_list(run, tasks):
 
         # Workaround for bug in my local db
         if "residual" in task and isinstance(task["residual"], dict):
-            game_count+=task["num_games"]
+            game_count += task["num_games"]
             continue
 
         if not "stats" in task:  # dummy task
-            game_count+=task["num_games"]
+            game_count += task["num_games"]
             continue
 
         if "pending" in task:
