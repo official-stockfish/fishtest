@@ -698,7 +698,6 @@ def validate_form(request):
     if stop_rule == "sprt":
         sprt_batch_size_games = 8
         assert sprt_batch_size_games % 2 == 0
-        assert request.rundb.chunk_size % sprt_batch_size_games == 0
         elo_model = request.POST["elo_model"]
         if elo_model not in ["BayesElo", "logistic", "normalized"]:
             raise Exception("Unknown Elo model")
@@ -711,9 +710,7 @@ def validate_form(request):
             batch_size=sprt_batch_size_games // 2,
         )  # game pairs
         # Limit on number of games played.
-        # Shouldn't be hit in practice as long as it is larger than > ~400000
-        # must scale with chunk_size to avoid overloading the server.
-        data["num_games"] = 4000 * request.rundb.chunk_size
+        data["num_games"] = 800000
     elif stop_rule == "spsa":
         data["num_games"] = int(request.POST["num-games"])
         if data["num_games"] <= 0:
@@ -739,7 +736,7 @@ def validate_form(request):
         if data["num_games"] <= 0:
             raise Exception("Number of games must be >= 0")
 
-    max_games = 16000 * request.rundb.chunk_size
+    max_games = 3200000
     if data["num_games"] > max_games:
         raise Exception("Number of games must be <= " + str(max_games))
 
@@ -864,17 +861,12 @@ def tests_modify(request):
             )
             return HTTPFound(location=request.route_url("tests"))
 
-        max_games = 16000 * request.rundb.chunk_size
+        max_games = 3200000
         if num_games > max_games:
             request.session.flash(
                 "Number of games must be <= " + str(max_games), "error"
             )
             return HTTPFound(location=request.route_url("tests"))
-
-        if num_games > existing_games:
-            # Create new chunks for the games
-            new_chunks = request.rundb.generate_tasks(num_games - existing_games)
-            run["tasks"] += new_chunks
 
         run["finished"] = False
         run["failed"] = False

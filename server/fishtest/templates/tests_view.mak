@@ -285,7 +285,7 @@ from fishtest.util import worker_name
             % else:
                 <td>
             % endif
-            % if approver and 'worker_info' in task and 'username' in task['worker_info'] and task['worker_info']['username'] != "Unknown_worker":
+            % if approver and task['worker_info']['username'] != "Unknown_worker":
                 <a href="/user/${task['worker_info']['username']}">${worker_name(task['worker_info'])}</a>
             % elif 'worker_info' in task:
                 ${worker_name(task["worker_info"])}
@@ -295,38 +295,17 @@ from fishtest.util import worker_name
             </td>
             <td>
             <%
-	      if 'worker_info' in task:
-	        if 'python_version' in task['worker_info']:
-                  gcc_version = ".".join([str(m) for m in task['worker_info']['gcc_version']])
-                  python_version = ".".join([str(m) for m in task['worker_info']['python_version']])
-                  version = task['worker_info']['version']
-                # The code below is for backward compatibility.
-                # To be able to delete it we have to convert the database.
-                # This would be a good idea anyway since it would allow us to delete a lot of cruft
-                # from the server code.
-                # Let's first see if this code works well with old db
-                # entries.
-                else:
-                  gcc_version = task['worker_info'].get('gcc_version', '?')
-                  version = str(task['worker_info'].get('version','?:?')).split(":")
-                  python_version = "?" if len(version) == 1 else version[1]
-                  version = version[0]
-                if 'ARCH' in task['worker_info']:
-                  ARCH = task['worker_info']['ARCH']
-                # Glue code, to be deleted after conversion
-                else:
-                  ARCH = task.get('ARCH', '?')
+               gcc_version = ".".join([str(m) for m in task['worker_info']['gcc_version']])
+               python_version = ".".join([str(m) for m in task['worker_info']['python_version']])
+               version = task['worker_info']['version']
+               ARCH = task['worker_info']['ARCH']
             %>
-            % if 'worker_info' in task:
-                os: ${task['worker_info']['uname']};
-                ram: ${task['worker_info'].get('max_memory', '?')}MiB;
-                gcc: ${gcc_version};
-                python: ${python_version};
-                worker: ${version};
-                arch: ${ARCH}
-            % else:
-                Unknown worker
-            % endif
+               os: ${task['worker_info']['uname']};
+               ram: ${task['worker_info']['max_memory']}MiB;
+               gcc: ${gcc_version};
+               python: ${python_version};
+               worker: ${version};
+               arch: ${ARCH}
             </td>
             <td>${str(task.get('last_updated', '-')).split('.')[0]}</td>
             <td>${f"{total:03d} / {task['num_games']:03d}"}</td>

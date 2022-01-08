@@ -12,7 +12,7 @@ from util import get_rundb
 
 def new_run(self, add_tasks=0):
     num_tasks = 4
-    num_games = num_tasks * self.rundb.chunk_size
+    num_games = num_tasks * self.chunk_size
     run_id = self.rundb.new_run(
         "master",
         "master",
@@ -34,7 +34,7 @@ def new_run(self, add_tasks=0):
         run["cores"] = 0
         for i in range(add_tasks):
             task = {
-                "num_games": self.rundb.chunk_size,
+                "num_games": self.chunk_size,
                 "stats": {"wins": 0, "draws": 0, "losses": 0, "crashes": 0},
                 "active": True,
                 "worker_info": self.worker_info,
@@ -61,6 +61,7 @@ def stop_all_runs(self):
 class TestApi(unittest.TestCase):
     @classmethod
     def setUpClass(self):
+        self.chunk_size = 200
         self.rundb = get_rundb()
         # Set up an API user (a worker)
         self.username = "JoeUserWorker"
@@ -216,7 +217,7 @@ class TestApi(unittest.TestCase):
         self.assertFalse(self.rundb.get_run(run_id)["results_stale"])
 
         # Task is still active
-        cs = self.rundb.chunk_size
+        cs = self.chunk_size
         w, d, l = cs // 2 - 10, cs // 2, 0
         request.json_body["stats"] = {
             "wins": w,
@@ -439,6 +440,7 @@ class TestApi(unittest.TestCase):
 class TestRunFinished(unittest.TestCase):
     @classmethod
     def setUpClass(self):
+        self.chunk_size = 200
         self.rundb = get_rundb()
         # Set up an API user (a worker)
         self.username = "JoeUserWorker"

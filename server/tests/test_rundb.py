@@ -17,6 +17,7 @@ class CreateRunDBTest(unittest.TestCase):
             name="finished_ltc_runs",
             partialFilterExpression={"finished": True, "tc_base": {"$gte": 40}},
         )
+        self.chunk_size = 200
         self.worker_info = {
             "uname": "Linux 5.11.0-40-generic",
             "architecture": ["64bit", "ELF"],
@@ -67,7 +68,7 @@ class CreateRunDBTest(unittest.TestCase):
         run = self.rundb.get_run(run_id_stc)
         run["finished"] = True
         task = {
-            "num_games": self.rundb.chunk_size,
+            "num_games": self.chunk_size,
             "stats": {"wins": 0, "draws": 0, "losses": 0, "crashes": 0},
             "pending": True,
             "active": True,
@@ -96,7 +97,7 @@ class CreateRunDBTest(unittest.TestCase):
         print(run_id)
         run = self.rundb.get_run(run_id)
         task = {
-            "num_games": self.rundb.chunk_size,
+            "num_games": self.chunk_size,
             "stats": {"wins": 0, "draws": 0, "losses": 0, "crashes": 0},
             "pending": True,
             "active": True,
@@ -126,7 +127,7 @@ class CreateRunDBTest(unittest.TestCase):
             {
                 "wins": 1,
                 "losses": 1,
-                "draws": self.rundb.chunk_size - 3,
+                "draws": self.chunk_size - 3,
                 "crashes": 0,
                 "time_losses": 0,
             },
@@ -141,7 +142,7 @@ class CreateRunDBTest(unittest.TestCase):
             {
                 "wins": 1,
                 "losses": 1,
-                "draws": self.rundb.chunk_size - 4,
+                "draws": self.chunk_size - 4,
                 "crashes": 0,
                 "time_losses": 0,
             },
@@ -160,7 +161,7 @@ class CreateRunDBTest(unittest.TestCase):
             {
                 "wins": 1,
                 "losses": 1,
-                "draws": self.rundb.chunk_size - 4,
+                "draws": self.chunk_size - 4,
                 "crashes": 0,
                 "time_losses": 0,
             },
@@ -174,7 +175,7 @@ class CreateRunDBTest(unittest.TestCase):
             {
                 "wins": 1,
                 "losses": 1,
-                "draws": self.rundb.chunk_size - 2,
+                "draws": self.chunk_size - 2,
                 "crashes": 0,
                 "time_losses": 0,
             },

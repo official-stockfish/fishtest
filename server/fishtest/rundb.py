@@ -25,7 +25,6 @@ from fishtest.util import (
     post_in_fishcooking_results,
     remaining_hours,
 )
-from fishtest.util import unique_key as unique_key_
 from fishtest.util import update_residuals, worker_name
 from fishtest.views import del_tasks
 from pymongo import DESCENDING, MongoClient
@@ -47,23 +46,15 @@ class RunDb:
         self.actiondb = ActionDb(self.db)
         self.pgndb = self.db["pgns"]
         self.nndb = self.db["nns"]
-        if "runs_new" in self.db.list_collection_names():
-            print('Using "runs_new"')
-            self.runs = self.db["runs_new"]
-        else:
-            print('Not using "runs_new"')
-            self.runs = self.db["runs"]
+        self.runs = self.db["runs"]
         self.deltas = self.db["deltas"]
         self.task_runs = []
 
-        self.chunk_size = 200
         self.task_duration = 900  # 15 minutes
 
         global last_rundb
         last_rundb = self
 
-    def generate_tasks(self, num_games):
-        return []
 
     def new_run(
         self,
@@ -149,8 +140,7 @@ class RunDb:
             "base_same_as_master": base_same_as_master,
             # Will be filled in by tasks, indexed by task-id.
             # Starts as an empty list.
-            # generate_tasks() is currently a dummy
-            "tasks": self.generate_tasks(num_games),
+            "tasks": [],
             # Aggregated results
             "results": {
                 "wins": 0,
@@ -1115,7 +1105,7 @@ class RunDb:
         )
         tasks = copy.copy(run["tasks"])
         for task in tasks:
-            if unique_key_(task["worker_info"]) in bad_workers:
+            if task["worker_info"]["unique_key"] in bad_workers:
                 purged = True
                 task["bad"] = True
                 run["bad_tasks"].append(task)
