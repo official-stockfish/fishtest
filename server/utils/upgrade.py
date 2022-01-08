@@ -1,18 +1,15 @@
-import copy
-import datetime
-import math
-import os
-import pprint
+import copy, datetime, math, pprint, os, uuid
 
 import pymongo
 from fishtest.stats import stat_util
-from fishtest.util import format_results
+from fishtest.util import format_results, worker_name
 
 
 def show(p):
     pprint.pprint(p)
 
 
+# for documentation
 run_default = {
     "_id": "?",
     "args": {
@@ -78,189 +75,41 @@ worker_info_default = {
     "country_code": "?",
 }
 
+worker_dict = {}
 
-def convert_task_list(run, tasks):
-    newtt = []
-    task_id = -1
-    game_count = 0
+
+def convert_task_list(tasks):
     for task in tasks:
-        task_id += 1
-        task = copy.deepcopy(task)
-
-        # Workaround for bug in my local db
-        if "residual" in task and isinstance(task["residual"], dict):
-            game_count += task["num_games"]
-            continue
-
-        if not "stats" in task:  # dummy task
-            game_count += task["num_games"]
-            continue
-
-        if "pending" in task:
-            del task["pending"]
-
-        if "start" not in task:
-            task["start"] = game_count
-
-        if "stats" in task:
-            stats = task["stats"]
-            if "crashes" not in stats:
-                stats["crashes"] = 0
-            if "time_losses" not in stats:
-                stats["time_losses"] = 0
-
-        if "last_updated" not in task:
-            if "last_updated" in run:
-                task["last_updated"] = run["last_updated"]
-            elif "start_time" in run:
-                task["last_updated"] = run["start_time"]
-            else:
-                task["last_updated"] = datetime.datetime.min
-
-        if "worker_info" not in task:
-            task["worker_info"] = copy.deepcopy(worker_info_default)
-
-        worker_info = task["worker_info"]
-        # in old tests concurrency was a string
-        worker_info["concurrency"] = int(worker_info["concurrency"])
-
-        if (
-            "uname" in worker_info
-            and isinstance(worker_info["uname"], list)
-            and len(worker_info["uname"]) >= 3
-        ):
-            uname = worker_info["uname"]
-            worker_info["uname"] = uname[0] + " " + uname[2]
-
-        # A bunch of things that changed at the same time
-        if "gcc_version" in worker_info:
-            gcc_version_ = worker_info["gcc_version"]
-            if isinstance(gcc_version_, str):
-                gcc_version = [int(k) for k in gcc_version_.split(".")]
-                worker_info["gcc_version"] = gcc_version
-
-        if "python_version" not in worker_info:
-            if "version" in worker_info:
-                if ":" in str(worker_info["version"]):
-                    version_ = worker_info["version"].split(":")
-                    version = int(version_[0])
-                    python_version = [int(k) for k in version_[1].split(".")]
-                    worker_info["python_version"] = python_version
-                    worker_info["version"] = version
-                else:
-                    version = int(worker_info["version"])
-                    worker_info["version"] = version
-
-        # Two other things that changed
-        if "ARCH" not in worker_info:
-            if "ARCH" in task:
-                worker_info["ARCH"] = task["ARCH"]
-                del task["ARCH"]
-            if "nps" in task:
-                worker_info["nps"] = task["nps"]
-                del task["nps"]
-
-        for k, v in worker_info_default.items():
-            if k not in worker_info:
-                worker_info[k] = v
-
-        game_count += task["num_games"]
-
-        newtt.append(task)
-    return newtt
+        if task["worker_info"]["unique_key"] == "xxxxxxxx":
+            name = worker_name(task["worker_info"])
+            if name not in worker_dict:
+                worker_dict[name] = str(uuid.uuid4())
+            task["worker_info"]["unique_key"] = worker_dict[name]
 
 
 def convert_run(run):
-    # some things that shouldn't have been here
-    if "failure_reason" in run:
-        del run["failure_reason"]
-    if "dead_task" in run:
-        del run["dead_task"]
-    if "new_tc" in run:
-        del run["new_tc"]
+    for k, v in run["args"].items():
+        if v == "?":
+            run["args"][k] = ""
 
-    if "results" in run:
-        results = run["results"]
-        if "crashes" not in results:
-            results["crashes"] = 0
-        if "time_losses" not in results:
-            results["time_losses"] = 0
-
-    if "start_time" in run and "last_updated" not in run:
-        run["last_updated"] = run["start_time"]
-
-    # This is present in very old test,
-    # but duplicated in the task list.
-    # Another db conversion?
-    if "worker_results" in run:
-        del run["worker_results"]
-
-    if "args" in run:
-        args = run["args"]
-        if "new_tc" not in args:
-            args["new_tc"] = args["tc"]
-        if "sprt" in args:
-            sprt = args["sprt"]
-            sprt["lower_bound"] = math.log(sprt["beta"] / (1 - sprt["alpha"]))
-            sprt["upper_bound"] = math.log((1 - sprt["beta"]) / sprt["alpha"])
-            if "elo_model" not in sprt:
-                sprt["elo_model"] = "BayesElo"
-            if "batch_size" not in sprt:
-                sprt["batch_size"] = 1
-
-            if "llr" not in sprt:
-                state = sprt.get("state", "")
-                if "results" in run:
-                    stat_util.update_SPRT(run["results"], sprt)
-                    # The LLR computation has changed slightly.
-                    # This may change the state.
-                    sprt["state"] = state
-                else:
-                    if state == "":
-                        sprt["llr"] = 0.0
-                    elif state == "rejected":
-                        sprt["llr"] = sprt["lower_bound"]
-                    else:
-                        sprt["llr"] = sprt["upper_bound"]
-
-        for k, v in run_default["args"].items():
-            if k not in args:
-                args[k] = v
-
-    run["results_info"] = format_results(run["results"], run)
-
-    for k, v in run_default.items():
-        if k not in run:
-            run[k] = v
+    for flag in ["finished", "failed", "deleted", "is_green", "is_yellow"]:
+        if flag not in run:
+            run[flag] = False
 
 
 if __name__ == "__main__":
-    print('Copying "runs" to "runs_new"...')
-    client = pymongo.MongoClient()
-    client["fishtest_new"]["runs_new"].drop()
-    client.close()
-    # copy indexes
-    cmd = (
-        "mongodump --archive --db=fishtest_new --collection=runs"
-        "|"
-        "mongorestore --archive  --nsFrom=fishtest_new.runs --nsTo=fishtest_new.runs_new"
-    )
-    os.system(cmd)
     client = pymongo.MongoClient()
     runs_collection = client["fishtest_new"]["runs"]
-    runs_collection_new = client["fishtest_new"]["runs_new"]
-    runs = runs_collection.find({})
+    runs = runs_collection.find({}).sort("_id", 1)
     count = 0
     print("Starting conversion...")
     t0 = datetime.datetime.utcnow()
     for r in runs:
         count += 1
         r_id = r["_id"]
-        r["tasks"] = convert_task_list(r, r["tasks"])
-        if "bad_tasks" in r:
-            r["bad_tasks"] = convert_task_list(r, r["bad_tasks"])
         convert_run(r)
-        runs_collection_new.replace_one({"_id": r_id}, r)
+        convert_task_list(r["tasks"])
+        runs_collection.replace_one({"_id": r_id}, r)
         print("Runs converted: {}.".format(count), end="\r")
     t1 = datetime.datetime.utcnow()
     duration = (t1 - t0).total_seconds()
