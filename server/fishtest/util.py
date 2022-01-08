@@ -10,20 +10,11 @@ from zxcvbn import zxcvbn
 FISH_URL = "https://tests.stockfishchess.org/tests/view/"
 
 
-def unique_key(worker_info):
-    if "unique_key" in worker_info:
-        return worker_info["unique_key"]
-    else:
-        # provide a mock unique key for very old tests
-        # which did not have a unique_key
-        return worker_name(worker_info)
-
-
 def worker_name(worker_info):
     # A user friendly name for the worker.
-    username = worker_info.get("username", "")
+    username = worker_info["username"]
     cores = str(worker_info["concurrency"])
-    uuid = worker_info.get("unique_key", "")
+    uuid = worker_info["unique_key"]
     name = "{}-{}cores".format(username, cores)
     if len(uuid) != 0:
         name += "-" + uuid.split("-")[0]
@@ -48,7 +39,7 @@ def get_chi2(tasks, exclude_workers=set()):
     for task in tasks:
         if "worker_info" not in task:
             continue
-        key = unique_key(task["worker_info"])
+        key = task["worker_info"]["unique_key"]
         if key in exclude_workers:
             continue
         stats = task.get("stats", {})
@@ -194,7 +185,7 @@ def update_residuals(tasks, cached_chi2=None):
     for task in tasks:
         if "worker_info" not in task:
             continue
-        task["residual"] = residuals.get(unique_key(task["worker_info"]), float("inf"))
+        task["residual"] = residuals.get(task["worker_info"]["unique_key"], float("inf"))
 
         if crash_or_time(task):
             task["residual"] = 10.0
@@ -236,8 +227,6 @@ def format_results(run_results, run):
         sprt = run["args"]["sprt"]
         state = sprt.get("state", "")
         elo_model = sprt.get("elo_model", "BayesElo")
-        if "llr" not in sprt:  # legacy
-            fishtest.stats.stat_util.update_SPRT(run_results, sprt)
         result["info"].append(
             "LLR: {:.2f} ({:.2f},{:.2f}) {}".format(
                 sprt["llr"],
