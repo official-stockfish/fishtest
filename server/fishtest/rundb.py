@@ -168,7 +168,7 @@ class RunDb:
         # administrative flags
 
         # "finished"
-        # set in stop_run(), /api/stop_run
+        # set in stop_run(), /api/stop_run, /tests/delete
         # cleared in purge_run(), /tests/modify
         new_run["finished"] = False
 
