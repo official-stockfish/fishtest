@@ -271,7 +271,8 @@ h3 + .row-fluid .rounded.elo-results {
   content: "\f46d";
 }
 
-.mainnavbar [href^="https://cloud.mongodb.com/freemonitoring/cluster/"]::before {
+.mainnavbar [href^="https://cloud.mongodb.com/freemonitoring/cluster/"]::before
+{
   content: "\f21e";
 }
 
