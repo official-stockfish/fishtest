@@ -32,7 +32,10 @@
             integrity="sha384-/bQdsTh/da6pkI1MST/rWKFNjaCP5gBSY4sEBT38Q/9RBh9AH40zEOg7Hlq2THRZ"
             crossorigin="anonymous"></script>
 
-    <script src="/js/jquery.cookie.js" defer></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.min.js"
+            integrity="sha256-1A78rJEdiWTzco6qdn3igTBv9VupN3Q1ozZNTR4WE/Y="
+            crossorigin="anonymous"></script>
+
     <script src="/js/application.js?v=${cache_busters['js/application.js']}" defer></script>
 
     <%block name="head"/>

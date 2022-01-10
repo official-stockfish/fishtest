@@ -44,7 +44,7 @@
         </tr>
     % endfor
     % if len(machines) == 0:
-        <td>No machines running</td>
+        <td colspan=20>No machines running</td>
     % endif
   </tbody>
 </table>

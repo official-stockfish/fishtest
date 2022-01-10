@@ -185,7 +185,9 @@ def update_residuals(tasks, cached_chi2=None):
     for task in tasks:
         if "worker_info" not in task:
             continue
-        task["residual"] = residuals.get(task["worker_info"]["unique_key"], float("inf"))
+        task["residual"] = residuals.get(
+            task["worker_info"]["unique_key"], float("inf")
+        )
 
         if crash_or_time(task):
             task["residual"] = 10.0
@@ -436,3 +438,19 @@ def validate(schema, object, name):
                     return ret
         return ""
     return "Type {} is not supported".format(type(schema))
+
+
+# Workaround for a bug in pyramid.request.cookies.
+# Chrome may send different cookies with the same name.
+# The one that applies is the first one (the one with the
+# most specific path).
+# But pyramid.request.cookies picks the last one.
+def get_cookie(request, name):
+    name = name.strip()
+    if "Cookie" not in request.headers:
+        return None
+    cookies = request.headers["Cookie"].split(";")
+    for cookie in cookies:
+        k, v = cookie.split("=")
+        if k.strip() == name:
+            return v.strip()
