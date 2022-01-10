@@ -10,5 +10,8 @@
   % endif
 </h2>
 
-<h3>Finished - ${num_finished_runs} tests</h3>
-<%include file="run_table.mak" args="runs=finished_runs, pages=finished_runs_pages"/>
+<%include file="run_table.mak" args="runs=finished_runs,
+                                     header='Finished',
+                                     count=num_finished_runs, 
+                                     pages=finished_runs_pages"
+/>

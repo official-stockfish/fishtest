@@ -22,20 +22,6 @@ $(() => {
             .forEach(tr => body.appendChild(tr));
     });
 
-    // clicking Show/Hide on Pending + Paused tests and Machines sections toggles them
-    $("#pending-button").click(function() {
-        var active = $(this).text().trim() === 'Hide';
-        $(this).text(active ? 'Show' : 'Hide');
-        $("#pending").slideToggle(150);
-        $.cookie('pending_state', $(this).text().trim());
-    });
-
-    $("#paused-button").click(function() {
-        var active = $(this).text().trim() === 'Hide';
-        $(this).text(active ? 'Show' : 'Hide');
-        $("#paused").slideToggle(150);
-        $.cookie('paused_state', $(this).text().trim());
-    });
 
     $("#non_default-button").click(function() {
         var active = $(this).text().trim().substring(0, 4) === 'Hide';
@@ -52,7 +38,7 @@ $(() => {
             fetchingMachines = true;
             $.get("/tests/machines", (html) => $("#machines").append(html));
         }
-        $("#machines").toggle();
+        $("#machines").slideToggle(150);
         $.cookie('machines_state', $(this).text().trim());
     });
 
