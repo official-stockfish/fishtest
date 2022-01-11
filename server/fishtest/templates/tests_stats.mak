@@ -54,6 +54,7 @@
   if has_pentanomial:
       results5 = run["results"]["pentanomial"]
       results5_ = fishtest.stats.LLRcalc.regularize(results5)
+      pentanomial_draw_ratio = results5_[2] / float(sum(results5_))
       N5, pdf5 = fishtest.stats.LLRcalc.results_to_pdf(results5)
       games5 = 2 * N5
       avg5, var5, skewness5, exkurt5 = fishtest.stats.LLRcalc.stats_ex(pdf5)
@@ -257,6 +258,9 @@
             <H4>Draws</H4>
             <table class="table table-sm" style="margin-top:1em;">
               <tr><td>Draw ratio</td><td>${f"{draw_ratio:.5f}"}</td></tr>
+              % if has_pentanomial:
+                <tr><td>Pentanomial draw ratio</td><td>${f"{pentanomial_draw_ratio:.5f}"}</td></tr>
+              % endif
               <tr><td>DrawElo (BayesElo)</td><td>${f"{drawelo:.2f}"}</td></tr>
             </table>
             % if has_sprt:
