@@ -229,7 +229,7 @@ def update_SPRT(R, sprt):
     R['pentanomial'] contains the pentanomial frequencies
     elo_model can be either 'BayesElo', 'logistic' or 'normalized'"""
 
-    elo_model = sprt.get["elo_model"]
+    elo_model = sprt["elo_model"]
     assert elo_model in ["BayesElo", "logistic", "normalized"]
     elo0 = sprt["elo0"]
     elo1 = sprt["elo1"]
@@ -246,7 +246,7 @@ def update_SPRT(R, sprt):
 
     R_ = R.get("pentanomial", R3)
 
-    batch_size = sprt.get["batch_size"]
+    batch_size = sprt["batch_size"]
 
     # sanity check on batch_size
     if sum(R_) % batch_size != 0:
