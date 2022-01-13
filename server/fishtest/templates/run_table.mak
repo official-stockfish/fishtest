@@ -74,7 +74,7 @@
                   <td style="width: 1%;" class="run-button run-deny">
                     <div class="dropdown">
                       <button type="submit" class="btn btn-danger btn-sm" data-bs-toggle="dropdown">
-                       <img src="/img/trash.svg">
+                        <i class="fas fa-trash-alt"></i>
                       </button>
                       <div class="dropdown-menu" role="menu">
                         <form action="/tests/delete" method="POST" style="display: inline;">
@@ -87,17 +87,6 @@
                     </div>
                   </td>
 
-                  <td style="width: 1%;" class="run-button">
-                    % if run.get('approved', False):
-                        <button class="btn btn-success btn-sm">
-                          <img src="/img/thumbs_up.svg">
-                        </button>
-                    % else:
-                        <button class="btn btn-warning btn-sm">
-                          <img src="/img/question_mark.svg">
-                        </button>
-                    % endif
-                  </td>
               % endif
 
               <td style="width: 6%;" class="run-date">

@@ -94,6 +94,14 @@ body {
   min-width: 53px;
 }
 
+/* Confirm deny button */
+.run-deny .dropdown-menu.show {
+  min-width: 0;
+  padding: 0;
+  background-color: transparent;
+  border: none;
+}
+
 a {
   color: #409e42;
   text-decoration: none;
