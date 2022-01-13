@@ -60,7 +60,6 @@
 % if toggle:
    style="${'' if get_cookie(request, cookie_name)=='Hide' else 'display: none;'}"
 % endif
-   class="overflow-auto"
 >
 
   ${pagination()}
