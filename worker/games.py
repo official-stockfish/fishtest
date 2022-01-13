@@ -444,8 +444,59 @@ def download_from_github(item, testing_dir):
         raise WorkerException("Item {} not found".format(item))
 
 
+def cc_is_clang():
+    """Parse the output of g++ -E -dM -"""
+    with subprocess.Popen(
+        ["g++", "-E", "-dM", "-"],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        universal_newlines=True,
+        bufsize=1,
+        close_fds=not IS_WINDOWS,
+    ) as p:
+        clang = "None"
+        for line in iter(p.stdout.readline, ""):
+            if "__clang__" in line:
+                clang = line.split()[2]
+
+    return clang == "1"
+
+
+def clang_props():
+    """Parse the output of g++ -E -dM - and extract the available clang properties"""
+    with subprocess.Popen(
+        ["g++", "-E", "-dM", "-"],
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        universal_newlines=True,
+        bufsize=1,
+        close_fds=not IS_WINDOWS,
+    ) as p:
+        flags = []
+        arch = "None"
+        version = "None"
+        arm64 = "None"
+        for line in iter(p.stdout.readline, ""):
+            if "__VERSION__" in line:
+                version = line.split()[2]
+            if "__arm64__" in line:
+                arm64 = line.split()[2]
+
+    if p.returncode != 0:
+        raise FatalException(
+            "g++ target query failed with return code {}".format(
+                format_return_code(p.returncode)
+            )
+        )
+
+    if "Apple" in version and arm64 == "1":
+        arch = "apple-silicon"
+
+    return {"flags": flags, "arch": arch}
+
+
 def gcc_props():
-    """Parse the output of g++ -Q -march=native --help=target and extract the available properties"""
+    """Parse the output of g++ -Q -march=native --help=target and extract the available gcc properties"""
     with subprocess.Popen(
         ["g++", "-Q", "-march=native", "--help=target"],
         stdout=subprocess.PIPE,
@@ -469,6 +520,15 @@ def gcc_props():
         )
 
     return {"flags": flags, "arch": arch}
+
+
+def cc_props():
+    if cc_is_clang():
+        global MAKE_CMD
+        MAKE_CMD = "make COMP=clang "
+        return clang_props()
+    else:
+        return gcc_props()
 
 
 def make_targets():
@@ -506,7 +566,7 @@ def find_arch():
 
     targets = make_targets()
 
-    props = gcc_props()
+    props = cc_props()
 
     if is_64bit():
         if (
@@ -550,7 +610,10 @@ def find_arch():
         ):
             arch = "x86-64-sse3-popcnt"
         else:
-            arch = "x86-64"
+            if props["arch"] in targets:
+                arch = props["arch"]
+            else:
+                arch = "x86-64"
     else:
         if (
             "-mpopcnt" in props["flags"]

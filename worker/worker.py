@@ -518,6 +518,7 @@ def gcc_version():
         bufsize=1,
         close_fds=not IS_WINDOWS,
     ) as p:
+        clang_major = "None"
         for line in iter(p.stdout.readline, ""):
             if "__GNUC__" in line:
                 major = line.split()[2]
@@ -525,15 +526,26 @@ def gcc_version():
                 minor = line.split()[2]
             if "__GNUC_PATCHLEVEL__" in line:
                 patchlevel = line.split()[2]
+            if "__clang_major__" in line:
+                clang_major = line.split()[2]
+            if "__clang_minor__" in line:
+                clang_minor = line.split()[2]
+            if "__clang_patchlevel__" in line:
+                clang_patchlevel = line.split()[2]
 
     if p.returncode != 0:
         print("g++ version query failed with return code {}".format(p.returncode))
         return None
 
     try:
-        major = int(major)
-        minor = int(minor)
-        patchlevel = int(patchlevel)
+        if clang_major == "None":
+            major = int(major)
+            minor = int(minor)
+            patchlevel = int(patchlevel)
+        else:
+            major = int(clang_major)
+            minor = int(clang_minor)
+            patchlevel = int(clang_patchlevel)
     except:
         print("Failed to parse g++ version.")
         return None
