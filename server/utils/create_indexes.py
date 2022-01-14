@@ -20,27 +20,27 @@ db = conn[db_name]
 def create_runs_indexes():
     print("Creating indexes on runs collection")
     db["runs"].create_index(
-        [("last_updated", ASCENDING)],
+        [("finished", ASCENDING), ("last_updated", ASCENDING)],
         name="unfinished_runs",
         partialFilterExpression={"finished": False},
     )
     db["runs"].create_index(
-        [("last_updated", DESCENDING)],
+        [("finished", ASCENDING), ("last_updated", DESCENDING)],
         name="finished_runs",
         partialFilterExpression={"finished": True},
     )
     db["runs"].create_index(
-        [("last_updated", DESCENDING), ("is_green", DESCENDING)],
+        [("finished", ASCENDING), ("is_green", DESCENDING), ("last_updated", DESCENDING)],
         name="finished_green_runs",
         partialFilterExpression={"finished": True, "is_green": True},
     )
     db["runs"].create_index(
-        [("last_updated", DESCENDING), ("is_yellow", DESCENDING)],
+        [("finished", ASCENDING), ("is_yellow", DESCENDING), ("last_updated", DESCENDING)],
         name="finished_yellow_runs",
         partialFilterExpression={"finished": True, "is_yellow": True},
     )
     db["runs"].create_index(
-        [("last_updated", DESCENDING), ("tc_base", DESCENDING)],
+        [("finished", ASCENDING), ("last_updated", DESCENDING), ("tc_base", DESCENDING)],
         name="finished_ltc_runs",
         partialFilterExpression={"finished": True, "tc_base": {"$gte": 40}},
     )
