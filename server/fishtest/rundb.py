@@ -474,35 +474,20 @@ class RunDb:
         ltc_only=False,
     ):
         q = {"finished": True}
-        idx_hint = "finished_runs"
         if username:
             q["args.username"] = username
-            idx_hint = None
         if ltc_only:
             q["tc_base"] = {"$gte": 40}
-            idx_hint = "finished_ltc_runs"
         if success_only:
             q["is_green"] = True
-            idx_hint = "finished_green_runs"
         if yellow_only:
             q["is_yellow"] = True
-            idx_hint = "finished_yellow_runs"
 
         c = self.runs.find(
             q, skip=skip, limit=limit, sort=[("last_updated", DESCENDING)]
         )
 
-        if idx_hint == "finished_runs":
-            # Use a fast COUNT_SCAN query when possible
-            count = self.runs.estimated_document_count()
-            q = {"finished": False}
-            uf = self.runs.count_documents(q, hint="unfinished_runs")
-            count -= uf
-            # Otherwise, the count is slow
-        elif idx_hint is not None:
-            count = self.runs.count_documents(q, hint=idx_hint)
-        else:
-            count = self.runs.count_documents(q)
+        count = self.runs.count_documents(q)
 
         # Don't show runs that were deleted
         runs_list = [run for run in c if not run.get("deleted")]
