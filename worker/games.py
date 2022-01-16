@@ -25,6 +25,7 @@ from zipfile import ZipFile
 import requests
 
 IS_WINDOWS = "windows" in platform.system().lower()
+IS_MACOS = "darwin" in platform.system().lower()
 LOGFILE = "api.log"
 
 LOG_LOCK = threading.Lock()
@@ -1167,6 +1168,8 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
     if not os.path.exists(cutechess):
         if len(EXE_SUFFIX) > 0:
             zipball = "cutechess-cli-win.zip"
+        elif IS_MACOS:
+            zipball = "cutechess-cli-macos-64bit.zip"
         else:
             zipball = "cutechess-cli-linux-{}.zip".format(platform.architecture()[0])
         download_from_github(zipball, testing_dir)
