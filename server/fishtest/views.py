@@ -1192,7 +1192,9 @@ def get_paginated_finished_runs(request):
         {
             "idx": "Next",
             "url": "?page={}".format(page_idx + 2),
-            "state": "disabled" if page_idx >= (num_finished_runs - 1) // page_size else "",
+            "state": "disabled"
+            if page_idx >= (num_finished_runs - 1) // page_size
+            else "",
         }
     )
 

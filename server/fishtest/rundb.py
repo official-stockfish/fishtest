@@ -24,8 +24,9 @@ from fishtest.util import (
     get_chi2,
     post_in_fishcooking_results,
     remaining_hours,
+    update_residuals,
+    worker_name,
 )
-from fishtest.util import update_residuals, worker_name
 from fishtest.views import del_tasks
 from pymongo import DESCENDING, MongoClient
 

@@ -30,17 +30,29 @@ def create_runs_indexes():
         partialFilterExpression={"finished": True},
     )
     db["runs"].create_index(
-        [("finished", ASCENDING), ("is_green", DESCENDING), ("last_updated", DESCENDING)],
+        [
+            ("finished", ASCENDING),
+            ("is_green", DESCENDING),
+            ("last_updated", DESCENDING),
+        ],
         name="finished_green_runs",
         partialFilterExpression={"finished": True, "is_green": True},
     )
     db["runs"].create_index(
-        [("finished", ASCENDING), ("is_yellow", DESCENDING), ("last_updated", DESCENDING)],
+        [
+            ("finished", ASCENDING),
+            ("is_yellow", DESCENDING),
+            ("last_updated", DESCENDING),
+        ],
         name="finished_yellow_runs",
         partialFilterExpression={"finished": True, "is_yellow": True},
     )
     db["runs"].create_index(
-        [("finished", ASCENDING), ("last_updated", DESCENDING), ("tc_base", DESCENDING)],
+        [
+            ("finished", ASCENDING),
+            ("last_updated", DESCENDING),
+            ("tc_base", DESCENDING),
+        ],
         name="finished_ltc_runs",
         partialFilterExpression={"finished": True, "tc_base": {"$gte": 40}},
     )
