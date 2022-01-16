@@ -55,7 +55,6 @@ class RunDb:
         global last_rundb
         last_rundb = self
 
-
     def new_run(
         self,
         base_tag,
@@ -997,46 +996,42 @@ class RunDb:
         self.actiondb.failed_task(task["worker_info"]["username"], run)
         return {}
 
-    def stop_run(self, run_id, run=None):
+    def stop_run(self, run_id):
         """Stops a run and runs auto-purge if it was enabled
         - Used by the website and API for manually stopping runs
         - Called during /api/update_task:
           - for stopping SPRT runs if the test is accepted or rejected
           - for stopping a run after all games are finished
         """
-        self.clear_params(run_id)
-        save_it = False
-        if run is None:
-            run = self.get_run(run_id)
-            save_it = True
-        run["tasks"] = [task for task in run["tasks"] if "stats" in task]
+        self.clear_params(run_id)  # spsa stuff
+        run = self.get_run(run_id)
         for task in run["tasks"]:
             task["active"] = False
-        if save_it:
-            self.buffer(run, True)
-            self.task_time = 0
-            # Auto-purge runs here
-            purged = False
-            if run["args"].get("auto_purge", True) and "spsa" not in run["args"]:
-                if self.purge_run(run):
-                    purged = True
-                    run = self.get_run(run["_id"])
-                    results = self.get_results(run, True)
-                    run["results_info"] = format_results(results, run)
-                    self.buffer(run, True)
-            if not purged:
-                # The run is now finished and will no longer be updated after this
-                run["finished"] = True
-                results = self.get_results(run, True)
-                run["results_info"] = format_results(results, run)
-                # De-couple the styling of the run from its finished status
-                if run["results_info"]["style"] == "#44EB44":
-                    run["is_green"] = True
-                elif run["results_info"]["style"] == "yellow":
-                    run["is_yellow"] = True
-                self.buffer(run, True)
-                # Publish the results of the run to the Fishcooking forum
-                post_in_fishcooking_results(run)
+        run["results_stale"] = True
+        results = self.get_results(run, True)
+        run["results_info"] = format_results(results, run)
+        # De-couple the styling of the run from its finished status
+        if run["results_info"]["style"] == "#44EB44":
+            run["is_green"] = True
+        elif run["results_info"]["style"] == "yellow":
+            run["is_yellow"] = True
+        run["finished"] = True
+        self.buffer(run, True)
+        # Publish the results of the run to the Fishcooking forum
+        post_in_fishcooking_results(run)
+        self.task_time = 0  # triggers a reload of self.task_runs
+        # Auto-purge runs here. This may revive the run.
+        if run["args"].get("auto_purge", True) and "spsa" not in run["args"]:
+            message = self.purge_run(run)
+            if message == "":
+                print("Run {} was auto-purged".format(str(run_id)), flush=True)
+            else:
+                print(
+                    "Run {} was not auto-purged. Message: {}.".format(
+                        str(run_id), message
+                    ),
+                    flush=True,
+                )
 
     def approve_run(self, run_id, approver):
         run = self.get_run(run_id)
@@ -1051,14 +1046,16 @@ class RunDb:
         return True
 
     def purge_run(self, run, p=0.001, res=7.0, iters=1):
+        # Only purge finished runs
+        assert run["finished"]
         now = datetime.utcnow()
         if "start_time" not in run or (now - run["start_time"]).days > 30:
-            return False
+            return "Run too old to be purged"
         # Do not revive failed runs
         if run.get("failed", False):
-            return False
-        # Remove bad tasks
-        purged = False
+            return "You cannot purge a failed run"
+        message = "No bad workers"
+        # Transfer bad tasks to run["bad_tasks"]
         if "bad_tasks" not in run:
             run["bad_tasks"] = []
 
@@ -1066,7 +1063,7 @@ class RunDb:
         for task in tasks:
             # Special cases: crashes or time losses.
             if crash_or_time(task):
-                purged = True
+                message = ""
                 # The next two lines are a bit hacky but
                 # the correct residual and color may not have
                 # been set yet.
@@ -1086,26 +1083,38 @@ class RunDb:
             cached_chi2=chi2,
             p=p,
             res=res,
-            iters=iters - 1 if purged else iters,
+            iters=iters - 1 if message == "" else iters,
         )
         tasks = copy.copy(run["tasks"])
         for task in tasks:
             if task["worker_info"]["unique_key"] in bad_workers:
-                purged = True
+                message = ""
                 task["bad"] = True
                 run["bad_tasks"].append(task)
                 run["tasks"].remove(task)
-        if purged:
+        if message == "":
             run["results_stale"] = True
             results = self.get_results(run)
-            run["finished"] = False
-            run["is_green"] = False
-            run["is_yellow"] = False
+            revived = True
             if "sprt" in run["args"] and "state" in run["args"]["sprt"]:
                 fishtest.stats.stat_util.update_SPRT(results, run["args"]["sprt"])
-                run["args"]["sprt"]["state"] = ""
+                if run["args"]["sprt"]["state"] != "":
+                    revived = False
+
+            run["results_info"] = format_results(results, run)
+            if revived:
+                run["finished"] = False
+                run["is_green"] = False
+                run["is_yellow"] = False
+            else:
+                # Copied code. Must be refactored.
+                if run["results_info"]["style"] == "#44EB44":
+                    run["is_green"] = True
+                elif run["results_info"]["style"] == "yellow":
+                    run["is_yellow"] = True
             self.buffer(run, True)
-        return purged
+
+        return message
 
     def spsa_param_clip_round(self, param, increment, clipping, rounding):
         if clipping == "old":

@@ -940,9 +940,9 @@ def tests_purge(request):
         return HTTPFound(location=request.route_url("tests"))
 
     # More relaxed conditions than with auto purge.
-    purged = request.rundb.purge_run(run, p=0.01, res=4.5)
-    if not purged:
-        request.session.flash("No bad workers!")
+    message = request.rundb.purge_run(run, p=0.01, res=4.5)
+    if message != "":
+        request.session.flash(message)
         return HTTPFound(location=request.route_url("tests"))
 
     run = del_tasks(run)
