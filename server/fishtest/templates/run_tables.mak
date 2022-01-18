@@ -1,6 +1,7 @@
 <%
   # to differentiate toggle states on different pages
-  prefix = username+"_" if username is not Undefined else ""
+  import binascii
+  prefix = 'user'+binascii.hexlify(username.encode()).decode()+"_" if username is not Undefined else ""
 %>
 
 
