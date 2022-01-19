@@ -610,10 +610,7 @@ def find_arch():
             and "x86-64-sse3-popcnt" in targets
         ):
             arch = "x86-64-sse3-popcnt"
-        elif (
-            IS_MACOS and
-            props["arch"] == "armv8-a"
-        ):
+        elif IS_MACOS and props["arch"] == "armv8-a":
             arch = "apple-silicon"
         else:
             if props["arch"] in targets:
