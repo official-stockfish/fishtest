@@ -464,19 +464,17 @@ def cc_is_clang():
 
 
 def clang_props():
-    """Parse the output of g++ -E -dM - and extract the available clang properties"""
+    """Parse the output of clang++ -E -dM - and extract the available clang properties"""
     with subprocess.Popen(
-        ["g++", "-E", "-dM", "-"],
+        ["clang++", "-E", "-dM", "-"],
         stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         universal_newlines=True,
         bufsize=1,
         close_fds=not IS_WINDOWS,
     ) as p:
-        flags = []
-        arch = "None"
-        version = "None"
-        arm64 = "None"
+        version = ""
+        arm64 = None
         for line in iter(p.stdout.readline, ""):
             if "__VERSION__" in line:
                 version = line.split()[2]
@@ -485,13 +483,45 @@ def clang_props():
 
     if p.returncode != 0:
         raise FatalException(
-            "g++ target query failed with return code {}".format(
+            "clang++ target query failed with return code {}".format(
                 format_return_code(p.returncode)
             )
         )
 
     if "Apple" in version and arm64 == "1":
-        arch = "apple-silicon"
+        return {"flags": [], "arch": "apple-silicon"}
+
+    # Parse the output of clang++ -E - -march=native -### and extract the available clang properties
+    with subprocess.Popen(
+        ["clang++", "-E", "-", "-march=native", "-###"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        universal_newlines=True,
+        bufsize=1,
+        close_fds=not IS_WINDOWS,
+    ) as p:
+        for line in iter(p.stdout.readline, ""):
+            if "cc1" in line:
+                tokens = line.split('" "')
+                arch = [
+                    tokens[i + 1]
+                    for i, token in enumerate(tokens)
+                    if token == "-target-cpu"
+                ]
+                arch = arch[0] if len(arch) else "None"
+                flags = [
+                    tokens[i + 1]
+                    for i, token in enumerate(tokens)
+                    if token == "-target-feature"
+                ]
+                flags = [flag[1:] for flag in flags if flag[0] == "+"]
+
+    if p.returncode != 0:
+        raise FatalException(
+            "clang++ target query failed with return code {}".format(
+                format_return_code(p.returncode)
+            )
+        )
 
     return {"flags": flags, "arch": arch}
 
@@ -509,7 +539,7 @@ def gcc_props():
         arch = "None"
         for line in iter(p.stdout.readline, ""):
             if "[enabled]" in line:
-                flags.append(line.split()[0])
+                flags.append(line.split()[0][2:])
             if "-march" in line and len(line.split()) == 2:
                 arch = line.split()[1]
 
@@ -571,42 +601,42 @@ def find_arch():
 
     if is_64bit():
         if (
-            "-mavx512vnni" in props["flags"]
-            and "-mavx512dq" in props["flags"]
-            and "-mavx512f" in props["flags"]
-            and "-mavx512bw" in props["flags"]
-            and "-mavx512vl" in props["flags"]
+            "avx512vnni" in props["flags"]
+            and "avx512dq" in props["flags"]
+            and "avx512f" in props["flags"]
+            and "avx512bw" in props["flags"]
+            and "avx512vl" in props["flags"]
             and "x86-64-vnni256" in targets
         ):
             arch = "x86-64-vnni256"
         elif (
-            "-mavx512f" in props["flags"]
-            and "-mavx512bw" in props["flags"]
+            "avx512f" in props["flags"]
+            and "avx512bw" in props["flags"]
             and "x86-64-avx512" in targets
         ):
             arch = "x86-64-avx512"
             arch = "x86-64-bmi2"  # use bmi2 until avx512 performance becomes actually better
-        elif "-mavxvnni" in props["flags"] and "x86-64-avxvnni" in targets:
+        elif "avxvnni" in props["flags"] and "x86-64-avxvnni" in targets:
             arch = "x86-64-avxvnni"
         elif (
-            "-mbmi2" in props["flags"]
+            "bmi2" in props["flags"]
             and "x86-64-bmi2" in targets
             and props["arch"] not in ["znver1", "znver2"]
         ):
             arch = "x86-64-bmi2"
-        elif "-mavx2" in props["flags"] and "x86-64-avx2" in targets:
+        elif "avx2" in props["flags"] and "x86-64-avx2" in targets:
             arch = "x86-64-avx2"
         elif (
-            "-mpopcnt" in props["flags"]
-            and "-msse4.1" in props["flags"]
+            "popcnt" in props["flags"]
+            and "sse4.1" in props["flags"]
             and "x86-64-modern" in targets
         ):
             arch = "x86-64-modern"
-        elif "-mssse3" in props["flags"] and "x86-64-ssse3" in targets:
+        elif "ssse3" in props["flags"] and "x86-64-ssse3" in targets:
             arch = "x86-64-ssse3"
         elif (
-            "-mpopcnt" in props["flags"]
-            and "-msse3" in props["flags"]
+            "popcnt" in props["flags"]
+            and "sse3" in props["flags"]
             and "x86-64-sse3-popcnt" in targets
         ):
             arch = "x86-64-sse3-popcnt"
@@ -619,12 +649,12 @@ def find_arch():
                 arch = "x86-64"
     else:
         if (
-            "-mpopcnt" in props["flags"]
-            and "-msse4.1" in props["flags"]
+            "popcnt" in props["flags"]
+            and "sse4.1" in props["flags"]
             and "x86-32-sse41-popcnt" in targets
         ):
             arch = "x86-32-sse41-popcnt"
-        elif "-msse2" in props["flags"] and "x86-32-sse2" in targets:
+        elif "sse2" in props["flags"] and "x86-32-sse2" in targets:
             arch = "x86-32-sse2"
         else:
             arch = "x86-32"
