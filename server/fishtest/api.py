@@ -4,7 +4,7 @@ from datetime import datetime
 
 import requests
 from fishtest.stats.stat_util import SPRT_elo
-from fishtest.util import optional_key, validate, worker_name
+from fishtest.util import optional_key, union, validate, worker_name
 from fishtest.views import del_tasks
 from pyramid.httpexceptions import (
     HTTPBadRequest,
@@ -49,6 +49,7 @@ def validate_request(request):
             "version": int,
             "python_version": [int, int, int],
             "gcc_version": [int, int, int],
+            "compiler": union("g++", "clang++"),
             "unique_key": str,
             "rate": {"limit": int, "remaining": int},
             "ARCH": str,

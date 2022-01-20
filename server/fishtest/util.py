@@ -403,15 +403,30 @@ class optional_key:
         self.key = key
 
 
+class union:
+    def __init__(self, *schemas):
+        self.schemas = schemas
+
+    def __validate__(self, object, name):
+        messages = []
+        for schema in self.schemas:
+            message = validate(schema, object, name)
+            if message == "":
+                return ""
+            else:
+                messages.append(message)
+        return " and ".join(messages)
+
+
 def validate(schema, object, name):
     if isinstance(schema, type):
         if not isinstance(object, schema):
             return "{} is not of type {}".format(name, schema.__name__)
         else:
             return ""
-    if type(schema) != type(object):
-        return "{} is not of type {}".format(name, type(schema).__name__)
     elif isinstance(schema, list) or isinstance(schema, tuple):
+        if type(schema) != type(object):
+            return "{} is not of type {}".format(name, type(schema).__name__)
         l = len(object)
         for i in range(len(schema)):
             name_ = "{}[{}]".format(name, i)
@@ -423,6 +438,8 @@ def validate(schema, object, name):
                     return ret
         return ""
     elif isinstance(schema, dict):
+        if type(schema) != type(object):
+            return "{} is not of type {}".format(name, type(schema).__name__)
         for k in schema:
             k_ = k
             if isinstance(k, optional_key):
@@ -437,7 +454,11 @@ def validate(schema, object, name):
                 if ret != "":
                     return ret
         return ""
-    return "Type {} is not supported".format(type(schema))
+    elif hasattr(schema, "__validate__"):  # duck typing
+        return schema.__validate__(object, name)
+    elif object != schema:
+        return "{} is not equal to {}".format(name, repr(schema))
+    return ""
 
 
 # Workaround for a bug in pyramid.request.cookies.

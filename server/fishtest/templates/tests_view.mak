@@ -296,13 +296,14 @@ from fishtest.util import worker_name
             <td>
             <%
                gcc_version = ".".join([str(m) for m in task['worker_info']['gcc_version']])
+               compiler = task['worker_info'].get('compiler', 'g++')
                python_version = ".".join([str(m) for m in task['worker_info']['python_version']])
                version = task['worker_info']['version']
                ARCH = task['worker_info']['ARCH']
             %>
                os: ${task['worker_info']['uname']};
                ram: ${task['worker_info']['max_memory']}MiB;
-               gcc: ${gcc_version};
+               compiler: ${compiler} ${gcc_version};
                python: ${python_version};
                worker: ${version};
                arch: ${ARCH}

@@ -7,7 +7,7 @@
       <th>MNps</th>
       <th>RAM</th>
       <th>System</th>
-      <th>GCC</th>
+      <th>Compiler</th>
       <th>Python</th>
       <th>Worker</th>
       <th>Running on</th>
@@ -18,6 +18,7 @@
     % for machine in machines:
         <%
           gcc_version = ".".join([str(m) for m in machine['gcc_version']])
+          compiler = machine.get('compiler', 'g++')
           python_version = ".".join([str(m) for m in machine['python_version']])
           version = machine['version']
         %>
@@ -34,7 +35,7 @@
           <td>${f"{machine['nps'] / 1000000:.2f}"}</td>
           <td>${machine['max_memory']}</td>
           <td>${machine['uname']}</td>
-          <td>${gcc_version}</td>
+          <td>${compiler} ${gcc_version}</td>
           <td>${python_version}</td>
           <td>${version}</td>
           <td>

@@ -518,7 +518,7 @@ def gcc_version():
         bufsize=1,
         close_fds=not IS_WINDOWS,
     ) as p:
-        clang_major = "None"
+        clang_major = None
         for line in iter(p.stdout.readline, ""):
             if "__GNUC__" in line:
                 major = line.split()[2]
@@ -538,20 +538,22 @@ def gcc_version():
         return None
 
     try:
-        if clang_major == "None":
+        if clang_major is None:
             major = int(major)
             minor = int(minor)
             patchlevel = int(patchlevel)
+            compiler = "g++"
         else:
             major = int(clang_major)
             minor = int(clang_minor)
             patchlevel = int(clang_patchlevel)
+            compiler = "clang++"
     except:
-        print("Failed to parse g++ version.")
+        print("Failed to parse compiler version.")
         return None
 
-    print("Found g++ version {}.{}.{}".format(major, minor, patchlevel))
-    return (major, minor, patchlevel)
+    print("Found {} version {}.{}.{}".format(compiler, major, minor, patchlevel))
+    return (compiler, major, minor, patchlevel)
 
 
 def get_exception(files):
@@ -917,8 +919,8 @@ def worker():
     gcc_version_ = gcc_version()
     if gcc_version_ is None:
         return 1
-    major, minor, patchlevel = gcc_version_
-    if (major, minor) < (7, 3):
+    compiler, major, minor, patchlevel = gcc_version_
+    if compiler == "g++" and (major, minor) < (7, 3):
         print(
             "Found g++ version {}.{}. Please update to g++ version 7.3 or later".format(
                 major, minor
@@ -948,6 +950,7 @@ def worker():
             minor,
             patchlevel,
         ),
+        "compiler": compiler,
         "unique_key": str(uuid.uuid4()),
         "ARCH": "?",
         "nps": 0.0,
