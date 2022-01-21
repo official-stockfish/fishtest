@@ -464,43 +464,15 @@ def cc_is_clang():
 
 
 def clang_props():
-    """Parse the output of clang++ -E -dM - and extract the available clang properties"""
-    with subprocess.Popen(
-        ["clang++", "-E", "-dM", "-"],
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE,
-        universal_newlines=True,
-        bufsize=1,
-        close_fds=not IS_WINDOWS,
-    ) as p:
-        version = ""
-        arm64 = None
-        for line in iter(p.stdout.readline, ""):
-            if "__VERSION__" in line:
-                version = line.split()[2]
-            if "__arm64__" in line:
-                arm64 = line.split()[2]
-
-    if p.returncode != 0:
-        raise FatalException(
-            "clang++ target query failed with return code {}".format(
-                format_return_code(p.returncode)
-            )
-        )
-
-    if "Apple" in version and arm64 == "1":
-        return {"flags": [], "arch": "apple-silicon"}
-
-    # Parse the output of clang++ -E - -march=native -### and extract the available clang properties
+    """Parse the output of clang++ -E - -march=native -### and extract the available clang properties"""
     with subprocess.Popen(
         ["clang++", "-E", "-", "-march=native", "-###"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
+        stderr=subprocess.PIPE,
         universal_newlines=True,
         bufsize=1,
         close_fds=not IS_WINDOWS,
     ) as p:
-        for line in iter(p.stdout.readline, ""):
+        for line in iter(p.stderr.readline, ""):
             if "cc1" in line:
                 tokens = line.split('" "')
                 arch = [
@@ -601,6 +573,12 @@ def find_arch():
 
     if is_64bit():
         if (
+            IS_MACOS
+            and ("armv8" in props["arch"] or "apple-" in props["arch"])
+            and "apple-silicon" in targets
+        ):
+            arch = "apple-silicon"
+        elif (
             "avx512vnni" in props["flags"]
             and "avx512dq" in props["flags"]
             and "avx512f" in props["flags"]
@@ -640,8 +618,6 @@ def find_arch():
             and "x86-64-sse3-popcnt" in targets
         ):
             arch = "x86-64-sse3-popcnt"
-        elif IS_MACOS and props["arch"] == "armv8-a":
-            arch = "apple-silicon"
         else:
             if props["arch"] in targets:
                 arch = props["arch"]
