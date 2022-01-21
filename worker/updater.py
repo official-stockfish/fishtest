@@ -114,35 +114,6 @@ def update(restart=True, test=False):
                         file=sys.stderr,
                     )
 
-    # To be dropped when all workers will use the new "requests" packages.
-    # Delete the "requests" folder with the old "requests" package because
-    # it has the higher precedence during import.
-    # Note: the switch was problem free, skip the backup step.
-    requests_dir = os.path.join(worker_dir, "requests")
-    requests_bkp = os.path.join(worker_dir, "_requests")
-    if os.path.exists(requests_bkp):
-        try:
-            shutil.rmtree(requests_bkp)
-        except Exception as e:
-            print(
-                "Failed to delete the old requests backup folder {}:\n".format(
-                    requests_bkp
-                ),
-                e,
-                sep="",
-                file=sys.stderr,
-            )
-    if os.path.exists(requests_dir):
-        try:
-            shutil.rmtree(requests_dir)
-        except Exception as e:
-            print(
-                "Failed to delete the old requests folder {}:\n".format(requests_dir),
-                e,
-                sep="",
-                file=sys.stderr,
-            )
-
     print("start_dir: {}".format(start_dir))
     if restart:
         do_restart()
