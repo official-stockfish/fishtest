@@ -71,7 +71,6 @@ UPDATE_RETRY_TIME = 15.0
 
 REPO_URL = "https://github.com/official-stockfish/books"
 EXE_SUFFIX = ".exe" if IS_WINDOWS else ""
-MAKE_CMD = "make COMP=mingw " if IS_WINDOWS else "make COMP=gcc "
 
 
 def log(s):
@@ -445,24 +444,6 @@ def download_from_github(item, testing_dir):
         raise WorkerException("Item {} not found".format(item))
 
 
-def cc_is_clang():
-    """Parse the output of g++ -E -dM -"""
-    with subprocess.Popen(
-        ["g++", "-E", "-dM", "-"],
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE,
-        universal_newlines=True,
-        bufsize=1,
-        close_fds=not IS_WINDOWS,
-    ) as p:
-        clang = "None"
-        for line in iter(p.stdout.readline, ""):
-            if "__clang__" in line:
-                clang = line.split()[2]
-
-    return clang == "1"
-
-
 def clang_props():
     """Parse the output of clang++ -E - -march=native -### and extract the available clang properties"""
     with subprocess.Popen(
@@ -525,15 +506,6 @@ def gcc_props():
     return {"flags": flags, "arch": arch}
 
 
-def cc_props():
-    if cc_is_clang():
-        global MAKE_CMD
-        MAKE_CMD = "make COMP=clang "
-        return clang_props()
-    else:
-        return gcc_props()
-
-
 def make_targets():
     """Parse the output of make help and extract the available targets"""
     with subprocess.Popen(
@@ -564,12 +536,11 @@ def make_targets():
     return targets
 
 
-def find_arch():
+def find_arch(compiler):
     """Find the best arch string based on the cpu/g++ capabilities and Makefile targets"""
 
     targets = make_targets()
-
-    props = cc_props()
+    props = gcc_props() if compiler == "g++" else clang_props()
 
     if is_64bit():
         if (
@@ -643,7 +614,7 @@ def find_arch():
 
 
 def setup_engine(
-    destination, worker_dir, testing_dir, remote, sha, repo_url, concurrency
+    destination, worker_dir, testing_dir, remote, sha, repo_url, concurrency, compiler
 ):
     """Download and build sources in a temporary directory then move exe to destination"""
     tmp_dir = tempfile.mkdtemp(dir=worker_dir)
@@ -675,11 +646,15 @@ def setup_engine(
                     )
             shutil.copyfile(os.path.join(testing_dir, net), net)
 
-        arch = find_arch()
+        arch = find_arch(compiler)
 
-        cmd = (
-            MAKE_CMD + "ARCH=" + arch + " -j {}".format(concurrency) + " profile-build"
-        )
+        if compiler == "g++":
+            comp = "mingw" if IS_WINDOWS else "gcc"
+        elif compiler == "clang++":
+            comp = "clang"
+
+        cmd = "make -j {} profile-build ARCH={} COMP={}".format(concurrency, arch, comp)
+
         env = dict(os.environ, CXXFLAGS="-DNNUE_EMBEDDING_OFF")
         with subprocess.Popen(
             cmd,
@@ -694,13 +669,10 @@ def setup_engine(
         if p.returncode:
             raise WorkerException("Executing {} failed. Error: {}".format(cmd, errors))
 
-        # Try needed for backwards compatibility with older stockfish,
-        # where 'make strip' fails under mingw. TODO: check if still needed.
+        # TODO: 'make strip' works fine with the new Makefile,
+        # 'try' should be safely dropped in the future
         try:
-            subprocess.check_call(
-                MAKE_CMD + "ARCH=" + arch + " -j {}".format(concurrency) + " strip",
-                shell=True,
-            )
+            subprocess.check_call("make strip COMP={}".format(comp), shell=True)
         except Exception as e:
             print("Exception stripping binary:\n", e, sep="", file=sys.stderr)
 
@@ -1225,6 +1197,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
             sha_new,
             repo_url,
             worker_info["concurrency"],
+            worker_info["compiler"],
         )
     if not os.path.exists(base_engine):
         setup_engine(
@@ -1235,6 +1208,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
             sha_base,
             repo_url,
             worker_info["concurrency"],
+            worker_info["compiler"],
         )
 
     os.chdir(testing_dir)
