@@ -7,7 +7,6 @@ import math
 import multiprocessing
 import os
 import platform
-import random
 import re
 import signal
 import subprocess
