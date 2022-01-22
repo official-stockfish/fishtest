@@ -613,9 +613,19 @@ def find_arch(compiler):
 
 
 def setup_engine(
-    destination, worker_dir, testing_dir, remote, sha, repo_url, concurrency, compiler
+    destination,
+    worker_dir,
+    testing_dir,
+    remote,
+    sha,
+    repo_url,
+    worker_info,
 ):
     """Download and build sources in a temporary directory then move exe to destination"""
+
+    concurrency = worker_info["concurrency"]
+    compiler = worker_info["compiler"]
+
     tmp_dir = tempfile.mkdtemp(dir=worker_dir)
 
     try:
@@ -646,6 +656,7 @@ def setup_engine(
             shutil.copyfile(os.path.join(testing_dir, net), net)
 
         arch = find_arch(compiler)
+        worker_info["ARCH_selected"] = arch
 
         if compiler == "g++":
             comp = "mingw" if IS_WINDOWS else "gcc"
@@ -1195,8 +1206,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
             remote,
             sha_new,
             repo_url,
-            worker_info["concurrency"],
-            worker_info["compiler"],
+            worker_info,
         )
     if not os.path.exists(base_engine):
         setup_engine(
@@ -1206,8 +1216,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
             remote,
             sha_base,
             repo_url,
-            worker_info["concurrency"],
-            worker_info["compiler"],
+            worker_info,
         )
 
     os.chdir(testing_dir)

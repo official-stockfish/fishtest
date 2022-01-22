@@ -1012,6 +1012,7 @@ def worker():
         "compiler": compiler,
         "unique_key": str(uuid.uuid4()),
         "ARCH": "?",
+        "ARCH_selected": "?",
         "nps": 0.0,
     }
 

@@ -92,6 +92,7 @@ class TestApi(unittest.TestCase):
             "unique_key": "unique key",
             "rate": {"limit": 5000, "remaining": 5000},
             "ARCH": "?",
+            "ARCH_selected": "?",
             "nps": 0.0,
         }
         self.rundb.userdb.create_user(self.username, self.password, "email@email.email")
@@ -472,6 +473,7 @@ class TestRunFinished(unittest.TestCase):
             "unique_key": "unique key",
             "rate": {"limit": 5000, "remaining": 5000},
             "ARCH": "?",
+            "ARCH_selected": "?",
             "nps": 0.0,
         }
         self.rundb.userdb.create_user(self.username, self.password, "email@email.email")

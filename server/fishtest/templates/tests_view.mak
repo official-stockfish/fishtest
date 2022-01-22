@@ -300,13 +300,15 @@ from fishtest.util import worker_name
                python_version = ".".join([str(m) for m in task['worker_info']['python_version']])
                version = task['worker_info']['version']
                ARCH = task['worker_info']['ARCH']
+               ARCH_selected = task['worker_info'].get('ARCH_selected', '?')
             %>
                os: ${task['worker_info']['uname']};
                ram: ${task['worker_info']['max_memory']}MiB;
                compiler: ${compiler} ${gcc_version};
                python: ${python_version};
                worker: ${version};
-               arch: ${ARCH}
+               features: ${ARCH};
+               arch: ${ARCH_selected}
             </td>
             <td>${str(task.get('last_updated', '-')).split('.')[0]}</td>
             <td>${f"{total:03d} / {task['num_games']:03d}"}</td>

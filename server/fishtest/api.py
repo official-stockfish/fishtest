@@ -53,6 +53,7 @@ def validate_request(request):
             "unique_key": str,
             "rate": {"limit": int, "remaining": int},
             "ARCH": str,
+            "ARCH_selected": str,
             "nps": float,
         },
         optional_key("spsa"): {
