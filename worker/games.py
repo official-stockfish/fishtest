@@ -538,7 +538,6 @@ def make_targets():
 
 def find_arch(compiler):
     """Find the best arch string based on the cpu/g++ capabilities and Makefile targets"""
-
     targets = make_targets()
     props = gcc_props() if compiler == "g++" else clang_props()
 
