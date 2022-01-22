@@ -261,7 +261,7 @@ def set_defaults(config, defaults):
                 config.remove_option(section, option)
 
 
-def setup_parameters(worker_dir):
+def setup_parameters(worker_dir, compilers):
 
     # Step 1: read the config file if it exists.
     config = ConfigParser()
@@ -309,6 +309,12 @@ def setup_parameters(worker_dir):
 
     cpu_count = min(3, max(1, max_cpu_count - 1))
 
+    compiler_names = list(compilers.keys())
+    if len(compiler_names) == 1:
+        default_compiler = compiler_names[0]
+    else:
+        default_compiler = "g++"
+
     # For backward compatibility. Will be removed.
     try:
         if config.getboolean("parameters", "use_all_cores"):
@@ -326,6 +332,7 @@ def setup_parameters(worker_dir):
         ("parameters", "max_memory", str(int(mem / 2 / 1024 / 1024)), int),
         ("parameters", "min_threads", "1", int),
         ("parameters", "fleet", "False", _bool),
+        ("parameters", "compiler", default_compiler, compiler_names),
     ]
 
     set_defaults(config, defaults)
@@ -392,6 +399,15 @@ def setup_parameters(worker_dir):
         help="quit in case of errors or if no task is available",
     )
     parser.add_argument(
+        "-C",
+        "--compiler",
+        dest="compiler",
+        default=config.get("parameters", "compiler"),
+        type=str,
+        choices=compiler_names,
+        help="choose the preferred compiler",
+    )
+    parser.add_argument(
         "-a",
         "--use_all_cores",
         dest="use_all_cores",
@@ -447,7 +463,7 @@ def setup_parameters(worker_dir):
             options.concurrency = max_cpu_count
         print("")
 
-    # Step 6: determine credentials
+    # Step 5: determine credentials
 
     username, password = get_credentials(config, options, args)
 
@@ -458,7 +474,7 @@ def setup_parameters(worker_dir):
     options.username = username
     options.password = password
 
-    # Step 7: write command line parameters to the config file.
+    # Step 6: write command line parameters to the config file.
     config.set("login", "username", options.username)
     config.set("login", "password", options.password)
     config.set("parameters", "protocol", options.protocol)
@@ -471,6 +487,7 @@ def setup_parameters(worker_dir):
     config.set("parameters", "max_memory", str(options.max_memory))
     config.set("parameters", "min_threads", str(options.min_threads))
     config.set("parameters", "fleet", str(options.fleet))
+    config.set("parameters", "compiler", str(options.compiler))
 
     with open(config_file, "w") as f:
         config.write(f)
@@ -509,50 +526,99 @@ def get_rate():
 
 def gcc_version():
     """Parse the output of g++ -E -dM -"""
-    with subprocess.Popen(
-        ["g++", "-E", "-dM", "-"],
-        stdin=subprocess.DEVNULL,
-        stdout=subprocess.PIPE,
-        universal_newlines=True,
-        bufsize=1,
-        close_fds=not IS_WINDOWS,
-    ) as p:
-        clang_major = None
-        for line in iter(p.stdout.readline, ""):
-            if "__GNUC__" in line:
-                major = line.split()[2]
-            if "__GNUC_MINOR__" in line:
-                minor = line.split()[2]
-            if "__GNUC_PATCHLEVEL__" in line:
-                patchlevel = line.split()[2]
-            if "__clang_major__" in line:
-                clang_major = line.split()[2]
-            if "__clang_minor__" in line:
-                clang_minor = line.split()[2]
-            if "__clang_patchlevel__" in line:
-                clang_patchlevel = line.split()[2]
-
+    try:
+        with subprocess.Popen(
+            ["g++", "-E", "-dM", "-"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            universal_newlines=True,
+            bufsize=1,
+            close_fds=not IS_WINDOWS,
+        ) as p:
+            for line in iter(p.stdout.readline, ""):
+                if "__clang_major__" in line:
+                    print("clang++ poses as g++")
+                    return None
+                if "__GNUC__" in line:
+                    major = line.split()[2]
+                if "__GNUC_MINOR__" in line:
+                    minor = line.split()[2]
+                if "__GNUC_PATCHLEVEL__" in line:
+                    patchlevel = line.split()[2]
+    except (OSError, subprocess.SubprocessError) as e:
+        print("No g++ or g++ is not executable")
+        return None
     if p.returncode != 0:
         print("g++ version query failed with return code {}".format(p.returncode))
         return None
 
     try:
-        if clang_major is None:
-            major = int(major)
-            minor = int(minor)
-            patchlevel = int(patchlevel)
-            compiler = "g++"
-        else:
-            major = int(clang_major)
-            minor = int(clang_minor)
-            patchlevel = int(clang_patchlevel)
-            compiler = "clang++"
+        major = int(major)
+        minor = int(minor)
+        patchlevel = int(patchlevel)
+        compiler = "g++"
     except:
-        print("Failed to parse compiler version.")
+        print("Failed to parse g++ version.")
+        return None
+
+    if (major, minor) < (7, 3):
+        print(
+            "Found g++ version {}.{}.{}. First usable version is 7.3.0.".format(
+                major, minor, patchlevel
+            )
+        )
+        return None
+    print("Found {} version {}.{}.{}".format(compiler, major, minor, patchlevel))
+    return (compiler, major, minor, patchlevel)
+
+
+def clang_version():
+    """Parse the output of clang++ -E -dM -"""
+    try:
+        with subprocess.Popen(
+            ["clang++", "-E", "-dM", "-"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            universal_newlines=True,
+            bufsize=1,
+            close_fds=not IS_WINDOWS,
+        ) as p:
+            for line in iter(p.stdout.readline, ""):
+                if "__clang_major__" in line:
+                    clang_major = line.split()[2]
+                if "__clang_minor__" in line:
+                    clang_minor = line.split()[2]
+                if "__clang_patchlevel__" in line:
+                    clang_patchlevel = line.split()[2]
+    except (OSError, subprocess.SubprocessError) as e:
+        print("No clang++ or clang++ is not executable")
+        return None
+    if p.returncode != 0:
+        print("clang++ version query failed with return code {}".format(p.returncode))
+        return None
+
+    try:
+        major = int(clang_major)
+        minor = int(clang_minor)
+        patchlevel = int(clang_patchlevel)
+        compiler = "clang++"
+    except:
+        print("Failed to parse clang++ version.")
         return None
 
     print("Found {} version {}.{}.{}".format(compiler, major, minor, patchlevel))
     return (compiler, major, minor, patchlevel)
+
+
+def detect_compilers():
+    ret = {}
+    gcc_version_ = gcc_version()
+    if gcc_version_ is not None:
+        ret["g++"] = gcc_version_
+    clang_version_ = clang_version()
+    if clang_version_ is not None:
+        ret["clang++"] = clang_version_
+    return ret
 
 
 def get_exception(files):
@@ -907,25 +973,19 @@ def worker():
         pass
 
     # Handle command line parameters and the config file.
-    options = setup_parameters(worker_dir)
+    compilers = detect_compilers()
+    if compilers == {}:
+        print("No suitable compilers found")
+        return 1
+    options = setup_parameters(worker_dir, compilers)
     if options is None:
         print("Error parsing options. Config file not written.")
         return 1
     if options.only_config:
         return 0
 
-    # Make sure a suitable version of gcc is present.
-    gcc_version_ = gcc_version()
-    if gcc_version_ is None:
-        return 1
-    compiler, major, minor, patchlevel = gcc_version_
-    if compiler == "g++" and (major, minor) < (7, 3):
-        print(
-            "Found g++ version {}.{}. Please update to g++ version 7.3 or later".format(
-                major, minor
-            )
-        )
-        return 1
+    compiler, major, minor, patchlevel = compilers[options.compiler]
+    print("Using {} {}.{}.{}".format(compiler, major, minor, patchlevel))
 
     # Assemble the config/options data as well as some other data in a
     # "worker_info" dictionary.
