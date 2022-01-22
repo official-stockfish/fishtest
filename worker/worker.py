@@ -285,7 +285,10 @@ def setup_parameters(worker_dir, compilers):
         if "linux" in system_type:
             cmd = "free -b"
         elif "windows" in system_type:
-            cmd = "wmic computersystem get TotalPhysicalMemory"
+            cmd = (
+                "powershell (Get-CimInstance Win32_OperatingSystem)"
+                ".TotalVisibleMemorySize*1024"
+            )
         elif "darwin" in system_type:
             cmd = "sysctl hw.memsize"
         else:
@@ -703,16 +706,15 @@ def delete_lock_file(lock_file):
 def pid_valid(pid, name):
     with ExitStack() as stack:
         if IS_WINDOWS:
+            cmdlet = (
+                "(Get-CimInstance Win32_Process "
+                "-Filter 'ProcessId = {}').CommandLine"
+            ).format(pid)
             p = stack.enter_context(
                 subprocess.Popen(
                     [
-                        "wmic",
-                        "path",
-                        "Win32_Process",
-                        "where",
-                        "handle={}".format(pid),
-                        "get",
-                        "commandline",
+                        "powershell",
+                        cmdlet,
                     ],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.DEVNULL,
