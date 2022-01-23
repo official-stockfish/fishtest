@@ -220,8 +220,8 @@ def get_credentials(config, options, args):
     return username, password
 
 
-def set_defaults(config, defaults):
-    for v in defaults:
+def validate(config, schema):
+    for v in schema:
         if not config.has_section(v[0]):
             config.add_section(v[0])
         if not config.has_option(v[0], v[1]):
@@ -248,20 +248,20 @@ def set_defaults(config, defaults):
                 config.set(*v[:3])
 
     # cleanup
-    defaults_ = [v[:2] for v in defaults]
-    defaults__ = [v[0] for v in defaults]
+    schema_ = [v[:2] for v in schema]
+    schema__ = [v[0] for v in schema]
     for section in config.sections():
-        if section not in defaults__:
+        if section not in schema__:
             print("Removing unknown config section '{}'".format(section))
             config.remove_section(section)
             continue
         for option in config.options(section):
-            if (section, option) not in defaults_:
+            if (section, option) not in schema_:
                 print("Removing unknown config option '{}'".format(option))
                 config.remove_option(section, option)
 
 
-def setup_parameters(worker_dir, compilers):
+def setup_parameters(worker_dir):
 
     # Step 1: read the config file if it exists.
     config = ConfigParser()
@@ -278,7 +278,16 @@ def setup_parameters(worker_dir, compilers):
         print("Initializing configfile")
         config = ConfigParser()
 
-    # Step 2: replace missing config options by defaults.
+    # For backward compatibility. Will be removed.
+    try:
+        if config.getboolean("parameters", "use_all_cores"):
+            config.set("parameters", "concurrency", "max")
+    except (NoOptionError, NoSectionError, ValueError):
+        pass
+
+    # Step 2: probe the host system.
+
+    # Step 2a: determine the amount of available memory.
     mem = 0
     system_type = platform.system().lower()
     try:
@@ -298,11 +307,22 @@ def setup_parameters(worker_dir, compilers):
         print("Exception checking HW info:\n", e, sep="", file=sys.stderr)
         return None
 
+    # Step 2b: determine the number of cores.
     max_cpu_count = 0
     try:
         max_cpu_count = multiprocessing.cpu_count()
     except Exception as e:
         print("Exception checking the CPU cores count:\n", e, sep="", file=sys.stderr)
+        return None
+
+    # Step 2c: detect the available compilers.
+    compilers = detect_compilers()
+    if compilers == {}:
+        print("No usable compilers found")
+        return None
+
+    # Step 3: validate config options and replace missing or invalid
+    # ones by defaults.
 
     __cores = lambda x: _cores(max_cpu_count, x)
     __cores.__name__ = _cores.__name__
@@ -310,19 +330,12 @@ def setup_parameters(worker_dir, compilers):
     cpu_count = min(3, max(1, max_cpu_count - 1))
 
     compiler_names = list(compilers.keys())
-    if len(compiler_names) == 1:
+    if "g++" not in compiler_names:
         default_compiler = compiler_names[0]
     else:
         default_compiler = "g++"
 
-    # For backward compatibility. Will be removed.
-    try:
-        if config.getboolean("parameters", "use_all_cores"):
-            config.set("parameters", "concurrency", "max")
-    except (NoOptionError, NoSectionError, ValueError):
-        pass
-
-    defaults = [
+    schema = [
         ("login", "username", "", str),
         ("login", "password", "", str),
         ("parameters", "protocol", "https", ["http", "https"]),
@@ -335,9 +348,9 @@ def setup_parameters(worker_dir, compilers):
         ("parameters", "compiler", default_compiler, compiler_names),
     ]
 
-    set_defaults(config, defaults)
+    validate(config, schema)
 
-    # Step 3: parse the command line. Use the current config options mostly as defaults.
+    # Step 4: parse the command line. Use the current config options mostly as defaults.
 
     parser = ArgumentParser(
         usage="python worker.py [USERNAME PASSWORD] [OPTIONS]",
@@ -401,7 +414,7 @@ def setup_parameters(worker_dir, compilers):
     parser.add_argument(
         "-C",
         "--compiler",
-        dest="compiler",
+        dest="compiler_",
         default=config.get("parameters", "compiler"),
         type=str,
         choices=compiler_names,
@@ -444,7 +457,7 @@ def setup_parameters(worker_dir, compilers):
         parser.print_usage()
         return None
 
-    # Step 4: fix inconsistencies in the config options.
+    # Step 5: fixup the config options.
     if options.protocol == "http" and options.port == 443:
         # Rewrite old port 443 to 80
         print("Changing port to 80")
@@ -453,6 +466,8 @@ def setup_parameters(worker_dir, compilers):
         # Rewrite old port 80 to 443
         print("Changing port to 443")
         options.port = 443
+
+    options.compiler = compilers[options.compiler_]
 
     # For backward compatibility. Will be removed.
     if options.use_all_cores is not None:
@@ -463,7 +478,7 @@ def setup_parameters(worker_dir, compilers):
             options.concurrency = max_cpu_count
         print("")
 
-    # Step 5: determine credentials
+    # Step 6: determine credentials
 
     username, password = get_credentials(config, options, args)
 
@@ -474,7 +489,7 @@ def setup_parameters(worker_dir, compilers):
     options.username = username
     options.password = password
 
-    # Step 6: write command line parameters to the config file.
+    # Step 7: write command line parameters to the config file.
     config.set("login", "username", options.username)
     config.set("login", "password", options.password)
     config.set("parameters", "protocol", options.protocol)
@@ -487,10 +502,12 @@ def setup_parameters(worker_dir, compilers):
     config.set("parameters", "max_memory", str(options.max_memory))
     config.set("parameters", "min_threads", str(options.min_threads))
     config.set("parameters", "fleet", str(options.fleet))
-    config.set("parameters", "compiler", str(options.compiler))
+    config.set("parameters", "compiler", str(options.compiler_))
 
     with open(config_file, "w") as f:
         config.write(f)
+
+    # Step 8: give some feedback to the user.
 
     print(
         "System memory determined to be: {:.3f}GiB".format(mem / (1024 * 1024 * 1024))
@@ -973,18 +990,14 @@ def worker():
         pass
 
     # Handle command line parameters and the config file.
-    compilers = detect_compilers()
-    if compilers == {}:
-        print("No suitable compilers found")
-        return 1
-    options = setup_parameters(worker_dir, compilers)
+    options = setup_parameters(worker_dir)
     if options is None:
         print("Error parsing options. Config file not written.")
         return 1
     if options.only_config:
         return 0
 
-    compiler, major, minor, patchlevel = compilers[options.compiler]
+    compiler, major, minor, patchlevel = options.compiler
     print("Using {} {}.{}.{}".format(compiler, major, minor, patchlevel))
 
     # Assemble the config/options data as well as some other data in a

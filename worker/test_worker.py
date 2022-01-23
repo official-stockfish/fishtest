@@ -29,7 +29,7 @@ class workerTest(unittest.TestCase):
         if os.path.exists("foo.txt"):
             os.remove("foo.txt")
         worker.CONFIGFILE = "foo.txt"
-        worker.setup_parameters(".", {"g++": ("g++", 10, 0, 0)})
+        worker.setup_parameters(".")
         from configparser import ConfigParser
 
         config = ConfigParser()
