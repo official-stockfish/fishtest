@@ -23,13 +23,17 @@ from functools import partial
 
 # Try to import an user installed package,
 # fall back to the local one in case of error.
+
+packages_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "packages")
 try:
     import requests
 except ImportError:
-    sys.path.append(
-        os.path.join(os.path.dirname(os.path.realpath(__file__)), "packages")
-    )
+    sys.path.append(packages_dir)
     import requests
+
+if packages_dir not in sys.path:
+    sys.path.append(packages_dir)
+import expression
 
 from games import (
     FatalException,
@@ -117,38 +121,6 @@ def _bool(x):
 
 
 _bool.__name__ = "bool"
-
-
-def _cores(max_cpu_count, x):
-    x = x.strip()
-    if x == "max":
-        return max_cpu_count
-    try:
-        x = int(x)
-    except ValueError:
-        raise ValueError(x)
-
-    if x <= 0:
-        raise ValueError(x)
-
-    if x >= max_cpu_count:
-        print(
-            (
-                "\nYou cannot have concurrency {} but at most:\n"
-                "  a) {} with '--concurrency max';\n"
-                "  b) {} otherwise.\n"
-                "Please use option a) only if your computer is very lightly loaded.\n"
-            ).format(
-                x,
-                max_cpu_count,
-                max_cpu_count - 1,
-            )
-        )
-        raise ValueError(x)
-    return x
-
-
-_cores.__name__ = "concurrency"
 
 
 def safe_sleep(f):
@@ -278,13 +250,6 @@ def setup_parameters(worker_dir):
         print("Initializing configfile")
         config = ConfigParser()
 
-    # For backward compatibility. Will be removed.
-    try:
-        if config.getboolean("parameters", "use_all_cores"):
-            config.set("parameters", "concurrency", "max")
-    except (NoOptionError, NoSectionError, ValueError):
-        pass
-
     # Step 2: probe the host system.
 
     # Step 2a: determine the amount of available memory.
@@ -327,11 +292,6 @@ def setup_parameters(worker_dir):
     # Step 3: validate config options and replace missing or invalid
     # ones by defaults.
 
-    __cores = lambda x: _cores(max_cpu_count, x)
-    __cores.__name__ = _cores.__name__
-
-    cpu_count = min(3, max(1, max_cpu_count - 1))
-
     compiler_names = list(compilers.keys())
     if "g++" not in compiler_names:
         default_compiler = compiler_names[0]
@@ -344,8 +304,8 @@ def setup_parameters(worker_dir):
         ("parameters", "protocol", "https", ["http", "https"]),
         ("parameters", "host", "tests.stockfishchess.org", str),
         ("parameters", "port", "443", int),
-        ("parameters", "concurrency", str(cpu_count), __cores),
-        ("parameters", "max_memory", str(int(mem / 2 / 1024 / 1024)), int),
+        ("parameters", "concurrency", "1 if max==1 else min(3, max-1)", str),
+        ("parameters", "max_memory", "max/2", str),
         ("parameters", "min_threads", "1", int),
         ("parameters", "fleet", "False", _bool),
         ("parameters", "compiler", default_compiler, compiler_names),
@@ -384,17 +344,17 @@ def setup_parameters(worker_dir):
     parser.add_argument(
         "-c",
         "--concurrency",
-        dest="concurrency",
+        dest="concurrency_",
         default=config.get("parameters", "concurrency"),
-        type=__cores,
+        type=str,
         help="the maximum amount of cores that the worker will use",
     )
     parser.add_argument(
         "-m",
         "--max_memory",
-        dest="max_memory",
-        default=config.getint("parameters", "max_memory"),
-        type=int,
+        dest="max_memory_",
+        default=config.get("parameters", "max_memory"),
+        type=str,
         help="the maximum amount of memory (in MiB) that the worker will use",
     )
     parser.add_argument(
@@ -422,14 +382,6 @@ def setup_parameters(worker_dir):
         type=str,
         choices=compiler_names,
         help="choose the preferred compiler",
-    )
-    parser.add_argument(
-        "-a",
-        "--use_all_cores",
-        dest="use_all_cores",
-        type=_bool,
-        choices=[False, True],
-        help="deprecated",
     )
     parser.add_argument(
         "-w",
@@ -461,6 +413,47 @@ def setup_parameters(worker_dir):
         return None
 
     # Step 5: fixup the config options.
+    e = expression.Expression_Parser(
+        variables={"max": max_cpu_count}, functions={"min": min}
+    )
+    try:
+        options.concurrency = round(e.parse(options.concurrency_))
+    except:
+        print("Unable to parse expression for concurrency")
+        return None
+
+    if options.concurrency <= 0:
+        print("--concurrency must be at least 1")
+        return None
+
+    if (
+        "max" not in options.concurrency_ and options.concurrency >= max_cpu_count
+    ) or options.concurrency > max_cpu_count:
+        print(
+            (
+                "\nYou cannot have concurrency {} but at most:\n"
+                "  a) {} with '--concurrency max';\n"
+                "  b) {} otherwise.\n"
+                "Please use option a) only if your computer is very lightly loaded.\n"
+            ).format(
+                options.concurrency,
+                max_cpu_count,
+                max_cpu_count - 1,
+            )
+        )
+        return None
+
+    e = expression.Expression_Parser(
+        variables={"max": mem / 1024 / 1024}, functions={"min": min}
+    )
+    try:
+        options.max_memory = round(
+            max(min(e.parse(options.max_memory_), mem / 1024 / 1024), 0)
+        )
+    except:
+        print("Unable to parse expression for max_memory")
+        return None
+
     if options.protocol == "http" and options.port == 443:
         # Rewrite old port 443 to 80
         print("Changing port to 80")
@@ -471,15 +464,6 @@ def setup_parameters(worker_dir):
         options.port = 443
 
     options.compiler = compilers[options.compiler_]
-
-    # For backward compatibility. Will be removed.
-    if options.use_all_cores is not None:
-        print("")
-        print("Warning: --use_all_cores is deprecated and will be removed")
-        if options.use_all_cores:
-            print("Use '--concurrency max' instead of '--use_all_cores True'")
-            options.concurrency = max_cpu_count
-        print("")
 
     # Step 6: determine credentials
 
@@ -498,11 +482,8 @@ def setup_parameters(worker_dir):
     config.set("parameters", "protocol", options.protocol)
     config.set("parameters", "host", options.host)
     config.set("parameters", "port", str(options.port))
-    if options.concurrency < max_cpu_count:
-        config.set("parameters", "concurrency", str(options.concurrency))
-    else:
-        config.set("parameters", "concurrency", "max")
-    config.set("parameters", "max_memory", str(options.max_memory))
+    config.set("parameters", "concurrency", options.concurrency_)
+    config.set("parameters", "max_memory", str(options.max_memory_))
     config.set("parameters", "min_threads", str(options.min_threads))
     config.set("parameters", "fleet", str(options.fleet))
     config.set("parameters", "compiler", str(options.compiler_))
@@ -999,12 +980,13 @@ def worker():
     if options.only_config:
         return 0
 
-    compiler, major, minor, patchlevel = options.compiler
-    print("Using {} {}.{}.{}".format(compiler, major, minor, patchlevel))
-
     # Assemble the config/options data as well as some other data in a
     # "worker_info" dictionary.
     # This data will be sent to the server when a new task is requested.
+
+    compiler, major, minor, patchlevel = options.compiler
+    print("Using {} {}.{}.{}".format(compiler, major, minor, patchlevel))
+
     uname = platform.uname()
     worker_info = {
         "uname": uname[0] + " " + uname[2],
