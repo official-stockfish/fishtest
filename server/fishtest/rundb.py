@@ -705,19 +705,18 @@ class RunDb:
             # We check if the worker has reserved enough memory
             need_tt = 0
             need_base = 0
-            if max_memory > 0:
 
-                def get_hash(s):
-                    h = re.search("Hash=([0-9]+)", s)
-                    if h:
-                        return int(h.group(1))
-                    return 0
+            def get_hash(s):
+                h = re.search("Hash=([0-9]+)", s)
+                if h:
+                    return int(h.group(1))
+                return 0
 
-                need_tt += get_hash(run["args"]["new_options"])
-                need_tt += get_hash(run["args"]["base_options"])
-                need_tt *= max_threads // run["args"]["threads"]
-                # estime another 70MB per process for net (40) and other things besides hash
-                need_base = 2 * 70 * (max_threads // run["args"]["threads"])
+            need_tt += get_hash(run["args"]["new_options"])
+            need_tt += get_hash(run["args"]["base_options"])
+            need_tt *= max_threads // run["args"]["threads"]
+            # estime another 70MB per process for net (40) and other things besides hash
+            need_base = 2 * 70 * (max_threads // run["args"]["threads"])
 
             if need_base + need_tt > max_memory:
                 continue
