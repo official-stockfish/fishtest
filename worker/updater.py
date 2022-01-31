@@ -48,7 +48,7 @@ def update(restart=True, test=False):
                 shutil.rmtree(packages_dir)
             except Exception as e:
                 print(
-                    "Failed to delete the folder {}:\n".folder(packages_dir),
+                    "Failed to delete the folder {}:\n".format(packages_dir),
                     e,
                     sep="",
                     file=sys.stderr,
