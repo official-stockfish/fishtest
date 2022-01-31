@@ -17,7 +17,7 @@ import traceback
 import uuid
 import zlib
 from argparse import ArgumentParser
-from configparser import ConfigParser, NoOptionError, NoSectionError
+from configparser import ConfigParser
 from contextlib import ExitStack
 from functools import partial
 
@@ -545,7 +545,7 @@ def gcc_version():
                     minor = line.split()[2]
                 if "__GNUC_PATCHLEVEL__" in line:
                     patchlevel = line.split()[2]
-    except (OSError, subprocess.SubprocessError) as e:
+    except (OSError, subprocess.SubprocessError):
         print("No g++ or g++ is not executable")
         return None
     if p.returncode != 0:
@@ -590,7 +590,7 @@ def clang_version():
                     clang_minor = line.split()[2]
                 if "__clang_patchlevel__" in line:
                     clang_patchlevel = line.split()[2]
-    except (OSError, subprocess.SubprocessError) as e:
+    except (OSError, subprocess.SubprocessError):
         print("No clang++ or clang++ is not executable")
         return None
     if p.returncode != 0:
