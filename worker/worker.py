@@ -122,6 +122,76 @@ def _bool(x):
 _bool.__name__ = "bool"
 
 
+# For backward compatibility.
+# Will be removed.
+def max_to_MAX(x, quiet=True):
+    y = re.sub(r"max(?=[\s]*([^(\s]|$))", r"MAX", x, count=0)
+    if y != x and not quiet:
+        print(
+            "\n"
+            '   WARNING: the use of "max" as a variable is deprecated\n'
+            '   and support for it will be removed. Use "MAX" instead.\n'
+        )
+    return y
+
+
+class _memory:
+    def __init__(self, MAX):
+        self.MAX = MAX
+        self.__name__ = "memory"
+
+    def __call__(self, x):
+        x = max_to_MAX(x, quiet=False)  # for backward compatibility
+        e = expression.Expression_Parser(
+            variables={"MAX": self.MAX}, functions={"min": min, "max": max}
+        )
+        try:
+            ret = round(max(min(e.parse(x), self.MAX), 0))
+        except:
+            print("Unable to parse expression for max_memory")
+            raise ValueError(x)
+
+        return x, ret
+
+
+class _concurrency:
+    def __init__(self, MAX):
+        self.MAX = MAX
+        self.__name__ = "concurrency"
+
+    def __call__(self, x):
+        x = max_to_MAX(x, quiet=False)  # for backward compatibility
+        e = expression.Expression_Parser(
+            variables={"MAX": self.MAX}, functions={"min": min, "max": max}
+        )
+        try:
+            ret = round(e.parse(x))
+        except:
+            print("Unable to parse expression for concurrency")
+            raise ValueError(x)
+
+        if ret <= 0:
+            print("concurrency must be at least 1")
+            raise ValueError(x)
+
+        if ("MAX" not in x and ret >= self.MAX) or ret > self.MAX:
+            print(
+                (
+                    "\nYou cannot have concurrency {} but at most:\n"
+                    "  a) {} with '--concurrency MAX';\n"
+                    "  b) {} otherwise.\n"
+                    "Please use option a) only if your computer is very lightly loaded.\n"
+                ).format(
+                    ret,
+                    self.MAX,
+                    self.MAX - 1,
+                )
+            )
+            raise ValueError(x)
+
+        return x, ret
+
+
 def safe_sleep(f):
     try:
         time.sleep(f)
@@ -199,6 +269,9 @@ def validate(config, schema):
             config.set(*v[:3])
         else:
             o = config.get(v[0], v[1])
+            if callable(v[4]):
+                o = v[4](o)
+                config.set(v[0], v[1], o)
             t = v[3]
             if callable(t):
                 try:
@@ -235,7 +308,7 @@ def validate(config, schema):
 def setup_parameters(worker_dir):
 
     # Step 1: read the config file if it exists.
-    config = ConfigParser()
+    config = ConfigParser(inline_comment_prefixes=";")
     config_file = os.path.join(worker_dir, CONFIGFILE)
     try:
         config.read(config_file)
@@ -298,16 +371,29 @@ def setup_parameters(worker_dir):
         default_compiler = "g++"
 
     schema = [
-        ("login", "username", "", str),
-        ("login", "password", "", str),
-        ("parameters", "protocol", "https", ["http", "https"]),
-        ("parameters", "host", "tests.stockfishchess.org", str),
-        ("parameters", "port", "443", int),
-        ("parameters", "concurrency", "1 if max==1 else min(3, max-1)", str),
-        ("parameters", "max_memory", "max/2", str),
-        ("parameters", "min_threads", "1", int),
-        ("parameters", "fleet", "False", _bool),
-        ("parameters", "compiler", default_compiler, compiler_names),
+        # (<section>, <option>, <default>, <type>, <preprocessor>),
+        ("login", "username", "", str, None),
+        ("login", "password", "", str, None),
+        ("parameters", "protocol", "https", ["http", "https"], None),
+        ("parameters", "host", "tests.stockfishchess.org", str, None),
+        ("parameters", "port", "443", int, None),
+        (
+            "parameters",
+            "concurrency",
+            "max(1,min(3,MAX-1))",
+            _concurrency(MAX=max_cpu_count),
+            max_to_MAX,
+        ),
+        (
+            "parameters",
+            "max_memory",
+            "MAX/2",
+            _memory(MAX=mem / 1024 / 1024),
+            max_to_MAX,
+        ),
+        ("parameters", "min_threads", "1", int, None),
+        ("parameters", "fleet", "False", _bool, None),
+        ("parameters", "compiler", default_compiler, compiler_names, None),
     ]
 
     validate(config, schema)
@@ -344,16 +430,18 @@ def setup_parameters(worker_dir):
         "-c",
         "--concurrency",
         dest="concurrency_",
+        metavar="CONCURRENCY",
         default=config.get("parameters", "concurrency"),
-        type=str,
+        type=_concurrency(MAX=max_cpu_count),
         help="the maximum amount of cores that the worker will use",
     )
     parser.add_argument(
         "-m",
         "--max_memory",
         dest="max_memory_",
+        metavar="MAX_MEMORY",
         default=config.get("parameters", "max_memory"),
-        type=str,
+        type=_memory(MAX=mem / 1024 / 1024),
         help="the maximum amount of memory (in MiB) that the worker will use",
     )
     parser.add_argument(
@@ -408,50 +496,14 @@ def setup_parameters(worker_dir):
         return None
 
     if len(args) not in [0, 2]:
+        print("Unparsed command line arguments: {}".format(" ".join(args)))
         parser.print_usage()
         return None
 
     # Step 5: fixup the config options.
-    e = expression.Expression_Parser(
-        variables={"max": max_cpu_count}, functions={"min": min}
-    )
-    try:
-        options.concurrency = round(e.parse(options.concurrency_))
-    except:
-        print("Unable to parse expression for concurrency")
-        return None
 
-    if options.concurrency <= 0:
-        print("--concurrency must be at least 1")
-        return None
-
-    if (
-        "max" not in options.concurrency_ and options.concurrency >= max_cpu_count
-    ) or options.concurrency > max_cpu_count:
-        print(
-            (
-                "\nYou cannot have concurrency {} but at most:\n"
-                "  a) {} with '--concurrency max';\n"
-                "  b) {} otherwise.\n"
-                "Please use option a) only if your computer is very lightly loaded.\n"
-            ).format(
-                options.concurrency,
-                max_cpu_count,
-                max_cpu_count - 1,
-            )
-        )
-        return None
-
-    e = expression.Expression_Parser(
-        variables={"max": mem / 1024 / 1024}, functions={"min": min}
-    )
-    try:
-        options.max_memory = round(
-            max(min(e.parse(options.max_memory_), mem / 1024 / 1024), 0)
-        )
-    except:
-        print("Unable to parse expression for max_memory")
-        return None
+    options.concurrency_, options.concurrency = options.concurrency_
+    options.max_memory_, options.max_memory = options.max_memory_
 
     if options.protocol == "http" and options.port == 443:
         # Rewrite old port 443 to 80
@@ -481,11 +533,19 @@ def setup_parameters(worker_dir):
     config.set("parameters", "protocol", options.protocol)
     config.set("parameters", "host", options.host)
     config.set("parameters", "port", str(options.port))
-    config.set("parameters", "concurrency", options.concurrency_)
-    config.set("parameters", "max_memory", str(options.max_memory_))
+    config.set(
+        "parameters",
+        "concurrency",
+        options.concurrency_ + " ; = {} cores".format(options.concurrency),
+    )
+    config.set(
+        "parameters",
+        "max_memory",
+        options.max_memory_ + " ; = {} MiB".format(options.max_memory),
+    )
     config.set("parameters", "min_threads", str(options.min_threads))
     config.set("parameters", "fleet", str(options.fleet))
-    config.set("parameters", "compiler", str(options.compiler_))
+    config.set("parameters", "compiler", options.compiler_)
 
     with open(config_file, "w") as f:
         config.write(f)
