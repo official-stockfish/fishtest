@@ -1087,7 +1087,7 @@ def tests_view(request):
                         int(p["start"]),
                         int(p["min"]),
                         int(p["max"]),
-                        "{:.3f}".format(p["c"] / (iter_local ** gamma)),
+                        "{:.3f}".format(p["c"] / (iter_local**gamma)),
                         "{:.3f}".format(p["a"] / (A + iter_local) ** alpha),
                     ]
                 )

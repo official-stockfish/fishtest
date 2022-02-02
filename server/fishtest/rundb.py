@@ -1205,7 +1205,7 @@ class RunDb:
                     ),
                     "R": param["a"]
                     / (spsa["A"] + iter_local) ** spsa["alpha"]
-                    / c ** 2,
+                    / c**2,
                     "c": c,
                     "flip": flip,
                 }

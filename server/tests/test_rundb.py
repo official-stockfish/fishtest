@@ -105,9 +105,9 @@ class CreateRunDBTest(unittest.TestCase):
         run["tasks"].append(task)
 
         print(run["tasks"][0])
-        self.assertTrue(run["tasks"][0][u"active"])
-        run["tasks"][0][u"active"] = True
-        run["tasks"][0][u"worker_info"] = self.worker_info
+        self.assertTrue(run["tasks"][0]["active"])
+        run["tasks"][0]["active"] = True
+        run["tasks"][0]["worker_info"] = self.worker_info
         run["cores"] = 1
 
         for run in self.rundb.get_unfinished_runs():
@@ -116,8 +116,8 @@ class CreateRunDBTest(unittest.TestCase):
 
     def test_20_update_task(self):
         run = self.rundb.get_run(run_id)
-        run["tasks"][0][u"active"] = True
-        run["tasks"][0][u"worker_info"] = self.worker_info
+        run["tasks"][0]["active"] = True
+        run["tasks"][0]["worker_info"] = self.worker_info
         run["cores"] = 1
         self.rundb.buffer(run, True)
         run = self.rundb.update_task(
