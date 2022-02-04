@@ -16,7 +16,7 @@ import time
 import traceback
 import uuid
 import zlib
-from argparse import ArgumentParser
+from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 from configparser import ConfigParser
 from contextlib import ExitStack
 from functools import partial
@@ -238,7 +238,7 @@ def get_credentials(config, options, args):
         username = args[0]
         password = args[1]
         cached = False
-    if not options.validate:
+    if options.no_validation:
         return username, password
 
     ret = verify_credentials(remote, username, password, cached)
@@ -269,38 +269,46 @@ def validate(config, schema):
             config.set(*v[:3])
         else:
             o = config.get(v[0], v[1])
-            if callable(v[4]):
-                o = v[4](o)
-                config.set(v[0], v[1], o)
-            t = v[3]
+            if callable(v[4]):  # prepocessor
+                o1 = v[4](o)
+                if o1 != o:
+                    print(
+                        "Replacing the value '{}' of config option '{}' by '{}'".format(
+                            o, v[1], o1
+                        )
+                    )
+                    config.set(v[0], v[1], o1)
+                    o = o1
+            t = v[3]  # type
             if callable(t):
                 try:
                     _ = t(o)
                 except:
+                    # v[2] is the default
                     print(
-                        "The value '{}' of config option '{}' is not of type {}.\n"
-                        "Replacing it by the default value {}".format(
+                        "The value '{}' of config option '{}' is not of type '{}'.\n"
+                        "Replacing it by the default value '{}'".format(
                             o, v[1], v[3].__name__, v[2]
                         )
                     )
                     config.set(*v[:3])
-            elif o not in t:
+            elif o not in t:  # choices
                 print(
                     "The value '{}' of config option '{}' is not in {}.\n"
-                    "Replacing it by the default value {}".format(o, v[1], v[3], v[2])
+                    "Replacing it by the default value '{}'".format(o, v[1], v[3], v[2])
                 )
                 config.set(*v[:3])
 
     # cleanup
-    schema_ = [v[:2] for v in schema]
-    schema__ = [v[0] for v in schema]
+    schema_sections = [v[0] for v in schema]
+    schema_options = [v[:2] for v in schema]
     for section in config.sections():
-        if section not in schema__:
+        if section not in schema_sections:
             print("Removing unknown config section '{}'".format(section))
             config.remove_section(section)
             continue
         for option in config.options(section):
-            if (section, option) not in schema_:
+            if (section, option) not in schema_options:
                 print("Removing unknown config option '{}'".format(option))
                 config.remove_option(section, option)
 
@@ -320,7 +328,7 @@ def setup_parameters(worker_dir):
             file=sys.stderr,
         )
         print("Initializing configfile")
-        config = ConfigParser()
+        config = ConfigParser(inline_comment_prefixes=";")
 
     # Step 2: probe the host system.
 
@@ -398,10 +406,17 @@ def setup_parameters(worker_dir):
 
     validate(config, schema)
 
-    # Step 4: parse the command line. Use the current config options mostly as defaults.
+    # Step 4: parse the command line. Use the current config options as defaults.
+
+    class ExplicitDefaultsHelpFormatter(ArgumentDefaultsHelpFormatter):
+        def _get_help_string(self, action):
+            if action.const:
+                return action.help
+            return super()._get_help_string(action)
 
     parser = ArgumentParser(
         usage="python worker.py [USERNAME PASSWORD] [OPTIONS]",
+        formatter_class=ExplicitDefaultsHelpFormatter,
     )
     parser.add_argument(
         "-P",
@@ -433,7 +448,8 @@ def setup_parameters(worker_dir):
         metavar="CONCURRENCY",
         default=config.get("parameters", "concurrency"),
         type=_concurrency(MAX=max_cpu_count),
-        help="the maximum amount of cores that the worker will use",
+        help="an expression, potentially involving the variable 'MAX', "
+        "evaluating to the maximal number of cores that the worker will use",
     )
     parser.add_argument(
         "-m",
@@ -442,7 +458,8 @@ def setup_parameters(worker_dir):
         metavar="MAX_MEMORY",
         default=config.get("parameters", "max_memory"),
         type=_memory(MAX=mem / 1024 / 1024),
-        help="the maximum amount of memory (in MiB) that the worker will use",
+        help="an expression, potentially involving the variable 'MAX', "
+        "evaluating to the maximum amount of memory in MiB that the worker will use",
     )
     parser.add_argument(
         "-t",
@@ -459,7 +476,7 @@ def setup_parameters(worker_dir):
         default=config.getboolean("parameters", "fleet"),
         type=_bool,
         choices=[False, True],  # useful for usage message
-        help="quit in case of errors or if no task is available",
+        help="if 'False', quit in case of errors or if no task is available",
     )
     parser.add_argument(
         "-C",
@@ -468,7 +485,7 @@ def setup_parameters(worker_dir):
         default=config.get("parameters", "compiler"),
         type=str,
         choices=compiler_names,
-        help="choose the preferred compiler",
+        help="choose the compiler used by the worker",
     )
     parser.add_argument(
         "-w",
@@ -480,8 +497,8 @@ def setup_parameters(worker_dir):
     parser.add_argument(
         "-v",
         "--no_validation",
-        dest="validate",
-        action="store_false",
+        dest="no_validation",
+        action="store_true",
         help="do not validate username/password with server",
     )
 
