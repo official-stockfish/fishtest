@@ -20,19 +20,17 @@ from fishtest.util import worker_name
   <a href="${h.diff_url(run)}" target="_blank" rel="noopener">diff</a>
 </h3>
 
-<div class="row-fluid">
-  <div style="display: inline-block;">
-    <%include file="elo_results.mak" args="run=run" />
-  </div>
+<div class="elo-results-top">
+  <%include file="elo_results.mak" args="run=run" />
 </div>
 
-<div class="row row-fluid">
-  <div class="col-8" style="min-width: 540px">
+<div class="row">
+  <div class="col-12 col-lg-9">
     <h4>Details</h4>
 
     <%! import markupsafe %>
 
-    <table class="table table-sm">
+    <table class="table table-striped table-sm">
       % for arg in run_args:
           % if len(arg[2]) == 0:
               <tr>
@@ -96,7 +94,7 @@ from fishtest.util import worker_name
     </table>
   </div>
 
-  <div class="col-4">
+  <div class="col-12 col-lg-3">
     <h4>Actions</h4>
     % if not run['finished']:
         <form action="/tests/stop" method="POST" style="display: inline;">
@@ -151,19 +149,19 @@ from fishtest.util import worker_name
 
     <form class="form" action="/tests/modify" method="POST">
       <label class="control-label">Number of games:</label>
-      <div class="input-group mb-3" style="width: 220px">
+      <div class="input-group mb-3">
         <input type="text" name="num-games" value="${run['args']['num_games']}"
                class="form-control">
       </div>
 
       <label class="control-label">Adjust priority (higher is more urgent):</label>
-      <div class="input-group mb-3" style="width: 220px">
+      <div class="input-group mb-3">
         <input type="text" name="priority" value="${run['args']['priority']}"
                class="form-control">
       </div>
 
       <label class="control-label">Adjust throughput (%):</label>
-      <div class="input-group mb-3" style="width: 220px">
+      <div class="input-group mb-3">
         <input type="text" name="throughput" value="${run['args'].get('throughput', 1000)}"
                class="form-control">
       </div>
@@ -185,7 +183,7 @@ from fishtest.util import worker_name
         <hr>
 
         <h4>Stats</h4>
-        <table class="table table-sm">
+        <table class="table table-striped table-sm">
           <tr><td>chi^2</td><td>${f"{chi2['chi2']:.2f}"}</td></tr>
           <tr><td>dof</td><td>${chi2['dof']}</td></tr>
           <tr><td>p-value</td><td>${f"{chi2['p']:.2%}"}</td></tr>
@@ -195,7 +193,7 @@ from fishtest.util import worker_name
     <hr>
 
     <h4>Time</h4>
-    <table class="table table-sm">
+    <table class="table table-striped table-sm">
       <tr><td>start time</td><td>${run['start_time'].strftime("%Y-%m-%d %H:%M:%S")}</td></tr>
       <tr><td>last updated</td><td>${run['last_updated'].strftime("%Y-%m-%d %H:%M:%S")}</td></tr>
     </table>

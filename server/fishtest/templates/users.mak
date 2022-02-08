@@ -53,7 +53,7 @@
   </div>
 </div>
 
-<div class="overflow-auto">
+<div>
   <table class="table table-striped table-sm">
     <thead class="sticky-top">
       <tr>

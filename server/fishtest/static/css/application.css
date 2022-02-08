@@ -4,21 +4,19 @@
     padding: 0;
   }
 
-  .mainnavbar .nav li {
-    margin-right: 4px;
-  }
-
   .mainnavbar .nav li a,
   .mainnavbar .nav li div {
     font-size: 0;
-    padding-top: 0;
+    padding: 0;
     padding-bottom: 0;
     line-height: 30px;
+    justify-content: center;
   }
 
   .mainnavbar .nav li a::before,
-  .mainnavbar .nav li div::before {
+  .mainnavbar .nav li#change-color-theme div::before {
     font-size: 14px;
+    margin-right: 0;
   }
 
   .mainnavbar {
@@ -65,9 +63,6 @@ body {
 
 .contentbase {
   overflow: hidden scroll;
-  height: 100vh;
-  width: 100%;
-  display: inline-table;
 }
 
 .contentbase main > h2 {
@@ -76,14 +71,6 @@ body {
   z-index: 1000;
   padding: 5px 0;
   box-shadow: 0px 3px 10px var(--bs-body-bg);
-}
-
-.contentbase > .container-fluid {
-  padding-right: 0;
-}
-
-.overflow-auto {
-  max-height: 80vh;
 }
 
 .sticky-top {
@@ -108,7 +95,7 @@ body {
 }
 
 a {
-  color: #409e42;
+  color: #008002;
   text-decoration: none;
 }
 
@@ -140,10 +127,6 @@ legend {
   margin-bottom: 20px;
 }
 
-.flash-message {
-  margin-top: 20px;
-}
-
 .elo-results {
   background: #f5f5f5;
   font-size: 12px;
@@ -153,7 +136,11 @@ legend {
   padding: 3px;
 }
 
-h3 + .row-fluid .rounded.elo-results {
+.elo-results-top {
+  display: inline-block;
+}
+
+.elo-results-top .rounded.elo-results {
   font-size: 14px;
   line-height: normal;
 }
@@ -175,16 +162,16 @@ h3 + .row-fluid .rounded.elo-results {
 /* Left navigation */
 .mainnavbar {
   min-width: 180px;
-  padding: 20px 0 0 0;
-  overflow: hidden scroll;
-  height: 100vh;
   background-color: var(--bs-gray-300);
   transition: width 0.3s;
-  user-select: none;
+}
+
+.mainnavbar::-webkit-scrollbar {
+  width: 8px;
 }
 
 .mainnavbar::-webkit-scrollbar-thumb {
-  border: 6px solid var(--bs-gray-300);
+  border: 2px solid var(--bs-gray-300);
 }
 
 .mainnavbar::-webkit-scrollbar-track {
@@ -199,28 +186,15 @@ h3 + .row-fluid .rounded.elo-results {
   background-color: var(--bs-body-bg);
 }
 
-.nav-list {
-  margin-bottom: 8px;
-}
-
 .nav li.nav-header {
   color: #2e2e2e;
   font-size: 14px;
   font-weight: bold;
   text-transform: uppercase;
-  margin-bottom: 3px;
-  padding-top: 4px;
-  padding-left: 8px;
-  margin-top: 4px;
 }
 
 .nav-header:not(:first-child) {
   border-top: 1px solid #65656540;
-}
-
-.nav li {
-  margin-left: 4px;
-  margin-right: 0;
 }
 
 #change-color-theme:hover {
@@ -385,7 +359,7 @@ h3 + .row-fluid .rounded.elo-results {
 }
 
 .mainnavbar [href="/pending"]::before {
-  content: "\f252";
+  content: "\f4fd";
 }
 
 .mainnavbar #change-color-theme #sun::before {
@@ -437,6 +411,7 @@ th {
 
 td {
   border-color: transparent;
+  vertical-align: middle;
 }
 
 .run-view {
