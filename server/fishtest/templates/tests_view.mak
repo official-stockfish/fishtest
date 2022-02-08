@@ -73,7 +73,9 @@ from fishtest.util import worker_name
                 % elif arg[0] == 'rescheduled_from':
                     <td><a href="/tests/view/${arg[1]}">${arg[1]}</a></td>
                 % else:
-                    <td>${str(markupsafe.Markup(arg[1])).replace('\n', '<br>') | n}</td>
+                    <td ${'class="run-info"' if arg[0]=="info" else "" | n}>
+                        ${str(markupsafe.Markup(arg[1])).replace('\n', '<br>') | n}
+                    </td>
                 % endif
               </tr>
           % else:
