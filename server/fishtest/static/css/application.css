@@ -103,6 +103,10 @@ body {
   border: none;
 }
 
+.run-info {
+    word-break: break-word;
+}
+
 a {
   color: #409e42;
   text-decoration: none;
