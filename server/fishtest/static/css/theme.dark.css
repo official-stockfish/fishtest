@@ -16,11 +16,11 @@ body {
 
 ::-webkit-scrollbar-thumb {
   background-color: #414141;
-  border: 4px solid var(--bg-dark-1);
+  border-color: var(--bg-dark-1);
 }
 
 .contentbase::-webkit-scrollbar-thumb {
-  border: 4px solid var(--bg-dark-1);
+  border-color: var(--bg-dark-1);
 }
 
 .contentbase::-webkit-scrollbar-track {
@@ -81,7 +81,7 @@ hr {
 }
 
 .mainnavbar::-webkit-scrollbar-thumb {
-  border: 6px solid var(--bg-dark-2);
+  border-color: var(--bg-dark-2);
 }
 
 .mainnavbar::-webkit-scrollbar-track {

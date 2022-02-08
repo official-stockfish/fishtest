@@ -122,13 +122,15 @@
                 ${('cores: '+str(run['cores'])) if not run['finished'] and 'cores' in run else ''}
               </td>
 
-              <td style="min-width: 150px;" class="run-info">
+              <td class="run-info">
                 ${run['args'].get('info', '')}
               </td>
             </tr>
         % endfor
         % if alt and count == 0:
-	  <td> ${alt} </td>
+          <tr>
+            <td> ${alt} </td>
+          </tr>
         % endif
       </tbody>
     </table>

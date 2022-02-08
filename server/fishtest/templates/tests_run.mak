@@ -110,11 +110,11 @@ else:
       <div class="btn-group btn-group-sm text-nowrap choose-test-type">
         <div class="btn border" id="fast_test"
              data-options='{"tc": "10+0.1", "new_tc": "10+0.1", "threads": 1, "options": "Hash=16 Use NNUE=true", "bounds": "standard STC"}'>
-          short (STC)
+          Short (STC)
         </div>
         <div class="btn border" id="slow_test"
              data-options='{"tc": "60+0.6", "new_tc": "60+0.6", "threads": 1, "options": "Hash=64 Use NNUE=true", "bounds": "standard LTC"}'>
-          long (LTC)
+          Long (LTC)
         </div>
         <div class="btn border" id="fast_smp_test"
              data-options='{"tc": "5+0.05", "new_tc": "5+0.05", "threads": 8, "options": "Hash=64 Use NNUE=true", "bounds": "standard STC"}'>

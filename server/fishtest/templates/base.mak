@@ -2,7 +2,7 @@
   monitoring = request.rundb.conn["admin"].command("getFreeMonitoringStatus")
 %>
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
     <title>Stockfish Testing Framework</title>
     <meta name="csrf-token" content="${request.session.get_csrf_token()}" />
@@ -42,10 +42,10 @@
   </head>
 
   <body>
-    <div class="clearfix mainnavbar">
-      <ul class="nav nav-list flex-column">
+    <div class="mainnavbar user-select-none vh-100 pt-2 pt-md-3 overflow-auto">
+      <ul class="nav nav-list flex-column mb-2 px-1">
 
-        <li class="nav-header">Tests</li>
+        <li class="nav-header mb-1 pt-1 ps-2">Tests</li>
         <li><a href="/tests">Overview</a></li>
         <li><a href="/tests/run">New Test</a></li>
         % if request.authenticated_userid:
@@ -59,7 +59,7 @@
             <li><a href="/upload">NN Upload</a></li>
         % endif
 
-        <li class="nav-header">Fishtest</li>
+        <li class="nav-header my-1 pt-1 ps-2">Fishtest</li>
         <li><a href="/users">Contributors</a></li>
         <li><a href="/users/monthly">Top Month</a></li>
         <li><a href="/actions">Events</a></li>
@@ -69,9 +69,9 @@
         <li>
           % if len(request.userdb.get_pending()) > 0:
               <a href="/pending"
-                 style="color: var(--bs-danger);">Pending (${len(request.userdb.get_pending())})</a>
+                 style="color: var(--bs-danger);">Pending Users (${len(request.userdb.get_pending())})</a>
           % else:
-              <a href="/pending">Pending</a>
+              <a href="/pending">Pending Users</a>
           % endif
         </li>
         % if request.authenticated_userid:
@@ -86,21 +86,21 @@
           <div id="moon" style="${'display: none;' if request.cookies.get('theme') == 'dark' else ''}">Dark Mode</div>
         </li>
 
-        <li class="nav-header">Stockfish</li>
+        <li class="nav-header my-1 pt-1 ps-2">Stockfish</li>
         <li><a href="https://stockfishchess.org/download/" target="_blank" rel="noopener">Official Releases</a></li>
         <li><a href="https://abrok.eu/stockfish/" target="_blank" rel="noopener">Dev Builds</a></li>
         <li><a href="https://stockfishchess.org/get-involved/" target="_blank" rel="noopener">Contribute</a></li>
         <li><a href="https://github.com/glinscott/fishtest/wiki/Regression-Tests" target="_blank" rel="noopener">Progress</a></li>
         <li><a href="/nns">NN Repo</a></li>
 
-        <li class="nav-header">Resources</li>
+        <li class="nav-header my-1 pt-1 ps-2">Resources</li>
         <li><a href="https://discord.gg/nv8gDtt" target="_blank" rel="noopener">Discord</a></li>
         <li><a href="https://groups.google.com/g/fishcooking" target="_blank" rel="noopener">Forum</a></li>
         <li><a href="https://github.com/glinscott/fishtest/wiki" target="_blank" rel="noopener">Wiki</a></li>
         <li><a href="/html/SPRTcalculator.html?elo-model=Normalized&elo-0=0.0&elo-1=2.5&draw-ratio=0.49&rms-bias=191" target="_blank">SPRT Calc</a></li>
         <li><a href="https://hxim.github.io/Stockfish-Evaluation-Guide/" target="_blank" rel="noopener">Eval Guide</a></li>
 
-        <li class="nav-header">Development</li>
+        <li class="nav-header my-1 pt-1 ps-2">Development</li>
         <li><a href="https://github.com/official-stockfish/Stockfish" target="_blank" rel="noopener">Stockfish</a></li>
         <li><a href="https://github.com/glinscott/fishtest" target="_blank" rel="noopener">Fishtest</a></li>
         <li><a href="https://github.com/glinscott/nnue-pytorch" target="_blank" rel="noopener">NN Trainer</a></li>
@@ -109,10 +109,10 @@
       </ul>
     </div>
 
-    <div class="clearfix contentbase">
-      <div class="container-fluid">
-        <div class="row-fluid">
-          <div class="flash-message">
+    <div class="contentbase vh-100 w-100">
+      <div class="container-fluid pe-0">
+        <div class="row">
+          <div class="flash-message mt-3">
             % if request.session.peek_flash('error'):
                 <% flash = request.session.pop_flash('error') %>
                 % for message in flash:
