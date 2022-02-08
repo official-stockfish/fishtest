@@ -70,6 +70,10 @@ body {
   display: inline-table;
 }
 
+#active {
+  width: max-content; 
+}
+
 .contentbase main > h2 {
   top: 0;
   background: var(--bs-body-bg);
