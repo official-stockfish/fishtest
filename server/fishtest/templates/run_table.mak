@@ -34,7 +34,7 @@
         var active = button.text().trim() === 'Hide';
         button.text(active ? 'Show' : 'Hide');
         div.slideToggle(150);
-        $.cookie('${cookie_name}', button.text().trim());
+        $.cookie('${cookie_name}', button.text().trim(), {expires : 3650});
     }
 </script>
 % endif

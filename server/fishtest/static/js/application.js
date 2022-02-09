@@ -26,7 +26,7 @@ $(() => {
     $("#non_default-button").click(function() {
         var active = $(this).text().trim().substring(0, 4) === 'Hide';
         $(this).text(active ? 'Show non default nets' : 'Hide non default nets');
-        $.cookie('non_default_state', active ? 'Hide' : 'Show');
+        $.cookie('non_default_state', active ? 'Hide' : 'Show', {expires: 3650});
         window.location.reload();
     });
 
@@ -39,7 +39,7 @@ $(() => {
             $.get("/tests/machines", (html) => $("#machines").append(html));
         }
         $("#machines").slideToggle(150);
-        $.cookie('machines_state', $(this).text().trim());
+        $.cookie('machines_state', $(this).text().trim(), {expires: 3650});
     });
 
     // Click the sun/moon icons to change the color theme of the site
