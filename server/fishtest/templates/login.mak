@@ -1,41 +1,51 @@
 <%inherit file="base.mak"/>
-<h2>Login</h2>
 
-<div class="alert alert-info alert-block">
-  <h4>Permission Required</h4>
-  Creating or modifying tests requires you to be logged in.
-  If you don't have an account, please
-  <a href="/signup">Register</a>.
-</div>
+<%block name="head">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</%block>
 
-<div>
-  <form class="form-horizontal" action="" method="POST">
-    <div class="form-group row mb-3">
-      <label class="col-form-label col-sm-2 text-end">Username</label>
-      <div class="col-sm-3">
-        <input name="username" type="text" class="form-control" />
-      </div>
+<div id="login">
+  <header class="text-md-center py-2">
+    <h2>Login</h2>
+    <div class="alert alert-info">
+      Don't have an account? 
+      <strong><a href="/signup" class="alert-link">Sign up</a></strong>
+    </div>
+  </header>
+
+  <form action="" method="POST">
+    <div class="form-floating mb-3">
+      <input
+        type="text"
+        class="form-control mb-3"
+        id="username"
+        name="username"
+        placeholder="Username"
+      />
+      <label for="username" class="d-flex align-items-end">Username</label>
     </div>
 
-    <div class="form-group row mb-3">
-      <label class="col-form-label col-sm-2 text-end">Password</label>
-      <div class="col-sm-3">
-        <input name="password" type="password" class="form-control" />
-      </div>
+    <div class="form-floating mb-3">
+      <input
+        type="password"
+        class="form-control mb-3"
+        id="password"
+        name="password"
+        placeholder="Password"
+      />
+      <label for="password" class="d-flex align-items-end">Password</label>
     </div>
 
-    <div class="form-group row mb-3">
-      <label class="col-form-label col-sm-2 form-check-label text-end">Stay logged in</label>
-      <div class="col-sm-3">
-        <input name="stay_logged_in" type="checkbox" class="form-check-input" />
-      </div>
+    <div class="mb-3 form-check">
+      <label for="staylogged">Remember me</label>
+      <input
+        type="checkbox"
+        class="form-check-input"
+        id="staylogged"
+        name="stay_logged_in"
+      />
     </div>
 
-    <div class="form-group row">
-      <div class="col-sm-2"></div>
-      <div class="col-sm-4">
-        <button type="submit" class="btn btn-primary">Login</button>
-      </div>
-    </div>
+    <button type="submit" class="btn btn-primary w-100">Login</button>
   </form>
 </div>
