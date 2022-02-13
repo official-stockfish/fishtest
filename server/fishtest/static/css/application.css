@@ -486,3 +486,9 @@ td {
 option.grayedoutoption {
   background-color: LightGray;
 }
+
+#login,
+#register {
+  max-width: 450px;
+  margin: 0 auto 30px auto;
+}

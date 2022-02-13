@@ -230,8 +230,8 @@ def signup(request):
     else:
         request.session.flash(
             "Account created! "
-            "A person will now manually approve your new account, to avoid spam. "
-            "This is usually quick, but sometimes takes a few hours. "
+            "To avoid spam, a person will now manually approve your new account. "
+            "This is usually quick but sometimes takes a few hours. "
             "Thank you for contributing!"
         )
         return HTTPFound(location=request.route_url("login"))
