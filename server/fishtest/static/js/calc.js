@@ -4,6 +4,7 @@ google.charts.load("current", { packages: ["corechart"] });
 
 var pass_chart = null;
 var expected_chart = null;
+var resize_timeout;
 
 google.charts.setOnLoadCallback(function () {
   var pass_prob_chart_div = document.getElementById("pass_prob_chart_div");
@@ -41,6 +42,10 @@ google.charts.setOnLoadCallback(function () {
   mouse_screen.addEventListener("mouseleave", handle_tooltips, true);
   set_fields();
   draw_charts();
+  window.onresize = function() {
+    clearTimeout(resize_timeout);
+    resize_timeout = setTimeout(draw_charts, 100);
+  };
 });
 
 function set_field_from_url(name, defaultValue) {

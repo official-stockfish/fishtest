@@ -50,6 +50,7 @@ def main(global_config, **settings):
         "css/application.css": static_file_hash("css/application.css"),
         "css/theme.dark.css": dark_theme_sha256_integrity,
         "js/application.js": static_file_hash("js/application.js"),
+        "html/SPRTcalculator.html": static_file_hash("html/SPRTcalculator.html"),
     }
 
     rundb = RunDb()
