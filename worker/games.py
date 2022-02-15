@@ -981,6 +981,11 @@ def launch_cutechess(
         if "error" in req:
             raise WorkerException(req["error"])
 
+        if not req["task_alive"]:
+            # This task is no longer necessary
+            print("Server told us task is no longer needed")
+            return False
+
         result["spsa"] = {"num_games": games_to_play}
 
         w_params = req["w_params"]
