@@ -487,6 +487,7 @@ option.grayedoutoption {
   background-color: LightGray;
 }
 
+#user-administration,
 #login,
 #register {
   max-width: 450px;
