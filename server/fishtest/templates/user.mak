@@ -1,63 +1,91 @@
 <%inherit file="base.mak"/>
-<h2>User Administration</h2>
 
-<form class="form-horizontal" action="${request.url}" method="POST">
-  <div class="control-group">
-    <label class="control-label">Username:</label>
-    <label class="control-label"><a href="/tests/user/${user['username']}">${user['username']}</a></label>
-  </div>
-  <div class="control-group">
-    <label class="control-label">eMail:</label>
-    % if profile:
-        <div class="controls">
-          <input name="email" type="email" value="${user['email']}" required="required"/>
-        </div>
-    % else:
-        <label class="control-label">&nbsp;<a href="mailto:${user['email']}?Subject=Fishtest%20Account">${user['email']}</a></label>
-    % endif
-  </div>
-  % if profile:
-      <div class="control-group">
-        <label class="control-label">New password:</label>
-        <div class="controls">
-          <input name="password" type="password" pattern=".{8,}" title="Eight or more characters: a password too simple or trivial to guess will be rejected"/>
-        </div>
+## Remove this when base.mak has the viewport meta tag
+<%block name="head">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</%block>
+
+<div id="user-administration">
+  <header class="text-md-center py-2">
+    <h2>User Administration</h2>
+    <div class="alert alert-info">
+      <h4 class="alert-heading">
+        <a href="/tests/user/${user['username']}" class="alert-link col-6 text-break">${user['username']}</a>
+      </h4>
+      <div class="row g-1">
+        % if not profile:
+          <div class="col-6 text-md-end">Email:</div>
+          <div class="col-6 text-start text-break"><a href="mailto:${user['email']}?Subject=Fishtest%20Account" class="alert-link">${user['email']}</a></div>
+        % endif
+        <div class="col-6 text-md-end">Registered:</div>
+        <div class="col-6 text-start text-break">${user['registration_time'] if 'registration_time' in user else 'Unknown'}</div>
+        <div class="col-6 text-md-end">Machine Limit:</div>
+        <div class="col-6 text-start text-break">${limit}</div>
+        <div class="col-6 text-md-end">CPU-Hours:</div>
+        <div class="col-6 text-start text-break">${hours}</div>
       </div>
-      <div class="control-group">
-        <label class="control-label">Verify password:</label>
-        <div class="controls">
-          <input name="password2" type="password"/>
-        </div>
-      </div>
-  % endif
-  <div class="control-group">
-    <label class="control-label">Registration Time:</label>
-    <label class="control-label">${user['registration_time'] if 'registration_time' in user else 'Unknown'}</label>
-  </div>
-  <div class="control-group">
-    <label class="control-label">Machine Limit:</label>
-    <label class="control-label">${limit}</label>
-  </div>
-  <div class="control-group">
-    <label class="control-label">CPU-Hours:</label>
-    <label class="control-label">${hours}</label>
-  </div>
-  % if not profile:
-      <%
-      blocked = user['blocked'] if 'blocked' in user else False
-      checked = 'checked' if blocked else ''
-      %>
-      <div class="control-group">
-        <label class="control-label">Blocked:</label>
-        <label class="control-label"><input name="blocked" type="checkbox" ${checked} value="True"></label>
-      </div>
-  % endif
-  <p>
-  <div class="control-group">
-    <div class="controls">
-      <button type="submit" class="btn btn-primary">Submit</button>
     </div>
-  </div>
-  </p>
-  <input type="hidden" name="user" value="${user['username']}" />
-</form>
+  </header>
+
+  <form action="${request.url}" method="POST">
+    % if profile:
+      <div class="form-floating mb-3">
+        <input
+          type="email"
+          class="form-control mb-3"
+          id="email"
+          name="email"
+          value="${user['email']}"
+          placeholder="Email"
+          required="required"
+        />
+        <label for="email" class="d-flex align-items-end">Email</label>
+      </div>
+
+      <div class="form-floating mb-3">
+        <input
+          type="password"
+          class="form-control mb-3"
+          id="password"
+          name="password"
+          placeholder="Password"
+          pattern=".{8,}"
+          title="Eight or more characters: a password too simple or trivial to guess will be rejected"
+          required="required"
+        />
+        <label for="password" class="d-flex align-items-end">New Password</label>
+      </div>
+
+      <div class="form-floating mb-3">
+        <input
+          type="password"
+          class="form-control mb-3"
+          id="password2"
+          name="password2"
+          placeholder="Repeat Password"
+          required="required"
+        />
+        <label for="password2" class="d-flex align-items-end">Repeat Password</label>
+      </div>
+    % else:
+      <%
+        blocked = user['blocked'] if 'blocked' in user else False
+        checked = 'checked' if blocked else ''
+      %>
+      <label class="list-group-item d-flex gap-2 mb-3 rounded-2">
+        <input
+          class="form-check-input flex-shrink-0"
+          type="checkbox"
+          name="blocked"
+          value="True"
+          ${checked}
+        >
+        <span>Blocked</span>
+      </label>
+    % endif
+
+    <button type="submit" class="btn btn-primary w-100">Submit</button>
+
+    <input type="hidden" name="user" value="${user['username']}" />
+  </form>
+</div>
