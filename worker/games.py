@@ -1431,7 +1431,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
             spsa_tuning,
             games_to_play,
             batch_size,
-            tc_limit * games_to_play / min(games_to_play, games_concurrency),
+            tc_limit * max(8, games_to_play / games_concurrency),
         )
 
         games_remaining -= games_to_play
