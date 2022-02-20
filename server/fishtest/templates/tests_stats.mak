@@ -54,6 +54,16 @@
   if has_pentanomial:
       results5 = run["results"]["pentanomial"]
       results5_ = fishtest.stats.LLRcalc.regularize(results5)
+      results5_pairs_ratio = (
+          sum(results5[3:]) / sum(results5[0:2])
+          if any(results5[0:2])
+          else float("nan")
+      )
+      results5_points_ratio = (
+          (2 * results5[4] + results5[3]) / (2 * results5[0] + results5[1])
+          if any(results5[0:2])
+          else float("nan")
+      )
       pentanomial_draw_ratio = results5_[2] / float(sum(results5_))
       N5, pdf5 = fishtest.stats.LLRcalc.results_to_pdf(results5)
       games5 = 2 * N5
@@ -314,8 +324,10 @@
                   <table class="table table-striped table-sm">
                     <tr><td>Games</td><td>${int(games5)}</td></tr>
                     <tr><td>Results [0-2]</td><td>${results5}</td></tr>
+                    <tr><td>Games pair ratio (ww+wd)/(ll+ld)</td><td>${f"{results5_pairs_ratio:.5f}"}</td></tr>
+                    <tr><td>Points ratio (2*ww+wd)/(2*ll+ld)</td><td>${f"{results5_points_ratio:.5f}"}</td></tr>
                     <tr><td>Distribution</td><td>${pdf5_s}</td></tr>
-                    <tr><td>(DD,WL) split</td><td>${f"({results5_DD_prob:.5f}, {results5_WL_prob:.5f})"}</td></tr>
+                    <tr><td>(dd,wl) split</td><td>${f"({results5_DD_prob:.5f}, {results5_WL_prob:.5f})"}</td></tr>
                     <tr><td>Expected value</td><td>${f"{avg5:.5f}"}</td></tr>
                     <tr><td>Variance</td><td>${f"{var5:.5f}"}</td></tr>
                     <tr><td>Skewness</td><td>${f"{skewness5:.5f}"}</td></tr>
