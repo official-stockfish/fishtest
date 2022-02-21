@@ -4,9 +4,9 @@
   import fishtest.stats.LLRcalc
   import math
 
-  has_sprt = "sprt" in run["args"].keys()
-  has_pentanomial = "pentanomial" in run["results"].keys()
-  has_spsa = "spsa" in run["args"].keys()
+  has_sprt = "sprt" in run["args"]
+  has_pentanomial = "pentanomial" in run["results"]
+  has_spsa = "spsa" in run["args"]
 
 
   def pdf_to_string(pdf, decimals=(2, 5)):

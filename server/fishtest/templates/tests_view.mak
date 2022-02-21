@@ -249,7 +249,7 @@ from fishtest.util import worker_name
         <th>Info</th>
         <th>Last Updated</th>
         <th>Played</th>
-        % if not 'pentanomial' in run['results'].keys():
+        % if 'pentanomial' not in run['results']:
             <th>Wins</th>
             <th>Losses</th>
             <th>Draws</th>
@@ -310,7 +310,7 @@ from fishtest.util import worker_name
             </td>
             <td>${str(task.get('last_updated', '-')).split('.')[0]}</td>
             <td>${f"{total:03d} / {task['num_games']:03d}"}</td>
-            % if not 'pentanomial' in run['results'].keys():
+            % if 'pentanomial' not in run['results']:
                 <td>${stats.get('wins', '-')}</td>
                 <td>${stats.get('losses', '-')}</td>
                 <td>${stats.get('draws', '-')}</td>
