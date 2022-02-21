@@ -16,6 +16,20 @@
   <%
     info = run['results_info']['info']
     l = len(info)
+    has_pairs_ratio = (
+        "sprt" not in run["args"]
+        and "spsa" not in run["args"]
+        and "pentanomial" in run["results"]
+    )
+    if has_pairs_ratio:
+      results5 = run["results"]["pentanomial"]
+      results5_pairs_ratio =  (
+          sum(results5[3:]) / sum(results5[0:2])
+          if any(results5[0:2])
+          else float("inf")
+          if any(results5[3:])
+          else float("nan")
+      )
   %>
   % for i in range(l):
       ${info[i]}
@@ -23,6 +37,10 @@
           <br/>
       % endif
   % endfor
+  % if has_pairs_ratio:
+      <br/>
+      ${f"PairsRatio: {results5_pairs_ratio:.5f}"}
+  % endif
 </%def>
 
 % if 'sprt' in run['args'] and not 'Pending' in run['results_info']['info'][0]:
