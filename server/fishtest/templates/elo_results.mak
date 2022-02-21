@@ -16,13 +16,31 @@
   <%
     info = run['results_info']['info']
     l = len(info)
-    has_pairs_ratio = (
+    elo_ptnml = (
         "sprt" not in run["args"]
         and "spsa" not in run["args"]
         and "pentanomial" in run["results"]
     )
-    if has_pairs_ratio:
+    if elo_ptnml:
+      import math
+      import fishtest.stats.stat_util
+      import fishtest.stats.LLRcalc
+
+      def t_conf(avg, var, skewness, exkurt):
+        t = (avg - 0.5) / var**0.5
+        # limit for rounding error
+        var_t = max(1 - t * skewness + 0.25 * t**2 * (exkurt + 2), 0)
+        return t, var_t
+
       results5 = run["results"]["pentanomial"]
+      z975 = fishtest.stats.stat_util.Phi_inv(0.975)
+      nelo5_coeff = 800 / math.log(10) / (2**0.5) ## 245.67405854855017099
+      N5, pdf5 = fishtest.stats.LLRcalc.results_to_pdf(results5)
+      avg5, var5, skewness5, exkurt5 = fishtest.stats.LLRcalc.stats_ex(pdf5)
+      t5, var_t5 = t_conf(avg5, var5, skewness5, exkurt5)
+      nelo5 = nelo5_coeff * t5
+      nelo5_delta = nelo5_coeff * z975 * (var_t5 / N5) ** 0.5
+
       results5_pairs_ratio =  (
           sum(results5[3:]) / sum(results5[0:2])
           if any(results5[0:2])
@@ -32,14 +50,14 @@
       )
   %>
   % for i in range(l):
-      ${info[i]}
+      ${info[i].replace("ELO", "Elo") if elo_ptnml and i == 0 else info[i]}
       % if i < l-1:
           <br/>
       % endif
   % endfor
-  % if has_pairs_ratio:
+  % if elo_ptnml:
       <br/>
-      ${f"PairsRatio: {results5_pairs_ratio:.5f}"}
+      ${f"nElo: {nelo5:.2f} +-{nelo5_delta:.2f} PairsRatio: {results5_pairs_ratio:.2f}"}
   % endif
 </%def>
 
