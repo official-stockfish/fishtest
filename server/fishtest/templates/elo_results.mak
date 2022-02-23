@@ -16,12 +16,12 @@
   <%
     info = run['results_info']['info']
     l = len(info)
-    elo_ptnml = (
+    elo_ptnml_run = (
         "sprt" not in run["args"]
         and "spsa" not in run["args"]
         and "pentanomial" in run["results"]
     )
-    if elo_ptnml:
+    if elo_ptnml_run:
       import math
       import fishtest.stats.stat_util
       import fishtest.stats.LLRcalc
@@ -50,14 +50,14 @@
       )
   %>
   % for i in range(l):
-      ${info[i].replace("ELO", "Elo") if elo_ptnml and i == 0 else info[i]}
+      ${info[i].replace("ELO", "Elo") if elo_ptnml_run and i == 0 else info[i]}
       % if i < l-1:
           <br/>
       % endif
   % endfor
-  % if elo_ptnml:
+  % if elo_ptnml_run:
       <br/>
-      ${f"nElo: {nelo5:.2f} +-{nelo5_delta:.2f} PairsRatio: {results5_pairs_ratio:.2f}"}
+      ${f"nElo: {nelo5:.2f} +-{nelo5_delta:.1f} (95%) PairsRatio: {results5_pairs_ratio:.2f}"}
   % endif
 </%def>
 
