@@ -6,6 +6,7 @@ import fishtest.stats.stat_util
 import numpy
 import scipy.stats
 from zxcvbn import zxcvbn
+from email_validator import validate_email, caching_resolver, EmailNotValidError
 
 FISH_URL = "https://tests.stockfishchess.org/tests/view/"
 
@@ -475,3 +476,11 @@ def get_cookie(request, name):
         k, v = cookie.split("=")
         if k.strip() == name:
             return v.strip()
+
+def email_valid(email):
+    try:
+        resolver = caching_resolver(timeout=10)
+        valid = validate_email(email, dns_resolver=resolver)
+        return True, valid.email
+    except EmailNotValidError as e:
+        return False, str(e)
