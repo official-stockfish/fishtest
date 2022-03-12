@@ -17,6 +17,7 @@ from fishtest.util import (
     get_chi2,
     password_strength,
     update_residuals,
+    email_valid,
 )
 from pyramid.httpexceptions import HTTPFound, exception_response
 from pyramid.security import forget, remember
@@ -191,8 +192,9 @@ def signup(request):
         errors.append("Error! Weak password: " + password_err)
     if signup_password != signup_password_verify:
         errors.append("Error! Matching verify password required")
-    if "@" not in signup_email:
-        errors.append("Error! Email required")
+    email_is_valid, validated_email = email_valid(signup_email)
+    if not email_is_valid:
+        errors.append("Error! Invalid email: " + validated_email)
     if len(signup_username) == 0:
         errors.append("Error! Username required")
     if not signup_username.isalnum():
@@ -223,7 +225,7 @@ def signup(request):
                 return {}
 
     result = request.userdb.create_user(
-        username=signup_username, password=signup_password, email=signup_email
+        username=signup_username, password=signup_password, email=validated_email
     )
     if not result:
         request.session.flash("Error! Invalid username or password", "error")
@@ -416,11 +418,14 @@ def user(request):
                     return HTTPFound(location=request.route_url("tests"))
 
             if len(new_email) > 0 and user_data["email"] != new_email:
-                if "@" not in new_email:
-                    request.session.flash("Error! Valid email required", "error")
+                email_is_valid, validated_email = email_valid(new_email)
+                if not email_is_valid:
+                    request.session.flash(
+                        "Error! Invalid email: " + validated_email, "error"
+                        )
                     return HTTPFound(location=request.route_url("tests"))
                 else:
-                    user_data["email"] = new_email
+                    user_data["email"] = validated_email
                     request.session.flash("Success! Email updated")
 
         else:
