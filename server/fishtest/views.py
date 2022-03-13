@@ -12,12 +12,12 @@ import requests
 from fishtest.util import (
     delta_date,
     diff_date,
+    email_valid,
     estimate_game_duration,
     format_results,
     get_chi2,
     password_strength,
     update_residuals,
-    email_valid,
 )
 from pyramid.httpexceptions import HTTPFound, exception_response
 from pyramid.security import forget, remember
@@ -422,7 +422,7 @@ def user(request):
                 if not email_is_valid:
                     request.session.flash(
                         "Error! Invalid email: " + validated_email, "error"
-                        )
+                    )
                     return HTTPFound(location=request.route_url("tests"))
                 else:
                     user_data["email"] = validated_email

@@ -5,8 +5,8 @@ from email.mime.text import MIMEText
 import fishtest.stats.stat_util
 import numpy
 import scipy.stats
+from email_validator import EmailNotValidError, caching_resolver, validate_email
 from zxcvbn import zxcvbn
-from email_validator import validate_email, caching_resolver, EmailNotValidError
 
 FISH_URL = "https://tests.stockfishchess.org/tests/view/"
 
@@ -476,6 +476,7 @@ def get_cookie(request, name):
         k, v = cookie.split("=")
         if k.strip() == name:
             return v.strip()
+
 
 def email_valid(email):
     try:
