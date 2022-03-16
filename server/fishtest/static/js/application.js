@@ -2,12 +2,15 @@
 // https://stackoverflow.com/questions/40201533/sort-version-dotted-number-strings-in-javascript
 const getCellValue = (tr, idx) => tr.children[idx].dataset.diff || tr.children[idx].innerText || tr.children[idx].textContent;
 const padDotVersion = (dn) => dn.split('.').map(n => +n+1000).join('');
+const padDotVersionStr = (dn) => dn.replace(/\d+/g, n => +n+1000);
 let p1, p2;
 const comparer = (idx, asc) => (a, b) => ((v1, v2) =>
     v1 !== '' && v2 !== '' && !isNaN(v1) && !isNaN(v2)
     ? v1 - v2
     : v1 !== '' && v2 !== '' && !isNaN(p1 = padDotVersion(v1)) && !isNaN(p2 = padDotVersion(v2))
     ? p1 - p2
+    : v1 !== '' && v2 !== '' && !isNaN(padDotVersion(v1.replace('clang++ ', '').replace('g++ ', ''))) && !isNaN(padDotVersion(v2.replace('clang++ ', '').replace('g++ ', '')))
+    ? padDotVersionStr(v1).toString().localeCompare(padDotVersionStr(v2))
     : v1.toString().localeCompare(v2)
 )(getCellValue(asc ? a : b, idx), getCellValue(asc ? b : a, idx));
 
