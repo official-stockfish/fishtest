@@ -566,7 +566,10 @@ class RunDb:
         game_time = estimate_game_duration(run["args"]["tc"])
         concurrency = worker_info["concurrency"] // run["args"]["threads"]
         assert concurrency >= 1
-        games = self.task_duration / game_time * concurrency
+        # as we have more tasks done (>1000), make them longer to avoid
+        # having many tasks in long running tests
+        scale_duration = 1 + (len(run["tasks"]) // 1000) ** 2
+        games = self.task_duration * scale_duration / game_time * concurrency
         if "sprt" in run["args"]:
             batch_size = 2 * run["args"]["sprt"].get("batch_size", 1)
             games = max(batch_size, batch_size * int(games / batch_size + 1 / 2))
