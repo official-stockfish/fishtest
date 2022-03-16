@@ -42,7 +42,7 @@ google.charts.setOnLoadCallback(function () {
   mouse_screen.addEventListener("mouseleave", handle_tooltips, true);
   set_fields();
   draw_charts();
-  window.onresize = function() {
+  window.onresize = function () {
     clearTimeout(resize_timeout);
     resize_timeout = setTimeout(draw_charts, 100);
   };
