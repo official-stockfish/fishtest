@@ -32,7 +32,7 @@ class workerTest(unittest.TestCase):
         worker.setup_parameters(".")
         from configparser import ConfigParser
 
-        config = ConfigParser()
+        config = ConfigParser(inline_comment_prefixes=";", interpolation=None)
         config.read("foo.txt")
         self.assertTrue(config.has_section("login"))
         self.assertTrue(config.has_section("parameters"))
