@@ -1236,16 +1236,10 @@ class RunDb:
         # so that the required storage (performance) remains constant.
         if "param_history" not in spsa:
             spsa["param_history"] = []
-        L = len(spsa["params"])
-        freq_max = 250000
-        freq = max(100, min(L * 25, freq_max))
-
-        # adjust freq to multiples of 100 that divide exactly into freq_max
-        freq_div = (i for i in range(100, freq_max + 1, 100) if not freq_max % i)
-        freq = max(i for i in freq_div if i <= freq)
-
-        maxlen = freq_max / freq
-        grow_summary = len(spsa["param_history"]) < min(maxlen, spsa["iter"] / freq)
+        n_params = len(spsa["params"])
+        samples = 101 if n_params < 100 else 10000 / n_params if n_params < 1000 else 1
+        freq = run["args"]["num_games"] / 2 / samples
+        grow_summary = len(spsa["param_history"]) < spsa["iter"] / freq
 
         # Update the current theta based on the results from the worker
         # Worker wins/losses are always in terms of w_params
