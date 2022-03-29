@@ -316,7 +316,7 @@ def validate(config, schema):
 def setup_parameters(worker_dir):
 
     # Step 1: read the config file if it exists.
-    config = ConfigParser(inline_comment_prefixes=";")
+    config = ConfigParser(inline_comment_prefixes=";", interpolation=None)
     config_file = os.path.join(worker_dir, CONFIGFILE)
     try:
         config.read(config_file)
@@ -328,7 +328,7 @@ def setup_parameters(worker_dir):
             file=sys.stderr,
         )
         print("Initializing configfile")
-        config = ConfigParser(inline_comment_prefixes=";")
+        config = ConfigParser(inline_comment_prefixes=";", interpolation=None)
 
     # Step 2: probe the host system.
 
