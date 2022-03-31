@@ -131,7 +131,7 @@
 
       var googleformat = [];
       for (i = 0; i < data_count; i++) {
-        var c = [i];
+        var c = [i / (data_count - 1) * 100];
         for (j = 0; j < spsa_params.length; j++) {
           c.push(d[j][i]);
         }
@@ -211,7 +211,7 @@
           for (j = 0; j < spsa_params.length; j++) raw.push([]);
 
           for (i = 0; i < spsa_history.length; i++) {
-            var d = [i];
+            var d = [i / (spsa_history.length - 1) * 100];
             for (j = 0; j < spsa_params.length; j++) {
               d.push(spsa_history[i][j].theta);
               raw[j].push(spsa_history[i][j].theta);
