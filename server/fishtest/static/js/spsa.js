@@ -186,7 +186,7 @@
     $("#div_spsa_preload").fadeIn();
 
     //load google library
-    google.load("visualization", "1.0", {
+    google.charts.load("current", {
       packages: ["corechart"],
       callback: function () {
         //request data for chart

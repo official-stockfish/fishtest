@@ -7,7 +7,7 @@ from fishtest.util import worker_name
 <%namespace name="base" file="base.mak"/>
 
 % if 'spsa' in run['args']:
-    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <script type="text/javascript" src="/js/gkr.js"></script>
     <script>
       var spsa_history_url = '${run_args[0][1]}/spsa_history';
