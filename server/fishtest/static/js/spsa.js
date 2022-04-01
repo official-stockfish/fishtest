@@ -90,7 +90,7 @@
     width: 1000,
     height: 500,
     hAxis: {
-      format: "percent"
+      format: "percent",
     },
     legend: {
       position: "right",
@@ -135,7 +135,7 @@
 
       var googleformat = [];
       for (i = 0; i < data_count; i++) {
-        var c = [i / (data_count - 1) * spsa_iter_ratio];
+        var c = [(i / (data_count - 1)) * spsa_iter_ratio];
         for (j = 0; j < spsa_params.length; j++) {
           c.push(d[j][i]);
         }
@@ -192,7 +192,7 @@
         //request data for chart
         $.getJSON(spsa_history_url, function (data) {
           spsa_params = data.params;
-	  spsa_iter_ratio = Math.min(data.iter / data.num_iter, 1.0);
+          spsa_iter_ratio = Math.min(data.iter / data.num_iter, 1.0);
           var spsa_history = data.param_history;
 
           if (!spsa_history || spsa_history.length < 2) {
@@ -216,7 +216,7 @@
           for (j = 0; j < spsa_params.length; j++) raw.push([]);
 
           for (i = 0; i < spsa_history.length; i++) {
-            var d = [i / (spsa_history.length - 1) * spsa_iter_ratio];
+            var d = [(i / (spsa_history.length - 1)) * spsa_iter_ratio];
             for (j = 0; j < spsa_params.length; j++) {
               d.push(spsa_history[i][j].theta);
               raw[j].push(spsa_history[i][j].theta);
