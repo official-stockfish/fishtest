@@ -1119,35 +1119,10 @@ class RunDb:
 
         return message
 
-    def spsa_param_clip_round(self, param, increment, clipping, rounding):
-        if clipping == "old":
-            value = param["theta"] + increment
-            if value < param["min"]:
-                value = param["min"]
-            elif value > param["max"]:
-                value = param["max"]
-        else:  # clipping == 'careful':
-            inc = min(
-                abs(increment),
-                abs(param["theta"] - param["min"]) / 2,
-                abs(param["theta"] - param["max"]) / 2,
-            )
-            if inc > 0:
-                value = param["theta"] + inc * increment / abs(increment)
-            else:  # revert to old behavior to bounce off boundary
-                value = param["theta"] + increment
-                if value < param["min"]:
-                    value = param["min"]
-                elif value > param["max"]:
-                    value = param["max"]
-
-        # 'deterministic' rounding calls round() inside the worker.
-        # 'randomized' says 4.p should be 5 with probability p,
-        # 4 with probability 1-p,
-        # and is continuous (albeit after expectation) unlike round().
-        if rounding == "randomized":
-            value = math.floor(value + random.uniform(0, 1))
-
+    def spsa_param_clip_round(self, param, increment):
+        value = min(max(param["theta"] + increment, param["min"]), param["max"])
+        # Stochastic rounding and probability for float N.p: (N, 1-p); (N+1, p)
+        value = math.floor(value + random.uniform(0, 1))
         return value
 
     # Store SPSA parameters for each worker
@@ -1189,10 +1164,6 @@ class RunDb:
     def generate_spsa(self, run):
         result = {"task_alive": True, "w_params": [], "b_params": []}
         spsa = run["args"]["spsa"]
-        if "clipping" not in spsa:
-            spsa["clipping"] = "old"
-        if "rounding" not in spsa:
-            spsa["rounding"] = "deterministic"
 
         # Generate the next set of tuning parameters
         iter_local = spsa["iter"] + 1  # assume at least one completed,
@@ -1203,9 +1174,7 @@ class RunDb:
             result["w_params"].append(
                 {
                     "name": param["name"],
-                    "value": self.spsa_param_clip_round(
-                        param, c * flip, spsa["clipping"], spsa["rounding"]
-                    ),
+                    "value": self.spsa_param_clip_round(param, c * flip),
                     "R": param["a"]
                     / (spsa["A"] + iter_local) ** spsa["alpha"]
                     / c**2,
@@ -1216,9 +1185,7 @@ class RunDb:
             result["b_params"].append(
                 {
                     "name": param["name"],
-                    "value": self.spsa_param_clip_round(
-                        param, -c * flip, spsa["clipping"], spsa["rounding"]
-                    ),
+                    "value": self.spsa_param_clip_round(param, -c * flip),
                 }
             )
 
@@ -1226,9 +1193,6 @@ class RunDb:
 
     def update_spsa(self, worker, run, spsa_results):
         spsa = run["args"]["spsa"]
-        if "clipping" not in spsa:
-            spsa["clipping"] = "old"
-
         spsa["iter"] += int(spsa_results["num_games"] / 2)
 
         # Store the history every 'freq' iterations.
@@ -1250,9 +1214,7 @@ class RunDb:
             R = w_params[idx]["R"]
             c = w_params[idx]["c"]
             flip = w_params[idx]["flip"]
-            param["theta"] = self.spsa_param_clip_round(
-                param, R * c * result * flip, spsa["clipping"], "deterministic"
-            )
+            param["theta"] = self.spsa_param_clip_round(param, R * c * result * flip)
             if grow_summary:
                 summary.append({"theta": param["theta"], "R": R, "c": c})
 

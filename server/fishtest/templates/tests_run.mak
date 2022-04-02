@@ -300,8 +300,6 @@ else:
         </i>
       </div>
     </div>
-    <input type="hidden" name="spsa_clipping" value="old" />
-    <input type="hidden" name="spsa_rounding" value="deterministic" />
   </section>
 
   <section id="worker-and-queue-options">
