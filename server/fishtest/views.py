@@ -728,8 +728,6 @@ def validate_form(request):
             "raw_params": request.POST["spsa_raw_params"],
             "iter": 0,
             "num_iter": int(data["num_games"] / 2),
-            "clipping": request.POST["spsa_clipping"],
-            "rounding": request.POST["spsa_rounding"],
         }
         data["spsa"]["params"] = parse_spsa_params(
             request.POST["spsa_raw_params"], data["spsa"]
@@ -1074,13 +1072,11 @@ def tests_view(request):
             A = value["A"]
             alpha = value["alpha"]
             gamma = value["gamma"]
-            summary = "Iter: {:d}, A: {:d}, alpha {:0.3f}, gamma {:0.3f}, clipping {}, rounding {}".format(
+            summary = "Iter: {:d}, A: {:d}, alpha {:0.3f}, gamma {:0.3f}".format(
                 iter_local,
                 A,
                 alpha,
                 gamma,
-                value["clipping"] if "clipping" in value else "old",
-                value["rounding"] if "rounding" in value else "deterministic",
             )
             params = value["params"]
             value = [summary]
