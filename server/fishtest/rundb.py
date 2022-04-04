@@ -1119,11 +1119,8 @@ class RunDb:
 
         return message
 
-    def spsa_param_clip_round(self, param, increment):
-        value = min(max(param["theta"] + increment, param["min"]), param["max"])
-        # Stochastic rounding and probability for float N.p: (N, 1-p); (N+1, p)
-        value = math.floor(value + random.uniform(0, 1))
-        return value
+    def spsa_param_clip(self, param, increment):
+        return min(max(param["theta"] + increment, param["min"]), param["max"])
 
     # Store SPSA parameters for each worker
     spsa_params = {}
@@ -1174,7 +1171,7 @@ class RunDb:
             result["w_params"].append(
                 {
                     "name": param["name"],
-                    "value": self.spsa_param_clip_round(param, c * flip),
+                    "value": self.spsa_param_clip(param, c * flip),
                     "R": param["a"]
                     / (spsa["A"] + iter_local) ** spsa["alpha"]
                     / c**2,
@@ -1185,7 +1182,7 @@ class RunDb:
             result["b_params"].append(
                 {
                     "name": param["name"],
-                    "value": self.spsa_param_clip_round(param, -c * flip),
+                    "value": self.spsa_param_clip(param, -c * flip),
                 }
             )
 
@@ -1214,7 +1211,7 @@ class RunDb:
             R = w_params[idx]["R"]
             c = w_params[idx]["c"]
             flip = w_params[idx]["flip"]
-            param["theta"] = self.spsa_param_clip_round(param, R * c * result * flip)
+            param["theta"] = self.spsa_param_clip(param, R * c * result * flip)
             if grow_summary:
                 summary.append({"theta": param["theta"], "R": R, "c": c})
 
