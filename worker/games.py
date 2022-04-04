@@ -8,6 +8,7 @@ import math
 import multiprocessing
 import os
 import platform
+import random
 import re
 import shutil
 import signal
@@ -996,16 +997,27 @@ def launch_cutechess(
         b_params = []
 
     # Run cutechess-cli binary.
+    # Stochastic rounding and probability for float N.p: (N, 1-p); (N+1, p)
     idx = cmd.index("_spsa_")
     cmd = (
         cmd[:idx]
-        + ["option.{}={}".format(x["name"], round(x["value"])) for x in w_params]
+        + [
+            "option.{}={}".format(
+                x["name"], math.floor(x["value"] + random.uniform(0, 1))
+            )
+            for x in w_params
+        ]
         + cmd[idx + 1 :]
     )
     idx = cmd.index("_spsa_")
     cmd = (
         cmd[:idx]
-        + ["option.{}={}".format(x["name"], round(x["value"])) for x in b_params]
+        + [
+            "option.{}={}".format(
+                x["name"], math.floor(x["value"] + random.uniform(0, 1))
+            )
+            for x in b_params
+        ]
         + cmd[idx + 1 :]
     )
 
