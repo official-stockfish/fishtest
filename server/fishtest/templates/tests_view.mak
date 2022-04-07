@@ -48,12 +48,12 @@ from fishtest.util import worker_name
                       <table>
                         <thead>
                           <th>param</th>
-                          <th>best</th>
+                          <th>value</th>
                           <th>start</th>
                           <th>min</th>
                           <th>max</th>
                           <th>c</th>
-                          <th>a</th>
+                          <th>r</th>
                         </thead>
                         <tbody>
                           % for row in arg[1][1:]:

@@ -1072,7 +1072,7 @@ def tests_view(request):
             A = value["A"]
             alpha = value["alpha"]
             gamma = value["gamma"]
-            summary = "Iter: {:d}, A: {:d}, alpha {:0.3f}, gamma {:0.3f}".format(
+            summary = "iter: {:d}, A: {:d}, alpha: {:0.3f}, gamma: {:0.3f}".format(
                 iter_local,
                 A,
                 alpha,
@@ -1081,6 +1081,8 @@ def tests_view(request):
             params = value["params"]
             value = [summary]
             for p in params:
+                c_iter = p["c"] / (iter_local**gamma)
+                r_iter = p["a"] / (A + iter_local) ** alpha / c_iter**2
                 value.append(
                     [
                         p["name"],
@@ -1088,8 +1090,8 @@ def tests_view(request):
                         int(p["start"]),
                         int(p["min"]),
                         int(p["max"]),
-                        "{:.3f}".format(p["c"] / (iter_local**gamma)),
-                        "{:.3f}".format(p["a"] / (A + iter_local) ** alpha),
+                        "{:.3f}".format(c_iter),
+                        "{:.2e}".format(r_iter),
                     ]
                 )
         if "tests_repo" in run["args"]:
