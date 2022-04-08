@@ -46,7 +46,7 @@ from games import (
 )
 from updater import update
 
-WORKER_VERSION = 162
+WORKER_VERSION = 163
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
 THREAD_JOIN_TIMEOUT = 15.0
@@ -702,9 +702,13 @@ def get_exception(files):
     i = 0
     exc_type, exc_obj, tb = sys.exc_info()
     filename, lineno, name, line = traceback.extract_tb(tb)[i]
-    message = "Exception {} at {}:{}".format(exc_type.__name__, os.path.basename(filename), lineno)
+    message = "Exception {} at {}:{}".format(
+        exc_type.__name__, os.path.basename(filename), lineno
+    )
     while os.path.basename(filename) in files:
-        message = "Exception {} at {}:{}".format(exc_type.__name__, os.path.basename(filename), lineno)
+        message = "Exception {} at {}:{}".format(
+            exc_type.__name__, os.path.basename(filename), lineno
+        )
         i += 1
         try:
             filename, lineno, name, line = traceback.extract_tb(tb)[i]
