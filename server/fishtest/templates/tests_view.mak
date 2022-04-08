@@ -2,6 +2,10 @@
 
 <%
 from fishtest.util import worker_name
+
+if 'spsa' in run['args']:
+  import json
+  spsa_data = json.dumps(run["args"]["spsa"])
 %>
 
 <%namespace name="base" file="base.mak"/>
@@ -9,8 +13,8 @@ from fishtest.util import worker_name
 % if 'spsa' in run['args']:
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <script type="text/javascript" src="/js/gkr.js"></script>
-    <script>
-      var spsa_history_url = '${run_args[0][1]}/spsa_history';
+    <script type="text/javascript">
+      var spsa_data = ${spsa_data | n};
     </script>
     <script type="text/javascript" src="/js/spsa.js"></script>
 % endif
@@ -207,7 +211,6 @@ from fishtest.util import worker_name
       </div>
     </div>
 
-    <div id="div_spsa_error" style="display: none; border: 1px solid red; color: red; width: 400px"></div>
     <div id="chart_toolbar" style="display: none">
       Gaussian Kernel Smoother&nbsp;&nbsp;
       <div class="btn-group">
