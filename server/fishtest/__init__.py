@@ -103,7 +103,6 @@ def main(global_config, **settings):
     config.add_route("tests_finished", "/tests/finished")
     config.add_route("tests_run", "/tests/run")
     config.add_route("tests_view", "/tests/view/{id}")
-    config.add_route("tests_view_spsa_history", "/tests/view/{id}/spsa_history")
     config.add_route("tests_user", "/tests/user/{username}")
     config.add_route("tests_stats", "/tests/stats/{id}")
 

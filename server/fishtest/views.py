@@ -996,15 +996,6 @@ def tests_machines(request):
     return {"machines": machines}
 
 
-@view_config(route_name="tests_view_spsa_history", renderer="json")
-def tests_view_spsa_history(request):
-    run = request.rundb.get_run(request.matchdict["id"])
-    if "spsa" not in run["args"]:
-        return {}
-
-    return run["args"]["spsa"]
-
-
 @view_config(route_name="tests_view", renderer="tests_view.mak")
 def tests_view(request):
     run = request.rundb.get_run(request.matchdict["id"])
