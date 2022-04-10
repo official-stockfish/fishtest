@@ -233,16 +233,21 @@ def github_api(repo):
 def required_net(engine):
     net = None
     print("Obtaining EvalFile of {} ...".format(os.path.basename(engine)))
-    with subprocess.Popen(
-        [engine, "uci"],
-        stdout=subprocess.PIPE,
-        universal_newlines=True,
-        bufsize=1,
-        close_fds=not IS_WINDOWS,
-    ) as p:
-        for line in iter(p.stdout.readline, ""):
-            if "EvalFile" in line:
-                net = line.split(" ")[6].strip()
+    try:
+        with subprocess.Popen(
+            [engine, "uci"],
+            stdout=subprocess.PIPE,
+            universal_newlines=True,
+            bufsize=1,
+            close_fds=not IS_WINDOWS,
+        ) as p:
+            for line in iter(p.stdout.readline, ""):
+                if "EvalFile" in line:
+                    net = line.split(" ")[6].strip()
+    except (OSError, subprocess.SubprocessError) as e:
+        raise WorkerException(
+            "Unable to obtain name for required net. Error: {}".format(str(e))
+        )
 
     if p.returncode != 0:
         raise WorkerException(
