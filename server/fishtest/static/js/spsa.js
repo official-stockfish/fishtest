@@ -194,6 +194,7 @@
         var spsa_history = spsa_data.param_history;
 
         if (!spsa_history || spsa_history.length < 2) {
+          $("#div_spsa_preload").hide();
           $("#div_spsa_history_plot")
             .html("Not enough data to generate plot.")
             .css({
@@ -282,6 +283,8 @@
           }
         );
 
+        $("#div_spsa_preload").hide();
+
         $("#btn_smooth_plus").on("click", function () {
           smoothing_factor = Math.min(smoothing_factor + 1, smoothing_max);
           smooth_data(smoothing_factor);
@@ -304,6 +307,5 @@
         });
       },
     });
-    $("#div_spsa_preload").hide();
   });
 })();
