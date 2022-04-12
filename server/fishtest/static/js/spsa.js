@@ -282,8 +282,6 @@
           }
         );
 
-        $("#div_spsa_preload").hide();
-
         $("#btn_smooth_plus").on("click", function () {
           smoothing_factor = Math.min(smoothing_factor + 1, smoothing_max);
           smooth_data(smoothing_factor);
@@ -306,5 +304,6 @@
         });
       },
     });
+    $("#div_spsa_preload").hide();
   });
 })();
