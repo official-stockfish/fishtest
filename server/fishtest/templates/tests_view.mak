@@ -19,10 +19,10 @@ if 'spsa' in run['args']:
     <script type="text/javascript" src="/js/spsa.js"></script>
 % endif
 
-<h3>
+<h2>
   <span>${page_title}</span>
   <a href="${h.diff_url(run)}" target="_blank" rel="noopener">diff</a>
-</h3>
+</h2>
 
 <div class="elo-results-top">
   <%include file="elo_results.mak" args="run=run" />
@@ -91,10 +91,12 @@ if 'spsa' in run['args']:
               </tr>
           % endif
       % endfor
-      <tr>
-        <td>raw statistics</td>
-        <td><a href=/tests/stats/${run['_id']}>/tests/stats/${run['_id']}</a></td>
-      </tr>
+      % if 'spsa' not in run['args']:
+          <tr>
+            <td>raw statistics</td>
+            <td><a href=/tests/stats/${run['_id']}>/tests/stats/${run['_id']}</a></td>
+          </tr>
+      % endif
     </table>
   </div>
 
