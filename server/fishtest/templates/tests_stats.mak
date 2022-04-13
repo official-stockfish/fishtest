@@ -212,7 +212,9 @@
           elo5_l = elo5 - elo95_5
           elo5_u = elo5 + elo95_5
 %>
+
 <style>td {width: 20%;}</style>
+
 % if has_spsa:
     <h2>SPSA tests do no have raw statistics: <a href=/tests/view/${run['_id']}>${run['_id']}</a></h3>
 % else:  ## not has_spsa
