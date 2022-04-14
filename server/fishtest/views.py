@@ -987,15 +987,6 @@ def tests_stats(request):
     return {"run": run}
 
 
-@view_config(route_name="tests_machines", renderer="machines_table.mak")
-def tests_machines(request):
-    machines = request.rundb.get_machines()
-    for machine in machines:
-        diff = diff_date(machine["last_updated"])
-        machine["last_updated"] = delta_date(diff)
-    return {"machines": machines}
-
-
 @view_config(route_name="tests_view", renderer="tests_view.mak")
 def tests_view(request):
     run = request.rundb.get_run(request.matchdict["id"])
@@ -1301,6 +1292,7 @@ def tests(request):
             finally:
                 last_time = time.time()
                 building.release()
+
     return {
         **last_tests,
         "machines_shown": request.cookies.get("machines_state") == "Hide",

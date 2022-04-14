@@ -19,11 +19,9 @@
     </h4>
 
     <div id="machines"
-          class="overflow-auto"
-          style="${'' if machines_shown else 'display: none;'}">
-      % if machines_shown:
-          <%include file="machines_table.mak" args="machines=machines"/>
-      % endif
+         class="overflow-auto"
+         style="${'' if machines_shown else 'display: none;'}">
+      <%include file="machines_table.mak"/>
     </div>
 % endif
 
