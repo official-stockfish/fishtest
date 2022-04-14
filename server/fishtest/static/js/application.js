@@ -27,22 +27,16 @@ $(() => {
             .forEach(tr => body.appendChild(tr));
     });
 
-
     $("#non_default-button").click(function() {
-        var active = $(this).text().trim().substring(0, 4) === 'Hide';
+        const active = $(this).text().trim().substring(0, 4) === 'Hide';
         $(this).text(active ? 'Show non default nets' : 'Hide non default nets');
         $.cookie('non_default_state', active ? 'Hide' : 'Show', {expires: 3650});
         window.location.reload();
     });
 
-    let fetchingMachines = false;
     $("#machines-button").click(function() {
         const active = $(this).text().trim() === 'Hide';
         $(this).text(active ? 'Show' : 'Hide');
-        if (!active && !$("#machines table")[0] && !fetchingMachines) {
-            fetchingMachines = true;
-            $.get("/tests/machines", (html) => $("#machines").append(html));
-        }
         $("#machines").slideToggle(150);
         $.cookie('machines_state', $(this).text().trim(), {expires: 3650});
     });
