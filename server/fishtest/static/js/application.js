@@ -47,6 +47,13 @@ $(() => {
         $.cookie('machines_state', $(this).text().trim(), {expires: 3650});
     });
 
+    $("#tasks-button").click(function() {
+        const active = $(this).text().trim() === 'Hide';
+        $(this).text(active ? 'Show' : 'Hide');
+        $("#tasks").slideToggle(150);
+        $.cookie('tasks_state', $(this).text().trim(), {expires: 3650});
+    });
+
     // Click the sun/moon icons to change the color theme of the site
     // SRI hash for "fishtest/server/fishtest/static/css/theme.dark.css":
     // openssl dgst -sha256 -binary theme.dark.css | openssl base64 -A
