@@ -31,6 +31,15 @@ function guassian_kernel_regression(y_, b) {
   var y = y_.splice(0);
   var L = y.length;
   var x = [];
+  var y_min = Infinity;
+  var y_max = -Infinity;
+  for (var i = 0; i < L; i++) {
+    if (y[i] < y_min) y_min = y[i];
+    if (y[i] > y_max) y_max = y[i];
+  }
+  for (var i = 0; i < L; i++) {
+    y[i] = (y[i] - y_min) / (y_max - y_min);
+  }
   for (var i = 1; i <= L; i++) {
     x.push(i);
     rx.push(i);
@@ -69,7 +78,7 @@ function guassian_kernel_regression(y_, b) {
       zt = zt + z;
       u = u + z * y[j];
     }
-    rf[i] = u / zt;
+    rf[i] = u / zt * (y_max - y_min) + y_min;
   }
   return rf;
 }
