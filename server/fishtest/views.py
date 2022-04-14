@@ -1131,6 +1131,7 @@ def tests_view(request):
         "totals": "({} active worker{} with {} core{})".format(
             active, ("s" if active != 1 else ""), cores, ("s" if cores != 1 else "")
         ),
+        "tasks_shown": request.cookies.get("tasks_state") == "Hide",
     }
 
 
