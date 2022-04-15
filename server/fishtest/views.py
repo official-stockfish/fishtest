@@ -1073,7 +1073,9 @@ def tests_view(request):
                         int(p["min"]),
                         int(p["max"]),
                         "{:.3f}".format(c_iter),
+                        "{:.3f}".format(p["c_end"]),
                         "{:.2e}".format(r_iter),
+                        "{:.2e}".format(p["r_end"]),
                     ]
                 )
         if "tests_repo" in run["args"]:

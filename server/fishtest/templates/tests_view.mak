@@ -56,7 +56,9 @@ if 'spsa' in run['args']:
                           <th>min</th>
                           <th>max</th>
                           <th>c</th>
+                          <th>c_end</th>
                           <th>r</th>
+                          <th>r_end</th>
                         </thead>
                         <tbody>
                           % for row in arg[1][1:]:
