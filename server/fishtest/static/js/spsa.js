@@ -76,7 +76,7 @@
     "#743411",
   ];
 
-  var chart_invisible_color = "#CCCCCC";
+  var chart_invisible_color = "#cccccc";
 
   var chart_options = {
     curveType: "function",
@@ -90,6 +90,9 @@
     height: 500,
     hAxis: {
       format: "percent",
+    },
+    vAxis: {
+      viewWindowMode: "maximized",
     },
     legend: {
       position: "right",
