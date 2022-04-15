@@ -147,7 +147,6 @@
       var d = [];
       for (j = 0; j < spsa_params.length; j++) {
         var g = gaussian_kernel_regression(copy_ary(raw[j]), b);
-        if (g[0] == 0) g[0] = g[1];
         d.push(g);
       }
 
