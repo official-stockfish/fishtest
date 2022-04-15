@@ -12,7 +12,6 @@ if 'spsa' in run['args']:
 
 % if 'spsa' in run['args']:
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-    <script type="text/javascript" src="/js/gkr.js"></script>
     <script type="text/javascript">
       var spsa_data = ${spsa_data | n};
     </script>

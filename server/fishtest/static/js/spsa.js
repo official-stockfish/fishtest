@@ -5,7 +5,6 @@
     data_cache = [],
     smoothing_factor = 0,
     smoothing_max = 20,
-    smoothing_step = 1,
     spsa_params,
     spsa_iter_ratio,
     data_count,
@@ -110,13 +109,35 @@
     return new_arr;
   }
 
+  function gaussian_kernel_regression(y, b) {
+    if (!b) return y;
+
+    var rf = [];
+    var L = y.length;
+    var p, z;
+    // adjust the bandwidth for tests with samples != 101
+    var h = b * ((L - 1) / (spsa_iter_ratio * 100));
+
+    for (var i = 0; i < L; i++) {
+      var yt = 0;
+      var zt = 0;
+
+      for (var j = 0; j < L; j++) {
+        p = (i - j) / h;
+        z = Math.exp((p * -1 * p) / 2.0);
+        zt += z;
+        yt += z * y[j];
+      }
+      rf.push(yt / zt);
+    }
+    return rf;
+  }
+
   function smooth_data(b) {
     var dt;
 
     //cache data table to avoid recomputing the smoothed graph
-    if (data_cache[b]) {
-      dt = data_cache[b];
-    } else {
+    if (!data_cache[b]) {
       dt = new google.visualization.DataTable();
       dt.addColumn("number", "Iteration");
       for (i = 0; i < spsa_params.length; i++) {
@@ -125,10 +146,7 @@
 
       var d = [];
       for (j = 0; j < spsa_params.length; j++) {
-        var g = guassian_kernel_regression(
-          copy_ary(raw[j]),
-          b * smoothing_step
-        );
+        var g = gaussian_kernel_regression(copy_ary(raw[j]), b);
         if (g[0] == 0) g[0] = g[1];
         d.push(g);
       }
@@ -146,7 +164,7 @@
       data_cache[b] = dt;
     }
 
-    chart_data = dt;
+    chart_data = data_cache[b];
     redraw(true);
   }
 
