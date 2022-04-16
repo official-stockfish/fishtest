@@ -295,11 +295,15 @@
         $("#div_spsa_preload").hide();
 
         $("#btn_smooth_plus").on("click", function () {
-          if (smoothing_factor < smoothing_max){smooth_data(++smoothing_factor);}
+          if (smoothing_factor < smoothing_max) {
+            smooth_data(++smoothing_factor);
+          }
         });
 
         $("#btn_smooth_minus").on("click", function () {
-          if (smoothing_factor > 0){smooth_data(--smoothing_factor);}
+          if (smoothing_factor > 0) {
+            smooth_data(--smoothing_factor);
+          }
         });
 
         $("#btn_view_all").on("click", function () {
