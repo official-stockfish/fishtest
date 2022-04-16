@@ -13,7 +13,7 @@ if 'spsa' in run['args']:
 % if 'spsa' in run['args']:
     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
     <script type="text/javascript">
-      var spsa_data = ${spsa_data | n};
+      const spsa_data = ${spsa_data | n};
     </script>
     <script type="text/javascript" src="/js/spsa.js"></script>
 % endif

@@ -1,17 +1,14 @@
 (function () {
-  var raw = [],
+  let raw = [],
     chart_object,
     chart_data,
     data_cache = [],
     smoothing_factor = 0,
     smoothing_max = 20,
-    spsa_params,
-    spsa_iter_ratio,
-    data_count,
     columns = [],
     viewAll = false;
 
-  var chart_colors = [
+  const chart_colors = [
     "#3366cc",
     "#dc3912",
     "#ff9900",
@@ -76,9 +73,9 @@
     "#743411",
   ];
 
-  var chart_invisible_color = "#cccccc";
+  const chart_invisible_color = "#cccccc";
 
-  var chart_options = {
+  let chart_options = {
     curveType: "function",
     chartArea: {
       width: "800",
@@ -105,29 +102,16 @@
     },
   };
 
-  function copy_ary(arr) {
-    var new_arr = arr.slice(0);
-    for (var i = new_arr.length; i--; )
-      if (new_arr[i] instanceof Array) new_arr[i] = copy_ary(new_arr[i]);
-    return new_arr;
-  }
+  function gaussian_kernel_regression(y, h) {
+    if (!h) return y;
 
-  function gaussian_kernel_regression(y, b) {
-    if (!b) return y;
-
-    var rf = [];
-    var L = y.length;
-    var p, z;
-    // adjust the bandwidth for tests with samples != 101
-    var h = b * ((L - 1) / (spsa_iter_ratio * 100));
-
-    for (var i = 0; i < L; i++) {
-      var yt = 0;
-      var zt = 0;
-
-      for (var j = 0; j < L; j++) {
-        p = (i - j) / h;
-        z = Math.exp((p * -1 * p) / 2.0);
+    let rf = [];
+    for (let i = 0; i < y.length; i++) {
+      let yt = 0;
+      let zt = 0;
+      for (let j = 0; j < y.length; j++) {
+        const p = (i - j) / h;
+        const z = Math.exp((p * -1 * p) / 2);
         zt += z;
         yt += z * y[j];
       }
@@ -137,48 +121,55 @@
   }
 
   function smooth_data(b) {
-    var dt;
+    const spsa_params = spsa_data.params;
+    const spsa_history = spsa_data.param_history;
+    const spsa_iter_ratio = Math.min(spsa_data.iter / spsa_data.num_iter, 1);
 
+    //cache the raw data
+    if (!raw.length) {
+      for (let j = 0; j < spsa_params.length; j++) raw.push([]);
+      for (let i = 0; i < spsa_history.length; i++) {
+        for (let j = 0; j < spsa_params.length; j++) {
+          raw[j].push(spsa_history[i][j].theta);
+        }
+      }
+    }
     //cache data table to avoid recomputing the smoothed graph
     if (!data_cache[b]) {
-      dt = new google.visualization.DataTable();
+      let dt = new google.visualization.DataTable();
       dt.addColumn("number", "Iteration");
-      for (i = 0; i < spsa_params.length; i++) {
+      for (let i = 0; i < spsa_params.length; i++) {
         dt.addColumn("number", spsa_params[i].name);
       }
-
-      var d = [];
-      for (j = 0; j < spsa_params.length; j++) {
-        var g = gaussian_kernel_regression(copy_ary(raw[j]), b);
-        d.push(g);
+      // adjust the bandwidth for tests with samples != 101
+      const h = b * ((spsa_history.length - 1) / (spsa_iter_ratio * 100));
+      let d = [];
+      for (let j = 0; j < spsa_params.length; j++) {
+        d.push(gaussian_kernel_regression(raw[j], h));
       }
-
-      var googleformat = [];
-      for (i = 0; i < data_count; i++) {
-        var c = [(i / (data_count - 1)) * spsa_iter_ratio];
-        for (j = 0; j < spsa_params.length; j++) {
+      let googleformat = [];
+      for (let i = 0; i < spsa_history.length; i++) {
+        let c = [(i / (spsa_history.length - 1)) * spsa_iter_ratio];
+        for (let j = 0; j < spsa_params.length; j++) {
           c.push(d[j][i]);
         }
         googleformat.push(c);
       }
-
       dt.addRows(googleformat);
       data_cache[b] = dt;
     }
-
     chart_data = data_cache[b];
     redraw(true);
   }
 
   function redraw(animate) {
-    var animation_params;
-
+    let animation_params;
     if (!animate) {
       animation_params = chart_options.animation;
       chart_options.animation = {};
     }
 
-    var view = new google.visualization.DataView(chart_data);
+    let view = new google.visualization.DataView(chart_data);
     view.setColumns(columns);
     chart_object.draw(view, chart_options);
 
@@ -209,9 +200,12 @@
     google.charts.load("current", {
       packages: ["corechart"],
       callback: function () {
-        spsa_params = spsa_data.params;
-        spsa_iter_ratio = Math.min(spsa_data.iter / spsa_data.num_iter, 1.0);
-        var spsa_history = spsa_data.param_history;
+        const spsa_params = spsa_data.params;
+        const spsa_history = spsa_data.param_history;
+        const spsa_iter_ratio = Math.min(
+          spsa_data.iter / spsa_data.num_iter,
+          1
+        );
 
         if (!spsa_history || spsa_history.length < 2) {
           $("#div_spsa_preload").hide();
@@ -225,20 +219,15 @@
           return;
         }
 
-        var i, j;
-        for (i = 0; i < smoothing_max; i++) {
+        for (let i = 0; i < smoothing_max; i++) {
           data_cache.push(false);
         }
 
-        var googleformat = [];
-        data_count = spsa_history.length;
-        for (j = 0; j < spsa_params.length; j++) raw.push([]);
-
-        for (i = 0; i < spsa_history.length; i++) {
-          var d = [(i / (spsa_history.length - 1)) * spsa_iter_ratio];
-          for (j = 0; j < spsa_params.length; j++) {
+        let googleformat = [];
+        for (let i = 0; i < spsa_history.length; i++) {
+          let d = [(i / (spsa_history.length - 1)) * spsa_iter_ratio];
+          for (let j = 0; j < spsa_params.length; j++) {
             d.push(spsa_history[i][j].theta);
-            raw[j].push(spsa_history[i][j].theta);
           }
           googleformat.push(d);
         }
@@ -246,7 +235,7 @@
         chart_data = new google.visualization.DataTable();
 
         chart_data.addColumn("number", "Iteration");
-        for (i = 0; i < spsa_params.length; i++) {
+        for (let i = 0; i < spsa_params.length; i++) {
           chart_data.addColumn("number", spsa_params[i].name);
         }
         chart_data.addRows(googleformat);
@@ -259,11 +248,11 @@
 
         $("#chart_toolbar").show();
 
-        for (i = 0; i < chart_data.getNumberOfColumns(); i++) {
+        for (let i = 0; i < chart_data.getNumberOfColumns(); i++) {
           columns.push(i);
         }
 
-        for (j = 0; j < spsa_params.length; j++) {
+        for (let j = 0; j < spsa_params.length; j++) {
           $("#dropdown_individual").append(
             '<li><a class="dropdown-item" href="javascript:" param_id="' +
               (j + 1) +
@@ -276,9 +265,9 @@
         $("#dropdown_individual")
           .find("a")
           .on("click", function () {
-            var param_id = $(this).attr("param_id");
+            let param_id = $(this).attr("param_id");
 
-            for (i = 1; i < chart_data.getNumberOfColumns(); i++) {
+            for (let i = 1; i < chart_data.getNumberOfColumns(); i++) {
               update_column_visibility(i, i == param_id);
             }
 
@@ -291,7 +280,7 @@
           chart_object,
           "select",
           function (e) {
-            var sel = chart_object.getSelection();
+            let sel = chart_object.getSelection();
             if (sel.length > 0) {
               if (sel[0].row == null) {
                 var col = sel[0].column;
@@ -306,20 +295,18 @@
         $("#div_spsa_preload").hide();
 
         $("#btn_smooth_plus").on("click", function () {
-          smoothing_factor = Math.min(smoothing_factor + 1, smoothing_max);
-          smooth_data(smoothing_factor);
+          if (smoothing_factor < smoothing_max){smooth_data(++smoothing_factor);}
         });
 
         $("#btn_smooth_minus").on("click", function () {
-          smoothing_factor = Math.max(smoothing_factor - 1, 0);
-          smooth_data(smoothing_factor);
+          if (smoothing_factor > 0){smooth_data(--smoothing_factor);}
         });
 
         $("#btn_view_all").on("click", function () {
           if (viewAll) return;
           viewAll = true;
 
-          for (var i = 0; i < chart_data.getNumberOfColumns(); i++) {
+          for (let i = 0; i < chart_data.getNumberOfColumns(); i++) {
             update_column_visibility(i, true);
           }
 
