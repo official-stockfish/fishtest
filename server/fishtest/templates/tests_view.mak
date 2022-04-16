@@ -349,7 +349,10 @@ if 'spsa' in run['args']:
   </table>
 </div>
 
-<script type="text/javascript" src="/js/highlight.diff.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"
+        integrity="sha512-yUUc0qWm2rhM7X0EFe82LNnv2moqArj5nro/w1bi05A09hRVeIZbN6jlMoyu0+4I/Bu4Ck/85JQIU82T82M28w=="
+        crossorigin="anonymous"
+        referrerpolicy="no-referrer"></script>
 <script>
   document.title = '${page_title} | Stockfish Testing';
 
@@ -408,7 +411,7 @@ if 'spsa' in run['args']:
           $toggleBtn.text("Show");
         }
         $("#diff-section").show();
-        hljs.highlightBlock($diffText[0]);
+        hljs.highlightElement($diffText[0]);
 
         // Show # of comments for this diff on Github
         $.ajax({
