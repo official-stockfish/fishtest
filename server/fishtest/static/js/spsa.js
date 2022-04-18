@@ -73,9 +73,15 @@
     "#743411",
   ];
 
-  const chart_invisible_color = "#cccccc";
+  const chart_invisible_color = "#ccc";
+  const chart_text_style = { color: "#888" };
+  const gridlines_style = { color: "#666" };
+  const minor_gridlines_style = { color: "#ccc" };
 
   let chart_options = {
+    backgroundColor: {
+      fill: "transparent",
+    },
     curveType: "function",
     chartArea: {
       width: "800",
@@ -87,19 +93,22 @@
     height: 500,
     hAxis: {
       format: "percent",
+      textStyle: chart_text_style,
+      gridlines: gridlines_style,
+      minorGridlines: minor_gridlines_style,
     },
     vAxis: {
       viewWindowMode: "maximized",
+      textStyle: chart_text_style,
+      gridlines: gridlines_style,
+      minorGridlines: minor_gridlines_style,
     },
     legend: {
       position: "right",
+      textStyle: chart_text_style,
     },
     colors: chart_colors.slice(0),
     seriesType: "line",
-    animation: {
-      duration: 800,
-      easing: "out",
-    },
   };
 
   function gaussian_kernel_regression(y, h) {
@@ -163,17 +172,10 @@
   }
 
   function redraw(animate) {
-    let animation_params;
-    if (!animate) {
-      animation_params = chart_options.animation;
-      chart_options.animation = {};
-    }
-
+    chart_options.animation = animate ? { duration: 800, easing: "out" } : {};
     let view = new google.visualization.DataView(chart_data);
     view.setColumns(columns);
     chart_object.draw(view, chart_options);
-
-    if (!animate) chart_options.animation = animation_params;
   }
 
   function update_column_visibility(col, visibility) {
@@ -219,9 +221,7 @@
           return;
         }
 
-        for (let i = 0; i < smoothing_max; i++) {
-          data_cache.push(false);
-        }
+        for (let i = 0; i < smoothing_max; i++) data_cache.push(false);
 
         let googleformat = [];
         for (let i = 0; i < spsa_history.length; i++) {
@@ -281,12 +281,10 @@
           "select",
           function (e) {
             let sel = chart_object.getSelection();
-            if (sel.length > 0) {
-              if (sel[0].row == null) {
-                var col = sel[0].column;
-                update_column_visibility(col, columns[col] != col);
-                redraw(false);
-              }
+            if (sel.length > 0 && sel[0].row == null) {
+              const col = sel[0].column;
+              update_column_visibility(col, columns[col] != col);
+              redraw(false);
             }
             viewAll = false;
           }
