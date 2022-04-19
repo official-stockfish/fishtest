@@ -69,7 +69,7 @@ def process_run(run, info, deltas=None):
 def build_users(machines, info):
     for machine in machines:
         games_per_hour = (
-            (machine["nps"] / 1280000.0)
+            (machine["nps"] / 1328000.0)
             * (3600.0 / estimate_game_duration(machine["run"]["args"]["tc"]))
             * (int(machine["concurrency"]) // machine["run"]["args"].get("threads", 1))
         )
