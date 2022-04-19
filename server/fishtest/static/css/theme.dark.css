@@ -271,7 +271,6 @@ input[type="checkbox"]:focus {
 .table th,
 .table td {
   color: var(--color-dark-1);
-  border-top: 1px solid var(--bg-dark-4);
 }
 
 .table th {
