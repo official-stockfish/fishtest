@@ -722,7 +722,7 @@ def validate_form(request):
             raise Exception("Number of games must be >= 0")
 
         data["spsa"] = {
-            "A": int(request.POST["spsa_A"]),
+            "A": int(float(request.POST["spsa_A"]) * data["num_games"] / 2),
             "alpha": float(request.POST["spsa_alpha"]),
             "gamma": float(request.POST["spsa_gamma"]),
             "raw_params": request.POST["spsa_raw_params"],
@@ -811,7 +811,12 @@ def tests_run(request):
 
     run_args = {}
     if "id" in request.params:
-        run_args = request.rundb.get_run(request.params["id"])["args"]
+        run_args = copy.deepcopy(request.rundb.get_run(request.params["id"])["args"])
+        if "spsa" in run_args:
+            # needs deepcopy
+            run_args["spsa"]["A"] = (
+                round(1000 * 2 * run_args["spsa"]["A"] / run_args["num_games"]) / 1000
+            )
 
     username = request.authenticated_userid
     u = request.userdb.get_user(username)
