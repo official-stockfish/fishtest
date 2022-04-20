@@ -242,10 +242,10 @@ else:
 
     <div class="flex-row input-group input-group-sm stop_rule spsa"
          style="${args.get('spsa') or 'display: none'}">
-      <label class="field-label leftmost">SPSA A</label>
-      <input type="number" min="0" step="500" name="spsa_A"
+      <label class="field-label leftmost">SPSA A ratio</label>
+      <input type="number" min="0" max="1" step="0.001" name="spsa_A"
              class="third-size no-arrows form-control"
-             value="${args.get('spsa', {'A': '3000'})['A']}" />
+             value="${args.get('spsa', {'A': '0.1'})['A']}" />
 
       <label class="field-label rightmost">SPSA Alpha</label>
       <input type="number" min="0" step="0.001" name="spsa_alpha"
