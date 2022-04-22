@@ -7,14 +7,14 @@ chi2 distribution.
 
 function chi2_95_approximation(df) {
   /* Wilson and Hilferty approximation */
-  var z95 = 1.6448536269514722;
-  var t = 2 / (9 * df);
+  const z95 = 1.6448536269514722;
+  const t = 2 / (9 * df);
   return df * Math.pow(z95 * Math.pow(t, 0.5) + 1 - t, 3);
 }
 
 function chi2_95(df) {
   /* Table for df=1,..,99 */
-  var chi2_95_ = [
+  const chi2_95_ = [
     3.8414588206941236, 5.9914645471079799, 7.8147279032511765,
     9.487729036781154, 11.070497693516351, 12.591587243743977,
     14.067140449340167, 15.507313055865453, 16.918977604620448,
@@ -49,14 +49,10 @@ function chi2_95(df) {
     118.75161175336743, 119.87093929856709, 120.98964369660951,
     122.10773460981952, 123.22522145336157,
   ];
-  if (df <= 99) {
-    return chi2_95_[df - 1];
-  } else {
-    return chi2_95_approximation(df);
-  }
+  return df <= 99 ? chi2_95_[df - 1] : chi2_95_approximation(df);
 }
 
-var spsa_setup_default = {
+const spsa_setup_default = {
   num_params: 1,
   draw_ratio: 0.61,
   precision: 0.5,
@@ -74,23 +70,21 @@ function deepcopy(o) {
 
 function spsa_compute(spsa_setup) {
   const C = 347.43558552260146;
-  var s = deepcopy(spsa_setup);
-  var chi2 = chi2_95(s.num_params);
-  var r = s.precision / ((C * chi2 * (1 - s.draw_ratio)) / 8);
-  var lambda = new Array(s.num_params);
-  var i;
-  for (i = 0; i < s.num_params; i++) {
+  let s = deepcopy(spsa_setup);
+  const chi2 = chi2_95(s.num_params);
+  const r = s.precision / ((C * chi2 * (1 - s.draw_ratio)) / 8);
+  let lambda = new Array(s.num_params);
+  for (let i = 0; i < s.num_params; i++) {
     s.params[i].c = s.c_ratio * (s.params[i].max - s.params[i].min);
     s.params[i].r = r;
-    var H_diag =
+    const H_diag =
       (-2 * s.params[i].elo) /
       Math.pow((s.params[i].max - s.params[i].min) / 2, 2);
     lambda[i] = -C / (2 * r * Math.pow(s.params[i].c, 2) * H_diag);
   }
-  var ng;
   s.num_games = -1;
-  for (i = 0; i < s.num_params; i++) {
-    ng = Math.round(s.lambda_ratio * lambda[i]);
+  for (let i = 0; i < s.num_params; i++) {
+    const ng = Math.round(s.lambda_ratio * lambda[i]);
     if (ng > s.num_games) {
       s.num_games = ng;
     }
@@ -106,12 +100,12 @@ a few data points valid for the book "noob_3moves.epd".
 
 function tc_to_seconds(tc) {
   /*
-Convert cutechess-cli like tc time[/moves][+inc] to seconds/move.
-*/
-  var inc = 0;
-  var moves = 68; /* Fishtest average LTC game duration. */
-  var time;
-  var chunks = tc.split("+");
+  Convert cutechess-cli like tc time[/moves][+inc] to seconds/move.
+  */
+  let inc = 0;
+  let moves = 68; /* Fishtest average LTC game duration. */
+  let time;
+  let chunks = tc.split("+");
   if (chunks.length > 2) {
     return null;
   }
@@ -135,25 +129,22 @@ Convert cutechess-cli like tc time[/moves][+inc] to seconds/move.
   if (chunks.length > 2) {
     return null;
   }
-  var chunk0 = parseFloat(chunks[0]);
+  const chunk0 = parseFloat(chunks[0]);
   if (!isFinite(Number(chunks[0])) || !isFinite(chunk0) || chunk0 < 0) {
     return null;
   }
   if (chunks.length == 1) {
     time = chunk0;
   } else {
-    var chunk1 = parseFloat(chunks[1]);
+    const chunk1 = parseFloat(chunks[1]);
     if (!isFinite(Number(chunks[1])) || !isFinite(chunk1) || chunk1 < 0) {
       return null;
     }
     time = 60 * chunk0 + chunk1;
   }
-  var tc_seconds = time / moves + inc;
+  const tc_seconds = time / moves + inc;
   /* Adhoc for our application: do not allow zero time control */
-  if (tc_seconds <= 0) {
-    return null;
-  }
-  return tc_seconds;
+  return tc_seconds > 0 ? tc_seconds : null;
 }
 
 function logistic(x) {
@@ -162,15 +153,14 @@ function logistic(x) {
 
 function draw_ratio(tc) {
   /*
-       Formula approximately valid for the book "noob_3moves.epd".
-    */
+  Formula approximately valid for the book "noob_3moves.epd".
+  */
   const slope = 0.372259082112;
   const intercept = 0.953433526293;
-  var tc_seconds = tc_to_seconds(tc);
-  if (tc_seconds == null) {
-    return null;
-  }
-  return logistic(slope * Math.log(tc_seconds) + intercept);
+  const tc_seconds = tc_to_seconds(tc);
+  return tc_seconds !== null
+    ? logistic(slope * Math.log(tc_seconds) + intercept)
+    : null;
 }
 
 /*
@@ -179,13 +169,12 @@ objects and back.
 */
 
 function fishtest_to_spsa(fs) {
-  var s = deepcopy(spsa_setup_default);
-  var lines = fs.split("\n");
-  var i = 0;
-  var j = 0;
+  let s = deepcopy(spsa_setup_default);
+  const lines = fs.split("\n");
+  let j = 0;
   s.params = [];
-  for (i = 0; i < lines.length; i++) {
-    var line = lines[i].trim();
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
     if (line == "") {
       continue;
     }
@@ -194,34 +183,34 @@ function fishtest_to_spsa(fs) {
 
     s.params[j].elo = 2;
 
-    var chunks = line.split(",");
+    const chunks = line.split(",");
     if (chunks.length != 6) {
       return null;
     }
 
-    var name = chunks[0];
+    const name = chunks[0];
 
-    var start = parseFloat(chunks[1]);
+    const start = parseFloat(chunks[1]);
     if (!isFinite(start)) {
       return null;
     }
 
-    var min = parseFloat(chunks[2]);
+    const min = parseFloat(chunks[2]);
     if (!isFinite(min)) {
       return null;
     }
 
-    var max = parseFloat(chunks[3]);
+    const max = parseFloat(chunks[3]);
     if (!isFinite(max) || max <= min) {
       return null;
     }
 
-    var c = parseFloat(chunks[4]);
+    const c = parseFloat(chunks[4]);
     if (!isFinite(c) || c <= 0) {
       return null;
     }
 
-    var r = parseFloat(chunks[5]);
+    const r = parseFloat(chunks[5]);
     if (!isFinite(r) || r <= 0) {
       return null;
     }
@@ -236,17 +225,13 @@ function fishtest_to_spsa(fs) {
     j++;
   }
   s.num_params = s.params.length;
-  if (s.num_params == 0) {
-    return null;
-  }
-  return s;
+  return s.num_params > 0 ? s : null;
 }
 
 function spsa_to_fishtest(ss) {
-  var ret = "";
-  var i;
-  for (i = 0; i < ss.params.length; i++) {
-    var p = ss.params;
+  let ret = "";
+  for (let i = 0; i < ss.params.length; i++) {
+    const p = ss.params;
     ret +=
       p[i].name +
       "," +
