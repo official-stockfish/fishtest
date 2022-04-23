@@ -213,6 +213,10 @@
           elo5_u = elo5 + elo95_5
 %>
 
+<script>
+  document.title = '${page_title} | Stockfish Testing';
+</script>
+
 <style>td {width: 20%;}</style>
 
 % if has_spsa:
