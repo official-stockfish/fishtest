@@ -353,6 +353,31 @@ if 'spsa' in run['args']:
         integrity="sha512-yUUc0qWm2rhM7X0EFe82LNnv2moqArj5nro/w1bi05A09hRVeIZbN6jlMoyu0+4I/Bu4Ck/85JQIU82T82M28w=="
         crossorigin="anonymous"
         referrerpolicy="no-referrer"></script>
+
+<script>
+  function set_highlight_theme_dark () {
+    $('head link[href*="/styles/github.min.css"]').remove();
+    $('head').append($('<link rel="stylesheet" crossorigin="anonymous" referrerpolicy="no-referrer" />')
+      .attr("href", "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/github-dark.min.css")
+      .attr("integrity", "sha512-rO+olRTkcf304DQBxSWxln8JXCzTHlKnIdnMUwYvQa9/Jd4cQaNkItIUj6Z4nvW1dqK0SKXLbn9h4KwZTNtAyw==")
+  )}
+
+  function set_highlight_theme_light () {
+    $('head link[href*="/styles/github-dark.min.css"]').remove();
+    $('head').append($('<link rel="stylesheet" crossorigin="anonymous" referrerpolicy="no-referrer" />')
+      .attr("href", "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/github.min.css")
+      .attr("integrity", "sha512-0aPQyyeZrWj9sCA46UlmWgKOP0mUipLQ6OZXu8l4IcAmD2u31EPEy9VcIMvl7SoAaKe8bLXZhYoMaE/in+gcgA==")
+  )}
+
+  $(document).ready(function () {
+    $.cookie('theme') === 'dark' ? set_highlight_theme_dark() : set_highlight_theme_light();
+  });
+
+  $("#change-color-theme").click(function() {
+    $.cookie('theme') === 'light' ? set_highlight_theme_dark() : set_highlight_theme_light();
+  });
+</script>
+
 <script>
   document.title = '${page_title} | Stockfish Testing';
 
@@ -428,4 +453,3 @@ if 'spsa' in run['args']:
     });
   });
 </script>
-<link rel="stylesheet" href="/css/highlight.github.css">
