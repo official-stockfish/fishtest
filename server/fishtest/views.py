@@ -985,11 +985,25 @@ def tests_delete(request):
     return HTTPFound(location=request.route_url("tests"))
 
 
+def get_page_title(run):
+    if run["args"].get("sprt"):
+        page_title = "SPRT {} vs {}".format(
+            run["args"]["new_tag"], run["args"]["base_tag"]
+        )
+    elif run["args"].get("spsa"):
+        page_title = "SPSA {}".format(run["args"]["new_tag"])
+    else:
+        page_title = "{} games - {} vs {}".format(
+            run["args"]["num_games"], run["args"]["new_tag"], run["args"]["base_tag"]
+        )
+    return page_title
+
+
 @view_config(route_name="tests_stats", renderer="tests_stats.mak")
 def tests_stats(request):
     run = request.rundb.get_run(request.matchdict["id"])
     request.rundb.get_results(run)
-    return {"run": run}
+    return {"run": run, "page_title": get_page_title(run)}
 
 
 @view_config(route_name="tests_view", renderer="tests_view.mak")
@@ -1117,22 +1131,12 @@ def tests_view(request):
         last_updated = task.get("last_updated", datetime.datetime.min)
         task["last_updated"] = last_updated
 
-    if run["args"].get("sprt"):
-        page_title = "SPRT {} vs {}".format(
-            run["args"]["new_tag"], run["args"]["base_tag"]
-        )
-    elif run["args"].get("spsa"):
-        page_title = "SPSA {}".format(run["args"]["new_tag"])
-    else:
-        page_title = "{} games - {} vs {}".format(
-            run["args"]["num_games"], run["args"]["new_tag"], run["args"]["base_tag"]
-        )
     chi2 = get_chi2(run["tasks"])
     update_residuals(run["tasks"], cached_chi2=chi2)
     return {
         "run": run,
         "run_args": run_args,
-        "page_title": page_title,
+        "page_title": get_page_title(run),
         "approver": request.has_permission("approve_run"),
         "chi2": chi2,
         "totals": "({} active worker{} with {} core{})".format(
