@@ -1,12 +1,12 @@
 <%
-  monitoring = request.rundb.conn["admin"].command("getFreeMonitoringStatus")
+monitoring = request.rundb.conn["admin"].command("getFreeMonitoringStatus")
 %>
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <title>Stockfish Testing Framework</title>
     <meta name="csrf-token" content="${request.session.get_csrf_token()}" />
-    <meta name="dark-theme-sha256" content="${cache_busters['css/theme.dark.css']}" />
+    <meta name="dark-theme-hash" content="${cache_busters['css/theme.dark.css']}" />
 
     <link rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css"
@@ -20,9 +20,16 @@
           crossorigin="anonymous"
           referrerpolicy="no-referrer" />
 
-    <link href="/css/application.css?v=${cache_busters['css/application.css']}" rel="stylesheet">
+    <link rel="stylesheet"
+          href="/css/application.css?v=${cache_busters['css/application.css']}"
+          integrity="sha384-${cache_busters['css/application.css']}"
+          crossorigin="anonymous" />
+
     % if request.cookies.get('theme') == 'dark':
-        <link href="/css/theme.dark.css?v=${cache_busters['css/theme.dark.css']}" rel="stylesheet">
+        <link rel="stylesheet"
+              href="/css/theme.dark.css?v=${cache_busters['css/theme.dark.css']}"
+              integrity="sha384-${cache_busters['css/theme.dark.css']}"
+              crossorigin="anonymous" />
     % endif
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"
@@ -40,7 +47,10 @@
             crossorigin="anonymous"
             referrerpolicy="no-referrer"></script>
 
-    <script src="/js/application.js?v=${cache_busters['js/application.js']}" defer></script>
+    <script src="/js/application.js?v=${cache_busters['js/application.js']}"
+            integrity="sha384-${cache_busters['js/application.js']}"
+            crossorigin="anonymous"
+	    defer></script>
 
     <%block name="head"/>
   </head>

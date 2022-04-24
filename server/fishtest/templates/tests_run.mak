@@ -383,7 +383,7 @@ else:
   % endif
 </form>
 
-<script type="text/javascript">
+<script>
   $(window).bind('pageshow', function() {
     // If pressing the 'back' button to get back to this page, make sure
     // the submit test button is enabled again.
@@ -556,8 +556,8 @@ else:
   });
 </script>
 
-<script type="text/javascript" src="/js/spsa_new.js?5"></script>
-<script type="text/javascript">
+<script src="/js/spsa_new.js?5"></script>
+<script>
   function do_spsa_work() {
     /* parsing/computing */
     if (!$('#enable').prop("checked")) {

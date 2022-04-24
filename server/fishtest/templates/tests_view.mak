@@ -11,11 +11,11 @@ if 'spsa' in run['args']:
 <%namespace name="base" file="base.mak"/>
 
 % if 'spsa' in run['args']:
-    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-    <script type="text/javascript">
+    <script src="https://www.gstatic.com/charts/loader.js"></script>
+    <script>
       const spsa_data = ${spsa_data | n};
     </script>
-    <script type="text/javascript" src="/js/spsa.js"></script>
+    <script src="/js/spsa.js"></script>
 % endif
 
 <h2>
