@@ -1,6 +1,6 @@
+import base64
 import hashlib
 import os
-import subprocess
 from pathlib import Path
 
 from fishtest.rundb import RunDb
@@ -27,31 +27,20 @@ def main(global_config, **settings):
     def static_file_full_path(static_file_path):
         return Path(__file__).parent / "./static/{}".format(static_file_path)
 
-    def static_file_hash(static_file_path):
-        with open(static_file_full_path(static_file_path), "r") as f:
-            return hashlib.md5(f.read().encode("utf-8")).hexdigest()
-
-    # the same hash calculated by browser for sub-resource integrity checks:
-    # https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity
-    dark_theme_sha256_integrity = (
-        subprocess.run(
-            "openssl dgst -sha256 -binary {} | openssl base64 -A".format(
-                str(static_file_full_path(("css/theme.dark.css")))
-            ),
-            shell=True,
-            check=True,
-            stdout=subprocess.PIPE,
+    def file_hash(file):
+        return base64.b64encode(hashlib.sha384(file.read_bytes()).digest()).decode(
+            "utf8"
         )
-        .stdout.strip()
-        .decode("utf-8")
-    )
 
-    cache_busters = {
-        "css/application.css": static_file_hash("css/application.css"),
-        "css/theme.dark.css": dark_theme_sha256_integrity,
-        "js/application.js": static_file_hash("js/application.js"),
-        "html/SPRTcalculator.html": static_file_hash("html/SPRTcalculator.html"),
-    }
+    # hash calculated by browser for sub-resource integrity checks:
+    # https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity
+    static_files = (
+        "css/application.css",
+        "css/theme.dark.css",
+        "js/application.js",
+        "html/SPRTcalculator.html",
+    )
+    cache_busters = {i: file_hash(static_file_full_path(i)) for i in static_files}
 
     rundb = RunDb()
 

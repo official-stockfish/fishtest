@@ -109,7 +109,7 @@
   </section>
 </form>
 
-<script type="text/javascript">
+<script>
   function doLicense() {
     var btn = document.getElementById("upload").disabled = ! document.getElementById("enable").checked;
   }
