@@ -267,7 +267,7 @@ legend {
   content: "\f5dc";
 }
 
-.mainnavbar [href^="/html/SPRTcalculator.html"]::before {
+.mainnavbar [href^="/sprt_calc"]::before {
   content: "\f1ec";
 }
 

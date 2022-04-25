@@ -266,6 +266,11 @@ def nns(request):
     }
 
 
+@view_config(route_name="sprt_calc", renderer="sprt_calc.mak")
+def sprt_calc(request):
+    return {}
+
+
 @view_config(route_name="actions", renderer="actions.mak")
 def actions(request):
     search_action = request.params.get("action", "")
