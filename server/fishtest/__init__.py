@@ -38,7 +38,6 @@ def main(global_config, **settings):
         "css/application.css",
         "css/theme.dark.css",
         "js/application.js",
-        "html/SPRTcalculator.html",
     )
     cache_busters = {i: file_hash(static_file_full_path(i)) for i in static_files}
 
@@ -86,6 +85,7 @@ def main(global_config, **settings):
     config.add_route("users_monthly", "/users/monthly")
     config.add_route("actions", "/actions")
     config.add_route("nns", "/nns")
+    config.add_route("sprt_calc", "/sprt_calc")
 
     config.add_route("tests", "/tests")
     config.add_route("tests_finished", "/tests/finished")

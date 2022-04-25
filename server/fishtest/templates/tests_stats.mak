@@ -220,9 +220,9 @@
 <style>td {width: 20%;}</style>
 
 % if has_spsa:
-    <h2>SPSA tests do no have raw statistics: <a href=/tests/view/${run['_id']}>${run['_id']}</a></h3>
+    <h2>SPSA tests do no have raw statistics: <a href=/tests/view/${run['_id']}>${run['_id']}</a></h2>
 % else:  ## not has_spsa
-    <h2>Raw statistics for test <a href=/tests/view/${run['_id']}>${run['_id']}</a></h3>
+    <h2>Raw statistics for test <a href=/tests/view/${run['_id']}>${run['_id']}</a></h2>
     <em>Unless otherwise specified, all Elo quantities below are logistic.</em>
     <div class="row">
       <div class="col-12 col-lg-9">

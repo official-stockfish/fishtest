@@ -2,12 +2,12 @@
 
 google.charts.load("current", { packages: ["corechart"] });
 
-var pass_chart = null;
-var expected_chart = null;
-var resize_timeout;
+let pass_chart = null;
+let expected_chart = null;
+let resize_timeout;
 
 google.charts.setOnLoadCallback(function () {
-  var pass_prob_chart_div = document.getElementById("pass_prob_chart_div");
+  const pass_prob_chart_div = document.getElementById("pass_prob_chart_div");
   pass_chart = new google.visualization.LineChart(pass_prob_chart_div);
   pass_chart.div = pass_prob_chart_div;
   pass_chart.loaded = false;
@@ -15,7 +15,7 @@ google.charts.setOnLoadCallback(function () {
     pass_chart.loaded = true;
   });
 
-  var expected_chart_div = document.getElementById("expected_chart_div");
+  const expected_chart_div = document.getElementById("expected_chart_div");
   expected_chart = new google.visualization.LineChart(expected_chart_div);
   expected_chart.div = expected_chart_div;
   expected_chart.loaded = false;
@@ -23,7 +23,7 @@ google.charts.setOnLoadCallback(function () {
     expected_chart.loaded = true;
   });
 
-  var mouse_screen = document.getElementById("mouse_screen");
+  let mouse_screen = document.getElementById("mouse_screen");
   mouse_screen.addEventListener(
     "click",
     function (e) {
@@ -49,8 +49,8 @@ google.charts.setOnLoadCallback(function () {
 });
 
 function set_field_from_url(name, defaultValue) {
-  var value = url("?" + name);
-  var input = document.getElementById(name);
+  const value = url("?" + name);
+  let input = document.getElementById(name);
   input.value = value !== null ? value : defaultValue;
 }
 
@@ -63,12 +63,14 @@ function set_fields() {
 }
 
 function draw_charts() {
-  var elo_model = document.getElementById("elo-model").value;
-  var elo0 = parseFloat(document.getElementById("elo-0").value);
-  var elo1 = parseFloat(document.getElementById("elo-1").value);
-  var draw_ratio = parseFloat(document.getElementById("draw-ratio").value);
-  var rms_bias = parseFloat(document.getElementById("rms-bias").value);
-  var val = "";
+  const elo_model = document.getElementById("elo-model").value;
+  let elo0 = parseFloat(document.getElementById("elo-0").value);
+  let elo1 = parseFloat(document.getElementById("elo-1").value);
+  const draw_ratio = parseFloat(document.getElementById("draw-ratio").value);
+  const rms_bias = parseFloat(document.getElementById("rms-bias").value);
+  let val = "";
+  let sprt;
+
   if (isNaN(elo0) || isNaN(elo1) || isNaN(draw_ratio) || isNaN(rms_bias)) {
     val = "Unreadable input.";
   } else if (elo1 < elo0 + 0.5) {
@@ -80,15 +82,7 @@ function draw_charts() {
   } else if (rms_bias < 0) {
     val = "The RMS bias must be positive.";
   } else {
-    var sprt = new Sprt(
-      0.05,
-      0.05,
-      elo0,
-      elo1,
-      draw_ratio,
-      rms_bias,
-      elo_model
-    );
+    sprt = new Sprt(0.05, 0.05, elo0, elo1, draw_ratio, rms_bias, elo_model);
     if (sprt.variance <= 0) {
       val = "The draw ratio and the RMS bias are not compatible.";
     }
@@ -101,25 +95,25 @@ function draw_charts() {
   elo1 = sprt.elo1;
   pass_chart.loaded = false;
   expected_chart.loaded = false;
-  var data_pass = [["Elo", { role: "annotation" }, "Pass Probability"]];
-  var data_expected = [
+  let data_pass = [["Elo", { role: "annotation" }, "Pass Probability"]];
+  let data_expected = [
     ["Elo", { role: "annotation" }, "Expected Number of Games"],
   ];
-  var d = elo1 - elo0;
-  var elo_start = Math.floor(elo0 - d / 3);
-  var elo_end = Math.ceil(elo1 + d / 3);
-  var N = elo_end - elo_start <= 5 ? 20 : 10;
+  const d = elo1 - elo0;
+  const elo_start = Math.floor(elo0 - d / 3);
+  const elo_end = Math.ceil(elo1 + d / 3);
+  const N = elo_end - elo_start <= 5 ? 20 : 10;
   // pseudo globals
   pass_chart.elo_start = elo_start;
   pass_chart.elo_end = elo_end;
   const specials = [elo0, elo1];
-  var anchors = [];
+  let anchors = [];
   pass_chart.anchors = anchors;
-  for (var i = elo_start * N; i <= elo_end * N; i += 1) {
-    var elo = i / N;
+  for (let i = elo_start * N; i <= elo_end * N; i += 1) {
+    const elo = i / N;
     anchors.push(elo);
-    var elo_next = (i + 1) / N;
-    var c = sprt.characteristics(elo);
+    const elo_next = (i + 1) / N;
+    const c = sprt.characteristics(elo);
     data_pass.push([elo, null, { v: c[0], f: (c[0] * 100).toFixed(1) + "%" }]);
     data_expected.push([
       elo,
@@ -129,7 +123,7 @@ function draw_charts() {
     for (const elo_ of specials) {
       if (elo < elo_ && elo_next >= elo_) {
         anchors.push(elo_);
-        var c_ = sprt.characteristics(elo_);
+        const c_ = sprt.characteristics(elo_);
         data_pass.push([
           elo_,
           elo_,
@@ -143,24 +137,68 @@ function draw_charts() {
       }
     }
   }
-  var options = {
-    legend: { position: "none" },
+
+  const chart_text_style = { color: "#888" };
+  const gridlines_style = { color: "#666" };
+  const minor_gridlines_style = { color: "#aaa" };
+  const title_text_style = {
+    color: "#999",
+    fontSize: 16,
+    bold: true,
+    italic: false,
+  };
+
+  let options = {
+    legend: {
+      position: "none",
+    },
     curveType: "function",
-    hAxis: { title: "Logistic Elo", gridlines: { count: elo_end - elo_start } },
-    vAxis: { title: "Pass Probability", format: "percent" },
-    tooltip: { trigger: "selection" },
+    hAxis: {
+      title: "Logistic Elo",
+      titleTextStyle: title_text_style,
+      textStyle: chart_text_style,
+      gridlines: {
+        count: elo_end - elo_start,
+        color: "#666",
+      },
+      minorGridlines: minor_gridlines_style,
+    },
+    vAxis: {
+      title: "Pass Probability",
+      titleTextStyle: title_text_style,
+      textStyle: chart_text_style,
+      gridlines: gridlines_style,
+      minorGridlines: minor_gridlines_style,
+      format: "percent",
+    },
+    tooltip: {
+      trigger: "selection",
+    },
+    backgroundColor: {
+      fill: "transparent",
+    },
     chartArea: {
-      backgroundColor: "#F0F0F0",
       left: "15%",
       top: "5%",
       width: "80%",
       height: "80%",
     },
-    annotations: { style: "line", stem: { color: "orange" } },
+    annotations: {
+      style: "line",
+      stem: { color: "orange" },
+      textStyle: title_text_style,
+    },
   };
-  var data_table = google.visualization.arrayToDataTable(data_pass);
+  let data_table = google.visualization.arrayToDataTable(data_pass);
   pass_chart.draw(data_table, options);
-  options.vAxis = { title: "Expected Number of Games", format: "short" };
+  options.vAxis = {
+    title: "Expected Number of Games",
+    titleTextStyle: title_text_style,
+    textStyle: chart_text_style,
+    gridlines: gridlines_style,
+    minorGridlines: minor_gridlines_style,
+    format: "short",
+  };
   data_table = google.visualization.arrayToDataTable(data_expected);
   expected_chart.draw(data_table, options);
 }
@@ -184,12 +222,12 @@ function handle_tooltips(e) {
   if (!ready()) {
     return;
   }
-  var x = e.clientX;
-  var y = e.clientY;
-  var rect;
-  var rect_pass = pass_chart.div.getBoundingClientRect();
-  var rect_expected = expected_chart.div.getBoundingClientRect();
-  var chart;
+  const x = e.clientX;
+  const y = e.clientY;
+  let rect;
+  let rect_pass = pass_chart.div.getBoundingClientRect();
+  let rect_expected = expected_chart.div.getBoundingClientRect();
+  let chart;
   if (contains(rect_pass, x, y)) {
     chart = pass_chart;
     rect = rect_pass;
@@ -201,11 +239,12 @@ function handle_tooltips(e) {
     expected_chart.setSelection([]);
     return;
   }
-  var elo = chart.getChartLayoutInterface().getHAxisValue(x - rect.left);
-  var anchors = pass_chart.anchors;
-  var last_dist = null;
-  for (var row = 0; row < anchors.length; row++) {
-    var dist = Math.abs(anchors[row] - elo);
+  const elo = chart.getChartLayoutInterface().getHAxisValue(x - rect.left);
+  const anchors = pass_chart.anchors;
+  let row;
+  let last_dist = null;
+  for (row = 0; row < anchors.length; row++) {
+    const dist = Math.abs(anchors[row] - elo);
     if (last_dist != null && dist > last_dist) {
       break;
     } else {
@@ -213,9 +252,9 @@ function handle_tooltips(e) {
     }
   }
   row--;
-  var elo_start = pass_chart.elo_start;
-  var elo_end = pass_chart.elo_end;
-  var d = (elo_end - elo_start) / 20;
+  const elo_start = pass_chart.elo_start;
+  const elo_end = pass_chart.elo_end;
+  const d = (elo_end - elo_start) / 20;
   if (elo >= elo_start - d && elo <= elo_end + d) {
     pass_chart.setSelection([{ row: row, column: 2 }]);
     expected_chart.setSelection([{ row: row, column: 2 }]);
