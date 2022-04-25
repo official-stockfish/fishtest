@@ -61,12 +61,12 @@
   % endif
 </%def>
 
-% if 'sprt' in run['args'] and not 'Pending' in run['results_info']['info'][0]:
+% if 'sprt' in run['args'] and 'Pending' not in run['results_info']['info'][0]:
     <a href="${'/html/live_elo.html?' + str(run['_id'])}" style="color: inherit">
 % endif
 % if show_gauge:
     <div id="chart_div_${str(run['_id'])}" style="width:90px;float:left;"></div>
-    % if 'sprt' in run['args'] and not 'Pending' in run['results_info']['info'][0]:
+    % if 'sprt' in run['args'] and 'Pending' not in run['results_info']['info'][0]:
         <div style="margin-left:90px;padding: 30px 0;">
     % else:
         <div style="margin-left:90px;">
@@ -78,6 +78,6 @@
 % if show_gauge:
     </div>
 % endif
-% if 'sprt' in run['args'] and not 'Pending' in run['results_info']['info'][0]:
+% if 'sprt' in run['args'] and 'Pending' not in run['results_info']['info'][0]:
     </a>
 % endif

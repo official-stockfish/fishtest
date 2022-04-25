@@ -25,7 +25,7 @@ def main(global_config, **settings):
     config.set_default_csrf_options(require_csrf=False)
 
     def static_file_full_path(static_file_path):
-        return Path(__file__).parent / "./static/{}".format(static_file_path)
+        return Path(__file__).parent / f"./static/{static_file_path}"
 
     def file_hash(file):
         return base64.b64encode(hashlib.sha384(file.read_bytes()).digest()).decode(
@@ -34,12 +34,11 @@ def main(global_config, **settings):
 
     # hash calculated by browser for sub-resource integrity checks:
     # https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity
-    static_files = (
-        "css/application.css",
-        "css/theme.dark.css",
-        "js/application.js",
-    )
-    cache_busters = {i: file_hash(static_file_full_path(i)) for i in static_files}
+    cache_busters = {
+        f"{i}/{j.name}": file_hash(j)
+        for i in ("css", "html", "js")
+        for j in static_file_full_path(i).glob(f"*.{i}")
+    }
 
     rundb = RunDb()
 
