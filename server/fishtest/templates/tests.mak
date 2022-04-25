@@ -1,6 +1,9 @@
 <%inherit file="base.mak"/>
 
-<link href="/css/flags.css" rel="stylesheet">
+<link rel="stylesheet"
+      href="/css/flags.css?v=${cache_busters['css/flags.css']}"
+      integrity="sha384-${cache_busters['css/flags.css']}"
+      crossorigin="anonymous" />
 
 <h2>Stockfish Testing Queue</h2>
 

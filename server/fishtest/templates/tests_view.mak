@@ -15,7 +15,9 @@ if 'spsa' in run['args']:
     <script>
       const spsa_data = ${spsa_data | n};
     </script>
-    <script src="/js/spsa.js"></script>
+    <script src="/js/spsa.js?v=${cache_busters['js/spsa.js']}"
+            integrity="sha384-${cache_busters['js/spsa.js']}"
+            crossorigin="anonymous"></script>
 % endif
 
 <h2>

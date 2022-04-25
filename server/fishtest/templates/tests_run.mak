@@ -556,7 +556,9 @@ else:
   });
 </script>
 
-<script src="/js/spsa_new.js?5"></script>
+<script src="/js/spsa_new.js?5&?v=${cache_busters['js/spsa_new.js']}"
+        integrity="sha384-${cache_busters['js/spsa_new.js']}"
+        crossorigin="anonymous"></script>
 <script>
   function do_spsa_work() {
     /* parsing/computing */
