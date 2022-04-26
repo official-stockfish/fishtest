@@ -1004,6 +1004,13 @@ def get_page_title(run):
     return page_title
 
 
+@view_config(route_name="tests_live_elo", renderer="tests_live_elo.mak")
+def tests_live_elo(request):
+    run = request.rundb.get_run(request.matchdict["id"])
+    request.rundb.get_results(run)
+    return {"run": run, "page_title": get_page_title(run)}
+
+
 @view_config(route_name="tests_stats", renderer="tests_stats.mak")
 def tests_stats(request):
     run = request.rundb.get_run(request.matchdict["id"])

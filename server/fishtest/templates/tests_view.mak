@@ -97,7 +97,7 @@ if 'spsa' in run['args']:
       % if 'spsa' not in run['args']:
           <tr>
             <td>raw statistics</td>
-            <td><a href=/tests/stats/${run['_id']}>/tests/stats/${run['_id']}</a></td>
+            <td><a href="/tests/stats/${str(run['_id'])}">/tests/stats/${run['_id']}</a></td>
           </tr>
       % endif
     </table>
