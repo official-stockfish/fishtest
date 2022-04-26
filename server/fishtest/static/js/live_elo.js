@@ -1,9 +1,9 @@
 "use strict";
 
 google.charts.load("current", { packages: ["gauge"] });
-var LOS_chart = null;
-var LLR_chart = null;
-var ELO_chart = null;
+let LOS_chart = null;
+let LLR_chart = null;
+let ELO_chart = null;
 
 google.charts.setOnLoadCallback(function () {
   LOS_chart = new google.visualization.Gauge(
@@ -16,13 +16,13 @@ google.charts.setOnLoadCallback(function () {
     document.getElementById("ELO_chart_div")
   );
   clear_gauges();
-  displayURL("" + window.location);
+  follow_live(test_id, true);
 });
 
 function collect(m) {
-  var sprt = m.args.sprt;
-  var results = m.results;
-  var ret = m.elo;
+  const sprt = m.args.sprt;
+  const results = m.results;
+  const ret = m.elo;
   ret.alpha = sprt.alpha;
   ret.beta = sprt.beta;
   ret.elo_raw0 = sprt.elo0;
@@ -38,36 +38,15 @@ function collect(m) {
   return ret;
 }
 
-function displayURL(url) {
-  follow_live(url, true);
-}
-
-function decodeURL(url) {
-  var test_ = url.split("?").pop().trim();
-  var re = /^[0-9a-f]*$/;
-  if (test_.match(re) && test_.length == 24) {
-    return test_;
-  }
-  return null;
-}
-
-function viewURL(url) {
-  return "/tests/view/" + url;
-}
-
-function statsURL(url) {
-  return "/tests/stats/" + url;
-}
-
 function set_gauges(LLR, a, b, LOS, elo, ci_lower, ci_upper) {
   if (!set_gauges.last_elo) {
     set_gauges.last_elo = 0;
   }
-  var LOS_chart_data = google.visualization.arrayToDataTable([
+  const LOS_chart_data = google.visualization.arrayToDataTable([
     ["Label", "Value"],
     ["LOS", Math.round(1000 * LOS) / 10],
   ]);
-  var LOS_chart_options = {
+  const LOS_chart_options = {
     width: 500,
     height: 150,
     greenFrom: 95,
@@ -80,13 +59,13 @@ function set_gauges(LLR, a, b, LOS, elo, ci_lower, ci_upper) {
   };
   LOS_chart.draw(LOS_chart_data, LOS_chart_options);
 
-  var LLR_chart_data = google.visualization.arrayToDataTable([
+  const LLR_chart_data = google.visualization.arrayToDataTable([
     ["Label", "Value"],
     ["LLR", Math.round(100 * LLR) / 100],
   ]);
   a = Math.round(100 * a) / 100;
   b = Math.round(100 * b) / 100;
-  var LLR_chart_options = {
+  const LLR_chart_options = {
     width: 500,
     height: 150,
     yellowFrom: a,
@@ -97,11 +76,11 @@ function set_gauges(LLR, a, b, LOS, elo, ci_lower, ci_upper) {
   };
   LLR_chart.draw(LLR_chart_data, LLR_chart_options);
 
-  var ELO_chart_data = google.visualization.arrayToDataTable([
+  const ELO_chart_data = google.visualization.arrayToDataTable([
     ["Label", "Value"],
     ["Elo", set_gauges.last_elo],
   ]);
-  var ELO_chart_options = {
+  const ELO_chart_options = {
     width: 500,
     height: 150,
     max: 4,
@@ -131,7 +110,7 @@ function clear_gauges() {
   set_gauges(0, -2.94, 2.94, 0.5, 0, 0, 0);
 }
 
-var entityMap = {
+const entityMap = {
   "&": "&amp;",
   "<": "&lt;",
   ">": "&gt;",
@@ -149,10 +128,7 @@ function escapeHtml(string) {
 }
 
 function display_data(items) {
-  var link = viewURL(items["_id"]);
-  var stats = statsURL(items["_id"]);
-
-  var j = collect(items);
+  const j = collect(items);
   document.getElementById("error").style.display = "none";
   document.getElementById("data").style.visibility = "visible";
   document.getElementById("commit").innerHTML =
@@ -214,15 +190,13 @@ function display_data(items) {
     ((100 * Math.round(j.D)) / (j.games + 0.001)).toFixed(1) +
     "%]";
 
-  document.getElementById("link").innerHTML =
-    "<a href=" + link + ">" + link + "</a>";
   set_gauges(j.LLR, j.a, j.b, j.LOS, j.elo, j.ci_lower, j.ci_upper);
 }
 
 function alert_(message) {
   document.getElementById("data").style.visibility = "hidden";
   clear_gauges();
-  var errorElement = document.getElementById("error");
+  let errorElement = document.getElementById("error");
   if (message == "") {
     errorElement.style.display = "none";
   } else {
@@ -234,7 +208,7 @@ function alert_(message) {
 }
 
 // Main worker.
-function follow_live(testURL, retry) {
+function follow_live(test_id, retry) {
   if (follow_live.timer_once === undefined) {
     follow_live.timer_once = null;
   }
@@ -242,18 +216,9 @@ function follow_live(testURL, retry) {
     clearTimeout(follow_live.timer_once);
     follow_live.timer_once = null;
   }
-  var test = decodeURL(testURL);
-  if (testURL != "" && !test) {
-    alert_("This is not the URL of a test.");
-    return;
-  }
-  if (testURL == "") {
-    alert_("");
-    return;
-  }
-  var xhttp = new XMLHttpRequest();
-  var timestamp = new Date().getTime();
-  xhttp.open("GET", "/api/get_elo/" + test + "?" + timestamp, true);
+  let xhttp = new XMLHttpRequest();
+  const timestamp = new Date().getTime();
+  xhttp.open("GET", "/api/get_elo/" + test_id + "?" + timestamp, true);
   xhttp.onreadystatechange = function () {
     if (this.readyState == 4) {
       if (this.status == 200) {
@@ -262,7 +227,7 @@ function follow_live(testURL, retry) {
           follow_live.timer_once = setTimeout(
             follow_live,
             20000,
-            testURL,
+            test_id,
             true
           );
         display_data(m);
@@ -271,7 +236,7 @@ function follow_live(testURL, retry) {
           follow_live.timer_once = setTimeout(
             follow_live,
             20000,
-            testURL,
+            test_id,
             true
           );
         } else {

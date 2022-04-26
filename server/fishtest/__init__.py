@@ -92,6 +92,7 @@ def main(global_config, **settings):
     config.add_route("tests_view", "/tests/view/{id}")
     config.add_route("tests_user", "/tests/user/{username}")
     config.add_route("tests_stats", "/tests/stats/{id}")
+    config.add_route("tests_live_elo", "/tests/live_elo/{id}")
 
     # Tests - actions
     config.add_route("tests_modify", "/tests/modify")

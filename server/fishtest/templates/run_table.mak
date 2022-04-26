@@ -113,7 +113,7 @@
 
               <td style="width: 11%;" class="run-live">
                 % if 'sprt' in run['args']:
-                    <a href="/html/live_elo.html?${str(run['_id'])}" target="_blank">sprt</a>
+                    <a href="/tests/live_elo/${str(run['_id'])}" target="_blank">sprt</a>
                 % else:
                   ${run['args']['num_games']}
                 % endif
