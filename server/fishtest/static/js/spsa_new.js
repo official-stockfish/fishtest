@@ -54,7 +54,7 @@ function chi2_95(df) {
 
 const spsa_setup_default = {
   num_params: 1,
-  draw_ratio: 0.61,
+  draw_ratio: 0.739, /* "virtual" draw_ratio(STC) */
   precision: 0.5,
   c_ratio: 1 / 6,
   lambda_ratio: 3,
@@ -153,10 +153,12 @@ function logistic(x) {
 
 function draw_ratio(tc) {
   /*
-  Formula approximately valid for the book "noob_3moves.epd".
+  Formula approximately valid for the book "UHO_XXL_+0.90_+1.19.epd".
+  The "virtual" draw ratio of an unbalanced book is defined as
+  1 - 4 * ("pentanomial variance/game")
   */
-  const slope = 0.372259082112;
-  const intercept = 0.953433526293;
+  const slope = 0.22;
+  const intercept = 1.35;
   const tc_seconds = tc_to_seconds(tc);
   return tc_seconds !== null
     ? logistic(slope * Math.log(tc_seconds) + intercept)
