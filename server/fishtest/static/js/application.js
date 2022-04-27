@@ -54,7 +54,6 @@ $(() => {
     let theme = $.cookie('theme') || 'light';
     $("#change-color-theme").click(function() {
       if (theme === 'light') {
-        const darkThemeHash = $("meta[name='dark-theme-hash']").attr("content");
         $("#sun").show();
         $("#moon").hide();
         $("<link>")

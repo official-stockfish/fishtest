@@ -6,7 +6,10 @@ monitoring = request.rundb.conn["admin"].command("getFreeMonitoringStatus")
   <head>
     <title>Stockfish Testing Framework</title>
     <meta name="csrf-token" content="${request.session.get_csrf_token()}" />
-    <meta name="dark-theme-hash" content="${cache_busters['css/theme.dark.css']}" />
+
+    <script>
+      darkThemeHash = "${cache_busters['css/theme.dark.css']}";
+    </script>
 
     <link rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css"
