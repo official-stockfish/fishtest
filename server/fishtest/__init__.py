@@ -1,6 +1,5 @@
 import base64
 import hashlib
-import os
 from pathlib import Path
 
 from fishtest.rundb import RunDb
@@ -24,8 +23,8 @@ def main(global_config, **settings):
     config.include("pyramid_mako")
     config.set_default_csrf_options(require_csrf=False)
 
-    def static_file_full_path(static_file_path):
-        return Path(__file__).parent / f"./static/{static_file_path}"
+    def static_full_path(static_path):
+        return Path(__file__).parent / f"static/{static_path}"
 
     def file_hash(file):
         return base64.b64encode(hashlib.sha384(file.read_bytes()).digest()).decode(
@@ -36,8 +35,8 @@ def main(global_config, **settings):
     # https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity
     cache_busters = {
         f"{i}/{j.name}": file_hash(j)
-        for i in ("css", "html", "js")
-        for j in static_file_full_path(i).glob(f"*.{i}")
+        for i in ("css", "js")
+        for j in static_full_path(i).glob(f"*.{i}")
     }
 
     rundb = RunDb()
@@ -58,8 +57,7 @@ def main(global_config, **settings):
     def group_finder(username, request):
         return request.userdb.get_user_groups(username)
 
-    with open(os.path.expanduser("~/fishtest.secret"), "r") as f:
-        secret = f.read()
+    secret = Path("~/fishtest.secret").expanduser().read_text()
     config.set_authentication_policy(
         AuthTktAuthenticationPolicy(
             secret, callback=group_finder, hashalg="sha512", http_only=True
@@ -67,7 +65,6 @@ def main(global_config, **settings):
     )
     config.set_authorization_policy(ACLAuthorizationPolicy())
 
-    config.add_static_view("html", "static/html", cache_max_age=3600)
     config.add_static_view("css", "static/css", cache_max_age=3600)
     config.add_static_view("js", "static/js", cache_max_age=3600)
     config.add_static_view("img", "static/img", cache_max_age=3600)

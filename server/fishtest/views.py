@@ -1266,7 +1266,6 @@ def homepage_results(request):
                     // machine["run"]["args"].get("threads", 1)
                 )
             )
-    machines.reverse()
     # Get updated results for unfinished runs + finished runs
     (runs, pending_hours, cores, nps) = request.rundb.aggregate_unfinished_runs()
     return {
