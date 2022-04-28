@@ -247,45 +247,60 @@ class ApiView(object):
         return self.request_body.get("spsa", {})
 
     def get_flag(self):
-        ip = self.request.remote_addr
-        if ip in flag_cache:
-            return flag_cache.get(ip, None)  # Handle race condition on "del"
-        # concurrent invocations get None, race condition is not an issue
-        flag_cache[ip] = None
-        result = self.request.userdb.flag_cache.find_one({"ip": ip})
-        if result:
-            flag_cache[ip] = result["country_code"]
-            return result["country_code"]
-        # Get country flag from worker IP address
-        req = (
-            "https://ipwho.is/"
-            + self.request.remote_addr
-            + "?fields=country_code,success,message"
-        )
-        try:
-            result = requests.get(req, timeout=1.0)
-            result.raise_for_status()  # also catch return codes >= 400
-        except Exception as e:
-            del flag_cache[ip]
-            print("Failed GeoIP check for {}:\n".format(ip), e, sep="")
-            return None
-        else:
-            result = result.json()
-            if result["success"]:
-                country_code = result["country_code"]
-                self.request.userdb.flag_cache.insert_one(
-                    {
-                        "ip": ip,
-                        "country_code": country_code,
-                        "geoip_checked_at": datetime.utcnow(),
-                    }
-                )
-                flag_cache[ip] = country_code
-                return country_code
+        def get_country_code(ip):
+            # https://ipwhois.io/ - free 10k/month requests, response examples:
+            # {'success': True, 'country_code': 'US'}
+            # {'success': False, 'message': 'Invalid IP address'}
+            # {'success': False, 'message': 'Reserved range'}
+
+            code = None  # required by exception
+            req = "https://ipwho.is/" + ip + "?fields=country_code,success,message"
+            try:
+                res = requests.get(req, timeout=1.0)
+                res.raise_for_status()  # also catch return codes >= 400
+            except Exception as e:
+                print("Exception checking GeoIP for {}:\n".format(ip), e, sep="")
             else:
-                del flag_cache[ip]
-                print("Failed GeoIP check for {}: {}".format(ip, result["message"]))
-                return None
+                res = res.json()
+                if res.get("success"):
+                    code = res.get("country_code")
+                else:
+                    print(
+                        "Failed GeoIP check for {}: {}".format(ip, res.get("message"))
+                    )
+            return code
+
+        def get_flag_data(self, ip):
+            flag_data = self.request.userdb.flag_cache.find_one({"ip": ip})
+            if not flag_data:
+                flag_data = {
+                    "ip": ip,
+                    "country_code": get_country_code(ip),
+                    "flag_data_checked_at": datetime.utcnow(),
+                }
+                if flag_data["country_code"]:
+                    self.request.userdb.flag_cache.insert_one(flag_data)
+            flag_data = {
+                "cc" if k == "country_code" else "dt": v
+                for k, v in flag_data.items()
+                if k != "ip"
+            }
+            return flag_data
+
+        ip = self.request.remote_addr
+        now = datetime.utcnow()
+        clean_flag_data = {"cc": None, "dt": now}
+        # With a new ip create a flag_data and insert it in flag_cache and db
+        # limit race: db and web service can be slow
+        if ip not in flag_cache:
+            flag_cache[ip] = clean_flag_data
+            flag_cache[ip] = get_flag_data(self, ip)
+        # Update after a timeout the failed request (service down, dev worker with private ip)
+        if not flag_cache[ip].get("cc"):
+            if (now - flag_cache[ip].get("dt", now)).total_seconds() > 3600 * 4:
+                flag_cache[ip] = clean_flag_data
+                flag_cache[ip] = get_flag_data(self, ip)
+        return flag_cache[ip].get("cc")
 
     @view_config(route_name="api_active_runs")
     def active_runs(self):
