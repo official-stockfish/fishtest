@@ -283,6 +283,7 @@ class ApiView(object):
                 flag_cache[ip] = country_code
                 return country_code
             else:
+                del flag_cache[ip]
                 print("Failed GeoIP check for {}: {}".format(ip, result["message"]))
                 return None
 
