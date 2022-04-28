@@ -256,12 +256,23 @@ class ApiView(object):
         if result:
             flag_cache[ip] = result["country_code"]
             return result["country_code"]
+        # Get country flag from worker IP address
+        req = (
+            "https://ipwho.is/"
+            + self.request.remote_addr
+            + "?fields=country_code,success,message"
+        )
         try:
-            # Get country flag from worker IP address
-            FLAG_HOST = "https://freegeoip.app/json/"
-            r = requests.get(FLAG_HOST + self.request.remote_addr, timeout=1.0)
-            if r.status_code == 200:
-                country_code = r.json()["country_code"]
+            result = requests.get(req, timeout=1.0)
+            result.raise_for_status()  # also catch return codes >= 400
+        except Exception as e:
+            del flag_cache[ip]
+            print("Failed GeoIP check for {}:\n".format(ip), e, sep="")
+            return None
+        else:
+            result = result.json()
+            if result["success"]:
+                country_code = result["country_code"]
                 self.request.userdb.flag_cache.insert_one(
                     {
                         "ip": ip,
@@ -271,11 +282,9 @@ class ApiView(object):
                 )
                 flag_cache[ip] = country_code
                 return country_code
-            raise ConnectionError("flag server failed")
-        except:
-            del flag_cache[ip]
-            print("Failed GeoIP check for {}".format(ip))
-            return None
+            else:
+                print("Failed GeoIP check for {}: {}".format(ip, result["message"]))
+                return None
 
     @view_config(route_name="api_active_runs")
     def active_runs(self):
