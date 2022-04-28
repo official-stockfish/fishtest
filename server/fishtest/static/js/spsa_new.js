@@ -95,7 +95,7 @@ function spsa_compute(spsa_setup) {
 /*
 Below is some code to estimate the draw ratio from the time
 control. The algorithm is very naive. It uses interpolation for
-a few data points valid for the book "noob_3moves.epd".
+a few data points valid for the book "UHO_XXL_+0.90_+1.19.epd".
 */
 
 function tc_to_seconds(tc) {

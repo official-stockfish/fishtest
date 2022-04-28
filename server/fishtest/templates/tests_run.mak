@@ -295,7 +295,7 @@ else:
         <a href=https://github.com/vdbergh/spsa_simul target=_blank>
         https://github.com/vdbergh/spsa_simul</a>.
         Currently this option
-        should be used with the book 'noob_3moves.epd' and contempt should be left at its default value 24
+        should be used with the book 'UHO_XXL_+0.90_+1.19.epd'
         and in addition the option should not be used with nodestime or with more than one thread.
         </i>
       </div>
