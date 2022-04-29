@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </%block>
 
+<script>
+  document.title = 'User Administration | Stockfish Testing';
+</script>
+
 <div id="user-administration">
   <header class="text-md-center py-2">
     <h2>User Administration</h2>

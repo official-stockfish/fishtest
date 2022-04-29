@@ -236,23 +236,23 @@ if 'spsa' in run['args']:
 % endif
 
 <section id="diff-section" style="display: none">
-  <h3>
+  <h4>
     <button id="diff-toggle" class="btn btn-sm btn-light border">Show</button>
     Diff
     <span id="diff-num-comments" style="display: none"></span>
     <a href="${h.diff_url(run)}" class="btn btn-link" target="_blank" rel="noopener">View on Github</a>
     <a href="javascript:" id="copy-diff" class="btn btn-link" style="margin-left: 10px; display: none">Copy apply-diff command</a>
     <div class="btn btn-link copied" style="color: green; display: none">Copied command!</div>
-  </h3>
+  </h4>
   <pre id="diff-contents"><code class="diff"></code></pre>
 </section>
 
-<h3>
+<h4>
   <button id="tasks-button" class="btn btn-sm btn-light border">
     ${'Hide' if tasks_shown else 'Show'}
   </button>
   Tasks ${totals}
-</h3>
+</h4>
 <div id="tasks"
      class="overflow-auto"
      style="${'' if tasks_shown else 'display: none;'}">

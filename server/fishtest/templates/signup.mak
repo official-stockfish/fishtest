@@ -1,5 +1,9 @@
 <%inherit file="base.mak"/>
 
+<script>
+  document.title = 'Register | Stockfish Testing';
+</script>
+
 <%block name="head">
   <script src='https://www.google.com/recaptcha/api.js'></script>
   ## Remove this when base.mak has the viewport meta tag

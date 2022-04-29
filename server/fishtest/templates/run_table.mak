@@ -1,6 +1,12 @@
-<%page args="runs, pages=None, show_delete=False, header=None, count=None, toggle=None, alt=None"/>
+<%page args="runs, pages=None, show_delete=False, header=None, count=None, toggle=None, alt=None, title=''"/>
 
 <%namespace name="base" file="base.mak"/>
+
+% if toggle is None:
+    <script>
+    document.title = '${username + " - " if username else ""}Finished Tests${title} - page ${page_idx+1} | Stockfish Testing';
+    </script>
+% endif
 
 <%def name="pagination()">
   % if pages and len(pages) > 3:

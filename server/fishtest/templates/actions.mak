@@ -5,10 +5,12 @@
 <h2>Events Log</h2>
 <p></p>
 <script>
-function timestamp(){
-  $('#before').val(Date.now()/1000);
-  return true;
-}
+  document.title = 'Events Log | Stockfish Testing';
+
+  function timestamp(){
+    $('#before').val(Date.now()/1000);
+    return true;
+  }
 </script>
 
 <form onsubmit="timestamp();">

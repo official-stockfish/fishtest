@@ -69,6 +69,10 @@
   }
 </style>
 
+<script>
+  document.title = 'Neural Network Upload | Stockfish Testing';
+</script>
+
 <header style="text-align: center; padding-top: 7px">
   <h2>Neural Network Upload</h2>
   <section class="instructions" style="margin-bottom: 35px">
