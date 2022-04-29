@@ -94,6 +94,10 @@ else:
   }
 </style>
 
+<script>
+  document.title = 'Create New Test | Stockfish Testing';
+</script>
+
 <header style="text-align: center; padding-top: 7px">
   <h2>Create New Test</h2>
   <section class="instructions" style="margin-bottom: 35px">

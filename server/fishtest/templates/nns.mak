@@ -1,5 +1,10 @@
 <%inherit file="base.mak"/>
-<h2>Neural Net Repository</h2>
+
+<script>
+  document.title = 'Neural Network Repository | Stockfish Testing';
+</script>
+
+<h2>Neural Network Repository</h2>
 
 <p>
 These networks are freely available for download and sharing under a

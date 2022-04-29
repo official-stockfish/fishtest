@@ -1,4 +1,9 @@
 <%inherit file="base.mak"/>
+
+<script>
+  document.title = 'Users${" - Top Month" if "monthly" in request.url else ""} | Stockfish Testing';
+</script>
+
 <h2>
   Users
   % if 'monthly' in request.url:

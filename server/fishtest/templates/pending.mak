@@ -1,5 +1,12 @@
 <%inherit file="base.mak"/>
-<h2>Pending Users</h2>
+
+<script>
+  document.title = 'Users - Pending & Idle | Stockfish Testing';
+</script>
+
+<h2>Users - Pending & Idle</h2>
+
+<h4>Pending Users</h4>
 
 <table class="table table-striped table-sm">
   <thead>
@@ -20,7 +27,7 @@
   </tbody>
 </table>
 
-<h3>Idle Users</h3>
+<h4>Idle Users</h4>
 
 <table class="table table-striped table-sm">
   <thead>

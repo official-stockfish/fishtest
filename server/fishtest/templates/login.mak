@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </%block>
 
+<script>
+  document.title = 'Login | Stockfish Testing';
+</script>
+
 <div id="login">
   <header class="text-md-center py-2">
     <h2>Login</h2>

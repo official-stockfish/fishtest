@@ -6,7 +6,7 @@
       crossorigin="anonymous" />
 
 <script>
-  document.title = '${page_title} | Live Elo | Stockfish Testing';
+  document.title = 'Live Elo - ${page_title} | Stockfish Testing';
   const test_id = "${str(run['_id'])}";
 </script>
 

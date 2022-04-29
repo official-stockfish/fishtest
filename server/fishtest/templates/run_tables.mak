@@ -45,7 +45,7 @@
 
 <%include file="run_table.mak" args="runs=finished_runs,
                                      header='Finished',
-                                     count= num_finished_runs,
-                                     toggle = prefix+'finished' if page_idx==0 else None,
+                                     count=num_finished_runs,
+                                     toggle=prefix+'finished' if page_idx==0 else None,
                                      pages=finished_runs_pages"
 />
