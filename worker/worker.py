@@ -122,26 +122,12 @@ def _bool(x):
 _bool.__name__ = "bool"
 
 
-# For backward compatibility.
-# Will be removed.
-def max_to_MAX(x, quiet=True):
-    y = re.sub(r"max(?=[\s]*([^(\s]|$))", r"MAX", x, count=0)
-    if y != x and not quiet:
-        print(
-            "\n"
-            '   WARNING: the use of "max" as a variable is deprecated\n'
-            '   and support for it will be removed. Use "MAX" instead.\n'
-        )
-    return y
-
-
 class _memory:
     def __init__(self, MAX):
         self.MAX = MAX
         self.__name__ = "memory"
 
     def __call__(self, x):
-        x = max_to_MAX(x, quiet=False)  # for backward compatibility
         e = expression.Expression_Parser(
             variables={"MAX": self.MAX}, functions={"min": min, "max": max}
         )
@@ -160,7 +146,6 @@ class _concurrency:
         self.__name__ = "concurrency"
 
     def __call__(self, x):
-        x = max_to_MAX(x, quiet=False)  # for backward compatibility
         e = expression.Expression_Parser(
             variables={"MAX": self.MAX}, functions={"min": min, "max": max}
         )
@@ -390,14 +375,14 @@ def setup_parameters(worker_dir):
             "concurrency",
             "max(1,min(3,MAX-1))",
             _concurrency(MAX=max_cpu_count),
-            max_to_MAX,
+            None,
         ),
         (
             "parameters",
             "max_memory",
             "MAX/2",
             _memory(MAX=mem / 1024 / 1024),
-            max_to_MAX,
+            None,
         ),
         ("parameters", "min_threads", "1", int, None),
         ("parameters", "fleet", "False", _bool, None),
