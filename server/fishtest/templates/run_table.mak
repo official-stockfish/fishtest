@@ -4,7 +4,7 @@
 
 % if toggle is None:
     <script>
-    document.title = '${username + " - " if username else ""}Finished Tests${title} - page ${page_idx+1} | Stockfish Testing';
+      document.title = '${username + " - " if username else ""}Finished Tests${title} - page ${page_idx+1} | Stockfish Testing';
     </script>
 % endif
 

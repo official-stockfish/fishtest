@@ -222,7 +222,7 @@ function follow_live(test_id, retry) {
   xhttp.onreadystatechange = function () {
     if (this.readyState == 4) {
       if (this.status == 200) {
-        var m = JSON.parse(this.responseText);
+        const m = JSON.parse(this.responseText);
         if (!m.args.sprt.state)
           follow_live.timer_once = setTimeout(
             follow_live,
