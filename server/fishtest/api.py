@@ -270,36 +270,37 @@ class ApiView(object):
                     )
             return code
 
-        def get_flag_data(self, ip):
-            flag_data = self.request.userdb.flag_cache.find_one({"ip": ip})
-            if not flag_data:
-                flag_data = {
+        def get_flag_cc(self, ip):
+            db_flag = self.request.userdb.flag_cache.find_one({"ip": ip})
+            if not db_flag:
+                db_flag = {
                     "ip": ip,
                     "country_code": get_country_code(ip),
                     "flag_data_checked_at": datetime.utcnow(),
                 }
-                if flag_data["country_code"]:
-                    self.request.userdb.flag_cache.insert_one(flag_data)
-            flag_data = {
-                "cc" if k == "country_code" else "dt": v
-                for k, v in flag_data.items()
-                if k != "ip"
-            }
-            return flag_data
+                if db_flag["country_code"] is not None:
+                    self.request.userdb.flag_cache.insert_one(db_flag)
+            return db_flag["country_code"]
 
         ip = self.request.remote_addr
-        now = datetime.utcnow()
-        clean_flag_data = {"cc": None, "dt": now}
-        # With a new ip create a flag_data and insert it in flag_cache and db
-        # limit race: db and web service can be slow
+        now_dt = datetime.utcnow()
+        clean_flag_data = {"cc": None, "dt": now_dt}
+        # Create a flag_data for a new ip and insert it in flag_cache and db
+        # limit race for workers with the same ip: db and web request can be slow
         if ip not in flag_cache:
             flag_cache[ip] = clean_flag_data
-            flag_cache[ip] = get_flag_data(self, ip)
-        # Update after a timeout the failed request (service down, dev worker with private ip)
-        if not flag_cache[ip].get("cc"):
-            if (now - flag_cache[ip].get("dt", now)).total_seconds() > 3600 * 4:
+            flag_cache[ip]["cc"] = get_flag_cc(self, ip)
+        # Update the flag_data after a timeout if the ip has not a country code
+        # (eg dev worker with private ip) to preserve the free geoip requests
+        try:
+            ip_cc = flag_cache[ip]["cc"]
+            ip_dt = flag_cache[ip]["dt"]
+        except KeyError:
+            pass
+        else:
+            if ip_cc is None and (now_dt - ip_dt).total_seconds() > 3600 * 4:
                 flag_cache[ip] = clean_flag_data
-                flag_cache[ip] = get_flag_data(self, ip)
+                flag_cache[ip]["cc"] = get_flag_cc(self, ip)
         return flag_cache[ip].get("cc")
 
     @view_config(route_name="api_active_runs")
