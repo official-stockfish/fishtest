@@ -375,3 +375,68 @@ pre[style*="border-color:Pink"] {
 option.grayedoutoption {
   background-color: Gray;
 }
+
+/* Gauges */
+/* Outer-ring */
+#LLR_chart_div circle:nth-child(1),
+#LOS_chart_div circle:nth-child(1),
+#ELO_chart_div circle:nth-child(1) {
+  fill: var(--bg-dark-5);
+  stroke: var(--color-dark-1);
+}
+/* Main background */
+#LLR_chart_div circle:nth-child(2),
+#LOS_chart_div circle:nth-child(2),
+#ELO_chart_div circle:nth-child(2) {
+  fill: var(--bg-dark-1);
+  stroke: var(--bg-dark-3);
+}
+/* Main text */
+#LLR_chart_div text,
+#LOS_chart_div text,
+#ELO_chart_div text {
+  fill: var(--color-dark-1);
+}
+/* Current value text */
+#LLR_chart_div text:nth-child(1),
+#LOS_chart_div text:nth-child(1),
+#ELO_chart_div text:nth-child(1) {
+  fill: var(--color-dark-1);
+}
+/* Ticks */
+#LLR_chart_div path,
+#LOS_chart_div path,
+#ELO_chart_div path {
+  stroke: var(--color-dark-1);
+}
+/* Hand */
+#LLR_chart_div path:nth-child(2),
+#LOS_chart_div path:nth-child(2),
+#ELO_chart_div path:nth-child(2) {
+  fill: orange;
+  stroke: orange;
+}
+/* Circle of the hand */
+#LLR_chart_div circle:nth-child(3),
+#LOS_chart_div circle:nth-child(3),
+#ELO_chart_div circle:nth-child(3) {
+  fill: #355eae;
+}
+/* Good area */
+#LLR_chart_div path:nth-child(3),
+#LOS_chart_div path:nth-child(3),
+#ELO_chart_div path:nth-child(3) {
+  fill: #005500;
+}
+/* Neutral area */
+#LLR_chart_div path:nth-child(4),
+#LOS_chart_div path:nth-child(4),
+#ELO_chart_div path:nth-child(4) {
+  fill: #9f3e18;
+}
+/* Bad area */
+#LLR_chart_div path:nth-child(5),
+#LOS_chart_div path:nth-child(5),
+#ELO_chart_div path:nth-child(5) {
+  fill: #880000;
+}
