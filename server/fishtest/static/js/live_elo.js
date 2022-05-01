@@ -68,6 +68,10 @@ function set_gauges(LLR, a, b, LOS, elo, ci_lower, ci_upper) {
   const LLR_chart_options = {
     width: 500,
     height: 150,
+    greenFrom: b,
+    greenTo: b * 1.04,
+    redFrom: a * 1.04,
+    redTo: a,
     yellowFrom: a,
     yellowTo: b,
     max: b,
@@ -90,14 +94,24 @@ function set_gauges(LLR, a, b, LOS, elo, ci_lower, ci_upper) {
   if (ci_lower < 0 && ci_upper > 0) {
     ELO_chart_options.redFrom = ci_lower;
     ELO_chart_options.redTo = 0;
+    ELO_chart_options.yellowFrom = 0;
+    ELO_chart_options.yellowTo = 0;
     ELO_chart_options.greenFrom = 0;
     ELO_chart_options.greenTo = ci_upper;
   } else if (ci_lower >= 0) {
+    ELO_chart_options.redFrom = ci_lower;
+    ELO_chart_options.redTo = ci_lower;
+    ELO_chart_options.yellowFrom = ci_lower;
+    ELO_chart_options.yellowTo = ci_lower;
     ELO_chart_options.greenFrom = ci_lower;
     ELO_chart_options.greenTo = ci_upper;
   } else if (ci_upper <= 0) {
     ELO_chart_options.redFrom = ci_lower;
     ELO_chart_options.redTo = ci_upper;
+    ELO_chart_options.yellowFrom = ci_upper;
+    ELO_chart_options.yellowTo = ci_upper;
+    ELO_chart_options.greenFrom = ci_upper;
+    ELO_chart_options.greenTo = ci_upper;
   }
   ELO_chart.draw(ELO_chart_data, ELO_chart_options);
   elo = Math.round(100 * elo) / 100;
