@@ -473,7 +473,10 @@ def get_cookie(request, name):
         return None
     cookies = request.headers["Cookie"].split(";")
     for cookie in cookies:
-        k, v = cookie.split("=", 1)
+        try:
+            k, v = cookie.split("=", 1)
+        except ValueError:
+            continue
         if k.strip() == name:
             return v.strip()
 
