@@ -461,7 +461,7 @@ def setup_parameters(worker_dir):
         default=config.getboolean("parameters", "fleet"),
         type=_bool,
         choices=[False, True],  # useful for usage message
-        help="if 'False', quit in case of errors or if no task is available",
+        help="if 'True', quit if no task is available",
     )
     parser.add_argument(
         "-C",
@@ -841,11 +841,17 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
     # If an immediate exit is necessary then one can set
     # current_state["alive"] to False.
 
+    # This functions returns:
+    # None if no task could be fetched;
+    # False if a task could be fetched but an error
+    # occurred during execution;
+    # True otherwise.
+
     # The following check can be triggered theoretically
     # but probably not in practice.
     if locked_by_others(lock_file):
         current_state["alive"] = False
-        return False
+        return None
 
     payload = {"worker_info": worker_info, "password": password}
 
@@ -853,7 +859,7 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
         rate, near_api_limit = get_rate()
         if near_api_limit:
             print("Near API limit")
-            return False
+            return None
 
         worker_info["rate"] = rate
 
@@ -862,7 +868,7 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
 
         if "error" in req:
             current_state["alive"] = False
-            return False
+            return None
 
         if req["version"] > WORKER_VERSION:
             print("Updating worker version to {}".format(req["version"]))
@@ -877,15 +883,15 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
         req = send_api_post_request(remote + "/api/request_task", payload)
     except Exception as e:
         print("Exception accessing host:\n", e, sep="", file=sys.stderr)
-        return False
+        return None
 
     if "error" in req:
-        return False
+        return None
 
     # No tasks ready for us yet, just wait...
     if "task_waiting" in req:
         print("No tasks available at this time, waiting...")
-        return False
+        return None
 
     run, task_id = req["run"], req["task_id"]
     current_state["run"] = run
@@ -1092,12 +1098,8 @@ def worker():
     )
     heartbeat_thread.start()
 
-    # If fleet==True then the worker will quit if it is unable to obtain
-    # or execute a task. If fleet==False then the worker will go to the
-    # next iteration of the main loop.
-    # The reason for the existence of this parameter is that it allows
-    # a fleet of workers to quickly quit as soon as the queue is empty
-    # or the server down.
+    # If fleet==True then the worker will quit if it is unable to obtain a task.
+    # If fleet==False then the worker will go to the next iteration of the main loop.
 
     # Start the main loop.
     delay = INITIAL_RETRY_TIME
@@ -1113,15 +1115,14 @@ def worker():
         )
         if not current_state["alive"]:  # the user may have pressed Ctrl-C...
             break
+        elif success is None and options.fleet:
+            current_state["alive"] = False
+            print("Exiting the worker since fleet==True and no task was available")
+            break
         elif not success:
-            if options.fleet:
-                current_state["alive"] = False
-                print("Exiting the worker since fleet==True and an error occurred")
-                break
-            else:
-                print("Waiting {} seconds before retrying".format(delay))
-                safe_sleep(delay)
-                delay = min(MAX_RETRY_TIME, delay * 2)
+            print("Waiting {} seconds before retrying".format(delay))
+            safe_sleep(delay)
+            delay = min(MAX_RETRY_TIME, delay * 2)
         else:
             delay = INITIAL_RETRY_TIME
 
