@@ -3,12 +3,14 @@ import atexit
 import base64
 import datetime
 import getpass
+import hashlib
 import math
 import multiprocessing
 import os
 import platform
 import re
 import signal
+import socket
 import subprocess
 import sys
 import threading
@@ -120,6 +122,21 @@ def _bool(x):
 
 
 _bool.__name__ = "bool"
+
+
+def _alpha_numeric(x):
+    x = x.strip()
+    if x == "_hw":
+        return x
+    if len(x) <= 1:
+        print("The prefix {} is too short".format(x))
+        raise ValueError(x)
+    if not x.isalnum():
+        raise ValueError(x)
+    return x[:8]
+
+
+_alpha_numeric.__name__ = "alphanumeric"
 
 
 class _memory:
@@ -384,6 +401,7 @@ def setup_parameters(worker_dir):
             _memory(MAX=mem / 1024 / 1024),
             None,
         ),
+        ("parameters", "uuid_prefix", "_hw", _alpha_numeric, None),
         ("parameters", "min_threads", "1", int, None),
         ("parameters", "fleet", "False", _bool, None),
         ("parameters", "compiler", default_compiler, compiler_names, None),
@@ -445,6 +463,14 @@ def setup_parameters(worker_dir):
         type=_memory(MAX=mem / 1024 / 1024),
         help="an expression, potentially involving the variable 'MAX', "
         "evaluating to the maximum amount of memory in MiB that the worker will use",
+    )
+    parser.add_argument(
+        "-u",
+        "--uuid_prefix",
+        dest="uuid_prefix",
+        default=config.get("parameters", "uuid_prefix"),
+        type=_alpha_numeric,
+        help="set the initial part of the UUID (_hw to reset)",
     )
     parser.add_argument(
         "-t",
@@ -545,6 +571,7 @@ def setup_parameters(worker_dir):
         "max_memory",
         options.max_memory_ + " ; = {} MiB".format(options.max_memory),
     )
+    config.set("parameters", "uuid_prefix", str(options.uuid_prefix))
     config.set("parameters", "min_threads", str(options.min_threads))
     config.set("parameters", "fleet", str(options.fleet))
     config.set("parameters", "compiler", options.compiler_)
@@ -570,6 +597,31 @@ def setup_parameters(worker_dir):
 def on_sigint(current_state, signal, frame):
     current_state["alive"] = False
     raise FatalException("Terminated by signal {}".format(str_signal(signal)))
+
+
+def fingerprint(s):
+    return int.from_bytes(hashlib.md5(s.encode("utf-8")).digest()[:4], byteorder="big")
+
+
+def hw_id():
+    fingerprint_node = fingerprint(str(uuid.getnode()))
+    fingerprint_path = fingerprint(os.path.abspath(sys.argv[0]))
+    try:
+        fingerprint_hostname = fingerprint(socket.gethostname())
+    except Exception as e:
+        print("Exception reading hostname:\n", e, sep="", file=sys.stderr)
+        fingerprint_hostname = 0
+
+    return format(fingerprint_node ^ fingerprint_path ^ fingerprint_hostname, "08x")
+
+
+def get_uuid(options):
+    if options.uuid_prefix == "_hw":
+        uuid_prefix = hw_id()
+    else:
+        uuid_prefix = options.uuid_prefix
+
+    return uuid_prefix[:8] + str(uuid.uuid4())[8:]
 
 
 def get_rate():
@@ -1072,7 +1124,7 @@ def worker():
             patchlevel,
         ),
         "compiler": compiler,
-        "unique_key": str(uuid.uuid4()),
+        "unique_key": get_uuid(options),
         "ARCH": "?",
         "nps": 0.0,
     }
