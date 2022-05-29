@@ -719,7 +719,11 @@ class RunDb:
             need_tt += get_hash(run["args"]["base_options"])
             need_tt *= max_threads // run["args"]["threads"]
             # estime another 10MB per process, 30MB per thread, and 40MB for net as a base memory need besides hash
-            need_base = 2 * (max_threads // run["args"]["threads"]) * (10 + 40 + 30 * run["args"]["threads"])
+            need_base = (
+                2
+                * (max_threads // run["args"]["threads"])
+                * (10 + 40 + 30 * run["args"]["threads"])
+            )
 
             if need_base + need_tt > max_memory:
                 continue

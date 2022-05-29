@@ -18,7 +18,7 @@ def worker_name(worker_info):
     uuid = worker_info["unique_key"]
     name = "{}-{}cores".format(username, cores)
     if len(uuid) != 0:
-        uuid_split=uuid.split("-")
+        uuid_split = uuid.split("-")
         if len(uuid_split) >= 1:
             name += "-" + uuid_split[0]
         if len(uuid_split) >= 2:
