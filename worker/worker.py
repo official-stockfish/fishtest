@@ -544,6 +544,8 @@ def setup_parameters(worker_dir):
 
     options.compiler = compilers[options.compiler_]
 
+    options.hw_id = hw_id()
+
     # Step 6: determine credentials
 
     username, password = get_credentials(config, options, args)
@@ -571,7 +573,12 @@ def setup_parameters(worker_dir):
         "max_memory",
         options.max_memory_ + " ; = {} MiB".format(options.max_memory),
     )
-    config.set("parameters", "uuid_prefix", str(options.uuid_prefix))
+    config.set(
+        "parameters",
+        "uuid_prefix",
+        options.uuid_prefix
+        + (" ; = {}".format(options.hw_id) if options.uuid_prefix == "_hw" else ""),
+    )
     config.set("parameters", "min_threads", str(options.min_threads))
     config.set("parameters", "fleet", str(options.fleet))
     config.set("parameters", "compiler", options.compiler_)
@@ -617,7 +624,7 @@ def hw_id():
 
 def get_uuid(options):
     if options.uuid_prefix == "_hw":
-        uuid_prefix = hw_id()
+        uuid_prefix = options.hw_id
     else:
         uuid_prefix = options.uuid_prefix
 
