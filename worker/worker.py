@@ -54,6 +54,15 @@ INITIAL_RETRY_TIME = 15.0
 THREAD_JOIN_TIMEOUT = 15.0
 MAX_RETRY_TIME = 900.0  # 15 minutes
 IS_WINDOWS = "windows" in platform.system().lower()
+IS_MACOS = "darwin" in platform.system().lower()
+IS_COLAB = False
+try:
+    import google.colab
+
+    IS_COLAB = True
+    del google.colab
+except:
+    pass
 CONFIGFILE = "fishtest.cfg"
 
 LOGO = r"""
@@ -470,7 +479,8 @@ def setup_parameters(worker_dir):
         dest="uuid_prefix",
         default=config.get("parameters", "uuid_prefix"),
         type=_alpha_numeric,
-        help="set the initial part of the UUID (_hw to reset)",
+        help="set the initial part of the UUID (_hw to use an internal algorithm), "
+        "if you run more than one worker, please make sure their prefixes are distinct",
     )
     parser.add_argument(
         "-t",
@@ -544,6 +554,9 @@ def setup_parameters(worker_dir):
 
     options.compiler = compilers[options.compiler_]
 
+    options.hw_id = hw_id()
+    print("Default uuid_prefix: {}".format(options.hw_id))
+
     # Step 6: determine credentials
 
     username, password = get_credentials(config, options, args)
@@ -571,7 +584,12 @@ def setup_parameters(worker_dir):
         "max_memory",
         options.max_memory_ + " ; = {} MiB".format(options.max_memory),
     )
-    config.set("parameters", "uuid_prefix", str(options.uuid_prefix))
+    config.set(
+        "parameters",
+        "uuid_prefix",
+        options.uuid_prefix
+        + (" ; = {}".format(options.hw_id) if options.uuid_prefix == "_hw" else ""),
+    )
     config.set("parameters", "min_threads", str(options.min_threads))
     config.set("parameters", "fleet", str(options.fleet))
     config.set("parameters", "compiler", options.compiler_)
@@ -600,24 +618,162 @@ def on_sigint(current_state, signal, frame):
 
 
 def fingerprint(s):
-    return int.from_bytes(hashlib.md5(s.encode("utf-8")).digest()[:4], byteorder="big")
+    # A cryptographically secure hash
+    return int.from_bytes(
+        hashlib.md5(str(s).encode("utf-8")).digest()[:4], byteorder="big"
+    )
+
+
+def _getnode():
+    # workarounds for buggy uuid.getnode() on some systems.
+    # See e.g. https://github.com/rcaloras/bashhub-client/issues/82 .
+    # _ip_getnode is for Linux
+    # _netstat_getnode is for MACOS
+    # _ifconfig_getnode should be somewhat generic
+    _OS_GETTERS = [
+        "uuid._ip_getnode()",
+        "uuid._netstat_getnode()",
+        "uuid._ifconfig_getnode()",
+    ]
+    MAC = None
+    if os.name == "posix":
+        for getter in _OS_GETTERS:
+            try:
+                MAC = eval(getter)
+                if MAC is not None:
+                    print("MAC address {:012x} obtained via {}".format(MAC, getter))
+                    break
+            except Exception as e:
+                print(
+                    "Exception while trying to get MAC adress:\n",
+                    e,
+                    sep="",
+                    file=sys.stderr,
+                )
+    if MAC is None:
+        MAC = uuid.getnode()
+        print("MAC address {:012x} obtained via uuid.getnode()".format(MAC))
+    if MAC & (0x2 << 40):
+        print(
+            "\n"
+            "  Locally administered MAC address detected!\n"
+            "  If you are not using a cloud worker or a virtual\n"
+            "  machine then this is probably caused by a bug in\n"
+            "  uuid.getnode(). Please report this!\n"
+        )
+    return MAC
+
+
+def read_winreg(path, name):
+    import winreg
+
+    views = [winreg.KEY_WOW64_64KEY, winreg.KEY_WOW64_32KEY]
+    value = None
+    for v in views:
+        try:
+            registry_key = winreg.OpenKey(
+                winreg.HKEY_LOCAL_MACHINE, path, 0, winreg.KEY_READ | v
+            )
+            value, regtype = winreg.QueryValueEx(registry_key, name)
+            winreg.CloseKey(registry_key)
+            break
+        except WindowsError:
+            pass
+    return value
+
+
+def _getmachineid():
+    if IS_WINDOWS:
+        # Get windows machine_id from the registry key:
+        # HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography\MachineGuid
+        # See https://www.medo64.com/2020/04/unique-machine-id/ .
+        path = r"SOFTWARE\Microsoft\Cryptography"
+        name = "MachineGuid"
+        machine_id = read_winreg(path, name)
+        if machine_id is not None:
+            print(
+                "machine_id {} obtained from HKEY_LOCAL_MACHINE\\{}\\{}".format(
+                    machine_id, path, name
+                )
+            )
+            return machine_id
+    elif IS_MACOS:
+        # https://stackoverflow.com/questions/11999886/get-machine-id-of-mac-os-x
+        # Somebody with a Mac should clean this code up a bit.
+        cmd = "ioreg -rd1 -c IOPlatformExpertDevice"
+        machine_uuid_str = ""
+        try:
+            with subprocess.Popen(
+                cmd.split(),
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                universal_newlines=True,
+                bufsize=1,
+                close_fds=not IS_WINDOWS,
+            ) as p:
+                for line in iter(p.stdout.readline, ""):
+                    if "UUID" not in line:
+                        continue
+                    if not line:
+                        break
+                    machine_uuid_str += line
+        except Exception as e:
+            print(
+                "Exception while reading the machine_id:\n",
+                e,
+                sep="",
+                file=sys.stderr,
+            )
+        if machine_uuid_str != "":
+            match_obj = re.compile(
+                "[A-Z,0-9]{8,8}-"
+                + "[A-Z,0-9]{4,4}-"
+                + "[A-Z,0-9]{4,4}-"
+                + "[A-Z,0-9]{4,4}-"
+                + "[A-Z,0-9]{12,12}"
+            )
+            result = match_obj.findall(machine_uuid_str)
+            if len(result) > 0:
+                machine_id = result[0]
+                print("machine_id {} obtained via '{}'".format(machine_id, cmd))
+                return machine_id
+    elif os.name == "posix":
+        host_ids = ["/etc/machine-id", "/var/lib/dbus/machine-id"]
+        for file in host_ids:
+            try:
+                with open(file) as f:
+                    machine_id = f.read().strip()
+                    print("machine_id {} obtained from {}".format(machine_id, file))
+                    return machine_id
+            except:
+                pass
+    print("Unable to obtain the machine id")
+    return ""
 
 
 def hw_id():
-    fingerprint_node = fingerprint(str(uuid.getnode()))
-    fingerprint_path = fingerprint(os.path.abspath(sys.argv[0]))
-    try:
-        fingerprint_hostname = fingerprint(socket.gethostname())
-    except Exception as e:
-        print("Exception reading hostname:\n", e, sep="", file=sys.stderr)
-        fingerprint_hostname = 0
+    fingerprint_node = fingerprint(_getnode())
+    fingerprint_machine = fingerprint(_getmachineid())
+    fingerprint_path = fingerprint(os.path.realpath(__file__))
+    fingerprint_hostname = 0
+    if IS_COLAB:
+        try:
+            fingerprint_hostname = fingerprint(socket.gethostname())
+        except Exception as e:
+            print("Exception reading hostname:\n", e, sep="", file=sys.stderr)
 
-    return format(fingerprint_node ^ fingerprint_path ^ fingerprint_hostname, "08x")
+    return format(
+        fingerprint_node
+        ^ fingerprint_machine
+        ^ fingerprint_path
+        ^ fingerprint_hostname,
+        "08x",
+    )
 
 
 def get_uuid(options):
     if options.uuid_prefix == "_hw":
-        uuid_prefix = hw_id()
+        uuid_prefix = options.hw_id
     else:
         uuid_prefix = options.uuid_prefix
 
@@ -1106,7 +1262,7 @@ def worker():
 
     uname = platform.uname()
     worker_info = {
-        "uname": uname[0] + " " + uname[2],
+        "uname": uname[0] + " " + uname[2] + (" (colab)" if IS_COLAB else ""),
         "architecture": platform.architecture(),
         "concurrency": options.concurrency,
         "max_memory": options.max_memory,
