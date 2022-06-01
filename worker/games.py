@@ -514,23 +514,27 @@ def gcc_props():
 
 def make_targets():
     """Parse the output of make help and extract the available targets"""
-    with subprocess.Popen(
-        ["make", "help"],
-        stdout=subprocess.PIPE,
-        universal_newlines=True,
-        bufsize=1,
-        close_fds=not IS_WINDOWS,
-    ) as p:
-        targets = []
-        read_targets = False
+    try:
+        with subprocess.Popen(
+            ["make", "help"],
+            stdout=subprocess.PIPE,
+            universal_newlines=True,
+            bufsize=1,
+            close_fds=not IS_WINDOWS,
+        ) as p:
+            targets = []
+            read_targets = False
 
-        for line in iter(p.stdout.readline, ""):
-            if "Supported compilers:" in line:
-                read_targets = False
-            if read_targets and len(line.split()) > 1:
-                targets.append(line.split()[0])
-            if "Supported archs:" in line:
-                read_targets = True
+            for line in iter(p.stdout.readline, ""):
+                if "Supported compilers:" in line:
+                    read_targets = False
+                if read_targets and len(line.split()) > 1:
+                    targets.append(line.split()[0])
+                if "Supported archs:" in line:
+                    read_targets = True
+    except FileNotFoundError as e:
+        print("Exception while executing make help:\n", e, sep="", file=sys.stderr)
+        raise FatalException("It appears 'make' is not installed")
 
     if p.returncode != 0:
         raise WorkerException(
