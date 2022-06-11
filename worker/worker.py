@@ -8,9 +8,9 @@ import math
 import multiprocessing
 import os
 import platform
+import random
 import re
 import signal
-import socket
 import subprocess
 import sys
 import threading
@@ -414,6 +414,7 @@ def setup_parameters(worker_dir):
         ("parameters", "min_threads", "1", int, None),
         ("parameters", "fleet", "False", _bool, None),
         ("parameters", "compiler", default_compiler, compiler_names, None),
+        ("private", "hw_seed", str(random.randint(0, 0xffffffff)), int, None),
     ]
 
     validate(config, schema)
@@ -554,7 +555,7 @@ def setup_parameters(worker_dir):
 
     options.compiler = compilers[options.compiler_]
 
-    options.hw_id = hw_id()
+    options.hw_id = hw_id(config.getint("private", "hw_seed"))
     print("Default uuid_prefix: {}".format(options.hw_id))
 
     # Step 6: determine credentials
@@ -624,46 +625,6 @@ def fingerprint(s):
     )
 
 
-def _getnode():
-    # workarounds for buggy uuid.getnode() on some systems.
-    # See e.g. https://github.com/rcaloras/bashhub-client/issues/82 .
-    # _ip_getnode is for Linux
-    # _netstat_getnode is for MACOS
-    # _ifconfig_getnode should be somewhat generic
-    _OS_GETTERS = [
-        "uuid._ip_getnode()",
-        "uuid._netstat_getnode()",
-        "uuid._ifconfig_getnode()",
-    ]
-    MAC = None
-    if os.name == "posix":
-        for getter in _OS_GETTERS:
-            try:
-                MAC = eval(getter)
-                if MAC is not None:
-                    print("MAC address {:012x} obtained via {}".format(MAC, getter))
-                    break
-            except Exception as e:
-                print(
-                    "Exception while trying to get MAC adress:\n",
-                    e,
-                    sep="",
-                    file=sys.stderr,
-                )
-    if MAC is None:
-        MAC = uuid.getnode()
-        print("MAC address {:012x} obtained via uuid.getnode()".format(MAC))
-    if MAC & (0x2 << 40):
-        print(
-            "\n"
-            "  Locally administered MAC address detected!\n"
-            "  If you are not using a cloud worker or a virtual\n"
-            "  machine then this is probably caused by a bug in\n"
-            "  uuid.getnode(). Please report this!\n"
-        )
-    return MAC
-
-
 def read_winreg(path, name):
     import winreg
 
@@ -682,7 +643,7 @@ def read_winreg(path, name):
     return value
 
 
-def _getmachineid():
+def get_machine_id():
     if IS_WINDOWS:
         # Get windows machine_id from the registry key:
         # HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography\MachineGuid
@@ -751,24 +712,10 @@ def _getmachineid():
     return ""
 
 
-def hw_id():
-    fingerprint_node = fingerprint(_getnode())
-    fingerprint_machine = fingerprint(_getmachineid())
+def hw_id(hw_seed):
+    fingerprint_machine = fingerprint(get_machine_id())
     fingerprint_path = fingerprint(os.path.realpath(__file__))
-    fingerprint_hostname = 0
-    if IS_COLAB:
-        try:
-            fingerprint_hostname = fingerprint(socket.gethostname())
-        except Exception as e:
-            print("Exception reading hostname:\n", e, sep="", file=sys.stderr)
-
-    return format(
-        fingerprint_node
-        ^ fingerprint_machine
-        ^ fingerprint_path
-        ^ fingerprint_hostname,
-        "08x",
-    )
+    return format(hw_seed ^ fingerprint_machine ^ fingerprint_path, "08x")
 
 
 def get_uuid(options):
