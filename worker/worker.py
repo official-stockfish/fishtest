@@ -48,7 +48,7 @@ from games import (
 )
 from updater import update
 
-WORKER_VERSION = 168
+WORKER_VERSION = 169
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
 THREAD_JOIN_TIMEOUT = 15.0
@@ -414,7 +414,7 @@ def setup_parameters(worker_dir):
         ("parameters", "min_threads", "1", int, None),
         ("parameters", "fleet", "False", _bool, None),
         ("parameters", "compiler", default_compiler, compiler_names, None),
-        ("private", "hw_seed", str(random.randint(0, 0xffffffff)), int, None),
+        ("private", "hw_seed", str(random.randint(0, 0xFFFFFFFF)), int, None),
     ]
 
     validate(config, schema)
