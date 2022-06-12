@@ -140,7 +140,7 @@ def _alpha_numeric(x):
     if len(x) <= 1:
         print("The prefix {} is too short".format(x))
         raise ValueError(x)
-    if not x.isalnum():
+    if not all(ord(c) < 128 for c in x) or not x.isalnum():
         raise ValueError(x)
     return x[:8]
 
