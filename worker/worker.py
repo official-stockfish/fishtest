@@ -133,19 +133,31 @@ def _bool(x):
 _bool.__name__ = "bool"
 
 
-def _alpha_numeric(x):
+def _printable(x):
     x = x.strip()
     if x == "_hw":
         return x
     if len(x) <= 1:
-        print("The prefix {} is too short".format(x))
+        print("The uuid_prefix is too short")
         raise ValueError(x)
-    if not x.isalnum():
+    if x[0] == "_":
+        print("The uuid_prefix cannot start with '_'")
         raise ValueError(x)
-    return x[:8]
+    if " " in x:
+        x = x.replace(" ", "_")
+        print("Replaced white space by '_' in uuid_prefix")
+    if "-" in x:
+        x = x.replace("-", "_")
+        print("Replaced '-' by '_' in uuid_prefix")
+    if not all(ord(c) < 128 for c in x) or not x.isprintable():
+        raise ValueError(x)
+    if len(x) > 12:
+        x = x[:12]
+        print("uuid_prefix truncated to 12 characters")
+    return x
 
 
-_alpha_numeric.__name__ = "alphanumeric"
+_printable.__name__ = "printable"
 
 
 class _memory:
@@ -410,7 +422,7 @@ def setup_parameters(worker_dir):
             _memory(MAX=mem / 1024 / 1024),
             None,
         ),
-        ("parameters", "uuid_prefix", "_hw", _alpha_numeric, None),
+        ("parameters", "uuid_prefix", "_hw", _printable, None),
         ("parameters", "min_threads", "1", int, None),
         ("parameters", "fleet", "False", _bool, None),
         ("parameters", "compiler", default_compiler, compiler_names, None),
@@ -479,7 +491,7 @@ def setup_parameters(worker_dir):
         "--uuid_prefix",
         dest="uuid_prefix",
         default=config.get("parameters", "uuid_prefix"),
-        type=_alpha_numeric,
+        type=_printable,
         help="set the initial part of the UUID (_hw to use an internal algorithm), "
         "if you run more than one worker, please make sure their prefixes are distinct",
     )
@@ -724,7 +736,7 @@ def get_uuid(options):
     else:
         uuid_prefix = options.uuid_prefix
 
-    return uuid_prefix[:8] + str(uuid.uuid4())[8:]
+    return uuid_prefix + str(uuid.uuid4())[8:]
 
 
 def get_rate():
