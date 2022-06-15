@@ -127,7 +127,7 @@ monitoring = request.rundb.conn["admin"].command("getFreeMonitoringStatus")
     </div>
 
     <div class="contentbase vh-100 w-100">
-      <div class="container-fluid pe-0">
+      <div class="container-fluid">
         <div class="row">
           <div class="flash-message mt-3">
             % if request.session.peek_flash('error'):

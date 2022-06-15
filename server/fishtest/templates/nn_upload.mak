@@ -1,117 +1,38 @@
 <%inherit file="base.mak"/>
 
-<style>
-  .flex-row {
-    display: flex;
-    align-items: center;
-    margin: 10px 0;
-  }
-
-  .field-label {
-    font-size: 12px;
-    margin: 0;
-    text-align: right;
-    padding-right: 15px;
-    width: 100px;
-  }
-
-  .field-label.leftmost {
-    width: 75px;
-    flex-shrink: 0;
-  }
-
-  .rightmost {
-    margin-left: auto;
-  }
-
-  .third-size {
-    width: 107px;
-    flex-shrink: 0;
-  }
-
-  input.quarter-size {
-    margin-right: 10px;
-    width: 70px;
-    flex-shrink: 0;
-  }
-
-  #upload-nn {
-    width: 700px;
-    margin: 7px auto;
-    padding-right: 30px;
-  }
-
-  #upload-nn input {
-    margin: 15px 0;
-  }
-
-  .quarter-size {
-    width: 80px;
-    flex-shrink: 0;
-  }
-
-  .choose-test-type .btn {
-    width: 75px;
-  }
-
-  #upload-nn label:hover {
-    cursor: text;
-  }
-
-  #upload-nn textarea {
-    width: 100%;
-    min-height: 40px;
-    margin: 0;
-  }
-
-  section.test-settings input {
-    width: 235px;
-  }
-</style>
+## Remove this when base.mak has the viewport meta tag
+<%block name="head">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</%block>
 
 <script>
   document.title = 'Neural Network Upload | Stockfish Testing';
 </script>
 
-<header style="text-align: center; padding-top: 7px">
-  <h2>Neural Network Upload</h2>
-  <section class="instructions" style="margin-bottom: 35px">
-    <p>
-    Please read the
-    <a href="https://github.com/glinscott/fishtest/wiki/Creating-my-first-test">Testing Guidelines</a>
-    before uploading your network.
-    </p>
-    <p>
-    By uploading you license your network under a
-    <a href="https://creativecommons.org/share-your-work/public-domain/cc0/">CC0</a> license.
-    </p>
-    <p>
-    <input type="checkbox" id="enable"/ onclick="doLicense()">
-    <b>You are the author of this network or have obtained the network with a CC0 license.</b>
-    </p>
-    <p>
-    Your uploaded network will be available for public download and listed on the
-    <a href="/nns">NN stats page</a>.
-    </p>
-  </section>
-</header>
+<div class="col-limited-size">
+  <header class="text-md-center py-2">
+    <h2>Neural Network Upload</h2>
+    <div class="alert alert-info">
+      <p class="mb-0">Please read the <a class="alert-link" href="https://github.com/glinscott/fishtest/wiki/Creating-my-first-test">Testing Guidelines</a> before uploading your network.</p>
+      <p class="mb-0">By uploading, you license your network under a <a class="alert-link" href="https://creativecommons.org/share-your-work/public-domain/cc0/">CC0</a> license.</p>
+      <p class="mb-0">Your uploaded network will be available for public download and listed on the <a class="alert-link" href="/nns">NN stats page</a>.</p>
+    </div>
+  </header>
 
-<form id="upload-nn" action="${request.url}" method="POST" enctype="multipart/form-data">
-  <section class="test-settings" style="margin-bottom: 35px">
-    <div class="control-group">
-      <label class="control-label">Select your Network file (nn-[SHA256 first 12 digits].nnue):</label>
-      <div class="controls">
-        <input id="network" name="network" type="file" accept=".nnue" value="" />
-      </div>
+  <form id="upload-nn" action="${request.url}" method="POST" enctype="multipart/form-data">
+    <div class="mb-3">
+      <label for="network" class="form-label">Select your Network file (nn-[SHA256 first 12 digits].nnue)</label>
+      <input class="form-control" id="network" name="network" type="file" accept=".nnue" value="" />
     </div>
 
-    <div class="control-group">
-      <div class="controls">
-        <button id="upload" type="submit" disabled="true" class="btn btn-primary">Agree to License & Upload</button>
-      </div>
+    <div class="mb-3 form-check">
+      <label for="enable">You are the author of this network or have obtained the network with a CC0 license.</label>
+      <input type="checkbox" class="form-check-input" id="enable" onclick="doLicense()">
     </div>
-  </section>
-</form>
+
+    <button id="upload" type="submit" disabled="true" class="btn btn-primary w-100">Upload</button>
+  </form>
+</div>
 
 <script>
   function doLicense() {

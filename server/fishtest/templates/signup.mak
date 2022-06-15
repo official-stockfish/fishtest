@@ -10,7 +10,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </%block>
 
-<div id="register">
+<div class="col-limited-size">
   <header class="text-md-center py-2">
     <h2>Register</h2>
     <div class="alert alert-info">

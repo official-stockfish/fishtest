@@ -138,6 +138,7 @@ input[type="url"],
 input[type="search"],
 input[type="tel"],
 input[type="color"],
+input[type="file"],
 .uneditable-input,
 label.list-group-item {
   background: var(--bg-dark-4);
@@ -160,6 +161,7 @@ input[type="url"]:focus,
 input[type="search"]:focus,
 input[type="tel"]:focus,
 input[type="color"]:focus,
+input[type="file"]:focus,
 .uneditable-input:focus {
   color: var(--color-dark-1);
   background: var(--bg-dark-4);
@@ -183,6 +185,7 @@ input[type="url"],
 input[type="search"],
 input[type="tel"],
 input[type="color"],
+input[type="file"],
 .uneditable-input,
 label.list-group-item {
   color: var(--color-dark-1);
@@ -199,6 +202,11 @@ input[type="radio"]:focus,
 input[type="checkbox"]:focus {
   outline: none;
   border-color: rgba(255, 255, 255, 0.5);
+}
+
+.form-control::file-selector-button {
+  color: var(--color-dark-1) !important;
+  background-color: var(--bg-dark-3) !important;
 }
 
 /* Button groups */
