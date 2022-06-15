@@ -9,7 +9,7 @@
   document.title = 'User Administration | Stockfish Testing';
 </script>
 
-<div id="user-administration">
+<div class="col-limited-size">
   <header class="text-md-center py-2">
     <h2>User Administration</h2>
     <div class="alert alert-info">

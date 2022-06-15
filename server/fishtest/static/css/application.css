@@ -487,9 +487,7 @@ option.grayedoutoption {
   background-color: LightGray;
 }
 
-#user-administration,
-#login,
-#register {
+.col-limited-size {
   max-width: 450px;
   margin: 0 auto 30px auto;
 }

@@ -135,11 +135,22 @@ else:
       </button>
     </div>
 
+    <div class="flex-row">
+      <label class="field-label leftmost">Test repo</label>
+      <div class="input-group input-group-sm">
+        <input type="text" name="tests-repo" style="width: 100%;"
+              class="form-control"
+              value="${args.get('tests_repo', tests_repo)}" ${'readonly' if is_rerun else ''}
+              placeholder="https://github.com/username/Stockfish">
+      </div>
+    </div>
+
     <div class="flex-row input-group input-group-sm">
       <label class="field-label leftmost">Test branch</label>
       <input type="text" name="test-branch"
              id="test-branch" class="form-control"
-             value="${args.get('new_tag', '')}" ${'readonly' if is_rerun else ''}>
+             value="${args.get('new_tag', '')}" ${'readonly' if is_rerun else ''}
+             placeholder="Your test branch name">
 
       <label class="field-label">Base branch</label>
       <input type="text" name="base-branch"
@@ -178,15 +189,6 @@ else:
         <textarea name="run-info" placeholder="Defaults to commit message"
                   class="form-control"
                   rows="3">${args.get('info', '')}</textarea>
-      </div>
-    </div>
-
-    <div class="flex-row">
-      <label class="field-label leftmost">Test repo</label>
-      <div class="input-group input-group-sm">
-        <input type="text" name="tests-repo" style="width: 100%;"
-              class="form-control"
-              value="${args.get('tests_repo', tests_repo)}" ${'readonly' if is_rerun else ''}>
       </div>
     </div>
   </section>
