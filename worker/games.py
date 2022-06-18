@@ -858,6 +858,12 @@ def parse_cutechess_output(
 
         print(line, flush=True)
 
+        # Parse line like this:
+        # Warning: Cannot start engine New-00d2b99ad3
+        if "Warning:" in line and "Cannot start engine" in line:
+            message = r'Cutechess-cli says: "{}"'.format(line)
+            raise WorkerException(message)
+
         # Have we reached the end of the match? Then just exit.
         if "Finished match" in line:
             if num_games_updated == games_to_play:
@@ -1143,7 +1149,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
     if "start" in task:
         print("Variable task sizes used. Opening offset = {}".format(opening_offset))
     start_game_index = opening_offset + input_total_games
-    run_seed = int(hashlib.sha1(run["_id"].encode("utf-8")).hexdigest(), 16) % (2**30)
+    run_seed = int(hashlib.sha1(run["_id"].encode("utf-8")).hexdigest(), 16) % (2 ** 30)
 
     # Format options according to cutechess syntax.
     def parse_options(s):
