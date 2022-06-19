@@ -1143,7 +1143,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
     if "start" in task:
         print("Variable task sizes used. Opening offset = {}".format(opening_offset))
     start_game_index = opening_offset + input_total_games
-    run_seed = int(hashlib.sha1(run["_id"].encode("utf-8")).hexdigest(), 16) % (2**30)
+    run_seed = int(hashlib.sha1(run["_id"].encode("utf-8")).hexdigest(), 16) % (2 ** 30)
 
     # Format options according to cutechess syntax.
     def parse_options(s):
@@ -1423,7 +1423,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
                 "-engine",
                 "name=New-" + run["args"]["resolved_new"][:10],
                 "tc={}".format(scaled_new_tc),
-                "cmd={}".format(new_engine_name),
+                "cmd={}".format(os.path.abspath(new_engine_name)),
                 "dir=.",
             ]
             + new_options
@@ -1432,7 +1432,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
                 "-engine",
                 "name=Base-" + run["args"]["resolved_base"][:10],
                 "tc={}".format(scaled_tc),
-                "cmd={}".format(base_engine_name),
+                "cmd={}".format(os.path.abspath(base_engine_name)),
                 "dir=.",
             ]
             + base_options
