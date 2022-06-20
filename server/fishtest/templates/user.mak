@@ -1,10 +1,5 @@
 <%inherit file="base.mak"/>
 
-## Remove this when base.mak has the viewport meta tag
-<%block name="head">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</%block>
-
 <script>
   document.title = 'User Administration | Stockfish Testing';
 </script>
@@ -76,16 +71,18 @@
         blocked = user['blocked'] if 'blocked' in user else False
         checked = 'checked' if blocked else ''
       %>
-      <label class="list-group-item d-flex gap-2 mb-3 rounded-2">
-        <input
-          class="form-check-input flex-shrink-0"
-          type="checkbox"
-          name="blocked"
-          value="True"
-          ${checked}
-        >
-        <span>Blocked</span>
-      </label>
+      <div class="list-group">
+        <label class="list-group-item d-flex gap-2 mb-3 rounded-2">
+          <input
+            class="form-check-input flex-shrink-0"
+            type="checkbox"
+            name="blocked"
+            value="True"
+            ${checked}
+          >
+          <span>Blocked</span>
+        </label>
+      </div>
     % endif
 
     <button type="submit" class="btn btn-primary w-100">Submit</button>

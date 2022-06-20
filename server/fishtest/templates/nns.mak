@@ -18,7 +18,7 @@ The recommended net for a given Stockfish executable can be found as the default
   ${'Hide non default nets' if non_default_shown else 'Show non default nets'}
 </button>
 
-<div>
+<div class="table-responsive-lg">
   <table class="table table-striped table-sm">
     <thead class="sticky-top">
       <tr>

@@ -37,7 +37,7 @@
 <button type="submit" class="btn btn-success">Select</button>
 </form>
 
-<div>
+<div class="table-responsive-lg">
   <table class="table table-striped table-sm">
     <thead class="sticky-top">
       <tr>
@@ -52,7 +52,7 @@
           <tr>
 ## Dates in mongodb have millisecond precision. So they fit comfortably in a float without precision loss.
             <td><a href=/actions?count=1&before=${action['time'].replace(tzinfo=datetime.timezone.utc).timestamp()}>
-	           ${action['time'].strftime(r"%y&#8209;%m&#8209;%d %H:%M:%S")|n}</a></td>
+             ${action['time'].strftime(r"%y&#8209;%m&#8209;%d %H:%M:%S")|n}</a></td>
             % if approver and 'fishtest.' not in action['username']:
                 <td><a href="/user/${action['username']}">${action['username']}</a></td>
             % else:

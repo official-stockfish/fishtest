@@ -1,10 +1,5 @@
 <%inherit file="base.mak"/>
 
-## Remove this when base.mak has the viewport meta tag
-<%block name="head">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</%block>
-
 <script>
   document.title = 'Neural Network Upload | Stockfish Testing';
 </script>

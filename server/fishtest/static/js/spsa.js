@@ -212,12 +212,7 @@
         if (!spsa_history || spsa_history.length < 2) {
           $("#div_spsa_preload").hide();
           $("#div_spsa_history_plot")
-            .html("Not enough data to generate plot.")
-            .css({
-              border: "1px solid #EEE",
-              padding: "10px",
-              width: "500px",
-            });
+            .html("<div class='alert alert-warning' role='alert'>Not enough data to generate plot.</div>");
           return;
         }
 
