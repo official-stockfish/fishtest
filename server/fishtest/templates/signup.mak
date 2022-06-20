@@ -6,8 +6,6 @@
 
 <%block name="head">
   <script src='https://www.google.com/recaptcha/api.js'></script>
-  ## Remove this when base.mak has the viewport meta tag
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </%block>
 
 <div class="col-limited-size">

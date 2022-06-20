@@ -1,10 +1,5 @@
 <%inherit file="base.mak"/>
 
-## Remove this when base.mak has the viewport meta tag
-<%block name="head">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</%block>
-
 <script>
   document.title = 'Login | Stockfish Testing';
 </script>
@@ -13,7 +8,7 @@
   <header class="text-md-center py-2">
     <h2>Login</h2>
     <div class="alert alert-info">
-      Don't have an account? 
+      Don't have an account?
       <strong><a href="/signup" class="alert-link">Sign up</a></strong>
     </div>
   </header>

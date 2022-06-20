@@ -26,7 +26,7 @@
 
 <%include file="run_table.mak" args="runs=finished_runs,
                                      header='Finished',
-                                     count=num_finished_runs, 
+                                     count=num_finished_runs,
                                      pages=finished_runs_pages,
-				     title=title"
+                     title=title"
 />

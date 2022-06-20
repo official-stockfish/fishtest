@@ -45,17 +45,18 @@
       <label for="rms-bias">RMS bias</label>
       <input id="rms-bias" class="form-control number" />
     </div>
-    <div class="col-auto form-group" style="position: relative">
+    <div class="col-auto form-group position-relative">
       <input
-        class="btn btn-success"
-        style="position: absolute; bottom: 0"
+        class="btn btn-success position-absolute bottom-0"
         type="button"
         value="Calculate"
         onclick="draw_charts();"
       />
     </div>
   </form>
-  <hr />
+  <div>
+    <hr />
+  </div>
   <div id="mouse_screen" class="row g-0">
     <div id="pass_prob_chart_div" class="chart-div col-12 col-md-6"></div>
     <div id="expected_chart_div" class="chart-div col-12 col-md-6"></div>

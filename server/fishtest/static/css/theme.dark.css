@@ -7,6 +7,7 @@
   --bg-dark-4: #444;
   --bg-dark-5: #555;
   --color-dark-1: #b1ada7;
+  --color-dark-2: #9b9b9b;
 }
 
 body {
@@ -19,17 +20,12 @@ body {
   border-color: var(--bg-dark-1);
 }
 
-.contentbase::-webkit-scrollbar-thumb {
+.main::-webkit-scrollbar-thumb {
   border-color: var(--bg-dark-1);
 }
 
-.contentbase::-webkit-scrollbar-track {
+.main::-webkit-scrollbar-track {
   background-color: var(--bg-dark-1);
-}
-
-.contentbase main > h2 {
-  background: var(--bg-dark-1);
-  box-shadow: 0px 3px 10px var(--bg-dark-1);
 }
 
 .sticky-top {
@@ -75,6 +71,23 @@ hr {
   border-bottom: 1px solid var(--bg-dark-3);
 }
 
+/* Top navbar */
+header.navbar {
+  background-color: var(--bg-dark-2);
+}
+
+.navbar {
+  --bs-navbar-brand-color: var(--color-dark-1);
+  --bs-navbar-brand-hover-color: var(--color-dark-2);
+  --bs-navbar-color: var(--color-dark-1);
+  --bs-navbar-hover-color: var(--color-dark-2);
+}
+
+.navbar-nav {
+  --bs-nav-link-color: var(--color-dark-1);
+  --bs-nav-link-hover-color: var(--color-dark-2);
+}
+
 /* Left-side main navigation sidebar */
 .mainnavbar {
   background-color: var(--bg-dark-2);
@@ -88,38 +101,26 @@ hr {
   background-color: var(--bg-dark-2);
 }
 
-.nav li.nav-header {
+.links-heading {
   color: var(--color-dark-1);
 }
 
-.nav li a,
-.nav li div {
+.links-group .links-link {
   color: var(--color-dark-1);
 }
 
-.nav li a:hover,
-.nav li div:hover {
+.links-group .links-link:hover {
   color: #e7e7e7;
-}
-
-.nav li a,
-.nav .nav-header,
-.nav li div {
-  text-shadow: 0 1px 0 rgba(10, 10, 10, 0.5);
-}
-
-.nav li a:hover,
-.nav li div:hover {
   background: var(--bg-dark-3);
 }
 
-.nav li a:focus,
-.nav li div:focus {
-  background: var(--bg-dark-4);
+.offcanvas-lg {
+  --bs-offcanvas-bg: var(--bg-dark-2);
+  --bs-border-color: var(--bg-dark-3);
 }
 
-#change-color-theme path {
-  fill: var(--color-dark-1) !important;
+.offcanvas-lg .btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%);
 }
 
 /* Text inputs and selects */
@@ -298,6 +299,12 @@ div#tasks thead {
   background-color: var(--bg-dark-1);
 }
 
+@media (max-width: 575.98px) {
+  .table-striped > tbody > tr:nth-of-type(odd) {
+    background-color: var(--bg-dark-2);
+  }
+}
+
 /* Background colors for running tasks on test run pages */
 .table tbody tr.info > td {
   background-color: #0f3373;
@@ -363,8 +370,7 @@ pre[style*="border-color:Pink"] {
   border-color: #ffffffcc !important;
 }
 
-.input-group-lg > .form-select,
-.input-group-sm > .form-select {
+.form-select {
   background: #2f2f2f;
   color: rgb(177, 173, 167);
 }

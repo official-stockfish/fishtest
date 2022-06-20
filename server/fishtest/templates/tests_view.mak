@@ -35,72 +35,74 @@ if 'spsa' in run['args']:
 
     <%! import markupsafe %>
 
-    <table class="table table-striped table-sm">
-      % for arg in run_args:
-          % if len(arg[2]) == 0:
-              <tr>
-                <td>${arg[0]}</td>
-                % if arg[0] == 'username':
-                    <td>
-                      <a href="/tests/user/${arg[1]}">${arg[1]}</a>
-                      % if approver:
-                          (<a href="/user/${arg[1]}">user admin</a>)
-                      % endif
-                    </td>
-                % elif arg[0] == 'spsa':
-                    <td>
-                      ${arg[1][0]}<br />
-                      <table>
-                        <thead>
-                          <th>param</th>
-                          <th>value</th>
-                          <th>start</th>
-                          <th>min</th>
-                          <th>max</th>
-                          <th>c</th>
-                          <th>c_end</th>
-                          <th>r</th>
-                          <th>r_end</th>
-                        </thead>
-                        <tbody>
-                          % for row in arg[1][1:]:
-                              <tr class="spsa-param-row">
-                                % for element in row:
-                                    <td>${element}</td>
-                                % endfor
-                              </tr>
-                          % endfor
-                        </tbody>
-                      </table>
-                    </td>
-                % elif arg[0] in ['resolved_new', 'resolved_base']:
-                    <td>${arg[1][:10]}</td>
-                % elif arg[0] == 'rescheduled_from':
-                    <td><a href="/tests/view/${arg[1]}">${arg[1]}</a></td>
-                % else:
-                    <td ${'class="run-info"' if arg[0]=="info" else "" | n}>
-                        ${str(markupsafe.Markup(arg[1])).replace('\n', '<br>') | n}
-                    </td>
-                % endif
-              </tr>
-          % else:
-              <tr>
-                <td>${arg[0]}</td>
-                <td>
-                  <a href="${arg[2]}" target="_blank" rel="noopener">
-                    ${str(markupsafe.Markup(arg[1]))}
-                  </a>
-                </td>
-              </tr>
-          % endif
-      % endfor
-      % if 'spsa' not in run['args']:
-          <tr>
-            <td>raw statistics</td>
-            <td><a href="/tests/stats/${str(run['_id'])}">/tests/stats/${run['_id']}</a></td>
-          </tr>
-      % endif
-    </table>
+    <div class="table-responsive-lg">
+      <table class="table table-striped table-sm">
+        % for arg in run_args:
+            % if len(arg[2]) == 0:
+                <tr>
+                  <td>${arg[0]}</td>
+                  % if arg[0] == 'username':
+                      <td>
+                        <a href="/tests/user/${arg[1]}">${arg[1]}</a>
+                        % if approver:
+                            (<a href="/user/${arg[1]}">user admin</a>)
+                        % endif
+                      </td>
+                  % elif arg[0] == 'spsa':
+                      <td>
+                        ${arg[1][0]}<br />
+                        <table class="table table-sm">
+                          <thead>
+                            <th>param</th>
+                            <th>value</th>
+                            <th>start</th>
+                            <th>min</th>
+                            <th>max</th>
+                            <th>c</th>
+                            <th>c_end</th>
+                            <th>r</th>
+                            <th>r_end</th>
+                          </thead>
+                          <tbody>
+                            % for row in arg[1][1:]:
+                                <tr class="spsa-param-row">
+                                  % for element in row:
+                                      <td>${element}</td>
+                                  % endfor
+                                </tr>
+                            % endfor
+                          </tbody>
+                        </table>
+                      </td>
+                  % elif arg[0] in ['resolved_new', 'resolved_base']:
+                      <td>${arg[1][:10]}</td>
+                  % elif arg[0] == 'rescheduled_from':
+                      <td><a href="/tests/view/${arg[1]}">${arg[1]}</a></td>
+                  % else:
+                      <td ${'class="run-info"' if arg[0]=="info" else "" | n}>
+                          ${str(markupsafe.Markup(arg[1])).replace('\n', '<br>') | n}
+                      </td>
+                  % endif
+                </tr>
+            % else:
+                <tr>
+                  <td>${arg[0]}</td>
+                  <td>
+                    <a href="${arg[2]}" target="_blank" rel="noopener">
+                      ${str(markupsafe.Markup(arg[1]))}
+                    </a>
+                  </td>
+                </tr>
+            % endif
+        % endfor
+        % if 'spsa' not in run['args']:
+            <tr>
+              <td>raw statistics</td>
+              <td><a href="/tests/stats/${str(run['_id'])}">/tests/stats/${run['_id']}</a></td>
+            </tr>
+        % endif
+      </table>
+    </div>
   </div>
 
   <div class="col-12 col-lg-3">
@@ -227,12 +229,14 @@ if 'spsa' in run['args']:
         <button id="btn_view_individual" type="button" class="btn btn-default dropdown-toggle" data-bs-toggle="dropdown">
           View Individual Parameter<span class="caret"></span>
         </button>
-	<ul class="dropdown-menu" style="z-index: 1030" role="menu" id="dropdown_individual"></ul>
+  <ul class="dropdown-menu" style="z-index: 1030" role="menu" id="dropdown_individual"></ul>
       </div>
 
       <button id="btn_view_all" class="btn">View All</button>
     </div>
-    <div id="div_spsa_history_plot"></div>
+    <div class="overflow-auto">
+      <div id="div_spsa_history_plot"></div>
+    </div>
 % endif
 
 <section id="diff-section" style="display: none">
