@@ -11,6 +11,7 @@ import platform
 import random
 import re
 import signal
+import socket
 import subprocess
 import sys
 import threading
@@ -888,18 +889,19 @@ def heartbeat(worker_info, password, remote, current_state):
         print("Heartbeat stopped")
 
 
-def read_int(file):
+def read_pid(file):
     try:
         with open(file, "r") as f:
-            return int(f.read())
+            r = f.read().split(":", 1)
+            return int(r[0]), r[1].strip()
     except:
-        return None
+        return None, None
 
 
-def write_int(file, n):
+def write_pid(file, pid, hostname):
     try:
         with open(file, "w") as f:
-            f.write("{}\n".format(n))
+            f.write("{}:{}\n".format(pid, hostname))
         return True
     except:
         return False
@@ -908,12 +910,12 @@ def write_int(file, n):
 def create_lock_file(lock_file):
     print("Creating lock file {}".format(lock_file))
     atexit.register(delete_lock_file, lock_file)
-    return write_int(lock_file, os.getpid())
+    return write_pid(lock_file, os.getpid(), socket.gethostname())
 
 
 def delete_lock_file(lock_file):
-    pid = read_int(lock_file)
-    if pid is None or pid == os.getpid():
+    pid, hostname = read_pid(lock_file)
+    if pid is None or (pid == os.getpid() and hostname == socket.gethostname()):
         print("Deleting lock file {}".format(lock_file))
         try:
             os.remove(lock_file)
@@ -921,7 +923,13 @@ def delete_lock_file(lock_file):
             print("Unable to delete lock file")
 
 
-def pid_valid(pid, name):
+def pid_valid(pid, hostname, name):
+    if hostname != socket.gethostname():
+        # We have no way of verifying a PID on a different host,
+        # so we steal the lockfile at start up. The other worker will
+        # eventually notice that its lockfile is no longer
+        # valid and stop.
+        return False
     with ExitStack() as stack:
         if IS_WINDOWS:
             cmdlet = (
@@ -964,7 +972,7 @@ def locked_by_others(lock_file, require_valid=True):
     # intend to replace it with one of our own.
     # Once we have started, we only accept a
     # valid lock file containing our own PID.
-    pid = read_int(lock_file)
+    pid, hostname = read_pid(lock_file)
     if pid is None:
         if require_valid:
             print(
@@ -972,11 +980,15 @@ def locked_by_others(lock_file, require_valid=True):
                 "Unable to read the lock file:\n{}.".format(os.getpid(), lock_file)
             )
         return require_valid
-    if pid != os.getpid() and (require_valid or pid_valid(pid, "worker.py")):
+    if (pid != os.getpid() or hostname != socket.gethostname()) and (
+        require_valid or pid_valid(pid, hostname, "worker.py")
+    ):
         print(
-            "\n*** Worker (PID={}) stopped! ***\n"
-            "Another worker (PID={}) is already running in this directory, "
-            "using the lock file:\n{}".format(os.getpid(), pid, lock_file)
+            "\n*** Worker (PID={}:{}) stopped! ***\n"
+            "Another worker (PID={}:{}) is already running in this directory, "
+            "using the lock file:\n{}".format(
+                os.getpid(), socket.gethostname(), pid, hostname, lock_file
+            )
         )
         return True
     return False
