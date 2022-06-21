@@ -952,8 +952,19 @@ def pid_valid(pid, name):
                     close_fds=not IS_WINDOWS,
                 )
             )
+            if p.returncode != 0:
+                print("It seems we are running busybox")
+                subprocess.Popen(
+                    ["ps"],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,
+                    universal_newlines=True,
+                    bufsize=1,
+                    close_fds=not IS_WINDOWS,
+                )
+
         for line in iter(p.stdout.readline, ""):
-            if name in line:
+            if name in line and str(pid) in line:
                 return True
     return False
 
