@@ -944,7 +944,8 @@ def pid_valid(pid, name):
         else:
             p = stack.enter_context(
                 subprocess.Popen(
-                    ["ps", "-f", "-p", str(pid)],
+                    # for busybox these options are undocumented...
+                    ["ps", "-f", "-a"],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.DEVNULL,
                     universal_newlines=True,
@@ -953,7 +954,7 @@ def pid_valid(pid, name):
                 )
             )
         for line in iter(p.stdout.readline, ""):
-            if name in line:
+            if name in line and str(pid) in line:
                 return True
     return False
 
