@@ -68,10 +68,6 @@ def update(restart=True, test=False):
         bkp_testing_dir = os.path.join(worker_dir, "_testing_" + time_stamp)
         shutil.move(testing_dir, bkp_testing_dir)
         os.makedirs(testing_dir)
-        # Copy the user built MacOS cutechess-cli
-        # until we will have an official MacOS build to download
-        if "darwin" in platform.system().lower():
-            shutil.copy2(os.path.join(bkp_testing_dir, "cutechess-cli"), testing_dir)
         # Delete old engine binaries
         engines = glob.glob(os.path.join(bkp_testing_dir, "stockfish_*"))
         for engine in engines:
