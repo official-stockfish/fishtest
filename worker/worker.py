@@ -3,6 +3,7 @@ import atexit
 import base64
 import datetime
 import getpass
+import glob
 import hashlib
 import math
 import multiprocessing
@@ -11,17 +12,20 @@ import platform
 import random
 import re
 import signal
+import stat
 import subprocess
 import sys
 import threading
 import time
 import traceback
 import uuid
+import shutil
 import zlib
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 from configparser import ConfigParser
 from contextlib import ExitStack
 from functools import partial
+from zipfile import ZipFile
 
 # Try to import the system wide package (eg requests).
 # Fall back to the local one if the global one does not exist.
@@ -35,10 +39,13 @@ sys.path.append(packages_dir)
 import packages.expression as expression
 import requests
 from games import (
+    EXE_SUFFIX,
     FatalException,
     RunException,
     WorkerException,
     backup_log,
+    download_from_github,
+    format_return_code,
     log,
     run_games,
     send_api_post_request,
@@ -268,6 +275,129 @@ def get_credentials(config, options, args):
                 return "", ""
 
     return username, password
+
+
+def verify_required_cutechess(testing_dir, cutechess):
+    # Verify that cutechess is working and has the required minimum version.
+    cutechess = os.path.join(testing_dir, cutechess)
+
+    print("Obtaining version info for {} ...".format(cutechess))
+
+    if not os.path.exists(cutechess):
+        print("{} does not exist ...".format(cutechess))
+        return False
+
+    try:
+        with subprocess.Popen(
+            [cutechess, "--version"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            universal_newlines=True,
+            bufsize=1,
+            close_fds=not IS_WINDOWS,
+        ) as p:
+            errors = p.stderr.read()
+            pattern = re.compile("cutechess-cli ([0-9]*).([0-9]*).([0-9]*)")
+            major, minor, patch = 0, 0, 0
+            for line in iter(p.stdout.readline, ""):
+                m = pattern.search(line)
+                if m:
+                    print("Found: ", line.strip())
+                    major = int(m.group(1))
+                    minor = int(m.group(2))
+                    patch = int(m.group(3))
+    except (OSError, subprocess.SubprocessError) as e:
+        print("Unable to run cutechess-cli. Error: {}".format(str(e)))
+        return False
+
+    if p.returncode != 0:
+        print(
+            "Unable to run cutechess-cli. Return code: {}. Error: {}".format(
+                format_return_code(p.returncode), errors
+            )
+        )
+        return False
+
+    if major + minor + patch == 0:
+        print("Unable to find the version of cutechess-cli.")
+        return False
+
+    if (major, minor) < (1, 2):
+        print("Requires cutechess 1.2 or higher, found version doesn't match")
+        return False
+
+    return True
+
+
+def setup_cutechess():
+    # Create the testing directory if missing.
+    worker_dir = os.path.dirname(os.path.realpath(__file__))
+    testing_dir = os.path.join(worker_dir, "testing")
+    if not os.path.exists(testing_dir):
+        os.makedirs(testing_dir)
+
+    try:
+        os.chdir(testing_dir)
+    except Exception as e:
+        print("Unable to enter {}. Error: {}".format(testing_dir, str(e)))
+        return False
+
+    cutechess = "cutechess-cli" + EXE_SUFFIX
+
+    if not verify_required_cutechess(testing_dir, cutechess):
+        if len(EXE_SUFFIX) > 0:
+            zipball = "cutechess-cli-win.zip"
+        elif IS_MACOS:
+            zipball = "cutechess-cli-macos-64bit.zip"
+        else:
+            zipball = "cutechess-cli-linux-{}.zip".format(platform.architecture()[0])
+        try:
+            download_from_github(zipball, testing_dir)
+            with ZipFile(zipball) as zip_file:
+                zip_file.extractall()
+            os.remove(zipball)
+            os.chmod(cutechess, os.stat(cutechess).st_mode | stat.S_IEXEC)
+        except Exception as e:
+            print(
+                "Exception downloading or extracting {}:\n".format(zipball),
+                e,
+                sep="",
+                file=sys.stderr,
+            )
+
+        if not verify_required_cutechess(testing_dir, cutechess):
+            print(
+                "The downloaded cutechess-cli is not working. Trying to restore a backup copy ..."
+            )
+            bkp_cutechess_clis = sorted(
+                glob.glob(os.path.join(worker_dir, "_testing_*", cutechess)),
+                key=os.path.getctime,
+            )
+            if bkp_cutechess_clis:
+                bkp_cutechess_cli = bkp_cutechess_clis[-1]
+                try:
+                    shutil.copy(bkp_cutechess_cli, testing_dir)
+                except Exception as e:
+                    print(
+                        "Unable to copy {} to {}. Error: {}".format(
+                            bkp_cutechess_cli, testing_dir, str(e)
+                        )
+                    )
+
+                if not verify_required_cutechess(testing_dir, cutechess):
+                    print(
+                        "The backup copy {} doesn't work either ...".format(
+                            bkp_cutechess_cli
+                        )
+                    )
+                    print("No suitable cutechess-cli found")
+                    return False
+            else:
+                print("No backup copy found")
+                print("No suitable cutechess-cli found")
+                return False
+
+    return True
 
 
 def validate(config, schema):
@@ -989,6 +1119,19 @@ def utcoffset():
     return "{}{:02d}:{:02d}".format("+" if utcoffset >= 0 else "-", hh, mm)
 
 
+def verify_worker_version(remote, username, password):
+    print("Verify worker version...")
+    payload = {"worker_info": {"username": username}, "password": password}
+    req = send_api_post_request(remote + "/api/request_version", payload)
+    if "error" in req:
+        return False
+    if req["version"] > WORKER_VERSION:
+        print("Updating worker version to {}".format(req["version"]))
+        backup_log()
+        update()
+    return True
+
+
 def fetch_and_handle_task(worker_info, password, remote, lock_file, current_state):
     # This function should normally not raise exceptions.
     # Unusual conditions are handled by returning False.
@@ -1001,8 +1144,6 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
         current_state["alive"] = False
         return False
 
-    payload = {"worker_info": worker_info, "password": password}
-
     try:
         rate, near_api_limit = get_rate()
         if near_api_limit:
@@ -1011,23 +1152,17 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
 
         worker_info["rate"] = rate
 
-        print("Verify worker version...")
-        req = send_api_post_request(remote + "/api/request_version", payload)
-
-        if "error" in req:
+        if not verify_worker_version(remote, worker_info["username"], password):
             current_state["alive"] = False
             return False
 
-        if req["version"] > WORKER_VERSION:
-            print("Updating worker version to {}".format(req["version"]))
-            backup_log()
-            update()
         print(
             "Current time is {} UTC (offset: {}) ".format(
                 datetime.datetime.utcnow(), utcoffset()
             )
         )
         print("Fetching task...")
+        payload = {"worker_info": worker_info, "password": password}
         req = send_api_post_request(remote + "/api/request_task", payload)
     except Exception as e:
         print("Exception accessing host:\n", e, sep="", file=sys.stderr)
@@ -1199,6 +1334,16 @@ def worker():
     if options.only_config:
         return 0
 
+    remote = "{}://{}:{}".format(options.protocol, options.host, options.port)
+
+    # Check the worker version and upgrade if necessary
+    if not verify_worker_version(remote, options.username, options.password):
+        return 1
+
+    # Make sure we have a working cutechess-cli
+    if not setup_cutechess():
+        return 1
+
     # Assemble the config/options data as well as some other data in a
     # "worker_info" dictionary.
     # This data will be sent to the server when a new task is requested.
@@ -1234,9 +1379,6 @@ def worker():
     print("UUID:", worker_info["unique_key"])
     with open(os.path.join(worker_dir, "uuid.txt"), "w") as f:
         f.write(worker_info["unique_key"])
-
-    # All seems to be well...
-    remote = "{}://{}:{}".format(options.protocol, options.host, options.port)
 
     # Start heartbeat thread as a daemon (not strictly necessary, but there might be bugs)
     heartbeat_thread = threading.Thread(

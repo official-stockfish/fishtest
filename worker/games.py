@@ -257,49 +257,6 @@ def required_net(engine):
     return net
 
 
-def verify_required_cutechess(testing_dir, cutechess):
-    print(
-        "Obtaining version info for {} ...".format(os.path.join(testing_dir, cutechess))
-    )
-    os.chdir(testing_dir)
-    try:
-        with subprocess.Popen(
-            [os.path.join(".", cutechess), "--version"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            universal_newlines=True,
-            bufsize=1,
-            close_fds=not IS_WINDOWS,
-        ) as p:
-            errors = p.stderr.read()
-            pattern = re.compile("cutechess-cli ([0-9]*).([0-9]*).([0-9]*)")
-            major, minor, patch = 0, 0, 0
-            for line in iter(p.stdout.readline, ""):
-                m = pattern.search(line)
-                if m:
-                    print("Found: ", line.strip())
-                    major = int(m.group(1))
-                    minor = int(m.group(2))
-                    patch = int(m.group(3))
-    except (OSError, subprocess.SubprocessError) as e:
-        raise FatalException("Unable to run cutechess-cl. Error: {}".format(str(e)))
-
-    if p.returncode != 0:
-        raise FatalException(
-            "Unable to run cutechess-cli. Return code: {}. Error: {}".format(
-                format_return_code(p.returncode), errors
-            )
-        )
-
-    if major + minor + patch == 0:
-        raise FatalException("Unable to find the version of cutechess-cli.")
-
-    if (major, minor) < (1, 2):
-        raise FatalException(
-            "Requires cutechess 1.2 or higher, found version doesn't match"
-        )
-
-
 def required_net_from_source():
     """Parse evaluate.h and ucioption.cpp to find default net"""
     net = None
@@ -1146,7 +1103,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
     if "start" in task:
         print("Variable task sizes used. Opening offset = {}".format(opening_offset))
     start_game_index = opening_offset + input_total_games
-    run_seed = int(hashlib.sha1(run["_id"].encode("utf-8")).hexdigest(), 16) % (2**30)
+    run_seed = int(hashlib.sha1(run["_id"].encode("utf-8")).hexdigest(), 16) % (2 ** 30)
 
     # Format options according to cutechess syntax.
     def parse_options(s):
@@ -1164,33 +1121,9 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
     new_options = parse_options(new_options)
     base_options = parse_options(base_options)
 
-    # Create the testing directory if missing.
+    # Clean up old engines (keeping the num_bkps most recent).
     worker_dir = os.path.dirname(os.path.realpath(__file__))
     testing_dir = os.path.join(worker_dir, "testing")
-    if not os.path.exists(testing_dir):
-        os.makedirs(testing_dir)
-
-    # Download cutechess if missing in the directory.
-    cutechess = "cutechess-cli" + EXE_SUFFIX
-    os.chdir(testing_dir)
-    if not os.path.exists(cutechess):
-        if len(EXE_SUFFIX) > 0:
-            zipball = "cutechess-cli-win.zip"
-        elif IS_MACOS:
-            zipball = "cutechess-cli-macos-64bit.zip"
-        else:
-            zipball = "cutechess-cli-linux-{}.zip".format(platform.architecture()[0])
-        download_from_github(zipball, testing_dir)
-        zip_file = ZipFile(zipball)
-        zip_file.extractall()
-        zip_file.close()
-        os.remove(zipball)
-        os.chmod(cutechess, os.stat(cutechess).st_mode | stat.S_IEXEC)
-
-    # Verify that cutechess is working and has the required minimum version.
-    verify_required_cutechess(testing_dir, cutechess)
-
-    # Clean up old engines (keeping the num_bkps most recent).
     engines = glob.glob(os.path.join(testing_dir, "stockfish_*" + EXE_SUFFIX))
     num_bkps = 50
     if len(engines) > num_bkps:
@@ -1384,6 +1317,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
             variant = "fischerandom"
 
         # Run cutechess binary.
+        cutechess = "cutechess-cli" + EXE_SUFFIX
         cmd = (
             [
                 os.path.join(testing_dir, cutechess),
