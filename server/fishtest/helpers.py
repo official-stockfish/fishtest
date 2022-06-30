@@ -5,7 +5,8 @@ def tests_repo(run):
 
 
 def master_diff_url(run):
-    return "https://github.com/official-stockfish/Stockfish/compare/master...{}".format(
+    return "{}/compare/master...{}".format(
+        tests_repo(run),
         run["args"]["resolved_base"][:10]
     )
 
