@@ -6,8 +6,7 @@ def tests_repo(run):
 
 def master_diff_url(run):
     return "{}/compare/master...{}".format(
-        tests_repo(run),
-        run["args"]["resolved_base"][:10]
+        tests_repo(run), run["args"]["resolved_base"][:10]
     )
 
 
