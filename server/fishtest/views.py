@@ -1182,11 +1182,14 @@ def get_paginated_finished_runs(request):
             "state": "disabled" if page_idx == 0 else "",
         }
     ]
+    last_idx = (num_finished_runs - 1) // page_size
     for idx, _ in enumerate(range(0, num_finished_runs, page_size)):
         if (
-            idx < 5
-            or abs(page_idx - idx) < 5
-            or idx > (num_finished_runs / page_size) - 5
+            idx < 1
+            or (idx < 5 and page_idx < 4)
+            or abs(idx - page_idx) < 2
+            or (idx > last_idx - 5 and page_idx > last_idx - 4)
+            or idx > last_idx - 1
         ):
             pages.append(
                 {
