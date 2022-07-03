@@ -23,19 +23,20 @@ from configparser import ConfigParser
 from contextlib import ExitStack
 from functools import partial
 
-# Try to import an user installed package,
-# fall back to the local one in case of error.
 
 packages_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "packages")
-try:
-    import requests
-except ImportError:
-    sys.path.append(packages_dir)
-    import requests
+sys.path.append(packages_dir)
 
-if packages_dir not in sys.path:
-    sys.path.append(packages_dir)
-import expression
+# Try to import the system wide requests package.
+# Fall back to the local one if the global one does not exist.
+
+import requests
+
+# Several packages are called "expression".
+# So we make sure to use the locally installed one.
+
+import packages.expression as expression
+
 from games import (
     FatalException,
     RunException,
