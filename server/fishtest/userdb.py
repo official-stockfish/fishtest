@@ -4,6 +4,7 @@ import time
 from datetime import datetime
 
 from pymongo import ASCENDING
+from argon2 import PasswordHasher
 
 
 class UserDb:
@@ -33,16 +34,32 @@ class UserDb:
         with self.user_lock:
             self.cache.clear()
 
+    def hash_password(self, password):
+        return PasswordHasher().hash(password)
+
+    def check_password(self, hashed_password, password):
+        try:
+            return PasswordHasher().verify(hashed_password, password)
+        except:
+            return False
+
     def authenticate(self, username, password):
         user = self.find(username)
-        if not user or user["password"] != password:
-            sys.stderr.write("Invalid login: '{}' '{}'\n".format(username, password))
-            return {"error": "Invalid password for user: {}".format(username)}
-        if "blocked" in user and user["blocked"]:
-            sys.stderr.write("Blocked login: '{}' '{}'\n".format(username, password))
-            return {"error": "Account blocked for user: {}".format(username)}
-
-        return {"username": username, "authenticated": True}
+        if user:
+            if "blocked" in user and user["blocked"]:
+                sys.stderr.write("Blocked login attempt: '{}'\n".format(username))
+                return {"error": "Account blocked for user: {}".format(username)}
+            if self.check_password(user["password"], password):
+                return {"username": username, "authenticated": True}
+            # remove elif logic after all the passwords in userdb are hashed
+            elif user["password"] == password:
+                user["password"] = self.hash_password(user["password"])
+                self.save_user(user)
+                return {"username": username, "authenticated": True}
+            else:
+                return {"error": "Invalid credentials"}
+        else:
+            return {"error": "Invalid credentials"}
 
     def get_users(self):
         return self.users.find(sort=[("_id", ASCENDING)])

@@ -49,6 +49,7 @@ class Create50LoginTest(unittest.TestCase):
         testing.tearDown()
 
     def test_login(self):
+        # blocked user, wrong password
         request = testing.DummyRequest(
             userdb=self.rundb.userdb,
             method="POST",
@@ -56,20 +57,28 @@ class Create50LoginTest(unittest.TestCase):
         )
         response = login(request)
         self.assertTrue(
-            "Invalid password for user: JoeUser" in request.session.pop_flash("error")
+            "Account blocked for user: JoeUser" in request.session.pop_flash("error")[0]
         )
 
-        # Correct password, but still blocked from logging in
+        # blocked user, correct password
         request.params["password"] = "secret"
-        login(request)
+        response = login(request)
         self.assertTrue(
             "Account blocked for user: JoeUser" in request.session.pop_flash("error")[0]
         )
 
-        # Unblock, then user can log in successfully
+        # allowed user, wrong password
         user = self.rundb.userdb.get_user("JoeUser")
         user["blocked"] = False
         self.rundb.userdb.save_user(user)
+        request.params["password"] = "badsecret"
+        response = login(request)
+        self.assertTrue(
+            "Invalid credentials" in request.session.pop_flash("error")
+        )
+
+        # allowed user, correct password
+        request.params["password"] = "secret"
         response = login(request)
         self.assertEqual(response.code, 302)
         self.assertTrue("The resource was found at" in str(response))

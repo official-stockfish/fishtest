@@ -276,7 +276,9 @@ def signup(request):
                 return {}
 
     result = request.userdb.create_user(
-        username=signup_username, password=signup_password, email=validated_email
+        username=signup_username,
+        password=request.userdb.hash_password(signup_password),
+        email=validated_email
     )
     if not result:
         request.session.flash("Error! Invalid username or password", "error")
@@ -464,7 +466,7 @@ def user(request):
                         (new_email if len(new_email) > 0 else None),
                     )
                     if strong_password:
-                        user_data["password"] = new_password
+                        user_data["password"] = request.userdb.hash_password(new_password)
                         request.session.flash("Success! Password updated")
                     else:
                         request.session.flash(
