@@ -23,20 +23,17 @@ from configparser import ConfigParser
 from contextlib import ExitStack
 from functools import partial
 
+# Try to import the system wide package (eg requests).
+# Fall back to the local one if the global one does not exist.
 
 packages_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "packages")
 sys.path.append(packages_dir)
-
-# Try to import the system wide requests package.
-# Fall back to the local one if the global one does not exist.
-
-import requests
 
 # Several packages are called "expression".
 # So we make sure to use the locally installed one.
 
 import packages.expression as expression
-
+import requests
 from games import (
     FatalException,
     RunException,
@@ -49,7 +46,7 @@ from games import (
 )
 from updater import update
 
-WORKER_VERSION = 172
+WORKER_VERSION = 173
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
 THREAD_JOIN_TIMEOUT = 15.0
