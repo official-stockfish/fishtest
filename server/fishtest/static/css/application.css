@@ -113,6 +113,16 @@
   min-width: 53px;
 }
 
+.bg-light-primary {
+  background-color: rgba(var(--bs-primary-rgb), .15);
+  color: var(--bs-primary);
+}
+
+.bg-light-secondary {
+  background-color: rgba(var(--bs-secondary-rgb), .15);
+  color: var(--bs-secondary);
+}
+
 /* Confirm deny button */
 .run-deny .dropdown-menu.show {
   min-width: 0;
