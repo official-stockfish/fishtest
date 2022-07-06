@@ -241,12 +241,12 @@ if 'spsa' in run['args']:
 
 <section id="diff-section" style="display: none">
   <h4>
-    <button id="diff-toggle" class="btn btn-sm btn-light border">Show</button>
+    <button id="diff-toggle" class="btn btn-sm btn-light border mb-2">Show</button>
     Diff
     <span id="diff-num-comments" style="display: none"></span>
-    <a href="${h.diff_url(run)}" class="btn btn-link" target="_blank" rel="noopener">View on Github</a>
-    <a href="javascript:" id="copy-diff" class="btn btn-link" style="margin-left: 10px; display: none">Copy apply-diff command</a>
-    <div class="btn btn-link copied" style="color: green; display: none">Copied command!</div>
+    <a href="${h.diff_url(run)}" class="btn btn-primary bg-light-primary border-0 mb-2" target="_blank" rel="noopener">View on Github</a>
+    <a href="javascript:" id="copy-diff" class="btn btn-secondary bg-light-secondary border-0 mb-2" style="display: none">Copy apply-diff command</a>
+    <span class="text-success copied text-nowrap" style="display: none">Copied!</span>
   </h4>
   <pre id="diff-contents"><code class="diff"></code></pre>
 </section>

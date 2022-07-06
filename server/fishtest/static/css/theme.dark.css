@@ -245,10 +245,6 @@ input[type="checkbox"]:focus {
   box-shadow: 0 0 0 0.25rem rgb(66 70 73 / 50%);
 }
 
-.btn-link {
-  color: #63daff;
-}
-
 /* Pagination links */
 .pagination li .page-link {
   color: var(--color-dark-1);
