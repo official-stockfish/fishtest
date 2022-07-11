@@ -84,6 +84,13 @@
   .offcanvas-body::-webkit-scrollbar {
     display: none
   }
+
+  .card-lg-sm {
+    --bs-card-spacer-y: 0.5rem;
+    --bs-card-spacer-x: 0.5rem;
+    --bs-card-cap-padding-y: 0.25rem;
+    --bs-card-cap-padding-x: 0.5rem;
+  }
 }
 
 .main {
@@ -522,7 +529,15 @@ option.grayedoutoption {
   background-color: LightGray;
 }
 
+.mw-xxl {
+  max-width: 1320px;
+}
+
 .col-limited-size {
   max-width: 450px;
   margin: 0 auto 30px auto;
+}
+
+.monospace {
+  font-family: var(--bs-font-monospace);
 }

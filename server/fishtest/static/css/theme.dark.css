@@ -450,3 +450,9 @@ option.grayedoutoption {
 #ELO_chart_div path:nth-child(5) {
   fill: #880000;
 }
+
+/* Cards */
+.card {
+  color: var(--color-dark-1);
+  background-color: var(--bg-dark-2);
+}
