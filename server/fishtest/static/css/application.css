@@ -121,6 +121,11 @@
   border: none;
 }
 
+.dropdown-menu {
+  max-height: 10em;
+  overflow: auto;
+}
+
 a {
   color: #008002;
   text-decoration: none;
