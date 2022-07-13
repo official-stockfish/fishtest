@@ -229,7 +229,7 @@ if 'spsa' in run['args']:
         <button id="btn_view_individual" type="button" class="btn btn-default dropdown-toggle" data-bs-toggle="dropdown">
           View Individual Parameter<span class="caret"></span>
         </button>
-  <ul class="dropdown-menu" style="z-index: 1030" role="menu" id="dropdown_individual"></ul>
+        <ul class="dropdown-menu" role="menu" id="dropdown_individual"></ul>
       </div>
 
       <button id="btn_view_all" class="btn">View All</button>
