@@ -49,7 +49,11 @@
 <h4>
 % if toggle:
     <button id="${toggle}-button" class="btn btn-sm btn-light border" onclick="toggle_${toggle}()">
-    ${'Hide' if get_cookie(request, cookie_name)=='Hide' else 'Show'}
+    % if toggle == "pending" or toggle == "active" or toggle == "finished":
+      ${'Show' if get_cookie(request, cookie_name)=='Show' else 'Hide'}
+    % else:
+      ${'Hide' if get_cookie(request, cookie_name)=='Hide' else 'Show'}
+    % endif
     </button>
 % endif
 % if header is not None and count is not None:
@@ -63,7 +67,9 @@
 
 <div
    id="${toggle}"
-% if toggle:
+% if toggle == "pending" or toggle == "active" or toggle == "finished":
+   style="${'display: none;' if get_cookie(request, cookie_name)=='Show' else ''}"
+% elif toggle:
    style="${'' if get_cookie(request, cookie_name)=='Hide' else 'display: none;'}"
 % endif
 >
