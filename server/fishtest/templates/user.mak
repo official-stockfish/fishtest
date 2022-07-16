@@ -71,18 +71,18 @@
         blocked = user['blocked'] if 'blocked' in user else False
         checked = 'checked' if blocked else ''
       %>
-      <div class="list-group">
-        <label class="list-group-item d-flex gap-2 mb-3 rounded-2">
+        <div class="mb-3 form-check">
+          <label for="blocked" role="button">Blocked</label>
           <input
-            class="form-check-input flex-shrink-0"
             type="checkbox"
+            class="form-check-input"
+            id="blocked"
             name="blocked"
             value="True"
+            role="button"
             ${checked}
-          >
-          <span>Blocked</span>
-        </label>
-      </div>
+          />
+        </div>
     % endif
 
     <button type="submit" class="btn btn-primary w-100">Submit</button>

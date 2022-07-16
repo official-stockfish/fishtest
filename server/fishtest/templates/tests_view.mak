@@ -33,7 +33,9 @@ if 'spsa' in run['args']:
   <div class="col-12 col-lg-9">
     <h4>Details</h4>
 
-    <%! import markupsafe %>
+    <%!
+      import markupsafe
+    %>
 
     <div class="table-responsive-lg">
       <table class="table table-striped table-sm">
@@ -107,87 +109,85 @@ if 'spsa' in run['args']:
 
   <div class="col-12 col-lg-3">
     <h4>Actions</h4>
-    % if not run['finished']:
-        <form action="/tests/stop" method="POST" style="display: inline;">
-          <input type="hidden" name="run-id" value="${run['_id']}">
-          <button type="submit" class="btn btn-danger">
-            Stop
-          </button>
-        </form>
+    <div class="row g-2 mb-2">
+      % if not run['finished']:
+        <div class="col-12 col-sm">
+          <form action="/tests/stop" method="POST">
+            <input type="hidden" name="run-id" value="${run['_id']}">
+            <button type="submit" class="btn btn-danger w-100">
+              Stop
+            </button>
+          </form>
+        </div>
 
         % if not run.get('approved', False):
-            <span>
-              <form action="/tests/approve" method="POST" style="display: inline;">
-                <input type="hidden" name="run-id" value="${run['_id']}">
-                <button type="submit" id="approve-btn"
-                        class="btn ${'btn-success' if run['base_same_as_master'] else 'btn-warning'}">
-                  Approve
-                </button>
-              </form>
-            </span>
+          <div class="col-12 col-sm">
+            <form action="/tests/approve" method="POST">
+              <input type="hidden" name="run-id" value="${run['_id']}">
+              <button type="submit" id="approve-btn"
+                      class="btn ${'btn-success' if run['base_same_as_master'] else 'btn-warning'} w-100">
+                Approve
+              </button>
+            </form>
+          </div>
         % endif
-    % else:
-        <form action="/tests/purge" method="POST" style="display: inline;">
-          <input type="hidden" name="run-id" value="${run['_id']}">
-          <button type="submit" class="btn btn-danger">
-            Purge
-          </button>
-        </form>
-    % endif
-    <a href="/tests/run?id=${run['_id']}">
-      <button class="btn btn-light border">Reschedule</button>
-    </a>
-
-    <br>
-    <br>
+      % else:
+        <div class="col-12 col-sm">
+          <form action="/tests/purge" method="POST">
+            <input type="hidden" name="run-id" value="${run['_id']}">
+            <button type="submit" class="btn btn-danger w-100">Purge</button>
+          </form>
+        </div>
+      % endif
+      <div class="col-12 col-sm">
+        <a class="btn btn-light border w-100" href="/tests/run?id=${run['_id']}">Reschedule</a>
+      </div>
+    </div>
 
     % if run.get('base_same_as_master') is not None:
-        <div id="master-diff"
-            class="alert ${'alert-success' if run['base_same_as_master'] else 'alert-danger'}">
-          % if run['base_same_as_master']:
+        % if run['base_same_as_master']:
+            <div id="master-diff" class="alert alert-success">
               Base branch same as Stockfish master
-          % else:
+        % else:
+            <div id="master-diff" class="alert alert-danger mb-2">
               Base branch not same as Stockfish master
-          % endif
-        </div>
+        % endif
+            </div>
     % endif
 
     % if not run.get('base_same_as_master'):
-        <a href="${h.master_diff_url(run)}" target="_blank" rel="noopener">Master diff</a>
+        <div class="alert alert-warning">
+          <a class="alert-link" href="${h.master_diff_url(run)}" target="_blank" rel="noopener">Master diff</a>
+        </div>
     % endif
 
     <hr>
 
     <form class="form" action="/tests/modify" method="POST">
-      <label class="control-label">Number of games:</label>
-      <div class="input-group mb-3">
-        <input type="text" name="num-games" value="${run['args']['num_games']}"
-               class="form-control">
+      <div class="mb-3">
+        <label class="form-label" for="modify-num-games">Number of games</label>
+        <input type="number" class="form-control" name="num-games" id="modify-num-games" min="0" step="1000" value="${run['args']['num_games']}">
       </div>
 
-      <label class="control-label">Adjust priority (higher is more urgent):</label>
-      <div class="input-group mb-3">
-        <input type="text" name="priority" value="${run['args']['priority']}"
-               class="form-control">
+      <div class="mb-3">
+        <label class="form-label" for="modify-priority">Priority (higher is more urgent)</label>
+        <input type="number" class="form-control" name="priority" id="modify-priority" value="${run['args']['priority']}">
       </div>
 
-      <label class="control-label">Adjust throughput (%):</label>
-      <div class="input-group mb-3">
-        <input type="text" name="throughput" value="${run['args'].get('throughput', 1000)}"
-               class="form-control">
+      <label class="form-label" for="modify-throughput">Throughput</label>
+      <div class="mb-3 input-group">
+        <input type="number" class="form-control" name="throughput" id="modify-throughput" min="0" value="${run['args'].get('throughput', 1000)}">
+        <span class="input-group-text">%</span>
       </div>
 
-      <div class="control-group">
-        <label class="checkbox">
-          <input type="checkbox" name="auto_purge"
-                 ${'checked' if run['args'].get('auto_purge') else ''} />
-          Auto-purge
-        </label>
+      <div class="mb-3 form-check">
+        <input type="checkbox" role="button" class="form-check-input" id="auto-purge" name="auto_purge"
+               ${'checked' if run['args'].get('auto_purge') else ''} />
+        <label class="form-check-label" role="button" for="auto-purge">Auto-purge</label>
       </div>
 
       <input type="hidden" name="run" value="${run['_id']}" />
-      <br>
-      <button type="submit" class="btn btn-primary">Modify</button>
+      <button type="submit" class="btn btn-primary col-12 col-md-auto">Modify</button>
     </form>
 
     % if 'spsa' not in run['args']:

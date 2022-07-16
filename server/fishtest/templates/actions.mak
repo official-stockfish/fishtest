@@ -3,7 +3,6 @@
   import datetime
 %>
 <h2>Events Log</h2>
-<p></p>
 <script>
   document.title = 'Events Log | Stockfish Testing';
 
@@ -13,28 +12,34 @@
   }
 </script>
 
-<form onsubmit="timestamp();">
-  Show only:
-  <select id="restrict" name="action">
-    <option value="">All</option>
-    <option value="new_run">New Run</option>
-    <option value="approve_run">Approve Run</option>
-    <option value="modify_run">Modify Run</option>
-    <option value="stop_run">Stop Run</option>
-    <option value="delete_run">Delete Run</option>
-    <option value="purge_run">Purge Run</option>
-    <option value="block_user">Block/Unblock User</option>
-    <option value="upload_nn">Upload NN file</option>
-    <option value="failed_task">Failed Tasks</option>
-    <option class=grayedoutoption value="dead_task">Dead Tasks</option>
-    <option class=grayedoutoption value="update_stats">System Events</option>
-  </select>
-  &nbsp;From user:
-  <input id="user" type="text" name="user" class="submit_on_enter">
-  <br/>
+<form onsubmit="timestamp();" class="row mb-3">
+  <div class="col-12 col-md-auto mb-3">
+    <label for="restrict" class="form-label">Show only</label>
+    <select id="restrict" class="form-select" name="action">
+      <option value="">All</option>
+      <option value="new_run">New Run</option>
+      <option value="approve_run">Approve Run</option>
+      <option value="modify_run">Modify Run</option>
+      <option value="stop_run">Stop Run</option>
+      <option value="delete_run">Delete Run</option>
+      <option value="purge_run">Purge Run</option>
+      <option value="block_user">Block/Unblock User</option>
+      <option value="upload_nn">Upload NN file</option>
+      <option value="failed_task">Failed Tasks</option>
+      <option value="dead_task" class="grayedoutoption">Dead Tasks</option>
+      <option value="update_stats" class="grayedoutoption">System Events</option>
+    </select>
+  </div>
+  <div class="col-12 col-md-auto mb-3">
+    <label for="user" class="form-label">From user</label>
+    <input id="user" type="text" name="user" class="form-control" placeholder="username" value="${request.GET.get('user') if request.GET.get('user') != None else ''}">
+  </div>
+
   <input type="hidden" id="before" name="before" value=-1>
   <input type="hidden" id="count" name="count" value=100>
-<button type="submit" class="btn btn-success">Select</button>
+  <div class="col-12 col-md-auto mb-3 d-flex align-items-end">
+    <button type="submit" class="btn btn-success w-100">Select</button>
+  </div>
 </form>
 
 <div class="table-responsive-lg">
@@ -50,7 +55,7 @@
     <tbody>
       % for action in actions:
           <tr>
-## Dates in mongodb have millisecond precision. So they fit comfortably in a float without precision loss.
+            ## Dates in mongodb have millisecond precision. So they fit comfortably in a float without precision loss.
             <td><a href=/actions?count=1&before=${action['time'].replace(tzinfo=datetime.timezone.utc).timestamp()}>
              ${action['time'].strftime(r"%y&#8209;%m&#8209;%d %H:%M:%S")|n}</a></td>
             % if approver and 'fishtest.' not in action['username']:
@@ -71,3 +76,7 @@
     </tbody>
   </table>
 </div>
+
+<script>
+  $('#restrict').val('${request.GET.get("action") if request.GET.get("action") != None else ''}');
+</script>
