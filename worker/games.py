@@ -956,7 +956,7 @@ def launch_cutechess(
             print("Server told us task is no longer needed")
             return False
 
-        result["spsa"] = {"num_games": games_to_play}
+        result["spsa"] = {"num_games": games_to_play, "wins": 0, "losses": 0, "draws": 0}
 
         w_params = req["w_params"]
         b_params = req["b_params"]
