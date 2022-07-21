@@ -11,6 +11,7 @@ import os
 import platform
 import random
 import re
+import shutil
 import signal
 import stat
 import subprocess
@@ -19,7 +20,6 @@ import threading
 import time
 import traceback
 import uuid
-import shutil
 import zlib
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 from configparser import ConfigParser
@@ -53,7 +53,7 @@ from games import (
 )
 from updater import update
 
-WORKER_VERSION = 173
+WORKER_VERSION = 174
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
 THREAD_JOIN_TIMEOUT = 15.0
