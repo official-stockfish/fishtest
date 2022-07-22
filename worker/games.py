@@ -1180,7 +1180,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
     ):
         zipball = book + ".zip"
         download_from_github(zipball, testing_dir)
-        with ZipFile(zipball) as zip_file: 
+        with ZipFile(zipball) as zip_file:
             zip_file.extractall()
         os.remove(zipball)
 
