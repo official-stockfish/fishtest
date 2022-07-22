@@ -1337,7 +1337,11 @@ def worker():
     remote = "{}://{}:{}".format(options.protocol, options.host, options.port)
 
     # Check the worker version and upgrade if necessary
-    if not verify_worker_version(remote, options.username, options.password):
+    try:
+        if not verify_worker_version(remote, options.username, options.password):
+            return 1
+    except Exception as e:
+        print("Exception verifying worker version:\n", e, sep="", file=sys.stderr)
         return 1
 
     # Make sure we have a working cutechess-cli
