@@ -35,9 +35,8 @@ def update(restart=True, test=False):
     with open(worker_zip, "wb+") as f:
         f.write(requests.get(WORKER_URL).content)
 
-    zip_file = ZipFile(worker_zip)
-    zip_file.extractall(update_dir)
-    zip_file.close()
+    with ZipFile(worker_zip) as zip_file:
+        zip_file.extractall(update_dir)
     prefix = os.path.commonprefix([n.filename for n in zip_file.infolist()])
     worker_src = os.path.join(update_dir, prefix, "worker")
     if not test:

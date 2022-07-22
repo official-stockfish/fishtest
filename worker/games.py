@@ -593,9 +593,8 @@ def setup_engine(
                     github_api(repo_url) + "/zipball/" + sha, timeout=HTTP_TIMEOUT
                 ).content
             )
-        zip_file = ZipFile("sf.gz")
-        zip_file.extractall()
-        zip_file.close()
+        with ZipFile("sf.gz") as zip_file:
+            zip_file.extractall()
         prefix = os.path.commonprefix([n.filename for n in zip_file.infolist()])
         os.chdir(os.path.join(tmp_dir, prefix, "src"))
 
@@ -1181,9 +1180,8 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
     ):
         zipball = book + ".zip"
         download_from_github(zipball, testing_dir)
-        zip_file = ZipFile(zipball)
-        zip_file.extractall()
-        zip_file.close()
+        with ZipFile(zipball) as zip_file: 
+            zip_file.extractall()
         os.remove(zipball)
 
     # Clean up the old networks (keeping the num_bkps most recent)
