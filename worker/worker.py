@@ -626,7 +626,7 @@ def setup_parameters(worker_dir):
         default=config.getboolean("parameters", "fleet"),
         type=_bool,
         choices=[False, True],  # useful for usage message
-        help="if 'False', quit in case of errors or if no task is available",
+        help="if 'True', quit in case of errors or if no task is available",
     )
     parser.add_argument(
         "-C",
