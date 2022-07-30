@@ -181,9 +181,9 @@ if 'spsa' in run['args']:
       </div>
 
       <div class="mb-3 form-check">
-        <input type="checkbox" role="button" class="form-check-input" id="auto-purge" name="auto_purge"
+        <input type="checkbox" class="form-check-input" id="auto-purge" name="auto_purge"
                ${'checked' if run['args'].get('auto_purge') else ''} />
-        <label class="form-check-label" role="button" for="auto-purge">Auto-purge</label>
+        <label class="form-check-label" for="auto-purge">Auto-purge</label>
       </div>
 
       <input type="hidden" name="run" value="${run['_id']}" />

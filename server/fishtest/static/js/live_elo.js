@@ -216,8 +216,7 @@ function alert_(message) {
   } else {
     errorElement.style.display = "block";
     errorElement.innerHTML =
-      '<i class="material-icons" style="vertical-align:bottom;">error</i> ' +
-      message;
+      `<div class="alert alert-danger" role="alert">${message}</div>`;
   }
 }
 
@@ -254,7 +253,7 @@ function follow_live(test_id, retry) {
             true
           );
         } else {
-          alert_("Network or server error.");
+          alert_("Network or server error");
         }
       }
     }
