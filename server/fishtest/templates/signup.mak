@@ -33,7 +33,8 @@
         placeholder="Username"
         pattern="[A-Za-z0-9]{2,}"
         title="Only letters and digits and at least 2 long"
-        required="required"
+        required
+        autofocus
       />
       <label for="username" class="d-flex align-items-end">Username</label>
     </div>
@@ -47,7 +48,7 @@
         placeholder="Password"
         pattern=".{8,}"
         title="Eight or more characters: a password too simple or trivial to guess will be rejected"
-        required="required"
+        required
       />
       <label for="password" class="d-flex align-items-end">Password</label>
     </div>
@@ -59,7 +60,7 @@
         id="password2"
         name="password2"
         placeholder="Repeat Password"
-        required="required"
+        required
       />
       <label for="password2" class="d-flex align-items-end">Repeat Password</label>
     </div>
@@ -71,7 +72,7 @@
         id="email"
         name="email"
         placeholder="Email"
-        required="required"
+        required
       />
       <label for="email" class="d-flex align-items-end">Email</label>
     </div>

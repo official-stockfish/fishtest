@@ -21,7 +21,7 @@
     </div>
 
     <div class="mb-3 form-check">
-      <label for="enable">You are the author of this network or have obtained the network with a CC0 license.</label>
+      <label class="form-check-label" for="enable">You are the author of this network or have obtained the network with a CC0 license.</label>
       <input type="checkbox" class="form-check-input" id="enable" onclick="doLicense()">
     </div>
 

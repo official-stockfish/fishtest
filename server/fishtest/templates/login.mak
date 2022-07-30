@@ -21,6 +21,8 @@
         id="username"
         name="username"
         placeholder="Username"
+        required
+        autofocus
       />
       <label for="username" class="d-flex align-items-end">Username</label>
     </div>
@@ -32,12 +34,13 @@
         id="password"
         name="password"
         placeholder="Password"
+        required
       />
       <label for="password" class="d-flex align-items-end">Password</label>
     </div>
 
     <div class="mb-3 form-check">
-      <label for="staylogged">Remember me</label>
+      <label class="form-check-label" for="staylogged">Remember me</label>
       <input
         type="checkbox"
         class="form-check-input"

@@ -541,3 +541,8 @@ option.grayedoutoption {
 .monospace {
   font-family: var(--bs-font-monospace);
 }
+
+input[type="checkbox"],
+.form-check-label {
+  cursor: pointer;
+}

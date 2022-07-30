@@ -36,7 +36,7 @@
           name="email"
           value="${user['email']}"
           placeholder="Email"
-          required="required"
+          required
         />
         <label for="email" class="d-flex align-items-end">Email</label>
       </div>
@@ -50,7 +50,7 @@
           placeholder="Password"
           pattern=".{8,}"
           title="Eight or more characters: a password too simple or trivial to guess will be rejected"
-          required="required"
+          required
         />
         <label for="password" class="d-flex align-items-end">New Password</label>
       </div>
@@ -62,7 +62,7 @@
           id="password2"
           name="password2"
           placeholder="Repeat Password"
-          required="required"
+          required
         />
         <label for="password2" class="d-flex align-items-end">Repeat Password</label>
       </div>
@@ -72,14 +72,13 @@
         checked = 'checked' if blocked else ''
       %>
         <div class="mb-3 form-check">
-          <label for="blocked" role="button">Blocked</label>
+          <label class="form-check-label" for="blocked">Blocked</label>
           <input
             type="checkbox"
             class="form-check-input"
             id="blocked"
             name="blocked"
             value="True"
-            role="button"
             ${checked}
           />
         </div>
