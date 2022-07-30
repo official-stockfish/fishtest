@@ -223,10 +223,10 @@ else:
 
         <div class="input-group input-group-sm">
           <select name="bounds" class="form-select stop_rule sprt" style="width: 246px">
-            <option value="standard STC">Standard STC ${fb(0.0, 2.5)}</option>
-            <option value="standard LTC">Standard LTC ${fb(0.5, 3.0)}</option>
-            <option value="regression STC">Non-regression STC ${fb(-2.25, 0.25)}</option>
-            <option value="regression LTC">Non-regression LTC ${fb(-2.25, 0.25)}</option>
+            <option value="standard STC">Standard STC ${fb(0.0, 2.0)}</option>
+            <option value="standard LTC">Standard LTC ${fb(0.5, 2.5)}</option>
+            <option value="regression STC">Non-regression STC ${fb(-1.75, 0.25)}</option>
+            <option value="regression LTC">Non-regression LTC ${fb(-1.75, 0.25)}</option>
             <option value="custom" ${is_rerun and 'selected'}>Custom bounds...</option>
           </select>
         </div>
@@ -401,10 +401,10 @@ else:
   });
 
   const preset_bounds = {
-    'standard STC': [ 0.0, 2.5],
-    'standard LTC': [ 0.5, 3.0],
-    'regression STC': [-2.25, 0.25],
-    'regression LTC': [-2.25, 0.25],
+    'standard STC': [ 0.0, 2.0],
+    'standard LTC': [ 0.5, 2.5],
+    'regression STC': [-1.75, 0.25],
+    'regression LTC': [-1.75, 0.25],
   };
 
   function update_sprt_bounds(selected_bounds_name) {
