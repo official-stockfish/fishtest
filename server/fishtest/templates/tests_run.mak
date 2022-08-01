@@ -243,7 +243,7 @@ else:
               style="${args.get('sprt') or 'display: none'}">SPRT Elo1</label>
         <input type="number" step="0.05" name="sprt_elo1"
               class="sprt custom_bounds no-arrows form-control"
-              value="${args.get('sprt', {'elo1': 2.5})['elo1']}"
+              value="${args.get('sprt', {'elo1': 2.0})['elo1']}"
               style="width: 90px; ${args.get('sprt') or 'display: none'}" />
       </div>
 
