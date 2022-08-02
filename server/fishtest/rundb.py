@@ -912,13 +912,13 @@ class RunDb:
                 error = "Update_task: the number of games received for task {}/{} is incompatible with the SPRT batch size".format(
                     run_id, task_id
                 )
-        elif    ("stats" in task
-            and ((task["stats"]["time_losses"] + task["stats"]["crashes"])*100 > num_games)
+        elif "stats" in task and error == "":
+            crashes, time_losses = task["stats"].get("crashes", 0), task["stats"].get("time_losses", 0)
             # Allow workers at most 1% bad data, however patches which break TM need special handling (TODO?)
-            and error == ""):
-            error = "Update task: task {}/{} has too many crashes+timelosses ({}+{})".format(
-                run_id, task_id, task["stats"]["crashes"], task["stats"]["time_losses"]
-            )
+            if (crashes + time_losses) * 100 > num_games:
+                error = "Update task: task {}/{} has too many crashes+timelosses ({}+{})".format(
+                    run_id, task_id, crashes, time_losses
+                )
 
         if error != "":
             print(error, flush=True)
