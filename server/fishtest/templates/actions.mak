@@ -7,7 +7,7 @@
   document.title = 'Events Log | Stockfish Testing';
 
   function timestamp(){
-    $('#before').val(Date.now()/1000);
+    document.querySelector('#before').value = Date.now() / 1000;
     return true;
   }
 </script>
@@ -78,5 +78,5 @@
 </div>
 
 <script>
-  $('#restrict').val('${request.GET.get("action") if request.GET.get("action") != None else ''}');
+  document.querySelector('#restrict').value = ('${request.GET.get("action") if request.GET.get("action") != None else ''}');
 </script>

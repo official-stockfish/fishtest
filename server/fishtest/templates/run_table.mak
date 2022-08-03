@@ -29,26 +29,28 @@
 <%
   from fishtest.util import get_cookie
   if toggle:
-    cookie_name = toggle+"-state"
+    cookie_name = toggle+"_state"
 %>
 
 % if toggle:
 <script>
-    function toggle_${toggle}() {
-        var button = $("#${toggle}-button");
-        var div = $("#${toggle}");
-        var active = button.text().trim() === 'Hide';
-        button.text(active ? 'Show' : 'Hide');
-        div.slideToggle(150);
-        $.cookie('${cookie_name}', button.text().trim(), {expires : 3650});
-    }
+  function toggle_${toggle}() {
+    const button = document.querySelector("#${toggle}-button");
+    const div = document.querySelector("#${toggle}");
+    const active = button.innerText.trim() === "Hide";
+    button.innerText = active ? "Show" : "Hide";
+    document.cookie =
+      "${cookie_name}" + "=" + button.innerText.trim() + ";max-age=315360000";
+  }
 </script>
 % endif
 
 
 <h4>
 % if toggle:
-    <button id="${toggle}-button" class="btn btn-sm btn-light border" onclick="toggle_${toggle}()">
+    <button id="${toggle}-button" class="btn btn-sm btn-light border" 
+    data-bs-toggle="collapse" href="#${toggle}" role="button" aria-expanded="false"
+    aria-controls="${toggle}" onclick="toggle_${toggle}()">
     ${'Hide' if get_cookie(request, cookie_name)=='Hide' else 'Show'}
     </button>
 % endif
@@ -64,7 +66,7 @@
 <div
    id="${toggle}"
 % if toggle:
-   style="${'' if get_cookie(request, cookie_name)=='Hide' else 'display: none;'}"
+   class="${'collapse show' if get_cookie(request, cookie_name)=='Hide' else 'collapse'}"
 % endif
 >
 

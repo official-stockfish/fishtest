@@ -54,7 +54,7 @@ function chi2_95(df) {
 
 const spsa_setup_default = {
   num_params: 1,
-  draw_ratio: 0.739, /* "virtual" draw_ratio(STC) */
+  draw_ratio: 0.739 /* "virtual" draw_ratio(STC) */,
   precision: 0.5,
   c_ratio: 1 / 6,
   lambda_ratio: 3,

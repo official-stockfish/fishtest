@@ -280,11 +280,13 @@ else:
         <input type="checkbox" id="enable" class="form-check-input" />
 
         &nbsp; &nbsp;
-        <input type="button" class="btn btn-info btn-sm" id="info" value="Info"/>
+        <input type="button" class="btn btn-info btn-sm" 
+        data-bs-toggle="collapse" href="#info_display" role="button"
+        aria-expanded="false" aria-controls="info_display" id="info" value="Info"/>
       </div>
       <div class="flex-row stop_rule spsa">
         <label class="field-label leftmost"></label>
-        <div  id="info_display" style="border-style:solid;">
+        <div id="info_display" class="collapse collapse-horizontal" style="border-style:solid;">
           <i>
           Checking this option will rewrite the hyperparameters furnished by
           the tuning code in Stockfish in such a way that the SPSA tune will finish
@@ -392,13 +394,17 @@ else:
 </div>
 
 <script>
-  $(window).bind('pageshow', function() {
+  let form_submitted = false;
+  window.onpageshow = function() {
     // If pressing the 'back' button to get back to this page, make sure
     // the submit test button is enabled again.
-    $('#submit-test').removeAttr('disabled').text('Submit test');
+    // make sure form_submitted is set back to false
+    form_submitted = false;
+    document.querySelector('#submit-test').removeAttribute('disabled');
+    document.querySelector('#submit-test').innerText = 'Submit test';
     // Also make sure that the odds TC fields have the right visibility.
-    update_odds($('#checkbox-time-odds')[0]);
-  });
+    update_odds(document.querySelector('#checkbox-time-odds'));
+  };
 
   const preset_bounds = {
     'standard STC': [ 0.0, 2.0],
@@ -408,158 +414,209 @@ else:
   };
 
   function update_sprt_bounds(selected_bounds_name) {
-    if (selected_bounds_name === 'custom') {
-      $('.custom_bounds').show();
+    if (selected_bounds_name === "custom") {
+      document
+        .querySelectorAll(".custom_bounds")
+        .forEach((bound) => (bound.style.display = ""));
     } else {
-      $('.custom_bounds').hide();
+      document
+        .querySelectorAll(".custom_bounds")
+        .forEach((bound) => (bound.style.display = "none"));
       const bounds = preset_bounds[selected_bounds_name];
-      $('input[name=sprt_elo0]').val(bounds[0]);
-      $('input[name=sprt_elo1]').val(bounds[1]);
+      document.querySelector("input[name=sprt_elo0]").value = bounds[0];
+      document.querySelector("input[name=sprt_elo1]").value = bounds[1];
     }
   }
 
   function update_book_depth_visibility(book) {
     if (book.match('\.pgn$')) {
-      $('.book-depth').show();
+      document.querySelector('.book-depth').style.display = "";
     } else {
-      $('.book-depth').hide();
+      document.querySelector('.book-depth').style.display = "none";
     }
   }
 
-  $('select[name=bounds]').on('change', function() {
-    update_sprt_bounds($(this).val());
-  });
+  document
+    .querySelector("select[name=bounds]")
+    .addEventListener("change", function () {
+      update_sprt_bounds(this.value);
+    });
 
-  var initial_base_branch = $('#base-branch').val();
-  var initial_base_signature = $('#base-signature').val();
-  var spsa_do_not_save = false;
-  $('.btn-group .btn').on('click', function() {
-    if (!spsa_do_not_save) {
-      initial_base_branch = $('#base-branch').val();
-      initial_base_signature = $('#base-signature').val();
-    }
-    const $btn = $(this);
-    $(this).parent().find('.btn').removeClass('btn-info');
-    $(this).addClass('btn-info');
+  let initial_base_branch = document.querySelector("#base-branch").value;
+  let initial_base_signature = document.querySelector("#base-signature").value;
+  let spsa_do_not_save = false;
 
-    // choose test type - STC, LTC - sets preset values
-    const test_options = $btn.data('options');
-    if (test_options) {
-      const { tc, new_tc, threads, options, bounds } = test_options;
-      if (test_options) {
-        $('input[name=tc]').val(tc);
-        $('input[name=new_tc]').val(new_tc);
-        $('input[name=threads]').val(threads);
-        $('input[name=new-options]').val((
-          options.replace(' Use NNUE=true', '')
-          + ' ' + $('input[name=new-options]').val()
-          .replace(/Hash=[0-9]+ ?/, '')).replace(/ $/, ''));
-        $('input[name=base-options]').val((
-          options.replace(' Use NNUE=true', '')
-          + ' ' + $('input[name=base-options]').val()
-          .replace(/Hash=[0-9]+ ?/, '')).replace(/ $/, ''));
-        $('select[name=bounds]').val(bounds);
+  document.querySelectorAll(".btn-group .btn").forEach((btn) =>
+    btn.addEventListener("click", function () {
+      if (!spsa_do_not_save) {
+        initial_base_branch = document.querySelector("#base-branch").value;
+        initial_base_signature = document.querySelector("#base-signature").value;
+      }
+      const btn = this;
+      this.parentElement
+        .querySelectorAll(".btn")
+        .forEach((btn) => btn.classList.remove("btn-info"));
+      this.classList.add("btn-info");
+
+      // choose test type - STC, LTC - sets preset values
+      let stopRule = null;
+      let testOptions = null;
+      if (btn.dataset.stopRule) stopRule = btn.dataset.stopRule;
+      if (btn.dataset.options) testOptions = btn.dataset.options;
+
+      if (testOptions) {
+        const { tc, new_tc, threads, options, bounds } = JSON.parse(testOptions);
+        document.querySelector("input[name=tc]").value = tc;
+        document.querySelector("input[name=new_tc]").value = new_tc;
+        document.querySelector("input[name=threads]").value = threads;
+        document.querySelector("input[name=new-options]").value = (
+          options.replace(" Use NNUE=true", "") +
+          " " +
+          document
+            .querySelector("input[name=new-options]")
+            .value.replace(/Hash=[0-9]+ ?/, "")
+        ).replace(/ $/, "");
+        document.querySelector("input[name=base-options]").value = (
+          options.replace(" Use NNUE=true", "") +
+          " " +
+          document
+            .querySelector("input[name=base-options]")
+            .value.replace(/Hash=[0-9]+ ?/, "")
+        ).replace(/ $/, "");
+        document.querySelector("select[name=bounds]").value = bounds;
         update_sprt_bounds(bounds);
         do_spsa_work();
       }
-    }
 
-    // stop-rule buttons - SPRT, Num games, SPSA - toggles stop-rule fields
-    const stop_rule = $btn.data('stop-rule');
-    if (stop_rule) {
-      $('.stop_rule').hide();
-      $('#stop_rule_field').val(stop_rule);
-      $('.' + stop_rule).show();
-      % if not is_rerun:
-          if (stop_rule === 'spsa') {
-            // base branch and test branch should be the same for SPSA tests
-            $('#base-branch').attr('readonly', 'true').val($('#test-branch').val());
-            $('#test-branch').on('input', function() {
-              $('#base-branch').val($(this).val());
-            })
-            $('#base-signature').attr('readonly', 'true').val($('#test-signature').val());
-            $('#test-signature').on('input', function() {
-              $('#base-signature').val($(this).val());
-            })
-            spsa_do_not_save = true;
-          } else {
-            $('#base-branch').removeAttr('readonly').val(initial_base_branch);
-            $('#base-signature').removeAttr('readonly').val(initial_base_signature);
-            $('#test-branch').off('input');
-            $('#test-signature').off('input');
-            spsa_do_not_save = false;
-          }
-      % endif
-      if (stop_rule === 'sprt') {
-        update_sprt_bounds($('select[name=bounds]').val());
+      // stop-rule buttons - SPRT, Num games, SPSA - toggles stop-rule fields
+      if (stopRule) {
+        const testBranchHandler = () =>
+          (document.querySelector("#base-branch").value =
+            document.querySelector("#test-branch").value);
+        const testSignatureHandler = () =>
+          (document.querySelector("#base-signature").value =
+            document.querySelector("#base-branch").value);
+        document
+          .querySelectorAll(".stop_rule")
+          .forEach((el) => (el.style.display = "none"));
+        document.querySelector("#stop_rule_field").value = stopRule;
+        document
+          .querySelectorAll("." + stopRule)
+          .forEach((el) => (el.style.display = ""));
+        % if not is_rerun:
+            if (stopRule === "spsa") {
+              // base branch and test branch should be the same for SPSA tests
+              document.querySelector("#base-branch").setAttribute("readonly", "true");
+              document.querySelector("#base-branch").value =
+                document.querySelector("#test-branch").value;
+              document
+                .querySelector("#test-branch")
+                .addEventListener("input", testBranchHandler);
+              document
+                .querySelector("#base-signature")
+                .setAttribute("readonly", "true");
+              document.querySelector("#base-signature").value =
+                document.querySelector("#test-signature").value;
+              document
+                .querySelector("#test-signature")
+                .addEventListener("input", testSignatureHandler);
+              spsa_do_not_save = true;
+            } else {
+              document.querySelector("#base-branch").removeAttribute("readonly");
+              document.querySelector("#base-branch").value = initial_base_branch;
+              document.querySelector("#base-signature").removeAttribute("readonly");
+              document.querySelector("#base-signature").value =
+                initial_base_signature;
+              document
+                .querySelector("#test-branch")
+                .removeEventListener("input", testBranchHandler);
+              document
+                .querySelector("#test-signature")
+                .removeEventListener("input", testSignatureHandler);
+              spsa_do_not_save = false;
+            }
+        % endif
+        if (stopRule === "sprt") {
+          update_sprt_bounds(document.querySelector("select[name=bounds]").value);
+        }
       }
-    }
-  });
+    })
+  );
 
   // Only .pgn book types have a book_depth field
-  update_book_depth_visibility($("#book").val());
-  $('#book').on('input', function() {
-    update_book_depth_visibility($(this).val());
+  update_book_depth_visibility(document.querySelector("#book").value);
+  document.querySelector("#book").addEventListener("input", function () {
+    update_book_depth_visibility(this.value);
   });
 
-  let form_submitted = false;
-  $('#create-new-test').on('submit', function(event) {
-    var ret = do_spsa_work();   // Last check that all spsa data are consistent.
-    if (!ret) {
-      return false;
-    }
-    if (form_submitted) {
-      // Don't allow submitting the form more than once
-      $(event).preventDefault();
-      return;
-    }
-    form_submitted = true;
-    $('#submit-test').attr('disabled', true).text('Submitting test...');
-  });
+  document
+    .querySelector("#create-new-test")
+    .addEventListener("submit", function (e) {
+      const ret = do_spsa_work(); // Last check that all spsa data are consistent.
+      if (!ret) {
+        return false;
+      }
+      if (form_submitted) {
+        // Don't allow submitting the form more than once
+        e.preventDefault();
+        return;
+      }
+      form_submitted = true;
+      document.querySelector("#submit-test").setAttribute("disabled", true);
+      document.querySelector("#submit-test").innerText = "Submitting test...";
+    });
 
   const is_rerun = ${'true' if is_rerun else 'false'};
   if (is_rerun) {
     // Select the correct fields by default for re-runs
     const tc = '${args.get('tc')}';
-    if (tc === '10+0.1') {
-      $('.choose-test-type .btn').removeClass('btn-info');
-      $('.btn#fast_test').addClass('btn-info');
-    } else if (tc === '60+0.6') {
-      $('.choose-test-type .btn').removeClass('btn-info');
-      $('.btn#slow_test').addClass('btn-info');
-    } else if (tc === '5+0.05') {
-      $('.choose-test-type .btn').removeClass('btn-info');
-      $('.btn#fast_smp_test').addClass('btn-info');
-    } else if (tc === '20+0.2') {
-      $('.choose-test-type .btn').removeClass('btn-info');
-      $('.btn#slow_smp_test').addClass('btn-info');
+    if (tc === "10+0.1") {
+      document
+        .querySelectorAll(".choose-test-type .btn")
+        .forEach((el) => el.classList.remove("btn-info"));
+      document.querySelector(".btn#fast_test").classList.add("btn-info");
+    } else if (tc === "60+0.6") {
+      document
+        .querySelectorAll(".choose-test-type .btn")
+        .forEach((el) => el.classList.remove("btn-info"));
+      document.querySelector(".btn#slow_test").classList.add("btn-info");
+    } else if (tc === "5+0.05") {
+      document
+        .querySelectorAll(".choose-test-type .btn")
+        .forEach((el) => el.classList.remove("btn-info"));
+      document.querySelector(".btn#fast_smp_test").classList.add("btn-info");
+    } else if (tc === "20+0.2") {
+      document
+        .querySelectorAll(".choose-test-type .btn")
+        .forEach((el) => el.classList.remove("btn-info"));
+      document.querySelector(".btn#slow_smp_test").classList.add("btn-info");
     }
     % if args.get('spsa'):
-        $('.btn[data-stop-rule="spsa"]').trigger('click');
+        document.querySelector('.btn[data-stop-rule="spsa"]').click();
     % elif not args.get('sprt'):
-        $('.btn[data-stop-rule="numgames"]').trigger('click');
+        document.querySelector('.btn[data-stop-rule="numgames"]').click();
     % endif
   } else {
     // short STC test by default for new tests
-    $('.btn#fast_test').addClass('btn-info');
+    document.querySelector('.btn#fast_test').classList.add('btn-info');
     // Focus the "Test branch" field on page load for new tests
-    $('#test-branch').focus();
+    document.querySelector('#test-branch').focus();
   }
 
   function update_odds(elt) {
     if (elt.checked) {
-      $('input[name=new_tc]').show();
-      $('label[name=new_tc_label]').show();
-      $('label[name=tc_label]').html("Base&nbsp;TC");
+      document.querySelector('input[name=new_tc]').style.display = "block";
+      document.querySelector('label[name=new_tc_label]').style.display = "block";
+      document.querySelector('label[name=tc_label]').innerHTML = "Base&nbsp;TC";
     } else {
-      $('input[name=new_tc]').hide();
-      $('label[name=new_tc_label]').hide();
-      $('input[name=new_tc]').val($('input[name=tc]').val());
-      $('label[name=tc_label]').html("TC");
+      document.querySelector('input[name=new_tc]').style.display = "none";
+      document.querySelector('label[name=new_tc_label]').style.display = "none";
+      document.querySelector('input[name=new_tc]').value = document.querySelector('input[name=tc]').value;
+      document.querySelector('label[name=tc_label]').innerHTML = "TC";
     }
   }
 
-  $('#checkbox-time-odds').change(function() {
+  document.querySelector('#checkbox-time-odds').addEventListener("change", function() {
     update_odds(this);
   });
 </script>
@@ -570,74 +627,72 @@ else:
 <script>
   function do_spsa_work() {
     /* parsing/computing */
-    if (!$('#enable').prop("checked")) {
+    if (!document.querySelector('#enable').checked) {
       return true;
     }
-    var params = $("textarea[name='spsa_raw_params']").val();
-    var s = fishtest_to_spsa(params);
+    const params = document.querySelector("textarea[name='spsa_raw_params']").value;
+    let s = fishtest_to_spsa(params);
     if (s === null) {
       alert("Unable to parse spsa parameters.");
       return false;
     }
     /* estimate the draw ratio */
-    var tc = $("input[name='tc']").val();
-    var dr = draw_ratio(tc);
+    const tc = document.querySelector("input[name='tc']").value;
+    const dr = draw_ratio(tc);
     if (dr === null) {
       alert("Unable to parse time control.");
       return false;
     }
     s.draw_ratio = dr;
     s = spsa_compute(s);
-    var fs = spsa_to_fishtest(s);
+    const fs = spsa_to_fishtest(s);
     /* Let's go */
-    $("input[name='spsa_A']").val(0);
-    $("input[name='spsa_alpha']").val(0.0);
-    $("input[name='spsa_gamma']").val(0.0);
-    $("input[name='num-games']").val(1000 * Math.round(s.num_games / 1000));
-    $("textarea[name='spsa_raw_params']").val(fs.trim());
+    document.querySelector("input[name='spsa_A']").value = 0;
+    document.querySelector("input[name='spsa_alpha']").value = 0.0;
+    document.querySelector("input[name='spsa_gamma']").value = 0.0;
+    document.querySelector("input[name='num-games']").value = 1000 * Math.round(s.num_games / 1000);
+    document.querySelector("textarea[name='spsa_raw_params']").value = fs.trim();
     return true;
   }
-  var saved_A = null;
-  var saved_alpha = null;
-  var saved_gamma = null;
-  var saved_games = null;
-  var saved_params = null;
+  let saved_A = null;
+  let saved_alpha = null;
+  let saved_gamma = null;
+  let saved_games = null;
+  let saved_params = null;
   function do_spsa_events() {
-    if ($('#enable').prop("checked")) {
+    if (document.querySelector('#enable')["checked"]) {
       /* save old stuff */
-      saved_A = $("input[name='spsa_A']").val();
-      saved_alpha = $("input[name='spsa_alpha']").val();
-      saved_gamma = $("input[name='spsa_gamma']").val();
-      saved_games = $("input[name='num-games']").val();
-      saved_params = $("textarea[name='spsa_raw_params']").val();
-      var ret = do_spsa_work();
+      saved_A = document.querySelector("input[name='spsa_A']").value;
+      saved_alpha = document.querySelector("input[name='spsa_alpha']").value;
+      saved_gamma = document.querySelector("input[name='spsa_gamma']").value;
+      saved_games = document.querySelector("input[name='num-games']").value;
+      saved_params = document.querySelector("textarea[name='spsa_raw_params']").value;
+      const ret = do_spsa_work();
       if (!ret) {
-        $('#enable').prop("checked", false);
+        document.querySelector('#enable').checked = false;
       }
     } else {
-      $("input[name='spsa_A']").val(saved_A);
-      $("input[name='spsa_alpha']").val(saved_alpha);
-      $("input[name='spsa_gamma']").val(saved_gamma);
-      $("input[name='num-games']").val(saved_games);
-      $("textarea[name='spsa_raw_params']").val(saved_params);
+      document.querySelector("input[name='spsa_A']").value = saved_A;
+      document.querySelector("input[name='spsa_alpha']").value = saved_alpha;
+      document.querySelector("input[name='spsa_gamma']").value = saved_gamma;
+      document.querySelector("input[name='num-games']").value = saved_games;
+      document.querySelector("textarea[name='spsa_raw_params']").value = saved_params;
     }
   }
-  $('#info_display').hide();
-  $('#info').click(function() {
-    if ($('#info').val() === "Info") {
-      $('#info').val("Hide");
+  document.querySelector('#info').addEventListener("click", function() {
+    if (document.querySelector('#info').value === "Info") {
+      document.querySelector('#info').value = "Hide";
     } else {
-      $('#info').val("Info");
+      document.querySelector('#info').value = "Info";
     }
-    $('#info_display').toggle(400);
   });
-  $('#enable').change(do_spsa_events);
-  $("input[name='tc']").on("input", function() {
-    if (!$('#enable').prop("checked")) {
+  document.querySelector('#enable').addEventListener("change", do_spsa_events);
+  document.querySelector("input[name='tc']").addEventListener("input", function() {
+    if (!document.querySelector('#enable').checked) {
       return;
     }
-    var tc = $("input[name='tc']").val();
-    var tc_seconds = tc_to_seconds(tc);
+    const tc = document.querySelector("input[name='tc']").value;
+    const tc_seconds = tc_to_seconds(tc);
     if (tc_seconds !== null) {
       do_spsa_work();
     }
