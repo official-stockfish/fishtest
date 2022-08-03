@@ -195,8 +195,14 @@
     }
   }
 
-  $(document).ready(function () {
-    $("#div_spsa_preload").fadeIn();
+  document.addEventListener("DOMContentLoaded", () => {
+    //fade in loader
+    const loader = document.querySelector("#div_spsa_preload");
+    loader.style.display = "";
+    loader.classList.add("fade");
+    setTimeout(() => {
+      loader.classList.add("show");
+    }, 150);
 
     //load google library
     google.charts.load("current", {
@@ -210,9 +216,9 @@
         );
 
         if (!spsa_history || spsa_history.length < 2) {
-          $("#div_spsa_preload").hide();
-          $("#div_spsa_history_plot")
-            .html("<div class='alert alert-warning' role='alert'>Not enough data to generate plot.</div>");
+          document.querySelector("#div_spsa_preload").style.display = "none";
+          document.querySelector("#div_spsa_history_plot").innerHTML =
+            "<div class='alert alert-warning' role='alert'>Not enough data to generate plot.</div>";
           return;
         }
 
@@ -240,28 +246,27 @@
           document.getElementById("div_spsa_history_plot")
         );
         chart_object.draw(chart_data, chart_options);
-
-        $("#chart_toolbar").show();
+        document.querySelector("#chart_toolbar").style.display = "block";
 
         for (let i = 0; i < chart_data.getNumberOfColumns(); i++) {
           columns.push(i);
         }
 
         for (let j = 0; j < spsa_params.length; j++) {
-          $("#dropdown_individual").append(
+          document.querySelector("#dropdown_individual").innerHTML +=
             '<li><a class="dropdown-item" href="javascript:" param_id="' +
-              (j + 1) +
-              '" >' +
-              spsa_params[j].name +
-              "</a></li>"
-          );
+            (j + 1) +
+            '" >' +
+            spsa_params[j].name +
+            "</a></li>";
         }
 
-        $("#dropdown_individual")
-          .find("a")
-          .on("click", function () {
-            let param_id = $(this).attr("param_id");
-
+        document
+          .querySelector("#dropdown_individual")
+          .addEventListener("click", (e) => {
+            if (!e.target.matches("a")) return;
+            const { target } = e;
+            let param_id = target.attributes.param_id.value;
             for (let i = 1; i < chart_data.getNumberOfColumns(); i++) {
               update_column_visibility(i, i == param_id);
             }
@@ -285,30 +290,35 @@
           }
         );
 
-        $("#div_spsa_preload").hide();
+        document.querySelector("#div_spsa_preload").style.display = "none";
 
-        $("#btn_smooth_plus").on("click", function () {
-          if (smoothing_factor < smoothing_max) {
-            smooth_data(++smoothing_factor);
-          }
-        });
+        document
+          .querySelector("#btn_smooth_plus")
+          .addEventListener("click", () => {
+            if (smoothing_factor < smoothing_max) {
+              smooth_data(++smoothing_factor);
+            }
+          });
 
-        $("#btn_smooth_minus").on("click", function () {
-          if (smoothing_factor > 0) {
-            smooth_data(--smoothing_factor);
-          }
-        });
+        document
+          .querySelector("#btn_smooth_minus")
+          .addEventListener("click", () => {
+            if (smoothing_factor > 0) {
+              smooth_data(--smoothing_factor);
+            }
+          });
 
-        $("#btn_view_all").on("click", function () {
-          if (viewAll) return;
-          viewAll = true;
+        document
+          .querySelector("#btn_view_all")
+          .addEventListener("click", () => {
+            if (viewAll) return;
+            viewAll = true;
+            for (let i = 0; i < chart_data.getNumberOfColumns(); i++) {
+              update_column_visibility(i, true);
+            }
 
-          for (let i = 0; i < chart_data.getNumberOfColumns(); i++) {
-            update_column_visibility(i, true);
-          }
-
-          redraw(false);
-        });
+            redraw(false);
+          });
       },
     });
   });

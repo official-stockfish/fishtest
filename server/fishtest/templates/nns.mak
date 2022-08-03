@@ -14,7 +14,18 @@ and achieved the status of <i>default net</i> during the development of Stockfis
 The recommended net for a given Stockfish executable can be found as the default value of the EvalFile UCI option.
 </p>
 
-<button id="non_default-button" class="btn btn-sm btn-light border">
+<script>
+  function toggle_nns() {
+    const button = document.querySelector("#non_default-button");
+    const active = button.innerText.trim().substring(0, 4) === "Hide";
+    button.innerText = active ? "Show non default nets" : "Hide non default nets";
+    document.cookie =
+      "non_default_state=" + (active ? "Hide" : "Show") + ";max-age=315360000";
+    window.location.reload();
+  }
+</script>
+    
+<button id="non_default-button" class="btn btn-sm btn-light border" onclick = "toggle_nns()">
   ${'Hide non default nets' if non_default_shown else 'Show non default nets'}
 </button>
 

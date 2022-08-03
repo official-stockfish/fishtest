@@ -251,15 +251,26 @@ if 'spsa' in run['args']:
   <pre id="diff-contents"><code class="diff"></code></pre>
 </section>
 
+<script>
+    function toggle_tasks() {
+      const button = document.querySelector("#tasks-button");
+      const div = document.querySelector("#tasks");
+      const active = button.innerText.trim() === 'Hide';
+      button.innerText = active ? 'Show' : 'Hide';
+      document.cookie = 'tasks_state' + '=' + button.innerText.trim() + ";max-age=315360000";
+    }
+</script>
+
 <h4>
-  <button id="tasks-button" class="btn btn-sm btn-light border">
+    <button id="tasks-button" class="btn btn-sm btn-light border" 
+    data-bs-toggle="collapse" href="#tasks" role="button" aria-expanded="false"
+    aria-controls="tasks" onclick="toggle_tasks()">
     ${'Hide' if tasks_shown else 'Show'}
-  </button>
+    </button>
   Tasks ${totals}
 </h4>
 <div id="tasks"
-     class="overflow-auto"
-     style="${'' if tasks_shown else 'display: none;'}">
+     class="overflow-auto ${'collapse show' if tasks_shown else 'collapse'}">
   <table class='table table-striped table-sm'>
     <thead class="sticky-top">
       <tr>
@@ -361,44 +372,71 @@ if 'spsa' in run['args']:
         referrerpolicy="no-referrer"></script>
 
 <script>
-  function set_highlight_theme_dark () {
-    $('head link[href*="/styles/github.min.css"]').remove();
-    $('head').append($('<link rel="stylesheet" crossorigin="anonymous" referrerpolicy="no-referrer" />')
-      .attr("href", "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/github-dark.min.css")
-      .attr("integrity", "sha512-rO+olRTkcf304DQBxSWxln8JXCzTHlKnIdnMUwYvQa9/Jd4cQaNkItIUj6Z4nvW1dqK0SKXLbn9h4KwZTNtAyw==")
-  )}
+  function set_highlight_theme_dark() {
+    document.head.querySelector('link[href*="styles/github.min.css"]')?.remove();
+    const link = document.createElement("link");
+    link["rel"] = "stylesheet";
+    link["crossOrigin"] = "anonymous";
+    link["referrerPolicy"] = "no-referrer";
+    link["href"] =
+      "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/github-dark.min.css";
+    link["integrity"] =
+      "sha512-rO+olRTkcf304DQBxSWxln8JXCzTHlKnIdnMUwYvQa9/Jd4cQaNkItIUj6Z4nvW1dqK0SKXLbn9h4KwZTNtAyw==";
+    document.head.appendChild(link);
+  }
 
-  function set_highlight_theme_light () {
-    $('head link[href*="/styles/github-dark.min.css"]').remove();
-    $('head').append($('<link rel="stylesheet" crossorigin="anonymous" referrerpolicy="no-referrer" />')
-      .attr("href", "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/github.min.css")
-      .attr("integrity", "sha512-0aPQyyeZrWj9sCA46UlmWgKOP0mUipLQ6OZXu8l4IcAmD2u31EPEy9VcIMvl7SoAaKe8bLXZhYoMaE/in+gcgA==")
-  )}
-
-  $(document).ready(function () {
-    $.cookie('theme') === 'dark' ? set_highlight_theme_dark() : set_highlight_theme_light();
+  function set_highlight_theme_light() {
+    document.head
+      .querySelector('link[href*="styles/github-dark.min.css"]')
+      ?.remove();
+    const link = document.createElement("link");
+    link["rel"] = "stylesheet";
+    link["crossOrigin"] = "anonymous";
+    link["referrerPolicy"] = "no-referrer";
+    link["href"] =
+      "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/github.min.css";
+    link["integrity"] =
+      "sha512-0aPQyyeZrWj9sCA46UlmWgKOP0mUipLQ6OZXu8l4IcAmD2u31EPEy9VcIMvl7SoAaKe8bLXZhYoMaE/in+gcgA==";
+    document.head.appendChild(link);
+  }
+  document.addEventListener("DOMContentLoaded", function () {
+    const match = document.cookie.match(
+      new RegExp("(^| )" + "theme" + "=([^;]+)")
+    );
+    const theme = match ? match[2] : false;
+    theme === "dark" ? set_highlight_theme_dark() : set_highlight_theme_light();
   });
 
-  $("#change-color-theme").click(function() {
-    $.cookie('theme') === 'light' ? set_highlight_theme_dark() : set_highlight_theme_light();
-  });
+  document
+    .querySelector("#change-color-theme")
+    .addEventListener("click", function () {
+      const match = document.cookie.match(
+        new RegExp("(^| )" + "theme" + "=([^;]+)")
+      );
+      const theme = match ? match[2] : false;
+      if (theme === "light") set_highlight_theme_dark();
+      else set_highlight_theme_light();
+    });
 </script>
 
 <script>
-  document.title = '${page_title} | Stockfish Testing';
+  document.title = "${page_title} | Stockfish Testing";
 
-  $(function() {
-    let $copyDiffBtn = $("#copy-diff");
-    if (document.queryCommandSupported && document.queryCommandSupported("copy")) {
-      $copyDiffBtn.on("click", () => {
+  document.addEventListener("DOMContentLoaded", function () {
+    let copyDiffBtn = document.querySelector("#copy-diff");
+    if (
+      document.queryCommandSupported &&
+      document.queryCommandSupported("copy")
+    ) {
+      copyDiffBtn.addEventListener("click", () => {
         const textarea = document.createElement("textarea");
         textarea.style.position = "fixed";
-        textarea.textContent = 'curl -s ${h.diff_url(run)}.diff | git apply';
+        textarea.textContent = "curl -s ${h.diff_url(run)}.diff | git apply";
         document.body.appendChild(textarea);
         textarea.select();
         try {
           document.execCommand("copy");
-          $(".copied").show();
+          document.querySelector(".copied").style.display = "";
         } catch (ex) {
           console.warn("Copy to clipboard failed.", ex);
         } finally {
@@ -406,56 +444,67 @@ if 'spsa' in run['args']:
         }
       });
     } else {
-      $copyDiffBtn = null;
+      copyDiffBtn = null;
     }
 
     // Fetch the diff and decide whether to show it on the page
-    const diffApiUrl = "${h.diff_url(run)}".replace("//github.com/", "//api.github.com/repos/");
-    $.ajax({
-      url: diffApiUrl,
+    const diffApiUrl = "${h.diff_url(run)}".replace(
+      "//github.com/",
+      "//api.github.com/repos/"
+    );
+
+    fetch(diffApiUrl, {
       headers: {
-        Accept: "application/vnd.github.v3.diff"
+        Accept: "application/vnd.github.v3.diff",
       },
-      success: function(response) {
-        const numLines = response.split("\n").length;
-        const $toggleBtn = $("#diff-toggle");
-        const $diffContents = $("#diff-contents");
-        const $diffText = $diffContents.find("code");
-        $diffText.text(response);
-        $toggleBtn.on("click", function() {
-          $diffContents.toggle();
-          $copyDiffBtn && $copyDiffBtn.toggle();
-          if ($toggleBtn.text() === "Hide") {
-            $toggleBtn.text("Show");
-          } else {
-            $toggleBtn.text("Hide");
-          }
+    })
+      .then((response) => {
+        if (response.ok) return response.text();
+      })
+      .then((text) => {
+        if (!text) return;
+        const numLines = text.split("\n").length;
+        const toggleBtn = document.querySelector("#diff-toggle");
+        const diffContents = document.querySelector("#diff-contents");
+        const diffText = diffContents.querySelector("code");
+        diffText.textContent = text;
+        toggleBtn.addEventListener("click", function () {
+          diffContents.style.display =
+            diffContents.style.display === "none" ? "" : "none";
+          if (copyDiffBtn)
+            copyDiffBtn.style.display =
+              copyDiffBtn.style.display === "none" ? "" : "none";
+          if (toggleBtn.innerText === "Hide") toggleBtn.innerText = "Show";
+          else toggleBtn.innerText = "Hide";
         });
+
         // Hide large diffs by default
         if (numLines < 50) {
-          $diffContents.show();
-          $copyDiffBtn && $copyDiffBtn.show();
-          $toggleBtn.text("Hide");
+          diffContents.style.display = "";
+          if (copyDiffBtn) copyDiffBtn.style.display = "";
+          toggleBtn.innerText = "Hide";
         } else {
-          $diffContents.hide();
-          $copyDiffBtn && $copyDiffBtn.hide();
-          $toggleBtn.text("Show");
+          diffContents.style.display = "none";
+          if (copyDiffBtn) copyDiffBtn.style.display = "none";
+          toggleBtn.innerText = "Show";
         }
-        $("#diff-section").show();
-        hljs.highlightElement($diffText[0]);
+        document.querySelector("#diff-section").style.display = "";
+        hljs.highlightElement(diffText);
 
-        // Show # of comments for this diff on Github
-        $.ajax({
-          url: diffApiUrl,
-          success: function(response) {
+        fetch(diffApiUrl)
+          .then((response) => {
+            if (response.ok) return response.json();
+          })
+          .then((json) => {
+            if (!json) return;
             let numComments = 0;
-            response.commits.forEach(function(row) {
+            json.commits.forEach(function (row) {
               numComments += row.commit.comment_count;
             });
-            $("#diff-num-comments").text("(" + numComments + " comments)").show();
-          }
-        });
-      }
-    });
+            document.querySelector("#diff-num-comments").innerText =
+              "(" + numComments + " comments)";
+            document.querySelector("#diff-num-comments").style.display = "";
+          });
+      });
   });
 </script>

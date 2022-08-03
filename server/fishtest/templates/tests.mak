@@ -44,8 +44,22 @@
         </div>
       </div>
     </div>
+    
+    <script>
+      function toggle_machines() {
+        const button = document.querySelector("#machines-button");
+        const div = document.querySelector("#machines");
+        const active = button.innerText.trim() === "Hide";
+        button.innerText = active ? "Show" : "Hide";
+        document.cookie =
+          "machines_state" + "=" + button.innerText.trim() + ";max-age=315360000";
+      }
+    </script>
+    
     <h4>
-      <button id="machines-button" class="btn btn-sm btn-light border">
+      <button id="machines-button" class="btn btn-sm btn-light border" 
+        data-bs-toggle="collapse" href="#machines" role="button" aria-expanded="false"
+        aria-controls="machines" onclick="toggle_machines()" >
         ${'Hide' if machines_shown else 'Show'}
       </button>
       <span>
@@ -54,8 +68,7 @@
     </h4>
 
     <div id="machines"
-         class="overflow-auto"
-         style="${'' if machines_shown else 'display: none;'}">
+         class="overflow-auto ${'collapse show' if machines_shown else 'collapse'}">
       <%include file="machines_table.mak"/>
     </div>
 % endif

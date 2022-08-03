@@ -1,102 +1,105 @@
 // https://stackoverflow.com/questions/14267781/sorting-html-table-with-javascript
 // https://stackoverflow.com/questions/40201533/sort-version-dotted-number-strings-in-javascript
-const getCellValue = (tr, idx) => tr.children[idx].dataset.diff || tr.children[idx].innerText || tr.children[idx].textContent;
-const padDotVersion = (dn) => dn.split('.').map(n => +n+1000).join('');
-const padDotVersionStr = (dn) => dn.replace(/\d+/g, n => +n+1000);
+const getCellValue = (tr, idx) =>
+  tr.children[idx].dataset.diff ||
+  tr.children[idx].innerText ||
+  tr.children[idx].textContent;
+const padDotVersion = (dn) =>
+  dn
+    .split(".")
+    .map((n) => +n + 1000)
+    .join("");
+const padDotVersionStr = (dn) => dn.replace(/\d+/g, (n) => +n + 1000);
 let p1, p2;
-const comparer = (idx, asc) => (a, b) => ((v1, v2) =>
-    v1 !== '' && v2 !== '' && !isNaN(v1) && !isNaN(v2)
-    ? v1 - v2
-    : v1 !== '' && v2 !== '' && !isNaN('0x' + v1) && !isNaN('0x' + v2)
-    ? parseInt(v1, 16) - parseInt(v2, 16)
-    : v1 !== '' && v2 !== '' && !isNaN(p1 = padDotVersion(v1)) && !isNaN(p2 = padDotVersion(v2))
-    ? p1 - p2
-    : v1 !== '' && v2 !== '' && !isNaN(padDotVersion(v1.replace('clang++ ', '').replace('g++ ', ''))) && !isNaN(padDotVersion(v2.replace('clang++ ', '').replace('g++ ', '')))
-    ? padDotVersionStr(v1).toString().localeCompare(padDotVersionStr(v2))
-    : v1.toString().localeCompare(v2)
-)(getCellValue(asc ? a : b, idx), getCellValue(asc ? b : a, idx));
+const comparer = (idx, asc) => (a, b) =>
+  ((v1, v2) =>
+    v1 !== "" && v2 !== "" && !isNaN(v1) && !isNaN(v2)
+      ? v1 - v2
+      : v1 !== "" && v2 !== "" && !isNaN("0x" + v1) && !isNaN("0x" + v2)
+      ? parseInt(v1, 16) - parseInt(v2, 16)
+      : v1 !== "" &&
+        v2 !== "" &&
+        !isNaN((p1 = padDotVersion(v1))) &&
+        !isNaN((p2 = padDotVersion(v2)))
+      ? p1 - p2
+      : v1 !== "" &&
+        v2 !== "" &&
+        !isNaN(padDotVersion(v1.replace("clang++ ", "").replace("g++ ", ""))) &&
+        !isNaN(padDotVersion(v2.replace("clang++ ", "").replace("g++ ", "")))
+      ? padDotVersionStr(v1).toString().localeCompare(padDotVersionStr(v2))
+      : v1.toString().localeCompare(v2))(
+    getCellValue(asc ? a : b, idx),
+    getCellValue(asc ? b : a, idx)
+  );
 
-$(() => {
-    // clicking on table headers sorts the rows
-    $(document).on('click', 'th', (event) => {
-        const th = $(event.currentTarget)[0];
-        const table = th.closest('table');
-        const body = table.querySelector('tbody');
-        Array.from(body.querySelectorAll('tr'))
-            .sort(comparer(Array.from(th.parentNode.children).indexOf(th), this.asc = !this.asc))
-            .forEach(tr => body.appendChild(tr));
-    });
+document.addEventListener("DOMContentLoaded", () => {
+  document.addEventListener("click", (e) => {
+    const { target } = e;
+    if (target.matches("th")) {
+      const th = target;
+      const table = th.closest("table");
+      const body = table.querySelector("tbody");
+      Array.from(body.querySelectorAll("tr"))
+        .sort(
+          comparer(
+            Array.from(th.parentNode.children).indexOf(th),
+            (this.asc = !this.asc)
+          )
+        )
+        .forEach((tr) => body.appendChild(tr));
+    }
+  });
 
-    $("#non_default-button").click(function() {
-        const active = $(this).text().trim().substring(0, 4) === 'Hide';
-        $(this).text(active ? 'Show non default nets' : 'Hide non default nets');
-        $.cookie('non_default_state', active ? 'Hide' : 'Show', {expires: 3650});
-        window.location.reload();
-    });
-
-    $("#machines-button").click(function() {
-        const active = $(this).text().trim() === 'Hide';
-        $(this).text(active ? 'Show' : 'Hide');
-        $("#machines").slideToggle(150);
-        $.cookie('machines_state', $(this).text().trim(), {expires: 3650});
-    });
-
-    $("#tasks-button").click(function() {
-        const active = $(this).text().trim() === 'Hide';
-        $(this).text(active ? 'Show' : 'Hide');
-        $("#tasks").slideToggle(150);
-        $.cookie('tasks_state', $(this).text().trim(), {expires: 3650});
-    });
-
-    // Click the sun/moon icons to change the color theme of the site
-    // hash calculated by browser for sub-resource integrity checks:
-    // https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity
-    let theme = $.cookie('theme') || 'light';
-    $("#change-color-theme").click(function() {
-      if (theme === 'light') {
-        $("#sun").show();
-        $("#moon").hide();
-        $("<link>")
-          .attr("rel", "stylesheet")
-          .attr("href", "/css/theme.dark.css?v=" + darkThemeHash)
-          .attr("integrity", "sha384-" + darkThemeHash)
-          .attr("crossorigin", "anonymous")
-          .appendTo($("head"));
-        theme = 'dark';
+  // Click the sun/moon icons to change the color theme of the site
+  // hash calculated by browser for sub-resource integrity checks:
+  // https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity
+  const match = document.cookie.match(
+    new RegExp("(^| )" + "theme" + "=([^;]+)")
+  );
+  let theme = match ? match[2] : "light";
+  document
+    .querySelector("#change-color-theme")
+    .addEventListener("click", () => {
+      if (theme === "light") {
+        document.querySelector("#sun").style.display = "inline-block";
+        document.querySelector("#moon").style.display = "none";
+        const link = document.createElement("link");
+        link["rel"] = "stylesheet";
+        link["href"] = "/css/theme.dark.css?v=" + darkThemeHash;
+        link["integrity"] = "sha384-" + darkThemeHash;
+        link["crossOrigin"] = "anonymous";
+        document.querySelector("head").appendChild(link);
+        theme = "dark";
       } else {
-        $("#sun").hide();
-        $("#moon").show();
-        $('head link[href*="/css/theme.dark.css"]').remove();
-        theme = 'light';
+        document.querySelector("#sun").style.display = "none";
+        document.querySelector("#moon").style.display = "inline-block";
+        document
+          .querySelector('head link[href*="/css/theme.dark.css"]')
+          .remove();
+        theme = "light";
       }
-      let cookieExpireDate = new Date();
       // Remember the theme for 30 days
-      cookieExpireDate.setTime(cookieExpireDate.getTime() + 30 * 24 * 60 * 60 * 1000);
-      $.cookie('theme', theme, {
-        path: '/',
-        expires: cookieExpireDate,
-      });
+      document.cookie = `theme=${theme};path=/;max-age=${30 * 24 * 60 * 60}`;
     });
 
-    // CSRF protection for links and forms
-    const csrfToken = $("meta[name='csrf-token']").attr('content');
-    $("#logout").on("click", (event) => {
-        event.preventDefault();
-        $.ajax({
-            url: "/logout",
-            method: "POST",
-            headers: {
-                'X-CSRF-Token': csrfToken
-            },
-            success: () => {
-                window.location = "/";
-            }
-        });
-    });
-    $("form[method='POST']").each((i, $form) => {
-        $("<input>")
-            .attr("type", "hidden")
-            .attr("name", "csrf_token").val(csrfToken)
-            .appendTo($form);
-    });
+  // CSRF protection for links and forms
+  const csrfToken = document.querySelector("meta[name='csrf-token']")[
+    "content"
+  ];
+  document.querySelector("#logout")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    fetch("/logout", {
+      method: "POST",
+      headers: {
+        "X-CSRF-Token": csrfToken,
+      },
+    }).then(() => (window.location = "/"));
+  });
+  document.querySelectorAll("form[method='POST']")?.forEach((form) => {
+    const input = document.createElement("input");
+    input["type"] = "hidden";
+    input["name"] = "csrf_token";
+    input["value"] = csrfToken;
+    form.appendChild(input);
+  });
 });
