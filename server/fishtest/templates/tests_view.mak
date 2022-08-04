@@ -453,58 +453,82 @@ if 'spsa' in run['args']:
       "//api.github.com/repos/"
     );
 
-    fetch(diffApiUrl, {
-      headers: {
-        Accept: "application/vnd.github.v3.diff",
-      },
-    })
-      .then((response) => {
-        if (response.ok) return response.text();
+    // Check if the diff is already in sessionStorage and use it if it is
+    const diffId = sessionStorage.getItem("${run['_id']}");
+    if (!diffId) {
+      fetchDiff();
+    } else {
+      showDiff(diffId);
+    }
+
+    function fetchDiff() {
+      fetch(diffApiUrl, {
+        headers: {
+          Accept: "application/vnd.github.v3.diff",
+        },
       })
-      .then((text) => {
-        if (!text) return;
-        const numLines = text.split("\n").length;
-        const toggleBtn = document.querySelector("#diff-toggle");
-        const diffContents = document.querySelector("#diff-contents");
-        const diffText = diffContents.querySelector("code");
-        diffText.textContent = text;
-        toggleBtn.addEventListener("click", function () {
-          diffContents.style.display =
-            diffContents.style.display === "none" ? "" : "none";
-          if (copyDiffBtn)
-            copyDiffBtn.style.display =
-              copyDiffBtn.style.display === "none" ? "" : "none";
-          if (toggleBtn.innerText === "Hide") toggleBtn.innerText = "Show";
-          else toggleBtn.innerText = "Hide";
+        .then((response) => {
+          if (response.ok) return response.text();
+        })
+        .then((text) => {
+          if (!text) return;
+          showDiff(text);
         });
+    }
 
-        // Hide large diffs by default
-        if (numLines < 50) {
-          diffContents.style.display = "";
-          if (copyDiffBtn) copyDiffBtn.style.display = "";
-          toggleBtn.innerText = "Hide";
-        } else {
-          diffContents.style.display = "none";
-          if (copyDiffBtn) copyDiffBtn.style.display = "none";
-          toggleBtn.innerText = "Show";
-        }
-        document.querySelector("#diff-section").style.display = "";
-        hljs.highlightElement(diffText);
+    function showDiff(text) {
+      const numLines = text.split("\n").length;
+      const toggleBtn = document.querySelector("#diff-toggle");
+      const diffContents = document.querySelector("#diff-contents");
+      const diffText = diffContents.querySelector("code");
+      diffText.textContent = text;
 
-        fetch(diffApiUrl)
-          .then((response) => {
-            if (response.ok) return response.json();
-          })
-          .then((json) => {
-            if (!json) return;
-            let numComments = 0;
-            json.commits.forEach(function (row) {
-              numComments += row.commit.comment_count;
-            });
-            document.querySelector("#diff-num-comments").innerText =
-              "(" + numComments + " comments)";
-            document.querySelector("#diff-num-comments").style.display = "";
-          });
+      // Try to save the diff in sessionStorage
+      // It can throw an exception if there is not enough space
+      try {
+        sessionStorage.setItem("${run['_id']}", text);
+      } catch (e) {
+        console.warn("Could not save diff in sessionStorage");
+      }
+
+      toggleBtn.addEventListener("click", function () {
+        diffContents.style.display =
+          diffContents.style.display === "none" ? "" : "none";
+        if (copyDiffBtn)
+          copyDiffBtn.style.display =
+            copyDiffBtn.style.display === "none" ? "" : "none";
+        if (toggleBtn.innerText === "Hide") toggleBtn.innerText = "Show";
+        else toggleBtn.innerText = "Hide";
       });
+
+      // Hide large diffs by default
+      if (numLines < 50) {
+        diffContents.style.display = "";
+        if (copyDiffBtn) copyDiffBtn.style.display = "";
+        toggleBtn.innerText = "Hide";
+      } else {
+        diffContents.style.display = "none";
+        if (copyDiffBtn) copyDiffBtn.style.display = "none";
+        toggleBtn.innerText = "Show";
+      }
+      document.querySelector("#diff-section").style.display = "";
+      hljs.highlightElement(diffText);
+
+      // Fetch amount of comments
+      fetch(diffApiUrl)
+        .then((response) => {
+          if (response.ok) return response.json();
+        })
+        .then((json) => {
+          if (!json) return;
+          let numComments = 0;
+          json.commits.forEach(function (row) {
+            numComments += row.commit.comment_count;
+          });
+          document.querySelector("#diff-num-comments").innerText =
+            "(" + numComments + " comments)";
+          document.querySelector("#diff-num-comments").style.display = "";
+        });
+    }
   });
 </script>
