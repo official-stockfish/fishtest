@@ -29,9 +29,9 @@
 
 @media (min-width: 992px) {
   .layout {
-      display: grid;
-      grid-template-areas: "sidebar main";
-      grid-template-columns: 180px auto;
+    display: grid;
+    grid-template-areas: "sidebar main";
+    grid-template-columns: 180px auto;
   }
 
   .mainnavbar {
@@ -40,7 +40,7 @@
     top: 3.5rem;
     display: block !important;
     height: calc(100vh - 3.5rem);
-    overflow-y: auto
+    overflow-y: auto;
   }
 
   .run-info,
@@ -61,15 +61,15 @@
   }
 
   .links-nav {
-      -moz-column-count: 2;
-      column-count: 2;
-      -moz-column-gap: 0.5rem;
-      column-gap: 0.5rem;
+    -moz-column-count: 2;
+    column-count: 2;
+    -moz-column-gap: 0.5rem;
+    column-gap: 0.5rem;
   }
 
   .links-nav .links-group {
-      -moz-column-break-inside: avoid;
-      break-inside: avoid
+    -moz-column-break-inside: avoid;
+    break-inside: avoid;
   }
 
   .links-nav .links-group > .list-unstyled {
@@ -82,7 +82,7 @@
   }
 
   .offcanvas-body::-webkit-scrollbar {
-    display: none
+    display: none;
   }
 
   .card-lg-sm {
@@ -94,7 +94,7 @@
 }
 
 .main {
-  grid-area: main
+  grid-area: main;
 }
 
 ::-webkit-scrollbar {
@@ -121,12 +121,12 @@
 }
 
 .bg-light-primary {
-  background-color: rgba(var(--bs-primary-rgb), .15);
+  background-color: rgba(var(--bs-primary-rgb), 0.15);
   color: var(--bs-primary);
 }
 
 .bg-light-secondary {
-  background-color: rgba(var(--bs-secondary-rgb), .15);
+  background-color: rgba(var(--bs-secondary-rgb), 0.15);
   color: var(--bs-secondary);
 }
 

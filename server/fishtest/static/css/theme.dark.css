@@ -136,7 +136,7 @@ header.navbar {
 }
 
 .form-control:hover:not(:disabled):not([readonly])::file-selector-button {
-  background-color: var(--bg-dark-4)
+  background-color: var(--bg-dark-4);
 }
 
 option.grayedoutoption {
