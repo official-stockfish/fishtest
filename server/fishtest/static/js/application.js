@@ -56,31 +56,49 @@ document.addEventListener("DOMContentLoaded", () => {
   const match = document.cookie.match(
     new RegExp("(^| )" + "theme" + "=([^;]+)")
   );
-  let theme = match ? match[2] : "light";
+
+  const setTheme = (theme) => {
+    if (theme === "dark") {
+      document.getElementById("sun").style.display = "";
+      document.getElementById("moon").style.display = "none";
+      const link = document.createElement("link");
+      link["rel"] = "stylesheet";
+      link["href"] = "/css/theme.dark.css?v=" + darkThemeHash;
+      link["integrity"] = "sha384-" + darkThemeHash;
+      link["crossOrigin"] = "anonymous";
+      document.querySelector("head").appendChild(link);
+    } else {
+      document.getElementById("sun").style.display = "none";
+      document.getElementById("moon").style.display = "";
+      document
+        .querySelector('head link[href*="/css/theme.dark.css"]')
+        ?.remove();
+    }
+    // Remember the theme for 30 days
+    document.cookie = `theme=${theme};path=/;max-age=${30 * 24 * 60 * 60}`;
+  };
+
+  const getPreferredTheme = () => {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  };
+
+  if (!match) {
+    setTheme(getPreferredTheme());
+  }
+
+  window
+    .matchMedia("(prefers-color-scheme: dark)")
+    .addEventListener("change", () => setTheme(getPreferredTheme()));
+
   document
-    .querySelector("#change-color-theme")
-    .addEventListener("click", () => {
-      if (theme === "light") {
-        document.querySelector("#sun").style.display = "inline-block";
-        document.querySelector("#moon").style.display = "none";
-        const link = document.createElement("link");
-        link["rel"] = "stylesheet";
-        link["href"] = "/css/theme.dark.css?v=" + darkThemeHash;
-        link["integrity"] = "sha384-" + darkThemeHash;
-        link["crossOrigin"] = "anonymous";
-        document.querySelector("head").appendChild(link);
-        theme = "dark";
-      } else {
-        document.querySelector("#sun").style.display = "none";
-        document.querySelector("#moon").style.display = "inline-block";
-        document
-          .querySelector('head link[href*="/css/theme.dark.css"]')
-          .remove();
-        theme = "light";
-      }
-      // Remember the theme for 30 days
-      document.cookie = `theme=${theme};path=/;max-age=${30 * 24 * 60 * 60}`;
-    });
+    .getElementById("sun")
+    .addEventListener("click", () => setTheme("light"));
+
+  document
+    .getElementById("moon")
+    .addEventListener("click", () => setTheme("dark"));
 
   // CSRF protection for links and forms
   const csrfToken = document.querySelector("meta[name='csrf-token']")[

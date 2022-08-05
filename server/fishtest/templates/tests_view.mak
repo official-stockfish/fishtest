@@ -372,51 +372,61 @@ if 'spsa' in run['args']:
         referrerpolicy="no-referrer"></script>
 
 <script>
-  function set_highlight_theme_dark() {
-    document.head.querySelector('link[href*="styles/github.min.css"]')?.remove();
+  const match = document.cookie.match(
+    new RegExp("(^| )" + "theme" + "=([^;]+)")
+  );
+
+  const setHighlightTheme = (theme) => {
     const link = document.createElement("link");
-    link["rel"] = "stylesheet";
-    link["crossOrigin"] = "anonymous";
-    link["referrerPolicy"] = "no-referrer";
-    link["href"] =
-      "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/github-dark.min.css";
-    link["integrity"] =
-      "sha512-rO+olRTkcf304DQBxSWxln8JXCzTHlKnIdnMUwYvQa9/Jd4cQaNkItIUj6Z4nvW1dqK0SKXLbn9h4KwZTNtAyw==";
+    if (theme === "dark") {
+      document.head
+        .querySelector('link[href*="styles/github.min.css"]')
+        ?.remove();
+      link["rel"] = "stylesheet";
+      link["crossOrigin"] = "anonymous";
+      link["referrerPolicy"] = "no-referrer";
+      link["href"] =
+        "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/github-dark.min.css";
+      link["integrity"] =
+        "sha512-rO+olRTkcf304DQBxSWxln8JXCzTHlKnIdnMUwYvQa9/Jd4cQaNkItIUj6Z4nvW1dqK0SKXLbn9h4KwZTNtAyw==";
+    } else {
+      document.head
+        .querySelector('link[href*="styles/github-dark.min.css"]')
+        ?.remove();
+      link["rel"] = "stylesheet";
+      link["crossOrigin"] = "anonymous";
+      link["referrerPolicy"] = "no-referrer";
+      link["href"] =
+        "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/github.min.css";
+      link["integrity"] =
+        "sha512-0aPQyyeZrWj9sCA46UlmWgKOP0mUipLQ6OZXu8l4IcAmD2u31EPEy9VcIMvl7SoAaKe8bLXZhYoMaE/in+gcgA==";
+    }
     document.head.appendChild(link);
+  };
+
+  const getPreferredTheme = () => {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  };
+
+  if (!match) {
+    setHighlightTheme(getPreferredTheme());
+  } else {
+    setHighlightTheme(match[2]);
   }
 
-  function set_highlight_theme_light() {
-    document.head
-      .querySelector('link[href*="styles/github-dark.min.css"]')
-      ?.remove();
-    const link = document.createElement("link");
-    link["rel"] = "stylesheet";
-    link["crossOrigin"] = "anonymous";
-    link["referrerPolicy"] = "no-referrer";
-    link["href"] =
-      "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/github.min.css";
-    link["integrity"] =
-      "sha512-0aPQyyeZrWj9sCA46UlmWgKOP0mUipLQ6OZXu8l4IcAmD2u31EPEy9VcIMvl7SoAaKe8bLXZhYoMaE/in+gcgA==";
-    document.head.appendChild(link);
-  }
-  document.addEventListener("DOMContentLoaded", function () {
-    const match = document.cookie.match(
-      new RegExp("(^| )" + "theme" + "=([^;]+)")
-    );
-    const theme = match ? match[2] : false;
-    theme === "dark" ? set_highlight_theme_dark() : set_highlight_theme_light();
-  });
+  window
+    .matchMedia("(prefers-color-scheme: dark)")
+    .addEventListener("change", () => setHighlightTheme(getPreferredTheme()));
 
   document
-    .querySelector("#change-color-theme")
-    .addEventListener("click", function () {
-      const match = document.cookie.match(
-        new RegExp("(^| )" + "theme" + "=([^;]+)")
-      );
-      const theme = match ? match[2] : false;
-      if (theme === "light") set_highlight_theme_dark();
-      else set_highlight_theme_light();
-    });
+    .getElementById("sun")
+    .addEventListener("click", () => setHighlightTheme("light"));
+
+  document
+    .getElementById("moon")
+    .addEventListener("click", () => setHighlightTheme("dark"));
 </script>
 
 <script>
