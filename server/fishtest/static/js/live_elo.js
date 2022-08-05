@@ -16,7 +16,7 @@ google.charts.setOnLoadCallback(function () {
     document.getElementById("ELO_chart_div")
   );
   clear_gauges();
-  follow_live(test_id, true);
+  follow_live(test_id);
 });
 
 function collect(m) {
@@ -207,21 +207,8 @@ function display_data(items) {
   set_gauges(j.LLR, j.a, j.b, j.LOS, j.elo, j.ci_lower, j.ci_upper);
 }
 
-function alert_(message) {
-  document.getElementById("data").style.visibility = "hidden";
-  clear_gauges();
-  let errorElement = document.getElementById("error");
-  if (message == "") {
-    errorElement.style.display = "none";
-  } else {
-    errorElement.style.display = "block";
-    errorElement.innerHTML =
-      `<div class="alert alert-danger" role="alert">${message}</div>`;
-  }
-}
-
 // Main worker.
-function follow_live(test_id, retry) {
+function follow_live(test_id) {
   if (follow_live.timer_once === undefined) {
     follow_live.timer_once = null;
   }
@@ -237,24 +224,10 @@ function follow_live(test_id, retry) {
       if (this.status == 200) {
         const m = JSON.parse(this.responseText);
         if (!m.args.sprt.state)
-          follow_live.timer_once = setTimeout(
-            follow_live,
-            20000,
-            test_id,
-            true
-          );
+          follow_live.timer_once = setTimeout(follow_live, 20000, test_id);
         display_data(m);
       } else {
-        if (retry) {
-          follow_live.timer_once = setTimeout(
-            follow_live,
-            20000,
-            test_id,
-            true
-          );
-        } else {
-          alert_("Network or server error");
-        }
+        follow_live.timer_once = setTimeout(follow_live, 20000, test_id);
       }
     }
   };
