@@ -1,6 +1,7 @@
 /* A custom dark color theme for overriding bootstrap css rules */
 
 :root {
+  color-scheme: dark;
   --bg-dark-1: #111;
   --bg-dark-2: #222;
   --bg-dark-3: #333;
@@ -8,10 +9,14 @@
   --bg-dark-5: #555;
   --color-dark-1: #b1ada7;
   --color-dark-2: #9b9b9b;
-  --green-1: #75bb76;
+
+  --bs-body-color: var(--color-dark-1);
+  --bs-body-color-rgb: 17, 17, 17;
 
   --bs-body-bg: var(--bg-dark-1);
-  --bs-body-color: var(--color-dark-1);
+  --bs-body-bg-rgb: 177, 173, 167;
+
+  --bs-link-color-rgb: 117, 187, 118;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -29,10 +34,6 @@
 
 .sticky-top {
   background: var(--bg-dark-1);
-}
-
-a {
-  color: var(--green-1);
 }
 
 pre .hljs {
@@ -177,20 +178,18 @@ option.grayedoutoption {
 }
 
 /* Pagination links */
-.pagination li .page-link {
-  color: var(--color-dark-1);
-  background-color: var(--bg-dark-1);
-  border-color: #292929;
-}
+.pagination {
+  --bs-pagination-bg: var(--bg-dark-1);
+  --bs-pagination-border-color: var(--bg-dark-3);
 
-.pagination li.active .page-link {
-  color: var(--color-dark-1);
-  background: var(--bg-dark-4);
-}
+  --bs-pagination-hover-bg: var(--bg-dark-4);
+  --bs-pagination-hover-border-color: var(--bs-pagination-border-color);
 
-.pagination li:not(.active) .page-link:hover {
-  background-color: var(--bg-dark-4);
-  color: var(--bs-white);
+  --bs-pagination-focus-bg: var(--bs-pagination-hover-bg);
+
+  --bs-pagination-disabled-color: var(--bs-gray-700);
+  --bs-pagination-disabled-bg: var(--bg-dark-1);
+  --bs-pagination-disabled-border-color: var(--bs-pagination-border-color);
 }
 
 /* Tables */
@@ -364,8 +363,74 @@ pre[style*="border-color:Pink"] {
 
 /* Cards */
 .card {
-  color: var(--color-dark-1);
-  background-color: var(--bg-dark-2);
+  --bs-card-bg: var(--bg-dark-2);
+}
+
+/* Alerts */
+.alert-primary {
+  --bs-alert-color: rgb(114, 190, 255);
+  --bs-alert-bg: rgba(var(--bs-primary-rgb), .271);
+  --bs-alert-border-color: rgba(var(--bs-primary-rgb), 0.5);
+}
+.alert-primary .alert-link {
+  color: rgb(134, 200, 255);
+}
+
+.alert-secondary {
+  --bs-alert-bg: rgba(var(--bs-secondary-rgb), .271);
+  --bs-alert-border-color: rgba(var(--bs-secondary-rgb), 0.5);
+}
+
+.alert-success {
+  --bs-alert-bg: rgba(var(--bs-link-color-rgb), .271);
+  --bs-alert-border-color: rgba(var(--bs-link-color-rgb), 0.5);
+}
+
+.alert-danger {
+  --bs-alert-bg: rgba(var(--bs-danger-rgb), .271);
+  --bs-alert-border-color: rgba(var(--bs-danger-rgb), 0.5);
+}
+
+.alert-warning {
+  --bs-alert-bg: rgba(var(--bs-warning-rgb), .271);
+  --bs-alert-border-color: rgba(var(--bs-warning-rgb), 0.5);
+}
+
+.alert-info {
+  --bs-alert-bg: rgba(var(--bs-info-rgb), .271);
+  --bs-alert-border-color: rgba(var(--bs-info-rgb), 0.5);
+}
+
+.alert-light {
+  --bs-alert-color: rgba(var(--bs-black-rgb), 0.75);
+  --bs-alert-bg: rgb(195, 195, 195);
+  --bs-alert-border-color: rgba(var(--bs-white-rgb), 0.5);
+}
+.alert-light .alert-link {
+  color: rgba(var(--bs-black-rgb), 0.75);
+}
+
+.alert-dark {
+  --bs-alert-bg: var(--bg-dark-2);
+  --bs-alert-border-color: var(--bg-dark-3);
+}
+
+.alert-secondary,
+.alert-success,
+.alert-danger,
+.alert-warning,
+.alert-info,
+.alert-dark {
+  --bs-alert-color: rgb(214, 209, 203);
+}
+
+.alert-secondary .alert-link,
+.alert-success .alert-link,
+.alert-danger .alert-link,
+.alert-warning .alert-link,
+.alert-info .alert-link,
+.alert-dark .alert-link {
+  color: rgb(214, 209, 203);
 }
 
 /* Green buttons in test run */

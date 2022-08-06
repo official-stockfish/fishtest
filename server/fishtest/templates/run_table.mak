@@ -13,7 +13,7 @@
       <nav>
         <ul class="pagination pagination-sm">
         % for page in pages:
-            <li class="${page['state']}">
+            <li class="page-item ${page['state']}">
               % if page['state'] not in ['disabled', 'active']:
                   <a class="page-link" href="${page['url']}">${page['idx']}</a>
               % else:
