@@ -395,11 +395,17 @@ else:
 
 <script>
   let form_submitted = false;
+  // when pressing the 'back'/'forward' button to get back to this page
   window.onpageshow = function() {
-    // If pressing the 'back' button to get back to this page, make sure
-    // the submit test button is enabled again.
+    // if the run was not a Reschedule
+    // make sure the base branch and base signiture are refilled again
+    % if not is_rerun:
+        document.querySelector("#base-branch").value = "${args.get('base_tag', 'master')}";
+        document.querySelector("#base-signature").value = "${args.get('base_signature', bench)}";
+    % endif
     // make sure form_submitted is set back to false
     form_submitted = false;
+    // make sure the submit test button is enabled again.
     document.querySelector('#submit-test').removeAttribute('disabled');
     document.querySelector('#submit-test').innerText = 'Submit test';
     // Also make sure that the odds TC fields have the right visibility.
