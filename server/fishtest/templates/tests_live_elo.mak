@@ -1,10 +1,5 @@
 <%inherit file="base.mak"/>
 
-<link rel="stylesheet"
-      href="/css/live_elo.css?2&v=${cache_busters['css/live_elo.css']}"
-      integrity="sha384-${cache_busters['css/live_elo.css']}"
-      crossorigin="anonymous" />
-
 <script>
   document.title = 'Live Elo - ${page_title} | Stockfish Testing';
   const test_id = "${str(run['_id'])}";
@@ -22,7 +17,7 @@
       <div id="ELO_chart_div"></div>
     </div>
     <h4>Details</h4>
-    <div class="error" id="error"></div>
+    <style>td:last-child {word-break: break-word;}</style>
     <div class="col-12 table-responsive-lg">
       <table
         id="data"

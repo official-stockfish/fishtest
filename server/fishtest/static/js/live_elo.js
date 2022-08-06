@@ -143,7 +143,6 @@ function escapeHtml(string) {
 
 function display_data(items) {
   const j = collect(items);
-  document.getElementById("error").style.display = "none";
   document.getElementById("data").style.visibility = "visible";
   document.getElementById("commit").innerHTML =
     "<a href=" +
