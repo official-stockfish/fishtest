@@ -1,7 +1,8 @@
 :root {
-  --green-1: #008002;
-  --green-2: #5f9960;
-  --green-3: #497449;
+  --bs-link-color-rgb: 0, 128, 2;
+  --bs-link-color: rgb(var(--bs-link-color-rgb));
+  --bs-link-hover-color: rgb(95, 153, 96);
+  --bs-link-focus-color: rgb(73, 116, 73);
 }
 
 @media (max-width: 575.98px) {
@@ -150,16 +151,15 @@
 }
 
 a {
-  color: var(--green-1);
   text-decoration: none;
 }
 
-a:hover {
-  color: var(--green-2);
+a:focus {
+  color: var(--bs-link-focus-color);
 }
 
-a:focus {
-  color: var(--green-3);
+.alert .alert-link {
+  text-decoration: underline;
 }
 
 .main .default-net {
@@ -496,39 +496,16 @@ td {
 }
 
 /* Pagination links */
-.page-link {
-  color: var(--bs-gray-700);
-  transition: 0.1s;
-  user-select: none;
-}
+.pagination {
+  --bs-pagination-color: var(--bs-body-color);
 
-.page-link:hover,
-.page-link:focus {
-  color: var(--bs-gray-900);
-  transition: 0.1s;
-}
+  --bs-pagination-focus-color: var(--bs-link-hover-color);
+  --bs-pagination-focus-box-shadow: 0 0 0 0.25rem rgba(var(--bs-link-color-rgb), 0.25);
 
-.pagination li.disabled .page-link,
-.pagination li.disabled .page-link:hover {
-  color: rgb(153, 153, 153) !important;
-  background: transparent !important;
-}
+  --bs-pagination-active-bg: var(--bs-link-hover-color);
+  --bs-pagination-active-border-color: var(--bs-link-color);
 
-.pagination li.active .page-link {
-  color: rgb(153, 153, 153);
-  background: rgb(245, 245, 245);
-}
-
-.pagination li:not(.active) .page-link:hover {
-  background-color: #f5f5f5;
-}
-
-.pagination > li:first-child a {
-  border-radius: 0.25rem 0 0 0.25rem;
-}
-
-.pagination > li:last-child a {
-  border-radius: 0 0.25rem 0.25rem 0;
+  --bs-pagination-disabled-color: var(--bs-gray-500);
 }
 
 option.grayedoutoption {
@@ -584,7 +561,7 @@ input[type="checkbox"],
 
 .list-group-item-check:checked + .list-group-item {
   color: #fff;
-  background-color: var(--green-3);
+  background-color: var(--bs-link-focus-color);
 }
 
 .list-group-item-check[disabled] + .list-group-item,
