@@ -955,7 +955,12 @@ def launch_cutechess(
             print("Server told us task is no longer needed")
             return False
 
-        result["spsa"] = {"num_games": games_to_play, "wins": 0, "losses": 0, "draws": 0}
+        result["spsa"] = {
+            "num_games": games_to_play,
+            "wins": 0,
+            "losses": 0,
+            "draws": 0,
+        }
 
         w_params = req["w_params"]
         b_params = req["b_params"]
@@ -990,47 +995,60 @@ def launch_cutechess(
     )
 
     #    print(cmd)
-    with subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        universal_newlines=True,
-        bufsize=1,
-        # The next options are necessary to be able to send a CTRL_C_EVENT to this process.
-        # https://stackoverflow.com/questions/7085604/sending-c-to-python-subprocess-objects-on-windows
-        startupinfo=subprocess.STARTUPINFO(
-            dwFlags=subprocess.STARTF_USESHOWWINDOW, wShowWindow=subprocess.SW_HIDE
-        )
-        if IS_WINDOWS
-        else None,
-        creationflags=subprocess.CREATE_NEW_CONSOLE if IS_WINDOWS else 0,
-        close_fds=not IS_WINDOWS,
-    ) as p:
-        try:
-            task_alive = parse_cutechess_output(
-                p,
-                remote,
-                result,
-                spsa_tuning,
-                games_to_play,
-                batch_size,
-                tc_limit,
+    try:
+        with subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+            bufsize=1,
+            # The next options are necessary to be able to send a CTRL_C_EVENT to this process.
+            # https://stackoverflow.com/questions/7085604/sending-c-to-python-subprocess-objects-on-windows
+            startupinfo=subprocess.STARTUPINFO(
+                dwFlags=subprocess.STARTF_USESHOWWINDOW, wShowWindow=subprocess.SW_HIDE
             )
-        finally:
+            if IS_WINDOWS
+            else None,
+            creationflags=subprocess.CREATE_NEW_CONSOLE if IS_WINDOWS else 0,
+            close_fds=not IS_WINDOWS,
+        ) as p:
             try:
-                # We nicely ask cutechess-cli to stop.
+                task_alive = parse_cutechess_output(
+                    p,
+                    remote,
+                    result,
+                    spsa_tuning,
+                    games_to_play,
+                    batch_size,
+                    tc_limit,
+                )
+            finally:
                 try:
-                    send_sigint(p)
-                except Exception as e:
-                    print("\nException in send_sigint:\n", e, sep="", file=sys.stderr)
-                # now wait...
-                print("\nWaiting for cutechess-cli to finish ... ", end="", flush=True)
-                p.wait(timeout=CUTECHESS_KILL_TIMEOUT)
-            except:
-                print("timeout", flush=True)
-                kill_process(p)
-            else:
-                print("done", flush=True)
+                    # We nicely ask cutechess-cli to stop.
+                    try:
+                        send_sigint(p)
+                    except Exception as e:
+                        print(
+                            "\nException in send_sigint:\n", e, sep="", file=sys.stderr
+                        )
+                    # now wait...
+                    print(
+                        "\nWaiting for cutechess-cli to finish ... ", end="", flush=True
+                    )
+                    p.wait(timeout=CUTECHESS_KILL_TIMEOUT)
+                except:
+                    print("timeout", flush=True)
+                    kill_process(p)
+                else:
+                    print("done", flush=True)
+    except (OSError, subprocess.SubprocessError) as e:
+        print(
+            "Exception starting cutechess:\n",
+            e,
+            sep="",
+            file=sys.stderr,
+        )
+        raise WorkerException("Unable to start cutechess. Error: {}".format(str(e)))
 
     return task_alive
 
