@@ -1,3 +1,9 @@
+:root {
+  --green-1: #008002;
+  --green-2: #5f9960;
+  --green-3: #497449;
+}
+
 @media (max-width: 575.98px) {
   body {
     font-size: 14px;
@@ -144,16 +150,16 @@
 }
 
 a {
-  color: #008002;
+  color: var(--green-1);
   text-decoration: none;
 }
 
 a:hover {
-  color: #5f9960;
+  color: var(--green-2);
 }
 
 a:focus {
-  color: #497449;
+  color: var(--green-3);
 }
 
 .main .default-net {
@@ -542,7 +548,47 @@ option.grayedoutoption {
   font-family: var(--bs-font-monospace);
 }
 
+.form-control[readonly] {
+  background: var(--bs-gray-300);
+}
+
 input[type="checkbox"],
 .form-check-label {
   cursor: pointer;
+}
+
+.no-arrows::-webkit-inner-spin-button,
+.no-arrows::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
+.no-arrows {
+  -moz-appearance: textfield;
+}
+
+.list-group-checkable .list-group-item {
+  cursor: pointer;
+}
+
+.list-group-item-check {
+  position: absolute;
+  clip: rect(0, 0, 0, 0);
+}
+
+.list-group-item-check:hover + .list-group-item {
+  background-color: var(--bs-list-group-border-color);
+}
+
+.list-group-item-check:checked + .list-group-item {
+  color: #fff;
+  background-color: var(--green-3);
+}
+
+.list-group-item-check[disabled] + .list-group-item,
+.list-group-item-check:disabled + .list-group-item {
+  pointer-events: none;
+  opacity: 0.5;
 }
