@@ -8,11 +8,10 @@
   --bg-dark-5: #555;
   --color-dark-1: #b1ada7;
   --color-dark-2: #9b9b9b;
-}
+  --green-1: #75bb76;
 
-body {
-  background: var(--bg-dark-1);
-  color: var(--color-dark-1);
+  --bs-body-bg: var(--bg-dark-1);
+  --bs-body-color: var(--color-dark-1);
 }
 
 ::-webkit-scrollbar-thumb {
@@ -33,7 +32,7 @@ body {
 }
 
 a {
-  color: #75bb76;
+  color: var(--green-1);
 }
 
 pre .hljs {
@@ -110,7 +109,7 @@ header.navbar {
   --bs-border-color: var(--bg-dark-3);
 }
 
-.offcanvas-lg .btn-close {
+.btn-close {
   filter: invert(1) grayscale(100%) brightness(200%);
 }
 
@@ -127,8 +126,7 @@ header.navbar {
 }
 
 .form-control[readonly] {
-  background: rgb(68, 68, 68);
-  color: rgb(177, 173, 167);
+  background: var(--bg-dark-5);
 }
 
 .form-select {
@@ -368,4 +366,19 @@ pre[style*="border-color:Pink"] {
 .card {
   color: var(--color-dark-1);
   background-color: var(--bg-dark-2);
+}
+
+/* Green buttons in test run */
+.list-group {
+  --bs-list-group-color: var(--bs-body-color);
+  --bs-list-group-bg: var(--bs-body-bg);
+  --bs-list-group-border-color: rgba(255, 255, 255, 0.125);
+}
+
+/* Modals */
+.modal {
+  --bs-modal-bg: var(--bg-dark-2);
+  --bs-modal-border-color: var(--bg-dark-3);
+  --bs-modal-footer-border-color: var(--bs-modal-border-color);
+  --bs-modal-header-border-color: var(--bs-modal-border-color);
 }
