@@ -27,16 +27,19 @@
       <label for="username" class="d-flex align-items-end">Username</label>
     </div>
 
-    <div class="form-floating mb-3">
-      <input
-        type="password"
-        class="form-control mb-3"
-        id="password"
-        name="password"
-        placeholder="Password"
-        required
-      />
-      <label for="password" class="d-flex align-items-end">Password</label>
+    <div class="input-group mb-3">
+      <div class="form-floating">
+        <input
+          type="password"
+          class="form-control"
+          id="password"
+          name="password"
+          placeholder="Password"
+          required
+        />
+        <label for="password" class="d-flex align-items-end">Password</label>
+      </div>
+      <span class="input-group-text toggle-password-visibility" role="button"><i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i></span>
     </div>
 
     <div class="mb-3 form-check">
@@ -52,3 +55,7 @@
     <button type="submit" class="btn btn-primary w-100">Login</button>
   </form>
 </div>
+
+<script src="/js/toggle_password.js?v=${cache_busters['js/toggle_password.js']}"
+        integrity="sha384-${cache_busters['js/toggle_password.js']}"
+        crossorigin="anonymous"></script>
