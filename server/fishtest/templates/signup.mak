@@ -39,30 +39,36 @@
       <label for="username" class="d-flex align-items-end">Username</label>
     </div>
 
-    <div class="form-floating mb-3">
-      <input
-        type="password"
-        class="form-control mb-3"
-        id="password"
-        name="password"
-        placeholder="Password"
-        pattern=".{8,}"
-        title="Eight or more characters: a password too simple or trivial to guess will be rejected"
-        required
-      />
-      <label for="password" class="d-flex align-items-end">Password</label>
+    <div class="input-group mb-3">
+      <div class="form-floating">
+        <input
+          type="password"
+          class="form-control"
+          id="password"
+          name="password"
+          placeholder="Password"
+          pattern=".{8,}"
+          title="Eight or more characters: a password too simple or trivial to guess will be rejected"
+          required
+        />
+        <label for="password" class="d-flex align-items-end">Password</label>
+      </div>
+      <span class="input-group-text toggle-password-visibility" role="button"><i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i></span>
     </div>
 
-    <div class="form-floating mb-3">
-      <input
-        type="password"
-        class="form-control mb-3"
-        id="password2"
-        name="password2"
-        placeholder="Repeat Password"
-        required
-      />
-      <label for="password2" class="d-flex align-items-end">Repeat Password</label>
+    <div class="input-group mb-3">
+      <div class="form-floating">
+        <input
+          type="password"
+          class="form-control"
+          id="password2"
+          name="password2"
+          placeholder="Repeat Password"
+          required
+        />
+        <label for="password2" class="d-flex align-items-end">Repeat Password</label>
+      </div>
+      <span class="input-group-text toggle-password-visibility" role="button"><i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i></span>
     </div>
 
     <div class="form-floating mb-3">
@@ -83,3 +89,7 @@
     <button type="submit" class="btn btn-primary w-100">Register</button>
   </form>
 </div>
+
+<script src="/js/toggle_password.js?v=${cache_busters['js/toggle_password.js']}"
+        integrity="sha384-${cache_busters['js/toggle_password.js']}"
+        crossorigin="anonymous"></script>
