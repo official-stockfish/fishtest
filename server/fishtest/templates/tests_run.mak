@@ -429,10 +429,11 @@ else:
   }
 
   function update_book_depth_visibility(book) {
-    if (book.match('\.pgn$')) {
-      document.querySelector('.book-depth').style.display = "";
+    const bookDepth = document.querySelectorAll(".book-depth");
+    if (book.match("\\.pgn$")) {
+      bookDepth.forEach((el) => (el.style.display = ""));
     } else {
-      document.querySelector('.book-depth').style.display = "none";
+      bookDepth.forEach((el) => (el.style.display = "none"));
     }
   }
 
