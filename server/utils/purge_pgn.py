@@ -1,10 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-from __future__ import print_function
-
-import os
 import re
-import sys
 from datetime import datetime, timedelta
 
 from fishtest.rundb import RunDb
@@ -13,9 +9,7 @@ from pymongo import DESCENDING
 rundb = RunDb()
 
 
-def purge_pgn(days):
-    """Purge old PGNs except LTC (>= 20s) runs"""
-
+def purge_pgn(deleted, days):
     deleted_runs = 0
     deleted_tasks = 0
     saved_runs = 0
@@ -24,20 +18,21 @@ def purge_pgn(days):
 
     run_count = 0
     for run in rundb.runs.find(
-        {"finished": True, "deleted": False},
+        {"finished": True, "deleted": deleted},
         sort=[("last_updated", DESCENDING)],
     ):
 
-        if (now - run["start_time"]).days > 30:
+        if (now - run["last_updated"]).days > 60:
             break
 
         run_count += 1
         if run_count % 10 == 0:
-            print("Run: %05d" % (run_count), end="\r")
+            print("Run: {:6d}".format(run_count), end="\r")
 
         skip = False
         if (
-            re.match("^([2-9][0-9])|(1[0-9][0-9])", run["args"]["tc"])
+            not deleted
+            and re.match("^([2-9][0-9])|([1-9][0-9][0-9])", run["args"]["tc"])
             and run["last_updated"] > datetime.utcnow() - timedelta(days=5 * days)
         ) or run["last_updated"] > datetime.utcnow() - timedelta(days=days):
             saved_runs += 1
@@ -56,12 +51,14 @@ def purge_pgn(days):
                     rundb.pgndb.delete_one({"_id": pgn["_id"]})
                     deleted_tasks += 1
 
-    print("PGN runs/tasks saved:  %5d/%7d" % (saved_runs, saved_tasks))
-    print("PGN runs/tasks purged: %5d/%7d" % (deleted_runs, deleted_tasks))
+    print("Deleted" if deleted else "Not deleted", "runs:")
+    print("PGN runs/tasks saved:  {:5d}/{:7d}".format(saved_runs, saved_tasks))
+    print("PGN runs/tasks purged: {:5d}/{:7d}".format(deleted_runs, deleted_tasks))
 
 
 def main():
-    purge_pgn(days=2)
+    purge_pgn(deleted=False, days=2)
+    purge_pgn(deleted=True, days=50)
 
 
 if __name__ == "__main__":
