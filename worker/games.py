@@ -955,7 +955,12 @@ def launch_cutechess(
             print("Server told us task is no longer needed")
             return False
 
-        result["spsa"] = {"num_games": games_to_play, "wins": 0, "losses": 0, "draws": 0}
+        result["spsa"] = {
+            "num_games": games_to_play,
+            "wins": 0,
+            "losses": 0,
+            "draws": 0,
+        }
 
         w_params = req["w_params"]
         b_params = req["b_params"]
@@ -1126,18 +1131,27 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
     engines = glob.glob(os.path.join(testing_dir, "stockfish_*" + EXE_SUFFIX))
     num_bkps = 50
     if len(engines) > num_bkps:
-        engines.sort(key=os.path.getmtime)
-        for old_engine in engines[:-num_bkps]:
-            try:
-                os.remove(old_engine)
-            except Exception as e:
-                print(
-                    "Failed to remove an old engine binary {}:\n".format(old_engine),
-                    e,
-                    sep="",
-                    file=sys.stderr,
-                )
-
+        try:
+            engines.sort(key=os.path.getmtime)
+            for old_engine in engines[:-num_bkps]:
+                try:
+                    os.remove(old_engine)
+                except Exception as e:
+                    print(
+                        "Failed to remove an old engine binary {}:\n".format(
+                            old_engine
+                        ),
+                        e,
+                        sep="",
+                        file=sys.stderr,
+                    )
+        except Exception as e:
+            print(
+                "Failed to obtain modification time of old engine binary:\n",
+                e,
+                sep="",
+                file=sys.stderr,
+            )
     # Create new engines.
     sha_new = run["args"]["resolved_new"]
     sha_base = run["args"]["resolved_base"]
