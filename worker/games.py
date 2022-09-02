@@ -1023,20 +1023,16 @@ def launch_cutechess(
                     tc_limit,
                 )
             finally:
+                # We nicely ask cutechess-cli to stop.
                 try:
-                    # We nicely ask cutechess-cli to stop.
-                    try:
-                        send_sigint(p)
-                    except Exception as e:
-                        print(
-                            "\nException in send_sigint:\n", e, sep="", file=sys.stderr
-                        )
-                    # now wait...
-                    print(
-                        "\nWaiting for cutechess-cli to finish ... ", end="", flush=True
-                    )
+                    send_sigint(p)
+                except Exception as e:
+                    print("\nException in send_sigint:\n", e, sep="", file=sys.stderr)
+                # now wait...
+                print("\nWaiting for cutechess-cli to finish ... ", end="", flush=True)
+                try:
                     p.wait(timeout=CUTECHESS_KILL_TIMEOUT)
-                except:
+                except subprocess.TimeoutExpired:
                     print("timeout", flush=True)
                     kill_process(p)
                 else:
@@ -1146,6 +1142,14 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
     if len(engines) > num_bkps:
         try:
             engines.sort(key=os.path.getmtime)
+        except Exception as e:
+            print(
+                "Failed to obtain modification time of old engine binary:\n",
+                e,
+                sep="",
+                file=sys.stderr,
+            )
+        else:
             for old_engine in engines[:-num_bkps]:
                 try:
                     os.remove(old_engine)
@@ -1158,13 +1162,6 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
                         sep="",
                         file=sys.stderr,
                     )
-        except Exception as e:
-            print(
-                "Failed to obtain modification time of old engine binary:\n",
-                e,
-                sep="",
-                file=sys.stderr,
-            )
     # Create new engines.
     sha_new = run["args"]["resolved_new"]
     sha_base = run["args"]["resolved_base"]
