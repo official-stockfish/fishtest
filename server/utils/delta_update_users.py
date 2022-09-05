@@ -1,15 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-import os
 import sys
 from datetime import datetime, timedelta
 
-from pymongo import DESCENDING
-
-# For tasks
-sys.path.append(os.path.expanduser("~/fishtest/fishtest"))
 from fishtest.rundb import RunDb
 from fishtest.util import delta_date, diff_date, estimate_game_duration
+from pymongo import DESCENDING
 
 new_deltas = {}
 skip = False
@@ -20,26 +16,26 @@ def process_run(run, info, deltas=None):
     if deltas and (skip or str(run["_id"]) in deltas):
         skip = True
         return
-    if deltas != None and str(run["_id"]) in new_deltas:
+    if deltas is not None and str(run["_id"]) in new_deltas:
         print("Warning: skipping repeated run!")
         return
     if "username" in run["args"]:
         username = run["args"]["username"]
-        if username not in info:
-            print("not in info: ", username)
-            return
-        else:
+        if username in info:
             info[username]["tests"] += 1
+        else:
+            print("not in info:", username)
+            return
 
     tc = estimate_game_duration(run["args"]["tc"])
     for task in run["tasks"]:
         if "worker_info" not in task:
             continue
         username = task["worker_info"].get("username", None)
-        if username == None:
+        if username is None:
             continue
         if username not in info:
-            print("not in info: ", username)
+            print("not in info:", username)
             continue
 
         if "stats" in task:
@@ -55,14 +51,17 @@ def process_run(run, info, deltas=None):
             info[username]["task_last_updated"] = max(
                 task["last_updated"], info[username]["last_updated"]
             )
-        except:
+        except (TypeError, KeyError) as e:
+            # Comparison between a datetime and a string as "6 hours ago"
             info[username]["last_updated"] = task["last_updated"]
+        except Exception as e:
+            print("Exception updating info[username]:", e, sep="\n", file=sys.stderr)
 
         info[username]["cpu_hours"] += float(
             num_games * int(run["args"].get("threads", 1)) * tc / (60 * 60)
         )
         info[username]["games"] += num_games
-    if deltas != None:
+    if deltas is not None:
         new_deltas.update({str(run["_id"]): None})
 
 
@@ -79,16 +78,19 @@ def build_users(machines, info):
     for u in info.keys():
         user = info[u]
         try:
+            # eg "11 minutes ago", "6 hours ago", "Never"
             if isinstance(user["last_updated"], str):
-                diff = diff_date(user["task_last_updated"])
-                user["diff"] = diff.total_seconds()
-                user["last_updated"] = delta_date(diff)
+                if "task_last_updated" in user:
+                    diff = diff_date(user["task_last_updated"])
+                    user["diff"] = diff.total_seconds()
+                    user["last_updated"] = delta_date(diff)
             else:
+                # eg "2022-08-30 01:05:23.656000", "0001-01-01 00:00:00"
                 diff = diff_date(user["last_updated"])
                 user["diff"] = diff.total_seconds()
                 user["last_updated"] = delta_date(diff)
-        except:
-            pass
+        except Exception as e:
+            print("Exception updating user['diff']:", e, sep="\n", file=sys.stderr)
         users.append(user)
 
     users = [u for u in users if u["games"] > 0 or u["tests"] > 0]
@@ -127,16 +129,21 @@ def update_users():
             info[username] = top_month[username].copy()
         else:
             info[username] = rundb.userdb.user_cache.find_one({"username": username})
-            if not info[username]:
-                info[username] = top_month[username].copy()
-            else:
+            if info[username]:
                 info[username]["games_per_hour"] = 0.0
+            else:
+                info[username] = top_month[username].copy()
 
     for run in rundb.get_unfinished_runs():
         try:
             process_run(run, top_month)
-        except:
-            print("Exception on run: ", run)
+        except Exception as e:
+            print(
+                "Exception processing run {} for top_month:".fnormat(run["_id"]),
+                e,
+                sep="\n",
+                file=sys.stderr,
+            )
 
     # Step through these in small batches (step size 100) to save RAM
     step_size = 100
@@ -156,31 +163,44 @@ def update_users():
         for run in runs:
             try:
                 process_run(run, info, deltas)
-            except:
-                print("Exception on run: ", run["_id"])
+            except Exception as e:
+                print(
+                    "Exception processing run {} for deltas:".format(run["_id"]),
+                    e,
+                    sep="\n",
+                    file=sys.stderr,
+                )
             if (now - run["start_time"]).days < 30:
                 try:
                     process_run(run, top_month)
-                except:
-                    print("Exception on run: ", run["_id"])
+                except Exception as e:
+                    print(
+                        "Exception on run {} for top_month:".format(run["_id"]),
+                        e,
+                        sep="\n",
+                        file=sys.stderr,
+                    )
             elif not clear_stats:
                 more_days = False
         last_updated = runs[-1]["last_updated"]
 
     if new_deltas:
         new_deltas.update(deltas)
-        rundb.deltas.remove()
-        rundb.deltas.save(new_deltas)
+        rundb.deltas.delete_many({})
+        rundb.deltas.insert_many([{k: v} for k, v in new_deltas.items()])
 
     machines = rundb.get_machines()
 
+    rundb.userdb.user_cache.delete_many({})
     users = build_users(machines, info)
-    rundb.userdb.user_cache.remove()
-    rundb.userdb.user_cache.insert(users)
-    rundb.userdb.user_cache.create_index("username", unique=True)
+    if users:
+        rundb.userdb.user_cache.insert_many(users)
+        rundb.userdb.user_cache.create_index("username", unique=True)
 
-    rundb.userdb.top_month.remove()
-    rundb.userdb.top_month.insert(build_users(machines, top_month))
+    rundb.userdb.top_month.delete_many({})
+    users_top = build_users(machines, top_month)
+    if users_top:
+        rundb.userdb.top_month.insert_many(users_top)
 
     # Delete users that have never been active and old admins group
     idle = {}
@@ -190,8 +210,8 @@ def update_users():
             u["groups"].remove("group:admins")
             update = True
         if update:
-            rundb.userdb.users.save(u)
-        if not "registration_time" in u or u[
+            rundb.userdb.users.save_user(u)
+        if "registration_time" not in u or u[
             "registration_time"
         ] < datetime.utcnow() - timedelta(days=28):
             idle[u["username"]] = u
@@ -200,23 +220,19 @@ def update_users():
             del idle[u["username"]]
     for u in idle.values():
         # A safe guard against deleting long time users
-        if not "registration_time" in u or u[
+        if "registration_time" not in u or u[
             "registration_time"
         ] < datetime.utcnow() - timedelta(days=38):
-            print("Warning: Found old user to delete: " + str(u["_id"]))
+            print("Warning: Found old user to delete:", str(u["_id"]))
         else:
-            print("Delete: " + str(u["_id"]))
-            rundb.userdb.users.remove({"_id": u["_id"]})
+            print("Delete:", str(u["_id"]))
+            rundb.userdb.users.delete_one({"_id": u["_id"]})
 
-    print("Successfully updated %d users" % (len(users)))
+    print("Successfully updated {} users".format(len(users)))
 
     # record this update run
     rundb.actiondb.update_stats()
 
 
-def main():
-    update_users()
-
-
 if __name__ == "__main__":
-    main()
+    update_users()
