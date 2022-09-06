@@ -5,6 +5,9 @@
   elo_model = "normalized"
   fb = lambda e0,e1:format_bounds(elo_model, e0, e1)
 
+  base_branch = args.get('base_tag', 'master')
+  base_signature = args.get('base_signature', bench)
+
   tc = args.get('tc', '10+0.1')
   new_tc = args.get('new_tc', tc)
 
@@ -41,11 +44,21 @@
           <div class="col-12 col-md-6 mb-2">
             <div class="row gx-1">
               <div class="mb-2">
-                <label class="form-label">Test type</label>
+                <label class="form-label">Test type <i class="fa-solid fa-ellipsis" role="button" data-bs-toggle="collapse" data-bs-target=".collapse-type" title="Toggle more tests"></i></label>
                 <div class="list-group list-group-checkable flex-row row row-cols-2 row-cols-xl-4 g-1 text-center">
                   <div class="col">
                     <input class="list-group-item-check pe-none" type="radio" name="test-type" id="fast_test"
-                      data-options='{"tc": "10+0.1", "new_tc": "10+0.1", "threads": 1, "options": "Hash=16 Use NNUE=true", "bounds": "standard STC"}'
+                      data-options='{
+                        "tc": "10+0.1",
+                        "new_tc": "10+0.1",
+                        "threads": 1,
+                        "options": "Hash=16 Use NNUE=true",
+                        "book": "UHO_XXL_+0.90_+1.19.epd",
+                        "stop_rule": "stop-rule-sprt",
+                        "bounds": "standard STC",
+                        "base_branch": "${base_branch}",
+                        "base_signature": ${base_signature}
+                      }'
                       checked>
                     <label class="list-group-item rounded-3" for="fast_test" title="Short time control | Single-threaded">
                       STC
@@ -54,7 +67,17 @@
 
                   <div class="col">
                     <input class="list-group-item-check pe-none" type="radio" name="test-type" id="slow_test"
-                      data-options='{"tc": "60+0.6", "new_tc": "60+0.6", "threads": 1, "options": "Hash=64 Use NNUE=true", "bounds": "standard LTC"}'>
+                      data-options='{
+                        "tc": "60+0.6",
+                        "new_tc": "60+0.6",
+                        "threads": 1,
+                        "options": "Hash=64 Use NNUE=true",
+                        "book": "UHO_XXL_+0.90_+1.19.epd",
+                        "stop_rule": "stop-rule-sprt",
+                        "bounds": "standard LTC",
+                        "base_branch": "${base_branch}",
+                        "base_signature": ${base_signature}
+                      }'>
                     <label class="list-group-item rounded-3" for="slow_test" title="Long time control | Single-threaded">
                       LTC
                     </label>
@@ -62,7 +85,17 @@
 
                   <div class="col">
                     <input class="list-group-item-check pe-none" type="radio" name="test-type" id="fast_smp_test"
-                      data-options='{"tc": "5+0.05", "new_tc": "5+0.05", "threads": 8, "options": "Hash=64 Use NNUE=true", "bounds": "standard STC"}'>
+                      data-options='{
+                        "tc": "5+0.05",
+                        "new_tc": "5+0.05",
+                        "threads": 8,
+                        "options": "Hash=64 Use NNUE=true",
+                        "book": "UHO_XXL_+0.90_+1.19.epd",
+                        "stop_rule": "stop-rule-sprt",
+                        "bounds": "standard STC",
+                        "base_branch": "${base_branch}",
+                        "base_signature": ${base_signature}
+                      }'>
                     <label class="list-group-item rounded-3" for="fast_smp_test" title="Short time control | Multi-threaded">
                       STC SMP
                     </label>
@@ -70,9 +103,55 @@
 
                   <div class="col">
                     <input class="list-group-item-check pe-none" type="radio" name="test-type" id="slow_smp_test"
-                      data-options='{"tc": "20+0.2", "new_tc": "20+0.2", "threads": 8, "options": "Hash=256 Use NNUE=true", "bounds": "standard LTC"}'>
+                      data-options='{
+                        "tc": "20+0.2",
+                        "new_tc": "20+0.2",
+                        "threads": 8,
+                        "options": "Hash=256 Use NNUE=true",
+                        "book": "UHO_XXL_+0.90_+1.19.epd",
+                        "stop_rule": "stop-rule-sprt",
+                        "bounds": "standard LTC",
+                        "base_branch": "${base_branch}",
+                        "base_signature": ${base_signature}
+                      }'>
                     <label class="list-group-item rounded-3" for="slow_smp_test" title="Long time control | Multi-threaded">
                       LTC SMP
+                    </label>
+                  </div>
+
+                  <div class="col collapse collapse-type">
+                    <input class="list-group-item-check pe-none" type="radio" name="test-type" id="pt_test"
+                      data-options='{
+                        "tc": "60+0.6",
+                        "new_tc": "60+0.6",
+                        "threads": 1,
+                        "options": "Hash=64 Use NNUE=true",
+                        "book": "8moves_v3.pgn",
+                        "stop_rule": "stop-rule-games",
+                        "games": 60000,
+                        "base_branch": "e6e324eb28fd49c1fc44b3b65784f85a773ec61c",
+                        "base_signature": 8129754
+                      }'>
+                    <label class="list-group-item rounded-3" for="pt_test" title="Progression test | Single-threaded">
+                      PT
+                    </label>
+                  </div>
+
+                  <div class="col collapse collapse-type">
+                    <input class="list-group-item-check pe-none" type="radio" name="test-type" id="pt_smp_test"
+                      data-options='{
+                        "tc": "30+0.3",
+                        "new_tc": "30+0.3",
+                        "threads": 8,
+                        "options": "Hash=256 Use NNUE=true",
+                        "book": "8moves_v3.pgn",
+                        "stop_rule": "stop-rule-games",
+                        "games": 40000,
+                        "base_branch": "e6e324eb28fd49c1fc44b3b65784f85a773ec61c",
+                        "base_signature": 8129754
+                      }'>
+                    <label class="list-group-item rounded-3" for="pt_smp_test" title="Progression test | Multi-threaded">
+                      PT SMP
                     </label>
                   </div>
                 </div>
@@ -93,7 +172,7 @@
 
               <div class="mb-2 col-6">
                 <label for="base-branch" class="form-label">Base Branch</label>
-                <input type="text" name="base-branch" id="base-branch" class="form-control" value="${args.get('base_tag', 'master')}" ${'readonly' if is_rerun else ''}>
+                <input type="text" name="base-branch" id="base-branch" class="form-control" value="${base_branch}" ${'readonly' if is_rerun else ''}>
               </div>
 
               <div class="mb-2 col-6">
@@ -105,7 +184,7 @@
               <div class="mb-2 col-6">
                 <label for="base-signature" class="form-label">Base Signature</label>
                 <input type="number" name="base-signature" id="base-signature" min="0" class="form-control no-arrows" onwheel="this.blur()"
-                  value="${args.get('base_signature', bench)}" ${'readonly' if is_rerun else ''}>
+                  value="${base_signature}" ${'readonly' if is_rerun else ''}>
               </div>
 
               <div class="mb-2 col-6">
@@ -437,7 +516,7 @@
       if (btn.dataset.options) testOptions = btn.dataset.options;
 
       if (testOptions) {
-        const { tc, new_tc, threads, options, bounds } = JSON.parse(testOptions);
+        const { tc, new_tc, threads, options, book, stop_rule, bounds, games, base_branch, base_signature } = JSON.parse(testOptions);
         document.getElementById("tc").value = tc;
         document.getElementById("new_tc").value = new_tc;
         document.getElementById("threads").value = threads;
@@ -455,8 +534,26 @@
             .getElementById("base-options")
             .value.replace(/Hash=[0-9]+ ?/, "")
         ).replace(/ $/, "");
-        document.getElementById("bounds").value = bounds;
-        update_sprt_bounds(bounds);
+
+        document.getElementById("book").value = book;
+        update_book_depth_visibility(book);
+
+        document.getElementById(stop_rule).click();
+
+        if (bounds) {
+          document.getElementById("bounds").value = bounds;
+          update_sprt_bounds(bounds);
+        }
+
+        if (games) {
+          document.getElementById("num-games").value = games;
+        }
+
+        if (!is_rerun) {
+          document.getElementById("base-branch").value = base_branch;
+          document.getElementById("base-signature").value = base_signature;
+        }
+
         do_spsa_work();
       }
     })
