@@ -370,16 +370,17 @@
 
 <script>
   let form_submitted = false;
-  window.onpageshow = function() {
-    // If pressing the 'back' button to get back to this page, make sure
-    // the submit test button is enabled again.
+  window.addEventListener("pageshow", () => {
     // make sure form_submitted is set back to false
     form_submitted = false;
+    
+    // make sure the submit test button is enabled again and has the correct text.
     document.getElementById('submit-test').disabled = false;
     document.getElementById('submit-test').innerText = 'Submit test';
+    
     // Also make sure that the odds TC fields have the right visibility.
     update_odds(document.getElementById('checkbox-time-odds'));
-  };
+  });
 
   const preset_bounds = {
     'standard STC': [ 0.0, 2.0],
