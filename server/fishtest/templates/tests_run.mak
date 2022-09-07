@@ -6,10 +6,16 @@
   fb = lambda e0,e1:format_bounds(elo_model, e0, e1)
 
   base_branch = args.get('base_tag', 'master')
-  base_signature = args.get('base_signature', bench)
+  latest_bench = args.get('base_signature', bench)
+
+  pt_branch = "e6e324eb28fd49c1fc44b3b65784f85a773ec61c"
+  pt_signature = 8129754
 
   tc = args.get('tc', '10+0.1')
   new_tc = args.get('new_tc', tc)
+
+  test_book = "UHO_XXL_+0.90_+1.19.epd"
+  pt_book = "8moves_v3.pgn"
 
   if new_tc != tc:
     is_odds = True
@@ -53,11 +59,11 @@
                         "new_tc": "10+0.1",
                         "threads": 1,
                         "options": "Hash=16 Use NNUE=true",
-                        "book": "UHO_XXL_+0.90_+1.19.epd",
+                        "book": "${test_book}",
                         "stop_rule": "stop-rule-sprt",
                         "bounds": "standard STC",
                         "base_branch": "${base_branch}",
-                        "base_signature": ${base_signature}
+                        "base_signature": ${latest_bench}
                       }'
                       checked>
                     <label class="list-group-item rounded-3" for="fast_test" title="Short time control | Single-threaded">
@@ -72,11 +78,11 @@
                         "new_tc": "60+0.6",
                         "threads": 1,
                         "options": "Hash=64 Use NNUE=true",
-                        "book": "UHO_XXL_+0.90_+1.19.epd",
+                        "book": "${test_book}",
                         "stop_rule": "stop-rule-sprt",
                         "bounds": "standard LTC",
                         "base_branch": "${base_branch}",
-                        "base_signature": ${base_signature}
+                        "base_signature": ${latest_bench}
                       }'>
                     <label class="list-group-item rounded-3" for="slow_test" title="Long time control | Single-threaded">
                       LTC
@@ -90,11 +96,11 @@
                         "new_tc": "5+0.05",
                         "threads": 8,
                         "options": "Hash=64 Use NNUE=true",
-                        "book": "UHO_XXL_+0.90_+1.19.epd",
+                        "book": "${test_book}",
                         "stop_rule": "stop-rule-sprt",
                         "bounds": "standard STC",
                         "base_branch": "${base_branch}",
-                        "base_signature": ${base_signature}
+                        "base_signature": ${latest_bench}
                       }'>
                     <label class="list-group-item rounded-3" for="fast_smp_test" title="Short time control | Multi-threaded">
                       STC SMP
@@ -108,11 +114,11 @@
                         "new_tc": "20+0.2",
                         "threads": 8,
                         "options": "Hash=256 Use NNUE=true",
-                        "book": "UHO_XXL_+0.90_+1.19.epd",
+                        "book": "${test_book}",
                         "stop_rule": "stop-rule-sprt",
                         "bounds": "standard LTC",
                         "base_branch": "${base_branch}",
-                        "base_signature": ${base_signature}
+                        "base_signature": ${latest_bench}
                       }'>
                     <label class="list-group-item rounded-3" for="slow_smp_test" title="Long time control | Multi-threaded">
                       LTC SMP
@@ -126,11 +132,13 @@
                         "new_tc": "60+0.6",
                         "threads": 1,
                         "options": "Hash=64 Use NNUE=true",
-                        "book": "8moves_v3.pgn",
+                        "book": "${pt_book}",
                         "stop_rule": "stop-rule-games",
                         "games": 60000,
-                        "base_branch": "e6e324eb28fd49c1fc44b3b65784f85a773ec61c",
-                        "base_signature": 8129754
+                        "test_branch": "master",
+                        "base_branch": "${pt_branch}",
+                        "test_signature": ${latest_bench},
+                        "base_signature": ${pt_signature}
                       }'>
                     <label class="list-group-item rounded-3" for="pt_test" title="Progression test | Single-threaded">
                       PT
@@ -144,11 +152,13 @@
                         "new_tc": "30+0.3",
                         "threads": 8,
                         "options": "Hash=256 Use NNUE=true",
-                        "book": "8moves_v3.pgn",
+                        "book": "${pt_book}",
                         "stop_rule": "stop-rule-games",
                         "games": 40000,
-                        "base_branch": "e6e324eb28fd49c1fc44b3b65784f85a773ec61c",
-                        "base_signature": 8129754
+                        "test_branch": "master",
+                        "base_branch": "${pt_branch}",
+                        "test_signature": ${latest_bench},
+                        "base_signature": ${pt_signature}
                       }'>
                     <label class="list-group-item rounded-3" for="pt_smp_test" title="Progression test | Multi-threaded">
                       PT SMP
@@ -184,7 +194,7 @@
               <div class="mb-2 col-6">
                 <label for="base-signature" class="form-label">Base Signature</label>
                 <input type="number" name="base-signature" id="base-signature" min="0" class="form-control no-arrows" onwheel="this.blur()"
-                  value="${base_signature}" ${'readonly' if is_rerun else ''}>
+                  value="${latest_bench}" ${'readonly' if is_rerun else ''}>
               </div>
 
               <div class="mb-2 col-6">
@@ -517,7 +527,7 @@
       if (btn.dataset.options) testOptions = btn.dataset.options;
 
       if (testOptions) {
-        const { tc, new_tc, threads, options, book, stop_rule, bounds, games, base_branch, base_signature } = JSON.parse(testOptions);
+        const { tc, new_tc, threads, options, book, stop_rule, bounds, games, test_branch, base_branch, test_signature, base_signature } = JSON.parse(testOptions);
         document.getElementById("tc").value = tc;
         document.getElementById("new_tc").value = new_tc;
         document.getElementById("threads").value = threads;
@@ -551,6 +561,12 @@
         }
 
         if (!is_rerun) {
+          if (test_branch) {
+            document.getElementById("test-branch").value = test_branch;
+          }
+          if (test_signature) {
+            document.getElementById("test-signature").value = test_signature;
+          }
           document.getElementById("base-branch").value = base_branch;
           document.getElementById("base-signature").value = base_signature;
         }
