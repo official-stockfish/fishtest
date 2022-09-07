@@ -655,7 +655,7 @@ def validate_form(request):
         u = request.userdb.get_user(data["username"])
         if u.get("tests_repo", "") != data["tests_repo"]:
             u["tests_repo"] = data["tests_repo"]
-            request.userdb.users.save(u)
+            request.userdb.save_user(u)
 
     if len(data["resolved_base"]) == 0 or len(data["resolved_new"]) == 0:
         raise Exception("Unable to find branch!")
