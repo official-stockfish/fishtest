@@ -53,6 +53,9 @@ def home(request):
 )
 @forbidden_view_config(renderer="login.mak")
 def login(request):
+    userid = request.authenticated_userid
+    if userid:
+        return home(request)
     login_url = request.route_url("login")
     referrer = request.url
     if referrer == login_url:
@@ -176,6 +179,9 @@ def logout(request):
     request_method=("GET", "POST"),
 )
 def signup(request):
+    userid = request.authenticated_userid
+    if userid:
+        return home(request)
     if request.method != "POST":
         return {}
     errors = []
