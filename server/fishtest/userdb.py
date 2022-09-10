@@ -2,9 +2,11 @@ import sys
 import threading
 import time
 from datetime import datetime
+from functools import lru_cache
 
-from pymongo import ASCENDING
 from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError, HashingError, InvalidHash, VerificationError
+from pymongo import ASCENDING
 
 
 class UserDb:
@@ -34,14 +36,26 @@ class UserDb:
         with self.user_lock:
             self.cache.clear()
 
-    def hash_password(self, password):
+    @lru_cache(maxsize=128)
+    def hash_password(self, password,
+        time_cost: int = 3, memory_cost: int = 65536, parallelism: int = 4,
+        hash_len: int = 32, salt_len: int = 16):
         return PasswordHasher().hash(password)
 
     def check_password(self, hashed_password, password):
         try:
             return PasswordHasher().verify(hashed_password, password)
-        except:
-            return False
+        except InvalidHash as e:
+            print("InvalidHash:", e, sep="\n")
+        except VerifyMismatchError as e:
+            print("VerifyMismatchError:", e, sep="\n")
+        except HashingError as e:
+            print("HashingError:", e, sep="\n")
+        except VerificationError as e:
+            print("VerificationError:", e, sep="\n")
+        except Exception as e:
+            print("Exception:", e, sep="\n")
+        return False
 
     def authenticate(self, username, password):
         user = self.find(username)
@@ -57,9 +71,9 @@ class UserDb:
                 self.save_user(user)
                 return {"username": username, "authenticated": True}
             else:
-                return {"error": "Invalid credentials"}
+                return {"error": "Invalid password"}
         else:
-            return {"error": "Invalid credentials"}
+            return {"error": "Invalid username"}
 
     def get_users(self):
         return self.users.find(sort=[("_id", ASCENDING)])
