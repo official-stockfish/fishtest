@@ -213,8 +213,14 @@
           elo5_u = elo5 + elo95_5
 %>
 
+<%def name="title_tests_stats()">Statistics - ${page_title} | Stockfish Testing</%def>
+
+<%block name="head">
+  <meta property="og:title" content="${title_tests_stats()}" />
+</%block>
+
 <script>
-  document.title = 'Statistics - ${page_title} | Stockfish Testing';
+  document.title = '${title_tests_stats()}';
 </script>
 
 <style>td {width: 20%;}</style>

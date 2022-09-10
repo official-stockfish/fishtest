@@ -1,7 +1,13 @@
 <%inherit file="base.mak"/>
 
+<%def name="title_tests_live_elo()">Live Elo - ${page_title} | Stockfish Testing</%def>
+
+<%block name="head">
+  <meta property="og:title" content="${title_tests_live_elo()}" />
+</%block>
+
 <script>
-  document.title = 'Live Elo - ${page_title} | Stockfish Testing';
+  document.title = '${title_tests_live_elo()}';
   const test_id = "${str(run['_id'])}";
 </script>
 

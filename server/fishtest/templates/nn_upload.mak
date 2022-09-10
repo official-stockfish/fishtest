@@ -1,7 +1,15 @@
 <%inherit file="base.mak"/>
 
+<%!
+  title = "Neural Network Upload | Stockfish Testing"
+%>
+
+<%block name="head">
+  <meta property="og:title" content="${title}" />
+</%block>
+
 <script>
-  document.title = 'Neural Network Upload | Stockfish Testing';
+  document.title = '${title}';
 </script>
 
 <div class="col-limited-size">

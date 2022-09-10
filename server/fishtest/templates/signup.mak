@@ -1,10 +1,15 @@
 <%inherit file="base.mak"/>
 
+<%!
+  title = "Register | Stockfish Testing"
+%>
+
 <script>
-  document.title = 'Register | Stockfish Testing';
+  document.title = '${title}';
 </script>
 
 <%block name="head">
+  <meta property="og:title" content="${title}" />
   <script src='https://www.google.com/recaptcha/api.js'></script>
 </%block>
 

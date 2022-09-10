@@ -1,7 +1,15 @@
 <%inherit file="base.mak"/>
 
+<%!
+  title = "Users - Pending & Idle | Stockfish Testing"
+%>
+
+<%block name="head">
+  <meta property="og:title" content="${title}" />
+</%block>
+
 <script>
-  document.title = 'Users - Pending & Idle | Stockfish Testing';
+  document.title = '${title}';
 </script>
 
 <h2>Users - Pending & Idle</h2>

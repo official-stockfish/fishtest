@@ -2,31 +2,35 @@
 <%
   title = ""
   if "ltc_only" in request.url:
-      title += " - LTC"
+      title += " LTC"
   if "success_only" in request.url:
-      title += " - Greens"
+      title += " Greens"
   if "yellow_only" in request.url:
-      title += " - Yellows"
+      title += " Yellows"
 %>
 
+<%!
+  title = "Finished Tests | Stockfish Testing"
+%>
+
+<%block name="head">
+  <meta property="og:title" content="${title}" />
+  <meta property="og:description" content="Finished - ${num_finished_runs} tests" />
+</%block>
+
 <script>
-  document.title =  'Finishes Test${title} | Stockfish Testing';
+  document.title =  '${title}';
 </script>
 
-<h2>
-  Finished Tests
-  % if 'success_only' in request.url:
-      - Greens
-  % elif 'yellow_only' in request.url:
-      - Yellows
-  % elif 'ltc_only' in request.url:
-      - LTC
-  % endif
-</h2>
+% if 'success_only' in request.url and 'yellow_only' in request.url:
+  <div class="alert alert-danger">Invalid parameters</div>
+% else:
+  <h2>Finished Tests -${title}</h2>
 
-<%include file="run_table.mak" args="runs=finished_runs,
-                                     header='Finished',
-                                     count=num_finished_runs,
-                                     pages=finished_runs_pages,
-                     title=title"
-/>
+  <%include file="run_table.mak" args="runs=finished_runs,
+                                       header='Finished',
+                                       count=num_finished_runs,
+                                       pages=finished_runs_pages,
+                                       title=title"
+  />
+% endif
