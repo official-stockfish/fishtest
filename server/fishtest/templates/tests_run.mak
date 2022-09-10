@@ -8,6 +8,7 @@
   base_branch = args.get('base_tag', 'master')
   latest_bench = args.get('base_signature', bench)
 
+  pt_version = "SF 15"
   pt_branch = "e6e324eb28fd49c1fc44b3b65784f85a773ec61c"
   pt_signature = 8129754
 
@@ -55,6 +56,7 @@
                   <div class="col">
                     <input class="list-group-item-check pe-none" type="radio" name="test-type" id="fast_test"
                       data-options='{
+                        "name": "STC",
                         "tc": "10+0.1",
                         "new_tc": "10+0.1",
                         "threads": 1,
@@ -74,6 +76,7 @@
                   <div class="col">
                     <input class="list-group-item-check pe-none" type="radio" name="test-type" id="slow_test"
                       data-options='{
+                        "name": "LTC",
                         "tc": "60+0.6",
                         "new_tc": "60+0.6",
                         "threads": 1,
@@ -92,6 +95,7 @@
                   <div class="col">
                     <input class="list-group-item-check pe-none" type="radio" name="test-type" id="fast_smp_test"
                       data-options='{
+                        "name": "STC SMP",
                         "tc": "5+0.05",
                         "new_tc": "5+0.05",
                         "threads": 8,
@@ -110,6 +114,7 @@
                   <div class="col">
                     <input class="list-group-item-check pe-none" type="radio" name="test-type" id="slow_smp_test"
                       data-options='{
+                        "name": "LTC SMP",
                         "tc": "20+0.2",
                         "new_tc": "20+0.2",
                         "threads": 8,
@@ -128,6 +133,7 @@
                   <div class="col collapse collapse-type">
                     <input class="list-group-item-check pe-none" type="radio" name="test-type" id="pt_test"
                       data-options='{
+                        "name": "PT",
                         "tc": "60+0.6",
                         "new_tc": "60+0.6",
                         "threads": 1,
@@ -148,6 +154,7 @@
                   <div class="col collapse collapse-type">
                     <input class="list-group-item-check pe-none" type="radio" name="test-type" id="pt_smp_test"
                       data-options='{
+                        "name": "PT SMP",
                         "tc": "30+0.3",
                         "new_tc": "30+0.3",
                         "threads": 8,
@@ -527,7 +534,7 @@
       if (btn.dataset.options) testOptions = btn.dataset.options;
 
       if (testOptions) {
-        const { tc, new_tc, threads, options, book, stop_rule, bounds, games, test_branch, base_branch, test_signature, base_signature } = JSON.parse(testOptions);
+        const { name, tc, new_tc, threads, options, book, stop_rule, bounds, games, test_branch, base_branch, test_signature, base_signature } = JSON.parse(testOptions);
         document.getElementById("tc").value = tc;
         document.getElementById("new_tc").value = new_tc;
         document.getElementById("threads").value = threads;
@@ -569,6 +576,21 @@
           }
           document.getElementById("base-branch").value = base_branch;
           document.getElementById("base-signature").value = base_signature;
+        }
+
+        if (name === "PT" || name === "PT SMP") {
+          fetch("https://api.github.com/repos/official-stockfish/stockfish/commits?per_page=1")
+            .then((response) => response.json().then((json) => json[0]))
+            .then((latestCommit) => {
+              const date = new Date(latestCommit.commit.committer.date).toDateString().substring(4).slice(0, -5);
+              const message = latestCommit.commit.message.match(/^.*$/m)[0];
+              let info = "";
+              if (name === "PT SMP") {
+                info += "SMP ";
+              }
+              info += 'Progression test of "' + message + '" of ' + date + ' vs ${pt_version}.';
+              document.getElementById("run-info").value = info;
+            });
         }
 
         do_spsa_work();
