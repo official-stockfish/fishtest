@@ -9,20 +9,6 @@ monitoring = request.rundb.conn["admin"].command("getFreeMonitoringStatus")
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <script>
-      window.addEventListener("pageshow", (e) => {
-        if (
-          location.pathname !== "/tests" &&
-          !location.pathname.includes("tests/user")
-        )
-          return;
-        const perfEntries = performance.getEntriesByType("navigation");
-        if (e.persisted || perfEntries[0].type === "back_forward") {
-          location.reload();
-        }
-      });
-    </script>
-
-    <script>
       darkThemeHash = "${cache_busters['css/theme.dark.css']}";
     </script>
 
