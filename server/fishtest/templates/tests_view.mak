@@ -257,7 +257,7 @@ if 'spsa' in run['args']:
       const div = document.querySelector("#tasks");
       const active = button.innerText.trim() === 'Hide';
       button.innerText = active ? 'Show' : 'Hide';
-      document.cookie = 'tasks_state' + '=' + button.innerText.trim() + ";max-age=315360000";
+      document.cookie = 'tasks_state' + '=' + button.innerText.trim() + ";max-age=315360000;SameSite=Lax;";
     }
 </script>
 

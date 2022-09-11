@@ -40,7 +40,7 @@
     const active = button.innerText.trim() === "Hide";
     button.innerText = active ? "Show" : "Hide";
     document.cookie =
-      "${cookie_name}" + "=" + button.innerText.trim() + ";max-age=315360000";
+      "${cookie_name}" + "=" + button.innerText.trim() + ";max-age=315360000;SameSite=Lax;";
   }
 </script>
 % endif

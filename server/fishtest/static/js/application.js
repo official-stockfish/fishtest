@@ -75,7 +75,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ?.remove();
     }
     // Remember the theme for 30 days
-    document.cookie = `theme=${theme};path=/;max-age=${30 * 24 * 60 * 60}`;
+    document.cookie = `theme=${theme};path=/;max-age=${30 * 24 * 60 * 60};SameSite=Lax;`;
   };
 
   const getPreferredTheme = () => {

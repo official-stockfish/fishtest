@@ -52,7 +52,7 @@
         const active = button.innerText.trim() === "Hide";
         button.innerText = active ? "Show" : "Hide";
         document.cookie =
-          "machines_state" + "=" + button.innerText.trim() + ";max-age=315360000";
+          "machines_state" + "=" + button.innerText.trim() + ";max-age=315360000;SameSite=Lax;";
       }
     </script>
     
