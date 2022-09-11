@@ -74,7 +74,11 @@
     <tbody>
       % for user in users:
           <tr>
-            <td>${user['username']}</td>
+            % if approver:
+                <td><a href="/user/${user['username']}">${user['username']}</a></td>
+            % else:
+              <td>${user['username']}</td>
+            % endif
             <td data-diff="${user['diff']}" class="text-end">${user['last_updated']}</td>
             <td class="text-end">${int(user['games_per_hour'])}</td>
             <td class="text-end">${int(user['cpu_hours'])}</td>

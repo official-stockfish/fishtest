@@ -47,6 +47,9 @@ class ActionDb:
     def block_user(self, username, data):
         self._new_action(username, "block_user", data)
 
+    def change_group(self, username, data):
+        self._new_action(username, "change_group", data)
+
     def failed_task(self, username, run):
         self._new_action(username, "failed_task", run)
 
