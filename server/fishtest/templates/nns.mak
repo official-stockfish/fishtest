@@ -20,7 +20,7 @@ The recommended net for a given Stockfish executable can be found as the default
     const active = button.innerText.trim().substring(0, 4) === "Hide";
     button.innerText = active ? "Show non default nets" : "Hide non default nets";
     document.cookie =
-      "non_default_state=" + (active ? "Hide" : "Show") + ";max-age=315360000";
+      "non_default_state=" + (active ? "Hide" : "Show") + ";max-age=315360000;SameSite=Lax;";
     window.location.reload();
   }
 </script>
