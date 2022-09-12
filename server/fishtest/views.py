@@ -532,16 +532,24 @@ def users_monthly(request):
     return {"users": users_list}
 
 
-def get_master_bench():
-    bs = re.compile(r"(^|\s)[Bb]ench[ :]+([0-9]+)", re.MULTILINE)
-    for c in requests.get(
+def get_master_info():
+    message_search = re.compile(r"^.*$", re.MULTILINE)
+    bench_search = re.compile(r"(^|\s)[Bb]ench[ :]+([0-9]+)", re.MULTILINE)
+    for idx, commit in enumerate(requests.get(
         "https://api.github.com/repos/official-stockfish/Stockfish/commits"
-    ).json():
-        if "commit" not in c:
+    ).json()):
+        if "commit" not in commit:
             return None
-        m = bs.search(c["commit"]["message"])
-        if m:
-            return m.group(2)
+        bench = bench_search.search(commit["commit"]["message"])
+        if idx == 0:
+            message = message_search.search(commit["commit"]["message"])
+            date = datetime.datetime.strptime(commit["commit"]["committer"]["date"], "%Y-%m-%dT%H:%M:%SZ")
+        if bench:
+            return {
+                "bench": bench.group(2),
+                "message": message.group(),
+                "date": date.strftime('%b %d'),
+            }
     return None
 
 
@@ -898,7 +906,7 @@ def tests_run(request):
         "is_rerun": len(run_args) > 0,
         "rescheduled_from": request.params["id"] if "id" in request.params else None,
         "tests_repo": u.get("tests_repo", ""),
-        "bench": get_master_bench(),
+        "master_info": get_master_info(),
         "valid_books": get_valid_books(),
     }
 
