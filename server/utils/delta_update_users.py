@@ -210,7 +210,7 @@ def update_users():
             u["groups"].remove("group:admins")
             update = True
         if update:
-            rundb.userdb.users.save_user(u)
+            rundb.userdb.save_user(u)
         if "registration_time" not in u or u[
             "registration_time"
         ] < datetime.utcnow() - timedelta(days=28):
