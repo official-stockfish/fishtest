@@ -6,7 +6,7 @@
   fb = lambda e0,e1:format_bounds(elo_model, e0, e1)
 
   base_branch = args.get('base_tag', 'master')
-  latest_bench = args.get('base_signature', bench)
+  latest_bench = args.get('base_signature', master_info["bench"])
 
   pt_version = "SF 15"
   pt_branch = "e6e324eb28fd49c1fc44b3b65784f85a773ec61c"
@@ -600,18 +600,9 @@
         }
 
         if (name === "PT" || name === "PT SMP") {
-          fetch("https://api.github.com/repos/official-stockfish/stockfish/commits?per_page=1")
-            .then((response) => response.json().then((json) => json[0]))
-            .then((latestCommit) => {
-              const date = new Date(latestCommit.commit.committer.date).toDateString().substring(4).slice(0, -5);
-              const message = latestCommit.commit.message.match(/^.*$/m)[0];
-              let info = "";
-              if (name === "PT SMP") {
-                info += "SMP ";
-              }
-              info += 'Progression test of "' + message + '" of ' + date + ' vs ${pt_version}.';
-              document.getElementById("run-info").value = info;
-            });
+          let info = (name === "PT SMP") ? "SMP " : "";
+          info += 'Progression test of "${master_info["message"]}" of ${master_info["date"]} vs ${pt_version}.';
+          document.getElementById("run-info").value = info;
         }
 
         do_spsa_work();
