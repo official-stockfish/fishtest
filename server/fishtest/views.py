@@ -451,17 +451,19 @@ def user(request):
             if user_group == "group:administrators":
                 request.session.flash("Cannot block/unblock an administrator", "error")
                 return HTTPFound(location=request.route_url("tests"))
-            user_data["blocked"] = "blocked" in request.POST
-            request.userdb.last_pending_time = 0
-            request.actiondb.block_user(
-                request.authenticated_userid,
-                {"user": user_name, "blocked": user_data["blocked"]},
-            )
-            request.session.flash(
-                ("Blocked" if user_data["blocked"] else "Unblocked")
-                + " user "
-                + user_name
-            )
+            unblock = request.POST.get("blocked") == None
+            if user_data["blocked"] == unblock:
+                user_data["blocked"] = "blocked" in request.POST
+                request.userdb.last_pending_time = 0
+                request.actiondb.block_user(
+                    request.authenticated_userid,
+                    {"user": user_name, "blocked": user_data["blocked"]},
+                )
+                request.session.flash(
+                    ("Blocked" if user_data["blocked"] else "Unblocked")
+                    + " user "
+                    + user_name
+                )
 
         if request.has_permission("administrate"):
             new_group = request.params.get("group")
