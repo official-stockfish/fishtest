@@ -264,15 +264,19 @@ legend {
   content: "\f00b";
 }
 
-.mainnavbar [href="/tests/finished?success_only=1"]::before {
+.mainnavbar [href="/tests/finished"]::before {
+  content: "\f11e";
+}
+
+.mainnavbar [href="/tests/finished?status=green"]::before {
   content: "\f14a";
 }
 
-.mainnavbar [href="/tests/finished?yellow_only=1"]::before {
+.mainnavbar [href="/tests/finished?status=yellow"]::before {
   content: "\f3fd";
 }
 
-.mainnavbar [href="/tests/finished?ltc_only=1"]::before {
+.mainnavbar [href="/tests/finished?tc=ltc"]::before {
   content: "\f017";
 }
 

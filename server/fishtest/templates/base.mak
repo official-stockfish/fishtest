@@ -148,9 +148,10 @@ monitoring = request.rundb.conn["admin"].command("getFreeMonitoringStatus")
                   <strong class="links-heading d-flex w-100 align-items-center fw-semibold">Tests</strong>
                   <ul class="list-unstyled fw-normal small">
                     <li><a href="/tests" class="links-link rounded">Overview</a></li>
-                    <li><a href="/tests/finished?ltc_only=1" class="links-link rounded">LTC</a></li>
-                    <li><a href="/tests/finished?success_only=1" class="links-link rounded">Greens</a></li>
-                    <li><a href="/tests/finished?yellow_only=1" class="links-link rounded">Yellows</a></li>
+                    <li><a href="/tests/finished" class="links-link rounded">Finished</a></li>
+                    <li><a href="/tests/finished?tc=ltc" class="links-link rounded">LTC</a></li>
+                    <li><a href="/tests/finished?status=green" class="links-link rounded">Greens</a></li>
+                    <li><a href="/tests/finished?status=yellow" class="links-link rounded">Yellows</a></li>
                     <li><a href="https://groups.google.com/g/fishcooking-results" target="_blank" rel="noopener" class="links-link rounded">History</a></li>
                   </ul>
                 </li>

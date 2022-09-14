@@ -190,7 +190,7 @@ class CreateRunDBTest(unittest.TestCase):
         self.rundb.buffer(run, True)
 
     def test_40_list_LTC(self):
-        finished_runs = self.rundb.get_finished_runs(limit=3, ltc_only=True)[0]
+        finished_runs = self.rundb.get_finished_runs(limit=3, tc="ltc")[0]
         for run in finished_runs:
             print(run["args"]["tc"])
 

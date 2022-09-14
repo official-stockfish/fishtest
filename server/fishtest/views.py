@@ -421,8 +421,6 @@ def actions(request):
         "actions": actions_list,
         "approver": request.has_permission("approve_run"),
         "pages": pages,
-        "num_actions": num_actions,
-        "page_idx": page_idx,
     }
 
 
@@ -1232,31 +1230,31 @@ def tests_view(request):
 
 def get_paginated_finished_runs(request):
     username = request.matchdict.get("username", "")
-    success_only = request.params.get("success_only", False)
-    yellow_only = request.params.get("yellow_only", False)
-    ltc_only = request.params.get("ltc_only", False)
+    status = request.params.get("status", False)
+    tc = request.params.get("tc", False)
+    info = request.params.get("info", False)
 
     page_idx = max(0, int(request.params.get("page", 1)) - 1)
     page_size = 25
 
     finished_runs, num_finished_runs = request.rundb.get_finished_runs(
         username=username,
-        success_only=success_only,
-        yellow_only=yellow_only,
-        ltc_only=ltc_only,
+        status=status,
+        tc=tc,
         skip=page_idx * page_size,
         limit=page_size,
+        info=info,
     )
 
     pages = pagination(page_idx, num_finished_runs, page_size)
 
     for page in pages:
-        if success_only:
-            page["url"] += "&success_only=1"
-        if yellow_only:
-            page["url"] += "&yellow_only=1"
-        if ltc_only:
-            page["url"] += "&ltc_only=1"
+        if status:
+            page["url"] += "&status={}".format(status)
+        if tc:
+            page["url"] += "&tc={}".format(tc)
+        if info:
+            page["url"] += "&info={}".format(info)
 
     failed_runs = []
     for run in finished_runs:

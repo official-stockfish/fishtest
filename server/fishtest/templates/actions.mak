@@ -30,7 +30,7 @@
   </div>
   <div class="col-12 col-md-auto mb-3">
     <label for="user" class="form-label">From user</label>
-    <input id="user" type="text" name="user" class="form-control" placeholder="username" value="${request.GET.get('user') if request.GET.get('user') != None else ''}">
+    <input id="user" type="text" name="user" class="form-control" placeholder="username" value="${request.GET.get('user') if request.GET.get('user') is not None else ''}">
   </div>
 
   <div class="col-12 col-md-auto mb-3 d-flex align-items-end">
@@ -78,5 +78,5 @@
 <%include file="pagination.mak" args="pages=pages"/>
 
 <script>
-  document.querySelector('#restrict').value = ('${request.GET.get("action") if request.GET.get("action") != None else ''}');
+  document.querySelector('#restrict').value = ('${request.GET.get("action") if request.GET.get("action") is not None else ''}');
 </script>

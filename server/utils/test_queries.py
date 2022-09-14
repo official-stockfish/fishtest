@@ -49,7 +49,7 @@ end = time.time()
 print("{} rows {:1.4f}".format(qlen(c), end - start) + "s\nFetching finished runs ...")
 start = time.time()
 c, n = rundb.get_finished_runs(
-    skip=0, limit=50, username="", success_only=False, ltc_only=False
+    skip=0, limit=50, username="", status=False, tc=False
 )
 end = time.time()
 
@@ -59,7 +59,7 @@ print(
 )
 start = time.time()
 c, n = rundb.get_finished_runs(
-    skip=0, limit=50, username="vdv", success_only=False, ltc_only=False
+    skip=0, limit=50, username="vdv", status=False, tc=False
 )
 end = time.time()
 

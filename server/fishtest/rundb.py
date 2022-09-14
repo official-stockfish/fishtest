@@ -489,19 +489,23 @@ class RunDb:
         skip=0,
         limit=0,
         username="",
-        success_only=False,
-        yellow_only=False,
-        ltc_only=False,
+        status=False,
+        tc=False,
+        info=""
     ):
         q = {"finished": True}
         if username:
             q["args.username"] = username
-        if ltc_only:
+        if tc == "stc":
+            q["tc_base"] = {"$lte": 40}
+        if tc == "ltc":
             q["tc_base"] = {"$gte": 40}
-        if success_only:
+        if status == "green":
             q["is_green"] = True
-        if yellow_only:
+        if status == "yellow":
             q["is_yellow"] = True
+        if info:
+            q["args.info"] = {"$regex": ".*{}.*".format(info), "$options": "i"}
 
         c = self.runs.find(
             q, skip=skip, limit=limit, sort=[("last_updated", DESCENDING)]

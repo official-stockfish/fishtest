@@ -1,10 +1,10 @@
-<%page args="runs, pages=None, show_delete=False, header=None, count=None, toggle=None, alt=None, title=''"/>
+<%page args="runs, pages=None, show_delete=False, header=None, count=None, toggle=None, alt=None"/>
 
 <%namespace name="base" file="base.mak"/>
 
 % if toggle is None:
     <script>
-      document.title = '${username + " - " if username else ""}Finished Tests${title} - page ${page_idx+1} | Stockfish Testing';
+      document.title = '${username + " - " if username else ""}Finished Tests - page ${page_idx+1} | Stockfish Testing';
     </script>
 % endif
 
