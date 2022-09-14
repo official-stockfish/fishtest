@@ -451,7 +451,7 @@ def user(request):
             if user_group == "group:administrators":
                 request.session.flash("Cannot block/unblock an administrator", "error")
                 return HTTPFound(location=request.route_url("tests"))
-            unblock = request.POST.get("blocked") == None
+            unblock = request.POST.get("blocked") is None
             if user_data["blocked"] == unblock:
                 user_data["blocked"] = "blocked" in request.POST
                 request.userdb.last_pending_time = 0
