@@ -449,7 +449,7 @@ def user(request):
             ## cannot block/unblock an administrator
             if any(g == "group:administrators" for g in user_data["groups"]):
                 request.session.flash("Cannot block/unblock an administrator", "error")
-                return HTTPFound(location=request.route_url("tests"))
+                return HTTPFound(location=request.current_route_path())
             unblock = request.POST.get("blocked") is None
             if user_data["blocked"] == unblock:
                 user_data["blocked"] = "blocked" in request.POST
@@ -469,11 +469,11 @@ def user(request):
             ## cannot change the group of an administrator
             if any(g == "group:administrators" for g in user_data["groups"]):
                 request.session.flash("Cannot change group", "error")
-                return HTTPFound(location=request.route_url("tests"))
+                return HTTPFound(location=request.current_route_path())
             ## check that the new group is valid
             if new_group != "" and new_group != "group:approvers":
                 request.session.flash("Invalid group", "error")
-                return HTTPFound(location=request.route_url("tests"))
+                return HTTPFound(location=request.current_route_path())
             ## check that the user is not already in the group
             if not any(g == new_group for g in user_data["groups"]):
                 request.actiondb.change_group(
@@ -486,7 +486,7 @@ def user(request):
                 request.session.flash("Group changed to '{}'".format(new_group))
 
         request.userdb.save_user(user_data)
-        return HTTPFound(location=request.route_url("tests"))
+        return HTTPFound(location=request.current_route_path())
     userc = request.userdb.user_cache.find_one({"username": user_name})
     hours = int(userc["cpu_hours"]) if userc is not None else 0
     return {
