@@ -446,9 +446,8 @@ def user(request):
                     request.session.flash("Success! Email updated")
 
         if request.has_permission("approve_run"):
-            user_group = user_data["groups"][0] if len(user_data["groups"]) > 0 else ''
             ## cannot block/unblock an administrator
-            if user_group == "group:administrators":
+            if any(g == "group:administrators" for g in user_data["groups"]):
                 request.session.flash("Cannot block/unblock an administrator", "error")
                 return HTTPFound(location=request.route_url("tests"))
             unblock = request.POST.get("blocked") is None
@@ -468,7 +467,7 @@ def user(request):
         if request.has_permission("administrate"):
             new_group = request.params.get("group")
             ## cannot change the group of an administrator
-            if user_group == "group:administrators":
+            if any(g == "group:administrators" for g in user_data["groups"]):
                 request.session.flash("Cannot change group", "error")
                 return HTTPFound(location=request.route_url("tests"))
             ## check that the new group is valid
@@ -476,10 +475,10 @@ def user(request):
                 request.session.flash("Invalid group", "error")
                 return HTTPFound(location=request.route_url("tests"))
             ## check that the user is not already in the group
-            if new_group != user_group:
+            if not any(g == new_group for g in user_data["groups"]):
                 request.actiondb.change_group(
                     request.authenticated_userid,
-                    {"user": user_name, "before": user_group, "after": new_group},
+                    {"user": user_name, "before": "".join(user_data["groups"]), "after": new_group},
                 )
                 request.userdb.remove_user_groups(user_name)
                 if len(new_group) > 0:

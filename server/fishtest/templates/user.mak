@@ -6,7 +6,8 @@
 
 <%
   user_is_blocked = user['blocked'] if 'blocked' in user else False
-  user_group = user['groups'][0] if len(user['groups']) > 0 else ''
+  user_group = "".join(user['groups'])
+  user_not_admin = not any(g == 'group:administrators' for g in user['groups'])
   show_submit = False
 %>
 
@@ -81,7 +82,7 @@
         </div>
         <span class="input-group-text toggle-password-visibility" role="button"><i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i></span>
       </div>
-    % elif user_group != 'group:administrators':
+    % elif user_not_admin:
       <%
         show_submit = True
       %>
@@ -98,7 +99,7 @@
       </div>
     % endif
 
-    % if not profile and admin and user_group != 'group:administrators':
+    % if not profile and admin and user_not_admin:
       <%
         show_submit = True
       %>
