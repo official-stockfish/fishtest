@@ -40,6 +40,44 @@ def cached_flash(request, requestString):
     return
 
 
+def pagination(page_idx, num, page_size):
+    pages = [
+        {
+            "idx": "Prev",
+            "url": "?page={}".format(page_idx),
+            "state": "disabled" if page_idx == 0 else "",
+        }
+    ]
+    last_idx = (num - 1) // page_size
+    for idx, _ in enumerate(range(0, num, page_size)):
+        if (
+            idx < 1
+            or (idx < 5 and page_idx < 4)
+            or abs(idx - page_idx) < 2
+            or (idx > last_idx - 5 and page_idx > last_idx - 4)
+            or idx > last_idx - 1
+        ):
+            pages.append(
+                {
+                    "idx": idx + 1,
+                    "url": "?page={}".format(idx + 1),
+                    "state": "active" if page_idx == idx else "",
+                }
+            )
+        elif pages[-1]["idx"] != "...":
+            pages.append({"idx": "...", "url": "", "state": "disabled"})
+    pages.append(
+        {
+            "idx": "Next",
+            "url": "?page={}".format(page_idx + 2),
+            "state": "disabled"
+            if page_idx >= (num - 1) // page_size
+            else "",
+        }
+    )
+    return pages
+
+
 @view_config(route_name="home")
 def home(request):
     return HTTPFound(location=request.route_url("tests"))
@@ -248,27 +286,37 @@ def signup(request):
 
 @view_config(route_name="nns", renderer="nns.mak")
 def nns(request):
+    user_id = request.authenticated_userid
+    user = request.params.get("user", "")
+    network_name = request.params.get("network_name", "")
+    master_only = request.params.get("master_only", False)
 
-    page_size = 250
-    page = int(request.params.get("page", 1))
-    skip = max(0, page - 1) * page_size
-    nns_list = []
+    page_idx = max(0, int(request.params.get("page", 1)) - 1)
+    page_size = 25
 
-    for nn in request.rundb.get_nns(page_size, skip=skip):
-        nns_list.append(nn)
-    if len(nns_list) == page_size:
-        next_page = (skip // page_size) + 2
-    else:
-        next_page = None
-    if page > 1:
-        prev_page = page - 1
-    else:
-        prev_page = None
+    nns_list, num_nns = request.rundb.get_nns(
+        user_id = user_id,
+        user = user,
+        network_name = network_name,
+        master_only = master_only,
+        limit = page_size,
+        skip = page_idx * page_size,
+    )
+
+    pages = pagination(page_idx, num_nns, page_size)
+
+    for page in pages:
+        if user:
+            page["url"] += "&user={}".format(user)
+        if network_name:
+            page["url"] += "&network_name={}".format(network_name)
+        if master_only:
+            page["url"] += "&master_only={}".format(master_only)
+
     return {
         "nns": nns_list,
-        "next_page": next_page,
-        "prev_page": prev_page,
-        "non_default_shown": request.cookies.get("non_default_state", "Show") == "Show",
+        "pages": pages,
+        "master_only": request.cookies.get("master_only") == "true",
     }
 
 
@@ -1172,6 +1220,7 @@ def get_paginated_finished_runs(request):
 
     page_idx = max(0, int(request.params.get("page", 1)) - 1)
     page_size = 25
+
     finished_runs, num_finished_runs = request.rundb.get_finished_runs(
         username=username,
         success_only=success_only,
@@ -1181,40 +1230,7 @@ def get_paginated_finished_runs(request):
         limit=page_size,
     )
 
-    pages = [
-        {
-            "idx": "Prev",
-            "url": "?page={}".format(page_idx),
-            "state": "disabled" if page_idx == 0 else "",
-        }
-    ]
-    last_idx = (num_finished_runs - 1) // page_size
-    for idx, _ in enumerate(range(0, num_finished_runs, page_size)):
-        if (
-            idx < 1
-            or (idx < 5 and page_idx < 4)
-            or abs(idx - page_idx) < 2
-            or (idx > last_idx - 5 and page_idx > last_idx - 4)
-            or idx > last_idx - 1
-        ):
-            pages.append(
-                {
-                    "idx": idx + 1,
-                    "url": "?page={}".format(idx + 1),
-                    "state": "active" if page_idx == idx else "",
-                }
-            )
-        elif pages[-1]["idx"] != "...":
-            pages.append({"idx": "...", "url": "", "state": "disabled"})
-    pages.append(
-        {
-            "idx": "Next",
-            "url": "?page={}".format(page_idx + 2),
-            "state": "disabled"
-            if page_idx >= (num_finished_runs - 1) // page_size
-            else "",
-        }
-    )
+    pages = pagination(page_idx, num_finished_runs, page_size)
 
     for page in pages:
         if success_only:
