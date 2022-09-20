@@ -231,13 +231,33 @@ class RunDb:
             return nn
         return None
 
-    def get_nns(self, limit, skip=0):
-        return [
+    def get_nns(
+        self,
+        user_id,
+        user = "",
+        network_name = "",
+        master_only = False,
+        limit = 0,
+        skip = 0
+    ):
+        q = {}
+        if user_id is None:
+            q["first_test"] = {"$exists": "true"}
+        if user:
+            q["user"] = {"$regex": ".*{}.*".format(user), "$options": "i"}
+        if network_name:
+            q["name"] = {"$regex": ".*{}.*".format(network_name), "$options": "i"}
+        if master_only:
+            q["is_master"] = True
+
+        count = self.nndb.count_documents(q)
+        nns_list = (
             dict(n, time=n["_id"].generation_time)
             for n in self.nndb.find(
-                {}, {"nn": 0}, limit=limit, skip=skip, sort=[("_id", DESCENDING)]
+                q, {"nn": 0}, limit=limit, skip=skip, sort=[("_id", DESCENDING)]
             )
-        ]
+        )
+        return nns_list, count
 
     # Cache runs
     run_cache = {}

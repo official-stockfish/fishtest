@@ -8,24 +8,6 @@
     </script>
 % endif
 
-<%def name="pagination()">
-  % if pages and len(pages) > 3:
-      <nav>
-        <ul class="pagination pagination-sm">
-        % for page in pages:
-            <li class="page-item ${page['state']}">
-              % if page['state'] not in ['disabled', 'active']:
-                  <a class="page-link" href="${page['url']}">${page['idx']}</a>
-              % else:
-                  <a class="page-link">${page['idx']}</a>
-              % endif
-            </li>
-        % endfor
-        </ul>
-      </nav>
-  % endif
-</%def>
-
 <%
   from fishtest.util import get_cookie
   if toggle:
@@ -70,7 +52,7 @@
 % endif
 >
 
-  ${pagination()}
+  <%include file="pagination.mak" args="pages=pages"/>
 
   <div class="table-responsive-lg">
     <table class="table table-striped table-sm run-table">
@@ -144,5 +126,5 @@
     </table>
   </div>
 
-  ${pagination()}
+  <%include file="pagination.mak" args="pages=pages"/>
 </div>

@@ -14,20 +14,30 @@ and achieved the status of <i>default net</i> during the development of Stockfis
 The recommended net for a given Stockfish executable can be found as the default value of the EvalFile UCI option.
 </p>
 
-<script>
-  function toggle_nns() {
-    const button = document.querySelector("#non_default-button");
-    const active = button.innerText.trim().substring(0, 4) === "Hide";
-    button.innerText = active ? "Show non default nets" : "Hide non default nets";
-    document.cookie =
-      "non_default_state=" + (active ? "Hide" : "Show") + ";max-age=315360000;SameSite=Lax;";
-    window.location.reload();
-  }
-</script>
-    
-<button id="non_default-button" class="btn btn-sm btn-light border" onclick = "toggle_nns()">
-  ${'Hide non default nets' if non_default_shown else 'Show non default nets'}
-</button>
+<form class="row mb-3" id="search_nn">
+  <div class="col-12 col-md-auto mb-3">
+    <label for="network_name" class="form-label">Network</label>
+    <input id="network_name" type="text" name="network_name" class="form-control" placeholder="Network name" value="${request.GET.get('network_name') if request.GET.get('network_name') is not None else ''}">
+  </div>
+
+  <div class="col-12 col-md-auto mb-3">
+    <label for="user" class="form-label">Uploaded by</label>
+    <input id="user" type="text" name="user" class="form-control" placeholder="Username" value="${request.GET.get('user') if request.GET.get('user') is not None else ''}">
+  </div>
+
+  <div class="col-12 mb-3 d-flex align-items-end">
+    <div class="form-check form-check-inline">
+      <label class="form-check-label" for="master_only">Only master</label>
+      <input type="checkbox" class="form-check-input" id="master_only" name="master_only" ${'checked' if master_only else ''}>
+    </div>
+  </div>
+
+  <div class="col-12 col-md-auto mb-3 d-flex align-items-end">
+    <button type="submit" class="btn btn-success w-100">Search</button>
+  </div>
+</form>
+
+<%include file="pagination.mak" args="pages=pages"/>
 
 <div class="table-responsive-lg">
   <table class="table table-striped table-sm">
@@ -43,43 +53,42 @@ The recommended net for a given Stockfish executable can be found as the default
     </thead>
     <tbody>
       % for nn in nns:
-          % if request.authenticated_userid or 'first_test' in nn:
-              % if non_default_shown or 'is_master' in nn:
-                  <tr>
-                    <td>${nn['time'].strftime("%y-%m-%d %H:%M:%S")}</td>
-                    % if 'is_master' in nn:
-                        <td class="default-net">
-                    % else:
-                        <td>
-                    % endif
-                    <a href="api/nn/${nn['name']}" style="font-family:monospace">${nn['name']}</a></td>
-                    <td>${nn['user']}</td>
+          % if not master_only or 'is_master' in nn:
+              <tr>
+                <td>${nn['time'].strftime("%y-%m-%d %H:%M:%S")}</td>
+                % if 'is_master' in nn:
+                    <td class="default-net">
+                % else:
                     <td>
-                      % if 'first_test' in nn:
-                          <a href="tests/view/${nn['first_test']['id']}">${str(nn['first_test']['date']).split('.')[0]}</a>
-                      % endif
-                    </td>
-                    <td>
-                      % if 'last_test' in nn:
-                          <a href="tests/view/${nn['last_test']['id']}">${str(nn['last_test']['date']).split('.')[0]}</a>
-                      % endif
-                    </td>
-                    <td style="text-align:right">${nn.get('downloads', 0)}</td>
-                  </tr>
-              % endif
+                % endif
+                <a href="api/nn/${nn['name']}" style="font-family:monospace">${nn['name']}</a></td>
+                <td>${nn['user']}</td>
+                <td>
+                  % if 'first_test' in nn:
+                      <a href="tests/view/${nn['first_test']['id']}">${str(nn['first_test']['date']).split('.')[0]}</a>
+                  % endif
+                </td>
+                <td>
+                  % if 'last_test' in nn:
+                      <a href="tests/view/${nn['last_test']['id']}">${str(nn['last_test']['date']).split('.')[0]}</a>
+                  % endif
+                </td>
+                <td style="text-align:right">${nn.get('downloads', 0)}</td>
+              </tr>
           % endif
       % endfor
     </tbody>
   </table>
 </div>
-<p>
-% if prev_page:
-    <a href="nns?page=${prev_page}">&laquo; Newer nets</a>
-% endif
-% if prev_page and next_page:
-    <span>-</span>
-% endif
-% if next_page:
-    <a href="nns?page=${next_page}">Older nets &raquo;</a>
-% endif
-</p>
+
+<%include file="pagination.mak" args="pages=pages"/>
+
+<script>
+  document
+    .getElementById("search_nn")
+    .addEventListener("submit", function (e) {
+      const master_only = document.getElementById("master_only");
+      document.cookie =
+        "master_only=" + master_only.checked + ";max-age=315360000;SameSite=Lax;";
+    });
+</script>
