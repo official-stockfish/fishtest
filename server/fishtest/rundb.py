@@ -473,7 +473,7 @@ class RunDb:
         yellow_only=False,
         ltc_only=False,
     ):
-        q = {"finished": True}
+        q = {"finished": True, "deleted": False}
         if username:
             q["args.username"] = username
         if ltc_only:
@@ -489,8 +489,7 @@ class RunDb:
 
         count = self.runs.count_documents(q)
 
-        # Don't show runs that were deleted
-        runs_list = [run for run in c if not run.get("deleted")]
+        runs_list = list(c)
         return [runs_list, count]
 
     def get_results(self, run, save_run=True):
