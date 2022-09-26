@@ -18,6 +18,8 @@
   test_book = "UHO_XXL_+0.90_+1.19.epd"
   pt_book = "8moves_v3.pgn"
 
+  default_book = args.get('book', test_book)
+
   if new_tc != tc:
     is_odds = True
   else:
@@ -392,11 +394,15 @@
               </div>
             </div>
 
-            <div class="mb-2">
+            <div id="test-book" class="mb-2" style="display: none;">
               <div class="row gx-1">
                 <div class="col">
                   <label for="book" class="form-label">Book</label>
-                  <input type="text" name="book" id="book" class="form-control" value="${args.get('book', 'UHO_XXL_+0.90_+1.19.epd')}">
+                  <select name="book" id="book" class="form-select">
+                    % for book in valid_books:
+                      <option value="${book}" ${"selected" if default_book == book else ""}>${book}</option>
+                    % endfor
+                  </select>
                 </div>
                 <div class="col-12 col-md-4 mt-2 mt-md-0 book-depth">
                   <label for="book-depth" class="form-label">Book depth</label>
@@ -429,6 +435,17 @@
                       id="checkbox-time-odds"
                       name="odds"
                       ${'checked' if is_odds else ''}
+                    />
+                  </div>
+                </div>
+                <div class="col text-nowrap">
+                  <div class="mb-2 form-check">
+                    <label class="form-check-label" for="checkbox-book-visibility">Custom book</label>
+                    <input
+                      type="checkbox"
+                      class="form-check-input"
+                      id="checkbox-book-visibility"
+                      ${'checked' if default_book != test_book else ''}
                     />
                   </div>
                 </div>
@@ -474,8 +491,9 @@
     document.getElementById('submit-test').disabled = false;
     document.getElementById('submit-test').innerText = 'Submit test';
     
-    // Also make sure that the odds TC fields have the right visibility.
+    // Also make sure that the fields have the right visibility.
     update_odds(document.getElementById('checkbox-time-odds'));
+    update_book_visibility(document.getElementById('checkbox-book-visibility'));
   });
 
   const preset_bounds = {
@@ -555,6 +573,9 @@
 
         document.getElementById("book").value = book;
         update_book_depth_visibility(book);
+
+        document.getElementById("checkbox-book-visibility").checked = (book != "${test_book}") ? true : false;
+        update_book_visibility(document.getElementById("checkbox-book-visibility"));
 
         document.getElementById(stop_rule).click();
 
@@ -719,6 +740,20 @@
 
   document.getElementById('checkbox-time-odds').addEventListener("change", function() {
     update_odds(this);
+  });
+
+  function update_book_visibility(checkbox) {
+    if (checkbox.checked) {
+      document.getElementById('test-book').style.display = "";
+    } else {
+      document.getElementById('test-book').style.display = "none";
+      document.getElementById('book').value = "${test_book}";
+      update_book_depth_visibility(document.getElementById('book').value);
+    }
+  }
+
+  document.getElementById('checkbox-book-visibility').addEventListener("change", function() {
+    update_book_visibility(this);
   });
 </script>
 

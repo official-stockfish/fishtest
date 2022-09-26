@@ -490,6 +490,18 @@ def get_master_bench():
     return None
 
 
+def get_valid_books():
+    response = requests.get(
+        "https://api.github.com/repos/official-stockfish/books/contents"
+    ).json()
+    books_list = (
+        b["path"].replace(".zip", "")
+        for b in response
+        if b["path"].endswith((".epd.zip", ".pgn.zip"))
+    )
+    return books_list
+
+
 def get_sha(branch, repo_url):
     """Resolves the git branch to sha commit"""
     api_url = repo_url.replace("https://github.com", "https://api.github.com/repos")
@@ -623,13 +635,7 @@ def validate_form(request):
 
     # Check that the book exists in the official books repo
     if len(data["book"]) > 0:
-        api_url = "https://api.github.com/repos/official-stockfish/books/contents"
-        c = requests.get(api_url).json()
-        matcher = re.compile(r"\.(epd|pgn)\.zip$")
-        valid_book_filenames = [
-            file["name"] for file in c if matcher.search(file["name"])
-        ]
-        if data["book"] + ".zip" not in valid_book_filenames:
+        if data["book"] not in get_valid_books():
             raise Exception("Invalid book - " + data["book"])
 
     if request.POST["stop_rule"] == "spsa":
@@ -838,6 +844,7 @@ def tests_run(request):
         "rescheduled_from": request.params["id"] if "id" in request.params else None,
         "tests_repo": u.get("tests_repo", ""),
         "bench": get_master_bench(),
+        "valid_books": get_valid_books(),
     }
 
 
