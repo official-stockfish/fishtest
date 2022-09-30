@@ -328,23 +328,42 @@ def sprt_calc(request):
 @view_config(route_name="actions", renderer="actions.mak")
 def actions(request):
     search_action = request.params.get("action", "")
-    search_user = request.params.get("user", "")
-    search_before = request.params.get("before", None)
-    try:
-        search_before = datetime.datetime.utcfromtimestamp(float(search_before))
-    except:
-        search_before = datetime.datetime.utcnow()
-    count = request.params.get("count", "100")
-    try:
-        count = int(count)
-    except:
-        count = 100
-    count = min(count, 100)
+    username = request.params.get("user", "")
+    before = request.params.get("before", None)
+    max_actions = request.params.get("max_actions", None)
+
+    utc_before = before
+    if before:
+        utc_before = datetime.datetime.utcfromtimestamp(float(before))
+    if max_actions:
+        max_actions = int(max_actions)
+
+    page_idx = max(0, int(request.params.get("page", 1)) - 1)
+    page_size = 25
+
+    actions, num_actions = request.actiondb.get_actions(
+        username=username,
+        action=search_action,
+        skip=page_idx * page_size,
+        limit=page_size,
+        utc_before=utc_before,
+        max_actions=max_actions,
+    )
+
+    pages = pagination(page_idx, num_actions, page_size)
+
+    for page in pages:
+        if username:
+            page["url"] += "&user={}".format(username)
+        if search_action:
+            page["url"] += "&action={}".format(search_action)
+        if max_actions:
+            page["url"] += "&max_actions={}".format(max_actions)
+        if before:
+            page["url"] += "&before={}".format(before)
 
     actions_list = []
-    for action in request.actiondb.get_actions(
-        count, search_action, search_user, search_before
-    ):
+    for action in actions:
         item = {
             "action": action["action"],
             "time": action["time"],
@@ -366,33 +385,19 @@ def actions(request):
             item["_id"] = action["data"]["before"]["_id"]
             item["description"] = []
 
-            before = action["data"]["before"]["args"]["priority"]
-            after = action["data"]["after"]["args"]["priority"]
-            if before != after:
-                item["description"].append(
-                    "priority changed from {} to {}".format(before, after)
-                )
-
-            before = action["data"]["before"]["args"]["num_games"]
-            after = action["data"]["after"]["args"]["num_games"]
-            if before != after:
-                item["description"].append(
-                    "games changed from {} to {}".format(before, after)
-                )
-
-            before = action["data"]["before"]["args"]["throughput"]
-            after = action["data"]["after"]["args"]["throughput"]
-            if before != after:
-                item["description"].append(
-                    "throughput changed from {} to {}".format(before, after)
-                )
-
-            before = action["data"]["before"]["args"]["auto_purge"]
-            after = action["data"]["after"]["args"]["auto_purge"]
-            if before != after:
-                item["description"].append(
-                    "auto-purge changed from {} to {}".format(before, after)
-                )
+            for k in ("priority", "num_games", "throughput", "auto_purge"):
+                try:
+                    before = action["data"]["before"]["args"][k]
+                    after = action["data"]["after"]["args"][k]
+                except KeyError:
+                    pass
+                else:
+                    if before != after:
+                        item["description"].append(
+                            "{} changed from {} to {}".format(
+                                k.replace("_", "-"), before, after
+                            )
+                        )
 
             item["description"] = "modify: " + ", ".join(item["description"])
         else:
@@ -412,7 +417,13 @@ def actions(request):
 
         actions_list.append(item)
 
-    return {"actions": actions_list, "approver": request.has_permission("approve_run")}
+    return {
+        "actions": actions_list,
+        "approver": request.has_permission("approve_run"),
+        "pages": pages,
+        "num_actions": num_actions,
+        "page_idx": page_idx,
+    }
 
 
 def get_idle_users(request):

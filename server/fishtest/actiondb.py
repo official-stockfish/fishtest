@@ -8,7 +8,15 @@ class ActionDb:
         self.db = db
         self.actions = self.db["actions"]
 
-    def get_actions(self, max_num, action=None, username=None, before=None):
+    def get_actions(
+        self,
+        username = None,
+        action = None,
+        limit = 0,
+        skip = 0,
+        utc_before = None,
+        max_actions = None,
+    ):
         q = {}
         if action:
             q["action"] = action
@@ -16,9 +24,17 @@ class ActionDb:
             q["action"] = {"$nin": ["update_stats", "dead_task"]}
         if username:
             q["username"] = username
-        if before:
-            q["time"] = {"$lte": before}
-        return self.actions.find(q, sort=[("_id", DESCENDING)], limit=max_num)
+        if utc_before:
+            q["time"] = {"$lte": utc_before}
+
+        count = self.actions.count_documents(q)
+        if max_actions:
+            limit = min(limit, max_actions - skip)
+            count = min(count, max_actions)
+
+        actions_list = self.actions.find(q, limit=limit, skip=skip, sort=[("_id", DESCENDING)])
+
+        return actions_list, count
 
     def update_stats(self):
         self._new_action("fishtest.system", "update_stats", "")
