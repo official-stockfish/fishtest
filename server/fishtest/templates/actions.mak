@@ -1,18 +1,16 @@
 <%inherit file="base.mak"/>
+
 <%
   import datetime
 %>
+
 <h2>Events Log</h2>
+
 <script>
   document.title = 'Events Log | Stockfish Testing';
-
-  function timestamp(){
-    document.querySelector('#before').value = Date.now() / 1000;
-    return true;
-  }
 </script>
 
-<form onsubmit="timestamp();" class="row mb-3">
+<form class="row mb-3">
   <div class="col-12 col-md-auto mb-3">
     <label for="restrict" class="form-label">Show only</label>
     <select id="restrict" class="form-select" name="action">
@@ -35,12 +33,12 @@
     <input id="user" type="text" name="user" class="form-control" placeholder="username" value="${request.GET.get('user') if request.GET.get('user') != None else ''}">
   </div>
 
-  <input type="hidden" id="before" name="before" value=-1>
-  <input type="hidden" id="count" name="count" value=100>
   <div class="col-12 col-md-auto mb-3 d-flex align-items-end">
     <button type="submit" class="btn btn-success w-100">Select</button>
   </div>
 </form>
+
+<%include file="pagination.mak" args="pages=pages"/>
 
 <div class="table-responsive-lg">
   <table class="table table-striped table-sm">
@@ -56,7 +54,7 @@
       % for action in actions:
           <tr>
             ## Dates in mongodb have millisecond precision. So they fit comfortably in a float without precision loss.
-            <td><a href=/actions?count=1&before=${action['time'].replace(tzinfo=datetime.timezone.utc).timestamp()}>
+            <td><a href=/actions?max_actions=1&before=${action['time'].replace(tzinfo=datetime.timezone.utc).timestamp()}>
              ${action['time'].strftime(r"%y&#8209;%m&#8209;%d %H:%M:%S")|n}</a></td>
             % if approver and 'fishtest.' not in action['username']:
                 <td><a href="/user/${action['username']}">${action['username']}</a></td>
@@ -76,6 +74,8 @@
     </tbody>
   </table>
 </div>
+
+<%include file="pagination.mak" args="pages=pages"/>
 
 <script>
   document.querySelector('#restrict').value = ('${request.GET.get("action") if request.GET.get("action") != None else ''}');
