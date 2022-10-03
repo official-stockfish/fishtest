@@ -358,7 +358,7 @@ def actions(request):
         if search_action:
             page["url"] += "&action={}".format(search_action)
         if max_actions:
-            page["url"] += "&max_actions={}".format(max_actions)
+            page["url"] += "&max_actions={}".format(num_actions)
         if before:
             page["url"] += "&before={}".format(before)
 
