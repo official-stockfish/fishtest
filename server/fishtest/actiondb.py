@@ -27,10 +27,11 @@ class ActionDb:
         if utc_before:
             q["time"] = {"$lte": utc_before}
 
-        count = self.actions.count_documents(q)
         if max_actions:
+            count = self.actions.count_documents(q, limit=max_actions)
             limit = min(limit, max_actions - skip)
-            count = min(count, max_actions)
+        else:
+            count = self.actions.count_documents(q)
 
         actions_list = self.actions.find(q, limit=limit, skip=skip, sort=[("_id", DESCENDING)])
 
