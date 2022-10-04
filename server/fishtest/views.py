@@ -1287,8 +1287,7 @@ def tests_finished(request):
 def tests_user(request):
     request.response.headerlist.extend(
         (
-            ("Cache-Control", "no-cache, no-store, must-revalidate"),
-            ("Pragma", "no-cache"),
+            ("Cache-Control", "no-store"),
             ("Expires", "0"),
         )
     )
@@ -1342,8 +1341,7 @@ building = threading.Semaphore()
 def tests(request):
     request.response.headerlist.extend(
         (
-            ("Cache-Control", "no-cache, no-store, must-revalidate"),
-            ("Pragma", "no-cache"),
+            ("Cache-Control", "no-store"),
             ("Expires", "0"),
         )
     )
