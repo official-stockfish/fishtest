@@ -88,9 +88,13 @@ document.addEventListener("DOMContentLoaded", () => {
     setTheme(getPreferredTheme());
   }
 
-  window
-    .matchMedia("(prefers-color-scheme: dark)")
-    .addEventListener("change", () => setTheme(getPreferredTheme()));
+  try {
+    window
+      .matchMedia("(prefers-color-scheme: dark)")
+      .addEventListener("change", () => setTheme(getPreferredTheme()));
+  } catch (e) {
+    console.error(e);
+  }
 
   document
     .getElementById("sun")

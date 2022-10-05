@@ -416,9 +416,13 @@ if 'spsa' in run['args']:
     setHighlightTheme(match[2]);
   }
 
-  window
-    .matchMedia("(prefers-color-scheme: dark)")
-    .addEventListener("change", () => setHighlightTheme(getPreferredTheme()));
+  try {
+    window
+      .matchMedia("(prefers-color-scheme: dark)")
+      .addEventListener("change", () => setHighlightTheme(getPreferredTheme()));
+  } catch (e) {
+    console.error(e);
+  }
 
   document
     .getElementById("sun")
