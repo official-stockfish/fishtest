@@ -10,12 +10,12 @@ class ActionDb:
 
     def get_actions(
         self,
-        username = None,
-        action = None,
-        limit = 0,
-        skip = 0,
-        utc_before = None,
-        max_actions = None,
+        username=None,
+        action=None,
+        limit=0,
+        skip=0,
+        utc_before=None,
+        max_actions=None,
     ):
         q = {}
         if action:
@@ -33,7 +33,9 @@ class ActionDb:
         else:
             count = self.actions.count_documents(q)
 
-        actions_list = self.actions.find(q, limit=limit, skip=skip, sort=[("_id", DESCENDING)])
+        actions_list = self.actions.find(
+            q, limit=limit, skip=skip, sort=[("_id", DESCENDING)]
+        )
 
         return actions_list, count
 

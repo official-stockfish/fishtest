@@ -232,13 +232,7 @@ class RunDb:
         return None
 
     def get_nns(
-        self,
-        user_id,
-        user = "",
-        network_name = "",
-        master_only = False,
-        limit = 0,
-        skip = 0
+        self, user_id, user="", network_name="", master_only=False, limit=0, skip=0
     ):
         q = {}
         if user_id is None:

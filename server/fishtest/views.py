@@ -70,9 +70,7 @@ def pagination(page_idx, num, page_size):
         {
             "idx": "Next",
             "url": "?page={}".format(page_idx + 2),
-            "state": "disabled"
-            if page_idx >= (num - 1) // page_size
-            else "",
+            "state": "disabled" if page_idx >= (num - 1) // page_size else "",
         }
     )
     return pages
@@ -295,12 +293,12 @@ def nns(request):
     page_size = 25
 
     nns_list, num_nns = request.rundb.get_nns(
-        user_id = user_id,
-        user = user,
-        network_name = network_name,
-        master_only = master_only,
-        limit = page_size,
-        skip = page_idx * page_size,
+        user_id=user_id,
+        user=user,
+        network_name=network_name,
+        master_only=master_only,
+        limit=page_size,
+        skip=page_idx * page_size,
     )
 
     pages = pagination(page_idx, num_nns, page_size)
@@ -421,8 +419,6 @@ def actions(request):
         "actions": actions_list,
         "approver": request.has_permission("approve_run"),
         "pages": pages,
-        "num_actions": num_actions,
-        "page_idx": page_idx,
     }
 
 
