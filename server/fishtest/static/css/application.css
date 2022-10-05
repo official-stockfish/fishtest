@@ -500,7 +500,8 @@ td {
   --bs-pagination-color: var(--bs-body-color);
 
   --bs-pagination-focus-color: var(--bs-link-hover-color);
-  --bs-pagination-focus-box-shadow: 0 0 0 0.25rem rgba(var(--bs-link-color-rgb), 0.25);
+  --bs-pagination-focus-box-shadow: 0 0 0 0.25rem
+    rgba(var(--bs-link-color-rgb), 0.25);
 
   --bs-pagination-active-bg: var(--bs-link-hover-color);
   --bs-pagination-active-border-color: var(--bs-link-color);
