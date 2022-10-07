@@ -378,6 +378,13 @@ def actions(request):
                 "blocked" if action["data"]["blocked"] else "unblocked"
             )
             item["user"] = action["data"]["user"]
+        elif action["action"] == "change_group":
+            before = action["data"]["before"]
+            after = action["data"]["after"]
+            item["description"] = (
+                "changed group from '{}' to '{}'".format(before, after)
+            )
+            item["user"] = action["data"]["user"]
         elif action["action"] == "modify_run":
             item["run"] = action["data"]["before"]["args"]["new_tag"]
             item["_id"] = action["data"]["before"]["_id"]
@@ -456,7 +463,6 @@ def user(request):
     user_data = request.userdb.get_user(user_name)
     if "user" in request.POST:
         if profile:
-
             new_password = request.params.get("password")
             new_password_verify = request.params.get("password2", "")
             new_email = request.params.get("email")
@@ -494,20 +500,48 @@ def user(request):
                     user_data["email"] = validated_email
                     request.session.flash("Success! Email updated")
 
-        else:
-            user_data["blocked"] = "blocked" in request.POST
-            request.userdb.last_pending_time = 0
-            request.actiondb.block_user(
-                request.authenticated_userid,
-                {"user": user_name, "blocked": user_data["blocked"]},
-            )
-            request.session.flash(
-                ("Blocked" if user_data["blocked"] else "Unblocked")
-                + " user "
-                + user_name
-            )
+        if request.has_permission("approve_run"):
+            ## cannot block/unblock an administrator
+            if any(g == "group:administrators" for g in user_data["groups"]):
+                request.session.flash("Cannot block/unblock an administrator", "error")
+                return HTTPFound(location=request.current_route_path())
+            unblock = request.POST.get("blocked") is None
+            if user_data["blocked"] == unblock:
+                user_data["blocked"] = "blocked" in request.POST
+                request.userdb.last_pending_time = 0
+                request.actiondb.block_user(
+                    request.authenticated_userid,
+                    {"user": user_name, "blocked": user_data["blocked"]},
+                )
+                request.session.flash(
+                    ("Blocked" if user_data["blocked"] else "Unblocked")
+                    + " user "
+                    + user_name
+                )
+
+        if request.has_permission("administrate"):
+            new_group = request.params.get("group")
+            ## cannot change the group of an administrator
+            if any(g == "group:administrators" for g in user_data["groups"]):
+                request.session.flash("Cannot change group", "error")
+                return HTTPFound(location=request.current_route_path())
+            ## check that the new group is valid
+            if new_group != "" and new_group != "group:approvers":
+                request.session.flash("Invalid group", "error")
+                return HTTPFound(location=request.current_route_path())
+            ## check that the user is not already in the group
+            if not any(g == new_group for g in user_data["groups"]):
+                request.actiondb.change_group(
+                    request.authenticated_userid,
+                    {"user": user_name, "before": "".join(user_data["groups"]), "after": new_group},
+                )
+                request.userdb.remove_user_groups(user_name)
+                if len(new_group) > 0:
+                    request.userdb.add_user_group(user_name, new_group)
+                request.session.flash("Group changed to '{}'".format(new_group))
+
         request.userdb.save_user(user_data)
-        return HTTPFound(location=request.route_url("tests"))
+        return HTTPFound(location=request.current_route_path())
     userc = request.userdb.user_cache.find_one({"username": user_name})
     hours = int(userc["cpu_hours"]) if userc is not None else 0
     return {
@@ -515,6 +549,7 @@ def user(request):
         "limit": request.userdb.get_machine_limit(user_name),
         "hours": hours,
         "profile": profile,
+        "admin": request.has_permission("administrate"),
     }
 
 
@@ -522,14 +557,14 @@ def user(request):
 def users(request):
     users_list = list(request.userdb.user_cache.find())
     users_list.sort(key=lambda k: k["cpu_hours"], reverse=True)
-    return {"users": users_list}
+    return {"users": users_list, "approver": request.has_permission("approve_run")}
 
 
 @view_config(route_name="users_monthly", renderer="users.mak")
 def users_monthly(request):
     users_list = list(request.userdb.top_month.find())
     users_list.sort(key=lambda k: k["cpu_hours"], reverse=True)
-    return {"users": users_list}
+    return {"users": users_list, "approver": request.has_permission("approve_run")}
 
 
 def get_master_bench():

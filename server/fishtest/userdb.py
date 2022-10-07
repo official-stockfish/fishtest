@@ -76,6 +76,11 @@ class UserDb:
         user["groups"].append(group)
         self.users.replace_one({"_id": user["_id"]}, user)
 
+    def remove_user_groups(self, username):
+        user = self.find(username)
+        user["groups"] = []
+        self.users.replace_one({"_id": user["_id"]}, user)
+
     def create_user(self, username, password, email):
         try:
             if self.find(username):

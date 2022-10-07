@@ -4,6 +4,13 @@
   document.title = 'User Administration | Stockfish Testing';
 </script>
 
+<%
+  user_is_blocked = user['blocked'] if 'blocked' in user else False
+  user_group = "".join(user['groups'])
+  user_not_admin = not any(g == 'group:administrators' for g in user['groups'])
+  show_submit = False
+%>
+
 <div class="col-limited-size">
   <header class="text-md-center py-2">
     <h2>User Administration</h2>
@@ -28,6 +35,9 @@
 
   <form action="${request.url}" method="POST">
     % if profile:
+      <%
+        show_submit = True
+      %>
       <div class="form-floating mb-3">
         <input
           type="email"
@@ -72,27 +82,43 @@
         </div>
         <span class="input-group-text toggle-password-visibility" role="button"><i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i></span>
       </div>
-    % else:
+    % elif user_not_admin:
       <%
-        blocked = user['blocked'] if 'blocked' in user else False
-        checked = 'checked' if blocked else ''
+        show_submit = True
       %>
-        <div class="mb-3 form-check">
-          <label class="form-check-label" for="blocked">Blocked</label>
-          <input
-            type="checkbox"
-            class="form-check-input"
-            id="blocked"
-            name="blocked"
-            value="True"
-            ${checked}
-          />
-        </div>
+      <div class="mb-3 form-check">
+        <label class="form-check-label" for="blocked">Blocked</label>
+        <input
+          type="checkbox"
+          class="form-check-input"
+          id="blocked"
+          name="blocked"
+          value="True"
+          ${'checked' if user_is_blocked else ''}
+        />
+      </div>
     % endif
 
-    <button type="submit" class="btn btn-primary w-100">Submit</button>
+    % if not profile and admin and user_not_admin:
+      <%
+        show_submit = True
+      %>
+      <div class="mb-3">
+        <label class="form-label" for="group">Group:</label>
+        <select class="form-select" name="group" id="group">
+          <option value="">Regular users</option>
+          <option value="group:approvers">Approvers</option>
+        </select>
+      </div>
+      <script>
+        document.getElementById('group').value = '${user_group}';
+      </script>
+    % endif
 
-    <input type="hidden" name="user" value="${user['username']}" />
+    % if show_submit:
+      <button type="submit" class="btn btn-primary w-100">Submit</button>
+      <input type="hidden" name="user" value="${user['username']}" />
+    % endif
   </form>
 </div>
 
