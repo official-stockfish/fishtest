@@ -1363,7 +1363,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
                 [
                     "-resign",
                     "movecount=3",
-                    "score=400",
+                    "score=600",
                     "-draw",
                     "movenumber=34",
                     "movecount=8",
