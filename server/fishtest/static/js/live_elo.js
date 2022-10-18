@@ -156,9 +156,8 @@ function display_data(items) {
     " (" +
     escapeHtml(items.args.msg_new) +
     ")</a>";
-  document.getElementById("username").innerHTML = escapeHtml(
-    items.args.username
-  );
+  document.getElementById("username").innerHTML = 
+    `<a href="/tests/user/${escapeHtml(items.args.username)}">${escapeHtml(items.args.username)}</a>`;
   document.getElementById("tc").innerHTML = escapeHtml(items.args.tc);
   document.getElementById("info").innerHTML = escapeHtml(items.args.info);
   document.getElementById("sprt").innerHTML =
