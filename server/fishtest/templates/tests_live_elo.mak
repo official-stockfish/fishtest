@@ -6,7 +6,10 @@
 </script>
 
 <div class="container">
-  <h2>Live Elo for SPRT test <a href="/tests/view/${str(run['_id'])}">${str(run['_id'])}</a></h2>
+  <h2 class="text-center">
+    Live Elo for SPRT test <br>
+    <a href="/tests/view/${str(run['_id'])}">${str(run['_id'])}</a>
+  </h2>
 
   <div class="row">
     <div class="col-12 d-flex justify-content-center align-items-center flex-column flex-sm-row" >
@@ -36,7 +39,7 @@
         <tr>
           <td>Submitter</td>
           <td>
-            <a id="username" target="_blank" rel="noopener noreferrer"></a>
+            <a id="username"></a>
           </td>
         </tr>
         <tr>
