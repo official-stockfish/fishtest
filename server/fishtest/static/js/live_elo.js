@@ -124,84 +124,48 @@ function clear_gauges() {
   set_gauges(0, -2.94, 2.94, 0.5, 0, 0, 0);
 }
 
-const entityMap = {
-  "&": "&amp;",
-  "<": "&lt;",
-  ">": "&gt;",
-  '"': "&quot;",
-  "'": "&#39;",
-  "/": "&#x2F;",
-  "`": "&#x60;",
-  "=": "&#x3D;",
-};
-
-function escapeHtml(string) {
-  return String(string).replace(/[&<>"'`=\/]/g, function (s) {
-    return entityMap[s];
-  });
-}
-
 function display_data(items) {
   const j = collect(items);
   document.getElementById("data").style.visibility = "visible";
-  document.getElementById("commit").innerHTML =
-    "<a href=" +
-    items.args.tests_repo +
-    "/compare/" +
-    items.args.resolved_base +
-    "..." +
-    items.args.resolved_new +
-    ">" +
-    escapeHtml(items.args.new_tag) +
-    " (" +
-    escapeHtml(items.args.msg_new) +
-    ")</a>";
-  document.getElementById("username").innerHTML = escapeHtml(
-    items.args.username
-  );
-  document.getElementById("tc").innerHTML = escapeHtml(items.args.tc);
-  document.getElementById("info").innerHTML = escapeHtml(items.args.info);
-  document.getElementById("sprt").innerHTML =
-    "elo0:&nbsp;" +
-    j.elo_raw0.toFixed(2) +
-    "&nbsp;&nbsp;alpha:&nbsp;" +
-    j.alpha.toFixed(2) +
-    "&nbsp;&nbsp;elo1:&nbsp;" +
-    j.elo_raw1.toFixed(2) +
-    "&nbsp;&nbsp;beta:&nbsp;" +
-    j.beta.toFixed(2) +
-    " (" +
-    j.elo_model +
-    ")";
-  document.getElementById("elo").innerHTML =
-    j.elo.toFixed(2) +
-    " [" +
-    j.ci_lower.toFixed(2) +
-    "," +
-    j.ci_upper.toFixed(2) +
-    "] (" +
-    100 * (1 - j.p).toFixed(2) +
-    "%" +
-    ")";
-  document.getElementById("LLR").innerHTML =
-    j.LLR.toFixed(2) +
-    " [" +
-    j.a.toFixed(2) +
-    "," +
-    j.b.toFixed(2) +
-    "]" +
-    (items.args.sprt.state ? " (" + items.args.sprt.state + ")" : "");
-  document.getElementById("LOS").innerHTML =
-    "" + (100 * j.LOS).toFixed(1) + "%";
-  document.getElementById("games").innerHTML =
-    j.games +
-    " [w:" +
-    ((100 * Math.round(j.W)) / (j.games + 0.001)).toFixed(1) +
-    "%, l:" +
-    ((100 * Math.round(j.L)) / (j.games + 0.001)).toFixed(1) +
-    "%, d:" +
-    ((100 * Math.round(j.D)) / (j.games + 0.001)).toFixed(1) +
-    "%]";
+
+  document.getElementById("commit").href = `${items.args.tests_repo}/compare/${items.args.resolved_base}...${items.args.resolved_new}`;
+  document.getElementById("commit").textContent = `${items.args.new_tag} (${items.args.msg_new})`;
+
+  document.getElementById("info").textContent = items.args.info;
+
+  document.getElementById("username").href = `/tests/user/${items.args.username}`;
+  document.getElementById("username").textContent = items.args.username;
+
+  document.getElementById("tc").textContent = items.args.tc;
+
+  document.getElementById("sprt").textContent = `
+    elo0:\xA0${j.elo_raw0.toFixed(2)}\xA0
+    alpha:\xA0${j.alpha.toFixed(2)}\xA0
+    elo1:\xA0${j.elo_raw1.toFixed(2)}\xA0
+    beta:\xA0${j.beta.toFixed(2)}
+    (${j.elo_model})
+  `;
+
+  document.getElementById("LLR").textContent = `
+    ${j.LLR.toFixed(2)}
+    [${j.a.toFixed(2)},${j.b.toFixed(2)}]
+    ${(items.args.sprt.state ? `(${items.args.sprt.state})` : "")}
+  `;
+
+  document.getElementById("elo").textContent = `
+    ${j.elo.toFixed(2)}
+    [${j.ci_lower.toFixed(2)},${j.ci_upper.toFixed(2)}]
+    (${100 * (1 - j.p).toFixed(2)}%)
+  `;
+
+  document.getElementById("LOS").textContent = `${(100 * j.LOS).toFixed(1)}%`;
+
+  document.getElementById("games").textContent = `
+    ${j.games}
+    [w:${((100 * Math.round(j.W)) / (j.games + 0.001)).toFixed(1)}%,
+    l:${((100 * Math.round(j.L)) / (j.games + 0.001)).toFixed(1)}%,
+    d:${((100 * Math.round(j.D)) / (j.games + 0.001)).toFixed(1)}%]
+  `;
 
   set_gauges(j.LLR, j.a, j.b, j.LOS, j.elo, j.ci_lower, j.ci_upper);
 }

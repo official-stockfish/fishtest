@@ -25,7 +25,9 @@
         style="visibility: hidden">
         <tr>
           <td>Commit</td>
-          <td id="commit"></td>
+          <td>
+            <a id="commit" target="_blank" rel="noopener noreferrer"></a>
+          </td>
         </tr>
         <tr>
           <td>Info</td>
@@ -33,7 +35,9 @@
         </tr>
         <tr>
           <td>Submitter</td>
-          <td id="username"></td>
+          <td>
+            <a id="username" target="_blank" rel="noopener noreferrer"></a>
+          </td>
         </tr>
         <tr>
           <td>TC</td>
