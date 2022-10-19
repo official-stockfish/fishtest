@@ -36,7 +36,7 @@
         <tr>
           <td>Submitter</td>
           <td>
-            <a id="username" target="_blank" rel="noopener noreferrer"></a>
+            <a id="username"></a>
           </td>
         </tr>
         <tr>
