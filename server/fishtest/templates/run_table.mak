@@ -12,6 +12,12 @@
   from fishtest.util import get_cookie
   if toggle:
     cookie_name = toggle+"_state"
+    request.response.headerlist.extend(
+        (
+            ("Cache-Control", "no-store"),
+            ("Expires", "0"),
+        )
+    )
 %>
 
 % if toggle:
