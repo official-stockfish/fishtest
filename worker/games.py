@@ -489,9 +489,9 @@ def make_targets():
                     targets.append(line.split()[0])
                 if "Supported archs:" in line:
                     read_targets = True
-    except FileNotFoundError as e:
+    except (FileNotFoundError, PermissionError) as e:
         print("Exception while executing make help:\n", e, sep="", file=sys.stderr)
-        raise FatalException("It appears 'make' is not installed")
+        raise FatalException("It appears 'make' is not properly installed")
 
     if p.returncode != 0:
         raise WorkerException(
