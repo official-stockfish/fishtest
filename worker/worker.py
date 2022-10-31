@@ -3,7 +3,6 @@ import atexit
 import base64
 import datetime
 import getpass
-import glob
 import hashlib
 import json
 import math
@@ -26,13 +25,13 @@ from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 from configparser import ConfigParser
 from contextlib import ExitStack
 from functools import partial
-from zipfile import ZipFile
+from pathlib import Path
 
 # Try to import the system wide package (eg requests).
 # Fall back to the local one if the global one does not exist.
 
-packages_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "packages")
-sys.path.append(packages_dir)
+packages_dir = Path(__file__).resolve().parent / "packages"
+sys.path.append(str(packages_dir))
 
 # Several packages are called "expression".
 # So we make sure to use the locally installed one.
@@ -41,15 +40,14 @@ import packages.expression as expression
 import requests
 from games import (
     EXE_SUFFIX,
+    IS_MACOS,
     FatalException,
     RunException,
     WorkerException,
     backup_log,
     download_from_github,
     format_return_code,
-    IS_MACOS,
     log,
-    requests_get,
     run_games,
     send_api_post_request,
     str_signal,
@@ -57,7 +55,7 @@ from games import (
 )
 from updater import update
 
-WORKER_VERSION = 189
+WORKER_VERSION = 190
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -221,10 +219,10 @@ def safe_sleep(f):
 
 
 def text_hash(file):
-    with open(file) as f:  # text mode to have newline translation!
-        return base64.b64encode(
-            hashlib.sha384(f.read().encode("utf8")).digest()
-        ).decode("utf8")
+    # text mode to have newline translation!
+    return base64.b64encode(
+        hashlib.sha384(file.read_text().encode("utf8")).digest()
+    ).decode("utf8")
 
 
 def generate_sri(install_dir):
@@ -232,7 +230,7 @@ def generate_sri(install_dir):
         "__version": WORKER_VERSION,
     }
     for file in FILE_LIST:
-        item = os.path.join(install_dir, file)
+        item = install_dir / file
         try:
             sri[file] = text_hash(item)
         except Exception as e:
@@ -248,7 +246,7 @@ def generate_sri(install_dir):
 
 def write_sri(install_dir):
     sri = generate_sri(install_dir)
-    sri_file = os.path.join(install_dir, "sri.txt")
+    sri_file = install_dir / "sri.txt"
     print("Writing sri hashes to {}".format(sri_file))
     with open(sri_file, "w") as f:
         json.dump(sri, f)
@@ -262,7 +260,7 @@ def verify_sri(install_dir):
     sri = generate_sri(install_dir)
     if sri is None:
         return False
-    sri_file = os.path.join(install_dir, "sri.txt")
+    sri_file = install_dir / "sri.txt"
     try:
         with open(sri_file, "r") as f:
             sri_ = json.load(f)
@@ -384,11 +382,11 @@ def get_credentials(config, options, args):
 
 def verify_required_cutechess(testing_dir, cutechess):
     # Verify that cutechess is working and has the required minimum version.
-    cutechess = os.path.join(testing_dir, cutechess)
+    cutechess = testing_dir / cutechess
 
     print("Obtaining version info for {} ...".format(cutechess))
 
-    if not os.path.exists(cutechess):
+    if not cutechess.exists():
         print("{} does not exist ...".format(cutechess))
         return False
 
@@ -434,12 +432,10 @@ def verify_required_cutechess(testing_dir, cutechess):
     return True
 
 
-def setup_cutechess():
+def setup_cutechess(worker_dir):
     # Create the testing directory if missing.
-    worker_dir = os.path.dirname(os.path.realpath(__file__))
-    testing_dir = os.path.join(worker_dir, "testing")
-    if not os.path.exists(testing_dir):
-        os.makedirs(testing_dir)
+    testing_dir = worker_dir / "testing"
+    testing_dir.mkdir(exist_ok=True)
 
     try:
         os.chdir(testing_dir)
@@ -474,11 +470,12 @@ def setup_cutechess():
                 "The downloaded cutechess-cli is not working. Trying to restore a backup copy ..."
             )
             bkp_cutechess_clis = sorted(
-                glob.glob(os.path.join(worker_dir, "_testing_*", cutechess)),
+                worker_dir.glob("_testing_*/" + cutechess),
                 key=os.path.getctime,
+                reverse=True,
             )
             if bkp_cutechess_clis:
-                bkp_cutechess_cli = bkp_cutechess_clis[-1]
+                bkp_cutechess_cli = bkp_cutechess_clis[0]
                 try:
                     shutil.copy(bkp_cutechess_cli, testing_dir)
                 except Exception as e:
@@ -560,7 +557,7 @@ def setup_parameters(worker_dir):
 
     # Step 1: read the config file if it exists.
     config = ConfigParser(inline_comment_prefixes=";", interpolation=None)
-    config_file = os.path.join(worker_dir, CONFIGFILE)
+    config_file = worker_dir / CONFIGFILE
     try:
         config.read(config_file)
     except Exception as e:
@@ -946,7 +943,7 @@ def get_machine_id():
 
 def hw_id(hw_seed):
     fingerprint_machine = fingerprint(get_machine_id())
-    fingerprint_path = fingerprint(os.path.realpath(__file__))
+    fingerprint_path = fingerprint(Path(__file__).resolve())
     return format(hw_seed ^ fingerprint_machine ^ fingerprint_path, "08x")
 
 
@@ -1066,7 +1063,9 @@ def clang_version():
         ):
             pass
     except (OSError, subprocess.SubprocessError):
-        print("clang++ is present but misconfigured: the command 'llvm-profdata' is missing")
+        print(
+            "clang++ is present but misconfigured: the command 'llvm-profdata' is missing"
+        )
         return None
 
     print("Found {} version {}.{}.{}".format(compiler, major, minor, patchlevel))
@@ -1088,16 +1087,14 @@ def get_exception(files):
     i = 0
     exc_type, exc_obj, tb = sys.exc_info()
     filename, lineno, name, line = traceback.extract_tb(tb)[i]
-    message = "Exception {} at {}:{}".format(
-        exc_type.__name__, os.path.basename(filename), lineno
-    )
-    while os.path.basename(filename) in files:
-        message = "Exception {} at {}:{}".format(
-            exc_type.__name__, os.path.basename(filename), lineno
-        )
+    filename = Path(filename).name
+    message = "Exception {} at {}:{}".format(exc_type.__name__, filename, lineno)
+    while filename in files:
+        message = "Exception {} at {}:{}".format(exc_type.__name__, filename, lineno)
         i += 1
         try:
             filename, lineno, name, line = traceback.extract_tb(tb)[i]
+            filename = Path(filename).name
         except:
             break
     return message
@@ -1136,16 +1133,14 @@ def heartbeat(worker_info, password, remote, current_state):
 
 def read_int(file):
     try:
-        with open(file, "r") as f:
-            return int(f.read())
+        return int(file.read_text())
     except:
         return None
 
 
 def write_int(file, n):
     try:
-        with open(file, "w") as f:
-            f.write("{}\n".format(n))
+        file.write_text("{}\n".format(n))
         return True
     except:
         return False
@@ -1162,9 +1157,9 @@ def delete_lock_file(lock_file):
     if pid is None or pid == os.getpid():
         print("Deleting lock file {}".format(lock_file))
         try:
-            os.remove(lock_file)
-        except:
-            print("Unable to delete lock file")
+            lock_file.unlink()
+        except Exception as e:
+            print("Exception deleting the lock file\n", e, sep="", file=sys.stderr)
 
 
 def pid_valid(pid, name):
@@ -1374,26 +1369,33 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
         except Exception as e:
             print("Exception posting failed_task:\n", e, sep="", file=sys.stderr)
     # Upload PGN file.
-    pgn_file = pgn_file[0]
-    if pgn_file is not None and os.path.exists(pgn_file) and "spsa" not in run["args"]:
-        try:
-            with open(pgn_file, "r") as f:
-                data = f.read()
-            # Ignore non utf-8 characters in PGN file.
-            data = bytes(data, "utf-8").decode("utf-8", "ignore")
-            payload["pgn"] = base64.b64encode(
-                zlib.compress(data.encode("utf-8"))
-            ).decode()
-            print("Uploading compressed PGN of {} bytes".format(len(payload["pgn"])))
-            req = send_api_post_request(remote + "/api/upload_pgn", payload)
-        except Exception as e:
-            print("\nException uploading PGN file:\n", e, sep="", file=sys.stderr)
+    if pgn_file[0] is not None:
+        pgn_file = pgn_file[0]
+        if pgn_file.exists():
+            if "spsa" not in run["args"]:
+                try:
+                    # Ignore non utf-8 characters in PGN file.
+                    data = bytes(pgn_file.read_text(), "utf-8").decode(
+                        "utf-8", "ignore"
+                    )
+                    payload["pgn"] = base64.b64encode(
+                        zlib.compress(data.encode("utf-8"))
+                    ).decode()
+                    print(
+                        "Uploading compressed PGN of {} bytes".format(
+                            len(payload["pgn"])
+                        )
+                    )
+                    req = send_api_post_request(remote + "/api/upload_pgn", payload)
+                except Exception as e:
+                    print(
+                        "\nException uploading PGN file:\n", e, sep="", file=sys.stderr
+                    )
 
-    if pgn_file is not None and os.path.exists(pgn_file):
-        try:
-            os.remove(pgn_file)
-        except Exception as e:
-            print("Exception deleting PGN file:\n", e, sep="", file=sys.stderr)
+            try:
+                pgn_file.unlink()
+            except Exception as e:
+                print("Exception deleting PGN file:\n", e, sep="", file=sys.stderr)
 
     print("Task exited")
 
@@ -1401,19 +1403,19 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
 
 
 def worker():
-    if os.path.basename(__file__) != "worker.py":
+    if Path(__file__).name != "worker.py":
         print("The script must be named 'worker.py'!")
         return 1
 
     print(LOGO)
 
-    worker_dir = os.path.dirname(os.path.realpath(__file__))
+    worker_dir = Path(__file__).resolve().parent
     print("Worker started in {} ... (PID={})".format(worker_dir, os.getpid()))
 
     # Python doesn't have a cross platform file locking api.
     # So we check periodically for the existence
     # of a lock file.
-    lock_file = os.path.join(worker_dir, "worker.lock")
+    lock_file = worker_dir / "worker.lock"
     if locked_by_others(lock_file, require_valid=False):
         return 1
     if not create_lock_file(lock_file):
@@ -1478,7 +1480,7 @@ def worker():
         return 1
 
     # Make sure we have a working cutechess-cli
-    if not setup_cutechess():
+    if not setup_cutechess(worker_dir):
         return 1
 
     # Check if we are running an unmodified worker
@@ -1540,7 +1542,7 @@ def worker():
     delay = INITIAL_RETRY_TIME
     fish_exit = False
     while current_state["alive"]:
-        if os.path.isfile(os.path.join(worker_dir, "fish.exit")):
+        if (worker_dir / "fish.exit").is_file():
             current_state["alive"] = False
             print("Stopped by 'fish.exit' file")
             fish_exit = True

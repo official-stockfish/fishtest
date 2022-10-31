@@ -1,8 +1,7 @@
-import os
-import os.path
 import subprocess
 import sys
 import unittest
+from pathlib import Path
 
 import games
 import updater
@@ -12,10 +11,14 @@ import worker
 
 class workerTest(unittest.TestCase):
     def tearDown(self):
-        if os.path.exists("foo.txt"):
-            os.remove("foo.txt")
-        if os.path.exists("README.md"):
-            os.remove("README.md")
+        try:
+            (Path.cwd() / "foo.txt").unlink()
+        except FileNotFoundError:
+            pass
+        try:
+            (Path.cwd() / "README.md").unlink()
+        except FileNotFoundError:
+            pass
 
     def test_item_download(self):
         blob = None
@@ -27,10 +30,13 @@ class workerTest(unittest.TestCase):
 
     def test_config_setup(self):
         sys.argv = [sys.argv[0], "user", "pass", "--no_validation"]
-        if os.path.exists("foo.txt"):
-            os.remove("foo.txt")
+        try:
+            (Path.cwd() / "foo.txt").unlink()
+        except FileNotFoundError:
+            pass
+
         worker.CONFIGFILE = "foo.txt"
-        worker.setup_parameters(".")
+        worker.setup_parameters(Path.cwd())
         from configparser import ConfigParser
 
         config = ConfigParser(inline_comment_prefixes=";", interpolation=None)
@@ -44,7 +50,7 @@ class workerTest(unittest.TestCase):
         self.assertTrue(config.has_option("parameters", "concurrency"))
 
     def test_worker_script_with_no_args(self):
-        assert not os.path.exists("fishtest.cfg")
+        assert not (Path.cwd() / "fishtest.cfg").exists()
         with subprocess.Popen(
             ["python", "worker.py"],
             stdin=subprocess.PIPE,
@@ -53,7 +59,7 @@ class workerTest(unittest.TestCase):
             self.assertEqual(p.returncode, 1)
 
     def test_setup_exception(self):
-        cwd = os.getcwd()
+        cwd = Path.cwd()
         with self.assertRaises(Exception):
             games.setup_engine("foo", cwd, cwd, "https://foo", "foo", "https://foo", 1)
 
@@ -63,7 +69,7 @@ class workerTest(unittest.TestCase):
         self.assertTrue("worker.py" in file_list)
 
     def test_sri(self):
-        self.assertTrue(worker.verify_sri("."))
+        self.assertTrue(worker.verify_sri(Path.cwd()))
 
 
 if __name__ == "__main__":

@@ -1,7 +1,6 @@
 import copy
 import ctypes
 import datetime
-import glob
 import hashlib
 import io
 import json
@@ -13,7 +12,6 @@ import random
 import re
 import shutil
 import signal
-import stat
 import subprocess
 import sys
 import tempfile
@@ -21,6 +19,7 @@ import threading
 import time
 from base64 import b64decode
 from contextlib import ExitStack
+from pathlib import Path
 from queue import Empty, Queue
 from zipfile import ZipFile
 
@@ -77,7 +76,7 @@ EXE_SUFFIX = ".exe" if IS_WINDOWS else ""
 
 
 def log(s):
-    logfile = os.path.join(os.path.dirname(os.path.realpath(__file__)), LOGFILE)
+    logfile = Path(__file__).resolve().parent / LOGFILE
     with LOG_LOCK:
         with open(logfile, "a") as f:
             f.write("{} : {}\n".format(datetime.datetime.utcnow(), s))
@@ -85,12 +84,12 @@ def log(s):
 
 def backup_log():
     try:
-        logfile = os.path.join(os.path.dirname(os.path.realpath(__file__)), LOGFILE)
-        logfile_previous = logfile + ".previous"
-        if os.path.exists(logfile):
+        logfile = Path(__file__).resolve().parent / LOGFILE
+        logfile_previous = logfile.with_suffix(logfile.suffix + ".previous")
+        if logfile.exists():
             print("Moving logfile {} to {}".format(logfile, logfile_previous))
             with LOG_LOCK:
-                os.replace(logfile, logfile_previous)
+                logfile.replace(logfile_previous)
     except Exception as e:
         print(
             "Exception moving log:\n",
@@ -290,14 +289,11 @@ def download_net(remote, testing_dir, net):
     url = remote + "/api/nn/" + net
     print("Downloading {}".format(net))
     r = requests_get(url, allow_redirects=True, timeout=HTTP_TIMEOUT)
-    with open(os.path.join(testing_dir, net), "wb") as f:
-        f.write(r.content)
+    (testing_dir / net).write_bytes(r.content)
 
 
 def validate_net(testing_dir, net):
-    with open(os.path.join(testing_dir, net), "rb") as f:
-        content = f.read()
-    hash = hashlib.sha256(content).hexdigest()
+    hash = hashlib.sha256((testing_dir / net).read_bytes()).hexdigest()
     return hash[:12] == net[3:15]
 
 
@@ -613,7 +609,7 @@ def setup_engine(
     destination, worker_dir, testing_dir, remote, sha, repo_url, concurrency, compiler
 ):
     """Download and build sources in a temporary directory then move exe to destination"""
-    tmp_dir = tempfile.mkdtemp(dir=worker_dir)
+    tmp_dir = Path(tempfile.mkdtemp(dir=worker_dir))
 
     try:
         item_url = github_api(repo_url) + "/zipball/" + sha
@@ -621,20 +617,18 @@ def setup_engine(
         blob = requests_get(item_url).content
         file_list = unzip(blob, tmp_dir)
         prefix = os.path.commonprefix([n.filename for n in file_list])
-        os.chdir(os.path.join(tmp_dir, prefix, "src"))
+        os.chdir(tmp_dir / prefix / "src")
 
         net = required_net_from_source()
         if net:
             print("Build uses default net: ", net)
-            if not os.path.exists(os.path.join(testing_dir, net)) or not validate_net(
-                testing_dir, net
-            ):
+            if not (testing_dir / net).exists() or not validate_net(testing_dir, net):
                 download_net(remote, testing_dir, net)
                 if not validate_net(testing_dir, net):
                     raise WorkerException(
                         "Failed to validate the network: {}".format(net)
                     )
-            shutil.copyfile(os.path.join(testing_dir, net), net)
+            shutil.copyfile(testing_dir / net, net)
 
         arch = find_arch(compiler)
 
@@ -1160,44 +1154,44 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
     base_options = parse_options(base_options)
 
     # Clean up old engines (keeping the num_bkps most recent).
-    worker_dir = os.path.dirname(os.path.realpath(__file__))
-    testing_dir = os.path.join(worker_dir, "testing")
-    engines = glob.glob(os.path.join(testing_dir, "stockfish_*" + EXE_SUFFIX))
+    worker_dir = Path(__file__).resolve().parent
+    testing_dir = worker_dir / "testing"
     num_bkps = 50
-    if len(engines) > num_bkps:
-        try:
-            engines.sort(key=os.path.getmtime)
-        except Exception as e:
-            print(
-                "Failed to obtain modification time of old engine binary:\n",
-                e,
-                sep="",
-                file=sys.stderr,
-            )
-        else:
-            for old_engine in engines[:-num_bkps]:
-                try:
-                    os.remove(old_engine)
-                except Exception as e:
-                    print(
-                        "Failed to remove an old engine binary {}:\n".format(
-                            old_engine
-                        ),
-                        e,
-                        sep="",
-                        file=sys.stderr,
-                    )
+    try:
+        engines = sorted(
+            testing_dir.glob("stockfish_*" + EXE_SUFFIX),
+            key=os.path.getmtime,
+            reverse=True,
+        )
+    except Exception as e:
+        print(
+            "Failed to obtain modification time of old engine binary:\n",
+            e,
+            sep="",
+            file=sys.stderr,
+        )
+    else:
+        for old_engine in engines[num_bkps:]:
+            try:
+                old_engine.unlink()
+            except Exception as e:
+                print(
+                    "Failed to remove an old engine binary {}:\n".format(old_engine),
+                    e,
+                    sep="",
+                    file=sys.stderr,
+                )
     # Create new engines.
     sha_new = run["args"]["resolved_new"]
     sha_base = run["args"]["resolved_base"]
     new_engine_name = "stockfish_" + sha_new
     base_engine_name = "stockfish_" + sha_base
 
-    new_engine = os.path.join(testing_dir, new_engine_name + EXE_SUFFIX)
-    base_engine = os.path.join(testing_dir, base_engine_name + EXE_SUFFIX)
+    new_engine = testing_dir / (new_engine_name + EXE_SUFFIX)
+    base_engine = testing_dir / (base_engine_name + EXE_SUFFIX)
 
     # Build from sources new and base engines as needed.
-    if not os.path.exists(new_engine):
+    if not new_engine.exists():
         setup_engine(
             new_engine,
             worker_dir,
@@ -1208,7 +1202,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
             worker_info["concurrency"],
             worker_info["compiler"],
         )
-    if not os.path.exists(base_engine):
+    if not base_engine.exists():
         setup_engine(
             base_engine,
             worker_dir,
@@ -1223,29 +1217,25 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
     os.chdir(testing_dir)
 
     # Download the opening book if missing in the directory.
-    if (
-        not os.path.exists(os.path.join(testing_dir, book))
-        or os.stat(os.path.join(testing_dir, book)).st_size == 0
-    ):
+    if not (testing_dir / book).exists() or (testing_dir / book).stat().st_size == 0:
         zipball = book + ".zip"
         blob = download_from_github(zipball)
         unzip(blob, testing_dir)
 
     # Clean up the old networks (keeping the num_bkps most recent)
-    networks = glob.glob(os.path.join(testing_dir, "nn-*.nnue"))
     num_bkps = 10
-    if len(networks) > num_bkps:
-        networks.sort(key=os.path.getmtime)
-        for old_net in networks[:-num_bkps]:
-            try:
-                os.remove(old_net)
-            except Exception as e:
-                print(
-                    "Failed to remove an old network {}:\n".format(old_net),
-                    e,
-                    sep="",
-                    file=sys.stderr,
-                )
+    for old_net in sorted(
+        testing_dir.glob("nn-*.nnue"), key=os.path.getmtime, reverse=True
+    )[num_bkps:]:
+        try:
+            old_net.unlink()
+        except Exception as e:
+            print(
+                "Failed to remove an old network {}:\n".format(old_net),
+                e,
+                sep="",
+                file=sys.stderr,
+            )
 
     # Add EvalFile with full path to cutechess options, and download the networks if missimg.
     net_base = required_net(base_engine)
@@ -1257,9 +1247,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
 
     for net in [net_base, net_new]:
         if net:
-            if not os.path.exists(os.path.join(testing_dir, net)) or not validate_net(
-                testing_dir, net
-            ):
+            if not (testing_dir / net).exists() or not validate_net(testing_dir, net):
                 download_net(remote, testing_dir, net)
                 if not validate_net(testing_dir, net):
                     raise WorkerException(
@@ -1268,10 +1256,12 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
 
     # PGN files output setup.
     pgn_name = "results-" + worker_info["unique_key"] + ".pgn"
-    pgn_file[0] = os.path.join(testing_dir, pgn_name)
+    pgn_file[0] = testing_dir / pgn_name
     pgn_file = pgn_file[0]
-    if os.path.exists(pgn_file):
-        os.remove(pgn_file)
+    try:
+        pgn_file.unlink()
+    except FileNotFoundError:
+        pass
 
     # Verify that the signatures are correct.
     verify_signature(
