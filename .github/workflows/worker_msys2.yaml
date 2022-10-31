@@ -1,0 +1,42 @@
+name: CI worker msys2
+
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        include:
+          - { sys: mingw64, env: x86_64,       comp: gcc }
+          - { sys: ucrt64,  env: ucrt-x86_64,  comp: gcc }
+          - { sys: clang64, env: clang-x86_64, comp: clang }
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - name: Setup msys and install required packages
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          msystem: ${{ matrix.sys }}
+          install: >-
+            make
+            mingw-w64-${{ matrix.env }}-python3
+            mingw-w64-${{ matrix.env }}-${{ matrix.comp }}
+
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          python3 -m venv env
+          . env/bin/activate
+          python3 -m pip install --upgrade pip setuptools wheel
+
+      - name: Run worker tests
+        run: |
+          . env/bin/activate
+          ./test_worker.sh
