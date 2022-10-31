@@ -61,6 +61,9 @@ class workerTest(unittest.TestCase):
         print(file_list)
         self.assertTrue("worker.py" in file_list)
 
+    def test_sri(self):
+        self.assertTrue(worker.verify_sri("."))
+
 
 if __name__ == "__main__":
     unittest.main()
