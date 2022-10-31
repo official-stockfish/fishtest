@@ -5,6 +5,7 @@ import datetime
 import getpass
 import glob
 import hashlib
+import json
 import math
 import multiprocessing
 import os
@@ -47,6 +48,7 @@ from games import (
     download_from_github,
     format_return_code,
     log,
+    requests_get,
     run_games,
     send_api_post_request,
     str_signal,
@@ -54,6 +56,8 @@ from games import (
 from updater import update
 
 WORKER_VERSION = 181
+FILE_LIST = ["updater.py", "worker.py", "games.py"]
+SRI_URL = "https://raw.githubusercontent.com/glinscott/fishtest/master/worker/sri.txt"
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
 THREAD_JOIN_TIMEOUT = 15.0
@@ -213,6 +217,91 @@ def safe_sleep(f):
         time.sleep(f)
     except:
         print("\nSleep interrupted...")
+
+
+def text_hash(file):
+    with open(file) as f:  # text mode to have newline translation!
+        return base64.b64encode(
+            hashlib.sha384(f.read().encode("utf8")).digest()
+        ).decode("utf8")
+
+
+def generate_sri(install_dir):
+    sri = {
+        "__version": WORKER_VERSION,
+    }
+    for file in FILE_LIST:
+        item = os.path.join(install_dir, file)
+        sri[file] = text_hash(item)
+    return sri
+
+
+def write_sri(install_dir):
+    sri = generate_sri(install_dir)
+    sri_file = os.path.join(install_dir, "sri.txt")
+    print("Writing sri hashes to {}".format(sri_file))
+    with open(sri_file, "w") as f:
+        json.dump(sri, f)
+        f.write("\n")
+
+
+def verify_sri(install_dir):  # used by CI
+    sri = generate_sri(install_dir)
+    sri_file = os.path.join(install_dir, "sri.txt")
+    if not os.path.exists(sri_file):
+        print("{} does not exist".format(sri_file))
+        return False
+    try:
+        with open(sri_file, "r") as f:
+            sri_ = json.load(f)
+    except Exception as e:
+        print("Exception reading {}:\n".format(sri_file), e, sep="", file=sys.stderr)
+        return False
+    if not isinstance(sri_, dict):
+        print("The file {} does not contain a dictionary".format(sri_file))
+        return False
+    for k, v in sri.items():
+        if k not in sri_ or v != sri_[k]:
+            print("The value for {} is incorrect in {}".format(k, sri_file))
+            return False
+    print("The file {} is up to date!".format(sri_file))
+    return True
+
+
+def download_sri():
+    print("Downloading {}".format(SRI_URL))
+    try:
+        ret = requests_get(SRI_URL).json()
+    except:
+        print("Unable to download {}".format(SRI_URL))
+        return None
+    return ret
+
+
+def verify_remote_sri(install_dir):
+    # Returns:
+    # None in case of network error
+    # True if verification succeeded
+    # False if verification failed
+    sri = generate_sri(install_dir)
+    sri_ = download_sri()
+    if sri_ is None:
+        return None
+    version = sri_.get("__version", -1)
+    if version > WORKER_VERSION:
+        print("The master sri file has a later version. Ignoring!")
+        return True
+    tainted = False
+    for k, v in sri_.items():
+        if k not in sri or v != sri[k]:
+            print("{} has been modified!".format(k))
+            tainted = True
+    if tainted:
+        print("This worker is tainted...")
+    else:
+        print("Running an unmodified worker...")
+
+    return not tainted
 
 
 def verify_credentials(remote, username, password, cached):
@@ -642,7 +731,7 @@ def setup_parameters(worker_dir):
         "--only_config",
         dest="only_config",
         action="store_true",
-        help="just write the configfile and quit",
+        help="write the configfile, update the sri hashes, and then quit",
     )
     parser.add_argument(
         "-v",
@@ -1328,9 +1417,14 @@ def worker():
 
     # Handle command line parameters and the config file.
     options = setup_parameters(worker_dir)
+
     if options is None:
         print("Error parsing options. Config file not written.")
         return 1
+
+    # Write sri hashes of the worker files
+    write_sri(worker_dir)
+
     if options.only_config:
         return 0
 
@@ -1346,6 +1440,11 @@ def worker():
 
     # Make sure we have a working cutechess-cli
     if not setup_cutechess():
+        return 1
+
+    # Check if we are running an unmodified worker
+    un_modified = verify_remote_sri(worker_dir)
+    if un_modified is None:
         return 1
 
     # Assemble the config/options data as well as some other data in a
@@ -1376,6 +1475,7 @@ def worker():
         ),
         "compiler": compiler,
         "unique_key": get_uuid(options),
+        "modified": not un_modified,
         "ARCH": "?",
         "nps": 0.0,
     }
