@@ -128,12 +128,18 @@ function display_data(items) {
   const j = collect(items);
   document.getElementById("data").style.visibility = "visible";
 
-  document.getElementById("commit").href = `${items.args.tests_repo}/compare/${items.args.resolved_base}...${items.args.resolved_new}`;
-  document.getElementById("commit").textContent = `${items.args.new_tag} (${items.args.msg_new})`;
+  document.getElementById(
+    "commit"
+  ).href = `${items.args.tests_repo}/compare/${items.args.resolved_base}...${items.args.resolved_new}`;
+  document.getElementById(
+    "commit"
+  ).textContent = `${items.args.new_tag} (${items.args.msg_new})`;
 
   document.getElementById("info").textContent = items.args.info;
 
-  document.getElementById("username").href = `/tests/user/${items.args.username}`;
+  document.getElementById(
+    "username"
+  ).href = `/tests/user/${items.args.username}`;
   document.getElementById("username").textContent = items.args.username;
 
   document.getElementById("tc").textContent = items.args.tc;
@@ -149,7 +155,7 @@ function display_data(items) {
   document.getElementById("LLR").textContent = `
     ${j.LLR.toFixed(2)}
     [${j.a.toFixed(2)},${j.b.toFixed(2)}]
-    ${(items.args.sprt.state ? `(${items.args.sprt.state})` : "")}
+    ${items.args.sprt.state ? `(${items.args.sprt.state})` : ""}
   `;
 
   document.getElementById("elo").textContent = `
