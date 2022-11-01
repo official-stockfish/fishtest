@@ -16,6 +16,7 @@ def worker_name(worker_info):
     username = worker_info["username"]
     cores = str(worker_info["concurrency"])
     uuid = worker_info["unique_key"]
+    modified = worker_info.get("modified", False)
     name = "{}-{}cores".format(username, cores)
     if len(uuid) != 0:
         uuid_split = uuid.split("-")
@@ -23,6 +24,8 @@ def worker_name(worker_info):
             name += "-" + uuid_split[0]
         if len(uuid_split) >= 2:
             name += "-" + uuid_split[1]
+    if modified:
+        name += "*"
     return name
 
 

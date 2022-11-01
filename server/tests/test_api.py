@@ -90,6 +90,7 @@ class TestApi(unittest.TestCase):
             ],
             "compiler": "g++",
             "unique_key": "unique key",
+            "modified" : True,
             "rate": {"limit": 5000, "remaining": 5000},
             "ARCH": "?",
             "nps": 0.0,
@@ -471,6 +472,7 @@ class TestRunFinished(unittest.TestCase):
             "compiler": "g++",
             "unique_key": "unique key",
             "rate": {"limit": 5000, "remaining": 5000},
+            "modified": True,
             "ARCH": "?",
             "nps": 0.0,
         }

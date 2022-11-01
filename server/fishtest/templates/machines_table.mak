@@ -20,7 +20,7 @@
           gcc_version = ".".join([str(m) for m in machine['gcc_version']])
           compiler = machine.get('compiler', 'g++')
           python_version = ".".join([str(m) for m in machine['python_version']])
-          version = machine['version']
+          version = str(machine['version']) + "*" * machine['modified']
         %>
         <tr>
           <td>${machine['username']}</td>
