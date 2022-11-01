@@ -38,6 +38,7 @@ class CreateRunDBTest(unittest.TestCase):
             ],
             "unique_key": "unique key",
             "rate": {"limit": 5000, "remaining": 5000},
+            "modified": True,
             "ARCH": "?",
             "nps": 0.0,
         }

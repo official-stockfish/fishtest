@@ -51,6 +51,7 @@ def validate_request(request):
             "gcc_version": [int, int, int],
             "compiler": union("g++", "clang++"),
             "unique_key": str,
+            "modified": bool,
             "rate": {"limit": int, "remaining": int},
             "ARCH": str,
             "nps": float,
