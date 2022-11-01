@@ -1481,8 +1481,6 @@ def worker():
     }
 
     print("UUID:", worker_info["unique_key"])
-    with open(os.path.join(worker_dir, "uuid.txt"), "w") as f:
-        f.write(worker_info["unique_key"])
 
     # Start heartbeat thread as a daemon (not strictly necessary, but there might be bugs)
     heartbeat_thread = threading.Thread(
