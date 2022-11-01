@@ -4,8 +4,10 @@
 .python-version
 env/
 venv/
+worker/api.log*
 worker/fish.exit
 worker/fishtest.cfg
-worker/uuid.txt
+worker/sri.txt
 worker/_testing_*
 worker/testing
+worker/worker.lock
