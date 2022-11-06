@@ -288,8 +288,8 @@ def verify_remote_sri(install_dir):
     if sri_ is None:
         return None
     version = sri_.get("__version", -1)
-    if version > WORKER_VERSION:
-        print("The master sri file has a later version. Ignoring!")
+    if version != WORKER_VERSION:
+        print("The master sri file has a different version number. Ignoring!")
         return True
     tainted = False
     for k, v in sri_.items():
@@ -1443,8 +1443,8 @@ def worker():
         return 1
 
     # Check if we are running an unmodified worker
-    un_modified = verify_remote_sri(worker_dir)
-    if un_modified is None:
+    unmodified = verify_remote_sri(worker_dir)
+    if unmodified is None:
         return 1
 
     # Assemble the config/options data as well as some other data in a
@@ -1475,7 +1475,7 @@ def worker():
         ),
         "compiler": compiler,
         "unique_key": get_uuid(options),
-        "modified": not un_modified,
+        "modified": not unmodified,
         "ARCH": "?",
         "nps": 0.0,
     }
