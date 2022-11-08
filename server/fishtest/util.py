@@ -375,18 +375,19 @@ def diff_date(date):
     return diff
 
 
+def plural(n, s):
+    return s + (n != 1) * "s"
+
+
 def delta_date(diff):
     if diff == timedelta.max:
-        delta = "Never"
-    elif diff.days != 0:
-        delta = "{:d} days ago".format(diff.days)
-    elif diff.seconds / 3600 > 1:
-        delta = "{:d} hours ago".format(diff.seconds // 3600)
-    elif diff.seconds / 60 > 1:
-        delta = "{:d} minutes ago".format(diff.seconds // 60)
-    else:
-        delta = "seconds ago"
-    return delta
+        return "Never"
+    tv = diff.days, diff.seconds // 3600, diff.seconds // 60
+    td = "day", "hour", "minute"
+    for v, d in zip(tv, td):
+        if v >= 1:
+            return "{:d} {} ago".format(v, plural(v, d))
+    return "seconds ago"
 
 
 def password_strength(password, *args):
