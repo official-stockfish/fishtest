@@ -232,7 +232,16 @@ def generate_sri(install_dir):
     }
     for file in FILE_LIST:
         item = os.path.join(install_dir, file)
-        sri[file] = text_hash(item)
+        try:
+            sri[file] = text_hash(item)
+        except Exception as e:
+            print(
+                "Exception computing sri hash of {}:\n".format(item),
+                e,
+                sep="",
+                file=sys.stderr,
+            )
+            return None
     return sri
 
 
@@ -245,12 +254,14 @@ def write_sri(install_dir):
         f.write("\n")
 
 
-def verify_sri(install_dir):  # used by CI
+def verify_sri(install_dir):
+    # This is is used by CI and by updater.py.
+    # If you change this function, make sure
+    # that the update process still works.
     sri = generate_sri(install_dir)
-    sri_file = os.path.join(install_dir, "sri.txt")
-    if not os.path.exists(sri_file):
-        print("{} does not exist".format(sri_file))
+    if sri is None:
         return False
+    sri_file = os.path.join(install_dir, "sri.txt")
     try:
         with open(sri_file, "r") as f:
             sri_ = json.load(f)
@@ -261,10 +272,15 @@ def verify_sri(install_dir):  # used by CI
         print("The file {} does not contain a dictionary".format(sri_file))
         return False
     for k, v in sri.items():
+        # When we update, the running worker is not the same as the one we are verifying.
+        # If the running worker and the verified worker are the same then a version check is
+        # still redundant as different version numbers must result in different worker hashes.
+        if k == "__version":
+            continue
         if k not in sri_ or v != sri_[k]:
             print("The value for {} is incorrect in {}".format(k, sri_file))
             return False
-    print("The file {} is up to date!".format(sri_file))
+    print("The file {} matches the worker files!".format(sri_file))
     return True
 
 
@@ -279,9 +295,9 @@ def download_sri():
 
 def verify_remote_sri(install_dir):
     # Returns:
-    # None in case of network error
-    # True if verification succeeded
-    # False if verification failed
+    # True  : verification succeeded
+    # False : verification failed
+    # None  : network error: unable to verify
     sri = generate_sri(install_dir)
     sri_ = download_sri()
     if sri_ is None:
@@ -1215,7 +1231,17 @@ def verify_worker_version(remote, username, password):
     if req["version"] > WORKER_VERSION:
         print("Updating worker version to {}".format(req["version"]))
         backup_log()
-        update()
+        try:
+            update()
+        except Exception as e:
+            print(
+                "Exception while updating to version {}:\n".format(req["version"]),
+                e,
+                sep="",
+                file=sys.stderr,
+            )
+        print("Attempted update to worker version {} failed!".format(req["version"]))
+        return False
     return True
 
 
