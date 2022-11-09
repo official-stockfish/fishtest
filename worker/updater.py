@@ -39,6 +39,13 @@ def update(restart=True, test=False):
         zip_file.extractall(update_dir)
     prefix = os.path.commonprefix([n.filename for n in zip_file.infolist()])
     worker_src = os.path.join(update_dir, prefix, "worker")
+    from worker import (
+        verify_sri,
+    )  # we do the import here to avoid issues with circular imports
+
+    if not verify_sri(worker_src):
+        shutil.rmtree(update_dir)
+        return None
     if not test:
         # Delete the "packages" folder to only have new files after an upgrade.
         packages_dir = os.path.join(worker_dir, "packages")
