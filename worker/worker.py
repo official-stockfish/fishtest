@@ -271,7 +271,7 @@ def verify_sri(install_dir):  # used by CI
 def download_sri():
     print("Downloading {}".format(SRI_URL))
     try:
-        ret = requests_get(SRI_URL).json()
+        ret = requests_get(SRI_URL, timeout=HTTP_TIMEOUT).json()
     except:
         print("Unable to download {}".format(SRI_URL))
         return None

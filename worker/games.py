@@ -70,7 +70,7 @@ HTTP_TIMEOUT = 30.0
 CUTECHESS_KILL_TIMEOUT = 15.0
 UPDATE_RETRY_TIME = 15.0
 
-REPO_URL = "https://github.com/official-stockfish/books"
+RAWCONTENT_URL = "https://raw.githubusercontent.com/official-stockfish/books/master/"
 EXE_SUFFIX = ".exe" if IS_WINDOWS else ""
 
 
@@ -392,19 +392,15 @@ def verify_signature(engine, signature, active_cores):
 
 
 def download_from_github(item, testing_dir):
-    """Download item from FishCooking to testing_dir"""
-    tree = requests_get(
-        github_api(REPO_URL) + "/git/trees/master", timeout=HTTP_TIMEOUT
-    ).json()
-    for blob in tree["tree"]:
-        if blob["path"] == item:
-            print("Downloading {} ...".format(item))
-            blob_json = requests_get(blob["url"], timeout=HTTP_TIMEOUT).json()
-            with open(os.path.join(testing_dir, item), "wb+") as f:
-                f.write(b64decode(blob_json["content"]))
-            break
-    else:
-        raise WorkerException("Item {} not found".format(item))
+    """Download item from GitHub to testing_dir"""
+    item_url = RAWCONTENT_URL + item
+    print("Downloading {}".format(item_url))
+    try:
+        blob = requests_get(item_url, timeout=HTTP_TIMEOUT).content
+        with open(os.path.join(testing_dir, item), "wb+") as f:
+            f.write(blob)
+    except:
+        raise WorkerException("Unable to download {}".format(item_url))
 
 
 def clang_props():
@@ -1108,7 +1104,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
     base_options = run["args"]["base_options"]
     threads = int(run["args"]["threads"])
     spsa_tuning = "spsa" in run["args"]
-    repo_url = run["args"].get("tests_repo", REPO_URL)
+    repo_url = run["args"].get("tests_repo")
     worker_concurrency = int(worker_info["concurrency"])
     games_concurrency = worker_concurrency // threads
 
