@@ -55,7 +55,7 @@ from games import (
 )
 from updater import update
 
-WORKER_VERSION = 184
+WORKER_VERSION = 185
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 SRI_URL = "https://raw.githubusercontent.com/glinscott/fishtest/master/worker/sri.txt"
 HTTP_TIMEOUT = 30.0
@@ -271,7 +271,7 @@ def verify_sri(install_dir):  # used by CI
 def download_sri():
     print("Downloading {}".format(SRI_URL))
     try:
-        ret = requests_get(SRI_URL).json()
+        ret = requests_get(SRI_URL, timeout=HTTP_TIMEOUT).json()
     except:
         print("Unable to download {}".format(SRI_URL))
         return None
