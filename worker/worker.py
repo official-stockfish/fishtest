@@ -55,7 +55,7 @@ from games import (
 )
 from updater import update
 
-WORKER_VERSION = 184
+WORKER_VERSION = 186
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 SRI_URL = "https://raw.githubusercontent.com/glinscott/fishtest/master/worker/sri.txt"
 HTTP_TIMEOUT = 30.0
