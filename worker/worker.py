@@ -52,12 +52,12 @@ from games import (
     run_games,
     send_api_post_request,
     str_signal,
+    unzip,
 )
 from updater import update
 
 WORKER_VERSION = 186
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
-SRI_URL = "https://raw.githubusercontent.com/glinscott/fishtest/master/worker/sri.txt"
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
 THREAD_JOIN_TIMEOUT = 15.0
@@ -269,13 +269,12 @@ def verify_sri(install_dir):  # used by CI
 
 
 def download_sri():
-    print("Downloading {}".format(SRI_URL))
     try:
-        ret = requests_get(SRI_URL).json()
+        return json.loads(
+            download_from_github("worker/sri.txt", owner="glinscott", repo="fishtest")
+        )
     except:
-        print("Unable to download {}".format(SRI_URL))
         return None
-    return ret
 
 
 def verify_remote_sri(install_dir):
@@ -441,10 +440,9 @@ def setup_cutechess():
         else:
             zipball = "cutechess-cli-linux-{}.zip".format(platform.architecture()[0])
         try:
-            download_from_github(zipball, testing_dir)
-            with ZipFile(zipball) as zip_file:
-                zip_file.extractall()
-            os.remove(zipball)
+            blob = download_from_github(zipball)
+            unzip(blob, testing_dir)
+
             os.chmod(cutechess, os.stat(cutechess).st_mode | stat.S_IEXEC)
         except Exception as e:
             print(

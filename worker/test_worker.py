@@ -18,11 +18,12 @@ class workerTest(unittest.TestCase):
             os.remove("README.md")
 
     def test_item_download(self):
+        blob = None
         try:
-            games.download_from_github("README.md", ".")
-            self.assertTrue(os.path.exists(os.path.join(".", "README.md")))
-        except KeyError:
+            blob = games.download_from_github("README.md")
+        except:
             pass
+        self.assertFalse(blob is None)
 
     def test_config_setup(self):
         sys.argv = [sys.argv[0], "user", "pass", "--no_validation"]

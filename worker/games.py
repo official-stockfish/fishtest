@@ -3,6 +3,7 @@ import ctypes
 import datetime
 import glob
 import hashlib
+import io
 import json
 import math
 import multiprocessing
@@ -70,7 +71,8 @@ HTTP_TIMEOUT = 30.0
 CUTECHESS_KILL_TIMEOUT = 15.0
 UPDATE_RETRY_TIME = 15.0
 
-REPO_URL = "https://github.com/official-stockfish/books"
+RAWCONTENT_HOST = "https://raw.githubusercontent.com"
+API_HOST = "https://api.github.com"
 EXE_SUFFIX = ".exe" if IS_WINDOWS else ""
 
 
@@ -391,20 +393,46 @@ def verify_signature(engine, signature, active_cores):
     return bench_nps, cpu_features
 
 
-def download_from_github(item, testing_dir):
-    """Download item from FishCooking to testing_dir"""
-    tree = requests_get(
-        github_api(REPO_URL) + "/git/trees/master", timeout=HTTP_TIMEOUT
-    ).json()
-    for blob in tree["tree"]:
-        if blob["path"] == item:
-            print("Downloading {} ...".format(item))
-            blob_json = requests_get(blob["url"], timeout=HTTP_TIMEOUT).json()
-            with open(os.path.join(testing_dir, item), "wb+") as f:
-                f.write(b64decode(blob_json["content"]))
-            break
-    else:
-        raise WorkerException("Item {} not found".format(item))
+def download_from_github_raw(
+    item, owner="official-stockfish", repo="books", branch="master"
+):
+    item_url = "{}/{}/{}/{}/{}".format(RAWCONTENT_HOST, owner, repo, branch, item)
+    print("Downloading {}".format(item_url))
+    return requests_get(item_url, timeout=HTTP_TIMEOUT).content
+
+
+def download_from_github_api(
+    item, owner="official-stockfish", repo="books", branch="master"
+):
+    item_url = "{}/repos/{}/{}/contents/{}?ref={}".format(
+        API_HOST, owner, repo, item, branch
+    )
+    print("Downloading {}".format(item_url))
+    git_url = requests_get(item_url, timeout=HTTP_TIMEOUT).json()["git_url"]
+    return b64decode(requests_get(git_url, timeout=HTTP_TIMEOUT).json()["content"])
+
+
+def download_from_github(
+    item, owner="official-stockfish", repo="books", branch="master"
+):
+    try:
+        blob = download_from_github_raw(item, owner=owner, repo=repo, branch=branch)
+    except:
+        print("Downloading {} failed. Trying the github api.".format(item))
+        try:
+            blob = download_from_github_api(item, owner=owner, repo=repo, branch=branch)
+        except:
+            raise WorkerException("Unable to download {}".format(item))
+    return blob
+
+
+def unzip(blob, save_dir):
+    cd = os.getcwd()
+    os.chdir(save_dir)
+    zipball = io.BytesIO(blob)
+    with ZipFile(zipball) as zip_file:
+        zip_file.extractall()
+    os.chdir(cd)
 
 
 def clang_props():
@@ -1108,7 +1136,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
     base_options = run["args"]["base_options"]
     threads = int(run["args"]["threads"])
     spsa_tuning = "spsa" in run["args"]
-    repo_url = run["args"].get("tests_repo", REPO_URL)
+    repo_url = run["args"].get("tests_repo")
     worker_concurrency = int(worker_info["concurrency"])
     games_concurrency = worker_concurrency // threads
 
@@ -1203,10 +1231,8 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
         or os.stat(os.path.join(testing_dir, book)).st_size == 0
     ):
         zipball = book + ".zip"
-        download_from_github(zipball, testing_dir)
-        with ZipFile(zipball) as zip_file:
-            zip_file.extractall()
-        os.remove(zipball)
+        blob = download_from_github(zipball)
+        unzip(blob, testing_dir)
 
     # Clean up the old networks (keeping the num_bkps most recent)
     networks = glob.glob(os.path.join(testing_dir, "nn-*.nnue"))
