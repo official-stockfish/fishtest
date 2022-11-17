@@ -432,7 +432,9 @@ def unzip(blob, save_dir):
     zipball = io.BytesIO(blob)
     with ZipFile(zipball) as zip_file:
         zip_file.extractall()
+        file_list = zip_file.infolist()
     os.chdir(cd)
+    return file_list
 
 
 def clang_props():
@@ -614,16 +616,11 @@ def setup_engine(
     tmp_dir = tempfile.mkdtemp(dir=worker_dir)
 
     try:
-        os.chdir(tmp_dir)
-        with open("sf.gz", "wb+") as f:
-            f.write(
-                requests_get(
-                    github_api(repo_url) + "/zipball/" + sha, timeout=HTTP_TIMEOUT
-                ).content
-            )
-        with ZipFile("sf.gz") as zip_file:
-            zip_file.extractall()
-        prefix = os.path.commonprefix([n.filename for n in zip_file.infolist()])
+        item_url = github_api(repo_url) + "/zipball/" + sha
+        print("Downloading {}".format(item_url))
+        blob = requests_get(item_url).content
+        file_list = unzip(blob, tmp_dir)
+        prefix = os.path.commonprefix([n.filename for n in file_list])
         os.chdir(os.path.join(tmp_dir, prefix, "src"))
 
         net = required_net_from_source()
