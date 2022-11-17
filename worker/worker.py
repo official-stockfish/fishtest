@@ -56,7 +56,7 @@ from games import (
 )
 from updater import update
 
-WORKER_VERSION = 187
+WORKER_VERSION = 188
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
