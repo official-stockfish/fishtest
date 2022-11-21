@@ -6,6 +6,12 @@
 </script>
 
 <div class="container">
+  <div id="notificationsAlert" class="alert alert-dark alert-dismissible fade show d-none" role="alert">
+    <p>Choose if you want to get a <strong>notification</strong> when a test that you are watching <strong>passes or fails</strong></p>
+    <button type="button" title="Choose" class="btn btn-sm text-bg-dark col-12 col-sm-auto" data-bs-dismiss="alert" onclick="Notification.requestPermission()">Choose</button>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+  </div>
+
   <h2>Live Elo for SPRT test <a href="/tests/view/${str(run['_id'])}">${str(run['_id'])}</a></h2>
 
   <div class="row">

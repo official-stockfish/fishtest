@@ -1,5 +1,34 @@
 "use strict";
 
+function supportsNotifications() {
+  if (
+    // Safari on iOS doesn't support them
+    "Notification" in window &&
+    // Chrome and Opera on Android don't support them
+    !(
+      navigator.userAgent.match(/Android/i) &&
+      navigator.userAgent.match(/Chrome/i)
+    )
+  )
+    return true;
+  return false;
+}
+
+if (supportsNotifications() && Notification.permission === "default") {
+  document.getElementById("notificationsAlert").classList.remove("d-none");
+}
+
+function notify(tag, state, elo) {
+  const notification = new Notification(`Test ${tag} ${state}!`, {
+    body: `Elo: ${elo > 0 ? "+" : ""}${elo.toFixed(2)}`,
+    requireInteraction: true,
+    icon: "https://tests.stockfishchess.org/img/stockfish.png",
+  });
+  notification.onclick = () => {
+    window.parent.parent.focus();
+  };
+}
+
 google.charts.load("current", { packages: ["gauge"] });
 let LOS_chart = null;
 let LLR_chart = null;
@@ -126,6 +155,18 @@ function clear_gauges() {
 
 function display_data(items) {
   const j = collect(items);
+
+  if (
+    // Only notify if the test has a state (accepted or rejected)
+    items.args.sprt.state &&
+    // Only notify if there is already text in LLR (the test wasn't just opened)
+    document.getElementById("LLR").textContent !== "" &&
+    supportsNotifications() &&
+    Notification.permission === "granted"
+  ) {
+    notify(items.args.new_tag, items.args.sprt.state, j.elo);
+  }
+
   document.getElementById("data").style.visibility = "visible";
 
   document.getElementById(
