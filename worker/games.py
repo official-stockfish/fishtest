@@ -660,6 +660,14 @@ def setup_engine(
         ) as p:
             errors = p.stderr.readlines()
         if p.returncode:
+            if comp == "clang" and "llvm-profdata: not found" in " ".join(
+                errors
+            ):  # catch a common clang misconfiguration
+                raise FatalException(
+                    "Executing {} failed due to an ill configured clang. Error: {}".format(
+                        cmd, errors
+                    )
+                )
             raise WorkerException("Executing {} failed. Error: {}".format(cmd, errors))
 
         # TODO: 'make strip' works fine with the new Makefile,
