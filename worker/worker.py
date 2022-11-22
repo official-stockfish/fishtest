@@ -47,6 +47,7 @@ from games import (
     backup_log,
     download_from_github,
     format_return_code,
+    IS_MACOS,
     log,
     requests_get,
     run_games,
@@ -1044,7 +1045,6 @@ def clang_version():
     if p.returncode != 0:
         print("clang++ version query failed with return code {}".format(p.returncode))
         return None
-
     try:
         major = int(clang_major)
         minor = int(clang_minor)
@@ -1052,6 +1052,21 @@ def clang_version():
         compiler = "clang++"
     except:
         print("Failed to parse clang++ version.")
+        return None
+    # Check for a common toolchain issue
+    try:
+        with subprocess.Popen(
+            (["xcrun"] if IS_MACOS else []) + ["llvm-profdata", "--help"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            universal_newlines=True,
+            bufsize=1,
+            close_fds=not IS_WINDOWS,
+        ):
+            pass
+    except (OSError, subprocess.SubprocessError):
+        print("clang++ is present but misconfigured: the command 'llvm-profdata' is missing")
         return None
 
     print("Found {} version {}.{}.{}".format(compiler, major, minor, patchlevel))
