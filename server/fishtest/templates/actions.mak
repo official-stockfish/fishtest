@@ -28,13 +28,28 @@
       <option value="update_stats" class="grayedoutoption">System Events</option>
     </select>
   </div>
+
   <div class="col-12 col-md-auto mb-3">
     <label for="user" class="form-label">From user</label>
-    <input id="user" type="text" name="user" class="form-control" placeholder="username" value="${request.GET.get('user') if request.GET.get('user') != None else ''}">
+    <input
+      id="user"
+      class="form-control"
+      autocomplete="off"
+      placeholder="Search by username"
+      type="text"
+      name="user"
+      list="users-list"
+      value="${request.GET.get('user') if request.GET.get('user') is not None else ''}"
+    />
+    <datalist id="users-list">
+      % for user in request.userdb.get_users():
+        <option value="${user["username"]}">${user["username"]}</option>
+      % endfor
+    </datalist>
   </div>
 
   <div class="col-12 col-md-auto mb-3 d-flex align-items-end">
-    <button type="submit" class="btn btn-success w-100">Select</button>
+    <button type="submit" class="btn btn-success w-100">Search</button>
   </div>
 </form>
 

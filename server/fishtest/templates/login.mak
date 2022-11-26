@@ -21,6 +21,7 @@
         id="username"
         name="username"
         placeholder="Username"
+        autocomplete="username"
         required
         autofocus
       />
@@ -35,6 +36,7 @@
           id="password"
           name="password"
           placeholder="Password"
+          autocomplete="password-current"
           required
         />
         <label for="password" class="d-flex align-items-end">Password</label>
