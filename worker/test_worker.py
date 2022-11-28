@@ -1,3 +1,4 @@
+import os
 import subprocess
 import sys
 import unittest
@@ -70,6 +71,12 @@ class workerTest(unittest.TestCase):
 
     def test_sri(self):
         self.assertTrue(worker.verify_sri(Path.cwd()))
+
+    def test_make_detection(self):
+        self.assertTrue(worker.detect_make())
+
+    def test_setup_cutechess(self):
+        self.assertTrue(worker.setup_cutechess(Path.cwd()))
 
 
 if __name__ == "__main__":
