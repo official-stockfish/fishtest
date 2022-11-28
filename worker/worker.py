@@ -437,6 +437,8 @@ def setup_cutechess(worker_dir):
     testing_dir = worker_dir / "testing"
     testing_dir.mkdir(exist_ok=True)
 
+    curr_dir = Path.cwd()
+
     try:
         os.chdir(testing_dir)
     except Exception as e:
@@ -444,6 +446,8 @@ def setup_cutechess(worker_dir):
         return False
 
     cutechess = "cutechess-cli" + EXE_SUFFIX
+
+    ret = True
 
     if not verify_required_cutechess(testing_dir, cutechess):
         if len(EXE_SUFFIX) > 0:
@@ -492,13 +496,14 @@ def setup_cutechess(worker_dir):
                         )
                     )
                     print("No suitable cutechess-cli found")
-                    return False
+                    ret = False
             else:
                 print("No backup copy found")
                 print("No suitable cutechess-cli found")
-                return False
+                ret = False
 
-    return True
+    os.chdir(curr_dir)
+    return ret
 
 
 def validate(config, schema):
@@ -1083,6 +1088,32 @@ def detect_compilers():
     return ret
 
 
+def detect_make():
+    try:
+        with subprocess.Popen(
+            ["make", "-v"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            universal_newlines=True,
+            bufsize=1,
+            close_fds=not IS_WINDOWS,
+        ) as p:
+            pass
+    except (OSError, subprocess.SubprocessError) as e:
+        print(
+            "It appears 'make' is not properly installed... ",
+            e,
+            sep="",
+            file=sys.stderr,
+        )
+        return False
+    if p.returncode != 0:
+        print("make -v failed with return code {}".format(format_return_code(p.returncode)))
+        return False
+    return True
+
+
 def get_exception(files):
     i = 0
     exc_type, exc_obj, tb = sys.exc_info()
@@ -1477,6 +1508,10 @@ def worker():
             return 1
     except Exception as e:
         print("Exception verifying worker version:\n", e, sep="", file=sys.stderr)
+        return 1
+
+    # Check for a common tool chain issue
+    if not detect_make():
         return 1
 
     # Make sure we have a working cutechess-cli
