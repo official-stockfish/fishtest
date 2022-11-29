@@ -137,6 +137,10 @@
   color: var(--bs-secondary);
 }
 
+code {
+  white-space: pre-wrap; 
+}
+
 /* Confirm deny button */
 .run-deny .dropdown-menu.show {
   min-width: 0;
