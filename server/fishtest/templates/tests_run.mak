@@ -26,9 +26,18 @@
     is_odds = False
 %>
 
+<%!
+  title = "Create New Test | Stockfish Testing"
+%>
+
+<%block name="head">
+  <meta property="og:title" content="${title}" />
+</%block>
+
 <script>
-  document.title = 'Create New Test | Stockfish Testing';
+  document.title = '${title}';
 </script>
+
 
 <header style="text-align: center; padding-top: 7px">
   <h2>Create New Test</h2>

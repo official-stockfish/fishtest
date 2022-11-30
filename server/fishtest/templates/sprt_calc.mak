@@ -1,5 +1,17 @@
 <%inherit file="base.mak"/>
 
+<%!
+  title = "Chess SPRT Calculator | Stockfish Testing"
+%>
+
+<%block name="head">
+  <meta property="og:title" content="${title}" />
+</%block>
+
+<script>
+  document.title = '${title}';
+</script>
+
 <style>
   @media (min-width: 768px) {
     .form-control.number {
@@ -16,10 +28,6 @@
     word-break: break-word;
   }
 </style>
-
-<script>
-  document.title = 'Chess SPRT Calculator | Stockfish Testing';
-</script>
 
 <h2>Chess SPRT Calculator</h2>
 

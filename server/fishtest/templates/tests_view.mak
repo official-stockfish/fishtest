@@ -1,5 +1,19 @@
 <%inherit file="base.mak"/>
 
+<%def name="list_info(run)">
+  % for i in range(len(run['results_info']['info'])):
+      ${run['results_info']['info'][i]}
+  % endfor
+</%def>
+
+<%def name="title_tests_view()">${page_title} | Stockfish Testing</%def>
+
+<%block name="head">
+  <meta property="og:title" content="${title_tests_view()}" />
+  <meta property="og:description" content="${list_info(run)}">
+  <meta name="theme-color" content="${'#FFFF00' if run['results_info']['style'] == 'yellow' else run['results_info']['style']}">
+</%block>
+
 <%
 from fishtest.util import worker_name
 
@@ -434,7 +448,7 @@ if 'spsa' in run['args']:
 </script>
 
 <script>
-  document.title = "${page_title} | Stockfish Testing";
+  document.title = '${title_tests_view()}';
 
   document.addEventListener("DOMContentLoaded", function () {
     let copyDiffBtn = document.querySelector("#copy-diff");

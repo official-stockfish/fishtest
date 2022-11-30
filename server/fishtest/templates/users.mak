@@ -1,7 +1,13 @@
 <%inherit file="base.mak"/>
 
+<%def name="title_users()">Users${" - Top Month" if "monthly" in request.url else ""} | Stockfish Testing</%def>
+
+<%block name="head">
+  <meta property="og:title" content="${title_users()}" />
+</%block>
+
 <script>
-  document.title = 'Users${" - Top Month" if "monthly" in request.url else ""} | Stockfish Testing';
+  document.title = '${title_users()}';
 </script>
 
 <h2>

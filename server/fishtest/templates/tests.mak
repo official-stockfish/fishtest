@@ -1,5 +1,9 @@
 <%inherit file="base.mak"/>
 
+<%block name="head">
+  <meta property="og:title" content="Stockfish Testing Framework" />
+</%block>
+
 <link rel="stylesheet"
       href="/css/flags.css?v=${cache_busters['css/flags.css']}"
       integrity="sha384-${cache_busters['css/flags.css']}"

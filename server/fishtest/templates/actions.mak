@@ -4,10 +4,18 @@
   import datetime
 %>
 
+<%!
+  title = "Events Log | Stockfish Testing"
+%>
+
+<%block name="head">
+  <meta property="og:title" content="${title}" />
+</%block>
+
 <h2>Events Log</h2>
 
 <script>
-  document.title = 'Events Log | Stockfish Testing';
+  document.title = '${title}';
 </script>
 
 <form class="row mb-3">

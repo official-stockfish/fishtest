@@ -262,7 +262,7 @@ td[style*="background-color:#FF6A6A"] {
 }
 
 /* Darken white box */
-pre[style*="white-space:nowrap"] {
+.elo-results {
   background: var(--bg-dark-3) !important;
   color: var(--color-dark-1) !important;
 }
