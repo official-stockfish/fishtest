@@ -55,7 +55,7 @@ from games import (
 )
 from updater import update
 
-WORKER_VERSION = 191
+WORKER_VERSION = 192
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -1109,7 +1109,11 @@ def detect_make():
         )
         return False
     if p.returncode != 0:
-        print("make -v failed with return code {}".format(format_return_code(p.returncode)))
+        print(
+            "make -v failed with return code {}".format(
+                format_return_code(p.returncode)
+            )
+        )
         return False
     return True
 
