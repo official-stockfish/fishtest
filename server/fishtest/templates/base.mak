@@ -184,7 +184,7 @@ monitoring = request.rundb.conn["admin"].command("getFreeMonitoringStatus")
                     <li><a href="https://stockfishchess.org/download/" target="_blank" rel="noopener" class="links-link rounded">Official Releases</a></li>
                     <li><a href="https://abrok.eu/stockfish/" target="_blank" rel="noopener" class="links-link rounded">Dev Builds</a></li>
                     <li><a href="https://stockfishchess.org/get-involved/" target="_blank" rel="noopener" class="links-link rounded">Contribute</a></li>
-                    <li><a href="https://github.com/glinscott/fishtest/wiki/Regression-Tests" target="_blank" rel="noopener" class="links-link rounded">Progress</a></li>
+                    <li><a href="https://github.com/official-stockfish/Stockfish/wiki/Regression-Tests" target="_blank" rel="noopener" class="links-link rounded">Progress</a></li>
                     <li><a href="/nns" class="links-link rounded">NN Repo</a></li>
                   </ul>
                 </li>
