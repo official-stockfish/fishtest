@@ -357,7 +357,7 @@ legend {
   content: "\f518";
 }
 
-.mainnavbar [href="https://github.com/glinscott/fishtest/wiki/Regression-Tests"]::before
+.mainnavbar [href="https://github.com/official-stockfish/Stockfish/wiki/Regression-Tests"]::before
 {
   content: "\f201";
 }
