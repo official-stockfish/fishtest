@@ -27,20 +27,17 @@ from contextlib import ExitStack
 from functools import partial
 from pathlib import Path
 
-# Try to import the system wide package (eg requests).
-# Fall back to the local one if the global one does not exist.
+# Fall back to the provided packages if missing in the local system.
 
 packages_dir = Path(__file__).resolve().parent / "packages"
 sys.path.append(str(packages_dir))
 
-# Several packages are called "expression".
-# So we make sure to use the locally installed one.
-
-import packages.expression as expression
 import requests
+
 from games import (
     EXE_SUFFIX,
     IS_MACOS,
+    IS_WINDOWS,
     FatalException,
     RunException,
     WorkerException,
@@ -53,16 +50,18 @@ from games import (
     str_signal,
     unzip,
 )
+from packages import expression
 from updater import update
 
-WORKER_VERSION = 193
+# Several packages are called "expression".
+# So we make sure to use the locally installed one.
+
+WORKER_VERSION = 194
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
 THREAD_JOIN_TIMEOUT = 15.0
 MAX_RETRY_TIME = 900.0  # 15 minutes
-IS_WINDOWS = "windows" in platform.system().lower()
-IS_MACOS = "darwin" in platform.system().lower()
 IS_COLAB = False
 try:
     import google.colab
@@ -1058,16 +1057,11 @@ def clang_version():
         return None
     # Check for a common toolchain issue
     try:
-        with subprocess.Popen(
+        subprocess.run(
             (["xcrun"] if IS_MACOS else []) + ["llvm-profdata", "--help"],
-            stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            universal_newlines=True,
-            bufsize=1,
-            close_fds=not IS_WINDOWS,
-        ):
-            pass
+        )
     except (OSError, subprocess.SubprocessError):
         print(
             "clang++ is present but misconfigured: the command 'llvm-profdata' is missing"
@@ -1091,16 +1085,9 @@ def detect_compilers():
 
 def detect_make():
     try:
-        with subprocess.Popen(
-            ["make", "-v"],
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            universal_newlines=True,
-            bufsize=1,
-            close_fds=not IS_WINDOWS,
-        ) as p:
-            pass
+        p = subprocess.run(
+            ["make", "-v"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
     except (OSError, subprocess.SubprocessError) as e:
         print(
             "It appears 'make' is not properly installed... ",
