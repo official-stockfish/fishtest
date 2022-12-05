@@ -52,7 +52,7 @@ def validate_request(request):
             "compiler": union("g++", "clang++"),
             "unique_key": str,
             "modified": bool,
-            "rate": {"limit": int, "remaining": int},
+            "near_github_api_limit": bool,
             "ARCH": str,
             "nps": float,
         },

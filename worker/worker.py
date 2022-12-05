@@ -961,18 +961,19 @@ def get_uuid(options):
     return uuid_prefix[:8] + str(uuid.uuid4())[8:]
 
 
-def get_rate():
+def get_remaining_github_api_calls():
     try:
-        rate = requests.get(
-            "https://api.github.com/rate_limit", timeout=HTTP_TIMEOUT
-        ).json()["resources"]["core"]
+        rate = requests.get("https://api.github.com/rate_limit", timeout=HTTP_TIMEOUT)
+        rate.raise_for_status()
+        return rate.json()["resources"]["core"]["remaining"]
     except Exception as e:
-        print("Exception fetching rate_limit:\n", e, sep="", file=sys.stderr)
-        rate = {"remaining": 0, "limit": 5000}
-        return rate, False
-    remaining = rate["remaining"]
-    print("API call rate limits:", rate)
-    return rate, remaining < math.sqrt(rate["limit"])
+        print(
+            "Exception fetching rate_limit (invalid ~/.netrc?):\n",
+            e,
+            sep="",
+            file=sys.stderr,
+        )
+        return 0
 
 
 def gcc_version():
@@ -1270,9 +1271,12 @@ def utcoffset():
 def verify_worker_version(remote, username, password):
     print("Verify worker version...")
     payload = {"worker_info": {"username": username}, "password": password}
-    req = send_api_post_request(remote + "/api/request_version", payload)
+    try:
+        req = send_api_post_request(remote + "/api/request_version", payload)
+    except:
+        return False  # the error message has already been written
     if "error" in req:
-        return False
+        return False  # likewise
     if req["version"] > WORKER_VERSION:
         print("Updating worker version to {}".format(req["version"]))
         backup_log()
@@ -1302,32 +1306,41 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
         current_state["alive"] = False
         return False
 
-    try:
-        rate, near_api_limit = get_rate()
-        if near_api_limit:
-            print("Near API limit")
-            return False
-
-        worker_info["rate"] = rate
-
-        if not verify_worker_version(remote, worker_info["username"], password):
-            current_state["alive"] = False
-            return False
-
-        print(
-            "Current time is {} UTC (offset: {}) ".format(
-                datetime.datetime.utcnow(), utcoffset()
-            )
+    # Print the current time for log purposes
+    print(
+        "Current time is {} UTC (local offset: {}) ".format(
+            datetime.datetime.utcnow(), utcoffset()
         )
-        print("Fetching task...")
-        payload = {"worker_info": worker_info, "password": password}
+    )
+
+    # Check the worker version and upgrade if necessary
+    if not verify_worker_version(remote, worker_info["username"], password):
+        current_state["alive"] = False
+        return False
+
+    # Verify if we still have enough github api calls
+    remaining = get_remaining_github_api_calls()
+    print("Remaining number of github api calls = {}".format(remaining))
+    near_github_api_limit = remaining <= 10
+    if near_github_api_limit:
+        print(
+            """
+  We have almost exhausted our github api calls. 
+  The server will only give us tasks for tests we have seen before.
+"""
+        )
+    worker_info["near_github_api_limit"] = near_github_api_limit
+
+    # Let's go!
+    print("Fetching task...")
+    payload = {"worker_info": worker_info, "password": password}
+    try:
         req = send_api_post_request(remote + "/api/request_task", payload)
     except Exception as e:
-        print("Exception accessing host:\n", e, sep="", file=sys.stderr)
-        return False
+        return False  # error message has already been printed
 
     if "error" in req:
-        return False
+        return False  # likewise
 
     # No tasks ready for us yet, just wait...
     if "task_waiting" in req:
