@@ -1,4 +1,3 @@
-import os
 import subprocess
 import sys
 import unittest
@@ -6,7 +5,6 @@ from pathlib import Path
 
 import games
 import updater
-
 import worker
 
 
@@ -52,12 +50,8 @@ class workerTest(unittest.TestCase):
 
     def test_worker_script_with_no_args(self):
         assert not (Path.cwd() / "fishtest.cfg").exists()
-        with subprocess.Popen(
-            ["python", "worker.py"],
-            stdin=subprocess.PIPE,
-        ) as p:
-            p.communicate()
-            self.assertEqual(p.returncode, 1)
+        p = subprocess.run(["python", "worker.py"])
+        self.assertEqual(p.returncode, 1)
 
     def test_setup_exception(self):
         cwd = Path.cwd()

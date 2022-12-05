@@ -659,7 +659,7 @@ def setup_engine(
         # TODO: 'make strip' works fine with the new Makefile,
         # 'try' should be safely dropped in the future
         try:
-            subprocess.check_call("make strip COMP={}".format(comp), shell=True)
+            subprocess.run("make strip COMP={}".format(comp), shell=True, check=True)
         except Exception as e:
             print("Exception stripping binary:\n", e, sep="", file=sys.stderr)
 
