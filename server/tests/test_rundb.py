@@ -37,7 +37,7 @@ class CreateRunDBTest(unittest.TestCase):
                 0,
             ],
             "unique_key": "unique key",
-            "rate": {"limit": 5000, "remaining": 5000},
+            "near_github_api_limit": False,
             "modified": True,
             "ARCH": "?",
             "nps": 0.0,

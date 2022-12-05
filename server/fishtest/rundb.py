@@ -678,11 +678,7 @@ class RunDb:
         max_memory = int(worker_info.get("max_memory", 0))
 
         # Is the worker near the github api limit?
-        if "rate" in worker_info:
-            rate = worker_info["rate"]
-            near_github_api_limit = rate["remaining"] <= 2 * math.sqrt(rate["limit"])
-        else:
-            near_github_api_limit = False
+        near_github_api_limit = worker_info["near_github_api_limit"]
 
         # Now go through the sorted list of unfinished runs.
         # We will add a task to the first run that is suitable.
