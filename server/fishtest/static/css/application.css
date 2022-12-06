@@ -139,6 +139,7 @@
 
 code {
   white-space: pre-wrap; 
+  word-break: break-all !important;
 }
 
 /* Confirm deny button */
