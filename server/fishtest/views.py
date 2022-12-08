@@ -419,6 +419,8 @@ def actions(request):
         "actions": actions_list,
         "approver": request.has_permission("approve_run"),
         "pages": pages,
+        "action_param": search_action,
+        "username_param": username,
     }
 
 
