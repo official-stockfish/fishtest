@@ -69,7 +69,7 @@
       % for action in actions:
           <tr>
             ## Dates in mongodb have millisecond precision. So they fit comfortably in a float without precision loss.
-            <td><a href=/actions?max_actions=1&before=${action['time'].replace(tzinfo=datetime.timezone.utc).timestamp()}>
+            <td><a href=/actions?max_actions=1${"&action="+action['action'] if action_param else ""}${"&user="+action['username'] if username_param else ""}&before=${action['time'].replace(tzinfo=datetime.timezone.utc).timestamp()}>
              ${action['time'].strftime(r"%y&#8209;%m&#8209;%d %H:%M:%S")|n}</a></td>
             % if approver and 'fishtest.' not in action['username']:
                 <td><a href="/user/${action['username']}">${action['username']}</a></td>
