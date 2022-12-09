@@ -60,9 +60,10 @@
     <thead class="sticky-top">
       <tr>
         <th>Time</th>
-        <th>Username</th>
-        <th>Run/User</th>
         <th>Event</th>
+        <th>Source</th>
+        <th>Target</th>
+        <th>Comment</th>
       </tr>
     </thead>
     <tbody>
@@ -71,19 +72,29 @@
             ## Dates in mongodb have millisecond precision. So they fit comfortably in a float without precision loss.
             <td><a href=/actions?max_actions=1&before=${action['time'].replace(tzinfo=datetime.timezone.utc).timestamp()}>
              ${action['time'].strftime(r"%y&#8209;%m&#8209;%d %H:%M:%S")|n}</a></td>
+            <td>${action['action']}</td>
+	    <%
+               if 'worker' in action:
+                 agent = action['worker']
+               else:
+                 agent = action['username']
+	    %>
             % if approver and 'fishtest.' not in action['username']:
-                <td><a href="/user/${action['username']}">${action['username']}</a></td>
+                <td><a href="/user/${action['username']}">${agent|n}</a></td>
             % else:
-                <td>${action['username']}</td>
+                <td>${agent|n}</td>
             % endif
-            % if 'run' in action:
-                <td><a href="/tests/view/${action['_id']}">${action['run'][:23]}</a></td>
+            % if 'nn' in action:
+                <td><a href=/api/nn/${action['nn']}>${action['nn'].replace('-', '&#8209;')|n}</a></td>
+            % elif 'run' in action:
+                <td><a href="/tests/view/${action['run_id']}">${action['run'][:23] + \
+                            ("/{}".format(action["task_id"]) if "task_id" in action else "")}</a></td>
             % elif approver:
                 <td><a href="/user/${action['user']}">${action['user']}</a></td>
             % else:
-                <td>${action.get('user','?')}</td>
+                <td>${action['user']}</td>
             % endif
-            <td>${action.get('description','?')}</td>
+            <td style="word-break: break-all">${action.get('message','?')}</td>
           </tr>
       % endfor
     </tbody>
