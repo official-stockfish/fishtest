@@ -367,21 +367,22 @@ def actions(request):
             "time": action["time"],
             "username": action["username"],
         }
+        item["message"] = ""
         if action["action"] == "update_stats":
             item["user"] = ""
-            item["description"] = "Update user statistics"
+            item["message"] = "Update user statistics"
         elif action["action"] == "upload_nn":
             item["user"] = ""
-            item["description"] = "Upload " + action["data"]
+            item["nn"] = action["data"]
         elif action["action"] == "block_user":
-            item["description"] = (
+            item["message"] = (
                 "blocked" if action["data"]["blocked"] else "unblocked"
             )
             item["user"] = action["data"]["user"]
         elif action["action"] == "modify_run":
             item["run"] = action["data"]["before"]["args"]["new_tag"]
-            item["_id"] = action["data"]["before"]["_id"]
-            item["description"] = []
+            item["run_id"] = action["data"]["before"]["_id"]
+            item["message"] = []
 
             for k in ("priority", "num_games", "throughput", "auto_purge"):
                 try:
@@ -391,27 +392,39 @@ def actions(request):
                     pass
                 else:
                     if before != after:
-                        item["description"].append(
+                        item["message"].append(
                             "{} changed from {} to {}".format(
                                 k.replace("_", "-"), before, after
                             )
                         )
 
-            item["description"] = "modify: " + ", ".join(item["description"])
+            item["message"] = "modify: " + ", ".join(item["message"])
         else:
             item["run"] = action["data"]["args"]["new_tag"]
-            item["_id"] = action["data"]["_id"]
-            item["description"] = " ".join(action["action"].split("_"))
+            item["run_id"] = action["data"]["_id"]
+            message = ""
             if action["action"] == "failed_task":
-                item["description"] += ": {}".format(
-                    action["data"].get("failure_reason", "Unknown reason")
-                )
+                message = action["data"].get("failure_reason", "Unknown reason")
             if action["action"] == "dead_task":
-                item["description"] += ": {}".format(action["data"].get("dead_task"))
+                message = action["data"].get("dead_task")
             if action["action"] == "stop_run":
-                item["description"] += ": {}".format(
-                    action["data"].get("stop_reason", "User stop")
-                )
+                message = action["data"].get("stop_reason", "User stop")
+            # Dirty hack (will be changed)
+            try:
+                chunks = message.split()
+                if len(chunks) > 2:
+                    item["task_id"] = int(chunks[1][:-1])
+                    item["worker"] = chunks[3][:-1]
+                    proto_message = " ".join(chunks[5:])
+                    # get rid of ' '.
+                    if "not authorized" not in proto_message:
+                        item["message"] = proto_message[1:-1]
+                    else:
+                        item["message"] = proto_message.replace("'","")
+                else:
+                    item["message"] = message
+            except Exception as e:
+                item["message"] = message
 
         actions_list.append(item)
 
