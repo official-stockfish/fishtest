@@ -86,13 +86,13 @@
             % endif
             % if 'nn' in action:
                 <td><a href=/api/nn/${action['nn']}>${action['nn'].replace('-', '&#8209;')|n}</a></td>
-            % elif 'run' in action:
+            % elif 'run' in action and 'run_id' in action:
                 <td><a href="/tests/view/${action['run_id']}">${action['run'][:23] + \
                             ("/{}".format(action["task_id"]) if "task_id" in action else "")}</a></td>
-            % elif approver:
+            % elif approver and 'user' in action:
                 <td><a href="/user/${action['user']}">${action['user']}</a></td>
             % else:
-                <td>${action['user']}</td>
+                <td>${action.get('user','')}</td>
             % endif
             <td style="word-break: break-all">${action.get('message','?')}</td>
           </tr>
