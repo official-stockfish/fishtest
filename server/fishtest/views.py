@@ -194,7 +194,10 @@ def sync_upload(request):
         )
         return {}
 
-    request.actiondb.upload_nn(request.authenticated_userid, filename)
+    request.actiondb.upload_nn(
+        username=request.authenticated_userid,
+        nn=filename,
+    )
     request.rundb.upload_nn(userid, filename, network)
 
     return HTTPFound(location=request.route_url("nns"))
@@ -445,8 +448,9 @@ def user(request):
             user_data["blocked"] = "blocked" in request.POST
             request.userdb.last_pending_time = 0
             request.actiondb.block_user(
-                request.authenticated_userid,
-                {"user": user_name, "blocked": user_data["blocked"]},
+                username=request.authenticated_userid,
+                user=user_name,
+                message="blocked" if user_data["blocked"] else "unblocked",
             )
             request.session.flash(
                 ("Blocked" if user_data["blocked"] else "Unblocked")
@@ -833,8 +837,11 @@ def tests_run(request):
         try:
             data = validate_form(request)
             run_id = request.rundb.new_run(**data)
-            run = del_tasks(request.rundb.get_run(run_id))
-            request.actiondb.new_run(request.authenticated_userid, run)
+            run = request.rundb.get_run(run_id)
+            request.actiondb.new_run(
+                username=request.authenticated_userid,
+                run=run,
+            )
             cached_flash(request, "Submitted test to the queue!")
             return HTTPFound(location="/tests/view/" + str(run_id))
         except Exception as e:
@@ -921,8 +928,28 @@ def tests_modify(request):
         request.rundb.task_time = 0
 
         after = del_tasks(run)
-        request.actiondb.modify_run(request.authenticated_userid, before, after)
+        message = []
 
+        for k in ("priority", "num_games", "throughput", "auto_purge"):
+            try:
+                before_ = before["args"][k]
+                after_ = after["args"][k]
+            except KeyError:
+                pass
+            else:
+                if before_ != after_:
+                    message.append(
+                        "{} changed from {} to {}".format(
+                            k.replace("_", "-"), before_, after_
+                        )
+                    )
+
+        message = "modify: " + ", ".join(message)
+        request.actiondb.modify_run(
+            username=request.authenticated_userid,
+            run=before,
+            message=message,
+        )
         cached_flash(request, "Run successfully modified!")
     return HTTPFound(location=request.route_url("tests"))
 
@@ -940,8 +967,11 @@ def tests_stop(request):
 
         run["finished"] = True
         request.rundb.stop_run(request.POST["run-id"])
-        run = del_tasks(run)
-        request.actiondb.stop_run(request.authenticated_userid, run)
+        request.actiondb.stop_run(
+            username=request.authenticated_userid,
+            run=run,
+            message="User stop",
+        )
         cached_flash(request, "Stopped run")
     return HTTPFound(location=request.route_url("tests"))
 
@@ -958,9 +988,11 @@ def tests_approve(request):
     run_id = request.POST["run-id"]
     if request.rundb.approve_run(run_id, username):
         run = request.rundb.get_run(run_id)
-        run = del_tasks(run)
         update_nets(request, run)
-        request.actiondb.approve_run(username, run)
+        request.actiondb.approve_run(
+            username=username,
+            run=run,
+        )
         cached_flash(request, "Approved run")
     else:
         request.session.flash("Unable to approve run!", "error")
@@ -981,12 +1013,15 @@ def tests_purge(request):
 
     # More relaxed conditions than with auto purge.
     message = request.rundb.purge_run(run, p=0.01, res=4.5)
+
     if message != "":
         request.session.flash(message)
         return HTTPFound(location=request.route_url("tests"))
 
-    run = del_tasks(run)
-    request.actiondb.purge_run(username, run)
+    request.actiondb.purge_run(
+        username=username,
+        run=run,
+    )
 
     cached_flash(request, "Purged run")
     return HTTPFound(location=request.route_url("tests"))
@@ -1010,9 +1045,10 @@ def tests_delete(request):
         request.rundb.buffer(run, True)
         request.rundb.task_time = 0
 
-        run = del_tasks(run)
-        request.actiondb.delete_run(request.authenticated_userid, run)
-
+        request.actiondb.delete_run(
+            username=request.authenticated_userid,
+            run=run,
+        )
         cached_flash(request, "Deleted run")
     return HTTPFound(location=request.route_url("tests"))
 

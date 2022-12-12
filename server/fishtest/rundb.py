@@ -400,11 +400,11 @@ class RunDb:
                     ),
                     flush=True,
                 )
-                run = del_tasks(run)
-                run["dead_task"] = "task_id: {}, worker: {}".format(
-                    task_id, worker_name(task["worker_info"])
+                self.actiondb.dead_task(
+                    username=task["worker_info"]["username"],
+                    run=run,
+                    task_id=task_id,
                 )
-                self.actiondb.dead_task(task["worker_info"]["username"], run)
         return dead_task
 
     def get_unfinished_runs_id(self):
@@ -1006,11 +1006,12 @@ class RunDb:
             ),
             flush=True,
         )
-        run = del_tasks(run)
-        run["failure_reason"] = "task_id: {}, worker: {}, reason: '{}'".format(
-            task_id, worker_name(task["worker_info"]), message[:1024]
+        self.actiondb.failed_task(
+            username=task["worker_info"]["username"],
+            run=run,
+            task_id=task_id,
+            message=message,
         )
-        self.actiondb.failed_task(task["worker_info"]["username"], run)
         return {}
 
     def stop_run(self, run_id):
