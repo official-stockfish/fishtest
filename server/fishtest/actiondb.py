@@ -1,77 +1,63 @@
 from datetime import datetime
 
+from bson.objectid import ObjectId
+from fishtest.util import optional_key, union, validate, worker_name
 from pymongo import DESCENDING
 
-"""
-schema = {
-"action" : str,
-"username" : str,
-"time" : datetime.datetime,
-optional_key("message") : str,
-optional_key("user") : str,
-optional_key("run_id") : ObjectId,
-optional_key("run") : str,
-optional_key("worker") : str,
-optional_key("nn") : str,
-}
-"""
-
-
-def expand_action(action):
-    action["message"] = ""
-    if action["action"] == "update_stats":
-        action["message"] = "Update user statistics"
-    elif action["action"] == "upload_nn":
-        action["nn"] = action["data"]
-    elif action["action"] == "block_user":
-        action["message"] = "blocked" if action["data"]["blocked"] else "unblocked"
-        action["user"] = action["data"]["user"]
-    elif action["action"] == "modify_run":
-        action["run"] = action["data"]["before"]["args"]["new_tag"]
-        action["run_id"] = action["data"]["before"]["_id"]
-        message = []
-
-        for k in ("priority", "num_games", "throughput", "auto_purge"):
-            try:
-                before = action["data"]["before"]["args"][k]
-                after = action["data"]["after"]["args"][k]
-            except KeyError:
-                pass
-            else:
-                if before != after:
-                    message.append(
-                        "{} changed from {} to {}".format(
-                            k.replace("_", "-"), before, after
-                        )
-                    )
-
-        action["message"] = "modify: " + ", ".join(message)
-    else:
-        action["run"] = action["data"]["args"]["new_tag"]
-        action["run_id"] = action["data"]["_id"]
-        message = ""
-        if action["action"] == "failed_task":
-            message = action["data"].get("failure_reason", "Unknown reason")
-        if action["action"] == "dead_task":
-            message = action["data"].get("dead_task")
-        if action["action"] == "stop_run":
-            message = action["data"].get("stop_reason", "User stop")
-        # Dirty hack (will be changed)
-        try:
-            chunks = message.split()
-            if len(chunks) > 2:
-                action["task_id"] = int(chunks[1][:-1])
-                action["worker"] = chunks[3][:-1]
-                proto_message = " ".join(chunks[5:])
-                # get rid of ' '.
-                if "not authorized" not in proto_message:
-                    action["message"] = proto_message[1:-1]
-                else:
-                    action["message"] = proto_message.replace("'", "")
-            else:
-                action["message"] = message
-        except Exception as e:
-            action["message"] = message
+schema = union(
+    {
+        "action": "failed_task",
+        "username": str,
+        "worker": str,
+        "run_id": ObjectId,
+        "run": str,
+        "task_id": int,
+        "message": str,
+    },
+    {
+        "action": "dead_task",
+        "username": str,
+        "worker": str,
+        "run_id": ObjectId,
+        "run": str,
+        "task_id": int,
+    },
+    {"action": "update_stats", "username": "fishtest.system", "message": str},
+    {"action": "new_run", "username": str, "run_id": ObjectId, "run": str},
+    {"action": "upload_nn", "username": str, "nn": str},
+    {
+        "action": "modify_run",
+        "username": str,
+        "run_id": ObjectId,
+        "run": str,
+        "message": str,
+    },
+    {"action": "delete_run", "username": str, "run_id": ObjectId, "run": str},
+    {
+        "action": "stop_run",
+        "username": str,
+        "worker": str,
+        "run_id": ObjectId,
+        "run": str,
+        "task_id": int,
+        "message": str,
+    },
+    {
+        "action": "stop_run",
+        "username": str,
+        "run_id": ObjectId,
+        "run": str,
+        "message": str,
+    },
+    {"action": "approve_run", "username": str, "run_id": ObjectId, "run": str},
+    {"action": "purge_run", "username": str, "run_id": ObjectId, "run": str},
+    {
+        "action": "block_user",
+        "username": str,
+        "user": str,
+        "message": union("blocked", "unblocked"),
+    },
+)
 
 
 class ActionDb:
@@ -110,45 +96,117 @@ class ActionDb:
 
         return actions_list, count
 
-    def update_stats(self):
-        self._new_action("fishtest.system", "update_stats", "")
+    def failed_task(self, username=None, run=None, task_id=None, message=None):
+        task = run["tasks"][task_id]
+        self.insert_action(
+            action="failed_task",
+            username=username,
+            worker=worker_name(task["worker_info"]),
+            run_id=run["_id"],
+            run=run["args"]["new_tag"],
+            task_id=task_id,
+            message=message[:1024],
+        )
 
-    def new_run(self, username, run):
-        self._new_action(username, "new_run", run)
+    def stop_run(self, username=None, run=None, task_id=None, message=None):
+        if task_id is not None:
+            task = run["tasks"][task_id]
+            self.insert_action(
+                action="stop_run",
+                username=username,
+                worker=worker_name(task["worker_info"]),
+                run_id=run["_id"],
+                run=run["args"]["new_tag"],
+                task_id=task_id,
+                message=message[:1024],
+            )
+        else:
+            self.insert_action(
+                action="stop_run",
+                username=username,
+                run_id=run["_id"],
+                run=run["args"]["new_tag"],
+                message=message[:1024],
+            )
 
-    def upload_nn(self, username, network):
-        self._new_action(username, "upload_nn", network)
+    def dead_task(self, username=None, run=None, task_id=None):
+        task = run["tasks"][task_id]
+        self.insert_action(
+            action="dead_task",
+            username=username,
+            worker=worker_name(task["worker_info"]),
+            run_id=run["_id"],
+            run=run["args"]["new_tag"],
+            task_id=task_id,
+        )
 
-    def modify_run(self, username, before, after):
-        self._new_action(username, "modify_run", {"before": before, "after": after})
+    def update_stats(self, message=None):
+        self.insert_action(
+            action="update_stats",
+            username="fishtest.system",
+            message=message,
+        )
 
-    def delete_run(self, username, run):
-        self._new_action(username, "delete_run", run)
+    def new_run(self, username=None, run=None):
+        self.insert_action(
+            action="new_run",
+            username=username,
+            run_id=run["_id"],
+            run=run["args"]["new_tag"],
+        )
 
-    def stop_run(self, username, run):
-        self._new_action(username, "stop_run", run)
+    def upload_nn(self, username=None, nn=None):
+        self.insert_action(
+            action="upload_nn",
+            username=username,
+            nn=nn,
+        )
 
-    def approve_run(self, username, run):
-        self._new_action(username, "approve_run", run)
+    def modify_run(self, username=None, run=None, message=None):
+        self.insert_action(
+            action="modify_run",
+            username=username,
+            run_id=run["_id"],
+            run=run["args"]["new_tag"],
+            message=message,
+        )
 
-    def purge_run(self, username, run):
-        self._new_action(username, "purge_run", run)
+    def delete_run(self, username=None, run=None):
+        self.insert_action(
+            action="delete_run",
+            username=username,
+            run_id=run["_id"],
+            run=run["args"]["new_tag"],
+        )
 
-    def block_user(self, username, data):
-        self._new_action(username, "block_user", data)
+    def approve_run(self, username=None, run=None):
+        self.insert_action(
+            action="approve_run",
+            username=username,
+            run_id=run["_id"],
+            run=run["args"]["new_tag"],
+        )
 
-    def failed_task(self, username, run):
-        self._new_action(username, "failed_task", run)
+    def purge_run(self, username=None, run=None):
+        self.insert_action(
+            action="purge_run",
+            username=username,
+            run_id=run["_id"],
+            run=run["args"]["new_tag"],
+        )
 
-    def dead_task(self, username, run):
-        self._new_action(username, "dead_task", run)
+    def block_user(self, username=None, user=None, message=None):
+        self.insert_action(
+            action="block_user",
+            username=username,
+            user=user,
+            message=message,
+        )
 
-    def _new_action(self, username, action, data):
-        action = {
-            "username": username,
-            "action": action,
-            "data": data,
-            "time": datetime.utcnow(),
-        }
-        expand_action(action)
-        self.actions.insert_one(action)
+    def insert_action(self, **action):
+        ret = validate(schema, action, "action", strict=True)
+        if ret == "":
+            action["time"] = datetime.utcnow()
+            self.actions.insert_one(action)
+        else:
+            raise Exception("Validation failed with error '{}'".format(ret))

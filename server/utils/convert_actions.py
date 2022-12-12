@@ -1,7 +1,6 @@
 import datetime
 
 import pymongo
-from fishtest.actiondb import expand_action
 
 
 if __name__ == "__main__":
@@ -14,10 +13,8 @@ if __name__ == "__main__":
     for action in actions:
         count += 1
         action_id = action["_id"]
-        expand_action(action)
-        action["_id"] = action_id
-#        if "data" in action:
-#            del action["data"]
+        if "data" in action:
+            del action["data"]
         actions_collection.replace_one({"_id": action_id}, action)
         print("Actions converted: {}.".format(count), end="\r")
     t1 = datetime.datetime.utcnow()

@@ -372,9 +372,7 @@ class TestApi(unittest.TestCase):
         response.pop("duration", None)
         self.assertTrue(response == {})
 
-        #        run = self.rundb.get_run(run_id)
         self.assertTrue(run["finished"])
-        self.assertTrue(message in run["stop_reason"])
 
     def test_upload_pgn(self):
         run_id = new_run(self, add_tasks=1)

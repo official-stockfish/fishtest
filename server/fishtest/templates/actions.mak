@@ -94,7 +94,7 @@
             % else:
                 <td>${action.get('user','')}</td>
             % endif
-            <td style="word-break: break-all">${action.get('message','?')}</td>
+            <td style="word-break: break-all">${action.get('message','')}</td>
           </tr>
       % endfor
     </tbody>

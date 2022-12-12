@@ -469,14 +469,15 @@ class ApiView(object):
             )
         with self.request.rundb.active_run_lock(self.run_id()):
             run = self.run()
-            run["stop_reason"] = "task_id: {}, worker: {}, reason: '{}' {}".format(
-                self.task_id(),
-                self.worker_name(),
-                self.message()[:1024],
-                " (not authorized)" if error != "" else "",
+            message = self.message()[:1024] + (
+                " (not authorized)" if error != "" else ""
             )
-            run_ = del_tasks(run)
-            self.request.actiondb.stop_run(self.get_username(), run_)
+            self.request.actiondb.stop_run(
+                username=self.get_username(),
+                run=run,
+                task_id=self.task_id(),
+                message=message,
+            )
             if error == "":
                 run["finished"] = True
                 run["failed"] = True
