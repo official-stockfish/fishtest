@@ -9,6 +9,7 @@ import time
 
 import fishtest.stats.stat_util
 import requests
+import urllib
 from fishtest.util import (
     delta_date,
     diff_date,
@@ -329,7 +330,8 @@ def sprt_calc(request):
 @view_config(route_name="actions", renderer="actions.mak")
 def actions(request):
     search_action = request.params.get("action", "")
-    username = request.params.get("user", "")
+    username = request.params.get("user", "").replace("'",'"')
+    text = request.params.get("text", "").replace("'",'"')
     before = request.params.get("before", None)
     max_actions = request.params.get("max_actions", None)
 
@@ -345,6 +347,7 @@ def actions(request):
     actions, num_actions = request.actiondb.get_actions(
         username=username,
         action=search_action,
+        text=text,
         skip=page_idx * page_size,
         limit=page_size,
         utc_before=utc_before,
@@ -358,6 +361,8 @@ def actions(request):
             page["url"] += "&user={}".format(username)
         if search_action:
             page["url"] += "&action={}".format(search_action)
+        if text:
+            page["url"] += "&text={}".format(text)
         if max_actions:
             page["url"] += "&max_actions={}".format(num_actions)
         if before:
@@ -369,6 +374,7 @@ def actions(request):
         "pages": pages,
         "action_param": search_action,
         "username_param": username,
+        "text_param": text,
     }
 
 

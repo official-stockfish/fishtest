@@ -80,6 +80,19 @@ def create_users_indexes():
 def create_actions_indexes():
     db["actions"].create_index([("username", ASCENDING), ("_id", DESCENDING)])
     db["actions"].create_index([("action", ASCENDING), ("_id", DESCENDING)])
+    db["actions"].create_index(
+        [
+            ("action", "text"),
+            ("username", "text"),
+            ("worker", "text"),
+            ("message", "text"),
+            ("run", "text"),
+            ("user", "text"),
+            ("nn", "text"),
+            ("_id", DESCENDING),
+        ],
+        default_language="none",
+    )
 
 
 def create_flag_cache_indexes():
@@ -140,7 +153,7 @@ if __name__ == "__main__":
         print("Finished creating indexes!\n")
     print_current_indexes()
     if not collection_names:
-        print("Collections in {}: {}".format(db_name, db.collection_names()))
+        print("Collections in {}: {}".format(db_name, db.list_collection_names()))
         print(
             "Give a list of collection names as arguments to re-create indexes. For example:\n"
         )
