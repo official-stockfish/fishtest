@@ -2,6 +2,7 @@
 
 <%
   import datetime
+  import urllib
 %>
 
 <h2>Events Log</h2>
@@ -39,7 +40,7 @@
       type="text"
       name="user"
       list="users-list"
-      value="${request.GET.get('user') if request.GET.get('user') is not None else ''}"
+      value='${username_param|n}'
     />
     <datalist id="users-list">
       % for user in request.userdb.get_users():
@@ -47,6 +48,45 @@
       % endfor
     </datalist>
   </div>
+
+  <div class="col-12 col-md-auto mb-3">
+    <label for="text" class="form-label">Free text search</label>
+    <i class="fa-solid fa-circle-info" role="button" data-bs-toggle="modal" data-bs-target="#autoselect-modal"></i>
+    <div class="modal fade" id="autoselect-modal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Free text search information</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body text-break">
+            This will perform a case insensitive free text search on the fields event name, user name, worker name,
+            target user, network name, branch name and comment.
+            In most cases one can only search for a list of full words, i.e. strings bounded by delimiters.
+            For example the worker name <i>chessuser-128cores-abcdefgh-uvwx</i> matches <i>abcdefh</i> but not <i>abcde</i>.
+	    To force a word or a combination of words to be
+            included in the result, use quotes like in <i>&quot;dog cat&quot;</i>. To exclude a word, precede
+            it with a minus sign like in <i>dog &minus;cat</i>. For more information see
+            <a https://www.mongodb.com/docs/manual/reference/operator/query/text/#mongodb-query-op.-text>
+              https://www.mongodb.com/docs/manual/reference/operator/query/text/#mongodb-query-op.-text
+            </a>.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <input
+      id="text"
+      class="form-control"
+      placeholder="Enter some text"
+      type="text"
+      name="text"
+      value='${text_param|n}'
+    />
+  </div>
+
+
+
 
   <div class="col-12 col-md-auto mb-3 d-flex align-items-end">
     <button type="submit" class="btn btn-success w-100">Search</button>
@@ -70,7 +110,7 @@
       % for action in actions:
           <tr>
             ## Dates in mongodb have millisecond precision. So they fit comfortably in a float without precision loss.
-            <td><a href=/actions?max_actions=1${"&action="+action['action'] if action_param else ""}${"&user="+action['username'] if username_param else ""}&before=${action['time'].replace(tzinfo=datetime.timezone.utc).timestamp()}>
+            <td><a href=/actions?max_actions=1&action=${action_param if action_param else ""}&user=${urllib.parse.quote_plus(username_param)}&text=${urllib.parse.quote_plus(text_param)}&before=${action['time'].replace(tzinfo=datetime.timezone.utc).timestamp()}>
              ${action['time'].strftime(r"%y&#8209;%m&#8209;%d %H:%M:%S")|n}</a></td>
             <td>${action['action']}</td>
 	    <%
@@ -94,7 +134,7 @@
             % else:
                 <td>${action.get('user','')}</td>
             % endif
-            <td style="word-break: break-all">${action.get('message','')}</td>
+            <td class="text-break">${action.get('message','')}</td>
           </tr>
       % endfor
     </tbody>

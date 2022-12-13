@@ -69,6 +69,7 @@ class ActionDb:
         self,
         username=None,
         action=None,
+        text=None,
         limit=0,
         skip=0,
         utc_before=None,
@@ -81,6 +82,8 @@ class ActionDb:
             q["action"] = {"$nin": ["update_stats", "dead_task"]}
         if username:
             q["username"] = username
+        if text:
+            q["$text"] = {"$search": text}
         if utc_before:
             q["time"] = {"$lte": utc_before}
 
