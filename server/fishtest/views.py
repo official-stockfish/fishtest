@@ -330,8 +330,8 @@ def sprt_calc(request):
 @view_config(route_name="actions", renderer="actions.mak")
 def actions(request):
     search_action = request.params.get("action", "")
-    username = request.params.get("user", "").replace("'",'"')
-    text = request.params.get("text", "").replace("'",'"')
+    username = request.params.get("user", "")
+    text = request.params.get("text", "")
     before = request.params.get("before", None)
     max_actions = request.params.get("max_actions", None)
 
