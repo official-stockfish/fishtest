@@ -40,7 +40,7 @@
       type="text"
       name="user"
       list="users-list"
-      value='${username_param|n}'
+      value="${username_param}"
     />
     <datalist id="users-list">
       % for user in request.userdb.get_users():
@@ -60,11 +60,11 @@
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body text-break">
-            This will perform a case insensitive free text search on the fields event name, user name, worker name,
+            This will perform a case insensitive text search on the fields event name, user name, worker name,
             target user, network name, branch name and comment.
-            In most cases one can only search for a list of full words, i.e. strings bounded by delimiters.
-            For example the worker name <i>chessuser-128cores-abcdefgh-uvwx</i> matches <i>abcdefh</i> but not <i>abcde</i>.
-	    To force a word or a combination of words to be
+            One can only search for a list of full words, i.e. strings bounded by delimiters.
+            For example the worker name <i>fishtestfan-128cores-abcdefgh-uvwx</i> matches <i>abcdefgh</i> but not <i>abcde</i>.
+            To force a word or a combination of words to be
             included in the result, use quotes like in <i>&quot;dog cat&quot;</i>. To exclude a word, precede
             it with a minus sign like in <i>dog &minus;cat</i>. For more information see
             <a https://www.mongodb.com/docs/manual/reference/operator/query/text/#mongodb-query-op.-text>
@@ -81,7 +81,7 @@
       placeholder="Enter some text"
       type="text"
       name="text"
-      value='${text_param|n}'
+      value="${text_param}"
     />
   </div>
 
@@ -110,7 +110,7 @@
       % for action in actions:
           <tr>
             ## Dates in mongodb have millisecond precision. So they fit comfortably in a float without precision loss.
-            <td><a href=/actions?max_actions=1&action=${action_param if action_param else ""}&user=${urllib.parse.quote_plus(username_param)}&text=${urllib.parse.quote_plus(text_param)}&before=${action['time'].replace(tzinfo=datetime.timezone.utc).timestamp()}>
+            <td><a href="/actions?max_actions=1&amp;action=${action_param}&amp;user=${username_param|u,n}&amp;text=${text_param|u,n}&amp;before=${action['time'].replace(tzinfo=datetime.timezone.utc).timestamp()}">
              ${action['time'].strftime(r"%y&#8209;%m&#8209;%d %H:%M:%S")|n}</a></td>
             <td>${action['action']}</td>
 	    <%
