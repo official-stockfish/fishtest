@@ -417,6 +417,32 @@ legend {
   content: "\f186";
 }
 
+.details-table td:last-child {
+  word-break: break-word;
+}
+
+.statistics-table td {
+  width: 20%;
+}
+
+.sprt-calc-chart{
+  height: 500px;
+}
+
+@media (min-width: 768px) {
+  .form-control.number {
+    width: 6em;
+  }
+}
+
+.form-control.number {
+  text-align: right;
+}
+
+#sprt-calc-description ul{
+  word-break: break-word;
+}
+
 #diff-num-comments + a::before {
   content: "\f09b";
   font-family: "Font Awesome 5 Brands";
@@ -425,6 +451,12 @@ legend {
 
 #copy-diff::before {
   content: "\f328";
+}
+
+#div_spsa_preload{
+  background-image:url('/img/preload.gif');
+  height: 32px;
+  display: none;
 }
 
 /* Header */

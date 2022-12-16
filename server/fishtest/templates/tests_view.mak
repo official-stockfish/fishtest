@@ -61,18 +61,20 @@
                       </td>
                   % elif arg[0] == 'spsa':
                       <td>
-                        ${arg[1][0]}<br />
+                        ${arg[1][0]}<br>
                         <table class="table table-sm">
                           <thead>
-                            <th>param</th>
-                            <th>value</th>
-                            <th>start</th>
-                            <th>min</th>
-                            <th>max</th>
-                            <th>c</th>
-                            <th>c_end</th>
-                            <th>r</th>
-                            <th>r_end</th>
+                            <tr>
+                              <th>param</th>
+                              <th>value</th>
+                              <th>start</th>
+                              <th>min</th>
+                              <th>max</th>
+                              <th>c</th>
+                              <th>c_end</th>
+                              <th>r</th>
+                              <th>r_end</th>
+                            </tr>
                           </thead>
                           <tbody>
                             % for row in arg[1][1:]:
@@ -175,27 +177,52 @@
     <form class="form" action="/tests/modify" method="POST">
       <div class="mb-3">
         <label class="form-label" for="modify-num-games">Number of games</label>
-        <input type="number" class="form-control" name="num-games" id="modify-num-games" min="0" step="1000" value="${run['args']['num_games']}">
+        <input
+          type="number"
+          class="form-control"
+          name="num-games"
+          id="modify-num-games"
+          min="0"
+          step="1000"
+          value="${run['args']['num_games']}"
+        >
       </div>
 
       <div class="mb-3">
         <label class="form-label" for="modify-priority">Priority (higher is more urgent)</label>
-        <input type="number" class="form-control" name="priority" id="modify-priority" value="${run['args']['priority']}">
+        <input
+          type="number"
+          class="form-control"
+          name="priority"
+          id="modify-priority"
+          value="${run['args']['priority']}"
+        >
       </div>
 
       <label class="form-label" for="modify-throughput">Throughput</label>
       <div class="mb-3 input-group">
-        <input type="number" class="form-control" name="throughput" id="modify-throughput" min="0" value="${run['args'].get('throughput', 1000)}">
+        <input
+          type="number"
+          class="form-control"
+          name="throughput"
+          id="modify-throughput"
+          min="0"
+          value="${run['args'].get('throughput', 1000)}"
+        >
         <span class="input-group-text">%</span>
       </div>
 
       <div class="mb-3 form-check">
-        <input type="checkbox" class="form-check-input" id="auto-purge" name="auto_purge"
-               ${'checked' if run['args'].get('auto_purge') else ''} />
+        <input
+          type="checkbox"
+          class="form-check-input"
+          id="auto-purge"
+          name="auto_purge" ${'checked' if run['args'].get('auto_purge') else ''}
+        >
         <label class="form-check-label" for="auto-purge">Auto-purge</label>
       </div>
 
-      <input type="hidden" name="run" value="${run['_id']}" />
+      <input type="hidden" name="run" value="${run['_id']}">
       <button type="submit" class="btn btn-primary col-12 col-md-auto">Modify</button>
     </form>
 
@@ -221,9 +248,9 @@
 </div>
 
 % if 'spsa' in run['args']:
-    <div id="div_spsa_preload" style="background-image:url('/img/preload.gif'); width: 256px; height: 32px; display: none;">
-      <div style="height: 100%; width: 100%; text-align: center; padding-top: 5px;">
-      Loading graph...
+    <div id="div_spsa_preload" class="col-lg-3">
+      <div class="pt-1 text-center">
+        Loading graph...
       </div>
     </div>
 
@@ -235,7 +262,11 @@
       </div>
 
       <div class="btn-group">
-        <button id="btn_view_individual" type="button" class="btn btn-default dropdown-toggle" data-bs-toggle="dropdown">
+        <button
+          id="btn_view_individual"
+          type="button"
+          class="btn btn-default dropdown-toggle" data-bs-toggle="dropdown"
+        >
           View Individual Parameter<span class="caret"></span>
         </button>
         <ul class="dropdown-menu" role="menu" id="dropdown_individual"></ul>
@@ -248,34 +279,52 @@
     </div>
 % endif
 
-<section id="diff-section" style="display: none">
+<div id="diff-section" style="display: none">
   <h4>
     <button id="diff-toggle" class="btn btn-sm btn-light border mb-2">Show</button>
     Diff
     <span id="diff-num-comments" style="display: none"></span>
-    <a href="${h.diff_url(run)}" class="btn btn-primary bg-light-primary border-0 mb-2" target="_blank" rel="noopener">View on Github</a>
-    <a href="javascript:" id="copy-diff" class="btn btn-secondary bg-light-secondary border-0 mb-2" style="display: none">Copy apply-diff command</a>
+    <a
+      href="${h.diff_url(run)}"
+      class="btn btn-primary bg-light-primary border-0 mb-2"
+      target="_blank" rel="noopener"
+    >
+      View on Github
+    </a>
+
+    <a
+      href="javascript:"
+      id="copy-diff"
+      class="btn btn-secondary bg-light-secondary border-0 mb-2"
+      style="display: none"
+    >
+      Copy apply-diff command
+    </a>
+
     <span class="text-success copied text-nowrap" style="display: none">Copied!</span>
   </h4>
   <pre id="diff-contents"><code class="diff"></code></pre>
-</section>
+</div>
 
 <script>
     function toggle_tasks() {
-      const button = document.querySelector("#tasks-button");
-      const div = document.querySelector("#tasks");
-      const active = button.innerText.trim() === 'Hide';
-      button.innerText = active ? 'Show' : 'Hide';
-      document.cookie = 'tasks_state' + '=' + button.innerText.trim() + ";max-age=315360000;SameSite=Lax;";
+      const button = document.getElementById("tasks-button");
+      const div = document.getElementById("tasks");
+      const active = button.textContent.trim() === 'Hide';
+      button.textContent = active ? 'Show' : 'Hide';
+      document.cookie =
+        'tasks_state' + '=' + button.textContent.trim() + ";max-age=${60 * 60 * 24 * 365 * 10};SameSite=Lax;";
     }
 </script>
 
 <h4>
-    <button id="tasks-button" class="btn btn-sm btn-light border" 
-    data-bs-toggle="collapse" href="#tasks" role="button" aria-expanded="false"
-    aria-controls="tasks" onclick="toggle_tasks()">
-    ${'Hide' if tasks_shown else 'Show'}
-    </button>
+    <a
+      id="tasks-button" class="btn btn-sm btn-light border" 
+      data-bs-toggle="collapse" href="#tasks" role="button" aria-expanded="false"
+      aria-controls="tasks" onclick="toggle_tasks()"
+    >
+      ${'Hide' if tasks_shown else 'Show'}
+    </a>
   Tasks ${totals}
 </h4>
 <div id="tasks"
@@ -377,10 +426,12 @@
   </table>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"
-        integrity="sha512-yUUc0qWm2rhM7X0EFe82LNnv2moqArj5nro/w1bi05A09hRVeIZbN6jlMoyu0+4I/Bu4Ck/85JQIU82T82M28w=="
-        crossorigin="anonymous"
-        referrerpolicy="no-referrer"></script>
+<script
+  src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"
+  integrity="sha512-yUUc0qWm2rhM7X0EFe82LNnv2moqArj5nro/w1bi05A09hRVeIZbN6jlMoyu0+4I/Bu4Ck/85JQIU82T82M28w=="
+  crossorigin="anonymous"
+  referrerpolicy="no-referrer"
+></script>
 
 <script>
   const match = document.cookie.match(
@@ -412,7 +463,7 @@
       link["integrity"] =
         "sha512-0aPQyyeZrWj9sCA46UlmWgKOP0mUipLQ6OZXu8l4IcAmD2u31EPEy9VcIMvl7SoAaKe8bLXZhYoMaE/in+gcgA==";
     }
-    document.head.appendChild(link);
+    document.head.append(link);
   };
 
   const getPreferredTheme = () => {
@@ -448,7 +499,7 @@
   document.title = "${page_title} | Stockfish Testing";
 
   document.addEventListener("DOMContentLoaded", function () {
-    let copyDiffBtn = document.querySelector("#copy-diff");
+    let copyDiffBtn = document.getElementById("copy-diff");
     if (
       document.queryCommandSupported &&
       document.queryCommandSupported("copy")
@@ -457,7 +508,7 @@
         const textarea = document.createElement("textarea");
         textarea.style.position = "fixed";
         textarea.textContent = "curl -s ${h.diff_url(run)}.diff | git apply";
-        document.body.appendChild(textarea);
+        document.body.append(textarea);
         textarea.select();
         try {
           document.execCommand("copy");
@@ -503,8 +554,8 @@
 
     function showDiff(text) {
       const numLines = text.split("\n").length;
-      const toggleBtn = document.querySelector("#diff-toggle");
-      const diffContents = document.querySelector("#diff-contents");
+      const toggleBtn = document.getElementById("diff-toggle");
+      const diffContents = document.getElementById("diff-contents");
       const diffText = diffContents.querySelector("code");
       diffText.textContent = text;
 
@@ -522,21 +573,21 @@
         if (copyDiffBtn)
           copyDiffBtn.style.display =
             copyDiffBtn.style.display === "none" ? "" : "none";
-        if (toggleBtn.innerText === "Hide") toggleBtn.innerText = "Show";
-        else toggleBtn.innerText = "Hide";
+        if (toggleBtn.textContent === "Hide") toggleBtn.textContent = "Show";
+        else toggleBtn.textContent = "Hide";
       });
 
       // Hide large diffs by default
       if (${show_task} == -1 && numLines < 50) {
         diffContents.style.display = "";
         if (copyDiffBtn) copyDiffBtn.style.display = "";
-        toggleBtn.innerText = "Hide";
+        toggleBtn.textContent = "Hide";
       } else {
         diffContents.style.display = "none";
         if (copyDiffBtn) copyDiffBtn.style.display = "none";
-        toggleBtn.innerText = "Show";
+        toggleBtn.textContent = "Show";
       }
-      document.querySelector("#diff-section").style.display = "";
+      document.getElementById("diff-section").style.display = "";
       hljs.highlightElement(diffText);
 
       // Fetch amount of comments
@@ -550,9 +601,9 @@
           json.commits.forEach(function (row) {
             numComments += row.commit.comment_count;
           });
-          document.querySelector("#diff-num-comments").innerText =
+          document.getElementById("diff-num-comments").textContent =
             "(" + numComments + " comments)";
-          document.querySelector("#diff-num-comments").style.display = "";
+          document.getElementById("diff-num-comments").style.display = "";
         });
     }
   });

@@ -40,7 +40,7 @@
       name="user"
       list="users-list"
       value="${username_param}"
-    />
+    >
     <datalist id="users-list">
       % for user in request.userdb.get_users():
         <option value="${user["username"]}">${user["username"]}</option>
@@ -66,7 +66,7 @@
             To force a word or a combination of words to be
             included in the result, use quotes like in <i>&quot;dog cat&quot;</i>. To exclude a word, precede
             it with a minus sign like in <i>dog &minus;cat</i>. For more information see
-            <a https://www.mongodb.com/docs/manual/reference/operator/query/text/#mongodb-query-op.-text>
+            <a href="https://www.mongodb.com/docs/manual/reference/operator/query/text/#mongodb-query-op.-text">
               https://www.mongodb.com/docs/manual/reference/operator/query/text/#mongodb-query-op.-text
             </a>.
           </div>
@@ -81,7 +81,7 @@
       type="text"
       name="text"
       value="${text_param}"
-    />
+    >
   </div>
 
 

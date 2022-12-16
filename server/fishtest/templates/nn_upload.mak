@@ -16,21 +16,28 @@
 
   <form id="upload-nn" action="${request.url}" method="POST" enctype="multipart/form-data">
     <div class="mb-3">
-      <label for="network" class="form-label">Select your Network file (nn-[SHA256 first 12 digits].nnue)</label>
-      <input class="form-control" id="network" name="network" type="file" accept=".nnue" value="" />
+      <label for="network" class="form-label">
+        Select your Network file (nn-[SHA256 first 12 digits].nnue)
+      </label>
+      <input class="form-control" id="network" name="network" type="file" accept=".nnue">
     </div>
 
     <div class="mb-3 form-check">
-      <label class="form-check-label" for="enable">You are the author of this network or have obtained the network with a CC0 license.</label>
-      <input type="checkbox" class="form-check-input" id="enable" onclick="doLicense()">
+      <label class="form-check-label" for="terms-checkbox">
+        You are the author of this network or have obtained the network with a CC0 license.
+      </label>
+      <input type="checkbox" class="form-check-input" id="terms-checkbox" onclick="doLicense()">
     </div>
 
-    <button id="upload" type="submit" disabled="true" class="btn btn-primary w-100">Upload</button>
+    <button id="upload-button" type="submit" class="btn btn-primary w-100" disabled>Upload</button>
   </form>
 </div>
 
 <script>
   function doLicense() {
-    var btn = document.getElementById("upload").disabled = ! document.getElementById("enable").checked;
+    if (document.getElementById("terms-checkbox").checked)
+      document.getElementById("upload-button").removeAttribute("disabled");
+    else
+      document.getElementById("upload-button").setAttribute("disabled","");
   }
 </script>

@@ -17,18 +17,37 @@ The recommended net for a given Stockfish executable can be found as the default
 <form class="row mb-3" id="search_nn">
   <div class="col-12 col-md-auto mb-3">
     <label for="network_name" class="form-label">Network</label>
-    <input id="network_name" type="text" name="network_name" class="form-control" placeholder="Network name" value="${request.GET.get('network_name') if request.GET.get('network_name') is not None else ''}">
+    <input
+      id="network_name"
+      type="text"
+      name="network_name"
+      class="form-control"
+      placeholder="Network name"
+      value="${request.GET.get('network_name') if request.GET.get('network_name') is not None else ''}"
+    >
   </div>
 
   <div class="col-12 col-md-auto mb-3">
     <label for="user" class="form-label">Uploaded by</label>
-    <input id="user" type="text" name="user" class="form-control" placeholder="Username" value="${request.GET.get('user') if request.GET.get('user') is not None else ''}">
+  <input
+    id="user"
+    type="text"
+    name="user"
+    class="form-control"
+    placeholder="Username"
+    value="${request.GET.get('user') if request.GET.get('user') is not None else ''}"
+  >
   </div>
 
   <div class="col-12 mb-3 d-flex align-items-end">
     <div class="form-check form-check-inline">
       <label class="form-check-label" for="master_only">Only master</label>
-      <input type="checkbox" class="form-check-input" id="master_only" name="master_only" ${'checked' if master_only else ''}>
+      <input
+        type="checkbox"
+        class="form-check-input"
+        id="master_only"
+        name="master_only" ${'checked' if master_only else ''}
+      >
     </div>
   </div>
 
@@ -89,6 +108,6 @@ The recommended net for a given Stockfish executable can be found as the default
     .addEventListener("submit", function (e) {
       const master_only = document.getElementById("master_only");
       document.cookie =
-        "master_only=" + master_only.checked + ";max-age=315360000;SameSite=Lax;";
+        "master_only=" + master_only.checked + ";max-age=${60 * 60 * 24 * 365 * 10};SameSite=Lax;";
     });
 </script>

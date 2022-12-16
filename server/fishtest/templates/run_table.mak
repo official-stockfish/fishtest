@@ -17,12 +17,12 @@
 % if toggle:
 <script>
   function toggle_${toggle}() {
-    const button = document.querySelector("#${toggle}-button");
-    const div = document.querySelector("#${toggle}");
-    const active = button.innerText.trim() === "Hide";
-    button.innerText = active ? "Show" : "Hide";
+    const button = document.getElementById("${toggle}-button");
+    const div = document.getElementById("${toggle}");
+    const active = button.textContent.trim() === "Hide";
+    button.textContent = active ? "Show" : "Hide";
     document.cookie =
-      "${cookie_name}" + "=" + button.innerText.trim() + ";max-age=315360000;SameSite=Lax;";
+      "${cookie_name}" + "=" + button.textContent.trim() + ";max-age=${60 * 60 * 24 * 365 * 10};SameSite=Lax;";
   }
 </script>
 % endif
@@ -30,11 +30,11 @@
 
 <h4>
 % if toggle:
-    <button id="${toggle}-button" class="btn btn-sm btn-light border" 
+    <a id="${toggle}-button" class="btn btn-sm btn-light border" 
     data-bs-toggle="collapse" href="#${toggle}" role="button" aria-expanded="false"
     aria-controls="${toggle}" onclick="toggle_${toggle}()">
     ${'Hide' if get_cookie(request, cookie_name)=='Hide' else 'Show'}
-    </button>
+    </a>
 % endif
 % if header is not None and count is not None:
   ${header} - ${count} tests
@@ -67,8 +67,7 @@
                       </button>
                       <div class="dropdown-menu" role="menu">
                         <form action="/tests/delete" method="POST" style="display: inline;">
-                          <input type="hidden" name="csrf_token"
-                                 value="${request.session.get_csrf_token()}" />
+                          <input type="hidden" name="csrf_token" value="${request.session.get_csrf_token()}">
                           <input type="hidden" name="run-id" value="${run['_id']}">
                           <button type="submit" class="btn btn-danger btn-mini">Confirm</button>
                         </form>

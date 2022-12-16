@@ -20,9 +20,8 @@
     </div>
   </header>
 
-  <form action="" method="POST">
-    <input type="hidden" name="csrf_token"
-           value="${request.session.get_csrf_token()}" />
+  <form method="POST">
+    <input type="hidden" name="csrf_token" value="${request.session.get_csrf_token()}">
 
     <div class="form-floating mb-3">
       <input
@@ -35,7 +34,7 @@
         title="Only letters and digits and at least 2 long"
         required
         autofocus
-      />
+      >
       <label for="username" class="d-flex align-items-end">Username</label>
     </div>
 
@@ -50,10 +49,12 @@
           pattern=".{8,}"
           title="Eight or more characters: a password too simple or trivial to guess will be rejected"
           required
-        />
+        >
         <label for="password" class="d-flex align-items-end">Password</label>
       </div>
-      <span class="input-group-text toggle-password-visibility" role="button"><i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i></span>
+      <span class="input-group-text toggle-password-visibility" role="button">
+        <i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i>
+      </span>
     </div>
 
     <div class="input-group mb-3">
@@ -65,10 +66,12 @@
           name="password2"
           placeholder="Repeat Password"
           required
-        />
+        >
         <label for="password2" class="d-flex align-items-end">Repeat Password</label>
       </div>
-      <span class="input-group-text toggle-password-visibility" role="button"><i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i></span>
+      <span class="input-group-text toggle-password-visibility" role="button">
+        <i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i>
+      </span>
     </div>
 
     <div class="form-floating mb-3">
@@ -79,7 +82,7 @@
         name="email"
         placeholder="Email"
         required
-      />
+      >
       <label for="email" class="d-flex align-items-end">Email</label>
     </div>
 

@@ -217,8 +217,6 @@
   document.title = 'Statistics - ${page_title} | Stockfish Testing';
 </script>
 
-<style>td {width: 20%;}</style>
-
 <div class="container">
   % if has_spsa:
       <h2>SPSA tests do no have raw statistics: <a href="/tests/view/${str(run['_id'])}">${str(run['_id'])}</a></h2>
@@ -228,7 +226,7 @@
       <div class="row">
         <div class="col-12">
           <h4>Context</h4>
-          <table class="table table-striped table-sm">
+          <table class="statistics-table table table-striped table-sm">
             <tr><td>Base TC</td><td>${run['args'].get('tc','?')}</td></tr>
             <tr><td>Test TC</td><td>${run['args'].get('new_tc',run['args'].get('tc','?'))}</td></tr>
             <tr><td>Book</td><td>${run['args'].get('book','?')}</td></tr>
@@ -258,7 +256,7 @@
               <h4>SPRT bounds</h4>
               <table class="table table-striped table-sm">
                 <tr>
-                <td></td></td><td>Logistic</td><td>Normalized</td><td>BayesElo</td><td>Score</td>
+                <td></td><td>Logistic</td><td>Normalized</td><td>BayesElo</td><td>Score</td>
                 </tr>
                 <tr>
                 <td>H0</td><td>${f"{lelo0:.3f}"}</td><td>${f"{nelo0:.3f}"}</td><td>${f"{belo0:.3f}"}</td><td>${f"{score0:.5f}"}</td>

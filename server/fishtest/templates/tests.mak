@@ -1,9 +1,11 @@
 <%inherit file="base.mak"/>
 
-<link rel="stylesheet"
-      href="/css/flags.css?v=${cache_busters['css/flags.css']}"
-      integrity="sha384-${cache_busters['css/flags.css']}"
-      crossorigin="anonymous" />
+<link
+  rel="stylesheet"
+  href="/css/flags.css?v=${cache_busters['css/flags.css']}"
+  integrity="sha384-${cache_busters['css/flags.css']}"
+  crossorigin="anonymous"
+>
 
 <h2>Stockfish Testing Queue</h2>
 
@@ -47,21 +49,21 @@
     
     <script>
       function toggle_machines() {
-        const button = document.querySelector("#machines-button");
-        const div = document.querySelector("#machines");
-        const active = button.innerText.trim() === "Hide";
-        button.innerText = active ? "Show" : "Hide";
+        const button = document.getElementById("machines-button");
+        const div = document.getElementById("machines");
+        const active = button.textContent.trim() === "Hide";
+        button.textContent = active ? "Show" : "Hide";
         document.cookie =
-          "machines_state" + "=" + button.innerText.trim() + ";max-age=315360000;SameSite=Lax;";
+          "machines_state" + "=" + button.textContent.trim() + ";max-age=${10 * 365 * 24 * 60 * 60};SameSite=Lax;";
       }
     </script>
     
     <h4>
-      <button id="machines-button" class="btn btn-sm btn-light border" 
+      <a id="machines-button" class="btn btn-sm btn-light border" 
         data-bs-toggle="collapse" href="#machines" role="button" aria-expanded="false"
         aria-controls="machines" onclick="toggle_machines()" >
         ${'Hide' if machines_shown else 'Show'}
-      </button>
+      </a>
       <span>
         Workers - ${len(machines)} machines
       </span>
