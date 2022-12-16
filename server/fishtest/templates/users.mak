@@ -79,7 +79,7 @@
             <td class="text-end">${int(user['games_per_hour'])}</td>
             <td class="text-end">${int(user['cpu_hours'])}</td>
             <td class="text-end">${int(user['games'])}</td>
-            <td class="text-end"><a href="/tests/user/${user['username']}">${user['tests']}</td>
+            <td class="text-end"><a href="/tests/user/${user['username']}">${user['tests']}</a></td>
             <td class="user-repo"><a href="${user['tests_repo']}" target="_blank" rel="noopener">${user['tests_repo']}</a></td>
           </tr>
       % endfor
