@@ -1,6 +1,6 @@
 <%page args="run, show_gauge=False"/>
 
-<%
+<%!
   def get_run_style(run):
     ret = 'white-space:nowrap; border: 1px solid rgba(0,0,0,0.15);'
     style = run['results_info'].get('style','')
@@ -12,6 +12,7 @@
        ret += 'border-style:solid;border-color:Pink;border-width:medium;'
     return ret
 %>
+
 <%def name="list_info(run)">
   <%
     info = run['results_info']['info']

@@ -1,5 +1,5 @@
 <%
-monitoring = request.rundb.conn["admin"].command("getFreeMonitoringStatus")
+  monitoring = request.rundb.conn["admin"].command("getFreeMonitoringStatus")
 %>
 <!DOCTYPE html>
 <html lang="en">
