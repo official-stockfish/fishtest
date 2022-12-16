@@ -236,6 +236,12 @@ div#tasks thead {
   background-color: #0f3373;
 }
 
+/* Background colors for a highlighted task */
+.table tbody tr.highlight > td {
+  background-color: #800080;
+}
+
+
 /* Override - test tasks table - purged tasks red background */
 td[style*="background-color:#ffebeb"] {
   background: #5f1c1c !important;

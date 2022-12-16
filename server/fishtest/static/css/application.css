@@ -500,6 +500,11 @@ td {
   background-color: #cff4fc;
 }
 
+/* Background colors for a highlighted task */
+.table tbody tr.highlight > td {
+  background-color: #fff0f5;
+}
+
 /* Pagination links */
 .pagination {
   --bs-pagination-color: var(--bs-body-color);

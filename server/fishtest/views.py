@@ -1214,6 +1214,14 @@ def tests_view(request):
 
     chi2 = get_chi2(run["tasks"])
     update_residuals(run["tasks"], cached_chi2=chi2)
+
+    try:
+        show_task = int(request.params.get("show_task", -1))
+    except:
+        show_task = -1
+    if show_task >= len(run["tasks"]) or show_task < -1:
+        show_task = -1
+
     return {
         "run": run,
         "run_args": run_args,
@@ -1223,7 +1231,8 @@ def tests_view(request):
         "totals": "({} active worker{} with {} core{})".format(
             active, ("s" if active != 1 else ""), cores, ("s" if cores != 1 else "")
         ),
-        "tasks_shown": request.cookies.get("tasks_state") == "Hide",
+        "tasks_shown": show_task != -1 or request.cookies.get("tasks_state") == "Hide",
+        "show_task": show_task,
     }
 
 

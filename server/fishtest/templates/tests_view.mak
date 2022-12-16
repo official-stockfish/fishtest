@@ -8,6 +8,15 @@
     spsa_data = json.dumps(run["args"]["spsa"])
 %>
 
+<script>
+if(${show_task} >= 0){
+  window.addEventListener("load", (event) => {
+    task=document.getElementById("task${show_task}");
+    task.scrollIntoView();
+  });
+}
+</script>
+
 <%namespace name="base" file="base.mak"/>
 
 % if 'spsa' in run['args']:
@@ -272,7 +281,7 @@
 <div id="tasks"
      class="overflow-auto ${'collapse show' if tasks_shown else 'collapse'}">
   <table class='table table-striped table-sm'>
-    <thead class="sticky-top">
+    <thead class=${"sticky-top" if show_task == -1 else ""}>
       <tr>
         <th>Idx</th>
         <th>Worker</th>
@@ -303,12 +312,14 @@
             else:
               continue
 
-            if task['active']:
+            if idx==show_task:
+              active_style = 'highlight'
+            elif task['active']:
               active_style = 'info'
             else:
               active_style = ''
           %>
-          <tr class="${active_style}">
+          <tr class="${active_style}" id=task${idx}>
             <td><a href=${f"/api/pgn/{run['_id']}-{idx:d}.pgn"}>${idx}</a></td>
             % if 'bad' in task:
                 <td style="text-decoration:line-through; background-color:#ffebeb">
