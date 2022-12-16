@@ -1,7 +1,7 @@
 <%inherit file="base.mak"/>
 
-<%
-import urllib
+<%!
+  import urllib
 %>
 
 <script>

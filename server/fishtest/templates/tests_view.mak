@@ -1,11 +1,11 @@
 <%inherit file="base.mak"/>
 
 <%
-from fishtest.util import worker_name
-
-if 'spsa' in run['args']:
-  import json
-  spsa_data = json.dumps(run["args"]["spsa"])
+  from fishtest.util import worker_name
+  
+  if 'spsa' in run['args']:
+    import json
+    spsa_data = json.dumps(run["args"]["spsa"])
 %>
 
 <%namespace name="base" file="base.mak"/>

@@ -1,8 +1,7 @@
 <%inherit file="base.mak"/>
 
-<%
+<%!
   import datetime
-  import urllib
 %>
 
 <h2>Events Log</h2>
