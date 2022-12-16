@@ -1,5 +1,9 @@
 <%inherit file="base.mak"/>
 
+<%
+import urllib
+%>
+
 <script>
   document.title = 'Users${" - Top Month" if "monthly" in request.url else ""} | Stockfish Testing';
 </script>
@@ -79,7 +83,7 @@
             <td class="text-end">${int(user['games_per_hour'])}</td>
             <td class="text-end">${int(user['cpu_hours'])}</td>
             <td class="text-end">${int(user['games'])}</td>
-            <td class="text-end"><a href="/tests/user/${user['username']}">${user['tests']}</a></td>
+            <td class="text-end"><a href="/tests/user/${urllib.parse.quote(user['username'])}">${user['tests']}</a></td>
             <td class="user-repo"><a href="${user['tests_repo']}" target="_blank" rel="noopener">${user['tests_repo']}</a></td>
           </tr>
       % endfor
