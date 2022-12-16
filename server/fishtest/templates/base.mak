@@ -5,7 +5,7 @@ monitoring = request.rundb.conn["admin"].command("getFreeMonitoringStatus")
 <html lang="en">
   <head>
     <title>Stockfish Testing Framework</title>
-    <meta name="csrf-token" content="${request.session.get_csrf_token()}" />
+    <meta name="csrf-token" content="${request.session.get_csrf_token()}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <script>
@@ -16,24 +16,24 @@ monitoring = request.rundb.conn["admin"].command("getFreeMonitoringStatus")
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css"
           integrity="sha512-KfkfwYDsLkIlwQp6LFnl8zNdLGxu9YAA1QvwINks4PhcElQSvqcyVLLD9aMhXd13uQjoXtEKNosOWaZqXgel0g=="
           crossorigin="anonymous"
-          referrerpolicy="no-referrer" />
+          referrerpolicy="no-referrer">
 
     <link rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.2.0/css/bootstrap.min.css"
           integrity="sha512-XWTTruHZEYJsxV3W/lSXG1n3Q39YIWOstqvmFsdNEEQfHoZ6vm6E9GK2OrF6DSJSpIbRbi+Nn0WDPID9O7xB2Q=="
           crossorigin="anonymous"
-          referrerpolicy="no-referrer" />
+          referrerpolicy="no-referrer">
 
     <link rel="stylesheet"
           href="/css/application.css?v=${cache_busters['css/application.css']}"
           integrity="sha384-${cache_busters['css/application.css']}"
-          crossorigin="anonymous" />
+          crossorigin="anonymous">
 
     % if request.cookies.get('theme') == 'dark':
         <link rel="stylesheet"
               href="/css/theme.dark.css?v=${cache_busters['css/theme.dark.css']}"
               integrity="sha384-${cache_busters['css/theme.dark.css']}"
-              crossorigin="anonymous" />
+              crossorigin="anonymous">
     % endif
 
 
