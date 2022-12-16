@@ -13,7 +13,7 @@
     </div>
   </header>
 
-  <form action="" method="POST">
+  <form method="POST">
     <div class="form-floating mb-3">
       <input
         type="text"
@@ -24,7 +24,7 @@
         autocomplete="username"
         required
         autofocus
-      />
+      >
       <label for="username" class="d-flex align-items-end">Username</label>
     </div>
 
@@ -36,12 +36,14 @@
           id="password"
           name="password"
           placeholder="Password"
-          autocomplete="password-current"
+          autocomplete="current-password"
           required
-        />
+        >
         <label for="password" class="d-flex align-items-end">Password</label>
       </div>
-      <span class="input-group-text toggle-password-visibility" role="button"><i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i></span>
+      <span class="input-group-text toggle-password-visibility" role="button">
+        <i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i>
+      </span>
     </div>
 
     <div class="mb-3 form-check">
@@ -51,7 +53,7 @@
         class="form-check-input"
         id="staylogged"
         name="stay_logged_in"
-      />
+      >
     </div>
 
     <button type="submit" class="btn btn-primary w-100">Login</button>

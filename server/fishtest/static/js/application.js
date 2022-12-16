@@ -46,7 +46,7 @@ document.addEventListener("DOMContentLoaded", () => {
             (this.asc = !this.asc)
           )
         )
-        .forEach((tr) => body.appendChild(tr));
+        .forEach((tr) => body.append(tr));
     }
   });
 
@@ -66,7 +66,7 @@ document.addEventListener("DOMContentLoaded", () => {
       link["href"] = "/css/theme.dark.css?v=" + darkThemeHash;
       link["integrity"] = "sha384-" + darkThemeHash;
       link["crossOrigin"] = "anonymous";
-      document.querySelector("head").appendChild(link);
+      document.querySelector("head").append(link);
     } else {
       document.getElementById("sun").style.display = "none";
       document.getElementById("moon").style.display = "";
@@ -108,7 +108,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const csrfToken = document.querySelector("meta[name='csrf-token']")[
     "content"
   ];
-  document.querySelector("#logout")?.addEventListener("click", (e) => {
+  document.getElementById("logout")?.addEventListener("click", (e) => {
     e.preventDefault();
     fetch("/logout", {
       method: "POST",
@@ -122,6 +122,6 @@ document.addEventListener("DOMContentLoaded", () => {
     input["type"] = "hidden";
     input["name"] = "csrf_token";
     input["value"] = csrfToken;
-    form.appendChild(input);
+    form.append(input);
   });
 });

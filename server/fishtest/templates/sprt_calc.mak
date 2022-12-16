@@ -1,22 +1,5 @@
 <%inherit file="base.mak"/>
 
-<style>
-  @media (min-width: 768px) {
-    .form-control.number {
-      width: 6em;
-    }
-  }
-  .form-control.number {
-    text-align: right;
-  }
-  .chart-div {
-    height: 500px;
-  }
-  ul {
-    word-break: break-word;
-  }
-</style>
-
 <script>
   document.title = 'Chess SPRT Calculator | Stockfish Testing';
 </script>
@@ -33,19 +16,19 @@
   </div>
   <div class="col-6 col-md-auto mb-3">
     <label for="elo-0" class="form-label">Elo0</label>
-    <input id="elo-0" class="form-control number" />
+    <input id="elo-0" class="form-control number">
   </div>
   <div class="col-6 col-md-auto mb-3">
     <label for="elo-1" class="form-label">Elo1</label>
-    <input id="elo-1" class="form-control number" />
+    <input id="elo-1" class="form-control number">
   </div>
   <div class="col-6 col-md-auto mb-3">
     <label for="draw-ratio" class="form-label">Draw ratio</label>
-    <input id="draw-ratio" class="form-control number" />
+    <input id="draw-ratio" class="form-control number">
   </div>
   <div class="col-6 col-md-auto mb-3">
     <label for="rms-bias" class="form-label">RMS bias</label>
-    <input id="rms-bias" class="form-control number" />
+    <input id="rms-bias" class="form-control number">
   </div>
   <div class="col-12 col-md-auto mb-3 d-flex align-items-end">
     <input
@@ -53,17 +36,17 @@
       type="button"
       value="Calculate"
       onclick="draw_charts();"
-    />
+    >
   </div>
 </form>
 <div>
-  <hr />
+  <hr>
 </div>
 <div id="mouse_screen" class="row g-0">
-  <div id="pass_prob_chart_div" class="chart-div col-12 col-md-6"></div>
-  <div id="expected_chart_div" class="chart-div col-12 col-md-6"></div>
+  <div id="pass_prob_chart_div" class="sprt-calc-chart col-12 col-md-6"></div>
+  <div id="expected_chart_div" class="sprt-calc-chart col-12 col-md-6"></div>
 </div>
-<div>
+<div id="sprt-calc-description">
   <ul>
     <li>
       The fields <b>Elo0</b> and <b>Elo1</b> represent the bounds for an

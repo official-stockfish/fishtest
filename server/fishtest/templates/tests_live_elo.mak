@@ -23,16 +23,15 @@
       <div id="ELO_chart_div"></div>
     </div>
     <h4>Details</h4>
-    <style>td:last-child {word-break: break-word;}</style>
     <div class="col-12 table-responsive-lg">
       <table
         id="data"
-        class="table table-striped table-sm"
+        class="details-table table table-striped table-sm"
         style="visibility: hidden">
         <tr>
           <td>Commit</td>
           <td>
-            <a id="commit" target="_blank" rel="noopener noreferrer"></a>
+            <a href="#" id="commit" target="_blank" rel="noopener noreferrer"></a>
           </td>
         </tr>
         <tr>
@@ -42,7 +41,7 @@
         <tr>
           <td>Submitter</td>
           <td>
-            <a id="username"></a>
+            <a href="#" id="username"></a>
           </td>
         </tr>
         <tr>

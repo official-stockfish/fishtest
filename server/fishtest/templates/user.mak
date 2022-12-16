@@ -14,10 +14,16 @@
       <div class="row g-1">
         % if not profile:
           <div class="col-6 text-md-end">Email:</div>
-          <div class="col-6 text-start text-break"><a href="mailto:${user['email']}?Subject=Fishtest%20Account" class="alert-link">${user['email']}</a></div>
+          <div class="col-6 text-start text-break">
+            <a href="mailto:${user['email']}?Subject=Fishtest%20Account" class="alert-link">
+              ${user['email']}
+            </a>
+          </div>
         % endif
         <div class="col-6 text-md-end">Registered:</div>
-        <div class="col-6 text-start text-break">${user['registration_time'] if 'registration_time' in user else 'Unknown'}</div>
+        <div class="col-6 text-start text-break">
+          ${user['registration_time'] if 'registration_time' in user else 'Unknown'}
+        </div>
         <div class="col-6 text-md-end">Machine Limit:</div>
         <div class="col-6 text-start text-break">${limit}</div>
         <div class="col-6 text-md-end">CPU-Hours:</div>
@@ -55,7 +61,9 @@
           />
           <label for="password" class="d-flex align-items-end">New Password</label>
         </div>
-        <span class="input-group-text toggle-password-visibility" role="button"><i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i></span>
+        <span class="input-group-text toggle-password-visibility" role="button">
+          <i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i>
+        </span>
       </div>
 
       <div class="input-group mb-3">
@@ -70,7 +78,9 @@
           />
           <label for="password2" class="d-flex align-items-end">Repeat Password</label>
         </div>
-        <span class="input-group-text toggle-password-visibility" role="button"><i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i></span>
+        <span class="input-group-text toggle-password-visibility" role="button">
+          <i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i>
+        </span>
       </div>
     % else:
       <%

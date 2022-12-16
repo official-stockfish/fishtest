@@ -197,7 +197,7 @@
 
   document.addEventListener("DOMContentLoaded", () => {
     //fade in loader
-    const loader = document.querySelector("#div_spsa_preload");
+    const loader = document.getElementById("div_spsa_preload");
     loader.style.display = "";
     loader.classList.add("fade");
     setTimeout(() => {
@@ -216,9 +216,14 @@
         );
 
         if (!spsa_history || spsa_history.length < 2) {
-          document.querySelector("#div_spsa_preload").style.display = "none";
-          document.querySelector("#div_spsa_history_plot").innerHTML =
-            "<div class='alert alert-warning' role='alert'>Not enough data to generate plot.</div>";
+          document.getElementById("div_spsa_preload").style.display = "none";
+          const alertElement = document.createElement('div');
+          alertElement.className = "alert alert-warning";
+          alertElement.role = "alert";
+          alertElement.textContent = "Not enough data to generate plot.";
+          const historyPlot = document.getElementById("div_spsa_history_plot");
+          historyPlot.replaceChildren();
+          historyPlot.append(alertElement);
           return;
         }
 
@@ -246,27 +251,29 @@
           document.getElementById("div_spsa_history_plot")
         );
         chart_object.draw(chart_data, chart_options);
-        document.querySelector("#chart_toolbar").style.display = "block";
+        document.getElementById("chart_toolbar").style.display = "";
 
         for (let i = 0; i < chart_data.getNumberOfColumns(); i++) {
           columns.push(i);
         }
 
         for (let j = 0; j < spsa_params.length; j++) {
-          document.querySelector("#dropdown_individual").innerHTML +=
-            '<li><a class="dropdown-item" href="javascript:" param_id="' +
-            (j + 1) +
-            '" >' +
-            spsa_params[j].name +
-            "</a></li>";
+          const dropdownItem = document.createElement("li");
+          const anchorItem = document.createElement("a");
+          anchorItem.className = "dropdown-item";
+          anchorItem.href = "javascript:";
+          anchorItem.param_id = j + 1;
+          anchorItem.append(spsa_params[j].name);
+          dropdownItem.append(anchorItem);
+          document.getElementById("dropdown_individual").append(dropdownItem);
         }
 
         document
-          .querySelector("#dropdown_individual")
+          .getElementById("dropdown_individual")
           .addEventListener("click", (e) => {
             if (!e.target.matches("a")) return;
             const { target } = e;
-            let param_id = target.attributes.param_id.value;
+            const param_id = target.param_id;
             for (let i = 1; i < chart_data.getNumberOfColumns(); i++) {
               update_column_visibility(i, i == param_id);
             }
@@ -290,10 +297,10 @@
           }
         );
 
-        document.querySelector("#div_spsa_preload").style.display = "none";
+        document.getElementById("div_spsa_preload").style.display = "none";
 
         document
-          .querySelector("#btn_smooth_plus")
+          .getElementById("btn_smooth_plus")
           .addEventListener("click", () => {
             if (smoothing_factor < smoothing_max) {
               smooth_data(++smoothing_factor);
@@ -301,7 +308,7 @@
           });
 
         document
-          .querySelector("#btn_smooth_minus")
+          .getElementById("btn_smooth_minus")
           .addEventListener("click", () => {
             if (smoothing_factor > 0) {
               smooth_data(--smoothing_factor);
@@ -309,7 +316,7 @@
           });
 
         document
-          .querySelector("#btn_view_all")
+          .getElementById("btn_view_all")
           .addEventListener("click", () => {
             if (viewAll) return;
             viewAll = true;

@@ -32,11 +32,11 @@
 
 <header style="text-align: center; padding-top: 7px">
   <h2>Create New Test</h2>
-  <section class="instructions" style="margin-bottom: 35px">
+  <div class="instructions" style="margin-bottom: 35px">
     Please read the
     <a href="https://github.com/glinscott/fishtest/wiki/Creating-my-first-test">Testing Guidelines</a>
     before creating your test.
-  </section>
+  </div>
 </header>
 
 <form id="create-new-test" action="${request.url}" method="POST">
@@ -178,47 +178,96 @@
 
               <div class="mb-2">
                 <label for="tests-repo" class="form-label">Test repository</label>
-                <input type="url" name="tests-repo" id="tests-repo" class="form-control"
+                <input
+                  type="url"
+                  name="tests-repo"
+                  id="tests-repo"
+                  class="form-control"
                   value="${args.get('tests_repo', tests_repo)}" ${'readonly' if is_rerun else ''}
-                  placeholder="https://github.com/username/Stockfish">
+                  placeholder="https://github.com/username/Stockfish"
+                >
               </div>
 
               <div class="mb-2 col-6">
                 <label for="test-branch" class="form-label">Test Branch</label>
-                <input type="text" name="test-branch" id="test-branch" class="form-control" value="${args.get('new_tag', '')}" ${'readonly' if is_rerun else ''}
-                  placeholder="Your test branch name">
+                <input
+                  type="text"
+                  name="test-branch"
+                  id="test-branch"
+                  class="form-control"
+                  value="${args.get('new_tag', '')}" ${'readonly' if is_rerun else ''}
+                  placeholder="Your test branch name"
+                >
               </div>
 
               <div class="mb-2 col-6">
                 <label for="base-branch" class="form-label">Base Branch</label>
-                <input type="text" name="base-branch" id="base-branch" class="form-control" value="${base_branch}" ${'readonly' if is_rerun else ''}>
+                <input
+                  type="text"
+                  name="base-branch"
+                  id="base-branch"
+                  class="form-control"
+                  value="${base_branch}" ${'readonly' if is_rerun else ''}
+                >
               </div>
 
               <div class="mb-2 col-6">
                 <label for="test-signature" class="form-label">Test Signature</label>
-                <input type="number" name="test-signature" id="test-signature" min="0" class="form-control no-arrows" onwheel="this.blur()"
-                  placeholder="Defaults to last commit message" value="${args.get('new_signature', '')}" ${'readonly' if is_rerun else ''}>
+                <input
+                  type="number"
+                  name="test-signature"
+                  id="test-signature"
+                  min="0"
+                  class="form-control no-arrows"
+                  onwheel="this.blur()"
+                  placeholder="Defaults to last commit message"
+                  value="${args.get('new_signature', '')}" ${'readonly' if is_rerun else ''}
+                >
               </div>
 
               <div class="mb-2 col-6">
                 <label for="base-signature" class="form-label">Base Signature</label>
-                <input type="number" name="base-signature" id="base-signature" min="0" class="form-control no-arrows" onwheel="this.blur()"
-                  value="${latest_bench}" ${'readonly' if is_rerun else ''}>
+                <input
+                  type="number"
+                  name="base-signature"
+                  id="base-signature"
+                  min="0"
+                  class="form-control no-arrows"
+                  onwheel="this.blur()"
+                  value="${latest_bench}" ${'readonly' if is_rerun else ''}
+                >
               </div>
 
               <div class="mb-2 col-6">
                 <label for="new-options" class="form-label">Test Options</label>
-                <input type="text" name="new-options" id="new-options" class="form-control" value="${args.get('new_options', 'Hash=16 Use NNUE=true')}">
+                <input
+                  type="text"
+                  name="new-options"
+                  id="new-options"
+                  class="form-control"
+                  value="${args.get('new_options', 'Hash=16 Use NNUE=true')}"
+                >
               </div>
 
               <div class="mb-2 col-6">
                 <label for="base-options" class="form-label">Base Options</label>
-                <input type="text" name="base-options" id="base-options" class="form-control" value="${args.get('base_options', 'Hash=16 Use NNUE=true')}">
+                <input
+                  type="text"
+                  name="base-options"
+                  id="base-options"
+                  class="form-control"
+                  value="${args.get('base_options', 'Hash=16 Use NNUE=true')}"
+                >
               </div>
 
               <div>
                 <label for="run-info" class="form-label">Info</label>
-                <textarea name="run-info" placeholder="Defaults to commit message" id="run-info" class="form-control" rows="4"
+                <textarea
+                  name="run-info"
+                  placeholder="Defaults to commit message"
+                  id="run-info"
+                  class="form-control"
+                  rows="4"
                   >${args.get('info', '')}</textarea>
               </div>
             </div>
@@ -228,7 +277,7 @@
 
           <div class="col-12 col-md-6 mb-2">
             <div class="mb-2">
-              <input type="hidden" name="stop_rule" id="stop_rule_field" value="sprt" />
+              <input type="hidden" name="stop_rule" id="stop_rule_field" value="sprt">
               <label class="form-label">Stop rule</label>
               <div class="list-group list-group-checkable flex-row row row-cols-3 g-1 text-center">
                 <div class="col">
@@ -248,8 +297,13 @@
                 </div>
 
                 <div class="col">
-                  <input class="list-group-item-check pe-none" type="radio" name="stop-rule" id="stop-rule-spsa"
-                    value="stop-rule-spsa">
+                  <input
+                    class="list-group-item-check pe-none"
+                    type="radio"
+                    name="stop-rule"
+                    id="stop-rule-spsa"
+                    value="stop-rule-spsa"
+                  >
                   <label class="list-group-item rounded-3" for="stop-rule-spsa" title="Simultaneous perturbation stochastic approximation">
                     SPSA
                   </label>
@@ -260,12 +314,20 @@
             ## This only appears when games or spsa is selected
             <div class="mb-2 stop-rule stop-rule-games stop-rule-spsa" style="${'display: none' if (args.get('sprt') or not is_rerun) else ''}">
               <label for="num-games" class="form-label">Amount of games</label>
-              <input type="number" name="num-games" min="1000" step="1000" id="num-games" class="form-control" value="${args.get('num_games', 60000)}">
+              <input
+                type="number"
+                name="num-games"
+                min="1000"
+                step="1000"
+                id="num-games"
+                class="form-control"
+                value="${args.get('num_games', 60000)}"
+              >
             </div>
 
             ## This only appears when sprt is selected
             <div class="mb-2 stop-rule stop-rule-sprt">
-              <input type="hidden" name="elo_model" id="elo_model_field" value=${elo_model} />
+              <input type="hidden" name="elo_model" id="elo_model_field" value=${elo_model}>
               <div class="row gx-1">
                 <div class="col-12 col-md">
                   <label for="bounds" class="form-label">SPRT Bounds</label>
@@ -274,48 +336,97 @@
                     <option value="standard LTC">Standard LTC ${fb(0.5, 2.5)}</option>
                     <option value="regression STC">Non-regression STC ${fb(-1.75, 0.25)}</option>
                     <option value="regression LTC">Non-regression LTC ${fb(-1.75, 0.25)}</option>
-                    <option value="custom" ${is_rerun and 'selected'}>Custom bounds...</option>
+                    <option value="custom" ${'selected' if is_rerun else ''}>Custom bounds...</option>
                   </select>
                 </div>
                 ## This only appears when custom bounds are selected
-                <div class="col-6 col-md-4 col-lg-3 mt-2 mt-md-0 custom-bounds" style="${args.get('sprt') or 'display: none'}">
+                <div
+                  class="col-6 col-md-4 col-lg-3 mt-2 mt-md-0 custom-bounds"
+                  style="${args.get('sprt') or 'display: none'}"
+                >
                   <label for="sprt_elo0" class="form-label">SPRT&nbsp;Elo0</label>
-                  <input type="number" step="0.05" name="sprt_elo0" id="sprt_elo0" class="form-control" value="${args.get('sprt', {'elo0': 0.0})['elo0']}">
+                  <input
+                    type="number"
+                    step="0.05"
+                    name="sprt_elo0"
+                    id="sprt_elo0"
+                    class="form-control"
+                    value="${args.get('sprt', {'elo0': 0.0})['elo0']}"
+                  >
                 </div>
-                <div class="col-6 col-md-4 col-lg-3 mt-2 mt-md-0 custom-bounds" style="${args.get('sprt') or 'display: none'}">
+                <div
+                  class="col-6 col-md-4 col-lg-3 mt-2 mt-md-0 custom-bounds"
+                  style="${args.get('sprt') or 'display: none'}"
+                >
                   <label for="sprt_elo1" class="form-label">SPRT&nbsp;Elo1</label>
-                  <input type="number" step="0.05" name="sprt_elo1" id="sprt_elo1" class="form-control" value="${args.get('sprt', {'elo1': 2.0})['elo1']}">
+                  <input
+                    type="number"
+                    step="0.05"
+                    name="sprt_elo1"
+                    id="sprt_elo1"
+                    class="form-control"
+                    value="${args.get('sprt', {'elo1': 2.0})['elo1']}"
+                  >
                 </div>
               </div>
             </div>
 
             ## This only appears when spsa is selected
-            <div class="mb-2 stop-rule stop-rule-spsa" style="${args.get('spsa') or 'display: none'}">
+            <div
+              class="mb-2 stop-rule stop-rule-spsa"
+              style="${args.get('spsa') or 'display: none'}"
+            >
               <div class="row gx-1">
                 <div class="col-4">
                   <div class="mb-2">
                     <label for="spsa_A" class="form-label">SPSA&nbsp;A&nbsp;ratio</label>
-                    <input type="number" min="0" max="1" step="0.001" name="spsa_A" id="spsa_A" class="form-control" value="${args.get('spsa', {'A': '0.1'})['A']}">
+                    <input
+                      type="number"
+                      min="0"
+                      max="1"
+                      step="0.001"
+                      name="spsa_A"
+                      id="spsa_A"
+                      class="form-control"
+                      value="${args.get('spsa', {'A': '0.1'})['A']}"
+                    >
                   </div>
                 </div>
                 <div class="col-4">
                   <div class="mb-2">
                     <label for="spsa_alpha" class="form-label">SPSA&nbsp;Alpha</label>
-                    <input type="number" min="0" step="0.001" name="spsa_alpha" id="spsa_alpha" class="form-control" value="${args.get('spsa', {'alpha': '0.602'})['alpha']}">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.001"
+                      name="spsa_alpha"
+                      id="spsa_alpha"
+                      class="form-control"
+                      value="${args.get('spsa', {'alpha': '0.602'})['alpha']}"
+                    >
                   </div>
                 </div>
                 <div class="col-4">
                   <div class="mb-2">
                     <label for="spsa_gamma" class="form-label">SPSA&nbsp;Gamma</label>
-                    <input type="number" min="0" step="0.001" name="spsa_gamma" id="spsa_gamma" class="form-control" value="${args.get('spsa', {'gamma': '0.101'})['gamma']}">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.001"
+                      name="spsa_gamma"
+                      id="spsa_gamma"
+                      class="form-control"
+                      value="${args.get('spsa', {'gamma': '0.101'})['gamma']}"
+                    >
                   </div>
                 </div>
               </div>
 
               <div class="mb-2">
                 <label for="spsa_raw_params" class="form-label">SPSA&nbsp;parameters</label>
-                <textarea name="spsa_raw_params" id="spsa_raw_params" class="form-control"
-                  >${args.get('spsa', {'raw_params': ''})['raw_params']}</textarea>
+                <textarea name="spsa_raw_params" id="spsa_raw_params" class="form-control">
+                ${args.get('spsa', {'raw_params': ''})['raw_params']}</textarea
+                >
               </div>
 
               <div class="mb-2 form-check">
@@ -324,15 +435,25 @@
                   type="checkbox"
                   class="form-check-input"
                   id="autoselect"
-                />
+                >
 
-                <i class="fa-solid fa-circle-info" role="button" data-bs-toggle="modal" data-bs-target="#autoselect-modal"></i>
+                <i
+                  class="fa-solid fa-circle-info"
+                  role="button"
+                  data-bs-toggle="modal"
+                  data-bs-target="#autoselect-modal"
+                ></i>
                 <div class="modal fade" id="autoselect-modal" tabindex="-1" aria-hidden="true">
                   <div class="modal-dialog modal-dialog-scrollable">
                     <div class="modal-content">
                       <div class="modal-header">
                         <h5 class="modal-title">Autoselect information</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <button
+                          type="button"
+                          class="btn-close"
+                          data-bs-dismiss="modal"
+                          aria-label="Close"
+                        ></button>
                       </div>
                       <div class="modal-body text-break">
                         Checking this option will rewrite the hyperparameters furnished by the tuning
@@ -367,19 +488,44 @@
               <div class="row gx-1">
                 <div class="col mb-2">
                   <label for="threads" class="form-label">Threads</label>
-                  <input type="number" min="1" name="threads" id="threads" class="form-control" value="${args.get('threads', 1)}">
+                  <input
+                    type="number"
+                    min="1"
+                    name="threads"
+                    id="threads"
+                    class="form-control"
+                    value="${args.get('threads', 1)}"
+                  >
                 </div>
                 <div class="col mb-2">
                   <label for="tc" class="form-label" title="Time control">TC</label>
-                  <input type="text" name="tc" id="tc" class="form-control" value="${args.get('tc', '10+0.1')}">
+                  <input
+                    type="text"
+                    name="tc"
+                    id="tc"
+                    class="form-control"
+                    value="${args.get('tc', '10+0.1')}"
+                  >
                 </div>
                 <div class="col mb-2 new_tc" style="display: none;">
                   <label for="new_tc" class="form-label">Test&nbsp;TC</label>
-                  <input type="text" name="new_tc" id="new_tc" class="form-control" value="${args.get('new_tc', '10+0.1')}">
+                  <input
+                    type="text"
+                    name="new_tc"
+                    id="new_tc"
+                    class="form-control"
+                    value="${args.get('new_tc', '10+0.1')}"
+                  >
                 </div>
                 <div class="col mb-2">
                   <label for="priority" class="form-label">Priority</label>
-                  <input type="number" name="priority" id="priority" class="form-control" value="${args.get('priority', 0)}">
+                  <input
+                    type="number"
+                    name="priority"
+                    id="priority"
+                    class="form-control"
+                    value="${args.get('priority', 0)}"
+                  >
                 </div>
                 <div class="col mb-2">
                   <label for="throughput" class="form-label">Throughput</label>
@@ -406,7 +552,14 @@
                 </div>
                 <div class="col-12 col-md-4 mt-2 mt-md-0 book-depth">
                   <label for="book-depth" class="form-label">Book depth</label>
-                  <input type="number" min="1" name="book-depth" id="book-depth" class="form-control" value="${args.get('book_depth', 8)}">
+                  <input
+                    type="number"
+                    min="1"
+                    name="book-depth"
+                    id="book-depth"
+                    class="form-control"
+                    value="${args.get('book_depth', 8)}"
+                  >
                 </div>
               </div>
             </div>
@@ -423,7 +576,7 @@
                       class="form-check-input"
                       id="checkbox-auto-purge"
                       name="auto-purge"
-                    />
+                    >
                   </div>
                 </div>
                 <div class="col text-nowrap">
@@ -435,7 +588,7 @@
                       id="checkbox-time-odds"
                       name="odds"
                       ${'checked' if is_odds else ''}
-                    />
+                    >
                   </div>
                 </div>
                 <div class="col text-nowrap">
@@ -446,7 +599,7 @@
                       class="form-check-input"
                       id="checkbox-book-visibility"
                       ${'checked' if default_book != test_book else ''}
-                    />
+                    >
                   </div>
                 </div>
                 <div class="col text-nowrap">
@@ -458,7 +611,7 @@
                       id="checkbox-adjudication"
                       name="adjudication"
                       ${'checked' if not args.get("adjudication", True) else ''}
-                    />
+                    >
                   </div>
                 </div>
               </div>
@@ -489,7 +642,7 @@
     
     // make sure the submit test button is enabled again and has the correct text.
     document.getElementById('submit-test').disabled = false;
-    document.getElementById('submit-test').innerText = 'Submit test';
+    document.getElementById('submit-test').textContent = 'Submit test';
     
     // Also make sure that the fields have the right visibility.
     update_odds(document.getElementById('checkbox-time-odds'));
@@ -530,8 +683,8 @@
 
   document
     .getElementById("bounds")
-    .addEventListener("change", function () {
-      update_sprt_bounds(this.value);
+    .addEventListener("change", (e) => {
+      update_sprt_bounds(e.target.value);
     });
 
   let initial_base_branch = document.getElementById("base-branch").value;
@@ -540,19 +693,33 @@
 
   // Test type is changed
   document.querySelectorAll("[name=test-type]").forEach((btn) =>
-    btn.addEventListener("click", function () {
+    btn.addEventListener("click", (e) => {
       if (!spsa_do_not_save) {
         initial_base_branch = document.getElementById("base-branch").value;
         initial_base_signature = document.getElementById("base-signature").value;
       }
-      const btn = this;
+      const btn = e.target;
 
       // choose test type - STC, LTC - sets preset values
       let testOptions = null;
       if (btn.dataset.options) testOptions = btn.dataset.options;
 
       if (testOptions) {
-        const { name, tc, new_tc, threads, options, book, stop_rule, bounds, games, test_branch, base_branch, test_signature, base_signature } = JSON.parse(testOptions);
+        const {
+          name,
+          tc,
+          new_tc,
+          threads,
+          options,
+          book,
+          stop_rule,
+          bounds,
+          games,
+          test_branch,
+          base_branch,
+          test_signature,
+          base_signature,
+        } = JSON.parse(testOptions);
         document.getElementById("tc").value = tc;
         document.getElementById("new_tc").value = new_tc;
         document.getElementById("threads").value = threads;
@@ -574,7 +741,7 @@
         document.getElementById("book").value = book;
         update_book_depth_visibility(book);
 
-        document.getElementById("checkbox-book-visibility").checked = (book != "${test_book}") ? true : false;
+        document.getElementById("checkbox-book-visibility").checked = (book != "${test_book}");
         update_book_visibility(document.getElementById("checkbox-book-visibility"));
 
         document.getElementById(stop_rule).click();
@@ -601,7 +768,8 @@
 
         if (name === "PT" || name === "PT SMP") {
           let info = (name === "PT SMP") ? "SMP " : "";
-          info += 'Progression test of "${master_info["message"]}" of ${master_info["date"]} vs ${pt_version}.';
+          info +=
+            'Progression test of "${master_info["message"]}" of ${master_info["date"]} vs ${pt_version}.';
           document.getElementById("run-info").value = info;
         }
 
@@ -673,8 +841,8 @@
 
   // Only .pgn book types have a book_depth field
   update_book_depth_visibility(document.getElementById("book").value);
-  document.getElementById("book").addEventListener("input", function () {
-    update_book_depth_visibility(this.value);
+  document.getElementById("book").addEventListener("input", (e) => {
+    update_book_depth_visibility(e.target.value);
   });
 
   document
@@ -690,8 +858,13 @@
         return;
       }
       form_submitted = true;
-      document.getElementById("submit-test").disabled = true;
-      document.getElementById("submit-test").innerHTML = '<div class="spinner-border spinner-border-sm" role="status"></div> Submitting...';
+      const submitButton = document.getElementById("submit-test");
+      submitButton.disabled = true;
+      submitButton.replaceChildren();
+      const spinner = document.createElement("div");
+      spinner.className = "spinner-border spinner-border-sm";
+      spinner.role = "status";
+      submitButton.append(spinner, " Submitting...");
     });
 
   // If the test is a reschedule
@@ -721,16 +894,16 @@
   function update_odds(checkbox) {
     if (checkbox.checked) {
       document.querySelector('.new_tc').style.display = "";
-      document.querySelector('[for=tc]').innerHTML = "Base&nbsp;TC";
+      document.querySelector('[for=tc]').textContent = "Base TC";
     } else {
       document.querySelector('.new_tc').style.display = "none";
       document.getElementById('new_tc').value = document.getElementById('tc').value;
-      document.querySelector('[for=tc]').innerHTML = "TC";
+      document.querySelector('[for=tc]').textContent = "TC";
     }
   }
 
-  document.getElementById('checkbox-time-odds').addEventListener("change", function() {
-    update_odds(this);
+  document.getElementById('checkbox-time-odds').addEventListener("change", (e) => {
+    update_odds(e.target);
   });
 
   function update_book_visibility(checkbox) {
@@ -743,8 +916,8 @@
     }
   }
 
-  document.getElementById('checkbox-book-visibility').addEventListener("change", function() {
-    update_book_visibility(this);
+  document.getElementById('checkbox-book-visibility').addEventListener("change", (e) => {
+    update_book_visibility(e.target);
   });
 </script>
 
@@ -812,11 +985,11 @@
 
   document.getElementById('autoselect').addEventListener("change", do_spsa_events);
 
-  document.getElementById('tc').addEventListener("input", function() {
+  document.getElementById('tc').addEventListener("input", (e) => {
     if (!document.getElementById('autoselect').checked) {
       return;
     }
-    const tc = document.getElementById('tc').value;
+    const tc = e.target.value;
     const tc_seconds = tc_to_seconds(tc);
     if (tc_seconds !== null) {
       do_spsa_work();

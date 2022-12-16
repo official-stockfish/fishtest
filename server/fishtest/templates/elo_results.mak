@@ -53,11 +53,11 @@
   % for i in range(l):
       ${info[i].replace("ELO", "Elo") if elo_ptnml_run and i == 0 else info[i]}
       % if i < l-1:
-          <br/>
+          <br>
       % endif
   % endfor
   % if elo_ptnml_run:
-      <br/>
+      <br>
       ${f"nElo: {nelo5:.2f} +-{nelo5_delta:.1f} (95%) PairsRatio: {results5_pairs_ratio:.2f}"}
   % endif
 </%def>

@@ -155,7 +155,7 @@
                   </ul>
                 </li>
 
-                <hr class="my-1">
+                <li><hr class="my-1"></li>
 
                 <li class="links-group">
                   <strong class="links-heading d-flex w-100 align-items-center fw-semibold">Fishtest</strong>
@@ -176,7 +176,7 @@
                   </ul>
                 </li>
 
-                <hr class="my-1">
+                <li><hr class="my-1"></li>
 
                 <li class="links-group">
                   <strong class="links-heading d-flex w-100 align-items-center fw-semibold">Stockfish</strong>
@@ -189,7 +189,7 @@
                   </ul>
                 </li>
 
-                <hr class="my-1">
+                <li><hr class="my-1"></li>
 
                 <li class="links-group">
                   <strong class="links-heading d-flex w-100 align-items-center fw-semibold">Resources</strong>
@@ -202,7 +202,7 @@
                   </ul>
                 </li>
 
-                <hr class="my-1">
+                <li><hr class="my-1"></li>
 
                 <li class="links-group">
                   <strong class="links-heading d-flex w-100 align-items-center fw-semibold">Development</strong>
@@ -244,7 +244,7 @@
                   % endfor
               % endif
             </div>
-            <main>${self.body()}</main>
+            <div>${self.body()}</div>
           </div>
         </div>
       </main>
