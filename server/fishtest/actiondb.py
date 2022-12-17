@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from bson.objectid import ObjectId
-from fishtest.util import optional_key, union, validate, worker_name
+from fishtest.util import hex_print, optional_key, union, validate, worker_name
 from pymongo import DESCENDING
 
 schema = union(
@@ -60,6 +60,12 @@ schema = union(
 )
 
 
+def run_name(run):
+    run_id = run["_id"]
+    run = run["args"]["new_tag"]
+    return run[:23] + "-" + hex_print(run_id)[0:7]
+
+
 class ActionDb:
     def __init__(self, db):
         self.db = db
@@ -79,7 +85,7 @@ class ActionDb:
         if action:
             # update_stats is no longer used, but included for backward compatibility
             if action == "system_event":
-                q["action"] = {"$in" : ["system_event", "update_stats"]}
+                q["action"] = {"$in": ["system_event", "update_stats"]}
             else:
                 q["action"] = action
         else:
@@ -110,7 +116,7 @@ class ActionDb:
             username=username,
             worker=worker_name(task["worker_info"]),
             run_id=run["_id"],
-            run=run["args"]["new_tag"],
+            run=run_name(run),
             task_id=task_id,
             message=message[:1024],
         )
@@ -123,7 +129,7 @@ class ActionDb:
                 username=username,
                 worker=worker_name(task["worker_info"]),
                 run_id=run["_id"],
-                run=run["args"]["new_tag"],
+                run=run_name(run),
                 task_id=task_id,
                 message=message[:1024],
             )
@@ -132,7 +138,7 @@ class ActionDb:
                 action="stop_run",
                 username=username,
                 run_id=run["_id"],
-                run=run["args"]["new_tag"],
+                run=run_name(run),
                 message=message[:1024],
             )
 
@@ -143,7 +149,7 @@ class ActionDb:
             username=username,
             worker=worker_name(task["worker_info"]),
             run_id=run["_id"],
-            run=run["args"]["new_tag"],
+            run=run_name(run),
             task_id=task_id,
         )
 
@@ -159,7 +165,7 @@ class ActionDb:
             action="new_run",
             username=username,
             run_id=run["_id"],
-            run=run["args"]["new_tag"],
+            run=run_name(run),
         )
 
     def upload_nn(self, username=None, nn=None):
@@ -174,7 +180,7 @@ class ActionDb:
             action="modify_run",
             username=username,
             run_id=run["_id"],
-            run=run["args"]["new_tag"],
+            run=run_name(run),
             message=message,
         )
 
@@ -183,7 +189,7 @@ class ActionDb:
             action="delete_run",
             username=username,
             run_id=run["_id"],
-            run=run["args"]["new_tag"],
+            run=run_name(run),
         )
 
     def approve_run(self, username=None, run=None):
@@ -191,7 +197,7 @@ class ActionDb:
             action="approve_run",
             username=username,
             run_id=run["_id"],
-            run=run["args"]["new_tag"],
+            run=run_name(run),
         )
 
     def purge_run(self, username=None, run=None):
@@ -199,7 +205,7 @@ class ActionDb:
             action="purge_run",
             username=username,
             run_id=run["_id"],
-            run=run["args"]["new_tag"],
+            run=run_name(run),
         )
 
     def block_user(self, username=None, user=None, message=None):
