@@ -191,7 +191,7 @@ def sync_upload(request):
     except Exception as e:
         print("Network upload failed: " + str(e))
         request.session.flash(
-            "Network upload failed: " + str(response.status_code), "error"
+            "Post request for the network upload failed", "error"
         )
         return {}
 
