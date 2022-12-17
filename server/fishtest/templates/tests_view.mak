@@ -8,14 +8,14 @@
     spsa_data = json.dumps(run["args"]["spsa"])
 %>
 
+% if show_task >= 0:
 <script>
-if(${show_task} >= 0){
   window.addEventListener("load", (event) => {
-    task=document.getElementById("task${show_task}");
-    task.scrollIntoView();
+    document.getElementById("task${show_task}")
+    .scrollIntoView();
   });
-}
 </script>
+% endif
 
 <%namespace name="base" file="base.mak"/>
 
@@ -527,7 +527,7 @@ if(${show_task} >= 0){
       });
 
       // Hide large diffs by default
-      if (numLines < 50) {
+      if (${show_task} == -1 && numLines < 50) {
         diffContents.style.display = "";
         if (copyDiffBtn) copyDiffBtn.style.display = "";
         toggleBtn.innerText = "Hide";
