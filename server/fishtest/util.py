@@ -3,12 +3,22 @@ from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 
 import fishtest.stats.stat_util
+import hashlib
 import numpy
 import scipy.stats
 from email_validator import EmailNotValidError, caching_resolver, validate_email
 from zxcvbn import zxcvbn
 
 FISH_URL = "https://tests.stockfishchess.org/tests/view/"
+
+
+def hex_print(s):
+    return format(
+        int.from_bytes(
+            hashlib.md5(str(s).encode("utf-8")).digest()[:4], byteorder="big"
+        ),
+        "08x",
+    )
 
 
 def worker_name(worker_info):
