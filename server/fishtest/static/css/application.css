@@ -502,7 +502,7 @@ td {
 
 /* Background colors for a highlighted task */
 .table tbody tr.highlight > td {
-  background-color: #fff0f5;
+  background-color: #ffbbff;
 }
 
 /* Pagination links */
