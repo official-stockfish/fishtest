@@ -859,7 +859,7 @@
       }
       form_submitted = true;
       const submitButton = document.getElementById("submit-test");
-      submitButton.disabled = true;
+      submitButton.setAttribute("disabled","");
       submitButton.replaceChildren();
       const spinner = document.createElement("div");
       spinner.className = "spinner-border spinner-border-sm";
