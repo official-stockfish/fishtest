@@ -338,7 +338,7 @@
 <div id="tasks"
      class="overflow-auto ${'collapse show' if tasks_shown else 'collapse'}">
   <table class='table table-striped table-sm'>
-    <thead class=${"sticky-top" if show_task == -1 else ""}>
+    <thead ${'class="sticky-top"' if show_task == -1 else ""}>
       <tr>
         <th>Idx</th>
         <th>Worker</th>
