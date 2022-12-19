@@ -10,12 +10,20 @@
 
 % if show_task >= 0:
 <script>
-  window.addEventListener("load", (event) => {
-    document.getElementById("task${show_task}")
+  function scroll_to(task_id) {
+    document.getElementById("task" + task_id)
     .scrollIntoView();
+  }
+  document.addEventListener("DOMContentLoaded", (event) => {
+    const resize_observer = new ResizeObserver((entries) => {
+      scroll_to(${show_task});
+    });
+    resize_observer.observe(document.body);
+    scroll_to(${show_task});
   });
 </script>
 % endif
+
 
 <%namespace name="base" file="base.mak"/>
 
@@ -578,7 +586,7 @@
       });
 
       // Hide large diffs by default
-      if (${show_task} == -1 && numLines < 50) {
+      if (numLines < 50) {
         diffContents.style.display = "";
         if (copyDiffBtn) copyDiffBtn.style.display = "";
         toggleBtn.textContent = "Hide";
