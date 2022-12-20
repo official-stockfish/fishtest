@@ -36,12 +36,12 @@ class UserDb:
         with self.user_lock:
             self.cache.clear()
 
-    @lru_cache(maxsize=128)
     def hash_password(self, password,
         time_cost: int = 3, memory_cost: int = 65536, parallelism: int = 4,
         hash_len: int = 32, salt_len: int = 16):
         return PasswordHasher().hash(password)
 
+    @lru_cache(maxsize=1024)
     def check_password(self, hashed_password, password):
         try:
             return PasswordHasher().verify(hashed_password, password)
