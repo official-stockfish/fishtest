@@ -193,11 +193,12 @@ class RunDb:
             sort=[("last_updated", DESCENDING)],
         )
         for run in active_runs:
-            for task in run["tasks"]:
+            for task_id, task in enumerate(run["tasks"]):
                 if task["active"]:
                     machine = copy.copy(task["worker_info"])
                     machine["last_updated"] = task.get("last_updated", None)
                     machine["run"] = run
+                    machine["task_id"] = task_id
                     machines.append(machine)
         return machines
 
