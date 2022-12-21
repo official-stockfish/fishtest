@@ -39,7 +39,7 @@
           <td>${python_version}</td>
           <td>${version}</td>
           <td>
-            <a href="/tests/view/${machine['run']['_id']}">${machine['run']['args']['new_tag']}</a>
+            <a href="/tests/view/${str(machine['run']['_id'])+'?show_task='+str(machine['task_id'])}">${machine['run']['args']['new_tag']+"/"+str(machine['task_id'])}</a>
           </td>
           <td>${machine['last_updated']}</td>
         </tr>
