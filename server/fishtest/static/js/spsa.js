@@ -1,4 +1,4 @@
-(function () {
+function spsa () {
   let raw = [],
     chart_object,
     chart_data,
@@ -194,8 +194,9 @@
         chart_colors[(col - 1) % chart_colors.length];
     }
   }
-
-  document.addEventListener("DOMContentLoaded", () => {
+  return new Promise ( (resolve, reject) => {
+    document.addEventListener("DOMContentLoaded", resolve);
+  }).then( () => {
     //fade in loader
     const loader = document.getElementById("div_spsa_preload");
     loader.style.display = "";
@@ -205,9 +206,8 @@
     }, 150);
 
     //load google library
-    google.charts.load("current", {
-      packages: ["corechart"],
-      callback: function () {
+      return google.charts.load("current", {packages: ["corechart"]}).then(
+	() => {
         const spsa_params = spsa_data.params;
         const spsa_history = spsa_data.param_history;
         const spsa_iter_ratio = Math.min(
@@ -224,7 +224,7 @@
           const historyPlot = document.getElementById("div_spsa_history_plot");
           historyPlot.replaceChildren();
           historyPlot.append(alertElement);
-          return;
+          return Promise.resolve();
         }
 
         for (let i = 0; i < smoothing_max; i++) data_cache.push(false);
@@ -326,7 +326,6 @@
 
             redraw(false);
           });
-      },
-    });
+	});
   });
-})();
+}
