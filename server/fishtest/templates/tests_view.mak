@@ -12,15 +12,8 @@
 <script>
   function scroll_to(task_id) {
     document.getElementById("task" + task_id)
-    .scrollIntoView();
+      .scrollIntoView();
   }
-  document.addEventListener("DOMContentLoaded", (event) => {
-    const resize_observer = new ResizeObserver((entries) => {
-      scroll_to(${show_task});
-    });
-    resize_observer.observe(document.body);
-    scroll_to(${show_task});
-  });
 </script>
 % endif
 
@@ -35,6 +28,13 @@
     <script src="/js/spsa.js?v=${cache_busters['js/spsa.js']}"
             integrity="sha384-${cache_busters['js/spsa.js']}"
             crossorigin="anonymous"></script>
+    <script>
+      const spsa_promise = spsa();
+    </script>
+% else:
+    <script>
+      const spsa_promise = Promise.resolve();
+    </script>
 % endif
 
 <h2>
@@ -511,8 +511,9 @@
 
 <script>
   document.title = "${page_title} | Stockfish Testing";
-
-  document.addEventListener("DOMContentLoaded", function () {
+  diff_promise = new Promise( (resolve, reject) => {
+    document.addEventListener("DOMContentLoaded", resolve);
+  }).then(() => {
     let copyDiffBtn = document.getElementById("copy-diff");
     if (
       document.queryCommandSupported &&
@@ -546,13 +547,13 @@
     // Check if the diff is already in sessionStorage and use it if it is
     const diffId = sessionStorage.getItem("${run['_id']}");
     if (!diffId) {
-      fetchDiff();
+      return fetchDiff();
     } else {
-      showDiff(diffId);
+      return showDiff(diffId);
     }
 
     function fetchDiff() {
-      fetch(diffApiUrl, {
+      return fetch(diffApiUrl, {
         headers: {
           Accept: "application/vnd.github.v3.diff",
         },
@@ -561,8 +562,8 @@
           if (response.ok) return response.text();
         })
         .then((text) => {
-          if (!text) return;
-          showDiff(text);
+          if (!text) return Promise.resolve();
+          return showDiff(text);
         });
     }
 
@@ -605,12 +606,12 @@
       hljs.highlightElement(diffText);
 
       // Fetch amount of comments
-      fetch(diffApiUrl)
+      return fetch(diffApiUrl)
         .then((response) => {
           if (response.ok) return response.json();
         })
         .then((json) => {
-          if (!json) return;
+          if (!json) return Promise.resolve();
           let numComments = 0;
           json.commits.forEach(function (row) {
             numComments += row.commit.comment_count;
@@ -621,4 +622,10 @@
         });
     }
   });
+  Promise.all([spsa_promise, diff_promise])
+    .then( () => {
+    % if show_task >= 0:
+      scroll_to(${show_task});
+    % endif
+    });
 </script>
