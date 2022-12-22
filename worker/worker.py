@@ -33,7 +33,6 @@ packages_dir = Path(__file__).resolve().parent / "packages"
 sys.path.append(str(packages_dir))
 
 import requests
-
 from games import (
     EXE_SUFFIX,
     IS_MACOS,

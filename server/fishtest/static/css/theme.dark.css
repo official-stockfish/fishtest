@@ -241,7 +241,6 @@ div#tasks thead {
   background-color: #800080;
 }
 
-
 /* Override - test tasks table - purged tasks red background */
 td[style*="background-color:#ffebeb"] {
   background: #5f1c1c !important;

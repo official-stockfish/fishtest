@@ -138,7 +138,7 @@
 }
 
 code {
-  white-space: pre-wrap; 
+  white-space: pre-wrap;
   word-break: break-word !important;
 }
 
@@ -425,7 +425,7 @@ legend {
   width: 20%;
 }
 
-.sprt-calc-chart{
+.sprt-calc-chart {
   height: 500px;
 }
 
@@ -439,7 +439,7 @@ legend {
   text-align: right;
 }
 
-#sprt-calc-description ul{
+#sprt-calc-description ul {
   word-break: break-word;
 }
 
@@ -453,8 +453,8 @@ legend {
   content: "\f328";
 }
 
-#div_spsa_preload{
-  background-image:url('/img/preload.gif');
+#div_spsa_preload {
+  background-image: url("/img/preload.gif");
   height: 32px;
   display: none;
 }

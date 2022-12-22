@@ -1,4 +1,4 @@
-function spsa () {
+function spsa() {
   let raw = [],
     chart_object,
     chart_data,
@@ -194,9 +194,9 @@ function spsa () {
         chart_colors[(col - 1) % chart_colors.length];
     }
   }
-  return new Promise ( (resolve, reject) => {
+  return new Promise((resolve, reject) => {
     document.addEventListener("DOMContentLoaded", resolve);
-  }).then( () => {
+  }).then(() => {
     //fade in loader
     const loader = document.getElementById("div_spsa_preload");
     loader.style.display = "";
@@ -206,8 +206,9 @@ function spsa () {
     }, 150);
 
     //load google library
-      return google.charts.load("current", {packages: ["corechart"]}).then(
-	() => {
+    return google.charts
+      .load("current", { packages: ["corechart"] })
+      .then(() => {
         const spsa_params = spsa_data.params;
         const spsa_history = spsa_data.param_history;
         const spsa_iter_ratio = Math.min(
@@ -217,7 +218,7 @@ function spsa () {
 
         if (!spsa_history || spsa_history.length < 2) {
           document.getElementById("div_spsa_preload").style.display = "none";
-          const alertElement = document.createElement('div');
+          const alertElement = document.createElement("div");
           alertElement.className = "alert alert-warning";
           alertElement.role = "alert";
           alertElement.textContent = "Not enough data to generate plot.";
@@ -326,6 +327,6 @@ function spsa () {
 
             redraw(false);
           });
-	});
+      });
   });
 }

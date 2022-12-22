@@ -6,10 +6,10 @@ import os
 import re
 import threading
 import time
+import urllib
 
 import fishtest.stats.stat_util
 import requests
-import urllib
 from fishtest.util import (
     delta_date,
     diff_date,
@@ -190,9 +190,7 @@ def sync_upload(request):
         response.raise_for_status()
     except Exception as e:
         print("Network upload failed: " + str(e))
-        request.session.flash(
-            "Post request for the network upload failed", "error"
-        )
+        request.session.flash("Post request for the network upload failed", "error")
         return {}
 
     request.actiondb.upload_nn(

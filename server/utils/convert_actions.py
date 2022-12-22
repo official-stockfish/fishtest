@@ -2,7 +2,6 @@ import datetime
 
 import pymongo
 
-
 if __name__ == "__main__":
     client = pymongo.MongoClient()
     actions_collection = client["fishtest_new"]["actions"]
