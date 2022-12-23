@@ -10,7 +10,7 @@
 
 % if show_task >= 0:
 <script>
-  document.documentElement.style="scroll-behavior:auto !important; visibility:hidden !important;";
+  document.documentElement.style="scroll-behavior:auto !important; overflow:hidden !important";
   function scroll_to(task_id) {
     document.getElementById("task" + task_id)
       .scrollIntoView();
@@ -37,6 +37,8 @@
       const spsa_promise = Promise.resolve();
     </script>
 % endif
+
+<div id="enclosure" ${"style=\"visibility:hidden !important;\"" if show_task >= 0 else "" |n}>
 
 <h2>
   <span>${page_title}</span>
@@ -441,6 +443,10 @@
   </table>
 </div>
 
+## End of enclosing div to be able to make things invisible.
+</div>
+
+
 <script
   src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"
   integrity="sha512-yUUc0qWm2rhM7X0EFe82LNnv2moqArj5nro/w1bi05A09hRVeIZbN6jlMoyu0+4I/Bu4Ck/85JQIU82T82M28w=="
@@ -627,7 +633,8 @@
     .then( () => {
     % if show_task >= 0:
       scroll_to(${show_task});
-      document.documentElement.style="visibility:visible !important;";
+      document.getElementById("enclosure").style="visibility:visible !important;";
+      document.documentElement.style="scroll-behavior:auto !important; overflow:scroll !important";
     % endif
     });
 </script>
