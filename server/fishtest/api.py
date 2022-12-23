@@ -27,7 +27,7 @@ db directly. However this information may be slightly outdated, depending
 on how frequently the main instance flushes its run cache.
 """
 
-WORKER_VERSION = 194
+WORKER_VERSION = 195
 
 flag_cache = {}
 
