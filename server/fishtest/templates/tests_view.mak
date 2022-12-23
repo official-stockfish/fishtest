@@ -10,6 +10,7 @@
 
 % if show_task >= 0:
 <script>
+  document.documentElement.style="scroll-behavior:auto !important; visibility:hidden !important;";
   function scroll_to(task_id) {
     document.getElementById("task" + task_id)
       .scrollIntoView();
@@ -626,6 +627,7 @@
     .then( () => {
     % if show_task >= 0:
       scroll_to(${show_task});
+      document.documentElement.style="visibility:visible !important;";
     % endif
     });
 </script>
