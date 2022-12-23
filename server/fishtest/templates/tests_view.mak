@@ -18,10 +18,13 @@ function event_listener(event) {
 
 % if show_task >= 0:
 <script>
-  document.documentElement.style="scroll-behavior:auto !important; overflow:hidden !important";
+  document.documentElement.style="scroll-behavior:auto; overflow:hidden;";
   function scroll_to(task_id) {
-    document.getElementById("task" + task_id)
-      .scrollIntoView();
+    const task_offset = document.getElementById("task" + task_id).offsetTop;
+    const tasks_head_height = document.getElementById("tasks-head").offsetHeight;
+    const tasks_div = document.getElementById("tasks");
+    tasks_div.scrollIntoView();
+    tasks_div.scrollTop = task_offset - tasks_head_height;
   }
 </script>
 % endif
@@ -46,7 +49,7 @@ function event_listener(event) {
     </script>
 % endif
 
-<div id="enclosure" ${"style=\"visibility:hidden !important;\"" if show_task >= 0 else "" |n}>
+<div id="enclosure"${' style="visibility:hidden;"' if show_task >= 0 else "" |n}>
 
 <h2>
   <span>${page_title}</span>
@@ -349,7 +352,7 @@ function event_listener(event) {
 <div id="tasks"
      class="overflow-auto ${'collapse show' if tasks_shown else 'collapse'}">
   <table class='table table-striped table-sm'>
-    <thead ${'class="sticky-top"' if show_task == -1 else "" | n}>
+    <thead id="tasks-head" class="sticky-top">
       <tr>
         <th>Idx</th>
         <th>Worker</th>
@@ -645,8 +648,8 @@ function event_listener(event) {
     .then(() => {
     % if show_task >= 0:
       scroll_to(${show_task});
-      document.getElementById("enclosure").style="visibility:visible !important;";
-      document.documentElement.style="scroll-behavior:auto !important; overflow:scroll !important";
+      document.getElementById("enclosure").style="visibility:visible;";
+      document.documentElement.style="overflow:scroll;";
     % endif
     });
 </script>
