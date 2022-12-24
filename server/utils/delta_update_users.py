@@ -231,7 +231,7 @@ def update_users():
     print("Successfully updated {} users".format(len(users)))
 
     # record this update run
-    rundb.actiondb.update_stats(message="Update user statistics")
+    rundb.actiondb.system_event(message="Update user statistics")
 
 
 if __name__ == "__main__":
