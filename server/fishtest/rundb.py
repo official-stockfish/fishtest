@@ -1,3 +1,4 @@
+import configparser
 import copy
 import math
 import os
@@ -37,6 +38,27 @@ boot_time = datetime.utcnow()
 last_rundb = None
 
 
+def get_port():
+    params = {}
+    args = sys.argv
+    if len(args) <= 1:
+        return -1
+    if os.path.basename(args[0]) != "pserve":
+        return -1
+    config = args[1]
+    for arg in args[2:]:
+        if arg[0] == "-" or "=" not in arg:
+            continue
+        arg = arg.split("=")
+        params[arg[0].strip()] = arg[1].strip()
+    c = configparser.ConfigParser(defaults=params)
+    try:
+        c.read(config)
+        return int(c["server:main"]["port"])
+    except:
+        return -1
+
+
 class RunDb:
     def __init__(self, db_name="fishtest_new"):
         # MongoDB server is assumed to be on the same machine, if not user should
@@ -49,12 +71,16 @@ class RunDb:
         self.nndb = self.db["nns"]
         self.runs = self.db["runs"]
         self.deltas = self.db["deltas"]
+        self.port = get_port()
         self.task_runs = []
 
         self.task_duration = 900  # 15 minutes
 
         global last_rundb
         last_rundb = self
+
+        if self.port >= 0:
+            self.actiondb.system_event(message=f"start fishtest@{self.port}")
 
     def new_run(
         self,
@@ -266,6 +292,10 @@ class RunDb:
         global last_rundb
         if last_rundb:
             last_rundb.flush_all()
+            if last_rundb.port >= 0:
+                last_rundb.actiondb.system_event(
+                    message=f"stop fishtest@{last_rundb.port}"
+                )
         sys.exit(0)
 
     signal.signal(signal.SIGINT, exit_run)

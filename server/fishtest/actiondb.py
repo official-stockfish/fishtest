@@ -22,7 +22,7 @@ schema = union(
         "run": str,
         "task_id": int,
     },
-    {"action": "update_stats", "username": "fishtest.system", "message": str},
+    {"action": "system_event", "username": "fishtest.system", "message": str},
     {"action": "new_run", "username": str, "run_id": ObjectId, "run": str},
     {"action": "upload_nn", "username": str, "nn": str},
     {
@@ -77,9 +77,13 @@ class ActionDb:
     ):
         q = {}
         if action:
-            q["action"] = action
+            # update_stats is no longer used, but included for backward compatibility
+            if action == "system_event":
+                q["action"] = {"$in" : ["system_event", "update_stats"]}
+            else:
+                q["action"] = action
         else:
-            q["action"] = {"$nin": ["update_stats", "dead_task"]}
+            q["action"] = {"$nin": ["system_event", "update_stats", "dead_task"]}
         if username:
             q["username"] = username
         if text:
@@ -143,9 +147,9 @@ class ActionDb:
             task_id=task_id,
         )
 
-    def update_stats(self, message=None):
+    def system_event(self, message=None):
         self.insert_action(
-            action="update_stats",
+            action="system_event",
             username="fishtest.system",
             message=message,
         )
