@@ -1,4 +1,4 @@
-function spsa() {
+async function handle_spsa() {
   let raw = [],
     chart_object,
     chart_data,
@@ -194,139 +194,120 @@ function spsa() {
         chart_colors[(col - 1) % chart_colors.length];
     }
   }
-  return new Promise((resolve, reject) => {
-    document.addEventListener("DOMContentLoaded", resolve);
-  }).then(() => {
-    //fade in loader
-    const loader = document.getElementById("div_spsa_preload");
-    loader.style.display = "";
-    loader.classList.add("fade");
-    setTimeout(() => {
-      loader.classList.add("show");
-    }, 150);
+  await event_listener("DOMContentLoaded");
+  //fade in loader
+  const loader = document.getElementById("div_spsa_preload");
+  loader.style.display = "";
+  loader.classList.add("fade");
+  setTimeout(() => {
+    loader.classList.add("show");
+  }, 150);
 
-    //load google library
-    return google.charts
-      .load("current", { packages: ["corechart"] })
-      .then(() => {
-        const spsa_params = spsa_data.params;
-        const spsa_history = spsa_data.param_history;
-        const spsa_iter_ratio = Math.min(
-          spsa_data.iter / spsa_data.num_iter,
-          1
-        );
+  //load google library
+  await google.charts.load("current", { packages: ["corechart"] });
+  const spsa_params = spsa_data.params;
+  const spsa_history = spsa_data.param_history;
+  const spsa_iter_ratio = Math.min(spsa_data.iter / spsa_data.num_iter, 1);
 
-        if (!spsa_history || spsa_history.length < 2) {
-          document.getElementById("div_spsa_preload").style.display = "none";
-          const alertElement = document.createElement("div");
-          alertElement.className = "alert alert-warning";
-          alertElement.role = "alert";
-          alertElement.textContent = "Not enough data to generate plot.";
-          const historyPlot = document.getElementById("div_spsa_history_plot");
-          historyPlot.replaceChildren();
-          historyPlot.append(alertElement);
-          return Promise.resolve();
-        }
+  if (!spsa_history || spsa_history.length < 2) {
+    document.getElementById("div_spsa_preload").style.display = "none";
+    const alertElement = document.createElement("div");
+    alertElement.className = "alert alert-warning";
+    alertElement.role = "alert";
+    alertElement.textContent = "Not enough data to generate plot.";
+    const historyPlot = document.getElementById("div_spsa_history_plot");
+    historyPlot.replaceChildren();
+    historyPlot.append(alertElement);
+    return;
+  }
 
-        for (let i = 0; i < smoothing_max; i++) data_cache.push(false);
+  for (let i = 0; i < smoothing_max; i++) data_cache.push(false);
 
-        let googleformat = [];
-        for (let i = 0; i < spsa_history.length; i++) {
-          let d = [(i / (spsa_history.length - 1)) * spsa_iter_ratio];
-          for (let j = 0; j < spsa_params.length; j++) {
-            d.push(spsa_history[i][j].theta);
-          }
-          googleformat.push(d);
-        }
+  let googleformat = [];
+  for (let i = 0; i < spsa_history.length; i++) {
+    let d = [(i / (spsa_history.length - 1)) * spsa_iter_ratio];
+    for (let j = 0; j < spsa_params.length; j++) {
+      d.push(spsa_history[i][j].theta);
+    }
+    googleformat.push(d);
+  }
 
-        chart_data = new google.visualization.DataTable();
+  chart_data = new google.visualization.DataTable();
 
-        chart_data.addColumn("number", "Iteration");
-        for (let i = 0; i < spsa_params.length; i++) {
-          chart_data.addColumn("number", spsa_params[i].name);
-        }
-        chart_data.addRows(googleformat);
+  chart_data.addColumn("number", "Iteration");
+  for (let i = 0; i < spsa_params.length; i++) {
+    chart_data.addColumn("number", spsa_params[i].name);
+  }
+  chart_data.addRows(googleformat);
 
-        data_cache[0] = chart_data;
-        chart_object = new google.visualization.LineChart(
-          document.getElementById("div_spsa_history_plot")
-        );
-        chart_object.draw(chart_data, chart_options);
-        document.getElementById("chart_toolbar").style.display = "";
+  data_cache[0] = chart_data;
+  chart_object = new google.visualization.LineChart(
+    document.getElementById("div_spsa_history_plot")
+  );
+  chart_object.draw(chart_data, chart_options);
+  document.getElementById("chart_toolbar").style.display = "";
 
-        for (let i = 0; i < chart_data.getNumberOfColumns(); i++) {
-          columns.push(i);
-        }
+  for (let i = 0; i < chart_data.getNumberOfColumns(); i++) {
+    columns.push(i);
+  }
 
-        for (let j = 0; j < spsa_params.length; j++) {
-          const dropdownItem = document.createElement("li");
-          const anchorItem = document.createElement("a");
-          anchorItem.className = "dropdown-item";
-          anchorItem.href = "javascript:";
-          anchorItem.param_id = j + 1;
-          anchorItem.append(spsa_params[j].name);
-          dropdownItem.append(anchorItem);
-          document.getElementById("dropdown_individual").append(dropdownItem);
-        }
+  for (let j = 0; j < spsa_params.length; j++) {
+    const dropdownItem = document.createElement("li");
+    const anchorItem = document.createElement("a");
+    anchorItem.className = "dropdown-item";
+    anchorItem.href = "javascript:";
+    anchorItem.param_id = j + 1;
+    anchorItem.append(spsa_params[j].name);
+    dropdownItem.append(anchorItem);
+    document.getElementById("dropdown_individual").append(dropdownItem);
+  }
 
-        document
-          .getElementById("dropdown_individual")
-          .addEventListener("click", (e) => {
-            if (!e.target.matches("a")) return;
-            const { target } = e;
-            const param_id = target.param_id;
-            for (let i = 1; i < chart_data.getNumberOfColumns(); i++) {
-              update_column_visibility(i, i == param_id);
-            }
+  document
+    .getElementById("dropdown_individual")
+    .addEventListener("click", (e) => {
+      if (!e.target.matches("a")) return;
+      const { target } = e;
+      const param_id = target.param_id;
+      for (let i = 1; i < chart_data.getNumberOfColumns(); i++) {
+        update_column_visibility(i, i == param_id);
+      }
 
-            viewAll = false;
-            redraw(false);
-          });
+      viewAll = false;
+      redraw(false);
+    });
 
-        //show/hide functionality
-        google.visualization.events.addListener(
-          chart_object,
-          "select",
-          function (e) {
-            let sel = chart_object.getSelection();
-            if (sel.length > 0 && sel[0].row == null) {
-              const col = sel[0].column;
-              update_column_visibility(col, columns[col] != col);
-              redraw(false);
-            }
-            viewAll = false;
-          }
-        );
+  //show/hide functionality
+  google.visualization.events.addListener(chart_object, "select", function (e) {
+    let sel = chart_object.getSelection();
+    if (sel.length > 0 && sel[0].row == null) {
+      const col = sel[0].column;
+      update_column_visibility(col, columns[col] != col);
+      redraw(false);
+    }
+    viewAll = false;
+  });
 
-        document.getElementById("div_spsa_preload").style.display = "none";
+  document.getElementById("div_spsa_preload").style.display = "none";
 
-        document
-          .getElementById("btn_smooth_plus")
-          .addEventListener("click", () => {
-            if (smoothing_factor < smoothing_max) {
-              smooth_data(++smoothing_factor);
-            }
-          });
+  document.getElementById("btn_smooth_plus").addEventListener("click", () => {
+    if (smoothing_factor < smoothing_max) {
+      smooth_data(++smoothing_factor);
+    }
+  });
 
-        document
-          .getElementById("btn_smooth_minus")
-          .addEventListener("click", () => {
-            if (smoothing_factor > 0) {
-              smooth_data(--smoothing_factor);
-            }
-          });
+  document.getElementById("btn_smooth_minus").addEventListener("click", () => {
+    if (smoothing_factor > 0) {
+      smooth_data(--smoothing_factor);
+    }
+  });
 
-        document
-          .getElementById("btn_view_all")
-          .addEventListener("click", () => {
-            if (viewAll) return;
-            viewAll = true;
-            for (let i = 0; i < chart_data.getNumberOfColumns(); i++) {
-              update_column_visibility(i, true);
-            }
+  document.getElementById("btn_view_all").addEventListener("click", () => {
+    if (viewAll) return;
+    viewAll = true;
+    for (let i = 0; i < chart_data.getNumberOfColumns(); i++) {
+      update_column_visibility(i, true);
+    }
 
-            redraw(false);
-          });
-      });
+    redraw(false);
   });
 }

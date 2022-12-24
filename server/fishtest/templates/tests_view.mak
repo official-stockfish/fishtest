@@ -8,6 +8,14 @@
     spsa_data = json.dumps(run["args"]["spsa"])
 %>
 
+<script>
+function event_listener(event) {
+  return new Promise((resolve,reject) => {
+    window.addEventListener(event, resolve);
+  });
+}
+</script>
+
 % if show_task >= 0:
 <script>
   document.documentElement.style="scroll-behavior:auto !important; overflow:hidden !important";
@@ -30,7 +38,7 @@
             integrity="sha384-${cache_busters['js/spsa.js']}"
             crossorigin="anonymous"></script>
     <script>
-      const spsa_promise = spsa();
+      const spsa_promise = handle_spsa();
     </script>
 % else:
     <script>
@@ -518,9 +526,8 @@
 
 <script>
   document.title = "${page_title} | Stockfish Testing";
-  diff_promise = new Promise( (resolve, reject) => {
-    document.addEventListener("DOMContentLoaded", resolve);
-  }).then(() => {
+  async function handle_diff() {
+    await event_listener("DOMContentLoaded");
     let copyDiffBtn = document.getElementById("copy-diff");
     if (
       document.queryCommandSupported &&
@@ -554,27 +561,29 @@
     // Check if the diff is already in sessionStorage and use it if it is
     const diffId = sessionStorage.getItem("${run['_id']}");
     if (!diffId) {
-      return fetchDiff();
+      await fetchDiff();
     } else {
-      return showDiff(diffId);
+      await showDiff(diffId);
     }
 
-    function fetchDiff() {
-      return fetch(diffApiUrl, {
+    async function fetchDiff() {
+      const response = await fetch(diffApiUrl, {
         headers: {
           Accept: "application/vnd.github.v3.diff",
         },
-      })
-        .then((response) => {
-          if (response.ok) return response.text();
-        })
-        .then((text) => {
-          if (!text) return Promise.resolve();
-          return showDiff(text);
-        });
+      });
+      let text = null;
+      if(response.ok) {
+        text = await response.text();
+      }
+      if(!text) {
+        return;
+      } else {
+        await showDiff(text);
+      }
     }
 
-    function showDiff(text) {
+    async function showDiff(text) {
       const numLines = text.split("\n").length;
       const toggleBtn = document.getElementById("diff-toggle");
       const diffContents = document.getElementById("diff-contents");
@@ -613,12 +622,14 @@
       hljs.highlightElement(diffText);
 
       // Fetch amount of comments
-      return fetch(diffApiUrl)
-        .then((response) => {
-          if (response.ok) return response.json();
-        })
-        .then((json) => {
-          if (!json) return Promise.resolve();
+      const response = await fetch(diffApiUrl);
+      let json = null;
+      if(response.ok){
+        json = await response.json();
+      }
+      if(!json) {
+        return
+      } else {
           let numComments = 0;
           json.commits.forEach(function (row) {
             numComments += row.commit.comment_count;
@@ -626,11 +637,12 @@
           document.getElementById("diff-num-comments").textContent =
             "(" + numComments + " comments)";
           document.getElementById("diff-num-comments").style.display = "";
-        });
+      }
     }
-  });
+  };
+  diff_promise = handle_diff();
   Promise.all([spsa_promise, diff_promise])
-    .then( () => {
+    .then(() => {
     % if show_task >= 0:
       scroll_to(${show_task});
       document.getElementById("enclosure").style="visibility:visible !important;";
