@@ -44,7 +44,7 @@ def get_port():
     if len(args) <= 1:
         return -1
     if os.path.basename(args[0]) != "pserve":
-        return -1
+        return -2
     config = args[1]
     for arg in args[2:]:
         if arg[0] == "-" or "=" not in arg:
@@ -54,9 +54,23 @@ def get_port():
     c = configparser.ConfigParser(defaults=params)
     try:
         c.read(config)
-        return int(c["server:main"]["port"])
     except:
-        return -1
+        return -3
+    try:
+        section = c["server:main"]
+    except:
+        return -4
+    if "port" in section:
+        port = section["port"]
+    elif "listen" in section:
+        listen = section["listen"]
+        port = listen.split(":")[-1]
+    else:
+        return -5
+    try:
+        return int(port)
+    except:
+        return -6
 
 
 class RunDb:
@@ -72,6 +86,8 @@ class RunDb:
         self.runs = self.db["runs"]
         self.deltas = self.db["deltas"]
         self.port = get_port()
+        if self.port < 0:
+            print(f"Unable to obtain the port number. Error: {self.port}", flush=True)
         self.task_runs = []
 
         self.task_duration = 900  # 15 minutes
