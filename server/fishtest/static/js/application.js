@@ -75,7 +75,9 @@ document.addEventListener("DOMContentLoaded", () => {
         ?.remove();
     }
     // Remember the theme for 30 days
-    document.cookie = `theme=${theme};path=/;max-age=${30 * 24 * 60 * 60};SameSite=Lax;`;
+    document.cookie = `theme=${theme};path=/;max-age=${
+      30 * 24 * 60 * 60
+    };SameSite=Lax;`;
   };
 
   const getPreferredTheme = () => {
@@ -125,3 +127,22 @@ document.addEventListener("DOMContentLoaded", () => {
     form.append(input);
   });
 });
+
+function DOM_loaded() {
+  // Use as
+  // await DOM_loaded();
+  // in an async function.
+  return new Promise((resolve, reject) => {
+    if (document.readyState == "loading") {
+      document.addEventListener("DOMContentLoaded", resolve);
+    } else {
+      resolve();
+    }
+  });
+}
+
+function async_sleep(ms) {
+  return new Promise((resolve, reject) => {
+    setTimeout(resolve, ms);
+  });
+}

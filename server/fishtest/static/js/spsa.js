@@ -194,7 +194,7 @@ async function handle_spsa() {
         chart_colors[(col - 1) % chart_colors.length];
     }
   }
-  await event_listener("DOMContentLoaded");
+  await DOM_loaded();
   //fade in loader
   const loader = document.getElementById("div_spsa_preload");
   loader.style.display = "";

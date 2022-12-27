@@ -45,8 +45,7 @@
 
     <script src="/js/application.js?v=${cache_busters['js/application.js']}"
             integrity="sha384-${cache_busters['js/application.js']}"
-            crossorigin="anonymous"
-            defer></script>
+            crossorigin="anonymous"></script>
 
     <%block name="head"/>
   </head>

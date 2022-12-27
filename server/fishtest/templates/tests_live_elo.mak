@@ -1,8 +1,15 @@
 <%inherit file="base.mak"/>
 
+<script src="https://www.gstatic.com/charts/loader.js"></script>
+<script src="/js/live_elo.js?v=${cache_busters['js/live_elo.js']}"
+        integrity="sha384-${cache_busters['js/live_elo.js']}"
+        crossorigin="anonymous"></script>
+
+
 <script>
   document.title = 'Live Elo - ${page_title} | Stockfish Testing';
   const test_id = "${str(run['_id'])}";
+  follow_live(test_id);
 </script>
 
 <div class="container">
@@ -72,7 +79,3 @@
     </div>
   </div>
 </div>
-<script src="https://www.gstatic.com/charts/loader.js"></script>
-<script src="/js/live_elo.js?v=${cache_busters['js/live_elo.js']}"
-        integrity="sha384-${cache_busters['js/live_elo.js']}"
-        crossorigin="anonymous"></script>
