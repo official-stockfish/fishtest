@@ -8,14 +8,6 @@
     spsa_data = json.dumps(run["args"]["spsa"])
 %>
 
-<script>
-function event_listener(event) {
-  return new Promise((resolve,reject) => {
-    window.addEventListener(event, resolve);
-  });
-}
-</script>
-
 % if show_task >= 0:
 <script>
   document.documentElement.style="scroll-behavior:auto; overflow:hidden;";
@@ -530,7 +522,7 @@ function event_listener(event) {
 <script>
   document.title = "${page_title} | Stockfish Testing";
   async function handle_diff() {
-    await event_listener("DOMContentLoaded");
+    await DOM_loaded();
     let copyDiffBtn = document.getElementById("copy-diff");
     if (
       document.queryCommandSupported &&
