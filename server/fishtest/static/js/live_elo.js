@@ -198,30 +198,23 @@ async function follow_live(test_id) {
     set_gauges(j.LLR, j.a, j.b, j.LOS, j.elo, j.ci_lower, j.ci_upper);
   }
 
-  // Main worker.
+  // Main worker
 
   let handled_once = false;
   while (true) {
     const timestamp = new Date().getTime();
-    let response = null;
     try {
-      response = await fetch("/api/get_elo/" + test_id + "?" + timestamp);
-    } catch (e) {
-      await async_sleep(20000);
-      continue;
-    }
-    if (response.ok) {
-      const m = await response.json();
-      if (m) {
-        display_data(m);
-        if (m.args.sprt.state) {
-          if (handled_once) {
-            notify(m.args.new_tag, m.args.sprt.state, m.elo.elo);
-          }
-          return;
+      const m = await fetch_json("/api/get_elo/" + test_id + "?" + timestamp);
+      display_data(m);
+      if (m.args.sprt.state) {
+        if (handled_once) {
+          notify(m.args.new_tag, m.args.sprt.state, m.elo.elo);
         }
-        handled_once = true;
+        return;
       }
+      handled_once = true;
+    } catch (e) {
+      console.log("Network error: " + e);
     }
     await async_sleep(20000);
   }

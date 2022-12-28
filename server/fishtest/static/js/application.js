@@ -142,6 +142,20 @@ function supportsNotifications() {
   return false;
 }
 
+function raise_for_status(response) {
+  // A useful function from the python requests package
+  if (response.ok) {
+    return;
+  }
+  throw `request failed with status code ${response.status}`;
+}
+
+async function fetch_json(url) {
+  const response = await fetch(url);
+  raise_for_status(response);
+  return response.json();
+}
+
 function DOM_loaded() {
   // Use as
   // await DOM_loaded();
