@@ -128,6 +128,20 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
+function supportsNotifications() {
+  if (
+    // Safari on iOS doesn't support them
+    "Notification" in window &&
+    // Chrome and Opera on Android don't support them
+    !(
+      navigator.userAgent.match(/Android/i) &&
+      navigator.userAgent.match(/Chrome/i)
+    )
+  )
+    return true;
+  return false;
+}
+
 function DOM_loaded() {
   // Use as
   // await DOM_loaded();

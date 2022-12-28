@@ -1,37 +1,30 @@
 "use strict";
 
 async function follow_live(test_id) {
-  await DOM_loaded();
-  function supportsNotifications() {
-    if (
-      // Safari on iOS doesn't support them
-      "Notification" in window &&
-      // Chrome and Opera on Android don't support them
-      !(
-        navigator.userAgent.match(/Android/i) &&
-        navigator.userAgent.match(/Chrome/i)
-      )
-    )
-      return true;
-    return false;
-  }
+  await Promise.all([
+    DOM_loaded(),
+    google.charts.load("current", { packages: ["gauge"] }),
+  ]);
 
   if (supportsNotifications() && Notification.permission === "default") {
     document.getElementById("notificationsAlert").classList.remove("d-none");
   }
 
   function notify(tag, state, elo) {
-    const notification = new Notification(`Test ${tag} ${state}!`, {
-      body: `Elo: ${elo > 0 ? "+" : ""}${elo.toFixed(2)}`,
-      requireInteraction: true,
-      icon: "https://tests.stockfishchess.org/img/stockfish.png",
-    });
-    notification.onclick = () => {
-      window.parent.parent.focus();
-    };
+    if (supportsNotifications() && Notification.permission === "granted") {
+      const notification = new Notification(`Test ${tag} ${state}!`, {
+        body: `Elo: ${elo > 0 ? "+" : ""}${elo.toFixed(2)}`,
+        requireInteraction: true,
+        icon: "https://tests.stockfishchess.org/img/stockfish.png",
+      });
+      notification.onclick = () => {
+        window.parent.parent.focus();
+      };
+    } else {
+      console.log(`${tag} ${state}! Elo: ${elo}`);
+    }
   }
 
-  await google.charts.load("current", { packages: ["gauge"] });
   let LOS_chart = null;
   let LLR_chart = null;
   let ELO_chart = null;
@@ -155,17 +148,6 @@ async function follow_live(test_id) {
   function display_data(items) {
     const j = collect(items);
 
-    if (
-      // Only notify if the test has a state (accepted or rejected)
-      items.args.sprt.state &&
-      // Only notify if there is already text in LLR (the test wasn't just opened)
-      document.getElementById("LLR").textContent !== "" &&
-      supportsNotifications() &&
-      Notification.permission === "granted"
-    ) {
-      notify(items.args.new_tag, items.args.sprt.state, j.elo);
-    }
-
     document.getElementById("data").style.visibility = "visible";
 
     document.getElementById(
@@ -218,6 +200,7 @@ async function follow_live(test_id) {
 
   // Main worker.
 
+  let handled_once = false;
   while (true) {
     const timestamp = new Date().getTime();
     let response = null;
@@ -232,8 +215,12 @@ async function follow_live(test_id) {
       if (m) {
         display_data(m);
         if (m.args.sprt.state) {
+          if (handled_once) {
+            notify(m.args.new_tag, m.args.sprt.state, m.elo.elo);
+          }
           return;
         }
+        handled_once = true;
       }
     }
     await async_sleep(20000);
