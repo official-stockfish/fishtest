@@ -521,6 +521,7 @@
 
 <script>
   document.title = "${page_title} | Stockfish Testing";
+
   async function handle_diff() {
     await DOM_loaded();
     let copyDiffBtn = document.getElementById("copy-diff");
@@ -547,38 +548,9 @@
       copyDiffBtn = null;
     }
 
-    // Fetch the diff and decide whether to show it on the page
-    const diffApiUrl = "${h.diff_url(run)}".replace(
-      "//github.com/",
-      "//api.github.com/repos/"
-    );
+    // Define some functions to fetch the diff and show it
 
-    // Check if the diff is already in sessionStorage and use it if it is
-    const diffId = sessionStorage.getItem("${run['_id']}");
-    if (!diffId) {
-      await fetchDiff();
-    } else {
-      await showDiff(diffId);
-    }
-
-    async function fetchDiff() {
-      const response = await fetch(diffApiUrl, {
-        headers: {
-          Accept: "application/vnd.github.v3.diff",
-        },
-      });
-      let text = null;
-      if(response.ok) {
-        text = await response.text();
-      }
-      if(!text) {
-        return;
-      } else {
-        await showDiff(text);
-      }
-    }
-
-    async function showDiff(text) {
+    function showDiff(text) {
       const numLines = text.split("\n").length;
       const toggleBtn = document.getElementById("diff-toggle");
       const diffContents = document.getElementById("diff-contents");
@@ -615,26 +587,59 @@
       }
       document.getElementById("diff-section").style.display = "";
       hljs.highlightElement(diffText);
+    }
 
-      // Fetch amount of comments
-      const response = await fetch(diffApiUrl);
-      let json = null;
-      if(response.ok){
-        json = await response.json();
+    async function fetchDiff(diffApiUrl) {
+      try {
+        const text = await fetch_text(diffApiUrl, {
+          headers: {
+            Accept: "application/vnd.github.diff",
+          },
+        });
+        return text;
+      } catch(e) {
+        console.log("Error fetching diff: " + e);
       }
-      if(!json) {
-        return
-      } else {
-          let numComments = 0;
-          json.commits.forEach(function (row) {
-            numComments += row.commit.comment_count;
-          });
-          document.getElementById("diff-num-comments").textContent =
+      return "";
+    }
+
+    async function fetchComments(diffApiUrl) {
+      // Fetch amount of comments
+      try {
+        const json = await fetch_json(diffApiUrl);
+        let numComments = 0;
+        json.commits.forEach(function (row) {
+          numComments += row.commit.comment_count;
+        });
+         document.getElementById("diff-num-comments").textContent =
             "(" + numComments + " comments)";
-          document.getElementById("diff-num-comments").style.display = "";
+         document.getElementById("diff-num-comments").style.display = "";
+      } catch(e) {
+        console.log("Error fetching comments: "+e);
+        return;
       }
     }
-  };
+
+
+    // Let's go
+
+    const diffApiUrl = "${h.diff_url(run)}".replace(
+      "//github.com/",
+      "//api.github.com/repos/"
+    );
+
+    // Check if the diff is already in sessionStorage and use it if it is
+    let text = sessionStorage.getItem("${run['_id']}");
+    if (!text) {
+      text = await fetchDiff(diffApiUrl);
+    }
+    if (text) {
+      showDiff(text);
+      return fetchComments(diffApiUrl);
+    }
+
+  }
+
   diff_promise = handle_diff();
   Promise.all([spsa_promise, diff_promise])
     .then(() => {

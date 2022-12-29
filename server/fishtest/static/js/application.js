@@ -150,10 +150,16 @@ function raise_for_status(response) {
   throw `request failed with status code ${response.status}`;
 }
 
-async function fetch_json(url) {
-  const response = await fetch(url);
+async function fetch_json(url, options) {
+  const response = await fetch(url, options);
   raise_for_status(response);
   return response.json();
+}
+
+async function fetch_text(url, options) {
+  const response = await fetch(url, options);
+  raise_for_status(response);
+  return response.text();
 }
 
 function DOM_loaded() {
