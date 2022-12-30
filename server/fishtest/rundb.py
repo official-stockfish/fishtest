@@ -91,6 +91,8 @@ class RunDb:
         self.task_runs = []
 
         self.task_duration = 900  # 15 minutes
+        self.ltc_lower_bound =40 # Beware: this is used as a filter in an index!
+        self.pt_info = {'pt_version' : 'SF_15', 'pt_branch' : "e6e324eb28fd49c1fc44b3b65784f85a773ec61c", 'pt_bench' : 8129754}
 
         global last_rundb
         last_rundb = self
@@ -538,7 +540,7 @@ class RunDb:
         if username:
             q["args.username"] = username
         if ltc_only:
-            q["tc_base"] = {"$gte": 40}
+            q["tc_base"] = {"$gte": self.ltc_lower_bound}
         if success_only:
             q["is_green"] = True
         if yellow_only:
