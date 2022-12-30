@@ -23,7 +23,13 @@ schema = union(
         "task_id": int,
     },
     {"action": "system_event", "username": "fishtest.system", "message": str},
-    {"action": "new_run", "username": str, "run_id": ObjectId, "run": str, "message": str},
+    {
+        "action": "new_run",
+        "username": str,
+        "run_id": ObjectId,
+        "run": str,
+        "message": str,
+    },
     {"action": "upload_nn", "username": str, "nn": str},
     {
         "action": "modify_run",

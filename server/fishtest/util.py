@@ -1,9 +1,9 @@
+import hashlib
 import smtplib
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 
 import fishtest.stats.stat_util
-import hashlib
 import numpy
 import scipy.stats
 from email_validator import EmailNotValidError, caching_resolver, validate_email

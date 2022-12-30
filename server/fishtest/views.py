@@ -857,22 +857,26 @@ def update_nets(request, run):
 
 
 def new_run_message(request, run):
-    if 'sprt' in run['args']:
+    if "sprt" in run["args"]:
         sprt = run["args"]["sprt"]
         elo_model = sprt.get("elo_model")
         ret = f"SPRT{format_bounds(elo_model, sprt['elo0'], sprt['elo1'])}"
-    elif 'spsa' in run['args']:
+    elif "spsa" in run["args"]:
         ret = f"SPSA[{run['args']['num_games']}]"
     else:
         ret = f"NumGames[{run['args']['num_games']}]"
-        if run['args']['resolved_base'] == request.rundb.pt_info["pt_branch"]:
+        if run["args"]["resolved_base"] == request.rundb.pt_info["pt_branch"]:
             ret += f"(PT:{request.rundb.pt_info['pt_version']})"
     ret += f" TC:{run['args']['tc']}"
-    ret += f"[{run['args']['new_tc']}]" if run['args']['new_tc'] != run['args']['tc'] else ""
+    ret += (
+        f"[{run['args']['new_tc']}]"
+        if run["args"]["new_tc"] != run["args"]["tc"]
+        else ""
+    )
     ret += "(LTC)" if run["tc_base"] >= request.rundb.ltc_lower_bound else ""
     ret += f" Book:{run['args']['book']}"
     ret += f" Threads:{run['args']['threads']}"
-    ret += "(SMP)" if run['args']['threads'] > 1 else ""
+    ret += "(SMP)" if run["args"]["threads"] > 1 else ""
     return ret
 
 
@@ -920,7 +924,7 @@ def tests_run(request):
         "tests_repo": u.get("tests_repo", ""),
         "master_info": get_master_info(),
         "valid_books": get_valid_books(),
-        "pt_info" : request.rundb.pt_info,
+        "pt_info": request.rundb.pt_info,
     }
 
 

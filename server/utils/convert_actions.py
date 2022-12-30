@@ -1,7 +1,8 @@
 import datetime
+
+import pymongo
 from fishtest.actiondb import run_name
 from fishtest.util import hex_print
-import pymongo
 
 if __name__ == "__main__":
     client = pymongo.MongoClient()
