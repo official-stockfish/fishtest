@@ -23,7 +23,7 @@ schema = union(
         "task_id": int,
     },
     {"action": "system_event", "username": "fishtest.system", "message": str},
-    {"action": "new_run", "username": str, "run_id": ObjectId, "run": str},
+    {"action": "new_run", "username": str, "run_id": ObjectId, "run": str, "message": str},
     {"action": "upload_nn", "username": str, "nn": str},
     {
         "action": "modify_run",
@@ -160,12 +160,13 @@ class ActionDb:
             message=message,
         )
 
-    def new_run(self, username=None, run=None):
+    def new_run(self, username=None, run=None, message=None):
         self.insert_action(
             action="new_run",
             username=username,
             run_id=run["_id"],
             run=run_name(run),
+            message=message,
         )
 
     def upload_nn(self, username=None, nn=None):

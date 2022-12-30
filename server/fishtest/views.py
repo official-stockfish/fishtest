@@ -15,6 +15,7 @@ from fishtest.util import (
     diff_date,
     email_valid,
     estimate_game_duration,
+    format_bounds,
     format_results,
     get_chi2,
     password_strength,
@@ -855,6 +856,26 @@ def update_nets(request, run):
         request.rundb.update_nn(net)
 
 
+def new_run_message(request, run):
+    if 'sprt' in run['args']:
+        sprt = run["args"]["sprt"]
+        elo_model = sprt.get("elo_model")
+        ret = f"SPRT{format_bounds(elo_model, sprt['elo0'], sprt['elo1'])}"
+    elif 'spsa' in run['args']:
+        ret = f"SPSA[{run['args']['num_games']}]"
+    else:
+        ret = f"NumGames[{run['args']['num_games']}]"
+        if run['args']['resolved_base'] == request.rundb.pt_info["pt_branch"]:
+            ret += f"(PT:{request.rundb.pt_info['pt_version']})"
+    ret += f" TC:{run['args']['tc']}"
+    ret += f"[{run['args']['new_tc']}]" if run['args']['new_tc'] != run['args']['tc'] else ""
+    ret += "(LTC)" if run["tc_base"] >= request.rundb.ltc_lower_bound else ""
+    ret += f" Book:{run['args']['book']}"
+    ret += f" Threads:{run['args']['threads']}"
+    ret += "(SMP)" if run['args']['threads'] > 1 else ""
+    return ret
+
+
 @view_config(route_name="tests_run", renderer="tests_run.mak", require_csrf=True)
 def tests_run(request):
     if not request.authenticated_userid:
@@ -873,6 +894,7 @@ def tests_run(request):
             request.actiondb.new_run(
                 username=request.authenticated_userid,
                 run=run,
+                message=new_run_message(request, run),
             )
             cached_flash(request, "Submitted test to the queue!")
             return HTTPFound(location="/tests/view/" + str(run_id))
@@ -898,6 +920,7 @@ def tests_run(request):
         "tests_repo": u.get("tests_repo", ""),
         "master_info": get_master_info(),
         "valid_books": get_valid_books(),
+        "pt_info" : request.rundb.pt_info,
     }
 
 

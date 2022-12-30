@@ -8,9 +8,9 @@
   base_branch = args.get('base_tag', 'master')
   latest_bench = args.get('base_signature', master_info["bench"])
 
-  pt_version = "SF 15"
-  pt_branch = "e6e324eb28fd49c1fc44b3b65784f85a773ec61c"
-  pt_signature = 8129754
+  pt_version = pt_info["pt_version"]
+  pt_branch = pt_info["pt_branch"]
+  pt_signature = pt_info["pt_bench"]
 
   tc = args.get('tc', '10+0.1')
   new_tc = args.get('new_tc', tc)
