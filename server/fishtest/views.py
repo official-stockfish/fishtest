@@ -325,11 +325,39 @@ def sprt_calc(request):
     return {}
 
 
+# Different LOCALES may have different quotation marks.
+# See https://op.europa.eu/en/web/eu-vocabularies/formex/physical-specifications/character-encoding/quotation-marks
+
+quotation_marks = [
+    0x0022,
+    0x0027,
+    0x00AB,
+    0x00BB,
+    0x2018,
+    0x2019,
+    0x201A,
+    0x201B,
+    0x201C,
+    0x201D,
+    0x201E,
+    0x201F,
+    0x2039,
+    0x203A,
+]
+
+quotation_marks = "".join([chr(c) for c in quotation_marks])
+quotation_marks_translation = str.maketrans(quotation_marks, len(quotation_marks) * '"')
+
+
+def sanitize_quotation_marks(text):
+    return text.translate(quotation_marks_translation)
+
+
 @view_config(route_name="actions", renderer="actions.mak")
 def actions(request):
     search_action = request.params.get("action", "")
     username = request.params.get("user", "")
-    text = request.params.get("text", "")
+    text = sanitize_quotation_marks(request.params.get("text", ""))
     before = request.params.get("before", None)
     max_actions = request.params.get("max_actions", None)
 
