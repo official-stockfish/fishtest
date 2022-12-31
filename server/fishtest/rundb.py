@@ -15,6 +15,7 @@ import fishtest.stats.stat_util
 from bson.binary import Binary
 from bson.objectid import ObjectId
 from fishtest.actiondb import ActionDb
+from fishtest.stats.stat_util import SPRT_elo
 from fishtest.userdb import UserDb
 from fishtest.util import (
     crash_or_time,
@@ -921,6 +922,51 @@ class RunDb:
                 self.active_runs[id] = {"time": time.time(), "lock": active_lock}
             return active_lock
 
+    def finished_run_message(self, run):
+        if "spsa" in run["args"]:
+            return "SPSA tune finished"
+        result = "red"
+        if run["is_yellow"]:
+            result = "yellow"
+        elif run["is_green"]:
+            result = "green"
+        ret = f"Result:{result}"
+        if "sprt" in run["args"]:
+            sprt = run["args"]["sprt"]
+            elo_model = sprt["elo_model"]
+            alpha = sprt["alpha"]
+            beta = sprt["beta"]
+            elo0 = sprt["elo0"]
+            elo1 = sprt["elo1"]
+            sprt["elo_model"] = elo_model
+            results = run["results"]
+            a = SPRT_elo(
+                results,
+                alpha=alpha,
+                beta=beta,
+                elo0=elo0,
+                elo1=elo1,
+                elo_model=elo_model,
+            )
+            ret += f" Elo:{a['elo']:.2f}[{a['ci'][0]:.2f},{a['ci'][1]:.2f}]"
+            ret += f" LOS:{a['LOS']:.0%}"
+            return ret
+        else:
+            results = run["results"]
+            if "pentanomial" in results:
+                elo, elo95, los = fishtest.stats.stat_util.get_elo(
+                    results["pentanomial"]
+                )
+            else:
+                WLD = [results["wins"], results["losses"], results["draws"]]
+                elo, elo95, los = fishtest.stats.stat_util.get_elo(
+                    [WLD[1], WLD[2], WLD[0]]
+                )
+            ret += f" Elo:{elo:.2f}[{elo-elo95:.2f},{elo+elo95:.2f}]"
+            ret += f" LOS:{los:.0%}"
+
+            return ret
+
     def update_task(self, worker_info, run_id, task_id, stats, spsa):
         lock = self.active_run_lock(str(run_id))
         with lock:
@@ -1032,6 +1078,13 @@ class RunDb:
         if run_finished:
             self.buffer(run, True)
             self.stop_run(run_id)
+            # stop run may not actually stop a run because of autopurging!
+            if run["finished"]:
+                self.actiondb.finished_run(
+                    username=run["args"]["username"],
+                    run=run,
+                    message=self.finished_run_message(run),
+                )
             ret = {"task_alive": False}
         else:
             self.buffer(run, False)

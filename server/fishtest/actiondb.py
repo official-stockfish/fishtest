@@ -55,6 +55,13 @@ schema = union(
         "run": str,
         "message": str,
     },
+    {
+        "action": "finished_run",
+        "username": str,
+        "run_id": ObjectId,
+        "run": str,
+        "message": str,
+    },
     {"action": "approve_run", "username": str, "run_id": ObjectId, "run": str},
     {"action": "purge_run", "username": str, "run_id": ObjectId, "run": str},
     {
@@ -169,6 +176,15 @@ class ActionDb:
     def new_run(self, username=None, run=None, message=None):
         self.insert_action(
             action="new_run",
+            username=username,
+            run_id=run["_id"],
+            run=run_name(run),
+            message=message,
+        )
+
+    def finished_run(self, username=None, run=None, message=None):
+        self.insert_action(
+            action="finished_run",
             username=username,
             run_id=run["_id"],
             run=run_name(run),
