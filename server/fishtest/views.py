@@ -361,6 +361,7 @@ def actions(request):
     text = sanitize_quotation_marks(request.params.get("text", ""))
     before = request.params.get("before", None)
     max_actions = request.params.get("max_actions", None)
+    run_id = request.params.get("run_id", None)
 
     utc_before = before
     if before:
@@ -379,6 +380,7 @@ def actions(request):
         limit=page_size,
         utc_before=utc_before,
         max_actions=max_actions,
+        run_id=run_id,
     )
 
     pages = pagination(page_idx, num_actions, page_size)

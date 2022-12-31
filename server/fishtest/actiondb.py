@@ -92,6 +92,7 @@ class ActionDb:
         limit=0,
         skip=0,
         utc_before=None,
+        run_id=None,
         max_actions=None,
     ):
         q = {}
@@ -109,6 +110,8 @@ class ActionDb:
             q["$text"] = {"$search": text}
         if utc_before:
             q["time"] = {"$lte": utc_before}
+        if run_id:
+            q["run_id"] = ObjectId(run_id)
 
         if max_actions:
             count = self.actions.count_documents(q, limit=max_actions)
