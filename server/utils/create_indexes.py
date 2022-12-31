@@ -90,6 +90,7 @@ def create_users_indexes():
 def create_actions_indexes():
     db["actions"].create_index([("username", ASCENDING), ("_id", DESCENDING)])
     db["actions"].create_index([("action", ASCENDING), ("_id", DESCENDING)])
+    db["actions"].create_index([("run_id", ASCENDING), ("_id", DESCENDING)])
     db["actions"].create_index(
         [
             ("action", "text"),
