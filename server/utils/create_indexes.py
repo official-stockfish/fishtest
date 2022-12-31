@@ -62,6 +62,16 @@ def create_runs_indexes():
         [("args.username", DESCENDING), ("last_updated", DESCENDING)], name="user_runs"
     )
 
+    db["runs"].create_index(
+        [
+            ("args.username", DESCENDING),
+            ("finished", ASCENDING),
+            ("last_updated", DESCENDING),
+        ],
+        name="finished_user_runs",
+        partialFilterExpression={"finished": True},
+    )
+
 
 def create_pgns_indexes():
     print("Creating indexes on pgns collection")
