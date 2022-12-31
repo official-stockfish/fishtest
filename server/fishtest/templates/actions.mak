@@ -21,6 +21,7 @@
       <option value="stop_run">Stop Run</option>
       <option value="delete_run">Delete Run</option>
       <option value="purge_run">Purge Run</option>
+      <option value="finished_run">Finished Runs</option>
       <option value="block_user">Block/Unblock User</option>
       <option value="upload_nn">Upload NN file</option>
       <option value="failed_task">Failed Tasks</option>
