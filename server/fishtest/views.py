@@ -361,7 +361,7 @@ def actions(request):
     text = sanitize_quotation_marks(request.params.get("text", ""))
     before = request.params.get("before", None)
     max_actions = request.params.get("max_actions", None)
-    run_id = request.params.get("run_id", None)
+    run_id = request.params.get("run_id", "")
 
     utc_before = before
     if before:
@@ -396,6 +396,8 @@ def actions(request):
             page["url"] += "&max_actions={}".format(num_actions)
         if before:
             page["url"] += "&before={}".format(before)
+        if run_id:
+            page["url"] += "&run_id={}".format(run_id)
 
     return {
         "actions": actions,
@@ -404,6 +406,7 @@ def actions(request):
         "action_param": search_action,
         "username_param": username,
         "text_param": text,
+        "run_id_param": run_id,
     }
 
 
