@@ -110,7 +110,7 @@
       % for action in actions:
           <tr>
             ## Dates in mongodb have millisecond precision. So they fit comfortably in a float without precision loss.
-            <td><a href="/actions?max_actions=1&amp;action=${action_param}&amp;user=${username_param|u,n}&amp;text=${text_param|u,n}&amp;before=${action['time'].replace(tzinfo=datetime.timezone.utc).timestamp()}">
+            <td><a href="/actions?max_actions=1&amp;action=${action_param}&amp;user=${username_param|u,n}&amp;text=${text_param|u,n}&amp;before=${action['time'].replace(tzinfo=datetime.timezone.utc).timestamp()}&amp;run_id=${run_id_param}">
              ${action['time'].strftime(r"%y&#8209;%m&#8209;%d %H:%M:%S")|n}</a></td>
             <td>${action['action']}</td>
 	    <%
