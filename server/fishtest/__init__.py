@@ -68,6 +68,7 @@ def main(global_config, **settings):
     config.add_static_view("css", "static/css", cache_max_age=3600)
     config.add_static_view("js", "static/js", cache_max_age=3600)
     config.add_static_view("img", "static/img", cache_max_age=3600)
+    config.add_static_view("html", "static/html", cache_max_age=3600)
 
     config.add_route("home", "/")
     config.add_route("login", "/login")
@@ -114,6 +115,7 @@ def main(global_config, **settings):
     config.add_route("api_download_pgn_100", "/api/pgn_100/{skip}")
     config.add_route("api_download_nn", "/api/nn/{id}")
     config.add_route("api_get_elo", "/api/get_elo/{id}")
+    config.add_route("api_actions", "/api/actions")
 
     config.scan()
     return config.make_wsgi_app()
