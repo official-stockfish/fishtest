@@ -219,6 +219,43 @@
       <main class="main order-1">
         <div class="container-fluid">
           <div class="row">
+            <div id="notificationsAlert" class="alert alert-dark alert-dismissible fade show d-none" role="alert">
+               <p>Choose if you want to get <strong>notifications</strong> when tests <strong>pass or fail</strong></p>
+               <button type="button" title="Choose" class="btn btn-sm text-bg-dark col-12 col-sm-auto" data-bs-dismiss="alert"
+                     onclick="Notification.requestPermission()">Choose</button>
+               <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            <script>
+              if (supportsNotifications() && Notification.permission === "default") {
+                document.getElementById("notificationsAlert").classList.remove("d-none");
+              }
+              <%text>
+              function notify(tag, state, elo) {
+                if (supportsNotifications() && Notification.permission === "granted") {
+                  const notification = new Notification(`Test ${tag} ${state}!`, {
+                    body: `Elo: ${elo > 0 ? "+" : ""}${elo.toFixed(2)}`,
+                    requireInteraction: true,
+                    icon: "https://tests.stockfishchess.org/img/stockfish.png",
+                  });
+                  notification.onclick = () => {
+                    window.parent.parent.focus();
+                  };
+                } else {
+                  console.log(`${tag} ${state}! Elo: ${elo}`);
+                }
+              }
+              </%text>
+              const filter = {"action" : "finished_run"};
+              monitor_events(filter, (event) => {
+                const tag = event["run"].slice(0,-8);
+                const message = event["message"];
+                const color = message.split(' ')[0].split(":")[1];
+                const state = color == "green" ? "accepted" : "rejected";
+                const elo = Number(message.split(' ')[1].split(":")[1].split("[")[0]);
+                notify(tag, state, elo);
+              });
+            </script>
+
             <div class="flash-message mt-3">
               % if request.session.peek_flash('error'):
                   <% flash = request.session.pop_flash('error') %>

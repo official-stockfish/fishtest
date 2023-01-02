@@ -6,25 +6,6 @@ async function follow_live(test_id) {
     google.charts.load("current", { packages: ["gauge"] }),
   ]);
 
-  if (supportsNotifications() && Notification.permission === "default") {
-    document.getElementById("notificationsAlert").classList.remove("d-none");
-  }
-
-  function notify(tag, state, elo) {
-    if (supportsNotifications() && Notification.permission === "granted") {
-      const notification = new Notification(`Test ${tag} ${state}!`, {
-        body: `Elo: ${elo > 0 ? "+" : ""}${elo.toFixed(2)}`,
-        requireInteraction: true,
-        icon: "https://tests.stockfishchess.org/img/stockfish.png",
-      });
-      notification.onclick = () => {
-        window.parent.parent.focus();
-      };
-    } else {
-      console.log(`${tag} ${state}! Elo: ${elo}`);
-    }
-  }
-
   let LOS_chart = null;
   let LLR_chart = null;
   let ELO_chart = null;
@@ -200,19 +181,17 @@ async function follow_live(test_id) {
 
   // Main worker
 
-  let handled_once = false;
   while (true) {
     const timestamp = new Date().getTime();
     try {
       const m = await fetch_json("/api/get_elo/" + test_id + "?" + timestamp);
       display_data(m);
       if (m.args.sprt.state) {
-        if (handled_once) {
-          notify(m.args.new_tag, m.args.sprt.state, m.elo.elo);
-        }
+
+
+
         return;
       }
-      handled_once = true;
     } catch (e) {
       console.log("Network error: " + e);
     }

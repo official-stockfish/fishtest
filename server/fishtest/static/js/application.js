@@ -162,6 +162,19 @@ async function fetch_text(url, options) {
   return response.text();
 }
 
+async function fetch_post(url, payload) {
+  options = {
+    method: "POST",
+    mode: "cors",
+    cache: "no-cache",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  };
+  return fetch_json(url, options);
+}
+
 function DOM_loaded() {
   // Use as
   // await DOM_loaded();
@@ -179,4 +192,54 @@ function async_sleep(ms) {
   return new Promise((resolve, reject) => {
     setTimeout(resolve, ms);
   });
+}
+const fishtest_notifications_key = "fishtest_notifications";
+
+function fetch_and_clean_past_notifications(treshold) {
+  let json = JSON.parse(localStorage.getItem(fishtest_notifications_key));
+  if (!json) {
+    json = {};
+  }
+  let new_object = {};
+  for (const fishtest_notifications_key in json) {
+    if (json[fishtest_notifications_key] >= treshold) {
+      new_object[fishtest_notifications_key] = json[fishtest_notifications_key];
+    }
+  }
+  localStorage.setItem(fishtest_notifications_key, JSON.stringify(new_object));
+  return new_object;
+}
+
+async function monitor_events(query, callback) {
+  await DOM_loaded();
+  const interval = 300; // seconds
+  const sleep_interval = 20;
+  while (true) {
+    const now = Date.now() / 1000;
+    let json = null;
+    try {
+      query["time"] = { $gte: now - interval };
+      json = await fetch_post("/api/actions", query);
+    } catch (e) {
+      console.log(e);
+      await async_sleep(sleep_interval * 1000);
+      continue;
+    }
+    let past_notifications = fetch_and_clean_past_notifications(now - interval);
+    let work = [];
+    json.forEach((entry) => {
+      if (past_notifications[entry["run_id"]] == undefined) {
+        work.push(entry);
+        past_notifications[entry["run_id"]] = entry["time"];
+      }
+    });
+    localStorage.setItem(
+      fishtest_notifications_key,
+      JSON.stringify(past_notifications)
+    );
+    work.forEach((entry) => {
+      callback(entry);
+    });
+    await async_sleep(sleep_interval * 1000);
+  }
 }
