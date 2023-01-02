@@ -1,6 +1,5 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
-from bson.objectid import ObjectId
 from fishtest.util import hex_print, optional_key, union, validate, worker_name
 from pymongo import DESCENDING
 
@@ -9,7 +8,7 @@ schema = union(
         "action": "failed_task",
         "username": str,
         "worker": str,
-        "run_id": ObjectId,
+        "run_id": str,
         "run": str,
         "task_id": int,
         "message": str,
@@ -18,7 +17,7 @@ schema = union(
         "action": "dead_task",
         "username": str,
         "worker": str,
-        "run_id": ObjectId,
+        "run_id": str,
         "run": str,
         "task_id": int,
     },
@@ -26,7 +25,7 @@ schema = union(
     {
         "action": "new_run",
         "username": str,
-        "run_id": ObjectId,
+        "run_id": str,
         "run": str,
         "message": str,
     },
@@ -34,16 +33,16 @@ schema = union(
     {
         "action": "modify_run",
         "username": str,
-        "run_id": ObjectId,
+        "run_id": str,
         "run": str,
         "message": str,
     },
-    {"action": "delete_run", "username": str, "run_id": ObjectId, "run": str},
+    {"action": "delete_run", "username": str, "run_id": str, "run": str},
     {
         "action": "stop_run",
         "username": str,
         "worker": str,
-        "run_id": ObjectId,
+        "run_id": str,
         "run": str,
         "task_id": int,
         "message": str,
@@ -51,19 +50,19 @@ schema = union(
     {
         "action": "stop_run",
         "username": str,
-        "run_id": ObjectId,
+        "run_id": str,
         "run": str,
         "message": str,
     },
     {
         "action": "finished_run",
         "username": str,
-        "run_id": ObjectId,
+        "run_id": str,
         "run": str,
         "message": str,
     },
-    {"action": "approve_run", "username": str, "run_id": ObjectId, "run": str},
-    {"action": "purge_run", "username": str, "run_id": ObjectId, "run": str},
+    {"action": "approve_run", "username": str, "run_id": str, "run": str},
+    {"action": "purge_run", "username": str, "run_id": str, "run": str},
     {
         "action": "block_user",
         "username": str,
@@ -74,7 +73,7 @@ schema = union(
 
 
 def run_name(run):
-    run_id = run["_id"]
+    run_id = str(run["_id"])
     run = run["args"]["new_tag"]
     return run[:23] + "-" + hex_print(run_id)[0:7]
 
@@ -111,7 +110,7 @@ class ActionDb:
         if utc_before:
             q["time"] = {"$lte": utc_before}
         if run_id:
-            q["run_id"] = ObjectId(run_id)
+            q["run_id"] = str(run_id)
 
         if max_actions:
             count = self.actions.count_documents(q, limit=max_actions)
@@ -243,9 +242,11 @@ class ActionDb:
         )
 
     def insert_action(self, **action):
+        if "run_id" in action:
+            action["run_id"] = str(action["run_id"])
         ret = validate(schema, action, "action", strict=True)
         if ret == "":
-            action["time"] = datetime.utcnow()
+            action["time"] = datetime.utcnow().replace(tzinfo=timezone.utc).timestamp()
             self.actions.insert_one(action)
         else:
             raise Exception("Validation failed with error '{}'".format(ret))

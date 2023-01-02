@@ -7,7 +7,6 @@ import re
 import threading
 import time
 import urllib
-
 import fishtest.stats.stat_util
 import requests
 from fishtest.util import (
@@ -363,9 +362,8 @@ def actions(request):
     max_actions = request.params.get("max_actions", None)
     run_id = request.params.get("run_id", "")
 
-    utc_before = before
     if before:
-        utc_before = datetime.datetime.utcfromtimestamp(float(before))
+        before = float(before)
     if max_actions:
         max_actions = int(max_actions)
 
@@ -378,7 +376,7 @@ def actions(request):
         text=text,
         skip=page_idx * page_size,
         limit=page_size,
-        utc_before=utc_before,
+        utc_before=before,
         max_actions=max_actions,
         run_id=run_id,
     )

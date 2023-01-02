@@ -1,6 +1,6 @@
 import datetime
-
 import pymongo
+from bson.objectid import ObjectId
 from fishtest.actiondb import run_name
 from fishtest.util import hex_print
 
@@ -15,19 +15,10 @@ if __name__ == "__main__":
     for action in actions:
         count += 1
         action_id = action["_id"]
-        if "data" in action:
-            del action["data"]
-        if "run" in action and "run_id" in action:
-            run_id = action["run_id"]
-            run = action["run"]
-            if "-" in run:
-                run = runs_collection.find_one({"_id": run_id})
-                if run is None:
-                    continue
-                action["run"] = run_name(run)
-            else:
-                action["run"] = run[:23] + "-" + hex_print(run_id)[0:7]
-
+        if "time" in action and isinstance(action["time"], datetime.datetime):
+            action["time"] = action["time"].replace(tzinfo=datetime.timezone.utc).timestamp()
+        if "run_id" in action and isinstance(action["run_id"], ObjectId):
+            action["run_id"] = str(action["run_id"])
         actions_collection.replace_one({"_id": action_id}, action)
         print("Actions converted: {}.".format(count), end="\r")
     t1 = datetime.datetime.utcnow()
