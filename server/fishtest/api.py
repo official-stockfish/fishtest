@@ -321,10 +321,6 @@ class ApiView(object):
         ret = []
         for action in actions:
             action["_id"] = str(action["_id"])
-            if "run_id" in action:
-                action["run_id"] = str(action["run_id"])
-            if "time" in action:
-                action["time"] = action["time"].replace(tzinfo=timezone.utc).timestamp()
             ret.append(action)
         self.request.response.headers["access-control-allow-origin"] = "*"
         self.request.response.headers["access-control-allow-headers"] = "content-type"
