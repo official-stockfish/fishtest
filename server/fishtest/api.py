@@ -1,6 +1,6 @@
 import base64
 import copy
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 import requests
 from fishtest.stats.stat_util import SPRT_elo
@@ -310,6 +310,25 @@ class ApiView(object):
         for run in self.request.rundb.get_unfinished_runs():
             active[str(run["_id"])] = strip_run(run)
         return active
+
+    @view_config(route_name="api_actions")
+    def actions(self):
+        try:
+            query = self.request.json_body
+            actions = self.request.rundb.db["actions"].find(query).limit(200)
+        except:
+            actions = []
+        ret = []
+        for action in actions:
+            action["_id"] = str(action["_id"])
+            if "run_id" in action:
+                action["run_id"] = str(action["run_id"])
+            if "time" in action:
+                action["time"] = action["time"].replace(tzinfo=timezone.utc).timestamp()
+            ret.append(action)
+        self.request.response.headers["access-control-allow-origin"] = "*"
+        self.request.response.headers["access-control-allow-headers"] = "content-type"
+        return ret
 
     @view_config(route_name="api_get_run")
     def get_run(self):
