@@ -45,6 +45,10 @@
             integrity="sha384-${cache_busters['js/application.js']}"
             crossorigin="anonymous"></script>
 
+    <script src="/js/notifications.js?v=${cache_busters['js/notifications.js']}"
+            integrity="sha384-${cache_busters['js/notifications.js']}"
+            crossorigin="anonymous"></script>
+
     <%block name="head"/>
   </head>
 
@@ -220,6 +224,11 @@
         <div class="container-fluid">
           <div class="row">
             <div class="flash-message mt-3">
+              <div id=fallback_div class="alert alert-success alert-dismissible" style="display:none;">
+                 <span id=fallback> Notification! </span>
+                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">
+                 </button>
+               </div>
               % if request.session.peek_flash('error'):
                   <% flash = request.session.pop_flash('error') %>
                   % for message in flash:
