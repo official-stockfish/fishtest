@@ -130,6 +130,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function supportsNotifications() {
   if (
+    // Notifications only work over a secure connection
+    window.location.protocol == "https:" &&
     // Safari on iOS doesn't support them
     "Notification" in window &&
     // Chrome and Opera on Android don't support them
@@ -137,9 +139,27 @@ function supportsNotifications() {
       navigator.userAgent.match(/Android/i) &&
       navigator.userAgent.match(/Chrome/i)
     )
-  )
+  ) {
     return true;
+  }
   return false;
+}
+
+function notify(title, body, fallback) {
+  if (supportsNotifications() && Notification.permission === "granted") {
+    const notification = new Notification(title, {
+      body: body,
+      requireInteraction: true,
+      icon: "https://tests.stockfishchess.org/img/stockfish.png",
+    });
+    notification.onclick = () => {
+      window.parent.parent.focus();
+    };
+  } else if (fallback) {
+    fallback(title, body);
+  } else {
+    console.log("Notification: title=" + title + " body=" + body);
+  }
 }
 
 function raise_for_status(response) {
@@ -154,6 +174,19 @@ async function fetch_json(url, options) {
   const response = await fetch(url, options);
   raise_for_status(response);
   return response.json();
+}
+
+async function fetch_post(url, payload) {
+  const options = {
+    method: "POST",
+    mode: "cors",
+    cache: "no-cache",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  };
+  return fetch_json(url, options);
 }
 
 async function fetch_text(url, options) {

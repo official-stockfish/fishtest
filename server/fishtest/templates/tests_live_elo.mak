@@ -12,13 +12,6 @@
   follow_live(test_id);
 </script>
 
-<div class="container">
-  <div id="notificationsAlert" class="alert alert-dark alert-dismissible fade show d-none" role="alert">
-    <p>Choose if you want to get a <strong>notification</strong> when a test that you are watching <strong>passes or fails</strong></p>
-    <button type="button" title="Choose" class="btn btn-sm text-bg-dark col-12 col-sm-auto" data-bs-dismiss="alert" onclick="Notification.requestPermission()">Choose</button>
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-  </div>
-
   <h2>Live Elo for SPRT test <a href="/tests/view/${str(run['_id'])}">${str(run['_id'])}</a></h2>
 
   <div class="row">
@@ -76,6 +69,12 @@
           <td id="games"></td>
         </tr>
       </table>
+      <script>
+        let page_id = "${str(run['_id'])}"
+        handle_follow_button(page_id);
+      </script>
+      <button id=follow_elo class="btn btn-sm btn-light border">
+      </button>
     </div>
   </div>
 </div>
