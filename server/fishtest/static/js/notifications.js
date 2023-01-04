@@ -153,21 +153,6 @@ async function handle_follow_button(run_id) {
     set_follow_button(run_id);
   };
   set_follow_button(run_id);
-  let json = null;
-  try {
-    json = await fetch_post("/api/actions", {
-      action: "finished_run",
-      run_id: run_id,
-    });
-  } catch (e) {
-    console.log(e);
-    button.style.display = "none";
-    return;
-  }
-  if (json.length != 0) {
-    button.style.display = "none";
-    return;
-  }
 }
 
 main_follow_loop();
