@@ -612,3 +612,7 @@ input[type="checkbox"],
   pointer-events: none;
   opacity: 0.5;
 }
+
+/* remove transparency of background */
+.alert-success-non-transparent {
+}

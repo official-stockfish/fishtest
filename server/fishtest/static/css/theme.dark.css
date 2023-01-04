@@ -452,3 +452,8 @@ pre[style*="border-color:Pink"] {
   --bs-modal-footer-border-color: var(--bs-modal-border-color);
   --bs-modal-header-border-color: var(--bs-modal-border-color);
 }
+
+/* remove transparency of background */
+.alert-success-non-transparent {
+    --bs-alert-bg: rgba(32,51,32,1);
+}

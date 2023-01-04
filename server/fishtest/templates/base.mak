@@ -224,7 +224,7 @@
         <div class="container-fluid">
           <div class="row">
             <div class="flash-message mt-3">
-              <div id=fallback_div class="alert alert-success alert-dismissible" style="display:none;">
+              <div id=fallback_div class="alert alert-success alert-success-non-transparent alert-dismissible fixed-top" style="display:none;">
                  <span id=fallback> Notification! </span>
                  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">
                  </button>
