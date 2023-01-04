@@ -224,11 +224,20 @@
         <div class="container-fluid">
           <div class="row">
             <div class="flash-message mt-3">
-              <div id=fallback_div class="alert alert-success alert-success-non-transparent alert-dismissible fixed-top" style="display:none;">
-                 <span id=fallback> Notification! </span>
-                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">
-                 </button>
-               </div>
+              <div id=fallback_div class="alert alert-success alert-dismissible alert-success-non-transparent fixed-top" style="display:none;">
+                <span id=fallback>Notification!</span>
+                <button type="button" id=fallback_button class="btn-close" aria-label="Close">
+                </button>
+		<script>
+                  function dismiss_notification() {
+                    // The bootstrap dismiss destroys the alert. So we roll our own.
+                    const div = document.getElementById("fallback_div");
+                    div.style.display = "none";
+                  }
+                  const fallback_button = document.getElementById("fallback_button");
+                  fallback_button.addEventListener("click", dismiss_notification);
+		</script>
+              </div>
               % if request.session.peek_flash('error'):
                   <% flash = request.session.pop_flash('error') %>
                   % for message in flash:

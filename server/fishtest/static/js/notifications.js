@@ -48,6 +48,7 @@ LRU.load = function (name) {
 
 const fishtest_notifications_key = "fishtest_notifications";
 
+let current_nofitication = "";
 function notify_elo(entry) {
   const tag = entry["run"].slice(0, -8);
   const message = entry["message"];
@@ -59,7 +60,12 @@ function notify_elo(entry) {
   notify(title, body, (title, body) => {
     const div = document.getElementById("fallback_div");
     const span = document.getElementById("fallback");
-    span.textContent = title + " " + body;
+    const fallback_div = document.getElementById("fallback_div");
+    if (fallback_div.style.display == "none") {
+      span.innerHTML = title + " " + body;
+    } else {
+      span.innerHTML += "<hr> " + title + " " + body;
+    }
     div.style.display = "block";
   });
 }
@@ -85,6 +91,7 @@ function save_notifications(notifications) {
 
 async function main_follow_loop() {
   await DOM_loaded();
+  async_sleep(10000);
   while (true) {
     let json;
     let notifications = get_notifications();
@@ -99,8 +106,6 @@ async function main_follow_loop() {
       continue;
     }
     notifications = get_notifications();
-    // Instrumentation
-    console.log("notifications before work=", JSON.stringify(notifications));
     let work = [];
     json.forEach((entry) => {
       let run_id = entry["run_id"];
@@ -109,9 +114,9 @@ async function main_follow_loop() {
         notifications.remove(run_id);
       }
     });
-    // Instrumentation
-    console.log("notifications after work=", JSON.stringify(notifications));
     save_notifications(notifications);
+    // Instrumentation
+    console.log("active notifications: ", JSON.stringify(notifications));
     work.forEach((entry) => {
       notify_elo(entry);
       if (typeof page_id != "undefined" && page_id == entry["run_id"]) {
