@@ -69,14 +69,6 @@
           <td id="games"></td>
         </tr>
       </table>
-      % if not run['finished']:
-        <script>
-          let page_id = "${str(run['_id'])}"
-          handle_follow_button(page_id);
-        </script>
-        <button id=follow_elo class="btn btn-sm btn-light border">
-        </button>
-      % endif
     </div>
   </div>
 </div>

@@ -262,6 +262,16 @@
       <tr><td>start time</td><td>${run['start_time'].strftime("%Y-%m-%d %H:%M:%S")}</td></tr>
       <tr><td>last updated</td><td>${run['last_updated'].strftime("%Y-%m-%d %H:%M:%S")}</td></tr>
     </table>
+
+    <hr>
+     % if not run['finished']:
+        <script>
+          let page_id = "${str(run['_id'])}"
+          handle_follow_button(page_id);
+        </script>
+	<h4>Notifications</h4>
+        <button id="follow_elo" class="btn btn-primary col-12 col-md-auto" style="display:none;margin-top:0.2em";></button>
+     % endif
   </div>
 </div>
 

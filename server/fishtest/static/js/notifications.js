@@ -136,6 +136,7 @@ function set_follow_button(run_id) {
   } else {
     button.textContent = "Follow";
   }
+  button.style.display = "";
 }
 
 async function handle_follow_button(run_id) {
