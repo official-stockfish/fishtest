@@ -904,7 +904,7 @@ def tests_run(request):
                 message=new_run_message(request, run),
             )
             cached_flash(request, "Submitted test to the queue!")
-            return HTTPFound(location="/tests/view/" + str(run_id))
+            return HTTPFound(location="/tests/view/" + str(run_id)+"?follow=1")
         except Exception as e:
             request.session.flash(str(e), "error")
 
@@ -1146,6 +1146,10 @@ def tests_stats(request):
 @view_config(route_name="tests_view", renderer="tests_view.mak")
 def tests_view(request):
     run = request.rundb.get_run(request.matchdict["id"])
+    if "follow" in request.params:
+        follow = 1
+    else:
+        follow = 0
     if run is None:
         raise exception_response(404)
     results = request.rundb.get_results(run)
@@ -1289,6 +1293,7 @@ def tests_view(request):
         ),
         "tasks_shown": show_task != -1 or request.cookies.get("tasks_state") == "Hide",
         "show_task": show_task,
+        "follow" : follow,
     }
 
 

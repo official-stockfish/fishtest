@@ -123,6 +123,18 @@ async function main_follow_loop() {
   }
 }
 
+function follow_run(run_id) {
+  let notifications = get_notifications();
+  notifications.add(run_id);
+  save_notifications(notifications);
+}
+
+function unfollow_run(run_id) {
+  let notifications = get_notifications();
+  notifications.remove(run_id);
+  save_notifications(notifications);
+}
+
 function set_follow_button(run_id) {
   let button = document.getElementById("follow_elo");
   let notifications = get_notifications();
@@ -140,16 +152,14 @@ async function handle_follow_button(run_id) {
   };
   let button = document.getElementById("follow_elo");
   button.onclick = () => {
-    let notifications = get_notifications();
     if (button.textContent.trim() == "Follow") {
       if (supportsNotifications() && Notification.permission === "default") {
         Notification.requestPermission();
       }
-      notifications.add(run_id);
+      follow_run(run_id);
     } else {
-      notifications.remove(run_id);
+      unfollow_run(run_id);
     }
-    save_notifications(notifications);
     set_follow_button(run_id);
   };
   set_follow_button(run_id);
