@@ -21,6 +21,12 @@
 </script>
 % endif
 
+% if follow == 1:
+  <script>
+    follow_run("${run['_id']}");
+  </script>
+% endif
+
 
 <%namespace name="base" file="base.mak"/>
 

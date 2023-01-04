@@ -852,6 +852,10 @@
       if (!ret) {
         return false;
       }
+      // we want to be able to register users for their own tests
+      if (supportsNotifications() && Notification.permission === "default") {
+        Notification.requestPermission();
+      }
       if (form_submitted) {
         // Don't allow submitting the form more than once
         e.preventDefault();
