@@ -454,6 +454,6 @@ pre[style*="border-color:Pink"] {
 }
 
 /* remove transparency of background */
-.alert-success-non-transparent {
+.alert-success.alert-success-non-transparent {
     --bs-alert-bg: rgba(32,51,32,1);
 }

@@ -140,6 +140,11 @@ function unfollow_run(run_id) {
   save_notifications(notifications);
 }
 
+function following_run(run_id) {
+  let notifications = get_notifications();
+  return notifications.contains(run_id);
+}
+
 function set_follow_button(run_id) {
   let button = document.getElementById("follow_elo");
   let notifications = get_notifications();
@@ -152,10 +157,12 @@ function set_follow_button(run_id) {
 }
 
 async function handle_follow_button(run_id) {
-  await DOM_loaded();
-  window.onstorage = () => {
-    set_follow_button(run_id);
-  };
+    await DOM_loaded();
+    window.addEventListener("storage", (event) => {
+    if (event.key == fishtest_notifications_key) {
+      set_follow_button(run_id);
+    }
+  });
   let button = document.getElementById("follow_elo");
   button.onclick = () => {
     if (button.textContent.trim() == "Follow") {

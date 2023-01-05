@@ -277,6 +277,7 @@
         </script>
 	<h4>Notifications</h4>
         <button id="follow_elo" class="btn btn-primary col-12 col-md-auto" style="display:none;margin-top:0.2em";></button>
+        <hr style="visibility:hidden;">
      % endif
   </div>
 </div>
