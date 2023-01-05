@@ -88,11 +88,11 @@
                 </a>
               </td>
               % if not run["finished"]:
-                <td class="run-eye" style="width:3em;text-align:center;">
-                  <div id=eye_${run['_id']} class='eyes' onclick='handle_eye(this)' style='display:inline-block;cursor:pointer;'>
+                <td class="run-notification" style="width:3em;text-align:center;">
+                  <div id=notification_${run['_id']} class='notifications' onclick='handle_notification(this)' style='display:inline-block;cursor:pointer;'>
                   </div>
                   <script>
-                    set_eye("${run['_id']}");
+                    set_notification("${run['_id']}");
                   </script>
                 </td>
               % endif
