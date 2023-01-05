@@ -87,7 +87,15 @@
                   ${run['args'].get('username', '')[:3]}
                 </a>
               </td>
-
+              % if not run["finished"]:
+                <td class="run-eye" style="width:3em;text-align:center;">
+                  <div id=eye_${run['_id']} class='eyes' onclick='handle_eye(this)' style='display:inline-block;cursor:pointer;'>
+                  </div>
+                  <script>
+                    set_eye("${run['_id']}");
+                  </script>
+                </td>
+              % endif
               <td style="width: 16%;" class="run-view">
                 <a href="/tests/view/${run['_id']}">${run['args']['new_tag'][:23]}</a>
               </td>

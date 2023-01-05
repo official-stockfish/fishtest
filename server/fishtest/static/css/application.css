@@ -14,6 +14,7 @@
   .run-table .run-date,
   .run-table .run-user,
   .run-table .run-view,
+  .run-table .run-eye,
   .run-table .run-diff,
   .run-table .run-elo,
   .run-table .run-live,
@@ -613,6 +614,3 @@ input[type="checkbox"],
   opacity: 0.5;
 }
 
-/* remove transparency of background */
-.alert-success-non-transparent {
-}
