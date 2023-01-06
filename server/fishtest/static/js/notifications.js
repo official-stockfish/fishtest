@@ -49,6 +49,22 @@ LRU.load = function (name) {
 const fishtest_notifications_key = "fishtest_notifications";
 const fishtest_broadcast_key = "fishtest_broadcast";
 
+async function process_title(count) {
+  // async because the document title is set in javascript
+  await DOM_loaded();
+  title = document.title;
+  // check if there is already a number
+  if (/\([\d]+\)/.test(title)) {
+    title = title.split(") ")[1]; // if so, remove it
+  }
+  // add it again if necessary
+  if (count > 0) {
+    document.title = `(${count}) ${title}`;
+  } else {
+    document.title = title;
+  }
+}
+
 function notify_fishtest_(message) {
   const div = document.getElementById("fallback_div");
   const span = document.getElementById("fallback");
@@ -56,8 +72,10 @@ function notify_fishtest_(message) {
   if (fallback_div.style.display == "none") {
     span.innerHTML = message;
   } else {
-    span.innerHTML += "<hr> " + title + " " + body;
+    span.innerHTML += "<hr> " + message;
   }
+  let count = span.innerHTML.split("<hr").length;
+  process_title(count);
   div.style.display = "block";
 }
 
