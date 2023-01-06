@@ -55,7 +55,9 @@ async function process_title(count) {
   title = document.title;
   // check if there is already a number
   if (/\([\d]+\)/.test(title)) {
-    title = title.split(") ")[1]; // if so, remove it
+    // if so, remove it
+    let idx = title.indexOf(" ");
+    title = title.slice(idx + 1);
   }
   // add it again if necessary
   if (count > 0) {
@@ -155,15 +157,14 @@ async function main_follow_loop() {
         notifications.remove(run_id);
       }
     });
-    save_notifications(notifications);
+    save_notifications(notifications); // triggers update of other tabs
     // Instrumentation
     console.log("active notifications: ", JSON.stringify(notifications));
     work.forEach((entry) => {
       notify_elo(entry);
-      if (typeof page_id != "undefined" && page_id == entry["run_id"]) {
-        button = document.getElementById("follow_elo");
-        button.style.display = "none";
-      }
+      set_notification(entry["run_id"]);
+      set_follow_button(entry["run_id"]);
+      disable_notification(entry["run_id"]); // also handles the button
     });
     await async_sleep(20000);
   }
@@ -188,13 +189,15 @@ function following_run(run_id) {
 
 function set_follow_button(run_id) {
   let button = document.getElementById("follow_elo");
-  let notifications = get_notifications();
-  if (notifications.contains(run_id)) {
-    button.textContent = "Unfollow";
-  } else {
-    button.textContent = "Follow";
+  if (button) {
+    let notifications = get_notifications();
+    if (notifications.contains(run_id)) {
+      button.textContent = "Unfollow";
+    } else {
+      button.textContent = "Follow";
+    }
+    button.style.display = "";
   }
-  button.style.display = "";
 }
 
 async function handle_follow_button(run_id) {
@@ -218,5 +221,81 @@ async function handle_follow_button(run_id) {
   };
   set_follow_button(run_id);
 }
+
+// The following functions are mainly for handling the main page
+
+function set_notification(run_id) {
+  let notification_id = "notification_" + run_id;
+  let notification = document.getElementById(notification_id);
+  if (notification) {
+    if (following_run(run_id)) {
+      notification.title = "Click to unfollow: no notification";
+      notification.innerHTML =
+        "<div style='white-space:nowrap;'><i class='fa-regular fa-bell' style='width:20px'></i><i class='fa-solid fa-toggle-on'></i></div>";
+    } else {
+      notification.title = "Click to follow: get notification";
+      notification.innerHTML =
+        "<div style='white-space:nowrap;'><i class='fa-regular fa-bell-slash' style='width:20px'></i><i class='fa-solid fa-toggle-off'></i></div>";
+    }
+  }
+}
+
+function handle_notification(notification) {
+  run_id = notification.id.split("_")[1];
+  if (!following_run(run_id)) {
+    if (supportsNotifications() && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+    follow_run(run_id);
+  } else {
+    unfollow_run(run_id);
+  }
+  set_notification(run_id);
+}
+
+window.addEventListener("storage", (event) => {
+  if (event.key == fishtest_notifications_key) {
+    let all_notifications = document.querySelectorAll(".notifications");
+    all_notifications.forEach((notification) => {
+      run_id = notification.id.split("_")[1];
+      set_notification(run_id);
+    });
+  }
+});
+
+function disable_notification_(run_id) {
+  if (typeof page_id != "undefined" && page_id == run_id) {
+    let button = document.getElementById("follow_elo");
+    if (button) {
+      button.disabled = 1;
+    }
+  }
+  let notification_id = "notification_" + run_id;
+  let notification = document.getElementById(notification_id);
+  if (notification) {
+    notification.style.opacity = 0.5;
+    notification.style["pointer-events"] = "none";
+  }
+}
+
+function disable_notification(run_id) {
+  disable_notification_(run_id);
+  broadcast_disable_notification(run_id);
+}
+
+const fishtest_disable_notification_key = "fishtest_disable_notification";
+
+function broadcast_disable_notification(run_id) {
+  localStorage.setItem(
+    fishtest_disable_notification_key,
+    JSON.stringify({ run_id: run_id, rnd: Math.random() })
+  );
+}
+
+window.addEventListener("storage", (event) => {
+  if (event.key == fishtest_disable_notification_key) {
+    disable_notification_(JSON.parse(event.newValue)["run_id"]);
+  }
+});
 
 main_follow_loop();
