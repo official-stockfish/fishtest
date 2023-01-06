@@ -10,11 +10,10 @@
     let notification = document.getElementById(notification_id);
     if(following_run(run_id)){
       notification.title = "Click to unfollow: no notification";
-      notification.innerHTML = "<div style='white-space:nowrap;'><i class='fa-regular fa-bell' style='padding:0px 2px;'></i><i class='fa-solid fa-toggle-on'></i></div>";
-
+      notification.innerHTML = "<div style='white-space:nowrap;'><i class='fa-regular fa-bell' style='width:20px'></i><i class='fa-solid fa-toggle-on'></i></div>";
     } else {
       notification.title = "Click to follow: get notification";
-      notification.innerHTML = "<div style='white-space:nowrap;'><i class='fa-regular fa-bell-slash'></i><i class='fa-solid fa-toggle-off'></i></div>";
+      notification.innerHTML = "<div style='white-space:nowrap;'><i class='fa-regular fa-bell-slash' style='width:20px'></i><i class='fa-solid fa-toggle-off'></i></div>";
     }
   }
 
