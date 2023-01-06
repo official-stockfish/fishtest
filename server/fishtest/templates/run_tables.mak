@@ -18,7 +18,6 @@
   }
 
   function handle_notification(notification) {
-    console.log("in handle_notification");
     run_id = notification.id.split("_")[1];
     if(!following_run(run_id)){
       if (supportsNotifications() && Notification.permission === "default") {

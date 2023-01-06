@@ -47,26 +47,49 @@ LRU.load = function (name) {
 };
 
 const fishtest_notifications_key = "fishtest_notifications";
+const fishtest_broadcast_key = "fishtest_broadcast";
 
-let current_nofitication = "";
+function notify_fishtest_(message) {
+  const div = document.getElementById("fallback_div");
+  const span = document.getElementById("fallback");
+  const fallback_div = document.getElementById("fallback_div");
+  if (fallback_div.style.display == "none") {
+    span.innerHTML = message;
+  } else {
+    span.innerHTML += "<hr> " + title + " " + body;
+  }
+  div.style.display = "block";
+}
+
+function notify_fishtest(message) {
+  notify_fishtest_(message);
+  broadcast_fishtest(message);
+}
+
+function broadcast_fishtest(message) {
+  localStorage.setItem(
+    fishtest_broadcast_key,
+    JSON.stringify({ message: message, rnd: Math.random() })
+  );
+}
+
+window.addEventListener("storage", (event) => {
+  if (event.key == fishtest_broadcast_key) {
+    notify_fishtest_(JSON.parse(event.newValue)["message"]);
+  }
+});
+
 function notify_elo(entry) {
   const tag = entry["run"].slice(0, -8);
   const message = entry["message"];
+  const username = entry["username"];
   const color = message.split(" ")[0].split(":")[1];
   const elo = message.split(" ")[1];
   const LOS = message.split(" ")[2];
-  const title = `Test ${tag} finished ${color}!`;
+  const title = `Test ${tag} by ${username} finished ${color}!`;
   const body = elo + " " + LOS;
   notify(title, body, (title, body) => {
-    const div = document.getElementById("fallback_div");
-    const span = document.getElementById("fallback");
-    const fallback_div = document.getElementById("fallback_div");
-    if (fallback_div.style.display == "none") {
-      span.innerHTML = title + " " + body;
-    } else {
-      span.innerHTML += "<hr> " + title + " " + body;
-    }
-    div.style.display = "block";
+    notify_fishtest(title + " " + body);
   });
 }
 
@@ -157,8 +180,8 @@ function set_follow_button(run_id) {
 }
 
 async function handle_follow_button(run_id) {
-    await DOM_loaded();
-    window.addEventListener("storage", (event) => {
+  await DOM_loaded();
+  window.addEventListener("storage", (event) => {
     if (event.key == fishtest_notifications_key) {
       set_follow_button(run_id);
     }
