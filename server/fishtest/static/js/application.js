@@ -195,6 +195,24 @@ async function fetch_text(url, options) {
   return response.text();
 }
 
+async function process_title(count) {
+  // async because the document title is often set in javascript
+  await DOM_loaded();
+  let title = document.title;
+  // check if there is already a number
+  if (/\([\d]+\)/.test(title)) {
+    // if so, remove it
+    let idx = title.indexOf(" ");
+    title = title.slice(idx + 1);
+  }
+  // add it again if necessary
+  if (count > 0) {
+    document.title = `(${count}) ${title}`;
+  } else {
+    document.title = title;
+  }
+}
+
 function DOM_loaded() {
   // Use as
   // await DOM_loaded();
@@ -212,4 +230,26 @@ function async_sleep(ms) {
   return new Promise((resolve, reject) => {
     setTimeout(resolve, ms);
   });
+}
+
+const fishtest_broadcast_key = "fishtest_broadcast";
+let broadcast_dispatch = {};
+
+window.addEventListener("storage", (event) => {
+  if (event.key == fishtest_broadcast_key) {
+    const cmd = JSON.parse(event.newValue);
+    const cmd_function = broadcast_dispatch[cmd["cmd"]];
+    if (cmd_function) {
+      cmd_function(cmd["arg"]);
+    }
+  }
+});
+
+function broadcast(cmd, arg) {
+  const cmd_function = broadcast_dispatch[cmd];
+  cmd_function(arg);
+  localStorage.setItem(
+    fishtest_broadcast_key,
+    JSON.stringify({ cmd: cmd, arg: arg, rnd: Math.random() })
+  );
 }

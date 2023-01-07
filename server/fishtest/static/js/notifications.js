@@ -47,25 +47,6 @@ LRU.load = function (name) {
 };
 
 const fishtest_notifications_key = "fishtest_notifications";
-const fishtest_broadcast_key = "fishtest_broadcast";
-
-async function process_title(count) {
-  // async because the document title is set in javascript
-  await DOM_loaded();
-  title = document.title;
-  // check if there is already a number
-  if (/\([\d]+\)/.test(title)) {
-    // if so, remove it
-    let idx = title.indexOf(" ");
-    title = title.slice(idx + 1);
-  }
-  // add it again if necessary
-  if (count > 0) {
-    document.title = `(${count}) ${title}`;
-  } else {
-    document.title = title;
-  }
-}
 
 function notify_fishtest_(message) {
   const div = document.getElementById("fallback_div");
@@ -82,22 +63,8 @@ function notify_fishtest_(message) {
 }
 
 function notify_fishtest(message) {
-  notify_fishtest_(message);
-  broadcast_fishtest(message);
+  broadcast("notify_fishtest_", message);
 }
-
-function broadcast_fishtest(message) {
-  localStorage.setItem(
-    fishtest_broadcast_key,
-    JSON.stringify({ message: message, rnd: Math.random() })
-  );
-}
-
-window.addEventListener("storage", (event) => {
-  if (event.key == fishtest_broadcast_key) {
-    notify_fishtest_(JSON.parse(event.newValue)["message"]);
-  }
-});
 
 function notify_elo(entry) {
   const tag = entry["run"].slice(0, -8);
@@ -157,14 +124,14 @@ async function main_follow_loop() {
         notifications.remove(run_id);
       }
     });
-    save_notifications(notifications); // triggers update of other tabs
+    save_notifications(notifications); // make sure other tabs are up to data
     // Instrumentation
     console.log("active notifications: ", JSON.stringify(notifications));
     work.forEach((entry) => {
       notify_elo(entry);
-      set_notification(entry["run_id"]);
-      set_follow_button(entry["run_id"]);
-      disable_notification(entry["run_id"]); // also handles the button
+      run_id = entry["run_id"];
+      set_notification_status(run_id);
+      disable_notification(run_id);
     });
     await async_sleep(20000);
   }
@@ -187,26 +154,9 @@ function following_run(run_id) {
   return notifications.contains(run_id);
 }
 
-function set_follow_button(run_id) {
-  let button = document.getElementById("follow_elo");
-  if (button) {
-    let notifications = get_notifications();
-    if (notifications.contains(run_id)) {
-      button.textContent = "Unfollow";
-    } else {
-      button.textContent = "Follow";
-    }
-    button.style.display = "";
-  }
-}
-
+// run at page load
 async function handle_follow_button(run_id) {
   await DOM_loaded();
-  window.addEventListener("storage", (event) => {
-    if (event.key == fishtest_notifications_key) {
-      set_follow_button(run_id);
-    }
-  });
   let button = document.getElementById("follow_elo");
   button.onclick = () => {
     if (button.textContent.trim() == "Follow") {
@@ -217,14 +167,23 @@ async function handle_follow_button(run_id) {
     } else {
       unfollow_run(run_id);
     }
-    set_follow_button(run_id);
+    set_notification_status(run_id);
   };
-  set_follow_button(run_id);
+  // do not broadcast since this is run at initialization
+  set_notification_status_(run_id);
 }
 
-// The following functions are mainly for handling the main page
+function set_notification_status_(run_id) {
+  let button = document.getElementById("follow_elo");
+  if (button) {
+    if (following_run(run_id)) {
+      button.textContent = "Unfollow";
+    } else {
+      button.textContent = "Follow";
+    }
+    button.style.display = "";
+  }
 
-function set_notification(run_id) {
   let notification_id = "notification_" + run_id;
   let notification = document.getElementById(notification_id);
   if (notification) {
@@ -240,6 +199,11 @@ function set_notification(run_id) {
   }
 }
 
+function set_notification_status(run_id) {
+  broadcast("set_notification_status_", run_id);
+}
+
+// old style callback on main page: onclick="handle_notification(this)"
 function handle_notification(notification) {
   run_id = notification.id.split("_")[1];
   if (!following_run(run_id)) {
@@ -250,18 +214,8 @@ function handle_notification(notification) {
   } else {
     unfollow_run(run_id);
   }
-  set_notification(run_id);
+  set_notification_status(run_id);
 }
-
-window.addEventListener("storage", (event) => {
-  if (event.key == fishtest_notifications_key) {
-    let all_notifications = document.querySelectorAll(".notifications");
-    all_notifications.forEach((notification) => {
-      run_id = notification.id.split("_")[1];
-      set_notification(run_id);
-    });
-  }
-});
 
 function disable_notification_(run_id) {
   if (typeof page_id != "undefined" && page_id == run_id) {
@@ -279,23 +233,11 @@ function disable_notification_(run_id) {
 }
 
 function disable_notification(run_id) {
-  disable_notification_(run_id);
-  broadcast_disable_notification(run_id);
+  broadcast("disable_notification_", run_id);
 }
 
-const fishtest_disable_notification_key = "fishtest_disable_notification";
-
-function broadcast_disable_notification(run_id) {
-  localStorage.setItem(
-    fishtest_disable_notification_key,
-    JSON.stringify({ run_id: run_id, rnd: Math.random() })
-  );
-}
-
-window.addEventListener("storage", (event) => {
-  if (event.key == fishtest_disable_notification_key) {
-    disable_notification_(JSON.parse(event.newValue)["run_id"]);
-  }
-});
+broadcast_dispatch["notify_fishtest_"] = notify_fishtest_;
+broadcast_dispatch["set_notification_status_"] = set_notification_status_;
+broadcast_dispatch["disable_notification_"] = disable_notification_;
 
 main_follow_loop();
