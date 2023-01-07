@@ -92,7 +92,7 @@
                   <div id=notification_${run['_id']} class='notifications' onclick='handle_notification(this)' style='display:inline-block;cursor:pointer;'>
                   </div>
                   <script>
-                    set_notification("${run['_id']}");
+                    set_notification_status_("${run['_id']}");   // no broadcast since this is at initialization
                   </script>
                 </td>
               % endif
