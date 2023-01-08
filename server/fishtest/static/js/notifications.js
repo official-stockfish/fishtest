@@ -6,7 +6,7 @@ function LRU(capacity, content) {
     throw "capacity is not a number";
   }
   if (!(content instanceof Array)) {
-    throw "content is not am Array";
+    throw "content is not an Array";
   }
   return {
     capacity: capacity,
@@ -16,11 +16,15 @@ function LRU(capacity, content) {
     },
     add(elt) {
       if (this.contains(elt)) {
-        return;
+        return null;
       } else {
         this.content.push(elt);
         if (this.content.length > this.capacity) {
+          const drop = this.content[0];
           this.content.shift();
+          return drop;
+        } else {
+          return null;
         }
       }
     },
@@ -57,7 +61,7 @@ function notify_fishtest_(message) {
   } else {
     span.innerHTML += "<hr> " + message;
   }
-  let count = span.innerHTML.split("<hr").length;
+  let count = span.innerHTML.split("<hr>").length;
   process_title(count);
   div.style.display = "block";
 }
@@ -80,16 +84,19 @@ function notify_elo(entry) {
   });
 }
 
+const design_capacity = 15;
+
 function get_notifications() {
+  let notifications;
   try {
-    let lru = LRU.load(fishtest_notifications_key);
-    if (lru["capacity"] != 15) {
+    notifications = LRU.load(fishtest_notifications_key);
+    if (notifications["capacity"] != design_capacity) {
       throw "";
     }
-    return lru;
+    return notifications;
   } catch (e) {
     console.log("Initializing new LRU object");
-    let notifications = new LRU(15);
+    notifications = new LRU(design_capacity);
     notifications.save(fishtest_notifications_key);
     return notifications;
   }
@@ -124,7 +131,7 @@ async function main_follow_loop() {
         notifications.remove(run_id);
       }
     });
-    save_notifications(notifications); // make sure other tabs are up to data
+    save_notifications(notifications); // make sure other tabs see up to date data
     // Instrumentation
     console.log("active notifications: ", JSON.stringify(notifications));
     work.forEach((entry) => {
@@ -139,8 +146,9 @@ async function main_follow_loop() {
 
 function follow_run(run_id) {
   let notifications = get_notifications();
-  notifications.add(run_id);
+  const ret = notifications.add(run_id);
   save_notifications(notifications);
+  return ret;
 }
 
 function unfollow_run(run_id) {
@@ -154,27 +162,8 @@ function following_run(run_id) {
   return notifications.contains(run_id);
 }
 
-// run at page load
-async function handle_follow_button(run_id) {
-  await DOM_loaded();
-  let button = document.getElementById("follow_elo");
-  button.onclick = () => {
-    if (button.textContent.trim() == "Follow") {
-      if (supportsNotifications() && Notification.permission === "default") {
-        Notification.requestPermission();
-      }
-      follow_run(run_id);
-    } else {
-      unfollow_run(run_id);
-    }
-    set_notification_status(run_id);
-  };
-  // do not broadcast since this is run at initialization
-  set_notification_status_(run_id);
-}
-
 function set_notification_status_(run_id) {
-  let button = document.getElementById("follow_elo");
+  let button = document.getElementById(`follow_button_${run_id}`);
   if (button) {
     if (following_run(run_id)) {
       button.textContent = "Unfollow";
@@ -190,11 +179,11 @@ function set_notification_status_(run_id) {
     if (following_run(run_id)) {
       notification.title = "Click to unfollow: no notification";
       notification.innerHTML =
-        "<div style='white-space:nowrap;'><i class='fa-regular fa-bell' style='width:20px'></i><i class='fa-solid fa-toggle-on'></i></div>";
+        "<div style='white-space:nowrap;'><i class='fa-regular fa-bell' style='width:20px;'></i><i class='fa-solid fa-toggle-on'></i></div>";
     } else {
       notification.title = "Click to follow: get notification";
       notification.innerHTML =
-        "<div style='white-space:nowrap;'><i class='fa-regular fa-bell-slash' style='width:20px'></i><i class='fa-solid fa-toggle-off'></i></div>";
+        "<div style='white-space:nowrap;'><i class='fa-regular fa-bell-slash' style='width:20px;'></i><i class='fa-solid fa-toggle-off'></i></div>";
     }
   }
 }
@@ -203,27 +192,39 @@ function set_notification_status(run_id) {
   broadcast("set_notification_status_", run_id);
 }
 
-// old style callback on main page: onclick="handle_notification(this)"
-function handle_notification(notification) {
-  run_id = notification.id.split("_")[1];
+function toggle_notifaction_status(run_id) {
   if (!following_run(run_id)) {
     if (supportsNotifications() && Notification.permission === "default") {
       Notification.requestPermission();
     }
-    follow_run(run_id);
+    const drop = follow_run(run_id);
+    if (drop) {
+      set_notification_status(drop);
+    }
   } else {
     unfollow_run(run_id);
   }
   set_notification_status(run_id);
 }
 
+// old style callback on main page: onclick="handle_notification(this)"
+function handle_notification(notification) {
+  run_id = notification.id.split("_")[1];
+  toggle_notifaction_status(run_id);
+}
+
+// old style callback on tests_view page
+function handle_follow_button(button) {
+  run_id = button.id.split("_")[2];
+  toggle_notifaction_status(run_id);
+}
+
 function disable_notification_(run_id) {
-  if (typeof page_id != "undefined" && page_id == run_id) {
-    let button = document.getElementById("follow_elo");
-    if (button) {
-      button.disabled = 1;
-    }
+  let button = document.getElementById(`follow_button_${run_id}`);
+  if (button) {
+    button.disabled = 1;
   }
+
   let notification_id = "notification_" + run_id;
   let notification = document.getElementById(notification_id);
   if (notification) {
