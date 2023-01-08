@@ -270,15 +270,14 @@
     </table>
 
     <hr>
-     % if not run['finished']:
+    % if not run['finished']:
+      <h4>Notifications</h4>
+        <button id="follow_button_${run['_id']}" class="btn btn-primary col-12 col-md-auto" onclick="handle_follow_button(this)" style="display:none;margin-top:0.2em";></button>
         <script>
-          let page_id = "${str(run['_id'])}"
-          handle_follow_button(page_id);
+          set_notification_status_("${run['_id']}");  // no broadcast since this is run at initialization
         </script>
-	<h4>Notifications</h4>
-        <button id="follow_elo" class="btn btn-primary col-12 col-md-auto" style="display:none;margin-top:0.2em";></button>
         <hr style="visibility:hidden;">
-     % endif
+    % endif
   </div>
 </div>
 
