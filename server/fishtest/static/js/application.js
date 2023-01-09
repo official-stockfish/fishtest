@@ -145,7 +145,7 @@ function supportsNotifications() {
   return false;
 }
 
-function notify(title, body, fallback) {
+function notify(title, body, link, fallback) {
   if (supportsNotifications() && Notification.permission === "granted") {
     const notification = new Notification(title, {
       body: body,
@@ -153,10 +153,10 @@ function notify(title, body, fallback) {
       icon: "https://tests.stockfishchess.org/img/stockfish.png",
     });
     notification.onclick = () => {
-      window.parent.parent.focus();
+      window.location = link;
     };
   } else if (fallback) {
-    fallback(title, body);
+    fallback(title, body, link);
   } else {
     console.log("Notification: title=" + title + " body=" + body);
   }

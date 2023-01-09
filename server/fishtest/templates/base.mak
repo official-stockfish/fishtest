@@ -233,12 +233,12 @@
                     // The bootstrap dismiss destroys the alert. So we roll our own.
                     const div = document.getElementById("fallback_div");
                     div.style.display = "none";
-		    // remove message count from the title
-		    process_title(0);
+                    // remove message count from the title
+                    process_title(0);
                   }
                   const fallback_button = document.getElementById("fallback_button");
                   fallback_button.addEventListener("click", dismiss_notification);
-		</script>
+                </script>
               </div>
               % if request.session.peek_flash('error'):
                   <% flash = request.session.pop_flash('error') %>

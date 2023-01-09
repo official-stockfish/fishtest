@@ -75,8 +75,10 @@ function notify_elo(entry) {
   const LOS = message.split(" ")[2];
   const title = `Test ${tag} by ${username} finished ${color}!`;
   const body = elo + " " + LOS;
-  notify(title, body, (title, body) => {
-    notify_fishtest(title + " " + body);
+  const link = `/tests/view/${entry["run_id"]}`;
+  notify(title, body, link, (title, body, link) => {
+    const message = `<a href=${link}>${title} ${body}</a>`;
+    notify_fishtest(message);
   });
 }
 
