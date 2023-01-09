@@ -55,7 +55,7 @@ from updater import update
 # Several packages are called "expression".
 # So we make sure to use the locally installed one.
 
-WORKER_VERSION = 195
+WORKER_VERSION = 196
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -1255,12 +1255,18 @@ def utcoffset():
 
 
 def verify_worker_version(remote, username, password):
+    # Returns:
+    # True: we are the right version and have the correct credentials
+    # False: incorrect credentials (the user may have been blocked in the meantime)
+    # None: network error: unable to verify
+    # We don't return if the server informs us that a newer version of the worker
+    # is available
     print("Verify worker version...")
     payload = {"worker_info": {"username": username}, "password": password}
     try:
         req = send_api_post_request(remote + "/api/request_version", payload)
     except WorkerException:
-        return False  # the error message has already been written
+        return None  # the error message has already been written
     if "error" in req:
         return False  # likewise
     if req["version"] > WORKER_VERSION:
@@ -1300,8 +1306,10 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
     )
 
     # Check the worker version and upgrade if necessary
-    if not verify_worker_version(remote, worker_info["username"], password):
+    ret = verify_worker_version(remote, worker_info["username"], password)
+    if ret is False:
         current_state["alive"] = False
+    if not ret:
         return False
 
     # Verify if we still have enough github api calls
@@ -1507,7 +1515,7 @@ def worker():
 
     # Check the worker version and upgrade if necessary
     try:
-        if not verify_worker_version(remote, options.username, options.password):
+        if verify_worker_version(remote, options.username, options.password) is False:
             return 1
     except Exception as e:
         print("Exception verifying worker version:\n", e, sep="", file=sys.stderr)
