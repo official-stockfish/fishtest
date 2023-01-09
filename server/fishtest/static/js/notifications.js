@@ -51,6 +51,7 @@ LRU.load = function (name) {
 };
 
 const fishtest_notifications_key = "fishtest_notifications";
+const fishtest_timestamp_key = "fishtest_timestamp";
 
 function notify_fishtest_(message) {
   const div = document.getElementById("fallback_div");
@@ -108,10 +109,37 @@ function save_notifications(notifications) {
   notifications.save(fishtest_notifications_key);
 }
 
+function get_timestamp() {
+  let ts;
+  try {
+    ts = JSON.parse(localStorage.getItem(fishtest_timestamp_key));
+  } catch (e) {
+    return null;
+  }
+  if (typeof ts != "number") {
+    return null;
+  }
+  return ts;
+}
+
+function save_timestamp(ts) {
+  localStorage.setItem(fishtest_timestamp_key, JSON.stringify(ts));
+}
+
 async function main_follow_loop() {
   await DOM_loaded();
   async_sleep(10000);
   while (true) {
+    const current_time = Date.now();
+    const timestamp_latest_fetch = get_timestamp();
+    if (
+      timestamp_latest_fetch != null &&
+      current_time - timestamp_latest_fetch < 19000
+    ) {
+      console.log("Skipping events update");
+      await async_sleep(20000);
+      continue;
+    }
     let json;
     let notifications = get_notifications();
     try {
@@ -124,6 +152,7 @@ async function main_follow_loop() {
       await async_sleep(20000);
       continue;
     }
+    save_timestamp(current_time);
     notifications = get_notifications();
     let work = [];
     json.forEach((entry) => {
