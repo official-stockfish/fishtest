@@ -253,3 +253,44 @@ function broadcast(cmd, arg) {
     JSON.stringify({ cmd: cmd, arg: arg, rnd: Math.random() })
   );
 }
+
+const tab_id = String(Math.random()).slice(2) + String(Math.random()).slice(2);
+
+async function critical_section(lock, critical_section_) {
+  // This is the simplest mutual exclusion algorithm not depending on
+  // locking primitives. It is due to Michael Fischer and is mentioned in
+  // Leslie Lamport's seminal paper "A Fast Mutual Exclusion Algorithm".
+  // Lamport regards the algorithm as inadequate since we cannot
+  // rigorously bound the delay necessary to execute (1)(2)(3) because
+  // there is no bound on memory contention (here corresponding to the
+  // setItem instructions). However for us this is not an issue -
+  // 30ms should be sufficient for plenty of tabs.
+  // Another issue is that taking the lock always takes at least 30ms
+  // (with this implementation) even if there is no contention. This is also
+  // not a problem since our application is not time critical.
+  while (true) {
+    let X;
+    // We wait for the lock to clear. After 1.5s we assume that the current
+    // holder of the lock has disappeared.
+    for (let i = 0; i <= 50; i++) {
+      X = localStorage.getItem(lock);
+      // (1)
+      if (X == null || X == "free") {
+        break; // (2)
+      }
+      async_sleep(30);
+    }
+    // Ok the lock is clear. Let's try to grab it. Of course competing tabs will now do the same.
+    localStorage.setItem(lock, tab_id); // (3)
+    async_sleep(30); // Should be long enough to do (1)(2)(3) (by other tabs)
+    X = localStorage.getItem(lock);
+    if (X == tab_id) {
+      // Hurray we won the race with the other tabs! Go to the critical section.
+      break;
+    }
+    // Some other tab beat us. Let's try again.
+  }
+  // Let's allow for the possibility that the critical section is async...
+  await critical_section_();
+  localStorage.setItem(lock, "free"); // Release the lock.
+}

@@ -52,6 +52,7 @@ LRU.load = function (name) {
 
 const fishtest_notifications_key = "fishtest_notifications";
 const fishtest_timestamp_key = "fishtest_timestamp";
+const fishtest_critical_section_key = "fishtest_critical_section";
 
 function notify_fishtest_(message) {
   const div = document.getElementById("fallback_div");
@@ -153,16 +154,18 @@ async function main_follow_loop() {
       continue;
     }
     save_timestamp(current_time);
-    notifications = get_notifications();
     let work = [];
-    json.forEach((entry) => {
-      let run_id = entry["run_id"];
-      if (notifications.contains(run_id)) {
-        work.push(entry);
-        notifications.remove(run_id);
-      }
+    await critical_section(fishtest_critical_section_key, () => {
+      notifications = get_notifications();
+      json.forEach((entry) => {
+        let run_id = entry["run_id"];
+        if (notifications.contains(run_id)) {
+          work.push(entry);
+          notifications.remove(run_id);
+        }
+      });
+      save_notifications(notifications); // make sure other tabs see up to date data
     });
-    save_notifications(notifications); // make sure other tabs see up to date data
     // Instrumentation
     console.log("active notifications: ", JSON.stringify(notifications));
     work.forEach((entry) => {
