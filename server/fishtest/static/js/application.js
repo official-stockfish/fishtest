@@ -153,7 +153,7 @@ function notify(title, body, link, fallback) {
       icon: "https://tests.stockfishchess.org/img/stockfish.png",
     });
     notification.onclick = () => {
-      window.location = link;
+      window.open(link, "_blank");
     };
   } else if (fallback) {
     fallback(title, body, link);
