@@ -124,23 +124,8 @@ def login(request):
     return {}
 
 
-# Guard against upload timeouts/retries
-uploading = threading.Semaphore()
-
-
 @view_config(route_name="nn_upload", renderer="nn_upload.mak", require_csrf=True)
 def upload(request):
-    if not uploading.acquire(False):
-        request.session.flash(
-            "An other upload is in progress, please try again later", "error"
-        )
-        return {}
-    result = sync_upload(request)
-    uploading.release()
-    return result
-
-
-def sync_upload(request):
     userid = request.authenticated_userid
     if not userid:
         request.session.flash("Please login")
@@ -179,25 +164,36 @@ def sync_upload(request):
         return {}
     try:
         with open(os.path.expanduser("~/fishtest.upload"), "r") as f:
-            upload_server = f.read().replace("\n", "")
-            upload_server = upload_server + "/" + filename
+            upload_server = f.read().strip()
     except Exception as e:
         print("Network upload not configured: " + str(e))
         request.session.flash("Network upload not configured", "error")
         return {}
     try:
-        response = requests.post(upload_server, data=network, timeout=HTTP_TIMEOUT * 20)
+        files = {"upload": (filename, network)}
+        response = requests.post(upload_server, files=files, timeout=HTTP_TIMEOUT * 20)
         response.raise_for_status()
     except Exception as e:
         print("Network upload failed: " + str(e))
-        request.session.flash("Post request for the network upload failed", "error")
+        if response.status_code == 409:
+            error = "Network {} already uploaded".format(filename)
+        elif response.status_code == 500:
+            error = "Failed to write {}".format(filename)
+        else:
+            error = "Post request for the network upload failed"
+        request.session.flash(error, "error")
         return {}
+
+    if request.rundb.get_nn(filename):
+        request.session.flash("Network already exists", "error")
+        return {}
+
+    request.rundb.upload_nn(userid, filename, network)
 
     request.actiondb.upload_nn(
         username=request.authenticated_userid,
         nn=filename,
     )
-    request.rundb.upload_nn(userid, filename, network)
 
     return HTTPFound(location=request.route_url("nns"))
 
@@ -904,7 +900,7 @@ def tests_run(request):
                 message=new_run_message(request, run),
             )
             cached_flash(request, "Submitted test to the queue!")
-            return HTTPFound(location="/tests/view/" + str(run_id)+"?follow=1")
+            return HTTPFound(location="/tests/view/" + str(run_id) + "?follow=1")
         except Exception as e:
             request.session.flash(str(e), "error")
 
@@ -1293,7 +1289,7 @@ def tests_view(request):
         ),
         "tasks_shown": show_task != -1 or request.cookies.get("tasks_state") == "Hide",
         "show_task": show_task,
-        "follow" : follow,
+        "follow": follow,
     }
 
 
