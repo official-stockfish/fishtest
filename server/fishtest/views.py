@@ -7,6 +7,7 @@ import re
 import threading
 import time
 import urllib
+
 import fishtest.stats.stat_util
 import requests
 from fishtest.util import (
@@ -23,6 +24,7 @@ from fishtest.util import (
 from pyramid.httpexceptions import HTTPFound, exception_response
 from pyramid.security import forget, remember
 from pyramid.view import forbidden_view_config, view_config
+from requests.exceptions import ConnectionError, HTTPError
 
 HTTP_TIMEOUT = 15.0
 
@@ -142,7 +144,7 @@ def upload(request):
         )
         return {}
     except Exception as e:
-        print("Error reading the network file: " + str(e))
+        print("Error reading the network file:", e)
         request.session.flash("Error reading the network file", "error")
         return {}
     if request.rundb.get_nn(filename):
@@ -166,21 +168,32 @@ def upload(request):
         with open(os.path.expanduser("~/fishtest.upload"), "r") as f:
             upload_server = f.read().strip()
     except Exception as e:
-        print("Network upload not configured: " + str(e))
+        print("Network upload not configured:", e)
         request.session.flash("Network upload not configured", "error")
         return {}
     try:
+        error = ""
         files = {"upload": (filename, network)}
         response = requests.post(upload_server, files=files, timeout=HTTP_TIMEOUT * 20)
         response.raise_for_status()
-    except Exception as e:
-        print("Network upload failed: " + str(e))
+    except ConnectionError as e:
+        print("Failed to connect to the net server:", e)
+        error = "Failed to connect to the net server"
+    except HTTPError as e:
+        print("Network upload failed:", e)
         if response.status_code == 409:
-            error = "Network {} already uploaded".format(filename)
+            error = "Post request failed: network {} already uploaded".format(filename)
         elif response.status_code == 500:
-            error = "Failed to write {}".format(filename)
+            error = "Post request failed: net server failed to write {}".format(
+                filename
+            )
         else:
-            error = "Post request for the network upload failed"
+            error = "Post request failed: other HTTP error"
+    except Exception as e:
+        print("Error during connection:", e)
+        error = "Post request for the network upload failed"
+
+    if error:
         request.session.flash(error, "error")
         return {}
 
