@@ -930,26 +930,24 @@ class RunDb:
             result = "yellow"
         elif run["is_green"]:
             result = "green"
+        # Todo: list blue results
         ret = f"Result:{result}"
         if "sprt" in run["args"]:
             sprt = run["args"]["sprt"]
-            elo_model = sprt["elo_model"]
-            alpha = sprt["alpha"]
-            beta = sprt["beta"]
             elo0 = sprt["elo0"]
             elo1 = sprt["elo1"]
-            sprt["elo_model"] = elo_model
             results = run["results"]
+            num_games = results["wins"] + results["draws"] + results["losses"]
+            ret += f" bounds:<{elo0},{elo1}> games:{num_games}"
             a = SPRT_elo(
                 results,
-                alpha=alpha,
-                beta=beta,
+                alpha=sprt["alpha"],
+                beta=sprt["beta"],
                 elo0=elo0,
                 elo1=elo1,
-                elo_model=elo_model,
+                elo_model=sprt["elo_model"],
             )
-            ret += f" Elo:{a['elo']:.2f}[{a['ci'][0]:.2f},{a['ci'][1]:.2f}]"
-            ret += f" LOS:{a['LOS']:.0%}"
+            ret += f" Elo:{a['elo']:.1f}[{a['ci'][0]:.1f},{a['ci'][1]:.1f}]"
             return ret
         else:
             results = run["results"]
