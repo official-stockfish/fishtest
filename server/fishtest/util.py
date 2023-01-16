@@ -1,4 +1,5 @@
 import hashlib
+import re
 import smtplib
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
@@ -511,3 +512,11 @@ def email_valid(email):
         return True, valid.email
     except EmailNotValidError as e:
         return False, str(e)
+
+
+def get_hash(s):
+    h = re.search("Hash=([0-9]+)", s)
+    if h:
+        return int(h.group(1))
+    return 0
+
