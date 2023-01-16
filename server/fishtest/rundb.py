@@ -24,6 +24,7 @@ from fishtest.util import (
     format_results,
     get_bad_workers,
     get_chi2,
+    get_hash,
     post_in_fishcooking_results,
     remaining_hours,
     update_residuals,
@@ -775,12 +776,6 @@ class RunDb:
             need_tt = 0
             need_base = 0
 
-            def get_hash(s):
-                h = re.search("Hash=([0-9]+)", s)
-                if h:
-                    return int(h.group(1))
-                return 0
-
             need_tt += get_hash(run["args"]["new_options"])
             need_tt += get_hash(run["args"]["base_options"])
             need_tt *= max_threads // run["args"]["threads"]
@@ -938,7 +933,6 @@ class RunDb:
             beta = sprt["beta"]
             elo0 = sprt["elo0"]
             elo1 = sprt["elo1"]
-            sprt["elo_model"] = elo_model
             results = run["results"]
             a = SPRT_elo(
                 results,
@@ -950,7 +944,6 @@ class RunDb:
             )
             ret += f" Elo:{a['elo']:.2f}[{a['ci'][0]:.2f},{a['ci'][1]:.2f}]"
             ret += f" LOS:{a['LOS']:.0%}"
-            return ret
         else:
             results = run["results"]
             if "pentanomial" in results:
@@ -965,7 +958,11 @@ class RunDb:
             ret += f" Elo:{elo:.2f}[{elo-elo95:.2f},{elo+elo95:.2f}]"
             ret += f" LOS:{los:.0%}"
 
-            return ret
+        results = run["results"]
+        pentanomial = results["pentanomial"]
+        total = sum(pentanomial)
+        ret += f" Games:{total} Ptnml:{str(pentanomial).replace(' ','')}"
+        return ret;
 
     def update_task(self, worker_info, run_id, task_id, stats, spsa):
         lock = self.active_run_lock(str(run_id))

@@ -14,6 +14,9 @@ function LRU(capacity, content) {
     count() {
       return this.content.length;
     },
+    copy() {
+      return new LRU(this.capacity, this.content.slice());
+    },
     add(elt) {
       if (this.contains(elt)) {
         return null;
@@ -71,18 +74,27 @@ function notify_fishtest(message) {
   broadcast("notify_fishtest_", message);
 }
 
-function notify_elo(entry) {
-  const tag = entry["run"].slice(0, -8);
-  const message = entry["message"];
-  const username = entry["username"];
-  const color = message.split(" ")[0].split(":")[1];
-  const elo = message.split(" ")[1];
-  const LOS = message.split(" ")[2];
+function notify_elo(entry_start, entry_finished) {
+  const tag = entry_finished["run"].slice(0, -8);
+  const message_finished = entry_finished["message"];
+  const username = entry_finished["username"];
+  const color = message_finished.split(" ")[0].split(":")[1];
+  const first_line_idx = message_finished.indexOf(" ") + 1;
+  const first_line = message_finished.slice(first_line_idx);
   const title = `Test ${tag} by ${username} finished ${color}!`;
-  const body = elo + " " + LOS;
-  const link = `/tests/view/${entry["run_id"]}`;
+  let second_line;
+  if (entry_start) {
+    const message_start = entry_start["message"];
+    second_line = ` *Testdata* ${message_start}`;
+  } else {
+    second_line = "";
+  }
+  const body = first_line + second_line;
+  const link = `/tests/view/${entry_finished["run_id"]}`;
   notify(title, body, link, (title, body, link) => {
-    const message = `<a href=${link}>${title} ${body}</a>`;
+    const message = `<a href=${link}>${escapeHtml(title)} ${escapeHtml(
+      body
+    )}</a>`;
     notify_fishtest(message);
   });
 }
@@ -128,7 +140,7 @@ function save_timestamp(ts) {
 
 async function main_follow_loop() {
   await DOM_loaded();
-  async_sleep(10000);
+  await async_sleep(10000);
   while (true) {
     const current_time = Date.now();
     const timestamp_latest_fetch = get_timestamp();
@@ -137,7 +149,7 @@ async function main_follow_loop() {
       current_time - timestamp_latest_fetch < 19000
     ) {
       console.log("Skipping events update");
-      await async_sleep(20000);
+      await async_sleep(20000 + 500 * Math.random());
       continue;
     }
     let json;
@@ -149,7 +161,7 @@ async function main_follow_loop() {
       });
     } catch (e) {
       console.log(e);
-      await async_sleep(20000);
+      await async_sleep(20000 + 500 * Math.random());
       continue;
     }
     save_timestamp(current_time);
@@ -165,13 +177,24 @@ async function main_follow_loop() {
     save_notifications(notifications); // make sure other tabs see up to date data
     // Instrumentation
     console.log("active notifications: ", JSON.stringify(notifications));
-    work.forEach((entry) => {
-      notify_elo(entry);
+    work.forEach(async (entry) => {
       run_id = entry["run_id"];
-      set_notification_status(run_id);
       disable_notification(run_id);
+      set_notification_status(run_id);
+      let json;
+      try {
+        json = await fetch_post("/api/actions", {
+          action: "new_run",
+          run_id: run_id,
+        });
+        notify_elo(json[0], entry);
+      } catch (e) {
+        // TODO: try to deal with network errors
+        console.log(e);
+        notify_elo(null, entry);
+      }
     });
-    await async_sleep(20000);
+    await async_sleep(20000 + 500 * Math.random());
   }
 }
 

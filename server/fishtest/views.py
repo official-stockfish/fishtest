@@ -18,6 +18,7 @@ from fishtest.util import (
     format_bounds,
     format_results,
     get_chi2,
+    get_hash,
     password_strength,
     update_residuals,
 )
@@ -889,6 +890,7 @@ def new_run_message(request, run):
     ret += f" Book:{run['args']['book']}"
     ret += f" Threads:{run['args']['threads']}"
     ret += "(SMP)" if run["args"]["threads"] > 1 else ""
+    ret += f" Hash:{get_hash(run['args']['base_options'])}/{get_hash(run['args']['new_options'])}"
     return ret
 
 
