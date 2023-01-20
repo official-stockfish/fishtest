@@ -962,7 +962,7 @@ class RunDb:
         pentanomial = results["pentanomial"]
         total = 2 * sum(pentanomial)
         ret += f" Games:{total} Ptnml:{str(pentanomial).replace(' ','')}"
-        return ret;
+        return ret
 
     def update_task(self, worker_info, run_id, task_id, stats, spsa):
         lock = self.active_run_lock(str(run_id))
@@ -992,6 +992,19 @@ class RunDb:
 
         if not task["active"]:
             info = "Update_task: task {}/{} is not active".format(run_id, task_id)
+            print(info, flush=True)
+            return {"task_alive": False, "info": info}
+
+        # There is a small possibility that a new task was assigned while this
+        # run was stopped in a previous call to update_task. If this is not
+        # handled then we may have duplicate event log entries as in
+        #
+        # https://tests.stockfishchess.org/actions?run_id=63c7059e18c20f4929c63833
+
+        if run["finished"]:
+            info = "Update_task: task {}/{} belongs to a finished run".format(
+                run_id, task_id
+            )
             print(info, flush=True)
             task["active"] = False
             return {"task_alive": False, "info": info}
