@@ -960,7 +960,7 @@ class RunDb:
 
         results = run["results"]
         pentanomial = results["pentanomial"]
-        total = sum(pentanomial)
+        total = 2 * sum(pentanomial)
         ret += f" Games:{total} Ptnml:{str(pentanomial).replace(' ','')}"
         return ret;
 
