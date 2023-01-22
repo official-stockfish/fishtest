@@ -455,6 +455,7 @@ class RunDb:
                     ),
                     flush=True,
                 )
+                self.handle_crash_or_time(run, task_id)
                 self.actiondb.dead_task(
                     username=task["worker_info"]["username"],
                     run=run,
@@ -964,6 +965,25 @@ class RunDb:
         ret += f" Games:{total} Ptnml:{str(pentanomial).replace(' ','')}"
         return ret
 
+    def handle_crash_or_time(self, run, task_id):
+        task = run['tasks'][task_id]
+        if crash_or_time(task):
+            stats = task.get("stats", {})
+            total = (
+                stats.get("wins", 0) + stats.get("losses", 0) + stats.get("draws", 0)
+            )
+            if not total:
+                return
+            crashes = stats.get("crashes", 0)
+            time_losses = stats.get("time_losses", 0)
+            message = f"Time losses:{time_losses}({time_losses/total:.1%}) Crashes:{crashes}({crashes/total:.1%})"
+            self.actiondb.crash_or_time(
+                username=task["worker_info"]["username"],
+                run=run,
+                task_id=task_id,
+                message=message,
+            )
+
     def update_task(self, worker_info, run_id, task_id, stats, spsa):
         lock = self.active_run_lock(str(run_id))
         with lock:
@@ -1071,9 +1091,17 @@ class RunDb:
         if "sprt" in run["args"]:
             sprt = run["args"]["sprt"]
             fishtest.stats.stat_util.update_SPRT(updated_results, sprt)
+            if sprt["state"] != "":
+                task_finished = True
+                task["active"] = False
 
         if "spsa" in run["args"] and spsa_games == spsa["num_games"]:
             self.update_spsa(task["worker_info"]["unique_key"], run, spsa)
+
+        # Record tasks with an excessive amount of crashes or time losses in the event log
+
+        if task_finished:
+            self.handle_crash_or_time(run, task_id)
 
         # Check if the run is finished.
 
@@ -1116,6 +1144,7 @@ class RunDb:
             return {"task_alive": False, "info": info}
         # Mark the task as inactive.
         task["active"] = False
+        self.handle_crash_or_time(run, task_id)
         self.buffer(run, False)
         print(
             "Failed_task: failure for: https://tests.stockfishchess.org/tests/view/{}, "
