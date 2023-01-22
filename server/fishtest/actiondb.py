@@ -14,6 +14,15 @@ schema = union(
         "message": str,
     },
     {
+        "action": "crash_or_time",
+        "username": str,
+        "worker": str,
+        "run_id": str,
+        "run": str,
+        "task_id": int,
+        "message": str,
+    },
+    {
         "action": "dead_task",
         "username": str,
         "worker": str,
@@ -128,6 +137,18 @@ class ActionDb:
         task = run["tasks"][task_id]
         self.insert_action(
             action="failed_task",
+            username=username,
+            worker=worker_name(task["worker_info"]),
+            run_id=run["_id"],
+            run=run_name(run),
+            task_id=task_id,
+            message=message[:1024],
+        )
+
+    def crash_or_time(self, username=None, run=None, task_id=None, message=None):
+        task = run["tasks"][task_id]
+        self.insert_action(
+            action="crash_or_time",
             username=username,
             worker=worker_name(task["worker_info"]),
             run_id=run["_id"],

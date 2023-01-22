@@ -25,6 +25,7 @@
       <option value="block_user">Block/Unblock User</option>
       <option value="upload_nn">Upload NN file</option>
       <option value="failed_task">Failed Tasks</option>
+      <option value="crash_or_time">Crashes or Time losses</option>
       <option value="dead_task" class="grayedoutoption">Dead Tasks</option>
       <option value="system_event" class="grayedoutoption">System Events</option>
     </select>
