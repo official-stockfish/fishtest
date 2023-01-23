@@ -653,6 +653,7 @@
   const preset_bounds = {
     'standard STC': [ 0.0, 2.0],
     'standard LTC': [ 0.5, 2.5],
+    'Parameter's Tweak LTC': [ 0.0, 2.0],
     'regression STC': [-1.75, 0.25],
     'regression LTC': [-1.75, 0.25],
   };
