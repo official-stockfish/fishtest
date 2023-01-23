@@ -23,7 +23,7 @@ The recommended net for a given Stockfish executable can be found as the default
       name="network_name"
       class="form-control"
       placeholder="Network name"
-      value="${request.GET.get('network_name') if request.GET.get('network_name') is not None else ''}"
+      value="${request.GET.get('network_name', '')}"
     >
   </div>
 
@@ -35,7 +35,7 @@ The recommended net for a given Stockfish executable can be found as the default
     name="user"
     class="form-control"
     placeholder="Username"
-    value="${request.GET.get('user') if request.GET.get('user') is not None else ''}"
+    value="${request.GET.get('user', '')}"
   >
   </div>
 
