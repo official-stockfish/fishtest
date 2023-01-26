@@ -78,10 +78,10 @@ function notify_elo(entry_start, entry_finished) {
   const tag = entry_finished["run"].slice(0, -8);
   const message_finished = entry_finished["message"];
   const username = entry_finished["username"];
-  const color = message_finished.split(" ")[0].split(":")[1];
+  const state = message_finished.split(" ")[0].split(":")[1];
   const first_line_idx = message_finished.indexOf(" ") + 1;
   const first_line = message_finished.slice(first_line_idx);
-  const title = `Test ${tag} by ${username} finished ${color}!`;
+  const title = `Test ${tag} by ${username} was ${state}!`;
   let second_line;
   if (entry_start) {
     const message_start = entry_start["message"];

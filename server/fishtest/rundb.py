@@ -921,14 +921,10 @@ class RunDb:
     def finished_run_message(self, run):
         if "spsa" in run["args"]:
             return "SPSA tune finished"
-        result = "red"
-        if run["is_yellow"]:
-            result = "yellow"
-        elif run["is_green"]:
-            result = "green"
-        ret = f"Result:{result}"
+        result = "unknown"
         if "sprt" in run["args"]:
             sprt = run["args"]["sprt"]
+            result = sprt.get("state", "")
             elo_model = sprt["elo_model"]
             alpha = sprt["alpha"]
             beta = sprt["beta"]
@@ -943,6 +939,7 @@ class RunDb:
                 elo1=elo1,
                 elo_model=elo_model,
             )
+            ret = f"Result:{result}"
             ret += f" Elo:{a['elo']:.2f}[{a['ci'][0]:.2f},{a['ci'][1]:.2f}]"
             ret += f" LOS:{a['LOS']:.0%}"
         else:
@@ -956,6 +953,12 @@ class RunDb:
                 elo, elo95, los = fishtest.stats.stat_util.get_elo(
                     [WLD[1], WLD[2], WLD[0]]
                 )
+            if run["is_green"]:
+                result = "accepted"
+            else:
+                result = "rejected"
+            
+            ret = f"Result:{result}"
             ret += f" Elo:{elo:.2f}[{elo-elo95:.2f},{elo+elo95:.2f}]"
             ret += f" LOS:{los:.0%}"
 
