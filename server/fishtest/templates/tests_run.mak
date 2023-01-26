@@ -334,7 +334,7 @@
                   <select class="form-select" id="bounds" name="bounds">
                     <option value="standard STC">Standard STC ${fb(0.0, 2.0)}</option>
                     <option value="standard LTC">Standard LTC ${fb(0.5, 2.5)}</option>
-                    <option value="Parameter's Tweak LTC">Parameter's Tweak LTC ${fb(0, 2)}</option>
+                    <option value="Parameters Tweak LTC">Parameters Tweak LTC ${fb(0, 2)}</option>
                     <option value="regression STC">Non-regression STC ${fb(-1.75, 0.25)}</option>
                     <option value="regression LTC">Non-regression LTC ${fb(-1.75, 0.25)}</option>
                     <option value="custom" ${'selected' if is_rerun else ''}>Custom bounds...</option>
@@ -653,7 +653,7 @@
   const preset_bounds = {
     'standard STC': [ 0.0, 2.0],
     'standard LTC': [ 0.5, 2.5],
-    'Parameter's Tweak LTC': [ 0.0, 2.0],
+    'Parameters Tweak LTC': [ 0.0, 2.0],
     'regression STC': [-1.75, 0.25],
     'regression LTC': [-1.75, 0.25],
   };
