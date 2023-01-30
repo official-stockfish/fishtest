@@ -38,7 +38,7 @@ function LRU(capacity, content) {
       localStorage.setItem(name, JSON.stringify(this));
     },
     remove(elt) {
-      idx = this.content.findIndex((x) => x == elt);
+      const idx = this.content.findIndex((x) => x == elt);
       if (idx == -1) {
         return;
       } else {
@@ -49,7 +49,7 @@ function LRU(capacity, content) {
 }
 
 LRU.load = function (name) {
-  let json = JSON.parse(localStorage.getItem(name));
+  const json = JSON.parse(localStorage.getItem(name));
   return new LRU(json["capacity"], json["content"]);
 };
 
@@ -61,11 +61,13 @@ function notify_fishtest_(message) {
   const span = document.getElementById("fallback");
   const fallback_div = document.getElementById("fallback_div");
   if (fallback_div.style.display == "none") {
-    span.innerHTML = message;
+    span.replaceChildren();
+    span.insertAdjacentHTML("beforeend", message);
   } else {
-    span.innerHTML += "<hr> " + message;
+    span.insertAdjacentHTML("beforeend", "<hr>");
+    span.insertAdjacentHTML("beforeend", message);
   }
-  let count = span.innerHTML.split("<hr>").length;
+  const count = span.querySelectorAll(".notification-message").length;
   process_title(count);
   div.style.display = "block";
 }
@@ -81,7 +83,9 @@ function notify_elo(entry_start, entry_finished) {
   const state = message_finished.split(" ")[0].split(":")[1];
   const first_line_idx = message_finished.indexOf(" ") + 1;
   const first_line = message_finished.slice(first_line_idx);
-  const title = `Test ${tag} by ${username} was ${state}!`;
+  const title = state
+    ? `Test ${tag} by ${username} was ${state}!`
+    : `Test ${tag} by ${username}.`;
   let second_line;
   if (entry_start) {
     const message_start = entry_start["message"];
@@ -92,9 +96,10 @@ function notify_elo(entry_start, entry_finished) {
   const body = first_line + second_line;
   const link = `/tests/view/${entry_finished["run_id"]}`;
   notify(title, body, link, (title, body, link) => {
-    const message = `<a href=${link}>${escapeHtml(title)} ${escapeHtml(
-      body
-    )}</a>`;
+    const message = `<a class="notification-message" href=${link}>${escapeHtml(
+      title
+    )} ${escapeHtml(body)}</a>`;
+
     notify_fishtest(message);
   });
 }
@@ -199,25 +204,25 @@ async function main_follow_loop() {
 }
 
 function follow_run(run_id) {
-  let notifications = get_notifications();
+  const notifications = get_notifications();
   const ret = notifications.add(run_id);
   save_notifications(notifications);
   return ret;
 }
 
 function unfollow_run(run_id) {
-  let notifications = get_notifications();
+  const notifications = get_notifications();
   notifications.remove(run_id);
   save_notifications(notifications);
 }
 
 function following_run(run_id) {
-  let notifications = get_notifications();
+  const notifications = get_notifications();
   return notifications.contains(run_id);
 }
 
 function set_notification_status_(run_id) {
-  let button = document.getElementById(`follow_button_${run_id}`);
+  const button = document.getElementById(`follow_button_${run_id}`);
   if (button) {
     if (following_run(run_id)) {
       button.textContent = "Unfollow";
@@ -227,17 +232,43 @@ function set_notification_status_(run_id) {
     button.style.display = "";
   }
 
-  let notification_id = "notification_" + run_id;
-  let notification = document.getElementById(notification_id);
+  const notification_id = "notification_" + run_id;
+  const notification = document.getElementById(notification_id);
   if (notification) {
     if (following_run(run_id)) {
       notification.title = "Click to unfollow: no notification";
-      notification.innerHTML =
-        "<div style='white-space:nowrap;'><i class='fa-regular fa-bell' style='width:20px;'></i><i class='fa-solid fa-toggle-on'></i></div>";
+
+      const italic1 = document.createElement("i");
+      italic1.className = "fa-regular fa-bell";
+      italic1.style.width = "20px";
+
+      const italic2 = document.createElement("i");
+      italic2.className = "fa-solid fa-toggle-on";
+
+      const notification_body = document.createElement("div");
+      notification_body.style.whiteSpace = "nowrap";
+      notification_body.append(italic1);
+      notification_body.append(italic2);
+
+      notification.replaceChildren();
+      notification.append(notification_body);
     } else {
       notification.title = "Click to follow: get notification";
-      notification.innerHTML =
-        "<div style='white-space:nowrap;'><i class='fa-regular fa-bell-slash' style='width:20px;'></i><i class='fa-solid fa-toggle-off'></i></div>";
+
+      const italic1 = document.createElement("i");
+      italic1.className = "fa-regular fa-bell-slash";
+      italic1.style.width = "20px";
+
+      const italic2 = document.createElement("i");
+      italic2.className = "fa-solid fa-toggle-off";
+
+      const notification_body = document.createElement("div");
+      notification_body.style.whiteSpace = "nowrap";
+      notification_body.append(italic1);
+      notification_body.append(italic2);
+
+      notification.replaceChildren();
+      notification.append(notification_body);
     }
   }
 }
@@ -263,18 +294,18 @@ function toggle_notifaction_status(run_id) {
 
 // old style callback on main page: onclick="handle_notification(this)"
 function handle_notification(notification) {
-  run_id = notification.id.split("_")[1];
+  const run_id = notification.id.split("_")[1];
   toggle_notifaction_status(run_id);
 }
 
 // old style callback on tests_view page
 function handle_follow_button(button) {
-  run_id = button.id.split("_")[2];
+  const run_id = button.id.split("_")[2];
   toggle_notifaction_status(run_id);
 }
 
 function disable_notification_(run_id) {
-  let button = document.getElementById(`follow_button_${run_id}`);
+  const button = document.getElementById(`follow_button_${run_id}`);
   if (button) {
     button.disabled = 1;
   }
