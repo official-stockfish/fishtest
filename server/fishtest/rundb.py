@@ -603,15 +603,22 @@ class RunDb:
             itp = 1
         elif itp > 500:
             itp = 500
-        itp *= math.sqrt(
-            estimate_game_duration(run["args"]["tc"]) / estimate_game_duration("10+0.1")
-        )
-        itp *= math.sqrt(run["args"]["threads"])
-        if "sprt" not in run["args"]:
-            itp *= 0.5
-        else:
+
+        # Base TP derived from power law of TC relative to STC
+        tc_ratio = run["args"]["threads"] * estimate_game_duration(run["args"]["tc"]) \
+                                          / estimate_game_duration("10+0.1")
+        # Discount longer test TP, but don't boost shorter tests
+        if tc_ratio > 1:
+            # LTC/STC tc_ratio = 6, target latency ratio = 3/2,
+            # => LTC base tp = 4 => log(4)/log(6) ~ 0.774
+            itp *= tc_ratio**0.774
+
+        # TP bonus derived from LLR (or min-bonus for nonSPRTs)
+        llr = -2.94
+        if "sprt" in run["args"]:
             llr = run["args"]["sprt"].get("llr", 0)
-            itp *= (5 + llr) / 5
+        itp *= (llr + 8) / 8 # max/min bonus 1.37/0.63
+
         run["args"]["itp"] = itp
 
     def sum_cores(self, run):
