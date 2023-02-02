@@ -1,4 +1,5 @@
 import datetime
+
 import pymongo
 from bson.objectid import ObjectId
 from fishtest.actiondb import run_name
@@ -16,7 +17,9 @@ if __name__ == "__main__":
         count += 1
         action_id = action["_id"]
         if "time" in action and isinstance(action["time"], datetime.datetime):
-            action["time"] = action["time"].replace(tzinfo=datetime.timezone.utc).timestamp()
+            action["time"] = (
+                action["time"].replace(tzinfo=datetime.timezone.utc).timestamp()
+            )
         if "run_id" in action and isinstance(action["run_id"], ObjectId):
             action["run_id"] = str(action["run_id"])
         actions_collection.replace_one({"_id": action_id}, action)

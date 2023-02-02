@@ -602,8 +602,11 @@ class RunDb:
         itp = max(min(itp, 500), 1)
 
         # Base TP derived from power law of TC relative to STC
-        tc_ratio = run["args"]["threads"] * estimate_game_duration(run["args"]["tc"]) \
-                                          / estimate_game_duration("10+0.1")
+        tc_ratio = (
+            run["args"]["threads"]
+            * estimate_game_duration(run["args"]["tc"])
+            / estimate_game_duration("10+0.1")
+        )
         # Discount longer test TP, but don't boost shorter tests
         if tc_ratio > 1:
             # LTC/STC tc_ratio = 6, target latency ratio = 3/2,
@@ -615,12 +618,17 @@ class RunDb:
         if "sprt" in run["args"]:
             # Sanity check that we're no lower than standard lower bound
             llr = max(llr, run["args"]["sprt"].get("llr", 0))
-        itp *= (llr + 8) / 8 # max/min bonus 1.37/0.63
+        itp *= (llr + 8) / 8  # max/min bonus 1.37/0.63
 
         # Extra bonus for most promising tests -- LTC at strong-gainer bounds with good LLR
-        if tc_ratio >= 3.0 and llr > 1.5 \
-           and run["args"].get("sprt", {}).get("elo0", 0) > 0:
-            itp *= 1.2 # LLR 1.5 bonus from 1.19 to 1.42, LLR 2.9 bonus from 1.36 to 1.64
+        if (
+            tc_ratio >= 3.0
+            and llr > 1.5
+            and run["args"].get("sprt", {}).get("elo0", 0) > 0
+        ):
+            itp *= (
+                1.2  # LLR 1.5 bonus from 1.19 to 1.42, LLR 2.9 bonus from 1.36 to 1.64
+            )
 
         run["args"]["itp"] = itp
 
@@ -967,7 +975,7 @@ class RunDb:
                 result = "accepted"
             else:
                 result = "rejected"
-            
+
             ret = f"Result:{result}"
             ret += f" Elo:{elo:.2f}[{elo-elo95:.2f},{elo+elo95:.2f}]"
             ret += f" LOS:{los:.0%}"
@@ -979,7 +987,7 @@ class RunDb:
         return ret
 
     def handle_crash_or_time(self, run, task_id):
-        task = run['tasks'][task_id]
+        task = run["tasks"][task_id]
         if crash_or_time(task):
             stats = task.get("stats", {})
             total = (

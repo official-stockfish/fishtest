@@ -519,4 +519,3 @@ def get_hash(s):
     if h:
         return int(h.group(1))
     return 0
-
