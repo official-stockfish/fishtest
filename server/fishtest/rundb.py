@@ -714,12 +714,21 @@ class RunDb:
 
         last_run_id = self.worker_runs.get(unique_key, {}).get("last_run", None)
 
+        # Collect some data about the worker that will be used below.
+        max_threads = int(worker_info["concurrency"])
+        min_threads = int(worker_info.get("min_threads", 1))
+        max_memory  = int(worker_info.get("max_memory", 0))
+
+        near_github_api_limit = worker_info["near_github_api_limit"]
+
         def priority(run):  # lower is better
             return (
                 -run["args"]["priority"],
-                # Try to find a new run for this worker.
+                # Try to avoid working on the same run consecutively
                 run["_id"] == last_run_id,
-                run["cores"] / run["args"]["itp"] * 100.0,
+                # Judge itp by including this potential worker, to solve
+                # low workers-per-run granularity issues
+                (run["cores"] + max_threads) / run["args"]["itp"],
                 -run["args"]["itp"],
                 run["_id"],
             )
@@ -745,16 +754,6 @@ class RunDb:
             )
             print(error, flush=True)
             return {"task_waiting": False, "error": error}
-
-        # Collect some data about the worker that will be used below.
-
-        # Memory
-        max_threads = int(worker_info["concurrency"])
-        min_threads = int(worker_info.get("min_threads", 1))
-        max_memory = int(worker_info.get("max_memory", 0))
-
-        # Is the worker near the github api limit?
-        near_github_api_limit = worker_info["near_github_api_limit"]
 
         # Now go through the sorted list of unfinished runs.
         # We will add a task to the first run that is suitable.
