@@ -724,11 +724,18 @@ class RunDb:
         def priority(run):  # lower is better
             return (
                 -run["args"]["priority"],
-                # Try to avoid working on the same run consecutively
+                # Try to avoid repeatedly working on the same test
                 run["_id"] == last_run_id,
-                # Judge itp by including this potential worker, to solve
-                # low workers-per-run granularity issues
-                (run["cores"] + max_threads) / run["args"]["itp"],
+                # Tests with low itp/workers-per-test can cause granularity issues.
+                # If we simply use oldcores-per-itp, then low-core tests will be
+                # overweighted when they're assigned large workers. If we simply
+                # use newcores-per-itp, then low-core tests will be underweighted
+                # when they're *not* assigned large workers. Split the difference
+                # by splitting the difference, and also ensuring at least one
+                # worker at all times.
+                run["cores"] > 0,
+                (run["cores"] + max_threads / 2) / run["args"]["itp"],
+                # Tiebreakers!
                 -run["args"]["itp"],
                 run["_id"],
             )
