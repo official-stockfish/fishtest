@@ -111,6 +111,8 @@
                       <td>${arg[1][:10]}</td>
                   % elif arg[0] == 'rescheduled_from':
                       <td><a href="/tests/view/${arg[1]}">${arg[1]}</a></td>
+                  % elif arg[0] == 'itp':
+                      <td>${f"{float(arg[1]):.2f}"}</a></td>
                   % else:
                       <td ${'class="run-info"' if arg[0]=="info" else "" | n}>
                           ${str(markupsafe.Markup(arg[1])).replace('\n', '<br>') | n}
