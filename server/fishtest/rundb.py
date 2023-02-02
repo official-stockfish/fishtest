@@ -621,14 +621,14 @@ class RunDb:
         itp *= (llr + 8) / 8  # max/min bonus 1.37/0.63
 
         # Extra bonus for most promising tests -- LTC at strong-gainer bounds with good LLR
-        if (
-            tc_ratio >= 3.0
-            and llr > 1.5
-            and run["args"].get("sprt", {}).get("elo0", 0) > 0
-        ):
-            itp *= (
-                1.2  # LLR 1.5 bonus from 1.19 to 1.42, LLR 2.9 bonus from 1.36 to 1.64
-            )
+        #if (
+        #    tc_ratio >= 3.0
+        #    and llr > 1.5
+        #    and run["args"].get("sprt", {}).get("elo0", 0) > 0
+        #):
+        #    itp *= (
+        #        1.2  # LLR 1.5 bonus from 1.19 to 1.42, LLR 2.9 bonus from 1.36 to 1.64
+        #    )
 
         run["args"]["itp"] = itp
 
