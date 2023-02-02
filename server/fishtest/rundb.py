@@ -599,10 +599,7 @@ class RunDb:
 
     def calc_itp(self, run):
         itp = run["args"]["throughput"]
-        if itp < 1:
-            itp = 1
-        elif itp > 500:
-            itp = 500
+        itp = max(min(itp, 500), 1)
 
         # Base TP derived from power law of TC relative to STC
         tc_ratio = run["args"]["threads"] * estimate_game_duration(run["args"]["tc"]) \
