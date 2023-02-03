@@ -1,15 +1,23 @@
 <%page args="run, show_gauge=False"/>
 
 <%!
-  def get_run_style(run):
-    ret = 'white-space:nowrap; border: 1px solid rgba(0,0,0,0.15);'
-    style = run['results_info'].get('style','')
-    if style != '':
-      ret += 'background-color:' + style+';'
+  from fishtest.util import is_active_sprt_ltc
+
+  def results_pre_attrs(run):
+    ret = ''
+    style = run['results_info'].get('style', '')
+    if style:
+      ret = f'style="background-color: {style};"'
+
+    classes = 'rounded elo-results results-pre'
+    if is_active_sprt_ltc(run):
+      classes += ' ltc-highlight'
     tc = run ['args']['tc']
     new_tc = run['args'].get('new_tc',tc)
     if tc != new_tc:
-       ret += 'border-style:solid;border-color:Pink;border-width:medium;'
+      classes += ' time-odds'
+    ret += f' class="{classes}"'
+
     return ret
 %>
 
@@ -73,7 +81,7 @@
         <div style="margin-left:90px;">
     % endif
 % endif
-<pre style="${get_run_style(run)}" class="rounded elo-results">
+<pre ${results_pre_attrs(run)|n}>
   ${list_info(run)}
 </pre>
 % if show_gauge:
