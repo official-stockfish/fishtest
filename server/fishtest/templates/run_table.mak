@@ -9,7 +9,7 @@
 % endif
 
 <%
-  from fishtest.util import get_cookie
+  from fishtest.util import get_cookie, is_active_sprt_ltc
   if toggle:
     cookie_name = toggle+"_state"
 %>
@@ -114,7 +114,7 @@
                 % else:
                   ${run['args']['num_games']}
                 % endif
-                @ ${run['args']['tc']} th ${str(run['args'].get('threads',1))}
+                @ <span class="${'rounded ltc-highlight' if is_active_sprt_ltc(run) else ''}">${run['args']['tc']} th ${str(run['args'].get('threads',1))}</span>
                 <br>
                 ${f"itp: {round(run['args']['itp'])} " if not run['finished'] else ''}
                 ${f"cores: {run['cores']}" if not run['finished'] and 'cores' in run else ''}

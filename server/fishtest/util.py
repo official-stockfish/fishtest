@@ -326,6 +326,17 @@ def estimate_game_duration(tc):
     return (time_tc + (increment * game_moves)) * scale
 
 
+def get_tc_ratio_stc(tc, threads=1):
+    # Relative to standard STC. Standard LTC is of course 6, and SMP-STC is 4.
+    return threads * estimate_game_duration(tc) \
+                   / estimate_game_duration("10+0.1")
+
+
+def is_active_sprt_ltc(run):
+    return not run["finished"] and 'sprt' in run['args'] \
+       and get_tc_ratio_stc(run["args"]["tc"], run["args"]["threads"]) > 4 # SMP-STC ratio is 4
+
+
 def remaining_hours(run):
     r = run["results"]
     if "sprt" in run["args"]:

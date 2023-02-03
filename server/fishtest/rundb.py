@@ -20,6 +20,7 @@ from fishtest.userdb import UserDb
 from fishtest.util import (
     crash_or_time,
     estimate_game_duration,
+    get_tc_ratio_stc,
     format_bounds,
     format_results,
     get_bad_workers,
@@ -602,11 +603,7 @@ class RunDb:
         itp = max(min(itp, 500), 1)
 
         # Base TP derived from power law of TC relative to STC
-        tc_ratio = (
-            run["args"]["threads"]
-            * estimate_game_duration(run["args"]["tc"])
-            / estimate_game_duration("10+0.1")
-        )
+        tc_ratio = get_tc_ratio_stc(run["args"]["tc"], run["args"]["threads"])
         # Discount longer test TP, but don't boost shorter tests
         if tc_ratio > 1:
             # LTC/STC tc_ratio = 6, target latency ratio = 3/2,
