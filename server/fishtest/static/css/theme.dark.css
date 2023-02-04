@@ -267,37 +267,47 @@ td[style*="background-color:#FF6A6A"] {
 }
 
 /* Darken white box */
-pre[style*="white-space:nowrap"] {
+pre[class*="results-pre"] {
   background: var(--bg-dark-3) !important;
   color: var(--color-dark-1) !important;
 }
 
+pre[class*="ltc-highlight"] {
+  background: rgb(40, 40, 15) !important;
+  color: var(--color-dark-1) !important;
+}
+
+span[class*="ltc-highlight"] {
+  background: rgb(40, 40, 15) !important;
+  color: var(--color-dark-1) !important;
+}
+
 /* Darker yellow */
-pre[style*="background-color:yellow"] {
+pre[style*="background-color: yellow"] {
   background: #efef22cc !important;
   color: var(--bg-dark-3) !important;
 }
 
 /* Darker red */
-pre[style*="background-color:#FF6A6A"] {
+pre[style*="background-color: #FF6A6A"] {
   background: #ed6464cc !important;
   color: var(--bg-dark-3) !important;
 }
 
 /* Darker green */
-pre[style*="background-color:#44EB44"] {
+pre[style*="background-color: #44EB44"] {
   background: #75bb76 !important;
   color: var(--bg-dark-3) !important;
 }
 
 /* Darker blue */
-pre[style*="background-color:#66CCFF"] {
+pre[style*="background-color: #66CCFF"] {
   background: #88d7ffcc !important;
   color: var(--bg-dark-3) !important;
 }
 
 /* Darken pink border */
-pre[style*="border-color:Pink"] {
+pre[class*="time-odds"] {
   border-color: #ffffffcc !important;
 }
 
