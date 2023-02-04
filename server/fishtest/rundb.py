@@ -616,19 +616,21 @@ class RunDb:
         # Gentle bonus/malus for positive/negative LLR (non-SPRTs are like worst LLR)
         llr = -2.94
         if "sprt" in run["args"]:
-            # Sanity check that we're no lower than standard lower bound
-            llr = max(llr, run["args"]["sprt"].get("llr", 0))
-        itp *= (llr + 8) / 8  # max/min bonus 1.37/0.63
+            llr = run["args"]["sprt"].get("llr", 0)
+        # Cap the bonus to within [-2,2]. It makes little sense to adjust tests
+        # which are nearly finished, instead adjust the unclear ones.
+        llr = max(min(llr, 2.0), -2.0)
+        # Use asymmetric bonus, reward good LLR more than punishing bad LLR
+        a = 4 if llr > 0 else 8 # max bonus 1.5x, min bonus 0.75x
+        itp *= (llr + a) / a
 
-        # Extra bonus for most promising tests -- LTC at strong-gainer bounds with good LLR
+        # Extra bonus for most promising tests LTCs at strong-gainer bounds
         #if (
         #    tc_ratio >= 3.0
         #    and llr > 1.5
         #    and run["args"].get("sprt", {}).get("elo0", 0) > 0
         #):
-        #    itp *= (
-        #        1.2  # LLR 1.5 bonus from 1.19 to 1.42, LLR 2.9 bonus from 1.36 to 1.64
-        #    )
+        #    itp *= 1.2 # Max net bonus 1.8x
 
         run["args"]["itp"] = itp
 
