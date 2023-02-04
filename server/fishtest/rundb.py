@@ -489,7 +489,7 @@ class RunDb:
                 "active" if any(task["active"] for task in run["tasks"]) else "pending"
             )
             if state == "pending":
-                run["cores"] = 0
+                run["workers"] = run["cores"] = 0
             runs[state].append(run)
         runs["pending"].sort(
             key=lambda run: (
@@ -632,12 +632,13 @@ class RunDb:
 
         run["args"]["itp"] = itp
 
-    def sum_cores(self, run):
-        cores = 0
+    def update_workers_cores(self, run):
+        workers = cores = 0
         for task in run["tasks"]:
             if task["active"]:
+                workers += 1
                 cores += int(task["worker_info"]["concurrency"])
-        run["cores"] = cores
+        run["workers"], run["cores"] = workers, cores
 
     # Limit concurrent request_task
     task_lock = threading.Lock()
@@ -700,7 +701,7 @@ class RunDb:
             self.task_runs = []
             for r in self.get_unfinished_runs_id():
                 run = self.get_run(r["_id"])
-                self.sum_cores(run)
+                self.update_workers_cores(run)
                 self.calc_itp(run)
                 self.task_runs.append(run)
             self.task_time = time.time()
@@ -892,6 +893,7 @@ class RunDb:
 
         task_id = len(run["tasks"]) - 1
 
+        run["workers"] += 1
         run["cores"] += task["worker_info"]["concurrency"]
         self.buffer(run, False)
 
@@ -1106,6 +1108,7 @@ class RunDb:
             # run["cores"] is also updated in request_task().
             # We use the same lock.
             with self.task_lock:
+                run["workers"] -= 1
                 run["cores"] -= task["worker_info"]["concurrency"]
                 assert run["cores"] >= 0
 

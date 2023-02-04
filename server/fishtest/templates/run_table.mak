@@ -116,8 +116,9 @@
                 % endif
                 @ ${run['args']['tc']} th ${str(run['args'].get('threads',1))}
                 <br>
-                ${f"itp: {round(run['args']['itp'])} " if not run['finished'] else ''}
-                ${f"cores: {run['cores']}" if not run['finished'] and 'cores' in run else ''}
+                % if not run['finished']:
+                    ${f"cores: {run.get('cores', '')} ({run.get('workers', '')})"}
+                % endif
               </td>
 
               <td class="run-info">

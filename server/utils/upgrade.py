@@ -52,6 +52,7 @@ run_default = {
     "finished": True,
     "approved": True,
     "approver": "?",
+    "workers": 0,
     "cores": 0,
     "results": {
         "wins": 0,

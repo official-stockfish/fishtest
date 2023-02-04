@@ -109,7 +109,7 @@ class CreateRunDBTest(unittest.TestCase):
         self.assertTrue(run["tasks"][0]["active"])
         run["tasks"][0]["active"] = True
         run["tasks"][0]["worker_info"] = self.worker_info
-        run["cores"] = 1
+        run["workers"] = run["cores"] = 1
 
         for run in self.rundb.get_unfinished_runs():
             if run["args"]["username"] == "travis":
@@ -119,7 +119,7 @@ class CreateRunDBTest(unittest.TestCase):
         run = self.rundb.get_run(run_id)
         run["tasks"][0]["active"] = True
         run["tasks"][0]["worker_info"] = self.worker_info
-        run["cores"] = 1
+        run["workers"] = run["cores"] = 1
         self.rundb.buffer(run, True)
         run = self.rundb.update_task(
             self.worker_info,
