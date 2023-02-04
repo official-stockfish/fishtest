@@ -31,7 +31,7 @@ def new_run(self, add_tasks=0):
     run = self.rundb.get_run(run_id)
     run["approved"] = True
     if add_tasks > 0:
-        run["cores"] = 0
+        run["workers"] = run["cores"] = 0
         for i in range(add_tasks):
             task = {
                 "num_games": self.chunk_size,
@@ -39,6 +39,7 @@ def new_run(self, add_tasks=0):
                 "active": True,
                 "worker_info": self.worker_info,
             }
+            run["workers"] += 1
             run["cores"] += self.worker_info["concurrency"]
             run["tasks"].append(task)
     self.rundb.buffer(run, True)
@@ -184,6 +185,7 @@ class TestApi(unittest.TestCase):
 
         run = self.rundb.get_run(run_id)
         self.assertEqual(len(run["tasks"]), 1)
+        self.assertEqual(run["workers"], 1)
         self.assertEqual(run["cores"], self.concurrency)
         task = run["tasks"][task_id]
         self.assertTrue(task["active"])
