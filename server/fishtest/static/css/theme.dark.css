@@ -272,16 +272,6 @@ pre[class*="results-pre"] {
   color: var(--color-dark-1) !important;
 }
 
-pre[class*="ltc-highlight"] {
-  background: rgb(40, 40, 15) !important;
-  color: var(--color-dark-1) !important;
-}
-
-span[class*="ltc-highlight"] {
-  background: rgb(40, 40, 15) !important;
-  color: var(--color-dark-1) !important;
-}
-
 /* Darker yellow */
 pre[style*="background-color: yellow"] {
   background: #efef22cc !important;
@@ -304,6 +294,11 @@ pre[style*="background-color: #44EB44"] {
 pre[style*="background-color: #66CCFF"] {
   background: #88d7ffcc !important;
   color: var(--bg-dark-3) !important;
+}
+
+.ltc-highlight {
+  background: rgb(40, 40, 15) !important;
+  color: var(--color-dark-1) !important;
 }
 
 /* Darken pink border */
