@@ -297,7 +297,7 @@ pre[style*="background-color: #66CCFF"] {
 }
 
 .ltc-highlight {
-  background: rgb(40, 40, 15) !important;
+  border: 2px solid rgba(100, 200, 50, 0.3) !important;
   color: var(--color-dark-1) !important;
 }
 
