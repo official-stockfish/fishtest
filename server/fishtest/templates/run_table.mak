@@ -108,17 +108,21 @@
                 <%include file="elo_results.mak" args="run=run" />
               </td>
 
-              <td style="width: 11%;" class="run-live">
+              <td style="width: 13%;" class="run-live">
                 % if 'sprt' in run['args']:
                     <a href="/tests/live_elo/${str(run['_id'])}" target="_blank">sprt</a>
                 % else:
                   ${run['args']['num_games']}
                 % endif
-                @ <span class="${'rounded ltc-highlight' if is_active_sprt_ltc(run) else ''}">${run['args']['tc']} th ${str(run['args'].get('threads',1))}</span>
-                <br>
-                % if not run['finished']:
-                    ${f"cores: {run.get('cores', '')} ({run.get('workers', '')})"}
-                % endif
+                @ 
+                <span>
+                  <span class="${'rounded ltc-highlight' if is_active_sprt_ltc(run) else ''}">
+                    ${run['args']['tc']} th ${str(run['args'].get('threads',1))}
+                  </span>
+                  % if not run['finished']:
+                      ${f"cores: {run.get('cores', '')} ({run.get('workers', '')})"}
+                  % endif
+                </span>
               </td>
 
               <td class="run-info">
