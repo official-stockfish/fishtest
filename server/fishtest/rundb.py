@@ -20,12 +20,12 @@ from fishtest.userdb import UserDb
 from fishtest.util import (
     crash_or_time,
     estimate_game_duration,
-    get_tc_ratio_stc,
     format_bounds,
     format_results,
     get_bad_workers,
     get_chi2,
     get_hash,
+    get_tc_ratio_stc,
     post_in_fishcooking_results,
     remaining_hours,
     update_residuals,
@@ -618,15 +618,15 @@ class RunDb:
         # which are nearly finished, instead adjust the unclear ones.
         llr = max(min(llr, 2.0), -2.0)
         # Use asymmetric bonus, reward good LLR more than punishing bad LLR
-        a = 4 if llr > 0 else 8 # max bonus 1.5x, min bonus 0.75x
+        a = 4 if llr > 0 else 8  # max bonus 1.5x, min bonus 0.75x
         itp *= (llr + a) / a
 
         # Extra bonus for most promising tests LTCs at strong-gainer bounds
-        #if (
+        # if (
         #    tc_ratio >= 3.0
         #    and llr > 1.5
         #    and run["args"].get("sprt", {}).get("elo0", 0) > 0
-        #):
+        # ):
         #    itp *= 1.2 # Max net bonus 1.8x
 
         run["args"]["itp"] = itp
@@ -679,7 +679,6 @@ class RunDb:
             return {"task_waiting": False}
 
     def sync_request_task(self, worker_info):
-
         unique_key = worker_info["unique_key"]
 
         # We get the list of unfinished runs.

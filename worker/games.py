@@ -961,9 +961,7 @@ def parse_cutechess_output(
 def launch_cutechess(
     cmd, remote, result, spsa_tuning, games_to_play, batch_size, tc_limit
 ):
-
     if spsa_tuning:
-
         # Request parameters for next game.
         req = send_api_post_request(remote + "/api/request_spsa", result)
         if "error" in req:
@@ -1311,7 +1309,6 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
         tc_limit *= 2
 
     while games_remaining > 0:
-
         batch_size = games_concurrency * 4  # update frequency
 
         if spsa_tuning:

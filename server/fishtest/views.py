@@ -452,7 +452,6 @@ def user(request):
     user_data = request.userdb.get_user(user_name)
     if "user" in request.POST:
         if profile:
-
             new_password = request.params.get("password")
             new_password_verify = request.params.get("password2", "")
             new_email = request.params.get("email")
@@ -1196,7 +1195,6 @@ def tests_view(request):
         "adjudication",
         "info",
     ]:
-
         if name not in run["args"]:
             continue
 

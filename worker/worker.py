@@ -344,7 +344,6 @@ def verify_credentials(remote, username, password, cached):
 
 
 def get_credentials(config, options, args):
-
     remote = "{}://{}:{}".format(options.protocol, options.host, options.port)
     print("Worker version {} connecting to {}".format(WORKER_VERSION, remote))
 
@@ -557,7 +556,6 @@ def validate(config, schema):
 
 
 def setup_parameters(worker_dir):
-
     # Step 1: read the config file if it exists.
     config = ConfigParser(inline_comment_prefixes=";", interpolation=None)
     config_file = worker_dir / CONFIGFILE

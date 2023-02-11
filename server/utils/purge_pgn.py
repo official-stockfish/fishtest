@@ -21,7 +21,6 @@ def purge_pgn(deleted, days):
         {"finished": True, "deleted": deleted},
         sort=[("last_updated", DESCENDING)],
     ):
-
         if (now - run["last_updated"]).days > 60:
             break
 
