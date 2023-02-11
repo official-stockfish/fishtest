@@ -297,7 +297,7 @@ pre[style*="background-color: #66CCFF"] {
 }
 
 .ltc-highlight {
-  border: 2px solid rgba(100, 200, 50, 0.3) !important;
+  outline: 2px solid rgba(50, 250, 50, 0.6) !important;
   color: var(--color-dark-1) !important;
 }
 

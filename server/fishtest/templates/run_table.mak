@@ -114,15 +114,15 @@
                 % else:
                   ${run['args']['num_games']}
                 % endif
-                @ 
-                <span>
-                  <span class="${'rounded ltc-highlight' if is_active_sprt_ltc(run) else ''}">
+                @
+                <span class="${'rounded ltc-highlight me-1' if is_active_sprt_ltc(run) else 'me-1'}">
                     ${run['args']['tc']} th ${str(run['args'].get('threads',1))}
-                  </span>
-                  % if not run['finished']:
-                      ${f"cores: {run.get('cores', '')} ({run.get('workers', '')})"}
-                  % endif
                 </span>
+                % if not run['finished']:
+                    <div>
+                        ${f"cores: {run.get('cores', '')} ({run.get('workers', '')})"}
+                    </div>
+                % endif
               </td>
 
               <td class="run-info">
