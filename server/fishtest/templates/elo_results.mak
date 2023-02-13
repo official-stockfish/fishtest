@@ -10,8 +10,6 @@
       ret = f'style="background-color: {style};"'
 
     classes = 'rounded elo-results results-pre'
-    if is_active_sprt_ltc(run):
-      classes += ' ltc-highlight'
     tc = run ['args']['tc']
     new_tc = run['args'].get('new_tc',tc)
     if tc != new_tc:
