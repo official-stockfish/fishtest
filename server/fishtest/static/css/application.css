@@ -212,7 +212,7 @@ legend {
 }
 
 .ltc-highlight {
-  outline: 2px solid rgba(0, 100, 0, 0.8);
+  outline: 1px solid var(--bs-link-color);
 }
 
 .time-odds {
