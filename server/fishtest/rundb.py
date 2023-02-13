@@ -826,7 +826,7 @@ class RunDb:
             # probably due to cutechess-cli as discussed in issue #822,
             # assign linux workers to LTC or multi-threaded jobs
             # and windows workers only to LTC jobs
-            if max_threads > 32:
+            if max_threads >= 29:
                 if "windows" in worker_info["uname"].lower():
                     short_tc = estimate_game_duration(
                         run["args"]["tc"]
