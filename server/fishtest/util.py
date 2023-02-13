@@ -3,6 +3,7 @@ import re
 import smtplib
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
+from functools import cache
 
 import fishtest.stats.stat_util
 import numpy
@@ -296,6 +297,7 @@ def format_results(run_results, run):
     return result
 
 
+@cache # A single hash lookup should be much cheaper than parsing a string
 def estimate_game_duration(tc):
     # Total time for a game is assumed to be the double of tc for each player
     # reduced for 92% because on average a game is stopped earlier (LTC fishtest result).
@@ -326,16 +328,17 @@ def estimate_game_duration(tc):
     return (time_tc + (increment * game_moves)) * scale
 
 
-def get_tc_ratio_stc(tc, threads=1):
-    # Relative to standard STC. Standard LTC is of course 6, and SMP-STC is 4.
-    return threads * estimate_game_duration(tc) / estimate_game_duration("10+0.1")
+def get_tc_ratio(tc, threads=1, base="10+0.1"):
+    '''Get TC ratio relative to the `base`, which defaults to standard STC.
+    Example: standard LTC is 6x, SMP-STC is 4x.'''
+    return threads * estimate_game_duration(tc) / estimate_game_duration(base)
 
 
 def is_active_sprt_ltc(run):
     return (
         not run["finished"]
         and "sprt" in run["args"]
-        and get_tc_ratio_stc(run["args"]["tc"], run["args"]["threads"]) > 4
+        and get_tc_ratio(run["args"]["tc"], run["args"]["threads"]) > 4
     )  # SMP-STC ratio is 4
 
 

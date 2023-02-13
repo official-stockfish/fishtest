@@ -25,7 +25,7 @@ from fishtest.util import (
     get_bad_workers,
     get_chi2,
     get_hash,
-    get_tc_ratio_stc,
+    get_tc_ratio,
     post_in_fishcooking_results,
     remaining_hours,
     update_residuals,
@@ -603,7 +603,7 @@ class RunDb:
         itp = max(min(itp, 500), 1)
 
         # Base TP derived from power law of TC relative to STC
-        tc_ratio = get_tc_ratio_stc(run["args"]["tc"], run["args"]["threads"])
+        tc_ratio = get_tc_ratio(run["args"]["tc"], run["args"]["threads"])
         # Discount longer test TP, but don't boost shorter tests
         if tc_ratio > 1:
             # LTC/STC tc_ratio = 6, target latency ratio = 3/2,
@@ -828,14 +828,10 @@ class RunDb:
             # and windows workers only to LTC jobs
             if max_threads > 32:
                 if "windows" in worker_info["uname"].lower():
-                    short_tc = estimate_game_duration(
-                        run["args"]["tc"]
-                    ) <= estimate_game_duration("55+0.5")
+                    tc_too_short = get_tc_ratio(run["args"]["tc"], base="55+0.5") < 1.0
                 else:
-                    short_tc = estimate_game_duration(run["args"]["tc"]) * run["args"][
-                        "threads"
-                    ] <= estimate_game_duration("30+0.3")
-                if short_tc:
+                    tc_too_short = get_tc_ratio(run["args"]["tc"], run["args"]["threads"], "35+0.3") < 1.0
+                if tc_too_short:
                     continue
 
             # Limit the number of cores.
