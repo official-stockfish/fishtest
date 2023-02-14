@@ -830,7 +830,12 @@ class RunDb:
                 if "windows" in worker_info["uname"].lower():
                     tc_too_short = get_tc_ratio(run["args"]["tc"], base="55+0.5") < 1.0
                 else:
-                    tc_too_short = get_tc_ratio(run["args"]["tc"], run["args"]["threads"], "35+0.3") < 1.0
+                    tc_too_short = (
+                        get_tc_ratio(
+                            run["args"]["tc"], run["args"]["threads"], "35+0.3"
+                        )
+                        < 1.0
+                    )
                 if tc_too_short:
                     continue
 

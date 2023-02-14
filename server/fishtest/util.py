@@ -297,7 +297,7 @@ def format_results(run_results, run):
     return result
 
 
-@cache # A single hash lookup should be much cheaper than parsing a string
+@cache  # A single hash lookup should be much cheaper than parsing a string
 def estimate_game_duration(tc):
     # Total time for a game is assumed to be the double of tc for each player
     # reduced for 92% because on average a game is stopped earlier (LTC fishtest result).
@@ -329,8 +329,8 @@ def estimate_game_duration(tc):
 
 
 def get_tc_ratio(tc, threads=1, base="10+0.1"):
-    '''Get TC ratio relative to the `base`, which defaults to standard STC.
-    Example: standard LTC is 6x, SMP-STC is 4x.'''
+    """Get TC ratio relative to the `base`, which defaults to standard STC.
+    Example: standard LTC is 6x, SMP-STC is 4x."""
     return threads * estimate_game_duration(tc) / estimate_game_duration(base)
 
 
