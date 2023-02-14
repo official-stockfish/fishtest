@@ -15,7 +15,7 @@
         <div class="col-6 col-sm">
           <div class="card card-lg-sm text-center">
             <div class="card-header text-nowrap" title="Cores">Cores</div>
-            <div class="card-body">
+            <div class="card-body" title="${f"itp: {itp:d}, c/i: {cores/itp:.2f}"}">
               <h4 class="card-title mb-0 monospace">${cores}</h4>
             </div>
           </div>
