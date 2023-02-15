@@ -1,4 +1,5 @@
 import hashlib
+import math
 import re
 import smtplib
 from datetime import datetime, timedelta
@@ -345,10 +346,35 @@ def is_active_sprt_ltc(run):
 def remaining_hours(run):
     r = run["results"]
     if "sprt" in run["args"]:
-        # current average number of games. Regularly update / have server guess?
-        expected_games = 58000
-        # checking randomly, half the expected games needs still to be done
-        remaining_games = expected_games / 2
+        # Current average number of games. The number should be regularly updated.
+        average_total_games = 95000
+
+        # SPRT tests always have pentanomial stats.
+        p = r["pentanomial"]
+        N = sum(p)
+
+        sprt = run["args"]["sprt"]
+        llr, alpha, beta = sprt["llr"], sprt["alpha"], sprt["beta"]
+        o0, o1 = 0, 0
+        if "overshoot" in sprt:
+            o = sprt["overshoot"]
+            o0 = -o["sq0"] / o["m0"] / 2 if o["m0"] != 0 else 0
+            o1 = o["sq1"] / o["m1"] / 2 if o["m1"] != 0 else 0
+        llr_bound = (math.log((1 - beta) / alpha) - o1 if llr > 0.0 else
+                     math.log(beta / (1 - alpha)) + o0)
+
+        # Use 0.1 as a safeguard if LLR is too small.
+        llr, llr_bound = max(0.1, abs(llr)), abs(llr_bound)
+        if llr >= llr_bound:
+            return 0
+
+        # Assume all tests use default book (UHO_XXL_+0.90_+1.19).
+        book_positions = 223070
+        t = scipy.stats.beta(1, 15).cdf(min(N / book_positions, 1.0))
+        expected_games_llr = int(2 * N * llr_bound / llr)
+        expected_games = min(run["args"]["num_games"],
+                             int(expected_games_llr * t + average_total_games * (1-t)))
+        remaining_games = max(0, expected_games - 2 * N)
     else:
         expected_games = run["args"]["num_games"]
         remaining_games = max(0, expected_games - r["wins"] - r["losses"] - r["draws"])
