@@ -344,16 +344,17 @@ def is_active_sprt_ltc(run):
 
 def remaining_hours(run):
     r = run["results"]
+    N = r["wins"] + r["losses"] + r["draws"]
+    remaining_games = max(0, run["args"]["num_games"] - N)
     if "sprt" in run["args"]:
         # current average number of games. Regularly update / have server guess?
         expected_games = 58000
         # checking randomly, half the expected games needs still to be done
         remaining_games = expected_games / 2
-    else:
-        expected_games = run["args"]["num_games"]
-        remaining_games = max(0, expected_games - r["wins"] - r["losses"] - r["draws"])
-    game_secs = estimate_game_duration(run["args"]["tc"])
-    return game_secs * remaining_games * int(run["args"].get("threads", 1)) / (60 * 60)
+    elif "spsa" in run["args"]: # Tunes are frequently stopped short, and with "autoselect" may have too many games anyways
+        remaining_games /= 2
+    game_secs = estimate_game_duration(run["args"]["tc"]) * int(run["args"].get("threads", 1))
+    return game_secs * remaining_games / 3600
 
 
 def post_in_fishcooking_results(run):
