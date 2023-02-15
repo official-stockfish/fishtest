@@ -347,10 +347,17 @@ def remaining_hours(run):
     N = r["wins"] + r["losses"] + r["draws"]
     remaining_games = max(0, run["args"]["num_games"] - N)
     if "sprt" in run["args"]:
-        # current average number of games. Regularly update / have server guess?
-        expected_games = 58000
-        # checking randomly, half the expected games needs still to be done
-        remaining_games = expected_games / 2
+        average_games = 95000
+        llr = abs(run["args"]["sprt"]["llr"]) + 0.001
+        # Dumb estimate (very dumb near 0)
+        rate = llr / (N + 1)
+        remaining = min((2.94 - llr) / rate, remaining_games)
+        # For the first 2*avg games, weight between the very dumb estimate and the average
+        average_games *= 2
+        w = (average_games - N) / (average_games)
+        w = max(w, 0)
+        remaining = remaining * (1 - w) + (average_games - N) * w
+        remaining_games = min(remaining, remaining_games)
     elif "spsa" in run["args"]: # Tunes are frequently stopped short, and with "autoselect" may have too many games anyways
         remaining_games /= 2
     game_secs = estimate_game_duration(run["args"]["tc"]) * int(run["args"].get("threads", 1))
