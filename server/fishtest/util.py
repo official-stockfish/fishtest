@@ -552,3 +552,15 @@ def get_hash(s):
     if h:
         return int(h.group(1))
     return 0
+
+
+class BinaryHistory:
+    def __init__(self, n):
+        self._n = n
+        self._l = n * [False]
+        self._i = 0
+    def update(self, bit):
+        self._l[self._i] = bool(bit)
+        self._i = (self._i + 1) % self._n
+    def sum(self):
+        return sum(self._l)
