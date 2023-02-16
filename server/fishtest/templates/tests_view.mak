@@ -389,9 +389,9 @@
       </tr>
     </thead>
     <tbody>
-      % for idx, task in enumerate(run['tasks'] + run.get('bad_tasks', [])):
+      % for idx, task in enumerate(run['tasks'] + run.get('purged_tasks', [])):
           <%
-            if task in run["tasks"] and "bad" in task:
+            if task in run["tasks"] and "purged" in task:
               continue
             if "task_id" in task:
               task_id = task["task_id"]
@@ -412,7 +412,7 @@
           %>
           <tr class="${active_style}" id=task${task_id}>
             <td><a href=${f"/api/pgn/{run['_id']}-{task_id:d}.pgn"}>${task_id}</a></td>
-            % if 'bad' in task:
+            % if 'purged' in task:
                 <td style="text-decoration:line-through; background-color:#ffebeb">
             % else:
                 <td>

@@ -22,7 +22,7 @@ from fishtest.util import (
     estimate_game_duration,
     format_bounds,
     format_results,
-    get_bad_workers,
+    get_bad_workers_by_residual,
     get_chi2,
     get_hash,
     get_tc_ratio,
@@ -573,7 +573,7 @@ class RunDb:
         has_pentanomial = True
         pentanomial = 5 * [0]
         for task in run["tasks"]:
-            if "bad" in task:
+            if "purged" in task:
                 continue
             if "stats" in task:
                 stats = task["stats"]
@@ -1245,75 +1245,40 @@ class RunDb:
         now = datetime.utcnow()
         if "start_time" not in run or (now - run["start_time"]).days > 30:
             return "Run too old to be purged"
-        # Do not revive failed runs
         if run.get("failed", False):
-            return "You cannot purge a failed run"
-        message = "No bad workers"
-        # Transfer bad tasks to run["bad_tasks"]
-        if "bad_tasks" not in run:
-            run["bad_tasks"] = []
+            return "You cannot purge, and thus revive, a failed run"
+        message = "No purged workers"
+        if "purged_tasks" not in run:
+            run["purged_tasks"] = []
 
+        # First, purge tasks by crashes/time losses
         tasks = copy.copy(run["tasks"])
-        zero_stats = {
-            "wins": 0,
-            "losses": 0,
-            "draws": 0,
-            "crashes": 0,
-            "time_losses": 0,
-            "pentanomial": 5 * [0],
-        }
-
         for task_id, task in enumerate(tasks):
-            if "bad" in task:
+            if "purged" in task:
                 continue
-            # Special cases: crashes or time losses.
             if crash_or_time(task):
                 message = ""
-                bad_task = copy.deepcopy(task)
-                # The next two lines are a bit hacky but
-                # the correct residual and color may not have
-                # been set yet.
-                bad_task["residual"] = 10.0
-                bad_task["residual_color"] = "#FF6A6A"
-                bad_task["task_id"] = task_id
-                bad_task["bad"] = True
-                run["bad_tasks"].append(bad_task)
-                # Rather than removing the task, we mark
-                # it as bad.
-                # In this way the numbering of tasks
-                # does not change.
-                # For safety we also set the stats
-                # to zero.
-                task["bad"] = True
-                task["active"] = False
-                task["stats"] = copy.deepcopy(zero_stats)
+                run["purged_tasks"].append(task_purge_and_copy(task))
 
         chi2 = get_chi2(run["tasks"])
-        # Make sure the residuals are up to date.
-        # Once a task is moved to run["bad_tasks"] its
-        # residual will no longer change.
-        update_residuals(run["tasks"], cached_chi2=chi2)
-        bad_workers = get_bad_workers(
+        # Make sure the residuals are up to date. Once a task is purged to
+        # run["purged_tasks"] its residual will no longer change.
+        update_residuals(run["tasks"], chi2=chi2) # Marks residual color (and calls crash_or_time, marking such failures not already caught)
+        bad_workers = get_bad_workers_by_residual(
             run["tasks"],
-            cached_chi2=chi2,
+            first_chi2=chi2,
             p=p,
             res=res,
             iters=iters - 1 if message == "" else iters,
         )
+        # Second, purge tasks by residual
         tasks = copy.copy(run["tasks"])
         for task_id, task in enumerate(tasks):
-            if "bad" in task:
+            if "purged" in task:
                 continue
             if task["worker_info"]["unique_key"] in bad_workers:
                 message = ""
-                purged = True
-                bad_task = copy.deepcopy(task)
-                bad_task["task_id"] = task_id
-                bad_task["bad"] = True
-                run["bad_tasks"].append(bad_task)
-                task["bad"] = True
-                task["active"] = False
-                task["stats"] = copy.deepcopy(zero_stats)
+                run["purged_tasks"].append(task_purge_and_copy(task))
 
         if message == "":
             run["results_stale"] = True
