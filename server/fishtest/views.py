@@ -19,6 +19,7 @@ from fishtest.util import (
     format_results,
     get_chi2,
     get_hash,
+    is_ltc,
     password_strength,
     update_residuals,
 )
@@ -885,7 +886,7 @@ def new_run_message(request, run):
         if run["args"]["new_tc"] != run["args"]["tc"]
         else ""
     )
-    ret += "(LTC)" if run["tc_base"] >= request.rundb.ltc_lower_bound else ""
+    ret += "(LTC)" if is_ltc(run) else ""
     ret += f" Book:{run['args']['book']}"
     ret += f" Threads:{run['args']['threads']}"
     ret += "(SMP)" if run["args"]["threads"] > 1 else ""

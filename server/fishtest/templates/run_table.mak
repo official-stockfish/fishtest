@@ -9,7 +9,7 @@
 % endif
 
 <%
-  from fishtest.util import get_cookie, is_active_sprt_ltc
+  from fishtest.util import get_cookie, is_ltc
   if toggle:
     cookie_name = toggle+"_state"
 %>
@@ -109,7 +109,7 @@
               </td>
 
               <td style="width: 13%;" class="run-live">
-                <span class="${'rounded ltc-highlight me-1' if is_active_sprt_ltc(run) else 'me-1'}">
+                <span class="${'rounded ltc-highlight me-1' if not run["finished"] and "sprt" in run["args"] and is_ltc(run) else 'me-1'}">
                 % if 'sprt' in run['args']:
                     <a href="/tests/live_elo/${str(run['_id'])}" target="_blank">sprt</a>
                 % else:
