@@ -198,7 +198,7 @@
                     <li><a href="https://discord.gg/awnh2qZfTT" target="_blank" rel="noopener" class="links-link rounded">Discord</a></li>
                     <li><a href="https://groups.google.com/g/fishcooking" target="_blank" rel="noopener" class="links-link rounded">Forum</a></li>
                     <li><a href="https://github.com/glinscott/fishtest/wiki" target="_blank" rel="noopener" class="links-link rounded">Wiki</a></li>
-                    <li><a href="/sprt_calc?elo-model=Normalized&elo-0=0.0&elo-1=2.0&draw-ratio=0.49&rms-bias=191" class="links-link rounded">SPRT Calc</a></li>
+                    <li><a href="/sprt_calc" class="links-link rounded">SPRT Calc</a></li>
                     <li><a href="https://hxim.github.io/Stockfish-Evaluation-Guide/" target="_blank" rel="noopener" class="links-link rounded">Eval Guide</a></li>
                   </ul>
                 </li>

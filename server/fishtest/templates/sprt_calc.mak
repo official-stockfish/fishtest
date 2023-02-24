@@ -16,19 +16,19 @@
   </div>
   <div class="col-6 col-md-auto mb-3">
     <label for="elo-0" class="form-label">Elo0</label>
-    <input id="elo-0" class="form-control number">
+    <input id="elo-0" class="form-control number no-arrows" type="number" step="0.1" min="-10" max="10">
   </div>
   <div class="col-6 col-md-auto mb-3">
     <label for="elo-1" class="form-label">Elo1</label>
-    <input id="elo-1" class="form-control number">
+    <input id="elo-1" class="form-control number no-arrows" type="number" step="0.1" min="-10" max="10">
   </div>
   <div class="col-6 col-md-auto mb-3">
     <label for="draw-ratio" class="form-label">Draw ratio</label>
-    <input id="draw-ratio" class="form-control number">
+    <input id="draw-ratio" class="form-control number no-arrows" type="number" step="0.01" min="0" max="1">
   </div>
   <div class="col-6 col-md-auto mb-3">
     <label for="rms-bias" class="form-label">RMS bias</label>
-    <input id="rms-bias" class="form-control number">
+    <input id="rms-bias" class="form-control number no-arrows" type="number" min="0">
   </div>
   <div class="col-12 col-md-auto mb-3 d-flex align-items-end">
     <input
@@ -72,8 +72,8 @@
       <em>live_elo page</em>
       of a test with typical URL
       <a
-        href="http://tests.stockfishchess.org/html/live_elo.html?5e15b3e061fe5f83a67dd926"
-        >http://tests.stockfishchess.org/html/live_elo.html?5e15b3e061fe5f83a67dd926</a
+        href="https://tests.stockfishchess.org/tests/live_elo/5e15b3e061fe5f83a67dd926"
+        >https://tests.stockfishchess.org/tests/live_elo/5e15b3e061fe5f83a67dd926</a
       >
       or the <em>raw statistics page</em> with typical URL
       <a
@@ -110,10 +110,6 @@
     </li>
   </ul>
 </div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/js-url/2.5.3/url.min.js"
-        integrity="sha512-YlfjbwbVZGikywbRiBmrMZh4gkigfbNHBLi8ZVQUMCGn/5Fnc700QDiZ3OC4WY2peX1nrqUbCcHyOyvKR8hwNA=="
-        crossorigin="anonymous"
-        referrerpolicy="no-referrer"></script>
 <script src="https://www.gstatic.com/charts/loader.js"></script>
 <script src="/js/sprt.js?v=${cache_busters['js/sprt.js']}"
         integrity="sha384-${cache_busters['js/sprt.js']}"

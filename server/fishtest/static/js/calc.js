@@ -1,5 +1,13 @@
 "use strict";
 
+const defaultParameters = {
+  "elo-model": "Normalized",
+  "elo-0": "0.0",
+  "elo-1": "2.0",
+  "draw-ratio": "0.49",
+  "rms-bias": "191",
+};
+
 google.charts.load("current", { packages: ["corechart"] });
 
 let pass_chart = null;
@@ -48,18 +56,20 @@ google.charts.setOnLoadCallback(function () {
   };
 });
 
-function set_field_from_url(name, defaultValue) {
-  const value = url("?" + name);
-  let input = document.getElementById(name);
-  input.value = value !== null ? value : defaultValue;
+function set_field_from_url(name, defaultValue, currentValue) {
+  const input = document.getElementById(name);
+  input.value = currentValue !== null ? currentValue : defaultValue;
 }
 
 function set_fields() {
-  set_field_from_url("elo-model", "Normalized");
-  set_field_from_url("elo-0", "-1");
-  set_field_from_url("elo-1", "3");
-  set_field_from_url("draw-ratio", "0.61");
-  set_field_from_url("rms-bias", "0");
+  const urlObj = new URL(window.location.href);
+  for (let key in defaultParameters) {
+    set_field_from_url(
+      key,
+      defaultParameters[key],
+      urlObj.searchParams.get(key)
+    );
+  }
 }
 
 function draw_charts() {
@@ -91,6 +101,11 @@ function draw_charts() {
     alert(val);
     return;
   }
+  history.replaceState(
+    null,
+    "",
+    `/sprt_calc?elo-model=${elo_model}&elo-0=${elo0}&elo-1=${elo1}&draw-ratio=${draw_ratio}&rms-bias=${rms_bias}`
+  );
   elo0 = sprt.elo0;
   elo1 = sprt.elo1;
   pass_chart.loaded = false;
