@@ -644,6 +644,7 @@ def setup_parameters(worker_dir):
         ("parameters", "min_threads", "1", int, None),
         ("parameters", "fleet", "False", _bool, None),
         ("parameters", "compiler", default_compiler, compiler_names, None),
+        ("parameters", "platform_release", "", str, None),
         ("private", "hw_seed", str(random.randint(0, 0xFFFFFFFF)), int, None),
     ]
 
@@ -754,6 +755,15 @@ def setup_parameters(worker_dir):
         help="do not validate username/password with server",
     )
 
+    parser.add_argument(
+        "-R",
+        "--platform_release",
+        dest="platform_release",
+        default=config.get("parameters", "platform_release"),
+        type=str,
+        help="override the platform release information string sent to the server",
+    )
+
     def my_error(e):
         raise Exception(e)
 
@@ -824,6 +834,7 @@ def setup_parameters(worker_dir):
     config.set("parameters", "min_threads", str(options.min_threads))
     config.set("parameters", "fleet", str(options.fleet))
     config.set("parameters", "compiler", options.compiler_)
+    config.set("parameters", "platform_release", options.platform_release)
 
     with open(config_file, "w") as f:
         config.write(f)
@@ -946,6 +957,12 @@ def hw_id(hw_seed):
     fingerprint_machine = fingerprint(get_machine_id())
     fingerprint_path = fingerprint(Path(__file__).resolve())
     return format(hw_seed ^ fingerprint_machine ^ fingerprint_path, "08x")
+
+def get_platform_release(options, default):
+    if len(options.platform_release) > 0:
+        return options.platform_release
+    else:
+        return default
 
 
 def get_uuid(options):
@@ -1541,7 +1558,7 @@ def worker():
 
     uname = platform.uname()
     worker_info = {
-        "uname": uname[0] + " " + uname[2] + (" (colab)" if IS_COLAB else ""),
+        "uname": uname[0] + " " + get_platform_release(options, uname[2]) + (" (colab)" if IS_COLAB else ""),
         "architecture": platform.architecture(),
         "concurrency": options.concurrency,
         "max_memory": options.max_memory,
@@ -1566,6 +1583,7 @@ def worker():
     }
 
     print("UUID:", worker_info["unique_key"])
+    print("System:", worker_info["uname"])
 
     # Start heartbeat thread as a daemon (not strictly necessary, but there might be bugs)
     heartbeat_thread = threading.Thread(
