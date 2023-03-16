@@ -542,6 +542,19 @@ def find_arch(compiler):
         ):
             arch = "apple-silicon"
         elif (
+            "armv8" in props["arch"]
+            "dotprod" in props["arch"]
+        ):
+            arch = "armv8-dotprod"
+        elif (
+            "armv8" in props["arch"]
+        ):
+            arch = "armv8"
+        elif (
+            "armv7" in props["arch"]
+        ):
+            arch = "armv7"
+        elif (
             "avx512vnni" in props["flags"]
             and "avx512dq" in props["flags"]
             and "avx512f" in props["flags"]
