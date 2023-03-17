@@ -452,7 +452,11 @@ def setup_cutechess(worker_dir):
         elif IS_MACOS:
             zipball = "cutechess-cli-macos-64bit.zip"
         else:
-            zipball = "cutechess-cli-linux-{}.zip".format(platform.architecture()[0])
+            platform_architecture = platform.architecture()[0]
+            platform_machine = platform.machine()
+            suffix = platform_architecture if platform_machine == "x86_64" \
+               else platform_machine + "-" + platform_architecture
+            zipball = "cutechess-cli-linux-{}.zip".format(suffix)
         try:
             blob = download_from_github(zipball)
             unzip(blob, testing_dir)
@@ -1317,7 +1321,7 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
     if near_github_api_limit:
         print(
             """
-  We have almost exhausted our github api calls. 
+  We have almost exhausted our github api calls.
   The server will only give us tasks for tests we have seen before.
 """
         )
