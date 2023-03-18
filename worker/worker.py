@@ -717,6 +717,7 @@ def setup_parameters(worker_dir):
         "-t",
         "--min_threads",
         dest="min_threads",
+        metavar="MIN_THREADS",
         default=config.getint("parameters", "min_threads"),
         type=int,
         help="do not accept tasks with fewer threads than MIN_THREADS",
@@ -1336,7 +1337,26 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
 
     # No tasks ready for us yet, just wait...
     if "task_waiting" in req:
-        print("No tasks available at this time, waiting...")
+        reasons = []
+        if "worker_low_memory" in req:
+            reasons.append("The MAX_MEMORY parameter is too low")
+        if "worker_too_many_threads" in req:
+            reasons.append("The CONCURRENCY parameter is too high")
+        if "worker_too_few_threads" in req:
+            reasons.append("The MIN_THREADS parameter is too low")
+        if "worker_no_binary" in req:
+            reasons.append("No binary or near Github API limit")
+        if "worker_tc_too_short" in req:
+            reasons.append("The TC is too short")
+        if "worker_core_limit_reached" in req:
+            reasons.append("Exceeded the limit of cores set by the server")
+        if len(reasons) == 0:
+            print("No tasks available at this time, waiting...")
+        else:
+            print("No suitable tasks available for the worker at this time, reason(s):")
+            for reason in reasons:
+                print(" - {}".format(reason))
+            print("Waiting...")
         return False
 
     run, task_id = req["run"], req["task_id"]

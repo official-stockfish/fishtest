@@ -766,6 +766,13 @@ class RunDb:
 
         run_found = False
 
+        worker_low_memory = False
+        worker_too_many_threads = False
+        worker_too_few_threads = False
+        worker_no_binary = False
+        worker_tc_too_short = False
+        worker_core_limit_reached = False
+
         for run in self.task_runs:
             if run["finished"]:
                 continue
@@ -774,9 +781,11 @@ class RunDb:
                 continue
 
             if run["args"]["threads"] > max_threads:
+                worker_too_many_threads = true
                 continue
 
             if run["args"]["threads"] < min_threads:
+                worker_too_few_threads = true
                 continue
 
             # Check if there aren't already enough workers
@@ -811,6 +820,7 @@ class RunDb:
             )
 
             if need_base + need_tt > max_memory:
+                worker_low_memory = True
                 continue
 
             # Github API limit...
@@ -820,6 +830,7 @@ class RunDb:
                     and run["_id"] in self.worker_runs[unique_key]
                 )
                 if not have_binary:
+                    worker_no_binary = True
                     continue
 
             # To avoid time losses in the case of large concurrency and short TC,
@@ -837,6 +848,7 @@ class RunDb:
                         < 1.0
                     )
                 if tc_too_short:
+                    worker_tc_too_short = True
                     continue
 
             # Limit the number of cores.
@@ -856,6 +868,7 @@ class RunDb:
                         break
 
             if core_limit_reached:
+                worker_core_limit_reached = True
                 continue
 
             # If we make it here, it means we have found a run
@@ -865,7 +878,20 @@ class RunDb:
 
         # If there is no suitable run, tell the worker.
         if not run_found:
-            return {"task_waiting": False}
+            ret = {"task_waiting": False}
+            if worker_low_memory is True:
+                ret["worker_low_memory"] = True
+            if worker_too_many_threads is True:
+                ret["worker_too_many_threads"] = True
+            if worker_too_few_threads is True:
+                ret["worker_too_few_threads"] = True
+            if worker_no_binary is True:
+                ret["worker_no_binary"] = True
+            if worker_tc_too_short is True:
+                ret["worker_tc_too_short"] = True
+            if worker_core_limit_reached is True:
+                ret["worker_core_limit_reached"] = True
+            return ret
 
         # Now we create a new task for this run.
         opening_offset = 0
