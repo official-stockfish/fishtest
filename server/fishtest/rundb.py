@@ -1,5 +1,6 @@
 import configparser
 import copy
+import enum
 import math
 import os
 import random
@@ -39,6 +40,16 @@ DEBUG = False
 boot_time = datetime.utcnow()
 
 last_rundb = None
+
+# This is duplicated in worker.py. Any changes here must be mirrored there.
+class _RequestTaskErrors(enum.IntFlag):
+    MachineLimit = enum.auto()
+    LowThreads   = enum.auto()
+    HighThreads  = enum.auto()
+    LowMemory    = enum.auto()
+    NoBinary     = enum.auto()
+    SkipSTC      = enum.auto()
+    ServerSide   = enum.auto()
 
 
 def get_port():
@@ -676,7 +687,7 @@ class RunDb:
                 self.task_semaphore.release()
         else:
             print("request_task too busy", flush=True)
-            return {"task_waiting": False}
+            return {"errors": int(_RequestTaskErrors.ServerSide)}
 
     def sync_request_task(self, worker_info):
         unique_key = worker_info["unique_key"]
@@ -755,23 +766,15 @@ class RunDb:
                     connections = connections + 1
 
         if connections >= self.userdb.get_machine_limit(worker_info["username"]):
-            error = "Request_task: Machine limit reached for user {}".format(
-                worker_info["username"]
-            )
+            error = f'Request_task: Machine limit reached for user {worker_info["username"]}'
             print(error, flush=True)
-            return {"task_waiting": False, "error": error}
+            return {"errors": int(_RequestTaskErrors.MachineLimit)}
 
         # Now go through the sorted list of unfinished runs.
         # We will add a task to the first run that is suitable.
 
         run_found = False
-
-        worker_low_memory = False
-        worker_too_many_threads = False
-        worker_too_few_threads = False
-        worker_no_binary = False
-        worker_tc_too_short = False
-        worker_core_limit_reached = False
+        errors = _RequestTaskErrors(0)
 
         for run in self.task_runs:
             if run["finished"]:
@@ -781,11 +784,11 @@ class RunDb:
                 continue
 
             if run["args"]["threads"] > max_threads:
-                worker_too_many_threads = true
+                errors |= _RequestTaskErrors.LowThreads
                 continue
 
             if run["args"]["threads"] < min_threads:
-                worker_too_few_threads = true
+                errors |= _RequestTaskErrors.HighThreads
                 continue
 
             # Check if there aren't already enough workers
@@ -812,7 +815,7 @@ class RunDb:
             need_tt += get_hash(run["args"]["new_options"])
             need_tt += get_hash(run["args"]["base_options"])
             need_tt *= max_threads // run["args"]["threads"]
-            # estime another 10MB per process, 30MB per thread, and 40MB for net as a base memory need besides hash
+            # estimate another 10MB per process, 30MB per thread, and 40MB for net as a base memory need besides hash
             need_base = (
                 2
                 * (max_threads // run["args"]["threads"])
@@ -820,7 +823,7 @@ class RunDb:
             )
 
             if need_base + need_tt > max_memory:
-                worker_low_memory = True
+                errors |= _RequestTaskErrors.LowMemory
                 continue
 
             # Github API limit...
@@ -830,7 +833,7 @@ class RunDb:
                     and run["_id"] in self.worker_runs[unique_key]
                 )
                 if not have_binary:
-                    worker_no_binary = True
+                    errors |= _RequestTaskErrors.NoBinary
                     continue
 
             # To avoid time losses in the case of large concurrency and short TC,
@@ -848,7 +851,7 @@ class RunDb:
                         < 1.0
                     )
                 if tc_too_short:
-                    worker_tc_too_short = True
+                    errors |= _RequestTaskErrors.SkipSTC
                     continue
 
             # Limit the number of cores.
@@ -868,7 +871,6 @@ class RunDb:
                         break
 
             if core_limit_reached:
-                worker_core_limit_reached = True
                 continue
 
             # If we make it here, it means we have found a run
@@ -878,20 +880,9 @@ class RunDb:
 
         # If there is no suitable run, tell the worker.
         if not run_found:
-            ret = {"task_waiting": False}
-            if worker_low_memory is True:
-                ret["worker_low_memory"] = True
-            if worker_too_many_threads is True:
-                ret["worker_too_many_threads"] = True
-            if worker_too_few_threads is True:
-                ret["worker_too_few_threads"] = True
-            if worker_no_binary is True:
-                ret["worker_no_binary"] = True
-            if worker_tc_too_short is True:
-                ret["worker_tc_too_short"] = True
-            if worker_core_limit_reached is True:
-                ret["worker_core_limit_reached"] = True
-            return ret
+            if not errors: # No active tasks whatsoever, no fault of the worker
+                errors = _RequestTaskErrors.ServerSide
+            return {"errors": int(errors)}
 
         # Now we create a new task for this run.
         opening_offset = 0
