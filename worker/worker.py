@@ -2,7 +2,6 @@
 import atexit
 import base64
 import datetime
-import enum
 import getpass
 import hashlib
 import json
@@ -1286,30 +1285,6 @@ def verify_worker_version(remote, username, password):
     return True
 
 
-# Duplicated from server's rundb.py.
-# Ideally we would have a common/ folder next to server/ and worker/, to prevent this...
-class _RequestTaskErrors(enum.IntFlag):
-    MachineLimit = enum.auto()
-    LowThreads   = enum.auto()
-    HighThreads  = enum.auto()
-    LowMemory    = enum.auto()
-    NoBinary     = enum.auto()
-    SkipSTC      = enum.auto()
-    ServerSide   = enum.auto()
-
-    # __private_names are not enum-ized
-    __messages = {MachineLimit: "This user has reached the max machines limit.",
-                  LowThreads:   "An available run requires more than CONCURRENCY threads."
-                  HighThreads:  "An available run requires less than MIN_THREADS threads."
-                  LowMemory:    "An available run requires more than MAX_MEMORY memory."
-                  NoBinary:     "This worker has exceeded its GitHub API limit, and has no local binary for an availabe run."
-                  SkipSTC:      "An available run is at STC, requiring less than CONCURRENCY threads due to cutechess issues. Consider splitting this worker. See Discord."
-                  ServerSide:   "Server error or no active runs. Try again shortly."
-                 }
-
-    def __str__(self):
-        return self.__messages[self]
-
 def fetch_and_handle_task(worker_info, password, remote, lock_file, current_state):
     # This function should normally not raise exceptions.
     # Unusual conditions are handled by returning False.
@@ -1358,13 +1333,8 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
         return False  # error message has already been printed
 
     # No tasks ready for us yet, just wait...
-    if "errors" in req and req["errors"]:
-        errors = _RequestTaskErrors(req["errors"])
-        if _RequestTaskErrors.ServerSide in errors:
-            print(_RequestTaskErrors.ServerSide)
-        else:
-            print(f"No active tasks suitable for the worker at this time:\n - {'\n - '.join(str(e) for e in errors)}")
-        print("Waiting...")
+    if "error_msg" in req:
+        print(f"Request task failure:{req['error_msg']}\nWaiting...")
         return False
 
     run, task_id = req["run"], req["task_id"]

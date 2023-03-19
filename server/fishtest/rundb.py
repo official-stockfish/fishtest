@@ -41,8 +41,8 @@ boot_time = datetime.utcnow()
 
 last_rundb = None
 
-# This is duplicated in worker.py. Any changes here must be mirrored there.
-class _RequestTaskErrors(enum.IntFlag):
+# Just a bit of low-maintenance, easy-to-read bookkeeping
+class _RequestTaskErrors(enum.Flag):
     MachineLimit = enum.auto()
     LowThreads   = enum.auto()
     HighThreads  = enum.auto()
@@ -50,6 +50,20 @@ class _RequestTaskErrors(enum.IntFlag):
     NoBinary     = enum.auto()
     SkipSTC      = enum.auto()
     ServerSide   = enum.auto()
+
+    # __private_names are not enum-ized
+    # These messages refer to worker command line options, and so need to be updated as the worker is.
+    __messages = {MachineLimit: "This user has reached the max machines limit.",
+                  LowThreads:   "An available run requires more than CONCURRENCY threads."
+                  HighThreads:  "An available run requires less than MIN_THREADS threads."
+                  LowMemory:    "An available run requires more than MAX_MEMORY memory."
+                  NoBinary:     "This worker has exceeded its GitHub API limit, and has no local binary for an availabe run."
+                  SkipSTC:      "An available run is at STC, requiring less than CONCURRENCY threads due to cutechess issues. Consider splitting this worker. See Discord."
+                  ServerSide:   "Server error or no active runs. Try again shortly."
+                 }
+
+    def __str__(self):
+        return self.__messages[self]
 
 
 def get_port():
@@ -687,10 +701,11 @@ class RunDb:
                 self.task_semaphore.release()
         else:
             print("request_task too busy", flush=True)
-            return {"errors": int(_RequestTaskErrors.ServerSide)}
+            return {"error_msg": _msg_sep + str(_RequestTaskErrors.ServerSide)}
 
     def sync_request_task(self, worker_info):
         unique_key = worker_info["unique_key"]
+        _msg_sep = '\n - '
 
         # We get the list of unfinished runs.
         # To limit db access the list is cached for
@@ -768,13 +783,13 @@ class RunDb:
         if connections >= self.userdb.get_machine_limit(worker_info["username"]):
             error = f'Request_task: Machine limit reached for user {worker_info["username"]}'
             print(error, flush=True)
-            return {"errors": int(_RequestTaskErrors.MachineLimit)}
+            return {"error_msg": _msg_sep + str(_RequestTaskErrors.MachineLimit)}
 
         # Now go through the sorted list of unfinished runs.
         # We will add a task to the first run that is suitable.
 
         run_found = False
-        errors = _RequestTaskErrors(0)
+        errors = _RequestTaskErrors(0) # Ignored when run_found
 
         for run in self.task_runs:
             if run["finished"]:
@@ -882,7 +897,7 @@ class RunDb:
         if not run_found:
             if not errors: # No active tasks whatsoever, no fault of the worker
                 errors = _RequestTaskErrors.ServerSide
-            return {"errors": int(errors)}
+            return {"error_msg": _msg_sep + _msg_sep.join(str(e) for e in errors)}
 
         # Now we create a new task for this run.
         opening_offset = 0
