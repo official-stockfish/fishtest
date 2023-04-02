@@ -547,6 +547,15 @@ def find_arch(compiler):
             and "avx512f" in props["flags"]
             and "avx512bw" in props["flags"]
             and "avx512vl" in props["flags"]
+            and "x86-64-vnni512" in targets
+        ):
+            arch = "x86-64-vnni512"
+        elif (
+            "avx512vnni" in props["flags"]
+            and "avx512dq" in props["flags"]
+            and "avx512f" in props["flags"]
+            and "avx512bw" in props["flags"]
+            and "avx512vl" in props["flags"]
             and "x86-64-vnni256" in targets
         ):
             arch = "x86-64-vnni256"
@@ -556,7 +565,6 @@ def find_arch(compiler):
             and "x86-64-avx512" in targets
         ):
             arch = "x86-64-avx512"
-            arch = "x86-64-bmi2"  # use bmi2 until avx512 performance becomes actually better
         elif "avxvnni" in props["flags"] and "x86-64-avxvnni" in targets:
             arch = "x86-64-avxvnni"
         elif (
