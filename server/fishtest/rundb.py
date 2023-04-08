@@ -54,11 +54,11 @@ class _RequestTaskErrors(enum.Flag):
     # __private_names are not enum-ized
     # These messages refer to worker command line options, and so need to be updated as the worker is.
     __messages = {MachineLimit: "This user has reached the max machines limit.",
-                  LowThreads:   "An available run requires more than CONCURRENCY threads."
-                  HighThreads:  "An available run requires less than MIN_THREADS threads."
-                  LowMemory:    "An available run requires more than MAX_MEMORY memory."
-                  NoBinary:     "This worker has exceeded its GitHub API limit, and has no local binary for an availabe run."
-                  SkipSTC:      "An available run is at STC, requiring less than CONCURRENCY threads due to cutechess issues. Consider splitting this worker. See Discord."
+                  LowThreads:   "An available run requires more than CONCURRENCY threads.",
+                  HighThreads:  "An available run requires less than MIN_THREADS threads.",
+                  LowMemory:    "An available run requires more than MAX_MEMORY memory.",
+                  NoBinary:     "This worker has exceeded its GitHub API limit, and has no local binary for an availabe run.",
+                  SkipSTC:      "An available run is at STC, requiring less than CONCURRENCY threads due to cutechess issues. Consider splitting this worker. See Discord.",
                   ServerSide:   "Server error or no active runs. Try again shortly."
                  }
 
