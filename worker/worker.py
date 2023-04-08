@@ -454,8 +454,11 @@ def setup_cutechess(worker_dir):
         else:
             platform_architecture = platform.architecture()[0]
             platform_machine = platform.machine()
-            suffix = platform_architecture if platform_machine == "x86_64" \
-               else platform_machine + "-" + platform_architecture
+            suffix = (
+                platform_architecture
+                if platform_machine == "x86_64"
+                else platform_machine + "-" + platform_architecture
+            )
             zipball = "cutechess-cli-linux-{}.zip".format(suffix)
         try:
             blob = download_from_github(zipball)
