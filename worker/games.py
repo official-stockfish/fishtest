@@ -571,13 +571,9 @@ def find_arch(compiler):
             and not ("nodotprod" in props["arch"])
         ):
             arch = "armv8-dotprod"
-        elif (
-            "armv8" in props["arch"]
-        ):
+        elif "armv8" in props["arch"]:
             arch = "armv8"
-        elif (
-            "armv7" in props["arch"]
-        ):
+        elif "armv7" in props["arch"]:
             arch = "armv7"
         elif (
             "avx512vnni" in props["flags"]
