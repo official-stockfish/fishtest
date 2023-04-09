@@ -1361,12 +1361,6 @@ def tests_finished(request):
 
 @view_config(route_name="tests_user", renderer="tests_user.mak")
 def tests_user(request):
-    request.response.headerlist.extend(
-        (
-            ("Cache-Control", "no-store"),
-            ("Expires", "0"),
-        )
-    )
     username = request.matchdict.get("username", "")
     response = {**get_paginated_finished_runs(request), "username": username}
     if int(request.params.get("page", 1)) == 1:
@@ -1405,7 +1399,7 @@ def homepage_results(request):
 
 
 # For caching the homepage tests output
-cache_time = 2
+cache_time = 4
 last_tests = None
 last_time = 0
 
@@ -1415,12 +1409,6 @@ building = threading.Semaphore()
 
 @view_config(route_name="tests", renderer="tests.mak")
 def tests(request):
-    request.response.headerlist.extend(
-        (
-            ("Cache-Control", "no-store"),
-            ("Expires", "0"),
-        )
-    )
     if int(request.params.get("page", 1)) > 1:
         # page 2 and beyond only show finished test results
         return get_paginated_finished_runs(request)
