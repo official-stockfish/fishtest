@@ -257,7 +257,16 @@ class RunDb:
         pgn_id = pgn_id.split(".")[0]  # strip .pgn
         pgn = self.pgndb.find_one({"run_id": pgn_id})
         if pgn:
-            return zlib.decompress(pgn["pgn_zip"]).decode()
+            response_body = pgn["pgn_zip"]
+            accept_encoding = request.headers.get("Accept-Encoding", "")
+            if not "gzip" not in accept_encoding.lower():
+                return zlib.decompress(response_body).decode()
+            # Some clients do not accept responses with the gzip encoding method.
+            # To serve such clients, add "gunzip on;" in nginx
+            # https://docs.nginx.com/nginx/admin-guide/web-server/compression/#enabling-decompression
+            self.request.response.headers["Content-Encoding"] = "gzip"
+            self.request.response.headers["Content-Length"] = len(response_body)
+            return response_body
         return None
 
     def get_pgn_100(self, skip):
