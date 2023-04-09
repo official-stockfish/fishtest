@@ -717,6 +717,7 @@ def setup_parameters(worker_dir):
         "-t",
         "--min_threads",
         dest="min_threads",
+        metavar="MIN_THREADS",
         default=config.getint("parameters", "min_threads"),
         type=int,
         help="do not accept tasks with fewer threads than MIN_THREADS",
@@ -1331,12 +1332,9 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
     except WorkerException:
         return False  # error message has already been printed
 
-    if "error" in req:
-        return False  # likewise
-
     # No tasks ready for us yet, just wait...
-    if "task_waiting" in req:
-        print("No tasks available at this time, waiting...")
+    if "error_msg" in req:
+        print(f"Request task failure:{req['error_msg']}\nWaiting...")
         return False
 
     run, task_id = req["run"], req["task_id"]

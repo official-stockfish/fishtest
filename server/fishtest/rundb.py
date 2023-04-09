@@ -1,5 +1,6 @@
 import configparser
 import copy
+import enum
 import math
 import os
 import random
@@ -39,6 +40,32 @@ DEBUG = False
 boot_time = datetime.utcnow()
 
 last_rundb = None
+
+
+# Just a bit of low-maintenance, easy-to-read bookkeeping
+class _RequestTaskErrors(enum.Flag):
+    MachineLimit = enum.auto()
+    LowThreads = enum.auto()
+    HighThreads = enum.auto()
+    LowMemory = enum.auto()
+    NoBinary = enum.auto()
+    SkipSTC = enum.auto()
+    ServerSide = enum.auto()
+
+    # __private_names are not enum-ized
+    # These messages refer to worker command line options, and so need to be updated as the worker is.
+    __messages = {
+        MachineLimit: "This user has reached the max machines limit.",
+        LowThreads: "An available run requires more than CONCURRENCY threads.",
+        HighThreads: "An available run requires less than MIN_THREADS threads.",
+        LowMemory: "An available run requires more than MAX_MEMORY memory.",
+        NoBinary: "This worker has exceeded its GitHub API limit, and has no local binary for an availabe run.",
+        SkipSTC: "An available run is at STC, requiring less than CONCURRENCY threads due to cutechess issues. Consider splitting this worker. See Discord.",
+        ServerSide: "Server error or no active runs. Try again shortly.",
+    }
+
+    def __str__(self):
+        return self.__messages[self]
 
 
 def get_port():
@@ -672,10 +699,11 @@ class RunDb:
                 self.task_semaphore.release()
         else:
             print("request_task too busy", flush=True)
-            return {"task_waiting": False}
+            return {"error_msg": _msg_sep + str(_RequestTaskErrors.ServerSide)}
 
     def sync_request_task(self, worker_info):
         unique_key = worker_info["unique_key"]
+        _msg_sep = "\n - "
 
         # We get the list of unfinished runs.
         # To limit db access the list is cached for
@@ -751,16 +779,15 @@ class RunDb:
                     connections = connections + 1
 
         if connections >= self.userdb.get_machine_limit(worker_info["username"]):
-            error = "Request_task: Machine limit reached for user {}".format(
-                worker_info["username"]
-            )
+            error = f'Request_task: Machine limit reached for user {worker_info["username"]}'
             print(error, flush=True)
-            return {"task_waiting": False, "error": error}
+            return {"error_msg": _msg_sep + str(_RequestTaskErrors.MachineLimit)}
 
         # Now go through the sorted list of unfinished runs.
         # We will add a task to the first run that is suitable.
 
         run_found = False
+        errors = _RequestTaskErrors(0)  # Ignored when run_found
 
         for run in self.task_runs:
             if run["finished"]:
@@ -770,9 +797,11 @@ class RunDb:
                 continue
 
             if run["args"]["threads"] > max_threads:
+                errors |= _RequestTaskErrors.LowThreads
                 continue
 
             if run["args"]["threads"] < min_threads:
+                errors |= _RequestTaskErrors.HighThreads
                 continue
 
             # Check if there aren't already enough workers
@@ -799,7 +828,7 @@ class RunDb:
             need_tt += get_hash(run["args"]["new_options"])
             need_tt += get_hash(run["args"]["base_options"])
             need_tt *= max_threads // run["args"]["threads"]
-            # estime another 10MB per process, 30MB per thread, and 40MB for net as a base memory need besides hash
+            # estimate another 10MB per process, 30MB per thread, and 40MB for net as a base memory need besides hash
             need_base = (
                 2
                 * (max_threads // run["args"]["threads"])
@@ -807,6 +836,7 @@ class RunDb:
             )
 
             if need_base + need_tt > max_memory:
+                errors |= _RequestTaskErrors.LowMemory
                 continue
 
             # Github API limit...
@@ -816,6 +846,7 @@ class RunDb:
                     and run["_id"] in self.worker_runs[unique_key]
                 )
                 if not have_binary:
+                    errors |= _RequestTaskErrors.NoBinary
                     continue
 
             # To avoid time losses in the case of large concurrency and short TC,
@@ -833,6 +864,7 @@ class RunDb:
                         < 1.0
                     )
                 if tc_too_short:
+                    errors |= _RequestTaskErrors.SkipSTC
                     continue
 
             # Limit the number of cores.
@@ -861,7 +893,9 @@ class RunDb:
 
         # If there is no suitable run, tell the worker.
         if not run_found:
-            return {"task_waiting": False}
+            if not errors:  # No active tasks whatsoever, no fault of the worker
+                errors = _RequestTaskErrors.ServerSide
+            return {"error_msg": _msg_sep + _msg_sep.join(str(e) for e in errors)}
 
         # Now we create a new task for this run.
         opening_offset = 0
