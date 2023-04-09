@@ -642,7 +642,10 @@ def setup_engine(
         make_cmd = "build" if arch == "apple-silicon" else "profile-build"
         cmd = "make -j {} {} ARCH={} COMP={}".format(concurrency, make_cmd, arch, comp)
 
-        env = dict(os.environ, CXXFLAGS="-DNNUE_EMBEDDING_OFF")
+        # append -DNNUE_EMBEDDING_OFF to existing CXXFLAGS environment variable, if any
+        cxx = os.environ.get("CXXFLAGS", "") + " -DNNUE_EMBEDDING_OFF"
+        env = dict(os.environ, CXXFLAGS=cxx.strip())
+
         with subprocess.Popen(
             cmd,
             shell=True,
