@@ -643,11 +643,8 @@ def setup_engine(
         cmd = "make -j {} {} ARCH={} COMP={}".format(concurrency, make_cmd, arch, comp)
 
         # append -DNNUE_EMBEDDING_OFF to existing CXXFLAGS environment variable, if any
-        cxx = "-DNNUE_EMBEDDING_OFF"
-        if 'CXXFLAGS' in os.environ:
-	        cxx = ' '.join(cxx, os.environ['CXXFLAGS'])
-
-        env = dict(os.environ, CXXFLAGS=cxx)
+        cxx = os.environ.get("CXXFLAGS", "") + " -DNNUE_EMBEDDING_OFF"
+        env = dict(os.environ, CXXFLAGS=cxx.strip())
 
         with subprocess.Popen(
             cmd,
