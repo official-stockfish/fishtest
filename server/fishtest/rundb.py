@@ -258,7 +258,7 @@ class RunDb:
         pgn = self.pgndb.find_one({"run_id": pgn_id})
         if pgn:
             response_body = pgn["pgn_zip"]
-            accept_encoding = request.headers.get("Accept-Encoding", "")
+            accept_encoding = self.request.headers.get("Accept-Encoding", "")
             if not "gzip" not in accept_encoding.lower():
                 return zlib.decompress(response_body).decode()
             # Some clients do not accept responses with the gzip encoding method.
