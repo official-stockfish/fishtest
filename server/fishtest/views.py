@@ -423,7 +423,8 @@ def get_idle_users(request):
     for u in request.userdb.get_users():
         idle[u["username"]] = u
     for u in request.userdb.user_cache.find():
-        del idle[u["username"]]
+        if u["username"] in idle:
+            del idle[u["username"]]
     idle = list(idle.values())
     return idle
 
