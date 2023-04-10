@@ -3,6 +3,8 @@ import copy
 from datetime import datetime, timedelta, timezone
 
 import requests
+import threading
+import time
 from fishtest.stats.stat_util import SPRT_elo
 from fishtest.util import optional_key, union, validate, worker_name
 from fishtest.views import del_tasks
@@ -109,6 +111,26 @@ class ApiView(object):
     def __init__(self, request):
         self.request = request
 
+    # Global rate limits
+    limits_lock = threading.Lock()
+    quotas = {"/api/request_version": 300}
+    limits = {}
+
+    def is_ratelimited(self):
+        if self.__api in self.quotas:
+            with self.limits_lock:
+                entry = self.limits.get(self.__api)
+                if entry and (datetime.utcnow() - entry["time"]).seconds < 60:
+                    entry["count"] += 1
+                    return entry["count"] > self.quotas[self.__api]
+                else:
+                    self.limits[self.__api] = {"count": 1, "time": datetime.utcnow()}
+        return False
+
+    def clear_limits(self):
+        with self.limits_lock:
+            self.limits.clear()
+
     def handle_error(self, error, exception=HTTPBadRequest):
         if error != "":
             error = "{}: {}".format(self.__api, error)
@@ -118,6 +140,10 @@ class ApiView(object):
     def validate_username_password(self, api):
         self.__t0 = datetime.utcnow()
         self.__api = api
+
+        if self.is_ratelimited():
+            self.handle_error("rate limit exceeded")
+
         # is the request valid json?
         try:
             self.request_body = self.request.json_body
