@@ -73,17 +73,30 @@ def validate_request(request):
 
 
 def strip_run(run):
-    run = copy.deepcopy(run)
-    if "tasks" in run:
-        run["tasks"] = []
-    if "bad_tasks" in run:
-        run["bad_tasks"] = []
-    if "spsa" in run["args"] and "param_history" in run["args"]["spsa"]:
-        run["args"]["spsa"]["param_history"] = []
-    run["_id"] = str(run["_id"])
-    run["start_time"] = str(run["start_time"])
-    run["last_updated"] = str(run["last_updated"])
-    return run
+    # a deep copy, avoiding copies of a few large lists.
+    stripped = {}
+    for k1, v1 in run.items():
+        if k1 in ["tasks", "bad_tasks"]:
+            stripped[k1] = []
+        elif k1 == "args":
+            stripped[k1] = {}
+            for k2, v2 in v1.items():
+                if k2 == "spsa":
+                    stripped[k1][k2] = {
+                        k3: [] if k3 == "param_history" else copy.deepcopy(v3)
+                        for k3, v3 in v2.items()
+                    }
+                else:
+                    stripped[k1][k2] = copy.deepcopy(v2)
+        else:
+            stripped[k1] = copy.deepcopy(v1)
+
+    # and some string conversions
+    stripped["_id"] = str(run["_id"])
+    stripped["start_time"] = str(run["start_time"])
+    stripped["last_updated"] = str(run["last_updated"])
+
+    return stripped
 
 
 @exception_view_config(HTTPBadRequest)
