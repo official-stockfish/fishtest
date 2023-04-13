@@ -514,7 +514,7 @@ class TestRunFinished(unittest.TestCase):
         stop_all_runs(self)
         run_id = new_run(self)
         run = self.rundb.get_run(run_id)
-        num_games = 600
+        num_games = 1200
         run["args"]["num_games"] = num_games
         self.rundb.buffer(run, True)
 
