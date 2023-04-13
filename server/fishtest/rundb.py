@@ -617,6 +617,15 @@ class RunDb:
         a = 3 # max bonus 1.67x
         itp *= (llr + a) / a
 
+        # Gentle bonus for high game count (up to double the average)
+        if "sprt" in run["args"]:
+            r = run["results"]
+            n = r["wins"] + r["losses"] + r["draws"]
+            x = 200_000
+            if n > x:
+                bonus = min(n / x, 2)
+                itp *= bonus
+
         # Extra bonus for most promising LTCs at strong-gainer bounds
         # if (
         #    tc_ratio >= 3.0
