@@ -93,7 +93,7 @@ class RunDb:
             print(f"Unable to obtain the port number. Error: {self.port}", flush=True)
         self.task_runs = []
 
-        self.task_duration = 900  # 15 minutes
+        self.task_duration = 1800  # 30 minutes
         self.ltc_lower_bound = 40  # Beware: this is used as a filter in an index!
         self.pt_info = {
             "pt_version": "SF_15",
@@ -645,9 +645,9 @@ class RunDb:
         game_time = estimate_game_duration(run["args"]["tc"])
         concurrency = worker_info["concurrency"] // run["args"]["threads"]
         assert concurrency >= 1
-        # as we have more tasks done (>1000), make them longer to avoid
+        # as we have more tasks done (>250), make them longer to avoid
         # having many tasks in long running tests
-        scale_duration = 1 + (len(run["tasks"]) // 1000) ** 2
+        scale_duration = 1 + (len(run["tasks"]) // 250)
         games = self.task_duration * scale_duration / game_time * concurrency
         if "sprt" in run["args"]:
             batch_size = 2 * run["args"]["sprt"].get("batch_size", 1)
