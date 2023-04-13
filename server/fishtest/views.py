@@ -1142,14 +1142,14 @@ def get_page_title(run):
 @view_config(route_name="tests_live_elo", renderer="tests_live_elo.mak")
 def tests_live_elo(request):
     run = request.rundb.get_run(request.matchdict["id"])
-    request.rundb.get_results(run)
+    request.rundb.get_results(run, save_run=False)
     return {"run": run, "page_title": get_page_title(run)}
 
 
 @view_config(route_name="tests_stats", renderer="tests_stats.mak")
 def tests_stats(request):
     run = request.rundb.get_run(request.matchdict["id"])
-    request.rundb.get_results(run)
+    request.rundb.get_results(run, save_run=False)
     return {"run": run, "page_title": get_page_title(run)}
 
 
@@ -1162,7 +1162,7 @@ def tests_view(request):
         follow = 0
     if run is None:
         raise exception_response(404)
-    results = request.rundb.get_results(run)
+    results = request.rundb.get_results(run, save_run=False)
     run["results_info"] = format_results(results, run)
     run_args = [("id", str(run["_id"]), "")]
     if run.get("rescheduled_from"):
@@ -1337,7 +1337,7 @@ def get_paginated_finished_runs(request):
     failed_runs = []
     for run in finished_runs:
         # Ensure finished runs have results_info
-        results = request.rundb.get_results(run)
+        results = request.rundb.get_results(run, save_run=False)
         if "results_info" not in run:
             run["results_info"] = format_results(results, run)
 
