@@ -495,7 +495,7 @@ class RunDb:
         runs["pending"].sort(
             key=lambda run: (
                 run["args"]["priority"],
-                run["args"]["itp"] if "itp" in run["args"] else 100,
+                run["args"].get("itp", 100),
             )
         )
         runs["active"].sort(
@@ -511,8 +511,7 @@ class RunDb:
         )
 
         # Calculate but don't save results_info on runs using info on current machines
-        cores = 0
-        nps = 0
+        cores = itp = nps = 0
         for m in self.get_machines():
             concurrency = int(m["concurrency"])
             cores += concurrency
@@ -522,18 +521,19 @@ class RunDb:
             if cores > 0:
                 eta = remaining_hours(run) / cores
                 pending_hours += eta
+                itp += run["args"].get("itp", 100)
             results = self.get_results(run, False)
             run["results_info"] = format_results(results, run)
             if "Pending..." in run["results_info"]["info"]:
                 if cores > 0:
-                    run["results_info"]["info"][0] += " ({:.1f} hrs)".format(eta)
+                    run["results_info"]["info"][0] += f" ({eta:.1f} hrs)"
                 if "sprt" in run["args"]:
                     sprt = run["args"]["sprt"]
                     elo_model = sprt.get("elo_model", "BayesElo")
                     run["results_info"]["info"].append(
                         format_bounds(elo_model, sprt["elo0"], sprt["elo1"])
                     )
-        return (runs, pending_hours, cores, nps)
+        return (runs, pending_hours, cores, itp, nps)
 
     def get_finished_runs(
         self,

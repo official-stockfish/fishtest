@@ -1392,13 +1392,14 @@ def homepage_results(request):
                 )
             )
     # Get updated results for unfinished runs + finished runs
-    (runs, pending_hours, cores, nps) = request.rundb.aggregate_unfinished_runs()
+    (runs, pending_hours, cores, itp, nps) = request.rundb.aggregate_unfinished_runs()
     return {
         **get_paginated_finished_runs(request),
         "runs": runs,
         "machines": machines,
-        "pending_hours": "{:.1f}".format(pending_hours),
+        "pending_hours": f"{pending_hours:.1f}",
         "cores": cores,
+        "itp": itp,
         "nps": nps,
         "games_per_minute": int(games_per_minute),
     }
