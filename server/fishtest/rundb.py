@@ -240,7 +240,7 @@ class RunDb:
     def get_machines(self):
         machines = []
         active_runs = self.runs.find(
-            {"finished": False, "tasks": {"$elemMatch": {"active": True}}},
+            {"finished": False},
             sort=[("last_updated", DESCENDING)],
         )
         for run in active_runs:
