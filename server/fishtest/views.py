@@ -1405,7 +1405,7 @@ def homepage_results(request):
 
 
 # For caching the homepage tests output
-cache_time = 2
+cache_time = 10
 last_tests = None
 last_time = 0
 
