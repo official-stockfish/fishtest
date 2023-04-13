@@ -1370,7 +1370,10 @@ def tests_user(request):
     username = request.matchdict.get("username", "")
     response = {**get_paginated_finished_runs(request), "username": username}
     if int(request.params.get("page", 1)) == 1:
-        response["runs"] = request.rundb.aggregate_unfinished_runs(username)[0]
+        machines = request.rundb.get_machines()
+        response["runs"] = request.rundb.aggregate_unfinished_runs(machines, username)[
+            0
+        ]
     # page 2 and beyond only show finished test results
     return response
 
@@ -1392,7 +1395,9 @@ def homepage_results(request):
                 )
             )
     # Get updated results for unfinished runs + finished runs
-    (runs, pending_hours, cores, nps) = request.rundb.aggregate_unfinished_runs()
+    (runs, pending_hours, cores, nps) = request.rundb.aggregate_unfinished_runs(
+        machines
+    )
     return {
         **get_paginated_finished_runs(request),
         "runs": runs,

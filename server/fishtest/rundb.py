@@ -482,7 +482,7 @@ class RunDb:
                 ]
             return unfinished_runs
 
-    def aggregate_unfinished_runs(self, username=None):
+    def aggregate_unfinished_runs(self, machines, username=None):
         unfinished_runs = self.get_unfinished_runs(username)
         runs = {"pending": [], "active": []}
         for run in unfinished_runs:
@@ -513,7 +513,7 @@ class RunDb:
         # Calculate but don't save results_info on runs using info on current machines
         cores = 0
         nps = 0
-        for m in self.get_machines():
+        for m in machines:
             concurrency = int(m["concurrency"])
             cores += concurrency
             nps += concurrency * m["nps"]
@@ -614,7 +614,7 @@ class RunDb:
         llr = run["args"].get("sprt", {}).get("llr", 0)
         # Don't throw workers at a run that finishes in 2 minutes anyways
         llr = min(max(llr, 0), 2.0)
-        a = 3 # max bonus 1.67x
+        a = 3  # max bonus 1.67x
         itp *= (llr + a) / a
 
         # Extra bonus for most promising LTCs at strong-gainer bounds
