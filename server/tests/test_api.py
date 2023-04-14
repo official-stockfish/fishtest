@@ -110,6 +110,7 @@ class TestApi(unittest.TestCase):
     def tearDownClass(self):
         self.rundb.runs.delete_many({})
         self.rundb.userdb.users.delete_many({"username": self.username})
+        self.rundb.userdb.clear_cache()
         self.rundb.userdb.user_cache.delete_many({"username": self.username})
         self.rundb.stop()
         self.rundb.runs.drop()
@@ -485,6 +486,7 @@ class TestRunFinished(unittest.TestCase):
     @classmethod
     def tearDownClass(self):
         self.rundb.userdb.users.delete_many({"username": self.username})
+        self.rundb.userdb.clear_cache()
         self.rundb.userdb.user_cache.delete_many({"username": self.username})
         self.rundb.stop()
         self.rundb.runs.drop()
