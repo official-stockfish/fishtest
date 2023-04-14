@@ -14,7 +14,7 @@ class UserDb:
         self.top_month = self.db["top_month"]
         self.flag_cache = self.db["flag_cache"]
 
-    # Cache user lookups for 60s
+    # Cache user lookups for 120s
     user_lock = threading.Lock()
     cache = {}
 
@@ -22,7 +22,7 @@ class UserDb:
         with self.user_lock:
             if name in self.cache:
                 u = self.cache[name]
-                if u["time"] > time.time() - 60:
+                if u["time"] > time.time() - 120:
                     return u["user"]
             user = self.users.find_one({"username": name})
             if not user:
@@ -75,11 +75,13 @@ class UserDb:
         user = self.find(username)
         user["groups"].append(group)
         self.users.replace_one({"_id": user["_id"]}, user)
+        self.clear_cache()
 
     def create_user(self, username, password, email):
         try:
             if self.find(username):
                 return False
+            # insert the new user in the db
             self.users.insert_one(
                 {
                     "username": username,
@@ -100,6 +102,7 @@ class UserDb:
     def save_user(self, user):
         self.users.replace_one({"_id": user["_id"]}, user)
         self.last_pending_time = 0
+        self.clear_cache()
 
     def get_machine_limit(self, username):
         user = self.find(username)
