@@ -100,7 +100,9 @@ class RunDb:
             "pt_branch": "e6e324eb28fd49c1fc44b3b65784f85a773ec61c",
             "pt_bench": 8129754,
         }
-
+        self.machines = None
+        self.finished_runs = None
+        self.start_homepage_timer()
         global last_rundb
         last_rundb = self
 
@@ -238,7 +240,7 @@ class RunDb:
         return self.runs.insert_one(new_run).inserted_id
 
     def get_machines(self):
-        machines = []
+        self.machines_ = []
         active_runs = self.runs.find(
             {"finished": False, "tasks": {"$elemMatch": {"active": True}}},
             sort=[("last_updated", DESCENDING)],
@@ -250,8 +252,73 @@ class RunDb:
                     machine["last_updated"] = task.get("last_updated", None)
                     machine["run"] = run
                     machine["task_id"] = task_id
-                    machines.append(machine)
-        return machines
+                    self.machines_.append(machine)
+
+        self.machines = self.machines_
+
+        return self.machines
+
+    def build_homepage_data(self):
+        while True:
+            self.get_machines()
+            self.get_finished_runs()
+            time.sleep(20)
+
+    def get_finished_runs(
+        self,
+        skip=0,
+        limit=0,
+        username="",
+        success_only=False,
+        yellow_only=False,
+        ltc_only=False,
+    ):
+        q = {"finished": True}
+        if username:
+            q["args.username"] = username
+        if ltc_only:
+            q["tc_base"] = {"$gte": self.ltc_lower_bound}
+        if success_only:
+            q["is_green"] = True
+        if yellow_only:
+            q["is_yellow"] = True
+
+        c = self.runs.find(
+            q, skip=skip, limit=limit, sort=[("last_updated", DESCENDING)]
+        )
+
+        count = self.runs.count_documents(q)
+
+        # Don't show runs that were deleted
+        runs_list = [run for run in c if not run.get("deleted")]
+
+        self.finished_runs = [runs_list, count]
+        return self.finished_runs
+
+    def get_machines_(self):
+        if self.machines is None:
+            self.get_machines()
+        return copy.deepcopy(self.machines)
+
+    def get_finished_runs_(
+        self,
+        skip=0,
+        limit=0,
+        username="",
+        success_only=False,
+        yellow_only=False,
+        ltc_only=False,
+    ):
+        if self.finished_runs is None:
+            self.get_finished_runs(
+                skip=skip,
+                limit=limit,
+                username=username,
+                success_only=success_only,
+                yellow_only=yellow_only,
+                ltc_only=ltc_only,
+            )
+        return copy.deepcopy(self.finished_runs)
 
     def get_pgn(self, pgn_id):
         pgn_id = pgn_id.split(".")[0]  # strip .pgn
@@ -350,6 +417,10 @@ class RunDb:
     def start_timer(self):
         self.timer = threading.Timer(1.0, self.flush_buffers)
         self.timer.start()
+
+    def start_homepage_timer(self):
+        homepage_thread = threading.Thread(target=self.build_homepage_data, daemon=True)
+        homepage_thread.start()
 
     def buffer(self, run, flush):
         with self.run_cache_lock:
@@ -513,7 +584,7 @@ class RunDb:
         # Calculate but don't save results_info on runs using info on current machines
         cores = 0
         nps = 0
-        for m in self.get_machines():
+        for m in self.get_machines_():
             concurrency = int(m["concurrency"])
             cores += concurrency
             nps += concurrency * m["nps"]
@@ -534,35 +605,6 @@ class RunDb:
                         format_bounds(elo_model, sprt["elo0"], sprt["elo1"])
                     )
         return (runs, pending_hours, cores, nps)
-
-    def get_finished_runs(
-        self,
-        skip=0,
-        limit=0,
-        username="",
-        success_only=False,
-        yellow_only=False,
-        ltc_only=False,
-    ):
-        q = {"finished": True}
-        if username:
-            q["args.username"] = username
-        if ltc_only:
-            q["tc_base"] = {"$gte": self.ltc_lower_bound}
-        if success_only:
-            q["is_green"] = True
-        if yellow_only:
-            q["is_yellow"] = True
-
-        c = self.runs.find(
-            q, skip=skip, limit=limit, sort=[("last_updated", DESCENDING)]
-        )
-
-        count = self.runs.count_documents(q)
-
-        # Don't show runs that were deleted
-        runs_list = [run for run in c if not run.get("deleted")]
-        return [runs_list, count]
 
     def get_results(self, run, save_run=True):
         if not run["results_stale"]:
@@ -614,7 +656,7 @@ class RunDb:
         llr = run["args"].get("sprt", {}).get("llr", 0)
         # Don't throw workers at a run that finishes in 2 minutes anyways
         llr = min(max(llr, 0), 2.0)
-        a = 3 # max bonus 1.67x
+        a = 3  # max bonus 1.67x
         itp *= (llr + a) / a
 
         # Extra bonus for most promising LTCs at strong-gainer bounds

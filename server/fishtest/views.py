@@ -30,16 +30,7 @@ from requests.exceptions import ConnectionError, HTTPError
 HTTP_TIMEOUT = 15.0
 
 
-def clear_cache():
-    global last_time, last_tests
-    building.acquire()
-    last_time = 0
-    last_tests = None
-    building.release()
-
-
 def cached_flash(request, requestString):
-    clear_cache()
     request.session.flash(requestString)
     return
 
@@ -1315,7 +1306,7 @@ def get_paginated_finished_runs(request):
     page_idx = max(0, int(request.params.get("page", 1)) - 1)
     page_size = 25
 
-    finished_runs, num_finished_runs = request.rundb.get_finished_runs(
+    finished_runs, num_finished_runs = request.rundb.get_finished_runs_(
         username=username,
         success_only=success_only,
         yellow_only=yellow_only,
@@ -1378,7 +1369,7 @@ def tests_user(request):
 def homepage_results(request):
     # Calculate games_per_minute from current machines
     games_per_minute = 0.0
-    machines = request.rundb.get_machines()
+    machines = request.rundb.get_machines_()
     for machine in machines:
         diff = diff_date(machine["last_updated"])
         machine["last_updated"] = delta_date(diff)
@@ -1404,15 +1395,6 @@ def homepage_results(request):
     }
 
 
-# For caching the homepage tests output
-cache_time = 2
-last_tests = None
-last_time = 0
-
-# Guard against parallel builds of main page
-building = threading.Semaphore()
-
-
 @view_config(route_name="tests", renderer="tests.mak")
 def tests(request):
     request.response.headerlist.extend(
@@ -1425,27 +1407,13 @@ def tests(request):
         # page 2 and beyond only show finished test results
         return get_paginated_finished_runs(request)
 
-    global last_tests, last_time
-    if time.time() - last_time > cache_time:
-        acquired = building.acquire(last_tests is None)
-        if not acquired:
-            # We have a current cache and another thread is rebuilding,
-            # so return the current cache
-            pass
-        elif time.time() - last_time < cache_time:
-            # Another thread has built the cache for us, so we are done
-            building.release()
-        else:
-            # Not cached, so calculate and fetch homepage results
-            try:
-                last_tests = homepage_results(request)
-            except Exception as e:
-                print("Overview exception: " + str(e))
-                if not last_tests:
-                    raise e
-            finally:
-                last_time = time.time()
-                building.release()
+    last_tests = None
+    try:
+        last_tests = homepage_results(request)
+    except Exception as e:
+        print("Overview exception: " + str(e))
+        if not last_tests:
+            raise e
 
     return {
         **last_tests,
