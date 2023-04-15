@@ -31,8 +31,10 @@ from fishtest.util import (
     update_residuals,
     worker_name,
 )
-from fishtest.views import del_tasks
+from fishtest.views import del_tasks, homepage_results
 from pymongo import DESCENDING, MongoClient
+from pyramid.testing import DummyRequest
+
 
 DEBUG = False
 
@@ -106,6 +108,25 @@ class RunDb:
 
         if self.port >= 0:
             self.actiondb.system_event(message=f"start fishtest@{self.port}")
+
+        self.start_homepage_thread()
+
+    def start_homepage_thread(self):
+        threading.Thread(target=self.homepage_build, daemon=True).start()
+
+    def homepage_build(self):
+        while True:
+            t0 = datetime.utcnow()
+            self.homepage_refresh()
+            t1 = datetime.utcnow()
+            delta = (t1 - t0).total_seconds()
+            # Auto load balancing!
+            time.sleep(2 * max(delta, 1))
+
+    def homepage_refresh(self):
+        request = DummyRequest(params={"page": 1})
+        request.rundb = self
+        homepage_results(request, cached=False)
 
     def new_run(
         self,
@@ -614,7 +635,7 @@ class RunDb:
         llr = run["args"].get("sprt", {}).get("llr", 0)
         # Don't throw workers at a run that finishes in 2 minutes anyways
         llr = min(max(llr, 0), 2.0)
-        a = 3 # max bonus 1.67x
+        a = 3  # max bonus 1.67x
         itp *= (llr + a) / a
 
         # Extra bonus for most promising LTCs at strong-gainer bounds
