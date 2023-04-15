@@ -28,18 +28,41 @@ from requests.exceptions import ConnectionError, HTTPError
 HTTP_TIMEOUT = 15.0
 
 
-def clear_cache():
+def clear_cache(request):
     global last_time, last_tests
     building.acquire()
     last_time = 0
     last_tests = None
+    request.rundb.comms.replace_one(
+        {"type": "ensure_refresh"},
+        {"type": "ensure_refresh", "timestamp": datetime.datetime.utcnow()},
+        upsert=True,
+    )
     building.release()
 
 
 def cached_flash(request, requestString):
-    clear_cache()
+    clear_cache(request)
     request.session.flash(requestString)
     return
+
+
+last_refresh = None
+
+
+def check_db_refresh(request):
+    global last_refresh
+    refresh_record = request.rundb.comms.find_one({"type": "ensure_refresh"})
+    if refresh_record is not None:
+        new_refresh = refresh_record["timestamp"]
+        if new_refresh != last_refresh:
+            last_refresh = new_refresh
+            ret = True
+        else:
+            ret = False
+    else:
+        ret = False
+    return ret
 
 
 def pagination(page_idx, num, page_size):
@@ -1470,6 +1493,10 @@ def tests(request):
         return get_paginated_finished_runs(request)
 
     global last_tests, last_time
+    if check_db_refresh(request):
+        # A clear_cache happened in another instance
+        last_time = 0
+        last_tests = None
     if time.time() - last_time > cache_time:
         acquired = building.acquire(last_tests is None)
         if not acquired:

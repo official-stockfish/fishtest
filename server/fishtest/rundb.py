@@ -87,6 +87,7 @@ class RunDb:
         self.nndb = self.db["nns"]
         self.runs = self.db["runs"]
         self.deltas = self.db["deltas"]
+        self.comms = self.db["comms"]
         self.port = get_port()
         if self.port < 0:
             print(f"Unable to obtain the port number. Error: {self.port}", flush=True)
