@@ -781,7 +781,8 @@ def validate_form(request):
     # Integer parameters
 
     if stop_rule == "sprt":
-        sprt_batch_size_games = 8
+        # Too small a number results in many API calls, especially with highly concurrent workers.
+        sprt_batch_size_games = 32
         assert sprt_batch_size_games % 2 == 0
         elo_model = request.POST["elo_model"]
         if elo_model not in ["BayesElo", "logistic", "normalized"]:

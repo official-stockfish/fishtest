@@ -1286,6 +1286,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
     factor = 1328000 / base_nps
 
     # Adjust CPU scaling.
+    scaled_tc_ltc, tc_limit_ltc = adjust_tc("60+0.6", factor)
     scaled_tc, tc_limit = adjust_tc(run["args"]["tc"], factor)
     scaled_new_tc = scaled_tc
     if "new_tc" in run["args"]:
@@ -1312,7 +1313,8 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
         tc_limit *= 2
 
     while games_remaining > 0:
-        batch_size = games_concurrency * 4  # update frequency
+        # update frequency: every 4 games at LTC, or a similar time interval at other TCs
+        batch_size = games_concurrency * 4 * max(1, round(tc_limit_ltc / tc_limit))
 
         if spsa_tuning:
             games_to_play = min(batch_size, games_remaining)
