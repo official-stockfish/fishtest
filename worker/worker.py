@@ -644,6 +644,7 @@ def setup_parameters(worker_dir):
         ("parameters", "min_threads", "1", int, None),
         ("parameters", "fleet", "False", _bool, None),
         ("parameters", "compiler", default_compiler, compiler_names, None),
+        ("parameters", "syzygy_path", "", str, None),
         ("private", "hw_seed", str(random.randint(0, 0xFFFFFFFF)), int, None),
     ]
 
@@ -754,6 +755,15 @@ def setup_parameters(worker_dir):
         help="do not validate username/password with server",
     )
 
+    parser.add_argument(
+        "-S",
+        "--syzygy_path",
+        dest="syzygy_path",
+        default=config.get("parameters", "syzygy_path"),
+        type=str,
+        help="Syzygy tabelbases path for cutechess-cli adjudication; not given to the engines",
+    )
+
     def my_error(e):
         raise Exception(e)
 
@@ -824,6 +834,7 @@ def setup_parameters(worker_dir):
     config.set("parameters", "min_threads", str(options.min_threads))
     config.set("parameters", "fleet", str(options.fleet))
     config.set("parameters", "compiler", options.compiler_)
+    config.set("parameters", "syzygy_path", options.syzygy_path)
 
     with open(config_file, "w") as f:
         config.write(f)
@@ -1284,7 +1295,9 @@ def verify_worker_version(remote, username, password):
     return True
 
 
-def fetch_and_handle_task(worker_info, password, remote, lock_file, current_state):
+def fetch_and_handle_task(
+    worker_info, password, remote, lock_file, current_state, syzygy_path
+):
     # This function should normally not raise exceptions.
     # Unusual conditions are handled by returning False.
     # If an immediate exit is necessary then one can set
@@ -1372,7 +1385,7 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
     api = remote + "/api/failed_task"
     pgn_file = [None]
     try:
-        run_games(worker_info, password, remote, run, task_id, pgn_file)
+        run_games(worker_info, password, remote, run, task_id, pgn_file, syzygy_path)
         success = True
     except FatalException as e:
         message = str(e)
@@ -1564,6 +1577,8 @@ def worker():
         "ARCH": "?",
         "nps": 0.0,
     }
+    if len(options.syzygy_path) > 0:
+        worker_info["cutechess_syzygy"] = "yes"
 
     print("UUID:", worker_info["unique_key"])
 
@@ -1592,7 +1607,12 @@ def worker():
             fish_exit = True
             break
         success = fetch_and_handle_task(
-            worker_info, options.password, remote, lock_file, current_state
+            worker_info,
+            options.password,
+            remote,
+            lock_file,
+            current_state,
+            options.syzygy_path,
         )
         if not current_state["alive"]:  # the user may have pressed Ctrl-C...
             break
