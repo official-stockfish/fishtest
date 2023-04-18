@@ -2,6 +2,7 @@
 
 import re
 from datetime import datetime, timedelta
+import time
 
 from fishtest.rundb import RunDb
 from pymongo import DESCENDING
@@ -21,6 +22,7 @@ def purge_pgn(deleted, days):
         {"finished": True, "deleted": deleted},
         sort=[("last_updated", DESCENDING)],
     ):
+        time.sleep(0.005)
         if (now - run["last_updated"]).days > 60:
             break
 
