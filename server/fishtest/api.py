@@ -1,5 +1,6 @@
 import base64
 import copy
+import threading
 from datetime import datetime, timedelta, timezone
 
 import requests
@@ -30,6 +31,9 @@ on how frequently the main instance flushes its run cache.
 WORKER_VERSION = 199
 
 flag_cache = {}
+
+last_scheduled_start = {}
+lock_last_scheduled_start = threading.Lock()
 
 
 def validate_request(request):
@@ -511,6 +515,22 @@ class ApiView(object):
         # elsewhere since the worker will upgrade.
         self.validate_username_password("/api/request_version")
         return self.add_time({"version": WORKER_VERSION})
+
+    @view_config(route_name="api_request_start")
+    def request_start(self):
+        # do fast verification only, later checks will be more strict
+        self.validate_username_password("/api/request_start")
+        username = self.request.json_body["worker_info"]["username"]
+
+        global lock_last_scheduled_start, last_scheduled_start
+        with lock_last_scheduled_start:
+            # we allow workers to start every 200ms
+            last_scheduled_start[username] = max(
+                datetime.utcnow(), last_scheduled_start.get(username, datetime.utcnow())
+            ) + timedelta(milliseconds=200)
+            return self.add_time(
+                {"scheduled_start": str(last_scheduled_start[username])}
+            )
 
     @view_config(route_name="api_beat")
     def beat(self):

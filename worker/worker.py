@@ -1284,6 +1284,29 @@ def verify_worker_version(remote, username, password):
     return True
 
 
+def schedule_start(remote, username, password):
+    # Returns:
+    # True: we have reached our communicated starting point and are ready to go
+    # False: incorrect credentials (the user may have been blocked in the meantime)
+    # None: network error: unable to get the starting time
+    print("Requesting scheduled start...")
+    payload = {"worker_info": {"username": username}, "password": password}
+    try:
+        req = send_api_post_request(remote + "/api/request_start", payload)
+    except WorkerException:
+        return None  # the error message has already been written
+    if "error" in req:
+        return False  # likewise
+
+    startTime = datetime.strptime(req["scheduled_start"], "%Y-%m-%d %H:%M:%S.%f")
+    timediff = max(0, (startTime - datetime.utcnow()).total_seconds())
+    print(f"Scheduled to start in {timediff} seconds")
+    time.sleep(timediff)
+    print("Starting...")
+
+    return True
+
+
 def fetch_and_handle_task(worker_info, password, remote, lock_file, current_state):
     # This function should normally not raise exceptions.
     # Unusual conditions are handled by returning False.
@@ -1517,6 +1540,14 @@ def worker():
             return 1
     except Exception as e:
         print("Exception verifying worker version:\n", e, sep="", file=sys.stderr)
+        return 1
+
+    # Schedule start
+    try:
+        if schedule_start(remote, options.username, options.password) is False:
+            return 1
+    except Exception as e:
+        print("Exception scheduling start :\n", e, sep="", file=sys.stderr)
         return 1
 
     # Check for a common tool chain issue

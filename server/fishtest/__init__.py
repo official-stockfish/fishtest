@@ -104,6 +104,7 @@ def main(global_config, **settings):
     config.add_route("api_failed_task", "/api/failed_task")
     config.add_route("api_stop_run", "/api/stop_run")
     config.add_route("api_request_version", "/api/request_version")
+    config.add_route("api_request_start", "/api/request_start")
     config.add_route("api_beat", "/api/beat")
     config.add_route("api_request_spsa", "/api/request_spsa")
     config.add_route("api_active_runs", "/api/active_runs")
