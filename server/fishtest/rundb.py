@@ -33,6 +33,15 @@ from fishtest.util import (
 )
 from fishtest.views import del_tasks
 from pymongo import DESCENDING, MongoClient
+from fishtest.mongodb_proxy import MongoProxy
+from fishtest.durable_cursor import DurableCursor
+from pymongo.collection import Collection
+
+def durable_find(self, *args, **kwargs):
+    """Same as Collection.find, but instead returns a DurableCursor"""
+    return DurableCursor(self, *args, **kwargs)
+
+Collection.find = durable_find
 
 DEBUG = False
 
@@ -80,7 +89,7 @@ class RunDb:
     def __init__(self, db_name="fishtest_new"):
         # MongoDB server is assumed to be on the same machine, if not user should
         # use ssh with port forwarding to access the remote host.
-        self.conn = MongoClient(os.getenv("FISHTEST_HOST") or "localhost")
+        self.conn = MongoProxy(MongoClient(os.getenv("FISHTEST_HOST") or "localhost"))
         self.db = self.conn[db_name]
         self.userdb = UserDb(self.db)
         self.actiondb = ActionDb(self.db)

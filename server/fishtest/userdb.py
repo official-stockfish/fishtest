@@ -4,7 +4,14 @@ import time
 from datetime import datetime
 
 from pymongo import ASCENDING
+from fishtest.durable_cursor import DurableCursor
+from pymongo.collection import Collection
 
+def durable_find(self, *args, **kwargs):
+    """Same as Collection.find, but instead returns a DurableCursor"""
+    return DurableCursor(self, *args, **kwargs)
+
+Collection.find = durable_find
 
 class UserDb:
     def __init__(self, db):

@@ -15,6 +15,15 @@ from pyramid.httpexceptions import (
 from pyramid.response import Response
 from pyramid.view import exception_view_config, view_config, view_defaults
 
+from fishtest.durable_cursor import DurableCursor
+from pymongo.collection import Collection
+
+def durable_find(self, *args, **kwargs):
+    """Same as Collection.find, but instead returns a DurableCursor"""
+    return DurableCursor(self, *args, **kwargs)
+
+Collection.find = durable_find
+
 """
 Important note
 ==============

@@ -2,6 +2,14 @@ from datetime import datetime, timezone
 
 from fishtest.util import hex_print, optional_key, union, validate, worker_name
 from pymongo import DESCENDING
+from fishtest.durable_cursor import DurableCursor
+from pymongo.collection import Collection
+
+def durable_find(self, *args, **kwargs):
+    """Same as Collection.find, but instead returns a DurableCursor"""
+    return DurableCursor(self, *args, **kwargs)
+
+Collection.find = durable_find
 
 schema = union(
     {
