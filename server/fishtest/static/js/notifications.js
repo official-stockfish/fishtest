@@ -145,7 +145,7 @@ function save_timestamp(ts) {
 
 async function main_follow_loop() {
   await DOM_loaded();
-  await async_sleep(10000);
+  await async_sleep(5000 + 10000 * Math.random());
   while (true) {
     const current_time = Date.now();
     const timestamp_latest_fetch = get_timestamp();
@@ -153,10 +153,11 @@ async function main_follow_loop() {
       timestamp_latest_fetch != null &&
       current_time - timestamp_latest_fetch < 19000
     ) {
-      console.log("Skipping events update");
       await async_sleep(20000 + 500 * Math.random());
       continue;
     }
+    // I won the race, other tabs should skip their fetch
+    save_timestamp(current_time);
     let json;
     let notifications = get_notifications();
     try {
@@ -166,10 +167,8 @@ async function main_follow_loop() {
       });
     } catch (e) {
       console.log(e);
-      await async_sleep(20000 + 500 * Math.random());
       continue;
     }
-    save_timestamp(current_time);
     notifications = get_notifications();
     let work = [];
     json.forEach((entry) => {
@@ -199,7 +198,6 @@ async function main_follow_loop() {
         notify_elo(null, entry);
       }
     });
-    await async_sleep(20000 + 500 * Math.random());
   }
 }
 
