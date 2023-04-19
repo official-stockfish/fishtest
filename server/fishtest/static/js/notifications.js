@@ -158,30 +158,32 @@ async function main_follow_loop() {
     }
     // I won the race, other tabs should skip their fetch
     save_timestamp(current_time);
-    let json;
+    let json = [];
     let notifications = get_notifications();
     try {
-      json = await fetch_post("/api/actions", {
-        action: "finished_run",
-        run_id: { $in: notifications.content },
-      });
+      if (notifications.content?.length) {
+        json = await fetch_post("/api/actions", {
+          action: "finished_run",
+          run_id: { $in: notifications.content },
+        });
+      }
     } catch (e) {
       console.log(e);
       continue;
     }
     notifications = get_notifications();
     let work = [];
-    json.forEach((entry) => {
+    for (const entry of json) {
       let run_id = entry["run_id"];
       if (notifications.contains(run_id)) {
         work.push(entry);
         notifications.remove(run_id);
       }
-    });
+    }
     save_notifications(notifications); // make sure other tabs see up to date data
     // Instrumentation
     console.log("active notifications: ", JSON.stringify(notifications));
-    work.forEach(async (entry) => {
+    for (const entry of work) {
       run_id = entry["run_id"];
       disable_notification(run_id);
       set_notification_status(run_id);
@@ -197,7 +199,7 @@ async function main_follow_loop() {
         console.log(e);
         notify_elo(null, entry);
       }
-    });
+    }
   }
 }
 
