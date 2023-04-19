@@ -1130,7 +1130,7 @@ def heartbeat(worker_info, password, remote, current_state):
     while current_state["alive"]:
         time.sleep(1)
         count += 1
-        if count == 60:
+        if count == 120:
             count = 0
             print("  Send heartbeat for", worker_info["unique_key"], end=" ... ")
             run = current_state["run"]
