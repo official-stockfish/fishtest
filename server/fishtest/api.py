@@ -2,7 +2,9 @@ import base64
 import copy
 from datetime import datetime, timedelta, timezone
 
+import ipaddress
 import requests
+import threading
 from fishtest.stats.stat_util import SPRT_elo
 from fishtest.util import optional_key, union, validate, worker_name
 from fishtest.views import del_tasks
@@ -30,6 +32,7 @@ on how frequently the main instance flushes its run cache.
 WORKER_VERSION = 199
 
 flag_cache = {}
+flag_cache_lock = threading.Lock()
 
 
 def validate_request(request):
@@ -284,25 +287,28 @@ class ApiView(object):
             return db_flag["country_code"]
 
         ip = self.request.remote_addr
+        if ':' in ip:
+            network = ipaddress.ip_network(ip + '/48', strict=False)
+            synthetic_ip = str(network.network_address + 1)
+        else:
+            network = ipaddress.ip_network(ip + '/24', strict=False)
+            synthetic_ip = str(network.network_address + 1)
+
         now_dt = datetime.utcnow()
-        clean_flag_data = {"cc": None, "dt": now_dt}
         # Create a flag_data for a new ip and insert it in flag_cache and db
         # limit race for workers with the same ip: db and web request can be slow
-        if ip not in flag_cache:
-            flag_cache[ip] = clean_flag_data
-            flag_cache[ip]["cc"] = get_flag_cc(self, ip)
+        flag_cache_lock.acquire()
+        if synthetic_ip not in flag_cache or (flag_cache[synthetic_ip]["cc"] is None and (now_dt - flag_cache[synthetic_ip]["dt"]).total_seconds() > 3600 * 4):
+            flag_cache[synthetic_ip] = {"cc": None, "dt": now_dt}
+            flag_cache_lock.release()
+            ip_cc = get_flag_cc(self, synthetic_ip)
+            flag_cache_lock.acquire()
+            flag_cache[synthetic_ip]["cc"] = ip_cc
         # Update the flag_data after a timeout if the ip has not a country code
         # (eg dev worker with private ip) to preserve the free geoip requests
-        try:
-            ip_cc = flag_cache[ip]["cc"]
-            ip_dt = flag_cache[ip]["dt"]
-        except KeyError:
-            pass
-        else:
-            if ip_cc is None and (now_dt - ip_dt).total_seconds() > 3600 * 4:
-                flag_cache[ip] = clean_flag_data
-                flag_cache[ip]["cc"] = get_flag_cc(self, ip)
-        return flag_cache[ip].get("cc")
+        ip_cc = flag_cache[synthetic_ip]["cc"]
+        flag_cache_lock.release()
+        return ip_cc
 
     @view_config(route_name="api_active_runs")
     def active_runs(self):
