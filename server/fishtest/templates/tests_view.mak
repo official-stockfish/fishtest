@@ -149,7 +149,11 @@
     <div class="row g-2 mb-2">
       % if not run['finished']:
         <div class="col-12 col-sm">
-          <form action="/tests/stop" method="POST">
+          <form
+            action="/tests/stop"
+            method="POST"
+            onsubmit="unfollow_run('${run['_id']}'); return true;"
+          >
             <input type="hidden" name="run-id" value="${run['_id']}">
             <button type="submit" class="btn btn-danger w-100">
               Stop
