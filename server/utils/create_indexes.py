@@ -106,13 +106,6 @@ def create_actions_indexes():
     )
 
 
-def create_flag_cache_indexes():
-    db["flag_cache"].create_index("ip")
-    db["flag_cache"].create_index(
-        "geoip_checked_at", expireAfterSeconds=60 * 60 * 24 * 7
-    )
-
-
 def print_current_indexes():
     for collection_name in db.list_collection_names():
         c = db[collection_name]
@@ -158,9 +151,6 @@ if __name__ == "__main__":
             elif collection_name == "nns":
                 drop_indexes("nns")
                 create_nns_indexes()
-            elif collection_name == "flag_cache":
-                drop_indexes("flag_cache")
-                create_flag_cache_indexes()
         print("Finished creating indexes!\n")
     print_current_indexes()
     if not collection_names:
