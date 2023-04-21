@@ -1370,15 +1370,25 @@ def tests_user(request):
     username = request.matchdict.get("username", "")
     response = {**get_paginated_finished_runs(request), "username": username}
     if int(request.params.get("page", 1)) == 1:
-        response["runs"] = request.rundb.aggregate_unfinished_runs(username)[0]
+        response["runs"] = request.rundb.aggregate_unfinished_runs(
+            username=username,
+        )[0]
     # page 2 and beyond only show finished test results
     return response
 
 
 def homepage_results(request):
+    # Get updated results for unfinished runs + finished runs
+
+    (
+        runs,
+        machines,
+        pending_hours,
+        cores,
+        nps,
+    ) = request.rundb.aggregate_unfinished_runs()
     # Calculate games_per_minute from current machines
     games_per_minute = 0.0
-    machines = request.rundb.get_machines()
     for machine in machines:
         diff = diff_date(machine["last_updated"])
         machine["last_updated"] = delta_date(diff)
@@ -1391,8 +1401,6 @@ def homepage_results(request):
                     // machine["run"]["args"].get("threads", 1)
                 )
             )
-    # Get updated results for unfinished runs + finished runs
-    (runs, pending_hours, cores, nps) = request.rundb.aggregate_unfinished_runs()
     return {
         **get_paginated_finished_runs(request),
         "runs": runs,
