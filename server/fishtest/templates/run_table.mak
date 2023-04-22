@@ -70,7 +70,7 @@
                           action="/tests/delete"
                           method="POST"
                           style="display: inline;"
-                          onsubmit="unfollow_run('${run['_id']}'); return true;"
+                          onsubmit="handle_stop_delete_button('${run['_id']}'); return true;"
                         >
                           <input type="hidden" name="csrf_token" value="${request.session.get_csrf_token()}">
                           <input type="hidden" name="run-id" value="${run['_id']}">
