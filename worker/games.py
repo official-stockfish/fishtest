@@ -1069,7 +1069,7 @@ def launch_cutechess(
     return task_alive
 
 
-def run_games(worker_info, password, remote, run, task_id, pgn_file):
+def run_games(worker_info, password, remote, run, task_id, pgn_file, syzygy_path):
     # This is the main cutechess-cli driver.
     # It is ok, and even expected, for this function to
     # raise exceptions, implicitly or explicitly, if a
@@ -1351,6 +1351,11 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
         if any(substring in book.upper() for substring in ["FRC", "960"]):
             variant = "fischerandom"
 
+        # Prepare the tablebase parameter
+        syzygy_cmd = []
+        if len(syzygy_path) > 0:
+            syzygy_cmd = ["-tb", syzygy_path]
+
         # Run cutechess binary.
         cutechess = "cutechess-cli" + EXE_SUFFIX
         cmd = (
@@ -1413,6 +1418,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
             + nodestime_cmd
             + threads_cmd
             + book_cmd
+            + syzygy_cmd
         )
 
         task_alive = launch_cutechess(
