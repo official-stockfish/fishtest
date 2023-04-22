@@ -22,7 +22,7 @@ db = conn[db_name]
 def create_runs_indexes():
     print("Creating indexes on runs collection")
     db["runs"].create_index(
-        [("finished", ASCENDING), ("last_updated", ASCENDING)],
+        [("finished", ASCENDING)],
         name="unfinished_runs",
         partialFilterExpression={"finished": False},
     )
