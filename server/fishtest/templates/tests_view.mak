@@ -152,7 +152,7 @@
           <form
             action="/tests/stop"
             method="POST"
-            onsubmit="unfollow_run('${run['_id']}'); return true;"
+            onsubmit="handle_stop_delete_button('${run['_id']}'); return true;"
           >
             <input type="hidden" name="run-id" value="${run['_id']}">
             <button type="submit" class="btn btn-danger w-100">
