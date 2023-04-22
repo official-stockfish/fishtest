@@ -163,7 +163,7 @@ async function main_follow_loop() {
     try {
       if (notifications.content?.length) {
         json = await fetch_post("/api/actions", {
-          action: "finished_run",
+          action: { $in: ["finished_run", "stop_run", "delete_run"] },
           run_id: { $in: notifications.content },
         });
       }
@@ -176,7 +176,8 @@ async function main_follow_loop() {
     for (const entry of json) {
       let run_id = entry["run_id"];
       if (notifications.contains(run_id)) {
-        work.push(entry);
+        if (entry["action"] === "finished_run")
+          work.push(entry);
         notifications.remove(run_id);
       }
     }
