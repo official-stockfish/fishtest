@@ -456,19 +456,14 @@ class RunDb:
             return unfinished_runs
 
     def get_unfinished_runs(self, username=None):
-        with self.run_cache_write_lock:
-            unfinished_runs = self.runs.find(
-                {"finished": False}, sort=[("last_updated", DESCENDING)]
-            )
-            # unfinished_runs is a cursor, convert to list
-            if username:
-                unfinished_runs = [
-                    r for r in unfinished_runs if r["args"].get("username") == username
-                ]
-            else:
-                unfinished_runs = list(unfinished_runs)
+        # Note: the result can be only used once.
 
-            return unfinished_runs
+        unfinished_runs = self.runs.find({"finished": False})
+        if username:
+            unfinished_runs = (
+                r for r in unfinished_runs if r["args"].get("username") == username
+            )
+        return unfinished_runs
 
     def aggregate_unfinished_runs(self, username=None):
         unfinished_runs = self.get_unfinished_runs(username=username)
