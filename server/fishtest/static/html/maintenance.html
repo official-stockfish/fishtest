@@ -59,64 +59,14 @@
         <img src="/img/stockfish.png" alt="logo" />
         <h2>Stockfish Testing Framework</h2>
       </div>
-      <h1>We&rsquo;ll be back soon!</h1>
+      <h1>Admins are performing maintenance on the server</h1>
       <div>
-        <p>
-          Sorry for the inconvenience but we&rsquo;re performing some
-          maintenance at the moment. We&rsquo;ll be back online soon but in the
-          meantime you may
-          <a
-            href="https://discord.gg/awnh2qZfTT"
-            target="_blank"
-            rel="noopener noreferrer"
-            >contact us on Discord</a
-          >
-          or play some chess!
-        </p>
+        <p>Sorry for the inconvenience, but the administrators of the Stockfish Testing Framework are currently performing some server maintenance. The server will be back online soon, but in the meantime, you may <a href="https://discord.gg/awnh2qZfTT" target="_blank" rel="noopener noreferrer">contact us on Discord</a> or play some chess!        </p>
         <p>&mdash; The Stockfish Team</p>
       </div>
-      <div
-        style="
-          display: flex;
-          flex-direction: row;
-          justify-content: space-between;
-        "
-      >
-        <p class="day"></p>
-        <p class="hour"></p>
-        <p class="minute"></p>
-        <p class="second"></p>
+      <div>
+       <img src="stockfish-maint.jpg" alt="Maintenance" style="width: 60%; height: 60%">
       </div>
     </article>
-    <iframe
-      src="https://lichess.org/training/frame?theme=marble&pieceSet=horsey&bg=dark"
-      style="width: 300px; height: 345px"
-      allowtransparency="true"
-      frameborder="0"
-    ></iframe>
-    <script>
-      const countDown = () => {
-        // write a stop date in ISO8601-compliant format (UTC)
-        // "YYYY-MM-DDTHH:mm:ssZ"
-        const countDay = new Date("2023-01-01T00:00:00Z");
-        const now = new Date();
-        const second = 1000;
-        const minute = second * 60;
-        const hour = minute * 60;
-        const day = hour * 24;
-        const counter =
-          countDay < now ? now - countDay + second : countDay - now;
-        const textDay = Math.floor(counter / day);
-        const textHour = Math.floor((counter % day) / hour);
-        const textMinute = Math.floor((counter % hour) / minute);
-        const textSecond = Math.floor((counter % minute) / second);
-        document.querySelector(".day").innerText = textDay + " Days";
-        document.querySelector(".hour").innerText = textHour + " Hours";
-        document.querySelector(".minute").innerText = textMinute + " Minutes";
-        document.querySelector(".second").innerText = textSecond + " Seconds";
-      };
-      countDown();
-      setInterval(countDown, 1000);
-    </script>
   </body>
 </html>
