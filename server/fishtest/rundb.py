@@ -654,7 +654,7 @@ class RunDb:
         assert concurrency >= 1
         # as we have more tasks done (>250), make them longer to avoid
         # having many tasks in long running tests
-        scale_duration = 1 + (len(run["tasks"]) // 250)
+        scale_duration = 1 + min(4, len(run["tasks"]) // 250)
         games = self.task_duration * scale_duration / game_time * concurrency
         if "sprt" in run["args"]:
             batch_size = 2 * run["args"]["sprt"].get("batch_size", 1)
