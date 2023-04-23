@@ -348,7 +348,7 @@ class RunDb:
                     "run": run,
                 }
                 with self.run_cache_write_lock:
-                    self.runs.replace_one({"_id": ObjectId(r_id)}, run)
+                    self.runs.replace_one({"_id": ObjectId(r_id)}, copy.deepcopy(run))
             else:
                 if r_id in self.run_cache:
                     ftime = self.run_cache[r_id]["ftime"]
@@ -396,7 +396,7 @@ class RunDb:
                         if self.scavenge(self.run_cache[r_id]["run"]):
                             with self.run_cache_write_lock:
                                 self.runs.replace_one(
-                                    {"_id": ObjectId(r_id)}, self.run_cache[r_id]["run"]
+                                    {"_id": ObjectId(r_id)}, copy.deepcopy(self.run_cache[r_id]["run"])
                                 )
                     if self.run_cache[r_id]["rtime"] < now - 300:
                         del self.run_cache[r_id]
@@ -412,7 +412,7 @@ class RunDb:
                 # print("SYNC")
                 with self.run_cache_write_lock:
                     self.runs.replace_one(
-                        {"_id": ObjectId(oldest)}, self.run_cache[oldest]["run"]
+                        {"_id": ObjectId(oldest)}, copy.deepcopy(self.run_cache[oldest]["run"])
                     )
         except:
             print("Flush exception", flush=True)
