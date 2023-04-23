@@ -139,7 +139,7 @@ def update_users():
             process_run(run, top_month)
         except Exception as e:
             print(
-                "Exception processing run {} for top_month:".fnormat(run["_id"]),
+                "Exception processing run {} for top_month:".format(run["_id"]),
                 e,
                 sep="\n",
                 file=sys.stderr,
