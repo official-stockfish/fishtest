@@ -139,7 +139,7 @@ def update_users():
             process_run(run, top_month)
         except Exception as e:
             print(
-                "Exception processing run {} for top_month:".fnormat(run["_id"]),
+                "Exception processing run {} for top_month:".format(run["_id"]),
                 e,
                 sep="\n",
                 file=sys.stderr,
@@ -189,7 +189,7 @@ def update_users():
         rundb.deltas.delete_many({})
         rundb.deltas.insert_many([{k: v} for k, v in new_deltas.items()])
 
-    machines = rundb.get_machines()
+    __runs, machines, __pending_hours, __cores, __nps = rundb.aggregate_unfinished_runs()
 
     rundb.userdb.user_cache.delete_many({})
     users = build_users(machines, info)

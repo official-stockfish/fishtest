@@ -105,16 +105,12 @@ class TestApi(unittest.TestCase):
         self.rundb.userdb.user_cache.insert_one(
             {"username": self.username, "cpu_hours": 0}
         )
-        self.rundb.userdb.flag_cache.insert_one(
-            {"ip": self.remote_addr, "country_code": "??"}
-        )
 
     @classmethod
     def tearDownClass(self):
         self.rundb.runs.delete_many({})
         self.rundb.userdb.users.delete_many({"username": self.username})
         self.rundb.userdb.user_cache.delete_many({"username": self.username})
-        self.rundb.userdb.flag_cache.delete_many({"ip": self.remote_addr})
         self.rundb.stop()
         self.rundb.runs.drop()
 
@@ -484,9 +480,6 @@ class TestRunFinished(unittest.TestCase):
 
         self.rundb.userdb.user_cache.insert_one(
             {"username": self.username, "cpu_hours": 0}
-        )
-        self.rundb.userdb.flag_cache.insert_one(
-            {"ip": self.remote_addr, "country_code": "??"}
         )
 
     @classmethod

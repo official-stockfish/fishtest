@@ -145,7 +145,7 @@ function save_timestamp(ts) {
 
 async function main_follow_loop() {
   await DOM_loaded();
-  await async_sleep(10000);
+  await async_sleep(5000 + 10000 * Math.random());
   while (true) {
     const current_time = Date.now();
     const timestamp_latest_fetch = get_timestamp();
@@ -153,36 +153,37 @@ async function main_follow_loop() {
       timestamp_latest_fetch != null &&
       current_time - timestamp_latest_fetch < 19000
     ) {
-      console.log("Skipping events update");
       await async_sleep(20000 + 500 * Math.random());
       continue;
     }
-    let json;
+    // I won the race, other tabs should skip their fetch
+    save_timestamp(current_time);
+    let json = [];
     let notifications = get_notifications();
     try {
-      json = await fetch_post("/api/actions", {
-        action: "finished_run",
-        run_id: { $in: notifications.content },
-      });
+      if (notifications.content?.length) {
+        json = await fetch_post("/api/actions", {
+          action: "finished_run",
+          run_id: { $in: notifications.content },
+        });
+      }
     } catch (e) {
       console.log(e);
-      await async_sleep(20000 + 500 * Math.random());
       continue;
     }
-    save_timestamp(current_time);
     notifications = get_notifications();
     let work = [];
-    json.forEach((entry) => {
+    for (const entry of json) {
       let run_id = entry["run_id"];
       if (notifications.contains(run_id)) {
         work.push(entry);
         notifications.remove(run_id);
       }
-    });
+    }
     save_notifications(notifications); // make sure other tabs see up to date data
     // Instrumentation
     console.log("active notifications: ", JSON.stringify(notifications));
-    work.forEach(async (entry) => {
+    for (const entry of work) {
       run_id = entry["run_id"];
       disable_notification(run_id);
       set_notification_status(run_id);
@@ -198,8 +199,7 @@ async function main_follow_loop() {
         console.log(e);
         notify_elo(null, entry);
       }
-    });
-    await async_sleep(20000 + 500 * Math.random());
+    }
   }
 }
 
