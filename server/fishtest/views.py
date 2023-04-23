@@ -961,7 +961,8 @@ def tests_modify(request):
             return HTTPFound(location=request.route_url("tests"))
 
         existing_games = 0
-        for chunk in run["tasks"]:
+        for task_id in range(0, len(run["tasks"])):
+            chunk = run["tasks"][task_id]
             existing_games += chunk["num_games"]
             if "stats" in chunk:
                 stats = chunk["stats"]
@@ -1112,7 +1113,8 @@ def tests_delete(request):
 
         run["deleted"] = True
         run["finished"] = True
-        for task in run["tasks"]:
+        for task_id in range(0, len(run["tasks"])):
+            task = run["tasks"][task_id]
             task["active"] = False
         request.rundb.buffer(run, True)
         request.rundb.task_time = 0
@@ -1274,7 +1276,8 @@ def tests_view(request):
 
     active = 0
     cores = 0
-    for task in run["tasks"]:
+    for task_id in range(0, len(run["tasks"])):
+        task = run["tasks"][task_id]
         if task["active"]:
             active += 1
             cores += task["worker_info"]["concurrency"]
@@ -1293,6 +1296,7 @@ def tests_view(request):
 
     return {
         "run": run,
+        "tasks": copy.copy(run["tasks"]),
         "run_args": run_args,
         "page_title": get_page_title(run),
         "approver": request.has_permission("approve_run"),

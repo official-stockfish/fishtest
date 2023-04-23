@@ -395,7 +395,7 @@
     <tbody>
       % for idx, task in enumerate(run['tasks'] + run.get('bad_tasks', [])):
           <%
-            if task in run["tasks"] and "bad" in task:
+            if task in tasks and "bad" in task:
               continue
             if "task_id" in task:
               task_id = task["task_id"]

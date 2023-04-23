@@ -427,10 +427,9 @@ class RunDb:
         # print("scavenge ", run["_id"])
         dead_task = False
         old = datetime.utcnow() - timedelta(minutes=6)
-        task_id = -1
         run_id = str(run["_id"])
-        for task in run["tasks"]:
-            task_id += 1
+        for task_id in range(0, len(run["tasks"])):
+            task = run["tasks"][task_id]
             if task["active"] and task["last_updated"] < old:
                 task["active"] = False
                 dead_task = True
@@ -565,7 +564,8 @@ class RunDb:
 
         has_pentanomial = True
         pentanomial = 5 * [0]
-        for task in run["tasks"]:
+        for task_id in range(0, len(run["tasks"])):
+            task = run["tasks"][task_id]
             if "bad" in task:
                 continue
             if "stats" in task:
@@ -622,7 +622,8 @@ class RunDb:
 
     def update_workers_cores(self, run):
         workers = cores = 0
-        for task in run["tasks"]:
+        for task_id in range(0, len(run["tasks"])):
+            task = run["tasks"][task_id]
             if task["active"]:
                 workers += 1
                 cores += int(task["worker_info"]["concurrency"])
@@ -736,7 +737,8 @@ class RunDb:
 
         connections = 0
         for run in self.task_runs:
-            for task in run["tasks"]:
+            for task_id in range(0, len(run["tasks"])):
+                task = run["tasks"][task_id]
                 if (
                     task["active"]
                     and task["worker_info"]["remote_addr"] == worker_info["remote_addr"]
@@ -771,7 +773,8 @@ class RunDb:
             # Check if there aren't already enough workers
             # working on this run.
             committed_games = 0
-            for task in run["tasks"]:
+            for task_id in range(0, len(run["tasks"])):
+                task = run["tasks"][task_id]
                 if not task["active"]:
                     if "stats" in task:
                         stats = task["stats"]
@@ -858,7 +861,8 @@ class RunDb:
 
         # Now we create a new task for this run.
         opening_offset = 0
-        for task in run["tasks"]:
+        for task_id in range(0, len(run["tasks"])):
+            task = run["tasks"][task_id]
             opening_offset += task["num_games"]
 
         task_size = min(self.worker_cap(run, worker_info), remaining)
@@ -1188,7 +1192,8 @@ class RunDb:
         """
         self.clear_params(run_id)  # spsa stuff
         run = self.get_run(run_id)
-        for task in run["tasks"]:
+        for task_id in range(0, len(run["tasks"])):
+            task = run["tasks"][task_id]
             task["active"] = False
         run["results_stale"] = True
         results = self.get_results(run, True)

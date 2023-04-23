@@ -347,7 +347,8 @@ class ApiView(object):
             min_task["start"] = task["start"]
             min_run["my_task"] = min_task
         else:
-            for task in run["tasks"]:
+            for task_id in range(0, len(run["tasks"])):
+                task = run["tasks"][task_id]
                 min_task = {"num_games": task["num_games"]}
                 if "stats" in task:
                     min_task["stats"] = task["stats"]
