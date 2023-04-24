@@ -55,7 +55,7 @@ from updater import update
 # Several packages are called "expression".
 # So we make sure to use the locally installed one.
 
-WORKER_VERSION = 199
+WORKER_VERSION = 200
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -1130,7 +1130,7 @@ def heartbeat(worker_info, password, remote, current_state):
     while current_state["alive"]:
         time.sleep(1)
         count += 1
-        if count == 60:
+        if count == 120:
             count = 0
             print("  Send heartbeat for", worker_info["unique_key"], end=" ... ")
             run = current_state["run"]

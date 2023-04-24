@@ -237,22 +237,6 @@ class RunDb:
 
         return self.runs.insert_one(new_run).inserted_id
 
-    def get_machines(self):
-        machines = []
-        active_runs = self.runs.find(
-            {"finished": False, "tasks": {"$elemMatch": {"active": True}}},
-            sort=[("last_updated", DESCENDING)],
-        )
-        for run in active_runs:
-            for task_id, task in enumerate(run["tasks"]):
-                if task["active"]:
-                    machine = copy.copy(task["worker_info"])
-                    machine["last_updated"] = task.get("last_updated", None)
-                    machine["run"] = run
-                    machine["task_id"] = task_id
-                    machines.append(machine)
-        return machines
-
     def get_pgn(self, pgn_id):
         pgn_id = pgn_id.split(".")[0]  # strip .pgn
         pgn = self.pgndb.find_one({"run_id": pgn_id})
@@ -438,11 +422,11 @@ class RunDb:
             self.start_timer()
 
     def scavenge(self, run):
-        if datetime.utcnow() < boot_time + timedelta(seconds=150):
+        if datetime.utcnow() < boot_time + timedelta(seconds=300):
             return False
         # print("scavenge ", run["_id"])
         dead_task = False
-        old = datetime.utcnow() - timedelta(minutes=3)
+        old = datetime.utcnow() - timedelta(minutes=6)
         task_id = -1
         run_id = str(run["_id"])
         for task in run["tasks"]:
@@ -472,18 +456,17 @@ class RunDb:
             return unfinished_runs
 
     def get_unfinished_runs(self, username=None):
-        with self.run_cache_write_lock:
-            unfinished_runs = self.runs.find(
-                {"finished": False}, sort=[("last_updated", DESCENDING)]
+        # Note: the result can be only used once.
+
+        unfinished_runs = self.runs.find({"finished": False})
+        if username:
+            unfinished_runs = (
+                r for r in unfinished_runs if r["args"].get("username") == username
             )
-            if username:
-                unfinished_runs = [
-                    r for r in unfinished_runs if r["args"].get("username") == username
-                ]
-            return unfinished_runs
+        return unfinished_runs
 
     def aggregate_unfinished_runs(self, username=None):
-        unfinished_runs = self.get_unfinished_runs(username)
+        unfinished_runs = self.get_unfinished_runs(username=username)
         runs = {"pending": [], "active": []}
         for run in unfinished_runs:
             state = (
@@ -510,10 +493,20 @@ class RunDb:
             ),
         )
 
+        machines = []
+        for run in runs["active"]:
+            for task_id, task in enumerate(run["tasks"]):
+                if task["active"]:
+                    machine = copy.copy(task["worker_info"])
+                    machine["last_updated"] = task.get("last_updated", None)
+                    machine["run"] = run
+                    machine["task_id"] = task_id
+                    machines.append(machine)
+
         # Calculate but don't save results_info on runs using info on current machines
         cores = 0
         nps = 0
-        for m in self.get_machines():
+        for m in machines:
             concurrency = int(m["concurrency"])
             cores += concurrency
             nps += concurrency * m["nps"]
@@ -533,7 +526,7 @@ class RunDb:
                     run["results_info"]["info"].append(
                         format_bounds(elo_model, sprt["elo0"], sprt["elo1"])
                     )
-        return (runs, pending_hours, cores, nps)
+        return (runs, machines, pending_hours, cores, nps)
 
     def get_finished_runs(
         self,
@@ -614,7 +607,7 @@ class RunDb:
         llr = run["args"].get("sprt", {}).get("llr", 0)
         # Don't throw workers at a run that finishes in 2 minutes anyways
         llr = min(max(llr, 0), 2.0)
-        a = 3 # max bonus 1.67x
+        a = 3  # max bonus 1.67x
         itp *= (llr + a) / a
 
         # Extra bonus for most promising LTCs at strong-gainer bounds

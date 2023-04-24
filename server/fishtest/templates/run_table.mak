@@ -66,7 +66,12 @@
                         <i class="fas fa-trash-alt"></i>
                       </button>
                       <div class="dropdown-menu" role="menu">
-                        <form action="/tests/delete" method="POST" style="display: inline;">
+                        <form 
+                          action="/tests/delete"
+                          method="POST"
+                          style="display: inline;"
+                          onsubmit="handle_stop_delete_button('${run['_id']}'); return true;"
+                        >
                           <input type="hidden" name="csrf_token" value="${request.session.get_csrf_token()}">
                           <input type="hidden" name="run-id" value="${run['_id']}">
                           <button type="submit" class="btn btn-danger btn-mini">Confirm</button>

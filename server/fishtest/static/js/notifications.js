@@ -8,6 +8,9 @@ function LRU(capacity, content) {
   if (!(content instanceof Array)) {
     throw "content is not an Array";
   }
+  if (content.length != 0 && !(content[0] instanceof Array)) {
+    throw "content entry has the wrong type";
+  }
   return {
     capacity: capacity,
     content: content,
@@ -17,28 +20,43 @@ function LRU(capacity, content) {
     copy() {
       return new LRU(this.capacity, this.content.slice());
     },
+    toArray() {
+      let ret = [];
+      for (const elt of this.content) {
+        ret.push(elt[0]);
+      }
+      return ret;
+    },
     add(elt) {
       if (this.contains(elt)) {
         return null;
       } else {
-        this.content.push(elt);
+        this.content.push([elt, Date.now()]);
         if (this.content.length > this.capacity) {
           const drop = this.content[0];
           this.content.shift();
-          return drop;
+          return drop[0];
         } else {
           return null;
         }
       }
     },
     contains(elt) {
-      return this.content.findIndex((x) => x == elt) != -1;
+      return this.content.findIndex((x) => x[0] == elt) != -1;
+    },
+    timestamp(elt) {
+      const idx = this.content.findIndex((x) => x[0] == elt);
+      if (idx == -1) {
+        return -1;
+      } else {
+        return this.content[idx][1];
+      }
     },
     save(name) {
       localStorage.setItem(name, JSON.stringify(this));
     },
     remove(elt) {
-      const idx = this.content.findIndex((x) => x == elt);
+      const idx = this.content.findIndex((x) => x[0] == elt);
       if (idx == -1) {
         return;
       } else {
@@ -53,7 +71,7 @@ LRU.load = function (name) {
   return new LRU(json["capacity"], json["content"]);
 };
 
-const fishtest_notifications_key = "fishtest_notifications";
+const fishtest_notifications_key = "fishtest_notifications_v2";
 const fishtest_timestamp_key = "fishtest_timestamp";
 
 function notify_fishtest_(message) {
@@ -78,11 +96,19 @@ function notify_fishtest(message) {
 
 function notify_elo(entry_start, entry_finished) {
   const tag = entry_finished["run"].slice(0, -8);
-  const message_finished = entry_finished["message"];
   const username = entry_finished["username"];
-  const state = message_finished.split(" ")[0].split(":")[1];
-  const first_line_idx = message_finished.indexOf(" ") + 1;
-  const first_line = message_finished.slice(first_line_idx);
+  let first_line = "";
+  let state = "";
+  if (entry_finished["action"] === "finished_run") {
+    const message_finished = entry_finished["message"];
+    state = message_finished.split(" ")[0].split(":")[1];
+    const first_line_idx = message_finished.indexOf(" ") + 1;
+    first_line = message_finished.slice(first_line_idx);
+  } else if (entry_finished["action"] == "delete_run") {
+    state = "deleted";
+  } else if (entry_finished["action"] == "stop_run") {
+    state = "stopped";
+  }
   const title = state
     ? `Test ${tag} by ${username} was ${state}!`
     : `Test ${tag} by ${username}.`;
@@ -145,7 +171,7 @@ function save_timestamp(ts) {
 
 async function main_follow_loop() {
   await DOM_loaded();
-  await async_sleep(10000);
+  await async_sleep(5000 + 10000 * Math.random());
   while (true) {
     const current_time = Date.now();
     const timestamp_latest_fetch = get_timestamp();
@@ -153,36 +179,39 @@ async function main_follow_loop() {
       timestamp_latest_fetch != null &&
       current_time - timestamp_latest_fetch < 19000
     ) {
-      console.log("Skipping events update");
       await async_sleep(20000 + 500 * Math.random());
       continue;
     }
-    let json;
+    // I won the race, other tabs should skip their fetch
+    save_timestamp(current_time);
+    let json = [];
     let notifications = get_notifications();
     try {
-      json = await fetch_post("/api/actions", {
-        action: "finished_run",
-        run_id: { $in: notifications.content },
-      });
+      if (notifications.count()) {
+        json = await fetch_post("/api/actions", {
+          action: { $in: ["finished_run", "stop_run", "delete_run"] },
+          run_id: { $in: notifications.toArray() },
+        });
+      }
     } catch (e) {
       console.log(e);
-      await async_sleep(20000 + 500 * Math.random());
       continue;
     }
-    save_timestamp(current_time);
     notifications = get_notifications();
     let work = [];
-    json.forEach((entry) => {
+    for (const entry of json) {
       let run_id = entry["run_id"];
-      if (notifications.contains(run_id)) {
+      const ts = notifications.timestamp(run_id);
+      // ignore events that happened more than 1 minute before subscribing
+      if (ts != -1 && entry["time"] >= ts / 1000 - 60) {
         work.push(entry);
         notifications.remove(run_id);
       }
-    });
+    }
     save_notifications(notifications); // make sure other tabs see up to date data
     // Instrumentation
     console.log("active notifications: ", JSON.stringify(notifications));
-    work.forEach(async (entry) => {
+    for (const entry of work) {
       run_id = entry["run_id"];
       disable_notification(run_id);
       set_notification_status(run_id);
@@ -198,8 +227,7 @@ async function main_follow_loop() {
         console.log(e);
         notify_elo(null, entry);
       }
-    });
-    await async_sleep(20000 + 500 * Math.random());
+    }
   }
 }
 
@@ -302,6 +330,12 @@ function handle_notification(notification) {
 function handle_follow_button(button) {
   const run_id = button.id.split("_")[2];
   toggle_notifaction_status(run_id);
+}
+
+// old style callback
+function handle_stop_delete_button(run_id) {
+  unfollow_run(run_id);
+  disable_notification(run_id);
 }
 
 function disable_notification_(run_id) {
