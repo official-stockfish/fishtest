@@ -1283,7 +1283,7 @@ def tests_view(request):
         task["last_updated"] = last_updated
 
     chi2 = get_chi2(run["tasks"])
-    update_residuals(run["tasks"], cached_chi2=chi2)
+    update_residuals(run["tasks"], chi2=chi2)
 
     try:
         show_task = int(request.params.get("show_task", -1))

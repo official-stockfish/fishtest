@@ -76,8 +76,8 @@ def strip_run(run):
     run = copy.deepcopy(run)
     if "tasks" in run:
         run["tasks"] = []
-    if "bad_tasks" in run:
-        run["bad_tasks"] = []
+    if "purged_tasks" in run:
+        run["purged_tasks"] = []
     if "spsa" in run["args"] and "param_history" in run["args"]["spsa"]:
         run["args"]["spsa"]["param_history"] = []
     run["_id"] = str(run["_id"])
@@ -279,9 +279,9 @@ class ApiView(object):
         try:
             run = self.request.rundb.get_run(self.request.matchdict["id"])
             task_id = self.request.matchdict["task_id"]
-            if task_id.endswith("bad"):
+            if task_id.endswith("bad"): # Where in the code is this made so?
                 task_id = int(task_id[:-3])
-                task = copy.deepcopy(run["bad_tasks"][task_id])
+                task = copy.deepcopy(run["purged_tasks"][task_id])
             else:
                 task_id = int(task_id)
                 task = copy.deepcopy(run["tasks"][task_id])
