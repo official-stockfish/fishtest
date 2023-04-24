@@ -360,8 +360,11 @@ def remaining_hours(run):
             o = sprt["overshoot"]
             o0 = -o["sq0"] / o["m0"] / 2 if o["m0"] != 0 else 0
             o1 = o["sq1"] / o["m1"] / 2 if o["m1"] != 0 else 0
-        llr_bound = (math.log((1 - beta) / alpha) - o1 if llr > 0.0 else
-                     math.log(beta / (1 - alpha)) + o0)
+        llr_bound = (
+            math.log((1 - beta) / alpha) - o1
+            if llr > 0.0
+            else math.log(beta / (1 - alpha)) + o0
+        )
 
         # Use 0.1 as a safeguard if LLR is too small.
         llr, llr_bound = max(0.1, abs(llr)), abs(llr_bound)
@@ -372,8 +375,10 @@ def remaining_hours(run):
         book_positions = 223070
         t = scipy.stats.beta(1, 15).cdf(min(N / book_positions, 1.0))
         expected_games_llr = int(2 * N * llr_bound / llr)
-        expected_games = min(run["args"]["num_games"],
-                             int(expected_games_llr * t + average_total_games * (1-t)))
+        expected_games = min(
+            run["args"]["num_games"],
+            int(expected_games_llr * t + average_total_games * (1 - t)),
+        )
         remaining_games = max(0, expected_games - 2 * N)
     else:
         expected_games = run["args"]["num_games"]

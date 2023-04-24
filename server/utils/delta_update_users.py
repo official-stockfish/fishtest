@@ -189,7 +189,13 @@ def update_users():
         rundb.deltas.delete_many({})
         rundb.deltas.insert_many([{k: v} for k, v in new_deltas.items()])
 
-    __runs, machines, __pending_hours, __cores, __nps = rundb.aggregate_unfinished_runs()
+    (
+        __runs,
+        machines,
+        __pending_hours,
+        __cores,
+        __nps,
+    ) = rundb.aggregate_unfinished_runs()
 
     rundb.userdb.user_cache.delete_many({})
     users = build_users(machines, info)
