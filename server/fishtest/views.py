@@ -778,10 +778,27 @@ def validate_form(request):
     data["base_net"] = get_net(data["resolved_base"], data["tests_repo"])
 
     # Integer parameters
+    data["threads"] = int(request.POST["threads"])
+    data["priority"] = int(request.POST["priority"])
+    data["throughput"] = int(request.POST["throughput"])
+
+    if data["threads"] <= 0:
+        raise Exception("Threads must be >= 1")
 
     if stop_rule == "sprt":
         # Too small a number results in many API calls, especially with highly concurrent workers.
-        sprt_batch_size_games = 32
+        # This expression results in 32 games per batch for single threaded STC games.
+        # This means a batch with be completed in roughly 2 minutes on a 8 core worker.
+        # This expression adjusts the batch size for threads and TC, to keep timings somewhat similar.
+        sprt_batch_size_games = 2 * max(
+            1,
+            int(
+                0.5
+                + 16
+                * estimate_game_duration("10+0.1")
+                / (data["threads"] * estimate_game_duration(data["tc"]))
+            ),
+        )
         assert sprt_batch_size_games % 2 == 0
         elo_model = request.POST["elo_model"]
         if elo_model not in ["BayesElo", "logistic", "normalized"]:
@@ -822,13 +839,6 @@ def validate_form(request):
     max_games = 3200000
     if data["num_games"] > max_games:
         raise Exception("Number of games must be <= " + str(max_games))
-
-    data["threads"] = int(request.POST["threads"])
-    data["priority"] = int(request.POST["priority"])
-    data["throughput"] = int(request.POST["throughput"])
-
-    if data["threads"] <= 0:
-        raise Exception("Threads must be >= 1")
 
     return data
 
