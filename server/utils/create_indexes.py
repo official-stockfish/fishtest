@@ -56,7 +56,7 @@ def create_runs_indexes():
             ("tc_base", DESCENDING),
         ],
         name="finished_ltc_runs",
-        partialFilterExpression={"finished": True, "tc_base": {"$gte": 40}},
+        partialFilterExpression={"finished": True, "tc_base": {"$gte": 20}}, # SMP LTC is 20 th 8
     )
     db["runs"].create_index(
         [("args.username", DESCENDING), ("last_updated", DESCENDING)], name="user_runs"

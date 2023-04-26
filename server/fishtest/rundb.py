@@ -26,6 +26,7 @@ from fishtest.util import (
     get_chi2,
     get_hash,
     get_tc_ratio,
+    is_ltc,
     post_in_fishcooking_results,
     remaining_hours,
     update_residuals,
@@ -94,7 +95,6 @@ class RunDb:
         self.task_runs = []
 
         self.task_duration = 900  # 15 minutes
-        self.ltc_lower_bound = 40  # Beware: this is used as a filter in an index!
         self.pt_info = {
             "pt_version": "SF_15",
             "pt_branch": "e6e324eb28fd49c1fc44b3b65784f85a773ec61c",
@@ -541,7 +541,7 @@ class RunDb:
         if username:
             q["args.username"] = username
         if ltc_only:
-            q["tc_base"] = {"$gte": self.ltc_lower_bound}
+            q["tc_base"] = {"$gte": 20} # String comparison, SMP LTC is 20 th 8
         if success_only:
             q["is_green"] = True
         if yellow_only:
@@ -551,11 +551,12 @@ class RunDb:
             q, skip=skip, limit=limit, sort=[("last_updated", DESCENDING)]
         )
 
-        count = self.runs.count_documents(q)
-
-        # Don't show runs that were deleted
-        runs_list = [run for run in c if not run.get("deleted")]
-        return [runs_list, count]
+        if ltc_only:
+            predicate = lambda run: not run.get("deleted") and is_ltc(run)
+        else:
+            predicate = lambda run: not run.get("deleted")
+        runs_list = list(filter(predicate, c))
+        return runs_list, len(runs_list)
 
     def get_results(self, run, save_run=True):
         if not run["results_stale"]:

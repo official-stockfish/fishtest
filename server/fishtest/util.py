@@ -335,12 +335,9 @@ def get_tc_ratio(tc, threads=1, base="10+0.1"):
     return threads * estimate_game_duration(tc) / estimate_game_duration(base)
 
 
-def is_active_sprt_ltc(run):
-    return (
-        not run["finished"]
-        and "sprt" in run["args"]
-        and get_tc_ratio(run["args"]["tc"], run["args"]["threads"]) > 4
-    )  # SMP-STC ratio is 4
+def is_ltc(run):
+    # SMP-STC ratio is 4
+    return get_tc_ratio(run["args"]["tc"], run["args"].get("threads", 1)) > 4
 
 
 def remaining_hours(run):
