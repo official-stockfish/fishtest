@@ -1,5 +1,14 @@
 <%
   monitoring = request.rundb.conn["admin"].command("getFreeMonitoringStatus")
+  try:
+    if monitoring["state"] == "enabled":
+      monitoring_url = monitoring["userReminder"].split()[-1].strip()
+      monitoring_url = monitoring_url if monitoring_url.startswith("https") else ""
+    else:
+      monitoring_url = ""
+  except Exception as e:
+    print("Exception parsing the monitoring URL:", e, sep="\n")
+    monitoring_url = ""
 %>
 <!DOCTYPE html>
 <html lang="en">
@@ -164,8 +173,8 @@
                     <li><a href="/users" class="links-link rounded">Contributors</a></li>
                     <li><a href="/users/monthly" class="links-link rounded">Top Month</a></li>
                     <li><a href="/actions" class="links-link rounded">Events</a></li>
-                    % if monitoring["state"] == 'enabled':
-                      <li><a href=${monitoring["url"]} target="_blank" rel="noopener" class="links-link rounded">Monitoring</a></li>
+                    % if monitoring["state"] == 'enabled' and monitoring_url:
+                      <li><a href=${monitoring_url} target="_blank" rel="noopener" class="links-link rounded">Monitoring</a></li>
                     % endif
                     <li>
                       % if len(request.userdb.get_pending()) > 0:
