@@ -338,6 +338,18 @@ function handle_stop_delete_button(run_id) {
   disable_notification(run_id);
 }
 
+// new style callback
+function dismiss_notification(elt_id) {
+  broadcast("dismiss_notification_", elt_id);
+}
+
+function dismiss_notification_(elt_id) {
+  const elt = document.getElementById(elt_id);
+  elt.style.display = "none";
+  // remove message count from the title
+  process_title(0);
+}
+
 function disable_notification_(run_id) {
   const button = document.getElementById(`follow_button_${run_id}`);
   if (button) {
@@ -359,5 +371,6 @@ function disable_notification(run_id) {
 broadcast_dispatch["notify_fishtest_"] = notify_fishtest_;
 broadcast_dispatch["set_notification_status_"] = set_notification_status_;
 broadcast_dispatch["disable_notification_"] = disable_notification_;
+broadcast_dispatch["dismiss_notification_"] = dismiss_notification_;
 
 main_follow_loop();
