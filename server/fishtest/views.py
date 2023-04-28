@@ -301,7 +301,8 @@ def nns(request):
     network_name = request.params.get("network_name", "")
     master_only = request.params.get("master_only", False)
 
-    page_idx = max(0, int(request.params.get("page", 1)) - 1)
+    page_param = request.params.get("page", "")
+    page_idx = max(0, int(page_param) - 1) if page_param.isdigit() else 0
     page_size = 25
 
     nns_list, num_nns = request.rundb.get_nns(
@@ -377,7 +378,8 @@ def actions(request):
     if max_actions:
         max_actions = int(max_actions)
 
-    page_idx = max(0, int(request.params.get("page", 1)) - 1)
+    page_param = request.params.get("page", "")
+    page_idx = max(0, int(page_param) - 1) if page_param.isdigit() else 0
     page_size = 25
 
     actions, num_actions = request.actiondb.get_actions(
@@ -1317,7 +1319,8 @@ def get_paginated_finished_runs(request):
     yellow_only = request.params.get("yellow_only", False)
     ltc_only = request.params.get("ltc_only", False)
 
-    page_idx = max(0, int(request.params.get("page", 1)) - 1)
+    page_param = request.params.get("page", "")
+    page_idx = max(0, int(page_param) - 1) if page_param.isdigit() else 0
     page_size = 25
 
     finished_runs, num_finished_runs = request.rundb.get_finished_runs(
@@ -1374,7 +1377,8 @@ def tests_user(request):
     )
     username = request.matchdict.get("username", "")
     response = {**get_paginated_finished_runs(request), "username": username}
-    if int(request.params.get("page", 1)) == 1:
+    page_param = request.params.get("page", "")
+    if not page_param.isdigit() or int(page_param) <= 1:
         response["runs"] = request.rundb.aggregate_unfinished_runs(
             username=username,
         )[0]
@@ -1434,7 +1438,8 @@ def tests(request):
             ("Expires", "0"),
         )
     )
-    if int(request.params.get("page", 1)) > 1:
+    page_param = request.params.get("page", "")
+    if page_param.isdigit() and int(page_param) > 1:
         # page 2 and beyond only show finished test results
         return get_paginated_finished_runs(request)
 
