@@ -237,16 +237,9 @@
                 <span id="fallback">Notification!</span>
                 <button type="button" id="fallback_button" class="btn-close" aria-label="Close">
                 </button>
-		<script>
-                  function dismiss_notification() {
-                    // The bootstrap dismiss destroys the alert. So we roll our own.
-                    const div = document.getElementById("fallback_div");
-                    div.style.display = "none";
-                    // remove message count from the title
-                    process_title(0);
-                  }
+                <script>
                   const fallback_button = document.getElementById("fallback_button");
-                  fallback_button.addEventListener("click", dismiss_notification);
+                  fallback_button.addEventListener("click", () => { dismiss_notification("fallback_div")});
                 </script>
               </div>
               % if request.session.peek_flash('error'):
