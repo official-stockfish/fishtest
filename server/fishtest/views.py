@@ -791,7 +791,9 @@ def validate_form(request):
         # This expression results in 32 games per batch for single threaded STC games.
         # This means a batch with be completed in roughly 2 minutes on a 8 core worker.
         # This expression adjusts the batch size for threads and TC, to keep timings somewhat similar.
-        sprt_batch_size_games = 2 * max(1, int(0.5 + 16 / get_tc_ratio(data["tc"], data["threads"])))
+        sprt_batch_size_games = 2 * max(
+            1, int(0.5 + 16 / get_tc_ratio(data["tc"], data["threads"]))
+        )
         assert sprt_batch_size_games % 2 == 0
         elo_model = request.POST["elo_model"]
         if elo_model not in ["BayesElo", "logistic", "normalized"]:
