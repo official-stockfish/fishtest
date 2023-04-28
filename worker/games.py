@@ -297,6 +297,30 @@ def validate_net(testing_dir, net):
     return hash[:12] == net[3:15]
 
 
+def establish_validated_net(remote, testing_dir, net):
+    if not (testing_dir / net).exists() or not validate_net(testing_dir, net):
+        attempt = 0
+        while True:
+            try:
+                attempt += 1
+                download_net(remote, testing_dir, net)
+                if not validate_net(testing_dir, net):
+                    raise WorkerException(
+                        "Failed to validate the network: {}".format(net)
+                    )
+                break
+            except WorkerException as e:
+                if attempt > 5:
+                    raise
+                waitTime = UPDATE_RETRY_TIME * attempt
+                print(
+                    "Failed to download {} in attempt {}, trying in {} seconds.".format(
+                        net, attempt, waitTime
+                    )
+                )
+                time.sleep(waitTime)
+
+
 def verify_signature(engine, signature, active_cores):
     cpu_features = "?"
     with subprocess.Popen(
@@ -622,12 +646,7 @@ def setup_engine(
         net = required_net_from_source()
         if net:
             print("Build uses default net: ", net)
-            if not (testing_dir / net).exists() or not validate_net(testing_dir, net):
-                download_net(remote, testing_dir, net)
-                if not validate_net(testing_dir, net):
-                    raise WorkerException(
-                        "Failed to validate the network: {}".format(net)
-                    )
+            establish_validated_net(remote, testing_dir, net)
             shutil.copyfile(testing_dir / net, net)
 
         arch = find_arch(compiler)
@@ -1248,12 +1267,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
 
     for net in [net_base, net_new]:
         if net:
-            if not (testing_dir / net).exists() or not validate_net(testing_dir, net):
-                download_net(remote, testing_dir, net)
-                if not validate_net(testing_dir, net):
-                    raise WorkerException(
-                        "Failed to validate the network: {}".format(net)
-                    )
+            establish_validated_net(remote, testing_dir, net)
 
     # PGN files output setup.
     pgn_name = "results-" + worker_info["unique_key"] + ".pgn"
