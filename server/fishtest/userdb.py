@@ -37,9 +37,8 @@ class UserDb:
             self.cache.clear()
 
     def hash_password(self, password,
-        time_cost: int = 3, memory_cost: int = 12288, parallelism: int = 1,
-        hash_len: int = 32, salt_len: int = 16):
-        return PasswordHasher().hash(password)
+        time_cost: int = 3, memory_cost: int = 12288, parallelism: int = 1):
+        return PasswordHasher(time_cost, memory_cost, parallelism).hash(password)
 
     @lru_cache(maxsize=128)
     def check_password(self, hashed_password, password):

@@ -39,7 +39,7 @@ class Create50LoginTest(unittest.TestCase):
     def setUp(self):
         self.rundb = util.get_rundb()
         self.rundb.userdb.create_user("JoeUser", "secret", "email@email.email")
-        self.rundb.userdb.create_user("JoeUser2", "$argon2id$v=19$m=65536,t=3,p=4$o0+5HBZzsgybGzJJllBGcQ$r0gw53V64bPEE4dLxKxrFHNqtQOTRy2nE1OHu1MBkBs", "email2@email.email")
+        self.rundb.userdb.create_user("JoeUser2", "$argon2id$v=19$m=12288,t=3,p=1$9tW9uRY6ijZ0PEiOcldWoQ$f5YCuVMP77x8Wlrcue0Jn7JGjCmgKy76WQynuIfitdA", "email2@email.email")
         self.config = testing.setUp()
         self.config.add_route("login", "/login")
 
