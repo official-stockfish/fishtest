@@ -102,7 +102,7 @@ class Create50LoginTest(unittest.TestCase):
         )
 
         # allowed user2, correct hashed password
-        request2.params["password"] = "secret"
+        request2.params["password"] = "secret2"
         response2 = login(request2)
         self.assertEqual(response2.code, 302)
         self.assertTrue("The resource was found at" in str(response2))
