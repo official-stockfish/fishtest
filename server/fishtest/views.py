@@ -806,8 +806,8 @@ def validate_form(request):
             elo_model=elo_model,
             batch_size=sprt_batch_size_games // 2,
         )  # game pairs
-        # Limit on number of games played.
-        data["num_games"] = 800000
+        # Limit on number of games played, quantized with batch size.
+        data["num_games"] = sprt_batch_size_games * (800000 // sprt_batch_size_games)
     elif stop_rule == "spsa":
         data["num_games"] = int(request.POST["num-games"])
         if data["num_games"] <= 0:
