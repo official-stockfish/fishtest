@@ -861,6 +861,12 @@ class RunDb:
         for task in run["tasks"]:
             opening_offset += task["num_games"]
 
+        if "sprt" in run["args"]:
+            sprt_batch_size_games = 2 * run["args"]["sprt"]["batch_size"]
+            remaining = sprt_batch_size_games * math.ceil(
+                remaining / sprt_batch_size_games
+            )
+
         task_size = min(self.worker_cap(run, worker_info), remaining)
         task = {
             "num_games": task_size,
