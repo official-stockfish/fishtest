@@ -494,41 +494,38 @@ class RunDb:
         )
 
         machines = []
-        pending_hours = 0
+        for run in runs["active"]:
+            for task_id, task in enumerate(run["tasks"]):
+                if task["active"]:
+                    machine = copy.copy(task["worker_info"])
+                    machine["last_updated"] = task.get("last_updated", None)
+                    machine["run"] = run
+                    machine["task_id"] = task_id
+                    machines.append(machine)
+
+        # Calculate but don't save results_info on runs using info on current machines
         cores = 0
         nps = 0
-
-        if username is None:
-            for run in runs["active"]:
-                for task_id, task in enumerate(run["tasks"]):
-                    if task["active"]:
-                        machine = copy.copy(task["worker_info"])
-                        machine["last_updated"] = task.get("last_updated", None)
-                        machine["run"] = run
-                        machine["task_id"] = task_id
-                        machines.append(machine)
-
-            # Calculate but don't save results_info on runs using info on current machines
-            for m in machines:
-                concurrency = int(m["concurrency"])
-                cores += concurrency
-                nps += concurrency * m["nps"]
-            for run in runs["pending"] + runs["active"]:
+        for m in machines:
+            concurrency = int(m["concurrency"])
+            cores += concurrency
+            nps += concurrency * m["nps"]
+        pending_hours = 0
+        for run in runs["pending"] + runs["active"]:
+            if cores > 0:
+                eta = remaining_hours(run) / cores
+                pending_hours += eta
+            results = self.get_results(run, False)
+            run["results_info"] = format_results(results, run)
+            if "Pending..." in run["results_info"]["info"]:
                 if cores > 0:
-                    eta = remaining_hours(run) / cores
-                    pending_hours += eta
-                results = self.get_results(run, False)
-                run["results_info"] = format_results(results, run)
-                if "Pending..." in run["results_info"]["info"]:
-                    if cores > 0:
-                        run["results_info"]["info"][0] += " ({:.1f} hrs)".format(eta)
-                    if "sprt" in run["args"]:
-                        sprt = run["args"]["sprt"]
-                        elo_model = sprt.get("elo_model", "BayesElo")
-                        run["results_info"]["info"].append(
-                            format_bounds(elo_model, sprt["elo0"], sprt["elo1"])
-                        )
-        
+                    run["results_info"]["info"][0] += " ({:.1f} hrs)".format(eta)
+                if "sprt" in run["args"]:
+                    sprt = run["args"]["sprt"]
+                    elo_model = sprt.get("elo_model", "BayesElo")
+                    run["results_info"]["info"].append(
+                        format_bounds(elo_model, sprt["elo0"], sprt["elo1"])
+                    )
         return (runs, machines, pending_hours, cores, nps)
 
     def get_finished_runs(
