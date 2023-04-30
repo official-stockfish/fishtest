@@ -169,9 +169,38 @@ function save_timestamp(ts) {
   localStorage.setItem(fishtest_timestamp_key, JSON.stringify(ts));
 }
 
+async function purge_notifications() {
+  let json = {};
+  try {
+    json = await fetch_post("/api/active_runs");
+  } catch (e) {
+    console.log(e);
+    return;
+  }
+  const current_time = Date.now();
+  let notifications = get_notifications();
+  const notifications_copy = notifications.copy();
+  for (const entry of notifications_copy.content) {
+    const run_id = entry[0];
+    const timestamp = entry[1];
+    // If we recently subscribed: keep.
+    if (timestamp > current_time - 60000) {
+      continue;
+    }
+    // If the run is not finished: keep.
+    if (run_id in json) {
+      continue;
+    }
+    console.log("Purging stale notification: " + run_id);
+    notifications.remove(run_id);
+  }
+  save_notifications(notifications);
+}
+
 async function main_follow_loop() {
   await DOM_loaded();
   await async_sleep(5000 + 10000 * Math.random());
+  let purge_count_down = Math.floor(1000 + 300 * Math.random());
   while (true) {
     const current_time = Date.now();
     const timestamp_latest_fetch = get_timestamp();
@@ -202,8 +231,8 @@ async function main_follow_loop() {
     for (const entry of json) {
       let run_id = entry["run_id"];
       const ts = notifications.timestamp(run_id);
-      // ignore events that happened more than 1 minute before subscribing
-      if (ts != -1 && entry["time"] >= ts / 1000 - 60) {
+      // ignore events that happened before subscribing
+      if (ts != -1 && entry["time"] >= ts / 1000) {
         work.push(entry);
         notifications.remove(run_id);
       }
@@ -227,6 +256,11 @@ async function main_follow_loop() {
         console.log(e);
         notify_elo(null, entry);
       }
+    }
+    purge_count_down--;
+    if (purge_count_down <= 0) {
+      await purge_notifications();
+      purge_count_down = Math.floor(1000 + 300 * Math.random());
     }
   }
 }
