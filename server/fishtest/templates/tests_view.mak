@@ -395,12 +395,9 @@
     <tbody>
       % for idx, task in enumerate(run['tasks'] + run.get('bad_tasks', [])):
           <%
-            if task in run["tasks"] and "bad" in task:
+            if 'bad' in task and idx < len(run['tasks']):
               continue
-            if "task_id" in task:
-              task_id = task["task_id"]
-            else:
-	      task_id = idx
+            task_id = task.get('task_id', idx)
             stats = task.get('stats', {})
             if 'stats' in task:
               total = stats['wins'] + stats['losses'] + stats['draws']
