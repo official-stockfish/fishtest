@@ -73,6 +73,7 @@ LRU.load = function (name) {
 
 const fishtest_notifications_key = "fishtest_notifications_v2";
 const fishtest_timestamp_key = "fishtest_timestamp";
+const fishtest_timestamp_purge_key = "fishtest_timestamp_purge";
 
 function notify_fishtest_(message) {
   const div = document.getElementById("fallback_div");
@@ -165,8 +166,25 @@ function get_timestamp() {
   return ts;
 }
 
+function get_timestamp_purge() {
+  let ts;
+  try {
+    ts = JSON.parse(localStorage.getItem(fishtest_timestamp_purge_key));
+  } catch (e) {
+    return null;
+  }
+  if (typeof ts != "number") {
+    return null;
+  }
+  return ts;
+}
+
 function save_timestamp(ts) {
   localStorage.setItem(fishtest_timestamp_key, JSON.stringify(ts));
+}
+
+function save_timestamp_purge(ts) {
+  localStorage.setItem(fishtest_timestamp_purge_key, JSON.stringify(ts));
 }
 
 async function purge_notifications() {
@@ -200,7 +218,6 @@ async function purge_notifications() {
 async function main_follow_loop() {
   await DOM_loaded();
   await async_sleep(5000 + 10000 * Math.random());
-  let purge_count_down = Math.floor(1000 + 300 * Math.random());
   while (true) {
     const current_time = Date.now();
     const timestamp_latest_fetch = get_timestamp();
@@ -257,10 +274,10 @@ async function main_follow_loop() {
         notify_elo(null, entry);
       }
     }
-    purge_count_down--;
-    if (purge_count_down <= 0) {
+    const timestamp_latest_purge = get_timestamp_purge();
+    if (timestamp_latest_purge == null || current_time - timestamp_latest_purge > 20 * 1000 * 1000) {
+      save_timestamp_purge(current_time);
       await purge_notifications();
-      purge_count_down = Math.floor(1000 + 300 * Math.random());
     }
   }
 }
