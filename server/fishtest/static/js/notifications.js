@@ -55,11 +55,14 @@ function LRU(capacity, content) {
     save(name) {
       localStorage.setItem(name, JSON.stringify(this));
     },
-    remove(elt) {
+    remove(elt, timestamp) {
       const idx = this.content.findIndex((x) => x[0] == elt);
       if (idx == -1) {
         return;
       } else {
+        if (timestamp && timestamp != this.content[idx][1]) {
+          return;
+        }
         this.content.splice(idx, 1);
       }
     },
@@ -188,6 +191,8 @@ function save_timestamp_purge(ts) {
 }
 
 async function purge_notifications() {
+  console.log("Purging stale notifications.");
+  let notifications = get_notifications();
   let json = {};
   try {
     json = await fetch_post("/api/active_runs");
@@ -196,21 +201,39 @@ async function purge_notifications() {
     return;
   }
   const current_time = Date.now();
-  let notifications = get_notifications();
-  const notifications_copy = notifications.copy();
-  for (const entry of notifications_copy.content) {
+  let work = [];
+  for (const entry of notifications.content) {
     const run_id = entry[0];
-    const timestamp = entry[1];
-    // If we recently subscribed: keep.
-    if (timestamp > current_time - 60000) {
-      continue;
-    }
     // If the run is not finished: keep.
     if (run_id in json) {
       continue;
     }
-    console.log("Purging stale notification: " + run_id);
-    notifications.remove(run_id);
+    // If there was recent activity: keep.
+    // It will be dealt with in the normal way.
+    json = [];
+    try {
+      json = await fetch_post("/api/actions", {
+        action: {
+          $in: ["finished_run", "stop_run", "delete_run"],
+        },
+        run_id: run_id,
+        time: { $gte: current_time / 1000 - 60 },
+      });
+    } catch (e) {
+      console.log(e);
+      return;
+    }
+    if (json.length > 0) {
+      continue;
+    }
+    work.push(entry);
+  }
+  notifications = get_notifications();
+  for (const entry of work) {
+    const run_id = entry[0];
+    const timestamp = entry[1];
+    console.log(`Purging stale notification: (${run_id},${timestamp})`);
+    notifications.remove(run_id, timestamp);
   }
   save_notifications(notifications);
 }
@@ -256,7 +279,7 @@ async function main_follow_loop() {
     }
     save_notifications(notifications); // make sure other tabs see up to date data
     // Instrumentation
-    console.log("active notifications: ", JSON.stringify(notifications));
+    console.log("Active notifications: ", JSON.stringify(notifications));
     for (const entry of work) {
       run_id = entry["run_id"];
       disable_notification(run_id);
@@ -275,7 +298,10 @@ async function main_follow_loop() {
       }
     }
     const timestamp_latest_purge = get_timestamp_purge();
-    if (timestamp_latest_purge == null || current_time - timestamp_latest_purge > 20 * 1000 * 1000) {
+    if (
+      timestamp_latest_purge == null ||
+      current_time - timestamp_latest_purge > 20 * 1000 * 1000
+    ) {
       save_timestamp_purge(current_time);
       await purge_notifications();
     }
