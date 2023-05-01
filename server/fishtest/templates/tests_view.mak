@@ -8,6 +8,196 @@
     spsa_data = json.dumps(run["args"]["spsa"])
 %>
 
+<script>
+
+  function worker_name(worker_info) {
+    // A user friendly name for the worker.
+    const username = worker_info["username"];
+    const cores = String(worker_info["concurrency"]);
+    const uuid = worker_info["unique_key"];
+    const modified = worker_info["modified"] || false;
+    let name = `${username}-${cores}cores`;
+    
+    if (uuid.length !== 0) {
+      const uuid_split = uuid.split("-");
+      if (uuid_split.length >= 1) {
+        name += "-" + uuid_split[0];
+      }
+      if (uuid_split.length >= 2) {
+        name += "-" + uuid_split[1];
+      }
+    }
+    
+    if (modified) {
+      name += "*";
+    }
+    
+    return name;
+  }
+
+  async function renderTasksTable(){
+    await DOM_loaded();
+
+    const tasks = ${run['tasks'] + run['bad_tasks'] | n};
+    const tasksLength = ${len(run['tasks']) | n};
+    const runId = ${run['id'] | n};
+    const approver = ${approver | n};
+
+    const taskData = tasks
+      .forEach((task, idx) => {
+        if ("bad" in task && idx < tasksLength)
+          return;
+
+        let taskId;
+        if ("task_id" in task) {
+          taskId = task.task_id;
+        } else {
+          taskId = idx;
+        }
+
+        const stats = task.stats;
+        if (typeof stats === 'undefined')
+          return;
+
+        const tasksBody = document.getElementById("tasks-body");
+        
+        let active_style;
+        if (taskId == ${show_task}) {
+          active_style = "highlight";
+        } else if (task["active"]) {
+          active_style = "info";
+        } else {
+          active_style = "";
+        }
+        const tasksRow = document.createElement("tr");
+        tasksRow.className = active_style;
+        taskRow.id = `task${taskId}`;
+
+        const pgnTd = document.createElement("td");
+        const pgnLink = document.createElement("a");
+        pgnLink.setAttribute("href", `/api/pgn/${runId}-${taskId}.pgn`)
+        pgnLink.textContent = taskId;
+        pgnTd.append(pgnLink);
+        taskRow.append(pgnTd);
+
+        const workerNameTd = document.createElement("td");
+        if ("bad" in task)
+        {
+          workerNameTd.style.textDecoration = "line-through";
+          workerNameTd.style.backgroundColor = "#ffebeb";
+        }
+
+        let approverHelpLink = null;
+        if (approver && task?.worker_info?.username != "Unknown_worker")
+        {
+          approverHelpLink = documentElement.createElement("a");
+          approverHelpLink.setAttribute("href", `/user/${task.worker_info.username}" )
+          approverHelpLink.textContent = worker_name(task['worker_info']);
+          workerNameTd.append(approverHelpLink);
+        }
+        else if ("worker_info" in task)
+          workerNameTd.textContent = worker_name(task['worker_info']);
+        else
+          workerNameTd.textContent = "-";
+        taskRow.append(workerNameTd);
+
+        let gcc_version;
+        let compiler;
+        let pythonVersion;
+        let version;
+        let ARCH;
+
+        if (task.worker_info){
+          gcc_version = task.worker_info?.gcc_version?.join(".");
+          compiler = task.worker_info?.compiler;
+          python_version = task.worker_info?.python_version?.join(".");
+          version = task.worker_info?.version;
+          ARCH = task.worker_info.ARCH;
+        }
+        else
+        {
+          gcc_version = "";
+          compiler = "g++";
+          pythonVersion = "";
+          version = "";
+          ARCH = "";
+        }
+        const workerSpecificationsTd = document.createElement("td");
+        workerSpecificationsTd.textContent = `
+                os: ${task?.worker_info?.uname || "-"};
+                ram: ${task?.worker_info?.max_memory || "-"}MiB;
+                compiler: ${compiler || "-"} ${gcc_version || "-"};
+                python: ${python_version || "-"};
+                worker: ${version || "-"};
+                arch: ${ARCH || "-"}
+        `;
+        taskRow.append(workerSpecificationsTd);
+
+        const last_updated = task.last_updated?.split(".")[0] || "-";
+        const lastUpdatedTd = document.createElement("td");
+        lastUpdatedTd.textContent = last_updated;
+        taskRow.append(lastUpdatedTd);
+
+        const total = stats.wins + stats.losses + stats.draws;
+        const num_games = `${total.toString().padStart(3, "0")} / ${task[
+          "num_games"
+        ]
+          .toString()
+          .padStart(3, "0")}`;
+        const playedTd = document.createElement("td");
+        playedTd.textContent = num_games;
+        taskRow.append(playedTd);
+
+        if ("pentanomial" in results)
+        {
+            const p = stats["pentanomial"] || [0,0,0,0,0];
+            const pentanomialTd = document.createElement("td");
+            pentanomialTd.textContent = `[${p[0]},&nbsp;${p[1]},&nbsp;${p[2]},&nbsp;${p[3]},&nbsp;${p[4]}]`;
+            taskRow.append(pentanomialTd);
+        }
+        else
+        {
+          const winsTd = document.createElement("td");
+          winsTd.textContent = stats["wins"] || "-";
+          taskRow.append(winsTd);
+
+          const drawsTd = document.createElement("td");
+          drawsTd.textContent = stats["draws"] || "-";
+          taskRow.append(drawsTd);
+
+          const lossesTd = document.createElement("td");
+          lossesTd.textContent = stats["losses"] || "-";
+          taskRow.append(lossesTd);
+        }
+
+
+        const crashesTd = document.createElement("td");
+        crashesTd.textContent = stats["crashes"];
+        taskRow.append(crashesTd);
+
+        const timeLossesTd = document.createElement("td");
+        timeLossesTd.textContent = stats["time_losses"];
+        taskRow.append(timeLossesTd);
+
+        const residual =
+          "spsa" in run["args"] ? "-" : task["residual"].toFixed(3) || "-";
+        const residual_color =
+          "spsa" in run["args"] ? "" : task["residual_color"] || "";
+
+        const residualTd = document.createElement("td");
+        residualTd.textContent = residual;
+        residualTd.style.backgroundColor = residual_color;
+        taskRow.append(residualTd);
+
+        tasksBody.append(taskRow);
+        
+      });
+  }
+
+  renderTasksTable();
+
+</script>
+
 % if show_task >= 0:
 <script>
   document.documentElement.style="scroll-behavior:auto; overflow:hidden;";
@@ -392,79 +582,7 @@
         % endif
       </tr>
     </thead>
-    <tbody>
-      % for idx, task in enumerate(run['tasks'] + run.get('bad_tasks', [])):
-          <%
-            if 'bad' in task and idx < len(run['tasks']):
-              continue
-            task_id = task.get('task_id', idx)
-            stats = task.get('stats', {})
-            if 'stats' in task:
-              total = stats['wins'] + stats['losses'] + stats['draws']
-            else:
-              continue
-
-            if task_id == show_task:
-              active_style = 'highlight'
-            elif task['active']:
-              active_style = 'info'
-            else:
-              active_style = ''
-          %>
-          <tr class="${active_style}" id=task${task_id}>
-            <td><a href=${f"/api/pgn/{run['_id']}-{task_id:d}.pgn"}>${task_id}</a></td>
-            % if 'bad' in task:
-                <td style="text-decoration:line-through; background-color:#ffebeb">
-            % else:
-                <td>
-            % endif
-            % if approver and task['worker_info']['username'] != "Unknown_worker":
-                <a href="/user/${task['worker_info']['username']}">${worker_name(task['worker_info'])}</a>
-            % elif 'worker_info' in task:
-                ${worker_name(task["worker_info"])}
-            % else:
-                -
-            % endif
-            </td>
-            <td>
-            <%
-               gcc_version = ".".join([str(m) for m in task['worker_info']['gcc_version']])
-               compiler = task['worker_info'].get('compiler', 'g++')
-               python_version = ".".join([str(m) for m in task['worker_info']['python_version']])
-               version = task['worker_info']['version']
-               ARCH = task['worker_info']['ARCH']
-            %>
-               os: ${task['worker_info']['uname']};
-               ram: ${task['worker_info']['max_memory']}MiB;
-               compiler: ${compiler} ${gcc_version};
-               python: ${python_version};
-               worker: ${version};
-               arch: ${ARCH}
-            </td>
-            <td>${str(task.get('last_updated', '-')).split('.')[0]}</td>
-            <td>${f"{total:03d} / {task['num_games']:03d}"}</td>
-            % if 'pentanomial' not in run['results']:
-                <td>${stats.get('wins', '-')}</td>
-                <td>${stats.get('losses', '-')}</td>
-                <td>${stats.get('draws', '-')}</td>
-            % else:
-                <%
-                  p=stats.get('pentanomial',5*[0])
-                %>
-                <td>[${p[0]},&nbsp;${p[1]},&nbsp;${p[2]},&nbsp;${p[3]},&nbsp;${p[4]}]</td>
-            % endif
-            <td>${stats.get('crashes', '-')}</td>
-            <td>${stats.get('time_losses', '-')}</td>
-
-            % if 'spsa' not in run['args']:
-                % if 'residual' in task and task['residual']!=float("inf"):
-                    <td style="background-color:${task['residual_color']}">${f"{task['residual']:.3f}"}</td>
-                % else:
-                    <td>-</td>
-                % endif
-            % endif
-          </tr>
-      % endfor
+    <tbody id="tasks-body">
     </tbody>
   </table>
 </div>
