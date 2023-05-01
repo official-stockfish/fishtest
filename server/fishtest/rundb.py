@@ -381,44 +381,47 @@ class RunDb:
     def flush_buffers(self):
         if self.timer is None:
             return
-        try:
-            self.run_cache_lock.acquire()
-            now = time.time()
-            old = now + 1
-            oldest = None
-            for r_id in list(self.run_cache):
-                if not self.run_cache[r_id]["dirty"]:
-                    if not self.run_cache[r_id]["run"].get("finished", False) and (
-                        "scavenge" not in self.run_cache[r_id]
-                        or self.run_cache[r_id]["scavenge"] < now - 60
-                    ):
-                        self.run_cache[r_id]["scavenge"] = now
-                        if self.scavenge(self.run_cache[r_id]["run"]):
-                            with self.run_cache_write_lock:
-                                self.runs.replace_one(
-                                    {"_id": ObjectId(r_id)}, self.run_cache[r_id]["run"]
-                                )
-                    if self.run_cache[r_id]["rtime"] < now - 300:
-                        del self.run_cache[r_id]
-                elif self.run_cache[r_id]["ftime"] < old:
-                    old = self.run_cache[r_id]["ftime"]
-                    oldest = r_id
-            # print(oldest)
-            if oldest is not None:
-                self.scavenge(self.run_cache[oldest]["run"])
-                self.run_cache[oldest]["scavenge"] = now
-                self.run_cache[oldest]["dirty"] = False
-                self.run_cache[oldest]["ftime"] = time.time()
-                # print("SYNC")
-                with self.run_cache_write_lock:
-                    self.runs.replace_one(
-                        {"_id": ObjectId(oldest)}, self.run_cache[oldest]["run"]
-                    )
-        except:
-            print("Flush exception", flush=True)
-        finally:
-            # Restart timer:
-            self.run_cache_lock.release()
+        if self.run_cache_lock.acquire():
+            try:
+                now = time.time()
+                old = now + 1
+                oldest = None
+                for r_id in list(self.run_cache):
+                    if not self.run_cache[r_id]["dirty"]:
+                        if not self.run_cache[r_id]["run"].get("finished", False) and (
+                            "scavenge" not in self.run_cache[r_id]
+                            or self.run_cache[r_id]["scavenge"] < now - 60
+                        ):
+                            self.run_cache[r_id]["scavenge"] = now
+                            if self.scavenge(self.run_cache[r_id]["run"]):
+                                with self.run_cache_write_lock:
+                                    self.runs.replace_one(
+                                        {"_id": ObjectId(r_id)}, self.run_cache[r_id]["run"]
+                                    )
+                        if self.run_cache[r_id]["rtime"] < now - 300:
+                            del self.run_cache[r_id]
+                    elif self.run_cache[r_id]["ftime"] < old:
+                        old = self.run_cache[r_id]["ftime"]
+                        oldest = r_id
+                # print(oldest)
+                if oldest is not None:
+                    self.scavenge(self.run_cache[oldest]["run"])
+                    self.run_cache[oldest]["scavenge"] = now
+                    self.run_cache[oldest]["dirty"] = False
+                    self.run_cache[oldest]["ftime"] = time.time()
+                    # print("SYNC")
+                    with self.run_cache_write_lock:
+                        self.runs.replace_one(
+                            {"_id": ObjectId(oldest)}, self.run_cache[oldest]["run"]
+                        )
+            except:
+                print("Flush exception", flush=True)
+            finally:
+                # Restart timer:
+                self.run_cache_lock.release()
+                self.start_timer()
+        else:
+            print("Failed to acquire run_cache_lock", flush=True)
             self.start_timer()
 
     def scavenge(self, run):
