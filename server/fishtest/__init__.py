@@ -9,7 +9,7 @@ from pyramid.config import Configurator
 from pyramid.events import BeforeRender, NewRequest
 from pyramid.session import SignedCookieSessionFactory
 from fishtest import helpers
-import traceback, signal, sys
+import traceback, signal, sys, threading
 
 
 def thread_stack_dump(sig, frame):
