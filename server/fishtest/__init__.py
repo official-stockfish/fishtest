@@ -1,5 +1,9 @@
 import base64
 import hashlib
+import signal
+import sys
+import threading
+import traceback
 from pathlib import Path
 
 from fishtest.rundb import RunDb
@@ -14,8 +18,22 @@ from pyramid.session import SignedCookieSessionFactory
 from fishtest import helpers
 
 
+def thread_stack_dump(sig, frame):
+    for th in threading.enumerate():
+        print("=================== ", th, " ======================", flush=True)
+        try:
+            traceback.print_stack(sys._current_frames()[th.ident])
+        except Exception:
+            print("Failed to print traceback, the thread is probably gone", flush=True)
+
+
 def main(global_config, **settings):
     """This function returns a Pyramid WSGI application."""
+
+    # Register handler, will list the stack traces of all active threads
+    # trigger with: kill -USR1 <pid>
+    signal.signal(signal.SIGUSR1, thread_stack_dump)
+
     session_factory = SignedCookieSessionFactory("fishtest")
     config = Configurator(
         settings=settings,
