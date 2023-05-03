@@ -470,7 +470,7 @@ class RunDb:
         runs = {"pending": [], "active": []}
         for run in unfinished_runs:
             state = (
-                "active" if any(task["active"] for task in run["tasks"]) else "pending"
+                "active" if any(task["active"] for task in reversed(run["tasks"])) else "pending"
             )
             if state == "pending":
                 run["workers"] = run["cores"] = 0
