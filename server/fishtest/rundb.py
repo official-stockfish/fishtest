@@ -11,9 +11,11 @@ import time
 import zlib
 from datetime import datetime, timedelta
 
-import fishtest.stats.stat_util
 from bson.binary import Binary
 from bson.objectid import ObjectId
+from pymongo import DESCENDING, MongoClient
+
+import fishtest.stats.stat_util
 from fishtest.actiondb import ActionDb
 from fishtest.stats.stat_util import SPRT_elo
 from fishtest.userdb import UserDb
@@ -32,13 +34,27 @@ from fishtest.util import (
     worker_name,
 )
 from fishtest.views import del_tasks
-from pymongo import DESCENDING, MongoClient
 
 DEBUG = False
 
 boot_time = datetime.utcnow()
 
 last_rundb = None
+
+server_config = None
+
+
+def get_server_config():
+    global server_config
+    if server_config is None:
+        server_config = configparser.ConfigParser()
+        server_config["worker"] = {
+            "GamesCap": "9000",
+        }
+        config_path = os.path.expanduser("~/fishtest.ini")
+        if os.path.exists(config_path):
+            server_config.read(config_path)
+    return server_config
 
 
 def get_port():
@@ -470,7 +486,9 @@ class RunDb:
         runs = {"pending": [], "active": []}
         for run in unfinished_runs:
             state = (
-                "active" if any(task["active"] for task in reversed(run["tasks"])) else "pending"
+                "active"
+                if any(task["active"] for task in reversed(run["tasks"]))
+                else "pending"
             )
             if state == "pending":
                 run["workers"] = run["cores"] = 0
@@ -867,7 +885,11 @@ class RunDb:
                 remaining / sprt_batch_size_games
             )
 
-        task_size = min(self.worker_cap(run, worker_info), remaining)
+        config = get_server_config()
+        config_worker_cap = max(1, int(config["worker"]["GamesCap"]))
+        task_size = min(
+            config_worker_cap, min(self.worker_cap(run, worker_info), remaining)
+        )
         task = {
             "num_games": task_size,
             "active": True,
