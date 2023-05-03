@@ -23,6 +23,7 @@ from fishtest.util import (
     password_strength,
     update_residuals,
 )
+from bson.objectid import ObjectId
 from pyramid.httpexceptions import HTTPFound, exception_response
 from pyramid.security import forget, remember
 from pyramid.view import forbidden_view_config, view_config
@@ -1159,6 +1160,26 @@ def tests_stats(request):
     request.rundb.get_results(run)
     return {"run": run, "page_title": get_page_title(run)}
 
+
+@view_config(route_name="tasks", renderer="tasks.mak")
+def tasks(request):
+    r_id = request.matchdict["id"]
+    run = request.rundb.runs.find_one({"_id": ObjectId(r_id)}, {"tasks":1, "bad_tasks":1, "results":1, "args":1})
+    if run is None:
+        raise exception_response(404)
+
+    try:
+        show_task = int(request.params.get("show_task", -1))
+    except:
+        show_task = -1
+    if show_task >= len(run["tasks"]) or show_task < -1:
+        show_task = -1    
+    
+    return {
+    "run": run,
+    "approver": request.has_permission("approve_run"),
+    "show_task": show_task,
+    }
 
 @view_config(route_name="tests_view", renderer="tests_view.mak")
 def tests_view(request):
