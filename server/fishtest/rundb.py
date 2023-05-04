@@ -54,6 +54,8 @@ def get_server_config():
         config_path = os.path.expanduser("~/fishtest.ini")
         if os.path.exists(config_path):
             server_config.read(config_path)
+        if server_config["worker"]["GamesCap"] % 2 == 1:
+            server_config["worker"]["GamesCap"] += 1
     return server_config
 
 
@@ -886,7 +888,7 @@ class RunDb:
             )
 
         config = get_server_config()
-        config_worker_cap = max(1, int(config["worker"]["GamesCap"]))
+        config_worker_cap = max(2, int(config["worker"]["GamesCap"]))
         task_size = min(
             config_worker_cap, min(self.worker_cap(run, worker_info), remaining)
         )
