@@ -36,8 +36,6 @@ setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=requires,
-    tests_require=requires,
-    test_suite="run_all_tests.server_test_suite",
     entry_points={
         "paste.app_factory": [
             "main = fishtest:main",

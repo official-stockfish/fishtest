@@ -14,6 +14,7 @@ jobs:
     defaults:
       run:
         shell: msys2 {0}
+        working-directory: worker
 
     steps:
       - name: Setup msys and install required packages
@@ -30,13 +31,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install dependencies
+      - name: Add packages folder to PYTHONPATH
         run: |
-          python3 -m venv env
-          . env/bin/activate
-          python3 -m pip install --upgrade pip setuptools wheel
+          echo "PYTHONPATH=$PYTHONPATH:$(pwd)/packages" >> $GITHUB_ENV
 
       - name: Run worker tests
         run: |
-          . env/bin/activate
-          ./test_worker.sh
+          python -m unittest discover -v
