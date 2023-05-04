@@ -129,7 +129,6 @@ function notify_elo(entry_start, entry_finished) {
     const message = `<a class="notification-message" href=${link}>${escapeHtml(
       title
     )} ${escapeHtml(body)}</a>`;
-
     notify_fishtest(message);
   });
 }
@@ -249,10 +248,24 @@ async function main_follow_loop() {
       current_time - timestamp_latest_fetch < 19000
     ) {
       await async_sleep(20000 + 500 * Math.random());
+      // Instrumentation
+      t = Date.now();
+      if (t - current_time > 40000) {
+        d = new Date(t);
+        console.log(
+          "Wakeup after sleep " + d + " (millis: " + d.getMilliseconds() + ")"
+        );
+      }
       continue;
     }
     // I won the race, other tabs should skip their fetch
     save_timestamp(current_time);
+    // Extra defense against race after wakeup from sleep
+    await async_sleep(1500);
+    if (current_time != get_timestamp()) {
+      console.log("My fetch was preempted by another tab");
+      continue;
+    }
     let json = [];
     let notifications = get_notifications();
     try {

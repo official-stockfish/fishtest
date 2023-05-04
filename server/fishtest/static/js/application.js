@@ -146,6 +146,8 @@ function supportsNotifications() {
 }
 
 function notify(title, body, link, fallback) {
+  // Instrumentation
+  console.log("Notification: title=" + title + " body=" + body);
   if (supportsNotifications() && Notification.permission === "granted") {
     const notification = new Notification(title, {
       body: body,
@@ -157,8 +159,6 @@ function notify(title, body, link, fallback) {
     };
   } else if (fallback) {
     fallback(title, body, link);
-  } else {
-    console.log("Notification: title=" + title + " body=" + body);
   }
 }
 
