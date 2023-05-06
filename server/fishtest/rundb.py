@@ -470,7 +470,9 @@ class RunDb:
         runs = {"pending": [], "active": []}
         for run in unfinished_runs:
             state = (
-                "active" if any(task["active"] for task in reversed(run["tasks"])) else "pending"
+                "active"
+                if any(task["active"] for task in reversed(run["tasks"]))
+                else "pending"
             )
             if state == "pending":
                 run["workers"] = run["cores"] = 0
@@ -1044,7 +1046,10 @@ class RunDb:
 
         if not task["active"]:
             info = "Update_task: task {}/{} is not active".format(run_id, task_id)
-            print(info, flush=True)
+            # Only log the case where the run is not yet finished,
+            # otherwise it is expected behavior
+            if not run["finished"]:
+                print(info, flush=True)
             return {"task_alive": False, "info": info}
 
         # There is a small possibility that a new task was assigned while this
