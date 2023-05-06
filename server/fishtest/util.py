@@ -1,3 +1,4 @@
+import copy
 import hashlib
 import math
 import re
@@ -566,3 +567,58 @@ def get_hash(s):
     if h:
         return int(h.group(1))
     return 0
+
+
+class Stats:
+    copy_ = copy
+
+    def __init__(self, stats, copy=True):
+        self.stats = self.copy_.deepcopy(stats) if copy else stats
+
+    def __eq__(self, stats):
+        return self.stats == stats.stats
+
+    def __add__(self, stats):
+        p2 = [
+            self.stats["pentanomial"][i] + stats.stats["pentanomial"][i]
+            for i in range(0, 5)
+        ]
+        wins2, losses2, draws2, crashes2, time_losses2 = [
+            self.stats[k] + stats.stats[k]
+            for k in ("wins", "losses", "draws", "crashes", "time_losses")
+        ]
+        return Stats(
+            {
+                "wins": wins2,
+                "losses": losses2,
+                "draws": draws2,
+                "crashes": crashes2,
+                "time_losses": time_losses2,
+                "pentanomial": p2,
+            },
+            copy=False,
+        )
+
+    def __sub__(self, stats):
+        p2 = [
+            self.stats["pentanomial"][i] - stats.stats["pentanomial"][i]
+            for i in range(0, 5)
+        ]
+        wins2, losses2, draws2, crashes2, time_losses2 = [
+            self.stats[k] - stats.stats[k]
+            for k in ("wins", "losses", "draws", "crashes", "time_losses")
+        ]
+        return Stats(
+            {
+                "wins": wins2,
+                "losses": losses2,
+                "draws": draws2,
+                "crashes": crashes2,
+                "time_losses": time_losses2,
+                "pentanomial": p2,
+            },
+            copy=False,
+        )
+
+    def __str__(self):
+        return str(self.stats)

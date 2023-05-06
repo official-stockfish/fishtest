@@ -28,6 +28,7 @@ from fishtest.util import (
     get_tc_ratio,
     post_in_fishcooking_results,
     remaining_hours,
+    Stats,
     update_residuals,
     worker_name,
 )
@@ -470,7 +471,9 @@ class RunDb:
         runs = {"pending": [], "active": []}
         for run in unfinished_runs:
             state = (
-                "active" if any(task["active"] for task in reversed(run["tasks"])) else "pending"
+                "active"
+                if any(task["active"] for task in reversed(run["tasks"]))
+                else "pending"
             )
             if state == "pending":
                 run["workers"] = run["cores"] = 0
@@ -1093,6 +1096,13 @@ class RunDb:
 
         # The update seems fine. Update run["tasks"][task_id] (=task).
 
+        # Experiment with incremental updates
+
+        old_stats = Stats(task["stats"])
+        new_stats = Stats(stats)
+        old_results = Stats(run["results"])
+        new_results = old_results + new_stats - old_stats
+
         task["stats"] = stats
         task["last_updated"] = update_time
         task["worker_info"] = worker_info  # updates rate, ARCH, nps
@@ -1116,10 +1126,15 @@ class RunDb:
                 assert run["cores"] >= 0
 
         run["results_stale"] = True  # force recalculation of results
+
         updated_results = self.get_results(
             run, False
         )  # computed from run["tasks"] which
         # has just been updated. Sets run["results_stale"]=False.
+
+        # Continue incremental updates experiment
+
+        assert Stats(updated_results) == new_results
 
         if "sprt" in run["args"]:
             sprt = run["args"]["sprt"]
