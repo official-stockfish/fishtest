@@ -241,16 +241,20 @@ async function main_follow_loop() {
   await DOM_loaded();
   await async_sleep(5000 + 10000 * Math.random());
   while (true) {
-    const current_time = Date.now();
+    // Milliseconds seem quantized on Chrome.
+    // We add a bit of randomness.
+    const current_time = Date.now() + Math.floor(200 * Math.random() - 100);
     const timestamp_latest_fetch = get_timestamp();
     if (
       timestamp_latest_fetch != null &&
       current_time - timestamp_latest_fetch < 19000
     ) {
       await async_sleep(20000 + 500 * Math.random());
-      // Instrumentation
+      // Instrumentation.
+      // Note that in modern browsers timer events in
+      // inactive tabs are severely throttled.
       t = Date.now();
-      if (t - current_time > 40000) {
+      if (t - current_time > 90000) {
         d = new Date(t);
         console.log(
           "Wakeup after sleep " + d + " (millis: " + d.getMilliseconds() + ")"
