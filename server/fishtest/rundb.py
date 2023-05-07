@@ -1094,7 +1094,20 @@ class RunDb:
             task["active"] = False
             return {"task_alive": False, "error": error}
 
-        # The update seems fine. Update run["tasks"][task_id] (=task).
+        # The update seems fine.
+
+        # Increment run results before overwriting task["stats"]
+
+        for key, value in stats.items():
+            if key == "pentanomial":
+                run["results"][key] = [
+                    x + y - z
+                    for x, y, z in zip(run["results"][key], value, task["stats"].get(key, [0] * 5))
+                ]
+            else:
+                run["results"][key] += value - task["stats"].get(key, 0)
+
+        # Update run["tasks"][task_id] (=task).
 
         task["stats"] = stats
         task["last_updated"] = update_time
@@ -1118,15 +1131,9 @@ class RunDb:
                 run["cores"] -= task["worker_info"]["concurrency"]
                 assert run["cores"] >= 0
 
-        run["results_stale"] = True  # force recalculation of results
-        updated_results = self.get_results(
-            run, False
-        )  # computed from run["tasks"] which
-        # has just been updated. Sets run["results_stale"]=False.
-
         if "sprt" in run["args"]:
             sprt = run["args"]["sprt"]
-            fishtest.stats.stat_util.update_SPRT(updated_results, sprt)
+            fishtest.stats.stat_util.update_SPRT(run["results"], sprt)
             if sprt["state"] != "":
                 task_finished = True
                 task["active"] = False
@@ -1142,7 +1149,7 @@ class RunDb:
         # Check if the run is finished.
 
         run_finished = False
-        if count_games(updated_results) >= run["args"]["num_games"]:
+        if count_games(run["results"]) >= run["args"]["num_games"]:
             run_finished = True
         elif "sprt" in run["args"] and sprt["state"] != "":
             run_finished = True
@@ -1150,7 +1157,8 @@ class RunDb:
         # Return.
 
         if run_finished:
-            self.buffer(run, True)
+            self.check_results(run, run_id, task_id)
+
             self.stop_run(run_id)
             # stop run may not actually stop a run because of autopurging!
             if run["finished"]:
@@ -1165,6 +1173,48 @@ class RunDb:
             ret = {"task_alive": task["active"]}
 
         return ret
+
+    def check_results(self, run, run_id, task_id):
+        old = run["results"]
+
+        # Force recalculation of results
+        run["results_stale"] = True
+
+        # Recalculate results from all tasks in run["tasks"].
+        # Sets run["results_stale"]=False and calls buffer(True).
+        self.get_results(run, True)
+
+        # Log any discrepancies between incremented and recalculated results
+        new = run["results"]
+        for s in ["wins", "losses", "draws", "crashes", "time_losses"]:
+            if old.get(s, -1) != new.get(s, -1):
+                info = "Check_results: task {}/{} {} results mismatch: {}/{}".format(
+                    run_id, task_id, s, old.get(s, -1), new.get(s, -1)
+                )
+                print(info, flush=True)
+
+        if (
+            "pentanomial" not in old
+            or "pentanomial" not in new
+            or len(old["pentanomial"]) < 5
+            or len(new["pentanomial"]) < 5
+        ):
+            info = "Check_results: task {}/{} pentanomial length results mismatch: {}/{}".format(
+                run_id,
+                task_id,
+                len(old.get("pentanomial", [])),
+                len(new.get("pentanomial", [])),
+            )
+            print(info, flush=True)
+        else:
+            for i, (old_value, new_value) in enumerate(
+                zip(old["pentanomial"], new["pentanomial"])
+            ):
+                if old_value != new_value:
+                    info = "Check_results: task {}/{} pentanomial value {} results mismatch: {}/{}".format(
+                        run_id, task_id, i, old_value, new_value
+                    )
+                    print(info, flush=True)
 
     def upload_pgn(self, run_id, pgn_zip):
         self.pgndb.insert_one({"run_id": run_id, "pgn_zip": Binary(pgn_zip)})
