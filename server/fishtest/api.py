@@ -260,9 +260,16 @@ class ApiView(object):
 
     @view_config(route_name="api_active_runs")
     def active_runs(self):
+        runs = self.request.rundb.runs.find(
+             {"finished": False},
+             {"tasks": 0, "bad_tasks": 0, "args.spsa.param_history": 0})
         active = {}
-        for run in self.request.rundb.get_unfinished_runs():
-            active[str(run["_id"])] = strip_run(run)
+        for run in runs:
+            # some string conversions
+            run["_id"] = str(run["_id"])
+            run["start_time"] = str(run["start_time"])
+            run["last_updated"] = str(run["last_updated"])
+            active[str(run["_id"])] = run
         return active
 
     @view_config(route_name="api_actions")
