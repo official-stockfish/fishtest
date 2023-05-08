@@ -123,7 +123,7 @@
                 @ ${run['args']['tc']} th ${str(run['args'].get('threads',1))}
                 </span>
                 % if not run['finished']:
-                    <div>
+                    <div title="${f"itp: {run["itp"]:d}, c/i: {run["cores"]/run["itp"]:.2f}"}">
                         ${f"cores: {run.get('cores', '')} ({run.get('workers', '')})"}
                     </div>
                 % endif
