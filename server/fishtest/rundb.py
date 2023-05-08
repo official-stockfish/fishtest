@@ -559,6 +559,7 @@ class RunDb:
         ltc_only=False,
     ):
         q = {"finished": True}
+        projection = {"tasks": 0, "bad_tasks": 0, "args.spsa.param_history": 0}
         if username:
             q["args.username"] = username
         if ltc_only:
@@ -569,7 +570,11 @@ class RunDb:
             q["is_yellow"] = True
 
         c = self.runs.find(
-            q, skip=skip, limit=limit, sort=[("last_updated", DESCENDING)]
+            q,
+            skip=skip,
+            limit=limit,
+            sort=[("last_updated", DESCENDING)],
+            projection=projection,
         )
 
         count = self.runs.count_documents(q)

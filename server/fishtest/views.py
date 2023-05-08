@@ -1386,14 +1386,11 @@ def get_paginated_finished_runs(request):
             page["url"] += "&ltc_only=1"
 
     failed_runs = []
-    for run in finished_runs:
-        # Ensure finished runs have results_info
-        results = request.rundb.get_results(run)
-        run["results_info"] = format_results(results, run)
-
-        # Look for failed runs
-        if "failed" in run and run["failed"]:
-            failed_runs.append(run)
+    if page_idx == 0:
+        for run in finished_runs:
+            # Look for failed runs
+            if "failed" in run and run["failed"]:
+                failed_runs.append(run)
 
     return {
         "finished_runs": finished_runs,
