@@ -474,8 +474,7 @@
       return Promise.resolve();
     const tasksBody = document.getElementById("tasks-body");
     try {
-      const response = await fetch(`/tasks/${str(run['_id'])}?show_task=${show_task}`);
-      const html = await response.text();
+      const html = await fetch_text(`/tasks/${str(run['_id'])}?show_task=${show_task}`);
       tasksBody.innerHTML = html;
       fetchedTasksBefore = true;
     } catch (error) {
