@@ -249,23 +249,26 @@ async function main_follow_loop() {
       timestamp_latest_fetch != null &&
       current_time - timestamp_latest_fetch < 19000
     ) {
-      await async_sleep(20000 + 500 * Math.random());
+      const t = await async_sleep(20000 + 500 * Math.random());
       // Instrumentation.
       // Note that in modern browsers timer events in
       // inactive tabs are severely throttled.
-      t = Date.now();
-      if (t - current_time > 90000) {
-        d = new Date(t);
-        console.log(
-          "Wakeup after sleep " + d + " (millis: " + d.getMilliseconds() + ")"
-        );
+      if (t > 90000) {
+        d = new Date();
+        console.log("Wakeup after sleep " + d + " (slept: " + t + "ms)");
       }
       continue;
     }
     // I won the race, other tabs should skip their fetch
     save_timestamp(current_time);
     // Extra defense against race after wakeup from sleep
-    await async_sleep(1500);
+    const t = await async_sleep(1500);
+    if (t > 90000) {
+      d = new Date();
+      console.log("Wakeup after sleep " + d + " (slept: " + t + "ms)");
+      console.log("Cancelling fetch...");
+      continue;
+    }
     if (current_time != get_timestamp()) {
       console.log("My fetch was preempted by another tab");
       continue;

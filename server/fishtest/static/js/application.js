@@ -228,7 +228,11 @@ function DOM_loaded() {
 
 function async_sleep(ms) {
   return new Promise((resolve, reject) => {
-    setTimeout(resolve, ms);
+    const t0 = Date.now();
+    setTimeout(() => {
+      const t1 = Date.now();
+      resolve(t1 - t0);
+    }, ms);
   });
 }
 
