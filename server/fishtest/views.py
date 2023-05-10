@@ -960,9 +960,15 @@ def tests_modify(request):
     if not request.authenticated_userid:
         request.session.flash("Please login")
         return HTTPFound(location=request.route_url("login"))
+
     if "num-games" in request.POST:
         run = request.rundb.get_run(request.POST["run"])
         before = del_tasks(run)
+
+        now = datetime.datetime.utcnow()
+        if "start_time" not in run or (now - run["start_time"]).days > 30:
+            request.session.flash("Run too old to be modified", "error")
+            return HTTPFound(location=request.route_url("tests"))
 
         if not can_modify_run(request, run):
             request.session.flash("Unable to modify another user's run!", "error")
