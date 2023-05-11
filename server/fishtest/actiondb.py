@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from fishtest.util import hex_print, optional_key, union, validate, worker_name
+from fishtest.util import hex_print, union, validate, worker_name
 from pymongo import DESCENDING
 
 schema = union(

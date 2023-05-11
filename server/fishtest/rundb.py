@@ -31,7 +31,6 @@ from fishtest.util import (
     update_residuals,
     worker_name,
 )
-from fishtest.views import del_tasks
 from pymongo import DESCENDING, MongoClient
 
 DEBUG = False
@@ -428,7 +427,6 @@ class RunDb:
         dead_task = False
         old = datetime.utcnow() - timedelta(minutes=6)
         task_id = -1
-        run_id = str(run["_id"])
         for task in run["tasks"]:
             task_id += 1
             if task["active"] and task["last_updated"] < old:
@@ -1315,7 +1313,6 @@ class RunDb:
                 continue
             if task["worker_info"]["unique_key"] in bad_workers:
                 message = ""
-                purged = True
                 bad_task = copy.deepcopy(task)
                 bad_task["task_id"] = task_id
                 bad_task["bad"] = True

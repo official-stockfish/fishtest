@@ -1,13 +1,9 @@
-import copy
 import datetime
-import math
-import os
 import pprint
 import uuid
 
 import pymongo
-from fishtest.stats import stat_util
-from fishtest.util import format_results, worker_name
+from fishtest.util import worker_name
 
 
 def show(p):

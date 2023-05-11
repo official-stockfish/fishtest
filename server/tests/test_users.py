@@ -2,7 +2,6 @@ import datetime
 import unittest
 
 import util
-from fishtest.api import ApiView
 from fishtest.views import login, signup
 from pyramid import testing
 
