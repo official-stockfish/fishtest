@@ -51,7 +51,7 @@ def process_run(run, info, deltas=None):
             info[username]["task_last_updated"] = max(
                 task["last_updated"], info[username]["last_updated"]
             )
-        except (TypeError, KeyError) as e:
+        except (TypeError, KeyError):
             # Comparison between a datetime and a string as "6 hours ago"
             info[username]["last_updated"] = task["last_updated"]
         except Exception as e:

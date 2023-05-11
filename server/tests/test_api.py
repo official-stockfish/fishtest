@@ -360,8 +360,8 @@ class TestApi(unittest.TestCase):
         )
         with self.assertRaises(HTTPUnauthorized):
             response = ApiView(request).stop_run()
-            self.assertTrue(error in response)
-            sefl.assertFalse(run["tasks"][0]["active"])
+            self.assertTrue("error" in response)
+            self.assertFalse(run["tasks"][0]["active"])
 
         self.rundb.userdb.user_cache.update_one(
             {"username": self.username}, {"$set": {"cpu_hours": 10000}}

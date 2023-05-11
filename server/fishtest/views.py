@@ -6,7 +6,6 @@ import os
 import re
 import threading
 import time
-import urllib
 
 import fishtest.stats.stat_util
 import requests

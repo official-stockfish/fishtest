@@ -1,11 +1,9 @@
 import base64
 import copy
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 
-import requests
 from fishtest.stats.stat_util import SPRT_elo
 from fishtest.util import optional_key, union, validate, worker_name
-from fishtest.views import del_tasks
 from pyramid.httpexceptions import (
     HTTPBadRequest,
     HTTPFound,
