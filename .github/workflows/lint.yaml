@@ -25,12 +25,13 @@ jobs:
 
       - name: Set up linters and formatters
         run: |
+          python -m pip install --upgrade pip
           python -m pip install pipx
           npm install --global prettier
 
       - name: Run linters and formatters
         run: |
-          pipx run flake8 --max-line-length=88 --exclude worker/packages . && echo "✔️ flake8 succeded" || echo "❌ flake8 failed"
+          pipx run flake8 --count --statistics --max-line-length=88 --exclude worker/packages . && echo "✔️ flake8 succeded" || echo "❌ flake8 failed"
           pipx run black --check --exclude="packages" . && echo "✔️ black succeded" || echo "❌ black failed"
           pipx run isort --check --profile black --skip worker/packages . && echo "✔️ isort succeded" || echo "❌ isort failed"
-          prettier --check "server/fishtest/static/{css/*.css,html/*.html,js/*[!highlight.diff.min].js}" && echo "✔️ prettier succeded" || echo "❌ prettier failed"
+          prettier --check "server/fishtest/static/{css/*.css,html/*.html,js/*.js}" && echo "✔️ prettier succeded" || echo "❌ prettier failed"
