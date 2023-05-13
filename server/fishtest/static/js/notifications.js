@@ -18,7 +18,7 @@ function LRU(capacity, content) {
       return this.content.length;
     },
     copy() {
-      return new LRU(this.capacity, this.content.slice());
+      return new LRU(this.capacity, JSON.parse(JSON.stringify(this.content)));
     },
     toArray() {
       let ret = [];
@@ -26,6 +26,17 @@ function LRU(capacity, content) {
         ret.push(elt[0]);
       }
       return ret;
+    },
+    isEqual(elt) {
+      return JSON.stringify(this) == JSON.stringify(elt);
+    },
+    toString() {
+      elt = this.copy();
+      for (const entry of elt.content) {
+        const ts = entry[1];
+        entry[1] = new Date(ts).toISOString();
+      }
+      return JSON.stringify(elt.content);
     },
     add(elt) {
       if (this.contains(elt)) {
@@ -144,7 +155,7 @@ function get_notifications() {
     }
     return notifications;
   } catch (e) {
-    console.log("Initializing new LRU object");
+    console_log("Initializing new LRU object");
     notifications = new LRU(design_capacity);
     notifications.save(fishtest_notifications_key);
     return notifications;
@@ -189,17 +200,17 @@ function save_timestamp_purge(ts) {
   localStorage.setItem(fishtest_timestamp_purge_key, JSON.stringify(ts));
 }
 
-async function purge_notifications() {
-  console.log("Purging stale notifications.");
+async function purge_notifications(last_fetch_time) {
+  // Instrumentation
+  console_log("Purging stale notifications.");
   let notifications = get_notifications();
   let json = {};
   try {
     json = await fetch_post("/api/active_runs");
   } catch (e) {
-    console.log(e);
+    console_log(e, true);
     return;
   }
-  const current_time = Date.now();
   let work = [];
   for (const entry of notifications.content) {
     const run_id = entry[0];
@@ -216,10 +227,10 @@ async function purge_notifications() {
           $in: ["finished_run", "stop_run", "delete_run"],
         },
         run_id: run_id,
-        time: { $gte: current_time / 1000 - 60 },
+        time: { $gte: last_fetch_time / 1000 - 60 },
       });
     } catch (e) {
-      console.log(e);
+      console_log(e, true);
       return;
     }
     if (json.length > 0) {
@@ -231,7 +242,6 @@ async function purge_notifications() {
   for (const entry of work) {
     const run_id = entry[0];
     const timestamp = entry[1];
-    console.log(`Purging stale notification: (${run_id},${timestamp})`);
     notifications.remove(run_id, timestamp);
   }
   save_notifications(notifications);
@@ -240,7 +250,14 @@ async function purge_notifications() {
 async function main_follow_loop() {
   await DOM_loaded();
   await async_sleep(5000 + 10000 * Math.random());
+  let last_notifications = null;
   while (true) {
+    let notifications = get_notifications();
+    if (!notifications.isEqual(last_notifications)) {
+      last_notifications = notifications;
+      // Instrumentation
+      console_log(`Active notifications: ${notifications}`);
+    }
     // Milliseconds seem quantized on Chrome.
     // We add a bit of randomness.
     const current_time = Date.now() + Math.floor(200 * Math.random() - 100);
@@ -250,13 +267,8 @@ async function main_follow_loop() {
       current_time - timestamp_latest_fetch < 19000
     ) {
       const t = await async_sleep(20000 + 500 * Math.random());
-      // Instrumentation.
       // Note that in modern browsers timer events in
       // inactive tabs are severely throttled.
-      if (t > 90000) {
-        d = new Date();
-        console.log("Wakeup after sleep " + d + " (slept: " + t + "ms)");
-      }
       continue;
     }
     // I won the race, other tabs should skip their fetch
@@ -264,17 +276,15 @@ async function main_follow_loop() {
     // Extra defense against race after wakeup from sleep
     const t = await async_sleep(1500);
     if (t > 90000) {
-      d = new Date();
-      console.log("Wakeup after sleep " + d + " (slept: " + t + "ms)");
-      console.log("Cancelling fetch...");
+      // Wake up from sleep: reset state
       continue;
     }
     if (current_time != get_timestamp()) {
-      console.log("My fetch was preempted by another tab");
+      // My fetch was preempted by another tab
       continue;
     }
     let json = [];
-    let notifications = get_notifications();
+    notifications = get_notifications();
     try {
       if (notifications.count()) {
         json = await fetch_post("/api/actions", {
@@ -283,7 +293,7 @@ async function main_follow_loop() {
         });
       }
     } catch (e) {
-      console.log(e);
+      console_log(e, true);
       continue;
     }
     notifications = get_notifications();
@@ -298,8 +308,6 @@ async function main_follow_loop() {
       }
     }
     save_notifications(notifications); // make sure other tabs see up to date data
-    // Instrumentation
-    console.log("Active notifications: ", JSON.stringify(notifications));
     for (const entry of work) {
       run_id = entry["run_id"];
       disable_notification(run_id);
@@ -313,7 +321,7 @@ async function main_follow_loop() {
         notify_elo(json[0], entry);
       } catch (e) {
         // TODO: try to deal with network errors
-        console.log(e);
+        console_log(e, true);
         notify_elo(null, entry);
       }
     }
@@ -323,7 +331,9 @@ async function main_follow_loop() {
       current_time - timestamp_latest_purge > 20 * 1000 * 1000
     ) {
       save_timestamp_purge(current_time);
-      await purge_notifications();
+      // Note that because of sleeping, current_time may be long ago.
+      // This is intentional!
+      await purge_notifications(current_time);
     }
   }
 }
