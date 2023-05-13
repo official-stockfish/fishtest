@@ -1,3 +1,14 @@
+// A console log with time stamp and optional stack trace
+function console_log(message, trace) {
+  const d = new Date().toISOString();
+  const message_ = `${d}: ${message}`;
+  if (trace) {
+    console.trace(message_);
+  } else {
+    console.log(message_);
+  }
+}
+
 // https://stackoverflow.com/questions/14267781/sorting-html-table-with-javascript
 // https://stackoverflow.com/questions/40201533/sort-version-dotted-number-strings-in-javascript
 const getCellValue = (tr, idx) =>
@@ -147,7 +158,7 @@ function supportsNotifications() {
 
 function notify(title, body, link, fallback) {
   // Instrumentation
-  console.log("Notification: title=" + title + " body=" + body);
+  console_log(`Notification: title=${title} body=${body}`);
   if (supportsNotifications() && Notification.permission === "granted") {
     const notification = new Notification(title, {
       body: body,
