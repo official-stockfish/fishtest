@@ -60,3 +60,11 @@ jobs:
           if [[ "${{ steps.isort.outcome }}" == "success" ]]; then echo "✔️ isort"; else echo "❌ isort"; fi
           if [[ "${{ steps.prettier.outcome }}" == "success" ]]; then echo "✔️ prettier"; else echo "❌ prettier"; fi
           if [[ "${{ steps.black.outcome }}" == "failure" || "${{ steps.isort.outcome }}" == "failure" || "${{ steps.prettier.outcome }}" == "failure" ]]; then exit 1; fi
+
+      - name: Print formatting instructions
+        if: ${{ failure() }}
+        run: |
+          echo "Run the following commands to format the code:"
+          echo "black --exclude='env|packages' ."
+          echo "isort --profile black --skip env --skip venv --skip worker/packages ."
+          echo "npx prettier --write 'server/fishtest/static/{css/*.css,html/*.html,js/*.js}'"
