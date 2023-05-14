@@ -29,9 +29,34 @@ jobs:
           python -m pip install pipx
           npm install --global prettier
 
-      - name: Run linters and formatters
+      - name: Run flake8
+        id: flake8
+        continue-on-error: true
         run: |
-          pipx run flake8 --count --statistics --max-line-length=88 --exclude worker/packages . && echo "✔️ flake8 succeded" || echo "❌ flake8 failed"
-          pipx run black --check --exclude="packages" . && echo "✔️ black succeded" || echo "❌ black failed"
-          pipx run isort --check --profile black --skip worker/packages . && echo "✔️ isort succeded" || echo "❌ isort failed"
-          prettier --check "server/fishtest/static/{css/*.css,html/*.html,js/*.js}" && echo "✔️ prettier succeded" || echo "❌ prettier failed"
+          pipx run flake8 --count --statistics --max-line-length=88 --exclude worker/packages .
+
+      - name: Run black
+        id: black
+        continue-on-error: true
+        run: |
+          pipx run black --check --exclude="packages" .
+
+      - name: Run isort
+        id: isort
+        continue-on-error: true
+        run: |
+          pipx run isort --check --profile black --skip worker/packages .
+
+      - name: Run prettier
+        id: prettier
+        continue-on-error: true
+        run: |
+          prettier --check "server/fishtest/static/{css/*.css,html/*.html,js/*.js}"
+
+      - name: Check linters and formatters status
+        run: |
+          if [[ "${{ steps.flake8.outcome }}" == "success" ]]; then echo "✔️ flake8"; else echo "❌ flake8"; fi
+          if [[ "${{ steps.black.outcome }}" == "success" ]]; then echo "✔️ black"; else echo "❌ black"; fi
+          if [[ "${{ steps.isort.outcome }}" == "success" ]]; then echo "✔️ isort"; else echo "❌ isort"; fi
+          if [[ "${{ steps.prettier.outcome }}" == "success" ]]; then echo "✔️ prettier"; else echo "❌ prettier"; fi
+          if [[ "${{ steps.black.outcome }}" == "failure" || "${{ steps.isort.outcome }}" == "failure" || "${{ steps.prettier.outcome }}" == "failure" ]]; then exit 1; fi
