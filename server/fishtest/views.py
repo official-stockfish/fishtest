@@ -1166,8 +1166,8 @@ def tests_stats(request):
     return {"run": run, "page_title": get_page_title(run)}
 
 
-@view_config(route_name="tasks", renderer="tasks.mak")
-def tasks(request):
+@view_config(route_name="tests_tasks", renderer="tasks.mak")
+def tests_tasks(request):
     r_id = request.matchdict["id"]
     run = request.rundb.runs.find_one(
         {"_id": ObjectId(r_id)}, {"tasks": 1, "bad_tasks": 1, "results": 1, "args": 1}

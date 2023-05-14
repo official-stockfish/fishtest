@@ -88,7 +88,7 @@ def main(global_config, **settings):
     config.add_route("tests_finished", "/tests/finished")
     config.add_route("tests_run", "/tests/run")
     config.add_route("tests_view", "/tests/view/{id}")
-    config.add_route("tasks", "/tasks/{id}")
+    config.add_route("tests_tasks", "/tests/tasks/{id}")
     config.add_route("tests_user", "/tests/user/{username}")
     config.add_route("tests_stats", "/tests/stats/{id}")
     config.add_route("tests_live_elo", "/tests/live_elo/{id}")
