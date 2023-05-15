@@ -69,12 +69,13 @@ function LRU(capacity, content) {
     remove(elt, timestamp) {
       const idx = this.content.findIndex((x) => x[0] == elt);
       if (idx == -1) {
-        return;
+        return false;
       } else {
         if (timestamp && timestamp != this.content[idx][1]) {
-          return;
+          return false;
         }
         this.content.splice(idx, 1);
+        return true;
       }
     },
   };
@@ -88,6 +89,14 @@ LRU.load = function (name) {
 const fishtest_notifications_key = "fishtest_notifications_v2";
 const fishtest_timestamp_key = "fishtest_timestamp";
 const fishtest_timestamp_purge_key = "fishtest_timestamp_purge";
+const fishtest_follow_lock = "fishtest_follow_lock";
+
+function has_web_locks() {
+  if (navigator.locks) {
+    return true;
+  }
+  return false;
+}
 
 function notify_fishtest_(message) {
   const div = document.getElementById("fallback_div");
@@ -151,7 +160,7 @@ function get_notifications() {
   try {
     notifications = LRU.load(fishtest_notifications_key);
     if (notifications["capacity"] != design_capacity) {
-      throw "";
+      throw "Incompatible LRU object found";
     }
     return notifications;
   } catch (e) {
@@ -220,9 +229,9 @@ async function purge_notifications(last_fetch_time) {
     }
     // If there was recent activity: keep.
     // It will be dealt with in the normal way.
-    json = [];
+    let json1 = [];
     try {
-      json = await fetch_post("/api/actions", {
+      json1 = await fetch_post("/api/actions", {
         action: {
           $in: ["finished_run", "stop_run", "delete_run"],
         },
@@ -233,22 +242,25 @@ async function purge_notifications(last_fetch_time) {
       console_log(e, true);
       return;
     }
-    if (json.length > 0) {
+    if (json1.length > 0) {
       continue;
     }
     work.push(entry);
   }
-  notifications = get_notifications();
   for (const entry of work) {
     const run_id = entry[0];
     const timestamp = entry[1];
-    notifications.remove(run_id, timestamp);
+    await unfollow_run(run_id, timestamp);
   }
-  save_notifications(notifications);
 }
 
 async function main_follow_loop() {
   await DOM_loaded();
+  if (has_web_locks()) {
+    console_log("Web locks supported!");
+  } else {
+    console_log("Web locks not supported!");
+  }
   await async_sleep(5000 + 10000 * Math.random());
   let last_notifications = null;
   while (true) {
@@ -299,20 +311,20 @@ async function main_follow_loop() {
     notifications = get_notifications();
     let work = [];
     for (const entry of json) {
-      let run_id = entry["run_id"];
+      const run_id = entry["run_id"];
       const ts = notifications.timestamp(run_id);
       // ignore events that happened before subscribing
       if (ts != -1 && entry["time"] >= ts / 1000) {
-        work.push(entry);
-        notifications.remove(run_id);
+        if (await unfollow_run(run_id)) {
+          work.push(entry);
+        }
       }
     }
-    save_notifications(notifications); // make sure other tabs see up to date data
     for (const entry of work) {
-      run_id = entry["run_id"];
+      const run_id = entry["run_id"];
       disable_notification(run_id);
       set_notification_status(run_id);
-      let json;
+      let json = [];
       try {
         json = await fetch_post("/api/actions", {
           action: "new_run",
@@ -338,17 +350,40 @@ async function main_follow_loop() {
   }
 }
 
-function follow_run(run_id) {
+function follow_run_(run_id) {
   const notifications = get_notifications();
   const ret = notifications.add(run_id);
   save_notifications(notifications);
   return ret;
 }
 
-function unfollow_run(run_id) {
+async function follow_run(run_id) {
+  if (navigator.locks) {
+    return navigator.locks.request(fishtest_follow_lock, async (lock) => {
+      return follow_run_(run_id);
+    });
+  } else {
+    return follow_run_(run_id);
+  }
+}
+
+function unfollow_run_(run_id, timestamp) {
   const notifications = get_notifications();
-  notifications.remove(run_id);
-  save_notifications(notifications);
+  const ret = notifications.remove(run_id, timestamp);
+  if (ret) {
+    save_notifications(notifications);
+  }
+  return ret;
+}
+
+async function unfollow_run(run_id, timestamp) {
+  if (navigator.locks) {
+    return navigator.locks.request(fishtest_follow_lock, async (lock) => {
+      return unfollow_run_(run_id, timestamp);
+    });
+  } else {
+    return unfollow_run_(run_id, timestamp);
+  }
 }
 
 function following_run(run_id) {
@@ -412,36 +447,36 @@ function set_notification_status(run_id) {
   broadcast("set_notification_status_", run_id);
 }
 
-function toggle_notifaction_status(run_id) {
+async function toggle_notifaction_status(run_id) {
   if (!following_run(run_id)) {
     if (supportsNotifications() && Notification.permission === "default") {
       Notification.requestPermission();
     }
-    const drop = follow_run(run_id);
+    const drop = await follow_run(run_id);
     if (drop) {
       set_notification_status(drop);
     }
   } else {
-    unfollow_run(run_id);
+    await unfollow_run(run_id);
   }
   set_notification_status(run_id);
 }
 
 // old style callback on main page: onclick="handle_notification(this)"
-function handle_notification(notification) {
+async function handle_notification(notification) {
   const run_id = notification.id.split("_")[1];
-  toggle_notifaction_status(run_id);
+  await toggle_notifaction_status(run_id);
 }
 
 // old style callback on tests_view page
-function handle_follow_button(button) {
+async function handle_follow_button(button) {
   const run_id = button.id.split("_")[2];
-  toggle_notifaction_status(run_id);
+  await toggle_notifaction_status(run_id);
 }
 
 // old style callback
-function handle_stop_delete_button(run_id) {
-  unfollow_run(run_id);
+async function handle_stop_delete_button(run_id) {
+  await unfollow_run(run_id);
   disable_notification(run_id);
 }
 
