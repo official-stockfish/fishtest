@@ -1,22 +1,23 @@
 <%inherit file="base.mak"/>
 
-<%
-  if 'spsa' in run['args']:
-    import json
-    spsa_data = json.dumps(run["args"]["spsa"])
+<%!
+  import json
+  import markupsafe
 %>
 
+<%namespace name="base" file="base.mak"/>
+
 % if show_task >= 0:
-<script>
-  document.documentElement.style="scroll-behavior:auto; overflow:hidden;";
-  function scroll_to(task_id) {
-    const task_offset = document.getElementById("task" + task_id).offsetTop;
-    const tasks_head_height = document.getElementById("tasks-head").offsetHeight;
-    const tasks_div = document.getElementById("tasks");
-    tasks_div.scrollIntoView();
-    tasks_div.scrollTop = task_offset - tasks_head_height;
-  }
-</script>
+  <script>
+    document.documentElement.style="scroll-behavior:auto; overflow:hidden;";
+    function scroll_to(task_id) {
+      const task_offset = document.getElementById("task" + task_id).offsetTop;
+      const tasks_head_height = document.getElementById("tasks-head").offsetHeight;
+      const tasks_div = document.getElementById("tasks");
+      tasks_div.scrollIntoView();
+      tasks_div.scrollTop = task_offset - tasks_head_height;
+    }
+  </script>
 % endif
 
 % if follow == 1:
@@ -36,236 +37,228 @@
   </script>
 % endif
 
-
-<%namespace name="base" file="base.mak"/>
-
 % if 'spsa' in run['args']:
-    <script src="https://www.gstatic.com/charts/loader.js"></script>
-    <script>
-      const spsa_data = ${spsa_data | n};
-    </script>
-    <script src="/js/spsa.js?v=${cache_busters['js/spsa.js']}"
-            integrity="sha384-${cache_busters['js/spsa.js']}"
-            crossorigin="anonymous"></script>
-    <script>
-      const spsa_promise = handle_spsa();
-    </script>
+  <script src="https://www.gstatic.com/charts/loader.js"></script>
+  <script>
+    const spsa_data = ${json.dumps(run["args"]["spsa"])|n};
+  </script>
+  <script src="/js/spsa.js?v=${cache_busters['js/spsa.js']}"
+          integrity="sha384-${cache_busters['js/spsa.js']}"
+          crossorigin="anonymous"></script>
+  <script>
+    const spsa_promise = handle_spsa();
+  </script>
 % else:
-    <script>
-      const spsa_promise = Promise.resolve();
-    </script>
+  <script>
+    const spsa_promise = Promise.resolve();
+  </script>
 % endif
 
 <div id="enclosure"${' style="visibility:hidden;"' if show_task >= 0 else "" |n}>
 
-<h2>
-  <span>${page_title}</span>
-  <a href="${h.diff_url(run)}" target="_blank" rel="noopener">diff</a>
-</h2>
+  <h2>
+    <span>${page_title}</span>
+    <a href="${h.diff_url(run)}" target="_blank" rel="noopener">diff</a>
+  </h2>
 
-<div class="elo-results-top">
-  <%include file="elo_results.mak" args="run=run" />
-</div>
+  <div class="elo-results-top">
+    <%include file="elo_results.mak" args="run=run" />
+  </div>
 
-<div class="row">
-  <div class="col-12 col-lg-9">
-    <h4>Details</h4>
-
-    <%!
-      import markupsafe
-    %>
-
-    <div class="table-responsive-lg">
-      <table class="table table-striped table-sm">
-        % for arg in run_args:
+  <div class="row">
+    <div class="col-12 col-lg-9">
+      <h4>Details</h4>
+      <div class="table-responsive-lg">
+        <table class="table table-striped table-sm">
+          % for arg in run_args:
             % if len(arg[2]) == 0:
-                <tr>
-                  <td>${arg[0]}</td>
-                  % if arg[0] == 'username':
-                      <td>
-                        <a href="/tests/user/${arg[1]}">${arg[1]}</a>
-                        % if approver:
-                            (<a href="/user/${arg[1]}">user admin</a>)
-                        % endif
-                      </td>
-                  % elif arg[0] == 'spsa':
-                      <td>
-                        ${arg[1][0]}<br>
-                        <table class="table table-sm">
-                          <thead>
-                            <tr>
-                              <th>param</th>
-                              <th>value</th>
-                              <th>start</th>
-                              <th>min</th>
-                              <th>max</th>
-                              <th>c</th>
-                              <th>c_end</th>
-                              <th>r</th>
-                              <th>r_end</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            % for row in arg[1][1:]:
-                                <tr class="spsa-param-row">
-                                  % for element in row:
-                                      <td>${element}</td>
-                                  % endfor
-                                </tr>
-                            % endfor
-                          </tbody>
-                        </table>
-                      </td>
-                  % elif arg[0] in ['resolved_new', 'resolved_base']:
-                      <td>${arg[1][:10]}</td>
-                  % elif arg[0] == 'rescheduled_from':
-                      <td><a href="/tests/view/${arg[1]}">${arg[1]}</a></td>
-                  % elif arg[0] == 'itp':
-                      <td>${f"{float(arg[1]):.2f}"}</a></td>
-                  % else:
-                      <td ${'class="run-info"' if arg[0]=="info" else "" | n}>
-                          ${str(markupsafe.Markup(arg[1])).replace('\n', '<br>') | n}
-                      </td>
-                  % endif
-                </tr>
-            % else:
-                <tr>
-                  <td>${arg[0]}</td>
+              <tr>
+                <td>${arg[0]}</td>
+                % if arg[0] == 'username':
                   <td>
-                    <a href="${arg[2]}" target="_blank" rel="noopener">
-                      ${str(markupsafe.Markup(arg[1]))}
-                    </a>
+                    <a href="/tests/user/${arg[1]}">${arg[1]}</a>
+                    % if approver:
+                      (<a href="/user/${arg[1]}">user admin</a>)
+                    % endif
                   </td>
-                </tr>
+                % elif arg[0] == 'spsa':
+                  <td>
+                    ${arg[1][0]}<br>
+                    <table class="table table-sm">
+                      <thead>
+                        <tr>
+                          <th>param</th>
+                          <th>value</th>
+                          <th>start</th>
+                          <th>min</th>
+                          <th>max</th>
+                          <th>c</th>
+                          <th>c_end</th>
+                          <th>r</th>
+                          <th>r_end</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        % for row in arg[1][1:]:
+                          <tr class="spsa-param-row">
+                          % for element in row:
+                            <td>${element}</td>
+                          % endfor
+                          </tr>
+                        % endfor
+                      </tbody>
+                    </table>
+                  </td>
+                % elif arg[0] in ['resolved_new', 'resolved_base']:
+                  <td>${arg[1][:10]}</td>
+                % elif arg[0] == 'rescheduled_from':
+                  <td><a href="/tests/view/${arg[1]}">${arg[1]}</a></td>
+                % elif arg[0] == 'itp':
+                  <td>${f"{float(arg[1]):.2f}"}</a></td>
+                % else:
+                  <td ${'class="run-info"' if arg[0]=="info" else "" | n}>
+                      ${str(markupsafe.Markup(arg[1])).replace('\n', '<br>') | n}
+                  </td>
+                % endif
+              </tr>
+            % else:
+              <tr>
+                <td>${arg[0]}</td>
+                <td>
+                  <a href="${arg[2]}" target="_blank" rel="noopener">
+                    ${str(markupsafe.Markup(arg[1]))}
+                  </a>
+                </td>
+              </tr>
             % endif
-        % endfor
-        <tr>
-          <td>events</td>
-          <td><a href="/actions?run_id=${str(run['_id'])}">/actions?run_id=${run['_id']}</a></td>
-        </tr>
-        % if 'spsa' not in run['args']:
+          % endfor
+          <tr>
+            <td>events</td>
+            <td><a href="/actions?run_id=${str(run['_id'])}">/actions?run_id=${run['_id']}</a></td>
+          </tr>
+          % if 'spsa' not in run['args']:
             <tr>
               <td>raw statistics</td>
               <td><a href="/tests/stats/${str(run['_id'])}">/tests/stats/${run['_id']}</a></td>
             </tr>
-        % endif
-      </table>
+          % endif
+        </table>
+      </div>
     </div>
-  </div>
 
-  <div class="col-12 col-lg-3">
-    <h4>Actions</h4>
-    <div class="row g-2 mb-2">
-      % if not run['finished']:
-        <div class="col-12 col-sm">
-          <form
-            action="/tests/stop"
-            method="POST"
-            onsubmit="handle_stop_delete_button('${run['_id']}'); return true;"
-          >
-            <input type="hidden" name="run-id" value="${run['_id']}">
-            <button type="submit" class="btn btn-danger w-100">
-              Stop
-            </button>
-          </form>
-        </div>
-
-        % if not run.get('approved', False):
+    <div class="col-12 col-lg-3">
+      <h4>Actions</h4>
+      <div class="row g-2 mb-2">
+        % if not run['finished']:
           <div class="col-12 col-sm">
-            <form action="/tests/approve" method="POST">
+            <form
+              action="/tests/stop"
+              method="POST"
+              onsubmit="handle_stop_delete_button('${run['_id']}'); return true;"
+            >
               <input type="hidden" name="run-id" value="${run['_id']}">
-              <button type="submit" id="approve-btn"
-                      class="btn ${'btn-success' if run['base_same_as_master'] else 'btn-warning'} w-100">
-                Approve
+              <button type="submit" class="btn btn-danger w-100">
+                Stop
               </button>
             </form>
           </div>
+
+          % if not run.get('approved', False):
+            <div class="col-12 col-sm">
+              <form action="/tests/approve" method="POST">
+                <input type="hidden" name="run-id" value="${run['_id']}">
+                <button type="submit" id="approve-btn"
+                        class="btn ${'btn-success' if run['base_same_as_master'] else 'btn-warning'} w-100">
+                  Approve
+                </button>
+              </form>
+            </div>
+          % endif
+        % else:
+          <div class="col-12 col-sm">
+            <form action="/tests/purge" method="POST">
+              <input type="hidden" name="run-id" value="${run['_id']}">
+              <button type="submit" class="btn btn-danger w-100">Purge</button>
+            </form>
+          </div>
         % endif
-      % else:
         <div class="col-12 col-sm">
-          <form action="/tests/purge" method="POST">
-            <input type="hidden" name="run-id" value="${run['_id']}">
-            <button type="submit" class="btn btn-danger w-100">Purge</button>
-          </form>
+          <a class="btn btn-light border w-100" href="/tests/run?id=${run['_id']}">Reschedule</a>
+        </div>
+      </div>
+
+      % if run.get('base_same_as_master') is not None:
+        % if run['base_same_as_master']:
+          <div id="master-diff" class="alert alert-success">
+            Base branch same as Stockfish master
+        % else:
+          <div id="master-diff" class="alert alert-danger mb-2">
+            Base branch not same as Stockfish master
+        % endif
         </div>
       % endif
-      <div class="col-12 col-sm">
-        <a class="btn btn-light border w-100" href="/tests/run?id=${run['_id']}">Reschedule</a>
-      </div>
-    </div>
 
-    % if run.get('base_same_as_master') is not None:
-        % if run['base_same_as_master']:
-            <div id="master-diff" class="alert alert-success">
-              Base branch same as Stockfish master
-        % else:
-            <div id="master-diff" class="alert alert-danger mb-2">
-              Base branch not same as Stockfish master
-        % endif
-            </div>
-    % endif
-
-    % if not run.get('base_same_as_master'):
+      % if not run.get('base_same_as_master'):
         <div class="alert alert-warning">
           <a class="alert-link" href="${h.master_diff_url(run)}" target="_blank" rel="noopener">Master diff</a>
         </div>
-    % endif
+      % endif
 
-    <hr>
+      <hr>
 
-    <form class="form" action="/tests/modify" method="POST">
-      <div class="mb-3">
-        <label class="form-label" for="modify-num-games">Number of games</label>
-        <input
-          type="number"
-          class="form-control"
-          name="num-games"
-          id="modify-num-games"
-          min="0"
-          step="1000"
-          value="${run['args']['num_games']}"
-        >
-      </div>
+      <form class="form" action="/tests/modify" method="POST">
+        <div class="mb-3">
+          <label class="form-label" for="modify-num-games">Number of games</label>
+          <input
+            type="number"
+            class="form-control"
+            name="num-games"
+            id="modify-num-games"
+            min="0"
+            step="1000"
+            value="${run['args']['num_games']}"
+          >
+        </div>
 
-      <div class="mb-3">
-        <label class="form-label" for="modify-priority">Priority (higher is more urgent)</label>
-        <input
-          type="number"
-          class="form-control"
-          name="priority"
-          id="modify-priority"
-          value="${run['args']['priority']}"
-        >
-      </div>
+        <div class="mb-3">
+          <label class="form-label" for="modify-priority">Priority (higher is more urgent)</label>
+          <input
+            type="number"
+            class="form-control"
+            name="priority"
+            id="modify-priority"
+            value="${run['args']['priority']}"
+          >
+        </div>
 
-      <label class="form-label" for="modify-throughput">Throughput</label>
-      <div class="mb-3 input-group">
-        <input
-          type="number"
-          class="form-control"
-          name="throughput"
-          id="modify-throughput"
-          min="0"
-          value="${run['args'].get('throughput', 1000)}"
-        >
-        <span class="input-group-text">%</span>
-      </div>
+        <label class="form-label" for="modify-throughput">Throughput</label>
+        <div class="mb-3 input-group">
+          <input
+            type="number"
+            class="form-control"
+            name="throughput"
+            id="modify-throughput"
+            min="0"
+            value="${run['args'].get('throughput', 1000)}"
+          >
+          <span class="input-group-text">%</span>
+        </div>
 
-      <div class="mb-3 form-check">
-        <input
-          type="checkbox"
-          class="form-check-input"
-          id="auto-purge"
-          name="auto_purge" ${'checked' if run['args'].get('auto_purge') else ''}
-        >
-        <label class="form-check-label" for="auto-purge">Auto-purge</label>
-      </div>
+        <div class="mb-3 form-check">
+          <input
+            type="checkbox"
+            class="form-check-input"
+            id="auto-purge"
+            name="auto_purge" ${'checked' if run['args'].get('auto_purge') else ''}
+          >
+          <label class="form-check-label" for="auto-purge">Auto-purge</label>
+        </div>
 
-      <input type="hidden" name="run" value="${run['_id']}">
-      <button type="submit" class="btn btn-primary col-12 col-md-auto">Modify</button>
-    </form>
+        <input type="hidden" name="run" value="${run['_id']}">
+        <button type="submit" class="btn btn-primary col-12 col-md-auto">Modify</button>
+      </form>
 
-    % if 'spsa' not in run['args']:
+      % if 'spsa' not in run['args']:
         <hr>
 
         <h4>Stats</h4>
@@ -274,26 +267,26 @@
           <tr><td>dof</td><td>${chi2['dof']}</td></tr>
           <tr><td>p-value</td><td>${f"{chi2['p']:.2%}"}</td></tr>
         </table>
-    % endif
+      % endif
 
-    <hr>
+      <hr>
 
-    <h4>Time</h4>
-    <table class="table table-striped table-sm">
-      <tr><td>start time</td><td>${run['start_time'].strftime("%Y-%m-%d %H:%M:%S")}</td></tr>
-      <tr><td>last updated</td><td>${run['last_updated'].strftime("%Y-%m-%d %H:%M:%S")}</td></tr>
-    </table>
+      <h4>Time</h4>
+      <table class="table table-striped table-sm">
+        <tr><td>start time</td><td>${run['start_time'].strftime("%Y-%m-%d %H:%M:%S")}</td></tr>
+        <tr><td>last updated</td><td>${run['last_updated'].strftime("%Y-%m-%d %H:%M:%S")}</td></tr>
+      </table>
 
-    <hr>
-    % if not run['finished']:
-      <h4>Notifications</h4>
+      <hr>
+      % if not run['finished']:
+        <h4>Notifications</h4>
         <button id="follow_button_${run['_id']}" class="btn btn-primary col-12 col-md-auto" onclick="handle_follow_button(this)" style="display:none;margin-top:0.2em";></button>
         <hr style="visibility:hidden;">
-    % endif
+      % endif
+    </div>
   </div>
-</div>
 
-% if 'spsa' in run['args']:
+  % if 'spsa' in run['args']:
     <div id="div_spsa_preload" class="col-lg-3">
       <div class="pt-1 text-center">
         Loading graph...
@@ -323,74 +316,73 @@
     <div class="overflow-auto">
       <div id="div_spsa_history_plot"></div>
     </div>
-% endif
+  % endif
 
-<div id="diff-section" style="display: none">
+  <div id="diff-section" style="display: none">
+    <h4>
+      <button id="diff-toggle" class="btn btn-sm btn-light border mb-2">Show</button>
+      Diff
+      <span id="diff-num-comments" style="display: none"></span>
+      <a
+        href="${h.diff_url(run)}"
+        class="btn btn-primary bg-light-primary border-0 mb-2"
+        target="_blank" rel="noopener"
+      >
+        View on Github
+      </a>
+
+      <a
+        href="javascript:"
+        id="copy-diff"
+        class="btn btn-secondary bg-light-secondary border-0 mb-2"
+        style="display: none"
+      >
+        Copy apply-diff command
+      </a>
+
+      <span class="text-success copied text-nowrap" style="display: none">Copied!</span>
+    </h4>
+    <pre id="diff-contents"><code class="diff"></code></pre>
+  </div>
+
   <h4>
-    <button id="diff-toggle" class="btn btn-sm btn-light border mb-2">Show</button>
-    Diff
-    <span id="diff-num-comments" style="display: none"></span>
-    <a
-      href="${h.diff_url(run)}"
-      class="btn btn-primary bg-light-primary border-0 mb-2"
-      target="_blank" rel="noopener"
-    >
-      View on Github
-    </a>
-
-    <a
-      href="javascript:"
-      id="copy-diff"
-      class="btn btn-secondary bg-light-secondary border-0 mb-2"
-      style="display: none"
-    >
-      Copy apply-diff command
-    </a>
-
-    <span class="text-success copied text-nowrap" style="display: none">Copied!</span>
+      <a
+        id="tasks-button" class="btn btn-sm btn-light border"
+        data-bs-toggle="collapse" href="#tasks" role="button" aria-expanded="false"
+        aria-controls="tasks"
+      >
+        ${'Hide' if tasks_shown else 'Show'}
+      </a>
+    Tasks ${totals}
   </h4>
-  <pre id="diff-contents"><code class="diff"></code></pre>
-</div>
-
-<h4>
-    <a
-      id="tasks-button" class="btn btn-sm btn-light border" 
-      data-bs-toggle="collapse" href="#tasks" role="button" aria-expanded="false"
-      aria-controls="tasks"
-    >
-      ${'Hide' if tasks_shown else 'Show'}
-    </a>
-  Tasks ${totals}
-</h4>
-<div id="tasks"
-     class="overflow-auto ${'collapse show' if tasks_shown else 'collapse'}">
-  <table class='table table-striped table-sm'>
-    <thead id="tasks-head" class="sticky-top">
-      <tr>
-        <th>Idx</th>
-        <th>Worker</th>
-        <th>Info</th>
-        <th>Last Updated</th>
-        <th>Played</th>
-        % if 'pentanomial' not in run['results']:
+  <div id="tasks"
+       class="overflow-auto ${'collapse show' if tasks_shown else 'collapse'}">
+    <table class='table table-striped table-sm'>
+      <thead id="tasks-head" class="sticky-top">
+        <tr>
+          <th>Idx</th>
+          <th>Worker</th>
+          <th>Info</th>
+          <th>Last Updated</th>
+          <th>Played</th>
+          % if 'pentanomial' not in run['results']:
             <th>Wins</th>
             <th>Losses</th>
             <th>Draws</th>
-        % else:
+          % else:
             <th>Pentanomial&nbsp;[0&#8209;2]</th>
-        % endif
-        <th>Crashes</th>
-        <th>Time</th>
+          % endif
+          <th>Crashes</th>
+          <th>Time</th>
 
-        % if 'spsa' not in run['args']:
+          % if 'spsa' not in run['args']:
             <th>Residual</th>
-        % endif
-      </tr>
-    </thead>
-    <tbody id="tasks-body"></tbody>
-  </table>
-</div>
-
+          % endif
+        </tr>
+      </thead>
+      <tbody id="tasks-body"></tbody>
+    </table>
+  </div>
 ## End of enclosing div to be able to make things invisible.
 </div>
 
@@ -500,11 +492,11 @@
       await renderTasks();
       button.textContent = "Hide";
     }
-    
+
     document.cookie =
       'tasks_state' + '=' + button.textContent.trim() + ";max-age=${60 * 60};SameSite=Lax;";
   }
-    
+
   async function handle_diff() {
     await DOM_loaded();
     let copyDiffBtn = document.getElementById("copy-diff");

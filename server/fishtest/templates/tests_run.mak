@@ -1,10 +1,13 @@
 <%inherit file="base.mak"/>
 
-<%
+<%!
   from fishtest.util import format_bounds
   elo_model = "normalized"
-  fb = lambda e0,e1:format_bounds(elo_model, e0, e1)
-
+  fb = lambda e0, e1: format_bounds(elo_model, e0, e1)
+  test_book = "UHO_XXL_+0.90_+1.19.epd"
+  pt_book = "8moves_v3.pgn"
+%>
+<%
   base_branch = args.get('base_tag', 'master')
   latest_bench = args.get('base_signature', master_info["bench"])
 
@@ -14,9 +17,6 @@
 
   tc = args.get('tc', '10+0.1')
   new_tc = args.get('new_tc', tc)
-
-  test_book = "UHO_XXL_+0.90_+1.19.epd"
-  pt_book = "8moves_v3.pgn"
 
   default_book = args.get('book', test_book)
 
@@ -621,14 +621,14 @@
       </div>
 
       % if 'resolved_base' in args:
-          <input type="hidden" name="resolved_base" value="${args['resolved_base']}">
-          <input type="hidden" name="resolved_new" value="${args['resolved_new']}">
-          <input type="hidden" name="msg_base" value="${args.get('msg_base', '')}">
-          <input type="hidden" name="msg_new" value="${args.get('msg_new', '')}">
+        <input type="hidden" name="resolved_base" value="${args['resolved_base']}">
+        <input type="hidden" name="resolved_new" value="${args['resolved_new']}">
+        <input type="hidden" name="msg_base" value="${args.get('msg_base', '')}">
+        <input type="hidden" name="msg_new" value="${args.get('msg_new', '')}">
       % endif
 
       % if is_rerun:
-          <input type="hidden" name="rescheduled_from" value="${rescheduled_from}">
+        <input type="hidden" name="rescheduled_from" value="${rescheduled_from}">
       % endif
     </div>
   </div>
@@ -639,11 +639,11 @@
   window.addEventListener("pageshow", () => {
     // make sure form_submitted is set back to false
     form_submitted = false;
-    
+
     // make sure the submit test button is enabled again and has the correct text.
     document.getElementById('submit-test').disabled = false;
     document.getElementById('submit-test').textContent = 'Submit test';
-    
+
     // Also make sure that the fields have the right visibility.
     update_odds(document.getElementById('checkbox-time-odds'));
     update_book_visibility(document.getElementById('checkbox-book-visibility'));

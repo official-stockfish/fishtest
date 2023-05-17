@@ -7,11 +7,11 @@
 <h2>Neural Network Repository</h2>
 
 <p>
-These networks are freely available for download and sharing under a
-<a href="https://creativecommons.org/share-your-work/public-domain/cc0/">CC0</a> license.<br><br>
-Nets colored <span class="default-net">green</span> in the table have passed fishtest testing
-and achieved the status of <i>default net</i> during the development of Stockfish.<br><br>
-The recommended net for a given Stockfish executable can be found as the default value of the EvalFile UCI option.
+  These networks are freely available for download and sharing under a
+  <a href="https://creativecommons.org/share-your-work/public-domain/cc0/">CC0</a> license.<br><br>
+  Nets colored <span class="default-net">green</span> in the table have passed fishtest testing
+  and achieved the status of <i>default net</i> during the development of Stockfish.<br><br>
+  The recommended net for a given Stockfish executable can be found as the default value of the EvalFile UCI option.
 </p>
 
 <form class="row mb-3" id="search_nn">
@@ -72,29 +72,29 @@ The recommended net for a given Stockfish executable can be found as the default
     </thead>
     <tbody>
       % for nn in nns:
-          % if not master_only or 'is_master' in nn:
-              <tr>
-                <td>${nn['time'].strftime("%y-%m-%d %H:%M:%S")}</td>
-                % if 'is_master' in nn:
-                    <td class="default-net">
-                % else:
-                    <td>
-                % endif
-                <a href="api/nn/${nn['name']}" style="font-family:monospace">${nn['name']}</a></td>
-                <td>${nn['user']}</td>
-                <td>
-                  % if 'first_test' in nn:
-                      <a href="tests/view/${nn['first_test']['id']}">${str(nn['first_test']['date']).split('.')[0]}</a>
-                  % endif
-                </td>
-                <td>
-                  % if 'last_test' in nn:
-                      <a href="tests/view/${nn['last_test']['id']}">${str(nn['last_test']['date']).split('.')[0]}</a>
-                  % endif
-                </td>
-                <td style="text-align:right">${nn.get('downloads', 0)}</td>
-              </tr>
-          % endif
+        % if not master_only or 'is_master' in nn:
+          <tr>
+            <td>${nn['time'].strftime("%y-%m-%d %H:%M:%S")}</td>
+            % if 'is_master' in nn:
+              <td class="default-net">
+            % else:
+              <td>
+            % endif
+            <a href="api/nn/${nn['name']}" style="font-family:monospace">${nn['name']}</a></td>
+            <td>${nn['user']}</td>
+            <td>
+              % if 'first_test' in nn:
+                <a href="tests/view/${nn['first_test']['id']}">${str(nn['first_test']['date']).split('.')[0]}</a>
+              % endif
+            </td>
+            <td>
+              % if 'last_test' in nn:
+                <a href="tests/view/${nn['last_test']['id']}">${str(nn['last_test']['date']).split('.')[0]}</a>
+              % endif
+            </td>
+            <td style="text-align:right">${nn.get('downloads', 0)}</td>
+          </tr>
+        % endif
       % endfor
     </tbody>
   </table>

@@ -86,9 +86,6 @@
     >
   </div>
 
-
-
-
   <div class="col-12 col-md-auto mb-3 d-flex align-items-end">
     <button type="submit" class="btn btn-success w-100">Search</button>
   </div>
@@ -109,33 +106,33 @@
     </thead>
     <tbody>
       % for action in actions:
-          <tr>
-            ## Dates in mongodb have millisecond precision. So they fit comfortably in a float without precision loss.
-            <td><a href="/actions?max_actions=1&amp;action=${action_param}&amp;user=${username_param|u,n}&amp;text=${text_param|u,n}&amp;before=${action['time']}&amp;run_id=${run_id_param}">
-             ${datetime.datetime.utcfromtimestamp(action['time']).strftime(r"%y&#8209;%m&#8209;%d %H:%M:%S")|n}</a></td>
-            <td>${action['action']}</td>
-	    <%
-               if 'worker' in action:
-                 agent = action['worker']
-               else:
-                 agent = action['username']
-	    %>
-            % if approver and 'fishtest.' not in action['username']:
-                <td><a href="/user/${action['username']}">${agent|n}</a></td>
-            % else:
-                <td>${agent|n}</td>
-            % endif
-            % if 'nn' in action:
-                <td><a href=/api/nn/${action['nn']}>${action['nn'].replace('-', '&#8209;')|n}</a></td>
-            % elif 'run' in action and 'run_id' in action:
-                <td><a href="/tests/view/${action['run_id']}${"?show_task={}".format(action["task_id"]) if "task_id" in action else ""}">${action['run']}${("/{}".format(action["task_id"]) if "task_id" in action else "")}</a></td>
-            % elif approver and 'user' in action:
-                <td><a href="/user/${action['user']}">${action['user']}</a></td>
-            % else:
-                <td>${action.get('user','')}</td>
-            % endif
-            <td class="text-break">${action.get('message','')}</td>
-          </tr>
+        <tr>
+          ## Dates in mongodb have millisecond precision. So they fit comfortably in a float without precision loss.
+          <td><a href="/actions?max_actions=1&amp;action=${action_param}&amp;user=${username_param|u,n}&amp;text=${text_param|u,n}&amp;before=${action['time']}&amp;run_id=${run_id_param}">
+                 ${datetime.datetime.utcfromtimestamp(action['time']).strftime(r"%y&#8209;%m&#8209;%d %H:%M:%S")|n}</a></td>
+          <td>${action['action']}</td>
+          <%
+            if 'worker' in action:
+              agent = action['worker']
+            else:
+              agent = action['username']
+          %>
+          % if approver and 'fishtest.' not in action['username']:
+            <td><a href="/user/${action['username']}">${agent|n}</a></td>
+          % else:
+            <td>${agent|n}</td>
+          % endif
+          % if 'nn' in action:
+            <td><a href=/api/nn/${action['nn']}>${action['nn'].replace('-', '&#8209;')|n}</a></td>
+          % elif 'run' in action and 'run_id' in action:
+            <td><a href="/tests/view/${action['run_id']}${"?show_task={}".format(action["task_id"]) if "task_id" in action else ""}">${action['run']}${("/{}".format(action["task_id"]) if "task_id" in action else "")}</a></td>
+          % elif approver and 'user' in action:
+            <td><a href="/user/${action['user']}">${action['user']}</a></td>
+          % else:
+            <td>${action.get('user','')}</td>
+          % endif
+          <td class="text-break">${action.get('message','')}</td>
+        </tr>
       % endfor
     </tbody>
   </table>

@@ -57,34 +57,34 @@
       )
   %>
   % for i in range(l):
-      ${info[i].replace("ELO", "Elo") if elo_ptnml_run and i == 0 else info[i]}
-      % if i < l-1:
-          <br>
-      % endif
+    ${info[i].replace("ELO", "Elo") if elo_ptnml_run and i == 0 else info[i]}
+    % if i < l-1:
+      <br>
+    % endif
   % endfor
   % if elo_ptnml_run:
-      <br>
-      ${f"nElo: {nelo5:.2f} +-{nelo5_delta:.1f} (95%) PairsRatio: {results5_pairs_ratio:.2f}"}
+    <br>
+    ${f"nElo: {nelo5:.2f} +-{nelo5_delta:.1f} (95%) PairsRatio: {results5_pairs_ratio:.2f}"}
   % endif
 </%def>
 
 % if 'sprt' in run['args'] and 'Pending' not in run['results_info']['info'][0]:
-    <a href="/tests/live_elo/${str(run['_id'])}" style="color: inherit;">
+  <a href="/tests/live_elo/${str(run['_id'])}" style="color: inherit;">
 % endif
 % if show_gauge:
-    <div id="chart_div_${str(run['_id'])}" style="width:90px;float:left;"></div>
-    % if 'sprt' in run['args'] and 'Pending' not in run['results_info']['info'][0]:
-        <div style="margin-left:90px;padding: 30px 0;">
-    % else:
-        <div style="margin-left:90px;">
-    % endif
+  <div id="chart_div_${str(run['_id'])}" style="width:90px;float:left;"></div>
+  % if 'sprt' in run['args'] and 'Pending' not in run['results_info']['info'][0]:
+    <div style="margin-left:90px;padding: 30px 0;">
+  % else:
+    <div style="margin-left:90px;">
+  % endif
 % endif
 <pre ${results_pre_attrs(run)|n}>
   ${list_info(run)}
 </pre>
 % if show_gauge:
-    </div>
+  </div>
 % endif
 % if 'sprt' in run['args'] and 'Pending' not in run['results_info']['info'][0]:
-    </a>
+  </a>
 % endif
