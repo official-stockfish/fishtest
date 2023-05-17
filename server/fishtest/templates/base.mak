@@ -18,7 +18,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <script>
-      darkThemeHash = "${cache_busters['css/theme.dark.css']}";
+      const darkThemeHash = "${cache_busters['css/theme.dark.css']}";
     </script>
 
     <link rel="stylesheet"
@@ -44,10 +44,10 @@
           crossorigin="anonymous">
 
     % if request.cookies.get('theme') == 'dark':
-        <link rel="stylesheet"
-              href="/css/theme.dark.css?v=${cache_busters['css/theme.dark.css']}"
-              integrity="sha384-${cache_busters['css/theme.dark.css']}"
-              crossorigin="anonymous">
+      <link rel="stylesheet"
+            href="/css/theme.dark.css?v=${cache_busters['css/theme.dark.css']}"
+            integrity="sha384-${cache_busters['css/theme.dark.css']}"
+            crossorigin="anonymous">
     % endif
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.2.3/js/bootstrap.bundle.min.js"
@@ -248,24 +248,24 @@
                 </script>
               </div>
               % if request.session.peek_flash('error'):
-                  <% flash = request.session.pop_flash('error') %>
-                  % for message in flash:
-                      <div class="alert alert-danger alert-dismissible">
-                        ${message}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">
-                        </button>
-                      </div>
-                  % endfor
+                <% flash = request.session.pop_flash('error') %>
+                % for message in flash:
+                  <div class="alert alert-danger alert-dismissible">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">
+                    </button>
+                  </div>
+                % endfor
               % endif
               % if request.session.peek_flash():
-                  <% flash = request.session.pop_flash() %>
-                  % for message in flash:
-                      <div class="alert alert-success alert-dismissible">
-                        ${message}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">
-                        </button>
-                      </div>
-                  % endfor
+                <% flash = request.session.pop_flash() %>
+                % for message in flash:
+                  <div class="alert alert-success alert-dismissible">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">
+                    </button>
+                  </div>
+                % endfor
               % endif
             </div>
             <div>${self.body()}</div>

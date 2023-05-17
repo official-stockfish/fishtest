@@ -16,11 +16,11 @@
 <h2>
   Finished Tests
   % if 'success_only' in request.url:
-      - Greens
+    - Greens
   % elif 'yellow_only' in request.url:
-      - Yellows
+    - Yellows
   % elif 'ltc_only' in request.url:
-      - LTC
+    - LTC
   % endif
 </h2>
 
@@ -28,5 +28,5 @@
                                      header='Finished',
                                      count=num_finished_runs,
                                      pages=finished_runs_pages,
-                     title=title"
+                                     title=title"
 />
