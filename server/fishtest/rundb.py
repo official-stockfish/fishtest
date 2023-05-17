@@ -1102,7 +1102,9 @@ class RunDb:
             if key == "pentanomial":
                 run["results"][key] = [
                     x + y - z
-                    for x, y, z in zip(run["results"][key], value, task["stats"].get(key, [0] * 5))
+                    for x, y, z in zip(
+                        run["results"][key], value, task["stats"].get(key, [0] * 5)
+                    )
                 ]
             else:
                 run["results"][key] += value - task["stats"].get(key, 0)
