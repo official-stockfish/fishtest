@@ -11,10 +11,7 @@ import fishtest.stats.stat_util
 import requests
 from bson.objectid import ObjectId
 from fishtest.util import (
-    delta_date,
-    diff_date,
     email_valid,
-    estimate_game_duration,
     format_bounds,
     format_results,
     get_chi2,
@@ -1189,6 +1186,28 @@ def tests_tasks(request):
     }
 
 
+@view_config(route_name="tests_machines", http_cache=10, renderer="machines.mak")
+def tests_machines(request):
+    active_runs = request.rundb.runs.find({"finished": False}, {"tasks": 1, "args": 1})
+    if active_runs is None:
+        raise exception_response(404)
+
+    machines_list = (
+        task["worker_info"]
+        | {
+            "last_updated": task.get("last_updated", None),
+            "run": run,
+            "task_id": task_id,
+        }
+        for run in active_runs
+        if any(task["active"] for task in reversed(run["tasks"]))
+        for task_id, task in enumerate(run["tasks"])
+        if task["active"]
+    )
+
+    return {"machines_list": machines_list}
+
+
 @view_config(route_name="tests_view", renderer="tests_view.mak")
 def tests_view(request):
     run = request.rundb.get_run(request.matchdict["id"])
@@ -1420,29 +1439,16 @@ def homepage_results(request):
 
     (
         runs,
-        machines,
         pending_hours,
         cores,
         nps,
+        games_per_minute,
+        machines_count,
     ) = request.rundb.aggregate_unfinished_runs()
-    # Calculate games_per_minute from current machines
-    games_per_minute = 0.0
-    for machine in machines:
-        diff = diff_date(machine["last_updated"])
-        machine["last_updated"] = delta_date(diff)
-        if machine["nps"] != 0:
-            games_per_minute += (
-                (machine["nps"] / 1328000.0)
-                * (60.0 / estimate_game_duration(machine["run"]["args"]["tc"]))
-                * (
-                    int(machine["concurrency"])
-                    // machine["run"]["args"].get("threads", 1)
-                )
-            )
     return {
         **get_paginated_finished_runs(request),
         "runs": runs,
-        "machines": machines,
+        "machines_count": machines_count,
         "pending_hours": "{:.1f}".format(pending_hours),
         "cores": cores,
         "nps": nps,

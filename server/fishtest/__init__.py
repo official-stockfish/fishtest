@@ -85,6 +85,7 @@ def main(global_config, **settings):
     config.add_route("sprt_calc", "/sprt_calc")
 
     config.add_route("tests", "/tests")
+    config.add_route("tests_machines", "/tests/machines")
     config.add_route("tests_finished", "/tests/finished")
     config.add_route("tests_run", "/tests/run")
     config.add_route("tests_view", "/tests/view/{id}")

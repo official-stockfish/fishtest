@@ -18,7 +18,6 @@
 <script>
   function toggle_${toggle}() {
     const button = document.getElementById("${toggle}-button");
-    const div = document.getElementById("${toggle}");
     const active = button.textContent.trim() === "Hide";
     button.textContent = active ? "Show" : "Hide";
     document.cookie =

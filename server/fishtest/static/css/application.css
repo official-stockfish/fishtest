@@ -528,10 +528,6 @@ td {
   text-align: left;
 }
 
-#machines {
-  max-height: 45vh;
-}
-
 #diff-contents {
   max-height: 70vh;
 }
@@ -625,4 +621,30 @@ input[type="checkbox"],
 .list-group-item-check:disabled + .list-group-item {
   pointer-events: none;
   opacity: 0.5;
+}
+
+#machines {
+  max-height: 41vh;
+}
+
+#machines td {
+  height: 37px;
+  text-align: center;
+}
+
+#machines th {
+  padding-bottom: 1.1vh;
+  text-align: center;
+  white-space: nowrap !important;
+}
+
+/* Override the background color of the Skeleton card */
+.ssc-wrapper {
+  background-color: transparent !important;
+  padding: 0.9vh 0vh 0vh 0vh !important;
+}
+
+.ssc-head-line {
+  height: 3.4vh !important;
+  margin-bottom: 2vh !important;
 }
