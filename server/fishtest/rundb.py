@@ -493,23 +493,28 @@ class RunDb:
             ),
         )
 
-        machines = []
-        for run in runs["active"]:
-            for task_id, task in enumerate(run["tasks"]):
-                if task["active"]:
-                    machine = copy.copy(task["worker_info"])
-                    machine["last_updated"] = task.get("last_updated", None)
-                    machine["run"] = run
-                    machine["task_id"] = task_id
-                    machines.append(machine)
-
         # Calculate but don't save results_info on runs using info on current machines
         cores = 0
         nps = 0
-        for m in machines:
-            concurrency = int(m["concurrency"])
-            cores += concurrency
-            nps += concurrency * m["nps"]
+        games_per_minute = 0.0
+        machines_count = 0
+        for run in runs["active"]:
+            for task_id, task in enumerate(run["tasks"]):
+                if task["active"]:
+                    machines_count += 1
+                    concurrency = int(task["worker_info"]["concurrency"])
+                    cores += concurrency
+                    nps += concurrency * task["worker_info"]["nps"]
+                    if task["worker_info"]["nps"] != 0:
+                        games_per_minute += (
+                            (task["worker_info"]["nps"] / 1328000.0)
+                            * (60.0 / estimate_game_duration(run["args"]["tc"]))
+                            * (
+                                int(task["worker_info"]["concurrency"])
+                                // run["args"].get("threads", 1)
+                            )
+                        )
+
         pending_hours = 0
         for run in runs["pending"] + runs["active"]:
             if cores > 0:
@@ -526,7 +531,7 @@ class RunDb:
                     run["results_info"]["info"].append(
                         format_bounds(elo_model, sprt["elo0"], sprt["elo1"])
                     )
-        return (runs, machines, pending_hours, cores, nps)
+        return (runs, pending_hours, cores, nps, games_per_minute, machines_count)
 
     def get_finished_runs(
         self,

@@ -186,9 +186,7 @@ async function follow_live(test_id) {
     try {
       const m = await fetch_json("/api/get_elo/" + test_id + "?" + timestamp);
       display_data(m);
-      if (m.args.sprt.state) {
-        return;
-      }
+      if (m.args.sprt.state) return;
     } catch (e) {
       console.log("Network error: " + e);
     }

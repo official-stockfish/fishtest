@@ -466,7 +466,7 @@
   document.title = "${page_title} | Stockfish Testing";
 
   let fetchedTasksBefore = false;
-  async function handleRenderOnLoad(){
+  async function handleRenderTasks(){
       await DOM_loaded();
       const tasksButton = document.getElementById("tasks-button");
       tasksButton?.addEventListener("click", async () => {
@@ -492,7 +492,6 @@
 
   async function toggle_tasks() {
     const button = document.getElementById("tasks-button");
-    const div = document.getElementById("tasks");
     const active = button.textContent.trim() === 'Hide';
     if (active){
       button.textContent = "Show";
@@ -625,7 +624,7 @@
   }
 
   const diff_promise = handle_diff();
-  const renderOnLoad = handleRenderOnLoad();
+  const renderOnLoad = handleRenderTasks();
 
   Promise.all([spsa_promise, diff_promise, renderOnLoad])
     .then(() => {

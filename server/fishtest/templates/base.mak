@@ -34,6 +34,11 @@
        	  referrerpolicy="no-referrer">
 
     <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/skeleton-screen-css@1.1.0/dist/index.min.css"
+          integrity="sha384-bVhC78CCZuU0Ls4O2v9Jvh01lwXOdpJm+f1HFJZ81vNIB+S88EM7jx/vyLOlQUGC"
+          crossorigin="anonymous">
+
+    <link rel="stylesheet"
           href="/css/application.css?v=${cache_busters['css/application.css']}"
           integrity="sha384-${cache_busters['css/application.css']}"
           crossorigin="anonymous">
