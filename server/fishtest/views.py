@@ -1302,13 +1302,7 @@ def tests_view(request):
         if name == "spsa":
             run_args.append(("spsa", value, ""))
         else:
-            try:
-                strval = str(value)
-            except:
-                strval = value.encode("ascii", "replace")
-            if name not in ["new_tag", "base_tag"]:
-                strval = html.escape(strval)
-            run_args.append((name, strval, url))
+            run_args.append((name, html.escape(str(value)), url))
 
     active = 0
     cores = 0
