@@ -1,8 +1,8 @@
 <%
   monitoring = request.rundb.conn["admin"].command("getFreeMonitoringStatus")
   try:
-    if monitoring["state"] == "enabled":
-      monitoring_url = monitoring["userReminder"].split()[-1].strip()
+    if monitoring["debug"]["state"] == "enabled":
+      monitoring_url = monitoring["debug"]["userReminder"].split()[-1].strip()
       monitoring_url = monitoring_url if monitoring_url.startswith("https") else ""
     else:
       monitoring_url = ""
@@ -178,7 +178,7 @@
                     <li><a href="/users" class="links-link rounded">Contributors</a></li>
                     <li><a href="/users/monthly" class="links-link rounded">Top Month</a></li>
                     <li><a href="/actions" class="links-link rounded">Events</a></li>
-                    % if monitoring["state"] == 'enabled' and monitoring_url:
+                    % if monitoring["debug"]["state"] == 'enabled' and monitoring_url:
                       <li><a href=${monitoring_url} target="_blank" rel="noopener" class="links-link rounded">Monitoring</a></li>
                     % endif
                     <li>
