@@ -1188,24 +1188,7 @@ def tests_tasks(request):
 
 @view_config(route_name="tests_machines", http_cache=10, renderer="machines.mak")
 def tests_machines(request):
-    active_runs = request.rundb.runs.find({"finished": False}, {"tasks": 1, "args": 1})
-    if active_runs is None:
-        raise exception_response(404)
-
-    machines_list = (
-        task["worker_info"]
-        | {
-            "last_updated": task.get("last_updated", None),
-            "run": run,
-            "task_id": task_id,
-        }
-        for run in active_runs
-        if any(task["active"] for task in reversed(run["tasks"]))
-        for task_id, task in enumerate(run["tasks"])
-        if task["active"]
-    )
-
-    return {"machines_list": machines_list}
+    return {"machines_list": request.rundb.get_machines()}
 
 
 @view_config(route_name="tests_view", renderer="tests_view.mak")

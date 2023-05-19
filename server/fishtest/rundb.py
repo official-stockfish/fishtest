@@ -463,6 +463,22 @@ class RunDb:
             )
         return unfinished_runs
 
+    def get_machines(self):
+        active_runs = self.runs.find({"finished": False}, {"tasks": 1, "args": 1})
+        machines_list = (
+            task["worker_info"]
+            | {
+                "last_updated": task.get("last_updated", None),
+                "run": run,
+                "task_id": task_id,
+            }
+            for run in active_runs
+            if any(task["active"] for task in reversed(run["tasks"]))
+            for task_id, task in enumerate(run["tasks"])
+            if task["active"]
+        )
+        return machines_list
+
     def aggregate_unfinished_runs(self, username=None):
         unfinished_runs = self.get_unfinished_runs(username=username)
         runs = {"pending": [], "active": []}
