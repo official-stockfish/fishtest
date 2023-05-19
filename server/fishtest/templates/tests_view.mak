@@ -458,14 +458,14 @@
 
   let fetchedTasksBefore = false;
   async function handleRenderTasks(){
-      await DOM_loaded();
-      const tasksButton = document.getElementById("tasks-button");
-      tasksButton?.addEventListener("click", async () => {
-        await toggle_tasks();
-      })
-       if (${str(tasks_shown).lower()})
-         await renderTasks();
-    }
+    await DOM_loaded();
+    const tasksButton = document.getElementById("tasks-button");
+    tasksButton?.addEventListener("click", async () => {
+      await toggle_tasks();
+    })
+     if (${str(tasks_shown).lower()})
+       await renderTasks();
+  }
 
   async function renderTasks() {
     await DOM_loaded();

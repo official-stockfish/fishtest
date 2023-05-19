@@ -336,7 +336,7 @@ def sprt_calc(request):
 # Different LOCALES may have different quotation marks.
 # See https://op.europa.eu/en/web/eu-vocabularies/formex/physical-specifications/character-encoding/quotation-marks
 
-quotation_marks = [
+quotation_marks = (
     0x0022,
     0x0027,
     0x00AB,
@@ -351,9 +351,9 @@ quotation_marks = [
     0x201F,
     0x2039,
     0x203A,
-]
+)
 
-quotation_marks = "".join([chr(c) for c in quotation_marks])
+quotation_marks = "".join(chr(c) for c in quotation_marks)
 quotation_marks_translation = str.maketrans(quotation_marks, len(quotation_marks) * '"')
 
 
@@ -1206,7 +1206,7 @@ def tests_view(request):
     if run.get("rescheduled_from"):
         run_args.append(("rescheduled_from", run["rescheduled_from"], ""))
 
-    for name in [
+    for name in (
         "new_tag",
         "new_signature",
         "new_options",
@@ -1232,7 +1232,7 @@ def tests_view(request):
         "tests_repo",
         "adjudication",
         "info",
-    ]:
+    ):
         if name not in run["args"]:
             continue
 
