@@ -2,7 +2,6 @@
 
 <%!
   import json
-  import markupsafe
 %>
 
 <%namespace name="base" file="base.mak"/>
@@ -116,8 +115,8 @@
                 % elif arg[0] == 'itp':
                   <td>${f"{float(arg[1]):.2f}"}</a></td>
                 % else:
-                  <td ${'class="run-info"' if arg[0]=="info" else "" | n}>
-                      ${str(markupsafe.Markup(arg[1])).replace('\n', '<br>') | n}
+                  <td ${'class="run-info"' if arg[0]=="info" else ""|n}>
+                    ${arg[1].replace('\n', '<br>')|n}
                   </td>
                 % endif
               </tr>
@@ -126,7 +125,7 @@
                 <td>${arg[0]}</td>
                 <td>
                   <a href="${arg[2]}" target="_blank" rel="noopener">
-                    ${str(markupsafe.Markup(arg[1]))}
+                    ${arg[1]|n}
                   </a>
                 </td>
               </tr>
