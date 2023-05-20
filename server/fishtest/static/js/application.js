@@ -247,6 +247,9 @@ function async_sleep(ms) {
   });
 }
 
+// Execute a function in all connected tabs.
+// See notifications.js for a usage example.
+
 const fishtest_broadcast_key = "fishtest_broadcast";
 let broadcast_dispatch = {};
 
@@ -267,6 +270,20 @@ function broadcast(cmd, arg) {
     fishtest_broadcast_key,
     JSON.stringify({ cmd: cmd, arg: arg, rnd: Math.random() })
   );
+}
+
+// serializing objects
+
+function save_object(key, value) {
+  const key_ = `__fishtest__${key}`;
+  const value_ = JSON.stringify(value);
+  localStorage.setItem(key_, value_);
+}
+
+function load_object(key) {
+  const key_ = `__fishtest__${key}`;
+  const value_ = localStorage.getItem(key_);
+  return JSON.parse(value_);
 }
 
 function escapeHtml(unsafe) {
