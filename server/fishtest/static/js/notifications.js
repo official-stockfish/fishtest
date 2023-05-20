@@ -64,7 +64,7 @@ function LRU(capacity, content) {
       }
     },
     save(name) {
-      localStorage.setItem(name, JSON.stringify(this));
+      save_object(name, this);
     },
     remove(elt, timestamp) {
       const idx = this.content.findIndex((x) => x[0] == elt);
@@ -82,13 +82,10 @@ function LRU(capacity, content) {
 }
 
 LRU.load = function (name) {
-  const json = JSON.parse(localStorage.getItem(name));
+  const json = load_object(name);
   return new LRU(json["capacity"], json["content"]);
 };
 
-const fishtest_notifications_key = "fishtest_notifications_v2";
-const fishtest_timestamp_key = "fishtest_timestamp";
-const fishtest_timestamp_purge_key = "fishtest_timestamp_purge";
 const fishtest_follow_lock = "fishtest_follow_lock";
 
 function has_web_locks() {
@@ -119,8 +116,18 @@ function notify_fishtest(message) {
 }
 
 function notify_elo(entry_start, entry_finished) {
+  // Currently entry_start may be null because of
+  // network errors.
   const tag = entry_finished["run"].slice(0, -8);
-  const username = entry_finished["username"];
+  let username = "unknown";
+  if (entry_start) {
+    username = entry_start["username"];
+  } else if (entry_finished["action"] === "finished_run") {
+    // For stopped and deleted runs the username refers
+    // to the user that did the stopping/deleting.
+    // This is not what we want.
+    username = entry_finished["username"];
+  }
   let first_line = "";
   let state = "";
   if (entry_finished["action"] === "finished_run") {
@@ -158,7 +165,7 @@ const design_capacity = 15;
 function get_notifications() {
   let notifications;
   try {
-    notifications = LRU.load(fishtest_notifications_key);
+    notifications = LRU.load("notifications");
     if (notifications["capacity"] != design_capacity) {
       throw "Incompatible LRU object found";
     }
@@ -166,47 +173,13 @@ function get_notifications() {
   } catch (e) {
     console_log("Initializing new LRU object");
     notifications = new LRU(design_capacity);
-    notifications.save(fishtest_notifications_key);
+    notifications.save("notifications");
     return notifications;
   }
 }
 
 function save_notifications(notifications) {
-  notifications.save(fishtest_notifications_key);
-}
-
-function get_timestamp() {
-  let ts;
-  try {
-    ts = JSON.parse(localStorage.getItem(fishtest_timestamp_key));
-  } catch (e) {
-    return null;
-  }
-  if (typeof ts != "number") {
-    return null;
-  }
-  return ts;
-}
-
-function get_timestamp_purge() {
-  let ts;
-  try {
-    ts = JSON.parse(localStorage.getItem(fishtest_timestamp_purge_key));
-  } catch (e) {
-    return null;
-  }
-  if (typeof ts != "number") {
-    return null;
-  }
-  return ts;
-}
-
-function save_timestamp(ts) {
-  localStorage.setItem(fishtest_timestamp_key, JSON.stringify(ts));
-}
-
-function save_timestamp_purge(ts) {
-  localStorage.setItem(fishtest_timestamp_purge_key, JSON.stringify(ts));
+  notifications.save("notifications");
 }
 
 async function purge_notifications(last_fetch_time) {
@@ -215,7 +188,7 @@ async function purge_notifications(last_fetch_time) {
   let notifications = get_notifications();
   let json = {};
   try {
-    json = await fetch_post("/api/active_runs");
+    json = await fetch_json("/api/active_runs");
   } catch (e) {
     console_log(e, true);
     return;
@@ -270,28 +243,29 @@ async function main_follow_loop() {
       // Instrumentation
       console_log(`Active notifications: ${notifications}`);
     }
-    // Milliseconds seem quantized on Chrome.
-    // We add a bit of randomness.
-    const current_time = Date.now() + Math.floor(200 * Math.random() - 100);
-    const timestamp_latest_fetch = get_timestamp();
+    const current_time = Date.now();
+    const current_time_sig = `${current_time}_${Math.random()}`;
+    const latest_fetch_time = load_object("latest_fetch_time");
     if (
-      timestamp_latest_fetch != null &&
-      current_time - timestamp_latest_fetch < 19000
+      typeof latest_fetch_time == "number" &&
+      current_time - latest_fetch_time < 19000
     ) {
-      const t = await async_sleep(20000 + 500 * Math.random());
       // Note that in modern browsers timer events in
       // inactive tabs are severely throttled.
+      // So the actual delay may be longer than expected.
+      await async_sleep(20000 + 500 * Math.random());
       continue;
     }
     // I won the race, other tabs should skip their fetch
-    save_timestamp(current_time);
-    // Extra defense against race after wakeup from sleep
+    save_object("latest_fetch_time", current_time);
+    save_object("latest_fetch_time_sig", current_time_sig);
+    // Extra defense against race after wake up from sleep
     const t = await async_sleep(1500);
     if (t > 90000) {
       // Wake up from sleep: reset state
       continue;
     }
-    if (current_time != get_timestamp()) {
+    if (current_time_sig != load_object("latest_fetch_time_sig")) {
       // My fetch was preempted by another tab
       continue;
     }
@@ -337,12 +311,12 @@ async function main_follow_loop() {
         notify_elo(null, entry);
       }
     }
-    const timestamp_latest_purge = get_timestamp_purge();
+    const latest_purge_time = load_object("latest_purge_time");
     if (
-      timestamp_latest_purge == null ||
-      current_time - timestamp_latest_purge > 20 * 1000 * 1000
+      typeof latest_purge_time != "number" ||
+      current_time - latest_purge_time > 20 * 1000 * 1000
     ) {
-      save_timestamp_purge(current_time);
+      save_object("latest_purge_time", current_time);
       // Note that because of sleeping, current_time may be long ago.
       // This is intentional!
       await purge_notifications(current_time);
