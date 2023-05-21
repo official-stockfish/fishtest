@@ -1410,10 +1410,9 @@ class RunDb:
                 run["is_yellow"] = False
             else:
                 # Copied code. Must be refactored.
-                if run["results_info"]["style"] == "#44EB44":
-                    run["is_green"] = True
-                elif run["results_info"]["style"] == "yellow":
-                    run["is_yellow"] = True
+                style = run["results_info"]["style"]
+                run["is_green"] = style == "#44EB44"
+                run["is_yellow"] = style == "yellow"
             self.buffer(run, True)
 
         return message
