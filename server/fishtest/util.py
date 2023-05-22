@@ -266,7 +266,7 @@ def format_results(run_results, run):
             elo, elo95, los = fishtest.stats.stat_util.get_elo([WLD[1], WLD[2], WLD[0]])
 
         # Display the results
-        eloInfo = "Elo: {:.2f} +-{:.1f} (95%)".format(elo, elo95)
+        eloInfo = "Elo: {:.2f} ± {:.1f} (95%)".format(elo, elo95)
         losInfo = "LOS: {:.1%}".format(los)
 
         result["info"].append(eloInfo + " " + losInfo)
