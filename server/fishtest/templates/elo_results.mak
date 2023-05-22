@@ -64,7 +64,7 @@
   % endfor
   % if elo_ptnml_run:
     <br>
-    ${f"nElo: {nelo5:.2f} +-{nelo5_delta:.1f} (95%) PairsRatio: {results5_pairs_ratio:.2f}"}
+    ${f"nElo: {nelo5:.2f} ± {nelo5_delta:.1f} (95%) PairsRatio: {results5_pairs_ratio:.2f}"}
   % endif
 </%def>
 

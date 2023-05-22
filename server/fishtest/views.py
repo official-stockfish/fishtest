@@ -1371,8 +1371,7 @@ def get_paginated_finished_runs(request):
     for run in finished_runs:
         # Ensure finished runs have results_info
         results = request.rundb.get_results(run)
-        if "results_info" not in run:
-            run["results_info"] = format_results(results, run)
+        run["results_info"] = format_results(results, run)
 
         # Look for failed runs
         if "failed" in run and run["failed"]:
