@@ -70,6 +70,7 @@ def validate_request(request):
     return validate(schema, request, "request")
 
 
+# Avoids exposing sensitive data about the workers to the client and skips some heavy data.
 def strip_run(run):
     # a deep copy, avoiding copies of a few large lists.
     stripped = {}
@@ -332,7 +333,8 @@ class ApiView(object):
         results = run["results"]
         if "sprt" not in run["args"]:
             return {}
-        sprt = run["args"].get("sprt").copy()
+        run = strip_run(run)
+        sprt = run["args"].get("sprt")
         elo_model = sprt.get("elo_model", "BayesElo")
         alpha = sprt["alpha"]
         beta = sprt["beta"]
@@ -342,9 +344,7 @@ class ApiView(object):
         a = SPRT_elo(
             results, alpha=alpha, beta=beta, elo0=elo0, elo1=elo1, elo_model=elo_model
         )
-        run = strip_run(run)
         run["elo"] = a
-        run["args"]["sprt"] = sprt
         return run
 
     @view_config(route_name="api_request_task")
