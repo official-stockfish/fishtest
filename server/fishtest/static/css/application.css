@@ -629,12 +629,10 @@ input[type="checkbox"],
 
 #machines td {
   height: 37px;
-  text-align: center;
 }
 
 #machines th {
   padding-bottom: 1.1vh;
-  text-align: center;
   white-space: nowrap !important;
 }
 
