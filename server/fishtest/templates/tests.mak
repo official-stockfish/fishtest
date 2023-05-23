@@ -73,9 +73,7 @@
           machinesTbody?.childElementCount;
 
         if (newMachinesCount === 1) {
-          const noMachines = machinesTbody.children[0]?.textContent?.includes(
-            "No machines"
-          );
+          const noMachines = machinesTbody.children[0]?.id === "no-machines";
           if (noMachines) newMachinesCount = 0;
         }
 

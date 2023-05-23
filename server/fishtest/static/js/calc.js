@@ -31,21 +31,9 @@ google.charts.setOnLoadCallback(function () {
     expected_chart.loaded = true;
   });
 
-  let mouse_screen = document.getElementById("mouse_screen");
-  mouse_screen.addEventListener(
-    "click",
-    function (e) {
-      e.stopPropagation();
-    },
-    true
-  );
-  mouse_screen.addEventListener(
-    "mouseover",
-    function (e) {
-      e.stopPropagation();
-    },
-    true
-  );
+  const mouse_screen = document.getElementById("mouse_screen");
+  mouse_screen.addEventListener("click", (e) => e.stopPropagation(), true);
+  mouse_screen.addEventListener("mouseover", (e) => e.stopPropagation(), true);
   mouse_screen.addEventListener("mousemove", handle_tooltips, true);
   mouse_screen.addEventListener("mouseleave", handle_tooltips, true);
   set_fields();
@@ -79,7 +67,7 @@ function draw_charts() {
   const draw_ratio = parseFloat(document.getElementById("draw-ratio").value);
   const rms_bias = parseFloat(document.getElementById("rms-bias").value);
   let val = "";
-  let sprt;
+  let sprt = null;
 
   if (isNaN(elo0) || isNaN(elo1) || isNaN(draw_ratio) || isNaN(rms_bias)) {
     val = "Unreadable input.";
@@ -110,8 +98,8 @@ function draw_charts() {
   elo1 = sprt.elo1;
   pass_chart.loaded = false;
   expected_chart.loaded = false;
-  let data_pass = [["Elo", { role: "annotation" }, "Pass Probability"]];
-  let data_expected = [
+  const data_pass = [["Elo", { role: "annotation" }, "Pass Probability"]];
+  const data_expected = [
     ["Elo", { role: "annotation" }, "Expected Number of Games"],
   ];
   const d = elo1 - elo0;
@@ -163,7 +151,7 @@ function draw_charts() {
     italic: false,
   };
 
-  let options = {
+  const options = {
     legend: {
       position: "none",
     },

@@ -121,15 +121,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const csrfToken = document.querySelector("meta[name='csrf-token']")[
     "content"
   ];
-  document.getElementById("logout")?.addEventListener("click", (e) => {
+
+  document.getElementById("logout")?.addEventListener("click", async (e) => {
     e.preventDefault();
-    fetch("/logout", {
+    await fetch("/logout", {
       method: "POST",
       headers: {
         "X-CSRF-Token": csrfToken,
       },
-    }).then(() => (window.location = "/"));
+    });
+    window.location = "/";
   });
+
   document.querySelectorAll("form[method='POST']")?.forEach((form) => {
     const input = document.createElement("input");
     input["type"] = "hidden";

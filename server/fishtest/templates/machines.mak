@@ -52,8 +52,7 @@
       </tr>
     % endfor
     % if "version" not in locals():
-      ## this text is used elsewhere in the code as a flag.
-      <td colspan=20>No machines running</td>
+      <td colspan=20 id="no-machines">No machines running</td>
     % endif
   </tbody>
 </table>
