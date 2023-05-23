@@ -945,10 +945,12 @@ def tests_run(request):
     }
 
 
+def is_same_user(request, run):
+    return run["args"]["username"] == request.authenticated_userid
+
+
 def can_modify_run(request, run):
-    return run["args"][
-        "username"
-    ] == request.authenticated_userid or request.has_permission("approve_run")
+    return is_same_user(request, run) or request.has_permission("approve_run")
 
 
 @view_config(route_name="tests_modify", require_csrf=True, request_method="POST")
@@ -1005,6 +1007,12 @@ def tests_modify(request):
         run["args"]["priority"] = int(request.POST["priority"])
         run["args"]["throughput"] = int(request.POST["throughput"])
         run["args"]["auto_purge"] = True if request.POST.get("auto_purge") else False
+        if (
+            is_same_user(request, run)
+            and "info" in request.POST
+            and request.POST["info"].strip() != ""
+        ):
+            run["args"]["info"] = request.POST["info"].strip()
         request.rundb.calc_itp(run)
         request.rundb.buffer(run, True)
         request.rundb.task_time = 0
@@ -1323,6 +1331,8 @@ def tests_view(request):
     if show_task >= len(run["tasks"]) or show_task < -1:
         show_task = -1
 
+    same_user = is_same_user(request, run)
+
     return {
         "run": run,
         "run_args": run_args,
@@ -1335,6 +1345,7 @@ def tests_view(request):
         "tasks_shown": show_task != -1 or request.cookies.get("tasks_state") == "Hide",
         "show_task": show_task,
         "follow": follow,
+        "same_user": same_user,
     }
 
 

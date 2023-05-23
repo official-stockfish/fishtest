@@ -243,6 +243,21 @@
           <span class="input-group-text">%</span>
         </div>
 
+        % if same_user:
+          <div class="mb-3">
+            <label for="info" class="form-label">
+              Info
+            </label>
+            <textarea
+              id="modify-info"
+              name="info"
+              placeholder="Defaults to submitted message."
+              class="form-control"
+              rows="4"
+              style="height: 149px;"></textarea>
+          </div>
+        % endif
+
         <div class="mb-3 form-check">
           <input
             type="checkbox"
