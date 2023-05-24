@@ -5,7 +5,12 @@ from datetime import datetime
 from functools import lru_cache
 
 from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError, HashingError, InvalidHash, VerificationError
+from argon2.exceptions import (
+    HashingError,
+    InvalidHash,
+    VerificationError,
+    VerifyMismatchError,
+)
 from pymongo import ASCENDING
 
 
@@ -36,8 +41,13 @@ class UserDb:
         with self.user_lock:
             self.cache.clear()
 
-    def hash_password(self, password,
-        time_cost: int = 3, memory_cost: int = 12288, parallelism: int = 1):
+    def hash_password(
+        self,
+        password,
+        time_cost: int = 3,
+        memory_cost: int = 12288,
+        parallelism: int = 1,
+    ):
         return PasswordHasher(time_cost, memory_cost, parallelism).hash(password)
 
     @lru_cache(maxsize=128)

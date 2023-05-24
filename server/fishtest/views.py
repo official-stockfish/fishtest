@@ -278,7 +278,7 @@ def signup(request):
     result = request.userdb.create_user(
         username=signup_username,
         password=request.userdb.hash_password(signup_password),
-        email=validated_email
+        email=validated_email,
     )
     if not result:
         request.session.flash("Error! Invalid username or password", "error")
@@ -466,7 +466,9 @@ def user(request):
                         (new_email if len(new_email) > 0 else None),
                     )
                     if strong_password:
-                        user_data["password"] = request.userdb.hash_password(new_password)
+                        user_data["password"] = request.userdb.hash_password(
+                            new_password
+                        )
                         request.session.flash("Success! Password updated")
                     else:
                         request.session.flash(
@@ -1280,8 +1282,8 @@ def tests_view(request):
             params = value["params"]
             value = [summary]
             for p in params:
-                c_iter = p["c"] / (iter_local**gamma)
-                r_iter = p["a"] / (A + iter_local) ** alpha / c_iter**2
+                c_iter = p["c"] / (iter_local ** gamma)
+                r_iter = p["a"] / (A + iter_local) ** alpha / c_iter ** 2
                 value.append(
                     [
                         p["name"],

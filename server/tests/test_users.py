@@ -39,7 +39,11 @@ class Create50LoginTest(unittest.TestCase):
     def setUp(self):
         self.rundb = util.get_rundb()
         self.rundb.userdb.create_user("JoeUser", "secret", "email@email.email")
-        self.rundb.userdb.create_user("JoeUser2", "$argon2id$v=19$m=12288,t=3,p=1$9tW9uRY6ijZ0PEiOcldWoQ$f5YCuVMP77x8Wlrcue0Jn7JGjCmgKy76WQynuIfitdA", "email2@email.email")
+        self.rundb.userdb.create_user(
+            "JoeUser2",
+            "$argon2id$v=19$m=12288,t=3,p=1$9tW9uRY6ijZ0PEiOcldWoQ$f5YCuVMP77x8Wlrcue0Jn7JGjCmgKy76WQynuIfitdA",
+            "email2@email.email",
+        )
         self.config = testing.setUp()
         self.config.add_route("login", "/login")
 
@@ -76,9 +80,7 @@ class Create50LoginTest(unittest.TestCase):
         self.rundb.userdb.save_user(user)
         request.params["password"] = "badsecret"
         response = login(request)
-        self.assertTrue(
-            "Invalid password" in request.session.pop_flash("error")
-        )
+        self.assertTrue("Invalid password" in request.session.pop_flash("error"))
 
         # allowed user, correct password
         request.params["password"] = "secret"
@@ -97,9 +99,7 @@ class Create50LoginTest(unittest.TestCase):
             params={"username": "JoeUser2", "password": "badsecret"},
         )
         response2 = login(request2)
-        self.assertTrue(
-            "Invalid password" in request2.session.pop_flash("error")
-        )
+        self.assertTrue("Invalid password" in request2.session.pop_flash("error"))
 
         # allowed user2, correct hashed password
         request2.params["password"] = "secret2"

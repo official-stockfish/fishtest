@@ -98,7 +98,7 @@ def MLE_t_value(pdfhat, ref, s):
         if max([abs(pdf_[i][1] - pdf_MLE[i][1]) for i in range(N)]) < 1e-9:
             break
     mu, var = stats(pdf_MLE)  # for validation
-    assert abs(s - (mu - ref) / var**0.5) < 1e-5
+    assert abs(s - (mu - ref) / var ** 0.5) < 1e-5
     return pdf_MLE
 
 
@@ -120,8 +120,8 @@ def stats_ex(pdf):
     s, var = stats(pdf)
     m3 = sum([prob * (value - s) ** 3 for value, prob in pdf])
     m4 = sum([prob * (value - s) ** 4 for value, prob in pdf])
-    skewness = m3 / var**1.5
-    exkurt = m4 / var**2 - 3
+    skewness = m3 / var ** 1.5
+    exkurt = m4 / var ** 2 - 3
     return s, var, skewness, exkurt
 
 
@@ -250,7 +250,7 @@ def LLR_normalized_alt(nelo0, nelo1, results):
         sigma_pg = (2 * var) ** 0.5
         games = 2 * count
     elif len(results) == 3:
-        sigma_pg = var**0.5
+        sigma_pg = var ** 0.5
         games = count
     else:
         assert False
@@ -267,7 +267,7 @@ def LLR_normalized(nelo0, nelo1, results):
     This function computes the generalized log-likelihood ratio for "results"
     using the statistic "t_value". nelo0,nelo1 are in normalized elo."""
     nt0, nt1 = [nelo / nelo_divided_by_nt for nelo in (nelo0, nelo1)]
-    sqrt2 = 2**0.5
+    sqrt2 = 2 ** 0.5
     t0, t1 = (
         (nt0, nt1)
         if len(results) == 3
