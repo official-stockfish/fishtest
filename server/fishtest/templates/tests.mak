@@ -69,11 +69,10 @@
         machines.replaceChildren();
         machines.insertAdjacentHTML("beforeend", html);
         const machinesTbody = document.querySelector("#machines tbody");
-        const newMachinesCount =
-          machinesTbody?.childElementCount;
+        let newMachinesCount = machinesTbody?.childElementCount;
 
         if (newMachinesCount === 1) {
-          const noMachines = machinesTbody.children[0]?.id === "no-machines";
+          const noMachines = machinesTbody.querySelector("#no-machines") !== null;
           if (noMachines) newMachinesCount = 0;
         }
 

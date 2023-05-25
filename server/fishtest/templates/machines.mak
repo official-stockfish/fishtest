@@ -52,7 +52,9 @@
       </tr>
     % endfor
     % if "version" not in locals():
-      <td colspan=20 id="no-machines">No machines running</td>
+      <tr id="no-machines">
+        <td colspan=20>No machines running</td>
+      </tr>
     % endif
   </tbody>
 </table>
