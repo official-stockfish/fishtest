@@ -489,4 +489,14 @@ broadcast_dispatch["set_notification_status_"] = set_notification_status_;
 broadcast_dispatch["disable_notification_"] = disable_notification_;
 broadcast_dispatch["dismiss_notification_"] = dismiss_notification_;
 
+function cleanup_() {
+  // Remove stale local storage items.
+  localStorage.removeItem("fishtest_disable_notification");
+  localStorage.removeItem("fishtest_notifications");
+  localStorage.removeItem("fishtest_notifications_v2");
+  localStorage.removeItem("fishtest_timestamp");
+  localStorage.removeItem("fishtest_timestamp_purge");
+}
+
+cleanup_();
 main_follow_loop();
