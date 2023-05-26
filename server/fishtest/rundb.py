@@ -765,6 +765,7 @@ class RunDb:
         # address.
 
         connections = 0
+        connections_limit = self.userdb.get_machine_limit(worker_info["username"])
         for run in self.task_runs:
             for task in run["tasks"]:
                 if (
@@ -772,13 +773,14 @@ class RunDb:
                     and task["worker_info"]["remote_addr"] == worker_info["remote_addr"]
                 ):
                     connections = connections + 1
-
-        if connections >= self.userdb.get_machine_limit(worker_info["username"]):
-            error = "Request_task: Machine limit reached for user {}".format(
-                worker_info["username"]
-            )
-            print(error, flush=True)
-            return {"task_waiting": False, "error": error}
+                    if connections >= connections_limit:
+                        error = (
+                            "Request_task: Machine limit reached for user {}".format(
+                                worker_info["username"]
+                            )
+                        )
+                        print(error, flush=True)
+                        return {"task_waiting": False, "error": error}
 
         # Now go through the sorted list of unfinished runs.
         # We will add a task to the first run that is suitable.
