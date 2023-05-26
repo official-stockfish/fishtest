@@ -27,46 +27,49 @@
       id="data"
       class="details-table table table-striped table-sm"
       style="visibility: hidden">
-      <tr>
-        <td>Commit</td>
-        <td>
-          <a href="#" id="commit" target="_blank" rel="noopener noreferrer"></a>
-        </td>
-      </tr>
-      <tr>
-        <td>Info</td>
-        <td id="info"></td>
-      </tr>
-      <tr>
-        <td>Submitter</td>
-        <td>
-          <a href="#" id="username"></a>
-        </td>
-      </tr>
-      <tr>
-        <td>TC</td>
-        <td id="tc"></td>
-      </tr>
-      <tr>
-        <td>SPRT</td>
-        <td id="sprt"></td>
-      </tr>
-      <tr>
-        <td>LLR</td>
-        <td id="LLR"></td>
-      </tr>
-      <tr>
-        <td>Elo</td>
-        <td id="elo"></td>
-      </tr>
-      <tr>
-        <td>LOS</td>
-        <td id="LOS"></td>
-      </tr>
-      <tr>
-        <td>Games</td>
-        <td id="games"></td>
-      </tr>
+      <thead></thead>
+      <tbody>
+        <tr>
+          <td>Commit</td>
+          <td>
+            <a href="#" id="commit" target="_blank" rel="noopener noreferrer"></a>
+          </td>
+        </tr>
+        <tr>
+          <td>Info</td>
+          <td id="info"></td>
+        </tr>
+        <tr>
+          <td>Submitter</td>
+          <td>
+            <a href="#" id="username"></a>
+          </td>
+        </tr>
+        <tr>
+          <td>TC</td>
+          <td id="tc"></td>
+        </tr>
+        <tr>
+          <td>SPRT</td>
+          <td id="sprt"></td>
+        </tr>
+        <tr>
+          <td>LLR</td>
+          <td id="LLR"></td>
+        </tr>
+        <tr>
+          <td>Elo</td>
+          <td id="elo"></td>
+        </tr>
+        <tr>
+          <td>LOS</td>
+          <td id="LOS"></td>
+        </tr>
+        <tr>
+          <td>Games</td>
+          <td id="games"></td>
+        </tr>
+      </tbody>
     </table>
   </div>
 </div>

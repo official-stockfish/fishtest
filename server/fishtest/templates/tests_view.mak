@@ -69,78 +69,81 @@
       <h4>Details</h4>
       <div class="table-responsive-lg">
         <table class="table table-striped table-sm">
-          % for arg in run_args:
-            % if len(arg[2]) == 0:
-              <tr>
-                <td>${arg[0]}</td>
-                % if arg[0] == 'username':
-                  <td>
-                    <a href="/tests/user/${arg[1]}">${arg[1]}</a>
-                    % if approver:
-                      (<a href="/user/${arg[1]}">user admin</a>)
-                    % endif
-                  </td>
-                % elif arg[0] == 'spsa':
-                  <td>
-                    ${arg[1][0]}<br>
-                    <table class="table table-sm">
-                      <thead>
-                        <tr>
-                          <th>param</th>
-                          <th>value</th>
-                          <th>start</th>
-                          <th>min</th>
-                          <th>max</th>
-                          <th>c</th>
-                          <th>c_end</th>
-                          <th>r</th>
-                          <th>r_end</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        % for row in arg[1][1:]:
-                          <tr class="spsa-param-row">
-                          % for element in row:
-                            <td>${element}</td>
-                          % endfor
+          <thead></thead>
+          <tbody>
+            % for arg in run_args:
+              % if len(arg[2]) == 0:
+                <tr>
+                  <td>${arg[0]}</td>
+                  % if arg[0] == 'username':
+                    <td>
+                      <a href="/tests/user/${arg[1]}">${arg[1]}</a>
+                      % if approver:
+                        (<a href="/user/${arg[1]}">user admin</a>)
+                      % endif
+                    </td>
+                  % elif arg[0] == 'spsa':
+                    <td>
+                      ${arg[1][0]}<br>
+                      <table class="table table-sm">
+                        <thead>
+                          <tr>
+                            <th>param</th>
+                            <th>value</th>
+                            <th>start</th>
+                            <th>min</th>
+                            <th>max</th>
+                            <th>c</th>
+                            <th>c_end</th>
+                            <th>r</th>
+                            <th>r_end</th>
                           </tr>
-                        % endfor
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          % for row in arg[1][1:]:
+                            <tr class="spsa-param-row">
+                            % for element in row:
+                              <td>${element}</td>
+                            % endfor
+                            </tr>
+                          % endfor
+                        </tbody>
+                      </table>
+                    </td>
+                  % elif arg[0] in ['resolved_new', 'resolved_base']:
+                    <td>${arg[1][:10]}</td>
+                  % elif arg[0] == 'rescheduled_from':
+                    <td><a href="/tests/view/${arg[1]}">${arg[1]}</a></td>
+                  % elif arg[0] == 'itp':
+                    <td>${f"{float(arg[1]):.2f}"}</td>
+                  % else:
+                    <td ${'class="run-info"' if arg[0]=="info" else ""|n}>
+                      ${arg[1].replace('\n', '<br>')|n}
+                    </td>
+                  % endif
+                </tr>
+              % else:
+                <tr>
+                  <td>${arg[0]}</td>
+                  <td>
+                    <a href="${arg[2]}" target="_blank" rel="noopener">
+                      ${arg[1]|n}
+                    </a>
                   </td>
-                % elif arg[0] in ['resolved_new', 'resolved_base']:
-                  <td>${arg[1][:10]}</td>
-                % elif arg[0] == 'rescheduled_from':
-                  <td><a href="/tests/view/${arg[1]}">${arg[1]}</a></td>
-                % elif arg[0] == 'itp':
-                  <td>${f"{float(arg[1]):.2f}"}</a></td>
-                % else:
-                  <td ${'class="run-info"' if arg[0]=="info" else ""|n}>
-                    ${arg[1].replace('\n', '<br>')|n}
-                  </td>
-                % endif
-              </tr>
-            % else:
+                </tr>
+              % endif
+            % endfor
+            <tr>
+              <td>events</td>
+              <td><a href="/actions?run_id=${str(run['_id'])}">/actions?run_id=${run['_id']}</a></td>
+            </tr>
+            % if 'spsa' not in run['args']:
               <tr>
-                <td>${arg[0]}</td>
-                <td>
-                  <a href="${arg[2]}" target="_blank" rel="noopener">
-                    ${arg[1]|n}
-                  </a>
-                </td>
+                <td>raw statistics</td>
+                <td><a href="/tests/stats/${str(run['_id'])}">/tests/stats/${run['_id']}</a></td>
               </tr>
             % endif
-          % endfor
-          <tr>
-            <td>events</td>
-            <td><a href="/actions?run_id=${str(run['_id'])}">/actions?run_id=${run['_id']}</a></td>
-          </tr>
-          % if 'spsa' not in run['args']:
-            <tr>
-              <td>raw statistics</td>
-              <td><a href="/tests/stats/${str(run['_id'])}">/tests/stats/${run['_id']}</a></td>
-            </tr>
-          % endif
+          </tbody>
         </table>
       </div>
     </div>
@@ -277,9 +280,12 @@
 
         <h4>Stats</h4>
         <table class="table table-striped table-sm">
-          <tr><td>chi^2</td><td>${f"{chi2['chi2']:.2f}"}</td></tr>
-          <tr><td>dof</td><td>${chi2['dof']}</td></tr>
-          <tr><td>p-value</td><td>${f"{chi2['p']:.2%}"}</td></tr>
+          <thead></thead>
+          <tbody>
+            <tr><td>chi^2</td><td>${f"{chi2['chi2']:.2f}"}</td></tr>
+            <tr><td>dof</td><td>${chi2['dof']}</td></tr>
+            <tr><td>p-value</td><td>${f"{chi2['p']:.2%}"}</td></tr>
+          </tbody>
         </table>
       % endif
 
@@ -287,14 +293,21 @@
 
       <h4>Time</h4>
       <table class="table table-striped table-sm">
-        <tr><td>start time</td><td>${run['start_time'].strftime("%Y-%m-%d %H:%M:%S")}</td></tr>
-        <tr><td>last updated</td><td>${run['last_updated'].strftime("%Y-%m-%d %H:%M:%S")}</td></tr>
+        <thead></thead>
+        <tbody>
+          <tr><td>start time</td><td>${run['start_time'].strftime("%Y-%m-%d %H:%M:%S")}</td></tr>
+          <tr><td>last updated</td><td>${run['last_updated'].strftime("%Y-%m-%d %H:%M:%S")}</td></tr>
+        </tbody>
       </table>
 
       <hr>
       % if not run['finished']:
         <h4>Notifications</h4>
-        <button id="follow_button_${run['_id']}" class="btn btn-primary col-12 col-md-auto" onclick="handle_follow_button(this)" style="display:none;margin-top:0.2em";></button>
+        <button 
+          id="follow_button_${run['_id']}"
+          class="btn btn-primary col-12 col-md-auto"
+          onclick="handle_follow_button(this)"
+          style="display:none; margin-top:0.2em;"></button>
         <hr style="visibility:hidden;">
       % endif
     </div>

@@ -56,6 +56,7 @@
 
   <div class="table-responsive-lg">
     <table class="table table-striped table-sm run-table">
+      <thead></thead>
       <tbody>
         % for run in runs:
           <tr>
