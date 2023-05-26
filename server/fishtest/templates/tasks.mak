@@ -80,3 +80,9 @@
     % endif
   </tr>
 % endfor
+
+% if len(run['tasks'] + run.get('bad_tasks', [])) == 0:
+  <tr id="no-tasks">
+    <td colspan=20>No tasks running</td>
+  </tr>
+% endif
