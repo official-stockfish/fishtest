@@ -216,7 +216,7 @@
   document.title = 'Statistics - ${page_title} | Stockfish Testing';
 </script>
 
-<div class="container">
+<div>
   % if has_spsa:
     <h2>SPSA tests do no have raw statistics: <a href="/tests/view/${str(run['_id'])}">${str(run['_id'])}</a></h2>
   % else:  ## not has_spsa
