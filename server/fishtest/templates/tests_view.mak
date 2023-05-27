@@ -66,85 +66,113 @@
 
   <div class="row">
     <div class="col-12 col-lg-9">
-      <h4>Details</h4>
-      <div class="table-responsive-lg">
-        <table class="table table-striped table-sm">
-          <thead></thead>
-          <tbody>
-            % for arg in run_args:
-              % if len(arg[2]) == 0:
-                <tr>
-                  <td>${arg[0]}</td>
-                  % if arg[0] == 'username':
-                    <td>
-                      <a href="/tests/user/${arg[1]}">${arg[1]}</a>
-                      % if approver:
-                        (<a href="/user/${arg[1]}">user admin</a>)
-                      % endif
-                    </td>
-                  % elif arg[0] == 'spsa':
-                    <td>
-                      ${arg[1][0]}<br>
-                      <table class="table table-sm">
-                        <thead>
-                          <tr>
-                            <th>param</th>
-                            <th>value</th>
-                            <th>start</th>
-                            <th>min</th>
-                            <th>max</th>
-                            <th>c</th>
-                            <th>c_end</th>
-                            <th>r</th>
-                            <th>r_end</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          % for row in arg[1][1:]:
-                            <tr class="spsa-param-row">
-                            % for element in row:
-                              <td>${element}</td>
-                            % endfor
+      <div id="diff-section">
+        <h4>
+          <button id="diff-toggle" class="btn btn-sm btn-light border mb-2">Show</button>
+          Diff
+          <span id="diff-num-comments">(0 comments)</span>
+          <a
+            href="${h.diff_url(run)}"
+            class="btn btn-primary bg-light-primary border-0 mb-2"
+            target="_blank" rel="noopener"
+          >
+            View on Github
+          </a>
+
+          <a
+            href="javascript:"
+            id="copy-diff"
+            class="btn btn-secondary bg-light-secondary border-0 mb-2"
+            style="display: none"
+          >
+            Copy apply-diff command
+          </a>
+
+          <span class="text-success copied text-nowrap" style="display: none">Copied!</span>
+        </h4>
+        <pre id="diff-contents" style="display: none;"><code class="diff"></code></pre>
+      </div>
+      <div>
+        <h4 style="margin-top: 9px;">Details</h4>
+        <div class="table-responsive-lg">
+          <table class="table table-striped table-sm">
+            <thead></thead>
+            <tbody>
+              % for arg in run_args:
+                % if len(arg[2]) == 0:
+                  <tr>
+                    <td>${arg[0]}</td>
+                    % if arg[0] == 'username':
+                      <td>
+                        <a href="/tests/user/${arg[1]}">${arg[1]}</a>
+                        % if approver:
+                          (<a href="/user/${arg[1]}">user admin</a>)
+                        % endif
+                      </td>
+                    % elif arg[0] == 'spsa':
+                      <td>
+                        ${arg[1][0]}<br>
+                        <table class="table table-sm">
+                          <thead>
+                            <tr>
+                              <th>param</th>
+                              <th>value</th>
+                              <th>start</th>
+                              <th>min</th>
+                              <th>max</th>
+                              <th>c</th>
+                              <th>c_end</th>
+                              <th>r</th>
+                              <th>r_end</th>
                             </tr>
-                          % endfor
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            % for row in arg[1][1:]:
+                              <tr class="spsa-param-row">
+                              % for element in row:
+                                <td>${element}</td>
+                              % endfor
+                              </tr>
+                            % endfor
+                          </tbody>
+                        </table>
+                      </td>
+                    % elif arg[0] in ['resolved_new', 'resolved_base']:
+                      <td>${arg[1][:10]}</td>
+                    % elif arg[0] == 'rescheduled_from':
+                      <td><a href="/tests/view/${arg[1]}">${arg[1]}</a></td>
+                    % elif arg[0] == 'itp':
+                      <td>${f"{float(arg[1]):.2f}"}</td>
+                    % else:
+                      <td ${'class="run-info"' if arg[0]=="info" else ""|n}>
+                        ${arg[1].replace('\n', '<br>')|n}
+                      </td>
+                    % endif
+                  </tr>
+                % else:
+                  <tr>
+                    <td>${arg[0]}</td>
+                    <td>
+                      <a href="${arg[2]}" target="_blank" rel="noopener">
+                        ${arg[1]|n}
+                      </a>
                     </td>
-                  % elif arg[0] in ['resolved_new', 'resolved_base']:
-                    <td>${arg[1][:10]}</td>
-                  % elif arg[0] == 'rescheduled_from':
-                    <td><a href="/tests/view/${arg[1]}">${arg[1]}</a></td>
-                  % elif arg[0] == 'itp':
-                    <td>${f"{float(arg[1]):.2f}"}</td>
-                  % else:
-                    <td ${'class="run-info"' if arg[0]=="info" else ""|n}>
-                      ${arg[1].replace('\n', '<br>')|n}
-                    </td>
-                  % endif
-                </tr>
-              % else:
+                  </tr>
+                % endif
+              % endfor
+              <tr>
+                <td>events</td>
+                <td><a href="/actions?run_id=${str(run['_id'])}">/actions?run_id=${run['_id']}</a></td>
+              </tr>
+              % if 'spsa' not in run['args']:
                 <tr>
-                  <td>${arg[0]}</td>
-                  <td>
-                    <a href="${arg[2]}" target="_blank" rel="noopener">
-                      ${arg[1]|n}
-                    </a>
-                  </td>
+                  <td>raw statistics</td>
+                  <td><a href="/tests/stats/${str(run['_id'])}">/tests/stats/${run['_id']}</a></td>
                 </tr>
               % endif
-            % endfor
-            <tr>
-              <td>events</td>
-              <td><a href="/actions?run_id=${str(run['_id'])}">/actions?run_id=${run['_id']}</a></td>
-            </tr>
-            % if 'spsa' not in run['args']:
-              <tr>
-                <td>raw statistics</td>
-                <td><a href="/tests/stats/${str(run['_id'])}">/tests/stats/${run['_id']}</a></td>
-              </tr>
-            % endif
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -345,33 +373,6 @@
     </div>
   % endif
 
-  <div id="diff-section" style="display: none">
-    <h4>
-      <button id="diff-toggle" class="btn btn-sm btn-light border mb-2">Show</button>
-      Diff
-      <span id="diff-num-comments" style="display: none"></span>
-      <a
-        href="${h.diff_url(run)}"
-        class="btn btn-primary bg-light-primary border-0 mb-2"
-        target="_blank" rel="noopener"
-      >
-        View on Github
-      </a>
-
-      <a
-        href="javascript:"
-        id="copy-diff"
-        class="btn btn-secondary bg-light-secondary border-0 mb-2"
-        style="display: none"
-      >
-        Copy apply-diff command
-      </a>
-
-      <span class="text-success copied text-nowrap" style="display: none">Copied!</span>
-    </h4>
-    <pre id="diff-contents"><code class="diff"></code></pre>
-  </div>
-
   <h4>
       <a
         id="tasks-button" class="btn btn-sm btn-light border"
@@ -556,6 +557,20 @@
       const numLines = text.split("\n").length;
       const toggleBtn = document.getElementById("diff-toggle");
       const diffContents = document.getElementById("diff-contents");
+      // Hide large diffs by default
+      if (numLines < 50) {
+        diffContents.style.display = "";
+        if (copyDiffBtn) copyDiffBtn.style.display = "";
+        setTimeout(()=> {
+          toggleBtn.textContent = "Hide";
+        }, 350);
+      } else {
+        diffContents.style.display = "none";
+        if (copyDiffBtn) copyDiffBtn.style.display = "none";
+        setTimeout(()=> {
+          toggleBtn.textContent = "Show";
+        }, 350);
+      }
       const diffText = diffContents.querySelector("code");
       diffText.textContent = text;
 
@@ -577,16 +592,6 @@
         else toggleBtn.textContent = "Hide";
       });
 
-      // Hide large diffs by default
-      if (numLines < 50) {
-        diffContents.style.display = "";
-        if (copyDiffBtn) copyDiffBtn.style.display = "";
-        toggleBtn.textContent = "Hide";
-      } else {
-        diffContents.style.display = "none";
-        if (copyDiffBtn) copyDiffBtn.style.display = "none";
-        toggleBtn.textContent = "Show";
-      }
       document.getElementById("diff-section").style.display = "";
       hljs.highlightElement(diffText);
     }

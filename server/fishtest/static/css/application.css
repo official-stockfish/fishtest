@@ -530,6 +530,7 @@ td {
 
 #diff-contents {
   max-height: 70vh;
+  margin-bottom: 0 !important;
 }
 
 #tasks {
@@ -636,13 +637,16 @@ input[type="checkbox"],
   white-space: nowrap !important;
 }
 
-/* Override the background color of the Skeleton card */
+/* Override the background color of the Skeleton wrapper*/
 .ssc-wrapper {
   background-color: transparent !important;
+}
+
+#machines .ssc-wrapper {
   padding: 0.9vh 0vh 0vh 0vh !important;
 }
 
-.ssc-head-line {
+#machines .ssc-head-line {
   height: 3.4vh !important;
   margin-bottom: 2vh !important;
 }
