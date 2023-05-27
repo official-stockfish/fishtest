@@ -4,6 +4,11 @@
   import json
 %>
 
+<%
+  args_row_count = 0
+  args_row_height = "33px"
+%>
+
 <%namespace name="base" file="base.mak"/>
 
 % if show_task >= 0:
@@ -72,6 +77,7 @@
           <thead></thead>
           <tbody>
             % for arg in run_args:
+              <% args_row_count += 1 %>
               % if len(arg[2]) == 0:
                 <tr>
                   <td>${arg[0]}</td>
@@ -133,11 +139,13 @@
                 </tr>
               % endif
             % endfor
+            <% args_row_count += 1 %>
             <tr>
               <td>events</td>
               <td><a href="/actions?run_id=${str(run['_id'])}">/actions?run_id=${run['_id']}</a></td>
             </tr>
             % if 'spsa' not in run['args']:
+              <% args_row_count += 1 %>
               <tr>
                 <td>raw statistics</td>
                 <td><a href="/tests/stats/${str(run['_id'])}">/tests/stats/${run['_id']}</a></td>
@@ -148,7 +156,10 @@
       </div>
     </div>
 
-    <div class="col-12 col-lg-3">
+    <div 
+      class="col-12 col-lg-3"
+      style="height: calc(${args_row_count + 2} * ${args_row_height}); overflow: auto;"
+    >
       <h4>Actions</h4>
       <div class="row g-2 mb-2">
         % if not run['finished']:
