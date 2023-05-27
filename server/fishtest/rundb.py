@@ -772,7 +772,7 @@ class RunDb:
                     task["active"]
                     and task["worker_info"]["remote_addr"] == worker_info["remote_addr"]
                 ):
-                    connections = connections + 1
+                    connections += 1
                     if connections >= connections_limit:
                         error = (
                             "Request_task: Machine limit reached for user {}".format(
