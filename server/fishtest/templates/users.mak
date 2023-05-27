@@ -20,7 +20,7 @@
     <div class="row">
       <div class="col text-end"><b>Testers</b></div>
       <div class="col text-start">
-        ${sum(u['last_updated'] != 'Never' for u in users)}
+        ${sum(u['str_last_updated'] != 'Never' for u in users)}
       </div>
     </div>
     <div class="row">
@@ -79,7 +79,7 @@
       % for user in users:
         <tr>
           <td>${user['username']}</td>
-          <td data-diff="${user['diff']}" class="text-end">${user['last_updated']}</td>
+          <td data-diff="${user['diff']}" class="text-end">${user['str_last_updated']}</td>
           <td class="text-end">${int(user['games_per_hour'])}</td>
           <td class="text-end">${int(user['cpu_hours'])}</td>
           <td class="text-end">${int(user['games'])}</td>

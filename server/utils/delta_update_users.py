@@ -24,9 +24,9 @@ def initialize_info(rundb, clear_stats):
             "games_per_hour": 0.0,
             "tests": 0,
             "tests_repo": u.get("tests_repo", ""),
-            "task_last_updated": datetime.min,
+            "last_updated": datetime.min,
             "diff": diff_ini,
-            "last_updated": last_ini,
+            "str_last_updated": last_ini,
         }
         if clear_stats:
             info_total[username] = info_top_month[username].copy()
@@ -87,8 +87,8 @@ def process_run(run, info):
             num_games = 0
 
         info_user = info[t_username]
-        info_user["task_last_updated"] = max(
-            info_user["task_last_updated"], task.get("last_updated", datetime.min)
+        info_user["last_updated"] = max(
+            info_user["last_updated"], task.get("last_updated", datetime.min)
         )
         info_user["cpu_hours"] += float(
             num_games * int(run["args"].get("threads", 1)) * tc / (60 * 60)
@@ -151,9 +151,9 @@ def build_users(info):
     # delta_date(diff: timedelta) -> str:
     for username, info_user in info.items():
         try:
-            diff = diff_date(info_user["task_last_updated"])
+            diff = diff_date(info_user["last_updated"])
             info_user["diff"] = diff.total_seconds()
-            info_user["last_updated"] = delta_date(diff)
+            info_user["str_last_updated"] = delta_date(diff)
         except Exception as e:
             print(f"Exception updating 'diff' for {username=}:\n{e}")
         users.append(info_user)
@@ -233,9 +233,9 @@ def main():
     #     "games_per_hour": 0.0,
     #     "tests": 0,
     #     "tests_repo": u.get("tests_repo", ""),
-    #     "task_last_updated": datetime.min, # latest datetime of all user's tasks
-    #     "diff": diff_date(datetime.min),   # used to sort in the users table
-    #     "last_updated": delta_date(diff_date(datetime.min)), # e.g. "Never", "12 days ago"
+    #     "last_updated": datetime.min,    # latest datetime of all user's tasks
+    #     "diff": diff_date(datetime.min), # used to sort in the users table
+    #     "str_last_updated": delta_date(diff_date(datetime.min)), # e.g. "Never", "12 days ago"
 
     # "new_deltas": dictionary with keys representing the IDs of newly finished runs
     # since the previous script execution. It is used to update the "deltas" collection.
