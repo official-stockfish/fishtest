@@ -36,7 +36,6 @@ def initialize_info(rundb, clear_stats):
                 {"username": username}
             )
             if info_total[username]:
-                # Reset to zero the games_per_hour contribution
                 info_total[username]["games_per_hour"] = 0.0
             else:
                 # No "user_cache" entry, initialize with cleared contribution
@@ -62,7 +61,6 @@ def process_run(run, info):
     if r_username in info:
         info[r_username]["tests"] += 1
     else:
-        # TODO: run created by an user not in rundb.userdb.get_users() ???
         print(f"not in userdb: {r_username=}; {run['_id']=}")
         return
 
@@ -241,8 +239,8 @@ def main():
     # since the previous script execution. It is used to update the "deltas" collection.
     # "deltas"    : dictionary with keys representing the IDs of all finished runs that
     # have already been processed in previous script executions to avoid double counting.
-    # It is loaded from the "deltas" collection.
-    # If in clear_stats mode, it is an empty dictionary.
+    # It is loaded from the "deltas" collection in update scan mode,
+    # it is an empty dictionary in full scan mode.
 
     rundb = RunDb()
 
