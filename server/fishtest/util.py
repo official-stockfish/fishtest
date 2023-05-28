@@ -113,7 +113,7 @@ def get_chi2(tasks, exclude_workers=set()):
     # Now we do the basic chi2 computation.
     df = (rows - 1) * (columns - 1)
     raw_residual = observed - expected
-    ratio = raw_residual ** 2 / expected
+    ratio = raw_residual**2 / expected
     row_chi2 = numpy.sum(ratio, axis=1)
     chi2 = numpy.sum(row_chi2)
     p_value = 1 - scipy.stats.chi2.cdf(chi2, df)

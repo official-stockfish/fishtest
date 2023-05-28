@@ -18,7 +18,7 @@ def U(n, gamma, A, y):
     return (
         2 * A * gamma * math.sin(math.pi * n * y / A)
         - 2 * math.pi * n * math.cos(math.pi * n * y / A)
-    ) / (A ** 2 * gamma ** 2 + math.pi ** 2 * n ** 2)
+    ) / (A**2 * gamma**2 + math.pi**2 * n**2)
 
 
 class Brownian:
@@ -27,7 +27,7 @@ class Brownian:
         self.b = b
         self.mu = mu
         self.sigma = sigma
-        self.sigma2 = sigma ** 2
+        self.sigma2 = sigma**2
 
     def outcome_cdf(self, T=None, y=None):
         # in case of slow convergence use Siegmund approximation.
@@ -35,7 +35,7 @@ class Brownian:
         mu = self.mu
         gamma = mu / sigma2
         A = self.b - self.a
-        if sigma2 * T / A ** 2 < 1e-2 or abs(gamma * A) > 15:
+        if sigma2 * T / A**2 < 1e-2 or abs(gamma * A) > 15:
             ret = self.outcome_cdf_alt2(T, y)
         else:
             ret = self.outcome_cdf_alt1(T, y)
@@ -56,10 +56,10 @@ class Brownian:
         gamma = mu / sigma2
         n = 1
         s = 0.0
-        lambda_1 = ((math.pi / A) ** 2) * sigma2 / 2 + (mu ** 2 / sigma2) / 2
+        lambda_1 = ((math.pi / A) ** 2) * sigma2 / 2 + (mu**2 / sigma2) / 2
         t0 = math.exp(-lambda_1 * T - x * gamma + y * gamma)
         while True:
-            lambda_n = ((n * math.pi / A) ** 2) * sigma2 / 2 + (mu ** 2 / sigma2) / 2
+            lambda_n = ((n * math.pi / A) ** 2) * sigma2 / 2 + (mu**2 / sigma2) / 2
             t1 = math.exp(-(lambda_n - lambda_1) * T)
             t3 = U(n, gamma, A, y)
             t4 = math.sin(n * math.pi * x / A)
@@ -91,17 +91,17 @@ class Brownian:
         t1 = Phi(z)
         if gamma * a >= 5:
             t2 = (
-                -math.exp(-(za ** 2) / 2 + 2 * gamma * a)
+                -math.exp(-(za**2) / 2 + 2 * gamma * a)
                 / math.sqrt(2 * math.pi)
-                * (1 / za - 1 / za ** 3)
+                * (1 / za - 1 / za**3)
             )
         else:
             t2 = math.exp(2 * gamma * a) * Phi(za)
         if gamma * b >= 5:
             t3 = (
-                -math.exp(-(zb ** 2) / 2 + 2 * gamma * b)
+                -math.exp(-(zb**2) / 2 + 2 * gamma * b)
                 / math.sqrt(2 * math.pi)
-                * (1 / zb - 1 / zb ** 3)
+                * (1 / zb - 1 / zb**3)
             )
         else:
             t3 = math.exp(2 * gamma * b) * Phi(zb)

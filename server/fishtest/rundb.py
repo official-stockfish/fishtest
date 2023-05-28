@@ -622,7 +622,7 @@ class RunDb:
         if tc_ratio > 1:
             # LTC/STC tc_ratio = 6, target latency ratio = 3/2,
             # => LTC base tp = 4 => log(4)/log(6) ~ 0.774
-            itp *= tc_ratio ** 0.774
+            itp *= tc_ratio**0.774
 
         # Gentle bonus for positive LLR
         llr = run["args"].get("sprt", {}).get("llr", 0)
@@ -1474,7 +1474,7 @@ class RunDb:
                     "value": self.spsa_param_clip(param, c * flip),
                     "R": param["a"]
                     / (spsa["A"] + iter_local) ** spsa["alpha"]
-                    / c ** 2,
+                    / c**2,
                     "c": c,
                     "flip": flip,
                 }

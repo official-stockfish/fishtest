@@ -277,12 +277,12 @@ def update_SPRT(R, sprt):
                 if LLR_ < o["ref0"]:
                     delta = LLR_ - o["ref0"]
                     o["m0"] += delta
-                    o["sq0"] += delta ** 2
+                    o["sq0"] += delta**2
                     o["ref0"] = LLR_
                 if LLR_ > o["ref1"]:
                     delta = LLR_ - o["ref1"]
                     o["m1"] += delta
-                    o["sq1"] += delta ** 2
+                    o["sq1"] += delta**2
                     o["ref1"] = LLR_
             else:
                 # Be robust if some updates are lost: reset data collection.

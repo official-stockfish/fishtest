@@ -45,7 +45,7 @@ class sprt:
             if len(results) == 5:
                 self.sigma_pg = (2 * var) ** 0.5
             elif len(results) == 3:
-                self.sigma_pg = var ** 0.5
+                self.sigma_pg = var**0.5
             else:
                 assert False
         self.s0, self.s1 = [self.elo_to_score(elo) for elo in (self.elo0, self.elo1)]
