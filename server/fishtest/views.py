@@ -1091,12 +1091,12 @@ def tests_approve(request):
 
 @view_config(route_name="tests_purge", require_csrf=True, request_method="POST")
 def tests_purge(request):
-    if not request.has_permission("approve_run"):
-        request.session.flash("Please login as approver")
-        return HTTPFound(location=request.route_url("login"))
-    username = request.authenticated_userid
-
     run = request.rundb.get_run(request.POST["run-id"])
+    if not request.has_permission("approve_run") and not is_same_user(request, run):
+        request.session.flash(
+            "Only approvers or the submitting user can purge the run."
+        )
+        return HTTPFound(location=request.route_url("login"))
     if not run["finished"]:
         request.session.flash("Can only purge completed run", "error")
         return HTTPFound(location=request.route_url("tests"))
@@ -1107,7 +1107,7 @@ def tests_purge(request):
     if message != "":
         request.session.flash(message)
         return HTTPFound(location=request.route_url("tests"))
-
+    username = request.authenticated_userid
     request.actiondb.purge_run(
         username=username,
         run=run,
