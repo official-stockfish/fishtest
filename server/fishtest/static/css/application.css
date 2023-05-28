@@ -650,3 +650,7 @@ input[type="checkbox"],
   height: 3.4vh !important;
   margin-bottom: 2vh !important;
 }
+
+.users-head th {
+  white-space: nowrap;
+}
