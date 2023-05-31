@@ -309,7 +309,7 @@ def establish_validated_net(remote, testing_dir, net):
                         "Failed to validate the network: {}".format(net)
                     )
                 break
-            except WorkerException as e:
+            except WorkerException:
                 if attempt > 5:
                     raise
                 waitTime = UPDATE_RETRY_TIME * attempt
