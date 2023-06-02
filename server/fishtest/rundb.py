@@ -316,7 +316,15 @@ class RunDb:
                 self.run_cache[r_id]["rtime"] = time.time()
                 return self.run_cache[r_id]["run"]
             try:
-                run = self.runs.find_one({"_id": ObjectId(r_id)})
+                run = self.runs.find_one(
+                    {"_id": ObjectId(r_id)},
+                    {"tasks": 0, "bad_tasks": 0, "args.spsa.param_history": 0},
+                )
+                run["tasks"] = []
+                run["bad_tasks"] = []
+                if "args" in run and "spsa" in run["args"]:
+                    run["args"]["spsa"]["param_history"] = []
+
                 if DEBUG:
                     print("Load", r_id, flush=True)
                 if run:

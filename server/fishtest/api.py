@@ -289,10 +289,13 @@ class ApiView(object):
 
     @view_config(route_name="api_get_run")
     def get_run(self):
-        run = self.request.rundb.get_run(self.request.matchdict["id"])
+        run = self.request.rundb.runs.find_one(
+            self.request.matchdict["id"],
+            {"tasks": 0, "bad_tasks": 0, "args.spsa.param_history": 0},
+        )
         if run is None:
             raise exception_response(404)
-        return strip_run(run)
+        return run
 
     @view_config(route_name="api_get_task")
     def get_task(self):
@@ -333,7 +336,9 @@ class ApiView(object):
         results = run["results"]
         if "sprt" not in run["args"]:
             return {}
-        run = strip_run(run)
+        # Strip runs from cache that has sensitive data
+        if run["tasks"] != [] or run["bad_tasks"] != []:
+            run = strip_run(run)
         sprt = run["args"].get("sprt")
         elo_model = sprt.get("elo_model", "BayesElo")
         alpha = sprt["alpha"]
