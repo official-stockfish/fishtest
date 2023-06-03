@@ -167,10 +167,12 @@ def update_deltas(rundb, deltas, new_deltas):
     new_deltas |= deltas
     print(f"{len(new_deltas)=}\n{next(iter(new_deltas))=}")
     rundb.deltas.delete_many({})
-    keys = tuple(new_deltas.keys())
     n = 10000
-    k_batches = (keys[i : i + n] for i in range(0, len(new_deltas), n))
-    docs = ({k: None for k in k_batch} for k_batch in k_batches)
+    keys = tuple(new_deltas.keys())
+    docs = (
+        {k: None for k in keys_batch}
+        for keys_batch in (keys[i : i + n] for i in range(0, len(new_deltas), n))
+    )
     rundb.deltas.insert_many(docs)
 
 
