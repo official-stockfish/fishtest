@@ -160,8 +160,8 @@ def build_users(info):
 
 
 def update_deltas(rundb, deltas, new_deltas):
-    # write the new deltas to the database in batches to speed up the collection operations
-    # set the value to None for speed, change to new_deltas[k] if needed
+    # Write the new deltas to the database in batches to speed up the collection operations,
+    # set directly the value to None for speed, change to new_deltas[k] if needed
     print("update deltas:")
     print(f"{len(new_deltas)=}\n{next(iter(new_deltas))=}")
     new_deltas |= deltas
