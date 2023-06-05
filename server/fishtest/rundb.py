@@ -825,6 +825,7 @@ class RunDb:
             need_tt += get_hash(run["args"]["base_options"])
             need_tt *= max_threads // run["args"]["threads"]
             # estime another 10MB per process, 30MB per thread, and 80MB for net as a base memory need besides hash
+            # Note that changes here need the corresponding worker change to STC_memory, which limits concurrency
             need_base = (
                 2
                 * (max_threads // run["args"]["threads"])
