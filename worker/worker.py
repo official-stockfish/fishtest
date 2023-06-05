@@ -782,6 +782,24 @@ def setup_parameters(worker_dir):
         print("Changing port to 443")
         options.port = 443
 
+    # Limit concurrency so that at least STC tests can run with the evailable memory
+    # The memory need per engine is 16 for the TT Hash, 10 for the process 80 for the net and 30 per thread
+    # These numbers need to be up-to-date with the server values
+    STC_memory = 2 * (16 + 10 + 80 + 30)
+    max_concurrency = max(1, int(options.max_memory / STC_memory))
+    if max_concurrency < options.concurrency:
+        print(
+            "Changing concurrency to allow for running STC tests with the available memory"
+        )
+        print(
+            "The required memory to run with {} concurrency is {} MB".format(
+                options.concurrency, STC_memory * options.concurrency
+            )
+        )
+        print("The concurrency has been reduced to {}".format(max_concurrency))
+        print("Consider increasing max_memory if possible")
+        options.concurrency = max_concurrency
+
     options.compiler = compilers[options.compiler_]
 
     options.hw_id = hw_id(config.getint("private", "hw_seed"))
