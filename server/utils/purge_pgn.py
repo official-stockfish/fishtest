@@ -7,8 +7,8 @@ from pymongo import DESCENDING
 
 
 def purge_pgn(rundb, finished, deleted, days):
-    saved_runs, saved_tasks, saved_pgns = 0, 0, 0
-    deleted_runs, deleted_tasks, deleted_pgns = 0, 0, 0
+    kept_runs, kept_tasks, kept_pgns = 0, 0, 0
+    purged_runs, purged_tasks, purged_pgns = 0, 0, 0
     now = datetime.utcnow()
     cutoff_date_ltc = now - timedelta(days=5 * days)
     cutoff_date = now - timedelta(days=days)
@@ -19,54 +19,54 @@ def purge_pgn(rundb, finished, deleted, days):
         "last_updated": {"$gte": now - timedelta(days=60)},
     }
     for run in rundb.db.runs.find(runs_query, sort=[("last_updated", DESCENDING)]):
-        skip = (
+        keep = (
             not deleted
             and finished
             and tc_regex.match(run["args"]["tc"])
             and run["last_updated"] > cutoff_date_ltc
         ) or run["last_updated"] > cutoff_date
 
-        if skip:
-            saved_runs += 1
+        if keep:
+            kept_runs += 1
         else:
-            deleted_runs += 1
+            purged_runs += 1
 
         tasks_count = len(run["tasks"])
         pgns_query = {
             "run_id": {"$in": [f"{run['_id']}-{idx}" for idx in range(tasks_count)]}
         }
         pgns_count = rundb.pgndb.count_documents(pgns_query)
-        if skip:
-            saved_tasks += tasks_count
-            saved_pgns += pgns_count
+        if keep:
+            kept_tasks += tasks_count
+            kept_pgns += pgns_count
         else:
             rundb.pgndb.delete_many(pgns_query)
-            deleted_tasks += tasks_count
-            deleted_pgns += pgns_count
+            purged_tasks += tasks_count
+            purged_pgns += pgns_count
 
     return (
-        saved_runs,
-        saved_tasks,
-        saved_pgns,
-        deleted_runs,
-        deleted_tasks,
-        deleted_pgns,
+        kept_runs,
+        kept_tasks,
+        kept_pgns,
+        purged_runs,
+        purged_tasks,
+        purged_pgns,
     )
 
 
 def report(
-    run_type,
-    saved_runs,
-    saved_tasks,
-    saved_pgns,
-    deleted_runs,
-    deleted_tasks,
-    deleted_pgns,
+    runs_type,
+    kept_runs,
+    kept_tasks,
+    kept_pgns,
+    purged_runs,
+    purged_tasks,
+    purged_pgns,
 ):
     template = "{:5d} runs, {:7d} tasks, {:7d} pgns"
-    print(run_type)
-    print("saved :", template.format(saved_runs, saved_tasks, saved_pgns))
-    print("purged:", template.format(deleted_runs, deleted_tasks, deleted_pgns))
+    print(runs_type)
+    print("kept  :", template.format(kept_runs, kept_tasks, kept_pgns))
+    print("purged:", template.format(purged_runs, purged_tasks, purged_pgns))
 
 
 def main():
