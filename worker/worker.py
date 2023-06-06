@@ -786,26 +786,33 @@ def setup_parameters(worker_dir):
     # The memory need per engine is 16 for the TT Hash, 10 for the process 80 for the net and 30 per thread
     # These numbers need to be up-to-date with the server values
     STC_memory = 2 * (16 + 10 + 80 + 30)
-    max_concurrency = max(1, int(options.max_memory / STC_memory))
+    max_concurrency = int(options.max_memory / STC_memory)
+    if max_concurrency < 1:
+        print(
+            "You need to reserve at least {} MiB to run the worker!".format(STC_memory)
+        )
+        return None
+    options.concurrency_reduced = False
     if max_concurrency < options.concurrency:
         print(
             "Changing concurrency to allow for running STC tests with the available memory"
         )
         print(
-            "The required memory to run with {} concurrency is {} MB".format(
+            "The required memory to run with {} concurrency is {} MiB".format(
                 options.concurrency, STC_memory * options.concurrency
             )
         )
         print("The concurrency has been reduced to {}".format(max_concurrency))
         print("Consider increasing max_memory if possible")
         options.concurrency = max_concurrency
+        options.concurrency_reduced = True
 
     options.compiler = compilers[options.compiler_]
 
     options.hw_id = hw_id(config.getint("private", "hw_seed"))
     print("Default uuid_prefix: {}".format(options.hw_id))
 
-    # Step 6: determine credentials
+    # Step 6: determine credentials.
 
     username, password = get_credentials(config, options, args)
 
@@ -825,7 +832,9 @@ def setup_parameters(worker_dir):
     config.set(
         "parameters",
         "concurrency",
-        options.concurrency_ + " ; = {} cores".format(options.concurrency),
+        options.concurrency_
+        + " ; = {} cores".format(options.concurrency)
+        + (" (reduced)" if options.concurrency_reduced else ""),
     )
     config.set(
         "parameters",
