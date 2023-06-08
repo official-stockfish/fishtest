@@ -161,6 +161,10 @@ async function follow_live(test_id) {
     ${items.args.sprt.state ? `(${items.args.sprt.state})` : ""}
   `;
 
+    const pentanomial = items.results?.pentanomial || [];
+    const ptnml = `[${pentanomial.slice(0, 5).join(", ")}]`;
+    document.getElementById("pentanomial").textContent = ptnml;
+
     document.getElementById("elo").textContent = `
     ${j.elo.toFixed(2)}
     [${j.ci_lower.toFixed(2)},${j.ci_upper.toFixed(2)}]
