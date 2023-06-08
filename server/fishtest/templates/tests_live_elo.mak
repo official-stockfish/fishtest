@@ -69,6 +69,10 @@
           <td>Games</td>
           <td id="games"></td>
         </tr>
+        <tr>
+          <td>Pentanomial</td>
+          <td id="pentanomial"></td>
+        </tr>
       </tbody>
     </table>
   </div>
