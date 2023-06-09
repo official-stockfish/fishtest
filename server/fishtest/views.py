@@ -449,6 +449,8 @@ def user(request):
         request.session.flash("You cannot inspect users", "error")
         return HTTPFound(location=request.route_url("tests"))
     user_data = request.userdb.get_user(user_name)
+    if user_data is None:
+        raise exception_response(404)
     if "user" in request.POST:
         if profile:
             new_password = request.params.get("password")
@@ -924,7 +926,10 @@ def tests_run(request):
 
     run_args = {}
     if "id" in request.params:
-        run_args = copy.deepcopy(request.rundb.get_run(request.params["id"])["args"])
+        run = request.rundb.get_run(request.params["id"])
+        if run is None:
+            raise exception_response(404)
+        run_args = copy.deepcopy(run["args"])
         if "spsa" in run_args:
             # needs deepcopy
             run_args["spsa"]["A"] = (
@@ -1160,6 +1165,8 @@ def get_page_title(run):
 @view_config(route_name="tests_live_elo", renderer="tests_live_elo.mak")
 def tests_live_elo(request):
     run = request.rundb.get_run(request.matchdict["id"])
+    if run is None:
+        raise exception_response(404)
     request.rundb.get_results(run)
     return {"run": run, "page_title": get_page_title(run)}
 
@@ -1167,6 +1174,8 @@ def tests_live_elo(request):
 @view_config(route_name="tests_stats", renderer="tests_stats.mak")
 def tests_stats(request):
     run = request.rundb.get_run(request.matchdict["id"])
+    if run is None:
+        raise exception_response(404)
     request.rundb.get_results(run)
     return {"run": run, "page_title": get_page_title(run)}
 
@@ -1202,12 +1211,12 @@ def tests_machines(request):
 @view_config(route_name="tests_view", renderer="tests_view.mak")
 def tests_view(request):
     run = request.rundb.get_run(request.matchdict["id"])
+    if run is None:
+        raise exception_response(404)
     if "follow" in request.params:
         follow = 1
     else:
         follow = 0
-    if run is None:
-        raise exception_response(404)
     results = request.rundb.get_results(run)
     run["results_info"] = format_results(results, run)
     run_args = [("id", str(run["_id"]), "")]
