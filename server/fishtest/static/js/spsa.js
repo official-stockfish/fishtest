@@ -214,7 +214,9 @@ async function handle_spsa() {
     const alertElement = document.createElement("div");
     alertElement.className = "alert alert-warning";
     alertElement.role = "alert";
-    alertElement.textContent = "Not enough data to generate plot.";
+    if (spsa_params.length >= 1000)
+      alertElement.textContent = "Too many tuning parameters to generate plot.";
+    else alertElement.textContent = "Not enough data to generate plot.";
     const historyPlot = document.getElementById("div_spsa_history_plot");
     historyPlot.replaceChildren();
     historyPlot.append(alertElement);
