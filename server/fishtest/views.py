@@ -530,25 +530,23 @@ def users_monthly(request):
 
 
 def get_master_info():
-    message_search = re.compile(r"^.*$", re.MULTILINE)
-    bench_search = re.compile(r"(^|\s)[Bb]ench[ :]+([0-9]+)", re.MULTILINE)
-    for idx, commit in enumerate(
-        requests.get(
-            "https://api.github.com/repos/official-stockfish/Stockfish/commits"
-        ).json()
-    ):
+    bench_search = re.compile(r"(^|\s)[Bb]ench[ :]+([1-9]\d{5,9})(?!\d)")
+    commits = requests.get(
+        "https://api.github.com/repos/official-stockfish/Stockfish/commits"
+    ).json()
+    for idx, commit in enumerate(commits):
         if "commit" not in commit:
             return None
-        bench = bench_search.search(commit["commit"]["message"])
+        message_lines = commit["commit"]["message"].strip().split("\n")
+        bench = bench_search.search(message_lines[-1].strip())
         if idx == 0:
-            message = message_search.search(commit["commit"]["message"])
-            date = datetime.datetime.strptime(
-                commit["commit"]["committer"]["date"], "%Y-%m-%dT%H:%M:%SZ"
-            )
+            message = message_lines[0].strip()
+            date_str = commit["commit"]["committer"]["date"]
+            date = datetime.datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%SZ")
         if bench:
             return {
                 "bench": bench.group(2),
-                "message": message.group(),
+                "message": message,
                 "date": date.strftime("%b %d"),
             }
     return None
