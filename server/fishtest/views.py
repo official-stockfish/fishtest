@@ -1005,6 +1005,7 @@ def tests_modify(request):
             return HTTPFound(location=request.route_url("tests"))
 
         run["finished"] = False
+        run["deleted"] = False
         run["failed"] = False
         run["is_green"] = False
         run["is_yellow"] = False
