@@ -529,14 +529,15 @@ def users_monthly(request):
     return {"users": users_list}
 
 
-def get_master_info():
-    bench_search = re.compile(r"(^|\s)[Bb]ench[ :]+([1-9]\d{5,9})(?!\d)")
-    commits = requests.get(
-        "https://api.github.com/repos/official-stockfish/Stockfish/commits"
-    ).json()
-    for idx, commit in enumerate(commits):
-        if "commit" not in commit:
-            return None
+def get_master_info(url):
+    try:
+        commits = requests.get(url)
+        commits.raise_for_status()
+    except Exception as e:
+        print(f"Exception getting commits:\n{e}")
+        return None
+    bench_search = re.compile(r"(^|\s)[Bb]ench[ :]+([1-9]\d{5,7})(?!\d)")
+    for idx, commit in enumerate(commits.json()):
         message_lines = commit["commit"]["message"].strip().split("\n")
         bench = bench_search.search(message_lines[-1].strip())
         if idx == 0:
@@ -664,7 +665,11 @@ def validate_form(request):
         data["rescheduled_from"] = request.POST["rescheduled_from"]
 
     def strip_message(m):
-        s = re.sub(r"[Bb]ench[ :]+[0-9]+\s*", "", m)
+        lines = m.strip().split("\n")
+        last_line = lines[-1].strip()
+        if re.match(r"(^|\s)[Bb]ench[ :]+([1-9]\d{5,7})(?!\d)", last_line):
+            lines[-1] = ""
+        s = "\n".join(lines)
         s = re.sub(r"[ \t]+", " ", s)
         s = re.sub(r"\n+", r"\n", s)
         return s.rstrip()
@@ -682,8 +687,10 @@ def validate_form(request):
         if "commit" not in c:
             raise Exception("Cannot find branch in developer repository")
         if len(data["new_signature"]) == 0:
-            bs = re.compile(r"(^|\s)[Bb]ench[ :]+([0-9]+)", re.MULTILINE)
-            m = bs.search(c["commit"]["message"])
+            bs = re.compile(r"(^|\s)[Bb]ench[ :]+([1-9]\d{5,7})(?!\d)")
+            lines = c["commit"]["message"].split("\n")
+            last_line = lines[-1].strip()
+            m = bs.search(last_line)
             if m:
                 data["new_signature"] = m.group(2)
             else:
@@ -736,18 +743,12 @@ def validate_form(request):
 
     # Check entered bench
     if data["base_tag"] == "master":
-        found = False
         api_url = data["tests_repo"].replace(
             "https://github.com", "https://api.github.com/repos"
         )
         api_url += "/commits"
-        bs = re.compile(r"(^|\s)[Bb]ench[ :]+([0-9]+)", re.MULTILINE)
-        for c in requests.get(api_url).json():
-            m = bs.search(c["commit"]["message"])
-            if m:
-                found = True
-                break
-        if not found or m.group(2) != data["base_signature"]:
+        master_info = get_master_info(api_url)
+        if master_info is None or master_info["bench"] != data["base_signature"]:
             raise Exception(
                 "Bench signature of Base master does not match, "
                 + 'please "git pull upstream master" !'
@@ -936,13 +937,15 @@ def tests_run(request):
 
     username = request.authenticated_userid
     u = request.userdb.get_user(username)
-
+    master_commits_url = (
+        "https://api.github.com/repos/official-stockfish/Stockfish/commits"
+    )
     return {
         "args": run_args,
         "is_rerun": len(run_args) > 0,
         "rescheduled_from": request.params["id"] if "id" in request.params else None,
         "tests_repo": u.get("tests_repo", ""),
-        "master_info": get_master_info(),
+        "master_info": get_master_info(master_commits_url),
         "valid_books": get_valid_books(),
         "pt_info": request.rundb.pt_info,
     }
