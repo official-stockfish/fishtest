@@ -1316,15 +1316,20 @@ class RunDb:
 
     def approve_run(self, run_id, approver):
         run = self.get_run(run_id)
+        if run is None:
+            return None, "Run not found!"
         # Can't self approve
         if run["args"]["username"] == approver:
-            return False
-
-        run["approved"] = True
-        run["approver"] = approver
-        self.buffer(run, True)
-        self.task_time = 0
-        return True
+            return None, "Self approval is disabled!"
+        # Only one approval per run
+        if not run["approved"]:
+            run["approved"] = True
+            run["approver"] = approver
+            self.buffer(run, True)
+            self.task_time = 0
+            return run, "Run approved"
+        else:
+            return None, "Run already approved!"
 
     def purge_run(self, run, p=0.001, res=7.0, iters=1):
         # Only purge finished runs

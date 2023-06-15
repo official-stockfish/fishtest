@@ -1079,16 +1079,13 @@ def tests_approve(request):
         return HTTPFound(location=request.route_url("login"))
     username = request.authenticated_userid
     run_id = request.POST["run-id"]
-    if request.rundb.approve_run(run_id, username):
-        run = request.rundb.get_run(run_id)
-        update_nets(request, run)
-        request.actiondb.approve_run(
-            username=username,
-            run=run,
-        )
-        cached_flash(request, "Approved run")
+    run, message = request.rundb.approve_run(run_id, username)
+    if run is None:
+        request.session.flash(message, "error")
     else:
-        request.session.flash("Unable to approve run!", "error")
+        update_nets(request, run)
+        request.actiondb.approve_run(username=username, run=run)
+        cached_flash(request, message)
     return HTTPFound(location=request.route_url("tests"))
 
 
