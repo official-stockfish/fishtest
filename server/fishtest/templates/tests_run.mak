@@ -4,8 +4,8 @@
   from fishtest.util import format_bounds
   elo_model = "normalized"
   fb = lambda e0, e1: format_bounds(elo_model, e0, e1)
-  test_book = "UHO_XXL_+0.90_+1.19.epd"
-  pt_book = "8moves_v3.pgn"
+  test_book = "UHO_4060_v2.epd"
+  pt_book = "UHO_4060_v2.epd"
 %>
 <%
   base_branch = args.get('base_tag', 'master')
@@ -473,7 +473,7 @@
                         <a href="https://github.com/vdbergh/spsa_simul" target="_blank">
                           https://github.com/vdbergh/spsa_simul</a
                         >. Currently this option should be used with the book
-                        'UHO_XXL_+0.90_+1.19.epd' and in addition the option should not be used with
+                        'UHO_4060_v2.epd' and in addition the option should not be used with
                         nodestime or with more than one thread.
                       </div>
                     </div>

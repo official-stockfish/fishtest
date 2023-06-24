@@ -167,7 +167,6 @@
                     <li><a href="/tests/finished?ltc_only=1" class="links-link rounded">LTC</a></li>
                     <li><a href="/tests/finished?success_only=1" class="links-link rounded">Greens</a></li>
                     <li><a href="/tests/finished?yellow_only=1" class="links-link rounded">Yellows</a></li>
-                    <li><a href="https://groups.google.com/g/fishcooking-results" target="_blank" rel="noopener" class="links-link rounded">History</a></li>
                   </ul>
                 </li>
 
@@ -197,10 +196,10 @@
                 <li class="links-group">
                   <strong class="links-heading d-flex w-100 align-items-center fw-semibold">Stockfish</strong>
                   <ul class="list-unstyled fw-normal small">
-                    <li><a href="https://stockfishchess.org/download/" target="_blank" rel="noopener" class="links-link rounded">Official Releases</a></li>
-                    <li><a href="https://abrok.eu/stockfish/" target="_blank" rel="noopener" class="links-link rounded">Dev Builds</a></li>
-                    <li><a href="https://stockfishchess.org/get-involved/" target="_blank" rel="noopener" class="links-link rounded">Contribute</a></li>
-                    <li><a href="https://github.com/official-stockfish/Stockfish/wiki/Regression-Tests" target="_blank" rel="noopener" class="links-link rounded">Progress</a></li>
+                    <li><a href="https://stockfishchess.org/download/" target="_blank" rel="noopener" class="links-link rounded release">Official Releases</a></li>
+                    <li><a href="https://github.com/official-stockfish/Stockfish/releases?q=prerelease%3Atrue" target="_blank" rel="noopener" class="links-link rounded release">Prereleases</a></li>
+                    <li><a href="https://stockfishchess.org/get-involved/" target="_blank" rel="noopener" class="links-link rounded get-involved">Contribute</a></li>
+                    <li><a href="https://github.com/official-stockfish/Stockfish/wiki/Regression-Tests" target="_blank" rel="noopener" class="links-link rounded regression">Progress</a></li>
                     <li><a href="/nns" class="links-link rounded">NN Repo</a></li>
                   </ul>
                 </li>
@@ -210,11 +209,12 @@
                 <li class="links-group">
                   <strong class="links-heading d-flex w-100 align-items-center fw-semibold">Resources</strong>
                   <ul class="list-unstyled fw-normal small">
-                    <li><a href="https://discord.gg/awnh2qZfTT" target="_blank" rel="noopener" class="links-link rounded">Discord</a></li>
-                    <li><a href="https://groups.google.com/g/fishcooking" target="_blank" rel="noopener" class="links-link rounded">Forum</a></li>
-                    <li><a href="https://github.com/glinscott/fishtest/wiki" target="_blank" rel="noopener" class="links-link rounded">Wiki</a></li>
+                    <li><a href="https://discord.gg/awnh2qZfTT" target="_blank" rel="noopener" class="links-link rounded discord">Discord</a></li>
+                    <li><a href="https://github.com/glinscott/fishtest/wiki" target="_blank" rel="noopener" class="links-link rounded wiki">Fishtest Wiki</a></li>
+                    <li><a href="https://github.com/official-stockfish/Stockfish/wiki" target="_blank" rel="noopener" class="links-link rounded wiki">Stockfish Wiki</a></li>
+                    <li><a href="https://github.com/glinscott/nnue-pytorch/wiki" target="_blank" rel="noopener" class="links-link rounded wiki">NN Trainer Wiki</a></li>
                     <li><a href="/sprt_calc" class="links-link rounded">SPRT Calc</a></li>
-                    <li><a href="https://hxim.github.io/Stockfish-Evaluation-Guide/" target="_blank" rel="noopener" class="links-link rounded">Eval Guide</a></li>
+                    <li><a href="https://hxim.github.io/Stockfish-Evaluation-Guide/" target="_blank" rel="noopener" class="links-link rounded eval-guide">Eval Guide</a></li>
                   </ul>
                 </li>
 
@@ -223,7 +223,7 @@
                 <li class="links-group">
                   <strong class="links-heading d-flex w-100 align-items-center fw-semibold">Development</strong>
                   <ul class="list-unstyled fw-normal small">
-                    <li><a href="https://github.com/official-stockfish/Stockfish" target="_blank" rel="noopener" class="links-link rounded">Stockfish</a></li>
+                    <li><a href="https://github.com/official-stockfish/Stockfish" target="_blank" rel="noopener" class="links-link rounded stockfish-repo">Stockfish</a></li>
                     <li><a href="https://github.com/glinscott/fishtest" target="_blank" rel="noopener" class="links-link rounded">Fishtest</a></li>
                     <li><a href="https://github.com/glinscott/nnue-pytorch" target="_blank" rel="noopener" class="links-link rounded">NN Trainer</a></li>
                     <li><a href="https://github.com/official-stockfish/books" target="_blank" rel="noopener" class="links-link rounded">Books</a></li>
