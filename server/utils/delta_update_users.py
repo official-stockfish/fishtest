@@ -44,10 +44,10 @@ def initialize_info(rundb, clear_stats):
 
 
 def compute_games_rates(rundb, info_tuple):
-    # 1328000 nps is the reference core, also sets in views.py and game.py
+    # 1184000 nps is the reference core, also set in rundb.py and games.py
     for machine in rundb.get_machines():
         games_per_hour = (
-            (machine["nps"] / 1328000.0)
+            (machine["nps"] / 1184000)
             * (3600.0 / estimate_game_duration(machine["run"]["args"]["tc"]))
             * (int(machine["concurrency"]) // machine["run"]["args"].get("threads", 1))
         )
