@@ -349,55 +349,33 @@ legend {
   content: "\f02d";
 }
 
-.mainnavbar [href="https://github.com/official-stockfish/Stockfish"]::before
-{
+.mainnavbar .stockfish-repo::before {
   content: "\f578";
 }
 
-.mainnavbar [href="https://github.com/glinscott/fishtest/wiki"]::before
-{
+.mainnavbar .wiki::before {
   content: "\f266";
   font-family: "Font Awesome 5 Brands";
   font-weight: 400;
 }
 
-.mainnavbar [href="https://groups.google.com/g/fishcooking"]::before
-{
-  content: "\f086";
-}
-
-.mainnavbar [href="https://groups.google.com/g/fishcooking-results"]::before
-{
-  content: "\f1da";
-}
-
-.mainnavbar [href="https://hxim.github.io/Stockfish-Evaluation-Guide/"]::before
-{
+.mainnavbar .eval-guide::before {
   content: "\f518";
 }
 
-.mainnavbar [href="https://github.com/official-stockfish/Stockfish/wiki/Regression-Tests"]::before
-{
+.mainnavbar .regression::before {
   content: "\f201";
 }
 
-.mainnavbar [href="https://abrok.eu/stockfish/"]::before
-{
+.mainnavbar .release::before {
   content: "\f019";
 }
 
-.mainnavbar [href="https://stockfishchess.org/download/"]::before
-{
-  content: "\f019";
-}
-
-.mainnavbar [href="https://stockfishchess.org/get-involved/"]::before
-{
+.mainnavbar .get-involved::before {
   content: "\f4c4";
 }
 
-.mainnavbar [href="https://discord.gg/awnh2qZfTT"]::before
-{
+.mainnavbar .discord::before {
   content: "\f392";
   font-family: "Font Awesome 5 Brands";
   font-weight: 400;

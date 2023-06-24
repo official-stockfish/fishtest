@@ -371,8 +371,8 @@ def remaining_hours(run):
         if llr >= llr_bound:
             return 0
 
-        # Assume all tests use default book (UHO_XXL_+0.90_+1.19).
-        book_positions = 223070
+        # Assume all tests use default book (UHO_4060_v2).
+        book_positions = 242201
         t = scipy.stats.beta(1, 15).cdf(min(N / book_positions, 1.0))
         expected_games_llr = int(2 * N * llr_bound / llr)
         expected_games = min(
