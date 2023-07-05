@@ -157,13 +157,13 @@
                     <input class="list-group-item-check pe-none" type="radio" name="test-type" id="pt_smp_test"
                       data-options='{
                         "name": "PT SMP",
-                        "tc": "30+0.3",
-                        "new_tc": "30+0.3",
+                        "tc": "60+0.6",
+                        "new_tc": "60+0.6",
                         "threads": 8,
-                        "options": "Hash=256 Use NNUE=true",
+                        "options": "Hash=512 Use NNUE=true",
                         "book": "${pt_book}",
                         "stop_rule": "stop-rule-games",
-                        "games": 40000,
+                        "games": 60000,
                         "test_branch": "master",
                         "base_branch": "${pt_branch}",
                         "test_signature": ${latest_bench},
