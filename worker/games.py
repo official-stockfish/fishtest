@@ -959,7 +959,10 @@ def parse_cutechess_output(
                     else:
                         if not response["task_alive"]:
                             # This task is no longer necessary
-                            print("Server told us task is no longer needed")
+                            print(
+                                "The server told us that no more games"
+                                " are needed for the current task."
+                            )
                             return False
                         update_succeeded = True
                         num_games_updated = num_games_finished
@@ -991,7 +994,10 @@ def launch_cutechess(
 
         if not req["task_alive"]:
             # This task is no longer necessary
-            print("Server told us task is no longer needed")
+            print(
+                "The server told us that no more games"
+                " are needed for the current task."
+            )
             return False
 
         result["spsa"] = {
