@@ -244,7 +244,7 @@ async function handle_spsa() {
 
   data_cache[0] = chart_data;
   chart_object = new google.visualization.LineChart(
-    document.getElementById("div_spsa_history_plot")
+    document.getElementById("div_spsa_history_plot"),
   );
   chart_object.draw(chart_data, chart_options);
   document.getElementById("chart_toolbar").style.display = "";

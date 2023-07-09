@@ -2,7 +2,7 @@
   "use strict";
 
   const togglePasswordVisibility = document.querySelectorAll(
-    ".toggle-password-visibility"
+    ".toggle-password-visibility",
   );
   togglePasswordVisibility.forEach((toggle) => {
     toggle.addEventListener("click", (event) => {

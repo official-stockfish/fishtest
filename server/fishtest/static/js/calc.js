@@ -55,7 +55,7 @@ function set_fields() {
     set_field_from_url(
       key,
       defaultParameters[key],
-      urlObj.searchParams.get(key)
+      urlObj.searchParams.get(key),
     );
   }
 }
@@ -92,7 +92,7 @@ function draw_charts() {
   history.replaceState(
     null,
     "",
-    `/sprt_calc?elo-model=${elo_model}&elo-0=${elo0}&elo-1=${elo1}&draw-ratio=${draw_ratio}&rms-bias=${rms_bias}`
+    `/sprt_calc?elo-model=${elo_model}&elo-0=${elo0}&elo-1=${elo1}&draw-ratio=${draw_ratio}&rms-bias=${rms_bias}`,
   );
   elo0 = sprt.elo0;
   elo1 = sprt.elo1;

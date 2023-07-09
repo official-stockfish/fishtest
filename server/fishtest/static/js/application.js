@@ -40,7 +40,7 @@ const comparer = (idx, asc) => (a, b) =>
       ? padDotVersionStr(v1).toString().localeCompare(padDotVersionStr(v2))
       : v1.toString().localeCompare(v2))(
     getCellValue(asc ? a : b, idx),
-    getCellValue(asc ? b : a, idx)
+    getCellValue(asc ? b : a, idx),
   );
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -54,8 +54,8 @@ document.addEventListener("DOMContentLoaded", () => {
         .sort(
           comparer(
             Array.from(th.parentNode.children).indexOf(th),
-            (this.asc = !this.asc)
-          )
+            (this.asc = !this.asc),
+          ),
         )
         .forEach((tr) => body.append(tr));
     }
@@ -65,7 +65,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // hash calculated by browser for sub-resource integrity checks:
   // https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity
   const match = document.cookie.match(
-    new RegExp("(^| )" + "theme" + "=([^;]+)")
+    new RegExp("(^| )" + "theme" + "=([^;]+)"),
   );
 
   const setTheme = (theme) => {
@@ -271,7 +271,7 @@ function broadcast(cmd, arg) {
   cmd_function(arg);
   localStorage.setItem(
     fishtest_broadcast_key,
-    JSON.stringify({ cmd: cmd, arg: arg, rnd: Math.random() })
+    JSON.stringify({ cmd: cmd, arg: arg, rnd: Math.random() }),
   );
 }
 
