@@ -112,7 +112,7 @@
                     % elif arg[0] == 'spsa':
                       <td>
                         ${arg[1][0]}<br>
-                        <table class="table table-sm">
+                        <table class="table table-sm spsa-table">
                           <thead>
                             <tr>
                               <th>param</th>

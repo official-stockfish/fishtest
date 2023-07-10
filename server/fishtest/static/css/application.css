@@ -451,6 +451,14 @@ legend {
   display: none;
 }
 
+.spsa-table {
+  table-layout: fixed;
+}
+
+.spsa-table td {
+  overflow-wrap: break-word;
+}
+
 /* Header */
 header.navbar {
   background-color: var(--bs-light);
