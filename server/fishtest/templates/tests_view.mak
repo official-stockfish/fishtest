@@ -94,7 +94,7 @@
       </div>
       <div>
         <h4 style="margin-top: 9px;">Details</h4>
-        <div class="table-responsive-lg">
+        <div class="table-responsive">
           <table class="table table-striped table-sm">
             <thead></thead>
             <tbody>
@@ -112,7 +112,7 @@
                     % elif arg[0] == 'spsa':
                       <td>
                         ${arg[1][0]}<br>
-                        <table class="table table-sm spsa-table">
+                        <table class="table table-sm">
                           <thead>
                             <tr>
                               <th>param</th>
