@@ -724,11 +724,13 @@
         document.getElementById("new_tc").value = new_tc;
         document.getElementById("threads").value = threads;
         document.getElementById("new-options").value = (
+          options + " " +
           document
             .getElementById("new-options")
             .value.replace(/Hash=[0-9]+ ?/, "")
         ).replace(/ $/, "");
         document.getElementById("base-options").value = (
+          options + " " +
           document
             .getElementById("base-options")
             .value.replace(/Hash=[0-9]+ ?/, "")
