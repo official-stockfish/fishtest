@@ -612,7 +612,7 @@ class RunDb:
 
         return results
 
-    def calc_itp(self, run):
+    def calc_itp(self, run, count):
         itp = run["args"]["throughput"]
         itp = max(min(itp, 500), 1)
 
@@ -640,13 +640,8 @@ class RunDb:
                 bonus = min(n / x, 2)
                 itp *= bonus
 
-        # Extra bonus for most promising LTCs at strong-gainer bounds
-        # if (
-        #    tc_ratio >= 3.0
-        #    and llr > 1.5
-        #    and run["args"].get("sprt", {}).get("elo0", 0) > 0
-        # ):
-        #    itp *= 1.2 # Max net bonus 2x
+        # Malus for too many active runs
+        itp *= 36.0 / (36.0 + count * count)
 
         run["args"]["itp"] = itp
 
@@ -715,11 +710,20 @@ class RunDb:
 
         if runs_finished or time.time() > self.task_time + 60:
             print("Request_task: refresh queue", flush=True)
+
+            # list user names for active runs
+            user_active = []
+            for r in self.get_unfinished_runs_id():
+                run = self.get_run(r["_id"])
+                if any(task["active"] for task in reversed(run["tasks"])):
+                    user_active.append(run["args"].get("username"))
+
+            # now compute their itp
             self.task_runs = []
             for r in self.get_unfinished_runs_id():
                 run = self.get_run(r["_id"])
                 self.update_workers_cores(run)
-                self.calc_itp(run)
+                self.calc_itp(run, user_active.count(run["args"].get("username")))
                 self.task_runs.append(run)
             self.task_time = time.time()
 
