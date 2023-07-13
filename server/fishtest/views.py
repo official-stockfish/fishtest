@@ -1017,7 +1017,6 @@ def tests_modify(request):
             and request.POST["info"].strip() != ""
         ):
             run["args"]["info"] = request.POST["info"].strip()
-        request.rundb.calc_itp(run)
         request.rundb.buffer(run, True)
         request.rundb.task_time = 0
 
