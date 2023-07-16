@@ -594,9 +594,9 @@ def find_arch(compiler):
         elif (
             "popcnt" in props["flags"]
             and "sse4.1" in props["flags"]
-            and "x86-64-modern" in targets
+            and "x86-64-sse41-popcnt" in targets
         ):
-            arch = "x86-64-modern"
+            arch = "x86-64-sse41-popcnt"
         elif "ssse3" in props["flags"] and "x86-64-ssse3" in targets:
             arch = "x86-64-ssse3"
         elif (
