@@ -219,7 +219,7 @@ class TestApi(unittest.TestCase):
 
         # Task is still active
         cs = self.chunk_size
-        w, d, l = cs // 2 - 10, cs // 2, 0
+        w, d = cs // 2 - 10, cs // 2
         request.json_body["stats"] = {
             "wins": w,
             "draws": d,

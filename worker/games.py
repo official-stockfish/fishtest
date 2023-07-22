@@ -309,7 +309,7 @@ def establish_validated_net(remote, testing_dir, net):
                         "Failed to validate the network: {}".format(net)
                     )
                 break
-            except WorkerException as e:
+            except WorkerException:
                 if attempt > 5:
                     raise
                 waitTime = UPDATE_RETRY_TIME * attempt
@@ -594,9 +594,9 @@ def find_arch(compiler):
         elif (
             "popcnt" in props["flags"]
             and "sse4.1" in props["flags"]
-            and "x86-64-modern" in targets
+            and "x86-64-sse41-popcnt" in targets
         ):
-            arch = "x86-64-modern"
+            arch = "x86-64-sse41-popcnt"
         elif "ssse3" in props["flags"] and "x86-64-ssse3" in targets:
             arch = "x86-64-ssse3"
         elif (
@@ -959,7 +959,10 @@ def parse_cutechess_output(
                     else:
                         if not response["task_alive"]:
                             # This task is no longer necessary
-                            print("Server told us task is no longer needed")
+                            print(
+                                "The server told us that no more games"
+                                " are needed for the current task."
+                            )
                             return False
                         update_succeeded = True
                         num_games_updated = num_games_finished
@@ -991,7 +994,10 @@ def launch_cutechess(
 
         if not req["task_alive"]:
             # This task is no longer necessary
-            print("Server told us task is no longer needed")
+            print(
+                "The server told us that no more games"
+                " are needed for the current task."
+            )
             return False
 
         result["spsa"] = {
@@ -1290,14 +1296,15 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
         games_concurrency * threads,
     )
 
-    if base_nps < 540000 / (1 + math.tanh((worker_concurrency - 1) / 8)):
+    if base_nps < 231000 / (1 + math.tanh((worker_concurrency - 1) / 8)):
         raise FatalException(
             "This machine is too slow ({} nps / thread) to run fishtest effectively - sorry!".format(
                 base_nps
             )
         )
-    # 1328000 nps is the reference core, also set in views.py and delta_update_users.py
-    factor = 1328000 / base_nps
+    # 1184000 nps is the reference core benched with respect to SF 11,
+    # also set in rundb.py and delta_update_users.py
+    factor = 640000 / base_nps
 
     # Adjust CPU scaling.
     _, tc_limit_ltc = adjust_tc("60+0.6", factor)

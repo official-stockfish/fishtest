@@ -11,13 +11,13 @@ async function follow_live(test_id) {
   let ELO_chart = null;
 
   LOS_chart = new google.visualization.Gauge(
-    document.getElementById("LOS_chart_div")
+    document.getElementById("LOS_chart_div"),
   );
   LLR_chart = new google.visualization.Gauge(
-    document.getElementById("LLR_chart_div")
+    document.getElementById("LLR_chart_div"),
   );
   ELO_chart = new google.visualization.Gauge(
-    document.getElementById("ELO_chart_div")
+    document.getElementById("ELO_chart_div"),
   );
   clear_gauges();
 
@@ -132,16 +132,16 @@ async function follow_live(test_id) {
     document.getElementById("data").style.visibility = "visible";
 
     document.getElementById(
-      "commit"
+      "commit",
     ).href = `${items.args.tests_repo}/compare/${items.args.resolved_base}...${items.args.resolved_new}`;
     document.getElementById(
-      "commit"
+      "commit",
     ).textContent = `${items.args.new_tag} (${items.args.msg_new})`;
 
     document.getElementById("info").textContent = items.args.info;
 
     document.getElementById(
-      "username"
+      "username",
     ).href = `/tests/user/${items.args.username}`;
     document.getElementById("username").textContent = items.args.username;
 
@@ -160,6 +160,10 @@ async function follow_live(test_id) {
     [${j.a.toFixed(2)},${j.b.toFixed(2)}]
     ${items.args.sprt.state ? `(${items.args.sprt.state})` : ""}
   `;
+
+    const pentanomial = items.results?.pentanomial || [];
+    const ptnml = `[${pentanomial.slice(0, 5).join(", ")}]`;
+    document.getElementById("pentanomial").textContent = ptnml;
 
     document.getElementById("elo").textContent = `
     ${j.elo.toFixed(2)}

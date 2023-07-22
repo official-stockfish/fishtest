@@ -451,6 +451,8 @@ def user(request):
         request.session.flash("You cannot inspect users", "error")
         return HTTPFound(location=request.route_url("tests"))
     user_data = request.userdb.get_user(user_name)
+    if user_data is None:
+        raise exception_response(404)
     if "user" in request.POST:
         if profile:
             new_password = request.params.get("password")
@@ -532,25 +534,23 @@ def users_monthly(request):
 
 
 def get_master_info():
-    message_search = re.compile(r"^.*$", re.MULTILINE)
-    bench_search = re.compile(r"(^|\s)[Bb]ench[ :]+([0-9]+)", re.MULTILINE)
-    for idx, commit in enumerate(
-        requests.get(
-            "https://api.github.com/repos/official-stockfish/Stockfish/commits"
-        ).json()
-    ):
+    bench_search = re.compile(r"(^|\s)[Bb]ench[ :]+([1-9]\d{5,9})(?!\d)")
+    commits = requests.get(
+        "https://api.github.com/repos/official-stockfish/Stockfish/commits"
+    ).json()
+    for idx, commit in enumerate(commits):
         if "commit" not in commit:
             return None
-        bench = bench_search.search(commit["commit"]["message"])
+        message_lines = commit["commit"]["message"].strip().split("\n")
+        bench = bench_search.search(message_lines[-1].strip())
         if idx == 0:
-            message = message_search.search(commit["commit"]["message"])
-            date = datetime.datetime.strptime(
-                commit["commit"]["committer"]["date"], "%Y-%m-%dT%H:%M:%SZ"
-            )
+            message = message_lines[0].strip()
+            date_str = commit["commit"]["committer"]["date"]
+            date = datetime.datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%SZ")
         if bench:
             return {
                 "bench": bench.group(2),
-                "message": message.group(),
+                "message": message,
                 "date": date.strftime("%b %d"),
             }
     return None
@@ -928,7 +928,10 @@ def tests_run(request):
 
     run_args = {}
     if "id" in request.params:
-        run_args = copy.deepcopy(request.rundb.get_run(request.params["id"])["args"])
+        run = request.rundb.get_run(request.params["id"])
+        if run is None:
+            raise exception_response(404)
+        run_args = copy.deepcopy(run["args"])
         if "spsa" in run_args:
             # needs deepcopy
             run_args["spsa"]["A"] = (
@@ -1004,6 +1007,7 @@ def tests_modify(request):
             return HTTPFound(location=request.route_url("tests"))
 
         run["finished"] = False
+        run["deleted"] = False
         run["failed"] = False
         run["is_green"] = False
         run["is_yellow"] = False
@@ -1017,7 +1021,6 @@ def tests_modify(request):
             and request.POST["info"].strip() != ""
         ):
             run["args"]["info"] = request.POST["info"].strip()
-        request.rundb.calc_itp(run)
         request.rundb.buffer(run, True)
         request.rundb.task_time = 0
 
@@ -1095,12 +1098,12 @@ def tests_approve(request):
 
 @view_config(route_name="tests_purge", require_csrf=True, request_method="POST")
 def tests_purge(request):
-    if not request.has_permission("approve_run"):
-        request.session.flash("Please login as approver")
-        return HTTPFound(location=request.route_url("login"))
-    username = request.authenticated_userid
-
     run = request.rundb.get_run(request.POST["run-id"])
+    if not request.has_permission("approve_run") and not is_same_user(request, run):
+        request.session.flash(
+            "Only approvers or the submitting user can purge the run."
+        )
+        return HTTPFound(location=request.route_url("login"))
     if not run["finished"]:
         request.session.flash("Can only purge completed run", "error")
         return HTTPFound(location=request.route_url("tests"))
@@ -1111,7 +1114,7 @@ def tests_purge(request):
     if message != "":
         request.session.flash(message)
         return HTTPFound(location=request.route_url("tests"))
-
+    username = request.authenticated_userid
     request.actiondb.purge_run(
         username=username,
         run=run,
@@ -1164,6 +1167,8 @@ def get_page_title(run):
 @view_config(route_name="tests_live_elo", renderer="tests_live_elo.mak")
 def tests_live_elo(request):
     run = request.rundb.get_run(request.matchdict["id"])
+    if run is None:
+        raise exception_response(404)
     request.rundb.get_results(run)
     return {"run": run, "page_title": get_page_title(run)}
 
@@ -1171,6 +1176,8 @@ def tests_live_elo(request):
 @view_config(route_name="tests_stats", renderer="tests_stats.mak")
 def tests_stats(request):
     run = request.rundb.get_run(request.matchdict["id"])
+    if run is None:
+        raise exception_response(404)
     request.rundb.get_results(run)
     return {"run": run, "page_title": get_page_title(run)}
 
@@ -1206,12 +1213,12 @@ def tests_machines(request):
 @view_config(route_name="tests_view", renderer="tests_view.mak")
 def tests_view(request):
     run = request.rundb.get_run(request.matchdict["id"])
+    if run is None:
+        raise exception_response(404)
     if "follow" in request.params:
         follow = 1
     else:
         follow = 0
-    if run is None:
-        raise exception_response(404)
     results = request.rundb.get_results(run)
     run["results_info"] = format_results(results, run)
     run_args = [("id", str(run["_id"]), "")]

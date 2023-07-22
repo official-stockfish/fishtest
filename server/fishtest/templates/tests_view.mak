@@ -94,7 +94,7 @@
       </div>
       <div>
         <h4 style="margin-top: 9px;">Details</h4>
-        <div class="table-responsive-lg">
+        <div class="table-responsive">
           <table class="table table-striped table-sm">
             <thead></thead>
             <tbody>

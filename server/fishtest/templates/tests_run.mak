@@ -4,8 +4,8 @@
   from fishtest.util import format_bounds
   elo_model = "normalized"
   fb = lambda e0, e1: format_bounds(elo_model, e0, e1)
-  test_book = "UHO_XXL_+0.90_+1.19.epd"
-  pt_book = "8moves_v3.pgn"
+  test_book = "UHO_4060_v2.epd"
+  pt_book = "UHO_4060_v2.epd"
 %>
 <%
   base_branch = args.get('base_tag', 'master')
@@ -62,7 +62,7 @@
                         "tc": "10+0.1",
                         "new_tc": "10+0.1",
                         "threads": 1,
-                        "options": "Hash=16 Use NNUE=true",
+                        "options": "Hash=16",
                         "book": "${test_book}",
                         "stop_rule": "stop-rule-sprt",
                         "bounds": "standard STC",
@@ -82,7 +82,7 @@
                         "tc": "60+0.6",
                         "new_tc": "60+0.6",
                         "threads": 1,
-                        "options": "Hash=64 Use NNUE=true",
+                        "options": "Hash=64",
                         "book": "${test_book}",
                         "stop_rule": "stop-rule-sprt",
                         "bounds": "standard LTC",
@@ -101,7 +101,7 @@
                         "tc": "5+0.05",
                         "new_tc": "5+0.05",
                         "threads": 8,
-                        "options": "Hash=64 Use NNUE=true",
+                        "options": "Hash=64",
                         "book": "${test_book}",
                         "stop_rule": "stop-rule-sprt",
                         "bounds": "standard STC",
@@ -120,7 +120,7 @@
                         "tc": "20+0.2",
                         "new_tc": "20+0.2",
                         "threads": 8,
-                        "options": "Hash=256 Use NNUE=true",
+                        "options": "Hash=256",
                         "book": "${test_book}",
                         "stop_rule": "stop-rule-sprt",
                         "bounds": "standard LTC",
@@ -139,7 +139,7 @@
                         "tc": "60+0.6",
                         "new_tc": "60+0.6",
                         "threads": 1,
-                        "options": "Hash=64 Use NNUE=true",
+                        "options": "Hash=64",
                         "book": "${pt_book}",
                         "stop_rule": "stop-rule-games",
                         "games": 60000,
@@ -157,13 +157,13 @@
                     <input class="list-group-item-check pe-none" type="radio" name="test-type" id="pt_smp_test"
                       data-options='{
                         "name": "PT SMP",
-                        "tc": "30+0.3",
-                        "new_tc": "30+0.3",
+                        "tc": "60+0.6",
+                        "new_tc": "60+0.6",
                         "threads": 8,
-                        "options": "Hash=256 Use NNUE=true",
+                        "options": "Hash=512",
                         "book": "${pt_book}",
                         "stop_rule": "stop-rule-games",
-                        "games": 40000,
+                        "games": 60000,
                         "test_branch": "master",
                         "base_branch": "${pt_branch}",
                         "test_signature": ${latest_bench},
@@ -245,7 +245,7 @@
                   name="new-options"
                   id="new-options"
                   class="form-control"
-                  value="${args.get('new_options', 'Hash=16 Use NNUE=true')}"
+                  value="${args.get('new_options', 'Hash=16')}"
                 >
               </div>
 
@@ -256,7 +256,7 @@
                   name="base-options"
                   id="base-options"
                   class="form-control"
-                  value="${args.get('base_options', 'Hash=16 Use NNUE=true')}"
+                  value="${args.get('base_options', 'Hash=16')}"
                 >
               </div>
 
@@ -473,7 +473,7 @@
                         <a href="https://github.com/vdbergh/spsa_simul" target="_blank">
                           https://github.com/vdbergh/spsa_simul</a
                         >. Currently this option should be used with the book
-                        'UHO_XXL_+0.90_+1.19.epd' and in addition the option should not be used with
+                        'UHO_4060_v2.epd' and in addition the option should not be used with
                         nodestime or with more than one thread.
                       </div>
                     </div>
@@ -724,15 +724,13 @@
         document.getElementById("new_tc").value = new_tc;
         document.getElementById("threads").value = threads;
         document.getElementById("new-options").value = (
-          options.replace(" Use NNUE=true", "") +
-          " " +
+          options + " " +
           document
             .getElementById("new-options")
             .value.replace(/Hash=[0-9]+ ?/, "")
         ).replace(/ $/, "");
         document.getElementById("base-options").value = (
-          options.replace(" Use NNUE=true", "") +
-          " " +
+          options + " " +
           document
             .getElementById("base-options")
             .value.replace(/Hash=[0-9]+ ?/, "")

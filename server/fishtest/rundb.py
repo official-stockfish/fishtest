@@ -95,9 +95,9 @@ class RunDb:
         self.task_duration = 1800  # 30 minutes
         self.ltc_lower_bound = 40  # Beware: this is used as a filter in an index!
         self.pt_info = {
-            "pt_version": "SF_15",
-            "pt_branch": "e6e324eb28fd49c1fc44b3b65784f85a773ec61c",
-            "pt_bench": 8129754,
+            "pt_version": "SF_16",
+            "pt_branch": "68e1e9b3811e16cad014b590d7443b9063b3eb52",
+            "pt_bench": 2593605,
         }
 
         global last_rundb
@@ -523,7 +523,7 @@ class RunDb:
                     nps += concurrency * task["worker_info"]["nps"]
                     if task["worker_info"]["nps"] != 0:
                         games_per_minute += (
-                            (task["worker_info"]["nps"] / 1328000.0)
+                            (task["worker_info"]["nps"] / 640000)
                             * (60.0 / estimate_game_duration(run["args"]["tc"]))
                             * (
                                 int(task["worker_info"]["concurrency"])
@@ -612,7 +612,7 @@ class RunDb:
 
         return results
 
-    def calc_itp(self, run):
+    def calc_itp(self, run, count):
         itp = run["args"]["throughput"]
         itp = max(min(itp, 500), 1)
 
@@ -640,13 +640,8 @@ class RunDb:
                 bonus = min(n / x, 2)
                 itp *= bonus
 
-        # Extra bonus for most promising LTCs at strong-gainer bounds
-        # if (
-        #    tc_ratio >= 3.0
-        #    and llr > 1.5
-        #    and run["args"].get("sprt", {}).get("elo0", 0) > 0
-        # ):
-        #    itp *= 1.2 # Max net bonus 2x
+        # Malus for too many active runs
+        itp *= 36.0 / (36.0 + count * count)
 
         run["args"]["itp"] = itp
 
@@ -715,11 +710,20 @@ class RunDb:
 
         if runs_finished or time.time() > self.task_time + 60:
             print("Request_task: refresh queue", flush=True)
+
+            # list user names for active runs
+            user_active = []
+            for r in self.get_unfinished_runs_id():
+                run = self.get_run(r["_id"])
+                if any(task["active"] for task in reversed(run["tasks"])):
+                    user_active.append(run["args"].get("username"))
+
+            # now compute their itp
             self.task_runs = []
             for r in self.get_unfinished_runs_id():
                 run = self.get_run(r["_id"])
                 self.update_workers_cores(run)
-                self.calc_itp(run)
+                self.calc_itp(run, user_active.count(run["args"].get("username")))
                 self.task_runs.append(run)
             self.task_time = time.time()
 
@@ -824,11 +828,12 @@ class RunDb:
             need_tt += get_hash(run["args"]["new_options"])
             need_tt += get_hash(run["args"]["base_options"])
             need_tt *= max_threads // run["args"]["threads"]
-            # estime another 10MB per process, 30MB per thread, and 40MB for net as a base memory need besides hash
+            # estime another 10MB per process, 30MB per thread, and 80MB for net as a base memory need besides hash
+            # Note that changes here need the corresponding worker change to STC_memory, which limits concurrency
             need_base = (
                 2
                 * (max_threads // run["args"]["threads"])
-                * (10 + 40 + 30 * run["args"]["threads"])
+                * (10 + 80 + 30 * run["args"]["threads"])
             )
 
             if need_base + need_tt > max_memory:

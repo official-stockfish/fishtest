@@ -15,48 +15,69 @@
   % endif
 </h2>
 
-<div class="row" style="padding: 1em 0">
-  <div class="col-sm">
-    <div class="row">
-      <div class="col text-end"><b>Testers</b></div>
-      <div class="col text-start">
-        ${sum(u['str_last_updated'] != 'Never' for u in users)}
-      </div>
-    </div>
-    <div class="row">
-      <div class="col text-end"><b>Developers</b></div>
-      <div class="col text-start">
-        ${sum(u['tests'] > 0 for u in users)}
+<div class="row g-3 mb-3">
+  <div class="col-6 col-sm">
+    <div class="card card-lg-sm text-center">
+      <div class="card-header text-nowrap" title="Testers">Testers</div>
+      <div class="card-body">
+        <h4 class="card-title mb-0 monospace">
+          ${sum(u['str_last_updated'] != 'Never' for u in users)}
+        </h4>
       </div>
     </div>
   </div>
 
-  <div class="col-sm">
-    <div class="row">
-      <div class="col text-end"><b>Active testers</b></div>
-      <div class="col text-start">
-        ${sum(u['games_per_hour'] > 0 for u in users)}
-      </div>
-    </div>
-    <div class="row">
-      <div class="col text-end"><b>Tests submitted</b></div>
-      <div class="col text-start">
-        ${sum(u['tests'] for u in users)}
+  <div class="col-6 col-sm">
+    <div class="card card-lg-sm text-center">
+      <div class="card-header text-nowrap" title="Developers">Developers</div>
+      <div class="card-body">
+        <h4 class="card-title mb-0 monospace">
+          ${sum(u['tests'] > 0 for u in users)}
+        </h4>
       </div>
     </div>
   </div>
 
-  <div class="col-sm">
-    <div class="row">
-      <div class="col text-end"><b>Games played</b></div>
-      <div class="col text-start">
-        ${sum(u['games'] for u in users)}
+  <div class="col-6 col-sm">
+    <div class="card card-lg-sm text-center">
+      <div class="card-header text-nowrap" title="Active testers">Active testers</div>
+      <div class="card-body">
+        <h4 class="card-title mb-0 monospace">
+          ${sum(u['games_per_hour'] > 0 for u in users)}
+        </h4>
       </div>
     </div>
-    <div class="row">
-      <div class="col text-end"><b>CPU time</b></div>
-      <div class="col text-start">
-        ${f"{sum(u['cpu_hours'] for u in users)/(24*365):.2f} years"}
+  </div>
+  
+  <div class="col-6 col-sm">
+    <div class="card card-lg-sm text-center">
+      <div class="card-header text-nowrap" title="CPU years">CPU years</div>
+      <div class="card-body">
+        <h4 class="card-title mb-0 monospace">
+          ${f"{sum(u['cpu_hours'] for u in users)/(24*365):.2f}"}
+        </h4>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-sm">
+    <div class="card card-lg-sm text-center">
+      <div class="card-header text-nowrap" title="Games played">Games played</div>
+      <div class="card-body">
+        <h4 class="card-title mb-0 monospace">
+          ${sum(u['games'] for u in users)}
+        </h4>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-sm">
+    <div class="card card-lg-sm text-center">
+      <div class="card-header text-nowrap" title="Tests submitted">Tests submitted</div>
+      <div class="card-body">
+        <h4 class="card-title mb-0 monospace">
+          ${sum(u['tests'] for u in users)}  
+        </h4>
       </div>
     </div>
   </div>

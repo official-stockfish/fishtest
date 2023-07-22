@@ -44,10 +44,10 @@ def initialize_info(rundb, clear_stats):
 
 
 def compute_games_rates(rundb, info_tuple):
-    # 1328000 nps is the reference core, also sets in views.py and game.py
+    # 1184000 nps is the reference core, also set in rundb.py and games.py
     for machine in rundb.get_machines():
         games_per_hour = (
-            (machine["nps"] / 1328000.0)
+            (machine["nps"] / 640000)
             * (3600.0 / estimate_game_duration(machine["run"]["args"]["tc"]))
             * (int(machine["concurrency"]) // machine["run"]["args"].get("threads", 1))
         )
@@ -156,17 +156,24 @@ def build_users(info):
             print(f"Exception updating 'diff' for {username=}:\n{e}")
         users.append(info_user)
 
-    users = [u for u in users if u["games"] > 0 or u["tests"] > 0]
-    return users
+    return [u for u in users if u["games"] > 0 or u["tests"] > 0]
 
 
 def update_deltas(rundb, deltas, new_deltas):
+    # Write the new deltas to the database in batches to speed up the collection operations,
+    # set directly the value to None for speed, change to new_deltas[k] if needed
     print("update deltas:")
     print(f"{len(new_deltas)=}\n{next(iter(new_deltas))=}")
     new_deltas |= deltas
     print(f"{len(new_deltas)=}\n{next(iter(new_deltas))=}")
     rundb.deltas.delete_many({})
-    rundb.deltas.insert_many([{k: v} for k, v in new_deltas.items()])
+    n = 10000
+    keys = tuple(new_deltas.keys())
+    docs = (
+        {k: None for k in keys_batch}
+        for keys_batch in (keys[i : i + n] for i in range(0, len(new_deltas), n))
+    )
+    rundb.deltas.insert_many(docs)
 
 
 def update_users(rundb, users_total, users_top_month):
@@ -243,24 +250,20 @@ def main():
     # it is an empty dictionary in full scan mode.
 
     rundb = RunDb()
-
-    if len(sys.argv) > 1:
-        # Force full scan
-        deltas = {}
-    else:
+    deltas = {}
+    if len(sys.argv) == 1:
         # No guarantee that the returned natural order will be the insertion order
-        deltas = rundb.deltas.find({}, {"_id": 0})
+        for doc in rundb.deltas.find({}, {"_id": 0}):
+            deltas |= doc
 
     if deltas:
         print("update scan")
         clear_stats = False
-        deltas = {k: v for d in deltas for k, v in d.items()}
         print("load deltas:")
         print(f"{len(deltas)=}\n{next(iter(deltas))=}")
     else:
         print("full scan")
         clear_stats = True
-        deltas = {}
 
     info_total, info_top_month = initialize_info(rundb, clear_stats)
     new_deltas = update_info(rundb, clear_stats, deltas, info_total, info_top_month)

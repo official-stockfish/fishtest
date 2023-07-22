@@ -154,7 +154,7 @@ function notify_elo(entry_start, entry_finished) {
   const link = `/tests/view/${entry_finished["run_id"]}`;
   notify(title, body, link, (title, body, link) => {
     const message = `<a class="notification-message" href=${link}>${escapeHtml(
-      title
+      title,
     )} ${escapeHtml(body)}</a>`;
     notify_fishtest(message);
   });
