@@ -3,7 +3,7 @@ name: CI worker posix
 on: [push, pull_request, workflow_dispatch]
 
 jobs:
-  build:
+  test:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
