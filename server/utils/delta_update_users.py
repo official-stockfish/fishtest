@@ -120,7 +120,7 @@ def update_info(rundb, clear_stats, deltas, info_total, info_top_month):
         if not skip:
             new_deltas |= {str(run["_id"]): None}
             try:
-                # Update info_total with the contribution of the unfinished runs
+                # Update info_total with the contribution of the finished runs
                 process_run(run, info_total)
             except Exception as e:
                 print(f"Exception on finished run {run['_id']=} for info_total:\n{e}")

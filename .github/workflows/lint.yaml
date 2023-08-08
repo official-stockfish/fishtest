@@ -3,7 +3,7 @@ name: CI lint
 on: [push, pull_request, workflow_dispatch]
 
 jobs:
-  build:
+  check:
     runs-on: ubuntu-latest
     strategy:
       matrix:

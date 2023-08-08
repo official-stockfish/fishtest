@@ -3,7 +3,7 @@ name: CI worker msys2
 on: [push, pull_request, workflow_dispatch]
 
 jobs:
-  build:
+  test:
     runs-on: windows-latest
     strategy:
       matrix:

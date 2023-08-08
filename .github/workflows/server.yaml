@@ -3,7 +3,7 @@ name: CI server
 on: [push, pull_request, workflow_dispatch]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
