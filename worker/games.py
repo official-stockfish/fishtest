@@ -101,7 +101,7 @@ def backup_log():
 
 def str_signal(signal_):
     try:
-        return str(signal.Signals(signal_)).split(".")[-1]
+        return signal.Signals(signal_).name
     except (ValueError, AttributeError):
         return "SIG<{}>".format(signal_)
 
