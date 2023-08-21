@@ -1,5 +1,5 @@
 ### Overview
-[![CI server](https://github.com/glinscott/fishtest/actions/workflows/server.yaml/badge.svg)](https://github.com/glinscott/fishtest/actions/workflows/server.yaml) [![CI worker posix](https://github.com/glinscott/fishtest/actions/workflows/worker_posix.yaml/badge.svg)](https://github.com/glinscott/fishtest/actions/workflows/worker_posix.yaml) [![CI worker msys2](https://github.com/glinscott/fishtest/actions/workflows/worker_msys2.yaml/badge.svg)](https://github.com/glinscott/fishtest/actions/workflows/worker_msys2.yaml) [![CI lint](https://github.com/glinscott/fishtest/actions/workflows/lint.yaml/badge.svg)](https://github.com/glinscott/fishtest/actions/workflows/lint.yaml)
+[![CI server](https://github.com/official-stockfish/fishtest/actions/workflows/server.yaml/badge.svg)](https://github.com/official-stockfish/fishtest/actions/workflows/server.yaml) [![CI worker posix](https://github.com/official-stockfish/fishtest/actions/workflows/worker_posix.yaml/badge.svg)](https://github.com/official-stockfish/fishtest/actions/workflows/worker_posix.yaml) [![CI worker msys2](https://github.com/official-stockfish/fishtest/actions/workflows/worker_msys2.yaml/badge.svg)](https://github.com/official-stockfish/fishtest/actions/workflows/worker_msys2.yaml) [![CI lint](https://github.com/official-stockfish/fishtest/actions/workflows/lint.yaml/badge.svg)](https://github.com/official-stockfish/fishtest/actions/workflows/lint.yaml)
 
 Fishtest is a distributed task queue for testing chess engines. The main instance
 for testing the chess engine [Stockfish](https://github.com/official-stockfish/Stockfish) is at this web page https://tests.stockfishchess.org
@@ -17,4 +17,4 @@ The fishtest server:
 - updates and publishes the results of ongoing tests.
 - knows how to stop tests when they are statistically significant and publishes the final tests results.
 
-To get more information, such as the worker/server install and configuration instructions, visit the [Fishtest Wiki](https://github.com/glinscott/fishtest/wiki).
+To get more information, such as the worker/server install and configuration instructions, visit the [Fishtest Wiki](https://github.com/official-stockfish/fishtest/wiki).
