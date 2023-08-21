@@ -283,7 +283,9 @@ def verify_sri(install_dir):
 def download_sri():
     try:
         return json.loads(
-            download_from_github("worker/sri.txt", owner="glinscott", repo="fishtest")
+            download_from_github(
+                "worker/sri.txt", owner="official-stockfish", repo="fishtest"
+            )
         )
     except:
         return None
