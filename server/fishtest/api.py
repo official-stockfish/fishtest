@@ -25,7 +25,7 @@ db directly. However this information may be slightly outdated, depending
 on how frequently the main instance flushes its run cache.
 """
 
-WORKER_VERSION = 211
+WORKER_VERSION = 212
 
 
 def validate_request(request):
