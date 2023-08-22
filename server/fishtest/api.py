@@ -25,7 +25,7 @@ db directly. However this information may be slightly outdated, depending
 on how frequently the main instance flushes its run cache.
 """
 
-WORKER_VERSION = 209
+WORKER_VERSION = 212
 
 
 def validate_request(request):
@@ -346,6 +346,82 @@ class ApiView(object):
         )
         run["elo"] = a
         return run
+
+    @view_config(route_name="api_calc_elo")
+    def calc_elo(self):
+        self.__t0 = datetime.utcnow()
+        self.__api = "/api/calc_elo"
+
+        W = self.request.params.get("W")
+        D = self.request.params.get("D")
+        L = self.request.params.get("L")
+        LL = self.request.params.get("LL")
+        LD = self.request.params.get("LD")
+        DDWL = self.request.params.get("DDWL")
+        WD = self.request.params.get("WD")
+        WW = self.request.params.get("WW")
+        elo0 = self.request.params.get("elo0")
+        elo1 = self.request.params.get("elo1")
+        elo_model = self.request.params.get("elo_model", "normalized")
+
+        if elo_model not in ["BayesElo", "logistic", "normalized"]:
+            self.handle_error(
+                "Valid Elo models are: BayesElo, logistic, and normalized."
+            )
+
+        is_ptnml = all(
+            value is not None and value.replace(".", "").replace("-", "").isdigit()
+            for value in [LL, LD, DDWL, WD, WW, elo0, elo1]
+        )
+
+        is_ptnml = is_ptnml and all(int(value) >= 0 for value in [LL, LD, DDWL, WD, WW])
+
+        is_wdl = not is_ptnml and all(
+            value is not None and value.replace(".", "").replace("-", "").isdigit()
+            for value in [W, D, L, elo0, elo1]
+        )
+
+        is_wdl = is_wdl and all(int(value) >= 0 for value in [W, D, L])
+
+        if not is_ptnml and not is_wdl:
+            self.handle_error(
+                "Invalid or missing parameters. Please provide all values as valid numbers."
+            )
+
+        if is_ptnml:
+            LL = int(LL)
+            LD = int(LD)
+            DDWL = int(DDWL)
+            WD = int(WD)
+            WW = int(WW)
+            if (LL + LD + DDWL + WD + WW) * 2 > 2**32:
+                self.handle_error("Number of games exceeds the limit.")
+            if LL + LD + DDWL + WD + WW == 0:
+                self.handle_error("No games to calculate Elo.")
+            results = {
+                "pentanomial": [LL, LD, DDWL, WD, WW],
+            }
+        if is_wdl:
+            W = int(W)
+            D = int(D)
+            L = int(L)
+            if W + D + L > 2**32:
+                self.handle_error("Number of games exceeds the limit.")
+            if W + D + L == 0:
+                self.handle_error("No games to calculate Elo.")
+            results = {
+                "wins": W,
+                "draws": D,
+                "losses": L,
+            }
+        elo0 = float(elo0)
+        elo1 = float(elo1)
+        alpha = 0.05
+        beta = 0.05
+        a = SPRT_elo(
+            results, alpha=alpha, beta=beta, elo0=elo0, elo1=elo1, elo_model=elo_model
+        )
+        return a
 
     @view_config(route_name="api_request_task")
     def request_task(self):

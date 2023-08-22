@@ -118,6 +118,7 @@ def main(global_config, **settings):
     config.add_route("api_download_nn", "/api/nn/{id}")
     config.add_route("api_get_elo", "/api/get_elo/{id}")
     config.add_route("api_actions", "/api/actions")
+    config.add_route("api_calc_elo", "/api/calc_elo")
 
     config.scan()
     return config.make_wsgi_app()

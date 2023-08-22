@@ -100,7 +100,7 @@
       More information on the mathematics behind this web page can be
       found on the
       <a
-        href="https://github.com/glinscott/fishtest/wiki/Fishtest-mathematics"
+        href="https://github.com/official-stockfish/fishtest/wiki/Fishtest-mathematics"
         >Fishtest wiki</a
       >.
     </li>

@@ -8,7 +8,7 @@
   <header class="text-md-center py-2">
     <h2>Neural Network Upload</h2>
     <div class="alert alert-info">
-      <p class="mb-0">Please read the <a class="alert-link" href="https://github.com/glinscott/fishtest/wiki/Creating-my-first-test">Testing Guidelines</a> before uploading your network.</p>
+      <p class="mb-0">Please read the <a class="alert-link" href="https://github.com/official-stockfish/fishtest/wiki/Creating-my-first-test">Testing Guidelines</a> before uploading your network.</p>
       <p class="mb-0">By uploading, you license your network under a <a class="alert-link" href="https://creativecommons.org/share-your-work/public-domain/cc0/">CC0</a> license.</p>
       <p class="mb-0">Your uploaded network will be available for public download and listed on the <a class="alert-link" href="/nns">NN stats page</a>.</p>
     </div>

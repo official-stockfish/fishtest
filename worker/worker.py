@@ -54,7 +54,7 @@ from updater import update
 # Several packages are called "expression".
 # So we make sure to use the locally installed one.
 
-WORKER_VERSION = 209
+WORKER_VERSION = 212
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -283,7 +283,9 @@ def verify_sri(install_dir):
 def download_sri():
     try:
         return json.loads(
-            download_from_github("worker/sri.txt", owner="glinscott", repo="fishtest")
+            download_from_github(
+                "worker/sri.txt", owner="official-stockfish", repo="fishtest"
+            )
         )
     except:
         return None
@@ -1310,7 +1312,9 @@ def verify_worker_version(remote, username, password):
     return True
 
 
-def fetch_and_handle_task(worker_info, password, remote, lock_file, current_state):
+def fetch_and_handle_task(
+    worker_info, password, remote, lock_file, current_state, clear_binaries
+):
     # This function should normally not raise exceptions.
     # Unusual conditions are handled by returning False.
     # If an immediate exit is necessary then one can set
@@ -1398,7 +1402,7 @@ def fetch_and_handle_task(worker_info, password, remote, lock_file, current_stat
     api = remote + "/api/failed_task"
     pgn_file = [None]
     try:
-        run_games(worker_info, password, remote, run, task_id, pgn_file)
+        run_games(worker_info, password, remote, run, task_id, pgn_file, clear_binaries)
         success = True
     except FatalException as e:
         message = str(e)
@@ -1611,6 +1615,7 @@ def worker():
     # Start the main loop.
     delay = INITIAL_RETRY_TIME
     fish_exit = False
+    clear_binaries = True
     while current_state["alive"]:
         if (worker_dir / "fish.exit").is_file():
             current_state["alive"] = False
@@ -1618,7 +1623,12 @@ def worker():
             fish_exit = True
             break
         success = fetch_and_handle_task(
-            worker_info, options.password, remote, lock_file, current_state
+            worker_info,
+            options.password,
+            remote,
+            lock_file,
+            current_state,
+            clear_binaries,
         )
         if not current_state["alive"]:  # the user may have pressed Ctrl-C...
             break
@@ -1632,6 +1642,7 @@ def worker():
                 safe_sleep(delay)
                 delay = min(MAX_RETRY_TIME, delay * 2)
         else:
+            clear_binaries = False
             delay = INITIAL_RETRY_TIME
 
     print("Waiting for the heartbeat thread to finish...")

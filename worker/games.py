@@ -101,7 +101,7 @@ def backup_log():
 
 def str_signal(signal_):
     try:
-        return str(signal.Signals(signal_)).split(".")[-1]
+        return signal.Signals(signal_).name
     except (ValueError, AttributeError):
         return "SIG<{}>".format(signal_)
 
@@ -1094,7 +1094,7 @@ def launch_cutechess(
     return task_alive
 
 
-def run_games(worker_info, password, remote, run, task_id, pgn_file):
+def run_games(worker_info, password, remote, run, task_id, pgn_file, clear_binaries):
     # This is the main cutechess-cli driver.
     # It is ok, and even expected, for this function to
     # raise exceptions, implicitly or explicitly, if a
@@ -1182,7 +1182,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file):
     # Clean up old engines (keeping the num_bkps most recent).
     worker_dir = Path(__file__).resolve().parent
     testing_dir = worker_dir / "testing"
-    num_bkps = 50
+    num_bkps = 0 if clear_binaries else 50
     try:
         engines = sorted(
             testing_dir.glob("stockfish_*" + EXE_SUFFIX),
