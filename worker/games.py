@@ -1,6 +1,5 @@
 import copy
 import ctypes
-import datetime
 import hashlib
 import io
 import json
@@ -19,6 +18,7 @@ import threading
 import time
 from base64 import b64decode
 from contextlib import ExitStack
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from queue import Empty, Queue
 from zipfile import ZipFile
@@ -79,7 +79,7 @@ def log(s):
     logfile = Path(__file__).resolve().parent / LOGFILE
     with LOG_LOCK:
         with open(logfile, "a") as f:
-            f.write("{} : {}\n".format(datetime.datetime.utcnow(), s))
+            f.write("{} : {}\n".format(datetime.now(timezone.utc), s))
 
 
 def backup_log():
@@ -174,7 +174,7 @@ def requests_post(remote, *args, **kw):
 
 
 def send_api_post_request(api_url, payload, quiet=False):
-    t0 = datetime.datetime.utcnow()
+    t0 = datetime.now(timezone.utc)
     response = requests_post(
         api_url,
         data=json.dumps(payload),
@@ -204,7 +204,7 @@ def send_api_post_request(api_url, payload, quiet=False):
     if "error" in response:
         print("Error from remote: {}".format(response["error"]))
 
-    t1 = datetime.datetime.utcnow()
+    t1 = datetime.now(timezone.utc)
     w = 1000 * (t1 - t0).total_seconds()
     s = 1000 * response["duration"]
     log(
@@ -843,11 +843,11 @@ def parse_cutechess_output(
     t.daemon = True
     t.start()
 
-    end_time = datetime.datetime.utcnow() + datetime.timedelta(seconds=tc_limit)
+    end_time = datetime.now(timezone.utc) + timedelta(seconds=tc_limit)
     print("TC limit {} End time: {}".format(tc_limit, end_time))
 
     num_games_updated = 0
-    while datetime.datetime.utcnow() < end_time:
+    while datetime.now(timezone.utc) < end_time:
         try:
             line = q.get_nowait().strip()
         except Empty:
@@ -977,7 +977,7 @@ def parse_cutechess_output(
             update_pentanomial(line, rounds)
     else:
         raise WorkerException(
-            "{} is past end time {}".format(datetime.datetime.utcnow(), end_time)
+            "{} is past end time {}".format(datetime.now(timezone.utc), end_time)
         )
 
     return True

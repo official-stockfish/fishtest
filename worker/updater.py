@@ -1,7 +1,7 @@
-import datetime
 import os
 import shutil
 import sys
+from datetime import datetime, timezone
 from distutils.dir_util import copy_tree
 from pathlib import Path
 from zipfile import ZipFile
@@ -68,7 +68,7 @@ def update(restart=True, test=False):
     os.chdir(worker_dir)
     testing_dir = worker_dir / "testing"
     if testing_dir.exists():
-        time_stamp = str(datetime.datetime.timestamp(datetime.datetime.utcnow()))
+        time_stamp = str(datetime.now(timezone.utc).timestamp())
         bkp_testing_dir = worker_dir / ("_testing_" + time_stamp)
         testing_dir.replace(bkp_testing_dir)
         testing_dir.mkdir()

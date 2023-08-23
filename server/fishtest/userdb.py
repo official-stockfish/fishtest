@@ -1,7 +1,7 @@
 import sys
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 from pymongo import ASCENDING
 
@@ -85,7 +85,7 @@ class UserDb:
                 {
                     "username": username,
                     "password": password,
-                    "registration_time": datetime.utcnow(),
+                    "registration_time": datetime.now(timezone.utc),
                     "blocked": True,
                     "email": email,
                     "groups": [],

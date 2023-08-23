@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fishtest.rundb import RunDb
 from fishtest.util import delta_date, diff_date, estimate_game_duration
@@ -9,10 +9,11 @@ from pymongo import DESCENDING
 
 
 def initialize_info(rundb, clear_stats):
+    utc_datetime_min = datetime.min.replace(tzinfo=timezone.utc)
     info_total = {}
     info_top_month = {}
-    diff_ini = diff_date(datetime.min).total_seconds()
-    last_ini = delta_date(diff_date(datetime.min))
+    diff_ini = diff_date(utc_datetime_min).total_seconds()
+    last_ini = delta_date(diff_date(utc_datetime_min))
 
     for u in rundb.userdb.get_users():
         username = u["username"]
@@ -24,7 +25,7 @@ def initialize_info(rundb, clear_stats):
             "games_per_hour": 0.0,
             "tests": 0,
             "tests_repo": u.get("tests_repo", ""),
-            "last_updated": datetime.min,
+            "last_updated": utc_datetime_min,
             "diff": diff_ini,
             "str_last_updated": last_ini,
         }
@@ -86,7 +87,8 @@ def process_run(run, info):
 
         info_user = info[t_username]
         info_user["last_updated"] = max(
-            info_user["last_updated"], task.get("last_updated", datetime.min)
+            info_user["last_updated"].replace(tzinfo=timezone.utc),
+            task.get("last_updated", datetime.min).replace(tzinfo=timezone.utc),
         )
         info_user["cpu_hours"] += float(
             num_games * int(run["args"].get("threads", 1)) * tc / (60 * 60)
@@ -102,7 +104,7 @@ def update_info(rundb, clear_stats, deltas, info_total, info_top_month):
         except Exception as e:
             print(f"Exception on unfinished run {run['_id']=} for info_top_month:\n{e}")
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     skip = False
     skip_count = 0
     new_deltas = {}
@@ -129,7 +131,7 @@ def update_info(rundb, clear_stats, deltas, info_total, info_top_month):
             skip_count += 1
 
         # Update info_top_month with finished runs having start_time in the last 30 days
-        if (now - run["start_time"]).days < 30:
+        if (now - run["start_time"].replace(tzinfo=timezone.utc)).days < 30:
             try:
                 process_run(run, info_top_month)
             except Exception as e:
@@ -145,7 +147,7 @@ def update_info(rundb, clear_stats, deltas, info_total, info_top_month):
 
 def build_users(info):
     users = []
-    # diff_date(given_date) = datetime.utcnow() - given_date
+    # diff_date(given_date) = datetime.now(timezone.utc) - given_date
     # delta_date(diff: timedelta) -> str:
     for username, info_user in info.items():
         try:
@@ -198,18 +200,18 @@ def cleanup_users(rundb):
             update = True
         if update:
             rundb.userdb.save_user(u)
-        if "registration_time" not in u or u[
-            "registration_time"
-        ] < datetime.utcnow() - timedelta(days=28):
+        if "registration_time" not in u or u["registration_time"].replace(
+            tzinfo=timezone.utc
+        ) < datetime.now(timezone.utc) - timedelta(days=28):
             idle[u["username"]] = u
     for u in rundb.userdb.user_cache.find():
         if u["username"] in idle:
             del idle[u["username"]]
     for u in idle.values():
         # A safe guard against deleting long time users
-        if "registration_time" not in u or u[
-            "registration_time"
-        ] < datetime.utcnow() - timedelta(days=38):
+        if "registration_time" not in u or u["registration_time"].replace(
+            tzinfo=timezone.utc
+        ) < datetime.now(timezone.utc) - timedelta(days=38):
             print("Warning: Found old user to delete:", str(u["_id"]))
         else:
             print("Delete:", str(u["_id"]))
@@ -238,9 +240,9 @@ def main():
     #     "games_per_hour": 0.0,
     #     "tests": 0,
     #     "tests_repo": u.get("tests_repo", ""),
-    #     "last_updated": datetime.min,    # latest datetime of all user's tasks
-    #     "diff": diff_date(datetime.min), # used to sort in the users table
-    #     "str_last_updated": delta_date(diff_date(datetime.min)), # e.g. "Never", "12 days ago"
+    #     "last_updated": utc_datetime_min,    # latest datetime of all user's tasks
+    #     "diff": diff_date(utc_datetime_min), # used to sort in the users table
+    #     "str_last_updated": delta_date(diff_date(utc_datetime_min)), # e.g. "Never", "12 days ago"
 
     # "new_deltas": dictionary with keys representing the IDs of newly finished runs
     # since the previous script execution. It is used to update the "deltas" collection.

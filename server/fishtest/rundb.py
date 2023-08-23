@@ -9,7 +9,7 @@ import sys
 import threading
 import time
 import zlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import fishtest.stats.stat_util
 from bson.binary import Binary
@@ -35,7 +35,7 @@ from pymongo import DESCENDING, MongoClient
 
 DEBUG = False
 
-boot_time = datetime.utcnow()
+boot_time = datetime.now(timezone.utc)
 
 last_rundb = None
 
@@ -140,7 +140,9 @@ class RunDb:
         adjudication=True,
     ):
         if start_time is None:
-            start_time = datetime.utcnow()
+            start_time = datetime.now(timezone.utc)
+        else:
+            start_time = start_time.replace(tzinfo=timezone.utc)
 
         run_args = {
             "base_tag": base_tag,
@@ -421,15 +423,18 @@ class RunDb:
             self.start_timer()
 
     def scavenge(self, run):
-        if datetime.utcnow() < boot_time + timedelta(seconds=300):
+        if datetime.now(timezone.utc) < boot_time + timedelta(seconds=300):
             return False
         # print("scavenge ", run["_id"])
         dead_task = False
-        old = datetime.utcnow() - timedelta(minutes=6)
+        old = datetime.now(timezone.utc) - timedelta(minutes=6)
         task_id = -1
         for task in run["tasks"]:
             task_id += 1
-            if task["active"] and task["last_updated"] < old:
+            if (
+                task["active"]
+                and task["last_updated"].replace(tzinfo=timezone.utc) < old
+            ):
                 task["active"] = False
                 dead_task = True
                 print(
@@ -468,7 +473,9 @@ class RunDb:
         machines = (
             task["worker_info"]
             | {
-                "last_updated": task.get("last_updated", None),
+                "last_updated": task["last_updated"].replace(tzinfo=timezone.utc)
+                if task.get("last_updated")
+                else None,
                 "run": run,
                 "task_id": task_id,
             }
@@ -779,11 +786,13 @@ class RunDb:
         # name is already connected.
 
         my_name = "-".join(worker_name(worker_info).split("-")[0:3])
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         for task in active_tasks:
             task_name = "-".join(worker_name(task["worker_info"]).split("-")[0:3])
             if my_name == task_name:
-                last_update = (now - task["last_updated"]).seconds
+                last_update = (
+                    now - task["last_updated"].replace(tzinfo=timezone.utc)
+                ).seconds
                 # 120 = period of heartbeat in worker.
                 if last_update <= 120:
                     error = 'Request_task: There is already a worker running with name "{}" which sent an update {} seconds ago'.format(
@@ -931,7 +940,7 @@ class RunDb:
             "num_games": task_size,
             "active": True,
             "worker_info": worker_info,
-            "last_updated": datetime.utcnow(),
+            "last_updated": datetime.now(timezone.utc),
             "start": opening_offset,
             "stats": {
                 "wins": 0,
@@ -986,7 +995,9 @@ class RunDb:
             if self.purge_count > 100000:
                 old = time.time() - 10000
                 self.active_runs = dict(
-                    (k, v) for k, v in self.active_runs.items() if v["time"] >= old
+                    (k, v)
+                    for k, v in self.active_runs.items()
+                    if v["time"].replace(tzinfo=timezone.utc) >= old
                 )
                 self.purge_count = 0
             if id in self.active_runs:
@@ -1074,7 +1085,7 @@ class RunDb:
     def sync_update_task(self, worker_info, run_id, task_id, stats, spsa):
         run = self.get_run(run_id)
         task = run["tasks"][task_id]
-        update_time = datetime.utcnow()
+        update_time = datetime.now(timezone.utc)
 
         error = ""
 
@@ -1356,8 +1367,11 @@ class RunDb:
     def purge_run(self, run, p=0.001, res=7.0, iters=1):
         # Only purge finished runs
         assert run["finished"]
-        now = datetime.utcnow()
-        if "start_time" not in run or (now - run["start_time"]).days > 30:
+        now = datetime.now(timezone.utc)
+        if (
+            "start_time" not in run
+            or (now - run["start_time"].replace(tzinfo=timezone.utc)).days > 30
+        ):
             return "Run too old to be purged"
         # Do not revive failed runs
         if run.get("failed", False):

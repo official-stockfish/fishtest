@@ -1,6 +1,6 @@
-import datetime
 import sys
 import unittest
+from datetime import datetime, timezone
 
 import util
 from fishtest.api import WORKER_VERSION
@@ -64,7 +64,7 @@ class CreateRunDBTest(unittest.TestCase):
             "",
             username="travis",
             tests_repo="travis",
-            start_time=datetime.datetime.utcnow(),
+            start_time=datetime.now(timezone.utc),
         )
         run = self.rundb.get_run(run_id_stc)
         run["finished"] = True
@@ -92,7 +92,7 @@ class CreateRunDBTest(unittest.TestCase):
             "",
             username="travis",
             tests_repo="travis",
-            start_time=datetime.datetime.utcnow(),
+            start_time=datetime.now(timezone.utc),
         )
         print(" ")
         print(run_id)

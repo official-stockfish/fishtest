@@ -1,11 +1,11 @@
 import copy
-import datetime
 import hashlib
 import html
 import os
 import re
 import threading
 import time
+from datetime import datetime, timezone
 
 import fishtest.stats.stat_util
 import requests
@@ -543,7 +543,7 @@ def get_master_info(url):
         if idx == 0:
             message = message_lines[0].strip()
             date_str = commit["commit"]["committer"]["date"]
-            date = datetime.datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%SZ")
+            date = datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%SZ")
         if bench:
             return {
                 "bench": bench.group(2),
@@ -868,8 +868,8 @@ def update_nets(request, run):
         if not net:
             return
         if "first_test" not in net:
-            net["first_test"] = {"id": run_id, "date": datetime.datetime.utcnow()}
-        net["last_test"] = {"id": run_id, "date": datetime.datetime.utcnow()}
+            net["first_test"] = {"id": run_id, "date": datetime.now(timezone.utc)}
+        net["last_test"] = {"id": run_id, "date": datetime.now(timezone.utc)}
         request.rundb.update_nn(net)
 
 
@@ -969,8 +969,11 @@ def tests_modify(request):
         run = request.rundb.get_run(request.POST["run"])
         before = del_tasks(run)
 
-        now = datetime.datetime.utcnow()
-        if "start_time" not in run or (now - run["start_time"]).days > 30:
+        now = datetime.now(timezone.utc)
+        if (
+            "start_time" not in run
+            or (now - run["start_time"].replace(tzinfo=timezone.utc)).days > 30
+        ):
             request.session.flash("Run too old to be modified", "error")
             return HTTPFound(location=request.route_url("tests"))
 
@@ -1325,7 +1328,9 @@ def tests_view(request):
         if task["active"]:
             active += 1
             cores += task["worker_info"]["concurrency"]
-        last_updated = task.get("last_updated", datetime.datetime.min)
+        last_updated = task.get("last_updated", datetime.min).replace(
+            tzinfo=timezone.utc
+        )
         task["last_updated"] = last_updated
 
     chi2 = get_chi2(run["tasks"])

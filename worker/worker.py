@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import atexit
 import base64
-import datetime
 import getpass
 import hashlib
 import json
@@ -23,6 +22,7 @@ import zlib
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 from configparser import ConfigParser
 from contextlib import ExitStack
+from datetime import datetime, timezone
 from functools import partial
 from pathlib import Path
 
@@ -54,7 +54,7 @@ from updater import update
 # Several packages are called "expression".
 # So we make sure to use the locally installed one.
 
-WORKER_VERSION = 212
+WORKER_VERSION = 213
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -1329,7 +1329,7 @@ def fetch_and_handle_task(
     # Print the current time for log purposes
     print(
         "Current time is {} UTC (local offset: {}) ".format(
-            datetime.datetime.utcnow(), utcoffset()
+            datetime.now(timezone.utc), utcoffset()
         )
     )
 

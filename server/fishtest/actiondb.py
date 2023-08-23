@@ -267,7 +267,7 @@ class ActionDb:
             action["run_id"] = str(action["run_id"])
         ret = validate(schema, action, "action", strict=True)
         if ret == "":
-            action["time"] = datetime.utcnow().replace(tzinfo=timezone.utc).timestamp()
+            action["time"] = datetime.now(timezone.utc).timestamp()
             self.actions.insert_one(action)
         else:
             raise Exception("Validation failed with error '{}'".format(ret))
