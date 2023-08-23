@@ -1,5 +1,5 @@
-import datetime
 import unittest
+from datetime import datetime, timezone
 
 import util
 from fishtest.views import login, signup
@@ -91,7 +91,7 @@ class Create90APITest(unittest.TestCase):
             "",
             username="travis",
             tests_repo="travis",
-            start_time=datetime.datetime.utcnow(),
+            start_time=datetime.now(timezone.utc),
         )
         self.rundb.userdb.user_cache.insert_one(
             {"username": "JoeUser", "cpu_hours": 12345}

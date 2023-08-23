@@ -2,7 +2,7 @@ import hashlib
 import math
 import re
 import smtplib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from email.mime.text import MIMEText
 from functools import cache
 
@@ -425,8 +425,9 @@ def post_in_fishcooking_results(run):
 
 
 def diff_date(date):
-    if date != datetime.min:
-        diff = datetime.utcnow() - date
+    utc_date = date.replace(tzinfo=timezone.utc)
+    if utc_date != datetime.min.replace(tzinfo=timezone.utc):
+        diff = datetime.now(timezone.utc) - utc_date
     else:
         diff = timedelta.max
     return diff

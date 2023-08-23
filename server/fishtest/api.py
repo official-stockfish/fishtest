@@ -1,6 +1,6 @@
 import base64
 import copy
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fishtest.stats.stat_util import SPRT_elo
 from fishtest.util import optional_key, union, validate, worker_name
@@ -25,7 +25,7 @@ db directly. However this information may be slightly outdated, depending
 on how frequently the main instance flushes its run cache.
 """
 
-WORKER_VERSION = 212
+WORKER_VERSION = 213
 
 
 def validate_request(request):
@@ -126,7 +126,7 @@ class ApiView(object):
             raise exception(self.add_time({"error": error}))
 
     def validate_username_password(self, api):
-        self.__t0 = datetime.utcnow()
+        self.__t0 = datetime.now(timezone.utc)
         self.__api = api
         # is the request valid json?
         try:
@@ -191,7 +191,7 @@ class ApiView(object):
             self.__task = task
 
     def add_time(self, result):
-        result["duration"] = (datetime.utcnow() - self.__t0).total_seconds()
+        result["duration"] = (datetime.now(timezone.utc) - self.__t0).total_seconds()
         return result
 
     def get_username(self):
@@ -349,7 +349,7 @@ class ApiView(object):
 
     @view_config(route_name="api_calc_elo")
     def calc_elo(self):
-        self.__t0 = datetime.utcnow()
+        self.__t0 = datetime.now(timezone.utc)
         self.__api = "/api/calc_elo"
 
         W = self.request.params.get("W")
@@ -553,7 +553,7 @@ class ApiView(object):
         self.validate_request("/api/beat")
         run = self.run()
         task = self.task()
-        task["last_updated"] = datetime.utcnow()
+        task["last_updated"] = datetime.now(timezone.utc)
         self.request.rundb.buffer(run, False)
         return self.add_time({})
 

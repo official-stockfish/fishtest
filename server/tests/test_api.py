@@ -1,8 +1,8 @@
 import base64
-import datetime
 import sys
 import unittest
 import zlib
+from datetime import datetime, timezone
 
 from fishtest.api import WORKER_VERSION, ApiView
 from pyramid.httpexceptions import HTTPUnauthorized
@@ -26,7 +26,7 @@ def new_run(self, add_tasks=0):
         "",
         username="travis",
         tests_repo="travis",
-        start_time=datetime.datetime.utcnow(),
+        start_time=datetime.now(timezone.utc),
     )
     run = self.rundb.get_run(run_id)
     run["approved"] = True
