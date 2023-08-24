@@ -521,17 +521,6 @@ class TestRunFinished(unittest.TestCase):
         task1 = self.rundb.get_run(run_id)["tasks"][0]
         task_size1 = task1["num_games"]
 
-        # Request task 2 of 2
-        request = self.correct_password_request()
-        response = ApiView(request).request_task()
-        self.assertEqual(response["run"]["_id"], str(run["_id"]))
-        self.assertEqual(response["task_id"], 1)
-        task2 = self.rundb.get_run(run_id)["tasks"][1]
-        task_size2 = task2["num_games"]
-        task_start2 = task2["start"]
-
-        self.assertEqual(task_start2, task_size1)
-
         # Finish task 1 of 2
         n_wins = task_size1 // 5
         n_losses = task_size1 // 5
@@ -555,6 +544,17 @@ class TestRunFinished(unittest.TestCase):
         self.assertFalse(response["task_alive"])
         run = self.rundb.get_run(run_id)
         self.assertFalse(run["finished"])
+
+        # Request task 2 of 2
+        request = self.correct_password_request()
+        response = ApiView(request).request_task()
+        self.assertEqual(response["run"]["_id"], str(run["_id"]))
+        self.assertEqual(response["task_id"], 1)
+        task2 = self.rundb.get_run(run_id)["tasks"][1]
+        task_size2 = task2["num_games"]
+        task_start2 = task2["start"]
+
+        self.assertEqual(task_start2, task_size1)
 
         # Finish task 2 of 2
         n_wins = task_size2 // 5
