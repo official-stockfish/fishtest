@@ -1112,6 +1112,7 @@ class RunDb:
             )
             print(info, flush=True)
             task["active"] = False
+            self.buffer(run, True)
             return {"task_alive": False, "info": info}
 
         # Guard against incorrect results
@@ -1219,6 +1220,8 @@ class RunDb:
                     run=run,
                     message=self.finished_run_message(run),
                 )
+            # No need to update the db since it was already
+            # done by stop_run.
             ret = {"task_alive": False}
         else:
             self.buffer(run, False)
