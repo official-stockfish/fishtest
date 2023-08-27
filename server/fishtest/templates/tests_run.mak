@@ -649,6 +649,8 @@
     update_book_visibility(document.getElementById('checkbox-book-visibility'));
   });
 
+  let stopRule = null;
+
   const preset_bounds = {
     'standard STC': [ 0.0, 2.0],
     'standard LTC': [ 0.5, 2.5],
@@ -686,6 +688,58 @@
     .addEventListener("change", (e) => {
       update_sprt_bounds(e.target.value);
     });
+
+  async function onBranchInput(e) {
+    if (stopRule === "stop-rule-spsa")
+        return;
+
+    let testRepo = document.getElementById("tests-repo").value;
+    if (!testRepo) return;
+
+    testRepo = testRepo.replace(
+      "https://github.com",
+      "https://api.github.com/repos"
+    );
+
+    let branch = e.target.value;
+    if (!branch) return;
+
+    const apiUrl = testRepo + "/commits/" + branch;
+
+    const response = await fetch(apiUrl);
+
+    if (!response.ok) {
+      console.error("HTTP error! Status: " + response.status);
+      return;
+    }
+
+    const commitData = await response.json();
+    const c = commitData.commit;
+
+    const regex = /(^|\s)[Bb]ench[ :]+([1-9]\d{5,7})(?!\d)/;
+    const lines = c.message.split("\n");
+    const lastLine = lines[lines.length - 1].trim();
+    const match = lastLine.match(regex);
+
+    if (match) {
+      const bench = match[2];
+      if (e.target.id === "test-branch")
+        document.getElementById("test-signature").value = bench;
+
+      if (e.target.id === "base-branch")
+        document.getElementById("base-signature").value = bench;
+    }
+  }
+
+  if (!is_rerun) {
+    document
+      .getElementById("test-branch")
+      .addEventListener("input", onBranchInput);
+    document
+      .getElementById("base-branch")
+      .addEventListener("input", onBranchInput);
+  }
+
 
   let initial_base_branch = document.getElementById("base-branch").value;
   let initial_base_signature = document.getElementById("base-signature").value;
@@ -779,7 +833,6 @@
   // Stop rule is changed
   document.querySelectorAll("[name=stop-rule]").forEach((btn) =>
     btn.addEventListener("click", function () {
-      let stopRule = null;
       stopRule = btn.value;
 
       if (stopRule) {
