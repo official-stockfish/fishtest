@@ -39,16 +39,24 @@ class Create50LoginTest(unittest.TestCase):
     def setUp(self):
         self.rundb = util.get_rundb()
         self.rundb.userdb.create_user("JoeUser", "secret", "email@email.email")
+        self.rundb.userdb.create_user(
+            "JoeUser2",
+            "$argon2id$v=19$m=12288,t=3,p=1$9tW9uRY6ijZ0PEiOcldWoQ$f5YCuVMP77x8Wlrcue0Jn7JGjCmgKy76WQynuIfitdA",
+            "email2@email.email",
+        )
         self.config = testing.setUp()
         self.config.add_route("login", "/login")
 
     def tearDown(self):
         self.rundb.userdb.users.delete_many({"username": "JoeUser"})
+        self.rundb.userdb.users.delete_many({"username": "JoeUser2"})
         self.rundb.userdb.user_cache.delete_many({"username": "JoeUser"})
+        self.rundb.userdb.user_cache.delete_many({"username": "JoeUser2"})
         self.rundb.stop()
         testing.tearDown()
 
     def test_login(self):
+        # blocked user, wrong password
         request = testing.DummyRequest(
             userdb=self.rundb.userdb,
             method="POST",
@@ -56,23 +64,48 @@ class Create50LoginTest(unittest.TestCase):
         )
         response = login(request)
         self.assertTrue(
-            "Invalid password for user: JoeUser" in request.session.pop_flash("error")
+            "Account blocked for user: JoeUser" in request.session.pop_flash("error")[0]
         )
 
-        # Correct password, but still blocked from logging in
+        # blocked user, correct password
         request.params["password"] = "secret"
-        login(request)
+        response = login(request)
         self.assertTrue(
             "Account blocked for user: JoeUser" in request.session.pop_flash("error")[0]
         )
 
-        # Unblock, then user can log in successfully
+        # allowed user, wrong password
         user = self.rundb.userdb.get_user("JoeUser")
         user["blocked"] = False
         self.rundb.userdb.save_user(user)
+        request.params["password"] = "badsecret"
+        response = login(request)
+        self.assertTrue("Invalid password" in request.session.pop_flash("error"))
+
+        # allowed user, correct password
+        request.params["password"] = "secret"
         response = login(request)
         self.assertEqual(response.code, 302)
         self.assertTrue("The resource was found at" in str(response))
+
+        # allowed user2, wrong hashed password
+        user2 = self.rundb.userdb.get_user("JoeUser2")
+        user2["blocked"] = False
+        self.rundb.userdb.save_user(user2)
+
+        request2 = testing.DummyRequest(
+            userdb=self.rundb.userdb,
+            method="POST",
+            params={"username": "JoeUser2", "password": "badsecret"},
+        )
+        response2 = login(request2)
+        self.assertTrue("Invalid password" in request2.session.pop_flash("error"))
+
+        # allowed user2, correct hashed password
+        request2.params["password"] = "secret2"
+        response2 = login(request2)
+        self.assertEqual(response2.code, 302)
+        self.assertTrue("The resource was found at" in str(response2))
 
 
 class Create90APITest(unittest.TestCase):
