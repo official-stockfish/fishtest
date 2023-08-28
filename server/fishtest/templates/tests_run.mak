@@ -706,7 +706,9 @@
 
     const apiUrl = testRepo + "/commits/" + branch;
 
-    const response = await fetch(apiUrl);
+    // a dummy query param is used to prevent caching an outdated branch
+    const timeStamp = Date.now();
+    const response = await fetch(apiUrl+"?random="+timeStamp);
 
     if (!response.ok) {
       console.error("HTTP error! Status: " + response.status);
