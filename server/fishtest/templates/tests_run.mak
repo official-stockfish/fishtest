@@ -845,19 +845,22 @@
     })
   );
 
+  function testBranchHandler() {
+    document.getElementById("base-branch").value =
+      document.getElementById("test-branch").value;
+  }
+
+  function testSignatureHandler() {
+    document.getElementById("base-signature").value =
+      document.getElementById("test-signature").value;
+  }
+
   // Stop rule is changed
   document.querySelectorAll("[name=stop-rule]").forEach((btn) =>
     btn.addEventListener("click", function () {
       stopRule = btn.value;
 
       if (stopRule) {
-        const testBranchHandler = () =>
-          (document.getElementById("base-branch").value =
-            document.getElementById("test-branch").value);
-        const testSignatureHandler = () =>
-          (document.getElementById("base-signature").value =
-            document.getElementById("base-branch").value);
-
         // Hide all elements that have the class "stop-rule"
         document
           .querySelectorAll(".stop-rule")
