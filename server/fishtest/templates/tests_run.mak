@@ -268,7 +268,7 @@
                   id="run-info"
                   class="form-control"
                   rows="4"
-                  >${args.get('info', '')}</textarea>
+                >${args.get('info', '')}</textarea>
               </div>
             </div>
           </div>
@@ -344,7 +344,7 @@
                   class="col-6 col-md-4 col-lg-3 mt-2 mt-md-0 custom-bounds"
                   style="${args.get('sprt') or 'display: none'}"
                 >
-                  <label for="sprt_elo0" class="form-label">SPRT&nbsp;Elo0</label>
+                  <label for="sprt_elo0" class="form-label">SPRT Elo0</label>
                   <input
                     type="number"
                     step="0.05"
@@ -358,7 +358,7 @@
                   class="col-6 col-md-4 col-lg-3 mt-2 mt-md-0 custom-bounds"
                   style="${args.get('sprt') or 'display: none'}"
                 >
-                  <label for="sprt_elo1" class="form-label">SPRT&nbsp;Elo1</label>
+                  <label for="sprt_elo1" class="form-label">SPRT Elo1</label>
                   <input
                     type="number"
                     step="0.05"
@@ -379,7 +379,7 @@
               <div class="row gx-1">
                 <div class="col-4">
                   <div class="mb-2">
-                    <label for="spsa_A" class="form-label">SPSA&nbsp;A&nbsp;ratio</label>
+                    <label for="spsa_A" class="form-label">SPSA A ratio</label>
                     <input
                       type="number"
                       min="0"
@@ -394,7 +394,7 @@
                 </div>
                 <div class="col-4">
                   <div class="mb-2">
-                    <label for="spsa_alpha" class="form-label">SPSA&nbsp;Alpha</label>
+                    <label for="spsa_alpha" class="form-label">SPSA Alpha</label>
                     <input
                       type="number"
                       min="0"
@@ -408,7 +408,7 @@
                 </div>
                 <div class="col-4">
                   <div class="mb-2">
-                    <label for="spsa_gamma" class="form-label">SPSA&nbsp;Gamma</label>
+                    <label for="spsa_gamma" class="form-label">SPSA Gamma</label>
                     <input
                       type="number"
                       min="0"
@@ -423,10 +423,13 @@
               </div>
 
               <div class="mb-2">
-                <label for="spsa_raw_params" class="form-label">SPSA&nbsp;parameters</label>
-                <textarea name="spsa_raw_params" id="spsa_raw_params" class="form-control">
-                ${args.get('spsa', {'raw_params': ''})['raw_params']}</textarea
-                >
+                <label for="spsa_raw_params" class="form-label">SPSA parameters</label>
+                <textarea
+                  name="spsa_raw_params"
+                  id="spsa_raw_params"
+                  class="form-control"
+                  placeholder="Paste values printed at the startup of the code here"
+                >${args.get('spsa', {'raw_params': ''})['raw_params']}</textarea>
               </div>
 
               <div class="mb-2 form-check">
@@ -508,7 +511,7 @@
                   >
                 </div>
                 <div class="col mb-2 new_tc" style="display: none;">
-                  <label for="new_tc" class="form-label">Test&nbsp;TC</label>
+                  <label for="new_tc" class="form-label">Test TC</label>
                   <input
                     type="text"
                     name="new_tc"
