@@ -71,7 +71,7 @@
       </tr>
     </thead>
     <tbody>
-      % for nn in nns:
+      % for idx, nn in enumerate(nns):
         % if not master_only or 'is_master' in nn:
           <tr>
             <td>${nn['time'].strftime("%y-%m-%d %H:%M:%S")}</td>
@@ -96,6 +96,11 @@
           </tr>
         % endif
       % endfor
+      % if "idx" not in locals():
+        <tr>
+          <td colspan=20>No nets available</td>
+        </tr>
+      % endif
     </tbody>
   </table>
 </div>

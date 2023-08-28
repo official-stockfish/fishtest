@@ -302,7 +302,7 @@ def nns(request):
     page_idx = max(0, int(page_param) - 1) if page_param.isdigit() else 0
     page_size = 25
 
-    nns_list, num_nns = request.rundb.get_nns(
+    nns, num_nns = request.rundb.get_nns(
         user_id=user_id,
         user=user,
         network_name=network_name,
@@ -322,7 +322,7 @@ def nns(request):
             page["url"] += "&master_only={}".format(master_only)
 
     return {
-        "nns": nns_list,
+        "nns": nns,
         "pages": pages,
         "master_only": request.cookies.get("master_only") == "true",
     }
@@ -433,7 +433,10 @@ def pending(request):
         request.session.flash("You cannot view pending users", "error")
         return HTTPFound(location=request.route_url("tests"))
 
-    return {"users": request.userdb.get_pending(), "idle": get_idle_users(request)}
+    return {
+        "pending_users": request.userdb.get_pending(),
+        "idle_users": get_idle_users(request),
+    }
 
 
 @view_config(route_name="user", renderer="user.mak")

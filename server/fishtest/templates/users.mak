@@ -112,6 +112,12 @@
           </td>
         </tr>
       % endfor
+    
+      % if len(users) == 0:
+        <tr>
+          <td colspan=20>No users exist</td>
+        </tr>
+      % endif
     </tbody>
   </table>
 </div>

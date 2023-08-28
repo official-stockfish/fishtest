@@ -13,17 +13,22 @@
     <tr>
       <th>Username</th>
       <th>Registration Time</th>
-      <th>eMail</th>
+      <th>Email</th>
     </tr>
   </thead>
   <tbody>
-    % for user in users:
+    % for user in pending_users:
       <tr>
         <td style="width:15%"><a href="/user/${user['username']}">${user['username']}</a></td>
         <td style="width:15%">${user['registration_time'].strftime("%y-%m-%d %H:%M:%S") if 'registration_time' in user else 'Unknown'}</td>
         <td style="width:70%">${user['email']}</td>
       </tr>
     % endfor
+    % if len(pending_users) == 0:
+      <tr>
+        <td colspan=20>No pending users</td>
+      </tr>
+    % endif
   </tbody>
 </table>
 
@@ -34,16 +39,21 @@
     <tr>
       <th>Username</th>
       <th>Registration Time</th>
-      <th>eMail</th>
+      <th>Email</th>
     </tr>
   </thead>
   <tbody>
-    % for user in idle:
+    % for user in idle_users:
       <tr>
         <td style="width:15%"><a href="/user/${user['username']}">${user['username']}</a></td>
         <td style="width:15%">${user['registration_time'].strftime("%y-%m-%d %H:%M:%S") if 'registration_time' in user else 'Unknown'}</td>
         <td style="width:60%">${user['email']}</td>
       </tr>
     % endfor
+    % if len(idle_users) == 0:
+      <tr>
+        <td colspan=20>No idle users</td>
+      </tr>
+    % endif
   </tbody>
 </table>
