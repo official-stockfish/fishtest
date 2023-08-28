@@ -105,7 +105,7 @@
       </tr>
     </thead>
     <tbody>
-      % for action in actions:
+      % for idx, action in enumerate(actions):
         <tr>
           ## Dates in mongodb have millisecond precision. So they fit comfortably in a float without precision loss.
           <td><a href="/actions?max_actions=1&amp;action=${action_param}&amp;user=${username_param|u,n}&amp;text=${text_param|u,n}&amp;before=${action['time']}&amp;run_id=${run_id_param}">
@@ -134,6 +134,11 @@
           <td class="text-break">${action.get('message','')}</td>
         </tr>
       % endfor
+      % if "idx" not in locals():
+        <tr>
+          <td colspan=20>No actions available</td>
+        </tr>
+      % endif
     </tbody>
   </table>
 </div>
@@ -141,5 +146,5 @@
 <%include file="pagination.mak" args="pages=pages"/>
 
 <script>
-  document.querySelector('#restrict').value = ('${request.GET.get("action") if request.GET.get("action") != None else ''}');
+  document.getElementById('restrict').value = ('${request.GET.get("action") if request.GET.get("action") != None else ''}');
 </script>
