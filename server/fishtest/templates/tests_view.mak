@@ -292,7 +292,8 @@
               placeholder="Defaults to submitted message."
               class="form-control"
               rows="4"
-              style="height: 149px;"></textarea>
+              style="height: 149px;"
+            ></textarea>
           </div>
         % endif
 
