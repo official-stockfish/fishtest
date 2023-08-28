@@ -995,9 +995,7 @@ class RunDb:
             if self.purge_count > 100000:
                 old = time.time() - 10000
                 self.active_runs = dict(
-                    (k, v)
-                    for k, v in self.active_runs.items()
-                    if v["time"].replace(tzinfo=timezone.utc) >= old
+                    (k, v) for k, v in self.active_runs.items() if v["time"] >= old
                 )
                 self.purge_count = 0
             if id in self.active_runs:
