@@ -689,6 +689,19 @@
       update_sprt_bounds(e.target.value);
     });
 
+  function stripMessage(m, regex) {
+    const lines = m.trim().split("\n");
+    let lastLine = lines[lines.length - 1].trim();
+
+    if (regex.test(lastLine))
+        lines[lines.length - 1] = "";
+
+    let s = lines.join("\n");
+    s = s.replace(/[ \t]+/g, " ");
+    s = s.replace(/\n+/g, "\n");
+    return s.trimRight();
+  }
+
   async function onBranchInput(e) {
     if (stopRule === "stop-rule-spsa")
         return;
@@ -723,8 +736,10 @@
 
     if (match) {
       const bench = match[2];
-      if (e.target.id === "test-branch")
+      if (e.target.id === "test-branch") {
         document.getElementById("test-signature").value = bench;
+        document.getElementById("run-info").value = stripMessage(c.message, regex);
+      }
 
       if (e.target.id === "base-branch")
         document.getElementById("base-signature").value = bench;
