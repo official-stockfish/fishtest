@@ -799,6 +799,7 @@ class RunDb:
                         my_name,
                         last_update,
                     )
+                    print(error, flush=True)
                     return {"task_waiting": False, "error": error}
 
         # We go through the list of active tasks to see if the worker
