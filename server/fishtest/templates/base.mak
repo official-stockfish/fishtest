@@ -188,6 +188,9 @@
                         <a href="/pending" class="links-link rounded">Pending Users</a>
                       % endif
                     </li>
+                    <li>
+                      <a href="/workers/show" class="links-link rounded">Blocked Workers</a>
+                    </li>
                   </ul>
                 </li>
 

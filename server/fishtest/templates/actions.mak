@@ -114,14 +114,13 @@
           <%
             if 'worker' in action:
               agent = action['worker']
+	      short_agent = "-".join(agent.split("-")[0:3])
+	      agent_link = "/workers/"+short_agent
             else:
               agent = action['username']
+	      agent_link = "/user/"+agent
           %>
-          % if approver and 'fishtest.' not in action['username']:
-            <td><a href="/user/${action['username']}">${agent|n}</a></td>
-          % else:
-            <td>${agent|n}</td>
-          % endif
+          <td><a href="${agent_link|n}">${agent|n}</a></td>
           % if 'nn' in action:
             <td><a href=/api/nn/${action['nn']}>${action['nn'].replace('-', '&#8209;')|n}</a></td>
           % elif 'run' in action and 'run_id' in action:

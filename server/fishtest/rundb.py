@@ -31,6 +31,7 @@ from fishtest.util import (
     update_residuals,
     worker_name,
 )
+from fishtest.workerdb import WorkerDb
 from pymongo import DESCENDING, MongoClient
 
 DEBUG = False
@@ -83,6 +84,7 @@ class RunDb:
         self.db = self.conn[db_name]
         self.userdb = UserDb(self.db)
         self.actiondb = ActionDb(self.db)
+        self.workerdb = WorkerDb(self.db)
         self.pgndb = self.db["pgns"]
         self.nndb = self.db["nns"]
         self.runs = self.db["runs"]
@@ -705,6 +707,28 @@ class RunDb:
             return {"task_waiting": False}
 
     def sync_request_task(self, worker_info):
+        # We check if the worker has not been blocked.
+        my_name = worker_name(worker_info, short=True)
+        host_url = worker_info["host_url"]
+        w = self.workerdb.get_worker(my_name)
+        if w["blocked"]:
+            # updates last_updated
+            self.workerdb.update_worker(
+                my_name, blocked=w["blocked"], message=w["message"]
+            )
+            error = f"""
+
+  **********************************************************
+  Request_task: This worker has been blocked!
+  Message: {w["message"]}
+  You may possibly find more information 
+  at {host_url}/actions?text=%22{my_name}%22.
+  After fixing the issues you can unblock the worker at
+  {host_url}/workers/{my_name}.
+  **********************************************************
+"""
+            return {"task_waiting": False, "error": error}
+
         unique_key = worker_info["unique_key"]
 
         # We get the list of unfinished runs.
@@ -785,7 +809,6 @@ class RunDb:
         # We go through the list of active tasks to see if a worker with the same
         # name is already connected.
 
-        my_name = worker_name(worker_info, short=True)
         now = datetime.now(timezone.utc)
         for task in active_tasks:
             task_name = worker_name(task["worker_info"], short=True)
