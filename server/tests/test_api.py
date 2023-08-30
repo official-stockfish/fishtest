@@ -505,6 +505,20 @@ class TestRunFinished(unittest.TestCase):
             {"password": self.password, "worker_info": self.worker_info, **json_body}
         )
 
+    def test_duplicate_workers(self):
+        stop_all_runs(self)
+        run_id = new_run(self)
+        run = self.rundb.get_run(run_id)
+        self.rundb.buffer(run, True)
+        # Request task 1 of 2
+        request = self.correct_password_request()
+        response = ApiView(request).request_task()
+        self.assertFalse("error" in response)
+        # Request task 2 of 2
+        request = self.correct_password_request()
+        response = ApiView(request).request_task()
+        self.assertTrue("error" in response)
+
     def test_auto_purge_runs(self):
         stop_all_runs(self)
         run_id = new_run(self)
