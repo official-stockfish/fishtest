@@ -67,7 +67,7 @@ def is_64bit():
 
 
 HTTP_TIMEOUT = 30.0
-CUTECHESS_KILL_TIMEOUT = 15.0
+FASTCHESS_KILL_TIMEOUT = 15.0
 UPDATE_RETRY_TIME = 15.0
 
 RAWCONTENT_HOST = "https://raw.githubusercontent.com"
@@ -504,24 +504,6 @@ def unzip(blob, save_dir):
     return file_list
 
 
-def convert_book_move_counters(book_file):
-    # converts files with complete FENs, leaving others (incl. converted ones) unchanged
-    epds = []
-    with open(book_file, "r") as file:
-        for fen in file:
-            fields = fen.split()
-            if len(fields) == 6 and fields[4].isdigit() and fields[5].isdigit():
-                fields[4] = f"hmvc {fields[4]};"
-                fields[5] = f"fmvn {fields[5]};"
-                epds.append(" ".join(fields))
-            else:
-                return
-
-    with open(book_file, "w") as file:
-        for epd in epds:
-            file.write(epd + "\n")
-
-
 def clang_props():
     """Parse the output of clang++ -E - -march=native -### and extract the available clang properties"""
     with subprocess.Popen(
@@ -876,89 +858,7 @@ def enqueue_output(stream, queue):
         queue.put(line)
 
 
-def update_pentanomial(line, rounds):
-    saved_rounds = copy.deepcopy(rounds)
-    saved_line = line
-
-    def result_to_score(_result):
-        if _result == "1-0":
-            return 2
-        elif _result == "0-1":
-            return 0
-        elif _result == "1/2-1/2":
-            return 1
-        else:
-            return -1
-
-    if "pentanomial" not in rounds.keys():
-        rounds["pentanomial"] = 5 * [0]
-    if "trinomial" not in rounds.keys():
-        rounds["trinomial"] = 3 * [0]
-
-    saved_sum_trinomial = sum(rounds["trinomial"])
-    current = {}
-
-    # Parse line like this:
-    # Finished game 4 (Base-SHA vs New-SHA): 1/2-1/2 {Draw by adjudication}
-    line = line.split()
-    if line[0] == "Finished" and line[1] == "game" and len(line) >= 7:
-        round_ = int(line[2])
-        rounds[round_] = current
-        current["white"] = line[3][1:]
-        current["black"] = line[5][:-2]
-        i = current["result"] = result_to_score(line[6])
-        if round_ % 2 == 0:
-            if i != -1:
-                rounds["trinomial"][2 - i] += 1  # reversed colors
-            odd = round_ - 1
-            even = round_
-        else:
-            if i != -1:
-                rounds["trinomial"][i] += 1
-            odd = round_
-            even = round_ + 1
-        if odd in rounds.keys() and even in rounds.keys():
-            assert rounds[odd]["white"][0:3] == "New"
-            assert rounds[odd]["white"] == rounds[even]["black"]
-            assert rounds[odd]["black"] == rounds[even]["white"]
-            i = rounds[odd]["result"]
-            j = rounds[even]["result"]  # even is reversed colors
-            if i != -1 and j != -1:
-                rounds["pentanomial"][i + 2 - j] += 1
-                del rounds[odd]
-                del rounds[even]
-                rounds["trinomial"][i] -= 1
-                rounds["trinomial"][2 - j] -= 1
-                assert rounds["trinomial"][i] >= 0
-                assert rounds["trinomial"][2 - j] >= 0
-
-    # make sure something happened, but not too much
-    # this sometimes fails: we want to understand why
-    assertion = (
-        current.get("result", -1000) == -1
-        or abs(sum(rounds["trinomial"]) - saved_sum_trinomial) == 1
-    )
-    if not assertion:
-        raise WorkerException(
-            "update_pentanomial() failed. line={}; rounds before={}; rounds after={}".format(
-                saved_line, saved_rounds, rounds
-            )
-        )
-
-
-def validate_pentanomial(wld, rounds):
-    def results_to_score(results):
-        return sum([results[i] * (i / 2.0) for i in range(len(results))])
-
-    LDW = [wld[1], wld[2], wld[0]]
-    s3 = results_to_score(LDW)
-    s5 = results_to_score(rounds["pentanomial"]) + results_to_score(rounds["trinomial"])
-    assert sum(LDW) == 2 * sum(rounds["pentanomial"]) + sum(rounds["trinomial"])
-    epsilon = 1e-4
-    assert abs(s5 - s3) < epsilon
-
-
-def parse_cutechess_output(
+def parse_fastchess_output(
     p, current_state, remote, result, spsa_tuning, games_to_play, batch_size, tc_limit
 ):
     hash_pattern = re.compile(r"(Base|New)-[a-f0-9]+")
@@ -968,7 +868,23 @@ def parse_cutechess_output(
         return "-".join([word[0], word[1][:10]])
 
     saved_stats = copy.deepcopy(result["stats"])
-    rounds = {}
+
+    # patterns used to obtain fastchess WLD and ptnml results from the following block of info:
+    # --------------------------------------------------
+    # Results of New-e443b2459e vs Base-e443b2459e (0.601+0.006, 1t, 16MB, UHO_Lichess_4852_v1.epd):
+    # Elo: -9.20 +/- 20.93, nElo: -11.50 +/- 26.11
+    # LOS: 19.41 %, DrawRatio: 42.35 %, PairsRatio: 0.88
+    # Games: 680, Wins: 248, Losses: 266, Draws: 166, Points: 331.0 (48.68 %)
+    # Ptnml(0-2): [43, 61, 144, 55, 37], WL/DD Ratio: 4.76
+    # --------------------------------------------------
+    pattern_WLD = re.compile(
+        r"Games: ([0-9]+), Wins: ([0-9]+), Losses: ([0-9]+), Draws: ([0-9]+), Points: ([0-9.]+) \("
+    )
+    pattern_ptnml = re.compile(
+        r"Ptnml\(0-2\): \[([0-9]+), ([0-9]+), ([0-9]+), ([0-9]+), ([0-9]+)\]"
+    )
+    fastchess_WLD_results = None
+    fastchess_ptnml_results = None
 
     q = Queue()
     t_output = threading.Thread(target=enqueue_output, args=(p.stdout, q), daemon=True)
@@ -986,7 +902,7 @@ def parse_cutechess_output(
         except Empty:
             if p.poll() is not None:
                 break
-            time.sleep(1)
+            time.sleep(0.1)
             continue
 
         line = hash_pattern.sub(shorten_hash, line)
@@ -997,70 +913,83 @@ def parse_cutechess_output(
             if num_games_updated == games_to_play:
                 print("Finished match cleanly")
             else:
-                raise WorkerException("Finished match uncleanly")
+                raise WorkerException(
+                    "Finished match uncleanly {} vs. required {}".format(
+                        num_games_updated, games_to_play
+                    )
+                )
 
         # Parse line like this:
         # Warning: New-SHA doesn't have option ThreatBySafePawn
         if "Warning:" in line and "doesn't have option" in line:
-            message = r'Cutechess-cli says: "{}"'.format(line)
+            message = r'fastchess says: "{}"'.format(line)
             raise RunException(message)
 
         # Parse line like this:
         # Warning: Invalid value for option P: -354
         if "Warning:" in line and "Invalid value" in line:
-            message = r'Cutechess-cli says: "{}"'.format(line)
+            message = r'fastchess says: "{}"'.format(line)
             raise RunException(message)
 
         # Parse line like this:
         # Finished game 1 (stockfish vs base): 0-1 {White disconnects}
-        if "disconnects" in line or "connection stalls" in line:
+        if "disconnect" in line or "stall" in line:
             result["stats"]["crashes"] += 1
 
-        if "on time" in line:
+        if "on time" in line or "timeout" in line:
             result["stats"]["time_losses"] += 1
 
-        # Parse line like this:
-        # Score of stockfish vs base: 0 - 0 - 1  [0.500] 1
-        if "Score" in line:
-            # Parsing sometimes fails. We want to understand why.
+        # fastchess WLD and pentanomial output parsing
+        m = pattern_WLD.search(line)
+        if m:
             try:
-                chunks = line.split(":")
-                chunks = chunks[1].split()
-                wld = [int(chunks[0]), int(chunks[2]), int(chunks[4])]
-            except:
-                raise WorkerException("Failed to parse score line: {}".format(line))
+                fastchess_WLD_results = {
+                    "games": int(m.group(1)),
+                    "wins": int(m.group(2)),
+                    "losses": int(m.group(3)),
+                    "draws": int(m.group(4)),
+                    "points": float(m.group(5)),
+                }
+            except Exception as e:
+                raise WorkerException(
+                    "Failed to parse WLD line: {} leading to: {}".format(line, str(e))
+                )
 
-            validate_pentanomial(
-                wld, rounds
-            )  # check if cutechess-cli result is compatible with
-            # our own bookkeeping
+        m = pattern_ptnml.search(line)
+        if m:
+            try:
+                fastchess_ptnml_results = [int(m.group(i)) for i in range(1, 6)]
+            except Exception as e:
+                raise WorkerException(
+                    "Failed to parse ptnml line: {} leading to: {}".format(line, str(e))
+                )
 
-            pentanomial = [
-                rounds["pentanomial"][i] + saved_stats["pentanomial"][i]
+        # if we have parsed the block properly let's update results
+        if (fastchess_ptnml_results is not None) and (
+            fastchess_WLD_results is not None
+        ):
+            result["stats"]["pentanomial"] = [
+                fastchess_ptnml_results[i] + saved_stats["pentanomial"][i]
                 for i in range(5)
             ]
-            result["stats"]["pentanomial"] = pentanomial
 
-            wld_pairs = {}  # trinomial frequencies of completed game pairs
-
-            # rounds['trinomial'] is ordered ldw
-            wld_pairs["wins"] = wld[0] - rounds["trinomial"][2]
-            wld_pairs["losses"] = wld[1] - rounds["trinomial"][0]
-            wld_pairs["draws"] = wld[2] - rounds["trinomial"][1]
-
-            result["stats"]["wins"] = wld_pairs["wins"] + saved_stats["wins"]
-            result["stats"]["losses"] = wld_pairs["losses"] + saved_stats["losses"]
-            result["stats"]["draws"] = wld_pairs["draws"] + saved_stats["draws"]
+            result["stats"]["wins"] = (
+                fastchess_WLD_results["wins"] + saved_stats["wins"]
+            )
+            result["stats"]["losses"] = (
+                fastchess_WLD_results["losses"] + saved_stats["losses"]
+            )
+            result["stats"]["draws"] = (
+                fastchess_WLD_results["draws"] + saved_stats["draws"]
+            )
 
             if spsa_tuning:
                 spsa = result["spsa"]
-                spsa["wins"] = wld_pairs["wins"]
-                spsa["losses"] = wld_pairs["losses"]
-                spsa["draws"] = wld_pairs["draws"]
+                spsa["wins"] = fastchess_WLD_results["wins"]
+                spsa["losses"] = fastchess_WLD_results["losses"]
+                spsa["draws"] = fastchess_WLD_results["draws"]
 
-            num_games_finished = (
-                wld_pairs["wins"] + wld_pairs["losses"] + wld_pairs["draws"]
-            )
+            num_games_finished = fastchess_WLD_results["games"]
 
             assert (
                 2 * sum(result["stats"]["pentanomial"])
@@ -1068,9 +997,12 @@ def parse_cutechess_output(
                 + result["stats"]["losses"]
                 + result["stats"]["draws"]
             )
-            assert num_games_finished == 2 * sum(rounds["pentanomial"])
+            assert num_games_finished == 2 * sum(fastchess_ptnml_results)
             assert num_games_finished <= num_games_updated + batch_size
             assert num_games_finished <= games_to_play
+
+            fastchess_ptnml_results = None
+            fastchess_WLD_results = None
 
             # Send an update_task request after a batch is full or if we have played all games.
             if (num_games_finished == num_games_updated + batch_size) or (
@@ -1111,10 +1043,6 @@ def parse_cutechess_output(
                 else:
                     current_state["last_updated"] = datetime.now(timezone.utc)
 
-        # Act on line like this:
-        # Finished game 4 (Base-SHA vs New-SHA): 1/2-1/2 {Draw by adjudication}
-        if line.startswith("Finished game"):
-            update_pentanomial(line, rounds)
     else:
         raise WorkerException(
             "{} is past end time {}".format(datetime.now(timezone.utc), end_time)
@@ -1123,7 +1051,7 @@ def parse_cutechess_output(
     return True
 
 
-def launch_cutechess(
+def launch_fastchess(
     cmd, current_state, remote, result, spsa_tuning, games_to_play, batch_size, tc_limit
 ):
     if spsa_tuning:
@@ -1154,7 +1082,7 @@ def launch_cutechess(
         w_params = []
         b_params = []
 
-    # Run cutechess-cli binary.
+    # Run fastchess binary.
     # Stochastic rounding and probability for float N.p: (N, 1-p); (N+1, p)
     idx = cmd.index("_spsa_")
     cmd = (
@@ -1179,7 +1107,7 @@ def launch_cutechess(
         + cmd[idx + 1 :]
     )
 
-    #    print(cmd)
+    # print(cmd)
     try:
         with subprocess.Popen(
             cmd,
@@ -1201,7 +1129,7 @@ def launch_cutechess(
             close_fds=not IS_WINDOWS,
         ) as p:
             try:
-                task_alive = parse_cutechess_output(
+                task_alive = parse_fastchess_output(
                     p,
                     current_state,
                     remote,
@@ -1212,15 +1140,15 @@ def launch_cutechess(
                     tc_limit,
                 )
             finally:
-                # We nicely ask cutechess-cli to stop.
+                # We nicely ask fastchess to stop.
                 try:
                     send_sigint(p)
                 except Exception as e:
                     print("\nException in send_sigint:\n", e, sep="", file=sys.stderr)
                 # now wait...
-                print("\nWaiting for cutechess-cli to finish ... ", end="", flush=True)
+                print("\nWaiting for fastchess to finish ... ", end="", flush=True)
                 try:
-                    p.wait(timeout=CUTECHESS_KILL_TIMEOUT)
+                    p.wait(timeout=FASTCHESS_KILL_TIMEOUT)
                 except subprocess.TimeoutExpired:
                     print("timeout", flush=True)
                     kill_process(p)
@@ -1228,12 +1156,12 @@ def launch_cutechess(
                     print("done", flush=True)
     except (OSError, subprocess.SubprocessError) as e:
         print(
-            "Exception starting cutechess:\n",
+            "Exception starting fastchess:\n",
             e,
             sep="",
             file=sys.stderr,
         )
-        raise WorkerException("Unable to start cutechess. Error: {}".format(str(e)))
+        raise WorkerException("Unable to start fastchess. Error: {}".format(str(e)))
 
     return task_alive
 
@@ -1249,7 +1177,7 @@ def run_games(
     clear_binaries,
     global_cache,
 ):
-    # This is the main cutechess-cli driver.
+    # This is the main fastchess driver.
     # It is ok, and even expected, for this function to
     # raise exceptions, implicitly or explicitly, if a
     # task cannot be completed.
@@ -1315,9 +1243,9 @@ def run_games(
     if "start" in task:
         print("Variable task sizes used. Opening offset = {}".format(opening_offset))
     start_game_index = opening_offset + input_total_games
-    run_seed = int(hashlib.sha1(run["_id"].encode("utf-8")).hexdigest(), 16) % (2**30)
+    run_seed = int(hashlib.sha1(run["_id"].encode("utf-8")).hexdigest(), 16) % (2**64)
 
-    # Format options according to cutechess syntax.
+    # Format options according to fastchess syntax.
     def parse_options(s):
         results = []
         chunks = s.split("=")
@@ -1404,11 +1332,6 @@ def run_games(
         blob = download_from_github(zipball)
         unzip(blob, testing_dir)
 
-    # convert .epd containing FENs into .epd containing EPDs with move counters
-    # only needed as long as cutechess-cli is the game manager
-    if book.endswith(".epd"):
-        convert_book_move_counters(testing_dir / book)
-
     # Clean up the old networks (keeping the num_bkps most recent)
     num_bkps = 10
     for old_net in sorted(
@@ -1424,7 +1347,7 @@ def run_games(
                 file=sys.stderr,
             )
 
-    # Add EvalFile* with full path to cutechess options, and download the networks if missing.
+    # Add EvalFile* with full path to fastchess options, and download the networks if missing.
     for option, net in required_nets(base_engine).items():
         base_options.append("option.{}={}".format(option, net))
         establish_validated_net(remote, testing_dir, net, global_cache)
@@ -1554,17 +1477,27 @@ def run_games(
         if any(substring in book.upper() for substring in ["FRC", "960"]):
             variant = "fischerandom"
 
-        # Run cutechess binary.
-        cutechess = "cutechess-cli" + EXE_SUFFIX
+        # Run fastchess binary.
+        fastchess = "fastchess" + EXE_SUFFIX
         cmd = (
             [
-                os.path.join(testing_dir, cutechess),
+                os.path.join(testing_dir, fastchess),
                 "-recover",
                 "-repeat",
                 "-games",
-                str(int(games_to_play)),
-                "-tournament",
-                "gauntlet",
+                "2",
+                "-rounds",
+                str(int(games_to_play) // 2),
+            ]
+            + [
+                "-ratinginterval",
+                "1",
+                "-scoreinterval",
+                "1",
+                "-autosaveinterval",
+                "0",
+                "-report",
+                "penta=true",
             ]
             + pgnout
             + ["-site", "https://tests.stockfishchess.org/tests/view/" + run["_id"]]
@@ -1618,7 +1551,7 @@ def run_games(
             + book_cmd
         )
 
-        task_alive = launch_cutechess(
+        task_alive = launch_fastchess(
             cmd,
             current_state,
             remote,

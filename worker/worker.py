@@ -12,9 +12,9 @@ import random
 import re
 import shutil
 import signal
-import stat
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import traceback
@@ -39,9 +39,12 @@ from games import (
     RunException,
     WorkerException,
     backup_log,
+    cache_read,
+    cache_write,
     download_from_github,
     format_return_code,
     log,
+    requests_get,
     run_games,
     send_api_post_request,
     str_signal,
@@ -66,7 +69,7 @@ MIN_GCC_MINOR = 3
 MIN_CLANG_MAJOR = 8
 MIN_CLANG_MINOR = 0
 
-WORKER_VERSION = 243
+WORKER_VERSION = 244
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -101,8 +104,8 @@ is as follows:
 worker.py : worker()
 worker.py :    fetch_and_handle_task()            [in loop]
 games.py  :       run_games()
-games.py  :          launch_cutechess()           [in loop for spsa]
-games.py  :             parse_cutechess_output()
+games.py  :          launch_fastchess()           [in loop for spsa]
+games.py  :             parse_fastchess_output()
 
 Apis used by the worker
 =======================
@@ -118,8 +121,8 @@ Setup task          <github>/rate_limit                                         
                     <fishtest>/api/request_task                                 POST
                     <fishtest>/api/nn/<nnue>                                    GET
                     <github-books>/git/trees/master                             GET
-                    <github-books>/git/trees/master/blobs/<sha-cutechess-cli>   GET
                     <github-books>/git/trees/master/blobs/<sha-book>            GET
+                    <github>/repos/Disservin/fastchess/zipball/<sha>           GET
                     <github>/repos/<user-repo>/zipball/<sha>                    GET
 
 Main loop           <fishtest>/api/update_task                                  POST
@@ -390,40 +393,17 @@ def get_credentials(config, options, args):
     return username, password
 
 
-def download_cutechess(cutechess, save_dir):
-    if len(EXE_SUFFIX) > 0:
-        zipball = "cutechess-cli-win.zip"
-    elif IS_MACOS:
-        zipball = "cutechess-cli-macos-64bit.zip"
-    else:
-        zipball = "cutechess-cli-linux-{}.zip".format(platform.architecture()[0])
-    try:
-        blob = download_from_github(zipball)
-        unzip(blob, save_dir)
+def verify_required_fastchess(fastchess_path, fastchess_sha):
+    # Verify that fastchess is working and has the required minimum version.
 
-        os.chmod(cutechess, os.stat(cutechess).st_mode | stat.S_IEXEC)
-    except Exception as e:
-        print(
-            "Exception downloading or extracting {}:\n".format(zipball),
-            e,
-            sep="",
-            file=sys.stderr,
-        )
-    else:
-        print("Finished downloading {}".format(cutechess))
-
-
-def verify_required_cutechess(cutechess_path):
-    # Verify that cutechess is working and has the required minimum version.
-
-    if not cutechess_path.exists():
+    if not fastchess_path.exists():
         return False
 
-    print("Obtaining version info for {} ...".format(cutechess_path))
+    print("Obtaining version info for {} ...".format(fastchess_path))
 
     try:
         with subprocess.Popen(
-            [cutechess_path, "--version"],
+            [fastchess_path, "--version"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             universal_newlines=True,
@@ -431,98 +411,125 @@ def verify_required_cutechess(cutechess_path):
             close_fds=not IS_WINDOWS,
         ) as p:
             errors = p.stderr.read()
-            pattern = re.compile(r"cutechess-cli ([0-9]+)\.([0-9]+)\.([0-9]+)")
-            major, minor, patch = 0, 0, 0
+            pattern = re.compile(
+                r"fastchess alpha [0-9]*.[0-9]*.[0-9]* [0-9]*-([0-9a-f-]*)$"
+            )
+            short_sha = ""
             for line in iter(p.stdout.readline, ""):
                 m = pattern.search(line)
                 if m:
                     print("Found", line.strip())
-                    major = int(m.group(1))
-                    minor = int(m.group(2))
-                    patch = int(m.group(3))
+                    short_sha = m.group(1)
     except (OSError, subprocess.SubprocessError) as e:
-        print("Unable to run cutechess-cli. Error: {}".format(str(e)))
+        print("Unable to run fastchess. Error: {}".format(str(e)))
         return False
 
     if p.returncode != 0:
         print(
-            "Unable to run cutechess-cli. Return code: {}. Error: {}".format(
+            "Unable to run fastchess. Return code: {}. Error: {}".format(
                 format_return_code(p.returncode), errors
             )
         )
         return False
 
-    if major + minor + patch == 0:
-        print("Unable to find the version of cutechess-cli.")
+    if len(short_sha) < 7:
+        print(
+            "Unable to find a suitable sha of length 7 or more in the fastchess version."
+        )
         return False
 
-    if (major, minor) < (1, 2):
-        print("Requires cutechess 1.2 or higher, found version doesn't match")
+    if not fastchess_sha.startswith(short_sha):
+        print(
+            "fastchess sha {} required but the version shows {}".format(
+                fastchess_sha, short_sha
+            )
+        )
         return False
 
     return True
 
 
-def setup_cutechess(worker_dir):
+def setup_fastchess(worker_dir, compiler, concurrency, global_cache):
     # Create the testing directory if missing.
     testing_dir = worker_dir / "testing"
     testing_dir.mkdir(exist_ok=True)
 
-    curr_dir = Path.cwd()
+    fastchess_sha = "37c6e12feaef484cd5eff1313d794532aa0bff14"
+    username = "Disservin"
 
-    try:
-        os.chdir(testing_dir)
-    except Exception as e:
-        print("Unable to enter {}. Error: {}".format(testing_dir, str(e)))
-        return False
-
-    cutechess = "cutechess-cli" + EXE_SUFFIX
-    cutechess_path = testing_dir / cutechess
-
-    # Download cutechess-cli if missing or overwrite if there are issues.
-    if not verify_required_cutechess(cutechess_path):
-        download_cutechess(cutechess, testing_dir)
-    else:
-        os.chdir(curr_dir)
+    fastchess = "fastchess" + EXE_SUFFIX
+    if verify_required_fastchess(testing_dir / fastchess, fastchess_sha):
         return True
 
-    ret = True
-
-    if not verify_required_cutechess(cutechess_path):
-        print(
-            "The downloaded cutechess-cli is not working. Trying to restore a backup copy ..."
+    # build it ourselves
+    try:
+        item_url = (
+            "https://api.github.com/repos/"
+            + username
+            + "/fastchess/zipball/"
+            + fastchess_sha
         )
-        bkp_cutechess_clis = sorted(
-            worker_dir.glob("_testing_*/" + cutechess),
-            key=os.path.getctime,
-            reverse=True,
-        )
-        if bkp_cutechess_clis:
-            bkp_cutechess_cli = bkp_cutechess_clis[0]
-            try:
-                shutil.copy(bkp_cutechess_cli, testing_dir)
-            except Exception as e:
-                print(
-                    "Unable to copy {} to {}. Error: {}".format(
-                        bkp_cutechess_cli, testing_dir, str(e)
-                    )
-                )
 
-            if not verify_required_cutechess(cutechess_path):
-                print(
-                    "The backup copy {} doesn't work either ...".format(
-                        bkp_cutechess_cli
-                    )
-                )
-                print("No suitable cutechess-cli found")
-                ret = False
+        print("Building fastchess from sources at {}".format(item_url))
+
+        should_cache = False
+        blob = cache_read(global_cache, fastchess_sha + ".zip")
+
+        if blob is None:
+            print("Downloading {}".format(item_url))
+            blob = requests_get(item_url).content
+            should_cache = True
         else:
-            print("No backup copy found")
-            print("No suitable cutechess-cli found")
-            ret = False
+            print("Using {} from global cache".format(fastchess_sha + ".zip"))
 
-    os.chdir(curr_dir)
-    return ret
+        tmp_dir = Path(tempfile.mkdtemp(dir=testing_dir))
+        file_list = unzip(blob, tmp_dir)
+        prefix = os.path.commonprefix([n.filename for n in file_list])
+
+        if should_cache:
+            cache_write(global_cache, fastchess_sha + ".zip", blob)
+
+        cd = os.getcwd()
+        os.chdir(tmp_dir / prefix)
+
+        cmds = [
+            f"make -j{concurrency} tests CXX={compiler} GIT_SHA={fastchess_sha[0:8]} GIT_DATE=01010101",
+            str(tmp_dir / prefix / ("fastchess-tests" + EXE_SUFFIX)),
+            "make clean",
+            f"make -j{concurrency} CXX={compiler} GIT_SHA={fastchess_sha[0:8]} GIT_DATE=01010101",
+        ]
+
+        for cmd in cmds:
+            print(cmd)
+            with subprocess.Popen(
+                cmd,
+                shell=True,
+                env=os.environ,
+                stderr=subprocess.PIPE,
+                universal_newlines=True,
+                bufsize=1,
+                close_fds=not IS_WINDOWS,
+            ) as p:
+                errors = p.stderr.readlines()
+
+            if p.returncode:
+                raise WorkerException(
+                    "Executing {} failed. Error: {}".format(cmd, errors)
+                )
+
+        shutil.copy("fastchess" + EXE_SUFFIX, testing_dir)
+        os.chdir(cd)
+        shutil.rmtree(tmp_dir)
+
+    except Exception as e:
+        print(
+            "Exception downloading, extracting or building fastchess:\n",
+            e,
+            sep="",
+            file=sys.stderr,
+        )
+
+    return verify_required_fastchess(testing_dir / fastchess, fastchess_sha)
 
 
 def validate(config, schema):
@@ -819,13 +826,16 @@ def setup_parameters(worker_dir):
 
     # Limit concurrency so that at least STC tests can run with the evailable memory
     # The memory need per engine is 16 for the TT Hash, 10 for the process 138 for the net and 16 per thread
-    # 60 is the need for cutechess-cli
+    # 60 is the need for fastchess
     # These numbers need to be up-to-date with the server values
     STC_memory = 2 * (16 + 10 + 138 + 16)
-    max_concurrency = int((options.max_memory - 60) / STC_memory)
+    fc_memory = 60
+    max_concurrency = int((options.max_memory - fc_memory) / STC_memory)
     if max_concurrency < 1:
         print(
-            "You need to reserve at least {} MiB to run the worker!".format(STC_memory)
+            "You need to reserve at least {} MiB to run the worker!".format(
+                STC_memory + fc_memory
+            )
         )
         return None
     options.concurrency_reduced = False
@@ -835,7 +845,7 @@ def setup_parameters(worker_dir):
         )
         print(
             "The required memory to run with {} concurrency is {} MiB".format(
-                options.concurrency, STC_memory * options.concurrency
+                options.concurrency, STC_memory * options.concurrency + fc_memory
             )
         )
         print("The concurrency has been reduced to {}".format(max_concurrency))
@@ -1517,25 +1527,27 @@ def worker():
         print("Exception verifying worker version:\n", e, sep="", file=sys.stderr)
         return 1
 
-    # Check for common tool chain issues
-    if not verify_toolchain():
-        return 1
-
-    # Make sure we have a working cutechess-cli
-    if not setup_cutechess(worker_dir):
-        return 1
-
-    # Check if we are running an unmodified worker
-    unmodified = verify_remote_sri(worker_dir)
-    if unmodified is None:
-        return 1
-
     # Assemble the config/options data as well as some other data in a
     # "worker_info" dictionary.
     # This data will be sent to the server when a new task is requested.
 
     compiler, major, minor, patchlevel = options.compiler
     print("Using {} {}.{}.{}".format(compiler, major, minor, patchlevel))
+
+    # Check for common tool chain issues
+    if not verify_toolchain():
+        return 1
+
+    # Make sure we have a working fastchess
+    if not setup_fastchess(
+        worker_dir, compiler, options.concurrency, options.global_cache
+    ):
+        return 1
+
+    # Check if we are running an unmodified worker
+    unmodified = verify_remote_sri(worker_dir)
+    if unmodified is None:
+        return 1
 
     uname = platform.uname()
     worker_info = {
