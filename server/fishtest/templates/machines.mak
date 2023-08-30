@@ -1,6 +1,7 @@
 <%!
   from fishtest.util import delta_date
   from fishtest.util import diff_date
+  from fishtest.util import worker_name
 %>
 
 <table class="table table-striped table-sm">
@@ -26,6 +27,7 @@
         compiler = machine.get('compiler', 'g++')
         python_version = ".".join([str(m) for m in machine['python_version']])
         version = str(machine['version']) + "*" * machine['modified']
+        worker_name_ = worker_name(machine, short=True)
         diff_time = diff_date(machine["last_updated"])
         delta_time = delta_date(diff_time)
       %>
@@ -38,7 +40,7 @@
           % endif
           ${machine['concurrency']}
         </td>
-        <td>${machine['unique_key'].split('-')[0]}</td>
+        <td><a href="/workers/${worker_name_}">${machine['unique_key'].split('-')[0]}</a></td>
         <td>${f"{machine['nps'] / 1000000:.2f}"}</td>
         <td>${machine['max_memory']}</td>
         <td>${machine['uname']}</td>

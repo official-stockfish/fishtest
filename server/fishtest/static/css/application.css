@@ -401,6 +401,10 @@ legend {
   content: "\f4fd";
 }
 
+.mainnavbar [href="/workers/show"]::before {
+  content: "\f4fd";
+}
+
 .mainnavbar #change-color-theme #sun::before {
   content: "\f185";
 }

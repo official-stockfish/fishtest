@@ -231,6 +231,7 @@ class ApiView(object):
         worker_info = self.request_body["worker_info"]
         worker_info["remote_addr"] = self.request.remote_addr
         worker_info["country_code"] = self.get_country_code()
+        worker_info["host_url"] = self.request.host_url
         return worker_info
 
     def worker_name(self):

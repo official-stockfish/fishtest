@@ -20,7 +20,12 @@ from fishtest.util import (
     password_strength,
     update_residuals,
 )
-from pyramid.httpexceptions import HTTPFound, exception_response
+from pyramid.httpexceptions import (
+    HTTPBadRequest,
+    HTTPFound,
+    HTTPUnauthorized,
+    exception_response,
+)
 from pyramid.security import forget, remember
 from pyramid.view import forbidden_view_config, view_config
 from requests.exceptions import ConnectionError, HTTPError
@@ -36,9 +41,9 @@ def clear_cache():
     building.release()
 
 
-def cached_flash(request, requestString):
+def cached_flash(request, requestString, *l):
     clear_cache()
-    request.session.flash(requestString)
+    request.session.flash(requestString, *l)
     return
 
 
@@ -122,6 +127,60 @@ def login(request):
             )
         request.session.flash(message, "error")
     return {}
+
+
+@view_config(route_name="workers", renderer="workers.mak", require_csrf=True)
+def workers(request):
+    blocked_workers = request.rundb.workerdb.get_blocked_workers()
+    worker_name = request.matchdict.get("worker_name")
+    # TODO. Do more validation of worker names
+    if len(worker_name.split("-")) != 3:
+        return {
+            "show_admin": False,
+            "blocked_workers": blocked_workers,
+        }
+    userid = request.authenticated_userid
+    if not userid:
+        request.session.flash("Please login")
+        return HTTPFound(
+            location=request.route_url(
+                "login", _query={"next": f"/workers/{worker_name}"}
+            )
+        )
+    username = worker_name.split("-")[0]
+    if not request.has_permission("approve_run") and userid != username:
+        cached_flash(request, f"Only owners and approvers can block/unblock", "error")
+        return {
+            "show_admin": False,
+            "blocked_workers": blocked_workers,
+        }
+
+    if request.method == "POST":
+        blocked = request.POST.get("blocked") is not None
+        message = request.POST.get("message")
+        button = request.POST.get("submit")
+        if button == "Submit":
+            request.rundb.workerdb.update_worker(
+                worker_name, blocked=blocked, message=message
+            )
+            cached_flash(
+                request,
+                f"Worker {worker_name} {'blocked' if blocked else 'unblocked'}!",
+            )
+        return HTTPFound(location=request.route_url("workers", worker_name="show"))
+
+    w = request.rundb.workerdb.get_worker(worker_name)
+    blocked = w["blocked"]
+    message = w["message"]
+    last_updated = w["last_updated"]
+    return {
+        "show_admin": True,
+        "worker_name": worker_name,
+        "blocked": blocked,
+        "message": message,
+        "last_updated": last_updated,
+        "blocked_workers": blocked_workers,
+    }
 
 
 @view_config(route_name="nn_upload", renderer="nn_upload.mak", require_csrf=True)

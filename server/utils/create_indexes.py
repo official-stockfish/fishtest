@@ -87,6 +87,10 @@ def create_users_indexes():
     db["users"].create_index("username", unique=True)
 
 
+def create_workers_indexes():
+    db["workers"].create_index("worker_name", unique=True)
+
+
 def create_actions_indexes():
     db["actions"].create_index([("username", ASCENDING), ("_id", DESCENDING)])
     db["actions"].create_index([("action", ASCENDING), ("_id", DESCENDING)])
@@ -139,6 +143,9 @@ if __name__ == "__main__":
             if collection_name == "users":
                 drop_indexes("users")
                 create_users_indexes()
+            if collection_name == "workers":
+                drop_indexes("workers")
+                create_workers_indexes()
             elif collection_name == "actions":
                 drop_indexes("actions")
                 create_actions_indexes()
