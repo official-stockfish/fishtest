@@ -785,10 +785,10 @@ class RunDb:
         # We go through the list of active tasks to see if a worker with the same
         # name is already connected.
 
-        my_name = "-".join(worker_name(worker_info).split("-")[0:3])
+        my_name = worker_name(worker_info, short=True)
         now = datetime.now(timezone.utc)
         for task in active_tasks:
-            task_name = "-".join(worker_name(task["worker_info"]).split("-")[0:3])
+            task_name = worker_name(task["worker_info"], short=True)
             if my_name == task_name:
                 last_update = (
                     now - task["last_updated"].replace(tzinfo=timezone.utc)

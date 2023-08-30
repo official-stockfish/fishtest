@@ -19,7 +19,7 @@ def hex_print(s):
     return hashlib.md5(str(s).encode("utf-8")).digest().hex()
 
 
-def worker_name(worker_info):
+def worker_name(worker_info, short=False):
     # A user friendly name for the worker.
     username = worker_info["username"]
     cores = str(worker_info["concurrency"])
@@ -30,9 +30,9 @@ def worker_name(worker_info):
         uuid_split = uuid.split("-")
         if len(uuid_split) >= 1:
             name += "-" + uuid_split[0]
-        if len(uuid_split) >= 2:
+        if len(uuid_split) >= 2 and not short:
             name += "-" + uuid_split[1]
-    if modified:
+    if modified and not short:
         name += "*"
     return name
 
