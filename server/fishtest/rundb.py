@@ -1158,23 +1158,6 @@ After fixing the issues you can unblock the worker at
                 if not have_binary:
                     continue
 
-            # To avoid time losses in the case of large concurrency and short TC,
-            # probably due to cutechess-cli as discussed in issue #822,
-            # assign linux workers to LTC or multi-threaded jobs
-            # and windows workers only to LTC jobs
-            if max_threads >= 29:
-                if "windows" in worker_info["uname"].lower():
-                    tc_too_short = get_tc_ratio(run["args"]["tc"], base="55+0.5") < 1.0
-                else:
-                    tc_too_short = (
-                        get_tc_ratio(
-                            run["args"]["tc"], run["args"]["threads"], "35+0.3"
-                        )
-                        < 1.0
-                    )
-                if tc_too_short:
-                    continue
-
             # Limit the number of cores.
             # Currently this is only done for spsa.
             if "spsa" in run["args"]:
