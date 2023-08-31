@@ -780,7 +780,7 @@ def update_pentanomial(line, rounds):
     current = {}
 
     # Parse line like this:
-    # Finished game 4 (Base-5446e6f vs New-1a68b26): 1/2-1/2 {Draw by adjudication}
+    # Finished game 4 (Base-SHA vs New-SHA): 1/2-1/2 {Draw by adjudication}
     line = line.split()
     if line[0] == "Finished" and line[1] == "game" and len(line) >= 7:
         round_ = int(line[2])
@@ -835,6 +835,12 @@ def validate_pentanomial(wld, rounds):
 def parse_cutechess_output(
     p, remote, result, spsa_tuning, games_to_play, batch_size, tc_limit
 ):
+    hash_pattern = re.compile(r"(Base|New)-[a-f0-9]+")
+
+    def shorten_hash(match):
+        word = match.group(0).split("-")
+        return "-".join([word[0], word[1][:10]])
+
     saved_stats = copy.deepcopy(result["stats"])
     rounds = {}
 
@@ -856,6 +862,7 @@ def parse_cutechess_output(
             time.sleep(1)
             continue
 
+        line = hash_pattern.sub(shorten_hash, line)
         print(line, flush=True)
 
         # Have we reached the end of the match? Then just exit.
@@ -866,7 +873,7 @@ def parse_cutechess_output(
                 raise WorkerException("Finished match uncleanly")
 
         # Parse line like this:
-        # Warning: New-eb6a21875e doesn't have option ThreatBySafePawn
+        # Warning: New-SHA doesn't have option ThreatBySafePawn
         if "Warning:" in line and "doesn't have option" in line:
             message = r'Cutechess-cli says: "{}"'.format(line)
             raise RunException(message)
@@ -972,7 +979,7 @@ def parse_cutechess_output(
                     raise WorkerException("Too many failed update attempts")
 
         # Act on line like this:
-        # Finished game 4 (Base-5446e6f vs New-1a68b26): 1/2-1/2 {Draw by adjudication}
+        # Finished game 4 (Base-SHA vs New-SHA): 1/2-1/2 {Draw by adjudication}
         if "Finished game" in line:
             update_pentanomial(line, rounds)
     else:
@@ -1417,7 +1424,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file, clear_binar
             + pgn_cmd
             + [
                 "-engine",
-                "name=New-" + run["args"]["resolved_new"][:10],
+                "name=New-" + run["args"]["resolved_new"],
                 "tc={}".format(scaled_new_tc),
                 "cmd=./{}".format(new_engine_name),
                 "dir=.",
@@ -1426,7 +1433,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file, clear_binar
             + ["_spsa_"]
             + [
                 "-engine",
-                "name=Base-" + run["args"]["resolved_base"][:10],
+                "name=Base-" + run["args"]["resolved_base"],
                 "tc={}".format(scaled_tc),
                 "cmd=./{}".format(base_engine_name),
                 "dir=.",
