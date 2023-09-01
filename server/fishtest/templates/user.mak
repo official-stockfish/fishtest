@@ -1,12 +1,12 @@
 <%inherit file="base.mak"/>
 
 <script>
-  document.title = 'User Administration | Stockfish Testing';
+  document.title = 'User Management | Stockfish Testing';
 </script>
 
 <div class="col-limited-size">
   <header class="text-md-center py-2">
-    <h2>User Administration</h2>
+    <h2>User Management</h2>
     <div class="alert alert-info">
       <h4 class="alert-heading">
         <a href="/tests/user/${user['username']}" class="alert-link col-6 text-break">${user['username']}</a>

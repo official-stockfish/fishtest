@@ -402,7 +402,7 @@ legend {
 }
 
 .mainnavbar [href="/workers/show"]::before {
-  content: "\f4fd";
+  content: "\f502";
 }
 
 .mainnavbar #change-color-theme #sun::before {
