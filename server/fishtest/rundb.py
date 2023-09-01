@@ -6,6 +6,7 @@ import random
 import re
 import signal
 import sys
+import textwrap
 import threading
 import time
 import zlib
@@ -695,6 +696,20 @@ class RunDb:
             games = max(2, 2 * int(games / 2 + 1 / 2))
         return games
 
+    def blocked_worker_message(self, worker_name, message, host_url):
+        wrapped_message = textwrap.fill("Message: " + message, width=70)
+        return f"""
+
+**********************************************************************
+Request_task: This worker has been blocked!
+{wrapped_message}
+You may possibly find more information at
+{host_url}/actions?text=%22{worker_name}%22.
+After fixing the issues you can unblock the worker at
+{host_url}/workers/{worker_name}.
+**********************************************************************
+"""
+
     def request_task(self, worker_info):
         if self.task_semaphore.acquire(False):
             try:
@@ -716,17 +731,7 @@ class RunDb:
             self.workerdb.update_worker(
                 my_name, blocked=w["blocked"], message=w["message"]
             )
-            error = f"""
-
-  **********************************************************
-  Request_task: This worker has been blocked!
-  Message: {w["message"]}
-  You may possibly find more information 
-  at {host_url}/actions?text=%22{my_name}%22.
-  After fixing the issues you can unblock the worker at
-  {host_url}/workers/{my_name}.
-  **********************************************************
-"""
+            error = self.blocked_worker_message(my_name, w["message"], host_url)
             return {"task_waiting": False, "error": error}
 
         unique_key = worker_info["unique_key"]
