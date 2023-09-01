@@ -156,10 +156,10 @@ def workers(request):
         }
 
     if request.method == "POST":
-        blocked = request.POST.get("blocked") is not None
-        message = request.POST.get("message")
         button = request.POST.get("submit")
         if button == "Submit":
+            blocked = request.POST.get("blocked") is not None
+            message = request.POST.get("message")[0:500]
             request.rundb.workerdb.update_worker(
                 worker_name, blocked=blocked, message=message
             )
