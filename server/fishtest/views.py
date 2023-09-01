@@ -143,9 +143,7 @@ def workers(request):
     if not userid:
         request.session.flash("Please login")
         return HTTPFound(
-            location=request.route_url(
-                "login", _query={"next": f"/workers/{worker_name}"}
-            )
+            location=request.route_url("login", _query={"next": request.path})
         )
     username = worker_name.split("-")[0]
     if not request.has_permission("approve_run") and userid != username:
@@ -188,7 +186,10 @@ def upload(request):
     userid = request.authenticated_userid
     if not userid:
         request.session.flash("Please login")
-        return HTTPFound(location=request.route_url("login"))
+        return HTTPFound(
+            location=request.route_url("login", _query={"next": request.path})
+        )
+
     if request.method != "POST":
         return {}
     try:
@@ -504,7 +505,9 @@ def user(request):
     userid = request.authenticated_userid
     if not userid:
         request.session.flash("Please login")
-        return HTTPFound(location=request.route_url("login"))
+        return HTTPFound(
+            location=request.route_url("login", _query={"next": request.path})
+        )
     user_name = request.matchdict.get("username", userid)
     profile = user_name == userid
     if not profile and not request.has_permission("approve_run"):
@@ -1140,7 +1143,6 @@ def tests_stop(request):
 @view_config(route_name="tests_approve", require_csrf=True, request_method="POST")
 def tests_approve(request):
     if not request.authenticated_userid:
-        request.session.flash("Please login")
         return HTTPFound(location=request.route_url("login"))
     if not request.has_permission("approve_run"):
         request.session.flash("Please login as approver")
@@ -1308,6 +1310,7 @@ def tests_view(request):
         "auto_purge",
         "priority",
         "itp",
+        "throughput",
         "username",
         "tests_repo",
         "adjudication",
@@ -1419,6 +1422,7 @@ def tests_view(request):
         "tasks_shown": show_task != -1 or request.cookies.get("tasks_state") == "Hide",
         "show_task": show_task,
         "follow": follow,
+        "can_modify_run": can_modify_run(request, run),
         "same_user": same_user,
     }
 

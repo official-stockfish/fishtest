@@ -179,39 +179,42 @@
     <div class="col-12 col-lg-3">
       <h4>Actions</h4>
       <div class="row g-2 mb-2">
-        % if not run['finished']:
-          <div class="col-12 col-sm">
-            <form
-              action="/tests/stop"
-              method="POST"
-              onsubmit="handle_stop_delete_button('${run['_id']}'); return true;"
-            >
-              <input type="hidden" name="run-id" value="${run['_id']}">
-              <button type="submit" class="btn btn-danger w-100">
-                Stop
-              </button>
-            </form>
-          </div>
-
-          % if not run.get('approved', False):
+        % if can_modify_run:
+          % if not run['finished']:
             <div class="col-12 col-sm">
-              <form action="/tests/approve" method="POST">
+              <form
+                action="/tests/stop"
+                method="POST"
+                onsubmit="handle_stop_delete_button('${run['_id']}'); return true;"
+              >
                 <input type="hidden" name="run-id" value="${run['_id']}">
-                <button type="submit" id="approve-btn"
-                        class="btn ${'btn-success' if run['base_same_as_master'] or 'spsa' in run['args'] else 'btn-warning'} w-100">
-                  Approve
+                <button type="submit" class="btn btn-danger w-100">
+                  Stop
                 </button>
               </form>
             </div>
+
+            % if not run.get('approved', False) and not same_user:
+              <div class="col-12 col-sm">
+                <form action="/tests/approve" method="POST">
+                  <input type="hidden" name="run-id" value="${run['_id']}">
+                  <button type="submit" id="approve-btn"
+                          class="btn ${'btn-success' if run['base_same_as_master'] or 'spsa' in run['args'] else 'btn-warning'} w-100">
+                    Approve
+                  </button>
+                </form>
+              </div>
+            % endif
+          % else:
+            <div class="col-12 col-sm">
+              <form action="/tests/purge" method="POST">
+                <input type="hidden" name="run-id" value="${run['_id']}">
+                <button type="submit" class="btn btn-danger w-100">Purge</button>
+              </form>
+            </div>
           % endif
-        % else:
-          <div class="col-12 col-sm">
-            <form action="/tests/purge" method="POST">
-              <input type="hidden" name="run-id" value="${run['_id']}">
-              <button type="submit" class="btn btn-danger w-100">Purge</button>
-            </form>
-          </div>
         % endif
+
         <div class="col-12 col-sm">
           <a class="btn btn-light border w-100" href="/tests/run?id=${run['_id']}">Reschedule</a>
         </div>
@@ -243,73 +246,75 @@
 
       <hr>
 
-      <form class="form" action="/tests/modify" method="POST">
-        <div class="mb-3">
-          <label class="form-label" for="modify-num-games">Number of games</label>
-          <input
-            type="number"
-            class="form-control"
-            name="num-games"
-            id="modify-num-games"
-            min="0"
-            step="1000"
-            value="${run['args']['num_games']}"
-          >
-        </div>
-
-        <div class="mb-3">
-          <label class="form-label" for="modify-priority">Priority (higher is more urgent)</label>
-          <input
-            type="number"
-            class="form-control"
-            name="priority"
-            id="modify-priority"
-            value="${run['args']['priority']}"
-          >
-        </div>
-
-        <label class="form-label" for="modify-throughput">Throughput</label>
-        <div class="mb-3 input-group">
-          <input
-            type="number"
-            class="form-control"
-            name="throughput"
-            id="modify-throughput"
-            min="0"
-            value="${run['args'].get('throughput', 1000)}"
-          >
-          <span class="input-group-text">%</span>
-        </div>
-
-        % if same_user:
+      % if can_modify_run:
+        <form class="form" action="/tests/modify" method="POST">
           <div class="mb-3">
-            <label for="info" class="form-label">
-              Info
-            </label>
-            <textarea
-              id="modify-info"
-              name="info"
-              placeholder="Defaults to submitted message."
+            <label class="form-label" for="modify-num-games">Number of games</label>
+            <input
+              type="number"
               class="form-control"
-              rows="4"
-              style="height: 149px;"
-            ></textarea>
+              name="num-games"
+              id="modify-num-games"
+              min="0"
+              step="1000"
+              value="${run['args']['num_games']}"
+            >
           </div>
-        % endif
 
-        <div class="mb-3 form-check">
-          <input
-            type="checkbox"
-            class="form-check-input"
-            id="auto-purge"
-            name="auto_purge" ${'checked' if run['args'].get('auto_purge') else ''}
-          >
-          <label class="form-check-label" for="auto-purge">Auto-purge</label>
-        </div>
+          <div class="mb-3">
+            <label class="form-label" for="modify-priority">Priority (higher is more urgent)</label>
+            <input
+              type="number"
+              class="form-control"
+              name="priority"
+              id="modify-priority"
+              value="${run['args']['priority']}"
+            >
+          </div>
 
-        <input type="hidden" name="run" value="${run['_id']}">
-        <button type="submit" class="btn btn-primary col-12 col-md-auto">Modify</button>
-      </form>
+          <label class="form-label" for="modify-throughput">Throughput</label>
+          <div class="mb-3 input-group">
+            <input
+              type="number"
+              class="form-control"
+              name="throughput"
+              id="modify-throughput"
+              min="0"
+              value="${run['args'].get('throughput', 1000)}"
+            >
+            <span class="input-group-text">%</span>
+          </div>
+
+          % if same_user:
+            <div class="mb-3">
+              <label for="info" class="form-label">
+                Info
+              </label>
+              <textarea
+                id="modify-info"
+                name="info"
+                placeholder="Defaults to submitted message."
+                class="form-control"
+                rows="4"
+                style="height: 149px;"
+              ></textarea>
+            </div>
+          % endif
+
+          <div class="mb-3 form-check">
+            <input
+              type="checkbox"
+              class="form-check-input"
+              id="auto-purge"
+              name="auto_purge" ${'checked' if run['args'].get('auto_purge') else ''}
+            >
+            <label class="form-check-label" for="auto-purge">Auto-purge</label>
+          </div>
+
+          <input type="hidden" name="run" value="${run['_id']}">
+          <button type="submit" class="btn btn-primary col-12 col-md-auto">Modify</button>
+        </form>
+      % endif
 
       % if 'spsa' not in run['args']:
         <hr>
