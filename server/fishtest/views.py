@@ -967,11 +967,8 @@ def new_run_message(request, run):
 def tests_run(request):
     if not request.authenticated_userid:
         request.session.flash("Please login")
-        next_page = "/tests/run"
-        if "id" in request.params:
-            next_page += "?id={}".format(request.params["id"])
         return HTTPFound(
-            location="{}?next={}".format(request.route_url("login"), next_page)
+            location=request.route_url("login", _query={"next": request.path})
         )
     if request.method == "POST":
         try:
