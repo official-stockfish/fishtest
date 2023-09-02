@@ -231,7 +231,6 @@ class ApiView(object):
         worker_info = self.request_body["worker_info"]
         worker_info["remote_addr"] = self.request.remote_addr
         worker_info["country_code"] = self.get_country_code()
-        worker_info["host_url"] = self.request.host_url
         return worker_info
 
     def worker_name(self):
@@ -428,6 +427,8 @@ class ApiView(object):
     def request_task(self):
         self.validate_request("/api/request_task")
         worker_info = self.worker_info()
+        # rundb.request_task() needs this for an error message...
+        worker_info["host_url"] = self.request.host_url
         result = self.request.rundb.request_task(worker_info)
         if "task_waiting" in result:
             return self.add_time(result)

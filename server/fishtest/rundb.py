@@ -724,7 +724,7 @@ After fixing the issues you can unblock the worker at
     def sync_request_task(self, worker_info):
         # We check if the worker has not been blocked.
         my_name = worker_name(worker_info, short=True)
-        host_url = worker_info["host_url"]
+        host_url = worker_info.get("host_url", "<host_url>")
         w = self.workerdb.get_worker(my_name)
         if w["blocked"]:
             # updates last_updated
@@ -733,6 +733,9 @@ After fixing the issues you can unblock the worker at
             )
             error = self.blocked_worker_message(my_name, w["message"], host_url)
             return {"task_waiting": False, "error": error}
+        # do not waste space in the db but also avoid side effects!
+        worker_info = copy.copy(worker_info)
+        worker_info.pop("host_url", None)
 
         unique_key = worker_info["unique_key"]
 
