@@ -94,6 +94,7 @@ def ensure_logged_in(request):
         raise HTTPFound(
             location=request.route_url("login", _query={"next": request.path_qs})
         )
+    return userid
 
 
 @view_config(
@@ -148,11 +149,9 @@ def workers(request):
             "show_admin": False,
             "blocked_workers": blocked_workers,
         }
-    ensure_logged_in(request)
-
+    user_id = ensure_logged_in(request)
     username = worker_name.split("-")[0]
-    userid = request.authenticated_userid
-    if not request.has_permission("approve_run") and userid != username:
+    if not request.has_permission("approve_run") and user_id != username:
         cached_flash(request, f"Only owners and approvers can block/unblock", "error")
         return {
             "show_admin": False,
@@ -502,9 +501,8 @@ def pending(request):
 @view_config(route_name="user", renderer="user.mak")
 @view_config(route_name="profile", renderer="user.mak")
 def user(request):
-    ensure_logged_in(request)
+    userid = ensure_logged_in(request)
 
-    userid = request.authenticated_userid
     user_name = request.matchdict.get("username", userid)
     profile = user_name == userid
     if not profile and not request.has_permission("approve_run"):
@@ -557,7 +555,7 @@ def user(request):
             user_data["blocked"] = "blocked" in request.POST
             request.userdb.last_pending_time = 0
             request.actiondb.block_user(
-                username=request.authenticated_userid,
+                username=userid,
                 user=user_name,
                 message="blocked" if user_data["blocked"] else "unblocked",
             )
@@ -963,7 +961,7 @@ def new_run_message(request, run):
 
 @view_config(route_name="tests_run", renderer="tests_run.mak", require_csrf=True)
 def tests_run(request):
-    ensure_logged_in(request)
+    user_id = ensure_logged_in(request)
 
     if request.method == "POST":
         try:
@@ -971,7 +969,7 @@ def tests_run(request):
             run_id = request.rundb.new_run(**data)
             run = request.rundb.get_run(run_id)
             request.actiondb.new_run(
-                username=request.authenticated_userid,
+                username=user_id,
                 run=run,
                 message=new_run_message(request, run),
             )
