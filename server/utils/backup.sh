@@ -10,7 +10,7 @@
 . ${HOME}/.profile
 
 cd ${HOME}/backup
-for db_name in "fishtest_new" "admin" "fishtest" "fishtest_testing"; do
+for db_name in "fishtest_new" "admin" "config" "local"; do
   mongodump --db=${db_name} --numParallelCollections=1 --excludeCollection="pgns" --gzip
 done
 tar -cvf dump.tar dump
