@@ -761,6 +761,9 @@ def enqueue_output(out, queue):
 
 
 def update_pentanomial(line, rounds):
+    saved_rounds = copy.deepcopy(rounds)
+    saved_line = line
+
     def result_to_score(_result):
         if _result == "1-0":
             return 2
@@ -814,10 +817,17 @@ def update_pentanomial(line, rounds):
                 assert rounds["trinomial"][2 - j] >= 0
 
     # make sure something happened, but not too much
-    assert (
+    # this sometimes fails: we want to understand why
+    assertion = (
         current.get("result", -1000) == -1
         or abs(sum(rounds["trinomial"]) - saved_sum_trinomial) == 1
     )
+    if not assertion:
+        raise WorkerException(
+            "update_pentanomial() failed. line={}; rounds before={}; rounds after={}".format(
+                saved_line, saved_rounds, rounds
+            )
+        )
 
 
 def validate_pentanomial(wld, rounds):
@@ -895,9 +905,13 @@ def parse_cutechess_output(
         # Parse line like this:
         # Score of stockfish vs base: 0 - 0 - 1  [0.500] 1
         if "Score" in line:
-            chunks = line.split(":")
-            chunks = chunks[1].split()
-            wld = [int(chunks[0]), int(chunks[2]), int(chunks[4])]
+            # Parsing sometimes fails. We want to understand why.
+            try:
+                chunks = line.split(":")
+                chunks = chunks[1].split()
+                wld = [int(chunks[0]), int(chunks[2]), int(chunks[4])]
+            except:
+                raise WorkerException("Failed to parse score line: {}".format(line))
 
             validate_pentanomial(
                 wld, rounds
