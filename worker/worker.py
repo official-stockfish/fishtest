@@ -1136,9 +1136,13 @@ def get_exception(files):
     exc_type, exc_obj, tb = sys.exc_info()
     filename, lineno, name, line = traceback.extract_tb(tb)[i]
     filename = Path(filename).name
-    message = "Exception {} at {}:{}".format(exc_type.__name__, filename, lineno)
+    message = "Exception {} at {}:{} WorkerVersion: {}".format(
+        exc_type.__name__, filename, lineno, WORKER_VERSION
+    )
     while filename in files:
-        message = "Exception {} at {}:{}".format(exc_type.__name__, filename, lineno)
+        message = "Exception {} at {}:{} WorkerVersion: {}".format(
+            exc_type.__name__, filename, lineno, WORKER_VERSION
+        )
         i += 1
         try:
             filename, lineno, name, line = traceback.extract_tb(tb)[i]
