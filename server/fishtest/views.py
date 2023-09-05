@@ -1157,22 +1157,21 @@ def tests_purge(request):
             "Only approvers or the submitting user can purge the run."
         )
         return HTTPFound(location=request.route_url("login"))
-    if not run["finished"]:
-        request.session.flash("Can only purge completed run", "error")
-        return home(request)
 
     # More relaxed conditions than with auto purge.
     message = request.rundb.purge_run(run, p=0.01, res=4.5)
-
-    if message != "":
-        request.session.flash(message)
-        return home(request)
 
     username = request.authenticated_userid
     request.actiondb.purge_run(
         username=username,
         run=run,
+        message=f"Manual purge (not performed): {message}"
+        if message
+        else "Manual purge",
     )
+    if message != "":
+        request.session.flash(message)
+        return home(request)
 
     cached_flash(request, "Purged run")
     return home(request)

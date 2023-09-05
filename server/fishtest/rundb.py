@@ -1370,6 +1370,13 @@ After fixing the issues you can unblock the worker at
         # Auto-purge runs here. This may revive the run.
         if run["args"].get("auto_purge", True) and "spsa" not in run["args"]:
             message = self.purge_run(run)
+            self.actiondb.purge_run(
+                username=run["args"]["username"],
+                run=run,
+                message=f"Auto purge (not performed): {message}"
+                if message
+                else "Auto purge",
+            )
             if message == "":
                 print("Run {} was auto-purged".format(str(run_id)), flush=True)
             else:
@@ -1399,7 +1406,9 @@ After fixing the issues you can unblock the worker at
 
     def purge_run(self, run, p=0.001, res=7.0, iters=1):
         # Only purge finished runs
-        assert run["finished"]
+        if not run["finished"]:
+            return "Can only purge completed run"
+
         now = datetime.now(timezone.utc)
         if (
             "start_time" not in run
@@ -1495,7 +1504,6 @@ After fixing the issues you can unblock the worker at
                 run["is_green"] = style == "#44EB44"
                 run["is_yellow"] = style == "yellow"
             self.buffer(run, True)
-
         return message
 
     def spsa_param_clip(self, param, increment):
