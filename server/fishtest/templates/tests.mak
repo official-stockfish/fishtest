@@ -68,7 +68,7 @@
         const html = await fetch_text("/tests/machines");
         machines.replaceChildren();
         machines.insertAdjacentHTML("beforeend", html);
-        const machinesTbody = document.getElementById("machines tbody");
+        const machinesTbody = document.querySelector("#machines tbody");
         let newMachinesCount = machinesTbody?.childElementCount;
 
         if (newMachinesCount === 1) {
