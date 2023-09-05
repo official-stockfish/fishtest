@@ -71,7 +71,7 @@ schema = union(
         "message": str,
     },
     {"action": "approve_run", "username": str, "run_id": str, "run": str},
-    {"action": "purge_run", "username": str, "run_id": str, "run": str},
+    {"action": "purge_run", "username": str, "run_id": str, "run": str, "message": str},
     {
         "action": "block_user",
         "username": str,
@@ -246,12 +246,13 @@ class ActionDb:
             run=run_name(run),
         )
 
-    def purge_run(self, username=None, run=None):
+    def purge_run(self, username=None, run=None, message=None):
         self.insert_action(
             action="purge_run",
             username=username,
             run_id=run["_id"],
             run=run_name(run),
+            message=message,
         )
 
     def block_user(self, username=None, user=None, message=None):
