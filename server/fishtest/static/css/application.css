@@ -321,11 +321,6 @@ legend {
   content: "\f46d";
 }
 
-.mainnavbar [href^="https://cloud.mongodb.com/freemonitoring/cluster/"]::before
-{
-  content: "\f21e";
-}
-
 .mainnavbar [href="/nns"]::before {
   content: "\f5dc";
 }
