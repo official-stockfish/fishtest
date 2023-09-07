@@ -1,8 +1,10 @@
 :root {
   --bs-link-color-rgb: 0, 128, 2;
   --bs-link-color: rgb(var(--bs-link-color-rgb));
-  --bs-link-hover-color: rgb(95, 153, 96);
+  --bs-link-hover-color-rgb: 95, 153, 96;
+  --bs-link-hover-color: rgb(var(--bs-link-hover-color-rgb));
   --bs-link-focus-color: rgb(73, 116, 73);
+  --bs-secondary-color: #6c757d;
 }
 
 @media (max-width: 575.98px) {
@@ -633,11 +635,7 @@ input[type="checkbox"],
   margin-bottom: 2vh !important;
 }
 
-/* Override some unwise decisions by the bootstrap team since the update to v5.3.1 */
-:root {
-  --bs-secondary-color: #6c757d;
-}
-
+/* Override bootstrap colors since v5.3.0 */
 .form-floating > .form-control-plaintext ~ label::after,
 .form-floating > .form-control:focus ~ label::after,
 .form-floating > .form-control:not(:placeholder-shown) ~ label::after,
