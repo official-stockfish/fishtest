@@ -632,3 +632,23 @@ input[type="checkbox"],
   height: 3.4vh !important;
   margin-bottom: 2vh !important;
 }
+
+/* Override some unwise decisions by the bootstrap team since the update to v5.3.1 */
+:root {
+  --bs-secondary-color: #6c757d;
+}
+
+.form-floating > .form-control-plaintext ~ label::after,
+.form-floating > .form-control:focus ~ label::after,
+.form-floating > .form-control:not(:placeholder-shown) ~ label::after,
+.form-floating > .form-select ~ label::after {
+  background-color: inherit !important;
+}
+
+.form-floating > .form-control-plaintext ~ label,
+.form-floating > .form-control:focus ~ label,
+.form-floating > .form-control:not(:placeholder-shown) ~ label,
+.form-floating > .form-select ~ label {
+  color: inherit !important;
+  opacity: 0.65;
+}
