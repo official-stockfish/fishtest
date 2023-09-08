@@ -3,6 +3,7 @@ import hashlib
 import html
 import os
 import re
+import textwrap
 import threading
 import time
 from datetime import datetime, timezone
@@ -139,22 +140,75 @@ def login(request):
     return {}
 
 
+# Note that the allowed length of mailto URLs on Chrome/Windows is severely
+# limited.
+
+
+def worker_email(worker_name, blocker_name, message, host_url, blocked):
+    owner_name = worker_name.split("-")[0]
+    wrapped_message = textwrap.fill(message, width=70)
+    body = f"""\
+Dear {owner_name},
+
+Thank you for contributing to the development of Stockfish. Unfortunately,
+it seems your Fishtest worker {worker_name} has some issue(s). More
+specifically the following has been reported:
+
+{wrapped_message}
+
+You may possibly find more information about this in our event log at 
+{host_url}/actions
+
+Feel free to reply to this email if you require any help, or else contact
+the #fishtest channel on the Stockfish Discord server:
+https://discord.com/invite/awnh2qZfTT
+
+Enjoy your day,
+
+{blocker_name} (Fishtest approver)
+
+"""
+
+    return body
+
+
 @view_config(route_name="workers", renderer="workers.mak", require_csrf=True)
 def workers(request):
+    is_approver = request.has_permission("approve_run")
+
     blocked_workers = request.rundb.workerdb.get_blocked_workers()
+    blocker_name = request.authenticated_userid
+
+    # If we are approver then we are logged in, so blocker_name is not None
+    if is_approver:
+        for w in blocked_workers:
+            owner_name = w["worker_name"].split("-")[0]
+            owner = request.userdb.find(owner_name)
+            w["owner_email"] = owner["email"] if owner is not None else ""
+            w["body"] = worker_email(
+                w["worker_name"],
+                blocker_name,
+                w["message"],
+                request.host_url,
+                w["blocked"],
+            )
+            w["subject"] = f"Issue(s) with worker {w['worker_name']}"
+
     worker_name = request.matchdict.get("worker_name")
     # TODO. Do more validation of worker names
     if len(worker_name.split("-")) != 3:
         return {
             "show_admin": False,
+            "show_email": is_approver,
             "blocked_workers": blocked_workers,
         }
-    user_id = ensure_logged_in(request)
-    username = worker_name.split("-")[0]
-    if not request.has_permission("approve_run") and user_id != username:
-        cached_flash(request, f"Only owners and approvers can block/unblock", "error")
+    ensure_logged_in(request)
+    owner_name = worker_name.split("-")[0]
+    if not is_approver and blocker_name != owner_name:
+        request.session.flash(f"Only owners and approvers can block/unblock", "error")
         return {
             "show_admin": False,
+            "show_email": is_approver,
             "blocked_workers": blocked_workers,
         }
 
@@ -162,26 +216,31 @@ def workers(request):
         button = request.POST.get("submit")
         if button == "Submit":
             blocked = request.POST.get("blocked") is not None
-            message = request.POST.get("message")[0:500]
+            message = request.POST.get("message")
+            if len(message) > 400:
+                request.session.flash(
+                    "Warning: your description of the issue has been truncated to 400 characters",
+                    "error",
+                )
+                message = message[:400]
+            was_blocked = request.workerdb.get_worker(worker_name)["blocked"]
             request.rundb.workerdb.update_worker(
                 worker_name, blocked=blocked, message=message
             )
-            cached_flash(
-                request,
-                f"Worker {worker_name} {'blocked' if blocked else 'unblocked'}!",
-            )
+            if blocked != was_blocked:
+                request.session.flash(
+                    f"Worker {worker_name} {'blocked' if blocked else 'unblocked'}!",
+                )
         return HTTPFound(location=request.route_url("workers", worker_name="show"))
 
     w = request.rundb.workerdb.get_worker(worker_name)
-    blocked = w["blocked"]
-    message = w["message"]
-    last_updated = w["last_updated"]
     return {
         "show_admin": True,
         "worker_name": worker_name,
-        "blocked": blocked,
-        "message": message,
-        "last_updated": last_updated,
+        "blocked": w["blocked"],
+        "message": w["message"],
+        "show_email": is_approver,
+        "last_updated": w["last_updated"],
         "blocked_workers": blocked_workers,
     }
 
