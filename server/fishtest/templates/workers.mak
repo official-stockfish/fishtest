@@ -16,13 +16,19 @@
   <form method="POST">
     <div class="mb-3">Last changed: ${delta_date(diff_date(last_updated)) if last_updated is not None else "Never"}</div>
     <div class="mb-3">
-      <label for="messageInput" class="form-label">Message</label>
-      <textarea id="messageInput" rows="4" class="form-control" placeholder="Leave a comment here" name="message">${message}</textarea>
+      <label for="messageInput" class="form-label">Issue</label>
+      <textarea id="messageInput" rows="4" class="form-control" placeholder="Describe the issue here" name="message">${message}</textarea>
     </div>
     <div class="mb-3 form-check">
       <label class="form-check-label" for="blockWorker">Blocked</label>
       <input type="checkbox" class="form-check-input" id="blockWorker" name="blocked" ${"checked" if blocked else ""}>
     </div>
+% if show_email:
+    <div  class="mb-3 form-check">
+      <label class="form-check-label" for="emailWorker">Notify by email</label>
+      <input type="checkbox" class="form-check-input" id="emailWorker" name="email">
+    </div>
+% endif
     <button type="submit" name="submit" value="Submit" class="btn btn-primary">Submit</button>
     <button type="submit" name="sumbit" class="btn btn-secondary">Cancel</button>
   </form>

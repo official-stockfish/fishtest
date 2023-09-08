@@ -387,6 +387,22 @@ def remaining_hours(run):
     return game_secs * remaining_games * int(run["args"].get("threads", 1)) / (60 * 60)
 
 
+def send_email(sender=None, to=None, subject=None, body=None):
+    msg = MIMEText(body)
+    msg["Subject"] = subject
+    msg["From"] = sender
+    msg["To"] = to
+
+    try:
+        s = smtplib.SMTP("localhost")
+        s.sendmail(sender, to, msg.as_string())
+        s.quit()
+    except ConnectionRefusedError:
+        return False
+
+    return True
+
+
 def post_in_fishcooking_results(run):
     """Posts the results of the run to the fishcooking forum:
     https://groups.google.com/g/fishcooking-results
@@ -411,17 +427,13 @@ def post_in_fishcooking_results(run):
 
     body += run["args"].get("info", "") + "\n\n"
 
-    msg = MIMEText(body)
-    msg["Subject"] = title
-    msg["From"] = "fishtest@noreply.stockfishchess.org"
-    msg["To"] = "fishcooking-results@googlegroups.com"
-
-    try:
-        s = smtplib.SMTP("localhost")
-        s.sendmail(msg["From"], [msg["To"]], msg.as_string())
-        s.quit()
-    except ConnectionRefusedError:
-        print("Unable to post results to fishcooking forum")
+    if not send_email(
+        sender="fishtest@noreply.stockfishchess.org",
+        to="fishcooking-results@googlegroups.com",
+        subject=title,
+        body=body,
+    ):
+        print("Unable to post results to fishcooking forum", flush=True)
 
 
 def diff_date(date):

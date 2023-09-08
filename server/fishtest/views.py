@@ -3,6 +3,7 @@ import hashlib
 import html
 import os
 import re
+import textwrap
 import threading
 import time
 from datetime import datetime, timezone
@@ -18,6 +19,7 @@ from fishtest.util import (
     get_hash,
     get_tc_ratio,
     password_strength,
+    send_email,
     update_residuals,
 )
 from pyramid.httpexceptions import (
@@ -139,6 +141,38 @@ def login(request):
     return {}
 
 
+def worker_email(worker_name, message, host_url, blocked):
+    owner = worker_name.split("-")[0]
+    wrapped_message = textwrap.fill(message, width=70)
+    blocked_part = (
+        f"""
+Note: your worker is currently blocked. After fixing the issue(s)
+you can unblock it at {host_url}/workers/{worker_name}.
+"""
+        if blocked
+        else ""
+    )
+
+    body = f"""
+Hi {owner},
+
+It seems your worker {worker_name} has some issue(s):
+
+{wrapped_message}
+
+Can you take a look?
+
+You may possibly find more information at
+{host_url}/actions?text=%22{worker_name}%22.
+{blocked_part}
+Thanks in advance!
+The Fishtest team
+
+"""
+
+    return body
+
+
 @view_config(route_name="workers", renderer="workers.mak", require_csrf=True)
 def workers(request):
     blocked_workers = request.rundb.workerdb.get_blocked_workers()
@@ -162,25 +196,59 @@ def workers(request):
         button = request.POST.get("submit")
         if button == "Submit":
             blocked = request.POST.get("blocked") is not None
+            email = request.POST.get("email") is not None
             message = request.POST.get("message")[0:500]
+            was_blocked = request.workerdb.get_worker(worker_name)["blocked"]
             request.rundb.workerdb.update_worker(
                 worker_name, blocked=blocked, message=message
             )
-            cached_flash(
-                request,
-                f"Worker {worker_name} {'blocked' if blocked else 'unblocked'}!",
-            )
+            if blocked != was_blocked:
+                request.session.flash(
+                    f"Worker {worker_name} {'blocked' if blocked else 'unblocked'}!",
+                )
+            if email:
+                error = ""
+                owner = request.userdb.find(username)
+                if not owner:
+                    error = "Email of owner not found!"
+                else:
+                    owner_email = owner["email"]
+                    blocker = request.userdb.find(user_id)
+                    if not blocker:
+                        error = "Email of blocker not found!"
+                    else:
+                        blocker_email = blocker["email"]
+                        body = worker_email(
+                            worker_name, message, request.host_url, blocked
+                        )
+                        print(
+                            f"Sending email to {owner_email} from {blocker_email}: {message}",
+                            flush=True,
+                        )
+                        if not send_email(
+                            sender=blocker_email,
+                            to=owner_email,
+                            subject=f"Issue(s) with worker {worker_name}",
+                            body=body,
+                        ):
+                            error = "Unable to send email..."
+                if error:
+                    request.session.flash(f"Email not sent: {error}", "error")
+                else:
+                    request.session.flash(f"Email sent!")
         return HTTPFound(location=request.route_url("workers", worker_name="show"))
 
     w = request.rundb.workerdb.get_worker(worker_name)
     blocked = w["blocked"]
     message = w["message"]
     last_updated = w["last_updated"]
+    show_email = request.has_permission("approve_run")
     return {
         "show_admin": True,
         "worker_name": worker_name,
         "blocked": blocked,
         "message": message,
+        "show_email": show_email,
         "last_updated": last_updated,
         "blocked_workers": blocked_workers,
     }
