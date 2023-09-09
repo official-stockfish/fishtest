@@ -3,7 +3,21 @@ import threading
 import time
 from datetime import datetime, timezone
 
+from fishtest.util import optional_key, validate
 from pymongo import ASCENDING
+
+schema = {
+    "username": str,
+    "password": str,
+    "registration_time": datetime,
+    "blocked": bool,
+    "email": str,
+    "groups": list,
+    "tests_repo": str,
+    optional_key("machine_limit"): int,
+}
+
+DEFAULT_MACHINE_LIMIT = 16
 
 
 class UserDb:
@@ -73,6 +87,7 @@ class UserDb:
     def add_user_group(self, username, group):
         user = self.find(username)
         user["groups"].append(group)
+        assert validate(schema, user, "user", strict=False) == ""
         self.users.replace_one({"_id": user["_id"]}, user)
         self.clear_cache()
 
@@ -81,17 +96,18 @@ class UserDb:
             if self.find(username):
                 return False
             # insert the new user in the db
-            self.users.insert_one(
-                {
-                    "username": username,
-                    "password": password,
-                    "registration_time": datetime.now(timezone.utc),
-                    "blocked": True,
-                    "email": email,
-                    "groups": [],
-                    "tests_repo": "",
-                }
-            )
+            user = {
+                "username": username,
+                "password": password,
+                "registration_time": datetime.now(timezone.utc),
+                "blocked": True,
+                "email": email,
+                "groups": [],
+                "tests_repo": "",
+                "machine_limit": DEFAULT_MACHINE_LIMIT,
+            }
+            assert validate(schema, user, "user", strict=False) == ""
+            self.users.insert_one(user)
             self.last_pending_time = 0
 
             return True
@@ -99,6 +115,7 @@ class UserDb:
             return False
 
     def save_user(self, user):
+        assert validate(schema, user, "user", strict=False) == ""
         self.users.replace_one({"_id": user["_id"]}, user)
         self.last_pending_time = 0
         self.clear_cache()
@@ -107,4 +124,4 @@ class UserDb:
         user = self.find(username)
         if user and "machine_limit" in user:
             return user["machine_limit"]
-        return 16
+        return DEFAULT_MACHINE_LIMIT
