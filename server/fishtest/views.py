@@ -62,6 +62,7 @@ def pagination(page_idx, num, page_size):
             or (idx < 5 and page_idx < 4)
             or abs(idx - page_idx) < 2
             or (idx > last_idx - 5 and page_idx > last_idx - 4)
+            or idx > last_idx - 1
         ):
             pages.append(
                 {
