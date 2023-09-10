@@ -6,6 +6,7 @@ import re
 import threading
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 
 import fishtest.stats.stat_util
 import requests
@@ -699,12 +700,12 @@ def get_master_info(url):
 
 def get_valid_books():
     response = requests.get(
-        "https://api.github.com/repos/official-stockfish/books/contents"
+        "https://api.github.com/repos/official-stockfish/books/git/trees/master?recursive=1"
     ).json()
     books_list = (
-        b["path"].replace(".zip", "")
-        for b in response
-        if b["path"].endswith((".epd.zip", ".pgn.zip"))
+        f"{Path(item['path']).stem}"
+        for item in response["tree"]
+        if item["type"] == "blob" and item["path"].endswith((".epd.zip", ".pgn.zip"))
     )
     return books_list
 
