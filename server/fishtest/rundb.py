@@ -1,5 +1,6 @@
 import configparser
 import copy
+import io
 import math
 import os
 import random
@@ -9,6 +10,7 @@ import sys
 import textwrap
 import threading
 import time
+import zipfile
 import zlib
 from datetime import datetime, timedelta, timezone
 
@@ -240,6 +242,23 @@ class RunDb:
             new_run["rescheduled_from"] = rescheduled_from
 
         return self.runs.insert_one(new_run).inserted_id
+
+    def get_test_pgns_as_archive(self, test_id):
+        test_id_pattern = f"^{re.escape(test_id)}"
+        pgns = self.pgndb.find({"run_id": {"$regex": test_id_pattern}})
+
+        if not pgns:
+            return None
+
+        archive = io.BytesIO()
+        with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zipf:
+            for pgn in pgns:
+                pgn_data = zlib.decompress(pgn["pgn_zip"]).decode()
+                pgn_filename = f"{pgn['run_id']}.pgn"
+                zipf.writestr(pgn_filename, pgn_data)
+
+        archive.seek(0)
+        return archive
 
     def get_pgn(self, pgn_id):
         pgn_id = pgn_id.split(".")[0]  # strip .pgn

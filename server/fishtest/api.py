@@ -491,13 +491,20 @@ class ApiView(object):
             self.request.response.content_type = "application/x-chess-pgn"
         return pgn
 
-    @view_config(route_name="api_download_pgn_100")
-    def download_pgn_100(self):
-        skip = int(self.request.matchdict["skip"])
-        urls = self.request.rundb.get_pgn_100(skip)
-        if urls is None:
-            raise exception_response(404)
-        return urls
+    @view_config(route_name="api_download_test_pgns")
+    def download_test_pgns(self):
+        test_id = self.request.matchdict["id"]
+        archive = self.request.rundb.get_test_pgns_as_archive(test_id)
+        if archive:
+            response = Response(content_type="application/zip")
+            response.app_iter = archive
+            response.content_length = archive.getbuffer().nbytes
+            response.headers[
+                "Content-Disposition"
+            ] = f'attachment; filename="{test_id}_pgns.zip"'
+            return response
+        else:
+            return Response("No data found", status=404)
 
     @view_config(route_name="api_download_nn")
     def download_nn(self):
