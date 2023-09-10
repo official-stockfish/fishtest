@@ -54,7 +54,7 @@ from updater import update
 # Several packages are called "expression".
 # So we make sure to use the locally installed one.
 
-WORKER_VERSION = 219
+WORKER_VERSION = 220
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -378,19 +378,37 @@ def get_credentials(config, options, args):
     return username, password
 
 
-def verify_required_cutechess(testing_dir, cutechess):
+def download_cutechess(cutechess, save_dir):
+    if len(EXE_SUFFIX) > 0:
+        zipball = "cutechess-cli-win.zip"
+    elif IS_MACOS:
+        zipball = "cutechess-cli-macos-64bit.zip"
+    else:
+        zipball = "cutechess-cli-linux-{}.zip".format(platform.architecture()[0])
+    try:
+        blob = download_from_github(zipball)
+        unzip(blob, save_dir)
+
+        os.chmod(cutechess, os.stat(cutechess).st_mode | stat.S_IEXEC)
+    except Exception as e:
+        print(
+            "Exception downloading or extracting {}:\n".format(zipball),
+            e,
+            sep="",
+            file=sys.stderr,
+        )
+    else:
+        print("Finished downloading {}".format(cutechess))
+
+
+def verify_required_cutechess(cutechess_path):
     # Verify that cutechess is working and has the required minimum version.
-    cutechess = testing_dir / cutechess
 
-    print("Obtaining version info for {} ...".format(cutechess))
-
-    if not cutechess.exists():
-        print("{} does not exist ...".format(cutechess))
-        return False
+    print("Obtaining version info for {} ...".format(cutechess_path))
 
     try:
         with subprocess.Popen(
-            [cutechess, "--version"],
+            [cutechess_path, "--version"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             universal_newlines=True,
@@ -444,61 +462,46 @@ def setup_cutechess(worker_dir):
         return False
 
     cutechess = "cutechess-cli" + EXE_SUFFIX
+    cutechess_path = testing_dir / cutechess
+
+    # Download cutechess-cli if missing or overwrite if there are issues.
+    if not cutechess_path.exists() or not verify_required_cutechess(cutechess_path):
+        download_cutechess(cutechess, testing_dir)
 
     ret = True
 
-    if not verify_required_cutechess(testing_dir, cutechess):
-        if len(EXE_SUFFIX) > 0:
-            zipball = "cutechess-cli-win.zip"
-        elif IS_MACOS:
-            zipball = "cutechess-cli-macos-64bit.zip"
-        else:
-            zipball = "cutechess-cli-linux-{}.zip".format(platform.architecture()[0])
-        try:
-            blob = download_from_github(zipball)
-            unzip(blob, testing_dir)
-
-            os.chmod(cutechess, os.stat(cutechess).st_mode | stat.S_IEXEC)
-        except Exception as e:
-            print(
-                "Exception downloading or extracting {}:\n".format(zipball),
-                e,
-                sep="",
-                file=sys.stderr,
-            )
-
-        if not verify_required_cutechess(testing_dir, cutechess):
-            print(
-                "The downloaded cutechess-cli is not working. Trying to restore a backup copy ..."
-            )
-            bkp_cutechess_clis = sorted(
-                worker_dir.glob("_testing_*/" + cutechess),
-                key=os.path.getctime,
-                reverse=True,
-            )
-            if bkp_cutechess_clis:
-                bkp_cutechess_cli = bkp_cutechess_clis[0]
-                try:
-                    shutil.copy(bkp_cutechess_cli, testing_dir)
-                except Exception as e:
-                    print(
-                        "Unable to copy {} to {}. Error: {}".format(
-                            bkp_cutechess_cli, testing_dir, str(e)
-                        )
+    if not verify_required_cutechess(cutechess_path):
+        print(
+            "The downloaded cutechess-cli is not working. Trying to restore a backup copy ..."
+        )
+        bkp_cutechess_clis = sorted(
+            worker_dir.glob("_testing_*/" + cutechess),
+            key=os.path.getctime,
+            reverse=True,
+        )
+        if bkp_cutechess_clis:
+            bkp_cutechess_cli = bkp_cutechess_clis[0]
+            try:
+                shutil.copy(bkp_cutechess_cli, testing_dir)
+            except Exception as e:
+                print(
+                    "Unable to copy {} to {}. Error: {}".format(
+                        bkp_cutechess_cli, testing_dir, str(e)
                     )
+                )
 
-                if not verify_required_cutechess(testing_dir, cutechess):
-                    print(
-                        "The backup copy {} doesn't work either ...".format(
-                            bkp_cutechess_cli
-                        )
+            if not verify_required_cutechess(cutechess_path):
+                print(
+                    "The backup copy {} doesn't work either ...".format(
+                        bkp_cutechess_cli
                     )
-                    print("No suitable cutechess-cli found")
-                    ret = False
-            else:
-                print("No backup copy found")
+                )
                 print("No suitable cutechess-cli found")
                 ret = False
+        else:
+            print("No backup copy found")
+            print("No suitable cutechess-cli found")
+            ret = False
 
     os.chdir(curr_dir)
     return ret
