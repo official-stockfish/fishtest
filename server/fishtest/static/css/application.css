@@ -309,11 +309,11 @@ legend {
   content: "\f093";
 }
 
-.mainnavbar [href="/users"]::before {
+.mainnavbar [href="/contributors"]::before {
   content: "\f0c0";
 }
 
-.mainnavbar [href="/users/monthly"]::before {
+.mainnavbar [href="/contributors/monthly"]::before {
   content: "\f091";
 }
 
@@ -394,7 +394,7 @@ legend {
   content: "\f2f5";
 }
 
-.mainnavbar [href="/pending"]::before {
+.mainnavbar [href="/user_management"]::before {
   content: "\f4fd";
 }
 

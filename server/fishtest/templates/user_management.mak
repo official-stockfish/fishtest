@@ -1,10 +1,10 @@
 <%inherit file="base.mak"/>
 
 <script>
-  document.title = 'Users - Pending & Idle | Stockfish Testing';
+  document.title = 'User Management | Stockfish Testing';
 </script>
 
-<h2>Users - Pending & Idle</h2>
+<h2>User Management</h2>
 
 <h4>Pending Users</h4>
 
@@ -27,6 +27,32 @@
     % if len(pending_users) == 0:
       <tr>
         <td colspan=20>No pending users</td>
+      </tr>
+    % endif
+  </tbody>
+</table>
+
+<h4>Blocked Users</h4>
+
+<table class="table table-striped table-sm">
+  <thead>
+    <tr>
+      <th>Username</th>
+      <th>Registration Time</th>
+      <th>Email</th>
+    </tr>
+  </thead>
+  <tbody>
+    % for user in blocked_users:
+      <tr>
+        <td style="width:15%"><a href="/user/${user['username']}">${user['username']}</a></td>
+        <td style="width:15%">${user['registration_time'].strftime("%y-%m-%d %H:%M:%S") if 'registration_time' in user else 'Unknown'}</td>
+        <td style="width:70%">${user['email']}</td>
+      </tr>
+    % endfor
+    % if len(blocked_users) == 0:
+      <tr>
+        <td colspan=20>No blocked users</td>
       </tr>
     % endif
   </tbody>

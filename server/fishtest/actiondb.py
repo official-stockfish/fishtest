@@ -80,6 +80,12 @@ schema = union(
         "message": union("blocked", "unblocked"),
     },
     {
+        "action": "accept_user",
+        "username": str,
+        "user": str,
+        "message": "accepted",
+    },
+    {
         "action": "block_worker",
         "username": str,
         "worker": str,
@@ -265,6 +271,14 @@ class ActionDb:
     def block_user(self, username=None, user=None, message=None):
         self.insert_action(
             action="block_user",
+            username=username,
+            user=user,
+            message=message,
+        )
+
+    def accept_user(self, username=None, user=None, message=None):
+        self.insert_action(
+            action="accept_user",
             username=username,
             user=user,
             message=message,

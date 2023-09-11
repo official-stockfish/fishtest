@@ -123,7 +123,7 @@ def login(request):
             next_page = request.params.get("next") or came_from
             return HTTPFound(location=next_page, headers=headers)
         message = token["error"]
-        if "Account blocked for user:" in message:
+        if "Account pending for user:" in message:
             message += (
                 " . If you recently registered to fishtest, "
                 "a person will now manually approve your new account, to avoid spam. "
@@ -544,14 +544,15 @@ def get_idle_users(request):
     return idle
 
 
-@view_config(route_name="pending", renderer="pending.mak")
-def pending(request):
+@view_config(route_name="user_management", renderer="user_management.mak")
+def user_management(request):
     if not request.has_permission("approve_run"):
-        request.session.flash("You cannot view pending users", "error")
+        request.session.flash("You cannot view user management", "error")
         return home(request)
 
     return {
         "pending_users": request.userdb.get_pending(),
+        "blocked_users": request.userdb.get_blocked(),
         "idle_users": get_idle_users(request),
     }
 
@@ -610,18 +611,31 @@ def user(request):
                     request.session.flash("Success! Email updated")
 
         else:
-            user_data["blocked"] = "blocked" in request.POST
-            request.userdb.last_pending_time = 0
-            request.actiondb.block_user(
-                username=userid,
-                user=user_name,
-                message="blocked" if user_data["blocked"] else "unblocked",
-            )
-            request.session.flash(
-                ("Blocked" if user_data["blocked"] else "Unblocked")
-                + " user "
-                + user_name
-            )
+            if "blocked" in request.POST and request.POST["blocked"].isdigit():
+                user_data["blocked"] = bool(int(request.POST["blocked"]))
+                request.session.flash(
+                    ("Blocked" if user_data["blocked"] else "Unblocked")
+                    + " user "
+                    + user_name
+                )
+                request.actiondb.block_user(
+                    username=userid,
+                    user=user_name,
+                    message="blocked" if user_data["blocked"] else "unblocked",
+                )
+
+            elif (
+                "pending" in request.POST
+                and user_data["pending"]
+                and request.POST["pending"] == "0"
+            ):
+                user_data["pending"] = False
+                request.userdb.last_pending_time = 0
+                request.actiondb.accept_user(
+                    username=userid,
+                    user=user_name,
+                    message="accepted",
+                )
         request.userdb.save_user(user_data)
         return home(request)
     userc = request.userdb.user_cache.find_one({"username": user_name})
@@ -634,15 +648,15 @@ def user(request):
     }
 
 
-@view_config(route_name="users", renderer="users.mak")
-def users(request):
+@view_config(route_name="contributors", renderer="contributors.mak")
+def contributors(request):
     users_list = list(request.userdb.user_cache.find())
     users_list.sort(key=lambda k: k["cpu_hours"], reverse=True)
     return {"users": users_list}
 
 
-@view_config(route_name="users_monthly", renderer="users.mak")
-def users_monthly(request):
+@view_config(route_name="contributors_monthly", renderer="contributors.mak")
+def contributors_monthly(request):
     users_list = list(request.userdb.top_month.find())
     users_list.sort(key=lambda k: k["cpu_hours"], reverse=True)
     return {"users": users_list}

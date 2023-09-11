@@ -24,6 +24,7 @@
       <option value="finished_run">Finished Runs</option>
       <option value="block_user">Block/Unblock User</option>
       <option value="block_worker">Block/Unblock Worker</option>
+      <option value="accept_user">Accept User</option>
       <option value="upload_nn">Upload NN file</option>
       <option value="failed_task">Failed Tasks</option>
       <option value="crash_or_time">Crashes or Time losses</option>
