@@ -162,14 +162,14 @@
                 <li class="links-group">
                   <strong class="links-heading d-flex w-100 align-items-center fw-semibold">Fishtest</strong>
                   <ul class="list-unstyled fw-normal small">
-                    <li><a href="/users" class="links-link rounded">Contributors</a></li>
-                    <li><a href="/users/monthly" class="links-link rounded">Top Month</a></li>
+                    <li><a href="/contributors" class="links-link rounded">Contributors</a></li>
+                    <li><a href="/contributors/monthly" class="links-link rounded">Top Month</a></li>
                     <li><a href="/actions" class="links-link rounded">Events</a></li>
                     <li>
                       % if len(request.userdb.get_pending()) > 0:
-                        <a href="/pending" class="links-link rounded text-danger">Pending Users (${len(request.userdb.get_pending())})</a>
+                        <a href="/user_management" class="links-link rounded text-danger">Users (${len(request.userdb.get_pending())})</a>
                       % else:
-                        <a href="/pending" class="links-link rounded">Pending Users</a>
+                        <a href="/user_management" class="links-link rounded">User</a>
                       % endif
                     </li>
                     <li>
@@ -184,7 +184,7 @@
                   <strong class="links-heading d-flex w-100 align-items-center fw-semibold">Stockfish</strong>
                   <ul class="list-unstyled fw-normal small">
                     <li><a href="https://stockfishchess.org/download/" target="_blank" rel="noopener" class="links-link rounded release">Official Releases</a></li>
-                    <li><a href="https://github.com/official-stockfish/Stockfish/releases?q=prerelease%3Atrue" target="_blank" rel="noopener" class="links-link rounded release">Prereleases</a></li>
+                    <li><a href="https://github.com/official-stockfish/Stockfish/releases?q=prerelease%3Atrue" target="_blank" rel="noopener" class="links-link rounded release">Prerelease</a></li>
                     <li><a href="https://stockfishchess.org/get-involved/" target="_blank" rel="noopener" class="links-link rounded get-involved">Contribute</a></li>
                     <li><a href="https://github.com/official-stockfish/Stockfish/wiki/Regression-Tests" target="_blank" rel="noopener" class="links-link rounded regression">Progress</a></li>
                     <li><a href="/nns" class="links-link rounded">NN Repo</a></li>

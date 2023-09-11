@@ -57,7 +57,7 @@
       with &alpha;=&beta;=0.05. In other words, if the true Elo is less
       than Elo0 then the probability of the test passing is less
       than&nbsp;5%. On the other hand if the true Elo is more than Elo1
-      then the pass probablility is more than&nbsp;95%.
+      then the pass probability is more than&nbsp;95%.
     </li>
     <li>
       If the Elo model is <b>Logistic</b> then the pass/fail probabilities

@@ -12,6 +12,7 @@ schema = {
     "username": str,
     "password": str,
     "registration_time": datetime,
+    "pending": bool,
     "blocked": bool,
     "email": email,
     "groups": [str, ...],
@@ -62,8 +63,11 @@ class UserDb:
             sys.stderr.write("Invalid login: '{}' '{}'\n".format(username, password))
             return {"error": "Invalid password for user: {}".format(username)}
         if "blocked" in user and user["blocked"]:
-            sys.stderr.write("Blocked login: '{}' '{}'\n".format(username, password))
+            sys.stderr.write("Blocked account: '{}' '{}'\n".format(username, password))
             return {"error": "Account blocked for user: {}".format(username)}
+        if "pending" in user and user["pending"]:
+            sys.stderr.write("Pending account: '{}' '{}'\n".format(username, password))
+            return {"error": "Account pending for user: {}".format(username)}
 
         return {"username": username, "authenticated": True}
 
@@ -72,17 +76,28 @@ class UserDb:
 
     # Cache pending for 1s
     last_pending_time = 0
+    last_blocked_time = 0
     last_pending = None
     pending_lock = threading.Lock()
+    blocked_lock = threading.Lock()
 
     def get_pending(self):
         with self.pending_lock:
             if time.time() > self.last_pending_time + 1:
                 self.last_pending = list(
-                    self.users.find({"blocked": True}, sort=[("_id", ASCENDING)])
+                    self.users.find({"pending": True}, sort=[("_id", ASCENDING)])
                 )
                 self.last_pending_time = time.time()
             return self.last_pending
+
+    def get_blocked(self):
+        with self.blocked_lock:
+            if time.time() > self.last_blocked_time + 1:
+                self.last_blocked = list(
+                    self.users.find({"blocked": True}, sort=[("_id", ASCENDING)])
+                )
+                self.last_blocked_time = time.time()
+            return self.last_blocked
 
     def get_user(self, username):
         return self.find(username)
@@ -109,7 +124,8 @@ class UserDb:
                 "username": username,
                 "password": password,
                 "registration_time": datetime.now(timezone.utc),
-                "blocked": True,
+                "pending": True,
+                "blocked": False,
                 "email": email,
                 "groups": [],
                 "tests_repo": "",
@@ -118,6 +134,7 @@ class UserDb:
             validate_user(user)
             self.users.insert_one(user)
             self.last_pending_time = 0
+            self.last_blocked_time = 0
 
             return True
         except:
@@ -127,6 +144,7 @@ class UserDb:
         validate_user(user)
         self.users.replace_one({"_id": user["_id"]}, user)
         self.last_pending_time = 0
+        self.last_blocked_time = 0
         self.clear_cache()
 
     def get_machine_limit(self, username):

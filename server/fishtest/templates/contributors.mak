@@ -5,11 +5,11 @@
 %>
 
 <script>
-  document.title = 'Users${" - Top Month" if "monthly" in request.url else ""} | Stockfish Testing';
+  document.title = 'Contributors${" - Top Month" if "monthly" in request.url else ""} | Stockfish Testing';
 </script>
 
 <h2>
-  Users
+  Contributors
   % if 'monthly' in request.url:
     - Top Month
   % endif

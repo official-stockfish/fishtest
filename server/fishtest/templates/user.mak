@@ -82,20 +82,42 @@
           <i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i>
         </span>
       </div>
+    % elif 'pending' in user and user['pending']:
+      <div class="mb-3 form-check">
+        <label class="form-check-label" for="pending">Pending</label>
+        <input
+          type="hidden"
+          value="0"
+          name="pending"
+        >
+        <input
+          type="checkbox"
+          class="form-check-input"
+          id="pending"
+          name="pending"
+          value="1"
+          checked
+        />
+      </div>
     % else:
       <%
         blocked = user['blocked'] if 'blocked' in user else False
-        checked = 'checked' if blocked else ''
+        blocked_checked = 'checked' if blocked else ''
       %>
       <div class="mb-3 form-check">
         <label class="form-check-label" for="blocked">Blocked</label>
+        <input
+          type="hidden"
+          value="0"
+          name="blocked"
+        >
         <input
           type="checkbox"
           class="form-check-input"
           id="blocked"
           name="blocked"
-          value="True"
-          ${checked}
+          value="1"
+          ${blocked_checked}
         />
       </div>
     % endif

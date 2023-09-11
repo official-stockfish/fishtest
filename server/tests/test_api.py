@@ -131,7 +131,7 @@ class TestApi(unittest.TestCase):
         }
         self.rundb.userdb.create_user(self.username, self.password, "email@email.email")
         user = self.rundb.userdb.get_user(self.username)
-        user["blocked"] = False
+        user["pending"] = False
         user["machine_limit"] = 50
         self.rundb.userdb.save_user(user)
 
@@ -493,7 +493,7 @@ class TestRunFinished(unittest.TestCase):
         }
         self.rundb.userdb.create_user(self.username, self.password, "email@email.email")
         user = self.rundb.userdb.get_user(self.username)
-        user["blocked"] = False
+        user["pending"] = False
         user["machine_limit"] = 50
         self.rundb.userdb.save_user(user)
 
