@@ -217,12 +217,13 @@ def workers(request):
         if button == "Submit":
             blocked = request.POST.get("blocked") is not None
             message = request.POST.get("message")
-            if len(message) > 400:
+            max_chars = 500
+            if len(message) > max_chars:
                 request.session.flash(
-                    "Warning: your description of the issue has been truncated to 400 characters",
+                    f"Warning: your description of the issue has been truncated to {max_chars} characters",
                     "error",
                 )
-                message = message[:400]
+                message = message[:max_chars]
             was_blocked = request.workerdb.get_worker(worker_name)["blocked"]
             request.rundb.workerdb.update_worker(
                 worker_name, blocked=blocked, message=message
