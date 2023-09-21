@@ -146,30 +146,28 @@ def login(request):
 
 def worker_email(worker_name, blocker_name, message, host_url, blocked):
     owner_name = worker_name.split("-")[0]
-    wrapped_message = textwrap.fill(message, width=70)
     body = f"""\
 Dear {owner_name},
 
-Thank you for contributing to the development of Stockfish. Unfortunately,
-it seems your Fishtest worker {worker_name} has some issue(s). More
-specifically the following has been reported:
+Thank you for contributing to the development of Stockfish. Unfortunately, it seems your Fishtest worker {worker_name} has some issue(s). More specifically the following has been reported:
 
-{wrapped_message}
+{message}
 
-You may possibly find more information about this in our event log at 
-{host_url}/actions
+You may possibly find more information about this in our event log at {host_url}/actions
 
-Feel free to reply to this email if you require any help, or else contact
-the #fishtest channel on the Stockfish Discord server:
-https://discord.com/invite/awnh2qZfTT
+Feel free to reply to this email if you require any help, or else contact the #fishtest channel on the Stockfish Discord server: https://discord.com/invite/awnh2qZfTT
 
 Enjoy your day,
 
 {blocker_name} (Fishtest approver)
 
 """
-
     return body
+
+
+def normalize_lf(m):
+    m = m.replace("\r\n", "\n").replace("\r", "\n")
+    return m.rstrip()
 
 
 @view_config(route_name="workers", renderer="workers.mak", require_csrf=True)
@@ -224,6 +222,7 @@ def workers(request):
                     "error",
                 )
                 message = message[:max_chars]
+            message = normalize_lf(message)
             was_blocked = request.workerdb.get_worker(worker_name)["blocked"]
             request.rundb.workerdb.update_worker(
                 worker_name, blocked=blocked, message=message
