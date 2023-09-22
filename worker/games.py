@@ -525,6 +525,7 @@ def make_targets():
         with subprocess.Popen(
             ["make", "help"],
             stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             universal_newlines=True,
             bufsize=1,
             close_fds=not IS_WINDOWS,
@@ -539,6 +540,11 @@ def make_targets():
                     targets.append(line.split()[0])
                 if "Supported archs:" in line:
                     read_targets = True
+            for line in iter(p.stderr.readline, ""):
+                if "native" in targets and "get_native_properties.sh" in line:
+                    targets.remove("native")
+                    break
+
     except (OSError, subprocess.SubprocessError) as e:
         print("Exception while executing make help:\n", e, sep="", file=sys.stderr)
         raise FatalException("It appears 'make' is not properly installed")
@@ -556,6 +562,13 @@ def make_targets():
 def find_arch(compiler):
     """Find the best arch string based on the cpu/g++ capabilities and Makefile targets"""
     targets = make_targets()
+
+    # recent SF support a native target
+    if "native" in targets:
+        print("Using native target architecture")
+        return "native"
+
+    # older SF will need to fall back to this implementation
     props = gcc_props() if compiler == "g++" else clang_props()
 
     if is_64bit():
@@ -681,7 +694,12 @@ def setup_engine(
         # TODO: 'make strip' works fine with the new Makefile,
         # 'try' should be safely dropped in the future
         try:
-            subprocess.run("make strip COMP={}".format(comp), shell=True, check=True)
+            subprocess.run(
+                "make strip COMP={}".format(comp),
+                stderr=subprocess.DEVNULL,
+                shell=True,
+                check=True,
+            )
         except Exception as e:
             print("Exception stripping binary:\n", e, sep="", file=sys.stderr)
 
