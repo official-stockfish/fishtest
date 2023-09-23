@@ -485,22 +485,34 @@ class union:
         return " and ".join(messages)
 
 
+def _keys(dict):
+    ret = set()
+    for k in dict:
+        if isinstance(k, optional_key):
+            ret.add(k.key)
+        else:
+            ret.add(k)
+    return ret
+
+
 def validate(schema, object, name, strict=False):
-    if isinstance(schema, type):
+    if hasattr(schema, "__validate__"):  # duck typing
+        return schema.__validate__(object, name, strict=strict)
+    elif isinstance(schema, type):
         if not isinstance(object, schema):
-            return "{} is not of type {}".format(name, schema.__name__)
+            return f"{name} is not of type {schema.__name__}"
         else:
             return ""
     elif isinstance(schema, list) or isinstance(schema, tuple):
         if type(schema) != type(object):
-            return "{} is not of type {}".format(name, type(schema).__name__)
+            return f"{name} is not of type {type(schema).__name}"
         l = len(object)
         if strict and l != len(schema):
-            return "{} does not have length {}".format(name, len(schema))
+            return f"{name} does not have length {len(schema)}"
         for i in range(len(schema)):
-            name_ = "{}[{}]".format(name, i)
+            name_ = f"{name}[{i}]"
             if i >= l:
-                return "{} does not exist".format(name_)
+                return f"{name_} does not exist"
             else:
                 ret = validate(schema[i], object[i], name_, strict=strict)
                 if ret != "":
@@ -508,29 +520,28 @@ def validate(schema, object, name, strict=False):
         return ""
     elif isinstance(schema, dict):
         if type(schema) != type(object):
-            return "{} is not of type {}".format(name, type(schema).__name__)
-        if strict and len(object) != len(schema):
-            return "the number of keys in {} is not equal to {}".format(
-                name, len(schema)
-            )
+            return f"{name} is not of type {type(schema).__name}"
+        if strict:
+            _k = _keys(schema)
+            for x in object:
+                if x not in _k:
+                    return f"{name}['{x}'] is not in the schema"
         for k in schema:
             k_ = k
             if isinstance(k, optional_key):
                 k_ = k.key
                 if k_ not in object:
                     continue
-            name_ = "{}['{}']".format(name, k_)
+            name_ = f"{name}['{k_}']"
             if k_ not in object:
-                return "{} is missing".format(name_)
+                return f"{name_} is missing"
             else:
                 ret = validate(schema[k], object[k_], name_, strict=strict)
                 if ret != "":
                     return ret
         return ""
-    elif hasattr(schema, "__validate__"):  # duck typing
-        return schema.__validate__(object, name, strict=strict)
     elif object != schema:
-        return "{} is not equal to {}".format(name, repr(schema))
+        return f"{name} is not equal to {repr(schema)}"
     return ""
 
 
