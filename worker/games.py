@@ -773,8 +773,8 @@ def adjust_tc(tc, factor):
     return scaled_tc, tc_limit
 
 
-def enqueue_output(out, queue):
-    for line in iter(out.readline, ""):
+def enqueue_output(stream, queue):
+    for line in iter(stream.readline, ""):
         queue.put(line)
 
 
@@ -873,9 +873,10 @@ def parse_cutechess_output(
     rounds = {}
 
     q = Queue()
-    t = threading.Thread(target=enqueue_output, args=(p.stdout, q))
-    t.daemon = True
-    t.start()
+    t_output = threading.Thread(target=enqueue_output, args=(p.stdout, q), daemon=True)
+    t_output.start()
+    t_error = threading.Thread(target=enqueue_output, args=(p.stderr, q), daemon=True)
+    t_error.start()
 
     end_time = datetime.now(timezone.utc) + timedelta(seconds=tc_limit)
     print("TC limit {} End time: {}".format(tc_limit, end_time))
@@ -1083,7 +1084,7 @@ def launch_cutechess(
         with subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
+            stderr=subprocess.PIPE,
             universal_newlines=True,
             bufsize=1,
             # The next options are necessary to be able to send a CTRL_C_EVENT to this process.
