@@ -1012,7 +1012,7 @@ def parse_cutechess_output(
 
         # Act on line like this:
         # Finished game 4 (Base-SHA vs New-SHA): 1/2-1/2 {Draw by adjudication}
-        if "Finished game" in line:
+        if line.startswith("Finished game"):
             update_pentanomial(line, rounds)
     else:
         raise WorkerException(
