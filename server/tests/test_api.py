@@ -1,7 +1,8 @@
 import base64
+import io
 import sys
 import unittest
-import zlib
+import zipfile
 from datetime import datetime, timezone
 
 from fishtest.api import WORKER_VERSION, ApiView
@@ -375,22 +376,27 @@ class TestApi(unittest.TestCase):
 
     def test_upload_pgn(self):
         run_id = new_run(self, add_tasks=1)
+        task_id = 0
         pgn_text = "1. e4 e5 2. d4 d5"
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
+            zipf.writestr(f"{run_id}-{task_id}.pgn", pgn_text)
         request = self.correct_password_request(
             {
                 "run_id": run_id,
-                "task_id": 0,
-                "pgn": base64.b64encode(
-                    zlib.compress(pgn_text.encode("utf-8"))
-                ).decode(),
+                "task_id": task_id,
+                "pgn": base64.b64encode(zip_buffer.getvalue()).decode(),
             }
         )
         response = ApiView(request).upload_pgn()
         response.pop("duration", None)
         self.assertTrue(response == {})
 
-        pgn_filename_prefix = "{}-{}".format(run_id, 0)
-        pgn = self.rundb.get_pgn(pgn_filename_prefix)
+        pgn_filename_prefix = "{}-{}".format(run_id, task_id)
+        zip_pgn = self.rundb.get_pgn(pgn_filename_prefix)
+        with zipfile.ZipFile(zip_pgn) as zipf:
+            file_name = zipf.namelist()[0]
+            pgn = zipf.read(file_name).decode()
         self.assertEqual(pgn, pgn_text)
         self.rundb.pgndb.delete_one({"run_id": pgn_filename_prefix})
 

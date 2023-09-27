@@ -1,5 +1,6 @@
 import configparser
 import copy
+import io
 import math
 import os
 import random
@@ -9,7 +10,7 @@ import sys
 import textwrap
 import threading
 import time
-import zlib
+import zipfile
 from datetime import datetime, timedelta, timezone
 
 import fishtest.stats.stat_util
@@ -241,22 +242,32 @@ class RunDb:
 
         return self.runs.insert_one(new_run).inserted_id
 
-    def get_pgn(self, pgn_id):
-        pgn_id = pgn_id.split(".")[0]  # strip .pgn
-        pgn = self.pgndb.find_one({"run_id": pgn_id})
+    def upload_pgn(self, run_id, pgn_zip):
+        self.pgndb.insert_one({"run_id": run_id, "pgn_zip": Binary(pgn_zip)})
+        return {}
+
+    def get_pgn(self, run_id):
+        pgn = self.pgndb.find_one({"run_id": run_id})
         if pgn:
-            return zlib.decompress(pgn["pgn_zip"]).decode()
+            zip_buffer = io.BytesIO(pgn["pgn_zip"])
+            zip_buffer.seek(0)
+            return zip_buffer
         return None
 
-    def get_pgn_100(self, skip):
-        return [
-            p["run_id"]
-            for p in self.pgndb.find(skip=skip, limit=100, sort=[("_id", DESCENDING)])
-        ]
+    def get_run_pgns(self, run_id):
+        run_id_pattern = f"^{re.escape(run_id)}"
+        pgns = self.pgndb.find({"run_id": {"$regex": run_id_pattern}})
+        if pgns:
+            zip_buffer = io.BytesIO()
+            with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_STORED) as zipf:
+                for pgn in pgns:
+                    zipf.writestr(f"{pgn['run_id']}.pgn.zip", pgn["pgn_zip"])
+            zip_buffer.seek(0)
+            return zip_buffer
+        return None
 
     def upload_nn(self, userid, name, nn):
         self.nndb.insert_one({"user": userid, "name": name, "downloads": 0})
-        # 'nn': Binary(zlib.compress(nn))})
         return {}
 
     def update_nn(self, net):
@@ -264,7 +275,6 @@ class RunDb:
         self.nndb.update_one({"name": net["name"]}, {"$set": net})
 
     def get_nn(self, name):
-        # nn = self.nndb.find_one({'name': name})
         nn = self.nndb.find_one({"name": name}, {"nn": 0})
         if nn:
             self.nndb.update_one({"name": name}, {"$inc": {"downloads": 1}})
@@ -1311,10 +1321,6 @@ After fixing the issues you can unblock the worker at
                         run_id, task_id, i, old_value, new_value
                     )
                     print(info, flush=True)
-
-    def upload_pgn(self, run_id, pgn_zip):
-        self.pgndb.insert_one({"run_id": run_id, "pgn_zip": Binary(pgn_zip)})
-        return {}
 
     def failed_task(self, run_id, task_id, message="Unknown reason"):
         run = self.get_run(run_id)

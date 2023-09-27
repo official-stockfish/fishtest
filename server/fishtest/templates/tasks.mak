@@ -22,7 +22,7 @@
   %>
   <tr class="${active_style}" id=task${task_id}>
     <td>
-      <a href=${f"/api/pgn/{run['_id']}-{task_id:d}.pgn"}>${task_id}</a>
+      <a href=${f"/api/pgn/{run['_id']}-{task_id:d}.pgn.zip"}>${task_id}</a>
     </td>
     % if 'bad' in task:
       <td style="text-decoration:line-through; background-color:#ffebeb">

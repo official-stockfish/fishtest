@@ -482,31 +482,36 @@ class ApiView(object):
         )
         return self.add_time(result)
 
+    def download_archive(self, archive_name, archive):
+        if archive:
+            response = Response(content_type="application/zip")
+            response.app_iter = archive
+            response.content_length = archive.getbuffer().nbytes
+            response.headers[
+                "Content-Disposition"
+            ] = f'attachment; filename="{archive_name}"'
+            return response
+        else:
+            return Response("No data found", status=404)
+
     @view_config(route_name="api_download_pgn", renderer="string")
     def download_pgn(self):
-        pgn = self.request.rundb.get_pgn(self.request.matchdict["id"])
-        if pgn is None:
-            raise exception_response(404)
-        if ".pgn" in self.request.matchdict["id"]:
-            self.request.response.content_type = "application/x-chess-pgn"
-        return pgn
+        pgn_zip = self.request.matchdict["id"]
+        run_id = pgn_zip.split(".")[0]  # strip .pgn.zip
+        archive = self.request.rundb.get_pgn(run_id)
+        return self.download_archive(pgn_zip, archive)
 
-    @view_config(route_name="api_download_pgn_100")
-    def download_pgn_100(self):
-        skip = int(self.request.matchdict["skip"])
-        urls = self.request.rundb.get_pgn_100(skip)
-        if urls is None:
-            raise exception_response(404)
-        return urls
+    @view_config(route_name="api_download_run_pgns")
+    def download_run_pgns(self):
+        run_id = self.request.matchdict["id"]
+        archive = self.request.rundb.get_run_pgns(run_id)
+        return self.download_archive(f"{run_id}_pgns.zip", archive)
 
     @view_config(route_name="api_download_nn")
     def download_nn(self):
         nn = self.request.rundb.get_nn(self.request.matchdict["id"])
         if nn is None:
             raise exception_response(404)
-        # self.request.response.content_type = 'application/x-chess-nnue'
-        # self.request.response.body = zlib.decompress(nn['nn'])
-        # return self.request.response
         return HTTPFound(
             "https://data.stockfishchess.org/nn/" + self.request.matchdict["id"]
         )
