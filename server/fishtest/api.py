@@ -1,5 +1,7 @@
 import base64
 import copy
+import io
+import re
 from datetime import datetime, timezone
 
 from fishtest.stats.stat_util import SPRT_elo
@@ -484,29 +486,41 @@ class ApiView(object):
 
     @view_config(route_name="api_download_pgn", renderer="string")
     def download_pgn(self):
-        pgn = self.request.rundb.get_pgn(self.request.matchdict["id"])
-        if pgn is None:
-            raise exception_response(404)
-        if ".pgn" in self.request.matchdict["id"]:
-            self.request.response.content_type = "application/x-chess-pgn"
-        return pgn
+        zip_name = self.request.matchdict["id"]
+        run_id = zip_name.split(".")[0]  # strip .pgn
+        pgn_zip = self.request.rundb.get_pgn(run_id)
+        if pgn_zip is None:
+            return Response("No data found", status=404)
+        zip_buffer = io.BytesIO(pgn_zip)
+        response = Response(content_type="application/gzip")
+        response.app_iter = zip_buffer
+        response.content_length = zip_buffer.getbuffer().nbytes
+        response.headers["Content-Disposition"] = f'attachment; filename="{zip_name}"'
+        response.headers["Content-Encoding"] = "gzip"
+        return response
 
-    @view_config(route_name="api_download_pgn_100")
-    def download_pgn_100(self):
-        skip = int(self.request.matchdict["skip"])
-        urls = self.request.rundb.get_pgn_100(skip)
-        if urls is None:
-            raise exception_response(404)
-        return urls
+    @view_config(route_name="api_download_run_pgns")
+    def download_run_pgns(self):
+        tar_name = self.request.matchdict["id"]
+        match = re.match(r"^([a-zA-Z0-9]+)\.pgns\.tar$", tar_name)
+        if not match:
+            return Response("Invalid filename format", status=400)
+        run_id = match.group(1)
+        pgns_zip = self.request.rundb.get_run_pgns(run_id)
+        if pgns_zip is None:
+            return Response("No data found", status=404)
+        zip_buffer = io.BytesIO(pgns_zip)
+        response = Response(content_type="application/x-tar")
+        response.app_iter = zip_buffer
+        response.content_length = zip_buffer.getbuffer().nbytes
+        response.headers["Content-Disposition"] = f'attachment; filename="{tar_name}"'
+        return response
 
     @view_config(route_name="api_download_nn")
     def download_nn(self):
         nn = self.request.rundb.get_nn(self.request.matchdict["id"])
         if nn is None:
             raise exception_response(404)
-        # self.request.response.content_type = 'application/x-chess-nnue'
-        # self.request.response.body = zlib.decompress(nn['nn'])
-        # return self.request.response
         return HTTPFound(
             "https://data.stockfishchess.org/nn/" + self.request.matchdict["id"]
         )

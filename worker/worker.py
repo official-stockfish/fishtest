@@ -2,7 +2,9 @@
 import atexit
 import base64
 import getpass
+import gzip
 import hashlib
+import io
 import json
 import multiprocessing
 import os
@@ -18,7 +20,6 @@ import threading
 import time
 import traceback
 import uuid
-import zlib
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 from configparser import ConfigParser
 from contextlib import ExitStack
@@ -1452,12 +1453,15 @@ def fetch_and_handle_task(
             if "spsa" not in run["args"]:
                 try:
                     # Ignore non utf-8 characters in PGN file.
-                    data = bytes(pgn_file.read_text(), "utf-8").decode(
-                        "utf-8", "ignore"
-                    )
-                    payload["pgn"] = base64.b64encode(
-                        zlib.compress(data.encode("utf-8"))
-                    ).decode()
+                    data = pgn_file.read_text(encoding="utf-8", errors="ignore")
+                    with io.BytesIO() as gz_buffer:
+                        with gzip.GzipFile(
+                            filename=f"{str(run['_id'])}-{task_id}.pgn.gz",
+                            mode="wb",
+                            fileobj=gz_buffer,
+                        ) as gz:
+                            gz.write(data.encode())
+                        payload["pgn"] = base64.b64encode(gz_buffer.getvalue()).decode()
                     print(
                         "Uploading compressed PGN of {} bytes".format(
                             len(payload["pgn"])
