@@ -1,11 +1,14 @@
 import configparser
 import copy
+import gzip
+import io
 import math
 import os
 import random
 import re
 import signal
 import sys
+import tarfile
 import textwrap
 import threading
 import time
@@ -241,22 +244,54 @@ class RunDb:
 
         return self.runs.insert_one(new_run).inserted_id
 
-    def get_pgn(self, pgn_id):
-        pgn_id = pgn_id.split(".")[0]  # strip .pgn
-        pgn = self.pgndb.find_one({"run_id": pgn_id})
+    def force_to_gzip(self, run_id, pgn_zip):
+        # This is a temporary hack to convert the old pgn_zip format to the new
+        # To be retired after completing the conversion of the pgns collection
+        try:
+            with gzip.open(io.BytesIO(pgn_zip), "rb") as test_f:
+                test_f.read(1)
+        except OSError:
+            pgn_text = zlib.decompress(pgn_zip).decode()
+            with io.BytesIO() as gz_buffer:
+                with gzip.GzipFile(
+                    filename=f"{run_id}.pgn.gz", mode="wb", fileobj=gz_buffer
+                ) as gz:
+                    gz.write(pgn_text.encode())
+                pgn_zip = gz_buffer.getvalue()
+        return pgn_zip
+
+    def upload_pgn(self, run_id, pgn_zip):
+        pgn_zip = self.force_to_gzip(run_id, pgn_zip)
+        self.pgndb.insert_one({"run_id": run_id, "pgn_zip": Binary(pgn_zip)})
+        return {}
+
+    def get_pgn(self, run_id):
+        pgn = self.pgndb.find_one({"run_id": run_id})
         if pgn:
-            return zlib.decompress(pgn["pgn_zip"]).decode()
+            pgn_zip = pgn["pgn_zip"]
+            pgn_zip = self.force_to_gzip(run_id, pgn_zip)
+            return pgn_zip
         return None
 
-    def get_pgn_100(self, skip):
-        return [
-            p["run_id"]
-            for p in self.pgndb.find(skip=skip, limit=100, sort=[("_id", DESCENDING)])
-        ]
+    def get_run_pgns(self, run_id):
+        pgns = self.pgndb.find({"run_id": {"$regex": f"^{run_id}"}})
+        if pgns:
+            with io.BytesIO() as tar_buffer:
+                with tarfile.open(fileobj=tar_buffer, mode="w") as tarf:
+                    for pgn in pgns:
+                        pgn_zip = pgn["pgn_zip"]
+                        pgn_zip = self.force_to_gzip(run_id, pgn_zip)
+                        tarinfo = tarfile.TarInfo(f"{pgn['run_id']}.pgn.gz")
+                        tarinfo.size = len(pgn_zip)
+                        # Extract and convert the 4 bytes starting at index 4
+                        tarinfo.mtime = int.from_bytes(pgn_zip[4:8], byteorder="little")
+                        tarf.addfile(tarinfo, io.BytesIO(pgn_zip))
+                pgns_tar = tar_buffer.getvalue()
+            return pgns_tar
+        return None
 
     def upload_nn(self, userid, name, nn):
         self.nndb.insert_one({"user": userid, "name": name, "downloads": 0})
-        # 'nn': Binary(zlib.compress(nn))})
         return {}
 
     def update_nn(self, net):
@@ -264,7 +299,6 @@ class RunDb:
         self.nndb.update_one({"name": net["name"]}, {"$set": net})
 
     def get_nn(self, name):
-        # nn = self.nndb.find_one({'name': name})
         nn = self.nndb.find_one({"name": name}, {"nn": 0})
         if nn:
             self.nndb.update_one({"name": name}, {"$inc": {"downloads": 1}})
@@ -1311,10 +1345,6 @@ After fixing the issues you can unblock the worker at
                         run_id, task_id, i, old_value, new_value
                     )
                     print(info, flush=True)
-
-    def upload_pgn(self, run_id, pgn_zip):
-        self.pgndb.insert_one({"run_id": run_id, "pgn_zip": Binary(pgn_zip)})
-        return {}
 
     def failed_task(self, run_id, task_id, message="Unknown reason"):
         run = self.get_run(run_id)
