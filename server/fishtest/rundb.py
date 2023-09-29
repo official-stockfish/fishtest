@@ -11,6 +11,7 @@ import textwrap
 import threading
 import time
 import zipfile
+import zlib
 from datetime import datetime, timedelta, timezone
 
 import fishtest.stats.stat_util
@@ -242,7 +243,19 @@ class RunDb:
 
         return self.runs.insert_one(new_run).inserted_id
 
+    def force_to_zip(self, run_id, pgn_zip):
+        # This is a temporary hack to convert the old pgn_zip format to the new
+        # To be retired after completing the conversion of the pgns collection
+        if not zipfile.is_zipfile(io.BytesIO(pgn_zip)):
+            pgn_text = zlib.decompress(pgn_zip).decode()
+            zip_buffer = io.BytesIO()
+            with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
+                zipf.writestr(f"{run_id}.pgn", pgn_text)
+            pgn_zip = zip_buffer.getvalue()
+        return pgn_zip
+
     def upload_pgn(self, run_id, pgn_zip):
+        pgn_zip = self.force_to_zip(run_id, pgn_zip)
         self.pgndb.insert_one({"run_id": run_id, "pgn_zip": Binary(pgn_zip)})
         return {}
 

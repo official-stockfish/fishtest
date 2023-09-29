@@ -482,14 +482,14 @@ class ApiView(object):
         )
         return self.add_time(result)
 
-    def download_archive(self, archive_name, archive):
-        if archive:
+    def download_archive(self, zip_name, zip_buffer):
+        if zip_buffer:
             response = Response(content_type="application/zip")
-            response.app_iter = archive
-            response.content_length = archive.getbuffer().nbytes
+            response.app_iter = zip_buffer
+            response.content_length = zip_buffer.getbuffer().nbytes
             response.headers[
                 "Content-Disposition"
-            ] = f'attachment; filename="{archive_name}"'
+            ] = f'attachment; filename="{zip_name}"'
             return response
         else:
             return Response("No data found", status=404)
@@ -498,14 +498,14 @@ class ApiView(object):
     def download_pgn(self):
         pgn_zip = self.request.matchdict["id"]
         run_id = pgn_zip.split(".")[0]  # strip .pgn.zip
-        archive = self.request.rundb.get_pgn(run_id)
-        return self.download_archive(pgn_zip, archive)
+        zip_buffer = self.request.rundb.get_pgn(run_id)
+        return self.download_archive(pgn_zip, zip_buffer)
 
     @view_config(route_name="api_download_run_pgns")
     def download_run_pgns(self):
         run_id = self.request.matchdict["id"]
-        archive = self.request.rundb.get_run_pgns(run_id)
-        return self.download_archive(f"{run_id}_pgns.zip", archive)
+        zip_buffer = self.request.rundb.get_run_pgns(run_id)
+        return self.download_archive(f"{run_id}_pgns.zip", zip_buffer)
 
     @view_config(route_name="api_download_nn")
     def download_nn(self):
