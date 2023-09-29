@@ -55,7 +55,7 @@ from updater import update
 # Several packages are called "expression".
 # So we make sure to use the locally installed one.
 
-WORKER_VERSION = 221
+WORKER_VERSION = 222
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -405,6 +405,9 @@ def download_cutechess(cutechess, save_dir):
 def verify_required_cutechess(cutechess_path):
     # Verify that cutechess is working and has the required minimum version.
 
+    if not cutechess_path.exists():
+        return False
+
     print("Obtaining version info for {} ...".format(cutechess_path))
 
     try:
@@ -417,7 +420,7 @@ def verify_required_cutechess(cutechess_path):
             close_fds=not IS_WINDOWS,
         ) as p:
             errors = p.stderr.read()
-            pattern = re.compile("cutechess-cli ([0-9]*).([0-9]*).([0-9]*)")
+            pattern = re.compile(r"cutechess-cli ([0-9]+)\.([0-9]+)\.([0-9]+)")
             major, minor, patch = 0, 0, 0
             for line in iter(p.stdout.readline, ""):
                 m = pattern.search(line)
@@ -466,8 +469,11 @@ def setup_cutechess(worker_dir):
     cutechess_path = testing_dir / cutechess
 
     # Download cutechess-cli if missing or overwrite if there are issues.
-    if not cutechess_path.exists() or not verify_required_cutechess(cutechess_path):
+    if not verify_required_cutechess(cutechess_path):
         download_cutechess(cutechess, testing_dir)
+    else:
+        os.chdir(curr_dir)
+        return True
 
     ret = True
 
@@ -1355,7 +1361,7 @@ def fetch_and_handle_task(
     if near_github_api_limit:
         print(
             """
-  We have almost exhausted our github api calls. 
+  We have almost exhausted our github api calls.
   The server will only give us tasks for tests we have seen before.
 """
         )
