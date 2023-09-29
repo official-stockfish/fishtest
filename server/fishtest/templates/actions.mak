@@ -23,6 +23,7 @@
       <option value="purge_run">Purge Run</option>
       <option value="finished_run">Finished Runs</option>
       <option value="block_user">Block/Unblock User</option>
+      <option value="block_worker">Block/Unblock Worker</option>
       <option value="upload_nn">Upload NN file</option>
       <option value="failed_task">Failed Tasks</option>
       <option value="crash_or_time">Crashes or Time losses</option>
@@ -112,13 +113,13 @@
                  ${datetime.datetime.utcfromtimestamp(action['time']).strftime(r"%y&#8209;%m&#8209;%d %H:%M:%S")|n}</a></td>
           <td>${action['action']}</td>
           <%
-            if 'worker' in action:
+            if 'worker' in action and action['action'] != 'block_worker':
               agent = action['worker']
-	      short_agent = "-".join(agent.split("-")[0:3])
-	      agent_link = "/workers/"+short_agent
+              short_agent = "-".join(agent.split("-")[0:3])
+              agent_link = "/workers/"+short_agent
             else:
               agent = action['username']
-	      agent_link = "/user/"+agent
+              agent_link = "/user/"+agent
           %>
           <td><a href="${agent_link|n}">${agent|n}</a></td>
           % if 'nn' in action:
@@ -127,6 +128,8 @@
             <td><a href="/tests/view/${action['run_id']}${"?show_task={}".format(action["task_id"]) if "task_id" in action else ""}">${action['run']}${("/{}".format(action["task_id"]) if "task_id" in action else "")}</a></td>
           % elif approver and 'user' in action:
             <td><a href="/user/${action['user']}">${action['user']}</a></td>
+	  % elif action['action'] == 'block_worker':
+            <td><a href="/workers/${action['worker']}">${action['worker']}</a></td>
           % else:
             <td>${action.get('user','')}</td>
           % endif

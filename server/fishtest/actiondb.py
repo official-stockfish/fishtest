@@ -78,6 +78,12 @@ schema = union(
         "user": str,
         "message": union("blocked", "unblocked"),
     },
+    {
+        "action": "block_worker",
+        "username": str,
+        "worker": str,
+        "message": union("blocked", "unblocked"),
+    },
 )
 
 
@@ -260,6 +266,14 @@ class ActionDb:
             action="block_user",
             username=username,
             user=user,
+            message=message,
+        )
+
+    def block_worker(self, username=None, worker=None, message=None):
+        self.insert_action(
+            action="block_worker",
+            username=username,
+            worker=worker,
             message=message,
         )
 
