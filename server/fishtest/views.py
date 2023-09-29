@@ -231,6 +231,11 @@ def workers(request):
                 request.session.flash(
                     f"Worker {worker_name} {'blocked' if blocked else 'unblocked'}!",
                 )
+                request.actiondb.block_worker(
+                    username=blocker_name,
+                    worker=worker_name,
+                    message="blocked" if blocked else "unblocked",
+                )
         return HTTPFound(location=request.route_url("workers", worker_name="show"))
 
     w = request.rundb.workerdb.get_worker(worker_name)
