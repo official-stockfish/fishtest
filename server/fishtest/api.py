@@ -1,5 +1,6 @@
 import base64
 import copy
+import io
 from datetime import datetime, timezone
 
 from fishtest.stats.stat_util import SPRT_elo
@@ -482,8 +483,11 @@ class ApiView(object):
         )
         return self.add_time(result)
 
-    def download_archive(self, zip_name, zip_buffer):
-        if zip_buffer:
+    def download_archive(self, zip_name, zip_data):
+        if zip_data is None:
+            return Response("No data found", status=404)
+        else:
+            zip_buffer = io.BytesIO(zip_data)
             response = Response(content_type="application/zip")
             response.app_iter = zip_buffer
             response.content_length = zip_buffer.getbuffer().nbytes
@@ -491,21 +495,19 @@ class ApiView(object):
                 "Content-Disposition"
             ] = f'attachment; filename="{zip_name}"'
             return response
-        else:
-            return Response("No data found", status=404)
 
     @view_config(route_name="api_download_pgn", renderer="string")
     def download_pgn(self):
-        pgn_zip = self.request.matchdict["id"]
-        run_id = pgn_zip.split(".")[0]  # strip .pgn.zip
-        zip_buffer = self.request.rundb.get_pgn(run_id)
-        return self.download_archive(pgn_zip, zip_buffer)
+        zip_name = self.request.matchdict["id"]
+        run_id = zip_name.split(".")[0]  # strip .pgn.zip
+        pgn_zip = self.request.rundb.get_pgn(run_id)
+        return self.download_archive(zip_name, pgn_zip)
 
     @view_config(route_name="api_download_run_pgns")
     def download_run_pgns(self):
         run_id = self.request.matchdict["id"]
-        zip_buffer = self.request.rundb.get_run_pgns(run_id)
-        return self.download_archive(f"{run_id}_pgns.zip", zip_buffer)
+        pgns_zip = self.request.rundb.get_run_pgns(run_id)
+        return self.download_archive(f"{run_id}_pgns.zip", pgns_zip)
 
     @view_config(route_name="api_download_nn")
     def download_nn(self):

@@ -248,10 +248,10 @@ class RunDb:
         # To be retired after completing the conversion of the pgns collection
         if not zipfile.is_zipfile(io.BytesIO(pgn_zip)):
             pgn_text = zlib.decompress(pgn_zip).decode()
-            zip_buffer = io.BytesIO()
-            with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
-                zipf.writestr(f"{run_id}.pgn", pgn_text)
-            pgn_zip = zip_buffer.getvalue()
+            with io.BytesIO() as zip_buffer:
+                with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
+                    zipf.writestr(f"{run_id}.pgn", pgn_text)
+                pgn_zip = zip_buffer.getvalue()
         return pgn_zip
 
     def upload_pgn(self, run_id, pgn_zip):
@@ -264,23 +264,21 @@ class RunDb:
         if pgn:
             pgn_zip = pgn["pgn_zip"]
             pgn_zip = self.force_to_zip(run_id, pgn_zip)
-            zip_buffer = io.BytesIO(pgn_zip)
-            zip_buffer.seek(0)
-            return zip_buffer
+            return pgn_zip
         return None
 
     def get_run_pgns(self, run_id):
         run_id_pattern = f"^{re.escape(run_id)}"
         pgns = self.pgndb.find({"run_id": {"$regex": run_id_pattern}})
         if pgns:
-            zip_buffer = io.BytesIO()
-            with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_STORED) as zipf:
-                for pgn in pgns:
-                    pgn_zip = pgn["pgn_zip"]
-                    pgn_zip = self.force_to_zip(run_id, pgn_zip)
-                    zipf.writestr(f"{pgn['run_id']}.pgn.zip", pgn_zip)
-            zip_buffer.seek(0)
-            return zip_buffer
+            with io.BytesIO() as zip_buffer:
+                with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_STORED) as zipf:
+                    for pgn in pgns:
+                        pgn_zip = pgn["pgn_zip"]
+                        pgn_zip = self.force_to_zip(run_id, pgn_zip)
+                        zipf.writestr(f"{pgn['run_id']}.pgn.zip", pgn_zip)
+                pgns_zip = zip_buffer.getvalue()
+            return pgns_zip
         return None
 
     def upload_nn(self, userid, name, nn):
