@@ -262,7 +262,9 @@ class RunDb:
     def get_pgn(self, run_id):
         pgn = self.pgndb.find_one({"run_id": run_id})
         if pgn:
-            zip_buffer = io.BytesIO(pgn["pgn_zip"])
+            pgn_zip = pgn["pgn_zip"]
+            pgn_zip = self.force_to_zip(run_id, pgn_zip)
+            zip_buffer = io.BytesIO(pgn_zip)
             zip_buffer.seek(0)
             return zip_buffer
         return None
@@ -274,7 +276,9 @@ class RunDb:
             zip_buffer = io.BytesIO()
             with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_STORED) as zipf:
                 for pgn in pgns:
-                    zipf.writestr(f"{pgn['run_id']}.pgn.zip", pgn["pgn_zip"])
+                    pgn_zip = pgn["pgn_zip"]
+                    pgn_zip = self.force_to_zip(run_id, pgn_zip)
+                    zipf.writestr(f"{pgn['run_id']}.pgn.zip", pgn_zip)
             zip_buffer.seek(0)
             return zip_buffer
         return None
