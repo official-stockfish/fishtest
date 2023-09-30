@@ -51,7 +51,7 @@
       % for w in blocked_workers:
         <tr>
           <td><a href="/workers/${w['worker_name']}">${w["worker_name"]}</td>
-          <td>${delta_date(diff_date(w["last_updated"])) if last_updated is not None else "Never"}</td>
+          <td>${delta_date(diff_date(w["last_updated"])) if w["last_updated"] is not None else "Never"}</td>
           <td><a href="/actions?text=%22${w['worker_name']}%22">/actions?text="${w['worker_name']}"</a></td>
 % if show_email:
           <td><a href="mailto:${w['owner_email']}?subject=${quote(w['subject'])}&body=${quote(w['body'].replace('\n','\r\n'))}" target="_blank" rel="noopener noreferrer">${w['owner_email']}</a.
