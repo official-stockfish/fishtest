@@ -175,7 +175,7 @@ def workers(request):
     if is_approver:
         for w in blocked_workers:
             owner_name = w["worker_name"].split("-")[0]
-            owner = request.userdb.find(owner_name)
+            owner = request.userdb.get_user(owner_name)
             w["owner_email"] = owner["email"] if owner is not None else ""
             w["body"] = worker_email(
                 w["worker_name"],
@@ -348,10 +348,10 @@ def signup(request):
         return {}
     errors = []
 
-    signup_username = request.POST.get("username", "")
-    signup_password = request.POST.get("password", "")
-    signup_password_verify = request.POST.get("password2", "")
-    signup_email = request.POST.get("email", "")
+    signup_username = request.POST.get("username", "").strip()
+    signup_password = request.POST.get("password", "").strip()
+    signup_password_verify = request.POST.get("password2", "").strip()
+    signup_email = request.POST.get("email", "").strip()
 
     strong_password, password_err = password_strength(
         signup_password, signup_username, signup_email
@@ -395,8 +395,10 @@ def signup(request):
     result = request.userdb.create_user(
         username=signup_username, password=signup_password, email=validated_email
     )
-    if not result:
+    if result is None:
         request.session.flash("Error! Invalid username or password", "error")
+    elif not result:
+        request.session.flash("Username or email is already registered", "error")
     else:
         request.session.flash(
             "Account created! "

@@ -41,7 +41,7 @@ class UserDb:
     user_lock = threading.Lock()
     cache = {}
 
-    def find(self, name):
+    def find_by_username(self, name):
         with self.user_lock:
             if name in self.cache:
                 u = self.cache[name]
@@ -53,12 +53,15 @@ class UserDb:
             self.cache[name] = {"user": user, "time": time.time()}
             return user
 
+    def find_by_email(self, email):
+        return self.users.find_one({"email": email})
+
     def clear_cache(self):
         with self.user_lock:
             self.cache.clear()
 
     def authenticate(self, username, password):
-        user = self.find(username)
+        user = self.get_user(username)
         if not user or user["password"] != password:
             sys.stderr.write("Invalid login: '{}' '{}'\n".format(username, password))
             return {"error": "Invalid password for user: {}".format(username)}
@@ -100,16 +103,16 @@ class UserDb:
             return self.last_blocked
 
     def get_user(self, username):
-        return self.find(username)
+        return self.find_by_username(username)
 
     def get_user_groups(self, username):
-        user = self.find(username)
+        user = self.get_user(username)
         if user:
             groups = user["groups"]
             return groups
 
     def add_user_group(self, username, group):
-        user = self.find(username)
+        user = self.get_user(username)
         user["groups"].append(group)
         validate_user(user)
         self.users.replace_one({"_id": user["_id"]}, user)
@@ -117,7 +120,7 @@ class UserDb:
 
     def create_user(self, username, password, email):
         try:
-            if self.find(username):
+            if self.find_by_username(username) or self.find_by_email(email):
                 return False
             # insert the new user in the db
             user = {
@@ -138,7 +141,7 @@ class UserDb:
 
             return True
         except:
-            return False
+            return None
 
     def save_user(self, user):
         validate_user(user)
@@ -148,7 +151,7 @@ class UserDb:
         self.clear_cache()
 
     def get_machine_limit(self, username):
-        user = self.find(username)
+        user = self.get_user(username)
         if user and "machine_limit" in user:
             return user["machine_limit"]
         return DEFAULT_MACHINE_LIMIT
