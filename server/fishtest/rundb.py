@@ -244,33 +244,14 @@ class RunDb:
 
         return self.runs.insert_one(new_run).inserted_id
 
-    def force_to_gzip(self, run_id, pgn_zip):
-        # This is a temporary hack to convert the old pgn_zip format to the new
-        # To be retired after completing the conversion of the pgns collection
-        try:
-            with gzip.open(io.BytesIO(pgn_zip), "rb") as test_f:
-                test_f.read(1)
-        except OSError:
-            pgn_text = zlib.decompress(pgn_zip).decode()
-            with io.BytesIO() as gz_buffer:
-                with gzip.GzipFile(
-                    filename=f"{run_id}.pgn.gz", mode="wb", fileobj=gz_buffer
-                ) as gz:
-                    gz.write(pgn_text.encode())
-                pgn_zip = gz_buffer.getvalue()
-        return pgn_zip
-
     def upload_pgn(self, run_id, pgn_zip):
-        pgn_zip = self.force_to_gzip(run_id, pgn_zip)
         self.pgndb.insert_one({"run_id": run_id, "pgn_zip": Binary(pgn_zip)})
         return {}
 
     def get_pgn(self, run_id):
         pgn = self.pgndb.find_one({"run_id": run_id})
         if pgn:
-            pgn_zip = pgn["pgn_zip"]
-            pgn_zip = self.force_to_gzip(run_id, pgn_zip)
-            return pgn_zip
+            return pgn["pgn_zip"]
         return None
 
     def get_run_pgns(self, run_id):
@@ -280,7 +261,6 @@ class RunDb:
                 with tarfile.open(fileobj=tar_buffer, mode="w") as tarf:
                     for pgn in pgns:
                         pgn_zip = pgn["pgn_zip"]
-                        pgn_zip = self.force_to_gzip(run_id, pgn_zip)
                         tarinfo = tarfile.TarInfo(f"{pgn['run_id']}.pgn.gz")
                         tarinfo.size = len(pgn_zip)
                         # Extract and convert the 4 bytes starting at index 4
