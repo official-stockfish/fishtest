@@ -3,7 +3,6 @@ import hashlib
 import html
 import os
 import re
-import textwrap
 import threading
 import time
 from datetime import datetime, timezone
@@ -21,12 +20,7 @@ from fishtest.util import (
     password_strength,
     update_residuals,
 )
-from pyramid.httpexceptions import (
-    HTTPBadRequest,
-    HTTPFound,
-    HTTPUnauthorized,
-    exception_response,
-)
+from pyramid.httpexceptions import HTTPFound, exception_response
 from pyramid.security import forget, remember
 from pyramid.view import forbidden_view_config, view_config
 from requests.exceptions import ConnectionError, HTTPError
@@ -203,7 +197,7 @@ def workers(request):
     ensure_logged_in(request)
     owner_name = worker_name.split("-")[0]
     if not is_approver and blocker_name != owner_name:
-        request.session.flash(f"Only owners and approvers can block/unblock", "error")
+        request.session.flash("Only owners and approvers can block/unblock", "error")
         return {
             "show_admin": False,
             "show_email": is_approver,

@@ -503,8 +503,8 @@ def validate(schema, object, name, strict=False):
             return f"{name} is not of type {schema.__name__}"
         else:
             return ""
-    elif isinstance(schema, list) or isinstance(schema, tuple):
-        if type(schema) != type(object):
+    elif isinstance(schema, (list, tuple)):
+        if not isinstance(schema, type(object)):
             return f"{name} is not of type {type(schema).__name}"
         l = len(object)
         if strict and l != len(schema):
@@ -519,7 +519,7 @@ def validate(schema, object, name, strict=False):
                     return ret
         return ""
     elif isinstance(schema, dict):
-        if type(schema) != type(object):
+        if not isinstance(schema, type(object)):
             return f"{name} is not of type {type(schema).__name}"
         if strict:
             _k = _keys(schema)

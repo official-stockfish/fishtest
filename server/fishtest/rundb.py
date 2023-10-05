@@ -1,6 +1,5 @@
 import configparser
 import copy
-import gzip
 import io
 import math
 import os
@@ -12,7 +11,6 @@ import tarfile
 import textwrap
 import threading
 import time
-import zlib
 from datetime import datetime, timedelta, timezone
 
 import fishtest.stats.stat_util
@@ -185,7 +183,7 @@ class RunDb:
         if spsa is not None:
             run_args["spsa"] = spsa
 
-        tc_base = re.search("^(\d+(\.\d+)?)", tc)
+        tc_base = re.search(r"^(\d+(\.\d+)?)", tc)
         if tc_base:
             tc_base = float(tc_base.group(1))
         new_run = {
