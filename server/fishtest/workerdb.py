@@ -1,7 +1,6 @@
 from datetime import datetime, timezone
 
 from fishtest.util import validate
-from pymongo import DESCENDING
 
 schema = {
     "worker_name": str,
