@@ -69,7 +69,7 @@ def validate_request(request):
             "pentanomial": [int, int, int, int, int],
         },
     }
-    return validate(schema, request, "request")
+    return validate(schema, request, "request", strict=True)
 
 
 # Avoids exposing sensitive data about the workers to the client and skips some heavy data.
