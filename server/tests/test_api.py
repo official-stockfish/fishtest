@@ -1,4 +1,5 @@
 import base64
+import copy
 import gzip
 import io
 import sys
@@ -9,6 +10,12 @@ from fishtest.api import WORKER_VERSION, ApiView
 from pyramid.httpexceptions import HTTPUnauthorized
 from pyramid.testing import DummyRequest
 from util import get_rundb
+
+
+def cleanup(request):
+    request.json_body["worker_info"].pop("remote_addr", None)
+    request.json_body["worker_info"].pop("country_code", None)
+    return request
 
 
 def new_run(self, add_tasks=0):
@@ -38,7 +45,7 @@ def new_run(self, add_tasks=0):
                 "num_games": self.chunk_size,
                 "stats": {"wins": 0, "draws": 0, "losses": 0, "crashes": 0},
                 "active": True,
-                "worker_info": self.worker_info,
+                "worker_info": copy.deepcopy(self.worker_info),
             }
             run["workers"] += 1
             run["cores"] += self.worker_info["concurrency"]
@@ -129,7 +136,7 @@ class TestApi(unittest.TestCase):
         return self.build_json_request(
             {
                 "password": "wrong password",
-                "worker_info": self.worker_info,
+                "worker_info": copy.deepcopy(self.worker_info),
             }
         )
 
@@ -137,7 +144,7 @@ class TestApi(unittest.TestCase):
         return self.build_json_request(
             {
                 "password": self.password,
-                "worker_info": self.worker_info,
+                "worker_info": copy.deepcopy(self.worker_info),
                 **json_body,
             }
         )
@@ -214,7 +221,7 @@ class TestApi(unittest.TestCase):
                 },
             }
         )
-        response = ApiView(request).update_task()
+        response = ApiView(cleanup(request)).update_task()
         self.assertTrue(response["task_alive"])
         self.assertFalse(self.rundb.get_run(run_id)["results_stale"])
 
@@ -229,7 +236,7 @@ class TestApi(unittest.TestCase):
             "time_losses": 0,
             "pentanomial": [0, 0, d // 2, 0, w // 2],
         }
-        response = ApiView(request).update_task()
+        response = ApiView(cleanup(request)).update_task()
         self.assertTrue(response["task_alive"])
         self.assertFalse(self.rundb.get_run(run_id)["results_stale"])
 
@@ -242,7 +249,7 @@ class TestApi(unittest.TestCase):
             "time_losses": 0,
             "pentanomial": [0, 0, d // 2, 0, w // 2],
         }
-        response = ApiView(request).update_task()
+        response = ApiView(cleanup(request)).update_task()
         self.assertFalse(response["task_alive"])
 
         request.json_body["stats"] = {
@@ -253,10 +260,10 @@ class TestApi(unittest.TestCase):
             "time_losses": 0,
             "pentanomial": [0, 0, d // 2, 0, w // 2 + 1],
         }
-        response = ApiView(request).update_task()
+        response = ApiView(cleanup(request)).update_task()
         self.assertFalse(response["task_alive"])
 
-        response = ApiView(request).update_task()
+        response = ApiView(cleanup(request)).update_task()
         self.assertTrue("info" in response)
         print(response["info"])
 
@@ -272,7 +279,7 @@ class TestApi(unittest.TestCase):
             "time_losses": 0,
             "pentanomial": [0, 0, d // 2, 0, w // 2 + 1],
         }
-        response = ApiView(request).update_task()
+        response = ApiView(cleanup(request)).update_task()
         self.assertTrue(response["task_alive"])
         # Go back in time
         request.json_body["stats"] = {
@@ -283,7 +290,7 @@ class TestApi(unittest.TestCase):
             "time_losses": 0,
             "pentanomial": [0, 0, d // 2, 0, w // 2],
         }
-        response = ApiView(request).update_task()
+        response = ApiView(cleanup(request)).update_task()
         self.assertFalse(response["task_alive"])
 
         # revive the task
@@ -301,7 +308,7 @@ class TestApi(unittest.TestCase):
             "time_losses": 0,
             "pentanomial": [0, 0, 0, 0, task_num_games // 2],
         }
-        response = ApiView(request).update_task()
+        response = ApiView(cleanup(request)).update_task()
         self.assertFalse(self.rundb.get_run(run_id)["results_stale"])
         self.assertFalse(response["task_alive"])
         run = self.rundb.get_run(run_id)
@@ -509,7 +516,11 @@ class TestRunFinished(unittest.TestCase):
 
     def correct_password_request(self, json_body={}):
         return self.build_json_request(
-            {"password": self.password, "worker_info": self.worker_info, **json_body}
+            {
+                "password": self.password,
+                "worker_info": copy.deepcopy(self.worker_info),
+                **json_body,
+            }
         )
 
     def test_duplicate_workers(self):
