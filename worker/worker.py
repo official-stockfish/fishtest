@@ -1354,14 +1354,14 @@ def fetch_and_handle_task(
     if not ret:
         return False
 
-    # Verify if we still have enough github api calls
+    # Verify if we still have enough GitHub api calls
     remaining = get_remaining_github_api_calls()
-    print("Remaining number of github api calls = {}".format(remaining))
+    print("Remaining number of GitHub api calls = {}".format(remaining))
     near_github_api_limit = remaining <= 10
     if near_github_api_limit:
         print(
             """
-  We have almost exhausted our github api calls.
+  We have almost exhausted our GitHub api calls.
   The server will only give us tasks for tests we have seen before.
 """
         )
