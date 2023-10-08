@@ -35,7 +35,7 @@
       class="btn btn-success w-100"
       type="button"
       value="Calculate"
-      onclick="draw_charts();"
+      onclick="draw_charts()"
     >
   </div>
 </form>
