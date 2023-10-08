@@ -274,6 +274,50 @@ class ApiView(object):
             active[str(run["_id"])] = run
         return active
 
+    @view_config(route_name="api_finished_runs")
+    def finished_runs(self):
+        self.__t0 = datetime.now(timezone.utc)
+        self.__api = "/api/finished_runs"
+
+        username = self.request.matchdict.get("username", "")
+        success_only = self.request.params.get("success_only", False)
+        yellow_only = self.request.params.get("yellow_only", False)
+        ltc_only = self.request.params.get("ltc_only", False)
+        timestamp = self.request.params.get("timestamp", "")
+        page_param = self.request.params.get("page", "")
+
+        if page_param == "":
+            self.handle_error("Please provide a Page number.")
+        if not page_param.isdigit() or int(page_param) < 1:
+            self.handle_error("Please provide a valid Page number.")
+        page_idx = int(page_param) - 1
+        page_size = 50
+
+        last_updated = None
+        if timestamp != "" and re.match(r"^\d{10}(\.\d+)?$", timestamp):
+            last_updated = datetime.fromtimestamp(float(timestamp))
+        elif timestamp != "":
+            self.handle_error("Please provide a valid UNIX timestamp.")
+
+        runs, num_finished = self.request.rundb.get_finished_runs(
+            username=username,
+            success_only=success_only,
+            yellow_only=yellow_only,
+            ltc_only=ltc_only,
+            skip=page_idx * page_size,
+            limit=page_size,
+            last_updated=last_updated,
+        )
+
+        finished = {}
+        for run in runs:
+            # some string conversions
+            run["_id"] = str(run["_id"])
+            run["start_time"] = str(run["start_time"])
+            run["last_updated"] = str(run["last_updated"])
+            finished[str(run["_id"])] = run
+        return finished
+
     @view_config(route_name="api_actions")
     def actions(self):
         try:
