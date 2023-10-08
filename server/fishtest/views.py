@@ -42,7 +42,7 @@ def cached_flash(request, requestString, *l):
     return
 
 
-def pagination(page_idx, num, page_size):
+def pagination(page_idx, num, page_size, query_params):
     pages = [
         {
             "idx": "Prev",
@@ -61,7 +61,7 @@ def pagination(page_idx, num, page_size):
             pages.append(
                 {
                     "idx": idx + 1,
-                    "url": "?page={}".format(idx + 1),
+                    "url": "?page={}".format(idx + 1) + query_params,
                     "state": "active" if page_idx == idx else "",
                 }
             )
@@ -70,7 +70,7 @@ def pagination(page_idx, num, page_size):
     pages.append(
         {
             "idx": "Next",
-            "url": "?page={}".format(page_idx + 2),
+            "url": "?page={}".format(page_idx + 2) + query_params,
             "state": "disabled" if page_idx >= (num - 1) // page_size else "",
         }
     )
@@ -428,15 +428,15 @@ def nns(request):
         skip=page_idx * page_size,
     )
 
-    pages = pagination(page_idx, num_nns, page_size)
+    query_params = ""
+    if user:
+        query_params += "&user={}".format(user)
+    if network_name:
+        query_params += "&network_name={}".format(network_name)
+    if master_only:
+        query_params += "&master_only={}".format(master_only)
 
-    for page in pages:
-        if user:
-            page["url"] += "&user={}".format(user)
-        if network_name:
-            page["url"] += "&network_name={}".format(network_name)
-        if master_only:
-            page["url"] += "&master_only={}".format(master_only)
+    pages = pagination(page_idx, num_nns, page_size, query_params)
 
     return {
         "nns": nns,
@@ -507,21 +507,21 @@ def actions(request):
         run_id=run_id,
     )
 
-    pages = pagination(page_idx, num_actions, page_size)
+    query_params = ""
+    if username:
+        query_params += "&user={}".format(username)
+    if search_action:
+        query_params += "&action={}".format(search_action)
+    if text:
+        query_params += "&text={}".format(text)
+    if max_actions:
+        query_params += "&max_actions={}".format(num_actions)
+    if before:
+        query_params += "&before={}".format(before)
+    if run_id:
+        query_params += "&run_id={}".format(run_id)
 
-    for page in pages:
-        if username:
-            page["url"] += "&user={}".format(username)
-        if search_action:
-            page["url"] += "&action={}".format(search_action)
-        if text:
-            page["url"] += "&text={}".format(text)
-        if max_actions:
-            page["url"] += "&max_actions={}".format(num_actions)
-        if before:
-            page["url"] += "&before={}".format(before)
-        if run_id:
-            page["url"] += "&run_id={}".format(run_id)
+    pages = pagination(page_idx, num_actions, page_size, query_params)
 
     return {
         "actions": actions,
@@ -1494,15 +1494,14 @@ def get_paginated_finished_runs(request):
         limit=page_size,
     )
 
-    pages = pagination(page_idx, num_finished_runs, page_size)
-
-    for page in pages:
-        if success_only:
-            page["url"] += "&success_only=1"
-        if yellow_only:
-            page["url"] += "&yellow_only=1"
-        if ltc_only:
-            page["url"] += "&ltc_only=1"
+    query_params = ""
+    if success_only:
+        query_params += "&success_only=1"
+    if yellow_only:
+        query_params += "&yellow_only=1"
+    if ltc_only:
+        query_params += "&ltc_only=1"
+    pages = pagination(page_idx, num_finished_runs, page_size, query_params)
 
     failed_runs = []
     if page_idx == 0:
