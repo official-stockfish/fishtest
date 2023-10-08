@@ -5,7 +5,7 @@
   elo_model = "normalized"
   fb = lambda e0, e1: format_bounds(elo_model, e0, e1)
   test_book = "UHO_4060_v3.epd"
-  pt_book = "UHO_4060_v3.epd"
+  pt_book = test_book
 %>
 <%
   base_branch = args.get('base_tag', 'master')
@@ -56,11 +56,12 @@
                 <label class="form-label">Test type <i class="fa-solid fa-ellipsis" role="button" data-bs-toggle="collapse" data-bs-target=".collapse-type" title="Toggle more tests"></i></label>
                 <div class="list-group list-group-checkable flex-row row row-cols-2 row-cols-xl-4 g-1 text-center">
                   <div class="col">
-                    <input class="list-group-item-check pe-none" type="radio" name="test-type" id="fast_test"
+                    <input class="list-group-item-check pe-none" type="radio" name="test-type" id="stc_test"
                       data-options='{
                         "name": "STC",
                         "tc": "10+0.1",
                         "new_tc": "10+0.1",
+                        "throughput": "100",
                         "threads": 1,
                         "options": "Hash=16",
                         "book": "${test_book}",
@@ -70,17 +71,18 @@
                         "base_signature": ${latest_bench}
                       }'
                       checked>
-                    <label class="list-group-item rounded-3" for="fast_test" title="Short time control | Single-threaded">
+                    <label class="list-group-item rounded-3" for="stc_test" title="Short time control | Single-threaded">
                       STC
                     </label>
                   </div>
 
                   <div class="col">
-                    <input class="list-group-item-check pe-none" type="radio" name="test-type" id="slow_test"
+                    <input class="list-group-item-check pe-none" type="radio" name="test-type" id="ltc_test"
                       data-options='{
                         "name": "LTC",
                         "tc": "60+0.6",
                         "new_tc": "60+0.6",
+                        "throughput": "100",
                         "threads": 1,
                         "options": "Hash=64",
                         "book": "${test_book}",
@@ -89,17 +91,18 @@
                         "base_branch": "${base_branch}",
                         "base_signature": ${latest_bench}
                       }'>
-                    <label class="list-group-item rounded-3" for="slow_test" title="Long time control | Single-threaded">
+                    <label class="list-group-item rounded-3" for="ltc_test" title="Long time control | Single-threaded">
                       LTC
                     </label>
                   </div>
 
                   <div class="col">
-                    <input class="list-group-item-check pe-none" type="radio" name="test-type" id="fast_smp_test"
+                    <input class="list-group-item-check pe-none" type="radio" name="test-type" id="stc_smp_test"
                       data-options='{
                         "name": "STC SMP",
                         "tc": "5+0.05",
                         "new_tc": "5+0.05",
+                        "throughput": "100",
                         "threads": 8,
                         "options": "Hash=64",
                         "book": "${test_book}",
@@ -108,17 +111,18 @@
                         "base_branch": "${base_branch}",
                         "base_signature": ${latest_bench}
                       }'>
-                    <label class="list-group-item rounded-3" for="fast_smp_test" title="Short time control | Multi-threaded">
+                    <label class="list-group-item rounded-3" for="stc_smp_test" title="Short time control | Multi-threaded">
                       STC SMP
                     </label>
                   </div>
 
                   <div class="col">
-                    <input class="list-group-item-check pe-none" type="radio" name="test-type" id="slow_smp_test"
+                    <input class="list-group-item-check pe-none" type="radio" name="test-type" id="ltc_smp_test"
                       data-options='{
                         "name": "LTC SMP",
                         "tc": "20+0.2",
                         "new_tc": "20+0.2",
+                        "throughput": "100",
                         "threads": 8,
                         "options": "Hash=256",
                         "book": "${test_book}",
@@ -127,8 +131,48 @@
                         "base_branch": "${base_branch}",
                         "base_signature": ${latest_bench}
                       }'>
-                    <label class="list-group-item rounded-3" for="slow_smp_test" title="Long time control | Multi-threaded">
+                    <label class="list-group-item rounded-3" for="ltc_smp_test" title="Long time control | Multi-threaded">
                       LTC SMP
+                    </label>
+                  </div>
+
+                  <div class="col collapse collapse-type">
+                    <input class="list-group-item-check pe-none" type="radio" name="test-type" id="vltc_test"
+                      data-options='{
+                        "name": "VLTC",
+                        "tc": "180+1.8",
+                        "new_tc": "180+1.8",
+                        "throughput": "50",
+                        "threads": 1,
+                        "options": "Hash=192",
+                        "book": "${test_book}",
+                        "stop_rule": "stop-rule-sprt",
+                        "bounds": "standard STC",
+                        "base_branch": "${base_branch}",
+                        "base_signature": ${latest_bench}
+                      }'>
+                    <label class="list-group-item rounded-3" for="vltc_test" title="Very long time control | Single-threaded">
+                      VLTC
+                    </label>
+                  </div>
+
+                  <div class="col collapse collapse-type">
+                    <input class="list-group-item-check pe-none" type="radio" name="test-type" id="vltc_smp_test"
+                      data-options='{
+                        "name": "VLTC SMP",
+                        "tc": "60+0.6",
+                        "new_tc": "60+0.6",
+                        "throughput": "50",
+                        "threads": 8,
+                        "options": "Hash=512",
+                        "book": "${test_book}",
+                        "stop_rule": "stop-rule-sprt",
+                        "bounds": "standard LTC",
+                        "base_branch": "${base_branch}",
+                        "base_signature": ${latest_bench}
+                      }'>
+                    <label class="list-group-item rounded-3" for="vltc_smp_test" title="Very long time control | Multi-threaded">
+                      VLTC SMP
                     </label>
                   </div>
 
@@ -138,6 +182,7 @@
                         "name": "PT",
                         "tc": "60+0.6",
                         "new_tc": "60+0.6",
+                        "throughput": "100",
                         "threads": 1,
                         "options": "Hash=64",
                         "book": "${pt_book}",
@@ -159,6 +204,7 @@
                         "name": "PT SMP",
                         "tc": "60+0.6",
                         "new_tc": "60+0.6",
+                        "throughput": "100",
                         "threads": 8,
                         "options": "Hash=512",
                         "book": "${pt_book}",
@@ -714,6 +760,7 @@
           name,
           tc,
           new_tc,
+          throughput,
           threads,
           options,
           book,
@@ -727,6 +774,7 @@
         } = JSON.parse(testOptions);
         document.getElementById("tc").value = tc;
         document.getElementById("new_tc").value = new_tc;
+        document.getElementById("throughput").value = throughput;
         document.getElementById("threads").value = threads;
         document.getElementById("new-options").value = (
           options + " " +
@@ -881,13 +929,22 @@
     // Select the correct fields by default for re-runs
     const tc = '${args.get('tc')}';
     if (tc === "10+0.1") {
-      document.getElementById("fast_test").checked = true;
-    } else if (tc === "60+0.6") {
-      document.getElementById("slow_test").checked = true;
+      document.getElementById("stc_test").checked = true;
     } else if (tc === "5+0.05") {
-      document.getElementById("fast_smp_test").checked = true;
+      document.getElementById("stc_smp_test").checked = true;
     } else if (tc === "20+0.2") {
-      document.getElementById("slow_smp_test").checked = true;
+      document.getElementById("ltc_smp_test").checked = true;
+    } else if (tc === "180+1.8") {
+      document.getElementById("vltc_test").checked = true;
+    }
+
+    const threads = '${args.get('threads')}';
+    if (tc === "60+0.6") {
+      if (threads === "1") {
+        document.getElementById("ltc_test").checked = true;
+      } else if (threads === "8") {
+        document.getElementById("vltc_smp_test").checked = true;
+      }
     }
 
     % if args.get('spsa'):
