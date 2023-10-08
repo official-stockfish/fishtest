@@ -669,7 +669,7 @@ class RunDb:
 
         # Malus for too many active runs
         # We scale based on total TP across all runs from this user
-        count = total_tp / 100.0
+        count = max(total_tp / 100.0, 1.0)
         capped_count = min(count, 6.0)  # cap at total 300 itp per user
         itp *= 36.0 / (36.0 + capped_count * capped_count) * (capped_count / count)
 
