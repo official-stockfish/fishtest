@@ -1078,6 +1078,8 @@ def tests_modify(request):
         request.session.flash("Please login")
         return HTTPFound(location=request.route_url("login"))
 
+    is_approver = request.has_permission("approve_run")
+
     if "num-games" in request.POST:
         run = request.rundb.get_run(request.POST["run"])
         before = del_tasks(run)
@@ -1150,6 +1152,17 @@ def tests_modify(request):
                 pass
             else:
                 if before_ != after_:
+                    # Non-approvers cannot increase prio > 0 or throughput > 100
+                    if not is_approver and (
+                        (k == "priority" and after_ > 0)
+                        or (k == "throughput" and after_ > max(before_, 100))
+                    ):
+                        request.session.flash(
+                            "No permission to increase priority or throughput beyond maximum!",
+                            "error",
+                        )
+                        return home(request)
+
                     message.append(
                         "{} changed from {} to {}".format(
                             k.replace("_", "-"), before_, after_
