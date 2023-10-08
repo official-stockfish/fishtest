@@ -8,6 +8,8 @@ const defaultParameters = {
   "rms-bias": "191",
 };
 
+let valid_sprt = null;
+
 google.charts.load("current", { packages: ["corechart"] });
 
 let pass_chart = null;
@@ -37,10 +39,10 @@ google.charts.setOnLoadCallback(function () {
   mouse_screen.addEventListener("mousemove", handle_tooltips, true);
   mouse_screen.addEventListener("mouseleave", handle_tooltips, true);
   set_fields();
-  draw_charts();
+  draw_charts(false);
   window.onresize = function () {
     clearTimeout(resize_timeout);
-    resize_timeout = setTimeout(draw_charts, 100);
+    resize_timeout = setTimeout(() => draw_charts(true), 100);
   };
 });
 
@@ -60,35 +62,40 @@ function set_fields() {
   }
 }
 
-function draw_charts() {
+function draw_charts(resize) {
   const elo_model = document.getElementById("elo-model").value;
   let elo0 = parseFloat(document.getElementById("elo-0").value);
   let elo1 = parseFloat(document.getElementById("elo-1").value);
   const draw_ratio = parseFloat(document.getElementById("draw-ratio").value);
   const rms_bias = parseFloat(document.getElementById("rms-bias").value);
-  let val = "";
+  let error = "";
   let sprt = null;
 
   if (isNaN(elo0) || isNaN(elo1) || isNaN(draw_ratio) || isNaN(rms_bias)) {
-    val = "Unreadable input.";
+    error = "Unreadable input.";
   } else if (elo1 < elo0 + 0.5) {
-    val = "The difference between Elo1 and Elo0 must be at least 0.5.";
+    error = "The difference between Elo1 and Elo0 must be at least 0.5.";
   } else if (Math.abs(elo0) > 10 || Math.abs(elo1) > 10) {
-    val = "Elo values must be between -10 and 10.";
+    error = "Elo values must be between -10 and 10.";
   } else if (draw_ratio <= 0.0 || draw_ratio >= 1.0) {
-    val = "The draw ratio must be strictly between 0.0 and 1.0.";
+    error = "The draw ratio must be strictly between 0.0 and 1.0.";
   } else if (rms_bias < 0) {
-    val = "The RMS bias must be positive.";
+    error = "The RMS bias must be positive.";
   } else {
     sprt = new Sprt(0.05, 0.05, elo0, elo1, draw_ratio, rms_bias, elo_model);
     if (sprt.variance <= 0) {
-      val = "The draw ratio and the RMS bias are not compatible.";
+      error = "The draw ratio and the RMS bias are not compatible.";
     }
   }
-  if (val != "") {
-    alert(val);
-    return;
-  }
+  if (error) {
+    // do not show a stale alert with a resize
+    // and use last valid sprt to draw chart
+    if (!resize || !valid_sprt) {
+      alert(error);
+      return;
+    } else sprt = valid_sprt;
+  } else valid_sprt = sprt;
+
   history.replaceState(
     null,
     "",
