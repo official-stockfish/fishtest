@@ -670,7 +670,8 @@ class RunDb:
         # Malus for too many active runs
         # We scale based on total TP across all runs from this user
         count = total_tp / 100.0
-        itp *= 36.0 / (36.0 + count * count)
+        capped_count = min(count, 6.0)  # cap at total 300 itp per user
+        itp *= 36.0 / (36.0 + capped_count * capped_count) * (capped_count / count)
 
         return itp
 
@@ -774,7 +775,7 @@ After fixing the issues you can unblock the worker at
             for r in self.get_unfinished_runs_id():
                 run = self.get_run(r["_id"])
                 if any(task["active"] for task in reversed(run["tasks"])):
-                    user_active.append((run["args"].get("username"), self.calc_itp(run, 0)))
+                    user_active.append((run["args"].get("username"), run["args"].get("throughput")))
 
             # now compute and update their itp
             self.task_runs = []
