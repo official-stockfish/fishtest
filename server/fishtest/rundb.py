@@ -672,7 +672,7 @@ class RunDb:
         count = total_tp / 100.0
         itp *= 36.0 / (36.0 + count * count)
 
-        run["args"]["itp"] = itp
+        return itp
 
     def update_workers_cores(self, run):
         workers = cores = 0
@@ -769,21 +769,21 @@ After fixing the issues you can unblock the worker at
         if runs_finished or time.time() > self.task_time + 60:
             print("Request_task: refresh queue", flush=True)
 
-            # list user names and TP for active runs
+            # list user names and ITP for active runs
             user_active = []
             for r in self.get_unfinished_runs_id():
                 run = self.get_run(r["_id"])
                 if any(task["active"] for task in reversed(run["tasks"])):
-                    user_active.append((run["args"].get("username"), run["args"].get("throughput")))
+                    user_active.append((run["args"].get("username"), self.calc_itp(run, 0)))
 
-            # now compute their itp
+            # now compute and update their itp
             self.task_runs = []
             for r in self.get_unfinished_runs_id():
                 run = self.get_run(r["_id"])
                 self.update_workers_cores(run)
                 run_user = run["args"].get("username")
                 total_tp = sum([tp for user, tp in user_active if user == run_user])
-                self.calc_itp(run, total_tp)
+                run["args"]["itp"] = self.calc_itp(run, total_tp)
                 self.task_runs.append(run)
             self.task_time = time.time()
 
