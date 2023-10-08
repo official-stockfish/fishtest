@@ -639,7 +639,7 @@ class RunDb:
 
         return results
 
-    def calc_itp(self, run, count):
+    def calc_itp(self, run, total_tp):
         itp = run["args"]["throughput"]
         itp = max(min(itp, 500), 1)
 
@@ -668,6 +668,8 @@ class RunDb:
                 itp *= bonus
 
         # Malus for too many active runs
+        # We scale based on total TP across all runs from this user
+        count = total_tp / 100.0
         itp *= 36.0 / (36.0 + count * count)
 
         run["args"]["itp"] = itp
@@ -767,19 +769,21 @@ After fixing the issues you can unblock the worker at
         if runs_finished or time.time() > self.task_time + 60:
             print("Request_task: refresh queue", flush=True)
 
-            # list user names for active runs
+            # list user names and TP for active runs
             user_active = []
             for r in self.get_unfinished_runs_id():
                 run = self.get_run(r["_id"])
                 if any(task["active"] for task in reversed(run["tasks"])):
-                    user_active.append(run["args"].get("username"))
+                    user_active.append((run["args"].get("username"), run["args"].get("throughput")))
 
             # now compute their itp
             self.task_runs = []
             for r in self.get_unfinished_runs_id():
                 run = self.get_run(r["_id"])
                 self.update_workers_cores(run)
-                self.calc_itp(run, user_active.count(run["args"].get("username")))
+                run_user = run["args"].get("username")
+                total_tp = sum([tp for user, tp in user_active if user == run_user])
+                self.calc_itp(run, total_tp)
                 self.task_runs.append(run)
             self.task_time = time.time()
 
