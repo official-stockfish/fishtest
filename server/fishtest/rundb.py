@@ -579,6 +579,7 @@ class RunDb:
         success_only=False,
         yellow_only=False,
         ltc_only=False,
+        last_updated=None,
     ):
         q = {"finished": True}
         projection = {"tasks": 0, "bad_tasks": 0, "args.spsa.param_history": 0}
@@ -590,6 +591,8 @@ class RunDb:
             q["is_green"] = True
         if yellow_only:
             q["is_yellow"] = True
+        if last_updated is not None:
+            q["last_updated"] = {"$gte": last_updated}
 
         c = self.runs.find(
             q,
