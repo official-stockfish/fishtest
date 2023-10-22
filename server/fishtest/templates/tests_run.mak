@@ -4,8 +4,8 @@
   from fishtest.util import format_bounds
   elo_model = "normalized"
   fb = lambda e0, e1: format_bounds(elo_model, e0, e1)
-  test_book = "UHO_4060_v3.epd"
-  pt_book = test_book
+  test_book = "UHO_Lichess_4852_v1.epd"
+  pt_book = "UHO_4060_v3.epd"
 %>
 <%
   base_branch = args.get('base_tag', 'master')
