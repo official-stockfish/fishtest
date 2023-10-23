@@ -279,7 +279,7 @@ class ApiView(object):
         self.__t0 = datetime.now(timezone.utc)
         self.__api = "/api/finished_runs"
 
-        username = self.request.matchdict.get("username", "")
+        username = self.request.params.get("username", "")
         success_only = self.request.params.get("success_only", False)
         yellow_only = self.request.params.get("yellow_only", False)
         ltc_only = self.request.params.get("ltc_only", False)
