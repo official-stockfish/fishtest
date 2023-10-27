@@ -650,26 +650,35 @@ def users_monthly(request):
 
 def get_master_info(url):
     try:
-        commits = requests.get(url)
-        commits.raise_for_status()
+        response = requests.get(url)
+        response.raise_for_status()
     except Exception as e:
         print(f"Exception getting commits:\n{e}")
         return None
+
     bench_search = re.compile(r"(^|\s)[Bb]ench[ :]+([1-9]\d{5,7})(?!\d)")
-    for idx, commit in enumerate(commits.json()):
+    latest_bench_match = None
+
+    commits = response.json()
+    message = commits[0]["commit"]["message"].strip().split("\n")[0].strip()
+    date_str = commits[0]["commit"]["committer"]["date"]
+    date = datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%SZ")
+
+    for commit in commits:
         message_lines = commit["commit"]["message"].strip().split("\n")
-        bench = bench_search.search(message_lines[-1].strip())
-        if idx == 0:
-            message = message_lines[0].strip()
-            date_str = commit["commit"]["committer"]["date"]
-            date = datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%SZ")
-        if bench:
-            return {
-                "bench": bench.group(2),
-                "message": message,
-                "date": date.strftime("%b %d"),
-            }
-    return None
+        for line in reversed(message_lines):
+            bench = bench_search.search(line.strip())
+            if bench:
+                latest_bench_match = {
+                    "bench": bench.group(2),
+                    "message": message,
+                    "date": date.strftime("%b %d"),
+                }
+                break
+        if latest_bench_match:
+            break
+
+    return latest_bench_match
 
 
 def get_valid_books():
@@ -785,9 +794,11 @@ def validate_form(request):
 
     def strip_message(m):
         lines = m.strip().split("\n")
-        last_line = lines[-1].strip()
-        if re.match(r"(^|\s)[Bb]ench[ :]+([1-9]\d{5,7})(?!\d)", last_line):
-            lines[-1] = ""
+        pattern = r"(^|\s)[Bb]ench[ :]+([1-9]\d{5,7})(?!\d)"
+        for i in range(len(lines) - 1, -1, -1):
+            if re.search(pattern, lines[i]):
+                lines[i] = re.sub(pattern, "", lines[i])
+                break
         s = "\n".join(lines)
         s = re.sub(r"[ \t]+", " ", s)
         s = re.sub(r"\n+", r"\n", s)
@@ -806,12 +817,13 @@ def validate_form(request):
         if "commit" not in c:
             raise Exception("Cannot find branch in developer repository")
         if len(data["new_signature"]) == 0:
-            bs = re.compile(r"(^|\s)[Bb]ench[ :]+([1-9]\d{5,7})(?!\d)")
+            bench_search = re.compile(r"(^|\s)[Bb]ench[ :]+([1-9]\d{5,7})(?!\d)")
             lines = c["commit"]["message"].split("\n")
-            last_line = lines[-1].strip()
-            m = bs.search(last_line)
-            if m:
-                data["new_signature"] = m.group(2)
+            for line in reversed(lines):  # Iterate in reverse to find the last match
+                m = bench_search.search(line)
+                if m:
+                    data["new_signature"] = m.group(2)
+                    break
             else:
                 raise Exception(
                     "This commit has no signature: please supply it manually."
