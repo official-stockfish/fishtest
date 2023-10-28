@@ -198,7 +198,6 @@ class TestApi(unittest.TestCase):
     def test_update_task(self):
         run_id = new_run(self, add_tasks=1)
         run = self.rundb.get_run(run_id)
-        self.assertFalse(run["results_stale"])
 
         # Request fails if username/password is invalid
         with self.assertRaises(HTTPUnauthorized):
@@ -223,7 +222,6 @@ class TestApi(unittest.TestCase):
         )
         response = ApiView(cleanup(request)).update_task()
         self.assertTrue(response["task_alive"])
-        self.assertFalse(self.rundb.get_run(run_id)["results_stale"])
 
         # Task is still active
         cs = self.chunk_size
@@ -238,7 +236,6 @@ class TestApi(unittest.TestCase):
         }
         response = ApiView(cleanup(request)).update_task()
         self.assertTrue(response["task_alive"])
-        self.assertFalse(self.rundb.get_run(run_id)["results_stale"])
 
         # Task is still active. Odd update.
         request.json_body["stats"] = {
@@ -309,7 +306,6 @@ class TestApi(unittest.TestCase):
             "pentanomial": [0, 0, 0, 0, task_num_games // 2],
         }
         response = ApiView(cleanup(request)).update_task()
-        self.assertFalse(self.rundb.get_run(run_id)["results_stale"])
         self.assertFalse(response["task_alive"])
         run = self.rundb.get_run(run_id)
         task = run["tasks"][0]
@@ -613,7 +609,6 @@ class TestRunFinished(unittest.TestCase):
         # The run should be marked as finished after the last task completes
         run = self.rundb.get_run(run_id)
         self.assertTrue(run["finished"])
-        self.assertFalse(run["results_stale"])
         self.assertTrue(all([not t["active"] for t in run["tasks"]]))
         self.assertTrue("Total: {}".format(num_games) in run["results_info"]["info"][1])
 

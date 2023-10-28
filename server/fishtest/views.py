@@ -1280,7 +1280,6 @@ def tests_live_elo(request):
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None:
         raise exception_response(404)
-    request.rundb.get_results(run)
     return {"run": run, "page_title": get_page_title(run)}
 
 
@@ -1289,7 +1288,6 @@ def tests_stats(request):
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None:
         raise exception_response(404)
-    request.rundb.get_results(run)
     return {"run": run, "page_title": get_page_title(run)}
 
 
@@ -1330,7 +1328,7 @@ def tests_view(request):
         follow = 1
     else:
         follow = 0
-    results = request.rundb.get_results(run)
+    results = run["results"]
     run["results_info"] = format_results(results, run)
     run_args = [("id", str(run["_id"]), "")]
     if run.get("rescheduled_from"):
