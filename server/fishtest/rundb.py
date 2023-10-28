@@ -206,9 +206,10 @@ class RunDb:
                 "time_losses": 0,
                 "pentanomial": 5 * [0],
             },
-            "results_stale": False,
             "approved": False,
             "approver": "",
+            "workers": 0,
+            "cores": 0,
         }
 
         # administrative flags
@@ -558,7 +559,7 @@ class RunDb:
             if cores > 0:
                 eta = remaining_hours(run) / cores
                 pending_hours += eta
-            results = self.get_results(run, False)
+            results = run["results"]
             run["results_info"] = format_results(results, run)
             if "Pending..." in run["results_info"]["info"]:
                 if cores > 0:
@@ -608,10 +609,10 @@ class RunDb:
         runs_list = [run for run in c if not run.get("deleted")]
         return [runs_list, count]
 
-    def get_results(self, run, save_run=True):
-        if not run["results_stale"]:
-            return run["results"]
-
+    def compute_results(self, run):
+        """
+        This is used in purge_run and also to verify the incrementally updated results
+        when a run is finished."""
         results = {"wins": 0, "losses": 0, "draws": 0, "crashes": 0, "time_losses": 0}
 
         has_pentanomial = True
@@ -634,11 +635,6 @@ class RunDb:
                     has_pentanomial = False
         if has_pentanomial:
             results["pentanomial"] = pentanomial
-
-        run["results_stale"] = False
-        run["results"] = results
-        if save_run:
-            self.buffer(run, True)
 
         return results
 
@@ -1288,15 +1284,10 @@ After fixing the issues you can unblock the worker at
     def check_results(self, run, run_id, task_id):
         old = run["results"]
 
-        # Force recalculation of results
-        run["results_stale"] = True
-
         # Recalculate results from all tasks in run["tasks"].
-        # Sets run["results_stale"]=False and calls buffer(True).
-        self.get_results(run, True)
+        new = self.compute_results(run)
 
         # Log any discrepancies between incremented and recalculated results
-        new = run["results"]
         for s in ["wins", "losses", "draws", "crashes", "time_losses"]:
             if old.get(s, -1) != new.get(s, -1):
                 info = "Check_results: task {}/{} {} results mismatch: {}/{}".format(
@@ -1365,14 +1356,15 @@ After fixing the issues you can unblock the worker at
         run = self.get_run(run_id)
         for task in run["tasks"]:
             task["active"] = False
-        run["results_stale"] = True
-        results = self.get_results(run, True)
+        results = run["results"]
         run["results_info"] = format_results(results, run)
         # De-couple the styling of the run from its finished status
         if run["results_info"]["style"] == "#44EB44":
             run["is_green"] = True
         elif run["results_info"]["style"] == "yellow":
             run["is_yellow"] = True
+        run["cores"] = 0
+        run["workers"] = 0
         run["finished"] = True
         self.buffer(run, True)
         # Publish the results of the run to the Fishcooking forum
@@ -1496,8 +1488,8 @@ After fixing the issues you can unblock the worker at
                 task["stats"] = copy.deepcopy(zero_stats)
 
         if message == "":
-            run["results_stale"] = True
-            results = self.get_results(run)
+            results = self.compute_results(run)
+            run["results"] = results
             revived = True
             if "sprt" in run["args"] and "state" in run["args"]["sprt"]:
                 fishtest.stats.stat_util.update_SPRT(results, run["args"]["sprt"])
