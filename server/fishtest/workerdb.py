@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from fishtest.util import validate
+from fishtest.validate import validate
 
 schema = {
     "worker_name": str,

@@ -5,7 +5,8 @@ import re
 from datetime import datetime, timezone
 
 from fishtest.stats.stat_util import SPRT_elo
-from fishtest.util import optional_key, union, validate, worker_name
+from fishtest.util import worker_name
+from fishtest.validate import optional_key, union, validate
 from pyramid.httpexceptions import (
     HTTPBadRequest,
     HTTPFound,

@@ -4,7 +4,7 @@ import time
 from datetime import datetime, timezone
 
 from bson.objectid import ObjectId
-from fishtest.util import optional_key, validate
+from fishtest.validate import email, optional_key, validate
 from pymongo import ASCENDING
 
 schema = {
@@ -13,13 +13,20 @@ schema = {
     "password": str,
     "registration_time": datetime,
     "blocked": bool,
-    "email": str,
-    "groups": list,
+    "email": email,
+    "groups": list[str],
     "tests_repo": str,
     "machine_limit": int,
 }
 
 DEFAULT_MACHINE_LIMIT = 16
+
+
+def validate_user(user):
+    valid = validate(schema, user, "user", strict=True)
+    if valid != "":
+        print(valid, flush=True)
+        assert False
 
 
 class UserDb:
@@ -89,7 +96,7 @@ class UserDb:
     def add_user_group(self, username, group):
         user = self.find(username)
         user["groups"].append(group)
-        assert validate(schema, user, "user", strict=True) == ""
+        validate_user(user)
         self.users.replace_one({"_id": user["_id"]}, user)
         self.clear_cache()
 
@@ -108,7 +115,7 @@ class UserDb:
                 "tests_repo": "",
                 "machine_limit": DEFAULT_MACHINE_LIMIT,
             }
-            assert validate(schema, user, "user", strict=True) == ""
+            validate_user(user)
             self.users.insert_one(user)
             self.last_pending_time = 0
 
@@ -117,7 +124,7 @@ class UserDb:
             return False
 
     def save_user(self, user):
-        assert validate(schema, user, "user", strict=True) == ""
+        validate_user(user)
         self.users.replace_one({"_id": user["_id"]}, user)
         self.last_pending_time = 0
         self.clear_cache()
