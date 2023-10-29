@@ -28,12 +28,24 @@ def new_run(self, add_tasks=0):
         "10+0.01",
         "10+0.01",
         "book",
-        10,
+        "10",
         1,
         "",
         "",
+        info="The ultimate patch",
+        resolved_base="347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+        resolved_new="347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+        msg_base="Bad stuff",
+        msg_new="Super stuff",
+        base_signature="123456",
+        new_signature="654321",
+        base_net="nn-0000000000a0.nnue",
+        new_net="nn-0000000000a0.nnue",
+        rescheduled_from="653db116cc309ae839563103",
+        base_same_as_master=False,
+        tests_repo="https://google.com",
+        auto_purge=False,
         username="travis",
-        tests_repo="travis",
         start_time=datetime.now(timezone.utc),
     )
     run = self.rundb.get_run(run_id)
@@ -41,11 +53,23 @@ def new_run(self, add_tasks=0):
     if add_tasks > 0:
         run["workers"] = run["cores"] = 0
         for i in range(add_tasks):
+            worker_info = copy.deepcopy(self.worker_info)
+            worker_info["remote_addr"] = self.remote_addr
+            worker_info["country_code"] = self.country_code
             task = {
                 "num_games": self.chunk_size,
-                "stats": {"wins": 0, "draws": 0, "losses": 0, "crashes": 0},
+                "stats": {
+                    "wins": 0,
+                    "draws": 0,
+                    "losses": 0,
+                    "crashes": 0,
+                    "time_losses": 0,
+                    "pentanomial": [0, 0, 0, 0, 0],
+                },
                 "active": True,
-                "worker_info": copy.deepcopy(self.worker_info),
+                "last_updated": datetime.now(timezone.utc),
+                "start": 1234,
+                "worker_info": worker_info,
             }
             run["workers"] += 1
             run["cores"] += self.worker_info["concurrency"]
@@ -77,6 +101,7 @@ class TestApi(unittest.TestCase):
         self.password = "secret"
         self.unique_key = "unique key"
         self.remote_addr = "127.0.0.1"
+        self.country_code = "US"
         self.concurrency = 7
 
         self.worker_info = {
