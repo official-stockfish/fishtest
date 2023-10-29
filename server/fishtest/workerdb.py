@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from fishtest.util import validate
+from fishtest.vtjson import _validate
 
 schema = {
     "worker_name": str,
@@ -40,7 +40,7 @@ class WorkerDb:
             "message": message,
             "last_updated": datetime.now(timezone.utc),
         }
-        assert validate(schema, r, "worker", strict=True) == ""
+        assert _validate(schema, r, "worker") == ""
         self.workers.replace_one({"worker_name": worker_name}, r, upsert=True)
 
     def get_blocked_workers(self):

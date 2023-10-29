@@ -51,21 +51,37 @@ class CreateRunDBTest(unittest.TestCase):
     def test_10_create_run(self):
         global run_id
         # STC
+        num_tasks = 4
+        num_games = num_tasks * self.chunk_size
+
         run_id_stc = self.rundb.new_run(
             "master",
             "master",
-            100000,
+            num_games,
             "10+0.01",
             "10+0.01",
             "book",
-            10,
+            "10",
             1,
             "",
             "",
+            info="The ultimate patch",
+            resolved_base="347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+            resolved_new="347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+            msg_base="Bad stuff",
+            msg_new="Super stuff",
+            base_signature="123456",
+            new_signature="654321",
+            base_net="nn-0000000000a0.nnue",
+            new_net="nn-0000000000a0.nnue",
+            rescheduled_from="653db116cc309ae839563103",
+            base_same_as_master=False,
+            tests_repo="https://google.com",
+            auto_purge=False,
             username="travis",
-            tests_repo="travis",
             start_time=datetime.now(timezone.utc),
         )
+
         run = self.rundb.get_run(run_id_stc)
         run["finished"] = True
         task = {
@@ -82,20 +98,30 @@ class CreateRunDBTest(unittest.TestCase):
         run_id = self.rundb.new_run(
             "master",
             "master",
-            100000,
-            "150+0.01",
-            "150+0.01",
+            num_games,
+            "10+0.01",
+            "10+0.01",
             "book",
-            10,
+            "10",
             1,
             "",
             "",
+            info="The ultimate patch",
+            resolved_base="347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+            resolved_new="347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+            msg_base="Bad stuff",
+            msg_new="Super stuff",
+            base_signature="123456",
+            new_signature="654321",
+            base_net="nn-0000000000a0.nnue",
+            new_net="nn-0000000000a0.nnue",
+            rescheduled_from="653db116cc309ae839563103",
+            base_same_as_master=False,
+            tests_repo="https://google.com",
+            auto_purge=False,
             username="travis",
-            tests_repo="travis",
             start_time=datetime.now(timezone.utc),
         )
-        print(" ")
-        print(run_id)
         run = self.rundb.get_run(run_id)
         task = {
             "num_games": self.chunk_size,

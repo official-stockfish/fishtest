@@ -33,6 +33,7 @@ from fishtest.util import (
     update_residuals,
     worker_name,
 )
+from fishtest.vtjson import _validate, ip_address, number, regex, union, url
 from fishtest.workerdb import WorkerDb
 from pymongo import DESCENDING, MongoClient
 
@@ -41,6 +42,196 @@ DEBUG = False
 boot_time = datetime.now(timezone.utc)
 
 last_rundb = None
+
+# This schema only matches new runs. The old runs are not
+# compatible with it. For documentation purposes it would
+# also be useful to have a "universal schema" that matches
+# all the runs in the db.
+# To make this practical we will eventually put all schemas
+# in a separate module "schemas.py".
+
+net_name = regex("nn-[a-z0-9]{12}.nnue", name="net_name")
+tc = regex(r"([1-9]\d*/)?\d+(\.\d+)?(\+\d+(\.\d+)?)?", name="tc")
+str_int = regex(r"[1-9]\d*", name="str_int")
+sha = regex(r"[a-f0-9]{40}", name="sha")
+country_code = regex(r"[A-Z][A-Z]", name="country_code")
+run_id = regex(r"[a-f0-9]{24}", name="run_id")
+
+worker_info_schema = {
+    "uname": str,
+    "architecture": [str, str],
+    "concurrency": int,
+    "max_memory": int,
+    "min_threads": int,
+    "username": str,
+    "version": int,
+    "python_version": [int, int, int],
+    "gcc_version": [int, int, int],
+    "compiler": union("clang++", "g++"),
+    "unique_key": str,
+    "modified": bool,
+    "ARCH": str,
+    "nps": number,
+    "near_github_api_limit": bool,
+    "remote_addr": ip_address,
+    "country_code": union(country_code, "?"),
+}
+
+results_schema = {
+    "wins": int,
+    "losses": int,
+    "draws": int,
+    "crashes": int,
+    "time_losses": int,
+    "pentanomial": [int, int, int, int, int],
+}
+
+schema = {
+    "_id?": ObjectId,
+    "start_time": datetime,
+    "last_updated": datetime,
+    "tc_base": number,
+    "base_same_as_master": bool,
+    "rescheduled_from?": run_id,
+    "approved": bool,
+    "approver": str,
+    "finished": bool,
+    "deleted": bool,
+    "failed": bool,
+    "is_green": bool,
+    "is_yellow": bool,
+    "workers": int,
+    "cores": int,
+    "results": results_schema,
+    "results_info?": {
+        "style": str,
+        "info": [str, ...],
+    },
+    "args": {
+        "base_tag": str,
+        "new_tag": str,
+        "base_net": net_name,
+        "new_net": net_name,
+        "num_games": int,
+        "tc": tc,
+        "new_tc": tc,
+        "book": str,
+        "book_depth": str_int,
+        "threads": int,
+        "resolved_base": sha,
+        "resolved_new": sha,
+        "msg_base": str,
+        "msg_new": str,
+        "base_options": str,
+        "new_options": str,
+        "info": str,
+        "base_signature": str_int,
+        "new_signature": str_int,
+        "username": str,
+        "tests_repo": url,
+        "auto_purge": bool,
+        "throughput": number,
+        "itp": number,
+        "priority": number,
+        "adjudication": bool,
+        "sprt?": {
+            "alpha": 0.05,
+            "beta": 0.05,
+            "elo0": number,
+            "elo1": number,
+            "elo_model": "normalized",
+            "state": union("", "accepted", "rejected"),
+            "llr": number,
+            "batch_size": int,
+            "lower_bound": -math.log(19),
+            "upper_bound": math.log(19),
+            "lost_samples?": int,
+            "illegal_update?": int,
+            "overshoot?": {
+                "last_update": int,
+                "skipped_updates": int,
+                "ref0": number,
+                "m0": number,
+                "sq0": number,
+                "ref1": number,
+                "m1": number,
+                "sq1": number,
+            },
+        },
+        "spsa?": {
+            "A": number,
+            "alpha": number,
+            "gamma": number,
+            "raw_params": str,
+            "iter": int,
+            "num_iter": int,
+            "params": [
+                {
+                    "name": str,
+                    "start": number,
+                    "min": number,
+                    "max": number,
+                    "c_end": number,
+                    "r_end": number,
+                    "c": number,
+                    "a_end": number,
+                    "a": number,
+                    "theta": number,
+                },
+                ...,
+            ],
+            "param_history?": [
+                [{"theta": number, "R": number, "c": number}, ...],
+                ...,
+            ],
+        },
+    },
+    "tasks": [
+        {
+            "num_games": int,
+            "active": bool,
+            "last_updated": datetime,
+            "start": int,
+            "residual?": number,
+            "residual_color?": str,
+            "bad?": True,
+            "stats": results_schema,
+            "worker_info": worker_info_schema,
+        },
+        ...,
+    ],
+    "bad_tasks?": [
+        {
+            "num_games": int,
+            "active": False,
+            "last_updated": datetime,
+            "start": int,
+            "residual": number,
+            "residual_color": str,
+            "bad": True,
+            "task_id": int,
+            "stats": results_schema,
+            "worker_info": worker_info_schema,
+        },
+        ...,
+    ],
+}
+
+# Avoid leaking too many things into the global scope
+del (
+    country_code,
+    ip_address,
+    number,
+    regex,
+    results_schema,
+    run_id,
+    sha,
+    str_int,
+    tc,
+    union,
+    url,
+    worker_info_schema,
+)
 
 
 def get_port():
@@ -240,6 +431,12 @@ class RunDb:
 
         if rescheduled_from:
             new_run["rescheduled_from"] = rescheduled_from
+
+        valid = _validate(schema, new_run, "run")
+        if valid != "":
+            message = f"The new run object does not _validate: {valid}"
+            print(message, flush=True)
+            raise Exception(message)
 
         return self.runs.insert_one(new_run).inserted_id
 
@@ -613,6 +810,7 @@ class RunDb:
         """
         This is used in purge_run and also to verify the incrementally updated results
         when a run is finished."""
+
         results = {"wins": 0, "losses": 0, "draws": 0, "crashes": 0, "time_losses": 0}
 
         has_pentanomial = True
@@ -1366,6 +1564,12 @@ After fixing the issues you can unblock the worker at
         run["cores"] = 0
         run["workers"] = 0
         run["finished"] = True
+        valid = _validate(schema, run, "run")
+        if valid != "":
+            print(f"The run object {run_id} does not validate: {valid}", flush=True)
+            # We are not confident enough to enable this...
+            # assert False
+
         self.buffer(run, True)
         # Publish the results of the run to the Fishcooking forum
         post_in_fishcooking_results(run)

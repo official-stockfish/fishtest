@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
-from fishtest.util import hex_print, union, validate, worker_name
+from fishtest.util import hex_print, worker_name
+from fishtest.vtjson import _validate, union
 from pymongo import DESCENDING
 
 schema = union(
@@ -280,7 +281,7 @@ class ActionDb:
     def insert_action(self, **action):
         if "run_id" in action:
             action["run_id"] = str(action["run_id"])
-        ret = validate(schema, action, "action", strict=True)
+        ret = _validate(schema, action, "action")
         if ret == "":
             action["time"] = datetime.now(timezone.utc).timestamp()
             self.actions.insert_one(action)

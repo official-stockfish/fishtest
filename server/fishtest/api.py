@@ -5,7 +5,8 @@ import re
 from datetime import datetime, timezone
 
 from fishtest.stats.stat_util import SPRT_elo
-from fishtest.util import optional_key, union, validate, worker_name
+from fishtest.util import worker_name
+from fishtest.vtjson import _validate, lax, union
 from pyramid.httpexceptions import (
     HTTPBadRequest,
     HTTPFound,
@@ -33,10 +34,10 @@ WORKER_VERSION = 222
 def validate_request(request):
     schema = {
         "password": str,
-        optional_key("run_id"): str,
-        optional_key("task_id"): int,
-        optional_key("pgn"): str,
-        optional_key("message"): str,
+        "run_id?": str,
+        "task_id?": int,
+        "pgn?": str,
+        "message?": str,
         "worker_info": {
             "uname": str,
             "architecture": [str, str],
@@ -54,13 +55,13 @@ def validate_request(request):
             "ARCH": str,
             "nps": float,
         },
-        optional_key("spsa"): {
+        "spsa?": {
             "wins": int,
             "losses": int,
             "draws": int,
             "num_games": int,
         },
-        optional_key("stats"): {
+        "stats?": {
             "wins": int,
             "losses": int,
             "draws": int,
@@ -69,7 +70,7 @@ def validate_request(request):
             "pentanomial": [int, int, int, int, int],
         },
     }
-    return validate(schema, request, "request", strict=True)
+    return _validate(schema, request, "request")
 
 
 # Avoids exposing sensitive data about the workers to the client and skips some heavy data.
@@ -137,8 +138,8 @@ class ApiView(object):
             self.handle_error("request is not json encoded")
 
         # Is the request syntactically correct?
-        schema = {"password": str, "worker_info": {"username": str}}
-        self.handle_error(validate(schema, self.request_body, "request"))
+        schema = lax({"password": str, "worker_info": {"username": str}})
+        self.handle_error(_validate(schema, self.request_body, "request"))
 
         # is the supplied password correct?
         token = self.request.userdb.authenticate(
