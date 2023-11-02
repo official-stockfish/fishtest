@@ -671,7 +671,11 @@ class RunDb:
                 itp *= bonus
 
         # Malus for too many active runs
-        itp *= 36.0 / (36.0 + count * count)
+        if count > 6:
+            # total itp for all user tests is the same as for 6 running tests
+            itp *= 3.0 / count
+        else:
+            itp *= 36.0 / (36.0 + count * count)
 
         run["args"]["itp"] = itp
 
