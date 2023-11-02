@@ -421,7 +421,7 @@ def post_in_fishcooking_results(run):
         s.sendmail(msg["From"], [msg["To"]], msg.as_string())
         s.quit()
     except ConnectionRefusedError:
-        print("Unable to post results to fishcooking forum")
+        print("Unable to post results to fishcooking forum", flush=True)
 
 
 def diff_date(date):

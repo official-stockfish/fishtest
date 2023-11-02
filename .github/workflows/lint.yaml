@@ -45,7 +45,7 @@ jobs:
         id: isort
         continue-on-error: true
         run: |
-          pipx run isort --check --profile black --skip worker/packages .
+          pipx run isort --check --profile black --df --skip worker/packages .
 
       - name: Run prettier
         id: prettier

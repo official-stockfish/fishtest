@@ -1,3 +1,4 @@
+import sys
 import unittest
 from datetime import datetime, timezone
 
@@ -8,6 +9,8 @@ from pyramid import testing
 
 class Create10UsersTest(unittest.TestCase):
     def setUp(self):
+        self.stdout = sys.stdout
+        sys.stdout = None
         self.rundb = util.get_rundb()
         self.config = testing.setUp()
         self.config.add_route("login", "/login")
@@ -17,6 +20,7 @@ class Create10UsersTest(unittest.TestCase):
         self.rundb.userdb.users.delete_many({"username": "JoeUser"})
         self.rundb.userdb.user_cache.delete_many({"username": "JoeUser"})
         self.rundb.stop()
+        sys.stdout = self.stdout
         testing.tearDown()
 
     def test_create_user(self):
@@ -37,6 +41,8 @@ class Create10UsersTest(unittest.TestCase):
 
 class Create50LoginTest(unittest.TestCase):
     def setUp(self):
+        self.stdout = sys.stdout
+        sys.stdout = None
         self.rundb = util.get_rundb()
         self.rundb.userdb.create_user("JoeUser", "secret", "email@email.email")
         self.config = testing.setUp()
@@ -46,6 +52,7 @@ class Create50LoginTest(unittest.TestCase):
         self.rundb.userdb.users.delete_many({"username": "JoeUser"})
         self.rundb.userdb.user_cache.delete_many({"username": "JoeUser"})
         self.rundb.stop()
+        sys.stdout = self.stdout
         testing.tearDown()
 
     def test_login(self):

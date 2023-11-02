@@ -3,6 +3,7 @@ import copy
 import gzip
 import io
 import sys
+import time
 import unittest
 from datetime import datetime, timezone
 
@@ -70,6 +71,8 @@ def stop_all_runs(self):
 class TestApi(unittest.TestCase):
     @classmethod
     def setUpClass(self):
+        self.stdout = sys.stdout
+        sys.stdout = None
         self.chunk_size = 200
         self.rundb = get_rundb()
         # Set up an API user (a worker)
@@ -122,6 +125,7 @@ class TestApi(unittest.TestCase):
         self.rundb.userdb.user_cache.delete_many({"username": self.username})
         self.rundb.stop()
         self.rundb.runs.drop()
+        sys.stdout = self.stdout
 
     def build_json_request(self, json_body):
         return DummyRequest(
@@ -453,6 +457,8 @@ class TestApi(unittest.TestCase):
 class TestRunFinished(unittest.TestCase):
     @classmethod
     def setUpClass(self):
+        self.stdout = sys.stdout
+        sys.stdout = None
         self.chunk_size = 200
         self.rundb = get_rundb()
         # Set up an API user (a worker)
@@ -504,6 +510,7 @@ class TestRunFinished(unittest.TestCase):
         self.rundb.userdb.user_cache.delete_many({"username": self.username})
         self.rundb.stop()
         self.rundb.runs.drop()
+        sys.stdout = self.stdout
 
     def build_json_request(self, json_body):
         return DummyRequest(
