@@ -1,9 +1,13 @@
+import sys
 import unittest
 from datetime import datetime, timezone
 
-import util
 from fishtest.views import login, signup
 from pyramid import testing
+
+import util
+
+sys.stdout = None
 
 
 class Create10UsersTest(unittest.TestCase):

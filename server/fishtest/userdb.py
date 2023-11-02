@@ -52,10 +52,10 @@ class UserDb:
     def authenticate(self, username, password):
         user = self.find(username)
         if not user or user["password"] != password:
-            sys.stderr.write("Invalid login: '{}' '{}'\n".format(username, password))
+            print("Invalid login: '{}' '{}'\n".format(username, password), flush=True)
             return {"error": "Invalid password for user: {}".format(username)}
         if "blocked" in user and user["blocked"]:
-            sys.stderr.write("Blocked login: '{}' '{}'\n".format(username, password))
+            print("Blocked login: '{}' '{}'\n".format(username, password), flush=True)
             return {"error": "Account blocked for user: {}".format(username)}
 
         return {"username": username, "authenticated": True}

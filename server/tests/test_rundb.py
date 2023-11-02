@@ -2,9 +2,13 @@ import sys
 import unittest
 from datetime import datetime, timezone
 
-import util
 from fishtest.api import WORKER_VERSION
 from pymongo import DESCENDING
+
+import util
+
+sys.stdout = None
+
 
 run_id = None
 
@@ -94,8 +98,6 @@ class CreateRunDBTest(unittest.TestCase):
             tests_repo="travis",
             start_time=datetime.now(timezone.utc),
         )
-        print(" ")
-        print(run_id)
         run = self.rundb.get_run(run_id)
         task = {
             "num_games": self.chunk_size,
@@ -105,15 +107,10 @@ class CreateRunDBTest(unittest.TestCase):
         }
         run["tasks"].append(task)
 
-        print(run["tasks"][0])
         self.assertTrue(run["tasks"][0]["active"])
         run["tasks"][0]["active"] = True
         run["tasks"][0]["worker_info"] = self.worker_info
         run["workers"] = run["cores"] = 1
-
-        for run in self.rundb.get_unfinished_runs():
-            if run["args"]["username"] == "travis":
-                print(run["args"])
 
     def test_20_update_task(self):
         run = self.rundb.get_run(run_id)
@@ -185,20 +182,13 @@ class CreateRunDBTest(unittest.TestCase):
         self.assertEqual(run, {"task_alive": False})
 
     def test_30_finish(self):
-        print("run_id: {}".format(run_id))
         run = self.rundb.get_run(run_id)
         run["finished"] = True
         self.rundb.buffer(run, True)
 
-    def test_40_list_LTC(self):
-        finished_runs = self.rundb.get_finished_runs(limit=3, ltc_only=True)[0]
-        for run in finished_runs:
-            print(run["args"]["tc"])
-
     def test_90_delete_runs(self):
         for run in self.rundb.runs.find():
             if run["args"]["username"] == "travis" and "deleted" not in run:
-                print("del ")
                 run["deleted"] = True
                 run["finished"] = True
                 for w in run["tasks"]:

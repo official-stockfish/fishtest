@@ -9,7 +9,10 @@ from datetime import datetime, timezone
 from fishtest.api import WORKER_VERSION, ApiView
 from pyramid.httpexceptions import HTTPUnauthorized
 from pyramid.testing import DummyRequest
+
 from util import get_rundb
+
+sys.stdout = None
 
 
 def cleanup(request):
