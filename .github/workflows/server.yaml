@@ -32,4 +32,4 @@ jobs:
 
       - name: Run server tests
         run: |
-          python -m unittest discover -v -s tests
+          python -m unittest discover -vb -s tests
