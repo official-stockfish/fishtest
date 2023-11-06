@@ -457,6 +457,24 @@ def unzip(blob, save_dir):
     return file_list
 
 
+def convert_book_move_counters(book_file):
+    # converts files with complete FENs, leaving others (incl. converted ones) unchanged
+    epds = []
+    with open(book_file, "r") as file:
+        for fen in file:
+            fields = fen.split()
+            if len(fields) == 6 and fields[4].isdigit() and fields[5].isdigit():
+                fields[4] = f"hmvc {fields[4]};"
+                fields[5] = f"fmvn {fields[5]};"
+                epds.append(" ".join(fields))
+            else:
+                return
+
+    with open(book_file, "w") as file:
+        for epd in epds:
+            file.write(epd + "\n")
+
+
 def clang_props():
     """Parse the output of clang++ -E - -march=native -### and extract the available clang properties"""
     with subprocess.Popen(
@@ -1287,6 +1305,11 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file, clear_binar
         zipball = book + ".zip"
         blob = download_from_github(zipball)
         unzip(blob, testing_dir)
+
+    # convert .epd containing FENs into .epd containing EPDs with move counters
+    # only needed as long as cutechess-cli is the game manager
+    if book.endswith(".epd"):
+        convert_book_move_counters(testing_dir / book)
 
     # Clean up the old networks (keeping the num_bkps most recent)
     num_bkps = 10
