@@ -463,7 +463,7 @@ def convert_book_move_counters(book_file):
     with open(book_file, "r") as file:
         for fen in file:
             fields = fen.split()
-            if len(fields) == 6:
+            if len(fields) == 6 and fields[4].isdigit() and fields[5].isdigit():
                 fields[4] = f"hmvc {fields[4]};"
                 fields[5] = f"fmvn {fields[5]};"
                 epds.append(" ".join(fields))
