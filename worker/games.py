@@ -1444,7 +1444,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file, clear_binar
                     "-draw",
                     "movenumber=34",
                     "movecount=8",
-                    "score=20",
+                    "score=16",
                 ]
                 if run["args"].get("adjudication", True)
                 else []
