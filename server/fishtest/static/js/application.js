@@ -27,18 +27,24 @@ const comparer = (idx, asc) => (a, b) =>
     v1 !== "" && v2 !== "" && !isNaN(v1) && !isNaN(v2)
       ? v1 - v2
       : v1 !== "" && v2 !== "" && !isNaN("0x" + v1) && !isNaN("0x" + v2)
-      ? parseInt(v1, 16) - parseInt(v2, 16)
-      : v1 !== "" &&
-        v2 !== "" &&
-        !isNaN((p1 = padDotVersion(v1))) &&
-        !isNaN((p2 = padDotVersion(v2)))
-      ? p1 - p2
-      : v1 !== "" &&
-        v2 !== "" &&
-        !isNaN(padDotVersion(v1.replace("clang++ ", "").replace("g++ ", ""))) &&
-        !isNaN(padDotVersion(v2.replace("clang++ ", "").replace("g++ ", "")))
-      ? padDotVersionStr(v1).toString().localeCompare(padDotVersionStr(v2))
-      : v1.toString().localeCompare(v2))(
+        ? parseInt(v1, 16) - parseInt(v2, 16)
+        : v1 !== "" &&
+            v2 !== "" &&
+            !isNaN((p1 = padDotVersion(v1))) &&
+            !isNaN((p2 = padDotVersion(v2)))
+          ? p1 - p2
+          : v1 !== "" &&
+              v2 !== "" &&
+              !isNaN(
+                padDotVersion(v1.replace("clang++ ", "").replace("g++ ", "")),
+              ) &&
+              !isNaN(
+                padDotVersion(v2.replace("clang++ ", "").replace("g++ ", "")),
+              )
+            ? padDotVersionStr(v1)
+                .toString()
+                .localeCompare(padDotVersionStr(v2))
+            : v1.toString().localeCompare(v2))(
     getCellValue(asc ? a : b, idx),
     getCellValue(asc ? b : a, idx),
   );
