@@ -131,18 +131,15 @@ async function follow_live(test_id) {
 
     document.getElementById("data").style.visibility = "visible";
 
-    document.getElementById(
-      "commit",
-    ).href = `${items.args.tests_repo}/compare/${items.args.resolved_base}...${items.args.resolved_new}`;
-    document.getElementById(
-      "commit",
-    ).textContent = `${items.args.new_tag} (${items.args.msg_new})`;
+    document.getElementById("commit").href =
+      `${items.args.tests_repo}/compare/${items.args.resolved_base}...${items.args.resolved_new}`;
+    document.getElementById("commit").textContent =
+      `${items.args.new_tag} (${items.args.msg_new})`;
 
     document.getElementById("info").textContent = items.args.info;
 
-    document.getElementById(
-      "username",
-    ).href = `/tests/user/${items.args.username}`;
+    document.getElementById("username").href =
+      `/tests/user/${items.args.username}`;
     document.getElementById("username").textContent = items.args.username;
 
     document.getElementById("tc").textContent = items.args.tc;

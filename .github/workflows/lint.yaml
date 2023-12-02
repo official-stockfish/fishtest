@@ -8,7 +8,7 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.11"]
-        node-version: ["18.x"]
+        node-version: ["20.x"]
 
     steps:
       - uses: actions/checkout@v3
@@ -33,24 +33,28 @@ jobs:
         id: flake8
         continue-on-error: true
         run: |
+          pipx run flake8 --version
           pipx run flake8 --count --statistics --max-line-length=88 --exclude worker/packages .
 
       - name: Run black
         id: black
         continue-on-error: true
         run: |
+          pipx run black --version
           pipx run black --check --exclude="packages" .
 
       - name: Run isort
         id: isort
         continue-on-error: true
         run: |
+          pipx run isort --version
           pipx run isort --check --profile black --skip worker/packages .
 
       - name: Run prettier
         id: prettier
         continue-on-error: true
         run: |
+          prettier --version
           prettier --check "server/fishtest/static/{css/*.css,html/*.html,js/*.js}"
 
       - name: Check linters and formatters status
