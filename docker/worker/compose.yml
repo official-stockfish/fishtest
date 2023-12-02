@@ -1,0 +1,10 @@
+services:
+  fishtest-worker:
+    restart: no
+    build:
+      dockerfile: ./Dockerfile
+    container_name: fishtest-worker
+    image: fishtest-worker
+    environment:
+      - NUM_WORKERS
+      - WORKER_ARGS
