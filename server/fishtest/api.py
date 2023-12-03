@@ -6,7 +6,6 @@ from datetime import datetime, timezone
 
 from fishtest.stats.stat_util import SPRT_elo
 from fishtest.util import worker_name
-from fishtest.vtjson import _validate, lax, union
 from pyramid.httpexceptions import (
     HTTPBadRequest,
     HTTPFound,
@@ -15,6 +14,7 @@ from pyramid.httpexceptions import (
 )
 from pyramid.response import Response
 from pyramid.view import exception_view_config, view_config, view_defaults
+from vtjson import _validate, lax, union
 
 """
 Important note

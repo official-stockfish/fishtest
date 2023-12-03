@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from fishtest.vtjson import _validate
+from vtjson import _validate
 
 schema = {
     "worker_name": str,

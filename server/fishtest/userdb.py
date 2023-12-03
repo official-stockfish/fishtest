@@ -4,8 +4,8 @@ import time
 from datetime import datetime, timezone
 
 from bson.objectid import ObjectId
-from fishtest.vtjson import _validate, email, union, url
 from pymongo import ASCENDING
+from vtjson import _validate, email, union, url
 
 schema = {
     "_id?": ObjectId,

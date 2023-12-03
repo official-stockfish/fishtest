@@ -1,8 +1,8 @@
 from datetime import datetime, timezone
 
 from fishtest.util import hex_print, worker_name
-from fishtest.vtjson import _validate, union
 from pymongo import DESCENDING
+from vtjson import _validate, union
 
 schema = union(
     {

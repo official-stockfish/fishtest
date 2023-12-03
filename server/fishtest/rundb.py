@@ -33,9 +33,9 @@ from fishtest.util import (
     update_residuals,
     worker_name,
 )
-from fishtest.vtjson import _validate, ip_address, number, regex, union, url
 from fishtest.workerdb import WorkerDb
 from pymongo import DESCENDING, MongoClient
+from vtjson import _validate, ip_address, number, regex, union, url
 
 DEBUG = False
 
