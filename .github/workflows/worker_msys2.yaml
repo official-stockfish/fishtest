@@ -27,7 +27,7 @@ jobs:
             mingw-w64-${{ matrix.env }}-python3
             mingw-w64-${{ matrix.env }}-${{ matrix.comp }}
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -37,4 +37,4 @@ jobs:
 
       - name: Run worker tests
         run: |
-          python -m unittest discover -v
+          python -m unittest discover -vb
