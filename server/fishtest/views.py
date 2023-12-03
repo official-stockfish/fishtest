@@ -794,10 +794,11 @@ def validate_form(request):
 
     def strip_message(m):
         lines = m.strip().split("\n")
-        pattern = r"(^|\s)[Bb]ench[ :]+([1-9]\d{5,7})(?!\d)"
-        for i in range(len(lines) - 1, -1, -1):
-            if re.search(pattern, lines[i]):
-                lines[i] = re.sub(pattern, "", lines[i])
+        bench_search = re.compile(r"(^|\s)[Bb]ench[ :]+([1-9]\d{5,7})(?!\d)")
+        for i, line in enumerate(reversed(lines)):
+            new_line, n = bench_search.subn("", line)
+            if n:
+                lines[-i - 1] = new_line
                 break
         s = "\n".join(lines)
         s = re.sub(r"[ \t]+", " ", s)
