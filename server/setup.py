@@ -15,6 +15,7 @@ requires = [
     "awscli",
     "zxcvbn",
     "email_validator",
+    "vtjson",
 ]
 
 setup(
