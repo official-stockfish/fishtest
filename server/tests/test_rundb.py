@@ -36,7 +36,7 @@ class CreateRunDBTest(unittest.TestCase):
                 3,
                 0,
             ],
-            "unique_key": "unique key",
+            "unique_key": "amaya-5a28-4b7d-b27b-d78d97ecf11a",
             "near_github_api_limit": False,
             "modified": True,
             "ARCH": "?",

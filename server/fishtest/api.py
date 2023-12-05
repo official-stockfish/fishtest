@@ -14,7 +14,7 @@ from pyramid.httpexceptions import (
 )
 from pyramid.response import Response
 from pyramid.view import exception_view_config, view_config, view_defaults
-from vtjson import _validate, lax, union
+from vtjson import _validate, compile, intersect, interval, lax, regex
 
 """
 Important note
@@ -30,47 +30,86 @@ on how frequently the main instance flushes its run cache.
 
 WORKER_VERSION = 222
 
+"""
+begin api_schema
+"""
+
+run_id = regex(r"[a-f0-9]{24}", name="run_id")
+uuid = regex(r"[0-9a-zA-z]{2,8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}", name="uuid")
+
+uint = intersect(int, interval(0, ...))
+suint = intersect(int, interval(1, ...))
+ufloat = intersect(float, interval(0.0, ...))
+
+
+def valid_results(R):
+    l, d, w = R["losses"], R["draws"], R["wins"]
+    R = R["pentanomial"]
+    return (
+        l + d + w == 2 * sum(R)
+        and w - l == 2 * R[4] + R[3] - R[1] - 2 * R[0]
+        and R[3] + 2 * R[2] + R[1] >= d >= R[3] + R[1]
+    )
+
+
+def valid_spsa_results(R):
+    return R["wins"] + R["losses"] + R["draws"] == R["num_games"]
+
+
+api_schema = {
+    "password": str,
+    "run_id?": run_id,
+    "task_id?": uint,
+    "pgn?": str,
+    "message?": str,
+    "worker_info": {
+        "uname": str,
+        "architecture": [str, str],
+        "concurrency": suint,
+        "max_memory": suint,
+        "min_threads": suint,
+        "username": str,
+        "version": uint,
+        "python_version": [uint, uint, uint],
+        "gcc_version": [uint, uint, uint],
+        "compiler": {"g++", "clang++"},
+        "unique_key": uuid,
+        "modified": bool,
+        "near_github_api_limit": bool,
+        "ARCH": str,
+        "nps": ufloat,
+    },
+    "spsa?": intersect(
+        {
+            "wins": uint,
+            "losses": uint,
+            "draws": uint,
+            "num_games": uint,
+        },
+        valid_spsa_results,
+    ),
+    "stats?": intersect(
+        {
+            "wins": uint,
+            "losses": uint,
+            "draws": uint,
+            "crashes": uint,
+            "time_losses": uint,
+            "pentanomial": [uint, uint, uint, uint, uint],
+        },
+        valid_results,
+    ),
+}
+
+api_schema = compile(api_schema)
+
+"""
+end api_schema
+"""
+
 
 def validate_request(request):
-    schema = {
-        "password": str,
-        "run_id?": str,
-        "task_id?": int,
-        "pgn?": str,
-        "message?": str,
-        "worker_info": {
-            "uname": str,
-            "architecture": [str, str],
-            "concurrency": int,
-            "max_memory": int,
-            "min_threads": int,
-            "username": str,
-            "version": int,
-            "python_version": [int, int, int],
-            "gcc_version": [int, int, int],
-            "compiler": union("g++", "clang++"),
-            "unique_key": str,
-            "modified": bool,
-            "near_github_api_limit": bool,
-            "ARCH": str,
-            "nps": float,
-        },
-        "spsa?": {
-            "wins": int,
-            "losses": int,
-            "draws": int,
-            "num_games": int,
-        },
-        "stats?": {
-            "wins": int,
-            "losses": int,
-            "draws": int,
-            "crashes": int,
-            "time_losses": int,
-            "pentanomial": [int, int, int, int, int],
-        },
-    }
-    return _validate(schema, request, "request")
+    return _validate(api_schema, request, "request")
 
 
 # Avoids exposing sensitive data about the workers to the client and skips some heavy data.
