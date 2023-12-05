@@ -7,7 +7,7 @@ import unittest
 from datetime import datetime, timezone
 
 from fishtest.api import WORKER_VERSION, ApiView
-from pyramid.httpexceptions import HTTPUnauthorized
+from pyramid.httpexceptions import HTTPBadRequest, HTTPUnauthorized
 from pyramid.testing import DummyRequest
 from util import get_rundb
 
@@ -99,7 +99,7 @@ class TestApi(unittest.TestCase):
         # Set up an API user (a worker)
         self.username = "JoeUserWorker"
         self.password = "secret"
-        self.unique_key = "unique key"
+        self.unique_key = "amaya-5a28-4b7d-b27b-d78d97ecf11a"
         self.remote_addr = "127.0.0.1"
         self.country_code = "US"
         self.concurrency = 7
@@ -123,7 +123,7 @@ class TestApi(unittest.TestCase):
                 0,
             ],
             "compiler": "g++",
-            "unique_key": "unique key",
+            "unique_key": "amaya-5a28-4b7d-b27b-d78d97ecf11a",
             "modified": True,
             "near_github_api_limit": False,
             "ARCH": "?",
@@ -271,8 +271,8 @@ class TestApi(unittest.TestCase):
             "time_losses": 0,
             "pentanomial": [0, 0, d // 2, 0, w // 2],
         }
-        response = ApiView(cleanup(request)).update_task()
-        self.assertFalse(response["task_alive"])
+        with self.assertRaises(HTTPBadRequest):
+            response = ApiView(cleanup(request)).update_task()
 
         request.json_body["stats"] = {
             "wins": w + 2,
@@ -282,27 +282,10 @@ class TestApi(unittest.TestCase):
             "time_losses": 0,
             "pentanomial": [0, 0, d // 2, 0, w // 2 + 1],
         }
-        response = ApiView(cleanup(request)).update_task()
-        self.assertFalse(response["task_alive"])
 
-        response = ApiView(cleanup(request)).update_task()
-        self.assertTrue("info" in response)
-        print(response["info"])
-
-        # revive the task
-        run["tasks"][0]["active"] = True
-        self.rundb.buffer(run, True)
-
-        request.json_body["stats"] = {
-            "wins": w + 2,
-            "draws": d,
-            "losses": 0,
-            "crashes": 0,
-            "time_losses": 0,
-            "pentanomial": [0, 0, d // 2, 0, w // 2 + 1],
-        }
         response = ApiView(cleanup(request)).update_task()
         self.assertTrue(response["task_alive"])
+
         # Go back in time
         request.json_body["stats"] = {
             "wins": w,
@@ -479,7 +462,7 @@ class TestRunFinished(unittest.TestCase):
         # Set up an API user (a worker)
         self.username = "JoeUserWorker"
         self.password = "secret"
-        self.unique_key = "unique key"
+        self.unique_key = "amaya-5a28-4b7d-b27b-d78d97ecf11a"
         self.remote_addr = "127.0.0.1"
         self.concurrency = 7
 
@@ -502,7 +485,7 @@ class TestRunFinished(unittest.TestCase):
                 0,
             ],
             "compiler": "g++",
-            "unique_key": "unique key",
+            "unique_key": "amaya-5a28-4b7d-b27b-d78d97ecf11a",
             "near_github_api_limit": False,
             "modified": True,
             "ARCH": "?",
@@ -610,8 +593,8 @@ class TestRunFinished(unittest.TestCase):
         self.assertEqual(task_start2, task_size1)
 
         # Finish task 2 of 2
-        n_wins = task_size2 // 5
-        n_losses = task_size2 // 5
+        n_wins = 2 * ((task_size2 // 5) // 2)
+        n_losses = 2 * ((task_size2 // 5) // 2)
         n_draws = task_size2 - n_wins - n_losses
 
         request = self.correct_password_request(
