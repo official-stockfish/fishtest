@@ -169,7 +169,7 @@
                       % if len(request.userdb.get_pending()) > 0:
                         <a href="/user_management" class="links-link rounded text-danger">Users (${len(request.userdb.get_pending())})</a>
                       % else:
-                        <a href="/user_management" class="links-link rounded">User</a>
+                        <a href="/user_management" class="links-link rounded">Users</a>
                       % endif
                     </li>
                     <li>

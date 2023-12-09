@@ -19,9 +19,9 @@
   <tbody>
     % for user in pending_users:
       <tr>
-        <td style="width:15%"><a href="/user/${user['username']}">${user['username']}</a></td>
-        <td style="width:15%">${user['registration_time'].strftime("%y-%m-%d %H:%M:%S") if 'registration_time' in user else 'Unknown'}</td>
-        <td style="width:70%">${user['email']}</td>
+        <td style="width:20%"><a href="/user/${user['username']}">${user['username']}</a></td>
+        <td style="width:20%">${user['registration_time'].strftime("%y-%m-%d %H:%M:%S") if 'registration_time' in user else 'Unknown'}</td>
+        <td style="width:60%">${user['email']}</td>
       </tr>
     % endfor
     % if len(pending_users) == 0:
@@ -45,9 +45,9 @@
   <tbody>
     % for user in blocked_users:
       <tr>
-        <td style="width:15%"><a href="/user/${user['username']}">${user['username']}</a></td>
-        <td style="width:15%">${user['registration_time'].strftime("%y-%m-%d %H:%M:%S") if 'registration_time' in user else 'Unknown'}</td>
-        <td style="width:70%">${user['email']}</td>
+        <td style="width:20%"><a href="/user/${user['username']}">${user['username']}</a></td>
+        <td style="width:20%">${user['registration_time'].strftime("%y-%m-%d %H:%M:%S") if 'registration_time' in user else 'Unknown'}</td>
+        <td style="width:60%">${user['email']}</td>
       </tr>
     % endfor
     % if len(blocked_users) == 0:
@@ -71,8 +71,8 @@
   <tbody>
     % for user in idle_users:
       <tr>
-        <td style="width:15%"><a href="/user/${user['username']}">${user['username']}</a></td>
-        <td style="width:15%">${user['registration_time'].strftime("%y-%m-%d %H:%M:%S") if 'registration_time' in user else 'Unknown'}</td>
+        <td style="width:20%"><a href="/user/${user['username']}">${user['username']}</a></td>
+        <td style="width:20%">${user['registration_time'].strftime("%y-%m-%d %H:%M:%S") if 'registration_time' in user else 'Unknown'}</td>
         <td style="width:60%">${user['email']}</td>
       </tr>
     % endfor
