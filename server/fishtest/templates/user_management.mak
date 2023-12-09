@@ -11,9 +11,9 @@
 <table class="table table-striped table-sm">
   <thead>
     <tr>
-      <th>Username</th>
-      <th>Registration Time</th>
-      <th>Email</th>
+      <th style="width:20%">Username</th>
+      <th style="width:20%">Registration Time</th>
+      <th style="width:60%">Email</th>
     </tr>
   </thead>
   <tbody>
@@ -37,9 +37,9 @@
 <table class="table table-striped table-sm">
   <thead>
     <tr>
-      <th>Username</th>
-      <th>Registration Time</th>
-      <th>Email</th>
+      <th style="width:20%">Username</th>
+      <th style="width:20%">Registration Time</th>
+      <th style="width:60%">Email</th>
     </tr>
   </thead>
   <tbody>
@@ -63,9 +63,9 @@
 <table class="table table-striped table-sm">
   <thead>
     <tr>
-      <th>Username</th>
-      <th>Registration Time</th>
-      <th>Email</th>
+      <th style="width:20%">Username</th>
+      <th style="width:20%">Registration Time</th>
+      <th style="width:60%">Email</th>
     </tr>
   </thead>
   <tbody>
