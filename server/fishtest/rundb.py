@@ -1111,7 +1111,7 @@ After fixing the issues you can unblock the worker at
             if need_base + need_tt > max_memory:
                 continue
 
-            # Github API limit...
+            # GitHub API limit...
             if near_github_api_limit:
                 have_binary = (
                     unique_key in self.worker_runs

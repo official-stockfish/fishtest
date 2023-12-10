@@ -76,7 +76,7 @@
             class="btn btn-primary bg-light-primary border-0 mb-2"
             target="_blank" rel="noopener"
           >
-            View on Github
+            View on GitHub
           </a>
 
           <a
