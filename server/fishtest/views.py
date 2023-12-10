@@ -621,6 +621,7 @@ def user(request):
                 + user_name
             )
             request.userdb.last_blocked_time = 0
+            request.userdb.save_user(user_data)
             request.actiondb.block_user(
                 username=userid,
                 user=user_name,
@@ -631,12 +632,12 @@ def user(request):
             request.userdb.last_pending_time = 0
             if request.POST["pending"] == "0":
                 user_data["pending"] = False
+                request.userdb.save_user(user_data)
                 request.actiondb.accept_user(
                     username=userid,
                     user=user_name,
                     message="accepted",
                 )
-                request.userdb.save_user(user_data)
             else:
                 request.userdb.remove_user(user_data)
         return home(request)
