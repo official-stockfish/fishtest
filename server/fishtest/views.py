@@ -612,34 +612,33 @@ def user(request):
                 else:
                     user_data["email"] = validated_email
                     request.session.flash("Success! Email updated")
+            request.userdb.save_user(user_data)
+        elif "blocked" in request.POST and request.POST["blocked"].isdigit():
+            user_data["blocked"] = bool(int(request.POST["blocked"]))
+            request.session.flash(
+                ("Blocked" if user_data["blocked"] else "Unblocked")
+                + " user "
+                + user_name
+            )
+            request.userdb.last_blocked_time = 0
+            request.actiondb.block_user(
+                username=userid,
+                user=user_name,
+                message="blocked" if user_data["blocked"] else "unblocked",
+            )
 
-        else:
-            if "blocked" in request.POST and request.POST["blocked"].isdigit():
-                user_data["blocked"] = bool(int(request.POST["blocked"]))
-                request.session.flash(
-                    ("Blocked" if user_data["blocked"] else "Unblocked")
-                    + " user "
-                    + user_name
-                )
-                request.actiondb.block_user(
-                    username=userid,
-                    user=user_name,
-                    message="blocked" if user_data["blocked"] else "unblocked",
-                )
-
-            elif (
-                "pending" in request.POST
-                and user_data["pending"]
-                and request.POST["pending"] == "0"
-            ):
+        elif "pending" in request.POST and user_data["pending"]:
+            request.userdb.last_pending_time = 0
+            if request.POST["pending"] == "0":
                 user_data["pending"] = False
-                request.userdb.last_pending_time = 0
                 request.actiondb.accept_user(
                     username=userid,
                     user=user_name,
                     message="accepted",
                 )
-        request.userdb.save_user(user_data)
+                request.userdb.save_user(user_data)
+            else:
+                request.userdb.remove_user(user_data)
         return home(request)
     userc = request.userdb.user_cache.find_one({"username": user_name})
     hours = int(userc["cpu_hours"]) if userc is not None else 0

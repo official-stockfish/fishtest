@@ -150,6 +150,17 @@ class UserDb:
         self.last_blocked_time = 0
         self.clear_cache()
 
+    def remove_user(self, user):
+        result = self.users.delete_one({"_id": user["_id"]})
+        if result.deleted_count > 0:
+            # User successfully deleted
+            self.last_pending_time = 0
+            self.clear_cache()
+            return True
+        else:
+            # User not found
+            return False
+
     def get_machine_limit(self, username):
         user = self.get_user(username)
         if user and "machine_limit" in user:

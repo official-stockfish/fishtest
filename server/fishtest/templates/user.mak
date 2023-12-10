@@ -33,6 +33,11 @@
   </header>
 
   <form action="${request.url}" method="POST">
+    <input
+      type="hidden"
+      name="user"
+      value="${user['username']}"
+    >
     % if profile:
       <div class="form-floating mb-3">
         <input
@@ -82,22 +87,29 @@
           <i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i>
         </span>
       </div>
+    <button type="submit" class="btn btn-primary w-100">Submit</button>
     % elif 'pending' in user and user['pending']:
-      <div class="mb-3 form-check">
-        <label class="form-check-label" for="pending">Pending</label>
-        <input
-          type="hidden"
-          value="0"
-          name="pending"
-        >
-        <input
-          type="checkbox"
-          class="form-check-input"
-          id="pending"
-          name="pending"
-          value="1"
-          checked
-        />
+      <div class="alert alert-dark mb-3">
+        <label class="mb-2 h5">User Approval:</label>
+        <div class="w-100 d-flex justify-content-between">
+          <button
+            id="accept_user"
+            name="pending"
+            value="0"
+            type="submit"
+            class="btn btn-success"
+            style="width: 48%;"
+          >Accept</button>
+
+          <button
+            id="reject_user"
+            name="pending"
+            value="1"            
+            type="submit"
+            class="btn btn-danger"
+            style="width: 48%;"
+          >Reject</button>
+        </div>
       </div>
     % else:
       <%
@@ -120,11 +132,8 @@
           ${blocked_checked}
         />
       </div>
+      <button type="submit" class="btn btn-primary w-100">Submit</button>
     % endif
-
-    <button type="submit" class="btn btn-primary w-100">Submit</button>
-
-    <input type="hidden" name="user" value="${user['username']}" />
   </form>
 </div>
 
