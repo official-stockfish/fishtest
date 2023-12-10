@@ -114,25 +114,22 @@
     % else:
       <%
         blocked = user['blocked'] if 'blocked' in user else False
-        blocked_checked = 'checked' if blocked else ''
       %>
-      <div class="mb-3 form-check">
-        <label class="form-check-label" for="blocked">Blocked</label>
-        <input
-          type="hidden"
-          value="0"
+      % if blocked:
+        <button
+          class="btn btn-primary w-100"
           name="blocked"
-        >
-        <input
-          type="checkbox"
-          class="form-check-input"
-          id="blocked"
+          value="0"
+          type="submit"
+        >Unblock</button>
+      % else:
+        <button
+          class="btn btn-primary w-100"
           name="blocked"
           value="1"
-          ${blocked_checked}
-        />
-      </div>
-      <button type="submit" class="btn btn-primary w-100">Submit</button>
+          type="submit"
+        >Block</button>
+      % endif
     % endif
   </form>
 </div>
