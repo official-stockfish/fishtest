@@ -83,7 +83,7 @@ schema = union(
         "action": "accept_user",
         "username": str,
         "user": str,
-        "message": "accepted",
+        "message": union("pending", "accepted"),
     },
     {
         "action": "block_worker",

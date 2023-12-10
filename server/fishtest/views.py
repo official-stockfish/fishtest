@@ -407,6 +407,9 @@ def signup(request):
             "This is usually quick but sometimes takes a few hours. "
             "Thank you for contributing!"
         )
+        request.actiondb.accept_user(
+            username=signup_username, user=signup_username, message="pending"
+        )
         return HTTPFound(location=request.route_url("login"))
     return {}
 
