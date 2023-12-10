@@ -703,7 +703,7 @@ def get_valid_books():
         "https://api.github.com/repos/official-stockfish/books/git/trees/master?recursive=1"
     ).json()
     books_list = (
-        f"{Path(item['path']).stem}"
+        str(Path(item["path"]).stem)
         for item in response["tree"]
         if item["type"] == "blob" and item["path"].endswith((".epd.zip", ".pgn.zip"))
     )
