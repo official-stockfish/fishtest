@@ -3,9 +3,8 @@ services:
     restart: no
     build:
       dockerfile: ./Dockerfile
-      args:
-        - NUM_WORKERS=$NUM_WORKERS
-        - WORKER_ARGS=$WORKER_ARGS
-
     container_name: fishtest-worker
     image: fishtest-worker
+    environment:
+      - NUM_WORKERS
+      - WORKER_ARGS

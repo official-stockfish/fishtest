@@ -1,8 +1,5 @@
 FROM ubuntu:23.10
 
-ARG NUM_WORKERS
-ARG WORKER_ARGS
-
 RUN apt update && apt upgrade -y && apt install -y \
   git vim python3 python3-distutils make g++ # clang llvm
 
