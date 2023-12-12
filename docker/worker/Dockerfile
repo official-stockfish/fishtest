@@ -13,4 +13,4 @@ USER worker
 ENV NUM_WORKERS ${NUM_WORKERS}
 ENV WORKER_ARGS ${WORKER_ARGS}
 
-CMD ./run_workers.sh
+CMD ["./run_workers.sh"]
