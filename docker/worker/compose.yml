@@ -3,8 +3,11 @@ services:
     restart: no
     build:
       dockerfile: ./Dockerfile
+    stop_grace_period: 1m30s
     container_name: fishtest-worker
     image: fishtest-worker
+    stdin_open: true # docker run -i
+    tty: true        # docker run -t
     environment:
       - NUM_WORKERS
       - WORKER_ARGS
