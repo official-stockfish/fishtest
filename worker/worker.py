@@ -55,7 +55,7 @@ from updater import update
 # Several packages are called "expression".
 # So we make sure to use the locally installed one.
 
-WORKER_VERSION = 223
+WORKER_VERSION = 224
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -425,7 +425,7 @@ def verify_required_cutechess(cutechess_path):
             for line in iter(p.stdout.readline, ""):
                 m = pattern.search(line)
                 if m:
-                    print("Found: ", line.strip())
+                    print("Found", line.strip())
                     major = int(m.group(1))
                     minor = int(m.group(2))
                     patch = int(m.group(3))

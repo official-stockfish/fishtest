@@ -244,7 +244,9 @@ def required_net(engine):
         ) as p:
             for line in iter(p.stdout.readline, ""):
                 if "EvalFile" in line:
-                    net = line.split(" ")[6].strip()
+                    m = re.search("nn-[a-f0-9]{12}.nnue", line)
+                    if m:
+                        net = m.group(0)
     except (OSError, subprocess.SubprocessError) as e:
         raise WorkerException(
             "Unable to obtain name for required net. Error: {}".format(str(e))
@@ -258,31 +260,29 @@ def required_net(engine):
     return net
 
 
-def required_net_from_source():
-    """Parse evaluate.h and ucioption.cpp to find default net"""
-    net = None
-
+def required_nets_from_source():
+    """Parse evaluate.h and ucioption.cpp to find default nets"""
+    nets = []
+    pattern = re.compile("nn-[a-f0-9]{12}.nnue")
     # NNUE code after binary embedding (Aug 2020)
     with open("evaluate.h", "r") as srcfile:
         for line in srcfile:
             if "EvalFileDefaultName" in line and "define" in line:
-                p = re.compile("nn-[a-z0-9]{12}.nnue")
-                m = p.search(line)
+                m = pattern.search(line)
                 if m:
-                    net = m.group(0)
-    if net:
-        return net
+                    nets.append(m.group(0))
+    if nets:
+        return nets
 
     # NNUE code before binary embedding (Aug 2020)
     with open("ucioption.cpp", "r") as srcfile:
         for line in srcfile:
             if "EvalFile" in line and "Option" in line:
-                p = re.compile("nn-[a-z0-9]{12}.nnue")
-                m = p.search(line)
+                m = pattern.search(line)
                 if m:
-                    net = m.group(0)
+                    nets.append(m.group(0))
 
-    return net
+    return nets
 
 
 def download_net(remote, testing_dir, net):
@@ -438,7 +438,7 @@ def download_from_github(
     try:
         blob = download_from_github_raw(item, owner=owner, repo=repo, branch=branch)
     except:
-        print("Downloading {} failed. Trying the github api.".format(item))
+        print("Downloading {} failed. Trying the GitHub api.".format(item))
         try:
             blob = download_from_github_api(item, owner=owner, repo=repo, branch=branch)
         except:
@@ -674,9 +674,8 @@ def setup_engine(
         prefix = os.path.commonprefix([n.filename for n in file_list])
         os.chdir(tmp_dir / prefix / "src")
 
-        net = required_net_from_source()
-        if net:
-            print("Build uses default net: ", net)
+        for net in required_nets_from_source():
+            print("Build uses default net:", net)
             establish_validated_net(remote, testing_dir, net)
             shutil.copyfile(testing_dir / net, net)
 
@@ -1334,7 +1333,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file, clear_binar
     if net_new:
         new_options = new_options + ["option.EvalFile={}".format(net_new)]
 
-    for net in [net_base, net_new]:
+    for net in (net_base, net_new):
         if net:
             establish_validated_net(remote, testing_dir, net)
 
