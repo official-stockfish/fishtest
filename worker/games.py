@@ -309,6 +309,8 @@ def establish_validated_net(remote, testing_dir, net):
                         "Failed to validate the network: {}".format(net)
                     )
                 break
+            except FatalException:
+                raise
             except WorkerException:
                 if attempt > 5:
                     raise
@@ -437,12 +439,14 @@ def download_from_github(
 ):
     try:
         blob = download_from_github_raw(item, owner=owner, repo=repo, branch=branch)
-    except:
-        print("Downloading {} failed. Trying the GitHub api.".format(item))
+    except FatalException:
+        raise
+    except Exception as e:
+        print(f"Downloading {item} failed: {str(e)}. Trying the GitHub api.")
         try:
             blob = download_from_github_api(item, owner=owner, repo=repo, branch=branch)
-        except:
-            raise WorkerException("Unable to download {}".format(item))
+        except Exception as e:
+            raise WorkerException(f"Unable to download {item}", e=e)
     return blob
 
 
@@ -699,11 +703,22 @@ def setup_engine(
             cmd,
             shell=True,
             env=env,
+            stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             universal_newlines=True,
             bufsize=1,
             close_fds=not IS_WINDOWS,
         ) as p:
+            try:
+                for out in p.stdout:
+                    print(out.strip())
+            except Exception as e:
+                if not IS_WINDOWS:
+                    p.send_signal(signal.SIGINT)
+                raise WorkerException(
+                    f"Executing {cmd} raised Exception: {e.__class__.__name__}: {str(e)}",
+                    e=e,
+                )
             errors = p.stderr.readlines()
         if p.returncode:
             raise WorkerException("Executing {} failed. Error: {}".format(cmd, errors))
