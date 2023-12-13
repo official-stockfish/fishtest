@@ -28,7 +28,7 @@ db directly. However this information may be slightly outdated, depending
 on how frequently the main instance flushes its run cache.
 """
 
-WORKER_VERSION = 223
+WORKER_VERSION = 224
 
 """
 begin api_schema
