@@ -699,11 +699,21 @@ def setup_engine(
             cmd,
             shell=True,
             env=env,
+            stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             universal_newlines=True,
             bufsize=1,
             close_fds=not IS_WINDOWS,
         ) as p:
+            try:
+                for out in p.stdout:
+                    print(out.strip())
+            except Exception as e:
+                p.send_signal(signal.SIGINT)
+                raise FatalException(
+                    f"Executing {cmd} raised Exception: {e.__class__.__name__}: {str(e)}",
+                    e=e,
+                )
             errors = p.stderr.readlines()
         if p.returncode:
             raise WorkerException("Executing {} failed. Error: {}".format(cmd, errors))
