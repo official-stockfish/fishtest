@@ -128,15 +128,9 @@ document.addEventListener("DOMContentLoaded", () => {
     "content"
   ];
 
-  document.getElementById("logout")?.addEventListener("click", async (e) => {
+  document.getElementById("logout")?.addEventListener("click", (e) => {
     e.preventDefault();
-    await fetch("/logout", {
-      method: "POST",
-      headers: {
-        "X-CSRF-Token": csrfToken,
-      },
-    });
-    window.location = "/";
+    log_out();
   });
 
   document.querySelectorAll("form[method='POST']")?.forEach((form) => {
@@ -256,29 +250,51 @@ function async_sleep(ms) {
   });
 }
 
+async function log_out_() {
+  const csrfToken = document.querySelector("meta[name='csrf-token']")[
+    "content"
+  ];
+
+  await fetch("/logout", {
+    method: "POST",
+    headers: {
+      "X-CSRF-Token": csrfToken,
+    },
+  });
+  window.location = "/";
+}
+
+function log_out() {
+  broadcast("log_out_");
+}
+
 // Execute a function in all connected tabs.
 // See notifications.js for a usage example.
 
 const fishtest_broadcast_key = "fishtest_broadcast";
-let broadcast_dispatch = {};
+let broadcast_dispatch = {
+  log_out_: log_out_,
+};
 
 window.addEventListener("storage", (event) => {
   if (event.key == fishtest_broadcast_key) {
     const cmd = JSON.parse(event.newValue);
     const cmd_function = broadcast_dispatch[cmd["cmd"]];
     if (cmd_function) {
-      cmd_function(cmd["arg"]);
+      if (cmd["arg"]) cmd_function(cmd["arg"]);
+      else cmd_function();
     }
   }
 });
 
 function broadcast(cmd, arg) {
   const cmd_function = broadcast_dispatch[cmd];
-  cmd_function(arg);
   localStorage.setItem(
     fishtest_broadcast_key,
     JSON.stringify({ cmd: cmd, arg: arg, rnd: Math.random() }),
   );
+  if (arg) cmd_function(arg);
+  else cmd_function();
 }
 
 // serializing objects
