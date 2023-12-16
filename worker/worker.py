@@ -882,7 +882,13 @@ def setup_parameters(worker_dir):
 
 
 def on_sigint(current_state, signal, frame):
-    current_state["alive"] = False
+    if not IS_WINDOWS and current_state["alive"]:  # avoid recursion
+        current_state["alive"] = False
+        pgid = os.getpgid(0)
+        os.killpg(pgid, signal)
+        return  # return to avoid race since the signal is also delivered to self
+    else:
+        current_state["alive"] = False
     raise FatalException("Terminated by signal {}".format(str_signal(signal)))
 
 
@@ -1495,6 +1501,21 @@ def worker():
         return 1
 
     print(LOGO)
+
+    if not IS_WINDOWS and not sys.stdout.isatty():
+        # Try to make sure the worker has its own process group so that we can easily kill
+        # all subprocesses.
+        # We assume that if it is started in a shell then it is already in its own group.
+        pid = os.getpid()
+        try:
+            os.setpgid(0, pid)
+        except Exception as e:
+            print(
+                "Unable to move the worker to its own group:",
+                e,
+                sep="",
+                file=sys.stderr,
+            )
 
     worker_dir = Path(__file__).resolve().parent
     print("Worker started in {} ... (PID={})".format(worker_dir, os.getpid()))

@@ -437,12 +437,14 @@ def download_from_github(
 ):
     try:
         blob = download_from_github_raw(item, owner=owner, repo=repo, branch=branch)
-    except:
-        print("Downloading {} failed. Trying the GitHub api.".format(item))
+    except FatalException as e:
+        raise (e)
+    except Exception as e:
+        print(f"Downloading {item} failed: {str(e)}. Trying the GitHub api.")
         try:
             blob = download_from_github_api(item, owner=owner, repo=repo, branch=branch)
-        except:
-            raise WorkerException("Unable to download {}".format(item))
+        except Exception as e:
+            raise WorkerException(f"Unable to download {item}", e=e)
     return blob
 
 
