@@ -1502,13 +1502,16 @@ def worker():
 
     print(LOGO)
 
-    if not IS_WINDOWS and not sys.stdout.isatty():
+    if not IS_WINDOWS:
         # Try to make sure the worker has its own process group so that we can easily kill
         # all subprocesses.
-        # We assume that if it is started in a shell then it is already in its own group.
+
+        print(f"Before: PID={os.getpid()} PGID={os.getpgid(0)}")
+        
         pid = os.getpid()
         try:
             os.setpgid(0, pid)
+            print(f"After: PID={os.getpid()} PGID={os.getpgid(0)}")
         except Exception as e:
             print(
                 "Unable to move the worker to its own group:",
