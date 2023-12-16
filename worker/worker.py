@@ -1506,12 +1506,12 @@ def worker():
         # Try to make sure the worker has its own process group so that we can easily kill
         # all subprocesses.
 
-        print(f"Before: PID={os.getpid()} PGID={os.getpgid(0)}")
+        print(f"Before: PID={os.getpid()} PPID={os.getppid()} PGID={os.getpgid(0)}")
         
         pid = os.getpid()
         try:
             os.setpgid(0, pid)
-            print(f"After: PID={os.getpid()} PGID={os.getpgid(0)}")
+            print(f"After: PID={os.getpid()} PPID={os.getppid()} PGID={os.getpgid(0)}")
         except Exception as e:
             print(
                 "Unable to move the worker to its own group:",
