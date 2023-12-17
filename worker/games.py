@@ -703,6 +703,7 @@ def setup_engine(
             cmd,
             shell=True,
             env=env,
+            start_new_session=False if IS_WINDOWS else True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             universal_newlines=True,
@@ -714,7 +715,7 @@ def setup_engine(
                     print(out.strip())
             except Exception as e:
                 if not IS_WINDOWS:
-                    p.send_signal(signal.SIGINT)
+                    os.killpg(p.pid, signal.SIGINT)
                 raise WorkerException(
                     f"Executing {cmd} raised Exception: {e.__class__.__name__}: {str(e)}",
                     e=e,
