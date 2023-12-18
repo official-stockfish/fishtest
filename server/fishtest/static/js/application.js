@@ -49,6 +49,46 @@ const comparer = (idx, asc) => (a, b) =>
     getCellValue(asc ? b : a, idx),
   );
 
+function filterTable(inputId, tableId, originalRows) {
+  const input = document.getElementById(inputId).value.toLowerCase();
+  const table = document.getElementById(tableId);
+  const tbody = table.querySelector("tbody");
+  let noDataRow = table.querySelector(".no-data");
+
+  // Clear the table before filtering
+  while (tbody.firstChild) {
+    tbody.removeChild(tbody.firstChild);
+  }
+
+  let filteredRows = 0;
+
+  originalRows.forEach((row) => {
+    const cells = Array.from(row.querySelectorAll("td"));
+    const found = cells.some((cell) => {
+      const cellText = cell.textContent || cell.innerText;
+      return cellText.toLowerCase().indexOf(input) > -1;
+    });
+
+    if (found) {
+      tbody.appendChild(row.cloneNode(true));
+      filteredRows++;
+    }
+  });
+
+  if (filteredRows === 0 && input !== "") {
+    // Create the no-data row dynamically if it doesn't exist
+    if (!noDataRow) {
+      noDataRow = document.createElement("tr");
+      noDataRow.classList.add("no-data");
+      const cell = document.createElement("td");
+      cell.setAttribute("colspan", "20");
+      cell.textContent = "No matching data found";
+      noDataRow.appendChild(cell);
+    }
+    tbody.appendChild(noDataRow);
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("click", (e) => {
     const { target } = e;

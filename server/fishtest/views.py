@@ -655,14 +655,20 @@ def user(request):
 def contributors(request):
     users_list = list(request.userdb.user_cache.find())
     users_list.sort(key=lambda k: k["cpu_hours"], reverse=True)
-    return {"users": users_list}
+    return {
+        "users": users_list,
+        "approver": request.has_permission("approve_run"),
+    }
 
 
 @view_config(route_name="contributors_monthly", renderer="contributors.mak")
 def contributors_monthly(request):
     users_list = list(request.userdb.top_month.find())
     users_list.sort(key=lambda k: k["cpu_hours"], reverse=True)
-    return {"users": users_list}
+    return {
+        "users": users_list,
+        "approver": request.has_permission("approve_run"),
+    }
 
 
 def get_master_info(url):

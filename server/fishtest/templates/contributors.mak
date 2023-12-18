@@ -8,6 +8,22 @@
   document.title = 'Contributors${" - Top Month" if "monthly" in request.url else ""} | Stockfish Testing';
 </script>
 
+
+<script>
+  (async () => {
+    await DOM_loaded();
+    const originalTable = document
+      .getElementById("contributors_table")
+      .cloneNode(true);
+    const originalRows = Array.from(originalTable.querySelectorAll("tbody tr"));
+
+    const searchInput = document.getElementById("search_contributors");
+    searchInput.addEventListener("input", () => {
+      filterTable("search_contributors", "contributors_table", originalRows);
+    });
+  })();
+</script>
+
 <h2>
   Contributors
   % if 'monthly' in request.url:
@@ -83,8 +99,20 @@
   </div>
 </div>
 
+<div class="row g-3 mb-1">
+  <div class="col-12 col-md-auto">
+    <label class="form-label">Search</label>
+    <input
+      id="search_contributors"
+      class="form-control"
+      placeholder="Search some text"
+      type="text"
+    >
+  </div>
+</div>
+
 <div class="table-responsive-lg">
-  <table class="table table-striped table-sm">
+  <table id="contributors_table" class="table table-striped table-sm">
     <thead class="sticky-top">
       <tr>
         <th>Username</th>
@@ -99,7 +127,15 @@
     <tbody>
       % for user in users:
         <tr>
-          <td>${user['username']}</td>
+          <td>
+          % if approver:
+            <a href="/user/${user['username']}">
+              ${user['username']}
+            </a>
+          % else:
+          ${user['username']}
+          % endif
+          </td>
           <td data-diff="${user['diff']}" class="text-end">${user['str_last_updated']}</td>
           <td class="text-end">${int(user['games_per_hour'])}</td>
           <td class="text-end">${int(user['cpu_hours'])}</td>
