@@ -30,7 +30,7 @@
       <td>
     % endif
     % if approver and task['worker_info']['username'] != "Unknown_worker":
-      <a href="/user/${task['worker_info']['username']}">
+      <a href="/workers/${worker_name(task['worker_info'], short=True)}">
         ${worker_name(task['worker_info'])}
       </a>
     % elif 'worker_info' in task:
