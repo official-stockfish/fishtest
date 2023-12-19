@@ -12,18 +12,19 @@
 
 % if toggle is None:
   <script>
-    document.title = '${username + " - " if username else ""}Finished Tests${title} - page ${page_idx+1} | Stockfish Testing';
+    document.title =
+      '${username + " - " if username else ""}Finished Tests${title} - page ${page_idx+1} | Stockfish Testing';
   </script>
 % endif
 
 % if toggle:
   <script>
-    function toggle_${toggle}() {
+    function toggle${toggle.capitalize()}() {
       const button = document.getElementById("${toggle}-button");
       const active = button.textContent.trim() === "Hide";
       button.textContent = active ? "Show" : "Hide";
       document.cookie =
-        "${cookie_name}" + "=" + button.textContent.trim() + ";max-age=${60 * 60 * 24 * 365 * 10};SameSite=Lax;";
+        "${cookie_name}" + "=" + button.textContent.trim() + "; max-age=${60 * 60 * 24 * 365 * 10}; SameSite=Lax";
     }
   </script>
 % endif
@@ -32,7 +33,7 @@
 % if toggle:
   <a id="${toggle}-button" class="btn btn-sm btn-light border"
      data-bs-toggle="collapse" href="#${toggle}" role="button" aria-expanded="false"
-     aria-controls="${toggle}" onclick="toggle_${toggle}()">
+     aria-controls="${toggle}" onclick="toggle${toggle.capitalize()}()">
   ${'Hide' if get_cookie(request, cookie_name)=='Hide' else 'Show'}
   </a>
 % endif
@@ -71,7 +72,7 @@
                       action="/tests/delete"
                       method="POST"
                       style="display: inline;"
-                      onsubmit="handle_stop_delete_button('${run['_id']}'); return true;"
+                      onsubmit="handleStopDeleteButton('${run['_id']}'); return true;"
                     >
                       <input type="hidden" name="csrf_token" value="${request.session.get_csrf_token()}">
                       <input type="hidden" name="run-id" value="${run['_id']}">
@@ -94,10 +95,10 @@
             </td>
             % if not run["finished"]:
               <td class="run-notification" style="width:3em;text-align:center;">
-                <div id=notification_${run['_id']} class='notifications' onclick='handle_notification(this)' style='display:inline-block;cursor:pointer;'>
+                <div id=notification_${run['_id']} class='notifications' onclick='handleNotification(this)' style='display:inline-block;cursor:pointer;'>
                 </div>
                 <script>
-                  set_notification_status_("${run['_id']}");   // no broadcast since this is at initialization
+                  setNotificationStatus_("${run['_id']}");   // no broadcast since this is at initialization
                 </script>
               </td>
             % endif

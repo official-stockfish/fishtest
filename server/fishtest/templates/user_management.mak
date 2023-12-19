@@ -1,7 +1,7 @@
 <%inherit file="base.mak"/>
 
 <script>
-  document.title = 'User Management | Stockfish Testing';
+  document.title = "User Management | Stockfish Testing";
 </script>
 
 <h2>User Management</h2>

@@ -1,7 +1,7 @@
 <%inherit file="base.mak"/>
 
 <script>
-  document.title = 'Neural Network Repository | Stockfish Testing';
+  document.title = "Neural Network Repository | Stockfish Testing";
 </script>
 
 <h2>Neural Network Repository</h2>
@@ -110,9 +110,9 @@
 <script>
   document
     .getElementById("search_nn")
-    .addEventListener("submit", function (e) {
-      const master_only = document.getElementById("master_only");
+    .addEventListener("submit", () => {
+      const masterOnly = document.getElementById("master_only");
       document.cookie =
-        "master_only=" + master_only.checked + ";max-age=${60 * 60 * 24 * 365 * 10};SameSite=Lax;";
+        "master_only" + "=" + masterOnly.checked + "; max-age=${60 * 60 * 24 * 365 * 10}; SameSite=Lax";
     });
 </script>

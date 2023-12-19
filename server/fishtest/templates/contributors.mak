@@ -5,21 +5,22 @@
 %>
 
 <script>
-  document.title = 'Contributors${" - Top Month" if "monthly" in request.url else ""} | Stockfish Testing';
+  document.title =
+    'Contributors${" - Top Month" if "monthly" in request.url else ""} | Stockfish Testing';
 </script>
 
 
 <script>
   (async () => {
-    await DOM_loaded();
+    await DOMContentLoaded();
     const originalTable = document
       .getElementById("contributors_table")
       .cloneNode(true);
     const originalRows = Array.from(originalTable.querySelectorAll("tbody tr"));
 
     const searchInput = document.getElementById("search_contributors");
-    searchInput.addEventListener("input", () => {
-      filterTable("search_contributors", "contributors_table", originalRows);
+    searchInput.addEventListener("input", (e) => {
+      filterTable(e.target.value, "contributors_table", originalRows);
     });
   })();
 </script>
@@ -64,7 +65,7 @@
       </div>
     </div>
   </div>
-  
+
   <div class="col-6 col-sm">
     <div class="card card-lg-sm text-center">
       <div class="card-header text-nowrap" title="CPU years">CPU years</div>

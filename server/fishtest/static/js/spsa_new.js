@@ -68,7 +68,7 @@ function deepcopy(o) {
   return JSON.parse(JSON.stringify(o));
 }
 
-function spsa_compute(spsa_setup) {
+function spsaCompute(spsa_setup) {
   const C = 347.43558552260146;
   let s = deepcopy(spsa_setup);
   const chi2 = chi2_95(s.num_params);
@@ -98,7 +98,7 @@ control. The algorithm is very naive. It uses interpolation for
 a few data points valid for the book "UHO_4060_v3.epd".
 */
 
-function tc_to_seconds(tc) {
+function tcToSeconds(tc) {
   /*
   Convert cutechess-cli like tc time[/moves][+inc] to seconds/move.
   */
@@ -151,7 +151,7 @@ function logistic(x) {
   return 1 / (1 + Math.exp(-x));
 }
 
-function draw_ratio(tc) {
+function drawRatio(tc) {
   /*
   Formula approximately valid for the book "UHO_4060_v3.epd".
   The "virtual" draw ratio of an unbalanced book is defined as
@@ -159,7 +159,7 @@ function draw_ratio(tc) {
   */
   const slope = 0.22;
   const intercept = 1.35;
-  const tc_seconds = tc_to_seconds(tc);
+  const tc_seconds = tcToSeconds(tc);
   return tc_seconds !== null
     ? logistic(slope * Math.log(tc_seconds) + intercept)
     : null;
@@ -170,7 +170,7 @@ Now some code to convert Fishtest style spsa data to spsa_setup
 objects and back.
 */
 
-function fishtest_to_spsa(fs) {
+function fishtestToSpsa(fs) {
   let s = deepcopy(spsa_setup_default);
   const lines = fs.split("\n");
   let j = 0;
@@ -230,7 +230,7 @@ function fishtest_to_spsa(fs) {
   return s.num_params > 0 ? s : null;
 }
 
-function spsa_to_fishtest(ss) {
+function spsaToFishtest(ss) {
   let ret = "";
   for (let i = 0; i < ss.params.length; i++) {
     const p = ss.params;

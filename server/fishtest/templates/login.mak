@@ -1,7 +1,7 @@
 <%inherit file="base.mak"/>
 
 <script>
-  document.title = 'Login | Stockfish Testing';
+  document.title = "Login | Stockfish Testing";
 </script>
 
 <div class="col-limited-size">
@@ -60,6 +60,8 @@
   </form>
 </div>
 
-<script src="/js/toggle_password.js?v=${cache_busters['js/toggle_password.js']}"
-        integrity="sha384-${cache_busters['js/toggle_password.js']}"
-        crossorigin="anonymous"></script>
+<script
+  src="/js/toggle_password.js?v=${cache_busters['js/toggle_password.js']}"
+  integrity="sha384-${cache_busters['js/toggle_password.js']}"
+  crossorigin="anonymous"
+></script>

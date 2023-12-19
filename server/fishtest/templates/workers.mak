@@ -7,7 +7,7 @@
 %>
 
 <script>
-  document.title = 'Workers Management | Stockfish Testing';
+  document.title = "Workers Management | Stockfish Testing";
 </script>
 
 <h2>Workers Management</h2>
@@ -18,13 +18,27 @@
     <div class="mb-3">Last changed: ${delta_date(diff_date(last_updated)) if last_updated is not None else "Never"}</div>
     <div class="mb-3">
       <label for="messageInput" class="form-label">Issue</label>
-      <textarea id="messageInput" rows="4" class="form-control" placeholder="Describe the issue here" name="message">${message}</textarea>
+      <textarea
+        id="messageInput"
+        rows="4" class="form-control"
+        placeholder="Describe the issue here" name="message"
+      >${message}</textarea>
     </div>
     <div class="mb-3 form-check">
       <label class="form-check-label" for="blockWorker">Blocked</label>
-      <input type="checkbox" class="form-check-input" id="blockWorker" name="blocked" ${"checked" if blocked else ""}>
+      <input
+        type="checkbox"
+        class="form-check-input"
+        id="blockWorker"
+        name="blocked" ${"checked" if blocked else ""}
+      >
     </div>
-    <button type="submit" name="submit" value="Submit" class="btn btn-primary">Submit</button>
+    <button
+      type="submit"
+      name="submit"
+      value="Submit"
+      class="btn btn-primary"
+    >Submit</button>
     <button type="submit" name="sumbit" class="btn btn-secondary">Cancel</button>
   </form>
   <hr>
@@ -37,9 +51,9 @@
       <th>Worker</th>
       <th>Last changed</th>
       <th>Events</th>
-% if show_email:
-      <th>Email</th>
-% endif
+      % if show_email:
+        <th>Email</th>
+      % endif
     </tr>
   </thead>
   <tbody>
@@ -52,10 +66,17 @@
         <tr>
           <td><a href="/workers/${w['worker_name']}">${w["worker_name"]}</td>
           <td>${delta_date(diff_date(w["last_updated"])) if w["last_updated"] is not None else "Never"}</td>
-          <td><a href="/actions?text=%22${w['worker_name']}%22">/actions?text="${w['worker_name']}"</a></td>
-% if show_email:
-          <td><a href="mailto:${w['owner_email']}?subject=${quote(w['subject'])}&body=${quote(w['body'].replace('\n','\r\n'))}" target="_blank" rel="noopener noreferrer">${w['owner_email']}</a.
-% endif
+          <td>
+            <a
+              href="/actions?text=%22${w['worker_name']}%22">/actions?text="${w['worker_name']}"</a
+            >
+          </td>
+          % if show_email:
+            <td>
+              <a
+                href="mailto:${w['owner_email']}?subject=${quote(w['subject'])}&body=${quote(w['body'].replace('\n','\r\n'))}" target="_blank" rel="noopener noreferrer">${w['owner_email']}
+              </a>
+          % endif
         </tr>
       % endfor
     % endif
