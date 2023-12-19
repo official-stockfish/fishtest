@@ -7,7 +7,7 @@
 <h2>Events Log</h2>
 
 <script>
-  document.title = 'Events Log | Stockfish Testing';
+  document.title = "Events Log | Stockfish Testing";
 </script>
 
 <form class="row mb-3">
@@ -54,23 +54,42 @@
 
   <div class="col-12 col-md-auto mb-3">
     <label for="text" class="form-label">Free text search</label>
-    <i class="fa-solid fa-circle-info" role="button" data-bs-toggle="modal" data-bs-target="#autoselect-modal"></i>
-    <div class="modal fade" id="autoselect-modal" tabindex="-1" aria-hidden="true">
+    <i
+      class="fa-solid fa-circle-info"
+      role="button"
+      data-bs-toggle="modal"
+      data-bs-target="#autoselect-modal"
+    ></i>
+    <div
+      class="modal fade"
+      id="autoselect-modal"
+      tabindex="-1"
+      aria-hidden="true"
+    >
       <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content">
           <div class="modal-header">
             <h5 class="modal-title">Free text search information</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
           </div>
           <div class="modal-body text-break">
-            This will perform a case insensitive text search on the fields event name, user name, worker name,
-            target user, network name, branch name and comment.
-            One can only search for a list of full words, i.e. strings bounded by delimiters.
-            For example the worker name <i>fishtestfan-128cores-abcdefgh-uvwx</i> matches <i>abcdefgh</i> but not <i>abcde</i>.
-            To force a word or a combination of words to be
-            included in the result, use quotes like in <i>&quot;dog cat&quot;</i>. To exclude a word, precede
-            it with a minus sign like in <i>dog &minus;cat</i>. For more information see
-            <a href="https://www.mongodb.com/docs/manual/reference/operator/query/text/#mongodb-query-op.-text">
+            This will perform a case insensitive text search on the fields event
+            name, user name, worker name, target user, network name, branch name
+            and comment. One can only search for a list of full words, i.e.
+            strings bounded by delimiters. For example the worker name
+            <i>fishtestfan-128cores-abcdefgh-uvwx</i> matches <i>abcdefgh</i> but
+            not <i>abcde</i>. To force a word or a combination of words to be
+            included in the result, use quotes like in <i>&quot;dog cat&quot;</i>.
+            To exclude a word, precede it with a minus sign like in
+            <i>dog &minus;cat</i>. For more information see
+            <a
+              href="https://www.mongodb.com/docs/manual/reference/operator/query/text/#mongodb-query-op.-text"
+            >
               https://www.mongodb.com/docs/manual/reference/operator/query/text/#mongodb-query-op.-text
             </a>.
           </div>
@@ -110,8 +129,13 @@
       % for idx, action in enumerate(actions):
         <tr>
           ## Dates in mongodb have millisecond precision. So they fit comfortably in a float without precision loss.
-          <td><a href="/actions?max_actions=1&amp;action=${action_param}&amp;user=${username_param|u,n}&amp;text=${text_param|u,n}&amp;before=${action['time']}&amp;run_id=${run_id_param}">
-                 ${datetime.datetime.utcfromtimestamp(action['time']).strftime(r"%y&#8209;%m&#8209;%d %H:%M:%S")|n}</a></td>
+          <td>
+            <a
+              href="/actions?max_actions=1&amp;action=${action_param}&amp;user=${username_param|u,n}&amp;text=${text_param|u,n}&amp;before=${action['time']}&amp;run_id=${run_id_param}"
+            >
+                 ${datetime.datetime.utcfromtimestamp(action['time']).strftime(r"%y&#8209;%m&#8209;%d %H:%M:%S")|n}
+            </a>
+          </td>
           <td>${action['action']}</td>
           <%
             if 'worker' in action and action['action'] != 'block_worker':
@@ -149,5 +173,6 @@
 <%include file="pagination.mak" args="pages=pages"/>
 
 <script>
-  document.getElementById('restrict').value = ('${request.GET.get("action") if request.GET.get("action") != None else ''}');
+  document.getElementById('restrict').value =
+    ('${request.GET.get("action") if request.GET.get("action") != None else ''}');
 </script>

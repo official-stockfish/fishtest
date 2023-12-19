@@ -1,14 +1,16 @@
 <%inherit file="base.mak"/>
 
 <script src="https://www.gstatic.com/charts/loader.js"></script>
+
 <script src="/js/live_elo.js?v=${cache_busters['js/live_elo.js']}"
         integrity="sha384-${cache_busters['js/live_elo.js']}"
-        crossorigin="anonymous"></script>
+        crossorigin="anonymous"
+></script>
 
 <script>
-  document.title = 'Live Elo - ${page_title} | Stockfish Testing';
-  const test_id = "${str(run['_id'])}";
-  follow_live(test_id);
+  document.title = "Live Elo - ${page_title} | Stockfish Testing";
+  const testId = "${str(run['_id'])}";
+  followLive(testId);
 </script>
 
 <h2>Live Elo for SPRT test <a href="/tests/view/${str(run['_id'])}">${str(run['_id'])}</a></h2>

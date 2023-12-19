@@ -22,16 +22,16 @@
 % if follow == 1:
   <script>
     (async () => {
-      await DOM_loaded();
-      await follow_run("${run['_id']}");
-      set_notification_status("${run['_id']}");
+      await DOMContentLoaded();
+      await followRun("${run['_id']}");
+      setNotificationStatus("${run['_id']}");
     })();
   </script>
 % else:
   <script>
     (async () => {
-      await DOM_loaded();
-      set_notification_status_("${run['_id']}");
+      await DOMContentLoaded();
+      setNotificationStatus_("${run['_id']}");
     })();
   </script>
 % endif
@@ -39,17 +39,21 @@
 % if 'spsa' in run['args']:
   <script src="https://www.gstatic.com/charts/loader.js"></script>
   <script>
-    const spsa_data = ${json.dumps(run["args"]["spsa"])|n};
+    const spsaData = ${json.dumps(run["args"]["spsa"])|n};
   </script>
-  <script src="/js/spsa.js?v=${cache_busters['js/spsa.js']}"
-          integrity="sha384-${cache_busters['js/spsa.js']}"
-          crossorigin="anonymous"></script>
+
+  <script
+    src="/js/spsa.js?v=${cache_busters['js/spsa.js']}"
+    integrity="sha384-${cache_busters['js/spsa.js']}"
+    crossorigin="anonymous"
+  ></script>
+
   <script>
-    const spsa_promise = handle_spsa();
+    const spsaPromise = handleSPSA();
   </script>
 % else:
   <script>
-    const spsa_promise = Promise.resolve();
+    const spsaPromise = Promise.resolve();
   </script>
 % endif
 
@@ -185,7 +189,7 @@
               <form
                 action="/tests/stop"
                 method="POST"
-                onsubmit="handle_stop_delete_button('${run['_id']}'); return true;"
+                onsubmit="handleStopDeleteButton('${run['_id']}'); return true;"
               >
                 <input type="hidden" name="run-id" value="${run['_id']}">
                 <button type="submit" class="btn btn-danger w-100">
@@ -347,7 +351,7 @@
         <button 
           id="follow_button_${run['_id']}"
           class="btn btn-primary col-12 col-md-auto"
-          onclick="handle_follow_button(this)"
+          onclick="handleFollowButton(this)"
           style="display:none; margin-top:0.2em;"></button>
         <hr style="visibility:hidden;">
       % endif
@@ -355,7 +359,7 @@
   </div>
 
   % if 'spsa' in run['args']:
-    <div id="div_spsa_preload" class="col-lg-3">
+    <div id="spsa_preload" class="col-lg-3">
       <div class="pt-1 text-center">
         Loading graph...
       </div>
@@ -382,7 +386,7 @@
       <button id="btn_view_all" class="btn">View All</button>
     </div>
     <div class="overflow-auto">
-      <div id="div_spsa_history_plot"></div>
+      <div id="spsa_history_plot"></div>
     </div>
   % endif
 
@@ -431,12 +435,11 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"
         integrity="sha512-rdhY3cbXURo13l/WU9VlaRyaIYeJ/KBakckXIvJNAQde8DgpOmE+eZf7ha4vdqVjTtwQt69bD2wH2LXob/LB7Q=="
         crossorigin="anonymous"
-        referrerpolicy="no-referrer"></script>
+        referrerpolicy="no-referrer"
+></script>
 
 <script>
-  const match = document.cookie.match(
-    new RegExp("(^| )" + "theme" + "=([^;]+)")
-  );
+  let cookieTheme = getCookie("theme");
 
   const setHighlightTheme = (theme) => {
     const link = document.createElement("link");
@@ -466,22 +469,16 @@
     document.head.append(link);
   };
 
-  const getPreferredTheme = () => {
-    return window.matchMedia("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light";
-  };
-
-  if (!match) {
-    setHighlightTheme(getPreferredTheme());
+  if (!cookieTheme) {
+    setHighlightTheme(mediaTheme());
   } else {
-    setHighlightTheme(match[2]);
+    setHighlightTheme(cookieTheme);
   }
 
   try {
     window
       .matchMedia("(prefers-color-scheme: dark)")
-      .addEventListener("change", () => setHighlightTheme(getPreferredTheme()));
+      .addEventListener("change", () => setHighlightTheme(mediaTheme()));
   } catch (e) {
     console.error(e);
   }
@@ -500,22 +497,22 @@
 
   let fetchedTasksBefore = false;
   async function handleRenderTasks(){
-    await DOM_loaded();
+    await DOMContentLoaded();
     const tasksButton = document.getElementById("tasks-button");
     tasksButton?.addEventListener("click", async () => {
-      await toggle_tasks();
+      await toggleTasks();
     })
      if (${str(tasks_shown).lower()})
        await renderTasks();
   }
 
   async function renderTasks() {
-    await DOM_loaded();
+    await DOMContentLoaded();
     if (fetchedTasksBefore)
       return Promise.resolve();
     const tasksBody = document.getElementById("tasks-body");
     try {
-      const html = await fetch_text(`/tests/tasks/${str(run['_id'])}?show_task=${show_task}`);
+      const html = await fetchText(`/tests/tasks/${str(run['_id'])}?show_task=${show_task}`);
       tasksBody.innerHTML = html;
       fetchedTasksBefore = true;
     } catch (error) {
@@ -523,9 +520,9 @@
     }
   }
 
-  async function toggle_tasks() {
+  async function toggleTasks() {
     const button = document.getElementById("tasks-button");
-    const active = button.textContent.trim() === 'Hide';
+    const active = button.textContent.trim() === "Hide";
     if (active){
       button.textContent = "Show";
     }
@@ -535,11 +532,11 @@
     }
 
     document.cookie =
-      'tasks_state' + '=' + button.textContent.trim() + ";max-age=${60 * 60};SameSite=Lax;";
+      "tasks_state" + "=" + button.textContent.trim() + "; max-age=${60 * 60}; SameSite=Lax";
   }
 
-  async function handle_diff() {
-    await DOM_loaded();
+  async function handleDiff() {
+    await DOMContentLoaded();
     let copyDiffBtn = document.getElementById("copy-diff");
     if (
       document.queryCommandSupported &&
@@ -611,7 +608,7 @@
 
     async function fetchDiff(diffApiUrl) {
       try {
-        const text = await fetch_text(diffApiUrl, {
+        const text = await fetchText(diffApiUrl, {
           headers: {
             Accept: "application/vnd.github.diff",
           },
@@ -626,7 +623,7 @@
     async function fetchComments(diffApiUrl) {
       // Fetch amount of comments
       try {
-        const json = await fetch_json(diffApiUrl);
+        const json = await fetchJson(diffApiUrl);
         let numComments = 0;
         json.commits.forEach(function (row) {
           numComments += row.commit.comment_count;
@@ -660,10 +657,10 @@
 
   }
 
-  const diff_promise = handle_diff();
-  const renderOnLoad = handleRenderTasks();
+  const diffPromise = handleDiff();
+  const tasksPromise = handleRenderTasks();
 
-  Promise.all([spsa_promise, diff_promise, renderOnLoad])
+  Promise.all([spsaPromise, diffPromise, tasksPromise])
     .then(() => {
     % if show_task >= 0:
       scroll_to(${show_task});

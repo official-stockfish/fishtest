@@ -1,8 +1,8 @@
 "use strict";
 
-async function follow_live(test_id) {
+async function followLive(testId) {
   await Promise.all([
-    DOM_loaded(),
+    DOMContentLoaded(),
     google.charts.load("current", { packages: ["gauge"] }),
   ]);
 
@@ -19,7 +19,7 @@ async function follow_live(test_id) {
   ELO_chart = new google.visualization.Gauge(
     document.getElementById("ELO_chart_div"),
   );
-  clear_gauges();
+  clearGauges();
 
   function collect(m) {
     const sprt = m.args.sprt;
@@ -40,9 +40,9 @@ async function follow_live(test_id) {
     return ret;
   }
 
-  function set_gauges(LLR, a, b, LOS, elo, ci_lower, ci_upper) {
-    if (!set_gauges.last_elo) {
-      set_gauges.last_elo = 0;
+  function setGauges(LLR, a, b, LOS, elo, ci_lower, ci_upper) {
+    if (!setGauges.lastElo) {
+      setGauges.lastElo = 0;
     }
     const LOS_chart_data = google.visualization.arrayToDataTable([
       ["Label", "Value"],
@@ -84,7 +84,7 @@ async function follow_live(test_id) {
 
     const ELO_chart_data = google.visualization.arrayToDataTable([
       ["Label", "Value"],
-      ["Elo", set_gauges.last_elo],
+      ["Elo", setGauges.lastElo],
     ]);
     const ELO_chart_options = {
       width: 500,
@@ -119,14 +119,14 @@ async function follow_live(test_id) {
     elo = Math.round(100 * elo) / 100;
     ELO_chart_data.setValue(0, 1, elo);
     ELO_chart.draw(ELO_chart_data, ELO_chart_options); // 2nd draw to get animation
-    set_gauges.last_elo = elo;
+    setGauges.lastElo = elo;
   }
 
-  function clear_gauges() {
-    set_gauges(0, -2.94, 2.94, 0.5, 0, 0, 0);
+  function clearGauges() {
+    setGauges(0, -2.94, 2.94, 0.5, 0, 0, 0);
   }
 
-  function display_data(items) {
+  function displayData(items) {
     const j = collect(items);
 
     document.getElementById("data").style.visibility = "visible";
@@ -177,7 +177,7 @@ async function follow_live(test_id) {
     d:${((100 * Math.round(j.D)) / (j.games + 0.001)).toFixed(1)}%]
   `;
 
-    set_gauges(j.LLR, j.a, j.b, j.LOS, j.elo, j.ci_lower, j.ci_upper);
+    setGauges(j.LLR, j.a, j.b, j.LOS, j.elo, j.ci_lower, j.ci_upper);
   }
 
   // Main worker
@@ -185,12 +185,12 @@ async function follow_live(test_id) {
   while (true) {
     const timestamp = new Date().getTime();
     try {
-      const m = await fetch_json("/api/get_elo/" + test_id + "?" + timestamp);
-      display_data(m);
+      const m = await fetchJson("/api/get_elo/" + testId + "?" + timestamp);
+      displayData(m);
       if (m.args.sprt.state) return;
     } catch (e) {
       console.log("Network error: " + e);
     }
-    await async_sleep(20000);
+    await asyncSleep(20000);
   }
 }

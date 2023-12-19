@@ -10,7 +10,7 @@
 %>
 
 <script>
-  document.title =  'Finishes Test${title} | Stockfish Testing';
+  document.title =  "Finishes Test${title} | Stockfish Testing";
 </script>
 
 <h2>
