@@ -693,7 +693,7 @@ def setup_engine(
         # skip temporary the profiled build for apple silicon, see
         # https://stackoverflow.com/questions/71580631/how-can-i-get-code-coverage-with-clang-13-0-1-on-mac
         make_cmd = "build" if arch == "apple-silicon" else "profile-build"
-        cmd = "make -j {} {} ARCH={} COMP={}".format(concurrency, make_cmd, arch, comp)
+        cmd = f"make -j {concurrency} {make_cmd} ARCH={arch} COMP={comp}".split()
 
         # append -DNNUE_EMBEDDING_OFF to existing CXXFLAGS environment variable, if any
         cxx = os.environ.get("CXXFLAGS", "") + " -DNNUE_EMBEDDING_OFF"
@@ -701,18 +701,16 @@ def setup_engine(
 
         with subprocess.Popen(
             cmd,
-            shell=True,
             env=env,
             start_new_session=False if IS_WINDOWS else True,
-            stdout=subprocess.PIPE,
+            stdout=None,
             stderr=subprocess.PIPE,
             universal_newlines=True,
             bufsize=1,
             close_fds=not IS_WINDOWS,
         ) as p:
             try:
-                for out in p.stdout:
-                    print(out.strip())
+                errors = p.stderr.readlines()
             except Exception as e:
                 if not IS_WINDOWS:
                     os.killpg(p.pid, signal.SIGINT)
@@ -720,7 +718,6 @@ def setup_engine(
                     f"Executing {cmd} raised Exception: {e.__class__.__name__}: {str(e)}",
                     e=e,
                 )
-            errors = p.stderr.readlines()
         if p.returncode:
             raise WorkerException("Executing {} failed. Error: {}".format(cmd, errors))
 
@@ -728,9 +725,8 @@ def setup_engine(
         # 'try' should be safely dropped in the future
         try:
             subprocess.run(
-                "make strip COMP={}".format(comp),
+                ["make", "strip", f"COMP={comp}"],
                 stderr=subprocess.DEVNULL,
-                shell=True,
                 check=True,
             )
         except Exception as e:
