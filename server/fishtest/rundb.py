@@ -56,6 +56,7 @@ str_int = regex(r"[1-9]\d*", name="str_int")
 sha = regex(r"[a-f0-9]{40}", name="sha")
 country_code = regex(r"[A-Z][A-Z]", name="country_code")
 run_id = regex(r"[a-f0-9]{24}", name="run_id")
+uuid = regex(r"[0-9a-zA-Z]{2,8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}", name="uuid")
 
 worker_info_schema = {
     "uname": str,
@@ -68,7 +69,7 @@ worker_info_schema = {
     "python_version": [int, int, int],
     "gcc_version": [int, int, int],
     "compiler": union("clang++", "g++"),
-    "unique_key": str,
+    "unique_key": uuid,
     "modified": bool,
     "ARCH": str,
     "nps": number,
@@ -230,6 +231,7 @@ del (
     tc,
     union,
     url,
+    uuid,
     worker_info_schema,
 )
 
