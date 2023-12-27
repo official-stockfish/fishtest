@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 from fishtest.util import hex_print, worker_name
 from pymongo import DESCENDING
-from vtjson import _validate, union
+from vtjson import ValidationError, union, validate
 
 schema = union(
     {
@@ -90,6 +90,11 @@ schema = union(
         "username": str,
         "worker": str,
         "message": union("blocked", "unblocked"),
+    },
+    {
+        "action": "log_message",
+        "username": str,
+        "message": str,
     },
 )
 
@@ -292,12 +297,19 @@ class ActionDb:
             message=message,
         )
 
+    def log_message(self, username=None, message=None):
+        self.insert_action(
+            action="log_message",
+            username=username,
+            message=message,
+        )
+
     def insert_action(self, **action):
         if "run_id" in action:
             action["run_id"] = str(action["run_id"])
-        ret = _validate(schema, action, "action")
-        if ret == "":
+        try:
+            validate(schema, action, "action")
             action["time"] = datetime.now(timezone.utc).timestamp()
             self.actions.insert_one(action)
-        else:
-            raise Exception("Validation failed with error '{}'".format(ret))
+        except ValidationError as e:
+            raise Exception(f"Validation failed:{str(e)}")

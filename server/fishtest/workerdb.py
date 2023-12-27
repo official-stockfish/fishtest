@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from vtjson import _validate
+from vtjson import validate
 
 schema = {
     "worker_name": str,
@@ -40,7 +40,7 @@ class WorkerDb:
             "message": message,
             "last_updated": datetime.now(timezone.utc),
         }
-        assert _validate(schema, r, "worker") == ""
+        validate(schema, r, "worker")  # may throw exception
         self.workers.replace_one({"worker_name": worker_name}, r, upsert=True)
 
     def get_blocked_workers(self):
