@@ -69,6 +69,7 @@ try:
     del google.colab
 except:
     pass
+
 CONFIGFILE = "fishtest.cfg"
 
 LOGO = r"""
@@ -886,6 +887,58 @@ def on_sigint(current_state, signal, frame):
     raise FatalException("Terminated by signal {}".format(str_signal(signal)))
 
 
+def get_aws_label():
+    # See:
+    # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instance-identity-documents.html
+    # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/instancedata-data-retrieval.html
+    instance_type = ""
+    instance_life_cycle = ""
+    TOKEN = ""
+    try:
+        t = requests.put(
+            "http://169.254.169.254/latest/api/token",
+            headers={"X-aws-ec2-metadata-token-ttl-seconds": "21600"},
+            timeout=0.3,
+        )
+        t.raise_for_status()
+        TOKEN = t.text
+    except Exception:
+        # We are not AWS
+        return ""
+    # We are AWS
+    try:
+        r = requests.get(
+            "http://169.254.169.254/latest/dynamic/instance-identity/document",
+            headers={"X-aws-ec2-metadata-token": TOKEN},
+        )
+        r.raise_for_status()
+        r = r.json()
+        instance_type = r.get("instanceType", "")
+    except Exception as e:
+        print(
+            "Exception requesting AWS instance-identity-document:\n",
+            e,
+            sep="",
+            file=sys.stderr,
+        )
+    try:
+        s = requests.get(
+            "http://169.254.169.254/latest/meta-data/instance-life-cycle",
+            headers={"X-aws-ec2-metadata-token": TOKEN},
+        )
+        s.raise_for_status()
+        instance_life_cycle = s.text
+    except Exception as e:
+        print(
+            "Exception requesting AWS meta-data:\n",
+            e,
+            sep="",
+            file=sys.stderr,
+        )
+    label = ":".join([instance_type, instance_life_cycle])
+    return label
+
+
 def fingerprint(s):
     # A cryptographically secure hash
     return int.from_bytes(
@@ -1587,8 +1640,17 @@ def worker():
     print("Using {} {}.{}.{}".format(compiler, major, minor, patchlevel))
 
     uname = platform.uname()
+    suffix = ""
+    if IS_COLAB:
+        suffix = " (colab)"
+    else:
+        label = get_aws_label()
+        if label:
+            print(f"AWS label: {label}")
+            suffix = f" (aws:{label})"
+
     worker_info = {
-        "uname": uname[0] + " " + uname[2] + (" (colab)" if IS_COLAB else ""),
+        "uname": uname[0] + " " + uname[2] + suffix,
         "architecture": platform.architecture(),
         "concurrency": options.concurrency,
         "max_memory": options.max_memory,
