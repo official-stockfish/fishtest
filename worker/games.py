@@ -406,7 +406,7 @@ def verify_signature(engine, signature, active_cores):
         )
 
     if int(bench_sig) != int(signature):
-        message = "Wrong bench in {} Expected: {} Got: {}".format(
+        message = "Wrong bench in {}, user expected: {} but worker got: {}".format(
             os.path.basename(engine),
             signature,
             bench_sig,
