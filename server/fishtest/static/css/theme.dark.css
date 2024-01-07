@@ -461,3 +461,8 @@ pre[class*="time-odds"] {
 .alert-success.alert-success-non-transparent {
   --bs-alert-bg: rgba(32, 51, 32, 1);
 }
+
+/* remove transparency of background */
+.alert-danger.alert-danger-non-transparent {
+  --bs-alert-bg: rgba(108, 20, 29, 1);
+}

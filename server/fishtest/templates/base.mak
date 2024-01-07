@@ -518,6 +518,26 @@
                   });
                 </script>
               </div>
+              <div
+                id="error_div"
+                class="alert alert-danger alert-dismissible alert-danger-non-transparent fixed-top"
+                style="display: none"
+              >
+                <span id="error"></span>
+                <button
+                  type="button"
+                  id="error_button"
+                  class="btn-close"
+                  aria-label="Close"
+                ></button>
+                <script>
+                  const error_button =
+                    document.getElementById("error_button");
+                  error_button.addEventListener("click", () => {
+                      error_button.parentElement.style.display="none";
+                  });
+                </script>
+              </div>
               % if request.session.peek_flash('error'):
                 <% flash = request.session.pop_flash('error') %>
                 % for message in flash:
