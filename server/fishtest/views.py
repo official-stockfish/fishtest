@@ -576,9 +576,15 @@ def user(request):
         raise exception_response(404)
     if "user" in request.POST:
         if profile:
-            new_password = request.params.get("password")
-            new_password_verify = request.params.get("password2", "")
-            new_email = request.params.get("email")
+            old_password = request.params.get("old_password").strip()
+            new_password = request.params.get("password").strip()
+            new_password_verify = request.params.get("password2", "").strip()
+            new_email = request.params.get("email").strip()
+
+            # Temporary comparison until passwords are hashed.
+            if old_password != user_data["password"].strip():
+                request.session.flash("Invalid password!", "error")
+                return home(request)
 
             if len(new_password) > 0:
                 if new_password == new_password_verify:
