@@ -229,18 +229,30 @@ function handleApplicationLogout() {
   });
 }
 
+// Alerts errors to the UI
+function alertError(message) {
+  document.getElementById("error_div").style.display = "";
+  document.getElementById("error").textContent = message;
+}
+
 async function logout_() {
   const csrfToken = document.querySelector("meta[name='csrf-token']")[
     "content"
   ];
 
-  await fetch("/logout", {
-    method: "POST",
-    headers: {
-      "X-CSRF-Token": csrfToken,
-    },
-  });
-  window.location = "/";
+  try {
+    const response = await fetch("/logout", {
+      method: "POST",
+      headers: {
+        "X-CSRF-Token": csrfToken,
+      },
+    });
+
+    raiseForStatus(response);
+    window.location = "/";
+  } catch (error) {
+    alertError("Network error: please check your network!");
+  }
 }
 
 function logout() {
