@@ -58,11 +58,27 @@
             type="password"
             class="form-control"
             id="password"
-            name="password"
+            name="old_password"
             placeholder="Password"
+            required
+          />
+          <label for="password" class="d-flex align-items-end">Password</label>
+        </div>
+        <span class="input-group-text toggle-password-visibility" role="button">
+          <i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i>
+        </span>
+      </div>
+
+      <div class="input-group mb-3">
+        <div class="form-floating">
+          <input
+            type="password"
+            class="form-control"
+            id="password"
+            name="password"
+            placeholder="New Password"
             pattern=".{8,}"
             title="Eight or more characters: a password too simple or trivial to guess will be rejected"
-            required
           />
           <label for="password" class="d-flex align-items-end">New Password</label>
         </div>
@@ -79,7 +95,6 @@
             id="password2"
             name="password2"
             placeholder="Repeat Password"
-            required
           />
           <label for="password2" class="d-flex align-items-end">Repeat Password</label>
         </div>
