@@ -55,7 +55,7 @@ from updater import update
 # Several packages are called "expression".
 # So we make sure to use the locally installed one.
 
-WORKER_VERSION = 228
+WORKER_VERSION = 229
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -1661,6 +1661,9 @@ def worker():
         else:
             clear_binaries = False
             delay = INITIAL_RETRY_TIME
+
+    if fish_exit:
+        (worker_dir / "fish.exit").unlink()
 
     print("Waiting for the heartbeat thread to finish...")
     heartbeat_thread.join(THREAD_JOIN_TIMEOUT)
