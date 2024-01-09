@@ -173,9 +173,10 @@ class _memory:
 
 
 class _concurrency:
-    def __init__(self, MAX):
+    def __init__(self, MAX, quiet=False):
         self.MAX = MAX
         self.__name__ = "concurrency"
+        self.quiet = quiet
 
     def __call__(self, x):
         e = expression.Expression_Parser(
@@ -191,20 +192,20 @@ class _concurrency:
             print("concurrency must be at least 1")
             raise ValueError(x)
 
-        if ("MAX" not in x and ret >= self.MAX) or ret > self.MAX:
-            print(
-                (
-                    "\nYou cannot have concurrency {} but at most:\n"
-                    "  a) {} with '--concurrency MAX';\n"
-                    "  b) {} otherwise.\n"
-                    "Please use option a) only if your computer is very lightly loaded.\n"
-                ).format(
-                    ret,
-                    self.MAX,
-                    self.MAX - 1,
-                )
-            )
+        if ret > self.MAX:
+            print("the concurrency is higher than the number of cores")
             raise ValueError(x)
+
+        if "MAX" not in x and ret == self.MAX and not self.quiet:
+            print(
+                "\n"
+                "************************************************************************\n"
+                f"WARNING: The concurrency {ret} you requested is equal to the number of\n"
+                "cores. This is not recommended, unless your computer is very\n"
+                "lightly loaded.\n"
+                "Use --concurrency MAX to suppress this warning message.\n"
+                "************************************************************************\n"
+            )
 
         return x, ret
 
@@ -641,7 +642,7 @@ def setup_parameters(worker_dir):
             "parameters",
             "concurrency",
             "max(1,min(3,MAX-1))",
-            _concurrency(MAX=max_cpu_count),
+            _concurrency(MAX=max_cpu_count, quiet=True),
             None,
         ),
         (
