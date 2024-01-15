@@ -190,34 +190,6 @@ def update_users(rundb, users_total, users_top_month):
         print(f"Successfully updated {len(users_top_month)} top month users")
 
 
-def cleanup_users(rundb):
-    # Delete users that have never been active and old admins group
-    idle = {}
-    for u in rundb.userdb.get_users():
-        update = False
-        while "group:admins" in u["groups"]:
-            u["groups"].remove("group:admins")
-            update = True
-        if update:
-            rundb.userdb.save_user(u)
-        if "registration_time" not in u or u["registration_time"].replace(
-            tzinfo=timezone.utc
-        ) < datetime.now(timezone.utc) - timedelta(days=28):
-            idle[u["username"]] = u
-    for u in rundb.userdb.user_cache.find():
-        if u["username"] in idle:
-            del idle[u["username"]]
-    for u in idle.values():
-        # A safe guard against deleting long time users
-        if "registration_time" not in u or u["registration_time"].replace(
-            tzinfo=timezone.utc
-        ) < datetime.now(timezone.utc) - timedelta(days=38):
-            print("Warning: Found old user to delete:", str(u["_id"]))
-        else:
-            print("Delete:", str(u["_id"]))
-            rundb.userdb.users.delete_one({"_id": u["_id"]})
-
-
 def main():
     # The script computes the total and top month contributions of all users in two modes:
     # - full scan  : from scratch, starting from a clean status.
@@ -275,7 +247,6 @@ def main():
     users_total = build_users(info_total)
     users_top_month = build_users(info_top_month)
     update_users(rundb, users_total, users_top_month)
-    cleanup_users(rundb)
     # Record this update run
     rundb.actiondb.system_event(message="Update user statistics")
 
