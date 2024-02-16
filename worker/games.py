@@ -1360,14 +1360,14 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file, clear_binar
         pass
 
     # Verify that the signatures are correct.
-    verify_signature(
-        new_engine,
-        run["args"]["new_signature"],
-        games_concurrency * threads,
-    )
     base_nps, cpu_features = verify_signature(
         base_engine,
         run["args"]["base_signature"],
+        games_concurrency * threads,
+    )
+    verify_signature(
+        new_engine,
+        run["args"]["new_signature"],
         games_concurrency * threads,
     )
 
