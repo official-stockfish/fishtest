@@ -482,12 +482,8 @@ class RunDb:
     def increment_nn_downloads(self, name):
         self.nndb.update_one({"name": name}, {"$inc": {"downloads": 1}})
 
-    def get_nns(
-        self, user_id, user="", network_name="", master_only=False, limit=0, skip=0
-    ):
+    def get_nns(self, user="", network_name="", master_only=False, limit=0, skip=0):
         q = {}
-        if user_id is None:
-            q["first_test"] = {"$exists": "true"}
         if user:
             q["user"] = {"$regex": ".*{}.*".format(user), "$options": "i"}
         if network_name:

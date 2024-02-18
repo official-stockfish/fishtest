@@ -413,7 +413,6 @@ def signup(request):
 
 @view_config(route_name="nns", renderer="nns.mak")
 def nns(request):
-    user_id = request.authenticated_userid
     user = request.params.get("user", "")
     network_name = request.params.get("network_name", "")
     master_only = request.params.get("master_only", False)
@@ -423,7 +422,6 @@ def nns(request):
     page_size = 25
 
     nns, num_nns = request.rundb.get_nns(
-        user_id=user_id,
         user=user,
         network_name=network_name,
         master_only=master_only,
