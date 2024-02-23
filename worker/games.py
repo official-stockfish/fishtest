@@ -1122,11 +1122,14 @@ def launch_cutechess(
             bufsize=1,
             # The next options are necessary to be able to send a CTRL_C_EVENT to this process.
             # https://stackoverflow.com/questions/7085604/sending-c-to-python-subprocess-objects-on-windows
-            startupinfo=subprocess.STARTUPINFO(
-                dwFlags=subprocess.STARTF_USESHOWWINDOW, wShowWindow=subprocess.SW_HIDE
-            )
-            if IS_WINDOWS
-            else None,
+            startupinfo=(
+                subprocess.STARTUPINFO(
+                    dwFlags=subprocess.STARTF_USESHOWWINDOW,
+                    wShowWindow=subprocess.SW_HIDE,
+                )
+                if IS_WINDOWS
+                else None
+            ),
             creationflags=subprocess.CREATE_NEW_CONSOLE if IS_WINDOWS else 0,
             close_fds=not IS_WINDOWS,
         ) as p:
