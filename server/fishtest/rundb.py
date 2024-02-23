@@ -686,9 +686,11 @@ class RunDb:
         machines = (
             task["worker_info"]
             | {
-                "last_updated": task["last_updated"].replace(tzinfo=timezone.utc)
-                if task.get("last_updated")
-                else None,
+                "last_updated": (
+                    task["last_updated"].replace(tzinfo=timezone.utc)
+                    if task.get("last_updated")
+                    else None
+                ),
                 "run": run,
                 "task_id": task_id,
             }
@@ -1580,9 +1582,11 @@ After fixing the issues you can unblock the worker at
             self.actiondb.purge_run(
                 username=run["args"]["username"],
                 run=run,
-                message=f"Auto purge (not performed): {message}"
-                if message
-                else "Auto purge",
+                message=(
+                    f"Auto purge (not performed): {message}"
+                    if message
+                    else "Auto purge"
+                ),
             )
             if message == "":
                 print("Run {} was auto-purged".format(str(run_id)), flush=True)
@@ -1766,9 +1770,7 @@ After fixing the issues you can unblock the worker at
                 {
                     "name": param["name"],
                     "value": self.spsa_param_clip(param, c * flip),
-                    "R": param["a"]
-                    / (spsa["A"] + iter_local) ** spsa["alpha"]
-                    / c**2,
+                    "R": param["a"] / (spsa["A"] + iter_local) ** spsa["alpha"] / c**2,
                     "c": c,
                     "flip": flip,
                 }

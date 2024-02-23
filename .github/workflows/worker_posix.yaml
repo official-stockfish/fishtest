@@ -8,7 +8,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-20.04, macos-latest]
-        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10", "3.11", "3.12"]
     defaults:
       run:
         working-directory: worker
@@ -25,9 +25,8 @@ jobs:
 
       - name: Add packages folder to PYTHONPATH
         run: |
-          echo "PYTHONPATH=$PYTHONPATH:$(pwd)/packages" >> $GITHUB_ENV
+          echo "PYTHONPATH=$(pwd)/packages" >> $GITHUB_ENV
 
       - name: Run worker tests
         run: |
-          python -m unittest discover -vb
-
+          python -m unittest discover -vb -s tests

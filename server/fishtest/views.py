@@ -1250,9 +1250,9 @@ def tests_purge(request):
     request.actiondb.purge_run(
         username=username,
         run=run,
-        message=f"Manual purge (not performed): {message}"
-        if message
-        else "Manual purge",
+        message=(
+            f"Manual purge (not performed): {message}" if message else "Manual purge"
+        ),
     )
     if message != "":
         request.session.flash(message)
