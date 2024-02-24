@@ -400,7 +400,7 @@
       </a>
     Tasks ${totals}
   </h4>
-  <div id="tasks"
+  <section id="tasks"
        class="overflow-auto ${'collapse show' if tasks_shown else 'collapse'}">
     <table class='table table-striped table-sm'>
       <thead id="tasks-head" class="sticky-top">

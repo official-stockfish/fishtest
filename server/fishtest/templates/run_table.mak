@@ -46,7 +46,7 @@
 % endif
 </h4>
 
-<div
+<section
   id="${toggle}"
 % if toggle:
   class="${'collapse show' if get_cookie(request, cookie_name)=='Hide' else 'collapse'}"
@@ -144,4 +144,4 @@
     </table>
   </div>
   <%include file="pagination.mak" args="pages=pages"/>
-</div>
+</section>
