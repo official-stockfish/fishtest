@@ -117,7 +117,7 @@
     min_height = str(37) + "px"
     max_height = str(34.7) + "vh"
   %>
-  <div id="machines"
+  <section id="machines"
       class="overflow-auto ${'collapse show' if machines_shown else 'collapse'}">
       <div class="ssc-card ssc-wrapper">
         <div class="ssc-head-line"></div>
