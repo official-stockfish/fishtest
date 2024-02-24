@@ -116,6 +116,7 @@
   <table id="contributors_table" class="table table-striped table-sm">
     <thead class="sticky-top">
       <tr>
+        <th></th>
         <th>Username</th>
         <th class="text-end">Last active</th>
         <th class="text-end">Games/Hour</th>
@@ -126,8 +127,9 @@
       </tr>
     </thead>
     <tbody>
-      % for user in users:
+      % for index, user in enumerate(users):
         <tr>
+          <td class="rank">${index + 1}</td>
           <td>
           % if approver:
             <a href="/user/${user['username']}">

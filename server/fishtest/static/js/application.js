@@ -293,7 +293,13 @@ function handleSortingTables() {
             (this.asc = !this.asc),
           ),
         )
-        .forEach((tr) => body.append(tr));
+        .forEach((tr, index) => {
+          const rankData = tr.querySelector("td.rank");
+          if (rankData) {
+            rankData.textContent = index + 1;
+          }
+          body.append(tr);
+        });
     }
   });
 }
