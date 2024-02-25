@@ -8,12 +8,23 @@ from pyramid.authorization import ACLAuthorizationPolicy
 from pyramid.config import Configurator
 from pyramid.events import BeforeRender, NewRequest
 from pyramid.session import SignedCookieSessionFactory
-
 from fishtest import helpers
+import traceback, signal, sys, threading
+
+
+def thread_stack_dump(sig, frame):
+    for th in threading.enumerate():
+        print("=================== ", th, " ======================")
+        traceback.print_stack(sys._current_frames()[th.ident])
 
 
 def main(global_config, **settings):
     """This function returns a Pyramid WSGI application."""
+
+    # Register handler, will list the stack traces of all active threads
+    # trigger with: kill -USR1 <pid>
+    signal.signal(signal.SIGUSR1, thread_stack_dump)
+
     session_factory = SignedCookieSessionFactory("fishtest")
     config = Configurator(
         settings=settings,
