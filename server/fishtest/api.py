@@ -20,12 +20,14 @@ from vtjson import _validate, compile, intersect, interval, lax, regex
 Important note
 ==============
 
-All apis that are relying on get_run() should be served from a single
-Fishtest instance.
+All APIs that rely on get_run() should be served from a single Fishtest instance.
+It's essential to note that validate_request() can also utilize get_run().
+Therefore, any APIs using self.validate_request("/api/<route>") could also
+requires to be served from the same Fishtest instance.
 
-If other instances need information about runs they should query the
-db directly. However this information may be slightly outdated, depending
-on how frequently the main instance flushes its run cache.
+If other instances require information about runs, they should directly query the database.
+However, please be aware that this information might be slightly outdated,
+depending on how frequently the main instance flushes its run cache.
 """
 
 WORKER_VERSION = 229
