@@ -50,7 +50,7 @@ last_rundb = None
 # To make this practical we will eventually put all schemas
 # in a separate module "schemas.py".
 
-net_name = regex("nn-[a-z0-9]{12}.nnue", name="net_name")
+net_name = regex("nn-[a-f0-9]{12}.nnue", name="net_name")
 tc = regex(r"([1-9]\d*/)?\d+(\.\d+)?(\+\d+(\.\d+)?)?", name="tc")
 str_int = regex(r"[1-9]\d*", name="str_int")
 sha = regex(r"[a-f0-9]{40}", name="sha")
@@ -111,8 +111,8 @@ schema = {
     "args": {
         "base_tag": str,
         "new_tag": str,
-        "base_net": net_name,
-        "new_net": net_name,
+        "base_nets": [net_name, ...],
+        "new_nets": [net_name, ...],
         "num_games": int,
         "tc": tc,
         "new_tc": tc,
@@ -322,8 +322,8 @@ class RunDb:
         msg_new="",
         base_signature="",
         new_signature="",
-        base_net=None,
-        new_net=None,
+        base_nets=None,
+        new_nets=None,
         rescheduled_from=None,
         base_same_as_master=None,
         start_time=None,
@@ -344,8 +344,8 @@ class RunDb:
         run_args = {
             "base_tag": base_tag,
             "new_tag": new_tag,
-            "base_net": base_net,
-            "new_net": new_net,
+            "base_nets": base_nets,
+            "new_nets": new_nets,
             "num_games": num_games,
             "tc": tc,
             "new_tc": new_tc,
@@ -477,11 +477,10 @@ class RunDb:
         self.nndb.update_one({"name": net["name"]}, {"$set": net})
 
     def get_nn(self, name):
-        nn = self.nndb.find_one({"name": name}, {"nn": 0})
-        if nn:
-            self.nndb.update_one({"name": name}, {"$inc": {"downloads": 1}})
-            return nn
-        return None
+        return self.nndb.find_one({"name": name}, {"nn": 0})
+
+    def increment_nn_downloads(self, name):
+        self.nndb.update_one({"name": name}, {"$inc": {"downloads": 1}})
 
     def get_nns(
         self, user_id, user="", network_name="", master_only=False, limit=0, skip=0
