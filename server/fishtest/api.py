@@ -608,6 +608,9 @@ class ApiView(object):
         nn = self.request.rundb.get_nn(self.request.matchdict["id"])
         if nn is None:
             raise exception_response(404)
+        else:
+            self.request.rundb.increment_nn_downloads(self.request.matchdict["id"])
+
         return HTTPFound(
             "https://data.stockfishchess.org/nn/" + self.request.matchdict["id"]
         )

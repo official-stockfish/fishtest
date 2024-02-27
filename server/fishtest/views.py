@@ -729,35 +729,34 @@ def get_sha(branch, repo_url):
         return "", ""
 
 
-def get_net(commit_sha, repo_url):
-    """Get the net from evaluate.h or ucioption.cpp in the repo"""
+def get_nets(commit_sha, repo_url):
+    """Get the nets from evaluate.h or ucioption.cpp in the repo"""
     api_url = repo_url.replace(
         "https://github.com", "https://raw.githubusercontent.com"
     )
     try:
-        net = None
+        nets = []
+        pattern = re.compile("nn-[a-f0-9]{12}.nnue")
 
         url1 = api_url + "/" + commit_sha + "/src/evaluate.h"
         options = requests.get(url1).content.decode("utf-8")
         for line in options.splitlines():
             if "EvalFileDefaultName" in line and "define" in line:
-                p = re.compile("nn-[a-z0-9]{12}.nnue")
-                m = p.search(line)
+                m = pattern.search(line)
                 if m:
-                    net = m.group(0)
+                    nets.append(m.group(0))
 
-        if net:
-            return net
+        if nets:
+            return nets
 
         url2 = api_url + "/" + commit_sha + "/src/ucioption.cpp"
         options = requests.get(url2).content.decode("utf-8")
         for line in options.splitlines():
             if "EvalFile" in line and "Option" in line:
-                p = re.compile("nn-[a-z0-9]{12}.nnue")
-                m = p.search(line)
+                m = pattern.search(line)
                 if m:
-                    net = m.group(0)
-        return net
+                    nets.append(m.group(0))
+        return nets
     except:
         raise Exception("Unable to access developer repository: " + api_url)
 
@@ -919,19 +918,23 @@ def validate_form(request):
     )
     data["base_same_as_master"] = master_diff.text == ""
 
-    # Test existence of net
-    new_net = get_net(data["resolved_new"], data["tests_repo"])
-    if new_net:
-        if not request.rundb.get_nn(new_net):
-            raise Exception(
-                "The net {}, used by {}, is not "
-                "known to Fishtest. Please upload it to: "
-                "{}/upload.".format(new_net, data["new_tag"], request.host_url)
-            )
+    # Store nets info
+    data["base_nets"] = get_nets(data["resolved_base"], data["tests_repo"])
+    data["new_nets"] = get_nets(data["resolved_new"], data["tests_repo"])
 
-    # Store net info
-    data["new_net"] = new_net
-    data["base_net"] = get_net(data["resolved_base"], data["tests_repo"])
+    # Test existence of nets
+    missing_nets = []
+    for net_name in set(data["base_nets"]) | set(data["new_nets"]):
+        net = request.rundb.get_nn(net_name)
+        if net is None:
+            missing_nets.append(net_name)
+    if missing_nets:
+        raise Exception(
+            "Missing net(s). Please upload to: {} the following net(s): {}".format(
+                request.host_url,
+                ", ".join(missing_nets),
+            )
+        )
 
     # Integer parameters
     data["threads"] = int(request.POST["threads"])
@@ -1003,25 +1006,32 @@ def del_tasks(run):
 def update_nets(request, run):
     run_id = str(run["_id"])
     data = run["args"]
+    base_nets, new_nets, missing_nets = [], [], []
+    for net_name in set(data["base_nets"]) | set(data["new_nets"]):
+        net = request.rundb.get_nn(net_name)
+        if net is None:
+            # This should never happen
+            missing_nets.append(net_name)
+        else:
+            if net_name in data["base_nets"]:
+                base_nets.append(net)
+            if net_name in data["new_nets"]:
+                new_nets.append(net)
+    if missing_nets:
+        raise Exception(
+            "Missing net(s). Please upload to {} the following net(s): {}".format(
+                request.host_url,
+                ", ".join(missing_nets),
+            )
+        )
+
     if run["base_same_as_master"]:
-        base_net = data["base_net"]
-        if base_net:
-            net = request.rundb.get_nn(base_net)
-            if not net:
-                # Should never happen:
-                raise Exception(
-                    "The net {}, used by {}, is not "
-                    "known to Fishtest. Please upload it to: "
-                    "{}/upload.".format(base_net, data["base_tag"], request.host_url)
-                )
+        for net in base_nets:
             if "is_master" not in net:
                 net["is_master"] = True
                 request.rundb.update_nn(net)
-    new_net = data["new_net"]
-    if new_net:
-        net = request.rundb.get_nn(new_net)
-        if not net:
-            return
+
+    for net in new_nets:
         if "first_test" not in net:
             net["first_test"] = {"id": run_id, "date": datetime.now(timezone.utc)}
         net["last_test"] = {"id": run_id, "date": datetime.now(timezone.utc)}
@@ -1228,7 +1238,10 @@ def tests_approve(request):
     if run is None:
         request.session.flash(message, "error")
     else:
-        update_nets(request, run)
+        try:
+            update_nets(request, run)
+        except Exception as e:
+            request.session.flash(str(e), "error")
         request.actiondb.approve_run(username=username, run=run)
         cached_flash(request, message)
     return home(request)
@@ -1367,11 +1380,13 @@ def tests_view(request):
         "new_options",
         "resolved_new",
         "new_net",
+        "new_nets",
         "base_tag",
         "base_signature",
         "base_options",
         "resolved_base",
         "base_net",
+        "base_nets",
         "sprt",
         "num_games",
         "spsa",
@@ -1400,6 +1415,9 @@ def tests_view(request):
 
         if name == "base_tag" and "msg_base" in run["args"]:
             value += "  (" + run["args"]["msg_base"][:50] + ")"
+
+        if name in ("new_nets", "base_nets"):
+            value = ", ".join(value)
 
         if name == "sprt" and value != "-":
             value = "elo0: {:.2f} alpha: {:.2f} elo1: {:.2f} beta: {:.2f} state: {} ({})".format(
