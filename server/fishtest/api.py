@@ -20,14 +20,15 @@ from vtjson import _validate, compile, intersect, interval, lax, regex
 Important note
 ==============
 
-All APIs that rely on get_run() should be served from a single Fishtest instance.
-It's essential to note that validate_request() can also utilize get_run().
-Therefore, any APIs using self.validate_request("/api/<route>") could also
-requires to be served from the same Fishtest instance.
+All APIs that rely on the `run_cache` of `rundb.get_run()`
+must be served from the main Fishtest instance.
+Note that `self.validate_request("/api/<route>")`
+uses `rundb.get_run()` under some conditions.
 
-If other instances require information about runs, they should directly query the database.
-However, please be aware that this information might be slightly outdated,
-depending on how frequently the main instance flushes its run cache.
+If other Fishtest instances need information about runs,
+they should query the database directly.
+However, keep in mind that this information might be slightly outdated.
+This depends on how frequently the main instance flushes its `run_cache`.
 """
 
 WORKER_VERSION = 230
