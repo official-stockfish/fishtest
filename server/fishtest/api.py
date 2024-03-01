@@ -14,7 +14,7 @@ from pyramid.httpexceptions import (
 )
 from pyramid.response import Response
 from pyramid.view import exception_view_config, view_config, view_defaults
-from vtjson import _validate, compile, intersect, interval, lax, regex
+from vtjson import ValidationError, compile, intersect, interval, lax, regex, validate
 
 """
 Important note
@@ -112,7 +112,7 @@ end api_schema
 
 
 def validate_request(request):
-    return _validate(api_schema, request, "request")
+    validate(api_schema, request, "request")
 
 
 # Avoids exposing sensitive data about the workers to the client and skips some heavy data.
@@ -181,7 +181,10 @@ class ApiView(object):
 
         # Is the request syntactically correct?
         schema = lax({"password": str, "worker_info": {"username": str}})
-        self.handle_error(_validate(schema, self.request_body, "request"))
+        try:
+            validate(schema, self.request_body, "request")
+        except ValidationError as e:
+            self.handle_error(str(e))
 
         # is the supplied password correct?
         token = self.request.userdb.authenticate(
@@ -202,7 +205,10 @@ class ApiView(object):
         self.validate_username_password(api)
 
         # Is the request syntactically correct?
-        self.handle_error(validate_request(self.request_body))
+        try:
+            validate_request(self.request_body)
+        except ValidationError as e:
+            self.handle_error(str(e))
 
         # is a supplied run_id correct?
         if "run_id" in self.request_body:

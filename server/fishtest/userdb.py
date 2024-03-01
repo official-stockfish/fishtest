@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from bson.objectid import ObjectId
 from pymongo import ASCENDING
-from vtjson import _validate, email, union, url
+from vtjson import ValidationError, email, union, url, validate
 
 schema = {
     "_id?": ObjectId,
@@ -24,10 +24,11 @@ DEFAULT_MACHINE_LIMIT = 16
 
 
 def validate_user(user):
-    valid = _validate(schema, user, "user")
-    if valid != "":
+    try:
+        validate(schema, user, "user")
+    except ValidationError as e:
         print(valid, flush=True)
-        assert False
+        raise
 
 
 class UserDb:
