@@ -1307,10 +1307,11 @@ After fixing the issues you can unblock the worker at
             total = (
                 stats.get("wins", 0) + stats.get("losses", 0) + stats.get("draws", 0)
             )
-            if not total:
-                return
             crashes = stats.get("crashes", 0)
             time_losses = stats.get("time_losses", 0)
+            total += crashes + time_losses
+            if not total:
+                return
             message = f"Time losses:{time_losses}({time_losses/total:.1%}) Crashes:{crashes}({crashes/total:.1%})"
             self.actiondb.crash_or_time(
                 username=task["worker_info"]["username"],

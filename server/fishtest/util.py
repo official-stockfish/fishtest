@@ -162,6 +162,7 @@ def crash_or_time(task):
     total = stats.get("wins", 0) + stats.get("losses", 0) + stats.get("draws", 0)
     crashes = stats.get("crashes", 0)
     time_losses = stats.get("time_losses", 0)
+    total += crashes + time_losses
     return crashes > 3 or (total > 20 and time_losses / total > 0.1)
 
 
