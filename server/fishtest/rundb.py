@@ -35,7 +35,7 @@ from fishtest.util import (
 )
 from fishtest.workerdb import WorkerDb
 from pymongo import DESCENDING, MongoClient
-from vtjson import _validate, ip_address, number, regex, union, url
+from vtjson import ValidationError, ip_address, number, regex, union, url, validate
 
 DEBUG = False
 
@@ -434,9 +434,10 @@ class RunDb:
         if rescheduled_from:
             new_run["rescheduled_from"] = rescheduled_from
 
-        valid = _validate(schema, new_run, "run")
-        if valid != "":
-            message = f"The new run object does not _validate: {valid}"
+        try:
+            validate(schema, new_run, "run")
+        except ValidationError as e:
+            message = f"The new run object does not validate: {str(e)}"
             print(message, flush=True)
             raise Exception(message)
 
@@ -1490,6 +1491,10 @@ After fixing the issues you can unblock the worker at
                 info = "Check_results: task {}/{} {} results mismatch: {}/{}".format(
                     run_id, task_id, s, old.get(s, -1), new.get(s, -1)
                 )
+                self.actiondb.log_message(
+                    username="fishtest.system",
+                    message=info,
+                )
                 print(info, flush=True)
 
         if (
@@ -1504,6 +1509,10 @@ After fixing the issues you can unblock the worker at
                 len(old.get("pentanomial", [])),
                 len(new.get("pentanomial", [])),
             )
+            self.actiondb.log_message(
+                username="fishtest.system",
+                message=info,
+            )
             print(info, flush=True)
         else:
             for i, (old_value, new_value) in enumerate(
@@ -1512,6 +1521,10 @@ After fixing the issues you can unblock the worker at
                 if old_value != new_value:
                     info = "Check_results: task {}/{} pentanomial value {} results mismatch: {}/{}".format(
                         run_id, task_id, i, old_value, new_value
+                    )
+                    self.actiondb.log_message(
+                        username="fishtest.system",
+                        message=info,
                     )
                     print(info, flush=True)
 
@@ -1563,11 +1576,15 @@ After fixing the issues you can unblock the worker at
         run["cores"] = 0
         run["workers"] = 0
         run["finished"] = True
-        valid = _validate(schema, run, "run")
-        if valid != "":
-            print(f"The run object {run_id} does not validate: {valid}", flush=True)
-            # We are not confident enough to enable this...
-            # assert False
+        try:
+            validate(schema, run, "run")
+        except ValidationError as e:
+            message = f"The run object {run_id} does not validate: {str(e)}"
+            print(message, flush=True)
+            self.actiondb.log_message(
+                username="fishtest.system",
+                message=message,
+            )
 
         self.buffer(run, True)
         # Publish the results of the run to the Fishcooking forum

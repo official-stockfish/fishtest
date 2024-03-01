@@ -155,6 +155,13 @@ schema = union(
         "worker": short_worker_name,
         "message": union("blocked", "unblocked"),
     },
+    {
+        "_id?": ObjectId,
+        "time": float,
+        "action": "log_message",
+        "username": str,
+        "message": str,
+    },
 )
 
 del long_worker_name, run_id, run_name, short_worker_name
@@ -355,6 +362,13 @@ class ActionDb:
             action="block_worker",
             username=username,
             worker=worker,
+            message=message,
+        )
+
+    def log_message(self, username=None, message=None):
+        self.insert_action(
+            action="log_message",
+            username=username,
             message=message,
         )
 
