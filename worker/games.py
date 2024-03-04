@@ -1360,16 +1360,32 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file, clear_binar
         pass
 
     # Verify that the signatures are correct.
-    verify_signature(
-        new_engine,
-        run["args"]["new_signature"],
-        games_concurrency * threads,
-    )
-    base_nps, cpu_features = verify_signature(
-        base_engine,
-        run["args"]["base_signature"],
-        games_concurrency * threads,
-    )
+    run_errors = []
+    try:
+        base_nps, cpu_features = verify_signature(
+            base_engine,
+            run["args"]["base_signature"],
+            games_concurrency * threads,
+        )
+    except RunException as e:
+        run_errors.append(str(e))
+    except WorkerException as e:
+        raise e
+
+    try:
+        verify_signature(
+            new_engine,
+            run["args"]["new_signature"],
+            games_concurrency * threads,
+        )
+    except RunException as e:
+        run_errors.append(str(e))
+    except WorkerException as e:
+        raise e
+
+    # Handle exceptions if any.
+    if run_errors:
+        raise RunException("\n".join(run_errors))
 
     if base_nps < 208082 / (1 + math.tanh((worker_concurrency - 1) / 8)):
         raise WorkerException(

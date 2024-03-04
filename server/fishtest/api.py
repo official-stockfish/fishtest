@@ -31,7 +31,7 @@ However, keep in mind that this information might be slightly outdated.
 This depends on how frequently the main instance flushes its `run_cache`.
 """
 
-WORKER_VERSION = 230
+WORKER_VERSION = 231
 
 """
 begin api_schema
