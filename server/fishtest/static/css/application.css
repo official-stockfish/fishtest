@@ -654,3 +654,7 @@ input[type="checkbox"],
   color: inherit !important;
   opacity: 0.65;
 }
+
+.dropdown-item {
+  cursor: pointer;
+}
