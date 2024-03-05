@@ -16,11 +16,20 @@
     const originalTable = document
       .getElementById("contributors_table")
       .cloneNode(true);
+
     const originalRows = Array.from(originalTable.querySelectorAll("tbody tr"));
+
+    const includes = (row, inputValue) => {
+      const cells = Array.from(row.querySelectorAll("td"));
+      return cells.some((cell) => {
+        const cellText = cell.textContent || cell.innerText;
+        return cellText.toLowerCase().indexOf(inputValue) > -1;
+      });
+    };
 
     const searchInput = document.getElementById("search_contributors");
     searchInput.addEventListener("input", (e) => {
-      filterTable(e.target.value, "contributors_table", originalRows);
+      filterTable(e.target.value, "contributors_table", originalRows, includes);
     });
   })();
 </script>
