@@ -545,9 +545,9 @@ def actions(request):
     }
 
 
-def get_idle_users(request):
+def get_idle_users(users, request):
     idle = {}
-    for u in request.userdb.get_users():
+    for u in users:
         idle[u["username"]] = u
     for u in request.userdb.user_cache.find():
         del idle[u["username"]]
@@ -561,10 +561,13 @@ def user_management(request):
         request.session.flash("You cannot view user management", "error")
         return home(request)
 
+    users = list(request.userdb.get_users())
+
     return {
+        "all_users": users,
         "pending_users": request.userdb.get_pending(),
         "blocked_users": request.userdb.get_blocked(),
-        "idle_users": get_idle_users(request),
+        "idle_users": get_idle_users(users, request),  # depends on cache too
     }
 
 
