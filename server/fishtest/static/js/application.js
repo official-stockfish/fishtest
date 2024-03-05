@@ -365,7 +365,7 @@ function padDotVersionStr(dn) {
 }
 
 // Filters tables client-side
-function filterTable(inputValue, tableId, originalRows) {
+function filterTable(inputValue, tableId, originalRows, predicate) {
   const table = document.getElementById(tableId);
   const tbody = table.querySelector("tbody");
   let noDataRow = table.querySelector(".no-data");
@@ -379,13 +379,7 @@ function filterTable(inputValue, tableId, originalRows) {
   let filteredRows = 0;
 
   originalRows.forEach((row) => {
-    const cells = Array.from(row.querySelectorAll("td"));
-    const found = cells.some((cell) => {
-      const cellText = cell.textContent || cell.innerText;
-      return cellText.toLowerCase().indexOf(inputValue) > -1;
-    });
-
-    if (found) {
+    if (predicate(row, inputValue)) {
       tbody.append(row.cloneNode(true));
       filteredRows++;
     }
@@ -428,6 +422,16 @@ function filterTable(inputValue, tableId, originalRows) {
   /* JavaScript Code:
   (async () => {
     await DOMContentLoaded();
+
+    // Define your predicate function
+    const myPredicate = (row, inputValue) => {
+      const cells = Array.from(row.querySelectorAll("td"));
+      return cells.some((cell) => {
+        const cellText = cell.textContent || cell.innerText;
+        return cellText.toLowerCase().indexOf(inputValue) > -1;
+      });
+    };
+
     const originalTable = document
       .getElementById("my_table")
       .cloneNode(true);
@@ -435,7 +439,7 @@ function filterTable(inputValue, tableId, originalRows) {
 
     const searchInput = document.getElementById("my_input");
     searchInput.addEventListener("input", (e) => {
-      filterTable(e.target.value, "my_table", originalRows);
+      filterTable(e.target.value, "my_table", originalRows, myPredicate);
     });
   })();
   */
