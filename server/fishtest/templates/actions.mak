@@ -147,7 +147,11 @@
               agent = action['username']
               agent_link = "/user/"+agent
           %>
-          <td><a href="${agent_link|n}">${agent|n}</a></td>
+          % if action['action'] in ('system_event', 'log_message'):
+            <td>${action['username']}</td>
+          % else:
+            <td><a href="${agent_link|n}">${agent|n}</a></td>
+          % endif
           % if 'nn' in action:
             <td><a href=/api/nn/${action['nn']}>${action['nn'].replace('-', '&#8209;')|n}</a></td>
           % elif 'run' in action and 'run_id' in action:
