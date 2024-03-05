@@ -4,7 +4,7 @@ import io
 import re
 from datetime import datetime, timezone
 
-from fishtest.stats.stat_util import SPRT_elo
+from fishtest.stats.stat_util import SPRT_elo, get_elo
 from fishtest.util import worker_name
 from pyramid.httpexceptions import (
     HTTPBadRequest,
@@ -455,25 +455,19 @@ class ApiView(object):
         DDWL = self.request.params.get("DDWL")
         WD = self.request.params.get("WD")
         WW = self.request.params.get("WW")
-        elo0 = self.request.params.get("elo0")
-        elo1 = self.request.params.get("elo1")
-        elo_model = self.request.params.get("elo_model", "normalized")
-
-        if elo_model not in ["BayesElo", "logistic", "normalized"]:
-            self.handle_error(
-                "Valid Elo models are: BayesElo, logistic, and normalized."
-            )
+        elo0 = self.request.params.get("elo0", "")
+        elo1 = self.request.params.get("elo1", "")
 
         is_ptnml = all(
             value is not None and value.replace(".", "").replace("-", "").isdigit()
-            for value in [LL, LD, DDWL, WD, WW, elo0, elo1]
+            for value in [LL, LD, DDWL, WD, WW]
         )
 
         is_ptnml = is_ptnml and all(int(value) >= 0 for value in [LL, LD, DDWL, WD, WW])
 
         is_wdl = not is_ptnml and all(
             value is not None and value.replace(".", "").replace("-", "").isdigit()
-            for value in [W, D, L, elo0, elo1]
+            for value in [W, D, L]
         )
 
         is_wdl = is_wdl and all(int(value) >= 0 for value in [W, D, L])
@@ -509,14 +503,47 @@ class ApiView(object):
                 "draws": D,
                 "losses": L,
             }
-        elo0 = float(elo0)
-        elo1 = float(elo1)
-        alpha = 0.05
-        beta = 0.05
-        a = SPRT_elo(
-            results, alpha=alpha, beta=beta, elo0=elo0, elo1=elo1, elo_model=elo_model
-        )
-        return a
+
+        is_sprt = elo0 != "" and elo1 != ""
+
+        if not is_sprt:  # fixed games
+            if "pentanomial" in results:
+                return get_elo(results["pentanomial"])
+            else:
+                WLD = [results["wins"], results["losses"], results["draws"]]
+                return get_elo([WLD[1], WLD[2], WLD[0]])
+        else:
+            badEloValues = (
+                not all(
+                    value.replace(".", "").replace("-", "").isdigit()
+                    for value in [elo0, elo1]
+                )
+                or float(elo1) < float(elo0) + 0.5
+                or abs(float(elo0)) > 10
+                or abs(float(elo1)) > 10
+            )
+            if badEloValues:
+                self.handle_error("Bad elo0, and elo1 values.")
+
+            elo_model = self.request.params.get("elo_model", "normalized")
+
+            if elo_model not in ["BayesElo", "logistic", "normalized"]:
+                self.handle_error(
+                    "Valid Elo models are: BayesElo, logistic, and normalized."
+                )
+
+            elo0 = float(elo0)
+            elo1 = float(elo1)
+            alpha = 0.05
+            beta = 0.05
+            return SPRT_elo(
+                results,
+                alpha=alpha,
+                beta=beta,
+                elo0=elo0,
+                elo1=elo1,
+                elo_model=elo_model,
+            )
 
     @view_config(route_name="api_request_task")
     def request_task(self):
