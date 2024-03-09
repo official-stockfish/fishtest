@@ -774,7 +774,7 @@ def parse_spsa_params(raw, spsa):
         if len(chunks) != 6:
             raise Exception("The line {} does not have 6 entries".format(chunks))
         if float(chunks[4]) < 1:
-            raise Exception("The tuner requires c values greater than 1")
+            raise Exception("The tuner requires c values greater than or equal to 1")
         param = {
             "name": chunks[0],
             "start": float(chunks[1]),

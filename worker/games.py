@@ -1091,7 +1091,7 @@ def launch_cutechess(
         cmd[:idx]
         + [
             "option.{}={}".format(
-                x["name"], int(x["value"])
+                x["name"], math.floor(x["value"])
             )
             for x in w_params
         ]
@@ -1102,7 +1102,7 @@ def launch_cutechess(
         cmd[:idx]
         + [
             "option.{}={}".format(
-                x["name"], int(x["value"])
+                x["name"], math.floor(x["value"])
             )
             for x in b_params
         ]
