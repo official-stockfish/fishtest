@@ -856,9 +856,7 @@ def validate_form(request):
                     "This commit has no signature: please supply it manually."
                 )
         if len(data["info"]) == 0:
-            data["info"] = (
-                "" if re.match(r"^[012]?[0-9][^0-9].*", data["tc"]) else "LTC: "
-            ) + strip_message(c["commit"]["message"])
+            data["info"] = strip_message(c["commit"]["message"])
 
     # Check that the book exists in the official books repo
     if len(data["book"]) > 0:
