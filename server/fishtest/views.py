@@ -22,6 +22,7 @@ from fishtest.util import (
     get_hash,
     get_tc_ratio,
     github_repo_valid,
+    is_sprt_ltc_data,
     password_strength,
     update_residuals,
 )
@@ -965,9 +966,7 @@ def validate_form(request):
                     "This commit has no signature: please supply it manually."
                 )
         if len(data["info"]) == 0:
-            data["info"] = (
-                "" if re.match(r"^[012]?[0-9][^0-9].*", data["tc"]) else "LTC: "
-            ) + strip_message(c["commit"]["message"])
+            data["info"] = strip_message(c["commit"]["message"])
 
     # Check that the book exists in the official books repo
     if len(data["book"]) > 0:
@@ -1194,6 +1193,8 @@ def tests_run(request):
     if request.method == "POST":
         try:
             data = validate_form(request)
+            if is_sprt_ltc_data(data):
+                data["info"] = "LTC: " + data["info"]
             run_id = request.rundb.new_run(**data)
             run = request.rundb.get_run(run_id)
             request.actiondb.new_run(
