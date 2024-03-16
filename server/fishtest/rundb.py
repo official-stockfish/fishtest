@@ -17,6 +17,7 @@ import fishtest.stats.stat_util
 from bson.binary import Binary
 from bson.objectid import ObjectId
 from fishtest.actiondb import ActionDb
+from fishtest.schemas import nn_schema, runs_schema
 from fishtest.stats.stat_util import SPRT_elo
 from fishtest.userdb import UserDb
 from fishtest.util import (
@@ -35,205 +36,13 @@ from fishtest.util import (
 )
 from fishtest.workerdb import WorkerDb
 from pymongo import DESCENDING, MongoClient
-from vtjson import ValidationError, ip_address, number, regex, union, url, validate
+from vtjson import ValidationError, validate
 
 DEBUG = False
 
 boot_time = datetime.now(timezone.utc)
 
 last_rundb = None
-
-# This schema only matches new runs. The old runs are not
-# compatible with it. For documentation purposes it would
-# also be useful to have a "universal schema" that matches
-# all the runs in the db.
-# To make this practical we will eventually put all schemas
-# in a separate module "schemas.py".
-
-net_name = regex("nn-[a-f0-9]{12}.nnue", name="net_name")
-tc = regex(r"([1-9]\d*/)?\d+(\.\d+)?(\+\d+(\.\d+)?)?", name="tc")
-str_int = regex(r"[1-9]\d*", name="str_int")
-sha = regex(r"[a-f0-9]{40}", name="sha")
-country_code = regex(r"[A-Z][A-Z]", name="country_code")
-run_id = regex(r"[a-f0-9]{24}", name="run_id")
-uuid = regex(r"[0-9a-zA-Z]{2,8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}", name="uuid")
-
-worker_info_schema = {
-    "uname": str,
-    "architecture": [str, str],
-    "concurrency": int,
-    "max_memory": int,
-    "min_threads": int,
-    "username": str,
-    "version": int,
-    "python_version": [int, int, int],
-    "gcc_version": [int, int, int],
-    "compiler": union("clang++", "g++"),
-    "unique_key": uuid,
-    "modified": bool,
-    "ARCH": str,
-    "nps": number,
-    "near_github_api_limit": bool,
-    "remote_addr": ip_address,
-    "country_code": union(country_code, "?"),
-}
-
-results_schema = {
-    "wins": int,
-    "losses": int,
-    "draws": int,
-    "crashes": int,
-    "time_losses": int,
-    "pentanomial": [int, int, int, int, int],
-}
-
-schema = {
-    "_id?": ObjectId,
-    "start_time": datetime,
-    "last_updated": datetime,
-    "tc_base": number,
-    "base_same_as_master": bool,
-    "rescheduled_from?": run_id,
-    "approved": bool,
-    "approver": str,
-    "finished": bool,
-    "deleted": bool,
-    "failed": bool,
-    "is_green": bool,
-    "is_yellow": bool,
-    "workers": int,
-    "cores": int,
-    "results": results_schema,
-    "results_info?": {
-        "style": str,
-        "info": [str, ...],
-    },
-    "args": {
-        "base_tag": str,
-        "new_tag": str,
-        "base_nets": [net_name, ...],
-        "new_nets": [net_name, ...],
-        "num_games": int,
-        "tc": tc,
-        "new_tc": tc,
-        "book": str,
-        "book_depth": str_int,
-        "threads": int,
-        "resolved_base": sha,
-        "resolved_new": sha,
-        "msg_base": str,
-        "msg_new": str,
-        "base_options": str,
-        "new_options": str,
-        "info": str,
-        "base_signature": str_int,
-        "new_signature": str_int,
-        "username": str,
-        "tests_repo": url,
-        "auto_purge": bool,
-        "throughput": number,
-        "itp": number,
-        "priority": number,
-        "adjudication": bool,
-        "sprt?": {
-            "alpha": 0.05,
-            "beta": 0.05,
-            "elo0": number,
-            "elo1": number,
-            "elo_model": "normalized",
-            "state": union("", "accepted", "rejected"),
-            "llr": number,
-            "batch_size": int,
-            "lower_bound": -math.log(19),
-            "upper_bound": math.log(19),
-            "lost_samples?": int,
-            "illegal_update?": int,
-            "overshoot?": {
-                "last_update": int,
-                "skipped_updates": int,
-                "ref0": number,
-                "m0": number,
-                "sq0": number,
-                "ref1": number,
-                "m1": number,
-                "sq1": number,
-            },
-        },
-        "spsa?": {
-            "A": number,
-            "alpha": number,
-            "gamma": number,
-            "raw_params": str,
-            "iter": int,
-            "num_iter": int,
-            "params": [
-                {
-                    "name": str,
-                    "start": number,
-                    "min": number,
-                    "max": number,
-                    "c_end": number,
-                    "r_end": number,
-                    "c": number,
-                    "a_end": number,
-                    "a": number,
-                    "theta": number,
-                },
-                ...,
-            ],
-            "param_history?": [
-                [{"theta": number, "R": number, "c": number}, ...],
-                ...,
-            ],
-        },
-    },
-    "tasks": [
-        {
-            "num_games": int,
-            "active": bool,
-            "last_updated": datetime,
-            "start": int,
-            "residual?": number,
-            "residual_color?": str,
-            "bad?": True,
-            "stats": results_schema,
-            "worker_info": worker_info_schema,
-        },
-        ...,
-    ],
-    "bad_tasks?": [
-        {
-            "num_games": int,
-            "active": False,
-            "last_updated": datetime,
-            "start": int,
-            "residual": number,
-            "residual_color": str,
-            "bad": True,
-            "task_id": int,
-            "stats": results_schema,
-            "worker_info": worker_info_schema,
-        },
-        ...,
-    ],
-}
-
-# Avoid leaking too many things into the global scope
-del (
-    country_code,
-    ip_address,
-    number,
-    regex,
-    results_schema,
-    run_id,
-    sha,
-    str_int,
-    tc,
-    union,
-    url,
-    uuid,
-    worker_info_schema,
-)
 
 
 def get_port():
@@ -435,7 +244,7 @@ class RunDb:
             new_run["rescheduled_from"] = rescheduled_from
 
         try:
-            validate(schema, new_run, "run")
+            validate(runs_schema, new_run, "run")
         except ValidationError as e:
             message = f"The new run object does not validate: {str(e)}"
             print(message, flush=True)
@@ -469,19 +278,27 @@ class RunDb:
             return pgns_tar
         return None
 
-    def upload_nn(self, userid, name, nn):
-        self.nndb.insert_one({"user": userid, "name": name, "downloads": 0})
-        return {}
-
-    def update_nn(self, net):
-        net.pop("downloads", None)
-        self.nndb.update_one({"name": net["name"]}, {"$set": net})
+    def write_nn(self, net):
+        validate(nn_schema, net, "net")
+        self.nndb.replace_one({"name": net["name"]}, net, upsert=True)
 
     def get_nn(self, name):
         return self.nndb.find_one({"name": name}, {"nn": 0})
 
+    def upload_nn(self, userid, name):
+        self.write_nn({"user": userid, "name": name, "downloads": 0})
+
+    def update_nn(self, net):
+        net = copy.copy(net)  # avoid side effects
+        net.pop("downloads", None)
+        old_net = self.get_nn(net["name"])
+        old_net.update(net)
+        self.write_nn(old_net)
+
     def increment_nn_downloads(self, name):
-        self.nndb.update_one({"name": name}, {"$inc": {"downloads": 1}})
+        net = self.get_nn(name)
+        net["downloads"] += 1
+        self.write_nn(net)
 
     def get_nns(self, user="", network_name="", master_only=False, limit=0, skip=0):
         q = {}
@@ -1460,8 +1277,6 @@ After fixing the issues you can unblock the worker at
         # Return.
 
         if run_finished:
-            self.check_results(run, run_id, task_id)
-
             self.stop_run(run_id)
             # stop run may not actually stop a run because of autopurging!
             if run["finished"]:
@@ -1478,55 +1293,6 @@ After fixing the issues you can unblock the worker at
             ret = {"task_alive": task["active"]}
 
         return ret
-
-    def check_results(self, run, run_id, task_id):
-        old = run["results"]
-
-        # Recalculate results from all tasks in run["tasks"].
-        new = self.compute_results(run)
-
-        # Log any discrepancies between incremented and recalculated results
-        for s in ["wins", "losses", "draws", "crashes", "time_losses"]:
-            if old.get(s, -1) != new.get(s, -1):
-                info = "Check_results: task {}/{} {} results mismatch: {}/{}".format(
-                    run_id, task_id, s, old.get(s, -1), new.get(s, -1)
-                )
-                self.actiondb.log_message(
-                    username="fishtest.system",
-                    message=info,
-                )
-                print(info, flush=True)
-
-        if (
-            "pentanomial" not in old
-            or "pentanomial" not in new
-            or len(old["pentanomial"]) < 5
-            or len(new["pentanomial"]) < 5
-        ):
-            info = "Check_results: task {}/{} pentanomial length results mismatch: {}/{}".format(
-                run_id,
-                task_id,
-                len(old.get("pentanomial", [])),
-                len(new.get("pentanomial", [])),
-            )
-            self.actiondb.log_message(
-                username="fishtest.system",
-                message=info,
-            )
-            print(info, flush=True)
-        else:
-            for i, (old_value, new_value) in enumerate(
-                zip(old["pentanomial"], new["pentanomial"])
-            ):
-                if old_value != new_value:
-                    info = "Check_results: task {}/{} pentanomial value {} results mismatch: {}/{}".format(
-                        run_id, task_id, i, old_value, new_value
-                    )
-                    self.actiondb.log_message(
-                        username="fishtest.system",
-                        message=info,
-                    )
-                    print(info, flush=True)
 
     def failed_task(self, run_id, task_id, message="Unknown reason"):
         run = self.get_run(run_id)
@@ -1577,7 +1343,7 @@ After fixing the issues you can unblock the worker at
         run["workers"] = 0
         run["finished"] = True
         try:
-            validate(schema, run, "run")
+            validate(runs_schema, run, "run")
         except ValidationError as e:
             message = f"The run object {run_id} does not validate: {str(e)}"
             print(message, flush=True)

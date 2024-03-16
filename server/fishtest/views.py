@@ -11,6 +11,7 @@ from pathlib import Path
 import fishtest.stats.stat_util
 import requests
 from bson.objectid import ObjectId
+from fishtest.schemas import short_worker_name
 from fishtest.util import (
     email_valid,
     format_bounds,
@@ -25,6 +26,7 @@ from pyramid.httpexceptions import HTTPFound, exception_response
 from pyramid.security import forget, remember
 from pyramid.view import forbidden_view_config, view_config
 from requests.exceptions import ConnectionError, HTTPError
+from vtjson import ValidationError, union, validate
 
 HTTP_TIMEOUT = 15.0
 
@@ -188,7 +190,15 @@ def workers(request):
             w["subject"] = f"Issue(s) with worker {w['worker_name']}"
 
     worker_name = request.matchdict.get("worker_name")
-    # TODO. Do more validation of worker names
+    try:
+        validate(union(short_worker_name, "show"), worker_name, name="worker_name")
+    except ValidationError as e:
+        request.session.flash(str(e), "error")
+        return {
+            "show_admin": False,
+            "show_email": is_approver,
+            "blocked_workers": blocked_workers,
+        }
     if len(worker_name.split("-")) != 3:
         return {
             "show_admin": False,
@@ -318,7 +328,7 @@ def upload(request):
         request.session.flash("Network already exists", "error")
         return {}
 
-    request.rundb.upload_nn(request.authenticated_userid, filename, network)
+    request.rundb.upload_nn(request.authenticated_userid, filename)
 
     request.actiondb.upload_nn(
         username=request.authenticated_userid,

@@ -4,28 +4,16 @@ import time
 from datetime import datetime, timezone
 
 from bson.objectid import ObjectId
+from fishtest.schemas import user_schema
 from pymongo import ASCENDING
-from vtjson import ValidationError, email, union, url, validate
-
-schema = {
-    "_id?": ObjectId,
-    "username": str,
-    "password": str,
-    "registration_time": datetime,
-    "pending": bool,
-    "blocked": bool,
-    "email": email,
-    "groups": [str, ...],
-    "tests_repo": union("", url),
-    "machine_limit": int,
-}
+from vtjson import ValidationError, validate
 
 DEFAULT_MACHINE_LIMIT = 16
 
 
 def validate_user(user):
     try:
-        validate(schema, user, "user")
+        validate(user_schema, user, "user")
     except ValidationError as e:
         print(valid, flush=True)
         raise

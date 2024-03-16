@@ -1,170 +1,10 @@
 from datetime import datetime, timezone
 
 from bson.objectid import ObjectId
+from fishtest.schemas import action_schema
 from fishtest.util import hex_print, worker_name
 from pymongo import DESCENDING
-from vtjson import regex, union, validate
-
-run_id = regex(r"[a-f0-9]{24}", name="run_id")
-run_name = regex(r".*-[a-f0-9]{7}", name="run_name")
-short_worker_name = regex(r".*-[\d]+cores-[a-zA-Z0-9]{2,8}", name="short_worker_name")
-long_worker_name = regex(
-    r".*-[\d]+cores-[a-zA-Z0-9]{2,8}-[a-f0-9]{4}\*?", name="long_worker_name"
-)
-
-schema = union(
-    {
-        "_id?": ObjectId,
-        "time": float,
-        "action": "failed_task",
-        "username": str,
-        "worker": long_worker_name,
-        "run_id": run_id,
-        "run": run_name,
-        "task_id": int,
-        "message": str,
-    },
-    {
-        "_id?": ObjectId,
-        "time": float,
-        "action": "crash_or_time",
-        "username": str,
-        "worker": long_worker_name,
-        "run_id": run_id,
-        "run": run_name,
-        "task_id": int,
-        "message": str,
-    },
-    {
-        "_id?": ObjectId,
-        "time": float,
-        "action": "dead_task",
-        "username": str,
-        "worker": long_worker_name,
-        "run_id": run_id,
-        "run": run_name,
-        "task_id": int,
-    },
-    {
-        "_id?": ObjectId,
-        "time": float,
-        "action": "system_event",
-        "username": "fishtest.system",
-        "message": str,
-    },
-    {
-        "_id?": ObjectId,
-        "time": float,
-        "action": "new_run",
-        "username": str,
-        "run_id": run_id,
-        "run": run_name,
-        "message": str,
-    },
-    {
-        "_id?": ObjectId,
-        "time": float,
-        "action": "upload_nn",
-        "username": str,
-        "nn": str,
-    },
-    {
-        "_id?": ObjectId,
-        "time": float,
-        "action": "modify_run",
-        "username": str,
-        "run_id": run_id,
-        "run": run_name,
-        "message": str,
-    },
-    {
-        "_id?": ObjectId,
-        "time": float,
-        "action": "delete_run",
-        "username": str,
-        "run_id": run_id,
-        "run": run_name,
-    },
-    {
-        "_id?": ObjectId,
-        "time": float,
-        "action": "stop_run",
-        "username": str,
-        "worker": long_worker_name,
-        "run_id": run_id,
-        "run": run_name,
-        "task_id": int,
-        "message": str,
-    },
-    {
-        "_id?": ObjectId,
-        "time": float,
-        "action": "stop_run",
-        "username": str,
-        "run_id": run_id,
-        "run": run_name,
-        "message": str,
-    },
-    {
-        "_id?": ObjectId,
-        "time": float,
-        "action": "finished_run",
-        "username": str,
-        "run_id": run_id,
-        "run": run_name,
-        "message": str,
-    },
-    {
-        "_id?": ObjectId,
-        "time": float,
-        "action": "approve_run",
-        "username": str,
-        "run_id": run_id,
-        "run": run_name,
-    },
-    {
-        "_id?": ObjectId,
-        "time": float,
-        "action": "purge_run",
-        "username": str,
-        "run_id": run_id,
-        "run": run_name,
-        "message": str,
-    },
-    {
-        "_id?": ObjectId,
-        "time": float,
-        "action": "block_user",
-        "username": str,
-        "user": str,
-        "message": union("blocked", "unblocked"),
-    },
-    {
-        "_id?": ObjectId,
-        "time": float,
-        "action": "accept_user",
-        "username": str,
-        "user": str,
-        "message": "accepted",
-    },
-    {
-        "_id?": ObjectId,
-        "time": float,
-        "action": "block_worker",
-        "username": str,
-        "worker": short_worker_name,
-        "message": union("blocked", "unblocked"),
-    },
-    {
-        "_id?": ObjectId,
-        "time": float,
-        "action": "log_message",
-        "username": str,
-        "message": str,
-    },
-)
-
-del long_worker_name, run_id, run_name, short_worker_name
+from vtjson import ValidationError, validate
 
 
 def run_name(run):
@@ -376,5 +216,14 @@ class ActionDb:
         if "run_id" in action:
             action["run_id"] = str(action["run_id"])
         action["time"] = datetime.now(timezone.utc).timestamp()
-        validate(schema, action, "action")  # may raise exception
+        try:
+            validate(action_schema, action, "action")
+        except ValidationError:
+            message = f"Internal Error. Request {str(action)} does not validate"
+            print(message, flush=True)
+            self.log_message(
+                username="fishtest.system",
+                message=message,
+            )
+            return
         self.actions.insert_one(action)

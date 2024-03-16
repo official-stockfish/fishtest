@@ -1,17 +1,8 @@
 from datetime import datetime, timezone
 
 from bson.objectid import ObjectId
+from fishtest.schemas import worker_schema
 from vtjson import regex, validate
-
-short_worker_name = regex(r".*-[\d]+cores-[a-zA-Z0-9]{2,8}", name="short_worker_name")
-
-schema = {
-    "_id?": ObjectId,
-    "worker_name": short_worker_name,
-    "blocked": bool,
-    "message": str,
-    "last_updated": datetime,
-}
 
 
 class WorkerDb:
@@ -44,7 +35,7 @@ class WorkerDb:
             "message": message,
             "last_updated": datetime.now(timezone.utc),
         }
-        validate(schema, r, "worker")  # may throw exception
+        validate(worker_schema, r, "worker")  # may throw exception
         self.workers.replace_one({"worker_name": worker_name}, r, upsert=True)
 
     def get_blocked_workers(self):
