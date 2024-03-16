@@ -4,6 +4,7 @@ import io
 import re
 from datetime import datetime, timezone
 
+from fishtest.schemas import api_access_schema, api_schema
 from fishtest.stats.stat_util import SPRT_elo
 from fishtest.util import worker_name
 from pyramid.httpexceptions import (
@@ -14,7 +15,7 @@ from pyramid.httpexceptions import (
 )
 from pyramid.response import Response
 from pyramid.view import exception_view_config, view_config, view_defaults
-from vtjson import ValidationError, compile, intersect, interval, lax, regex, validate
+from vtjson import ValidationError, validate
 
 """
 Important note
@@ -32,83 +33,6 @@ This depends on how frequently the main instance flushes its `run_cache`.
 """
 
 WORKER_VERSION = 232
-
-"""
-begin api_schema
-"""
-
-run_id = regex(r"[a-f0-9]{24}", name="run_id")
-uuid = regex(r"[0-9a-zA-Z]{2,8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}", name="uuid")
-
-uint = intersect(int, interval(0, ...))
-suint = intersect(int, interval(1, ...))
-ufloat = intersect(float, interval(0.0, ...))
-
-
-def valid_results(R):
-    l, d, w = R["losses"], R["draws"], R["wins"]
-    R = R["pentanomial"]
-    return (
-        l + d + w == 2 * sum(R)
-        and w - l == 2 * R[4] + R[3] - R[1] - 2 * R[0]
-        and R[3] + 2 * R[2] + R[1] >= d >= R[3] + R[1]
-    )
-
-
-def valid_spsa_results(R):
-    return R["wins"] + R["losses"] + R["draws"] == R["num_games"]
-
-
-api_schema = {
-    "password": str,
-    "run_id?": run_id,
-    "task_id?": uint,
-    "pgn?": str,
-    "message?": str,
-    "worker_info": {
-        "uname": str,
-        "architecture": [str, str],
-        "concurrency": suint,
-        "max_memory": suint,
-        "min_threads": suint,
-        "username": str,
-        "version": uint,
-        "python_version": [uint, uint, uint],
-        "gcc_version": [uint, uint, uint],
-        "compiler": {"g++", "clang++"},
-        "unique_key": uuid,
-        "modified": bool,
-        "near_github_api_limit": bool,
-        "ARCH": str,
-        "nps": ufloat,
-    },
-    "spsa?": intersect(
-        {
-            "wins": uint,
-            "losses": uint,
-            "draws": uint,
-            "num_games": uint,
-        },
-        valid_spsa_results,
-    ),
-    "stats?": intersect(
-        {
-            "wins": uint,
-            "losses": uint,
-            "draws": uint,
-            "crashes": uint,
-            "time_losses": uint,
-            "pentanomial": [uint, uint, uint, uint, uint],
-        },
-        valid_results,
-    ),
-}
-
-api_schema = compile(api_schema)
-
-"""
-end api_schema
-"""
 
 
 def validate_request(request):
@@ -180,9 +104,8 @@ class ApiView(object):
             self.handle_error("request is not json encoded")
 
         # Is the request syntactically correct?
-        schema = lax({"password": str, "worker_info": {"username": str}})
         try:
-            validate(schema, self.request_body, "request")
+            validate(api_access_schema, self.request_body, "request")
         except ValidationError as e:
             self.handle_error(str(e))
 
@@ -218,13 +141,11 @@ class ApiView(object):
                 self.handle_error("Invalid run_id: {}".format(run_id))
             self.__run = run
 
-        # if a task_id is present then there should be a run_id, and
-        # the unique_key should correspond to the unique_key of the
-        # task
+        # if a task_id is present then the unique_key should correspond
+        # to the unique_key of the task
+
         if "task_id" in self.request_body:
             task_id = self.request_body["task_id"]
-            if "run_id" not in self.request_body:
-                self.handle_error("The request has a task_id but no run_id")
 
             if task_id < 0 or task_id >= len(run["tasks"]):
                 self.handle_error(

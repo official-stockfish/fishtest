@@ -27,7 +27,7 @@ def new_run(self, add_tasks=0):
         num_games,
         "10+0.01",
         "10+0.01",
-        "book",
+        "book.pgn",
         "10",
         1,
         "",
