@@ -35,7 +35,23 @@ from fishtest.util import (
 )
 from fishtest.workerdb import WorkerDb
 from pymongo import DESCENDING, MongoClient
-from vtjson import ValidationError, ip_address, number, regex, union, url, validate
+from vtjson import (
+    ValidationError,
+    at_most_one_of,
+    glob,
+    ifthen,
+    intersect,
+    interval,
+    ip_address,
+    keys,
+    lax,
+    number,
+    one_of,
+    regex,
+    union,
+    url,
+    validate,
+)
 
 DEBUG = False
 
@@ -57,179 +73,254 @@ sha = regex(r"[a-f0-9]{40}", name="sha")
 country_code = regex(r"[A-Z][A-Z]", name="country_code")
 run_id = regex(r"[a-f0-9]{24}", name="run_id")
 uuid = regex(r"[0-9a-zA-Z]{2,8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}", name="uuid")
+epd_file = glob("*.epd", name="epd_file")
+pgn_file = glob("*.pgn", name="pgn_file")
+
+uint = intersect(int, interval(0, ...))
+suint = intersect(int, interval(1, ...))
+unumber = intersect(number, interval(0, ...))
+
+
+def valid_results(R):
+    l, d, w = R["losses"], R["draws"], R["wins"]
+    R = R["pentanomial"]
+    return (
+        l + d + w == 2 * sum(R)
+        and w - l == 2 * R[4] + R[3] - R[1] - 2 * R[0]
+        and R[3] + 2 * R[2] + R[1] >= d >= R[3] + R[1]
+    )
+
+
+zero_results = {
+    "wins": 0,
+    "draws": 0,
+    "losses": 0,
+    "crashes": 0,
+    "time_losses": 0,
+    "pentanomial": 5 * [0],
+}
+
+
+if_bad_then_zero_stats_and_not_active = ifthen(
+    keys("bad"), lax({"active": False, "stats": zero_results})
+)
+
+
+def final_results_must_match(run):
+    rr = copy.deepcopy(zero_results)
+    for t in run["tasks"]:
+        r = t["stats"]
+        for k in r:
+            if k != "pentanomial":
+                rr[k] += r[k]
+            else:
+                for i, p in enumerate(r["pentanomial"]):
+                    rr[k][i] += p
+    if rr != run["results"]:
+        raise Exception(
+            f"The final results {run['results']} do not match the computed results {rr}"
+        )
+    else:
+        return True
+
 
 worker_info_schema = {
     "uname": str,
     "architecture": [str, str],
-    "concurrency": int,
-    "max_memory": int,
-    "min_threads": int,
+    "concurrency": suint,
+    "max_memory": uint,
+    "min_threads": suint,
     "username": str,
-    "version": int,
-    "python_version": [int, int, int],
-    "gcc_version": [int, int, int],
+    "version": uint,
+    "python_version": [uint, uint, uint],
+    "gcc_version": [uint, uint, uint],
     "compiler": union("clang++", "g++"),
     "unique_key": uuid,
     "modified": bool,
     "ARCH": str,
-    "nps": number,
+    "nps": unumber,
     "near_github_api_limit": bool,
     "remote_addr": ip_address,
     "country_code": union(country_code, "?"),
 }
 
-results_schema = {
-    "wins": int,
-    "losses": int,
-    "draws": int,
-    "crashes": int,
-    "time_losses": int,
-    "pentanomial": [int, int, int, int, int],
-}
+results_schema = intersect(
+    {
+        "wins": uint,
+        "losses": uint,
+        "draws": uint,
+        "crashes": uint,
+        "time_losses": uint,
+        "pentanomial": [uint, uint, uint, uint, uint],
+    },
+    valid_results,
+)
 
-schema = {
-    "_id?": ObjectId,
-    "start_time": datetime,
-    "last_updated": datetime,
-    "tc_base": number,
-    "base_same_as_master": bool,
-    "rescheduled_from?": run_id,
-    "approved": bool,
-    "approver": str,
-    "finished": bool,
-    "deleted": bool,
-    "failed": bool,
-    "is_green": bool,
-    "is_yellow": bool,
-    "workers": int,
-    "cores": int,
-    "results": results_schema,
-    "results_info?": {
-        "style": str,
-        "info": [str, ...],
-    },
-    "args": {
-        "base_tag": str,
-        "new_tag": str,
-        "base_nets": [net_name, ...],
-        "new_nets": [net_name, ...],
-        "num_games": int,
-        "tc": tc,
-        "new_tc": tc,
-        "book": str,
-        "book_depth": str_int,
-        "threads": int,
-        "resolved_base": sha,
-        "resolved_new": sha,
-        "msg_base": str,
-        "msg_new": str,
-        "base_options": str,
-        "new_options": str,
-        "info": str,
-        "base_signature": str_int,
-        "new_signature": str_int,
-        "username": str,
-        "tests_repo": url,
-        "auto_purge": bool,
-        "throughput": number,
-        "itp": number,
-        "priority": number,
-        "adjudication": bool,
-        "sprt?": {
-            "alpha": 0.05,
-            "beta": 0.05,
-            "elo0": number,
-            "elo1": number,
-            "elo_model": "normalized",
-            "state": union("", "accepted", "rejected"),
-            "llr": number,
-            "batch_size": int,
-            "lower_bound": -math.log(19),
-            "upper_bound": math.log(19),
-            "lost_samples?": int,
-            "illegal_update?": int,
-            "overshoot?": {
-                "last_update": int,
-                "skipped_updates": int,
-                "ref0": number,
-                "m0": number,
-                "sq0": number,
-                "ref1": number,
-                "m1": number,
-                "sq1": number,
-            },
+schema = intersect(
+    {
+        "_id?": ObjectId,
+        "start_time": datetime,
+        "last_updated": datetime,
+        "tc_base": unumber,
+        "base_same_as_master": bool,
+        "rescheduled_from?": run_id,
+        "approved": bool,
+        "approver": str,
+        "finished": bool,
+        "deleted": bool,
+        "failed": bool,
+        "is_green": bool,
+        "is_yellow": bool,
+        "workers": uint,
+        "cores": uint,
+        "results": results_schema,
+        "results_info?": {
+            "style": str,
+            "info": [str, ...],
         },
-        "spsa?": {
-            "A": number,
-            "alpha": number,
-            "gamma": number,
-            "raw_params": str,
-            "iter": int,
-            "num_iter": int,
-            "params": [
-                {
-                    "name": str,
-                    "start": number,
-                    "min": number,
-                    "max": number,
-                    "c_end": number,
-                    "r_end": number,
-                    "c": number,
-                    "a_end": number,
-                    "a": number,
-                    "theta": number,
+        "args": intersect(
+            {
+                "base_tag": str,
+                "new_tag": str,
+                "base_nets": [net_name, ...],
+                "new_nets": [net_name, ...],
+                "num_games": uint,
+                "tc": tc,
+                "new_tc": tc,
+                "book": union(epd_file, pgn_file),
+                "book_depth": str_int,
+                "threads": suint,
+                "resolved_base": sha,
+                "resolved_new": sha,
+                "msg_base": str,
+                "msg_new": str,
+                "base_options": str,
+                "new_options": str,
+                "info": str,
+                "base_signature": str_int,
+                "new_signature": str_int,
+                "username": str,
+                "tests_repo": url,
+                "auto_purge": bool,
+                "throughput": unumber,
+                "itp": unumber,
+                "priority": unumber,
+                "adjudication": bool,
+                "sprt?": intersect(
+                    {
+                        "alpha": 0.05,
+                        "beta": 0.05,
+                        "elo0": number,
+                        "elo1": number,
+                        "elo_model": "normalized",
+                        "state": union("", "accepted", "rejected"),
+                        "llr": number,
+                        "batch_size": suint,
+                        "lower_bound": -math.log(19),
+                        "upper_bound": math.log(19),
+                        "lost_samples?": uint,
+                        "illegal_update?": uint,
+                        "overshoot?": {
+                            "last_update": uint,
+                            "skipped_updates": uint,
+                            "ref0": number,
+                            "m0": number,
+                            "sq0": unumber,
+                            "ref1": number,
+                            "m1": number,
+                            "sq1": unumber,
+                        },
+                    },
+                    one_of("overshoot", "lost_samples"),
+                ),
+                "spsa?": {
+                    "A": unumber,
+                    "alpha": unumber,
+                    "gamma": unumber,
+                    "raw_params": str,
+                    "iter": uint,
+                    "num_iter": uint,
+                    "params": [
+                        {
+                            "name": str,
+                            "start": number,
+                            "min": number,
+                            "max": number,
+                            "c_end": unumber,
+                            "r_end": unumber,
+                            "c": unumber,
+                            "a_end": unumber,
+                            "a": unumber,
+                            "theta": number,
+                        },
+                        ...,
+                    ],
+                    "param_history?": [
+                        [
+                            {"theta": number, "R": unumber, "c": unumber},
+                            ...,
+                        ],
+                        ...,
+                    ],
                 },
-                ...,
-            ],
-            "param_history?": [
-                [{"theta": number, "R": number, "c": number}, ...],
-                ...,
-            ],
-        },
+            },
+            at_most_one_of("sprt", "spsa"),
+        ),
+        "tasks": [
+            intersect(
+                {
+                    "num_games": uint,
+                    "active": bool,
+                    "last_updated": datetime,
+                    "start": uint,
+                    "residual?": number,
+                    "residual_color?": str,
+                    "bad?": True,
+                    "stats": results_schema,
+                    "worker_info": worker_info_schema,
+                },
+                if_bad_then_zero_stats_and_not_active,
+            ),
+            ...,
+        ],
+        "bad_tasks?": [
+            {
+                "num_games": uint,
+                "active": False,
+                "last_updated": datetime,
+                "start": uint,
+                "residual": number,
+                "residual_color": str,
+                "bad": True,
+                "task_id": uint,
+                "stats": results_schema,
+                "worker_info": worker_info_schema,
+            },
+            ...,
+        ],
     },
-    "tasks": [
-        {
-            "num_games": int,
-            "active": bool,
-            "last_updated": datetime,
-            "start": int,
-            "residual?": number,
-            "residual_color?": str,
-            "bad?": True,
-            "stats": results_schema,
-            "worker_info": worker_info_schema,
-        },
-        ...,
-    ],
-    "bad_tasks?": [
-        {
-            "num_games": int,
-            "active": False,
-            "last_updated": datetime,
-            "start": int,
-            "residual": number,
-            "residual_color": str,
-            "bad": True,
-            "task_id": int,
-            "stats": results_schema,
-            "worker_info": worker_info_schema,
-        },
-        ...,
-    ],
-}
+    final_results_must_match,
+)
+
 
 # Avoid leaking too many things into the global scope
 del (
     country_code,
+    epd_file,
     ip_address,
+    net_name,
     number,
+    pgn_file,
     regex,
     results_schema,
     run_id,
     sha,
     str_int,
+    suint,
     tc,
+    uint,
     union,
+    unumber,
     url,
     uuid,
     worker_info_schema,
@@ -1460,8 +1551,6 @@ After fixing the issues you can unblock the worker at
         # Return.
 
         if run_finished:
-            self.check_results(run, run_id, task_id)
-
             self.stop_run(run_id)
             # stop run may not actually stop a run because of autopurging!
             if run["finished"]:
@@ -1478,55 +1567,6 @@ After fixing the issues you can unblock the worker at
             ret = {"task_alive": task["active"]}
 
         return ret
-
-    def check_results(self, run, run_id, task_id):
-        old = run["results"]
-
-        # Recalculate results from all tasks in run["tasks"].
-        new = self.compute_results(run)
-
-        # Log any discrepancies between incremented and recalculated results
-        for s in ["wins", "losses", "draws", "crashes", "time_losses"]:
-            if old.get(s, -1) != new.get(s, -1):
-                info = "Check_results: task {}/{} {} results mismatch: {}/{}".format(
-                    run_id, task_id, s, old.get(s, -1), new.get(s, -1)
-                )
-                self.actiondb.log_message(
-                    username="fishtest.system",
-                    message=info,
-                )
-                print(info, flush=True)
-
-        if (
-            "pentanomial" not in old
-            or "pentanomial" not in new
-            or len(old["pentanomial"]) < 5
-            or len(new["pentanomial"]) < 5
-        ):
-            info = "Check_results: task {}/{} pentanomial length results mismatch: {}/{}".format(
-                run_id,
-                task_id,
-                len(old.get("pentanomial", [])),
-                len(new.get("pentanomial", [])),
-            )
-            self.actiondb.log_message(
-                username="fishtest.system",
-                message=info,
-            )
-            print(info, flush=True)
-        else:
-            for i, (old_value, new_value) in enumerate(
-                zip(old["pentanomial"], new["pentanomial"])
-            ):
-                if old_value != new_value:
-                    info = "Check_results: task {}/{} pentanomial value {} results mismatch: {}/{}".format(
-                        run_id, task_id, i, old_value, new_value
-                    )
-                    self.actiondb.log_message(
-                        username="fishtest.system",
-                        message=info,
-                    )
-                    print(info, flush=True)
 
     def failed_task(self, run_id, task_id, message="Unknown reason"):
         run = self.get_run(run_id)
