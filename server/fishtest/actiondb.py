@@ -3,10 +3,11 @@ from datetime import datetime, timezone
 from bson.objectid import ObjectId
 from fishtest.util import hex_print, worker_name
 from pymongo import DESCENDING
-from vtjson import regex, union, validate
+from vtjson import intersect, regex, size, union, validate
 
 run_id = regex(r"[a-f0-9]{24}", name="run_id")
-run_name = regex(r".*-[a-f0-9]{7}", name="run_name")
+run_name = intersect(regex(r".*-[a-f0-9]{7}", name="run_name"), size(0, 23 + 1 + 7))
+message = intersect(str, size(0, 1024))
 short_worker_name = regex(r".*-[\d]+cores-[a-z0-9]{2,8}", name="short_worker_name")
 long_worker_name = regex(
     r".*-[\d]+cores-[a-z0-9]{2,8}-[a-f0-9]{4}\*?", name="long_worker_name"
@@ -22,7 +23,7 @@ schema = union(
         "run_id": run_id,
         "run": run_name,
         "task_id": int,
-        "message": str,
+        "message": message,
     },
     {
         "_id?": ObjectId,
@@ -33,7 +34,7 @@ schema = union(
         "run_id": run_id,
         "run": run_name,
         "task_id": int,
-        "message": str,
+        "message": message,
     },
     {
         "_id?": ObjectId,
@@ -50,7 +51,7 @@ schema = union(
         "time": float,
         "action": "system_event",
         "username": "fishtest.system",
-        "message": str,
+        "message": message,
     },
     {
         "_id?": ObjectId,
@@ -59,7 +60,7 @@ schema = union(
         "username": str,
         "run_id": run_id,
         "run": run_name,
-        "message": str,
+        "message": message,
     },
     {
         "_id?": ObjectId,
@@ -75,7 +76,7 @@ schema = union(
         "username": str,
         "run_id": run_id,
         "run": run_name,
-        "message": str,
+        "message": message,
     },
     {
         "_id?": ObjectId,
@@ -94,7 +95,7 @@ schema = union(
         "run_id": run_id,
         "run": run_name,
         "task_id": int,
-        "message": str,
+        "message": message,
     },
     {
         "_id?": ObjectId,
@@ -103,7 +104,7 @@ schema = union(
         "username": str,
         "run_id": run_id,
         "run": run_name,
-        "message": str,
+        "message": message,
     },
     {
         "_id?": ObjectId,
@@ -112,7 +113,7 @@ schema = union(
         "username": str,
         "run_id": run_id,
         "run": run_name,
-        "message": str,
+        "message": message,
     },
     {
         "_id?": ObjectId,
@@ -129,7 +130,7 @@ schema = union(
         "username": str,
         "run_id": run_id,
         "run": run_name,
-        "message": str,
+        "message": message,
     },
     {
         "_id?": ObjectId,
@@ -160,7 +161,7 @@ schema = union(
         "time": float,
         "action": "log_message",
         "username": str,
-        "message": str,
+        "message": message,
     },
 )
 
