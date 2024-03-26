@@ -318,7 +318,7 @@ def upload(request):
         request.session.flash("Network already exists", "error")
         return {}
 
-    request.rundb.upload_nn(request.authenticated_userid, filename, network)
+    request.rundb.upload_nn(request.authenticated_userid, filename)
 
     request.actiondb.upload_nn(
         username=request.authenticated_userid,
