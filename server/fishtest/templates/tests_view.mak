@@ -6,6 +6,13 @@
 
 <%namespace name="base" file="base.mak"/>
 
+<script
+  src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/5.2.0/diff.js"
+  integrity="sha512-Ubw08LwzeoACkP9I1L0LqwnhiVs6Vg9LWeTFDj0leZIVp5XG28xcxK0lrlFvaL8ZqR8oMOBnFdZLo6agy5+SgQ=="
+  crossorigin="anonymous"
+  referrerpolicy="no-referrer"
+></script>
+
 % if show_task >= 0:
   <script>
     document.documentElement.style="scroll-behavior:auto; overflow:hidden;";
@@ -563,21 +570,20 @@
 
     // Define some functions to fetch the diff and show it
 
-    function showDiff(text) {
-      const numLines = text.split("\n").length;
+    function showDiff(text, numLines) {
       const toggleBtn = document.getElementById("diff-toggle");
       const diffContents = document.getElementById("diff-contents");
       // Hide large diffs by default
       if (numLines < 50) {
         diffContents.style.display = "";
         if (copyDiffBtn) copyDiffBtn.style.display = "";
-        setTimeout(()=> {
+        setTimeout(() => {
           toggleBtn.textContent = "Hide";
         }, 350);
       } else {
         diffContents.style.display = "none";
         if (copyDiffBtn) copyDiffBtn.style.display = "none";
-        setTimeout(()=> {
+        setTimeout(() => {
           toggleBtn.textContent = "Show";
         }, 350);
       }
@@ -588,6 +594,7 @@
       // It can throw an exception if there is not enough space
       try {
         sessionStorage.setItem("${run['_id']}", text);
+        sessionStorage.setItem("${run['_id']}" + "_lines", numLines);
       } catch (e) {
         console.warn("Could not save diff in sessionStorage");
       }
@@ -606,18 +613,90 @@
       hljs.highlightElement(diffText);
     }
 
-    async function fetchDiff(diffApiUrl) {
+    async function getFileContentFromUrl(url) {
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(
+            "Failed to fetch " + url + ": " + response.status + " " + response.statusText
+          );
+        }
+        return await response.text();
+      } catch (error) {
+        console.log("File may have been deleted, error fetching file from URL "+ url + ":", error);
+        return "";
+      }
+    }
+
+    async function getFilesInBranch(apiUrl, branch) {
+      try {
+        const url = apiUrl + "/git/trees/" + branch + "?recursive=1";
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(
+            "Failed to fetch files in branch " + branch + ": " + response.status + " " + response.statusText
+          );
+        }
+        const data = await response.json();
+        return data.tree
+          .filter((entry) => entry.type === "blob")
+          .map((entry) => entry.path);
+      } catch (error) {
+        console.error("Error fetching files in branch " +  branch + ": ", error);
+        return [];
+      }
+    }
+
+    async function fetchDiffThreeDots(diffApiUrl) {
       try {
         const text = await fetchText(diffApiUrl, {
           headers: {
             Accept: "application/vnd.github.diff",
           },
         });
-        return text;
+        return {text: text, count: text?.split("\n")?.length || 0};
       } catch(e) {
         console.log("Error fetching diff: " + e);
+        return {text: "", count: 0};
       }
-      return "";
+    }
+
+    async function fetchDiffTwoDots(rawContentUrl, apiUrl, diffBase, diffNew) {
+      try {
+        const [files1, files2] = await Promise.all([
+          getFilesInBranch(apiUrl, diffBase),
+          getFilesInBranch(apiUrl, diffNew),
+        ]);
+
+        const allFiles = Array.from(new Set([...files1, ...files2]));
+        let diffs = await Promise.all(
+          allFiles.map(async (filePath) => {
+            const [content1, content2] = await Promise.all([
+              getFileContentFromUrl(
+                rawContentUrl + "/" + diffBase + "/" + filePath
+              ),
+              getFileContentFromUrl(
+                rawContentUrl + "/" + diffNew + "/" + filePath
+              ),
+            ]);
+
+            const diff = Diff.createPatch(filePath, content1, content2);
+            if (diff.trim() !== "" && diff.trim().split("\n").length >= 5) {
+              return diff;
+            }
+          })
+        );
+
+        diffs = diffs.filter((diff) => diff);
+        if (diffs.length) {
+          return { text: diffs.join("\n"), count: diffs.length };
+        } else {
+          return { text: "", count: 0 };
+        }
+      } catch (error) {
+        console.error("Error comparing branches:", error);
+        return { text: "", count: 0 };
+      }
     }
 
     async function fetchComments(diffApiUrl) {
@@ -644,14 +723,32 @@
       "//github.com/",
       "//api.github.com/repos/"
     );
+    
+    const rawContentUrl = "${h.tests_repo(run)}".replace(
+      "//github.com/",
+      "//raw.githubusercontent.com/"
+    );
+    const apiUrl = "${h.tests_repo(run)}".replace(
+      "//github.com/",
+      "//api.github.com/repos/"
+    );
+    const diffBase = "${"master" if run["args"].get("spsa") else run["args"]["resolved_base"][:10]}";
+    const diffNew  = "${run["args"]["resolved_new"][:10]}";
 
     // Check if the diff is already in sessionStorage and use it if it is
     let text = sessionStorage.getItem("${run['_id']}");
+    let count = sessionStorage.getItem("${run['_id']}" + "_lines");
     if (!text) {
-      text = await fetchDiff(diffApiUrl);
+
+      if (diffBase !== "master") // not SPSA
+        diffs = await fetchDiffTwoDots(rawContentUrl, apiUrl, diffBase, diffNew);
+      else
+        diffs = await fetchDiffThreeDots(diffApiUrl);
+      text = diffs.text;
+      count = diffs.count;
     }
     if (text) {
-      showDiff(text);
+      showDiff(text, count);
       return fetchComments(diffApiUrl);
     }
 
