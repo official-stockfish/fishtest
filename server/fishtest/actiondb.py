@@ -7,9 +7,9 @@ from vtjson import regex, union, validate
 
 run_id = regex(r"[a-f0-9]{24}", name="run_id")
 run_name = regex(r".*-[a-f0-9]{7}", name="run_name")
-short_worker_name = regex(r".*-[\d]+cores-[a-z0-9]{2,8}", name="short_worker_name")
+short_worker_name = regex(r".*-[\d]+cores-[a-zA-Z0-9]{2,8}", name="short_worker_name")
 long_worker_name = regex(
-    r".*-[\d]+cores-[a-z0-9]{2,8}-[a-f0-9]{4}\*?", name="long_worker_name"
+    r".*-[\d]+cores-[a-zA-Z0-9]{2,8}-[a-f0-9]{4}\*?", name="long_worker_name"
 )
 
 schema = union(
