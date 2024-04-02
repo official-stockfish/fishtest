@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from bson.objectid import ObjectId
 from vtjson import regex, validate
 
-short_worker_name = regex(r".*-[\d]+cores-[a-z0-9]{2,8}", name="short_worker_name")
+short_worker_name = regex(r".*-[\d]+cores-[a-zA-Z0-9]{2,8}", name="short_worker_name")
 
 schema = {
     "_id?": ObjectId,
