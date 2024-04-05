@@ -422,6 +422,8 @@ runs_schema = intersect(
                 "threads": suint,
                 "resolved_base": sha,
                 "resolved_new": sha,
+                "master_sha": sha,
+                "official_master_sha": sha,
                 "msg_base": str,
                 "msg_new": str,
                 "base_options": str,
