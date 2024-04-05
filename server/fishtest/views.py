@@ -815,6 +815,18 @@ def validate_form(request):
         "tests_repo": request.POST["tests-repo"],
         "info": request.POST["run-info"],
     }
+    try:
+        data["master_sha"] = get_master_sha(
+            data["tests_repo"].replace(
+                "https://github.com", "https://api.github.com/repos"
+            )
+        )
+        data["official_master_sha"] = get_master_sha(
+            "https://api.github.com/repos/official-stockfish/Stockfish"
+        )
+    except Exception as e:
+        raise Exception("Error occurred while fetching master commit signatures") from e
+
     odds = request.POST.get("odds", "off")  # off checkboxes are not posted
     if odds == "off":
         data["new_tc"] = data["tc"]
@@ -1075,6 +1087,17 @@ def new_run_message(request, run):
     ret += "(SMP)" if run["args"]["threads"] > 1 else ""
     ret += f" Hash:{get_hash(run['args']['base_options'])}/{get_hash(run['args']['new_options'])}"
     return ret
+
+
+def get_master_sha(repo_url):
+    try:
+        repo_url += "/commits/master"
+        response = requests.get(repo_url).json()
+        if "commit" not in response:
+            raise Exception("Cannot find branch in repository")
+        return response["sha"]
+    except Exception as e:
+        raise Exception("Unable to access repository") from e
 
 
 @view_config(route_name="tests_run", renderer="tests_run.mak", require_csrf=True)

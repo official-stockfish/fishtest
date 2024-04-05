@@ -354,7 +354,7 @@
                         target="_blank"
                         rel="noopener"
                         class="links-link rounded release"
-                        >Prerelease</a
+                        >Prereleases</a
                       >
                     </li>
                     <li>

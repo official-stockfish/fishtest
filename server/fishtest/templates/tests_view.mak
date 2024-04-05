@@ -99,6 +99,15 @@
             Copy apply-diff command
           </a>
 
+          <a
+            href="javascript:" 
+            id="master_vs_official_master" class="btn btn-danger  border-0 mb-2"
+            title="Compares master to official-master at the time of submission"
+            style="display: none">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+              <span> master vs official</span>
+            </a>
+
           <span class="text-success copied text-nowrap" style="display: none">Copied!</span>
         </h4>
         <pre id="diff-contents" style="display: none;"><code class="diff"></code></pre>
@@ -570,9 +579,11 @@
 
     // Define some functions to fetch the diff and show it
 
-    function showDiff(text, numLines) {
-      const toggleBtn = document.getElementById("diff-toggle");
-      const diffContents = document.getElementById("diff-contents");
+    function addDiff (diffText, text) {
+      diffText.textContent = text;
+    }
+
+    function showDiff(diffContents, diffText, numLines) {
       // Hide large diffs by default
       if (numLines < 50) {
         diffContents.style.display = "";
@@ -587,44 +598,25 @@
           toggleBtn.textContent = "Show";
         }, 350);
       }
-      const diffText = diffContents.querySelector("code");
-      diffText.textContent = text;
-
-      // Try to save the diff in sessionStorage
-      // It can throw an exception if there is not enough space
-      try {
-        sessionStorage.setItem("${run['_id']}", text);
-        sessionStorage.setItem("${run['_id']}" + "_lines", numLines);
-      } catch (e) {
-        console.warn("Could not save diff in sessionStorage");
-      }
-
-      toggleBtn.addEventListener("click", function () {
-        diffContents.style.display =
-          diffContents.style.display === "none" ? "" : "none";
-        if (copyDiffBtn)
-          copyDiffBtn.style.display =
-            copyDiffBtn.style.display === "none" ? "" : "none";
-        if (toggleBtn.textContent === "Hide") toggleBtn.textContent = "Show";
-        else toggleBtn.textContent = "Hide";
-      });
-
-      document.getElementById("diff-section").style.display = "";
-      hljs.highlightElement(diffText);
     }
 
     async function getFileContentFromUrl(url) {
       try {
         const response = await fetch(url);
         if (!response.ok) {
-          throw new Error(
-            "Failed to fetch " + url + ": " + response.status + " " + response.statusText
-          );
+          if (response.status === 404) {
+            return "";
+          } else {
+            throw new Error(
+             "Failed to fetch " + url + ": " + response.status + " " + response.statusText
+            );
+          }
         }
         return await response.text();
       } catch (error) {
-        console.log("File may have been deleted, error fetching file from URL "+ url + ":", error);
-        return "";
+          throw new Error(
+            "Failed to fetch file: " + error
+          );
       }
     }
 
@@ -633,9 +625,7 @@
         const url = apiUrl + "/git/trees/" + branch + "?recursive=1";
         const response = await fetch(url);
         if (!response.ok) {
-          throw new Error(
-            "Failed to fetch files in branch " + branch + ": " + response.status + " " + response.statusText
-          );
+            return null;
         }
         const data = await response.json();
         return data.tree
@@ -643,7 +633,7 @@
           .map((entry) => entry.path);
       } catch (error) {
         console.error("Error fetching files in branch " +  branch + ": ", error);
-        return [];
+        return null;
       }
     }
 
@@ -661,22 +651,24 @@
       }
     }
 
-    async function fetchDiffTwoDots(rawContentUrl, apiUrl, diffBase, diffNew) {
+    async function fetchDiffTwoDots(rawContentUrlNew, rawContentUrlBase, apiUrlNew, apiUrlBase, diffNew, diffBase) {
       try {
         const [files1, files2] = await Promise.all([
-          getFilesInBranch(apiUrl, diffBase),
-          getFilesInBranch(apiUrl, diffNew),
+          getFilesInBranch(apiUrlBase, diffBase),
+          getFilesInBranch(apiUrlNew, diffNew),
         ]);
 
+        if (files1 === null || files2 === null)
+          return;
         const allFiles = Array.from(new Set([...files1, ...files2]));
         let diffs = await Promise.all(
           allFiles.map(async (filePath) => {
             const [content1, content2] = await Promise.all([
               getFileContentFromUrl(
-                rawContentUrl + "/" + diffBase + "/" + filePath
+                rawContentUrlNew + "/" + diffBase + "/" + filePath
               ),
               getFileContentFromUrl(
-                rawContentUrl + "/" + diffNew + "/" + filePath
+                rawContentUrlBase + "/" + diffNew + "/" + filePath
               ),
             ]);
 
@@ -724,34 +716,126 @@
       "//api.github.com/repos/"
     );
     
-    const rawContentUrl = "${h.tests_repo(run)}".replace(
+    let dots = 2;
+
+    const testRepo = "${h.tests_repo(run)}";
+    const rawContentUrlNew = testRepo.replace(
       "//github.com/",
       "//raw.githubusercontent.com/"
     );
-    const apiUrl = "${h.tests_repo(run)}".replace(
+    const apiUrlNew = testRepo.replace(
       "//github.com/",
       "//api.github.com/repos/"
     );
-    const diffBase = "${"master" if run["args"].get("spsa") else run["args"]["resolved_base"][:10]}";
+
     const diffNew  = "${run["args"]["resolved_new"][:10]}";
+    const rawOfficialMaster = "https://raw.githubusercontent.com/official-stockfish/Stockfish";
+    const apiOfficialMaster = "https://api.github.com/repos/official-stockfish/Stockfish";
+    const baseOfficialMaster = "${run["args"]["official_master_sha"][:10] if run["args"].get("official_master_sha") else ""}";
+
+    % if run["args"].get("spsa"):
+      const rawContentUrlBase = rawOfficialMaster;
+      const apiUrlBase = apiOfficialMaster;
+      % if run["args"].get("official_master_sha"):
+          const diffBase = baseOfficialMaster;
+      % else: # old tests before this field
+          const diffBase = "master";
+          dots = 3; // fall back to the three dot diff request as the diff will be rebased
+      % endif
+    % else:
+      const rawContentUrlBase = rawContentUrlNew;
+      const apiUrlBase = apiUrlNew;
+      const diffBase = "${run["args"]["resolved_base"][:10]}";
+    % endif
 
     // Check if the diff is already in sessionStorage and use it if it is
     let text = sessionStorage.getItem("${run['_id']}");
     let count = sessionStorage.getItem("${run['_id']}" + "_lines");
+    count = count == "null" ? 0 : count;
+
     if (!text) {
-
-      if (diffBase !== "master") // not SPSA
-        diffs = await fetchDiffTwoDots(rawContentUrl, apiUrl, diffBase, diffNew);
-      else
+      if (dots === 2)
+        diffs = await fetchDiffTwoDots(rawContentUrlNew, rawContentUrlBase, apiUrlNew, apiUrlBase, diffNew, diffBase);
+      else if (dots === 3)
         diffs = await fetchDiffThreeDots(diffApiUrl);
-      text = diffs.text;
-      count = diffs.count;
-    }
-    if (text) {
-      showDiff(text, count);
-      return fetchComments(diffApiUrl);
+
+      if (diffs && diffs.text) {
+        text = diffs.text;
+        count = diffs.count;
+      }
     }
 
+    if (!text) {
+      text = "No diff available";
+    } 
+    const diffContents = document.getElementById("diff-contents");
+    const diffText = diffContents.querySelector("code");
+    addDiff(diffText, text);
+    showDiff(diffContents, diffText, count);
+    hljs.highlightElement(diffText);
+    const toggleBtn = document.getElementById("diff-toggle");
+    toggleBtn.addEventListener("click", function () {
+        diffContents.style.display =
+          diffContents.style.display === "none" ? "" : "none";
+        if (copyDiffBtn)
+          copyDiffBtn.style.display =
+            copyDiffBtn.style.display === "none" ? "" : "none";
+        if (toggleBtn.textContent === "Hide") toggleBtn.textContent = "Show";
+        else toggleBtn.textContent = "Hide";
+      });
+    document.getElementById("diff-section").style.display = "";
+    // Try to save the diff in sessionStorage
+    // It can throw an exception if there is not enough space
+    try {
+      sessionStorage.setItem("${run['_id']}", text);
+      sessionStorage.setItem("${run['_id']}" + "_lines", count);
+    } catch (e) {
+      console.warn("Could not save diff in sessionStorage");
+    }
+
+    % if run["args"]["base_tag"] == "master":
+      if (baseOfficialMaster) {
+        let text = sessionStorage.getItem("${run['_id']}_master_vs_official_master");
+        if (!text) {
+           const masterVsOfficialMaster =
+             await fetchDiffTwoDots(rawContentUrlBase, rawOfficialMaster, apiUrlBase, apiOfficialMaster, diffBase, baseOfficialMaster);
+           text = masterVsOfficialMaster.text;
+        }
+        
+        if (text) {
+          document.getElementById("master_vs_official_master").style.display = "";
+          const diffContents = document.getElementById("diff-contents");
+          const diffText = diffContents.querySelector("code");
+          document.getElementById("master_vs_official_master").addEventListener("click", (e) => {
+            e.currentTarget.classList.toggle("active");
+            if (e.currentTarget.classList.contains("active")) {
+                e.currentTarget.querySelector("span").textContent = "base vs master";
+                addDiff(diffText, text);
+                hljs.highlightElement(diffText);
+            }
+            else {
+              e.currentTarget.querySelector("span").textContent = "master vs base";
+              // Check if the diff is already in sessionStorage and use it if it is
+              const originalDiffText = sessionStorage.getItem("${run['_id']}");
+              const originalDiffCount = sessionStorage.getItem("${run['_id']}" + "_lines");
+              addDiff(diffText, originalDiffText);
+              showDiff(diffContents, diffText, originalDiffCount);
+              hljs.highlightElement(diffText);
+            }
+          });
+
+          // Try to save the diff in sessionStorage
+          // It can throw an exception if there is not enough space
+          try {
+            sessionStorage.setItem("${run['_id']}_master_vs_official_master", text);
+          } catch (e) {
+            console.warn("Could not save diff in sessionStorage");
+          }
+        }
+      }
+    % endif
+
+    return fetchComments(diffApiUrl);
   }
 
   const diffPromise = handleDiff();
