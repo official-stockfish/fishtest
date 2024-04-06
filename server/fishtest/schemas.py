@@ -386,9 +386,17 @@ def final_results_must_match(run):
 # it would also be useful to have a "universal schema"
 # that matches all the runs in the db.
 
+# Please increment this if the format of the run schema
+# changes. This will suppress spurious event log messages
+# about non-validation of runs created with the prior
+# schema.
+
+RUN_VERSION = 0
+
 runs_schema = intersect(
     {
         "_id?": ObjectId,
+        "version": uint,
         "start_time": datetime,
         "last_updated": datetime,
         "tc_base": unumber,

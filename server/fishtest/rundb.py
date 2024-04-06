@@ -17,7 +17,7 @@ import fishtest.stats.stat_util
 from bson.binary import Binary
 from bson.objectid import ObjectId
 from fishtest.actiondb import ActionDb
-from fishtest.schemas import nn_schema, runs_schema
+from fishtest.schemas import RUN_VERSION, nn_schema, runs_schema
 from fishtest.stats.stat_util import SPRT_elo
 from fishtest.userdb import UserDb
 from fishtest.util import (
@@ -189,6 +189,7 @@ class RunDb:
         if tc_base:
             tc_base = float(tc_base.group(1))
         new_run = {
+            "version": RUN_VERSION,
             "args": run_args,
             "start_time": start_time,
             "last_updated": start_time,
@@ -1355,11 +1356,11 @@ After fixing the issues you can unblock the worker at
         except ValidationError as e:
             message = f"The run object {run_id} does not validate: {str(e)}"
             print(message, flush=True)
-            self.actiondb.log_message(
-                username="fishtest.system",
-                message=message,
-            )
-
+            if "version" in run and run["version"] >= RUN_VERSION:
+                self.actiondb.log_message(
+                    username="fishtest.system",
+                    message=message,
+                )
         self.buffer(run, True)
         # Publish the results of the run to the Fishcooking forum
         post_in_fishcooking_results(run)
