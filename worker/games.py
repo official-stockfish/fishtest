@@ -1085,13 +1085,12 @@ def launch_cutechess(
         b_params = []
 
     # Run cutechess-cli binary.
-    # Stochastic rounding and probability for float N.p: (N, 1-p); (N+1, p)
     idx = cmd.index("_spsa_")
     cmd = (
         cmd[:idx]
         + [
             "option.{}={}".format(
-                x["name"], math.floor(x["value"] + random.uniform(0, 1))
+                x["name"], x["value"]
             )
             for x in w_params
         ]
@@ -1102,7 +1101,7 @@ def launch_cutechess(
         cmd[:idx]
         + [
             "option.{}={}".format(
-                x["name"], math.floor(x["value"] + random.uniform(0, 1))
+                x["name"], x["value"]
             )
             for x in b_params
         ]

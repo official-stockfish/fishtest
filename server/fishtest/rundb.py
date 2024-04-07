@@ -1553,20 +1553,25 @@ After fixing the issues you can unblock the worker at
         # and avoid division by zero
         for param in spsa["params"]:
             c = param["c"] / iter_local ** spsa["gamma"]
+            r = random.uniform(0, 1)
             flip = 1 if random.getrandbits(1) else -1
+            # Stochastic rounding and probability for float N.p: (N, 1-p); (N+1, p)
+            w_value = math.floor(self.spsa_param_clip(param, c * flip) + r)
+            b_value = math.floor(self.spsa_param_clip(param, -c * flip) + r)
             result["w_params"].append(
                 {
                     "name": param["name"],
-                    "value": self.spsa_param_clip(param, c * flip),
+                    "value": w_value,
                     "R": param["a"] / (spsa["A"] + iter_local) ** spsa["alpha"] / c**2,
-                    "c": c,
+                    #Set c to the real delta after stochastic rounding is applied
+                    "c": abs(w_value - b_value),
                     "flip": flip,
                 }
             )
             result["b_params"].append(
                 {
                     "name": param["name"],
-                    "value": self.spsa_param_clip(param, -c * flip),
+                    "value": b_value
                 }
             )
 
