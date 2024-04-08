@@ -218,8 +218,10 @@ class ActionDb:
         action["time"] = datetime.now(timezone.utc).timestamp()
         try:
             validate(action_schema, action, "action")
-        except ValidationError:
-            message = f"Internal Error. Request {str(action)} does not validate"
+        except ValidationError as e:
+            message = (
+                f"Internal Error. Request {str(action)} does not validate: {str(e)}"
+            )
             print(message, flush=True)
             self.log_message(
                 username="fishtest.system",
