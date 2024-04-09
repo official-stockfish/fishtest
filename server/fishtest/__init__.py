@@ -7,6 +7,8 @@ from pyramid.authentication import AuthTktAuthenticationPolicy
 from pyramid.authorization import ACLAuthorizationPolicy
 from pyramid.config import Configurator
 from pyramid.events import BeforeRender, NewRequest
+from pyramid.httpexceptions import HTTPFound
+from pyramid.security import forget
 from pyramid.session import SignedCookieSessionFactory
 
 from fishtest import helpers
@@ -51,8 +53,26 @@ def main(global_config, **settings):
         event["h"] = helpers
         event["cache_busters"] = cache_busters
 
+    def check_blocked_user(event):
+        request = event.request
+        if request.authenticated_userid is not None:
+            auth_user_id = request.authenticated_userid
+            if is_user_blocked(auth_user_id, request.userdb):
+                session = request.session
+                headers = forget(request)
+                session.invalidate()
+                raise HTTPFound(location=request.route_url("tests"), headers=headers)
+
+    def is_user_blocked(auth_user_id, userdb):
+        blocked_users = userdb.get_blocked()
+        for user in blocked_users:
+            if user["username"] == auth_user_id and user["blocked"]:
+                return True
+        return False
+
     config.add_subscriber(add_rundb, NewRequest)
     config.add_subscriber(add_renderer_globals, BeforeRender)
+    config.add_subscriber(check_blocked_user, NewRequest)
 
     # Authentication
     def group_finder(username, request):
