@@ -58,7 +58,7 @@ function protectForms() {
   });
 }
 
-// Gets from the bowser the value of a saved cookie
+// Gets from the browser the value of a saved cookie
 function getCookie(cookieName) {
   return document.cookie
     .split(";")
