@@ -652,41 +652,38 @@
     }
 
     async function fetchDiffTwoDots(rawContentUrlNew, rawContentUrlBase, apiUrlNew, apiUrlBase, diffNew, diffBase) {
-      try {
-        const [files1, files2] = await Promise.all([
-          getFilesInBranch(apiUrlBase, diffBase),
-          getFilesInBranch(apiUrlNew, diffNew),
-        ]);
+      const [files1, files2] = await Promise.all([
+        getFilesInBranch(apiUrlBase, diffBase),
+        getFilesInBranch(apiUrlNew, diffNew),
+      ]);
 
-        if (files1 === null || files2 === null)
-          return;
-        const allFiles = Array.from(new Set([...files1, ...files2]));
-        let diffs = await Promise.all(
-          allFiles.map(async (filePath) => {
-            const [content1, content2] = await Promise.all([
-              getFileContentFromUrl(
-                rawContentUrlNew + "/" + diffBase + "/" + filePath
-              ),
-              getFileContentFromUrl(
-                rawContentUrlBase + "/" + diffNew + "/" + filePath
-              ),
-            ]);
+      if (files1 === null || files2 === null) {
+          throw new Error("Failed to fetch files from branches");
+      }
 
-            const diff = Diff.createPatch(filePath, content1, content2);
-            if (diff.trim() !== "" && diff.trim().split("\n").length >= 5) {
-              return diff;
-            }
-          })
-        );
+      const allFiles = Array.from(new Set([...files1, ...files2]));
+      let diffs = await Promise.all(
+        allFiles.map(async (filePath) => {
+          const [content1, content2] = await Promise.all([
+            getFileContentFromUrl(
+              rawContentUrlNew + "/" + diffBase + "/" + filePath
+            ),
+            getFileContentFromUrl(
+              rawContentUrlBase + "/" + diffNew + "/" + filePath
+            ),
+          ]);
 
-        diffs = diffs.filter((diff) => diff);
-        if (diffs.length) {
-          return { text: diffs.join("\n"), count: diffs.length };
-        } else {
-          return { text: "", count: 0 };
-        }
-      } catch (error) {
-        console.error("Error comparing branches:", error);
+          const diff = Diff.createPatch(filePath, content1, content2);
+          if (diff.trim() !== "" && diff.trim().split("\n").length >= 5) {
+            return diff;
+          }
+        })
+      );
+
+      diffs = diffs.filter((diff) => diff);
+      if (diffs.length) {
+        return { text: diffs.join("\n"), count: diffs.length };
+      } else {
         return { text: "", count: 0 };
       }
     }
@@ -753,21 +750,36 @@
     let count = sessionStorage.getItem("${run['_id']}" + "_lines");
     count = count == "null" ? 0 : count;
 
-    if (!text) {
-      if (dots === 2)
-        diffs = await fetchDiffTwoDots(rawContentUrlNew, rawContentUrlBase, apiUrlNew, apiUrlBase, diffNew, diffBase);
-      else if (dots === 3)
-        diffs = await fetchDiffThreeDots(diffApiUrl);
+    try {
+      if (!text) {
+        if (dots === 2)
+          diffs = await fetchDiffTwoDots(rawContentUrlNew, rawContentUrlBase, apiUrlNew, apiUrlBase, diffNew, diffBase);
+        else if (dots === 3)
+          diffs = await fetchDiffThreeDots(diffApiUrl);
 
-      if (diffs && diffs.text) {
-        text = diffs.text;
-        count = diffs.count;
+        if (diffs && diffs.text) {
+          text = diffs.text;
+          count = diffs.count;
+        }
+      }
+
+      if (!text) {
+        text = "No diff available";
+      }
+
+      // Try to save the diff in sessionStorage
+      // It can throw an exception if there is not enough space
+      try {
+        sessionStorage.setItem("${run['_id']}", text);
+        sessionStorage.setItem("${run['_id']}" + "_lines", count);
+      } catch (e) {
+        console.warn("Could not save diff in sessionStorage");
       }
     }
+    catch {
+      text = "API limit rate exceeded, please try 'View on GitHub'";
+    }
 
-    if (!text) {
-      text = "No diff available";
-    } 
     const diffContents = document.getElementById("diff-contents");
     const diffText = diffContents.querySelector("code");
     addDiff(diffText, text);
@@ -784,14 +796,6 @@
         else toggleBtn.textContent = "Hide";
       });
     document.getElementById("diff-section").style.display = "";
-    // Try to save the diff in sessionStorage
-    // It can throw an exception if there is not enough space
-    try {
-      sessionStorage.setItem("${run['_id']}", text);
-      sessionStorage.setItem("${run['_id']}" + "_lines", count);
-    } catch (e) {
-      console.warn("Could not save diff in sessionStorage");
-    }
 
     % if run["args"]["base_tag"] == "master":
       if (baseOfficialMaster) {
