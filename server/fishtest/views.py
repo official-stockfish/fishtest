@@ -1218,6 +1218,19 @@ def tests_modify(request):
         request.session.flash("Unable to modify another user's run!", "error")
         return home(request)
 
+    is_approver = request.has_permission("approve_run")
+    if not is_approver and (
+        (
+            run["args"]["throughput"] != int(request.POST["throughput"])
+            and int(request.POST["throughput"]) > 100
+        )
+        or (
+            run["args"]["priority"] != int(request.POST["priority"])
+            and int(request.POST["priority"]) > 0
+        )
+    ):
+        run["approved"] = False
+
     before = del_tasks(run)
     run["finished"] = False
     run["deleted"] = False
@@ -1260,7 +1273,10 @@ def tests_modify(request):
         run=before,
         message=message,
     )
-    cached_flash(request, "Run successfully modified!")
+    if run["approved"]:
+        cached_flash(request, "Run successfully modified!")
+    else:
+        cached_flash(request, "Run successfully modified!, please wait for approval.")
     return home(request)
 
 
