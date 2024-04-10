@@ -802,6 +802,49 @@ def parse_spsa_params(raw, spsa):
     return params
 
 
+def validate_modify(request, run):
+    if not "num-games" in request.POST:
+        request.session.flash("Unable to modify with no number of games!", "error")
+        raise home(request)
+
+    bad_values = not all(
+        value is not None and value.replace("-", "").isdigit()
+        for value in [
+            request.POST["priority"],
+            request.POST["num-games"],
+            request.POST["throughput"],
+        ]
+    )
+
+    if bad_values:
+        request.session.flash("Bad values!", "error")
+        raise home(request)
+
+    num_games = int(request.POST["num-games"])
+    if (
+        num_games > run["args"]["num_games"]
+        and "sprt" not in run["args"]
+        and "spsa" not in run["args"]
+    ):
+        request.session.flash(
+            "Unable to modify number of games in a fixed game test!", "error"
+        )
+        raise home(request)
+
+    max_games = 3200000
+    if num_games > max_games:
+        request.session.flash("Number of games must be <= " + str(max_games), "error")
+        raise home(request)
+
+    now = datetime.now(timezone.utc)
+    if (
+        "start_time" not in run
+        or (now - run["start_time"].replace(tzinfo=timezone.utc)).days > 30
+    ):
+        request.session.flash("Run too old to be modified", "error")
+        raise home(request)
+
+
 def validate_form(request):
     data = {
         "base_tag": request.POST["base-branch"],
@@ -1164,82 +1207,60 @@ def tests_modify(request):
         request.session.flash("Please login")
         return HTTPFound(location=request.route_url("login"))
 
-    if "num-games" in request.POST:
-        run = request.rundb.get_run(request.POST["run"])
-        before = del_tasks(run)
+    run = request.rundb.get_run(request.POST["run"])
+    if run is None:
+        request.session.flash("No run with this id", "error")
+        return home(request)
 
-        now = datetime.now(timezone.utc)
-        if (
-            "start_time" not in run
-            or (now - run["start_time"].replace(tzinfo=timezone.utc)).days > 30
-        ):
-            request.session.flash("Run too old to be modified", "error")
-            return home(request)
+    validate_modify(request, run)
 
-        if not can_modify_run(request, run):
-            request.session.flash("Unable to modify another user's run!", "error")
-            return home(request)
+    if not can_modify_run(request, run):
+        request.session.flash("Unable to modify another user's run!", "error")
+        return home(request)
 
-        num_games = int(request.POST["num-games"])
-        if (
-            num_games > run["args"]["num_games"]
-            and "sprt" not in run["args"]
-            and "spsa" not in run["args"]
-        ):
-            request.session.flash(
-                "Unable to modify number of games in a fixed game test!", "error"
-            )
-            return home(request)
+    before = del_tasks(run)
+    run["finished"] = False
+    run["deleted"] = False
+    run["failed"] = False
+    run["is_green"] = False
+    run["is_yellow"] = False
+    run["args"]["num_games"] = int(request.POST["num-games"])
+    run["args"]["priority"] = int(request.POST["priority"])
+    run["args"]["throughput"] = int(request.POST["throughput"])
+    run["args"]["auto_purge"] = True if request.POST.get("auto_purge") else False
+    if (
+        is_same_user(request, run)
+        and "info" in request.POST
+        and request.POST["info"].strip() != ""
+    ):
+        run["args"]["info"] = request.POST["info"].strip()
+    request.rundb.buffer(run, True)
+    request.rundb.task_time = 0
 
-        max_games = 3200000
-        if num_games > max_games:
-            request.session.flash(
-                "Number of games must be <= " + str(max_games), "error"
-            )
-            return home(request)
+    after = del_tasks(run)
+    message = []
 
-        run["finished"] = False
-        run["deleted"] = False
-        run["failed"] = False
-        run["is_green"] = False
-        run["is_yellow"] = False
-        run["args"]["num_games"] = num_games
-        run["args"]["priority"] = int(request.POST["priority"])
-        run["args"]["throughput"] = int(request.POST["throughput"])
-        run["args"]["auto_purge"] = True if request.POST.get("auto_purge") else False
-        if (
-            is_same_user(request, run)
-            and "info" in request.POST
-            and request.POST["info"].strip() != ""
-        ):
-            run["args"]["info"] = request.POST["info"].strip()
-        request.rundb.buffer(run, True)
-        request.rundb.task_time = 0
-
-        after = del_tasks(run)
-        message = []
-
-        for k in ("priority", "num_games", "throughput", "auto_purge"):
-            try:
-                before_ = before["args"][k]
-                after_ = after["args"][k]
-            except KeyError:
-                pass
-            else:
-                if before_ != after_:
-                    message.append(
-                        "{} changed from {} to {}".format(
-                            k.replace("_", "-"), before_, after_
-                        )
+    for k in ("priority", "num_games", "throughput", "auto_purge"):
+        try:
+            before_ = before["args"][k]
+            after_ = after["args"][k]
+        except KeyError:
+            pass
+        else:
+            if before_ != after_:
+                message.append(
+                    "{} changed from {} to {}".format(
+                        k.replace("_", "-"), before_, after_
                     )
+                )
 
-        message = "modify: " + ", ".join(message)
-        request.actiondb.modify_run(
-            username=request.authenticated_userid,
-            run=before,
-            message=message,
-        )
-        cached_flash(request, "Run successfully modified!")
+    message = "modify: " + ", ".join(message)
+    request.actiondb.modify_run(
+        username=request.authenticated_userid,
+        run=before,
+        message=message,
+    )
+    cached_flash(request, "Run successfully modified!")
     return home(request)
 
 
