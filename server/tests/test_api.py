@@ -7,7 +7,7 @@ import unittest
 from datetime import datetime, timezone
 
 from fishtest.api import WORKER_VERSION, ApiView
-from pyramid.httpexceptions import HTTPUnauthorized
+from pyramid.httpexceptions import HTTPBadRequest, HTTPUnauthorized
 from pyramid.testing import DummyRequest
 from util import get_rundb
 
@@ -27,13 +27,27 @@ def new_run(self, add_tasks=0):
         num_games,
         "10+0.01",
         "10+0.01",
-        "book",
-        10,
+        "book.pgn",
+        "10",
         1,
         "",
         "",
+        info="The ultimate patch",
+        resolved_base="347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+        resolved_new="347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+        master_sha="347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+        official_master_sha="347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+        msg_base="Bad stuff",
+        msg_new="Super stuff",
+        base_signature="123456",
+        new_signature="654321",
+        base_nets=["nn-0000000000a0.nnue"],
+        new_nets=["nn-0000000000a0.nnue", "nn-0000000000a1.nnue"],
+        rescheduled_from="653db116cc309ae839563103",
+        base_same_as_master=False,
+        tests_repo="https://google.com",
+        auto_purge=False,
         username="travis",
-        tests_repo="travis",
         start_time=datetime.now(timezone.utc),
     )
     run = self.rundb.get_run(run_id)
@@ -41,11 +55,23 @@ def new_run(self, add_tasks=0):
     if add_tasks > 0:
         run["workers"] = run["cores"] = 0
         for i in range(add_tasks):
+            worker_info = copy.deepcopy(self.worker_info)
+            worker_info["remote_addr"] = self.remote_addr
+            worker_info["country_code"] = self.country_code
             task = {
                 "num_games": self.chunk_size,
-                "stats": {"wins": 0, "draws": 0, "losses": 0, "crashes": 0},
+                "stats": {
+                    "wins": 0,
+                    "draws": 0,
+                    "losses": 0,
+                    "crashes": 0,
+                    "time_losses": 0,
+                    "pentanomial": [0, 0, 0, 0, 0],
+                },
                 "active": True,
-                "worker_info": copy.deepcopy(self.worker_info),
+                "last_updated": datetime.now(timezone.utc),
+                "start": 1234,
+                "worker_info": worker_info,
             }
             run["workers"] += 1
             run["cores"] += self.worker_info["concurrency"]
@@ -75,8 +101,9 @@ class TestApi(unittest.TestCase):
         # Set up an API user (a worker)
         self.username = "JoeUserWorker"
         self.password = "secret"
-        self.unique_key = "unique key"
+        self.unique_key = "amaya-5a28-4b7d-b27b-d78d97ecf11a"
         self.remote_addr = "127.0.0.1"
+        self.country_code = "US"
         self.concurrency = 7
 
         self.worker_info = {
@@ -98,7 +125,7 @@ class TestApi(unittest.TestCase):
                 0,
             ],
             "compiler": "g++",
-            "unique_key": "unique key",
+            "unique_key": "amaya-5a28-4b7d-b27b-d78d97ecf11a",
             "modified": True,
             "near_github_api_limit": False,
             "ARCH": "?",
@@ -106,7 +133,7 @@ class TestApi(unittest.TestCase):
         }
         self.rundb.userdb.create_user(self.username, self.password, "email@email.email")
         user = self.rundb.userdb.get_user(self.username)
-        user["blocked"] = False
+        user["pending"] = False
         user["machine_limit"] = 50
         self.rundb.userdb.save_user(user)
 
@@ -198,7 +225,6 @@ class TestApi(unittest.TestCase):
     def test_update_task(self):
         run_id = new_run(self, add_tasks=1)
         run = self.rundb.get_run(run_id)
-        self.assertFalse(run["results_stale"])
 
         # Request fails if username/password is invalid
         with self.assertRaises(HTTPUnauthorized):
@@ -223,7 +249,6 @@ class TestApi(unittest.TestCase):
         )
         response = ApiView(cleanup(request)).update_task()
         self.assertTrue(response["task_alive"])
-        self.assertFalse(self.rundb.get_run(run_id)["results_stale"])
 
         # Task is still active
         cs = self.chunk_size
@@ -238,7 +263,6 @@ class TestApi(unittest.TestCase):
         }
         response = ApiView(cleanup(request)).update_task()
         self.assertTrue(response["task_alive"])
-        self.assertFalse(self.rundb.get_run(run_id)["results_stale"])
 
         # Task is still active. Odd update.
         request.json_body["stats"] = {
@@ -249,8 +273,8 @@ class TestApi(unittest.TestCase):
             "time_losses": 0,
             "pentanomial": [0, 0, d // 2, 0, w // 2],
         }
-        response = ApiView(cleanup(request)).update_task()
-        self.assertFalse(response["task_alive"])
+        with self.assertRaises(HTTPBadRequest):
+            response = ApiView(cleanup(request)).update_task()
 
         request.json_body["stats"] = {
             "wins": w + 2,
@@ -260,27 +284,10 @@ class TestApi(unittest.TestCase):
             "time_losses": 0,
             "pentanomial": [0, 0, d // 2, 0, w // 2 + 1],
         }
-        response = ApiView(cleanup(request)).update_task()
-        self.assertFalse(response["task_alive"])
 
-        response = ApiView(cleanup(request)).update_task()
-        self.assertTrue("info" in response)
-        print(response["info"])
-
-        # revive the task
-        run["tasks"][0]["active"] = True
-        self.rundb.buffer(run, True)
-
-        request.json_body["stats"] = {
-            "wins": w + 2,
-            "draws": d,
-            "losses": 0,
-            "crashes": 0,
-            "time_losses": 0,
-            "pentanomial": [0, 0, d // 2, 0, w // 2 + 1],
-        }
         response = ApiView(cleanup(request)).update_task()
         self.assertTrue(response["task_alive"])
+
         # Go back in time
         request.json_body["stats"] = {
             "wins": w,
@@ -309,7 +316,6 @@ class TestApi(unittest.TestCase):
             "pentanomial": [0, 0, 0, 0, task_num_games // 2],
         }
         response = ApiView(cleanup(request)).update_task()
-        self.assertFalse(self.rundb.get_run(run_id)["results_stale"])
         self.assertFalse(response["task_alive"])
         run = self.rundb.get_run(run_id)
         task = run["tasks"][0]
@@ -458,7 +464,7 @@ class TestRunFinished(unittest.TestCase):
         # Set up an API user (a worker)
         self.username = "JoeUserWorker"
         self.password = "secret"
-        self.unique_key = "unique key"
+        self.unique_key = "amaya-5a28-4b7d-b27b-d78d97ecf11a"
         self.remote_addr = "127.0.0.1"
         self.concurrency = 7
 
@@ -481,7 +487,7 @@ class TestRunFinished(unittest.TestCase):
                 0,
             ],
             "compiler": "g++",
-            "unique_key": "unique key",
+            "unique_key": "amaya-5a28-4b7d-b27b-d78d97ecf11a",
             "near_github_api_limit": False,
             "modified": True,
             "ARCH": "?",
@@ -489,7 +495,7 @@ class TestRunFinished(unittest.TestCase):
         }
         self.rundb.userdb.create_user(self.username, self.password, "email@email.email")
         user = self.rundb.userdb.get_user(self.username)
-        user["blocked"] = False
+        user["pending"] = False
         user["machine_limit"] = 50
         self.rundb.userdb.save_user(user)
 
@@ -589,8 +595,8 @@ class TestRunFinished(unittest.TestCase):
         self.assertEqual(task_start2, task_size1)
 
         # Finish task 2 of 2
-        n_wins = task_size2 // 5
-        n_losses = task_size2 // 5
+        n_wins = 2 * ((task_size2 // 5) // 2)
+        n_losses = 2 * ((task_size2 // 5) // 2)
         n_draws = task_size2 - n_wins - n_losses
 
         request = self.correct_password_request(
@@ -613,7 +619,6 @@ class TestRunFinished(unittest.TestCase):
         # The run should be marked as finished after the last task completes
         run = self.rundb.get_run(run_id)
         self.assertTrue(run["finished"])
-        self.assertFalse(run["results_stale"])
         self.assertTrue(all([not t["active"] for t in run["tasks"]]))
         self.assertTrue("Total: {}".format(num_games) in run["results_info"]["info"][1])
 

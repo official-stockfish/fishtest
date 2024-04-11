@@ -1,4 +1,4 @@
-async function handle_spsa() {
+async function handleSPSA() {
   let raw = [],
     chart_object,
     chart_data,
@@ -8,7 +8,7 @@ async function handle_spsa() {
     columns = [],
     viewAll = false;
 
-  const chart_colors = [
+  const chartColors = [
     "#3366cc",
     "#dc3912",
     "#ff9900",
@@ -73,12 +73,12 @@ async function handle_spsa() {
     "#743411",
   ];
 
-  const chart_invisible_color = "#ccc";
-  const chart_text_style = { color: "#888" };
-  const gridlines_style = { color: "#666" };
-  const minor_gridlines_style = { color: "#ccc" };
+  const chartInvisibleColor = "#ccc";
+  const chartTextStyle = { color: "#888" };
+  const gridlinesStyle = { color: "#666" };
+  const minorGridlinesStyle = { color: "#ccc" };
 
-  let chart_options = {
+  let chartOptions = {
     backgroundColor: {
       fill: "transparent",
     },
@@ -93,25 +93,25 @@ async function handle_spsa() {
     height: 500,
     hAxis: {
       format: "percent",
-      textStyle: chart_text_style,
-      gridlines: gridlines_style,
-      minorGridlines: minor_gridlines_style,
+      textStyle: chartTextStyle,
+      gridlines: gridlinesStyle,
+      minorGridlines: minorGridlinesStyle,
     },
     vAxis: {
       viewWindowMode: "maximized",
-      textStyle: chart_text_style,
-      gridlines: gridlines_style,
-      minorGridlines: minor_gridlines_style,
+      textStyle: chartTextStyle,
+      gridlines: gridlinesStyle,
+      minorGridlines: minorGridlinesStyle,
     },
     legend: {
       position: "right",
-      textStyle: chart_text_style,
+      textStyle: chartTextStyle,
     },
-    colors: chart_colors.slice(0),
+    colors: chartColors.slice(0),
     seriesType: "line",
   };
 
-  function gaussian_kernel_regression(y, h) {
+  function gaussianKernelRegression(y, h) {
     if (!h) return y;
 
     let rf = [];
@@ -129,17 +129,17 @@ async function handle_spsa() {
     return rf;
   }
 
-  function smooth_data(b) {
-    const spsa_params = spsa_data.params;
-    const spsa_history = spsa_data.param_history;
-    const spsa_iter_ratio = Math.min(spsa_data.iter / spsa_data.num_iter, 1);
+  function smoothData(b) {
+    const spsaParams = spsaData.params;
+    const spsaHistory = spsaData.param_history;
+    const spsaIterRatio = Math.min(spsaData.iter / spsaData.num_iter, 1);
 
     //cache the raw data
     if (!raw.length) {
-      for (let j = 0; j < spsa_params.length; j++) raw.push([]);
-      for (let i = 0; i < spsa_history.length; i++) {
-        for (let j = 0; j < spsa_params.length; j++) {
-          raw[j].push(spsa_history[i][j].theta);
+      for (let j = 0; j < spsaParams.length; j++) raw.push([]);
+      for (let i = 0; i < spsaHistory.length; i++) {
+        for (let j = 0; j < spsaParams.length; j++) {
+          raw[j].push(spsaHistory[i][j].theta);
         }
       }
     }
@@ -147,19 +147,19 @@ async function handle_spsa() {
     if (!data_cache[b]) {
       let dt = new google.visualization.DataTable();
       dt.addColumn("number", "Iteration");
-      for (let i = 0; i < spsa_params.length; i++) {
-        dt.addColumn("number", spsa_params[i].name);
+      for (let i = 0; i < spsaParams.length; i++) {
+        dt.addColumn("number", spsaParams[i].name);
       }
       // adjust the bandwidth for tests with samples != 101
-      const h = b * ((spsa_history.length - 1) / (spsa_iter_ratio * 100));
+      const h = b * ((spsaHistory.length - 1) / (spsaIterRatio * 100));
       let d = [];
-      for (let j = 0; j < spsa_params.length; j++) {
-        d.push(gaussian_kernel_regression(raw[j], h));
+      for (let j = 0; j < spsaParams.length; j++) {
+        d.push(gaussianKernelRegression(raw[j], h));
       }
       let googleformat = [];
-      for (let i = 0; i < spsa_history.length; i++) {
-        let c = [(i / (spsa_history.length - 1)) * spsa_iter_ratio];
-        for (let j = 0; j < spsa_params.length; j++) {
+      for (let i = 0; i < spsaHistory.length; i++) {
+        let c = [(i / (spsaHistory.length - 1)) * spsaIterRatio];
+        for (let j = 0; j < spsaParams.length; j++) {
           c.push(d[j][i]);
         }
         googleformat.push(c);
@@ -172,13 +172,13 @@ async function handle_spsa() {
   }
 
   function redraw(animate) {
-    chart_options.animation = animate ? { duration: 800, easing: "out" } : {};
+    chartOptions.animation = animate ? { duration: 800, easing: "out" } : {};
     let view = new google.visualization.DataView(chart_data);
     view.setColumns(columns);
-    chart_object.draw(view, chart_options);
+    chart_object.draw(view, chartOptions);
   }
 
-  function update_column_visibility(col, visibility) {
+  function updateColumnVisibility(col, visibility) {
     if (!visibility) {
       columns[col] = {
         label: chart_data.getColumnLabel(col),
@@ -187,16 +187,16 @@ async function handle_spsa() {
           return null;
         },
       };
-      chart_options.colors[col - 1] = chart_invisible_color;
+      chartOptions.colors[col - 1] = chartInvisibleColor;
     } else {
       columns[col] = col;
-      chart_options.colors[col - 1] =
-        chart_colors[(col - 1) % chart_colors.length];
+      chartOptions.colors[col - 1] =
+        chartColors[(col - 1) % chartColors.length];
     }
   }
-  await DOM_loaded();
+  await DOMContentLoaded();
   //fade in loader
-  const loader = document.getElementById("div_spsa_preload");
+  const loader = document.getElementById("spsa_preload");
   loader.style.display = "";
   loader.classList.add("fade");
   setTimeout(() => {
@@ -205,19 +205,19 @@ async function handle_spsa() {
 
   //load google library
   await google.charts.load("current", { packages: ["corechart"] });
-  const spsa_params = spsa_data.params;
-  const spsa_history = spsa_data.param_history;
-  const spsa_iter_ratio = Math.min(spsa_data.iter / spsa_data.num_iter, 1);
+  const spsaParams = spsaData.params;
+  const spsaHistory = spsaData.param_history;
+  const spsaIterRatio = Math.min(spsaData.iter / spsaData.num_iter, 1);
 
-  if (!spsa_history || spsa_history.length < 2) {
-    document.getElementById("div_spsa_preload").style.display = "none";
+  if (!spsaHistory || spsaHistory.length < 2) {
+    document.getElementById("spsa_preload").style.display = "none";
     const alertElement = document.createElement("div");
     alertElement.className = "alert alert-warning";
     alertElement.role = "alert";
-    if (spsa_params.length >= 1000)
+    if (spsaParams.length >= 1000)
       alertElement.textContent = "Too many tuning parameters to generate plot.";
     else alertElement.textContent = "Not enough data to generate plot.";
-    const historyPlot = document.getElementById("div_spsa_history_plot");
+    const historyPlot = document.getElementById("spsa_history_plot");
     historyPlot.replaceChildren();
     historyPlot.append(alertElement);
     return;
@@ -226,10 +226,10 @@ async function handle_spsa() {
   for (let i = 0; i < smoothing_max; i++) data_cache.push(false);
 
   let googleformat = [];
-  for (let i = 0; i < spsa_history.length; i++) {
-    let d = [(i / (spsa_history.length - 1)) * spsa_iter_ratio];
-    for (let j = 0; j < spsa_params.length; j++) {
-      d.push(spsa_history[i][j].theta);
+  for (let i = 0; i < spsaHistory.length; i++) {
+    let d = [(i / (spsaHistory.length - 1)) * spsaIterRatio];
+    for (let j = 0; j < spsaParams.length; j++) {
+      d.push(spsaHistory[i][j].theta);
     }
     googleformat.push(d);
   }
@@ -237,29 +237,29 @@ async function handle_spsa() {
   chart_data = new google.visualization.DataTable();
 
   chart_data.addColumn("number", "Iteration");
-  for (let i = 0; i < spsa_params.length; i++) {
-    chart_data.addColumn("number", spsa_params[i].name);
+  for (let i = 0; i < spsaParams.length; i++) {
+    chart_data.addColumn("number", spsaParams[i].name);
   }
   chart_data.addRows(googleformat);
 
   data_cache[0] = chart_data;
   chart_object = new google.visualization.LineChart(
-    document.getElementById("div_spsa_history_plot"),
+    document.getElementById("spsa_history_plot"),
   );
-  chart_object.draw(chart_data, chart_options);
+  chart_object.draw(chart_data, chartOptions);
   document.getElementById("chart_toolbar").style.display = "";
 
   for (let i = 0; i < chart_data.getNumberOfColumns(); i++) {
     columns.push(i);
   }
 
-  for (let j = 0; j < spsa_params.length; j++) {
+  for (let j = 0; j < spsaParams.length; j++) {
     const dropdownItem = document.createElement("li");
     const anchorItem = document.createElement("a");
     anchorItem.className = "dropdown-item";
     anchorItem.href = "javascript:";
     anchorItem.param_id = j + 1;
-    anchorItem.append(spsa_params[j].name);
+    anchorItem.append(spsaParams[j].name);
     dropdownItem.append(anchorItem);
     document.getElementById("dropdown_individual").append(dropdownItem);
   }
@@ -271,7 +271,7 @@ async function handle_spsa() {
       const { target } = e;
       const param_id = target.param_id;
       for (let i = 1; i < chart_data.getNumberOfColumns(); i++) {
-        update_column_visibility(i, i == param_id);
+        updateColumnVisibility(i, i == param_id);
       }
 
       viewAll = false;
@@ -283,23 +283,23 @@ async function handle_spsa() {
     let sel = chart_object.getSelection();
     if (sel.length > 0 && sel[0].row == null) {
       const col = sel[0].column;
-      update_column_visibility(col, columns[col] != col);
+      updateColumnVisibility(col, columns[col] != col);
       redraw(false);
     }
     viewAll = false;
   });
 
-  document.getElementById("div_spsa_preload").style.display = "none";
+  document.getElementById("spsa_preload").style.display = "none";
 
   document.getElementById("btn_smooth_plus").addEventListener("click", () => {
     if (smoothing_factor < smoothing_max) {
-      smooth_data(++smoothing_factor);
+      smoothData(++smoothing_factor);
     }
   });
 
   document.getElementById("btn_smooth_minus").addEventListener("click", () => {
     if (smoothing_factor > 0) {
-      smooth_data(--smoothing_factor);
+      smoothData(--smoothing_factor);
     }
   });
 
@@ -307,7 +307,7 @@ async function handle_spsa() {
     if (viewAll) return;
     viewAll = true;
     for (let i = 0; i < chart_data.getNumberOfColumns(); i++) {
-      update_column_visibility(i, true);
+      updateColumnVisibility(i, true);
     }
 
     redraw(false);

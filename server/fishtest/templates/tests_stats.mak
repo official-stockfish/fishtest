@@ -213,7 +213,7 @@
 %>
 
 <script>
-  document.title = 'Statistics - ${page_title} | Stockfish Testing';
+  document.title = "Statistics - ${page_title} | Stockfish Testing";
 </script>
 
 <div>

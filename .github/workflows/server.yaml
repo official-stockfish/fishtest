@@ -13,7 +13,7 @@ jobs:
         working-directory: server
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Start MongoDB
         uses: supercharge/mongodb-github-action@1.10.0
@@ -21,7 +21,7 @@ jobs:
           mongodb-version: "6.0"
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -32,4 +32,4 @@ jobs:
 
       - name: Run server tests
         run: |
-          python -m unittest discover -v -s tests
+          python -m unittest discover -vb -s tests

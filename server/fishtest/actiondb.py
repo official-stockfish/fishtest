@@ -1,90 +1,10 @@
 from datetime import datetime, timezone
 
-from fishtest.util import hex_print, union, validate, worker_name
+from bson.objectid import ObjectId
+from fishtest.schemas import action_schema
+from fishtest.util import hex_print, worker_name
 from pymongo import DESCENDING
-
-schema = union(
-    {
-        "action": "failed_task",
-        "username": str,
-        "worker": str,
-        "run_id": str,
-        "run": str,
-        "task_id": int,
-        "message": str,
-    },
-    {
-        "action": "crash_or_time",
-        "username": str,
-        "worker": str,
-        "run_id": str,
-        "run": str,
-        "task_id": int,
-        "message": str,
-    },
-    {
-        "action": "dead_task",
-        "username": str,
-        "worker": str,
-        "run_id": str,
-        "run": str,
-        "task_id": int,
-    },
-    {"action": "system_event", "username": "fishtest.system", "message": str},
-    {
-        "action": "new_run",
-        "username": str,
-        "run_id": str,
-        "run": str,
-        "message": str,
-    },
-    {"action": "upload_nn", "username": str, "nn": str},
-    {
-        "action": "modify_run",
-        "username": str,
-        "run_id": str,
-        "run": str,
-        "message": str,
-    },
-    {"action": "delete_run", "username": str, "run_id": str, "run": str},
-    {
-        "action": "stop_run",
-        "username": str,
-        "worker": str,
-        "run_id": str,
-        "run": str,
-        "task_id": int,
-        "message": str,
-    },
-    {
-        "action": "stop_run",
-        "username": str,
-        "run_id": str,
-        "run": str,
-        "message": str,
-    },
-    {
-        "action": "finished_run",
-        "username": str,
-        "run_id": str,
-        "run": str,
-        "message": str,
-    },
-    {"action": "approve_run", "username": str, "run_id": str, "run": str},
-    {"action": "purge_run", "username": str, "run_id": str, "run": str, "message": str},
-    {
-        "action": "block_user",
-        "username": str,
-        "user": str,
-        "message": union("blocked", "unblocked"),
-    },
-    {
-        "action": "block_worker",
-        "username": str,
-        "worker": str,
-        "message": union("blocked", "unblocked"),
-    },
-)
+from vtjson import ValidationError, validate
 
 
 def run_name(run):
@@ -269,6 +189,14 @@ class ActionDb:
             message=message,
         )
 
+    def accept_user(self, username=None, user=None, message=None):
+        self.insert_action(
+            action="accept_user",
+            username=username,
+            user=user,
+            message=message,
+        )
+
     def block_worker(self, username=None, worker=None, message=None):
         self.insert_action(
             action="block_worker",
@@ -277,12 +205,27 @@ class ActionDb:
             message=message,
         )
 
+    def log_message(self, username=None, message=None):
+        self.insert_action(
+            action="log_message",
+            username=username,
+            message=message,
+        )
+
     def insert_action(self, **action):
         if "run_id" in action:
             action["run_id"] = str(action["run_id"])
-        ret = validate(schema, action, "action", strict=True)
-        if ret == "":
-            action["time"] = datetime.now(timezone.utc).timestamp()
-            self.actions.insert_one(action)
-        else:
-            raise Exception("Validation failed with error '{}'".format(ret))
+        action["time"] = datetime.now(timezone.utc).timestamp()
+        try:
+            validate(action_schema, action, "action")
+        except ValidationError as e:
+            message = (
+                f"Internal Error. Request {str(action)} does not validate: {str(e)}"
+            )
+            print(message, flush=True)
+            self.log_message(
+                username="fishtest.system",
+                message=message,
+            )
+            return
+        self.actions.insert_one(action)

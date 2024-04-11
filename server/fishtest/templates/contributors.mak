@@ -5,11 +5,37 @@
 %>
 
 <script>
-  document.title = 'Users${" - Top Month" if "monthly" in request.url else ""} | Stockfish Testing';
+  document.title =
+    'Contributors${" - Top Month" if "monthly" in request.url else ""} | Stockfish Testing';
+</script>
+
+
+<script>
+  (async () => {
+    await DOMContentLoaded();
+    const originalTable = document
+      .getElementById("contributors_table")
+      .cloneNode(true);
+
+    const originalRows = Array.from(originalTable.querySelectorAll("tbody tr"));
+
+    const includes = (row, inputValue) => {
+      const cells = Array.from(row.querySelectorAll("td"));
+      return cells.some((cell) => {
+        const cellText = cell.textContent || cell.innerText;
+        return cellText.toLowerCase().indexOf(inputValue) > -1;
+      });
+    };
+
+    const searchInput = document.getElementById("search_contributors");
+    searchInput.addEventListener("input", (e) => {
+      filterTable(e.target.value, "contributors_table", originalRows, includes);
+    });
+  })();
 </script>
 
 <h2>
-  Users
+  Contributors
   % if 'monthly' in request.url:
     - Top Month
   % endif
@@ -48,7 +74,7 @@
       </div>
     </div>
   </div>
-  
+
   <div class="col-6 col-sm">
     <div class="card card-lg-sm text-center">
       <div class="card-header text-nowrap" title="CPU years">CPU years</div>
@@ -83,10 +109,23 @@
   </div>
 </div>
 
+<div class="row g-3 mb-1">
+  <div class="col-12 col-md-auto">
+    <label class="form-label">Search</label>
+    <input
+      id="search_contributors"
+      class="form-control"
+      placeholder="Search some text"
+      type="text"
+    >
+  </div>
+</div>
+
 <div class="table-responsive-lg">
-  <table class="table table-striped table-sm">
+  <table id="contributors_table" class="table table-striped table-sm">
     <thead class="sticky-top">
       <tr>
+        <th></th>
         <th>Username</th>
         <th class="text-end">Last active</th>
         <th class="text-end">Games/Hour</th>
@@ -97,9 +136,18 @@
       </tr>
     </thead>
     <tbody>
-      % for user in users:
+      % for index, user in enumerate(users):
         <tr>
-          <td>${user['username']}</td>
+          <td class="rank">${index + 1}</td>
+          <td>
+          % if approver:
+            <a href="/user/${user['username']}">
+              ${user['username']}
+            </a>
+          % else:
+          ${user['username']}
+          % endif
+          </td>
           <td data-diff="${user['diff']}" class="text-end">${user['str_last_updated']}</td>
           <td class="text-end">${int(user['games_per_hour'])}</td>
           <td class="text-end">${int(user['cpu_hours'])}</td>

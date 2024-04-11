@@ -231,8 +231,9 @@ def github_api(repo):
     return repo.replace("https://github.com", "https://api.github.com/repos")
 
 
-def required_net(engine):
-    net = None
+def required_nets(engine):
+    nets = {}
+    pattern = re.compile(r"(EvalFile\w*)\s+.*\s+(nn-[a-f0-9]{12}.nnue)")
     print("Obtaining EvalFile of {} ...".format(os.path.basename(engine)))
     try:
         with subprocess.Popen(
@@ -243,8 +244,10 @@ def required_net(engine):
             close_fds=not IS_WINDOWS,
         ) as p:
             for line in iter(p.stdout.readline, ""):
-                if "EvalFile" in line:
-                    net = line.split(" ")[6].strip()
+                match = pattern.search(line)
+                if match:
+                    nets[match.group(1)] = match.group(2)
+
     except (OSError, subprocess.SubprocessError) as e:
         raise WorkerException(
             "Unable to obtain name for required net. Error: {}".format(str(e))
@@ -255,34 +258,32 @@ def required_net(engine):
             "UCI exited with non-zero code {}".format(format_return_code(p.returncode))
         )
 
-    return net
+    return nets
 
 
-def required_net_from_source():
-    """Parse evaluate.h and ucioption.cpp to find default net"""
-    net = None
-
+def required_nets_from_source():
+    """Parse evaluate.h and ucioption.cpp to find default nets"""
+    nets = []
+    pattern = re.compile("nn-[a-f0-9]{12}.nnue")
     # NNUE code after binary embedding (Aug 2020)
     with open("evaluate.h", "r") as srcfile:
         for line in srcfile:
             if "EvalFileDefaultName" in line and "define" in line:
-                p = re.compile("nn-[a-z0-9]{12}.nnue")
-                m = p.search(line)
+                m = pattern.search(line)
                 if m:
-                    net = m.group(0)
-    if net:
-        return net
+                    nets.append(m.group(0))
+    if nets:
+        return nets
 
     # NNUE code before binary embedding (Aug 2020)
     with open("ucioption.cpp", "r") as srcfile:
         for line in srcfile:
             if "EvalFile" in line and "Option" in line:
-                p = re.compile("nn-[a-z0-9]{12}.nnue")
-                m = p.search(line)
+                m = pattern.search(line)
                 if m:
-                    net = m.group(0)
+                    nets.append(m.group(0))
 
-    return net
+    return nets
 
 
 def download_net(remote, testing_dir, net):
@@ -309,6 +310,8 @@ def establish_validated_net(remote, testing_dir, net):
                         "Failed to validate the network: {}".format(net)
                     )
                 break
+            except FatalException:
+                raise
             except WorkerException:
                 if attempt > 5:
                     raise
@@ -437,12 +440,14 @@ def download_from_github(
 ):
     try:
         blob = download_from_github_raw(item, owner=owner, repo=repo, branch=branch)
-    except:
-        print("Downloading {} failed. Trying the github api.".format(item))
+    except FatalException:
+        raise
+    except Exception as e:
+        print(f"Downloading {item} failed: {str(e)}. Trying the GitHub api.")
         try:
             blob = download_from_github_api(item, owner=owner, repo=repo, branch=branch)
-        except:
-            raise WorkerException("Unable to download {}".format(item))
+        except Exception as e:
+            raise WorkerException(f"Unable to download {item}", e=e)
     return blob
 
 
@@ -455,6 +460,24 @@ def unzip(blob, save_dir):
         file_list = zip_file.infolist()
     os.chdir(cd)
     return file_list
+
+
+def convert_book_move_counters(book_file):
+    # converts files with complete FENs, leaving others (incl. converted ones) unchanged
+    epds = []
+    with open(book_file, "r") as file:
+        for fen in file:
+            fields = fen.split()
+            if len(fields) == 6 and fields[4].isdigit() and fields[5].isdigit():
+                fields[4] = f"hmvc {fields[4]};"
+                fields[5] = f"fmvn {fields[5]};"
+                epds.append(" ".join(fields))
+            else:
+                return
+
+    with open(book_file, "w") as file:
+        for epd in epds:
+            file.write(epd + "\n")
 
 
 def clang_props():
@@ -656,9 +679,8 @@ def setup_engine(
         prefix = os.path.commonprefix([n.filename for n in file_list])
         os.chdir(tmp_dir / prefix / "src")
 
-        net = required_net_from_source()
-        if net:
-            print("Build uses default net: ", net)
+        for net in required_nets_from_source():
+            print("Build uses default net:", net)
             establish_validated_net(remote, testing_dir, net)
             shutil.copyfile(testing_dir / net, net)
 
@@ -672,7 +694,13 @@ def setup_engine(
         # skip temporary the profiled build for apple silicon, see
         # https://stackoverflow.com/questions/71580631/how-can-i-get-code-coverage-with-clang-13-0-1-on-mac
         make_cmd = "build" if arch == "apple-silicon" else "profile-build"
-        cmd = "make -j {} {} ARCH={} COMP={}".format(concurrency, make_cmd, arch, comp)
+        cmd = [
+            "make",
+            f"-j{concurrency}",
+            f"{make_cmd}",
+            f"ARCH={arch}",
+            f"COMP={comp}",
+        ]
 
         # append -DNNUE_EMBEDDING_OFF to existing CXXFLAGS environment variable, if any
         cxx = os.environ.get("CXXFLAGS", "") + " -DNNUE_EMBEDDING_OFF"
@@ -680,28 +708,30 @@ def setup_engine(
 
         with subprocess.Popen(
             cmd,
-            shell=True,
             env=env,
+            start_new_session=False if IS_WINDOWS else True,
             stderr=subprocess.PIPE,
             universal_newlines=True,
             bufsize=1,
             close_fds=not IS_WINDOWS,
         ) as p:
-            errors = p.stderr.readlines()
+            try:
+                errors = p.stderr.readlines()
+            except Exception as e:
+                if not IS_WINDOWS:
+                    os.killpg(p.pid, signal.SIGINT)
+                raise WorkerException(
+                    f"Executing {cmd} raised Exception: {e.__class__.__name__}: {str(e)}",
+                    e=e,
+                )
         if p.returncode:
             raise WorkerException("Executing {} failed. Error: {}".format(cmd, errors))
 
-        # TODO: 'make strip' works fine with the new Makefile,
-        # 'try' should be safely dropped in the future
-        try:
-            subprocess.run(
-                "make strip COMP={}".format(comp),
-                stderr=subprocess.DEVNULL,
-                shell=True,
-                check=True,
-            )
-        except Exception as e:
-            print("Exception stripping binary:\n", e, sep="", file=sys.stderr)
+        subprocess.run(
+            ["make", "strip", f"COMP={comp}"],
+            stderr=subprocess.DEVNULL,
+            check=True,
+        )
 
         # We called setup_engine() because the engine was not cached.
         # Only another worker running in the same folder can have built the engine.
@@ -1089,11 +1119,14 @@ def launch_cutechess(
             bufsize=1,
             # The next options are necessary to be able to send a CTRL_C_EVENT to this process.
             # https://stackoverflow.com/questions/7085604/sending-c-to-python-subprocess-objects-on-windows
-            startupinfo=subprocess.STARTUPINFO(
-                dwFlags=subprocess.STARTF_USESHOWWINDOW, wShowWindow=subprocess.SW_HIDE
-            )
-            if IS_WINDOWS
-            else None,
+            startupinfo=(
+                subprocess.STARTUPINFO(
+                    dwFlags=subprocess.STARTF_USESHOWWINDOW,
+                    wShowWindow=subprocess.SW_HIDE,
+                )
+                if IS_WINDOWS
+                else None
+            ),
             creationflags=subprocess.CREATE_NEW_CONSOLE if IS_WINDOWS else 0,
             close_fds=not IS_WINDOWS,
         ) as p:
@@ -1288,6 +1321,11 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file, clear_binar
         blob = download_from_github(zipball)
         unzip(blob, testing_dir)
 
+    # convert .epd containing FENs into .epd containing EPDs with move counters
+    # only needed as long as cutechess-cli is the game manager
+    if book.endswith(".epd"):
+        convert_book_move_counters(testing_dir / book)
+
     # Clean up the old networks (keeping the num_bkps most recent)
     num_bkps = 10
     for old_net in sorted(
@@ -1303,17 +1341,14 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file, clear_binar
                 file=sys.stderr,
             )
 
-    # Add EvalFile with full path to cutechess options, and download the networks if missimg.
-    net_base = required_net(base_engine)
-    if net_base:
-        base_options = base_options + ["option.EvalFile={}".format(net_base)]
-    net_new = required_net(new_engine)
-    if net_new:
-        new_options = new_options + ["option.EvalFile={}".format(net_new)]
+    # Add EvalFile* with full path to cutechess options, and download the networks if missing.
+    for option, net in required_nets(base_engine).items():
+        base_options.append("option.{}={}".format(option, net))
+        establish_validated_net(remote, testing_dir, net)
 
-    for net in [net_base, net_new]:
-        if net:
-            establish_validated_net(remote, testing_dir, net)
+    for option, net in required_nets(new_engine).items():
+        new_options.append("option.{}={}".format(option, net))
+        establish_validated_net(remote, testing_dir, net)
 
     # PGN files output setup.
     pgn_name = "results-" + worker_info["unique_key"] + ".pgn"
@@ -1325,26 +1360,43 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file, clear_binar
         pass
 
     # Verify that the signatures are correct.
-    verify_signature(
-        new_engine,
-        run["args"]["new_signature"],
-        games_concurrency * threads,
-    )
-    base_nps, cpu_features = verify_signature(
-        base_engine,
-        run["args"]["base_signature"],
-        games_concurrency * threads,
-    )
+    run_errors = []
+    try:
+        base_nps, cpu_features = verify_signature(
+            base_engine,
+            run["args"]["base_signature"],
+            games_concurrency * threads,
+        )
+    except RunException as e:
+        run_errors.append(str(e))
+    except WorkerException as e:
+        raise e
 
-    if base_nps < 231000 / (1 + math.tanh((worker_concurrency - 1) / 8)):
+    try:
+        verify_signature(
+            new_engine,
+            run["args"]["new_signature"],
+            games_concurrency * threads,
+        )
+    except RunException as e:
+        run_errors.append(str(e))
+    except WorkerException as e:
+        raise e
+
+    # Handle exceptions if any.
+    if run_errors:
+        raise RunException("\n".join(run_errors))
+
+    if base_nps < 208082 / (1 + math.tanh((worker_concurrency - 1) / 8)):
         raise FatalException(
             "This machine is too slow ({} nps / thread) to run fishtest effectively - sorry!".format(
                 base_nps
             )
         )
-    # 1184000 nps is the reference core benched with respect to SF 11,
+    # fishtest with Stockfish 11 had 1.6 Mnps as reference nps and
+    # 0.7 Mnps as threshold for the slow worker.
     # also set in rundb.py and delta_update_users.py
-    factor = 640000 / base_nps
+    factor = 691680 / base_nps
 
     # Adjust CPU scaling.
     _, tc_limit_ltc = adjust_tc("60+0.6", factor)

@@ -6,6 +6,13 @@
 
 <%namespace name="base" file="base.mak"/>
 
+<script
+  src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/5.2.0/diff.js"
+  integrity="sha512-Ubw08LwzeoACkP9I1L0LqwnhiVs6Vg9LWeTFDj0leZIVp5XG28xcxK0lrlFvaL8ZqR8oMOBnFdZLo6agy5+SgQ=="
+  crossorigin="anonymous"
+  referrerpolicy="no-referrer"
+></script>
+
 % if show_task >= 0:
   <script>
     document.documentElement.style="scroll-behavior:auto; overflow:hidden;";
@@ -22,16 +29,16 @@
 % if follow == 1:
   <script>
     (async () => {
-      await DOM_loaded();
-      await follow_run("${run['_id']}");
-      set_notification_status("${run['_id']}");
+      await DOMContentLoaded();
+      await followRun("${run['_id']}");
+      setNotificationStatus("${run['_id']}");
     })();
   </script>
 % else:
   <script>
     (async () => {
-      await DOM_loaded();
-      set_notification_status_("${run['_id']}");
+      await DOMContentLoaded();
+      setNotificationStatus_("${run['_id']}");
     })();
   </script>
 % endif
@@ -39,17 +46,21 @@
 % if 'spsa' in run['args']:
   <script src="https://www.gstatic.com/charts/loader.js"></script>
   <script>
-    const spsa_data = ${json.dumps(run["args"]["spsa"])|n};
+    const spsaData = ${json.dumps(run["args"]["spsa"])|n};
   </script>
-  <script src="/js/spsa.js?v=${cache_busters['js/spsa.js']}"
-          integrity="sha384-${cache_busters['js/spsa.js']}"
-          crossorigin="anonymous"></script>
+
+  <script
+    src="/js/spsa.js?v=${cache_busters['js/spsa.js']}"
+    integrity="sha384-${cache_busters['js/spsa.js']}"
+    crossorigin="anonymous"
+  ></script>
+
   <script>
-    const spsa_promise = handle_spsa();
+    const spsaPromise = handleSPSA();
   </script>
 % else:
   <script>
-    const spsa_promise = Promise.resolve();
+    const spsaPromise = Promise.resolve();
   </script>
 % endif
 
@@ -76,7 +87,7 @@
             class="btn btn-primary bg-light-primary border-0 mb-2"
             target="_blank" rel="noopener"
           >
-            View on Github
+            View on GitHub
           </a>
 
           <a
@@ -87,6 +98,15 @@
           >
             Copy apply-diff command
           </a>
+
+          <a
+            href="javascript:" 
+            id="master_vs_official_master" class="btn btn-danger  border-0 mb-2"
+            title="Compares master to official-master at the time of submission"
+            style="display: none">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+              <span> master vs official</span>
+            </a>
 
           <span class="text-success copied text-nowrap" style="display: none">Copied!</span>
         </h4>
@@ -185,7 +205,7 @@
               <form
                 action="/tests/stop"
                 method="POST"
-                onsubmit="handle_stop_delete_button('${run['_id']}'); return true;"
+                onsubmit="handleStopDeleteButton('${run['_id']}'); return true;"
               >
                 <input type="hidden" name="run-id" value="${run['_id']}">
                 <button type="submit" class="btn btn-danger w-100">
@@ -347,7 +367,7 @@
         <button 
           id="follow_button_${run['_id']}"
           class="btn btn-primary col-12 col-md-auto"
-          onclick="handle_follow_button(this)"
+          onclick="handleFollowButton(this)"
           style="display:none; margin-top:0.2em;"></button>
         <hr style="visibility:hidden;">
       % endif
@@ -355,7 +375,7 @@
   </div>
 
   % if 'spsa' in run['args']:
-    <div id="div_spsa_preload" class="col-lg-3">
+    <div id="spsa_preload" class="col-lg-3">
       <div class="pt-1 text-center">
         Loading graph...
       </div>
@@ -382,7 +402,7 @@
       <button id="btn_view_all" class="btn">View All</button>
     </div>
     <div class="overflow-auto">
-      <div id="div_spsa_history_plot"></div>
+      <div id="spsa_history_plot"></div>
     </div>
   % endif
 
@@ -396,7 +416,7 @@
       </a>
     Tasks ${totals}
   </h4>
-  <div id="tasks"
+  <section id="tasks"
        class="overflow-auto ${'collapse show' if tasks_shown else 'collapse'}">
     <table class='table table-striped table-sm'>
       <thead id="tasks-head" class="sticky-top">
@@ -431,12 +451,13 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"
         integrity="sha512-rdhY3cbXURo13l/WU9VlaRyaIYeJ/KBakckXIvJNAQde8DgpOmE+eZf7ha4vdqVjTtwQt69bD2wH2LXob/LB7Q=="
         crossorigin="anonymous"
-        referrerpolicy="no-referrer"></script>
+        referrerpolicy="no-referrer"
+></script>
 
 <script>
-  const match = document.cookie.match(
-    new RegExp("(^| )" + "theme" + "=([^;]+)")
-  );
+  let cookieTheme = getCookie("theme");
+  const currentTime = new Date().getTime();
+  const oneDayAgo = currentTime - (24 * 60 * 60 * 1000); // 24 hours ago in milliseconds
 
   const setHighlightTheme = (theme) => {
     const link = document.createElement("link");
@@ -466,22 +487,16 @@
     document.head.append(link);
   };
 
-  const getPreferredTheme = () => {
-    return window.matchMedia("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light";
-  };
-
-  if (!match) {
-    setHighlightTheme(getPreferredTheme());
+  if (!cookieTheme) {
+    setHighlightTheme(mediaTheme());
   } else {
-    setHighlightTheme(match[2]);
+    setHighlightTheme(cookieTheme);
   }
 
   try {
     window
       .matchMedia("(prefers-color-scheme: dark)")
-      .addEventListener("change", () => setHighlightTheme(getPreferredTheme()));
+      .addEventListener("change", () => setHighlightTheme(mediaTheme()));
   } catch (e) {
     console.error(e);
   }
@@ -500,22 +515,22 @@
 
   let fetchedTasksBefore = false;
   async function handleRenderTasks(){
-    await DOM_loaded();
+    await DOMContentLoaded();
     const tasksButton = document.getElementById("tasks-button");
     tasksButton?.addEventListener("click", async () => {
-      await toggle_tasks();
+      await toggleTasks();
     })
      if (${str(tasks_shown).lower()})
        await renderTasks();
   }
 
   async function renderTasks() {
-    await DOM_loaded();
+    await DOMContentLoaded();
     if (fetchedTasksBefore)
       return Promise.resolve();
     const tasksBody = document.getElementById("tasks-body");
     try {
-      const html = await fetch_text(`/tests/tasks/${str(run['_id'])}?show_task=${show_task}`);
+      const html = await fetchText(`/tests/tasks/${str(run['_id'])}?show_task=${show_task}`);
       tasksBody.innerHTML = html;
       fetchedTasksBefore = true;
     } catch (error) {
@@ -523,9 +538,9 @@
     }
   }
 
-  async function toggle_tasks() {
+  async function toggleTasks() {
     const button = document.getElementById("tasks-button");
-    const active = button.textContent.trim() === 'Hide';
+    const active = button.textContent.trim() === "Hide";
     if (active){
       button.textContent = "Show";
     }
@@ -535,11 +550,136 @@
     }
 
     document.cookie =
-      'tasks_state' + '=' + button.textContent.trim() + ";max-age=${60 * 60};SameSite=Lax;";
+      "tasks_state" + "=" + button.textContent.trim() + "; max-age=${60 * 60}; SameSite=Lax";
   }
 
-  async function handle_diff() {
-    await DOM_loaded();
+  function addDiff (diffText, text) {
+    diffText.textContent = text;
+  }
+
+  function showDiff(diffContents, diffText, numLines, copyDiffBtn, toggleBtn) {
+    // Hide large diffs by default
+    if (numLines < 50) {
+      diffContents.style.display = "";
+      if (copyDiffBtn) copyDiffBtn.style.display = "";
+      setTimeout(() => {
+        toggleBtn.textContent = "Hide";
+      }, 350);
+    } else {
+      diffContents.style.display = "none";
+      if (copyDiffBtn) copyDiffBtn.style.display = "none";
+      setTimeout(() => {
+        toggleBtn.textContent = "Show";
+      }, 350);
+    }
+  }
+
+  async function getFileContentFromUrl(url) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        if (response.status === 404) {
+          return "";
+        } else {
+          throw new Error(
+            "Failed to fetch " + url + ": " + response.status + " " + response.statusText
+          );
+        }
+      }
+      return await response.text();
+    } catch (error) {
+        throw new Error(
+          "Failed to fetch file: " + error
+        );
+    }
+  }
+
+  async function getFilesInBranch(apiUrl, branch) {
+    try {
+      const url = apiUrl + "/git/trees/" + branch + "?recursive=1";
+      const response = await fetch(url);
+      if (!response.ok) {
+          return null;
+      }
+      const data = await response.json();
+      return data.tree
+        .filter((entry) => entry.type === "blob")
+        .map((entry) => entry.path);
+    } catch (error) {
+      console.error("Error fetching files in branch " +  branch + ": ", error);
+      return null;
+    }
+  }
+
+  async function fetchDiffThreeDots(diffApiUrl) {
+    try {
+      const text = await fetchText(diffApiUrl, {
+        headers: {
+          Accept: "application/vnd.github.diff",
+        },
+      });
+      return {text: text, count: text?.split("\n")?.length || 0};
+    } catch(e) {
+      console.log("Error fetching diff: " + e);
+      return {text: "", count: 0};
+    }
+  }
+
+  async function fetchDiffTwoDots(rawContentUrlNew, rawContentUrlBase, apiUrlNew, apiUrlBase, diffNew, diffBase) {
+    const [files1, files2] = await Promise.all([
+      getFilesInBranch(apiUrlBase, diffBase),
+      getFilesInBranch(apiUrlNew, diffNew),
+    ]);
+
+    if (files1 === null || files2 === null) {
+        throw new Error("Failed to fetch files from branches");
+    }
+
+    const allFiles = Array.from(new Set([...files1, ...files2]));
+    let diffs = await Promise.all(
+      allFiles.map(async (filePath) => {
+        const [content1, content2] = await Promise.all([
+          getFileContentFromUrl(
+            rawContentUrlNew + "/" + diffBase + "/" + filePath
+          ),
+          getFileContentFromUrl(
+            rawContentUrlBase + "/" + diffNew + "/" + filePath
+          ),
+        ]);
+
+        const diff = Diff.createPatch(filePath, content1, content2);
+        if (diff.trim() !== "" && diff.trim().split("\n").length >= 5) {
+          return diff;
+        }
+      })
+    );
+
+    diffs = diffs.filter((diff) => diff);
+    if (diffs.length) {
+      return { text: diffs.join("\n"), count: diffs.length };
+    } else {
+      return { text: "", count: 0 };
+    }
+  }
+
+  async function fetchComments(diffApiUrl) {
+    // Fetch amount of comments
+    try {
+      const json = await fetchJson(diffApiUrl);
+      let numComments = 0;
+      json.commits.forEach(function (row) {
+        numComments += row.commit.comment_count;
+      });
+        document.getElementById("diff-num-comments").textContent =
+          "(" + numComments + " comments)";
+        document.getElementById("diff-num-comments").style.display = "";
+    } catch(e) {
+      console.log("Error fetching comments: "+e);
+    }
+  }
+
+  async function handleDiff() {
+    await DOMContentLoaded();
     let copyDiffBtn = document.getElementById("copy-diff");
     if (
       document.queryCommandSupported &&
@@ -564,38 +704,83 @@
       copyDiffBtn = null;
     }
 
-    // Define some functions to fetch the diff and show it
+    const diffApiUrl = "${h.diff_url(run)}".replace(
+      "//github.com/",
+      "//api.github.com/repos/"
+    );
+    
+    let dots = 2;
 
-    function showDiff(text) {
-      const numLines = text.split("\n").length;
-      const toggleBtn = document.getElementById("diff-toggle");
-      const diffContents = document.getElementById("diff-contents");
-      // Hide large diffs by default
-      if (numLines < 50) {
-        diffContents.style.display = "";
-        if (copyDiffBtn) copyDiffBtn.style.display = "";
-        setTimeout(()=> {
-          toggleBtn.textContent = "Hide";
-        }, 350);
-      } else {
-        diffContents.style.display = "none";
-        if (copyDiffBtn) copyDiffBtn.style.display = "none";
-        setTimeout(()=> {
-          toggleBtn.textContent = "Show";
-        }, 350);
+    const testRepo = "${h.tests_repo(run)}";
+    const rawContentUrlNew = testRepo.replace(
+      "//github.com/",
+      "//raw.githubusercontent.com/"
+    );
+    const apiUrlNew = testRepo.replace(
+      "//github.com/",
+      "//api.github.com/repos/"
+    );
+
+    const diffNew  = "${run["args"]["resolved_new"][:10]}";
+    const rawOfficialMaster = "https://raw.githubusercontent.com/official-stockfish/Stockfish";
+    const apiOfficialMaster = "https://api.github.com/repos/official-stockfish/Stockfish";
+    const baseOfficialMaster = "${run["args"]["official_master_sha"][:10] if run["args"].get("official_master_sha") else ""}";
+
+    % if run["args"].get("spsa"):
+      const rawContentUrlBase = rawOfficialMaster;
+      const apiUrlBase = apiOfficialMaster;
+      % if run["args"].get("official_master_sha"):
+          const diffBase = baseOfficialMaster;
+      % else: # old tests before this field
+          const diffBase = "master";
+          dots = 3; // fall back to the three dot diff request as the diff will be rebased
+      % endif
+    % else:
+      const rawContentUrlBase = rawContentUrlNew;
+      const apiUrlBase = apiUrlNew;
+      const diffBase = "${run["args"]["resolved_base"][:10]}";
+    % endif
+
+    // Check if the diff is already in localStorage and use it if it is
+    let localStorageDiffs = JSON.parse(localStorage.getItem("localStorageDiffs")) || [];
+    localStorageDiffs = localStorageDiffs.filter(diff => diff?.timeStamp >= oneDayAgo);
+
+    let run = localStorageDiffs.find(diff => diff["id"] === "${run['_id']}" && !diff["masterVsBase"]);
+    let text = run?.text;
+    let count = run?.lines || 0;
+
+    try {
+      if (!text) {
+        if (dots === 2)
+          diffs = await fetchDiffTwoDots(rawContentUrlNew, rawContentUrlBase, apiUrlNew, apiUrlBase, diffNew, diffBase);
+        else if (dots === 3)
+          diffs = await fetchDiffThreeDots(diffApiUrl);
+
+        text = diffs.text || "No diff available";
+        count = diffs.count || 0;
+
+        // Try to save the diff in localStorage
+        // It can throw an exception if there is not enough space
+        try {
+          localStorageDiffs.push({id:"${run['_id']}", text: text, lines: count, masterVsBase: false, timeStamp: currentTime});
+          localStorage.setItem("localStorageDiffs", JSON.stringify(localStorageDiffs));
+        } catch (e) {
+          console.warn("Could not save diff in localStorage");
+        }
       }
-      const diffText = diffContents.querySelector("code");
-      diffText.textContent = text;
+      fetchComments(diffApiUrl);
+    }
+    catch {
+      text = "API limit rate exceeded, please try 'View on GitHub'";
+    }
 
-      // Try to save the diff in sessionStorage
-      // It can throw an exception if there is not enough space
-      try {
-        sessionStorage.setItem("${run['_id']}", text);
-      } catch (e) {
-        console.warn("Could not save diff in sessionStorage");
-      }
-
-      toggleBtn.addEventListener("click", function () {
+    const diffContents = document.getElementById("diff-contents");
+    const diffText = diffContents.querySelector("code");
+    addDiff(diffText, text);
+    const toggleBtn = document.getElementById("diff-toggle");
+    showDiff(diffContents, diffText, count, copyDiffBtn, toggleBtn);
+    hljs.highlightElement(diffText);
+    toggleBtn.addEventListener("click", function () {
         diffContents.style.display =
           diffContents.style.display === "none" ? "" : "none";
         if (copyDiffBtn)
@@ -604,66 +789,63 @@
         if (toggleBtn.textContent === "Hide") toggleBtn.textContent = "Show";
         else toggleBtn.textContent = "Hide";
       });
+    document.getElementById("diff-section").style.display = "";
 
-      document.getElementById("diff-section").style.display = "";
-      hljs.highlightElement(diffText);
-    }
+    % if run["args"]["base_tag"] == "master":
+      if (baseOfficialMaster) {
+        // Check if the diff is already in localStorage and use it if it is
+        let run = localStorageDiffs.find(diff => diff["id"] === "${run['_id']}" && diff["masterVsBase"] === true);
+        let text = run?.text;
 
-    async function fetchDiff(diffApiUrl) {
-      try {
-        const text = await fetch_text(diffApiUrl, {
-          headers: {
-            Accept: "application/vnd.github.diff",
-          },
-        });
-        return text;
-      } catch(e) {
-        console.log("Error fetching diff: " + e);
+        if (!text) {
+           const masterVsOfficialMaster =
+             await fetchDiffTwoDots(rawContentUrlBase, rawOfficialMaster, apiUrlBase, apiOfficialMaster, diffBase, baseOfficialMaster);
+           text = masterVsOfficialMaster.text;
+        }
+        
+        if (text) {
+          document.getElementById("master_vs_official_master").style.display = "";
+          const diffContents = document.getElementById("diff-contents");
+          const diffText = diffContents.querySelector("code");
+          document.getElementById("master_vs_official_master").addEventListener("click", (e) => {
+            // Check if the diff is already in localStorage and use it if it is
+            let localStorageDiffs = JSON.parse(localStorage.getItem("localStorageDiffs")) || [];
+            localStorageDiffs = localStorageDiffs.filter(diff => diff?.timeStamp >= oneDayAgo);
+            e.currentTarget.classList.toggle("active");
+            if (e.currentTarget.classList.contains("active")) {
+                e.currentTarget.querySelector("span").textContent = "base vs master";
+                addDiff(diffText, text);
+                hljs.highlightElement(diffText);
+            }
+            else {
+              e.currentTarget.querySelector("span").textContent = "master vs base";
+              // Check if the diff is already in localStorage and use it if it is
+              let run = localStorageDiffs.find(diff => diff["id"] === "${run['_id']}" && diff["masterVsBase"] === false);
+              const originalDiffText = run.text;
+              const originalDiffCount = run.lines || 0;
+              addDiff(diffText, originalDiffText);
+              showDiff(diffContents, diffText, originalDiffCount, copyDiffBtn, toggleBtn);
+              hljs.highlightElement(diffText);
+            }
+          });
+
+          // Try to save the diff in localStorage
+          // It can throw an exception if there is not enough space
+          try {
+            localStorageDiffs.push({id:"${run['_id']}", text: text, lines: count, masterVsBase: true, timeStamp: currentTime});
+            localStorage.setItem("localStorageDiffs", JSON.stringify(localStorageDiffs));
+          } catch (e) {
+            console.warn("Could not save diff in localStorage");
+          }
+        }
       }
-      return "";
-    }
-
-    async function fetchComments(diffApiUrl) {
-      // Fetch amount of comments
-      try {
-        const json = await fetch_json(diffApiUrl);
-        let numComments = 0;
-        json.commits.forEach(function (row) {
-          numComments += row.commit.comment_count;
-        });
-         document.getElementById("diff-num-comments").textContent =
-            "(" + numComments + " comments)";
-         document.getElementById("diff-num-comments").style.display = "";
-      } catch(e) {
-        console.log("Error fetching comments: "+e);
-        return;
-      }
-    }
-
-
-    // Let's go
-
-    const diffApiUrl = "${h.diff_url(run)}".replace(
-      "//github.com/",
-      "//api.github.com/repos/"
-    );
-
-    // Check if the diff is already in sessionStorage and use it if it is
-    let text = sessionStorage.getItem("${run['_id']}");
-    if (!text) {
-      text = await fetchDiff(diffApiUrl);
-    }
-    if (text) {
-      showDiff(text);
-      return fetchComments(diffApiUrl);
-    }
-
+    % endif
   }
 
-  const diff_promise = handle_diff();
-  const renderOnLoad = handleRenderTasks();
+  const diffPromise = handleDiff();
+  const tasksPromise = handleRenderTasks();
 
-  Promise.all([spsa_promise, diff_promise, renderOnLoad])
+  Promise.all([spsaPromise, diffPromise, tasksPromise])
     .then(() => {
     % if show_task >= 0:
       scroll_to(${show_task});

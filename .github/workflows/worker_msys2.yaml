@@ -27,14 +27,14 @@ jobs:
             mingw-w64-${{ matrix.env }}-python3
             mingw-w64-${{ matrix.env }}-${{ matrix.comp }}
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Add packages folder to PYTHONPATH
         run: |
-          echo "PYTHONPATH=$PYTHONPATH:$(pwd)/packages" >> $GITHUB_ENV
+          echo "PYTHONPATH=$(pwd)/packages" >> $GITHUB_ENV
 
       - name: Run worker tests
         run: |
-          python -m unittest discover -v
+          python -m unittest discover -vb -s tests

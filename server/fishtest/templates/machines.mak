@@ -2,6 +2,12 @@
   from fishtest.util import delta_date
   from fishtest.util import diff_date
   from fishtest.util import worker_name
+
+  def clip_long(text, max_length=20):
+      if len(text) > max_length:
+          return text[:max_length] + "..."
+      else:
+          return text
 %>
 
 <table class="table table-striped table-sm">
@@ -30,6 +36,9 @@
         worker_name_ = worker_name(machine, short=True)
         diff_time = diff_date(machine["last_updated"])
         delta_time = delta_date(diff_time)
+        branch = machine['run']['args']['new_tag']
+        task_id = str(machine['task_id'])
+        run_id = str(machine['run']['_id'])
       %>
       <tr>
         <td>${machine['username']}</td>
@@ -48,7 +57,7 @@
         <td>${python_version}</td>
         <td>${version}</td>
         <td>
-          <a href="/tests/view/${str(machine['run']['_id'])+'?show_task='+str(machine['task_id'])}">${machine['run']['args']['new_tag']+"/"+str(machine['task_id'])}</a>
+          <a href="/tests/view/${run_id + '?show_task=' + task_id}" title="${branch + "/" + task_id}">${clip_long(branch) + "/" + task_id}</a>
         </td>
         <td>${delta_time}</td>
       </tr>

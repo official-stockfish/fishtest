@@ -4,8 +4,9 @@ import io
 import re
 from datetime import datetime, timezone
 
+from fishtest.schemas import api_access_schema, api_schema
 from fishtest.stats.stat_util import SPRT_elo
-from fishtest.util import optional_key, union, validate, worker_name
+from fishtest.util import worker_name
 from pyramid.httpexceptions import (
     HTTPBadRequest,
     HTTPFound,
@@ -14,62 +15,28 @@ from pyramid.httpexceptions import (
 )
 from pyramid.response import Response
 from pyramid.view import exception_view_config, view_config, view_defaults
+from vtjson import ValidationError, validate
 
 """
 Important note
 ==============
 
-All apis that are relying on get_run() should be served from a single
-Fishtest instance.
+All APIs that rely on the `run_cache` of `rundb.get_run()`
+must be served from the main Fishtest instance.
+Note that `self.validate_request("/api/<route>")`
+uses `rundb.get_run()` under some conditions.
 
-If other instances need information about runs they should query the
-db directly. However this information may be slightly outdated, depending
-on how frequently the main instance flushes its run cache.
+If other Fishtest instances need information about runs,
+they should query the database directly.
+However, keep in mind that this information might be slightly outdated.
+This depends on how frequently the main instance flushes its `run_cache`.
 """
 
-WORKER_VERSION = 222
+WORKER_VERSION = 232
 
 
 def validate_request(request):
-    schema = {
-        "password": str,
-        optional_key("run_id"): str,
-        optional_key("task_id"): int,
-        optional_key("pgn"): str,
-        optional_key("message"): str,
-        "worker_info": {
-            "uname": str,
-            "architecture": [str, str],
-            "concurrency": int,
-            "max_memory": int,
-            "min_threads": int,
-            "username": str,
-            "version": int,
-            "python_version": [int, int, int],
-            "gcc_version": [int, int, int],
-            "compiler": union("g++", "clang++"),
-            "unique_key": str,
-            "modified": bool,
-            "near_github_api_limit": bool,
-            "ARCH": str,
-            "nps": float,
-        },
-        optional_key("spsa"): {
-            "wins": int,
-            "losses": int,
-            "draws": int,
-            "num_games": int,
-        },
-        optional_key("stats"): {
-            "wins": int,
-            "losses": int,
-            "draws": int,
-            "crashes": int,
-            "time_losses": int,
-            "pentanomial": [int, int, int, int, int],
-        },
-    }
-    return validate(schema, request, "request", strict=True)
+    validate(api_schema, request, "request")
 
 
 # Avoids exposing sensitive data about the workers to the client and skips some heavy data.
@@ -137,8 +104,10 @@ class ApiView(object):
             self.handle_error("request is not json encoded")
 
         # Is the request syntactically correct?
-        schema = {"password": str, "worker_info": {"username": str}}
-        self.handle_error(validate(schema, self.request_body, "request"))
+        try:
+            validate(api_access_schema, self.request_body, "request")
+        except ValidationError as e:
+            self.handle_error(str(e))
 
         # is the supplied password correct?
         token = self.request.userdb.authenticate(
@@ -159,7 +128,10 @@ class ApiView(object):
         self.validate_username_password(api)
 
         # Is the request syntactically correct?
-        self.handle_error(validate_request(self.request_body))
+        try:
+            validate_request(self.request_body)
+        except ValidationError as e:
+            self.handle_error(str(e))
 
         # is a supplied run_id correct?
         if "run_id" in self.request_body:
@@ -169,13 +141,11 @@ class ApiView(object):
                 self.handle_error("Invalid run_id: {}".format(run_id))
             self.__run = run
 
-        # if a task_id is present then there should be a run_id, and
-        # the unique_key should correspond to the unique_key of the
-        # task
+        # if a task_id is present then the unique_key should correspond
+        # to the unique_key of the task
+
         if "task_id" in self.request_body:
             task_id = self.request_body["task_id"]
-            if "run_id" not in self.request_body:
-                self.handle_error("The request has a task_id but no run_id")
 
             if task_id < 0 or task_id >= len(run["tasks"]):
                 self.handle_error(
@@ -273,6 +243,50 @@ class ApiView(object):
             run["last_updated"] = str(run["last_updated"])
             active[str(run["_id"])] = run
         return active
+
+    @view_config(route_name="api_finished_runs")
+    def finished_runs(self):
+        self.__t0 = datetime.now(timezone.utc)
+        self.__api = "/api/finished_runs"
+
+        username = self.request.params.get("username", "")
+        success_only = self.request.params.get("success_only", False)
+        yellow_only = self.request.params.get("yellow_only", False)
+        ltc_only = self.request.params.get("ltc_only", False)
+        timestamp = self.request.params.get("timestamp", "")
+        page_param = self.request.params.get("page", "")
+
+        if page_param == "":
+            self.handle_error("Please provide a Page number.")
+        if not page_param.isdigit() or int(page_param) < 1:
+            self.handle_error("Please provide a valid Page number.")
+        page_idx = int(page_param) - 1
+        page_size = 50
+
+        last_updated = None
+        if timestamp != "" and re.match(r"^\d{10}(\.\d+)?$", timestamp):
+            last_updated = datetime.fromtimestamp(float(timestamp))
+        elif timestamp != "":
+            self.handle_error("Please provide a valid UNIX timestamp.")
+
+        runs, num_finished = self.request.rundb.get_finished_runs(
+            username=username,
+            success_only=success_only,
+            yellow_only=yellow_only,
+            ltc_only=ltc_only,
+            skip=page_idx * page_size,
+            limit=page_size,
+            last_updated=last_updated,
+        )
+
+        finished = {}
+        for run in runs:
+            # some string conversions
+            run["_id"] = str(run["_id"])
+            run["start_time"] = str(run["start_time"])
+            run["last_updated"] = str(run["last_updated"])
+            finished[str(run["_id"])] = run
+        return finished
 
     @view_config(route_name="api_actions")
     def actions(self):
@@ -521,6 +535,9 @@ class ApiView(object):
         nn = self.request.rundb.get_nn(self.request.matchdict["id"])
         if nn is None:
             raise exception_response(404)
+        else:
+            self.request.rundb.increment_nn_downloads(self.request.matchdict["id"])
+
         return HTTPFound(
             "https://data.stockfishchess.org/nn/" + self.request.matchdict["id"]
         )

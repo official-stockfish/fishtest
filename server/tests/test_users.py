@@ -59,16 +59,16 @@ class Create50LoginTest(unittest.TestCase):
             "Invalid password for user: JoeUser" in request.session.pop_flash("error")
         )
 
-        # Correct password, but still blocked from logging in
+        # Correct password, but still pending from logging in
         request.params["password"] = "secret"
         login(request)
         self.assertTrue(
-            "Account blocked for user: JoeUser" in request.session.pop_flash("error")[0]
+            "Account pending for user: JoeUser" in request.session.pop_flash("error")[0]
         )
 
         # Unblock, then user can log in successfully
         user = self.rundb.userdb.get_user("JoeUser")
-        user["blocked"] = False
+        user["pending"] = False
         self.rundb.userdb.save_user(user)
         response = login(request)
         self.assertEqual(response.code, 302)

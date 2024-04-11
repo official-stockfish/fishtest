@@ -1,7 +1,7 @@
 <%inherit file="base.mak"/>
 
 <script>
-  document.title = 'User Management | Stockfish Testing';
+  document.title = "User Management | Stockfish Testing";
 </script>
 
 <div class="col-limited-size">
@@ -33,6 +33,11 @@
   </header>
 
   <form action="${request.url}" method="POST">
+    <input
+      type="hidden"
+      name="user"
+      value="${user['username']}"
+    >
     % if profile:
       <div class="form-floating mb-3">
         <input
@@ -53,11 +58,27 @@
             type="password"
             class="form-control"
             id="password"
-            name="password"
+            name="old_password"
             placeholder="Password"
+            required
+          />
+          <label for="password" class="d-flex align-items-end">Password</label>
+        </div>
+        <span class="input-group-text toggle-password-visibility" role="button">
+          <i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i>
+        </span>
+      </div>
+
+      <div class="input-group mb-3">
+        <div class="form-floating">
+          <input
+            type="password"
+            class="form-control"
+            id="password"
+            name="password"
+            placeholder="New Password"
             pattern=".{8,}"
             title="Eight or more characters: a password too simple or trivial to guess will be rejected"
-            required
           />
           <label for="password" class="d-flex align-items-end">New Password</label>
         </div>
@@ -74,7 +95,6 @@
             id="password2"
             name="password2"
             placeholder="Repeat Password"
-            required
           />
           <label for="password2" class="d-flex align-items-end">Repeat Password</label>
         </div>
@@ -82,30 +102,55 @@
           <i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i>
         </span>
       </div>
+    <button type="submit" class="btn btn-primary w-100">Submit</button>
+    % elif 'pending' in user and user['pending']:
+      <div class="alert alert-dark mb-3">
+        <label class="mb-2 h5">User Approval:</label>
+        <div class="w-100 d-flex justify-content-between">
+          <button
+            id="accept_user"
+            name="pending"
+            value="0"
+            type="submit"
+            class="btn btn-success"
+            style="width: 48%;"
+          >Accept</button>
+
+          <button
+            id="reject_user"
+            name="pending"
+            value="1"            
+            type="submit"
+            class="btn btn-danger"
+            style="width: 48%;"
+          >Reject</button>
+        </div>
+      </div>
     % else:
       <%
         blocked = user['blocked'] if 'blocked' in user else False
-        checked = 'checked' if blocked else ''
       %>
-      <div class="mb-3 form-check">
-        <label class="form-check-label" for="blocked">Blocked</label>
-        <input
-          type="checkbox"
-          class="form-check-input"
-          id="blocked"
+      % if blocked:
+        <button
+          class="btn btn-primary w-100"
           name="blocked"
-          value="True"
-          ${checked}
-        />
-      </div>
+          value="0"
+          type="submit"
+        >Unblock</button>
+      % else:
+        <button
+          class="btn btn-primary w-100"
+          name="blocked"
+          value="1"
+          type="submit"
+        >Block</button>
+      % endif
     % endif
-
-    <button type="submit" class="btn btn-primary w-100">Submit</button>
-
-    <input type="hidden" name="user" value="${user['username']}" />
   </form>
 </div>
 
-<script src="/js/toggle_password.js?v=${cache_busters['js/toggle_password.js']}"
-        integrity="sha384-${cache_busters['js/toggle_password.js']}"
-        crossorigin="anonymous"></script>
+<script
+  src="/js/toggle_password.js?v=${cache_busters['js/toggle_password.js']}"
+  integrity="sha384-${cache_busters['js/toggle_password.js']}"
+  crossorigin="anonymous"
+></script>

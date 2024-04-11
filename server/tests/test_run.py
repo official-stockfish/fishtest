@@ -10,7 +10,9 @@ class CreateRunTest(unittest.TestCase):
             "https://api.github.com/repos/official-stockfish/Stockfish/commits"
         )
         self.assertTrue(
-            re.match("[0-9]{7}|None", str(get_master_info(master_commits_url)["bench"]))
+            re.match(
+                r"[1-9]\d{5,7}|None", str(get_master_info(master_commits_url)["bench"])
+            )
         )
 
 

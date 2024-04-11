@@ -112,10 +112,10 @@
         const textHour = Math.floor((counter % day) / hour);
         const textMinute = Math.floor((counter % hour) / minute);
         const textSecond = Math.floor((counter % minute) / second);
-        document.querySelector(".day").innerText = textDay + " Days";
-        document.querySelector(".hour").innerText = textHour + " Hours";
-        document.querySelector(".minute").innerText = textMinute + " Minutes";
-        document.querySelector(".second").innerText = textSecond + " Seconds";
+        document.querySelector(".day").textContent = textDay + " Days";
+        document.querySelector(".hour").textContent = textHour + " Hours";
+        document.querySelector(".minute").textContent = textMinute + " Minutes";
+        document.querySelector(".second").textContent = textSecond + " Seconds";
       };
       countDown();
       setInterval(countDown, 1000);

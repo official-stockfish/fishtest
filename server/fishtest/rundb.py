@@ -17,6 +17,7 @@ import fishtest.stats.stat_util
 from bson.binary import Binary
 from bson.objectid import ObjectId
 from fishtest.actiondb import ActionDb
+from fishtest.schemas import RUN_VERSION, nn_schema, runs_schema
 from fishtest.stats.stat_util import SPRT_elo
 from fishtest.userdb import UserDb
 from fishtest.util import (
@@ -35,6 +36,7 @@ from fishtest.util import (
 )
 from fishtest.workerdb import WorkerDb
 from pymongo import DESCENDING, MongoClient
+from vtjson import ValidationError, validate
 
 DEBUG = False
 
@@ -125,12 +127,14 @@ class RunDb:
         info="",
         resolved_base="",
         resolved_new="",
+        master_sha="",
+        official_master_sha="",
         msg_base="",
         msg_new="",
         base_signature="",
         new_signature="",
-        base_net=None,
-        new_net=None,
+        base_nets=None,
+        new_nets=None,
         rescheduled_from=None,
         base_same_as_master=None,
         start_time=None,
@@ -151,8 +155,8 @@ class RunDb:
         run_args = {
             "base_tag": base_tag,
             "new_tag": new_tag,
-            "base_net": base_net,
-            "new_net": new_net,
+            "base_nets": base_nets,
+            "new_nets": new_nets,
             "num_games": num_games,
             "tc": tc,
             "new_tc": new_tc,
@@ -161,6 +165,8 @@ class RunDb:
             "threads": threads,
             "resolved_base": resolved_base,
             "resolved_new": resolved_new,
+            "master_sha": master_sha,
+            "official_master_sha": official_master_sha,
             "msg_base": msg_base,
             "msg_new": msg_new,
             "base_options": base_options,
@@ -187,6 +193,7 @@ class RunDb:
         if tc_base:
             tc_base = float(tc_base.group(1))
         new_run = {
+            "version": RUN_VERSION,
             "args": run_args,
             "start_time": start_time,
             "last_updated": start_time,
@@ -206,9 +213,10 @@ class RunDb:
                 "time_losses": 0,
                 "pentanomial": 5 * [0],
             },
-            "results_stale": False,
             "approved": False,
             "approver": "",
+            "workers": 0,
+            "cores": 0,
         }
 
         # administrative flags
@@ -240,6 +248,13 @@ class RunDb:
         if rescheduled_from:
             new_run["rescheduled_from"] = rescheduled_from
 
+        try:
+            validate(runs_schema, new_run, "run")
+        except ValidationError as e:
+            message = f"The new run object does not validate: {str(e)}"
+            print(message, flush=True)
+            raise Exception(message)
+
         return self.runs.insert_one(new_run).inserted_id
 
     def upload_pgn(self, run_id, pgn_zip):
@@ -268,27 +283,30 @@ class RunDb:
             return pgns_tar
         return None
 
-    def upload_nn(self, userid, name, nn):
-        self.nndb.insert_one({"user": userid, "name": name, "downloads": 0})
-        return {}
-
-    def update_nn(self, net):
-        net.pop("downloads", None)
-        self.nndb.update_one({"name": net["name"]}, {"$set": net})
+    def write_nn(self, net):
+        validate(nn_schema, net, "net")
+        self.nndb.replace_one({"name": net["name"]}, net, upsert=True)
 
     def get_nn(self, name):
-        nn = self.nndb.find_one({"name": name}, {"nn": 0})
-        if nn:
-            self.nndb.update_one({"name": name}, {"$inc": {"downloads": 1}})
-            return nn
-        return None
+        return self.nndb.find_one({"name": name}, {"nn": 0})
 
-    def get_nns(
-        self, user_id, user="", network_name="", master_only=False, limit=0, skip=0
-    ):
+    def upload_nn(self, userid, name):
+        self.write_nn({"user": userid, "name": name, "downloads": 0})
+
+    def update_nn(self, net):
+        net = copy.copy(net)  # avoid side effects
+        net.pop("downloads", None)
+        old_net = self.get_nn(net["name"])
+        old_net.update(net)
+        self.write_nn(old_net)
+
+    def increment_nn_downloads(self, name):
+        net = self.get_nn(name)
+        net["downloads"] += 1
+        self.write_nn(net)
+
+    def get_nns(self, user="", network_name="", master_only=False, limit=0, skip=0):
         q = {}
-        if user_id is None:
-            q["first_test"] = {"$exists": "true"}
         if user:
             q["user"] = {"$regex": ".*{}.*".format(user), "$options": "i"}
         if network_name:
@@ -348,8 +366,16 @@ class RunDb:
                 return None
 
     def start_timer(self):
-        self.timer = threading.Timer(1.0, self.flush_buffers)
-        self.timer.start()
+        try:
+            self.timer = threading.Timer(1.0, self.flush_buffers)
+            self.timer.start()
+        except RuntimeError as e:
+            # Mitigation for a 3.12 bug during the interpreter shutdown, see:
+            # - issue https://github.com/python/cpython/pull/104826
+            # - bugfix https://github.com/python/cpython/pull/117029
+            # With python 3.12.3 the try except block could be potentially removed.
+            if "interpreter shutdown" not in str(e):
+                raise
 
     def buffer(self, run, flush):
         with self.run_cache_lock:
@@ -488,9 +514,11 @@ class RunDb:
         machines = (
             task["worker_info"]
             | {
-                "last_updated": task["last_updated"].replace(tzinfo=timezone.utc)
-                if task.get("last_updated")
-                else None,
+                "last_updated": (
+                    task["last_updated"].replace(tzinfo=timezone.utc)
+                    if task.get("last_updated")
+                    else None
+                ),
                 "run": run,
                 "task_id": task_id,
             }
@@ -545,7 +573,7 @@ class RunDb:
                     nps += concurrency * task["worker_info"]["nps"]
                     if task["worker_info"]["nps"] != 0:
                         games_per_minute += (
-                            (task["worker_info"]["nps"] / 640000)
+                            (task["worker_info"]["nps"] / 691680)
                             * (60.0 / estimate_game_duration(run["args"]["tc"]))
                             * (
                                 int(task["worker_info"]["concurrency"])
@@ -558,7 +586,7 @@ class RunDb:
             if cores > 0:
                 eta = remaining_hours(run) / cores
                 pending_hours += eta
-            results = self.get_results(run, False)
+            results = run["results"]
             run["results_info"] = format_results(results, run)
             if "Pending..." in run["results_info"]["info"]:
                 if cores > 0:
@@ -579,6 +607,7 @@ class RunDb:
         success_only=False,
         yellow_only=False,
         ltc_only=False,
+        last_updated=None,
     ):
         q = {"finished": True}
         projection = {"tasks": 0, "bad_tasks": 0, "args.spsa.param_history": 0}
@@ -590,6 +619,8 @@ class RunDb:
             q["is_green"] = True
         if yellow_only:
             q["is_yellow"] = True
+        if last_updated is not None:
+            q["last_updated"] = {"$gte": last_updated}
 
         c = self.runs.find(
             q,
@@ -605,9 +636,10 @@ class RunDb:
         runs_list = [run for run in c if not run.get("deleted")]
         return [runs_list, count]
 
-    def get_results(self, run, save_run=True):
-        if not run["results_stale"]:
-            return run["results"]
+    def compute_results(self, run):
+        """
+        This is used in purge_run and also to verify the incrementally updated results
+        when a run is finished."""
 
         results = {"wins": 0, "losses": 0, "draws": 0, "crashes": 0, "time_losses": 0}
 
@@ -631,11 +663,6 @@ class RunDb:
                     has_pentanomial = False
         if has_pentanomial:
             results["pentanomial"] = pentanomial
-
-        run["results_stale"] = False
-        run["results"] = results
-        if save_run:
-            self.buffer(run, True)
 
         return results
 
@@ -914,7 +941,7 @@ After fixing the issues you can unblock the worker at
             if need_base + need_tt > max_memory:
                 continue
 
-            # Github API limit...
+            # GitHub API limit...
             if near_github_api_limit:
                 have_binary = (
                     unique_key in self.worker_runs
@@ -1263,8 +1290,6 @@ After fixing the issues you can unblock the worker at
         # Return.
 
         if run_finished:
-            self.check_results(run, run_id, task_id)
-
             self.stop_run(run_id)
             # stop run may not actually stop a run because of autopurging!
             if run["finished"]:
@@ -1281,48 +1306,6 @@ After fixing the issues you can unblock the worker at
             ret = {"task_alive": task["active"]}
 
         return ret
-
-    def check_results(self, run, run_id, task_id):
-        old = run["results"]
-
-        # Force recalculation of results
-        run["results_stale"] = True
-
-        # Recalculate results from all tasks in run["tasks"].
-        # Sets run["results_stale"]=False and calls buffer(True).
-        self.get_results(run, True)
-
-        # Log any discrepancies between incremented and recalculated results
-        new = run["results"]
-        for s in ["wins", "losses", "draws", "crashes", "time_losses"]:
-            if old.get(s, -1) != new.get(s, -1):
-                info = "Check_results: task {}/{} {} results mismatch: {}/{}".format(
-                    run_id, task_id, s, old.get(s, -1), new.get(s, -1)
-                )
-                print(info, flush=True)
-
-        if (
-            "pentanomial" not in old
-            or "pentanomial" not in new
-            or len(old["pentanomial"]) < 5
-            or len(new["pentanomial"]) < 5
-        ):
-            info = "Check_results: task {}/{} pentanomial length results mismatch: {}/{}".format(
-                run_id,
-                task_id,
-                len(old.get("pentanomial", [])),
-                len(new.get("pentanomial", [])),
-            )
-            print(info, flush=True)
-        else:
-            for i, (old_value, new_value) in enumerate(
-                zip(old["pentanomial"], new["pentanomial"])
-            ):
-                if old_value != new_value:
-                    info = "Check_results: task {}/{} pentanomial value {} results mismatch: {}/{}".format(
-                        run_id, task_id, i, old_value, new_value
-                    )
-                    print(info, flush=True)
 
     def failed_task(self, run_id, task_id, message="Unknown reason"):
         run = self.get_run(run_id)
@@ -1362,15 +1345,26 @@ After fixing the issues you can unblock the worker at
         run = self.get_run(run_id)
         for task in run["tasks"]:
             task["active"] = False
-        run["results_stale"] = True
-        results = self.get_results(run, True)
+        results = run["results"]
         run["results_info"] = format_results(results, run)
         # De-couple the styling of the run from its finished status
         if run["results_info"]["style"] == "#44EB44":
             run["is_green"] = True
         elif run["results_info"]["style"] == "yellow":
             run["is_yellow"] = True
+        run["cores"] = 0
+        run["workers"] = 0
         run["finished"] = True
+        try:
+            validate(runs_schema, run, "run")
+        except ValidationError as e:
+            message = f"The run object {run_id} does not validate: {str(e)}"
+            print(message, flush=True)
+            if "version" in run and run["version"] >= RUN_VERSION:
+                self.actiondb.log_message(
+                    username="fishtest.system",
+                    message=message,
+                )
         self.buffer(run, True)
         # Publish the results of the run to the Fishcooking forum
         post_in_fishcooking_results(run)
@@ -1381,9 +1375,11 @@ After fixing the issues you can unblock the worker at
             self.actiondb.purge_run(
                 username=run["args"]["username"],
                 run=run,
-                message=f"Auto purge (not performed): {message}"
-                if message
-                else "Auto purge",
+                message=(
+                    f"Auto purge (not performed): {message}"
+                    if message
+                    else "Auto purge"
+                ),
             )
             if message == "":
                 print("Run {} was auto-purged".format(str(run_id)), flush=True)
@@ -1493,8 +1489,8 @@ After fixing the issues you can unblock the worker at
                 task["stats"] = copy.deepcopy(zero_stats)
 
         if message == "":
-            run["results_stale"] = True
-            results = self.get_results(run)
+            results = self.compute_results(run)
+            run["results"] = results
             revived = True
             if "sprt" in run["args"] and "state" in run["args"]["sprt"]:
                 fishtest.stats.stat_util.update_SPRT(results, run["args"]["sprt"])
@@ -1567,9 +1563,7 @@ After fixing the issues you can unblock the worker at
                 {
                     "name": param["name"],
                     "value": self.spsa_param_clip(param, c * flip),
-                    "R": param["a"]
-                    / (spsa["A"] + iter_local) ** spsa["alpha"]
-                    / c**2,
+                    "R": param["a"] / (spsa["A"] + iter_local) ** spsa["alpha"] / c**2,
                     "c": c,
                     "flip": flip,
                 }

@@ -55,7 +55,7 @@ from updater import update
 # Several packages are called "expression".
 # So we make sure to use the locally installed one.
 
-WORKER_VERSION = 222
+WORKER_VERSION = 232
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -425,7 +425,7 @@ def verify_required_cutechess(cutechess_path):
             for line in iter(p.stdout.readline, ""):
                 m = pattern.search(line)
                 if m:
-                    print("Found: ", line.strip())
+                    print("Found", line.strip())
                     major = int(m.group(1))
                     minor = int(m.group(2))
                     patch = int(m.group(3))
@@ -1354,14 +1354,14 @@ def fetch_and_handle_task(
     if not ret:
         return False
 
-    # Verify if we still have enough github api calls
+    # Verify if we still have enough GitHub api calls
     remaining = get_remaining_github_api_calls()
-    print("Remaining number of github api calls = {}".format(remaining))
+    print("Remaining number of GitHub api calls = {}".format(remaining))
     near_github_api_limit = remaining <= 10
     if near_github_api_limit:
         print(
             """
-  We have almost exhausted our github api calls.
+  We have almost exhausted our GitHub api calls.
   The server will only give us tasks for tests we have seen before.
 """
         )
@@ -1661,6 +1661,9 @@ def worker():
         else:
             clear_binaries = False
             delay = INITIAL_RETRY_TIME
+
+    if fish_exit:
+        (worker_dir / "fish.exit").unlink()
 
     print("Waiting for the heartbeat thread to finish...")
     heartbeat_thread.join(THREAD_JOIN_TIMEOUT)

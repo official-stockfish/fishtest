@@ -4,7 +4,7 @@
   from fishtest.util import format_bounds
   elo_model = "normalized"
   fb = lambda e0, e1: format_bounds(elo_model, e0, e1)
-  test_book = "UHO_4060_v3.epd"
+  test_book = "UHO_Lichess_4852_v1.epd"
   pt_book = "UHO_4060_v3.epd"
 %>
 <%
@@ -27,7 +27,7 @@
 %>
 
 <script>
-  document.title = 'Create New Test | Stockfish Testing';
+  document.title = "Create New Test | Stockfish Testing";
 </script>
 
 <header style="text-align: center; padding-top: 7px">
@@ -56,11 +56,12 @@
                 <label class="form-label">Test type <i class="fa-solid fa-ellipsis" role="button" data-bs-toggle="collapse" data-bs-target=".collapse-type" title="Toggle more tests"></i></label>
                 <div class="list-group list-group-checkable flex-row row row-cols-2 row-cols-xl-4 g-1 text-center">
                   <div class="col">
-                    <input class="list-group-item-check pe-none" type="radio" name="test-type" id="fast_test"
+                    <input class="list-group-item-check pe-none" type="radio" name="test-type" id="stc_test"
                       data-options='{
                         "name": "STC",
                         "tc": "10+0.1",
                         "new_tc": "10+0.1",
+                        "throughput": "100",
                         "threads": 1,
                         "options": "Hash=16",
                         "book": "${test_book}",
@@ -70,17 +71,18 @@
                         "base_signature": ${latest_bench}
                       }'
                       checked>
-                    <label class="list-group-item rounded-3" for="fast_test" title="Short time control | Single-threaded">
+                    <label class="list-group-item rounded-3" for="stc_test" title="Short time control | Single-threaded">
                       STC
                     </label>
                   </div>
 
                   <div class="col">
-                    <input class="list-group-item-check pe-none" type="radio" name="test-type" id="slow_test"
+                    <input class="list-group-item-check pe-none" type="radio" name="test-type" id="ltc_test"
                       data-options='{
                         "name": "LTC",
                         "tc": "60+0.6",
                         "new_tc": "60+0.6",
+                        "throughput": "100",
                         "threads": 1,
                         "options": "Hash=64",
                         "book": "${test_book}",
@@ -89,17 +91,18 @@
                         "base_branch": "${base_branch}",
                         "base_signature": ${latest_bench}
                       }'>
-                    <label class="list-group-item rounded-3" for="slow_test" title="Long time control | Single-threaded">
+                    <label class="list-group-item rounded-3" for="ltc_test" title="Long time control | Single-threaded">
                       LTC
                     </label>
                   </div>
 
                   <div class="col">
-                    <input class="list-group-item-check pe-none" type="radio" name="test-type" id="fast_smp_test"
+                    <input class="list-group-item-check pe-none" type="radio" name="test-type" id="stc_smp_test"
                       data-options='{
                         "name": "STC SMP",
                         "tc": "5+0.05",
                         "new_tc": "5+0.05",
+                        "throughput": "100",
                         "threads": 8,
                         "options": "Hash=64",
                         "book": "${test_book}",
@@ -108,17 +111,18 @@
                         "base_branch": "${base_branch}",
                         "base_signature": ${latest_bench}
                       }'>
-                    <label class="list-group-item rounded-3" for="fast_smp_test" title="Short time control | Multi-threaded">
+                    <label class="list-group-item rounded-3" for="stc_smp_test" title="Short time control | Multi-threaded">
                       STC SMP
                     </label>
                   </div>
 
                   <div class="col">
-                    <input class="list-group-item-check pe-none" type="radio" name="test-type" id="slow_smp_test"
+                    <input class="list-group-item-check pe-none" type="radio" name="test-type" id="ltc_smp_test"
                       data-options='{
                         "name": "LTC SMP",
                         "tc": "20+0.2",
                         "new_tc": "20+0.2",
+                        "throughput": "100",
                         "threads": 8,
                         "options": "Hash=256",
                         "book": "${test_book}",
@@ -127,8 +131,48 @@
                         "base_branch": "${base_branch}",
                         "base_signature": ${latest_bench}
                       }'>
-                    <label class="list-group-item rounded-3" for="slow_smp_test" title="Long time control | Multi-threaded">
+                    <label class="list-group-item rounded-3" for="ltc_smp_test" title="Long time control | Multi-threaded">
                       LTC SMP
+                    </label>
+                  </div>
+
+                  <div class="col collapse collapse-type">
+                    <input class="list-group-item-check pe-none" type="radio" name="test-type" id="vltc_test"
+                      data-options='{
+                        "name": "VLTC",
+                        "tc": "180+1.8",
+                        "new_tc": "180+1.8",
+                        "throughput": "50",
+                        "threads": 1,
+                        "options": "Hash=192",
+                        "book": "${test_book}",
+                        "stop_rule": "stop-rule-sprt",
+                        "bounds": "standard STC",
+                        "base_branch": "${base_branch}",
+                        "base_signature": ${latest_bench}
+                      }'>
+                    <label class="list-group-item rounded-3" for="vltc_test" title="Very long time control | Single-threaded">
+                      VLTC
+                    </label>
+                  </div>
+
+                  <div class="col collapse collapse-type">
+                    <input class="list-group-item-check pe-none" type="radio" name="test-type" id="vltc_smp_test"
+                      data-options='{
+                        "name": "VLTC SMP",
+                        "tc": "60+0.6",
+                        "new_tc": "60+0.6",
+                        "throughput": "50",
+                        "threads": 8,
+                        "options": "Hash=512",
+                        "book": "${test_book}",
+                        "stop_rule": "stop-rule-sprt",
+                        "bounds": "standard LTC",
+                        "base_branch": "${base_branch}",
+                        "base_signature": ${latest_bench}
+                      }'>
+                    <label class="list-group-item rounded-3" for="vltc_smp_test" title="Very long time control | Multi-threaded">
+                      VLTC SMP
                     </label>
                   </div>
 
@@ -138,6 +182,7 @@
                         "name": "PT",
                         "tc": "60+0.6",
                         "new_tc": "60+0.6",
+                        "throughput": "100",
                         "threads": 1,
                         "options": "Hash=64",
                         "book": "${pt_book}",
@@ -159,6 +204,7 @@
                         "name": "PT SMP",
                         "tc": "60+0.6",
                         "new_tc": "60+0.6",
+                        "throughput": "100",
                         "threads": 8,
                         "options": "Hash=512",
                         "book": "${pt_book}",
@@ -638,33 +684,33 @@
 </form>
 
 <script>
-  let form_submitted = false;
+  let submitted = false;
   window.addEventListener("pageshow", () => {
-    // make sure form_submitted is set back to false
-    form_submitted = false;
+    // make sure submitted is set back to false
+    submitted = false;
 
     // make sure the submit test button is enabled again and has the correct text.
     document.getElementById('submit-test').disabled = false;
     document.getElementById('submit-test').textContent = 'Submit test';
 
     // Also make sure that the fields have the right visibility.
-    update_odds(document.getElementById('checkbox-time-odds'));
-    update_book_visibility(document.getElementById('checkbox-book-visibility'));
+    updateOdds(document.getElementById('checkbox-time-odds'));
+    toggleBook(document.getElementById('checkbox-book-visibility'));
   });
 
   let stopRule = null;
 
-  const preset_bounds = {
+  const presetBounds = {
     'standard STC': [ 0.0, 2.0],
     'standard LTC': [ 0.5, 2.5],
     'regression STC': [-1.75, 0.25],
     'regression LTC': [-1.75, 0.25],
   };
 
-  const is_rerun = ${'true' if is_rerun else 'false'};
+  const isRun = ${'true' if is_rerun else 'false'};
 
-  function update_sprt_bounds(selected_bounds_name) {
-    if (selected_bounds_name === "custom") {
+  function updateSprtBounds(selectedBounds) {
+    if (selectedBounds === "custom") {
       document
         .querySelectorAll(".custom-bounds")
         .forEach((bound) => (bound.style.display = ""));
@@ -672,13 +718,13 @@
       document
         .querySelectorAll(".custom-bounds")
         .forEach((bound) => (bound.style.display = "none"));
-      const bounds = preset_bounds[selected_bounds_name];
+      const bounds = presetBounds[selectedBounds];
       document.getElementById("sprt_elo0").value = bounds[0];
       document.getElementById("sprt_elo1").value = bounds[1];
     }
   }
 
-  function update_book_depth_visibility(book) {
+  function toggleBookDepth(book) {
     if (book.match('\\.pgn$')) {
       document.querySelector('.book-depth').style.display = "";
     } else {
@@ -689,19 +735,19 @@
   document
     .getElementById("bounds")
     .addEventListener("change", (e) => {
-      update_sprt_bounds(e.target.value);
+      updateSprtBounds(e.target.value);
     });
 
-  let initial_base_branch = document.getElementById("base-branch").value;
-  let initial_base_signature = document.getElementById("base-signature").value;
-  let spsa_do_not_save = false;
+  let initialBaseBranch = document.getElementById("base-branch").value;
+  let initialBaseSignature = document.getElementById("base-signature").value;
+  let spsa = false;
 
   // Test type is changed
   document.querySelectorAll("[name=test-type]").forEach((btn) =>
     btn.addEventListener("click", (e) => {
-      if (!spsa_do_not_save) {
-        initial_base_branch = document.getElementById("base-branch").value;
-        initial_base_signature = document.getElementById("base-signature").value;
+      if (!spsa) {
+        initialBaseBranch = document.getElementById("base-branch").value;
+        initialBaseSignature = document.getElementById("base-signature").value;
       }
       const btn = e.target;
 
@@ -714,6 +760,7 @@
           name,
           tc,
           new_tc,
+          throughput,
           threads,
           options,
           book,
@@ -727,6 +774,7 @@
         } = JSON.parse(testOptions);
         document.getElementById("tc").value = tc;
         document.getElementById("new_tc").value = new_tc;
+        document.getElementById("throughput").value = throughput;
         document.getElementById("threads").value = threads;
         document.getElementById("new-options").value = (
           options + " " +
@@ -742,23 +790,23 @@
         ).replace(/ $/, "");
 
         document.getElementById("book").value = book;
-        update_book_depth_visibility(book);
+        toggleBookDepth(book);
 
         document.getElementById("checkbox-book-visibility").checked = (book != "${test_book}");
-        update_book_visibility(document.getElementById("checkbox-book-visibility"));
+        toggleBook(document.getElementById("checkbox-book-visibility"));
 
         document.getElementById(stop_rule).click();
 
         if (bounds) {
           document.getElementById("bounds").value = bounds;
-          update_sprt_bounds(bounds);
+          updateSprtBounds(bounds);
         }
 
         if (games) {
           document.getElementById("num-games").value = games;
         }
 
-        if (!is_rerun) {
+        if (!isRun) {
           if (test_branch) {
             document.getElementById("test-branch").value = test_branch;
           }
@@ -776,7 +824,7 @@
           document.getElementById("run-info").value = info;
         }
 
-        do_spsa_work();
+        spsaWork();
       }
     })
   );
@@ -809,7 +857,7 @@
           .querySelectorAll("." + stopRule)
           .forEach((el) => (el.style.display = ""));
 
-        if (!is_rerun) {
+        if (!isRun) {
           if (stopRule === "stop-rule-spsa") {
             // base branch and test branch should be the same for SPSA tests
             document.getElementById("base-branch").readOnly = true;
@@ -822,38 +870,38 @@
             document
               .getElementById("test-signature")
               .addEventListener("input", testSignatureHandler);
-            spsa_do_not_save = true;
+            spsa = true;
           } else {
             document.getElementById("base-branch").removeAttribute("readonly");
-            document.getElementById("base-branch").value = initial_base_branch;
+            document.getElementById("base-branch").value = initialBaseBranch;
             document.getElementById("base-signature").removeAttribute("readonly");
-            document.getElementById("base-signature").value = initial_base_signature;
+            document.getElementById("base-signature").value = initialBaseSignature;
             document
               .getElementById("test-branch")
               .removeEventListener("input", testBranchHandler);
             document
               .getElementById("test-signature")
               .removeEventListener("input", testSignatureHandler);
-            spsa_do_not_save = false;
+            spsa = false;
           }
         }
         if (stopRule === "stop-rule-sprt") {
-          update_sprt_bounds(document.getElementById("bounds").value);
+          updateSprtBounds(document.getElementById("bounds").value);
         }
       }
     })
   );
 
   // Only .pgn book types have a book_depth field
-  update_book_depth_visibility(document.getElementById("book").value);
+  toggleBookDepth(document.getElementById("book").value);
   document.getElementById("book").addEventListener("input", (e) => {
-    update_book_depth_visibility(e.target.value);
+    toggleBookDepth(e.target.value);
   });
 
   document
     .getElementById("create-new-test")
     .addEventListener("submit", function (e) {
-      const ret = do_spsa_work(); // Last check that all spsa data are consistent.
+      const ret = spsaWork(); // Last check that all spsa data are consistent.
       if (!ret) {
         return false;
       }
@@ -861,12 +909,12 @@
       if (supportsNotifications() && Notification.permission === "default") {
         Notification.requestPermission();
       }
-      if (form_submitted) {
+      if (submitted) {
         // Don't allow submitting the form more than once
         e.preventDefault();
         return;
       }
-      form_submitted = true;
+      submitted = true;
       const submitButton = document.getElementById("submit-test");
       submitButton.setAttribute("disabled","");
       submitButton.replaceChildren();
@@ -877,17 +925,26 @@
     });
 
   // If the test is a reschedule
-  if (is_rerun) {
+  if (isRun) {
     // Select the correct fields by default for re-runs
     const tc = '${args.get('tc')}';
     if (tc === "10+0.1") {
-      document.getElementById("fast_test").checked = true;
-    } else if (tc === "60+0.6") {
-      document.getElementById("slow_test").checked = true;
+      document.getElementById("stc_test").checked = true;
     } else if (tc === "5+0.05") {
-      document.getElementById("fast_smp_test").checked = true;
+      document.getElementById("stc_smp_test").checked = true;
     } else if (tc === "20+0.2") {
-      document.getElementById("slow_smp_test").checked = true;
+      document.getElementById("ltc_smp_test").checked = true;
+    } else if (tc === "180+1.8") {
+      document.getElementById("vltc_test").checked = true;
+    }
+
+    const threads = '${args.get('threads')}';
+    if (tc === "60+0.6") {
+      if (threads === "1") {
+        document.getElementById("ltc_test").checked = true;
+      } else if (threads === "8") {
+        document.getElementById("vltc_smp_test").checked = true;
+      }
     }
 
     % if args.get('spsa'):
@@ -900,7 +957,7 @@
     document.getElementById('test-branch').focus();
   }
 
-  function update_odds(checkbox) {
+  function updateOdds(checkbox) {
     if (checkbox.checked) {
       document.querySelector('.new_tc').style.display = "";
       document.querySelector('[for=tc]').textContent = "Base TC";
@@ -912,50 +969,52 @@
   }
 
   document.getElementById('checkbox-time-odds').addEventListener("change", (e) => {
-    update_odds(e.target);
+    updateOdds(e.target);
   });
 
-  function update_book_visibility(checkbox) {
+  function toggleBook(checkbox) {
     if (checkbox.checked) {
       document.getElementById('test-book').style.display = "";
     } else {
       document.getElementById('test-book').style.display = "none";
       document.getElementById('book').value = "${test_book}";
-      update_book_depth_visibility(document.getElementById('book').value);
+      toggleBookDepth(document.getElementById('book').value);
     }
   }
 
   document.getElementById('checkbox-book-visibility').addEventListener("change", (e) => {
-    update_book_visibility(e.target);
+    toggleBook(e.target);
   });
 </script>
 
-<script src="/js/spsa_new.js?5&?v=${cache_busters['js/spsa_new.js']}"
-        integrity="sha384-${cache_busters['js/spsa_new.js']}"
-        crossorigin="anonymous"></script>
+<script
+  src="/js/spsa_new.js?5&?v=${cache_busters['js/spsa_new.js']}"
+  integrity="sha384-${cache_busters['js/spsa_new.js']}"
+  crossorigin="anonymous"
+></script>
 
 <script>
-  function do_spsa_work() {
+  function spsaWork() {
     /* parsing/computing */
     if (!document.getElementById('autoselect').checked) {
       return true;
     }
     const params = document.getElementById('spsa_raw_params').value;
-    let s = fishtest_to_spsa(params);
+    let s = fishtestToSpsa(params);
     if (s === null) {
       alert("Unable to parse spsa parameters.");
       return false;
     }
     /* estimate the draw ratio */
     const tc = document.getElementById('tc').value;
-    const dr = draw_ratio(tc);
+    const dr = drawRatio(tc);
     if (dr === null) {
       alert("Unable to parse time control.");
       return false;
     }
     s.draw_ratio = dr;
-    s = spsa_compute(s);
-    const fs = spsa_to_fishtest(s);
+    s = spsaCompute(s);
+    const fs = spsaToFishtest(s);
     /* Let's go */
     document.getElementById("spsa_A").value = 0;
     document.getElementById("spsa_alpha").value = 0.0;
@@ -971,7 +1030,7 @@
   let saved_games = null;
   let saved_params = null;
 
-  function do_spsa_events() {
+  function spsaEvents() {
     if (document.getElementById('autoselect')["checked"]) {
       /* save old stuff */
       saved_A = document.getElementById("spsa_A").value;
@@ -979,7 +1038,7 @@
       saved_gamma = document.getElementById("spsa_gamma").value;
       saved_games = document.getElementById("num-games").value;
       saved_params = document.getElementById("spsa_raw_params").value;
-      const ret = do_spsa_work();
+      const ret = spsaWork();
       if (!ret) {
         document.getElementById('autoselect').checked = false;
       }
@@ -992,16 +1051,16 @@
     }
   }
 
-  document.getElementById('autoselect').addEventListener("change", do_spsa_events);
+  document.getElementById('autoselect').addEventListener("change", spsaEvents);
 
   document.getElementById('tc').addEventListener("input", (e) => {
     if (!document.getElementById('autoselect').checked) {
       return;
     }
     const tc = e.target.value;
-    const tc_seconds = tc_to_seconds(tc);
+    const tc_seconds = tcToSeconds(tc);
     if (tc_seconds !== null) {
-      do_spsa_work();
+      spsaWork();
     }
   });
 </script>

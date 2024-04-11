@@ -6,10 +6,12 @@ import re
 import threading
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 
 import fishtest.stats.stat_util
 import requests
 from bson.objectid import ObjectId
+from fishtest.schemas import short_worker_name
 from fishtest.util import (
     email_valid,
     format_bounds,
@@ -24,6 +26,7 @@ from pyramid.httpexceptions import HTTPFound, exception_response
 from pyramid.security import forget, remember
 from pyramid.view import forbidden_view_config, view_config
 from requests.exceptions import ConnectionError, HTTPError
+from vtjson import ValidationError, union, validate
 
 HTTP_TIMEOUT = 15.0
 
@@ -42,7 +45,7 @@ def cached_flash(request, requestString, *l):
     return
 
 
-def pagination(page_idx, num, page_size):
+def pagination(page_idx, num, page_size, query_params):
     pages = [
         {
             "idx": "Prev",
@@ -61,7 +64,7 @@ def pagination(page_idx, num, page_size):
             pages.append(
                 {
                     "idx": idx + 1,
-                    "url": "?page={}".format(idx + 1),
+                    "url": "?page={}".format(idx + 1) + query_params,
                     "state": "active" if page_idx == idx else "",
                 }
             )
@@ -70,7 +73,7 @@ def pagination(page_idx, num, page_size):
     pages.append(
         {
             "idx": "Next",
-            "url": "?page={}".format(page_idx + 2),
+            "url": "?page={}".format(page_idx + 2) + query_params,
             "state": "disabled" if page_idx >= (num - 1) // page_size else "",
         }
     )
@@ -123,7 +126,7 @@ def login(request):
             next_page = request.params.get("next") or came_from
             return HTTPFound(location=next_page, headers=headers)
         message = token["error"]
-        if "Account blocked for user:" in message:
+        if "Account pending for user:" in message:
             message += (
                 " . If you recently registered to fishtest, "
                 "a person will now manually approve your new account, to avoid spam. "
@@ -175,7 +178,7 @@ def workers(request):
     if is_approver:
         for w in blocked_workers:
             owner_name = w["worker_name"].split("-")[0]
-            owner = request.userdb.find(owner_name)
+            owner = request.userdb.get_user(owner_name)
             w["owner_email"] = owner["email"] if owner is not None else ""
             w["body"] = worker_email(
                 w["worker_name"],
@@ -187,7 +190,15 @@ def workers(request):
             w["subject"] = f"Issue(s) with worker {w['worker_name']}"
 
     worker_name = request.matchdict.get("worker_name")
-    # TODO. Do more validation of worker names
+    try:
+        validate(union(short_worker_name, "show"), worker_name, name="worker_name")
+    except ValidationError as e:
+        request.session.flash(str(e), "error")
+        return {
+            "show_admin": False,
+            "show_email": is_approver,
+            "blocked_workers": blocked_workers,
+        }
     if len(worker_name.split("-")) != 3:
         return {
             "show_admin": False,
@@ -317,7 +328,7 @@ def upload(request):
         request.session.flash("Network already exists", "error")
         return {}
 
-    request.rundb.upload_nn(request.authenticated_userid, filename, network)
+    request.rundb.upload_nn(request.authenticated_userid, filename)
 
     request.actiondb.upload_nn(
         username=request.authenticated_userid,
@@ -348,10 +359,10 @@ def signup(request):
         return {}
     errors = []
 
-    signup_username = request.POST.get("username", "")
-    signup_password = request.POST.get("password", "")
-    signup_password_verify = request.POST.get("password2", "")
-    signup_email = request.POST.get("email", "")
+    signup_username = request.POST.get("username", "").strip()
+    signup_password = request.POST.get("password", "").strip()
+    signup_password_verify = request.POST.get("password2", "").strip()
+    signup_email = request.POST.get("email", "").strip()
 
     strong_password, password_err = password_strength(
         signup_password, signup_username, signup_email
@@ -395,8 +406,10 @@ def signup(request):
     result = request.userdb.create_user(
         username=signup_username, password=signup_password, email=validated_email
     )
-    if not result:
+    if result is None:
         request.session.flash("Error! Invalid username or password", "error")
+    elif not result:
+        request.session.flash("Username or email is already registered", "error")
     else:
         request.session.flash(
             "Account created! "
@@ -410,7 +423,6 @@ def signup(request):
 
 @view_config(route_name="nns", renderer="nns.mak")
 def nns(request):
-    user_id = request.authenticated_userid
     user = request.params.get("user", "")
     network_name = request.params.get("network_name", "")
     master_only = request.params.get("master_only", False)
@@ -420,7 +432,6 @@ def nns(request):
     page_size = 25
 
     nns, num_nns = request.rundb.get_nns(
-        user_id=user_id,
         user=user,
         network_name=network_name,
         master_only=master_only,
@@ -428,15 +439,15 @@ def nns(request):
         skip=page_idx * page_size,
     )
 
-    pages = pagination(page_idx, num_nns, page_size)
+    query_params = ""
+    if user:
+        query_params += "&user={}".format(user)
+    if network_name:
+        query_params += "&network_name={}".format(network_name)
+    if master_only:
+        query_params += "&master_only={}".format(master_only)
 
-    for page in pages:
-        if user:
-            page["url"] += "&user={}".format(user)
-        if network_name:
-            page["url"] += "&network_name={}".format(network_name)
-        if master_only:
-            page["url"] += "&master_only={}".format(master_only)
+    pages = pagination(page_idx, num_nns, page_size, query_params)
 
     return {
         "nns": nns,
@@ -507,21 +518,21 @@ def actions(request):
         run_id=run_id,
     )
 
-    pages = pagination(page_idx, num_actions, page_size)
+    query_params = ""
+    if username:
+        query_params += "&user={}".format(username)
+    if search_action:
+        query_params += "&action={}".format(search_action)
+    if text:
+        query_params += "&text={}".format(text)
+    if max_actions:
+        query_params += "&max_actions={}".format(num_actions)
+    if before:
+        query_params += "&before={}".format(before)
+    if run_id:
+        query_params += "&run_id={}".format(run_id)
 
-    for page in pages:
-        if username:
-            page["url"] += "&user={}".format(username)
-        if search_action:
-            page["url"] += "&action={}".format(search_action)
-        if text:
-            page["url"] += "&text={}".format(text)
-        if max_actions:
-            page["url"] += "&max_actions={}".format(num_actions)
-        if before:
-            page["url"] += "&before={}".format(before)
-        if run_id:
-            page["url"] += "&run_id={}".format(run_id)
+    pages = pagination(page_idx, num_actions, page_size, query_params)
 
     return {
         "actions": actions,
@@ -534,9 +545,9 @@ def actions(request):
     }
 
 
-def get_idle_users(request):
+def get_idle_users(users, request):
     idle = {}
-    for u in request.userdb.get_users():
+    for u in users:
         idle[u["username"]] = u
     for u in request.userdb.user_cache.find():
         del idle[u["username"]]
@@ -544,15 +555,19 @@ def get_idle_users(request):
     return idle
 
 
-@view_config(route_name="pending", renderer="pending.mak")
-def pending(request):
+@view_config(route_name="user_management", renderer="user_management.mak")
+def user_management(request):
     if not request.has_permission("approve_run"):
-        request.session.flash("You cannot view pending users", "error")
+        request.session.flash("You cannot view user management", "error")
         return home(request)
 
+    users = list(request.userdb.get_users())
+
     return {
+        "all_users": users,
         "pending_users": request.userdb.get_pending(),
-        "idle_users": get_idle_users(request),
+        "blocked_users": request.userdb.get_blocked(),
+        "idle_users": get_idle_users(users, request),  # depends on cache too
     }
 
 
@@ -572,9 +587,15 @@ def user(request):
         raise exception_response(404)
     if "user" in request.POST:
         if profile:
-            new_password = request.params.get("password")
-            new_password_verify = request.params.get("password2", "")
-            new_email = request.params.get("email")
+            old_password = request.params.get("old_password").strip()
+            new_password = request.params.get("password").strip()
+            new_password_verify = request.params.get("password2", "").strip()
+            new_email = request.params.get("email").strip()
+
+            # Temporary comparison until passwords are hashed.
+            if old_password != user_data["password"].strip():
+                request.session.flash("Invalid password!", "error")
+                return home(request)
 
             if len(new_password) > 0:
                 if new_password == new_password_verify:
@@ -608,21 +629,34 @@ def user(request):
                 else:
                     user_data["email"] = validated_email
                     request.session.flash("Success! Email updated")
-
-        else:
-            user_data["blocked"] = "blocked" in request.POST
-            request.userdb.last_pending_time = 0
-            request.actiondb.block_user(
-                username=userid,
-                user=user_name,
-                message="blocked" if user_data["blocked"] else "unblocked",
-            )
+            request.userdb.save_user(user_data)
+        elif "blocked" in request.POST and request.POST["blocked"].isdigit():
+            user_data["blocked"] = bool(int(request.POST["blocked"]))
             request.session.flash(
                 ("Blocked" if user_data["blocked"] else "Unblocked")
                 + " user "
                 + user_name
             )
-        request.userdb.save_user(user_data)
+            request.userdb.last_blocked_time = 0
+            request.userdb.save_user(user_data)
+            request.actiondb.block_user(
+                username=userid,
+                user=user_name,
+                message="blocked" if user_data["blocked"] else "unblocked",
+            )
+
+        elif "pending" in request.POST and user_data["pending"]:
+            request.userdb.last_pending_time = 0
+            if request.POST["pending"] == "0":
+                user_data["pending"] = False
+                request.userdb.save_user(user_data)
+                request.actiondb.accept_user(
+                    username=userid,
+                    user=user_name,
+                    message="accepted",
+                )
+            else:
+                request.userdb.remove_user(user_data)
         return home(request)
     userc = request.userdb.user_cache.find_one({"username": user_name})
     hours = int(userc["cpu_hours"]) if userc is not None else 0
@@ -634,52 +668,67 @@ def user(request):
     }
 
 
-@view_config(route_name="users", renderer="users.mak")
-def users(request):
+@view_config(route_name="contributors", renderer="contributors.mak")
+def contributors(request):
     users_list = list(request.userdb.user_cache.find())
     users_list.sort(key=lambda k: k["cpu_hours"], reverse=True)
-    return {"users": users_list}
+    return {
+        "users": users_list,
+        "approver": request.has_permission("approve_run"),
+    }
 
 
-@view_config(route_name="users_monthly", renderer="users.mak")
-def users_monthly(request):
+@view_config(route_name="contributors_monthly", renderer="contributors.mak")
+def contributors_monthly(request):
     users_list = list(request.userdb.top_month.find())
     users_list.sort(key=lambda k: k["cpu_hours"], reverse=True)
-    return {"users": users_list}
+    return {
+        "users": users_list,
+        "approver": request.has_permission("approve_run"),
+    }
 
 
 def get_master_info(url):
     try:
-        commits = requests.get(url)
-        commits.raise_for_status()
+        response = requests.get(url)
+        response.raise_for_status()
     except Exception as e:
         print(f"Exception getting commits:\n{e}")
         return None
+
     bench_search = re.compile(r"(^|\s)[Bb]ench[ :]+([1-9]\d{5,7})(?!\d)")
-    for idx, commit in enumerate(commits.json()):
+    latest_bench_match = None
+
+    commits = response.json()
+    message = commits[0]["commit"]["message"].strip().split("\n")[0].strip()
+    date_str = commits[0]["commit"]["committer"]["date"]
+    date = datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%SZ")
+
+    for commit in commits:
         message_lines = commit["commit"]["message"].strip().split("\n")
-        bench = bench_search.search(message_lines[-1].strip())
-        if idx == 0:
-            message = message_lines[0].strip()
-            date_str = commit["commit"]["committer"]["date"]
-            date = datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%SZ")
-        if bench:
-            return {
-                "bench": bench.group(2),
-                "message": message,
-                "date": date.strftime("%b %d"),
-            }
-    return None
+        for line in reversed(message_lines):
+            bench = bench_search.search(line.strip())
+            if bench:
+                latest_bench_match = {
+                    "bench": bench.group(2),
+                    "message": message,
+                    "date": date.strftime("%b %d"),
+                }
+                break
+        if latest_bench_match:
+            break
+
+    return latest_bench_match
 
 
 def get_valid_books():
     response = requests.get(
-        "https://api.github.com/repos/official-stockfish/books/contents"
+        "https://api.github.com/repos/official-stockfish/books/git/trees/master?recursive=1"
     ).json()
     books_list = (
-        b["path"].replace(".zip", "")
-        for b in response
-        if b["path"].endswith((".epd.zip", ".pgn.zip"))
+        str(Path(item["path"]).stem)
+        for item in response["tree"]
+        if item["type"] == "blob" and item["path"].endswith((".epd.zip", ".pgn.zip"))
     )
     return books_list
 
@@ -697,35 +746,34 @@ def get_sha(branch, repo_url):
         return "", ""
 
 
-def get_net(commit_sha, repo_url):
-    """Get the net from evaluate.h or ucioption.cpp in the repo"""
+def get_nets(commit_sha, repo_url):
+    """Get the nets from evaluate.h or ucioption.cpp in the repo"""
     api_url = repo_url.replace(
         "https://github.com", "https://raw.githubusercontent.com"
     )
     try:
-        net = None
+        nets = []
+        pattern = re.compile("nn-[a-f0-9]{12}.nnue")
 
         url1 = api_url + "/" + commit_sha + "/src/evaluate.h"
         options = requests.get(url1).content.decode("utf-8")
         for line in options.splitlines():
             if "EvalFileDefaultName" in line and "define" in line:
-                p = re.compile("nn-[a-z0-9]{12}.nnue")
-                m = p.search(line)
+                m = pattern.search(line)
                 if m:
-                    net = m.group(0)
+                    nets.append(m.group(0))
 
-        if net:
-            return net
+        if nets:
+            return nets
 
         url2 = api_url + "/" + commit_sha + "/src/ucioption.cpp"
         options = requests.get(url2).content.decode("utf-8")
         for line in options.splitlines():
             if "EvalFile" in line and "Option" in line:
-                p = re.compile("nn-[a-z0-9]{12}.nnue")
-                m = p.search(line)
+                m = pattern.search(line)
                 if m:
-                    net = m.group(0)
-        return net
+                    nets.append(m.group(0))
+        return nets
     except:
         raise Exception("Unable to access developer repository: " + api_url)
 
@@ -770,6 +818,18 @@ def validate_form(request):
         "tests_repo": request.POST["tests-repo"],
         "info": request.POST["run-info"],
     }
+    try:
+        data["master_sha"] = get_master_sha(
+            data["tests_repo"].replace(
+                "https://github.com", "https://api.github.com/repos"
+            )
+        )
+        data["official_master_sha"] = get_master_sha(
+            "https://api.github.com/repos/official-stockfish/Stockfish"
+        )
+    except Exception as e:
+        raise Exception("Error occurred while fetching master commit signatures") from e
+
     odds = request.POST.get("odds", "off")  # off checkboxes are not posted
     if odds == "off":
         data["new_tc"] = data["tc"]
@@ -785,9 +845,12 @@ def validate_form(request):
 
     def strip_message(m):
         lines = m.strip().split("\n")
-        last_line = lines[-1].strip()
-        if re.match(r"(^|\s)[Bb]ench[ :]+([1-9]\d{5,7})(?!\d)", last_line):
-            lines[-1] = ""
+        bench_search = re.compile(r"(^|\s)[Bb]ench[ :]+([1-9]\d{5,7})(?!\d)")
+        for i, line in enumerate(reversed(lines)):
+            new_line, n = bench_search.subn("", line)
+            if n:
+                lines[-i - 1] = new_line
+                break
         s = "\n".join(lines)
         s = re.sub(r"[ \t]+", " ", s)
         s = re.sub(r"\n+", r"\n", s)
@@ -806,12 +869,13 @@ def validate_form(request):
         if "commit" not in c:
             raise Exception("Cannot find branch in developer repository")
         if len(data["new_signature"]) == 0:
-            bs = re.compile(r"(^|\s)[Bb]ench[ :]+([1-9]\d{5,7})(?!\d)")
+            bench_search = re.compile(r"(^|\s)[Bb]ench[ :]+([1-9]\d{5,7})(?!\d)")
             lines = c["commit"]["message"].split("\n")
-            last_line = lines[-1].strip()
-            m = bs.search(last_line)
-            if m:
-                data["new_signature"] = m.group(2)
+            for line in reversed(lines):  # Iterate in reverse to find the last match
+                m = bench_search.search(line)
+                if m:
+                    data["new_signature"] = m.group(2)
+                    break
             else:
                 raise Exception(
                     "This commit has no signature: please supply it manually."
@@ -883,19 +947,23 @@ def validate_form(request):
     )
     data["base_same_as_master"] = master_diff.text == ""
 
-    # Test existence of net
-    new_net = get_net(data["resolved_new"], data["tests_repo"])
-    if new_net:
-        if not request.rundb.get_nn(new_net):
-            raise Exception(
-                "The net {}, used by {}, is not "
-                "known to Fishtest. Please upload it to: "
-                "{}/upload.".format(new_net, data["new_tag"], request.host_url)
-            )
+    # Store nets info
+    data["base_nets"] = get_nets(data["resolved_base"], data["tests_repo"])
+    data["new_nets"] = get_nets(data["resolved_new"], data["tests_repo"])
 
-    # Store net info
-    data["new_net"] = new_net
-    data["base_net"] = get_net(data["resolved_base"], data["tests_repo"])
+    # Test existence of nets
+    missing_nets = []
+    for net_name in set(data["base_nets"]) | set(data["new_nets"]):
+        net = request.rundb.get_nn(net_name)
+        if net is None:
+            missing_nets.append(net_name)
+    if missing_nets:
+        raise Exception(
+            "Missing net(s). Please upload to: {} the following net(s): {}".format(
+                request.host_url,
+                ", ".join(missing_nets),
+            )
+        )
 
     # Integer parameters
     data["threads"] = int(request.POST["threads"])
@@ -967,25 +1035,32 @@ def del_tasks(run):
 def update_nets(request, run):
     run_id = str(run["_id"])
     data = run["args"]
+    base_nets, new_nets, missing_nets = [], [], []
+    for net_name in set(data["base_nets"]) | set(data["new_nets"]):
+        net = request.rundb.get_nn(net_name)
+        if net is None:
+            # This should never happen
+            missing_nets.append(net_name)
+        else:
+            if net_name in data["base_nets"]:
+                base_nets.append(net)
+            if net_name in data["new_nets"]:
+                new_nets.append(net)
+    if missing_nets:
+        raise Exception(
+            "Missing net(s). Please upload to {} the following net(s): {}".format(
+                request.host_url,
+                ", ".join(missing_nets),
+            )
+        )
+
     if run["base_same_as_master"]:
-        base_net = data["base_net"]
-        if base_net:
-            net = request.rundb.get_nn(base_net)
-            if not net:
-                # Should never happen:
-                raise Exception(
-                    "The net {}, used by {}, is not "
-                    "known to Fishtest. Please upload it to: "
-                    "{}/upload.".format(base_net, data["base_tag"], request.host_url)
-                )
+        for net in base_nets:
             if "is_master" not in net:
                 net["is_master"] = True
                 request.rundb.update_nn(net)
-    new_net = data["new_net"]
-    if new_net:
-        net = request.rundb.get_nn(new_net)
-        if not net:
-            return
+
+    for net in new_nets:
         if "first_test" not in net:
             net["first_test"] = {"id": run_id, "date": datetime.now(timezone.utc)}
         net["last_test"] = {"id": run_id, "date": datetime.now(timezone.utc)}
@@ -1015,6 +1090,17 @@ def new_run_message(request, run):
     ret += "(SMP)" if run["args"]["threads"] > 1 else ""
     ret += f" Hash:{get_hash(run['args']['base_options'])}/{get_hash(run['args']['new_options'])}"
     return ret
+
+
+def get_master_sha(repo_url):
+    try:
+        repo_url += "/commits/master"
+        response = requests.get(repo_url).json()
+        if "commit" not in response:
+            raise Exception("Cannot find branch in repository")
+        return response["sha"]
+    except Exception as e:
+        raise Exception("Unable to access repository") from e
 
 
 @view_config(route_name="tests_run", renderer="tests_run.mak", require_csrf=True)
@@ -1095,15 +1181,6 @@ def tests_modify(request):
         if not can_modify_run(request, run):
             request.session.flash("Unable to modify another user's run!", "error")
             return home(request)
-
-        existing_games = 0
-        for chunk in run["tasks"]:
-            existing_games += chunk["num_games"]
-            if "stats" in chunk:
-                stats = chunk["stats"]
-                total = stats["wins"] + stats["losses"] + stats["draws"]
-                if total < chunk["num_games"]:
-                    chunk["pending"] = True
 
         num_games = int(request.POST["num-games"])
         if (
@@ -1214,7 +1291,10 @@ def tests_approve(request):
     if run is None:
         request.session.flash(message, "error")
     else:
-        update_nets(request, run)
+        try:
+            update_nets(request, run)
+        except Exception as e:
+            request.session.flash(str(e), "error")
         request.actiondb.approve_run(username=username, run=run)
         cached_flash(request, message)
     return home(request)
@@ -1236,9 +1316,9 @@ def tests_purge(request):
     request.actiondb.purge_run(
         username=username,
         run=run,
-        message=f"Manual purge (not performed): {message}"
-        if message
-        else "Manual purge",
+        message=(
+            f"Manual purge (not performed): {message}" if message else "Manual purge"
+        ),
     )
     if message != "":
         request.session.flash(message)
@@ -1293,7 +1373,6 @@ def tests_live_elo(request):
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None:
         raise exception_response(404)
-    request.rundb.get_results(run)
     return {"run": run, "page_title": get_page_title(run)}
 
 
@@ -1302,7 +1381,6 @@ def tests_stats(request):
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None:
         raise exception_response(404)
-    request.rundb.get_results(run)
     return {"run": run, "page_title": get_page_title(run)}
 
 
@@ -1343,7 +1421,7 @@ def tests_view(request):
         follow = 1
     else:
         follow = 0
-    results = request.rundb.get_results(run)
+    results = run["results"]
     run["results_info"] = format_results(results, run)
     run_args = [("id", str(run["_id"]), "")]
     if run.get("rescheduled_from"):
@@ -1355,11 +1433,13 @@ def tests_view(request):
         "new_options",
         "resolved_new",
         "new_net",
+        "new_nets",
         "base_tag",
         "base_signature",
         "base_options",
         "resolved_base",
         "base_net",
+        "base_nets",
         "sprt",
         "num_games",
         "spsa",
@@ -1388,6 +1468,9 @@ def tests_view(request):
 
         if name == "base_tag" and "msg_base" in run["args"]:
             value += "  (" + run["args"]["msg_base"][:50] + ")"
+
+        if name in ("new_nets", "base_nets"):
+            value = ", ".join(value)
 
         if name == "sprt" and value != "-":
             value = "elo0: {:.2f} alpha: {:.2f} elo1: {:.2f} beta: {:.2f} state: {} ({})".format(
@@ -1507,15 +1590,14 @@ def get_paginated_finished_runs(request):
         limit=page_size,
     )
 
-    pages = pagination(page_idx, num_finished_runs, page_size)
-
-    for page in pages:
-        if success_only:
-            page["url"] += "&success_only=1"
-        if yellow_only:
-            page["url"] += "&yellow_only=1"
-        if ltc_only:
-            page["url"] += "&ltc_only=1"
+    query_params = ""
+    if success_only:
+        query_params += "&success_only=1"
+    if yellow_only:
+        query_params += "&yellow_only=1"
+    if ltc_only:
+        query_params += "&ltc_only=1"
+    pages = pagination(page_idx, num_finished_runs, page_size, query_params)
 
     failed_runs = []
     if page_idx == 0:

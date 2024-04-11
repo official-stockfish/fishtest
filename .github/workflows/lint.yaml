@@ -8,26 +8,25 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.11"]
-        node-version: ["18.x"]
+        node-version: ["21.x"]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
       - name: Set up Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
 
-      - name: Set up linters and formatters
+      - name: Set up pipx
         run: |
           python -m pip install --upgrade pip
           python -m pip install pipx
-          npm install --global prettier
 
       - name: Run flake8
         id: flake8
@@ -51,7 +50,7 @@ jobs:
         id: prettier
         continue-on-error: true
         run: |
-          prettier --check "server/fishtest/static/{css/*.css,html/*.html,js/*.js}"
+          npx prettier --check "server/fishtest/static/{css/*.css,html/*.html,js/*.js}"
 
       - name: Check linters and formatters status
         run: |
@@ -65,6 +64,6 @@ jobs:
         if: ${{ failure() }}
         run: |
           echo "Run the following commands to format the code:"
-          echo "black --exclude='env|packages' ."
-          echo "isort --profile black --skip env --skip venv --skip worker/packages ."
+          echo "pipx run black --exclude='env|packages' ."
+          echo "pipx run isort --profile black --skip env --skip venv --skip worker/packages ."
           echo "npx prettier --write 'server/fishtest/static/{css/*.css,html/*.html,js/*.js}'"
