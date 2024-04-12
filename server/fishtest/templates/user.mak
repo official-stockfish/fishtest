@@ -4,6 +4,20 @@
   document.title = "User Management | Stockfish Testing";
 </script>
 
+<script>
+  async function handleGitHubToken() {
+    await DOMContentLoaded();
+    document.getElementById("github_token").value = localStorage.getItem("github_token") || "";
+    document.getElementById("profile_form").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const githubToken = document.getElementById("github_token").value;
+        localStorage.setItem("github_token", githubToken);
+        e.target.submit();
+    });
+  }
+  handleGitHubToken();
+</script>
+
 <div class="col-limited-size">
   <header class="text-md-center py-2">
     <h2>User Management</h2>
@@ -32,7 +46,7 @@
     </div>
   </header>
 
-  <form action="${request.url}" method="POST">
+  <form id="profile_form" action="${request.url}" method="POST">
     <input
       type="hidden"
       name="user"
@@ -102,7 +116,61 @@
           <i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i>
         </span>
       </div>
-    <button type="submit" class="btn btn-primary w-100">Submit</button>
+
+      <div class="input-group mb-3">
+        <div class="form-floating">
+          <input
+            class="form-control"
+            id="github_token"
+            name="github_token"
+            autocomplete="off"
+            placeholder="GitHub fine-grained personal access token"
+          />
+        <label for="github_token" class="d-flex align-items-end">GitHub Fine-grained personal access tokens</label>
+        </div>
+        <span class="input-group-text" role="button" data-bs-toggle="modal" data-bs-target="#infoModal">
+          <i class="fas fa-question-circle fa-lg pe-none" style="width: 30px"></i>
+        </span>
+      </div>
+
+      <div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-body">
+              <!-- Explanation about token purpose -->
+              <p>The purpose of this token is to authenticate your requests to GitHub's API, 
+              which has a rate limit of 60 requests per hour for unauthenticated users. By using this token, 
+              you can increase this limit to 5000 requests per hour. More information about GitHub's rate limits can be found 
+              <a href="https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting">here</a>.
+              </p>
+              
+              <!-- Information about storage -->
+              <p>This token will be stored in your local storage, not in a database. 
+              This ensures that the token is only accessible to you, reducing the risk of unauthorized access.
+              </p>
+              
+              <!-- Permissions and access information -->
+              <p>The token should be granted the minimum permissions necessary for your use case. 
+              This reduces the potential impact if the token is accidentally exposed or misused.
+              </p>
+              
+              <!-- Instructions on how to obtain the token -->
+              <h4>Instructions:</h4>
+              <ol>
+                <li>Access the link <a href="https://github.com/settings/tokens?type=beta">here</a>.</li>
+                <li>Press "Generate a new token".</li>
+                <li>Set a "Token name".</li>
+                <li>Set your preferred "Expiration" time.</li>
+                <li>Set "Repository access" to "All Repositories".</li>
+                <li>In "Permissions" section, grant the "Read" permission only for "Contents", leaving all other permissions at default values.</li>
+                <li>Press "Generate token" at the bottom of the page.</li>
+                <li>Copy the token and paste it into the input field above. Remember, GitHub will not show the token again for security reasons, so make sure to save it somewhere safe.</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary w-100">Save</button>
     % elif 'pending' in user and user['pending']:
       <div class="alert alert-dark mb-3">
         <label class="mb-2 h5">User Approval:</label>
