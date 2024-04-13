@@ -1383,16 +1383,20 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file, clear_binar
     except WorkerException as e:
         raise e
 
-    try:
-        verify_signature(
-            new_engine,
-            run["args"]["new_signature"],
-            games_concurrency * threads,
-        )
-    except RunException as e:
-        run_errors.append(str(e))
-    except WorkerException as e:
-        raise e
+    if not (
+        run["args"]["base_signature"] == run["args"]["new_signature"]
+        and new_engine == base_engine
+    ):
+        try:
+            verify_signature(
+                new_engine,
+                run["args"]["new_signature"],
+                games_concurrency * threads,
+            )
+        except RunException as e:
+            run_errors.append(str(e))
+        except WorkerException as e:
+            raise e
 
     # Handle exceptions if any.
     if run_errors:
