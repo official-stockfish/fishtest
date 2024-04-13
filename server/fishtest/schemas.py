@@ -298,6 +298,7 @@ action_schema = intersect(
                 "username": str,
                 "run_id": run_id,
                 "run": run_name,
+                "message": union("approved", "unapproved"),
             },
         ),
         (

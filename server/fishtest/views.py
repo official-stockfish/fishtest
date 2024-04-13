@@ -1203,9 +1203,7 @@ def can_modify_run(request, run):
 
 @view_config(route_name="tests_modify", require_csrf=True, request_method="POST")
 def tests_modify(request):
-    if not request.authenticated_userid:
-        request.session.flash("Please login")
-        return HTTPFound(location=request.route_url("login"))
+    userid = ensure_logged_in(request)
 
     run = request.rundb.get_run(request.POST["run"])
     if run is None:
@@ -1219,16 +1217,21 @@ def tests_modify(request):
         return home(request)
 
     is_approver = request.has_permission("approve_run")
-    if not is_approver and (
-        (
-            run["args"]["throughput"] != int(request.POST["throughput"])
-            and int(request.POST["throughput"]) > 100
-        )
-        or (
-            run["args"]["priority"] != int(request.POST["priority"])
-            and int(request.POST["priority"]) > 0
+    if (
+        not is_approver
+        and run["approved"]
+        and (
+            (
+                run["args"]["throughput"] != int(request.POST["throughput"])
+                and int(request.POST["throughput"]) > 100
+            )
+            or (
+                run["args"]["priority"] != int(request.POST["priority"])
+                and int(request.POST["priority"]) > 0
+            )
         )
     ):
+        request.actiondb.approve_run(username=userid, run=run, message="unapproved")
         run["approved"] = False
 
     before = del_tasks(run)
@@ -1319,7 +1322,7 @@ def tests_approve(request):
             update_nets(request, run)
         except Exception as e:
             request.session.flash(str(e), "error")
-        request.actiondb.approve_run(username=username, run=run)
+        request.actiondb.approve_run(username=username, run=run, message="approved")
         cached_flash(request, message)
     return home(request)
 
