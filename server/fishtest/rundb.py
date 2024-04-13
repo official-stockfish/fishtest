@@ -366,16 +366,8 @@ class RunDb:
                 return None
 
     def start_timer(self):
-        try:
-            self.timer = threading.Timer(1.0, self.flush_buffers)
-            self.timer.start()
-        except RuntimeError as e:
-            # Mitigation for a 3.12 bug during the interpreter shutdown, see:
-            # - issue https://github.com/python/cpython/pull/104826
-            # - bugfix https://github.com/python/cpython/pull/117029
-            # With python 3.12.3 the try except block could be potentially removed.
-            if "interpreter shutdown" not in str(e):
-                raise
+        self.timer = threading.Timer(1.0, self.flush_buffers)
+        self.timer.start()
 
     def buffer(self, run, flush):
         with self.run_cache_lock:
