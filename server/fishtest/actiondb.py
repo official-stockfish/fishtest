@@ -164,12 +164,13 @@ class ActionDb:
             run=run_name(run),
         )
 
-    def approve_run(self, username=None, run=None):
+    def approve_run(self, username=None, run=None, message=None):
         self.insert_action(
             action="approve_run",
             username=username,
             run_id=run["_id"],
             run=run_name(run),
+            message=message,
         )
 
     def purge_run(self, username=None, run=None, message=None):
