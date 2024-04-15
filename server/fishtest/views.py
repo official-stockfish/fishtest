@@ -1233,6 +1233,7 @@ def tests_modify(request):
     ):
         request.actiondb.approve_run(username=userid, run=run, message="unapproved")
         run["approved"] = False
+        run["approver"] = ""
 
     before = del_tasks(run)
     run["finished"] = False

@@ -42,7 +42,8 @@ short_worker_name = regex(r".*-[\d]+cores-[a-zA-Z0-9]{2,8}", name="short_worker_
 long_worker_name = regex(
     r".*-[\d]+cores-[a-zA-Z0-9]{2,8}-[a-f0-9]{4}\*?", name="long_worker_name"
 )
-net_name = regex("nn-[a-f0-9]{12}.nnue", name="net_name")
+username = regex(r"[!-~][ -~]{0,30}[!-~]", name="username")
+net_name = regex(r"nn-[a-f0-9]{12}.nnue", name="net_name")
 tc = regex(r"([1-9]\d*/)?\d+(\.\d+)?(\+\d+(\.\d+)?)?", name="tc")
 str_int = regex(r"[1-9]\d*", name="str_int")
 sha = regex(r"[a-f0-9]{40}", name="sha")
@@ -52,7 +53,6 @@ epd_file = glob("*.epd", name="epd_file")
 pgn_file = glob("*.pgn", name="pgn_file")
 even = div(2, name="even")
 
-
 uint = intersect(int, interval(0, ...))
 suint = intersect(int, interval(1, ...))
 ufloat = intersect(float, interval(0.0, ...))
@@ -60,7 +60,7 @@ unumber = intersect(number, interval(0, ...))
 
 user_schema = {
     "_id?": ObjectId,
-    "username": str,
+    "username": username,
     "password": str,
     "registration_time": datetime,
     "pending": bool,
@@ -101,16 +101,15 @@ nn_schema = intersect(
         "is_master?": True,
         "last_test?": {"date": datetime, "id": run_id},
         "name": net_name,
-        "user": str,
+        "user": username,
     },
     ifthen(
-        at_least_one_of("first_test", "last_test"),
+        at_least_one_of("is_master", "first_test", "last_test"),
         intersect(
             keys("first_test", "last_test"),
             first_test_before_last,
         ),
     ),
-    ifthen(keys("is_master"), keys("first_test")),
 )
 
 # not yet used, not tested
@@ -124,7 +123,7 @@ contributors_schema = {
     "str_last_updated": str,
     "tests": uint,
     "tests_repo": union(url, ""),
-    "username": str,
+    "username": username,
 }
 
 
@@ -170,7 +169,7 @@ action_schema = intersect(
                 "_id?": ObjectId,
                 "time": float,
                 "action": "failed_task",
-                "username": str,
+                "username": username,
                 "worker": long_worker_name,
                 "run_id": run_id,
                 "run": run_name,
@@ -184,7 +183,7 @@ action_schema = intersect(
                 "_id?": ObjectId,
                 "time": float,
                 "action": "crash_or_time",
-                "username": str,
+                "username": username,
                 "worker": long_worker_name,
                 "run_id": run_id,
                 "run": run_name,
@@ -198,7 +197,7 @@ action_schema = intersect(
                 "_id?": ObjectId,
                 "time": float,
                 "action": "dead_task",
-                "username": str,
+                "username": username,
                 "worker": long_worker_name,
                 "run_id": run_id,
                 "run": run_name,
@@ -221,7 +220,7 @@ action_schema = intersect(
                 "_id?": ObjectId,
                 "time": float,
                 "action": "new_run",
-                "username": str,
+                "username": username,
                 "run_id": run_id,
                 "run": run_name,
                 "message": action_message,
@@ -233,7 +232,7 @@ action_schema = intersect(
                 "_id?": ObjectId,
                 "time": float,
                 "action": "upload_nn",
-                "username": str,
+                "username": username,
                 "nn": str,
             },
         ),
@@ -243,7 +242,7 @@ action_schema = intersect(
                 "_id?": ObjectId,
                 "time": float,
                 "action": "modify_run",
-                "username": str,
+                "username": username,
                 "run_id": run_id,
                 "run": run_name,
                 "message": action_message,
@@ -255,7 +254,7 @@ action_schema = intersect(
                 "_id?": ObjectId,
                 "time": float,
                 "action": "delete_run",
-                "username": str,
+                "username": username,
                 "run_id": run_id,
                 "run": run_name,
             },
@@ -267,7 +266,7 @@ action_schema = intersect(
                     "_id?": ObjectId,
                     "time": float,
                     "action": "stop_run",
-                    "username": str,
+                    "username": username,
                     "run_id": run_id,
                     "run": run_name,
                     "message": action_message,
@@ -283,7 +282,7 @@ action_schema = intersect(
                 "_id?": ObjectId,
                 "time": float,
                 "action": "finished_run",
-                "username": str,
+                "username": username,
                 "run_id": run_id,
                 "run": run_name,
                 "message": action_message,
@@ -295,7 +294,7 @@ action_schema = intersect(
                 "_id?": ObjectId,
                 "time": float,
                 "action": "approve_run",
-                "username": str,
+                "username": username,
                 "run_id": run_id,
                 "run": run_name,
                 "message": union("approved", "unapproved"),
@@ -307,7 +306,7 @@ action_schema = intersect(
                 "_id?": ObjectId,
                 "time": float,
                 "action": "purge_run",
-                "username": str,
+                "username": username,
                 "run_id": run_id,
                 "run": run_name,
                 "message": action_message,
@@ -319,7 +318,7 @@ action_schema = intersect(
                 "_id?": ObjectId,
                 "time": float,
                 "action": "block_user",
-                "username": str,
+                "username": username,
                 "user": str,
                 "message": union("blocked", "unblocked"),
             },
@@ -330,7 +329,7 @@ action_schema = intersect(
                 "_id?": ObjectId,
                 "time": float,
                 "action": "accept_user",
-                "username": str,
+                "username": username,
                 "user": str,
                 "message": "accepted",
             },
@@ -341,7 +340,7 @@ action_schema = intersect(
                 "_id?": ObjectId,
                 "time": float,
                 "action": "block_worker",
-                "username": str,
+                "username": username,
                 "worker": short_worker_name,
                 "message": union("blocked", "unblocked"),
             },
@@ -352,7 +351,7 @@ action_schema = intersect(
                 "_id?": ObjectId,
                 "time": float,
                 "action": "log_message",
-                "username": str,
+                "username": username,
                 "message": action_message,
             },
         ),
@@ -368,7 +367,7 @@ worker_info_schema_api = {
     "concurrency": suint,
     "max_memory": uint,
     "min_threads": suint,
-    "username": str,
+    "username": username,
     "version": uint,
     "python_version": [uint, uint, uint],
     "gcc_version": [uint, uint, uint],
@@ -413,7 +412,7 @@ def valid_spsa_results(R):
     return R["wins"] + R["losses"] + R["draws"] == R["num_games"]
 
 
-api_access_schema = lax({"password": str, "worker_info": {"username": str}})
+api_access_schema = lax({"password": str, "worker_info": {"username": username}})
 
 api_schema = intersect(
     {
@@ -493,7 +492,7 @@ runs_schema = intersect(
         "base_same_as_master": bool,
         "rescheduled_from?": run_id,
         "approved": bool,
-        "approver": str,
+        "approver": union(username, ""),
         "finished": bool,
         "deleted": bool,
         "failed": bool,
@@ -529,7 +528,7 @@ runs_schema = intersect(
                 "info": str,
                 "base_signature": str_int,
                 "new_signature": str_int,
-                "username": str,
+                "username": username,
                 "tests_repo": url,
                 "auto_purge": bool,
                 "throughput": unumber,
@@ -629,5 +628,12 @@ runs_schema = intersect(
             ...,
         ],
     },
+    lax(ifthen({"approved": True}, {"approver": username}, {"approver": ""})),
+    lax(ifthen({"is_green": True}, {"is_yellow": False})),
+    lax(ifthen({"is_yellow": True}, {"is_green": False})),
+    lax(ifthen({"failed": True}, {"finished": True})),
+    lax(ifthen({"deleted": True}, {"finished": True})),
+    lax(ifthen({"finished": True}, {"workers": 0, "cores": 0})),
+    lax(ifthen({"finished": True}, {"tasks": [{"active": False}, ...]})),
     final_results_must_match,
 )
