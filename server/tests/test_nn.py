@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime
+from datetime import datetime, timezone
 
 from util import get_rundb
 from vtjson import ValidationError
@@ -15,9 +15,9 @@ class TestNN(unittest.TestCase):
         self.rundb = get_rundb()
         self.name = "nn-0000000000a0.nnue"
         self.user = "user00"
-        self.first_test = datetime(2024, 1, 1)
-        self.last_test = datetime(2024, 3, 24)
-        self.last_test_old = datetime(2023, 3, 24)
+        self.first_test = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        self.last_test = datetime(2024, 3, 24, tzinfo=timezone.utc)
+        self.last_test_old = datetime(2023, 3, 24, tzinfo=timezone.utc)
         self.run_id = "64e74776a170cb1f26fa3930"
 
     def tearDown(self):

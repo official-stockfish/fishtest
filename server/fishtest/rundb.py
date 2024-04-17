@@ -15,6 +15,7 @@ from datetime import datetime, timedelta, timezone
 
 import fishtest.stats.stat_util
 from bson.binary import Binary
+from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from fishtest.actiondb import ActionDb
 from fishtest.schemas import RUN_VERSION, nn_schema, runs_schema
@@ -85,7 +86,8 @@ class RunDb:
         # MongoDB server is assumed to be on the same machine, if not user should
         # use ssh with port forwarding to access the remote host.
         self.conn = MongoClient(os.getenv("FISHTEST_HOST") or "localhost")
-        self.db = self.conn[db_name]
+        codec_options = CodecOptions(tz_aware=True, tzinfo=timezone.utc)
+        self.db = self.conn[db_name].with_options(codec_options=codec_options)
         self.userdb = UserDb(self.db)
         self.actiondb = ActionDb(self.db)
         self.workerdb = WorkerDb(self.db)
@@ -149,8 +151,6 @@ class RunDb:
     ):
         if start_time is None:
             start_time = datetime.now(timezone.utc)
-        else:
-            start_time = start_time.replace(tzinfo=timezone.utc)
 
         run_args = {
             "base_tag": base_tag,
@@ -464,10 +464,7 @@ class RunDb:
         task_id = -1
         for task in run["tasks"]:
             task_id += 1
-            if (
-                task["active"]
-                and task["last_updated"].replace(tzinfo=timezone.utc) < old
-            ):
+            if task["active"] and task["last_updated"] < old:
                 task["active"] = False
                 dead_task = True
                 print(
@@ -507,9 +504,7 @@ class RunDb:
             task["worker_info"]
             | {
                 "last_updated": (
-                    task["last_updated"].replace(tzinfo=timezone.utc)
-                    if task.get("last_updated")
-                    else None
+                    task["last_updated"] if task.get("last_updated") else None
                 ),
                 "run": run,
                 "task_id": task_id,
@@ -852,9 +847,7 @@ After fixing the issues you can unblock the worker at
         for task in active_tasks:
             task_name = worker_name(task["worker_info"], short=True)
             if my_name == task_name:
-                last_update = (
-                    now - task["last_updated"].replace(tzinfo=timezone.utc)
-                ).seconds
+                last_update = (now - task["last_updated"]).seconds
                 # 120 = period of heartbeat in worker.
                 if last_update <= 120:
                     error = 'Request_task: There is already a worker running with name "{}" which sent an update {} seconds ago'.format(
@@ -1406,10 +1399,7 @@ After fixing the issues you can unblock the worker at
             return "Can only purge completed run"
 
         now = datetime.now(timezone.utc)
-        if (
-            "start_time" not in run
-            or (now - run["start_time"].replace(tzinfo=timezone.utc)).days > 30
-        ):
+        if "start_time" not in run or (now - run["start_time"]).days > 30:
             return "Run too old to be purged"
         # Do not revive failed runs
         if run.get("failed", False):

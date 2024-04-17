@@ -23,8 +23,8 @@ def purge_pgn(rundb, finished, deleted, days):
             not deleted
             and finished
             and tc_regex.match(run["args"]["tc"])
-            and run["last_updated"].replace(tzinfo=timezone.utc) > cutoff_date_ltc
-        ) or run["last_updated"].replace(tzinfo=timezone.utc) > cutoff_date
+            and run["last_updated"] > cutoff_date_ltc
+        ) or run["last_updated"] > cutoff_date
 
         if keep:
             kept_runs += 1

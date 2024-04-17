@@ -425,11 +425,11 @@ def post_in_fishcooking_results(run):
 
 
 def diff_date(date):
-    utc_date = date.replace(tzinfo=timezone.utc)
-    if utc_date != datetime.min.replace(tzinfo=timezone.utc):
-        diff = datetime.now(timezone.utc) - utc_date
-    else:
-        diff = timedelta.max
+    diff = (
+        datetime.now(timezone.utc) - date
+        if date != datetime.min.replace(tzinfo=timezone.utc)
+        else timedelta.max
+    )
     return diff
 
 
