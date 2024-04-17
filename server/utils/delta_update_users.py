@@ -87,8 +87,8 @@ def process_run(run, info):
 
         info_user = info[t_username]
         info_user["last_updated"] = max(
-            info_user["last_updated"].replace(tzinfo=timezone.utc),
-            task.get("last_updated", datetime.min).replace(tzinfo=timezone.utc),
+            info_user["last_updated"],
+            task.get("last_updated", datetime.min.replace(tzinfo=timezone.utc)),
         )
         info_user["cpu_hours"] += float(
             num_games * int(run["args"].get("threads", 1)) * tc / (60 * 60)
@@ -131,7 +131,7 @@ def update_info(rundb, clear_stats, deltas, info_total, info_top_month):
             skip_count += 1
 
         # Update info_top_month with finished runs having start_time in the last 30 days
-        if (now - run["start_time"].replace(tzinfo=timezone.utc)).days < 30:
+        if (now - run["start_time"]).days < 30:
             try:
                 process_run(run, info_top_month)
             except Exception as e:
@@ -193,6 +193,7 @@ def update_users(rundb, users_total, users_top_month):
 def cleanup_users(rundb):
     # Delete users that have never been active and old admins group
     idle = {}
+    now = datetime.now(timezone.utc)
     for u in rundb.userdb.get_users():
         update = False
         while "group:admins" in u["groups"]:
@@ -200,18 +201,18 @@ def cleanup_users(rundb):
             update = True
         if update:
             rundb.userdb.save_user(u)
-        if "registration_time" not in u or u["registration_time"].replace(
-            tzinfo=timezone.utc
-        ) < datetime.now(timezone.utc) - timedelta(days=28):
+        if "registration_time" not in u or u["registration_time"] < now - timedelta(
+            days=28
+        ):
             idle[u["username"]] = u
     for u in rundb.userdb.user_cache.find():
         if u["username"] in idle:
             del idle[u["username"]]
     for u in idle.values():
         # A safe guard against deleting long time users
-        if "registration_time" not in u or u["registration_time"].replace(
-            tzinfo=timezone.utc
-        ) < datetime.now(timezone.utc) - timedelta(days=38):
+        if "registration_time" not in u or u["registration_time"] < now - timedelta(
+            days=38
+        ):
             print("Warning: Found old user to delete:", str(u["_id"]))
         else:
             print("Delete:", str(u["_id"]))

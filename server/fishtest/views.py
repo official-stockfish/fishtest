@@ -837,10 +837,7 @@ def validate_modify(request, run):
         raise home(request)
 
     now = datetime.now(timezone.utc)
-    if (
-        "start_time" not in run
-        or (now - run["start_time"].replace(tzinfo=timezone.utc)).days > 30
-    ):
+    if "start_time" not in run or (now - run["start_time"]).days > 30:
         request.session.flash("Run too old to be modified", "error")
         raise home(request)
 
@@ -1565,8 +1562,8 @@ def tests_view(request):
         if task["active"]:
             active += 1
             cores += task["worker_info"]["concurrency"]
-        last_updated = task.get("last_updated", datetime.min).replace(
-            tzinfo=timezone.utc
+        last_updated = task.get(
+            "last_updated", datetime.min.replace(tzinfo=timezone.utc)
         )
         task["last_updated"] = last_updated
 

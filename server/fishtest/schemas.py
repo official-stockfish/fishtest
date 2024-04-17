@@ -82,9 +82,8 @@ worker_schema = {
 
 
 def first_test_before_last(x):
-    # Pymongo is not timezone aware. Assume dates are UTC.
-    f = x["first_test"]["date"].replace(tzinfo=timezone.utc)
-    l = x["last_test"]["date"].replace(tzinfo=timezone.utc)
+    f = x["first_test"]["date"]
+    l = x["last_test"]["date"]
     if f <= l:
         return True
     else:
