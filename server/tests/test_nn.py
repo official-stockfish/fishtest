@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime
 
 from util import get_rundb
 from vtjson import ValidationError
