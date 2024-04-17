@@ -1,6 +1,5 @@
 from datetime import datetime, timezone
 
-from bson.objectid import ObjectId
 from fishtest.schemas import action_schema
 from fishtest.util import hex_print, worker_name
 from pymongo import DESCENDING

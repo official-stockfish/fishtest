@@ -3,7 +3,6 @@ import threading
 import time
 from datetime import datetime, timezone
 
-from bson.objectid import ObjectId
 from fishtest.schemas import user_schema
 from pymongo import ASCENDING
 from vtjson import ValidationError, validate
@@ -15,8 +14,9 @@ def validate_user(user):
     try:
         validate(user_schema, user, "user")
     except ValidationError as e:
-        print(valid, flush=True)
-        raise
+        message = f"The user object does not validate: {str(e)}"
+        print(message, flush=True)
+        raise Exception(message)
 
 
 class UserDb:

@@ -803,7 +803,7 @@ def parse_spsa_params(raw, spsa):
 
 
 def validate_modify(request, run):
-    if not "num-games" in request.POST:
+    if "num-games" not in request.POST:
         request.session.flash("Unable to modify with no number of games!", "error")
         raise home(request)
 

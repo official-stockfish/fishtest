@@ -1,8 +1,7 @@
 from datetime import datetime, timezone
 
-from bson.objectid import ObjectId
 from fishtest.schemas import worker_schema
-from vtjson import regex, validate
+from vtjson import validate
 
 
 class WorkerDb:
