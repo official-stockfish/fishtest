@@ -16,6 +16,7 @@ from vtjson import (
     cond,
     div,
     email,
+    fields,
     glob,
     ifthen,
     intersect,
@@ -52,6 +53,7 @@ country_code = regex(r"[A-Z][A-Z]", name="country_code")
 epd_file = glob("*.epd", name="epd_file")
 pgn_file = glob("*.pgn", name="pgn_file")
 even = div(2, name="even")
+datetime_utc = intersect(datetime, fields({"tzinfo": timezone.utc}))
 
 uint = intersect(int, interval(0, ...))
 suint = intersect(int, interval(1, ...))
@@ -62,7 +64,7 @@ user_schema = {
     "_id?": ObjectId,
     "username": username,
     "password": str,
-    "registration_time": datetime,
+    "registration_time": datetime_utc,
     "pending": bool,
     "blocked": bool,
     "email": email,
@@ -77,7 +79,7 @@ worker_schema = {
     "worker_name": short_worker_name,
     "blocked": bool,
     "message": worker_message,
-    "last_updated": datetime,
+    "last_updated": datetime_utc,
 }
 
 
@@ -96,9 +98,9 @@ nn_schema = intersect(
     {
         "_id?": ObjectId,
         "downloads": uint,
-        "first_test?": {"date": datetime, "id": run_id},
+        "first_test?": {"date": datetime_utc, "id": run_id},
         "is_master?": True,
-        "last_test?": {"date": datetime, "id": run_id},
+        "last_test?": {"date": datetime_utc, "id": run_id},
         "name": net_name,
         "user": username,
     },
@@ -118,7 +120,7 @@ contributors_schema = {
     "diff": unumber,
     "games": uint,
     "games_per_hour": unumber,
-    "last_updated": datetime,
+    "last_updated": datetime_utc,
     "str_last_updated": str,
     "tests": uint,
     "tests_repo": union(url, ""),
@@ -485,8 +487,8 @@ runs_schema = intersect(
     {
         "_id?": ObjectId,
         "version": uint,
-        "start_time": datetime,
-        "last_updated": datetime,
+        "start_time": datetime_utc,
+        "last_updated": datetime_utc,
         "tc_base": unumber,
         "base_same_as_master": bool,
         "rescheduled_from?": run_id,
@@ -599,7 +601,7 @@ runs_schema = intersect(
                 {
                     "num_games": intersect(uint, even),
                     "active": bool,
-                    "last_updated": datetime,
+                    "last_updated": datetime_utc,
                     "start": uint,
                     "residual?": number,
                     "residual_color?": str,
@@ -615,7 +617,7 @@ runs_schema = intersect(
             {
                 "num_games": intersect(uint, even),
                 "active": False,
-                "last_updated": datetime,
+                "last_updated": datetime_utc,
                 "start": uint,
                 "residual": number,
                 "residual_color": str,
