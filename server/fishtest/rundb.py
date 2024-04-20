@@ -1536,8 +1536,7 @@ After fixing the issues you can unblock the worker at
         spsa = run["args"]["spsa"]
 
         # Generate the next set of tuning parameters
-        iter_local = spsa["iter"] + 1  # assume at least one completed,
-        # and avoid division by zero
+        iter_local = spsa["iter"] + 1  # start from 1 to avoid division by zero
         for param in spsa["params"]:
             c = param["c"] / iter_local ** spsa["gamma"]
             flip = 1 if random.getrandbits(1) else -1

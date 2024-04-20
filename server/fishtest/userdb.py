@@ -32,14 +32,12 @@ class UserDb:
 
     def find_by_username(self, name):
         with self.user_lock:
-            if name in self.cache:
-                u = self.cache[name]
-                if u["time"] > time.time() - 120:
-                    return u["user"]
+            user = self.cache.get(name)
+            if user and time.time() < user["time"] + 120:
+                return user["user"]
             user = self.users.find_one({"username": name})
-            if not user:
-                return None
-            self.cache[name] = {"user": user, "time": time.time()}
+            if user is not None:
+                self.cache[name] = {"user": user, "time": time.time()}
             return user
 
     def find_by_email(self, email):
@@ -96,7 +94,7 @@ class UserDb:
 
     def get_user_groups(self, username):
         user = self.get_user(username)
-        if user:
+        if user is not None:
             groups = user["groups"]
             return groups
 

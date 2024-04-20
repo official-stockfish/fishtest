@@ -77,14 +77,14 @@ def get_chi2(tasks, exclude_workers=set()):
             # The ww and ll frequencies will typically be too small for
             # the full pentanomial chi2 test to be valid. See e.g. the last page of
             # https://www.open.ac.uk/socialsciences/spsstutorial/files/tutorials/chi-square.pdf.
-            # So we combine the ww and ll frequencies with the wd and ld frequencies.
+            # So we combine the ww and ll frequencies with the wd and ld frequencies,
+            # this is equivalent to use the frequencies for the pair of games.
             wld = [float(p[4] + p[3]), float(p[0] + p[1]), float(p[2])]
-        if key in users:
-            for idx in range(len(wld)):
-                users[key][idx] += wld[idx]
-        else:
-            users[key] = wld
 
+        users[key] = [
+            user_val + wld_val
+            for user_val, wld_val in zip(users.get(key, [0] * len(wld)), wld)
+        ]
     # We filter out the workers whose expected frequences are <= 5 as
     # they break the chi2 test.
     filtering_done = False
@@ -103,11 +103,10 @@ def get_chi2(tasks, exclude_workers=set()):
         if grand_total == 0:
             return default_results
         expected = numpy.outer(row_sums, column_sums) / grand_total
-        keys = list(users)
         filtering_done = True
-        for idx in range(len(keys)):
-            if min(expected[idx]) <= 5:
-                del users[keys[idx]]
+        for key, expected_row in zip(list(users), expected):
+            if min(expected_row) <= 5:
+                del users[key]
                 filtering_done = False
 
     # Now we do the basic chi2 computation.
@@ -136,11 +135,11 @@ def get_chi2(tasks, exclude_workers=set()):
     # in order to be able to deal accurately with very low p-values.
     res_z = scipy.stats.norm.isf(scipy.stats.chi2.sf(adj_row_chi2, columns - 1))
 
-    for idx in range(len(keys)):
+    for idx, key in enumerate(users):
         # We cap the standard normal "residuals" at zero since negative values
         # do not look very nice and moreover they do not convey any
         # information.
-        users[keys[idx]] = max(0, res_z[idx])
+        users[key] = max(0, res_z[idx])
 
     # We compute 95% and 99% thresholds using the Bonferroni correction.
     # Under the null hypothesis, yellow and red residuals should appear
@@ -169,22 +168,22 @@ def get_bad_workers(tasks, cached_chi2=None, p=0.001, res=7.0, iters=1):
     # If we have an up-to-date result of get_chi2() we can pass
     # it as cached_chi2 to avoid needless recomputation.
     bad_workers = set()
-    for _ in range(iters):
-        if cached_chi2 is None:
-            chi2 = get_chi2(tasks, exclude_workers=bad_workers)
-        else:
-            chi2 = cached_chi2
-            cached_chi2 = None
+    for i in range(iters):
+        chi2 = (
+            get_chi2(tasks, exclude_workers=bad_workers)
+            if i > 0 or cached_chi2 is None
+            else cached_chi2
+        )
         worst_user = {}
         residuals = chi2["residual"]
         for worker_key in residuals:
             if worker_key in bad_workers:
                 continue
             if chi2["p"] < p or residuals[worker_key] > res:
-                if worst_user == {} or residuals[worker_key] > worst_user["residual"]:
+                if not worst_user or residuals[worker_key] > worst_user["residual"]:
                     worst_user["unique_key"] = worker_key
                     worst_user["residual"] = residuals[worker_key]
-        if worst_user == {}:
+        if not worst_user:
             break
         bad_workers.add(worst_user["unique_key"])
 
@@ -194,10 +193,7 @@ def get_bad_workers(tasks, cached_chi2=None, p=0.001, res=7.0, iters=1):
 def update_residuals(tasks, cached_chi2=None):
     # If we have an up-to-date result of get_chi2() we can pass
     # it as cached_chi2 to avoid needless recomputation.
-    if cached_chi2 is None:
-        chi2 = get_chi2(tasks)
-    else:
-        chi2 = cached_chi2
+    chi2 = get_chi2(tasks) if cached_chi2 is None else cached_chi2
     residuals = chi2["residual"]
 
     for task in tasks:

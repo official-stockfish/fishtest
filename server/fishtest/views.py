@@ -1442,10 +1442,7 @@ def tests_view(request):
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None:
         raise exception_response(404)
-    if "follow" in request.params:
-        follow = 1
-    else:
-        follow = 0
+    follow = 1 if "follow" in request.params else 0
     results = run["results"]
     run["results_info"] = format_results(results, run)
     run_args = [("id", str(run["_id"]), "")]
@@ -1508,8 +1505,7 @@ def tests_view(request):
             )
 
         if name == "spsa" and value != "-":
-            iter_local = value["iter"] + 1  # assume at least one completed,
-            # and avoid division by zero
+            iter_local = value["iter"] + 1  # start from 1 to avoid division by zero
             A = value["A"]
             alpha = value["alpha"]
             gamma = value["gamma"]
@@ -1562,17 +1558,14 @@ def tests_view(request):
         if task["active"]:
             active += 1
             cores += task["worker_info"]["concurrency"]
-        last_updated = task.get(
-            "last_updated", datetime.min.replace(tzinfo=timezone.utc)
-        )
-        task["last_updated"] = last_updated
+        task.setdefault("last_updated", datetime.min.replace(tzinfo=timezone.utc))
 
     chi2 = get_chi2(run["tasks"])
     update_residuals(run["tasks"], cached_chi2=chi2)
 
     try:
         show_task = int(request.params.get("show_task", -1))
-    except:
+    except ValueError:
         show_task = -1
     if show_task >= len(run["tasks"]) or show_task < -1:
         show_task = -1
