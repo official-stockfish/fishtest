@@ -44,7 +44,7 @@ def strip_run(run):
     # a deep copy, avoiding copies of a few large lists.
     stripped = {}
     for k1, v1 in run.items():
-        if k1 in ["tasks", "bad_tasks"]:
+        if k1 in ("tasks", "bad_tasks"):
             stripped[k1] = []
         elif k1 == "args":
             stripped[k1] = {}
@@ -60,9 +60,8 @@ def strip_run(run):
             stripped[k1] = copy.deepcopy(v1)
 
     # and some string conversions
-    stripped["_id"] = str(run["_id"])
-    stripped["start_time"] = str(run["start_time"])
-    stripped["last_updated"] = str(run["last_updated"])
+    for key in ("_id", "start_time", "last_updated"):
+        stripped[key] = str(run[key])
 
     return stripped
 
@@ -211,10 +210,7 @@ class ApiView(object):
     def cpu_hours(self):
         username = self.get_username()
         user = self.request.userdb.user_cache.find_one({"username": username})
-        if not user:
-            return -1
-        else:
-            return user["cpu_hours"]
+        return -1 if user is None else user["cpu_hours"]
 
     def message(self):
         return self.request_body.get("message", "")
@@ -238,9 +234,8 @@ class ApiView(object):
         active = {}
         for run in runs:
             # some string conversions
-            run["_id"] = str(run["_id"])
-            run["start_time"] = str(run["start_time"])
-            run["last_updated"] = str(run["last_updated"])
+            for key in ("_id", "start_time", "last_updated"):
+                run[key] = str(run[key])
             active[str(run["_id"])] = run
         return active
 
@@ -282,9 +277,8 @@ class ApiView(object):
         finished = {}
         for run in runs:
             # some string conversions
-            run["_id"] = str(run["_id"])
-            run["start_time"] = str(run["start_time"])
-            run["last_updated"] = str(run["last_updated"])
+            for key in ("_id", "start_time", "last_updated"):
+                run[key] = str(run[key])
             finished[str(run["_id"])] = run
         return finished
 
@@ -381,17 +375,17 @@ class ApiView(object):
 
         is_ptnml = all(
             value is not None and value.replace(".", "").replace("-", "").isdigit()
-            for value in [LL, LD, DDWL, WD, WW]
+            for value in (LL, LD, DDWL, WD, WW)
         )
 
-        is_ptnml = is_ptnml and all(int(value) >= 0 for value in [LL, LD, DDWL, WD, WW])
+        is_ptnml = is_ptnml and all(int(value) >= 0 for value in (LL, LD, DDWL, WD, WW))
 
         is_wdl = not is_ptnml and all(
             value is not None and value.replace(".", "").replace("-", "").isdigit()
-            for value in [W, D, L]
+            for value in (W, D, L)
         )
 
-        is_wdl = is_wdl and all(int(value) >= 0 for value in [W, D, L])
+        is_wdl = is_wdl and all(int(value) >= 0 for value in (W, D, L))
 
         if not is_ptnml and not is_wdl:
             self.handle_error(
@@ -443,7 +437,7 @@ class ApiView(object):
             badEloValues = (
                 not all(
                     value.replace(".", "").replace("-", "").isdigit()
-                    for value in [elo0, elo1]
+                    for value in (elo0, elo1)
                 )
                 or float(elo1) < float(elo0) + 0.5
                 or abs(float(elo0)) > 10
@@ -484,21 +478,11 @@ class ApiView(object):
 
         # Strip the run of unneccesary information
         run = result["run"]
-        min_run = {"_id": str(run["_id"]), "args": run["args"], "tasks": []}
-        if int(str(worker_info["version"]).split(":")[0]) > 64:
-            task = run["tasks"][result["task_id"]]
-            min_task = {"num_games": task["num_games"]}
-            if "stats" in task:
-                min_task["stats"] = task["stats"]
-            min_task["start"] = task["start"]
-            min_run["my_task"] = min_task
-        else:
-            for task in run["tasks"]:
-                min_task = {"num_games": task["num_games"]}
-                if "stats" in task:
-                    min_task["stats"] = task["stats"]
-                min_run["tasks"].append(min_task)
-
+        task = run["tasks"][result["task_id"]]
+        min_task = {"num_games": task["num_games"], "start": task["start"]}
+        if "stats" in task:
+            min_task["stats"] = task["stats"]
+        min_run = {"_id": str(run["_id"]), "args": run["args"], "my_tasks": min_task}
         result["run"] = min_run
         return self.add_time(result)
 
