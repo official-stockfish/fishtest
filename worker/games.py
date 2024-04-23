@@ -727,11 +727,22 @@ def setup_engine(
         if p.returncode:
             raise WorkerException("Executing {} failed. Error: {}".format(cmd, errors))
 
-        subprocess.run(
-            ["make", "strip", f"COMP={comp}"],
-            stderr=subprocess.DEVNULL,
-            check=True,
-        )
+        cmd = ["make", "strip", f"COMP={comp}"]
+        try:
+            p = subprocess.run(
+                cmd,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError) as e:
+            raise FatalException(
+                f"Executing {' '.join(cmd)} raised Exception: {e.__class__.__name__}: {str(e)}",
+                e=e,
+            )
+        if p.returncode != 0:
+            raise FatalException(
+                f"Executing {' '.join(cmd)} failed. Error: {p.stderr.decode().strip()}",
+            )
 
         # We called setup_engine() because the engine was not cached.
         # Only another worker running in the same folder can have built the engine.
