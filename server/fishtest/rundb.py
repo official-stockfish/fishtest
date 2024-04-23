@@ -1492,8 +1492,8 @@ After fixing the issues you can unblock the worker at
             self.buffer(run, True)
         return message
 
-    def spsa_param_clip(self, param, increment):
-        return min(max(param["theta"] + increment, param["min"]), param["max"])
+    def spsa_param_clip(self, param, increment, r):
+        return min(max(param["theta"] + increment + r, param["min"]), param["max"])
 
     # Store SPSA parameters for each worker
     spsa_params = {}
@@ -1540,20 +1540,25 @@ After fixing the issues you can unblock the worker at
         # and avoid division by zero
         for param in spsa["params"]:
             c = param["c"] / iter_local ** spsa["gamma"]
+            r = random.uniform(0, 1)
             flip = 1 if random.getrandbits(1) else -1
+            # Stochastic rounding and probability for float N.p: (N, 1-p); (N+1, p)
+            w_value = math.floor(self.spsa_param_clip(param, c * flip, r))
+            b_value = math.floor(self.spsa_param_clip(param, -c * flip, r))
             result["w_params"].append(
                 {
                     "name": param["name"],
-                    "value": self.spsa_param_clip(param, c * flip),
+                    "value": w_value,
                     "R": param["a"] / (spsa["A"] + iter_local) ** spsa["alpha"] / c**2,
-                    "c": c,
+                    # Set c to the real delta after stochastic rounding is applied
+                    "c": abs(w_value - b_value) / 2,
                     "flip": flip,
                 }
             )
             result["b_params"].append(
                 {
                     "name": param["name"],
-                    "value": self.spsa_param_clip(param, -c * flip),
+                    "value": b_value
                 }
             )
 
@@ -1582,7 +1587,7 @@ After fixing the issues you can unblock the worker at
             R = w_params[idx]["R"]
             c = w_params[idx]["c"]
             flip = w_params[idx]["flip"]
-            param["theta"] = self.spsa_param_clip(param, R * c * result * flip)
+            param["theta"] = self.spsa_param_clip(param, R * c * result * flip, 0)
             if grow_summary:
                 summary.append({"theta": param["theta"], "R": R, "c": c})
 
