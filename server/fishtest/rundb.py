@@ -682,7 +682,7 @@ class RunDb:
                 itp *= bonus
 
         # Malus for too many active runs
-        itp *= 36.0 / (36.0 + count * count)
+        itp *= 64.0 / (64.0 + count * count)
 
         run["args"]["itp"] = itp
 
