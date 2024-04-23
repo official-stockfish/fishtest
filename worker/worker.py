@@ -1119,26 +1119,28 @@ def detect_compilers():
     return ret
 
 
-def detect_make():
-    try:
-        p = subprocess.run(
-            ["make", "-v"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-        )
-    except (OSError, subprocess.SubprocessError) as e:
-        print(
-            "It appears 'make' is not properly installed... ",
-            e,
-            sep="",
-            file=sys.stderr,
-        )
-        return False
-    if p.returncode != 0:
-        print(
-            "make -v failed with return code {}".format(
-                format_return_code(p.returncode)
+def verify_toolchain():
+    cmds = {"strip": ["strip", "-V"], "make": ["make", "-v"]}
+    if IS_MACOS:
+        # MacOSX apears not to have a method to detect strip
+        cmds["strip"] = ["which", "strip"]
+    for name, cmd in cmds.items():
+        cmd_str = " ".join(cmd)
+        ret = True
+        try:
+            p = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        except (OSError, subprocess.SubprocessError) as e:
+            print(f"'{cmd_str}' raised Exception: {e.__class__.__name__}: {str(e)}")
+            ret = False
+        if ret and p.returncode != 0:
+            print(
+                f"Executing '{cmd_str}' failed with return code "
+                f"{format_return_code(p.returncode)}. Error: {p.stderr.decode().strip()}"
             )
-        )
-        return False
+            ret = False
+        if not ret:
+            print(f"It appears '{name}' is not properly installed")
+            return ret
     return True
 
 
@@ -1567,8 +1569,8 @@ def worker():
         print("Exception verifying worker version:\n", e, sep="", file=sys.stderr)
         return 1
 
-    # Check for a common tool chain issue
-    if not detect_make():
+    # Check for common tool chain issues
+    if not verify_toolchain():
         return 1
 
     # Make sure we have a working cutechess-cli

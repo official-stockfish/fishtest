@@ -67,8 +67,8 @@ class workerTest(unittest.TestCase):
     def test_sri(self):
         self.assertTrue(worker.verify_sri(Path.cwd()))
 
-    def test_make_detection(self):
-        self.assertTrue(worker.detect_make())
+    def test_toolchain_verification(self):
+        self.assertTrue(worker.verify_toolchain())
 
     def test_setup_cutechess(self):
         self.assertTrue(worker.setup_cutechess(Path.cwd()))
