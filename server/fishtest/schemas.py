@@ -70,7 +70,7 @@ user_schema = {
     "email": email,
     "groups": [str, ...],
     "tests_repo": union("", url),
-    "machine_limit": int,
+    "machine_limit": uint,
 }
 
 
@@ -174,7 +174,7 @@ action_schema = intersect(
                 "worker": long_worker_name,
                 "run_id": run_id,
                 "run": run_name,
-                "task_id": int,
+                "task_id": uint,
                 "message": action_message,
             },
         ),
@@ -188,7 +188,7 @@ action_schema = intersect(
                 "worker": long_worker_name,
                 "run_id": run_id,
                 "run": run_name,
-                "task_id": int,
+                "task_id": uint,
                 "message": action_message,
             },
         ),
@@ -202,7 +202,7 @@ action_schema = intersect(
                 "worker": long_worker_name,
                 "run_id": run_id,
                 "run": run_name,
-                "task_id": int,
+                "task_id": uint,
             },
         ),
         (
@@ -234,7 +234,7 @@ action_schema = intersect(
                 "time": float,
                 "action": "upload_nn",
                 "username": username,
-                "nn": str,
+                "nn": net_name,
             },
         ),
         (
@@ -272,7 +272,7 @@ action_schema = intersect(
                     "run": run_name,
                     "message": action_message,
                     "worker?": long_worker_name,
-                    "task_id?": int,
+                    "task_id?": uint,
                 },
                 ifthen(at_least_one_of("worker", "task_id"), keys("worker", "task_id")),
             ),
