@@ -482,7 +482,7 @@ class ApiView(object):
         min_task = {"num_games": task["num_games"], "start": task["start"]}
         if "stats" in task:
             min_task["stats"] = task["stats"]
-        min_run = {"_id": str(run["_id"]), "args": run["args"], "my_tasks": min_task}
+        min_run = {"_id": str(run["_id"]), "args": run["args"], "my_task": min_task}
         result["run"] = min_run
         return self.add_time(result)
 
