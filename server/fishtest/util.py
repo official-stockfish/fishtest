@@ -15,6 +15,24 @@ from zxcvbn import zxcvbn
 FISH_URL = "https://tests.stockfishchess.org/tests/view/"
 
 
+class GeneratorAsFileReader:
+    def __init__(self, generator):
+        self.generator = generator
+        self.buffer = b""
+
+    def read(self, size=-1):
+        while size < 0 or len(self.buffer) < size:
+            try:
+                self.buffer += next(self.generator)
+            except StopIteration:
+                break
+        result, self.buffer = self.buffer[:size], self.buffer[size:]
+        return result
+
+    def close(self):
+        pass  # No cleanup needed, but method is required
+
+
 def hex_print(s):
     return hashlib.md5(str(s).encode("utf-8")).digest().hex()
 

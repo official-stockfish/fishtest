@@ -1,13 +1,11 @@
 import configparser
 import copy
-import io
 import math
 import os
 import random
 import re
 import signal
 import sys
-import tarfile
 import textwrap
 import threading
 import time
@@ -22,6 +20,7 @@ from fishtest.schemas import RUN_VERSION, nn_schema, runs_schema
 from fishtest.stats.stat_util import SPRT_elo
 from fishtest.userdb import UserDb
 from fishtest.util import (
+    GeneratorAsFileReader,
     crash_or_time,
     estimate_game_duration,
     format_bounds,
@@ -269,18 +268,10 @@ class RunDb:
 
     def get_run_pgns(self, run_id):
         pgns = self.pgndb.find({"run_id": {"$regex": f"^{run_id}"}})
-        if pgns:
-            with io.BytesIO() as tar_buffer:
-                with tarfile.open(fileobj=tar_buffer, mode="w") as tarf:
-                    for pgn in pgns:
-                        pgn_zip = pgn["pgn_zip"]
-                        tarinfo = tarfile.TarInfo(f"{pgn['run_id']}.pgn.gz")
-                        tarinfo.size = len(pgn_zip)
-                        # Extract and convert the 4 bytes starting at index 4
-                        tarinfo.mtime = int.from_bytes(pgn_zip[4:8], byteorder="little")
-                        tarf.addfile(tarinfo, io.BytesIO(pgn_zip))
-                pgns_tar = tar_buffer.getvalue()
-            return pgns_tar
+        if pgns is not None:
+            # Create a generator that yields each pgn.gz file
+            pgn_generator = (pgn["pgn_zip"] for pgn in pgns)
+            return GeneratorAsFileReader(pgn_generator)
         return None
 
     def write_nn(self, net):
