@@ -668,35 +668,35 @@ class RunDb:
         return results
 
     def calc_itp(self, run, count):
-        itp = run["args"]["throughput"]
-        itp = max(min(itp, 500), 1)
+        # Tests default to 100% base throughput, but we have several adjustments behind the scenes to get internal throughput.
+        base_tp = run["args"]["throughput"]
+        itp = base_tp = max(min(base_tp, 500), 1)  # Sanity check
 
-        # Base TP derived from power law of TC relative to STC
+        # The primary adjustment is derived from a power law of test TC relative to STC, so that long TCs compromise
+        # between worse latency and chewing too many cores.
         tc_ratio = get_tc_ratio(run["args"]["tc"], run["args"]["threads"])
-        # Discount longer test TP, but don't boost shorter tests
+        # Discount longer test itp-per-TC without boosting sub-STC tests
         if tc_ratio > 1:
             # LTC/STC tc_ratio = 6, target latency ratio = 3/2,
-            # => LTC base tp = 4 => log(4)/log(6) ~ 0.774
+            # --> LTC itp = 4 --> power = log(4)/log(6) ~ 0.774
             itp *= tc_ratio**0.774
 
-        # Gentle bonus for positive LLR
-        llr = run["args"].get("sprt", {}).get("llr", 0)
-        # Don't throw workers at a run that finishes in 2 minutes anyways
-        llr = min(max(llr, 0), 2.0)
-        a = 3  # max bonus 1.67x
-        itp *= (llr + a) / a
+        # The second adjustment is a multiplicative malus for too many active runs
+        itp *= 36.0 / (36.0 + count * count)
 
-        # Gentle bonus for high game count (up to double the average)
-        if "sprt" in run["args"]:
+        # Finally two gentle bonuses for positive LLR and long-running tests
+        if sprt := run["args"].get("sprt"):
+            llr = sprt.get("llr", 0)
+            # Don't throw workers at a run that finishes in 2 minutes anyways
+            llr = min(max(llr, 0), 2.0)
+            a = 3  # max LLR bonus 1.67x
+            itp *= (llr + a) / a
+            # max long test bonus 2.0x
             r = run["results"]
             n = r["wins"] + r["losses"] + r["draws"]
             x = 200_000
             if n > x:
-                bonus = min(n / x, 2)
-                itp *= bonus
-
-        # Malus for too many active runs
-        itp *= 36.0 / (36.0 + count * count)
+                itp *= min(n / x, 2)
 
         run["args"]["itp"] = itp
 
@@ -836,9 +836,14 @@ After fixing the issues you can unblock the worker at
                 # If we simply use oldcores-per-itp, then low-core tests will be
                 # overweighted when they're assigned large workers. If we simply
                 # use newcores-per-itp, then low-core tests will be underweighted
-                # when they're *not* assigned large workers. Split the difference
-                # by splitting the difference, and also ensuring at least one
-                # worker at all times.
+                # when they're *not* assigned large workers. Instead we split the
+                # difference and ensure at least one worker at all times. (The 2:1
+                # old:new weighting seems slightly more practical than 1:1 weighting?)
+                # This does result in some bias where smaller workers are more likely
+                # to get low itp tests and vice versa, however no one has *yet*
+                # demonstrated any resulting data quality issues.
+                # (Perhaps we should investigate that either way -- but then this is
+                # hardly the only source of bias either).
                 run["cores"] > 0,
                 (run["cores"] + max_threads / 2) / run["args"]["itp"],
                 # Tiebreakers!
@@ -929,7 +934,7 @@ After fixing the issues you can unblock the worker at
             need_tt += get_hash(run["args"]["new_options"])
             need_tt += get_hash(run["args"]["base_options"])
             need_tt *= max_threads // run["args"]["threads"]
-            # estime another 10MB per process, 30MB per thread, and 80MB for net as a base memory need besides hash
+            # estimate another 10MB per process, 30MB per thread, and 80MB for net as a base memory need besides hash
             # Note that changes here need the corresponding worker change to STC_memory, which limits concurrency
             need_base = (
                 2
