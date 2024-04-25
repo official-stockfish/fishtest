@@ -13,7 +13,7 @@ from pyramid.httpexceptions import (
     HTTPUnauthorized,
     exception_response,
 )
-from pyramid.response import Response
+from pyramid.response import FileIter, Response
 from pyramid.view import exception_view_config, view_config, view_defaults
 from vtjson import ValidationError, validate
 
@@ -532,19 +532,18 @@ class ApiView(object):
 
     @view_config(route_name="api_download_run_pgns")
     def download_run_pgns(self):
-        tar_name = self.request.matchdict["id"]
-        match = re.match(r"^([a-zA-Z0-9]+)\.pgns\.tar$", tar_name)
+        pgns_name = self.request.matchdict["id"]
+        match = re.match(r"^([a-zA-Z0-9]+)\.pgn\.gz$", pgns_name)
         if not match:
             return Response("Invalid filename format", status=400)
         run_id = match.group(1)
-        pgns_zip = self.request.rundb.get_run_pgns(run_id)
-        if pgns_zip is None:
+        pgns_reader = self.request.rundb.get_run_pgns(run_id)
+        if pgns_reader is None:
             return Response("No data found", status=404)
-        zip_buffer = io.BytesIO(pgns_zip)
-        response = Response(content_type="application/x-tar")
-        response.app_iter = zip_buffer
-        response.content_length = zip_buffer.getbuffer().nbytes
-        response.headers["Content-Disposition"] = f'attachment; filename="{tar_name}"'
+        response = Response(content_type="application/gzip")
+        response.app_iter = FileIter(pgns_reader)
+        response.headers["Content-Disposition"] = f'attachment; filename="{pgns_name}"'
+        response.headers["Content-Encoding"] = "gzip"
         return response
 
     @view_config(route_name="api_download_nn")
