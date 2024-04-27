@@ -32,9 +32,7 @@ def purge_pgn(rundb, finished, deleted, days):
             purged_runs += 1
 
         tasks_count = len(run["tasks"])
-        pgns_query = {
-            "run_id": {"$in": [f"{run['_id']}-{idx}" for idx in range(tasks_count)]}
-        }
+        pgns_query = {"run_id": {"$regex": f"^{run['_id']}-\\d+"}}
         pgns_count = rundb.pgndb.count_documents(pgns_query)
         if keep:
             kept_tasks += tasks_count
