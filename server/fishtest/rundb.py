@@ -257,22 +257,33 @@ class RunDb:
         return self.runs.insert_one(new_run).inserted_id
 
     def upload_pgn(self, run_id, pgn_zip):
-        self.pgndb.insert_one({"run_id": run_id, "pgn_zip": Binary(pgn_zip)})
+        self.pgndb.insert_one(
+            {"run_id": run_id, "pgn_zip": Binary(pgn_zip), "size": len(pgn_zip)}
+        )
         return {}
 
     def get_pgn(self, run_id):
         pgn = self.pgndb.find_one({"run_id": run_id})
-        if pgn:
-            return pgn["pgn_zip"]
-        return None
+        return pgn["pgn_zip"] if pgn else None
 
     def get_run_pgns(self, run_id):
-        pgns = self.pgndb.find({"run_id": {"$regex": f"^{run_id}"}})
-        if pgns is not None:
-            # Create a generator that yields each pgn.gz file
-            pgn_generator = (pgn["pgn_zip"] for pgn in pgns)
-            return GeneratorAsFileReader(pgn_generator)
-        return None
+        # Compute the total size using MongoDB's aggregation framework
+        total_size_agg = self.pgndb.aggregate(
+            [
+                {"$match": {"run_id": {"$regex": f"^{run_id}-\\d+"}}},
+                {"$group": {"_id": None, "totalSize": {"$sum": "$size"}}},
+            ]
+        )
+        total_size = total_size_agg.next()["totalSize"] if total_size_agg.alive else 0
+
+        if total_size > 0:
+            # Find the pgns and create a generator that yields each pgn.gz file
+            pgns = self.pgndb.find({"run_id": {"$regex": f"^{run_id}-\\d+"}})
+            pgns_reader = GeneratorAsFileReader(pgn["pgn_zip"] for pgn in pgns)
+        else:
+            pgns_reader = None
+
+        return pgns_reader, total_size
 
     def write_nn(self, net):
         validate(nn_schema, net, "net")

@@ -537,13 +537,14 @@ class ApiView(object):
         if not match:
             return Response("Invalid filename format", status=400)
         run_id = match.group(1)
-        pgns_reader = self.request.rundb.get_run_pgns(run_id)
+        pgns_reader, total_size = self.request.rundb.get_run_pgns(run_id)
         if pgns_reader is None:
             return Response("No data found", status=404)
         response = Response(content_type="application/gzip")
         response.app_iter = FileIter(pgns_reader)
         response.headers["Content-Disposition"] = f'attachment; filename="{pgns_name}"'
         response.headers["Content-Encoding"] = "gzip"
+        response.headers["Content-Length"] = str(total_size)
         return response
 
     @view_config(route_name="api_download_nn")
