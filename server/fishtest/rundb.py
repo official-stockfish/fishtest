@@ -264,7 +264,7 @@ class RunDb:
 
     def get_pgn(self, run_id):
         pgn = self.pgndb.find_one({"run_id": run_id})
-        return pgn["pgn_zip"] if pgn else None
+        return (pgn["pgn_zip"], pgn["size"]) if pgn else (None, 0)
 
     def get_run_pgns(self, run_id):
         # Compute the total size using MongoDB's aggregation framework
