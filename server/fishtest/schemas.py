@@ -8,6 +8,7 @@ import copy
 import math
 from datetime import datetime, timezone
 
+from bson.binary import Binary
 from bson.objectid import ObjectId
 from vtjson import (
     anything,
@@ -36,6 +37,7 @@ from vtjson import (
 )
 
 run_id = regex(r"[a-f0-9]{24}", name="run_id")
+run_id_pgns = regex(r"[a-f0-9]{24}-(0|[1-9]\d*)", name="run_id_pgns")
 run_name = intersect(regex(r".*-[a-f0-9]{7}", name="run_name"), size(0, 23 + 1 + 7))
 action_message = intersect(str, size(0, 1024))
 worker_message = intersect(str, size(0, 500))
@@ -59,6 +61,13 @@ uint = intersect(int, interval(0, ...))
 suint = intersect(int, interval(1, ...))
 ufloat = intersect(float, interval(0.0, ...))
 unumber = intersect(number, interval(0, ...))
+
+pgns_schema = {
+    "_id?": ObjectId,
+    "run_id": run_id_pgns,
+    "pgn_zip": Binary,
+    "size": uint,
+}
 
 user_schema = {
     "_id?": ObjectId,

@@ -16,7 +16,7 @@ from bson.binary import Binary
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from fishtest.actiondb import ActionDb
-from fishtest.schemas import RUN_VERSION, nn_schema, runs_schema
+from fishtest.schemas import RUN_VERSION, nn_schema, pgns_schema, runs_schema
 from fishtest.stats.stat_util import SPRT_elo
 from fishtest.userdb import UserDb
 from fishtest.util import (
@@ -257,8 +257,18 @@ class RunDb:
         return self.runs.insert_one(new_run).inserted_id
 
     def upload_pgn(self, run_id, pgn_zip):
+        record = {"run_id": run_id, "pgn_zip": Binary(pgn_zip), "size": len(pgn_zip)}
+        try:
+            validate(pgns_schema, record)
+        except ValidationError as e:
+            message = f"Internal Error. Pgn record has the wrong format: {str(e)}"
+            print(message, flush=True)
+            self.actiondb.log_message(
+                username="fishtest.system",
+                message=message,
+            )
         self.pgndb.insert_one(
-            {"run_id": run_id, "pgn_zip": Binary(pgn_zip), "size": len(pgn_zip)}
+            record,
         )
         return {}
 
