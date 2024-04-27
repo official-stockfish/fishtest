@@ -408,8 +408,8 @@ class TestApi(unittest.TestCase):
         self.assertTrue(response == {})
 
         pgn_filename_prefix = "{}-{}".format(run_id, task_id)
-        zip_pgn = self.rundb.get_pgn(pgn_filename_prefix)
-        with gzip.GzipFile(fileobj=io.BytesIO(zip_pgn), mode="rb") as gz:
+        pgn_zip, _ = self.rundb.get_pgn(pgn_filename_prefix)
+        with gzip.GzipFile(fileobj=io.BytesIO(pgn_zip), mode="rb") as gz:
             pgn = gz.read().decode()
         self.assertEqual(pgn, pgn_text)
         self.rundb.pgndb.delete_one({"run_id": pgn_filename_prefix})

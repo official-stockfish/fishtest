@@ -519,15 +519,14 @@ class ApiView(object):
     def download_pgn(self):
         zip_name = self.request.matchdict["id"]
         run_id = zip_name.split(".")[0]  # strip .pgn
-        pgn_zip = self.request.rundb.get_pgn(run_id)
+        pgn_zip, size = self.request.rundb.get_pgn(run_id)
         if pgn_zip is None:
             return Response("No data found", status=404)
-        zip_buffer = io.BytesIO(pgn_zip)
         response = Response(content_type="application/gzip")
-        response.app_iter = zip_buffer
-        response.content_length = zip_buffer.getbuffer().nbytes
+        response.app_iter = io.BytesIO(pgn_zip)
         response.headers["Content-Disposition"] = f'attachment; filename="{zip_name}"'
         response.headers["Content-Encoding"] = "gzip"
+        response.headers["Content-Length"] = str(size)
         return response
 
     @view_config(route_name="api_download_run_pgns")
