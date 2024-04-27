@@ -268,17 +268,19 @@ class RunDb:
 
     def get_run_pgns(self, run_id):
         # Compute the total size using MongoDB's aggregation framework
+        pgns_query = {"run_id": {"$regex": f"^{run_id}-\\d+"}}
         total_size_agg = self.pgndb.aggregate(
             [
-                {"$match": {"run_id": {"$regex": f"^{run_id}-\\d+"}}},
+                {"$match": pgns_query},
+                {"$project": {"size": 1, "_id": 0}},
                 {"$group": {"_id": None, "totalSize": {"$sum": "$size"}}},
             ]
         )
         total_size = total_size_agg.next()["totalSize"] if total_size_agg.alive else 0
 
         if total_size > 0:
-            # Find the pgns and create a generator that yields each pgn.gz file
-            pgns = self.pgndb.find({"run_id": {"$regex": f"^{run_id}-\\d+"}})
+            # Create a file reader from a generator that yields each pgn.gz file
+            pgns = self.pgndb.find(pgns_query, {"pgn_zip": 1, "_id": 0})
             pgns_reader = GeneratorAsFileReader(pgn["pgn_zip"] for pgn in pgns)
         else:
             pgns_reader = None
