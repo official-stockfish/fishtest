@@ -55,7 +55,7 @@ from updater import update
 # Several packages are called "expression".
 # So we make sure to use the locally installed one.
 
-WORKER_VERSION = 232
+WORKER_VERSION = 233
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -795,10 +795,11 @@ def setup_parameters(worker_dir):
         options.port = 443
 
     # Limit concurrency so that at least STC tests can run with the evailable memory
-    # The memory need per engine is 16 for the TT Hash, 10 for the process 80 for the net and 30 per thread
+    # The memory need per engine is 16 for the TT Hash, 10 for the process 138 for the net and 16 per thread
+    # 60 is the need for cutechess-cli
     # These numbers need to be up-to-date with the server values
-    STC_memory = 2 * (16 + 10 + 80 + 30)
-    max_concurrency = int(options.max_memory / STC_memory)
+    STC_memory = 2 * (16 + 10 + 138 + 16)
+    max_concurrency = int((options.max_memory - 60) / STC_memory)
     if max_concurrency < 1:
         print(
             "You need to reserve at least {} MiB to run the worker!".format(STC_memory)

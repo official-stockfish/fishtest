@@ -929,17 +929,17 @@ After fixing the issues you can unblock the worker at
 
             # We check if the worker has reserved enough memory
             need_tt = 0
-            need_base = 0
-
             need_tt += get_hash(run["args"]["new_options"])
             need_tt += get_hash(run["args"]["base_options"])
             need_tt *= max_threads // run["args"]["threads"]
-            # estimate another 10MB per process, 30MB per thread, and 80MB for net as a base memory need besides hash
+            # Needed for cutechess-cli with the fairly large UHO_Lichess_4852_v1.epd opening book
+            need_base = 60
+            # estimate another 10MB per process, 16MB per thread, and 132+6MB for large and small net
             # Note that changes here need the corresponding worker change to STC_memory, which limits concurrency
-            need_base = (
+            need_base += (
                 2
                 * (max_threads // run["args"]["threads"])
-                * (10 + 80 + 30 * run["args"]["threads"])
+                * (10 + 138 + 16 * run["args"]["threads"])
             )
 
             if need_base + need_tt > max_memory:
