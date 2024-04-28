@@ -542,7 +542,6 @@ class ApiView(object):
         response = Response(content_type="application/gzip")
         response.app_iter = FileIter(pgns_reader)
         response.headers["Content-Disposition"] = f'attachment; filename="{pgns_name}"'
-        response.headers["Content-Encoding"] = "gzip"
         response.headers["Content-Length"] = str(total_size)
         return response
 
