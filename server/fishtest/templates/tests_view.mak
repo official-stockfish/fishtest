@@ -235,6 +235,12 @@
           % endif
         % endif
 
+        % if approver:
+          <div class="col-12 col-sm">
+            <a href="/api/run_pgns/${run['_id']}.pgn.gz" class="btn btn-primary text-nowrap w-100">Download games</a>
+          </div>
+        % endif
+
         <div class="col-12 col-sm">
           <a class="btn btn-light border w-100" href="/tests/run?id=${run['_id']}">Reschedule</a>
         </div>
