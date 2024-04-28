@@ -237,7 +237,7 @@
 
         % if approver:
           <div class="col-12 col-sm">
-            <a href="/api/run_pgns/${run['_id']}.pgn.gz" class="btn btn-primary text-nowrap w-100">Download games</a>
+            <button id="gamesDownloadButton" class="btn btn-primary text-nowrap w-100">Download games</button>
           </div>
         % endif
 
@@ -859,4 +859,28 @@
       document.documentElement.style="overflow:scroll;";
     % endif
     });
+</script>
+<script>
+  document.getElementById("gamesDownloadButton")?.addEventListener("click", function () {
+    async function downloadFile() {
+      try {
+        const response = await fetch(`/api/run_pgns/${run["_id"]}.pgn.gz`);
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || "Error fetching file");
+        }
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${run["_id"]}.pgn.gz`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } catch (error) {
+        console.error(error.message);
+      }
+    }
+    downloadFile();
+  });
 </script>
