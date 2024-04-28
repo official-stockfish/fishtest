@@ -4,7 +4,7 @@ import io
 import re
 from datetime import datetime, timezone
 
-from fishtest.schemas import api_access_schema, api_schema
+from fishtest.schemas import api_access_schema, api_schema, gzip_data
 from fishtest.stats.stat_util import SPRT_elo, get_elo
 from fishtest.util import worker_name
 from pyramid.httpexceptions import (
@@ -509,9 +509,14 @@ class ApiView(object):
     @view_config(route_name="api_upload_pgn")
     def upload_pgn(self):
         self.validate_request("/api/upload_pgn")
+        try:
+            pgn_zip = base64.b64decode(self.pgn())
+            validate(gzip_data, pgn_zip, "pgn")
+        except Exception as e:
+            self.handle_error(str(e))
         result = self.request.rundb.upload_pgn(
             run_id="{}-{}".format(self.run_id(), self.task_id()),
-            pgn_zip=base64.b64decode(self.pgn()),
+            pgn_zip=pgn_zip,
         )
         return self.add_time(result)
 

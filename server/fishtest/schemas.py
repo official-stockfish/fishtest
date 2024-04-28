@@ -25,6 +25,7 @@ from vtjson import (
     ip_address,
     keys,
     lax,
+    magic,
     nothing,
     number,
     one_of,
@@ -56,18 +57,27 @@ epd_file = glob("*.epd", name="epd_file")
 pgn_file = glob("*.pgn", name="pgn_file")
 even = div(2, name="even")
 datetime_utc = intersect(datetime, fields({"tzinfo": timezone.utc}))
+gzip_data = magic("application/gzip", name="gzip_data")
 
 uint = intersect(int, interval(0, ...))
 suint = intersect(int, interval(1, ...))
 ufloat = intersect(float, interval(0.0, ...))
 unumber = intersect(number, interval(0, ...))
 
-pgns_schema = {
-    "_id?": ObjectId,
-    "run_id": run_id_pgns,
-    "pgn_zip": Binary,
-    "size": uint,
-}
+
+def size_is_length(x):
+    return x["size"] == len(x["pgn_zip"])
+
+
+pgns_schema = intersect(
+    {
+        "_id?": ObjectId,
+        "run_id": run_id_pgns,
+        "pgn_zip": intersect(Binary, gzip_data),
+        "size": uint,
+    },
+    size_is_length,
+)
 
 user_schema = {
     "_id?": ObjectId,
