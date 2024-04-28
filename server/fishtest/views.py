@@ -831,6 +831,13 @@ def validate_modify(request, run):
         )
         raise home(request)
 
+    if "spsa" in run["args"] and num_games != run["args"]["num_games"]:
+        request.session.flash(
+            "Unable to modify number of games for SPSA tests, SPSA hyperparams are based off the initial number of games",
+            "error",
+        )
+        raise home(request)
+
     max_games = 3200000
     if num_games > max_games:
         request.session.flash("Number of games must be <= " + str(max_games), "error")
