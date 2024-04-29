@@ -1002,14 +1002,14 @@
     const params = document.getElementById('spsa_raw_params').value;
     let s = fishtestToSpsa(params);
     if (s === null) {
-      alert("Unable to parse spsa parameters.");
+      alertError("Unable to parse spsa parameters.");
       return false;
     }
     /* estimate the draw ratio */
     const tc = document.getElementById('tc').value;
     const dr = drawRatio(tc);
     if (dr === null) {
-      alert("Unable to parse time control.");
+      alertError("Unable to parse time control.");
       return false;
     }
     s.draw_ratio = dr;

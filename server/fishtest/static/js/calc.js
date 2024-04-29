@@ -87,7 +87,13 @@ function drawCharts(resize) {
     // do not show a stale alert with a resize
     // and use last valid sprt to draw chart
     if (!resize || !validSprt) {
-      alert(error);
+      if (alertError) {
+        // if a global custom alertError is defined when using this package
+        alertError(error);
+      } else {
+        alert(error);
+      }
+
       return;
     } else sprt = validSprt;
   } else validSprt = sprt;
