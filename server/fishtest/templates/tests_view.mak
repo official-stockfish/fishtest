@@ -237,7 +237,10 @@
 
         % if approver:
           <div class="col-12 col-sm">
-            <button id="gamesDownloadButton" class="btn btn-primary text-nowrap w-100">Download games</button>
+            <button 
+              id="download_games"
+              class="btn btn-primary text-nowrap w-100"
+            >Download games</button>
           </div>
         % endif
 
@@ -461,6 +464,7 @@
 ></script>
 
 <script>
+  document.title = "${page_title} | Stockfish Testing";
   let cookieTheme = getCookie("theme");
   const currentTime = new Date().getTime();
   const oneDayAgo = currentTime - (24 * 60 * 60 * 1000); // 24 hours ago in milliseconds
@@ -514,10 +518,40 @@
   document
     .getElementById("moon")
     .addEventListener("click", () => setHighlightTheme("dark"));
-</script>
 
-<script>
-  document.title = "${page_title} | Stockfish Testing";
+  async function downloadPGNs() {
+    try {
+      const response = await fetch(`/api/run_pgns/${run["_id"]}.pgn.gz`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          alertError("No games found for this run");
+        } else {
+          alertError("Unable to download PGNs");
+        }
+        return;
+      }
+      const blob = await response.blob();
+
+      // Check if the blob is empty
+      if (blob.size === 0) {
+        alertError("Blob is empty!");
+        return;
+      }
+      
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${run["_id"]}.pgn.gz`;
+      document.body.append(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (error) {
+      alertError("Network error: please check your network!");
+    }
+  }
+
+  const downloadPGNsButton = document.getElementById("download_games");
+  downloadPGNsButton?.addEventListener("click", downloadPGNs);
 
   let fetchedTasksBefore = false;
   async function handleRenderTasks(){
@@ -859,28 +893,4 @@
       document.documentElement.style="overflow:scroll;";
     % endif
     });
-</script>
-<script>
-  document.getElementById("gamesDownloadButton")?.addEventListener("click", function () {
-    async function downloadFile() {
-      try {
-        const response = await fetch(`/api/run_pgns/${run["_id"]}.pgn.gz`);
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(errorText || "Error fetching file");
-        }
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `${run["_id"]}.pgn.gz`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      } catch (error) {
-        console.error(error.message);
-      }
-    }
-    downloadFile();
-  });
 </script>
