@@ -66,6 +66,16 @@ function getCookie(cookieName) {
     .find(([name]) => name === cookieName)?.[1];
 }
 
+function formatBytes(bytes) {
+  const units = ["B", "KiB", "MiB", "GiB", "TiB"];
+  let unitIndex = 0;
+  while (bytes >= 1024 && unitIndex < units.length - 1) {
+    bytes /= 1024;
+    unitIndex++;
+  }
+  return `${bytes.toFixed(2)} ${units[unitIndex]}`;
+}
+
 function handleApplicationThemes() {
   if (!getCookie("theme")) {
     setTheme(mediaTheme());
