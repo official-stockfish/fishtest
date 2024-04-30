@@ -20,7 +20,6 @@ from fishtest.util import (
     get_hash,
     get_tc_ratio,
     password_strength,
-    update_residuals,
 )
 from pyramid.httpexceptions import HTTPFound, exception_response
 from pyramid.security import forget, remember
@@ -1565,7 +1564,6 @@ def tests_view(request):
         task.setdefault("last_updated", datetime.min.replace(tzinfo=timezone.utc))
 
     chi2 = get_chi2(run["tasks"])
-    update_residuals(run["tasks"], cached_chi2=chi2)
 
     try:
         show_task = int(request.params.get("show_task", -1))

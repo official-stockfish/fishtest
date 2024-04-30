@@ -1306,6 +1306,8 @@ After fixing the issues you can unblock the worker at
             # done by stop_run.
             ret = {"task_alive": False}
         else:
+            if not task["active"]:
+                update_residuals(run["tasks"])
             self.buffer(run, False)
             ret = {"task_alive": task["active"]}
 
@@ -1322,6 +1324,7 @@ After fixing the issues you can unblock the worker at
         # Mark the task as inactive.
         task["active"] = False
         self.handle_crash_or_time(run, task_id)
+        update_residuals(run["tasks"])
         self.buffer(run, False)
         print(
             "Failed_task: failure for: https://tests.stockfishchess.org/tests/view/{}, "
@@ -1347,6 +1350,7 @@ After fixing the issues you can unblock the worker at
         """
         self.clear_params(run_id)  # spsa stuff
         run = self.get_run(run_id)
+        update_residuals(run["tasks"])
         for task in run["tasks"]:
             task["active"] = False
         results = run["results"]
