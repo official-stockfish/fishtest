@@ -519,7 +519,14 @@
     .getElementById("moon")
     .addEventListener("click", () => setHighlightTheme("dark"));
 
-  async function downloadPGNs() {
+  let downloading = false;
+  async function downloadPGNs(e) {
+    if (downloading) {
+      return;
+    }
+    downloading = true;
+    const button = e.currentTarget;
+    button.textContent = "Downloading...";
     try {
       const response = await fetch(`/api/run_pgns/${run["_id"]}.pgn.gz`);
       if (!response.ok) {
@@ -530,7 +537,28 @@
         }
         return;
       }
-      const blob = await response.blob();
+      const contentLength = parseInt(response.headers.get('Content-Length'));
+      const contentLengthFormatted = formatBytes(contentLength);
+      const reader = response.body.getReader();
+      let receivedLength = 0;
+      let chunks = [];
+
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          break;
+        }
+
+        chunks.push(value);
+        receivedLength += value.length;
+
+        const progressFormatted = formatBytes(receivedLength);
+        button.textContent = progressFormatted + " / " + contentLengthFormatted;
+      }
+
+      // Combine all chunks into a single Blob
+      const blob = new Blob(chunks);
 
       // Check if the blob is empty
       if (blob.size === 0) {
@@ -547,6 +575,9 @@
       document.body.removeChild(a);
     } catch (error) {
       alertError("Network error: please check your network!");
+    } finally {
+      downloading = false;
+      button.textContent = "Download Games";
     }
   }
 
