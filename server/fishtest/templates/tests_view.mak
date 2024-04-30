@@ -235,19 +235,21 @@
           % endif
         % endif
 
-        % if approver:
+        <div class="col-12 col-sm">
+          <a class="btn btn-light border w-100" href="/tests/run?id=${run['_id']}">Reschedule</a>
+        </div>
+      </div>
+
+      % if approver:
+        <div class="row g-2 mb-2">
           <div class="col-12 col-sm">
             <button 
               id="download_games"
               class="btn btn-primary text-nowrap w-100"
             >Download games</button>
           </div>
-        % endif
-
-        <div class="col-12 col-sm">
-          <a class="btn btn-light border w-100" href="/tests/run?id=${run['_id']}">Reschedule</a>
         </div>
-      </div>
+      % endif
 
       % if run.get('base_same_as_master') is not None:
         % if run['base_same_as_master']:
