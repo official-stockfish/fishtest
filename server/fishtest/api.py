@@ -32,7 +32,7 @@ However, keep in mind that this information might be slightly outdated.
 This depends on how frequently the main instance flushes its `run_cache`.
 """
 
-WORKER_VERSION = 235
+WORKER_VERSION = 236
 
 
 def validate_request(request):
