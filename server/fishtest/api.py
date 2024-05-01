@@ -331,7 +331,7 @@ class ApiView(object):
             task["last_updated"] = str(task["last_updated"])
         if "residual" in task:
             # json does not know about infinity
-            if task["residual"] == float("inf"):
+            if task.get("residual", None) == float("inf"):
                 task["residual"] = "inf"
         return task
 

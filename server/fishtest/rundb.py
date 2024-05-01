@@ -31,7 +31,7 @@ from fishtest.util import (
     get_tc_ratio,
     post_in_fishcooking_results,
     remaining_hours,
-    update_residuals,
+    residual_to_color,
     worker_name,
 )
 from fishtest.workerdb import WorkerDb
@@ -203,6 +203,7 @@ class RunDb:
             # Will be filled in by tasks, indexed by task-id.
             # Starts as an empty list.
             "tasks": [],
+            "bad_tasks": [],
             # Aggregated results
             "results": {
                 "wins": 0,
@@ -1424,7 +1425,11 @@ After fixing the issues you can unblock the worker at
         if run.get("failed", False):
             return "You cannot purge a failed run"
         message = "No bad workers"
-        # Transfer bad tasks to run["bad_tasks"]
+
+        # The following is necessary to be able to purge
+        # old runs. It can be deleted after 30 days
+        # (cfr above).
+
         if "bad_tasks" not in run:
             run["bad_tasks"] = []
 
@@ -1445,11 +1450,8 @@ After fixing the issues you can unblock the worker at
             if crash_or_time(task):
                 message = ""
                 bad_task = copy.deepcopy(task)
-                # The next two lines are a bit hacky but
-                # the correct residual and color may not have
-                # been set yet.
                 bad_task["residual"] = 10.0
-                bad_task["residual_color"] = "#FF6A6A"
+                bad_task["residual_color"] = "red"
                 bad_task["task_id"] = task_id
                 bad_task["bad"] = True
                 run["bad_tasks"].append(bad_task)
@@ -1464,10 +1466,6 @@ After fixing the issues you can unblock the worker at
                 task["stats"] = copy.deepcopy(zero_stats)
 
         chi2 = get_chi2(run["tasks"])
-        # Make sure the residuals are up to date.
-        # Once a task is moved to run["bad_tasks"] its
-        # residual will no longer change.
-        update_residuals(run["tasks"], cached_chi2=chi2)
         bad_workers = get_bad_workers(
             run["tasks"],
             cached_chi2=chi2,
@@ -1484,6 +1482,15 @@ After fixing the issues you can unblock the worker at
                 bad_task = copy.deepcopy(task)
                 bad_task["task_id"] = task_id
                 bad_task["bad"] = True
+                # Remember the residual!
+                # Once a task is moved to run["bad_tasks"] its
+                # residual will no longer change.
+                bad_task["residual"] = chi2["residual"].get(
+                    task["worker_info"]["unique_key"], float("inf")
+                )
+                bad_task["residual_color"] = residual_to_color(
+                    bad_task["residual"], chi2
+                )
                 run["bad_tasks"].append(bad_task)
                 task["bad"] = True
                 task["active"] = False
