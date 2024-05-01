@@ -1,5 +1,5 @@
 <%!
-  from fishtest.util import worker_name
+  from fishtest.util import worker_name, display_residual
 %>
 
 % for idx, task in enumerate(run['tasks'] + run.get('bad_tasks', [])):
@@ -70,9 +70,12 @@
     <td>${stats.get('time_losses', '-')}</td>
 
     % if 'spsa' not in run['args']:
-      % if 'residual' in task and task['residual']!=float("inf"):
-        <td style="background-color:${task['residual_color']}">
-          ${f"{task['residual']:.3f}"}
+      <%
+        d=display_residual(task, chi2)
+      %>
+      % if d['residual']!=float("inf"):
+        <td style="background-color:${d['display_color']}">
+          ${f"{d['residual']:.3f}"}
         </td>
       % else:
         <td>-</td>
