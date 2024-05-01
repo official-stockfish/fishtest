@@ -721,7 +721,7 @@ def setup_engine(
                 if not IS_WINDOWS:
                     os.killpg(p.pid, signal.SIGINT)
                 raise WorkerException(
-                    f"Executing {cmd} raised Exception: {e.__class__.__name__}: {str(e)}",
+                    f"Executing {cmd} raised Exception: {type(e).__name__}: {e}",
                     e=e,
                 )
         if p.returncode:
@@ -736,7 +736,7 @@ def setup_engine(
             )
         except (OSError, subprocess.SubprocessError) as e:
             raise FatalException(
-                f"Executing {' '.join(cmd)} raised Exception: {e.__class__.__name__}: {str(e)}",
+                f"Executing {' '.join(cmd)} raised Exception: {type(e).__name__}: {e}",
                 e=e,
             )
         if p.returncode != 0:

@@ -1130,7 +1130,7 @@ def verify_toolchain():
         try:
             p = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
         except (OSError, subprocess.SubprocessError) as e:
-            print(f"'{cmd_str}' raised Exception: {e.__class__.__name__}: {str(e)}")
+            print(f"'{cmd_str}' raised Exception: {type(e).__name__}: {e}")
             ret = False
         if ret and p.returncode != 0:
             print(
