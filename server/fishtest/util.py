@@ -209,30 +209,44 @@ def get_bad_workers(tasks, cached_chi2=None, p=0.001, res=7.0, iters=1):
     return bad_workers
 
 
-def update_residuals(tasks, cached_chi2=None):
-    # If we have an up-to-date result of get_chi2() we can pass
-    # it as cached_chi2 to avoid needless recomputation.
-    chi2 = get_chi2(tasks) if cached_chi2 is None else cached_chi2
-    residuals = chi2["residual"]
+def residual_to_color(residual, chi2):
+    if abs(residual) < chi2["z_95"]:
+        return "green"
+    elif abs(residual) < chi2["z_99"]:
+        return "yellow"
+    else:
+        return "red"
 
-    for task in tasks:
-        if "bad" in task:
-            continue
-        if "worker_info" not in task:
-            continue
-        task["residual"] = residuals.get(
-            task["worker_info"]["unique_key"], float("inf")
-        )
 
+def display_residual(task, chi2):
+    if "bad" in task and "residual" in task:
+        residual = task["residual"]
+        residual_color = task["residual_color"]
+    else:
         if crash_or_time(task):
-            task["residual"] = 10.0
-            task["residual_color"] = "#FF6A6A"
-        elif abs(task["residual"]) < chi2["z_95"]:
-            task["residual_color"] = "#44EB44"
-        elif abs(task["residual"]) < chi2["z_99"]:
-            task["residual_color"] = "yellow"
+            residual = 10.0
+            residual_color = "red"
         else:
-            task["residual_color"] = "#FF6A6A"
+            residual = chi2["residual"].get(
+                task["worker_info"]["unique_key"], float("inf")
+            )
+            residual_color = residual_to_color(residual, chi2)
+
+    display_colors = {
+        "green": "#44EB44",
+        "yellow": "yellow",
+        "red": "#FF6A6A",
+        "#44EB44": "#44EB44",  # legacy bad tasks
+        "#FF6A6A": "#FF6A6A",
+    }
+
+    display_color = display_colors[residual_color]
+
+    return {
+        "residual": residual,
+        "residual_color": residual_color,
+        "display_color": display_color,
+    }
 
 
 def format_bounds(elo_model, elo0, elo1):

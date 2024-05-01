@@ -62,6 +62,7 @@ pgn_file = glob("*.pgn", name="pgn_file")
 even = div(2, name="even")
 datetime_utc = intersect(datetime, fields({"tzinfo": timezone.utc}))
 gzip_data = magic("application/gzip", name="gzip_data")
+residual_color = set_name(union("green", "yellow", "red"), "residual_color")
 
 uint = intersect(int, ge(0))
 suint = intersect(int, gt(0))
@@ -640,7 +641,7 @@ valid_aggregated_data = intersect(
 # about non-validation of runs created with the prior
 # schema.
 
-RUN_VERSION = 6
+RUN_VERSION = 7
 
 runs_schema = intersect(
     {
@@ -762,8 +763,6 @@ runs_schema = intersect(
                     "active": bool,
                     "last_updated": datetime_utc,
                     "start": uint,
-                    "residual?": number,
-                    "residual_color?": str,
                     "bad?": True,
                     "stats": results_schema,
                     "worker_info": worker_info_schema_runs,
@@ -772,14 +771,14 @@ runs_schema = intersect(
             ),
             ...,
         ],
-        "bad_tasks?": [
+        "bad_tasks": [
             {
                 "num_games": intersect(uint, even),
                 "active": False,
                 "last_updated": datetime_utc,
                 "start": uint,
                 "residual": number,
-                "residual_color": str,
+                "residual_color": residual_color,
                 "bad": True,
                 "task_id": task_id,
                 "stats": results_schema,
