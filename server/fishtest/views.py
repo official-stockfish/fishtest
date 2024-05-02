@@ -1562,7 +1562,6 @@ def tests_view(request):
         if task["active"]:
             active += 1
             cores += task["worker_info"]["concurrency"]
-        task.setdefault("last_updated", datetime.min.replace(tzinfo=timezone.utc))
 
     chi2 = get_chi2(run["tasks"])
     update_residuals(run["tasks"], cached_chi2=chi2)
