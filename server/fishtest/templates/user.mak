@@ -124,9 +124,9 @@
             id="github_token"
             name="github_token"
             autocomplete="off"
-            placeholder="GitHub fine-grained personal access token"
+           placeholder="GitHub's fine-grained personal access token"
           />
-        <label for="github_token" class="d-flex align-items-end">GitHub Fine-grained personal access tokens</label>
+        <label for="github_token" class="d-flex align-items-end">GitHub's fine-grained personal access token</label>
         </div>
         <span class="input-group-text" role="button" data-bs-toggle="modal" data-bs-target="#infoModal">
           <i class="fas fa-question-circle fa-lg pe-none" style="width: 30px"></i>
@@ -145,7 +145,7 @@
               </p>
               
               <!-- Information about storage -->
-              <p>This token will be stored in your local storage, not in a database. 
+              <p>This token will be stored in your local storage, not in the server database.
               This ensures that the token is only accessible to you, reducing the risk of unauthorized access.
               </p>
               
@@ -157,14 +157,13 @@
               <!-- Instructions on how to obtain the token -->
               <h4>Instructions:</h4>
               <ol>
-                <li>Access the link <a href="https://github.com/settings/tokens?type=beta">here</a>.</li>
+                <li>Access the Github's link <a href="https://github.com/settings/tokens?type=beta">here</a>, login if required.</li>
                 <li>Press "Generate a new token".</li>
                 <li>Set a "Token name".</li>
                 <li>Set your preferred "Expiration" time.</li>
-                <li>Set "Repository access" to "All Repositories".</li>
-                <li>In "Permissions" section, grant the "Read" permission only for "Contents", leaving all other permissions at default values.</li>
+                <li>Set "Repository access" to "Public Repositories (read-only)".</li>
                 <li>Press "Generate token" at the bottom of the page.</li>
-                <li>Copy the token and paste it into the input field above. Remember, GitHub will not show the token again for security reasons, so make sure to save it somewhere safe.</li>
+                <li>Copy the token and paste it into this input field. Remember, GitHub will not show the token again for security reasons, so make sure to save it somewhere safe.</li>
               </ol>
             </div>
           </div>
