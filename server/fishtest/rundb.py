@@ -866,11 +866,21 @@ After fixing the issues you can unblock the worker at
         for task in active_tasks:
             task_name = worker_name(task["worker_info"], short=True)
             if my_name == task_name:
+                task_name_long = worker_name(task["worker_info"])
+                my_name_long = worker_name(worker_info)
+                task_unique_key = task["worker_info"]["unique_key"]
+                if unique_key == task_unique_key:
+                    # It seems that this worker was unable to update an old task
+                    # (perhaps because of server issues).
+                    print(
+                        f'Stale active task detected for worker "{my_name_long}". Correcting...',
+                        flush=True,
+                    )
+                    task["active"] = False
+                    continue
                 last_update = (now - task["last_updated"]).seconds
                 # 120 = period of heartbeat in worker.
                 if last_update <= 120:
-                    task_name_long = worker_name(task["worker_info"])
-                    my_name_long = worker_name(worker_info)
                     error = (
                         f'Request_task: There is already a worker running with name "{task_name_long}" '
                         f'which sent an update {last_update} seconds ago (my name is "{my_name_long}")'
