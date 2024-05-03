@@ -869,9 +869,11 @@ After fixing the issues you can unblock the worker at
                 last_update = (now - task["last_updated"]).seconds
                 # 120 = period of heartbeat in worker.
                 if last_update <= 120:
-                    error = 'Request_task: There is already a worker running with name "{}" which sent an update {} seconds ago'.format(
-                        my_name,
-                        last_update,
+                    task_name_long = worker_name(task["worker_info"])
+                    my_name_long = worker_name(worker_info)
+                    error = (
+                        f'Request_task: There is already a worker running with name "{task_name_long}" '
+                        f'which sent an update {last_update} seconds ago (my name is "{my_name_long}")'
                     )
                     print(error, flush=True)
                     return {"task_waiting": False, "error": error}
