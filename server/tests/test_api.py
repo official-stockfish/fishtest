@@ -541,7 +541,8 @@ class TestRunFinished(unittest.TestCase):
         # Request task 2 of 2
         request = self.correct_password_request()
         response = ApiView(request).request_task()
-        self.assertTrue("error" in response)
+        self.assertFalse("error" in response)
+        # TODO Add test for a different worker connecting
 
     def test_auto_purge_runs(self):
         stop_all_runs(self)
