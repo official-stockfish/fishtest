@@ -87,9 +87,7 @@
                         "options": "Hash=64",
                         "book": "${test_book}",
                         "stop_rule": "stop-rule-sprt",
-                        "bounds": "standard LTC",
-                        "base_branch": "${base_branch}",
-                        "base_signature": ${latest_bench}
+                        "bounds": "standard LTC"
                       }'>
                     <label class="list-group-item rounded-3" for="ltc_test" title="Long time control | Single-threaded">
                       LTC
@@ -107,9 +105,7 @@
                         "options": "Hash=64",
                         "book": "${test_book}",
                         "stop_rule": "stop-rule-sprt",
-                        "bounds": "standard STC",
-                        "base_branch": "${base_branch}",
-                        "base_signature": ${latest_bench}
+                        "bounds": "standard STC"
                       }'>
                     <label class="list-group-item rounded-3" for="stc_smp_test" title="Short time control | Multi-threaded">
                       STC SMP
@@ -127,9 +123,7 @@
                         "options": "Hash=256",
                         "book": "${test_book}",
                         "stop_rule": "stop-rule-sprt",
-                        "bounds": "standard LTC",
-                        "base_branch": "${base_branch}",
-                        "base_signature": ${latest_bench}
+                        "bounds": "standard LTC"
                       }'>
                     <label class="list-group-item rounded-3" for="ltc_smp_test" title="Long time control | Multi-threaded">
                       LTC SMP
@@ -147,9 +141,7 @@
                         "options": "Hash=192",
                         "book": "${test_book}",
                         "stop_rule": "stop-rule-sprt",
-                        "bounds": "standard STC",
-                        "base_branch": "${base_branch}",
-                        "base_signature": ${latest_bench}
+                        "bounds": "standard STC"
                       }'>
                     <label class="list-group-item rounded-3" for="vltc_test" title="Very long time control | Single-threaded">
                       VLTC
@@ -167,9 +159,7 @@
                         "options": "Hash=512",
                         "book": "${test_book}",
                         "stop_rule": "stop-rule-sprt",
-                        "bounds": "standard LTC",
-                        "base_branch": "${base_branch}",
-                        "base_signature": ${latest_bench}
+                        "bounds": "standard LTC"
                       }'>
                     <label class="list-group-item rounded-3" for="vltc_smp_test" title="Very long time control | Multi-threaded">
                       VLTC SMP
@@ -813,8 +803,13 @@
           if (test_signature) {
             document.getElementById("test-signature").value = test_signature;
           }
-          document.getElementById("base-branch").value = base_branch;
-          document.getElementById("base-signature").value = base_signature;
+          
+          if (base_branch) {
+            document.getElementById("base-branch").value = base_branch;
+          }
+          if (base_signature) {
+            document.getElementById("base-signature").value = base_signature;
+          }
         }
 
         if (name === "PT" || name === "PT SMP") {
