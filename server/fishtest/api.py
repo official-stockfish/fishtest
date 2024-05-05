@@ -5,6 +5,7 @@ import re
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 
+from bson.objectid import ObjectId
 from fishtest.schemas import api_access_schema, api_schema, gzip_data
 from fishtest.stats.stat_util import SPRT_elo, get_elo
 from fishtest.util import worker_name
@@ -24,8 +25,6 @@ Important note
 
 All APIs that rely on the `run_cache` of `rundb.get_run()`
 must be served from the main Fishtest instance.
-Note that `self.validate_request("/api/<route>")`
-uses `rundb.get_run()` under some conditions.
 
 If other Fishtest instances need information about runs,
 they should query the database directly.
@@ -122,6 +121,13 @@ class ApiView(object):
             )
 
     def validate_request(self):
+        """
+        This function will load the run from the cache or the db,
+        depending on the type of instance it runs on (primary or
+        secondary). If the request refers to a particular
+        task then one needs to make sure that it has been saved
+        to disk when invoking this function on a secondary instance.
+        """
         self.__run = None
         self.__task = None
 
@@ -137,7 +143,10 @@ class ApiView(object):
         # is a supplied run_id correct?
         if "run_id" in self.request_body:
             run_id = self.request_body["run_id"]
-            run = self.request.rundb.get_run(run_id)
+            if self.request.rundb.is_primary_instance():
+                run = self.request.rundb.get_run(run_id)
+            else:
+                run = self.request.rundb.runs.find_one({"_id": ObjectId(run_id)})
             if run is None:
                 self.handle_error("Invalid run_id: {}".format(run_id))
             self.__run = run
