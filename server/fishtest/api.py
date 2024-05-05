@@ -3,6 +3,7 @@ import copy
 import io
 import re
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
 from fishtest.schemas import api_access_schema, api_schema, gzip_data
 from fishtest.stats.stat_util import SPRT_elo, get_elo
@@ -89,13 +90,14 @@ class ApiView(object):
 
     def handle_error(self, error, exception=HTTPBadRequest):
         if error != "":
-            error = "{}: {}".format(self.__api, error)
+            full_url = self.request.route_url(self.request.matched_route.name)
+            api = urlparse(full_url).path
+            error = f"{api}: {error}"
             print(error, flush=True)
             raise exception(self.add_time({"error": error}))
 
-    def validate_username_password(self, api):
+    def validate_username_password(self):
         self.__t0 = datetime.now(timezone.utc)
-        self.__api = api
         # is the request valid json?
         try:
             self.request_body = self.request.json_body
@@ -119,12 +121,12 @@ class ApiView(object):
                 exception=HTTPUnauthorized,
             )
 
-    def validate_request(self, api):
+    def validate_request(self):
         self.__run = None
         self.__task = None
 
         # Preliminary validation.
-        self.validate_username_password(api)
+        self.validate_username_password()
 
         # Is the request syntactically correct?
         try:
@@ -242,7 +244,6 @@ class ApiView(object):
     @view_config(route_name="api_finished_runs")
     def finished_runs(self):
         self.__t0 = datetime.now(timezone.utc)
-        self.__api = "/api/finished_runs"
 
         username = self.request.params.get("username", "")
         success_only = self.request.params.get("success_only", False)
@@ -360,7 +361,6 @@ class ApiView(object):
     @view_config(route_name="api_calc_elo")
     def calc_elo(self):
         self.__t0 = datetime.now(timezone.utc)
-        self.__api = "/api/calc_elo"
 
         W = self.request.params.get("W")
         D = self.request.params.get("D")
@@ -468,7 +468,7 @@ class ApiView(object):
 
     @view_config(route_name="api_request_task")
     def request_task(self):
-        self.validate_request("/api/request_task")
+        self.validate_request()
         worker_info = self.worker_info()
         # rundb.request_task() needs this for an error message...
         worker_info["host_url"] = self.request.host_url
@@ -488,7 +488,7 @@ class ApiView(object):
 
     @view_config(route_name="api_update_task")
     def update_task(self):
-        self.validate_request("/api/update_task")
+        self.validate_request()
         result = self.request.rundb.update_task(
             worker_info=self.worker_info(),
             run_id=self.run_id(),
@@ -500,7 +500,7 @@ class ApiView(object):
 
     @view_config(route_name="api_failed_task")
     def failed_task(self):
-        self.validate_request("/api/failed_task")
+        self.validate_request()
         result = self.request.rundb.failed_task(
             self.run_id(), self.task_id(), self.message()
         )
@@ -508,7 +508,7 @@ class ApiView(object):
 
     @view_config(route_name="api_upload_pgn")
     def upload_pgn(self):
-        self.validate_request("/api/upload_pgn")
+        self.validate_request()
         try:
             pgn_zip = base64.b64decode(self.pgn())
             validate(gzip_data, pgn_zip, "pgn")
@@ -564,8 +564,7 @@ class ApiView(object):
 
     @view_config(route_name="api_stop_run")
     def stop_run(self):
-        api = "/api/stop_run"
-        self.validate_request(api)
+        self.validate_request()
         error = ""
         if self.cpu_hours() < 1000:
             error = "User {} has too few games to stop a run".format(
@@ -598,12 +597,12 @@ class ApiView(object):
     def request_version(self):
         # By being mor lax here we can be more strict
         # elsewhere since the worker will upgrade.
-        self.validate_username_password("/api/request_version")
+        self.validate_username_password()
         return self.add_time({"version": WORKER_VERSION})
 
     @view_config(route_name="api_beat")
     def beat(self):
-        self.validate_request("/api/beat")
+        self.validate_request()
         run = self.run()
         task = self.task()
         task["last_updated"] = datetime.now(timezone.utc)
@@ -612,6 +611,6 @@ class ApiView(object):
 
     @view_config(route_name="api_request_spsa")
     def request_spsa(self):
-        self.validate_request("/api/request_spsa")
+        self.validate_request()
         result = self.request.rundb.request_spsa(self.run_id(), self.task_id())
         return self.add_time(result)
