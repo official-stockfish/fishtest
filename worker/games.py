@@ -1021,7 +1021,7 @@ def parse_cutechess_output(
             ):
                 # Attempt to send game results to the server. Retry a few times upon error.
                 update_succeeded = False
-                for _ in range(5):
+                for attempt in range(5):
                     try:
                         response = send_api_post_request(
                             remote + "/api/update_task", result
@@ -1048,7 +1048,7 @@ def parse_cutechess_output(
                         update_succeeded = True
                         num_games_updated = num_games_finished
                         break
-                    time.sleep(UPDATE_RETRY_TIME)
+                    time.sleep(UPDATE_RETRY_TIME * (attempt + 2))
                 if not update_succeeded:
                     raise WorkerException("Too many failed update attempts")
 
