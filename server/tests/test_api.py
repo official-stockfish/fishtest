@@ -95,24 +95,24 @@ def stop_all_runs(self):
 
 class TestApi(unittest.TestCase):
     @classmethod
-    def setUpClass(self):
-        self.chunk_size = 200
-        self.rundb = get_rundb()
+    def setUpClass(cls):
+        cls.chunk_size = 200
+        cls.rundb = get_rundb()
         # Set up an API user (a worker)
-        self.username = "JoeUserWorker"
-        self.password = "secret"
-        self.unique_key = "amaya-5a28-4b7d-b27b-d78d97ecf11a"
-        self.remote_addr = "127.0.0.1"
-        self.country_code = "US"
-        self.concurrency = 7
+        cls.username = "JoeUserWorker"
+        cls.password = "secret"
+        cls.unique_key = "amaya-5a28-4b7d-b27b-d78d97ecf11a"
+        cls.remote_addr = "127.0.0.1"
+        cls.country_code = "US"
+        cls.concurrency = 7
 
-        self.worker_info = {
+        cls.worker_info = {
             "uname": "Linux 5.11.0-40-generic",
             "architecture": ["64bit", "ELF"],
-            "concurrency": self.concurrency,
+            "concurrency": cls.concurrency,
             "max_memory": 5702,
             "min_threads": 1,
-            "username": self.username,
+            "username": cls.username,
             "version": WORKER_VERSION,
             "python_version": [
                 sys.version_info.major,
@@ -131,24 +131,24 @@ class TestApi(unittest.TestCase):
             "ARCH": "?",
             "nps": 0.0,
         }
-        self.rundb.userdb.create_user(self.username, self.password, "email@email.email")
-        user = self.rundb.userdb.get_user(self.username)
+        cls.rundb.userdb.create_user(cls.username, cls.password, "email@email.email")
+        user = cls.rundb.userdb.get_user(cls.username)
         user["pending"] = False
         user["machine_limit"] = 50
-        self.rundb.userdb.save_user(user)
+        cls.rundb.userdb.save_user(user)
 
-        self.rundb.userdb.user_cache.insert_one(
-            {"username": self.username, "cpu_hours": 0}
+        cls.rundb.userdb.user_cache.insert_one(
+            {"username": cls.username, "cpu_hours": 0}
         )
 
     @classmethod
-    def tearDownClass(self):
-        self.rundb.runs.delete_many({})
-        self.rundb.userdb.users.delete_many({"username": self.username})
-        self.rundb.userdb.clear_cache()
-        self.rundb.userdb.user_cache.delete_many({"username": self.username})
-        self.rundb.stop()
-        self.rundb.runs.drop()
+    def tearDownClass(cls):
+        cls.rundb.runs.delete_many({})
+        cls.rundb.userdb.users.delete_many({"username": cls.username})
+        cls.rundb.userdb.clear_cache()
+        cls.rundb.userdb.user_cache.delete_many({"username": cls.username})
+        cls.rundb.stop()
+        cls.rundb.runs.drop()
 
     def build_json_request(self, json_body):
         return DummyRequest(
@@ -458,23 +458,23 @@ class TestApi(unittest.TestCase):
 
 class TestRunFinished(unittest.TestCase):
     @classmethod
-    def setUpClass(self):
-        self.chunk_size = 200
-        self.rundb = get_rundb()
+    def setUpClass(cls):
+        cls.chunk_size = 200
+        cls.rundb = get_rundb()
         # Set up an API user (a worker)
-        self.username = "JoeUserWorker"
-        self.password = "secret"
-        self.unique_key = "amaya-5a28-4b7d-b27b-d78d97ecf11a"
-        self.remote_addr = "127.0.0.1"
-        self.concurrency = 7
+        cls.username = "JoeUserWorker"
+        cls.password = "secret"
+        cls.unique_key = "amaya-5a28-4b7d-b27b-d78d97ecf11a"
+        cls.remote_addr = "127.0.0.1"
+        cls.concurrency = 7
 
-        self.worker_info = {
+        cls.worker_info = {
             "uname": "Linux 5.11.0-40-generic",
             "architecture": ["64bit", "ELF"],
-            "concurrency": self.concurrency,
+            "concurrency": cls.concurrency,
             "max_memory": 5702,
             "min_threads": 1,
-            "username": self.username,
+            "username": cls.username,
             "version": WORKER_VERSION,
             "python_version": [
                 sys.version_info.major,
@@ -493,23 +493,23 @@ class TestRunFinished(unittest.TestCase):
             "ARCH": "?",
             "nps": 0.0,
         }
-        self.rundb.userdb.create_user(self.username, self.password, "email@email.email")
-        user = self.rundb.userdb.get_user(self.username)
+        cls.rundb.userdb.create_user(cls.username, cls.password, "email@email.email")
+        user = cls.rundb.userdb.get_user(cls.username)
         user["pending"] = False
         user["machine_limit"] = 50
-        self.rundb.userdb.save_user(user)
+        cls.rundb.userdb.save_user(user)
 
-        self.rundb.userdb.user_cache.insert_one(
-            {"username": self.username, "cpu_hours": 0}
+        cls.rundb.userdb.user_cache.insert_one(
+            {"username": cls.username, "cpu_hours": 0}
         )
 
     @classmethod
-    def tearDownClass(self):
-        self.rundb.userdb.users.delete_many({"username": self.username})
-        self.rundb.userdb.clear_cache()
-        self.rundb.userdb.user_cache.delete_many({"username": self.username})
-        self.rundb.stop()
-        self.rundb.runs.drop()
+    def tearDownClass(cls):
+        cls.rundb.userdb.users.delete_many({"username": cls.username})
+        cls.rundb.userdb.clear_cache()
+        cls.rundb.userdb.user_cache.delete_many({"username": cls.username})
+        cls.rundb.stop()
+        cls.rundb.runs.drop()
 
     def build_json_request(self, json_body):
         return DummyRequest(
