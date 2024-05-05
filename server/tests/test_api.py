@@ -12,6 +12,11 @@ from pyramid.testing import DummyRequest
 from util import get_rundb
 
 
+class DummyRoute:
+    def __init__(self, name):
+        self.name = name
+
+
 def cleanup(request):
     request.json_body["worker_info"].pop("remote_addr", None)
     request.json_body["worker_info"].pop("country_code", None)
@@ -157,6 +162,8 @@ class TestApi(unittest.TestCase):
             actiondb=self.rundb.actiondb,
             remote_addr=self.remote_addr,
             json_body=json_body,
+            matched_route=DummyRoute("api_foo"),
+            route_url=lambda x: "/api/foo",
         )
 
     def invalid_password_request(self):
