@@ -878,18 +878,16 @@ After fixing the issues you can unblock the worker at
                 if unique_key == task_unique_key:
                     # It seems that this worker was unable to update an old task
                     # (perhaps because of server issues).
-                    print(
-                        f'Stale active task detected for worker "{my_name_long}". Correcting...',
-                        flush=True,
-                    )
-                    self.set_inactive_task(task_id, run)
+                    # Set the task to inactive and print a message in the event log.
+                    self.failed_task(run["_id"], task_id, message="Stale active task")
                     continue
                 last_update = (now - task["last_updated"]).seconds
                 # 120 = period of heartbeat in worker.
                 if last_update <= 120:
                     error = (
                         f'Request_task: There is already a worker running with name "{task_name_long}" '
-                        f'which sent an update {last_update} seconds ago (my name is "{my_name_long}")'
+                        f'which {last_update} seconds ago sent an update for task {str(run["_id"])}/{task_id} '
+                        f'(my name is "{my_name_long}")'
                     )
                     print(error, flush=True)
                     return {"task_waiting": False, "error": error}
@@ -900,7 +898,7 @@ After fixing the issues you can unblock the worker at
 
         connections = 0
         connections_limit = self.userdb.get_machine_limit(worker_info["username"])
-        for run, task_id, task in active_tasks:
+        for _, _, task in active_tasks:
             if task["worker_info"]["remote_addr"] == worker_info["remote_addr"]:
                 connections += 1
                 if connections >= connections_limit:
