@@ -80,6 +80,9 @@ def get_port():
         return -6
 
 
+PRIMARY_INSTANCE_PORTS = [6542, 6543]
+
+
 class RunDb:
     def __init__(self, db_name="fishtest_new"):
         # MongoDB server is assumed to be on the same machine, if not user should
@@ -255,6 +258,11 @@ class RunDb:
             raise Exception(message)
 
         return self.runs.insert_one(new_run).inserted_id
+
+    def is_primary_instance(self):
+        # If the port number cannot be determined like during unit tests or CI,
+        # assume the instance is primary for backward compatibility.
+        return self.port < 0 or self.port in PRIMARY_INSTANCE_PORTS
 
     def upload_pgn(self, run_id, pgn_zip):
         record = {"run_id": run_id, "pgn_zip": Binary(pgn_zip), "size": len(pgn_zip)}
