@@ -1589,6 +1589,7 @@ def tests_view(request):
         "follow": follow,
         "can_modify_run": can_modify_run(request, run),
         "same_user": same_user,
+        "pt_info": request.rundb.pt_info,
     }
 
 

@@ -847,6 +847,9 @@
           dots = 3; // fall back to the three dot diff request as the diff will be rebased
       % endif
     % else:
+      % if run["args"]["new_tag"] == "master" and run["args"]["base_tag"] == pt_info["pt_branch"]:
+          dots = 3; // fall back to the three dot in case of PTs since official is always rebased
+      % endif
       const apiUrlBase = apiUrlNew;
       const diffBase = "${run["args"]["resolved_base"][:10]}";
     % endif
