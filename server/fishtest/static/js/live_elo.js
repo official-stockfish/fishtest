@@ -182,7 +182,29 @@ async function followLive(testId) {
 
   // Main worker
 
-  while (true) {
+  let isTabFocused = true;
+  let isVisibilityChange = true;
+
+  document.addEventListener("visibilitychange", function () {
+    isTabFocused = document.visibilityState === "visible";
+
+    // If the tab just becomes visible, update immediately
+    if (isVisibilityChange && isTabFocused) {
+      isVisibilityChange = false;
+      update();
+    }
+  });
+
+  async function mainWorker() {
+    while (true) {
+      if (isTabFocused) {
+        update();
+      }
+      await asyncSleep(20000);
+    }
+  }
+
+  async function update() {
     const timestamp = new Date().getTime();
     try {
       const m = await fetchJson("/api/get_elo/" + testId + "?" + timestamp);
@@ -191,6 +213,8 @@ async function followLive(testId) {
     } catch (e) {
       console.log("Network error: " + e);
     }
-    await asyncSleep(20000);
   }
+
+  // Start the worker
+  mainWorker();
 }
