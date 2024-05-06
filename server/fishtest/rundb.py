@@ -710,7 +710,7 @@ class RunDb:
 
     # Limit concurrent request_task
     task_lock = threading.Lock()
-    task_semaphore = threading.Semaphore(4)
+    task_semaphore = threading.Semaphore(1)
 
     task_time = 0
     task_runs = None
