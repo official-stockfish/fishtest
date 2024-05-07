@@ -201,6 +201,7 @@ async function followLive(testId) {
         update();
       }
       await asyncSleep(20000);
+      isVisibilityChange = true;
     }
   }
 
