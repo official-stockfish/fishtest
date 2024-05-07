@@ -656,7 +656,7 @@ def user(request):
                     message="accepted",
                 )
             else:
-                request.userdb.remove_user(user_data)
+                request.userdb.remove_user(user_data, userid)
         return home(request)
     userc = request.userdb.user_cache.find_one({"username": user_name})
     hours = int(userc["cpu_hours"]) if userc is not None else 0
