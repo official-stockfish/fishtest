@@ -38,8 +38,6 @@ from fishtest.workerdb import WorkerDb
 from pymongo import DESCENDING, MongoClient
 from vtjson import ValidationError, validate
 
-DEBUG = False
-
 boot_time = datetime.now(timezone.utc)
 
 last_rundb = None
@@ -367,16 +365,14 @@ class RunDb:
     signal.signal(signal.SIGTERM, exit_run)
 
     def get_run(self, r_id):
-        with self.run_cache_lock:
-            r_id = str(r_id)
-            if r_id in self.run_cache:
-                self.run_cache[r_id]["rtime"] = time.time()
-                return self.run_cache[r_id]["run"]
-            try:
+        if self.is_primary_instance():
+            with self.run_cache_lock:
+                r_id = str(r_id)
+                if r_id in self.run_cache:
+                    self.run_cache[r_id]["rtime"] = time.time()
+                    return self.run_cache[r_id]["run"]
                 run = self.runs.find_one({"_id": ObjectId(r_id)})
-                if DEBUG:
-                    print("Load", r_id, flush=True)
-                if run:
+                if run is not None:
                     self.run_cache[r_id] = {
                         "rtime": time.time(),
                         "ftime": time.time(),
@@ -384,8 +380,8 @@ class RunDb:
                         "dirty": False,
                     }
                 return run
-            except:
-                return None
+        else:
+            return self.runs.find_one({"_id": ObjectId(r_id)})
 
     def start_timer(self):
         self.timer = threading.Timer(1.0, self.flush_buffers)
@@ -1066,17 +1062,6 @@ After fixing the issues you can unblock the worker at
 
         self.worker_runs[unique_key]["last_run"] = run["_id"]
 
-        if DEBUG:
-            print(
-                "Allocate run: https://tests.stockfishchess.org/tests/view/{} task_id: {} to {}/{} Stats: {}".format(
-                    run["_id"],
-                    task_id,
-                    worker_info["username"],
-                    unique_key,
-                    run["tasks"][task_id]["stats"],
-                ),
-                flush=True,
-            )
         return {"run": run, "task_id": task_id}
 
     # Create a lock for each active run

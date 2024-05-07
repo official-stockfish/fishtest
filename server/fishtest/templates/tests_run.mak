@@ -803,7 +803,7 @@
           if (test_signature) {
             document.getElementById("test-signature").value = test_signature;
           }
-          
+
           if (base_branch) {
             document.getElementById("base-branch").value = base_branch;
           }
