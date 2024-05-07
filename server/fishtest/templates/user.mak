@@ -175,6 +175,15 @@
         <label class="mb-2 h5">User Approval:</label>
         <div class="w-100 d-flex justify-content-between">
           <button
+            id="reject_user"
+            name="pending"
+            value="1"
+            type="submit"
+            class="btn btn-danger"
+            style="width: 48%;"
+          >Reject</button>
+
+          <button
             id="accept_user"
             name="pending"
             value="0"
@@ -182,15 +191,6 @@
             class="btn btn-success"
             style="width: 48%;"
           >Accept</button>
-
-          <button
-            id="reject_user"
-            name="pending"
-            value="1"            
-            type="submit"
-            class="btn btn-danger"
-            style="width: 48%;"
-          >Reject</button>
         </div>
       </div>
     % else:
