@@ -5,7 +5,6 @@ import re
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 
-from bson.objectid import ObjectId
 from fishtest.schemas import api_access_schema, api_schema, gzip_data
 from fishtest.stats.stat_util import SPRT_elo, get_elo
 from fishtest.util import worker_name
@@ -23,13 +22,15 @@ from vtjson import ValidationError, validate
 Important note
 ==============
 
-All APIs that rely on the `run_cache` of `rundb.get_run()`
-must be served from the main Fishtest instance.
+APIs hosted on the primary Fishtest instance have read and write access
+to the `run_cache` via `rundb.get_run()` and `rundb.buffer()` 
 
-If other Fishtest instances need information about runs,
-they should query the database directly.
-However, keep in mind that this information might be slightly outdated.
-This depends on how frequently the main instance flushes its `run_cache`.
+APIs hosted on secondary instances have read access to the `run` 
+from the database via `rundb.get_run()`. However, they should not 
+attempt to write to `run_cache` using `rundb.buffer()`.
+
+Proper configuration of `nginx` is crucial for this, and should be done
+according to the route/URL mapping defined in `__init__.py`.
 """
 
 WORKER_VERSION = 236
@@ -143,10 +144,7 @@ class ApiView(object):
         # is a supplied run_id correct?
         if "run_id" in self.request_body:
             run_id = self.request_body["run_id"]
-            if self.request.rundb.is_primary_instance():
-                run = self.request.rundb.get_run(run_id)
-            else:
-                run = self.request.rundb.runs.find_one({"_id": ObjectId(run_id)})
+            run = self.request.rundb.get_run(run_id)
             if run is None:
                 self.handle_error("Invalid run_id: {}".format(run_id))
             self.__run = run
