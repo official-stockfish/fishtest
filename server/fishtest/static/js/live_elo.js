@@ -183,14 +183,12 @@ async function followLive(testId) {
   // Main worker
 
   let isTabFocused = true;
-  let isVisibilityChange = true;
-
-  document.addEventListener("visibilitychange", function () {
+  document.addEventListener("visibilitychange", async function () {
     isTabFocused = document.visibilityState === "visible";
 
-    // If the tab just becomes visible, update immediately
-    if (isVisibilityChange && isTabFocused) {
-      isVisibilityChange = false;
+    // If the tab just becomes visible, update in 5 seconds
+    if (isTabFocused) {
+      await asyncSleep(5000);
       update();
     }
   });
@@ -199,8 +197,8 @@ async function followLive(testId) {
     while (true) {
       if (isTabFocused) {
         update();
+        await asyncSleep(20000);
       }
-      await asyncSleep(20000);
     }
   }
 
