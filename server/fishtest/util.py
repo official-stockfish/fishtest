@@ -1,4 +1,6 @@
+import base64
 import copy
+import gzip
 import hashlib
 import math
 import re
@@ -7,9 +9,11 @@ from datetime import datetime, timedelta, timezone
 from functools import cache
 from random import uniform
 
+import bson
 import fishtest.stats.stat_util
 import numpy
 import scipy.stats
+from bson.codec_options import CodecOptions
 from email_validator import EmailNotValidError, caching_resolver, validate_email
 from zxcvbn import zxcvbn
 
@@ -779,3 +783,18 @@ class Scheduler:
             else:
                 self.__event.wait()
             self.__event.clear()
+
+
+def serialize(run):
+    b = bson.encode(run)
+    g = gzip.compress(b)
+    return g
+
+
+codec_options = CodecOptions(tz_aware=True, tzinfo=timezone.utc)
+
+
+def deserialize(g):
+    b = gzip.decompress(g)
+    run = bson.decode(b, codec_options=codec_options)
+    return run

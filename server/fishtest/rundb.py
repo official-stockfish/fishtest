@@ -10,6 +10,7 @@ import time
 from datetime import datetime, timezone
 
 import fishtest.stats.stat_util
+import requests
 from bson.binary import Binary
 from bson.codec_options import CodecOptions
 from bson.errors import InvalidId
@@ -39,6 +40,7 @@ from fishtest.util import (
     GeneratorAsFileReader,
     Scheduler,
     crash_or_time,
+    deserialize,
     estimate_game_duration,
     format_results,
     get_bad_workers,
@@ -670,14 +672,26 @@ class RunDb:
             self.actiondb.system_event(message=f"stop fishtest@{self.port}")
         sys.exit(0)
 
-    def get_run(self, r_id):
-        r_id = str(r_id)
+    def get_run(self, r_id, db=True, cache=None):
+        """
+        If the instance is non-primary then there are two strategies
+        to get the run depending on the value of "db". If db=True
+        then Fishtest will load the run from the db.
+        If db=False then Fishtest will request the run from the
+        primary instance via an internal api. The first option is
+        probably(?) faster but it may give a slightly outdated run
+        which may in particular be missing some recently created tasks.
+
+        The cache argument is for testing and should be left alone.
+        """
         try:
             r_id_obj = ObjectId(r_id)
         except InvalidId:
+            print(f"Invalid object id {r_id}", flush=True)
             return None
-
-        if self.is_primary_instance():
+        if cache is None:
+            cache = self.is_primary_instance()
+        if cache:
             with self.run_cache_lock:
                 if r_id in self.run_cache:
                     self.run_cache[r_id]["last_access_time"] = time.time()
@@ -692,7 +706,17 @@ class RunDb:
                     }
                 return run
         else:
-            return self.runs.find_one({"_id": r_id_obj})
+            if db:
+                return self.runs.find_one({"_id": r_id_obj})
+            else:
+                result = requests.get(f"http://localhost/api/serialize_run/{r_id}")
+                try:
+                    result.raise_for_status()
+                    run = deserialize(result.content)
+                except Exception as e:
+                    print(f"Failed to deserialize {r_id}: {str(e)}", flush=True)
+                    return None
+                return run
 
     def buffer(self, run, flush):
         if not self.is_primary_instance():

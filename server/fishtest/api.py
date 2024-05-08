@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 
 from fishtest.schemas import api_access_schema, api_schema, gzip_data
 from fishtest.stats.stat_util import SPRT_elo, get_elo
-from fishtest.util import strip_run, worker_name
+from fishtest.util import serialize, strip_run, worker_name
 from pyramid.httpexceptions import (
     HTTPBadRequest,
     HTTPException,
@@ -126,7 +126,7 @@ class WorkerApi(GenericApi):
         # is a supplied run_id correct?
         if "run_id" in self.request_body:
             run_id = self.request_body["run_id"]
-            run = self.request.rundb.get_run(run_id)
+            run = self.request.rundb.get_run(run_id, db=False)
             if run is None:
                 self.handle_error("Invalid run_id: {}".format(run_id))
             self.__run = run
@@ -620,4 +620,26 @@ class UserApi(GenericApi):
 
 
 class InternalApi(GenericApi):
-    pass
+    @view_config(route_name="api_serialize_run")
+    def serialize_run(self):
+        # Must be hosted on the primary instance!!
+        if not self.request.rundb.is_primary_instance():
+            self.handle_error("This api must be hosted on the primary instance")
+        host_url = self.request.host_url
+        if host_url != "http://localhost":
+            self.handle_error("Access denied", exception=HTTPUnauthorized)
+        try:
+            run_id = self.request.matchdict["id"]
+        except Exception as e:
+            self.handle_error(str(e))
+        try:
+            run = self.request.rundb.get_run(run_id, cache=True)
+        except Exception as e:
+            self.handle_error(str(e))
+        if run is None:
+            self.handle_error("Run does not exist")
+        try:
+            s = serialize(run)
+        except Exception as e:
+            self.handle_error(str(e))
+        return Response(body=s, content_type="application/octet-stream")
