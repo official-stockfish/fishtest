@@ -141,7 +141,7 @@
               <p>The purpose of this token is to authenticate your requests to GitHub's API, 
               which has a rate limit of 60 requests per hour for unauthenticated users. By using this token, 
               you can increase this limit to 5000 requests per hour. More information about GitHub's rate limits can be found 
-              <a href="https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting">here</a>.
+              <a href="https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting" target="_blank">here</a>.
               </p>
               
               <!-- Information about storage -->
@@ -157,7 +157,7 @@
               <!-- Instructions on how to obtain the token -->
               <h4>Instructions:</h4>
               <ol>
-                <li>Access the Github's link <a href="https://github.com/settings/tokens?type=beta">here</a>, login if required.</li>
+                <li>Access the Github's link <a href="https://github.com/settings/tokens?type=beta" target="_blank">here</a>, login if required.</li>
                 <li>Press "Generate a new token".</li>
                 <li>Set a "Token name".</li>
                 <li>Set your preferred "Expiration" time.</li>
