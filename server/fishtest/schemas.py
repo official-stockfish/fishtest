@@ -37,7 +37,7 @@ from vtjson import (
     url,
 )
 
-run_id = regex(r"[a-f0-9]{24}", name="run_id")
+run_id = intersect(str, set_name(ObjectId.is_valid, "valid_object_id"))
 run_id_pgns = regex(r"[a-f0-9]{24}-(0|[1-9]\d*)", name="run_id_pgns")
 run_name = intersect(regex(r".*-[a-f0-9]{7}", name="run_name"), size(0, 23 + 1 + 7))
 action_message = intersect(str, size(0, 1024))
