@@ -14,6 +14,7 @@ from datetime import datetime, timedelta, timezone
 import fishtest.stats.stat_util
 from bson.binary import Binary
 from bson.codec_options import CodecOptions
+from bson.errors import InvalidId
 from bson.objectid import ObjectId
 from fishtest.actiondb import ActionDb
 from fishtest.schemas import RUN_VERSION, nn_schema, pgns_schema, runs_schema
@@ -365,13 +366,18 @@ class RunDb:
     signal.signal(signal.SIGTERM, exit_run)
 
     def get_run(self, r_id):
+        r_id = str(r_id)
+        try:
+            r_id_obj = ObjectId(r_id)
+        except InvalidId:
+            return None
+
         if self.is_primary_instance():
             with self.run_cache_lock:
-                r_id = str(r_id)
                 if r_id in self.run_cache:
                     self.run_cache[r_id]["rtime"] = time.time()
                     return self.run_cache[r_id]["run"]
-                run = self.runs.find_one({"_id": ObjectId(r_id)})
+                run = self.runs.find_one({"_id": r_id_obj})
                 if run is not None:
                     self.run_cache[r_id] = {
                         "rtime": time.time(),
@@ -381,7 +387,7 @@ class RunDb:
                     }
                 return run
         else:
-            return self.runs.find_one({"_id": ObjectId(r_id)})
+            return self.runs.find_one({"_id": r_id_obj})
 
     def start_timer(self):
         self.timer = threading.Timer(1.0, self.flush_buffers)
