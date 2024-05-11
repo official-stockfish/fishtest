@@ -44,46 +44,8 @@ boot_time = datetime.now(timezone.utc)
 last_rundb = None
 
 
-def get_port():
-    params = {}
-    args = sys.argv
-    if len(args) <= 1:
-        return -1
-    if os.path.basename(args[0]) != "pserve":
-        return -2
-    config = args[1]
-    for arg in args[2:]:
-        if arg[0] == "-" or "=" not in arg:
-            continue
-        arg = arg.split("=")
-        params[arg[0].strip()] = arg[1].strip()
-    c = configparser.ConfigParser(defaults=params)
-    try:
-        c.read(config)
-    except:
-        return -3
-    try:
-        section = c["server:main"]
-    except:
-        return -4
-    if "port" in section:
-        port = section["port"]
-    elif "listen" in section:
-        listen = section["listen"]
-        port = listen.split(":")[-1]
-    else:
-        return -5
-    try:
-        return int(port)
-    except:
-        return -6
-
-
-PRIMARY_INSTANCE_PORTS = [6542, 6543]
-
-
 class RunDb:
-    def __init__(self, db_name="fishtest_new"):
+    def __init__(self, db_name="fishtest_new", port=-1, is_primary_instance=True):
         # MongoDB server is assumed to be on the same machine, if not user should
         # use ssh with port forwarding to access the remote host.
         self.conn = MongoClient(os.getenv("FISHTEST_HOST") or "localhost")
@@ -96,9 +58,7 @@ class RunDb:
         self.nndb = self.db["nns"]
         self.runs = self.db["runs"]
         self.deltas = self.db["deltas"]
-        self.port = get_port()
-        if self.port < 0:
-            print(f"Unable to obtain the port number. Error: {self.port}", flush=True)
+        self.port = port
         self.task_runs = []
 
         self.task_duration = 1800  # 30 minutes
@@ -114,6 +74,8 @@ class RunDb:
 
         if self.port >= 0:
             self.actiondb.system_event(message=f"start fishtest@{self.port}")
+
+        self.__is_primary_instance = is_primary_instance
 
     def new_run(
         self,
@@ -259,9 +221,7 @@ class RunDb:
         return self.runs.insert_one(new_run).inserted_id
 
     def is_primary_instance(self):
-        # If the port number cannot be determined like during unit tests or CI,
-        # assume the instance is primary for backward compatibility.
-        return self.port < 0 or self.port in PRIMARY_INSTANCE_PORTS
+        return self.__is_primary_instance
 
     def upload_pgn(self, run_id, pgn_zip):
         record = {"run_id": run_id, "pgn_zip": Binary(pgn_zip), "size": len(pgn_zip)}
