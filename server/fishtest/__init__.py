@@ -41,7 +41,13 @@ def main(global_config, **settings):
         for j in static_full_path(i).glob(f"*.{i}")
     }
 
-    rundb = RunDb()
+    port = int(settings.get("fishtest.port", -1))
+    primary_port = int(settings.get("fishtest.primary_port", -1))
+    # If the port number cannot be determined like during unit tests or CI,
+    # assume the instance is primary for backward compatibility.
+    is_primary_instance = port == primary_port
+
+    rundb = RunDb(port=port, is_primary_instance=is_primary_instance)
 
     def add_rundb(event):
         event.request.rundb = rundb
