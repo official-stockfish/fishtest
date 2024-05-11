@@ -81,23 +81,32 @@ def authentication_failed(error, request):
     return response
 
 
-@view_defaults(renderer="json")
-class ApiView(object):
-    """All API endpoints that require authentication are used by workers"""
+def add_time(result, ts=None):
+    result["duration"] = (datetime.now(timezone.utc) - ts).total_seconds()
+    return result
 
-    def __init__(self, request):
-        self.request = request
+
+def handle_error(request, error, exception=HTTPBadRequest, ts=None):
+    if error != "":
+        full_url = request.route_url(request.matched_route.name)
+        api = urlparse(full_url).path
+        error = f"{api}: {error}"
+        print(error, flush=True)
+        raise exception(add_time({"error": error}, ts=ts))
+
+
+class worker_apis:
+    def __init__(self, apiview):
+        self.__t0 = apiview.timestamp()
+        self.request = apiview.request
 
     def handle_error(self, error, exception=HTTPBadRequest):
-        if error != "":
-            full_url = self.request.route_url(self.request.matched_route.name)
-            api = urlparse(full_url).path
-            error = f"{api}: {error}"
-            print(error, flush=True)
-            raise exception(self.add_time({"error": error}))
+        handle_error(self.request, error, exception=exception, ts=self.__t0)
+
+    def add_time(self, result):
+        return add_time(result, ts=self.__t0)
 
     def validate_username_password(self):
-        self.__t0 = datetime.now(timezone.utc)
         # is the request valid json?
         try:
             self.request_body = self.request.json_body
@@ -170,10 +179,6 @@ class ApiView(object):
                 )
             self.__task = task
 
-    def add_time(self, result):
-        result["duration"] = (datetime.now(timezone.utc) - self.__t0).total_seconds()
-        return result
-
     def get_username(self):
         return self.request_body["worker_info"]["username"]
 
@@ -233,6 +238,159 @@ class ApiView(object):
     def get_country_code(self):
         country_code = self.request.headers.get("X-Country-Code")
         return "?" if country_code in (None, "ZZ") else country_code
+
+    def request_task(self):
+        self.validate_request()
+        worker_info = self.worker_info()
+        # rundb.request_task() needs this for an error message...
+        worker_info["host_url"] = self.request.host_url
+        result = self.request.rundb.request_task(worker_info)
+        if "task_waiting" in result:
+            return self.add_time(result)
+
+        # Strip the run of unneccesary information
+        run = result["run"]
+        task = run["tasks"][result["task_id"]]
+        min_task = {"num_games": task["num_games"], "start": task["start"]}
+        if "stats" in task:
+            min_task["stats"] = task["stats"]
+        min_run = {"_id": str(run["_id"]), "args": run["args"], "my_task": min_task}
+        result["run"] = min_run
+        return self.add_time(result)
+
+    def update_task(self):
+        self.validate_request()
+        result = self.request.rundb.update_task(
+            worker_info=self.worker_info(),
+            run_id=self.run_id(),
+            task_id=self.task_id(),
+            stats=self.stats(),
+            spsa=self.spsa(),
+        )
+        return self.add_time(result)
+
+    def failed_task(self):
+        self.validate_request()
+        result = self.request.rundb.failed_task(
+            self.run_id(), self.task_id(), self.message()
+        )
+        return self.add_time(result)
+
+    def upload_pgn(self):
+        self.validate_request()
+        try:
+            pgn_zip = base64.b64decode(self.pgn())
+            validate(gzip_data, pgn_zip, "pgn")
+        except Exception as e:
+            self.handle_error(str(e))
+        result = self.request.rundb.upload_pgn(
+            run_id="{}-{}".format(self.run_id(), self.task_id()),
+            pgn_zip=pgn_zip,
+        )
+        return self.add_time(result)
+
+    def stop_run(self):
+        self.validate_request()
+        error = ""
+        if self.cpu_hours() < 1000:
+            error = "User {} has too few games to stop a run".format(
+                self.get_username()
+            )
+        with self.request.rundb.active_run_lock(self.run_id()):
+            run = self.run()
+            message = self.message()[:1024] + (
+                " (not authorized)" if error != "" else ""
+            )
+            self.request.actiondb.stop_run(
+                username=self.get_username(),
+                run=run,
+                task_id=self.task_id(),
+                message=message,
+            )
+            if error == "":
+                run["finished"] = True
+                run["failed"] = True
+                self.request.rundb.stop_run(self.run_id())
+            else:
+                task = self.task()
+                task["active"] = False
+                self.request.rundb.buffer(run, True)
+
+        self.handle_error(error, exception=HTTPUnauthorized)
+        return self.add_time({})
+
+    def request_version(self):
+        # By being mor lax here we can be more strict
+        # elsewhere since the worker will upgrade.
+        self.validate_username_password()
+        return self.add_time({"version": WORKER_VERSION})
+
+    def beat(self):
+        self.validate_request()
+        run = self.run()
+        task = self.task()
+        task["last_updated"] = datetime.now(timezone.utc)
+        self.request.rundb.buffer(run, False)
+        return self.add_time({})
+
+    def request_spsa(self):
+        self.validate_request()
+        result = self.request.rundb.request_spsa(self.run_id(), self.task_id())
+        return self.add_time(result)
+
+
+@view_defaults(renderer="json")
+class ApiView(object):
+    def __init__(self, request):
+        self.request = request
+        self.__t0 = datetime.now(timezone.utc)
+        self.worker_apis_handler = worker_apis(self)
+
+    ### Start worker apis
+    ### The worker apis require authentication
+
+    @view_config(route_name="api_request_task")
+    def request_task(self):
+        return self.worker_apis_handler.request_task()
+
+    @view_config(route_name="api_update_task")
+    def update_task(self):
+        return self.worker_apis_handler.update_task()
+
+    @view_config(route_name="api_failed_task")
+    def failed_task(self):
+        return self.worker_apis_handler.failed_task()
+
+    @view_config(route_name="api_upload_pgn")
+    def upload_pgn(self):
+        return self.worker_apis_handler.upload_pgn()
+
+    @view_config(route_name="api_stop_run")
+    def stop_run(self):
+        return self.worker_apis_handler.stop_run()
+
+    @view_config(route_name="api_request_version")
+    def request_version(self):
+        return self.worker_apis_handler.request_version()
+
+    @view_config(route_name="api_beat")
+    def beat(self):
+        return self.worker_apis_handler.beat()
+
+    @view_config(route_name="api_request_spsa")
+    def request_spsa(self):
+        return self.worker_apis_handler.request_spsa()
+
+    ### End worker apis
+
+    def timestamp(self):
+        return self.__t0
+
+    def handle_error(self, error, exception=HTTPBadRequest):
+        handle_error(self.request, error, exception=exception, ts=self.__t0)
+
+    def add_time(self, result):
+        return add_time(result, ts=self.__t0)
 
     @view_config(route_name="api_active_runs")
     def active_runs(self):
@@ -473,60 +631,6 @@ class ApiView(object):
                 elo_model=elo_model,
             )
 
-    @view_config(route_name="api_request_task")
-    def request_task(self):
-        self.validate_request()
-        worker_info = self.worker_info()
-        # rundb.request_task() needs this for an error message...
-        worker_info["host_url"] = self.request.host_url
-        result = self.request.rundb.request_task(worker_info)
-        if "task_waiting" in result:
-            return self.add_time(result)
-
-        # Strip the run of unneccesary information
-        run = result["run"]
-        task = run["tasks"][result["task_id"]]
-        min_task = {"num_games": task["num_games"], "start": task["start"]}
-        if "stats" in task:
-            min_task["stats"] = task["stats"]
-        min_run = {"_id": str(run["_id"]), "args": run["args"], "my_task": min_task}
-        result["run"] = min_run
-        return self.add_time(result)
-
-    @view_config(route_name="api_update_task")
-    def update_task(self):
-        self.validate_request()
-        result = self.request.rundb.update_task(
-            worker_info=self.worker_info(),
-            run_id=self.run_id(),
-            task_id=self.task_id(),
-            stats=self.stats(),
-            spsa=self.spsa(),
-        )
-        return self.add_time(result)
-
-    @view_config(route_name="api_failed_task")
-    def failed_task(self):
-        self.validate_request()
-        result = self.request.rundb.failed_task(
-            self.run_id(), self.task_id(), self.message()
-        )
-        return self.add_time(result)
-
-    @view_config(route_name="api_upload_pgn")
-    def upload_pgn(self):
-        self.validate_request()
-        try:
-            pgn_zip = base64.b64decode(self.pgn())
-            validate(gzip_data, pgn_zip, "pgn")
-        except Exception as e:
-            self.handle_error(str(e))
-        result = self.request.rundb.upload_pgn(
-            run_id="{}-{}".format(self.run_id(), self.task_id()),
-            pgn_zip=pgn_zip,
-        )
-        return self.add_time(result)
-
     @view_config(route_name="api_download_pgn", renderer="string")
     def download_pgn(self):
         zip_name = self.request.matchdict["id"]
@@ -568,56 +672,3 @@ class ApiView(object):
         return HTTPFound(
             "https://data.stockfishchess.org/nn/" + self.request.matchdict["id"]
         )
-
-    @view_config(route_name="api_stop_run")
-    def stop_run(self):
-        self.validate_request()
-        error = ""
-        if self.cpu_hours() < 1000:
-            error = "User {} has too few games to stop a run".format(
-                self.get_username()
-            )
-        with self.request.rundb.active_run_lock(self.run_id()):
-            run = self.run()
-            message = self.message()[:1024] + (
-                " (not authorized)" if error != "" else ""
-            )
-            self.request.actiondb.stop_run(
-                username=self.get_username(),
-                run=run,
-                task_id=self.task_id(),
-                message=message,
-            )
-            if error == "":
-                run["finished"] = True
-                run["failed"] = True
-                self.request.rundb.stop_run(self.run_id())
-            else:
-                task = self.task()
-                task["active"] = False
-                self.request.rundb.buffer(run, True)
-
-        self.handle_error(error, exception=HTTPUnauthorized)
-        return self.add_time({})
-
-    @view_config(route_name="api_request_version")
-    def request_version(self):
-        # By being mor lax here we can be more strict
-        # elsewhere since the worker will upgrade.
-        self.validate_username_password()
-        return self.add_time({"version": WORKER_VERSION})
-
-    @view_config(route_name="api_beat")
-    def beat(self):
-        self.validate_request()
-        run = self.run()
-        task = self.task()
-        task["last_updated"] = datetime.now(timezone.utc)
-        self.request.rundb.buffer(run, False)
-        return self.add_time({})
-
-    @view_config(route_name="api_request_spsa")
-    def request_spsa(self):
-        self.validate_request()
-        result = self.request.rundb.request_spsa(self.run_id(), self.task_id())
-        return self.add_time(result)
