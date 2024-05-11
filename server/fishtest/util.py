@@ -1,3 +1,4 @@
+import copy
 import hashlib
 import math
 import re
@@ -512,3 +513,30 @@ def get_hash(s):
     if h:
         return int(h.group(1))
     return 0
+
+
+# Avoids exposing sensitive data about the workers to the client and skips some heavy data.
+def strip_run(run):
+    # a deep copy, avoiding copies of a few large lists.
+    stripped = {}
+    for k1, v1 in run.items():
+        if k1 in ("tasks", "bad_tasks"):
+            stripped[k1] = []
+        elif k1 == "args":
+            stripped[k1] = {}
+            for k2, v2 in v1.items():
+                if k2 == "spsa":
+                    stripped[k1][k2] = {
+                        k3: [] if k3 == "param_history" else copy.deepcopy(v3)
+                        for k3, v3 in v2.items()
+                    }
+                else:
+                    stripped[k1][k2] = copy.deepcopy(v2)
+        else:
+            stripped[k1] = copy.deepcopy(v1)
+
+    # and some string conversions
+    for key in ("_id", "start_time", "last_updated"):
+        stripped[key] = str(run[key])
+
+    return stripped

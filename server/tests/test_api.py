@@ -6,7 +6,7 @@ import sys
 import unittest
 from datetime import datetime, timezone
 
-from fishtest.api import WORKER_VERSION, ApiView
+from fishtest.api import WORKER_VERSION, UserApi, WorkerApi
 from pyramid.httpexceptions import HTTPBadRequest, HTTPUnauthorized
 from pyramid.testing import DummyRequest
 from util import get_rundb
@@ -186,19 +186,19 @@ class TestApi(unittest.TestCase):
     def test_get_active_runs(self):
         run_id = new_run(self)
         request = DummyRequest(rundb=self.rundb)
-        response = ApiView(request).active_runs()
+        response = UserApi(request).active_runs()
         self.assertTrue(run_id in response)
 
     def test_get_run(self):
         run_id = new_run(self)
         request = DummyRequest(rundb=self.rundb, matchdict={"id": run_id})
-        response = ApiView(request).get_run()
+        response = UserApi(request).get_run()
         self.assertEqual(run_id, response["_id"])
 
     def test_get_elo(self):
         run_id = new_run(self)
         request = DummyRequest(rundb=self.rundb, matchdict={"id": run_id})
-        response = ApiView(request).get_elo()
+        response = UserApi(request).get_elo()
         # /api/get_elo only works for SPRT
         self.assertFalse(response)
 
@@ -209,12 +209,12 @@ class TestApi(unittest.TestCase):
 
         request = self.invalid_password_request()
         with self.assertRaises(HTTPUnauthorized):
-            response = ApiView(request).request_task()
+            response = WorkerApi(request).request_task()
             self.assertTrue("error" in response)
             print(response["error"])
 
         request = self.correct_password_request()
-        response = ApiView(request).request_task()
+        response = WorkerApi(request).request_task()
 
         run = response["run"]
         run_id = str(run["_id"])
@@ -235,7 +235,7 @@ class TestApi(unittest.TestCase):
 
         # Request fails if username/password is invalid
         with self.assertRaises(HTTPUnauthorized):
-            response = ApiView(self.invalid_password_request()).update_task()
+            response = WorkerApi(self.invalid_password_request()).update_task()
             self.assertTrue("error" in response)
             print(response["error"])
 
@@ -254,7 +254,7 @@ class TestApi(unittest.TestCase):
                 },
             }
         )
-        response = ApiView(cleanup(request)).update_task()
+        response = WorkerApi(cleanup(request)).update_task()
         self.assertTrue(response["task_alive"])
 
         # Task is still active
@@ -268,7 +268,7 @@ class TestApi(unittest.TestCase):
             "time_losses": 0,
             "pentanomial": [0, 0, d // 2, 0, w // 2],
         }
-        response = ApiView(cleanup(request)).update_task()
+        response = WorkerApi(cleanup(request)).update_task()
         self.assertTrue(response["task_alive"])
 
         # Task is still active. Odd update.
@@ -281,7 +281,7 @@ class TestApi(unittest.TestCase):
             "pentanomial": [0, 0, d // 2, 0, w // 2],
         }
         with self.assertRaises(HTTPBadRequest):
-            response = ApiView(cleanup(request)).update_task()
+            response = WorkerApi(cleanup(request)).update_task()
 
         request.json_body["stats"] = {
             "wins": w + 2,
@@ -292,7 +292,7 @@ class TestApi(unittest.TestCase):
             "pentanomial": [0, 0, d // 2, 0, w // 2 + 1],
         }
 
-        response = ApiView(cleanup(request)).update_task()
+        response = WorkerApi(cleanup(request)).update_task()
         self.assertTrue(response["task_alive"])
 
         # Go back in time
@@ -304,7 +304,7 @@ class TestApi(unittest.TestCase):
             "time_losses": 0,
             "pentanomial": [0, 0, d // 2, 0, w // 2],
         }
-        response = ApiView(cleanup(request)).update_task()
+        response = WorkerApi(cleanup(request)).update_task()
         self.assertFalse(response["task_alive"])
 
         # revive the task
@@ -322,7 +322,7 @@ class TestApi(unittest.TestCase):
             "time_losses": 0,
             "pentanomial": [0, 0, 0, 0, task_num_games // 2],
         }
-        response = ApiView(cleanup(request)).update_task()
+        response = WorkerApi(cleanup(request)).update_task()
         self.assertFalse(response["task_alive"])
         run = self.rundb.get_run(run_id)
         task = run["tasks"][0]
@@ -334,7 +334,7 @@ class TestApi(unittest.TestCase):
         # Request fails if username/password is invalid
         request = self.invalid_password_request()
         with self.assertRaises(HTTPUnauthorized):
-            response = ApiView(self.invalid_password_request()).update_task()
+            response = WorkerApi(self.invalid_password_request()).update_task()
             self.assertTrue("error" in response)
             print(response["error"])
 
@@ -343,13 +343,13 @@ class TestApi(unittest.TestCase):
         request = self.correct_password_request(
             {"run_id": run_id, "task_id": 0, "message": message}
         )
-        response = ApiView(request).failed_task()
+        response = WorkerApi(request).failed_task()
         response.pop("duration", None)
         self.assertEqual(response, {})
         self.assertFalse(run["tasks"][0]["active"])
 
         request = self.correct_password_request({"run_id": run_id, "task_id": 0})
-        response = ApiView(request).failed_task()
+        response = WorkerApi(request).failed_task()
         self.assertTrue("info" in response)
         print(response["info"])
         self.assertFalse(run["tasks"][0]["active"])
@@ -360,7 +360,7 @@ class TestApi(unittest.TestCase):
         request = self.correct_password_request(
             {"run_id": run_id, "task_id": 0, "message": message}
         )
-        response = ApiView(request).failed_task()
+        response = WorkerApi(request).failed_task()
         response.pop("duration", None)
         self.assertTrue(response == {})
         self.assertFalse(run["tasks"][0]["active"])
@@ -368,7 +368,7 @@ class TestApi(unittest.TestCase):
     def test_stop_run(self):
         run_id = new_run(self, add_tasks=1)
         with self.assertRaises(HTTPUnauthorized):
-            response = ApiView(self.invalid_password_request()).stop_run()
+            response = WorkerApi(self.invalid_password_request()).stop_run()
             self.assertTrue("error" in response)
             print(response["error"])
 
@@ -380,7 +380,7 @@ class TestApi(unittest.TestCase):
             {"run_id": run_id, "task_id": 0, "message": message}
         )
         with self.assertRaises(HTTPUnauthorized):
-            response = ApiView(request).stop_run()
+            response = WorkerApi(request).stop_run()
             self.assertTrue("error" in response)
             self.assertFalse(run["tasks"][0]["active"])
 
@@ -388,7 +388,7 @@ class TestApi(unittest.TestCase):
             {"username": self.username}, {"$set": {"cpu_hours": 10000}}
         )
 
-        response = ApiView(request).stop_run()
+        response = WorkerApi(request).stop_run()
         response.pop("duration", None)
         self.assertTrue(response == {})
 
@@ -410,7 +410,7 @@ class TestApi(unittest.TestCase):
                     "pgn": base64.b64encode(gz_buffer.getvalue()).decode(),
                 }
             )
-        response = ApiView(request).upload_pgn()
+        response = WorkerApi(request).upload_pgn()
         response.pop("duration", None)
         self.assertTrue(response == {})
 
@@ -435,30 +435,30 @@ class TestApi(unittest.TestCase):
             ],
         }
         request = self.correct_password_request({"run_id": run_id, "task_id": 0})
-        response = ApiView(request).request_spsa()
+        response = WorkerApi(request).request_spsa()
         self.assertTrue(response["task_alive"])
         self.assertTrue(response["w_params"] is not None)
         self.assertTrue(response["b_params"] is not None)
 
     def test_request_version(self):
         with self.assertRaises(HTTPUnauthorized):
-            response = ApiView(self.invalid_password_request()).request_version()
+            response = WorkerApi(self.invalid_password_request()).request_version()
             self.assertTrue("error" in response)
             print(response["error"])
 
-        response = ApiView(self.correct_password_request()).request_version()
+        response = WorkerApi(self.correct_password_request()).request_version()
         self.assertEqual(WORKER_VERSION, response["version"])
 
     def test_beat(self):
         run_id = new_run(self, add_tasks=1)
 
         with self.assertRaises(HTTPUnauthorized):
-            response = ApiView(self.invalid_password_request()).beat()
+            response = WorkerApi(self.invalid_password_request()).beat()
             self.assertTrue("error" in response)
             print(response["error"])
 
         request = self.correct_password_request({"run_id": run_id, "task_id": 0})
-        response = ApiView(request).beat()
+        response = WorkerApi(request).beat()
         response.pop("duration", None)
         self.assertEqual(response, {})
 
@@ -543,11 +543,11 @@ class TestRunFinished(unittest.TestCase):
         self.rundb.buffer(run, True)
         # Request task 1 of 2
         request = self.correct_password_request()
-        response = ApiView(request).request_task()
+        response = WorkerApi(request).request_task()
         self.assertFalse("error" in response)
         # Request task 2 of 2
         request = self.correct_password_request()
-        response = ApiView(request).request_task()
+        response = WorkerApi(request).request_task()
         self.assertFalse("error" in response)
         # TODO Add test for a different worker connecting
 
@@ -561,7 +561,7 @@ class TestRunFinished(unittest.TestCase):
 
         # Request task 1 of 2
         request = self.correct_password_request()
-        response = ApiView(request).request_task()
+        response = WorkerApi(request).request_task()
         self.assertEqual(response["run"]["_id"], str(run["_id"]))
         self.assertEqual(response["task_id"], 0)
         task1 = self.rundb.get_run(run_id)["tasks"][0]
@@ -586,14 +586,14 @@ class TestRunFinished(unittest.TestCase):
                 },
             }
         )
-        response = ApiView(request).update_task()
+        response = WorkerApi(request).update_task()
         self.assertFalse(response["task_alive"])
         run = self.rundb.get_run(run_id)
         self.assertFalse(run["finished"])
 
         # Request task 2 of 2
         request = self.correct_password_request()
-        response = ApiView(request).request_task()
+        response = WorkerApi(request).request_task()
         self.assertEqual(response["run"]["_id"], str(run["_id"]))
         self.assertEqual(response["task_id"], 1)
         task2 = self.rundb.get_run(run_id)["tasks"][1]
@@ -621,7 +621,7 @@ class TestRunFinished(unittest.TestCase):
                 },
             }
         )
-        response = ApiView(request).update_task()
+        response = WorkerApi(request).update_task()
         self.assertFalse(response["task_alive"])
 
         # The run should be marked as finished after the last task completes
