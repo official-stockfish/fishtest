@@ -10,9 +10,10 @@ from fishtest.stats.stat_util import SPRT_elo, get_elo
 from fishtest.util import strip_run, worker_name
 from pyramid.httpexceptions import (
     HTTPBadRequest,
+    HTTPException,
     HTTPFound,
+    HTTPNotFound,
     HTTPUnauthorized,
-    exception_response,
 )
 from pyramid.response import FileIter, Response
 from pyramid.view import exception_view_config, view_config, view_defaults
@@ -36,17 +37,14 @@ according to the route/URL mapping defined in `__init__.py`.
 WORKER_VERSION = 237
 
 
-@exception_view_config(HTTPBadRequest)
-def badrequest_failed(error, request):
+@exception_view_config(HTTPException)
+def exception_handler(error, request):
+    if request.exception.code < 400:
+        return request.exception
+    if not isinstance(error.detail, dict):
+        return request.exception
     response = Response(json_body=error.detail)
-    response.status_int = 400
-    return response
-
-
-@exception_view_config(HTTPUnauthorized)
-def authentication_failed(error, request):
-    response = Response(json_body=error.detail)
-    response.status_int = 401
+    response.status_int = request.exception.code
     return response
 
 
@@ -66,7 +64,9 @@ class GenericApi:
 
     def handle_error(self, error, exception=HTTPBadRequest):
         if error != "":
-            full_url = self.request.route_url(self.request.matched_route.name)
+            full_url = self.request.route_url(
+                self.request.matched_route.name, **self.request.matchdict
+            )
             api = urlparse(full_url).path
             error = f"{api}: {error}"
             print(error, flush=True)
@@ -393,15 +393,19 @@ class UserApi(GenericApi):
 
     @view_config(route_name="api_get_run")
     def get_run(self):
-        run = self.request.rundb.get_run(self.request.matchdict["id"])
+        run_id = self.request.matchdict["id"]
+        run = self.request.rundb.get_run(run_id)
         if run is None:
-            raise exception_response(404)
+            self.handle_error(
+                f"The run {run_id} does not exist", exception=HTTPNotFound
+            )
         return strip_run(run)
 
     @view_config(route_name="api_get_task")
     def get_task(self):
         try:
-            run = self.request.rundb.get_run(self.request.matchdict["id"])
+            run_id = self.request.matchdict["id"]
+            run = self.request.rundb.get_run(run_id)
             task_id = self.request.matchdict["task_id"]
             if task_id.endswith("bad"):
                 task_id = int(task_id[:-3])
@@ -410,7 +414,9 @@ class UserApi(GenericApi):
                 task_id = int(task_id)
                 task = copy.deepcopy(run["tasks"][task_id])
         except:
-            raise exception_response(404)
+            self.handle_error(
+                f"The task {run_id}/{task_id} does not exist", exception=HTTPNotFound
+            )
         if "worker_info" in task:
             worker_info = task["worker_info"]
             # Do not reveal the unique_key.
@@ -433,7 +439,9 @@ class UserApi(GenericApi):
     def get_elo(self):
         run = self.request.rundb.get_run(self.request.matchdict["id"])
         if run is None:
-            raise exception_response(404)
+            self.handle_error(
+                f"The run {run_id} does not exist", exception=HTTPNotFound
+            )
         results = run["results"]
         if "sprt" not in run["args"]:
             return {}
@@ -563,7 +571,7 @@ class UserApi(GenericApi):
         run_id = zip_name.split(".")[0]  # strip .pgn
         pgn_zip, size = self.request.rundb.get_pgn(run_id)
         if pgn_zip is None:
-            return Response("No data found", status=404)
+            self.handle_error(f"No data found for {zip_name}", exception=HTTPNotFound)
         response = Response(content_type="application/gzip")
         response.app_iter = io.BytesIO(pgn_zip)
         response.headers["Content-Disposition"] = f'attachment; filename="{zip_name}"'
@@ -576,11 +584,13 @@ class UserApi(GenericApi):
         pgns_name = self.request.matchdict["id"]
         match = re.match(r"^([a-zA-Z0-9]+)\.pgn\.gz$", pgns_name)
         if not match:
-            return Response("Invalid filename format", status=400)
+            self.handle_error(
+                f"Invalid filename format for {pgns_name}", exception=HTTPBadRequest
+            )
         run_id = match.group(1)
         pgns_reader, total_size = self.request.rundb.get_run_pgns(run_id)
         if pgns_reader is None:
-            return Response("No data found", status=404)
+            self.handle_error(f"No data found for {pgns_name}", exception=HTTPNotFound)
         response = Response(content_type="application/gzip")
         response.app_iter = FileIter(pgns_reader)
         response.headers["Content-Disposition"] = f'attachment; filename="{pgns_name}"'
@@ -589,9 +599,12 @@ class UserApi(GenericApi):
 
     @view_config(route_name="api_download_nn")
     def download_nn(self):
-        nn = self.request.rundb.get_nn(self.request.matchdict["id"])
+        nn_id = self.request.matchdict["id"]
+        nn = self.request.rundb.get_nn(nn_id)
         if nn is None:
-            raise exception_response(404)
+            self.handle_error(
+                f"The network {nn_id} does not exist", exception=HTTPNotFound
+            )
         else:
             self.request.rundb.increment_nn_downloads(self.request.matchdict["id"])
 
