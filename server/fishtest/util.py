@@ -401,43 +401,6 @@ def remaining_hours(run):
     return game_secs * remaining_games * int(run["args"].get("threads", 1)) / (60 * 60)
 
 
-def post_in_fishcooking_results(run):
-    """Posts the results of the run to the fishcooking forum:
-    https://groups.google.com/g/fishcooking-results
-    """
-    title = run["args"]["new_tag"][:23]
-
-    if "username" in run["args"]:
-        title += "  (" + run["args"]["username"] + ")"
-
-    body = FISH_URL + "{}\n\n".format(str(run["_id"]))
-
-    body += run["start_time"].strftime("%d-%m-%y") + " from "
-    body += run["args"].get("username", "") + "\n\n"
-
-    body += run["args"]["new_tag"] + ": " + run["args"].get("msg_new", "") + "\n"
-    body += run["args"]["base_tag"] + ": " + run["args"].get("msg_base", "") + "\n\n"
-
-    body += (
-        "TC: " + run["args"]["tc"] + " th " + str(run["args"].get("threads", 1)) + "\n"
-    )
-    body += "\n".join(run["results_info"]["info"]) + "\n\n"
-
-    body += run["args"].get("info", "") + "\n\n"
-
-    msg = MIMEText(body)
-    msg["Subject"] = title
-    msg["From"] = "fishtest@noreply.stockfishchess.org"
-    msg["To"] = "fishcooking-results@googlegroups.com"
-
-    try:
-        s = smtplib.SMTP("localhost")
-        s.sendmail(msg["From"], [msg["To"]], msg.as_string())
-        s.quit()
-    except ConnectionRefusedError:
-        print("Unable to post results to fishcooking forum")
-
-
 def diff_date(date):
     diff = (
         datetime.now(timezone.utc) - date
