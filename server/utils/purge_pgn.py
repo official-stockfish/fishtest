@@ -10,7 +10,7 @@ def purge_pgn(rundb, finished, deleted, days):
     kept_runs, kept_tasks, kept_pgns = 0, 0, 0
     purged_runs, purged_tasks, purged_pgns = 0, 0, 0
     now = datetime.now(timezone.utc)
-    cutoff_date_ltc = now - timedelta(days=5 * days)
+    cutoff_date_ltc = now - timedelta(days=10 * days)
     cutoff_date = now - timedelta(days=days)
     tc_regex = re.compile("^([2-9][0-9])|([1-9][0-9][0-9])")
     runs_query = {
@@ -70,13 +70,13 @@ def report(
 def main():
     # Process the runs in descending order of last_updated for the
     # last 60 days and purge the pgns collection for:
-    # - runs that are finished and not deleted, and older than 2 days for STC
+    # - runs that are finished and not deleted, and older than 1 days for STC
     # - runs that are finished and not deleted, and older than 10 days for LTC
     # - runs that are finished and deleted, and older than 10 days
     # - runs that are not finished and not deleted, and older than 50 days
 
     rundb = RunDb()
-    out = purge_pgn(rundb=rundb, finished=True, deleted=False, days=2)
+    out = purge_pgn(rundb=rundb, finished=True, deleted=False, days=1)
     report("Finished runs:", *out)
     out = purge_pgn(rundb=rundb, finished=True, deleted=True, days=10)
     report("Deleted runs:", *out)
