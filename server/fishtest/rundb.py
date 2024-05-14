@@ -793,12 +793,7 @@ After fixing the issues you can unblock the worker at
         # To limit db access the list is cached for
         # 60 seconds.
 
-        runs_finished = True
-        for run in self.task_runs:
-            if not run["finished"]:
-                runs_finished = False
-                break
-
+        runs_finished = all(run["finished"] for run in self.task_runs)
         if runs_finished:
             print("Request_task: no useful cached runs left", flush=True)
 
