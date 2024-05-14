@@ -40,10 +40,9 @@ from vtjson import ValidationError, validate
 
 boot_time = datetime.now(timezone.utc)
 
-last_rundb = None
-
 
 class RunDb:
+
     def __init__(self, db_name="fishtest_new", port=-1, is_primary_instance=True):
         # MongoDB server is assumed to be on the same machine, if not user should
         # use ssh with port forwarding to access the remote host.
@@ -68,13 +67,50 @@ class RunDb:
             "pt_bench": 2593605,
         }
 
-        global last_rundb
-        last_rundb = self
-
         if self.port >= 0:
             self.actiondb.system_event(message=f"start fishtest@{self.port}")
 
         self.__is_primary_instance = is_primary_instance
+
+        self.task_lock = threading.Lock()
+        self.request_task_lock = threading.Lock()
+        self.timer = None
+        self.timer_active = True
+
+    def set_inactive_run(self, run):
+        with self.task_lock:
+            run["workers"] = run["cores"] = 0
+            for task in run["tasks"]:
+                task["active"] = False
+
+    def set_inactive_task(self, task_id, run):
+        task = run["tasks"][task_id]
+        with self.task_lock:
+            if task["active"]:
+                run["workers"] -= 1
+                run["cores"] -= task["worker_info"]["concurrency"]
+                task["active"] = False
+
+    def update_workers_cores(self):
+        """
+        If the code is correct then this should be a noop, unless after a crash.
+        """
+        with self.task_lock:
+            for r in self.get_unfinished_runs_id():
+                workers = cores = 0
+                run = self.get_run(r["_id"])
+                for task in run["tasks"]:
+                    if task["active"]:
+                        workers += 1
+                        cores += int(task["worker_info"]["concurrency"])
+                if (run["workers"], run["cores"]) != (workers, cores):
+                    print(
+                        f"Warning: correcting (workers, cores) for f{str(run['_id'])}",
+                        f"db: {(run['workers'], run['cores'])} computed: {(workers, cores)}",
+                        flush=True,
+                    )
+                    run["workers"], run["cores"] = workers, cores
+                    self.buffer(run, False)
 
     def new_run(
         self,
@@ -308,21 +344,13 @@ class RunDb:
     run_cache_lock = threading.Lock()
     run_cache_write_lock = threading.Lock()
 
-    timer = None
-
     # handle termination
-    def exit_run(signum, frame):
-        global last_rundb
-        if last_rundb:
-            last_rundb.flush_all()
-            if last_rundb.port >= 0:
-                last_rundb.actiondb.system_event(
-                    message=f"stop fishtest@{last_rundb.port}"
-                )
+    def exit_run(self, signum, frame):
+        self.stop_timer()
+        self.flush_all()
+        if self.port >= 0:
+            self.actiondb.system_event(message=f"stop fishtest@{self.port}")
         sys.exit(0)
-
-    signal.signal(signal.SIGINT, exit_run)
-    signal.signal(signal.SIGTERM, exit_run)
 
     def get_run(self, r_id):
         r_id = str(r_id)
@@ -348,9 +376,16 @@ class RunDb:
         else:
             return self.runs.find_one({"_id": r_id_obj})
 
+    def stop_timer(self):
+        if self.timer is not None:
+            self.timer.cancel()
+        self.timer = None
+        self.timer_active = False
+
     def start_timer(self):
-        self.timer = threading.Timer(1.0, self.flush_buffers)
-        self.timer.start()
+        if self.timer_active:
+            self.timer = threading.Timer(1.0, self.flush_buffers)
+            self.timer.start()
 
     def buffer(self, run, flush):
         if not self.is_primary_instance():
@@ -361,8 +396,6 @@ class RunDb:
             )
             return
         with self.run_cache_lock:
-            if self.timer is None:
-                self.start_timer()
             r_id = str(run["_id"])
             if flush:
                 self.run_cache[r_id] = {
@@ -455,7 +488,7 @@ class RunDb:
         for task in run["tasks"]:
             task_id += 1
             if task["active"] and task["last_updated"] < old:
-                task["active"] = False
+                self.set_inactive_task(task_id, run)
                 dead_task = True
                 print(
                     "dead task: run: https://tests.stockfishchess.org/tests/view/{} task_id: {} worker: {}".format(
@@ -515,8 +548,6 @@ class RunDb:
                 if any(task["active"] for task in reversed(run["tasks"]))
                 else "pending"
             )
-            if state == "pending":
-                run["workers"] = run["cores"] = 0
             runs[state].append(run)
         runs["pending"].sort(
             key=lambda run: (
@@ -676,18 +707,10 @@ class RunDb:
 
         run["args"]["itp"] = itp
 
-    def update_workers_cores(self, run):
-        workers = cores = 0
-        for task in run["tasks"]:
-            if task["active"]:
-                workers += 1
-                cores += int(task["worker_info"]["concurrency"])
-        run["workers"], run["cores"] = workers, cores
-
     # Limit concurrent request_task
-    # The semaphore must be initialized with a value
-    # less than the number of Waitress threads.
-    task_lock = threading.Lock()
+    # It is very important that the following semaphore is initialized
+    # with a value strictly less than the number of Waitress threads.
+
     task_semaphore = threading.Semaphore(2)
 
     task_time = 0
@@ -731,7 +754,7 @@ After fixing the issues you can unblock the worker at
     def request_task(self, worker_info):
         if self.task_semaphore.acquire(False):
             try:
-                with self.task_lock:
+                with self.request_task_lock:
                     return self.sync_request_task(worker_info)
             finally:
                 self.task_semaphore.release()
@@ -784,7 +807,6 @@ After fixing the issues you can unblock the worker at
             self.task_runs = []
             for r in self.get_unfinished_runs_id():
                 run = self.get_run(r["_id"])
-                self.update_workers_cores(run)
                 self.calc_itp(run, user_active.count(run["args"].get("username")))
                 self.task_runs.append(run)
             self.task_time = time.time()
@@ -834,14 +856,17 @@ After fixing the issues you can unblock the worker at
         # get the list of active tasks
 
         active_tasks = [
-            task for run in self.task_runs for task in run["tasks"] if task["active"]
+            (run, task_id, task)
+            for run in self.task_runs
+            for task_id, task in enumerate(run["tasks"])
+            if task["active"]
         ]
 
         # We go through the list of active tasks to see if a worker with the same
         # name is already connected.
 
         now = datetime.now(timezone.utc)
-        for task in active_tasks:
+        for run, task_id, task in active_tasks:
             task_name = worker_name(task["worker_info"], short=True)
             if my_name == task_name:
                 task_name_long = worker_name(task["worker_info"])
@@ -854,7 +879,7 @@ After fixing the issues you can unblock the worker at
                         f'Stale active task detected for worker "{my_name_long}". Correcting...',
                         flush=True,
                     )
-                    task["active"] = False
+                    self.set_inactive_task(task_id, run)
                     continue
                 last_update = (now - task["last_updated"]).seconds
                 # 120 = period of heartbeat in worker.
@@ -872,7 +897,7 @@ After fixing the issues you can unblock the worker at
 
         connections = 0
         connections_limit = self.userdb.get_machine_limit(worker_info["username"])
-        for task in active_tasks:
+        for run, task_id, task in active_tasks:
             if task["worker_info"]["remote_addr"] == worker_info["remote_addr"]:
                 connections += 1
                 if connections >= connections_limit:
@@ -990,38 +1015,40 @@ After fixing the issues you can unblock the worker at
             return {"task_waiting": False}
 
         # Now we create a new task for this run.
-        opening_offset = 0
-        for task in run["tasks"]:
-            opening_offset += task["num_games"]
+        with self.task_lock:
+            opening_offset = 0
+            for task in run["tasks"]:
+                opening_offset += task["num_games"]
 
-        if "sprt" in run["args"]:
-            sprt_batch_size_games = 2 * run["args"]["sprt"]["batch_size"]
-            remaining = sprt_batch_size_games * math.ceil(
-                remaining / sprt_batch_size_games
-            )
+            if "sprt" in run["args"]:
+                sprt_batch_size_games = 2 * run["args"]["sprt"]["batch_size"]
+                remaining = sprt_batch_size_games * math.ceil(
+                    remaining / sprt_batch_size_games
+                )
 
-        task_size = min(self.worker_cap(run, worker_info), remaining)
-        task = {
-            "num_games": task_size,
-            "active": True,
-            "worker_info": worker_info,
-            "last_updated": datetime.now(timezone.utc),
-            "start": opening_offset,
-            "stats": {
-                "wins": 0,
-                "losses": 0,
-                "draws": 0,
-                "crashes": 0,
-                "time_losses": 0,
-                "pentanomial": 5 * [0],
-            },
-        }
-        run["tasks"].append(task)
+            task_size = min(self.worker_cap(run, worker_info), remaining)
+            task = {
+                "num_games": task_size,
+                "active": True,
+                "worker_info": worker_info,
+                "last_updated": datetime.now(timezone.utc),
+                "start": opening_offset,
+                "stats": {
+                    "wins": 0,
+                    "losses": 0,
+                    "draws": 0,
+                    "crashes": 0,
+                    "time_losses": 0,
+                    "pentanomial": 5 * [0],
+                },
+            }
+            run["tasks"].append(task)
 
-        task_id = len(run["tasks"]) - 1
+            task_id = len(run["tasks"]) - 1
 
-        run["workers"] += 1
-        run["cores"] += task["worker_info"]["concurrency"]
+            run["workers"] += 1
+            run["cores"] += task["worker_info"]["concurrency"]
+
         self.buffer(run, False)
 
         # Cache some data. Currently we record the id's
@@ -1174,7 +1201,7 @@ After fixing the issues you can unblock the worker at
                 run_id, task_id
             )
             print(info, flush=True)
-            task["active"] = False
+            self.set_inactive_task(task_id, run)
             self.buffer(run, True)
             return {"task_alive": False, "info": info}
 
@@ -1205,7 +1232,7 @@ After fixing the issues you can unblock the worker at
 
         if error != "":
             print(error, flush=True)
-            task["active"] = False
+            self.set_inactive_task(task_id, run)
             return {"task_alive": False, "error": error}
 
         # The update seems fine.
@@ -1233,26 +1260,18 @@ After fixing the issues you can unblock the worker at
         if num_games >= task["num_games"]:
             # This task is now finished
             task_finished = True
-            task["active"] = False
+            self.set_inactive_task(task_id, run)
 
         # Now update the current run.
 
         run["last_updated"] = update_time
-
-        if task_finished:
-            # run["cores"] is also updated in request_task().
-            # We use the same lock.
-            with self.task_lock:
-                run["workers"] -= 1
-                run["cores"] -= task["worker_info"]["concurrency"]
-                assert run["cores"] >= 0
 
         if "sprt" in run["args"]:
             sprt = run["args"]["sprt"]
             fishtest.stats.stat_util.update_SPRT(run["results"], sprt)
             if sprt["state"] != "":
                 task_finished = True
-                task["active"] = False
+                self.set_inactive_task(task_id, run)
 
         if "spsa" in run["args"] and spsa_games == spsa["num_games"]:
             self.update_spsa(task["worker_info"]["unique_key"], run, spsa)
@@ -1299,7 +1318,7 @@ After fixing the issues you can unblock the worker at
             print(info, flush=True)
             return {"task_alive": False, "info": info}
         # Mark the task as inactive.
-        task["active"] = False
+        self.set_inactive_task(task_id, run)
         self.handle_crash_or_time(run, task_id)
         self.buffer(run, False)
         print(
@@ -1326,8 +1345,8 @@ After fixing the issues you can unblock the worker at
         """
         self.clear_params(run_id)  # spsa stuff
         run = self.get_run(run_id)
-        for task in run["tasks"]:
-            task["active"] = False
+        self.set_inactive_run(run)
+
         results = run["results"]
         run["results_info"] = format_results(results, run)
         # De-couple the styling of the run from its finished status
@@ -1335,8 +1354,6 @@ After fixing the issues you can unblock the worker at
             run["is_green"] = True
         elif run["results_info"]["style"] == "yellow":
             run["is_yellow"] = True
-        run["cores"] = 0
-        run["workers"] = 0
         run["finished"] = True
         try:
             validate(runs_schema, run, "run")
@@ -1437,7 +1454,7 @@ After fixing the issues you can unblock the worker at
                 # For safety we also set the stats
                 # to zero.
                 task["bad"] = True
-                task["active"] = False
+                self.set_inactive_task(task_id, run)
                 task["stats"] = copy.deepcopy(zero_stats)
 
         chi2 = get_chi2(run["tasks"])
@@ -1463,7 +1480,7 @@ After fixing the issues you can unblock the worker at
                 bad_task["bad"] = True
                 run["bad_tasks"].append(bad_task)
                 task["bad"] = True
-                task["active"] = False
+                self.set_inactive_task(task_id, run)
                 task["stats"] = copy.deepcopy(zero_stats)
 
         if message == "":
