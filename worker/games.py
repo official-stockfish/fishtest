@@ -1508,6 +1508,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file, clear_binar
                     "-resign",
                     "movecount=3",
                     "score=600",
+                    "twosided=true",
                     "-draw",
                     "movenumber=34",
                     "movecount=8",
