@@ -10,7 +10,7 @@ from fishtest.rundb import RunDb
 from pyramid.authentication import AuthTktAuthenticationPolicy
 from pyramid.authorization import ACLAuthorizationPolicy
 from pyramid.config import Configurator
-from pyramid.events import BeforeRender, NewRequest
+from pyramid.events import ApplicationCreated, BeforeRender, NewRequest
 from pyramid.httpexceptions import HTTPFound
 from pyramid.security import forget
 from pyramid.session import SignedCookieSessionFactory
@@ -94,9 +94,19 @@ def main(global_config, **settings):
                 return True
         return False
 
+    def init_rundb(event):
+        # We do not want to do the following in the constructor of rundb since
+        # it writes to the db and starts the flush timer.
+        if rundb.is_primary_instance():
+            signal.signal(signal.SIGINT, rundb.exit_run)
+            signal.signal(signal.SIGTERM, rundb.exit_run)
+            rundb.start_timer()
+            rundb.update_workers_cores()
+
     config.add_subscriber(add_rundb, NewRequest)
     config.add_subscriber(add_renderer_globals, BeforeRender)
     config.add_subscriber(check_blocked_user, NewRequest)
+    config.add_subscriber(init_rundb, ApplicationCreated)
 
     # Authentication
     def group_finder(username, request):

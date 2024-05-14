@@ -1373,8 +1373,7 @@ def tests_delete(request):
 
         run["deleted"] = True
         run["finished"] = True
-        for task in run["tasks"]:
-            task["active"] = False
+        request.rundb.set_inactive_run(run)
         request.rundb.buffer(run, True)
         request.rundb.task_time = 0
 
