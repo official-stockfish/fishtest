@@ -30,7 +30,6 @@ from fishtest.util import (
     get_chi2,
     get_hash,
     get_tc_ratio,
-    post_in_fishcooking_results,
     remaining_hours,
     update_residuals,
     worker_name,
@@ -1341,8 +1340,6 @@ After fixing the issues you can unblock the worker at
                     message=message,
                 )
         self.buffer(run, True)
-        # Publish the results of the run to the Fishcooking forum
-        post_in_fishcooking_results(run)
         self.task_time = 0  # triggers a reload of self.task_runs
         # Auto-purge runs here. This may revive the run.
         if run["args"].get("auto_purge", True) and "spsa" not in run["args"]:
