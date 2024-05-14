@@ -430,15 +430,6 @@
                         >SPRT Calc</a
                       >
                     </li>
-                    <li>
-                      <a
-                        href="https://hxim.github.io/Stockfish-Evaluation-Guide/"
-                        target="_blank"
-                        rel="noopener"
-                        class="links-link rounded eval-guide"
-                        >Eval Guide</a
-                      >
-                    </li>
                   </ul>
                 </li>
 
