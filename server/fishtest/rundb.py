@@ -863,18 +863,18 @@ After fixing the issues you can unblock the worker at
 
         self.task_runs.sort(key=priority)
 
-        # get the list of active tasks
-
-        active_tasks = [
-            task for run in self.task_runs for task in run["tasks"] if task["active"]
-        ]
-
-        # We go through the list of active tasks to see if a worker with the same
-        # name is already connected.
-
         now = datetime.now(timezone.utc)
+        connections = 0
+        connections_limit = self.userdb.get_machine_limit(worker_info["username"])
+
+        active_tasks = (
+            task for run in self.task_runs for task in run["tasks"] if task["active"]
+        )
+
         for task in active_tasks:
             task_name = worker_name(task["worker_info"], short=True)
+
+            # see if a worker with the same name is already connected.
             if my_name == task_name:
                 task_name_long = worker_name(task["worker_info"])
                 my_name_long = worker_name(worker_info)
@@ -887,24 +887,19 @@ After fixing the issues you can unblock the worker at
                         flush=True,
                     )
                     task["active"] = False
-                    continue
-                last_update = (now - task["last_updated"]).seconds
-                # 120 = period of heartbeat in worker.
-                if last_update <= 120:
-                    error = (
-                        f'Request_task: There is already a worker running with name "{task_name_long}" '
-                        f'which sent an update {last_update} seconds ago (my name is "{my_name_long}")'
-                    )
-                    print(error, flush=True)
-                    return {"task_waiting": False, "error": error}
+                else:
+                    last_update = (now - task["last_updated"]).seconds
+                    # 120 = period of heartbeat in worker.
+                    if last_update <= 120:
+                        error = (
+                            f'Request_task: There is already a worker running with name "{task_name_long}" '
+                            f'which sent an update {last_update} seconds ago (my name is "{my_name_long}")'
+                        )
+                        print(error, flush=True)
+                        return {"task_waiting": False, "error": error}
 
-        # We go through the list of active tasks to see if the worker
-        # has reached the number of allowed connections from the same ip
-        # address.
-
-        connections = 0
-        connections_limit = self.userdb.get_machine_limit(worker_info["username"])
-        for task in active_tasks:
+            # see if the worker has reached the number of allowed connections from the same ip
+            # address.
             if task["worker_info"]["remote_addr"] == worker_info["remote_addr"]:
                 connections += 1
                 if connections >= connections_limit:
