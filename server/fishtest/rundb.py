@@ -353,6 +353,13 @@ class RunDb:
         self.timer.start()
 
     def buffer(self, run, flush):
+        if not self.is_primary_instance():
+            print(
+                "Warning: attempt to use the run_cache on the",
+                f"secondary instance with port number {self.port}!",
+                flush=True,
+            )
+            return
         with self.run_cache_lock:
             if self.timer is None:
                 self.start_timer()
