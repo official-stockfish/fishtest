@@ -772,7 +772,9 @@ def get_valid_books():
 
 def get_sha(branch, repo_url):
     """Resolves the git branch to sha commit"""
-    api_url = repo_url.replace("https://github.com", "https://api.github.com/repos")
+    api_url = repo_url.replace(
+        "https://github.com", "https://api.github.com/repos"
+    ).rstrip("/")
     try:
         commit = requests.get(api_url + "/commits/" + branch).json()
     except:
@@ -787,7 +789,7 @@ def get_nets(commit_sha, repo_url):
     """Get the nets from evaluate.h or ucioption.cpp in the repo"""
     api_url = repo_url.replace(
         "https://github.com", "https://raw.githubusercontent.com"
-    )
+    ).rstrip("/")
     try:
         nets = []
         pattern = re.compile("nn-[a-f0-9]{12}.nnue")
@@ -1176,7 +1178,7 @@ def new_run_message(request, run):
 
 def get_master_sha(repo_url):
     try:
-        repo_url += "/commits/master"
+        repo_url = repo_url.rstrip("/") + "/commits/master"
         response = requests.get(repo_url).json()
         if "commit" not in response:
             raise Exception("Cannot find branch in repository")

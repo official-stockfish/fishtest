@@ -29,7 +29,9 @@ def main():
     in_sync = False
     loaded = {}
     while True:
-        pgn_list = requests.get(fish_host + "/api/pgn_100/" + str(skip)).json()
+        pgn_list = requests.get(
+            fish_host.rstrip("/") + "/api/pgn_100/" + str(skip)
+        ).json()
         for pgn_file in pgn_list:
             print(pgn_file)
             if pgndb.find_one({"run_id": pgn_file}):
@@ -41,9 +43,11 @@ def main():
                 run_id = pgn_file.split("-")[0]
                 if not runs.find_one({"_id": run_id}):
                     print("New run: " + run_id)
-                    run = requests.get(fish_host + "/api/get_run/" + run_id).json()
+                    run = requests.get(
+                        fish_host.rstrip("/") + "/api/get_run/" + run_id
+                    ).json()
                     runs.insert(run)
-                pgn = requests.get(fish_host + "/api/pgn/" + pgn_file)
+                pgn = requests.get(fish_host.rstrip("/") + "/api/pgn/" + pgn_file)
                 pgndb.insert(
                     dict(pgn_bz2=Binary(bz2.compress(pgn.content)), run_id=pgn_file)
                 )
