@@ -678,8 +678,10 @@ class RunDb:
         run["workers"], run["cores"] = workers, cores
 
     # Limit concurrent request_task
+    # The semaphore must be initialized with a value
+    # less than the number of Waitress threads.
     task_lock = threading.Lock()
-    task_semaphore = threading.Semaphore(4)
+    task_semaphore = threading.Semaphore(2)
 
     task_time = 0
     task_runs = None
