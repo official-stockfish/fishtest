@@ -4,19 +4,21 @@
   document.title = "User Management | Stockfish Testing";
 </script>
 
-<script>
-  async function handleGitHubToken() {
-    await DOMContentLoaded();
-    document.getElementById("github_token").value = localStorage.getItem("github_token") || "";
-    document.getElementById("profile_form").addEventListener("submit", (e) => {
-        e.preventDefault();
-        const githubToken = document.getElementById("github_token").value;
-        localStorage.setItem("github_token", githubToken);
-        e.target.submit();
-    });
-  }
-  handleGitHubToken();
-</script>
+% if profile:
+  <script>
+      async function handleGitHubToken() {
+        await DOMContentLoaded();
+        document.getElementById("github_token").value = localStorage.getItem("github_token") || "";
+        document.getElementById("profile_form").addEventListener("submit", (e) => {
+            e.preventDefault();
+            const githubToken = document.getElementById("github_token").value;
+            localStorage.setItem("github_token", githubToken);
+            e.target.submit();
+        });
+      }
+      handleGitHubToken();
+  </script>
+% endif
 
 <div class="col-limited-size">
   <header class="text-md-center py-2">
@@ -128,12 +130,12 @@
           />
         <label for="github_token" class="d-flex align-items-end">GitHub's fine-grained personal access token</label>
         </div>
-        <span class="input-group-text" role="button" data-bs-toggle="modal" data-bs-target="#infoModal">
+        <span class="input-group-text" role="button" data-bs-toggle="modal" data-bs-target="#info_modal">
           <i class="fas fa-question-circle fa-lg pe-none" style="width: 30px"></i>
         </span>
       </div>
 
-      <div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true">
+      <div id="info_modal" class="modal fade" tabindex="-1" aria-labelledby="info_modal_label" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
           <div class="modal-content">
             <div class="modal-body">
@@ -176,10 +178,9 @@
         <div class="w-100 d-flex justify-content-between">
           <button
             id="reject_user"
-            name="pending"
-            value="1"
-            type="submit"
+            type="button"
             class="btn btn-danger"
+            data-bs-toggle="modal" data-bs-target="#reject_modal"
             style="width: 48%;"
           >Reject</button>
 
@@ -191,6 +192,24 @@
             class="btn btn-success"
             style="width: 48%;"
           >Accept</button>
+
+          <div id="reject_modal" class="modal fade" tabindex="-1" aria-labelledby="reject_modal" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title">Confirmation Required</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <p>Are you sure you want to reject this user?</p>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                  <button name="pending" type="submit" class="btn btn-primary" value="1">Confirm</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     % else:
