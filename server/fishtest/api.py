@@ -437,7 +437,8 @@ class UserApi(GenericApi):
 
     @view_config(route_name="api_get_elo")
     def get_elo(self):
-        run = self.request.rundb.get_run(self.request.matchdict["id"])
+        run_id = self.request.matchdict["id"]
+        run = self.request.rundb.get_run(run_id)
         if run is None:
             self.handle_error(
                 f"The run {run_id} does not exist", exception=HTTPNotFound
