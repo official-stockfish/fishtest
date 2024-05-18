@@ -72,20 +72,21 @@ class RunDb:
 
         self.__is_primary_instance = is_primary_instance
 
-        self.task_lock = threading.Lock()
         self.request_task_lock = threading.Lock()
         self.timer = None
         self.timer_active = True
 
     def set_inactive_run(self, run):
-        with self.task_lock:
+        run_id = run["_id"]
+        with self.active_run_lock(str(run_id)):
             run["workers"] = run["cores"] = 0
             for task in run["tasks"]:
                 task["active"] = False
 
     def set_inactive_task(self, task_id, run):
-        task = run["tasks"][task_id]
-        with self.task_lock:
+        run_id = run["_id"]
+        with self.active_run_lock(str(run_id)):
+            task = run["tasks"][task_id]
             if task["active"]:
                 run["workers"] -= 1
                 run["cores"] -= task["worker_info"]["concurrency"]
@@ -95,10 +96,11 @@ class RunDb:
         """
         If the code is correct then this should be a noop, unless after a crash.
         """
-        with self.task_lock:
-            for r in self.get_unfinished_runs_id():
-                workers = cores = 0
-                run = self.get_run(r["_id"])
+        for r in self.get_unfinished_runs_id():
+            workers = cores = 0
+            run_id = r["_id"]
+            run = self.get_run(run_id)
+            with self.active_run_lock(str(run_id)):
                 for task in run["tasks"]:
                     if task["active"]:
                         workers += 1
@@ -1015,7 +1017,8 @@ After fixing the issues you can unblock the worker at
             return {"task_waiting": False}
 
         # Now we create a new task for this run.
-        with self.task_lock:
+        run_id = run["_id"]
+        with self.active_run_lock(str(run_id)):
             opening_offset = 0
             for task in run["tasks"]:
                 opening_offset += task["num_games"]
@@ -1083,7 +1086,7 @@ After fixing the issues you can unblock the worker at
                 active_lock = self.active_runs[id]["lock"]
                 self.active_runs[id]["time"] = time.time()
             else:
-                active_lock = threading.Lock()
+                active_lock = threading.RLock()
                 self.active_runs[id] = {"time": time.time(), "lock": active_lock}
             return active_lock
 
