@@ -1019,6 +1019,17 @@ After fixing the issues you can unblock the worker at
         # Now we create a new task for this run.
         run_id = run["_id"]
         with self.active_run_lock(str(run_id)):
+            # It may happen that the run we have selected is now finished.
+            # Since this is very rare we just return instead of cluttering the
+            # code with remedial actions.
+            if run["finished"]:
+                info = (
+                    f"Request_task: alas the run {run_id} corresponding to the "
+                    "assigned task has meanwhile finished. Please try again..."
+                )
+                print(info, flush=True)
+                return {"task_waiting": False, "info": info}
+
             opening_offset = 0
             for task in run["tasks"]:
                 opening_offset += task["num_games"]
@@ -1191,21 +1202,6 @@ After fixing the issues you can unblock the worker at
             # otherwise it is expected behavior
             if not run["finished"]:
                 print(info, flush=True)
-            return {"task_alive": False, "info": info}
-
-        # There is a small possibility that a new task was assigned while this
-        # run was stopped in a previous call to update_task. If this is not
-        # handled then we may have duplicate event log entries as in
-        #
-        # https://tests.stockfishchess.org/actions?run_id=63c7059e18c20f4929c63833
-
-        if run["finished"]:
-            info = "Update_task: task {}/{} belongs to a finished run".format(
-                run_id, task_id
-            )
-            print(info, flush=True)
-            self.set_inactive_task(task_id, run)
-            self.buffer(run, True)
             return {"task_alive": False, "info": info}
 
         # Guard against incorrect results
