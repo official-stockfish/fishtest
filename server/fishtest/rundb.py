@@ -736,8 +736,9 @@ After fixing the issues you can unblock the worker at
             finally:
                 self.task_semaphore.release()
         else:
-            print("request_task too busy", flush=True)
-            return {"task_waiting": False}
+            message = "Request_task: the server is currently too busy..."
+            print(message, flush=True)
+            return {"task_waiting": False, "info": message}
 
     def sync_request_task(self, worker_info):
         # We check if the worker has not been blocked.
