@@ -902,7 +902,7 @@ def validate_pentanomial(wld, rounds):
 
 
 def parse_cutechess_output(
-    p, remote, result, spsa_tuning, games_to_play, batch_size, tc_limit
+    p, current_state, remote, result, spsa_tuning, games_to_play, batch_size, tc_limit
 ):
     hash_pattern = re.compile(r"(Base|New)-[a-f0-9]+")
 
@@ -1051,6 +1051,8 @@ def parse_cutechess_output(
                     time.sleep(UPDATE_RETRY_TIME)
                 if not update_succeeded:
                     raise WorkerException("Too many failed update attempts")
+                else:
+                    current_state["last_updated"] = datetime.now(timezone.utc)
 
         # Act on line like this:
         # Finished game 4 (Base-SHA vs New-SHA): 1/2-1/2 {Draw by adjudication}
@@ -1065,7 +1067,7 @@ def parse_cutechess_output(
 
 
 def launch_cutechess(
-    cmd, remote, result, spsa_tuning, games_to_play, batch_size, tc_limit
+    cmd, current_state, remote, result, spsa_tuning, games_to_play, batch_size, tc_limit
 ):
     if spsa_tuning:
         # Request parameters for next game.
@@ -1144,6 +1146,7 @@ def launch_cutechess(
             try:
                 task_alive = parse_cutechess_output(
                     p,
+                    current_state,
                     remote,
                     result,
                     spsa_tuning,
@@ -1178,7 +1181,9 @@ def launch_cutechess(
     return task_alive
 
 
-def run_games(worker_info, password, remote, run, task_id, pgn_file, clear_binaries):
+def run_games(
+    worker_info, current_state, password, remote, run, task_id, pgn_file, clear_binaries
+):
     # This is the main cutechess-cli driver.
     # It is ok, and even expected, for this function to
     # raise exceptions, implicitly or explicitly, if a
@@ -1548,6 +1553,7 @@ def run_games(worker_info, password, remote, run, task_id, pgn_file, clear_binar
 
         task_alive = launch_cutechess(
             cmd,
+            current_state,
             remote,
             result,
             spsa_tuning,
