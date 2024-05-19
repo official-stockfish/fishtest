@@ -358,6 +358,48 @@ def is_active_sprt_ltc(run):
     )  # SMP-STC ratio is 4
 
 
+def format_date(date):
+    if not date or date == "Unknown":
+        return "Unknown"
+
+    # Define month names
+    month_names = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+    ]
+
+    # Extract date components
+    year = date.year
+    month = month_names[date.month - 1]
+    day = date.day
+    hours = date.hour
+    minutes = date.minute
+
+    # Determine AM/PM
+    ampm = "AM" if hours < 12 else "PM"
+    hours = hours % 12 or 12  # Convert 0 to 12 for 12-hour format
+
+    # Format minutes to always have two digits
+    formatted_minutes = f"{minutes:02}"
+
+    # Construct the formatted date string
+    formatted_date = (
+        f"{month} {day}, {year}, at {hours}:{formatted_minutes} {ampm} (UTC)"
+    )
+
+    return formatted_date
+
+
 def remaining_hours(run):
     r = run["results"]
     if "sprt" in run["args"]:

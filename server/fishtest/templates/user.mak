@@ -27,24 +27,18 @@
       <h4 class="alert-heading">
         <a href="/tests/user/${user['username']}" class="alert-link col-6 text-break">${user['username']}</a>
       </h4>
-      <div class="row g-1">
+      <ul class="list-group list-group-flush">
         % if not profile:
-          <div class="col-6 text-md-end">Email:</div>
-          <div class="col-6 text-start text-break">
+          <li class="list-group-item bg-transparent text-break">Email: 
             <a href="mailto:${user['email']}?Subject=Fishtest%20Account" class="alert-link">
               ${user['email']}
             </a>
-          </div>
+          </li>
         % endif
-        <div class="col-6 text-md-end">Registered:</div>
-        <div class="col-6 text-start text-break">
-          ${user['registration_time'] if 'registration_time' in user else 'Unknown'}
-        </div>
-        <div class="col-6 text-md-end">Machine Limit:</div>
-        <div class="col-6 text-start text-break">${limit}</div>
-        <div class="col-6 text-md-end">CPU-Hours:</div>
-        <div class="col-6 text-start text-break">${hours}</div>
-      </div>
+        <li class="list-group-item bg-transparent text-break">Registered: ${format_date(user['registration_time'] if 'registration_time' in user else 'Unknown')}</li>
+        <li class="list-group-item bg-transparent text-break">Machine Limit: ${limit}</li>
+        <li class="list-group-item bg-transparent text-break">CPU-Hours: ${hours}</li>
+      </ul>
     </div>
   </header>
 
