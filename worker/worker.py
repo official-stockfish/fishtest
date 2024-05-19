@@ -23,7 +23,7 @@ import uuid
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 from configparser import ConfigParser
 from contextlib import ExitStack
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from functools import partial
 from pathlib import Path
 
@@ -1171,13 +1171,12 @@ def heartbeat(worker_info, password, remote, current_state):
         "password": password,
         "worker_info": worker_info,
     }
-    count = 0
     while current_state["alive"]:
         time.sleep(1)
-        count += 1
-        if count == 120:
-            count = 0
+        now = datetime.now(timezone.utc)
+        if current_state["last_updated"] + timedelta(seconds=120) < now:
             print("  Send heartbeat for", worker_info["unique_key"], end=" ... ")
+            current_state["last_updated"] = now
             run = current_state["run"]
             payload["run_id"] = str(run["_id"]) if run else None
             task_id = current_state["task_id"]
@@ -1419,7 +1418,16 @@ def fetch_and_handle_task(
     api = remote + "/api/failed_task"
     pgn_file = [None]
     try:
-        run_games(worker_info, password, remote, run, task_id, pgn_file, clear_binaries)
+        run_games(
+            worker_info,
+            current_state,
+            password,
+            remote,
+            run,
+            task_id,
+            pgn_file,
+            clear_binaries,
+        )
         success = True
     except FatalException as e:
         message = str(e)
@@ -1528,8 +1536,10 @@ def worker():
     current_state = {
         "run": None,  # the current run
         "task_id": None,  # the id of the current task
-        "alive": True,  # controls the main loop and
-        # the heartbeat loop
+        "alive": True,  # controls the main and heartbeat loop
+        "last_updated": datetime.now(
+            timezone.utc
+        ),  # tracks the last update to the server
     }
 
     # Install signal handlers.
