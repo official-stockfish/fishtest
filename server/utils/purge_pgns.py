@@ -6,11 +6,11 @@ from fishtest.rundb import RunDb
 from pymongo import DESCENDING
 
 
-def purge_pgn(rundb, finished, deleted, days):
-    kept_runs, kept_tasks, kept_pgns = 0, 0, 0
-    purged_runs, purged_tasks, purged_pgns = 0, 0, 0
+def purge_pgns(rundb, finished, deleted, days, days_ltc=60):
+    kept_runs = kept_tasks = kept_pgns = 0
+    purged_runs = purged_tasks = purged_pgns = 0
     now = datetime.now(timezone.utc)
-    cutoff_date_ltc = now - timedelta(days=10 * days)
+    cutoff_date_ltc = now - timedelta(days=days_ltc)
     cutoff_date = now - timedelta(days=days)
     tc_regex = re.compile("^([2-9][0-9])|([1-9][0-9][0-9])")
     runs_query = {
@@ -76,11 +76,11 @@ def main():
     # - runs that are not finished and not deleted, and older than 50 days
 
     rundb = RunDb()
-    out = purge_pgn(rundb=rundb, finished=True, deleted=False, days=1)
+    out = purge_pgns(rundb=rundb, finished=True, deleted=False, days=1, days_ltc=10)
     report("Finished runs:", *out)
-    out = purge_pgn(rundb=rundb, finished=True, deleted=True, days=10)
+    out = purge_pgns(rundb=rundb, finished=True, deleted=True, days=10)
     report("Deleted runs:", *out)
-    out = purge_pgn(rundb=rundb, finished=False, deleted=False, days=50)
+    out = purge_pgns(rundb=rundb, finished=False, deleted=False, days=50)
     report("Unfinished runs:", *out)
     msg = rundb.db.command({"compact": "pgns"})
     print(msg)
