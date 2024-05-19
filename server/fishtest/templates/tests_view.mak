@@ -261,6 +261,19 @@
         % endif
       % endif
       
+      % if run["args"]["throughput"] > 100 or run["args"]["priority"] > 0:
+        <div class="alert alert-warning">
+          Warning: 
+          % if run["args"]["throughput"] > 100 and run["args"]["priority"] > 0:
+            <span>Throughput and priority exceed the normal limits.</span>
+          % elif run["args"]["throughput"] > 100:
+            <span>Throughput exceeds the normal limit.</span>
+          % elif run["args"]["priority"] > 0:
+            <span>Priority exceeds the normal limit.</span>
+          % endif
+        </div>
+      % endif
+
       % if 'spsa' not in run['args'] and run['args']['base_signature'] == run['args']['new_signature']:
         <div class="alert alert-info mb-2">
           Note: The new signature is the same as base signature.
