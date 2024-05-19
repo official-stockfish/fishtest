@@ -23,9 +23,9 @@ from fishtest.util import (
     password_strength,
     update_residuals,
 )
-from pyramid.httpexceptions import HTTPFound, exception_response
+from pyramid.httpexceptions import HTTPFound, HTTPNotFound, exception_response
 from pyramid.security import forget, remember
-from pyramid.view import forbidden_view_config, view_config
+from pyramid.view import forbidden_view_config, notfound_view_config, view_config
 from requests.exceptions import ConnectionError, HTTPError
 from vtjson import ValidationError, union, validate
 
@@ -79,6 +79,12 @@ def pagination(page_idx, num, page_size, query_params):
         }
     )
     return pages
+
+
+@notfound_view_config(renderer="notfound.mak")
+def notfound_view(request):
+    request.response.status = 404
+    return {}
 
 
 @view_config(route_name="home")
@@ -585,7 +591,7 @@ def user(request):
 
     user_data = request.userdb.get_user(user_name)
     if user_data is None:
-        raise exception_response(404)
+        raise HTTPNotFound("Resource not found")
     if "user" in request.POST:
         if profile:
             old_password = request.params.get("old_password").strip()
@@ -1175,7 +1181,7 @@ def tests_run(request):
     if "id" in request.params:
         run = request.rundb.get_run(request.params["id"])
         if run is None:
-            raise exception_response(404)
+            raise HTTPNotFound("Resource not found")
         run_args = copy.deepcopy(run["args"])
         if "spsa" in run_args:
             # needs deepcopy
@@ -1405,7 +1411,7 @@ def get_page_title(run):
 def tests_live_elo(request):
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None:
-        raise exception_response(404)
+        raise HTTPNotFound("Resource not found")
     return {"run": run, "page_title": get_page_title(run)}
 
 
@@ -1413,7 +1419,7 @@ def tests_live_elo(request):
 def tests_stats(request):
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None:
-        raise exception_response(404)
+        raise HTTPNotFound("Resource not found")
     return {"run": run, "page_title": get_page_title(run)}
 
 
@@ -1421,7 +1427,7 @@ def tests_stats(request):
 def tests_tasks(request):
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None:
-        raise exception_response(404)
+        raise HTTPNotFound("Resource not found")
 
     try:
         show_task = int(request.params.get("show_task", -1))
@@ -1446,7 +1452,7 @@ def tests_machines(request):
 def tests_view(request):
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None:
-        raise exception_response(404)
+        raise HTTPNotFound("Resource not found")
     follow = 1 if "follow" in request.params else 0
     results = run["results"]
     run["results_info"] = format_results(results, run)
@@ -1652,6 +1658,9 @@ def tests_user(request):
         )
     )
     username = request.matchdict.get("username", "")
+    user_data = request.userdb.get_user(username)
+    if user_data is None:
+        raise HTTPNotFound("Resource not found")
     response = {**get_paginated_finished_runs(request), "username": username}
     page_param = request.params.get("page", "")
     if not page_param.isdigit() or int(page_param) <= 1:
