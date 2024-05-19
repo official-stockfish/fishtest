@@ -15,6 +15,7 @@ from fishtest.schemas import short_worker_name
 from fishtest.util import (
     email_valid,
     format_bounds,
+    format_date,
     format_results,
     get_chi2,
     get_hash,
@@ -661,6 +662,7 @@ def user(request):
     userc = request.userdb.user_cache.find_one({"username": user_name})
     hours = int(userc["cpu_hours"]) if userc is not None else 0
     return {
+        "format_date": format_date,
         "user": user_data,
         "limit": request.userdb.get_machine_limit(user_name),
         "hours": hours,
