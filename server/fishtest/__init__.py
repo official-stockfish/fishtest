@@ -100,7 +100,7 @@ def main(global_config, **settings):
         if rundb.is_primary_instance():
             signal.signal(signal.SIGINT, rundb.exit_run)
             signal.signal(signal.SIGTERM, rundb.exit_run)
-            rundb.start_timer()
+            rundb.schedule_tasks()
             rundb.update_workers_cores()
 
     config.add_subscriber(add_rundb, NewRequest)
