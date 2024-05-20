@@ -473,36 +473,37 @@ class RunDb:
             self.run_cache_lock.acquire()
             now = time.time()
             old = now + 1
-            oldest = None
-            for r_id in list(self.run_cache):
-                if not self.run_cache[r_id]["is_changed"]:
-                    if not self.run_cache[r_id]["run"].get("finished", False) and (
-                        "last_scavenge_time" not in self.run_cache[r_id]
-                        or self.run_cache[r_id]["last_scavenge_time"] < now - 60
+            oldest_entry = None
+            # We make this a list to be able to change run_cache during iteration
+            for r_id, cache_entry in list(self.run_cache.items()):
+                run = cache_entry["run"]
+                if not cache_entry["is_changed"]:
+                    if not run["finished"] and (
+                        "last_scavenge_time" not in cache_entry
+                        or cache_entry["last_scavenge_time"] < now - 60
                     ):
-                        self.run_cache[r_id]["last_scavenge_time"] = now
-                        if self.scavenge(self.run_cache[r_id]["run"]):
+                        cache_entry["last_scavenge_time"] = now
+                        if self.scavenge(run):
                             with self.run_cache_write_lock:
-                                self.runs.replace_one(
-                                    {"_id": ObjectId(r_id)}, self.run_cache[r_id]["run"]
-                                )
-                    if self.run_cache[r_id]["last_access_time"] < now - 300:
+                                self.runs.replace_one({"_id": run["_id"]}, run)
+                    if (
+                        run["cores"] <= 0
+                        and cache_entry["last_access_time"] < now - 300
+                    ):
                         del self.run_cache[r_id]
-                elif self.run_cache[r_id]["last_sync_time"] < old:
-                    old = self.run_cache[r_id]["last_sync_time"]
-                    oldest = r_id
-            if oldest is not None:
-                self.scavenge(self.run_cache[oldest]["run"])
-                self.run_cache[oldest]["last_scavenge_time"] = now
-                self.run_cache[oldest]["is_changed"] = False
-                self.run_cache[oldest]["last_sync_time"] = time.time()
-                # print("SYNC")
+                elif cache_entry["last_sync_time"] < old:
+                    old = cache_entry["last_sync_time"]
+                    oldest_entry = cache_entry
+            if oldest_entry is not None:
+                oldest_run = oldest_entry["run"]
+                self.scavenge(oldest_run)
+                oldest_entry["last_scavenge_time"] = now
+                oldest_entry["is_changed"] = False
+                oldest_entry["last_sync_time"] = time.time()
                 with self.run_cache_write_lock:
-                    self.runs.replace_one(
-                        {"_id": ObjectId(oldest)}, self.run_cache[oldest]["run"]
-                    )
-        except:
-            print("Flush exception", flush=True)
+                    self.runs.replace_one({"_id": oldest_run["_id"]}, oldest_run)
+        except Exception as e:
+            print(f"Flush exception: {str(e)}", flush=True)
         finally:
             self.run_cache_lock.release()
 
