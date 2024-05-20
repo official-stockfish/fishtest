@@ -21,7 +21,6 @@ from fishtest.util import (
     get_hash,
     get_tc_ratio,
     password_strength,
-    update_residuals,
 )
 from pyramid.httpexceptions import HTTPFound, exception_response
 from pyramid.security import forget, remember
@@ -1422,7 +1421,7 @@ def tests_tasks(request):
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None:
         raise exception_response(404)
-
+    chi2 = get_chi2(run["tasks"])
     try:
         show_task = int(request.params.get("show_task", -1))
     except:
@@ -1434,6 +1433,7 @@ def tests_tasks(request):
         "run": run,
         "approver": request.has_permission("approve_run"),
         "show_task": show_task,
+        "chi2": chi2,
     }
 
 
@@ -1565,7 +1565,6 @@ def tests_view(request):
             cores += task["worker_info"]["concurrency"]
 
     chi2 = get_chi2(run["tasks"])
-    update_residuals(run["tasks"], cached_chi2=chi2)
 
     try:
         show_task = int(request.params.get("show_task", -1))
