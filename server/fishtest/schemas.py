@@ -698,7 +698,7 @@ runs_schema = intersect(
 cache_schema = {
     run_id: {
         "run": runs_schema,
-        "is_changed": bool,  # Indicates if the run has changed since last write to db.
+        "is_changed": bool,  # Indicates if the run has changed since last_sync_time.
         "last_sync_time": ufloat,  # Last sync time (reading from or writing to db). If never synced then creation time.
         "last_access_time": ufloat,  # Last time the cache entry was touched (via buffer() or get_run()).
         "last_scavenge_time?": ufloat,  # Last time the run was scanned for dead tasks.
