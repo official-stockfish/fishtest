@@ -15,11 +15,18 @@ from bson.codec_options import CodecOptions
 from bson.errors import InvalidId
 from bson.objectid import ObjectId
 from fishtest.actiondb import ActionDb
-from fishtest.schemas import RUN_VERSION, nn_schema, pgns_schema, runs_schema
+from fishtest.schemas import (
+    RUN_VERSION,
+    nn_schema,
+    pgns_schema,
+    runs_schema,
+    valid_aggregated_data,
+)
 from fishtest.stats.stat_util import SPRT_elo
 from fishtest.userdb import UserDb
 from fishtest.util import (
     GeneratorAsFileReader,
+    Scheduler,
     crash_or_time,
     estimate_game_duration,
     format_bounds,
@@ -71,8 +78,43 @@ class RunDb:
         self.__is_primary_instance = is_primary_instance
 
         self.request_task_lock = threading.Lock()
-        self.timer = None
-        self.timer_active = True
+        self.scheduler = None
+
+    def schedule_tasks(self):
+        if self.scheduler is None:
+            self.scheduler = Scheduler(jitter=0.05)
+        self.scheduler.add_task(1.0, self.flush_buffers)
+        self.scheduler.add_task(180.0, self.validate_random_run)
+
+    def validate_random_run(self):
+        run_list = list(self.run_cache.values())
+        if len(run_list) == 0:
+            print(
+                "Validate_random_run: cache empty. No runs to validate...", flush=True
+            )
+            return
+        run = random.choice(list(run_list))["run"]
+        run_id = str(run["_id"])
+        try:
+            # Make sure that the run object does not change while we are
+            # validating it
+            with self.active_run_lock(run_id):
+                # We verify only the aggregated data since the other
+                # data is not synchronized and may be in a transient
+                # inconsistent state
+                validate(valid_aggregated_data, run, "run")
+                print(
+                    f"Validate_random_run: validated aggregated data in cache run {run_id}...",
+                    flush=True,
+                )
+        except ValidationError as e:
+            message = f"The run object {run_id} does not validate: {str(e)}"
+            print(message, flush=True)
+            if "version" in run and run["version"] >= RUN_VERSION:
+                self.actiondb.log_message(
+                    username="fishtest.system",
+                    message=message,
+                )
 
     def set_inactive_run(self, run):
         run_id = run["_id"]
@@ -346,7 +388,8 @@ class RunDb:
 
     # handle termination
     def exit_run(self, signum, frame):
-        self.stop_timer()
+        if self.scheduler is not None:
+            self.scheduler.stop()
         self.flush_all()
         if self.port >= 0:
             self.actiondb.system_event(message=f"stop fishtest@{self.port}")
@@ -375,17 +418,6 @@ class RunDb:
                 return run
         else:
             return self.runs.find_one({"_id": r_id_obj})
-
-    def stop_timer(self):
-        if self.timer is not None:
-            self.timer.cancel()
-        self.timer = None
-        self.timer_active = False
-
-    def start_timer(self):
-        if self.timer_active:
-            self.timer = threading.Timer(1.0, self.flush_buffers)
-            self.timer.start()
 
     def buffer(self, run, flush):
         if not self.is_primary_instance():
@@ -437,8 +469,6 @@ class RunDb:
 
     # For documentation of the cache format see "cache_schema" in schemas.py.
     def flush_buffers(self):
-        if self.timer is None:
-            return
         try:
             self.run_cache_lock.acquire()
             now = time.time()
@@ -474,9 +504,7 @@ class RunDb:
         except:
             print("Flush exception", flush=True)
         finally:
-            # Restart timer:
             self.run_cache_lock.release()
-            self.start_timer()
 
     def scavenge(self, run):
         if datetime.now(timezone.utc) < boot_time + timedelta(seconds=300):
