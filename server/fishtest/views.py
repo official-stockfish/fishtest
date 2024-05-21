@@ -1694,7 +1694,12 @@ def tests_user(request):
     user_data = request.userdb.get_user(username)
     if user_data is None:
         raise HTTPNotFound()
-    response = {**get_paginated_finished_runs(request), "username": username}
+    is_approver = request.has_permission("approve_run")
+    response = {
+        **get_paginated_finished_runs(request),
+        "username": username,
+        "is_approver": is_approver,
+    }
     page_param = request.params.get("page", "")
     if not page_param.isdigit() or int(page_param) <= 1:
         response["runs"] = request.rundb.aggregate_unfinished_runs(
