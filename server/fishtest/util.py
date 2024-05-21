@@ -513,6 +513,28 @@ def email_valid(email):
         return False, str(e)
 
 
+def github_repo_valid(url):
+    # Accept no repo for resources contribution
+    if not url:
+        return True
+
+    # Regular expression to match the GitHub repository URL pattern, with optional 'www.'
+    pattern = r"^https:\/\/(www\.)?github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/?$"
+    return re.match(pattern, url) is not None
+
+
+def extract_repo_from_link(url):
+    # Validate the URL
+    if not github_repo_valid(url):
+        return None
+
+    # Regular expression to capture the username/repository part of the URL
+    match = re.search(r"github\.com\/([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)\/?", url)
+    if match:
+        return match.group(1)
+    return None
+
+
 def get_hash(s):
     h = re.search("Hash=([0-9]+)", s)
     if h:

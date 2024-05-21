@@ -86,6 +86,32 @@
       <label for="email" class="d-flex align-items-end">Email</label>
     </div>
 
+    <div class="input-group mb-3">
+      <div class="form-floating">
+        <input
+          class="form-control"
+          id="tests_repo"
+          name="tests_repo"
+          placeholder="GitHub Stockfish fork URL"
+        >
+        <label for="tests_repo" class="d-flex align-items-end">Tests Repository</label>
+      </div>
+      <span class="input-group-text" role="button" data-bs-toggle="modal" data-bs-target="#tests_repo_info_modal">
+        <i class="fas fa-question-circle fa-lg pe-none" style="width: 30px"></i>
+      </span>
+    </div>
+
+    <div id="tests_repo_info_modal" class="modal fade" tabindex="-1" aria-labelledby="tests_repo_info_modal_label" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-body">
+          This Github fork URL will be the default fork URL for users who want to contribute code when creating runs,
+           it is not needed for resources contribution.
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="g-recaptcha mb-3"
          data-sitekey="6LePs8YUAAAAABMmqHZVyVjxat95Z1c_uHrkugZM"></div>
 

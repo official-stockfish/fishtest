@@ -105,7 +105,7 @@ class UserDb:
         self.users.replace_one({"_id": user["_id"]}, user)
         self.clear_cache()
 
-    def create_user(self, username, password, email):
+    def create_user(self, username, password, email, tests_repo):
         try:
             if self.find_by_username(username) or self.find_by_email(email):
                 return False
@@ -118,7 +118,7 @@ class UserDb:
                 "blocked": False,
                 "email": email,
                 "groups": [],
-                "tests_repo": "",
+                "tests_repo": tests_repo,
                 "machine_limit": DEFAULT_MACHINE_LIMIT,
             }
             validate_user(user)
