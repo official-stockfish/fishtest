@@ -29,6 +29,7 @@ class Create10UsersTest(unittest.TestCase):
                 "password": "secret",
                 "password2": "secret",
                 "email": "joe@user.net",
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
             },
         )
         response = signup(request)
@@ -38,7 +39,12 @@ class Create10UsersTest(unittest.TestCase):
 class Create50LoginTest(unittest.TestCase):
     def setUp(self):
         self.rundb = util.get_rundb()
-        self.rundb.userdb.create_user("JoeUser", "secret", "email@email.email")
+        self.rundb.userdb.create_user(
+            "JoeUser",
+            "secret",
+            "email@email.email",
+            "https://github.com/official-stockfish/Stockfish",
+        )
         self.config = testing.setUp()
         self.config.add_route("login", "/login")
 

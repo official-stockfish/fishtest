@@ -136,7 +136,12 @@ class TestApi(unittest.TestCase):
             "ARCH": "?",
             "nps": 0.0,
         }
-        cls.rundb.userdb.create_user(cls.username, cls.password, "email@email.email")
+        cls.rundb.userdb.create_user(
+            cls.username,
+            cls.password,
+            "email@email.email",
+            "https://github.com/official-stockfish/Stockfish",
+        )
         user = cls.rundb.userdb.get_user(cls.username)
         user["pending"] = False
         user["machine_limit"] = 50
@@ -500,7 +505,12 @@ class TestRunFinished(unittest.TestCase):
             "ARCH": "?",
             "nps": 0.0,
         }
-        cls.rundb.userdb.create_user(cls.username, cls.password, "email@email.email")
+        cls.rundb.userdb.create_user(
+            cls.username,
+            cls.password,
+            "email@email.email",
+            "https://github.com/official-stockfish/Stockfish",
+        )
         user = cls.rundb.userdb.get_user(cls.username)
         user["pending"] = False
         user["machine_limit"] = 50

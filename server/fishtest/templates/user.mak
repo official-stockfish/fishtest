@@ -1,41 +1,56 @@
 <%inherit file="base.mak"/>
 
-<script>
-  document.title = "User Management | Stockfish Testing";
-</script>
-
 % if profile:
   <script>
-      async function handleGitHubToken() {
-        await DOMContentLoaded();
-        document.getElementById("github_token").value = localStorage.getItem("github_token") || "";
-        document.getElementById("profile_form").addEventListener("submit", (e) => {
-            e.preventDefault();
-            const githubToken = document.getElementById("github_token").value;
-            localStorage.setItem("github_token", githubToken);
-            e.target.submit();
-        });
-      }
-      handleGitHubToken();
+    document.title = "Profile | Stockfish Testing";
+    async function handleGitHubToken() {
+      await DOMContentLoaded();
+      document.getElementById("github_token").value = localStorage.getItem("github_token") || "";
+      document.getElementById("profile_form").addEventListener("submit", (e) => {
+          e.preventDefault();
+          const githubToken = document.getElementById("github_token").value;
+          localStorage.setItem("github_token", githubToken);
+          e.target.submit();
+      });
+    }
+    handleGitHubToken();
+  </script>
+% else:
+  <script>
+    document.title = "User Management | Stockfish Testing";
   </script>
 % endif
 
 <div class="col-limited-size">
   <header class="text-md-center py-2">
-    <h2>User Management</h2>
+    % if profile:
+      <h2>Profile</h2>
+    % else:
+      <h2>User Management</h2>
+    % endif
     <div class="alert alert-info">
       <h4 class="alert-heading">
         <a href="/tests/user/${user['username']}" class="alert-link col-6 text-break">${user['username']}</a>
       </h4>
       <ul class="list-group list-group-flush">
+        <li class="list-group-item bg-transparent text-break">Registered: ${format_date(user['registration_time'] if 'registration_time' in user else 'Unknown')}</li>
         % if not profile:
+          <li class="list-group-item bg-transparent text-break">Tests Repository: 
+            % if user['tests_repo']:
+              <a class="alert-link" href="${user['tests_repo']}">${extract_repo_from_link(user['tests_repo'])}</a>
+            % else:
+              <span>-</span>
+            % endif
+          </li>
           <li class="list-group-item bg-transparent text-break">Email: 
             <a href="mailto:${user['email']}?Subject=Fishtest%20Account" class="alert-link">
               ${user['email']}
             </a>
           </li>
         % endif
-        <li class="list-group-item bg-transparent text-break">Registered: ${format_date(user['registration_time'] if 'registration_time' in user else 'Unknown')}</li>
+        <li class="list-group-item bg-transparent text-break">
+          Groups: ${', '.join([group.replace('group:', '') for group in user['groups']]) if user['groups'] and len(user['groups']) > 0 else "No group"}
+        </li>
         <li class="list-group-item bg-transparent text-break">Machine Limit: ${limit}</li>
         <li class="list-group-item bg-transparent text-break">CPU-Hours: ${hours}</li>
       </ul>
@@ -117,6 +132,33 @@
         <div class="form-floating">
           <input
             class="form-control"
+            id="tests_repo"
+            name="tests_repo"
+            value="${user['tests_repo']}"
+            placeholder="GitHub Stockfish fork URL"
+          >
+          <label for="tests_repo" class="d-flex align-items-end">Tests Repository</label>
+        </div>
+        <span class="input-group-text" role="button" data-bs-toggle="modal" data-bs-target="#tests_repo_info_modal">
+          <i class="fas fa-question-circle fa-lg pe-none" style="width: 30px"></i>
+        </span>
+      </div>
+
+      <div id="tests_repo_info_modal" class="modal fade" tabindex="-1" aria-labelledby="tests_repo_info_modal_label" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-body">
+            This Github fork URL will be the default fork URL for users who want to contribute code when creating runs,
+            it is not needed for resources contribution.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="input-group mb-3">
+        <div class="form-floating">
+          <input
+            class="form-control"
             id="github_token"
             name="github_token"
             autocomplete="off"
@@ -124,12 +166,12 @@
           />
         <label for="github_token" class="d-flex align-items-end">GitHub's fine-grained personal access token</label>
         </div>
-        <span class="input-group-text" role="button" data-bs-toggle="modal" data-bs-target="#info_modal">
+        <span class="input-group-text" role="button" data-bs-toggle="modal" data-bs-target="#github_token_info_modal">
           <i class="fas fa-question-circle fa-lg pe-none" style="width: 30px"></i>
         </span>
       </div>
 
-      <div id="info_modal" class="modal fade" tabindex="-1" aria-labelledby="info_modal_label" aria-hidden="true">
+      <div id="github_token_info_modal" class="modal fade" tabindex="-1" aria-labelledby="github_token_info_modal_label" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
           <div class="modal-content">
             <div class="modal-body">

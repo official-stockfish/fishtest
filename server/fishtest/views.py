@@ -14,12 +14,14 @@ from bson.objectid import ObjectId
 from fishtest.schemas import short_worker_name
 from fishtest.util import (
     email_valid,
+    extract_repo_from_link,
     format_bounds,
     format_date,
     format_results,
     get_chi2,
     get_hash,
     get_tc_ratio,
+    github_repo_valid,
     password_strength,
     update_residuals,
 )
@@ -370,6 +372,7 @@ def signup(request):
     signup_password = request.POST.get("password", "").strip()
     signup_password_verify = request.POST.get("password2", "").strip()
     signup_email = request.POST.get("email", "").strip()
+    tests_repo = request.POST.get("tests_repo", "").strip()
 
     strong_password, password_err = password_strength(
         signup_password, signup_username, signup_email
@@ -385,6 +388,8 @@ def signup(request):
         errors.append("Error! Username required")
     if not signup_username.isalnum():
         errors.append("Error! Alphanumeric username required")
+    if not github_repo_valid(tests_repo):
+        errors.append("Error! Invalid tests repo: " + tests_repo)
     if errors:
         for error in errors:
             request.session.flash(error, "error")
@@ -411,7 +416,10 @@ def signup(request):
                 return {}
 
     result = request.userdb.create_user(
-        username=signup_username, password=signup_password, email=validated_email
+        username=signup_username,
+        password=signup_password,
+        email=validated_email,
+        tests_repo=tests_repo,
     )
     if result is None:
         request.session.flash("Error! Invalid username or password", "error")
@@ -598,6 +606,7 @@ def user(request):
             new_password = request.params.get("password").strip()
             new_password_verify = request.params.get("password2", "").strip()
             new_email = request.params.get("email").strip()
+            tests_repo = request.params.get("tests_repo").strip()
 
             # Temporary comparison until passwords are hashed.
             if old_password != user_data["password"].strip():
@@ -625,6 +634,12 @@ def user(request):
                         "Error! Matching verify password required", "error"
                     )
                     return home(request)
+
+            if not github_repo_valid(tests_repo):
+                request.session.flash("Error! Invalid test repo", "error")
+                return home(request)
+            else:
+                user_data["tests_repo"] = tests_repo
 
             if len(new_email) > 0 and user_data["email"] != new_email:
                 email_is_valid, validated_email = email_valid(new_email)
@@ -673,6 +688,7 @@ def user(request):
         "limit": request.userdb.get_machine_limit(user_name),
         "hours": hours,
         "profile": profile,
+        "extract_repo_from_link": extract_repo_from_link,
     }
 
 
