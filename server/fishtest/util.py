@@ -2,9 +2,7 @@ import copy
 import hashlib
 import math
 import re
-import smtplib
 from datetime import datetime, timedelta, timezone
-from email.mime.text import MIMEText
 from functools import cache
 
 import fishtest.stats.stat_util
