@@ -10,7 +10,6 @@ from pathlib import Path
 
 import fishtest.stats.stat_util
 import requests
-from bson.objectid import ObjectId
 from fishtest.schemas import short_worker_name
 from fishtest.util import (
     email_valid,
@@ -25,7 +24,7 @@ from fishtest.util import (
     password_strength,
     update_residuals,
 )
-from pyramid.httpexceptions import HTTPFound, HTTPNotFound, exception_response
+from pyramid.httpexceptions import HTTPFound, HTTPNotFound
 from pyramid.security import forget, remember
 from pyramid.view import forbidden_view_config, notfound_view_config, view_config
 from requests.exceptions import ConnectionError, HTTPError
