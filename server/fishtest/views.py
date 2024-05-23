@@ -29,6 +29,7 @@ from pyramid.httpexceptions import HTTPFound, HTTPNotFound
 from pyramid.security import forget, remember
 from pyramid.view import forbidden_view_config, notfound_view_config, view_config
 from requests.exceptions import ConnectionError, HTTPError
+from urllib.parse import urljoin, urlparse, urlsplit, urlunparse, urlunsplit
 from vtjson import ValidationError, union, validate
 
 HTTP_TIMEOUT = 15.0
@@ -772,24 +773,31 @@ def get_valid_books():
 
 def get_sha(branch, repo_url):
     """Resolves the git branch to sha commit"""
-    api_url = repo_url.replace(
-        "https://github.com", "https://api.github.com/repos"
-    ).rstrip("/")
+    parsed_url = urlparse(repo_url)
+    api_url = parsed_url._replace(
+        netloc="api.github.com", path=f"/repos{parsed_url.path}"
+    )._replace(scheme="https")
+    api_url = urlunparse(api_url)
     try:
-        commit = requests.get(api_url + "/commits/" + branch).json()
-    except:
+        response = requests.get(urljoin(api_url, f"commits/{branch}"))
+        response.raise_for_status()
+        commit = response.json()
+    except requests.RequestException:
         raise Exception("Unable to access developer repository")
-    if "sha" in commit:
-        return commit["sha"], commit["commit"]["message"].split("\n")[0]
-    else:
-        return "", ""
+
+    # Extract the SHA and commit message
+    sha = commit.get("sha", "")
+    message = commit.get("commit", {}).get("message", "").split("\n")[0]
+
+    return sha, message
 
 
 def get_nets(commit_sha, repo_url):
     """Get the nets from evaluate.h or ucioption.cpp in the repo"""
-    api_url = repo_url.replace(
-        "https://github.com", "https://raw.githubusercontent.com"
-    ).rstrip("/")
+    urlparts = urlsplit(repo_url)
+    raw_netloc = urlparts.netloc.replace("github.com", "raw.githubusercontent.com")
+    raw_url_parts = urlparts._replace(netloc=raw_netloc)
+    api_url = urlunsplit(raw_url_parts)
     try:
         nets = []
         pattern = re.compile("nn-[a-f0-9]{12}.nnue")
@@ -1179,13 +1187,25 @@ def new_run_message(request, run):
 
 
 def get_master_sha(repo_url):
+    """Resolves the master branch to its sha commit"""
     try:
-        repo_url = repo_url.rstrip("/") + "/commits/master"
-        response = requests.get(repo_url).json()
-        if "commit" not in response:
+        urlparts = urlsplit(repo_url)
+        urlparts = urlparts._replace(
+            netloc=urlparts.netloc.replace("github.com", "api.github.com")
+        )
+        api_url = urlunsplit(urlparts)
+        get_url = urljoin(api_url, f"repos{urlparts.path}/commits/master")
+
+        # Fetch the commit information
+        response = requests.get(get_url)
+        response.raise_for_status()
+        commit = response.json()
+
+        if "commit" not in commit:
             raise Exception("Cannot find branch in repository")
-        return response["sha"]
-    except Exception as e:
+
+        return commit["sha"]
+    except requests.RequestException as e:
         raise Exception("Unable to access repository") from e
 
 
