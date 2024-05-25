@@ -18,10 +18,11 @@ from vtjson import (
     div,
     email,
     fields,
+    ge,
     glob,
+    gt,
     ifthen,
     intersect,
-    interval,
     ip_address,
     keys,
     lax,
@@ -59,10 +60,11 @@ even = div(2, name="even")
 datetime_utc = intersect(datetime, fields({"tzinfo": timezone.utc}))
 gzip_data = magic("application/gzip", name="gzip_data")
 
-uint = intersect(int, interval(0, ...))
-suint = intersect(int, interval(1, ...))
-ufloat = intersect(float, interval(0.0, ...))
-unumber = intersect(number, interval(0, ...))
+uint = intersect(int, ge(0))
+suint = intersect(int, gt(0))
+ufloat = intersect(float, ge(0))
+unumber = intersect(number, ge(0))
+sunumber = intersect(number, gt(0))
 
 
 def size_is_length(x):
@@ -595,9 +597,9 @@ runs_schema = intersect(
                             "start": number,
                             "min": number,
                             "max": number,
-                            "c_end": unumber,
+                            "c_end": sunumber,
                             "r_end": unumber,
-                            "c": unumber,
+                            "c": sunumber,
                             "a_end": unumber,
                             "a": unumber,
                             "theta": number,
