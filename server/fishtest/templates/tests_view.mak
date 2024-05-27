@@ -249,6 +249,12 @@
         </div>
       </div>
 
+      % if not h.reasonable_run_hashes(run):
+        <div class="alert alert-danger mb-2">
+          Hash options are too low or too high for this TC
+        </div>
+      % endif 
+
       % if 'spsa' not in run['args'] and run['args'].get('base_options', 'Hash=16').replace(" ", "") != run['args'].get('new_options', 'Hash=16').replace(" ", ""):
           <div class="alert alert-danger mb-2">
             Base engine options are not the same as the new engine options
