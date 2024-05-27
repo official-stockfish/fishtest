@@ -491,7 +491,7 @@ class RunDb:
                 self.set_inactive_task(task_id, run)
                 dead_task = True
                 print(
-                    "dead task: run: https://tests.stockfishchess.org/tests/view/{} task_id: {} worker: {}".format(
+                    "dead task: run: https://149.202.73.158/tests/view/{} task_id: {} worker: {}".format(
                         run["_id"], task_id, worker_name(task["worker_info"])
                     ),
                     flush=True,
@@ -1318,7 +1318,7 @@ After fixing the issues you can unblock the worker at
         self.handle_crash_or_time(run, task_id)
         self.buffer(run, False)
         print(
-            "Failed_task: failure for: https://tests.stockfishchess.org/tests/view/{}, "
+            "Failed_task: failure for: https://149.202.73.158/tests/view/{}, "
             "task_id: {}, worker: {}, reason: '{}'".format(
                 run_id, task_id, worker_name(task["worker_info"]), message
             ),

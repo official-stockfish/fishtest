@@ -11,7 +11,7 @@ import scipy.stats
 from email_validator import EmailNotValidError, caching_resolver, validate_email
 from zxcvbn import zxcvbn
 
-FISH_URL = "https://tests.stockfishchess.org/tests/view/"
+FISH_URL = "https://149.202.73.158/tests/view/"
 
 
 class GeneratorAsFileReader:

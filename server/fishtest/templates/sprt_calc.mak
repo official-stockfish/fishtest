@@ -97,13 +97,13 @@
       <em>live_elo page</em>
       of a test with typical URL
       <a
-        href="https://tests.stockfishchess.org/tests/live_elo/5e15b3e061fe5f83a67dd926"
-        >https://tests.stockfishchess.org/tests/live_elo/5e15b3e061fe5f83a67dd926</a
+        href="https://149.202.73.158/tests/live_elo/5e15b3e061fe5f83a67dd926"
+        >https://149.202.73.158/tests/live_elo/5e15b3e061fe5f83a67dd926</a
       >
       or the <em>raw statistics page</em> with typical URL
       <a
-        href="http://tests.stockfishchess.org/tests/stats/5e15b3e061fe5f83a67dd926"
-        >http://tests.stockfishchess.org/tests/stats/5e15b3e061fe5f83a67dd926</a
+        href="http://149.202.73.158/tests/stats/5e15b3e061fe5f83a67dd926"
+        >http://149.202.73.158/tests/stats/5e15b3e061fe5f83a67dd926</a
       >.
     </li>
     <li>
