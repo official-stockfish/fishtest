@@ -362,15 +362,15 @@ class RunDb:
         if self.is_primary_instance():
             with self.run_cache_lock:
                 if r_id in self.run_cache:
-                    self.run_cache[r_id]["rtime"] = time.time()
+                    self.run_cache[r_id]["last_access_time"] = time.time()
                     return self.run_cache[r_id]["run"]
                 run = self.runs.find_one({"_id": r_id_obj})
                 if run is not None:
                     self.run_cache[r_id] = {
-                        "rtime": time.time(),
-                        "ftime": time.time(),
+                        "last_access_time": time.time(),
+                        "last_sync_time": time.time(),
                         "run": run,
-                        "dirty": False,
+                        "is_changed": False,
                     }
                 return run
         else:
@@ -399,22 +399,22 @@ class RunDb:
             r_id = str(run["_id"])
             if flush:
                 self.run_cache[r_id] = {
-                    "dirty": False,
-                    "rtime": time.time(),
-                    "ftime": time.time(),
+                    "is_changed": False,
+                    "last_access_time": time.time(),
+                    "last_sync_time": time.time(),
                     "run": run,
                 }
                 with self.run_cache_write_lock:
                     self.runs.replace_one({"_id": ObjectId(r_id)}, run)
             else:
                 if r_id in self.run_cache:
-                    ftime = self.run_cache[r_id]["ftime"]
+                    last_sync_time = self.run_cache[r_id]["last_sync_time"]
                 else:
-                    ftime = time.time()
+                    last_sync_time = time.time()
                 self.run_cache[r_id] = {
-                    "dirty": True,
-                    "rtime": time.time(),
-                    "ftime": ftime,
+                    "is_changed": True,
+                    "last_access_time": time.time(),
+                    "last_sync_time": last_sync_time,
                     "run": run,
                 }
 
@@ -430,11 +430,12 @@ class RunDb:
         # called from a signal handler and grabbing locks might deadlock
         for r_id in list(self.run_cache):
             entry = self.run_cache.get(r_id, None)
-            if entry is not None and entry["dirty"]:
+            if entry is not None and entry["is_changed"]:
                 self.runs.replace_one({"_id": ObjectId(r_id)}, entry["run"])
                 print(".", end="", flush=True)
         print("done", flush=True)
 
+    # For documentation of the cache format see "cache_schema" in schemas.py.
     def flush_buffers(self):
         if self.timer is None:
             return
@@ -444,28 +445,27 @@ class RunDb:
             old = now + 1
             oldest = None
             for r_id in list(self.run_cache):
-                if not self.run_cache[r_id]["dirty"]:
+                if not self.run_cache[r_id]["is_changed"]:
                     if not self.run_cache[r_id]["run"].get("finished", False) and (
-                        "scavenge" not in self.run_cache[r_id]
-                        or self.run_cache[r_id]["scavenge"] < now - 60
+                        "last_scavenge_time" not in self.run_cache[r_id]
+                        or self.run_cache[r_id]["last_scavenge_time"] < now - 60
                     ):
-                        self.run_cache[r_id]["scavenge"] = now
+                        self.run_cache[r_id]["last_scavenge_time"] = now
                         if self.scavenge(self.run_cache[r_id]["run"]):
                             with self.run_cache_write_lock:
                                 self.runs.replace_one(
                                     {"_id": ObjectId(r_id)}, self.run_cache[r_id]["run"]
                                 )
-                    if self.run_cache[r_id]["rtime"] < now - 300:
+                    if self.run_cache[r_id]["last_access_time"] < now - 300:
                         del self.run_cache[r_id]
-                elif self.run_cache[r_id]["ftime"] < old:
-                    old = self.run_cache[r_id]["ftime"]
+                elif self.run_cache[r_id]["last_sync_time"] < old:
+                    old = self.run_cache[r_id]["last_sync_time"]
                     oldest = r_id
-            # print(oldest)
             if oldest is not None:
                 self.scavenge(self.run_cache[oldest]["run"])
-                self.run_cache[oldest]["scavenge"] = now
-                self.run_cache[oldest]["dirty"] = False
-                self.run_cache[oldest]["ftime"] = time.time()
+                self.run_cache[oldest]["last_scavenge_time"] = now
+                self.run_cache[oldest]["is_changed"] = False
+                self.run_cache[oldest]["last_sync_time"] = time.time()
                 # print("SYNC")
                 with self.run_cache_write_lock:
                     self.runs.replace_one(
@@ -481,7 +481,6 @@ class RunDb:
     def scavenge(self, run):
         if datetime.now(timezone.utc) < boot_time + timedelta(seconds=300):
             return False
-        # print("scavenge ", run["_id"])
         dead_task = False
         old = datetime.now(timezone.utc) - timedelta(minutes=6)
         task_id = -1
