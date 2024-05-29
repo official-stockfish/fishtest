@@ -55,7 +55,14 @@ from updater import update
 # Several packages are called "expression".
 # So we make sure to use the locally installed one.
 
-WORKER_VERSION = 238
+# Minimum requirement of compiler version for Stockfish.
+MIN_GCC_MAJOR = 7
+MIN_GCC_MINOR = 3
+
+MIN_CLANG_MAJOR = 8
+MIN_CLANG_MINOR = 0
+
+WORKER_VERSION = 239
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -1048,10 +1055,10 @@ def gcc_version():
         print("Failed to parse g++ version.")
         return None
 
-    if (major, minor) < (7, 3):
+    if (major, minor) < (MIN_GCC_MAJOR, MIN_GCC_MINOR):
         print(
-            "Found g++ version {}.{}.{}. First usable version is 7.3.0.".format(
-                major, minor, patchlevel
+            "Found g++ version {}.{}.{}. First usable version is {}.{}.0".format(
+                major, minor, patchlevel, MIN_GCC_MAJOR, MIN_GCC_MINOR
             )
         )
         return None
@@ -1091,6 +1098,15 @@ def clang_version():
     except:
         print("Failed to parse clang++ version.")
         return None
+
+    if (major, minor) < (MIN_CLANG_MAJOR, MIN_CLANG_MINOR):
+        print(
+            "Found clang++ version {}.{}.{}. First usable version is {}.{}.0".format(
+                major, minor, patchlevel, MIN_CLANG_MAJOR, MIN_CLANG_MINOR
+            )
+        )
+        return None
+
     # Check for a common toolchain issue
     try:
         subprocess.run(
