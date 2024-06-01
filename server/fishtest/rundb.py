@@ -486,10 +486,11 @@ class RunDb:
                         if self.scavenge(run):
                             with self.run_cache_write_lock:
                                 self.runs.replace_one({"_id": run["_id"]}, run)
-                    if (
-                        run["cores"] <= 0
-                        and cache_entry["last_access_time"] < now - 300
-                    ):
+                    # Presently run["finished"] implies run["cores"]==0 but
+                    # this was not always true in the past.
+                    if (run["cores"] <= 0 or run["finished"]) and cache_entry[
+                        "last_access_time"
+                    ] < now - 300:
                         del self.run_cache[r_id]
                 elif cache_entry["last_sync_time"] < old:
                     old = cache_entry["last_sync_time"]
