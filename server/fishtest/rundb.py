@@ -517,13 +517,12 @@ class RunDb:
         with self.run_cache_lock:
             for cache_entry in self.run_cache.values():
                 run = cache_entry["run"]
-                if not cache_entry["is_changed"] and not run["finished"]:
+                if not run["finished"]:
                     for task_id, task in enumerate(run["tasks"]):
                         if (
                             task["active"]
                             and task["last_updated"].timestamp() < now - 360
                         ):
-                            cache_entry["is_changed"] = True
                             dead_tasks.append((task_id, run))
         # We release the lock to avoid deadlock
         for task_id, run in dead_tasks:
@@ -541,6 +540,7 @@ class RunDb:
                 task_id=task_id,
             )
             self.set_inactive_task(task_id, run)
+            self.buffer(run, False)
 
     def get_unfinished_runs_id(self):
         with self.run_cache_write_lock:
