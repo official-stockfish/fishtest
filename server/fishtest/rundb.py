@@ -119,6 +119,7 @@ class RunDb:
     def set_inactive_run(self, run):
         run_id = run["_id"]
         with self.active_run_lock(str(run_id)):
+            run["finished"] = True
             run["workers"] = run["cores"] = 0
             for task in run["tasks"]:
                 task["active"] = False
@@ -1378,7 +1379,6 @@ After fixing the issues you can unblock the worker at
             run["is_green"] = True
         elif run["results_info"]["style"] == "yellow":
             run["is_yellow"] = True
-        run["finished"] = True
         try:
             validate(runs_schema, run, "run")
         except ValidationError as e:
