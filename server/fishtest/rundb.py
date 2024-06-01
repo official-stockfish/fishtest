@@ -87,13 +87,21 @@ class RunDb:
         self.scheduler.add_task(180.0, self.validate_random_run)
 
     def validate_random_run(self):
-        run_list = list(self.run_cache.values())
+        # Excess of caution. Another thread may change run_cache
+        # while we are iterating over it.
+        with self.run_cache_lock:
+            run_list = [
+                cache_entry["run"]
+                for cache_entry in self.run_cache.values()
+                if not cache_entry["run"]["finished"]
+            ]
         if len(run_list) == 0:
             print(
-                "Validate_random_run: cache empty. No runs to validate...", flush=True
+                "Validate_random_run: no unfinished cache runs. No runs to validate...",
+                flush=True,
             )
             return
-        run = random.choice(list(run_list))["run"]
+        run = random.choice(run_list)
         run_id = str(run["_id"])
         try:
             # Make sure that the run object does not change while we are
