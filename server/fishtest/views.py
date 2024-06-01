@@ -10,7 +10,7 @@ from pathlib import Path
 
 import fishtest.stats.stat_util
 import requests
-from fishtest.schemas import short_worker_name
+from fishtest.schemas import runs_schema, short_worker_name
 from fishtest.util import (
     email_valid,
     extract_repo_from_link,
@@ -1394,9 +1394,18 @@ def tests_delete(request):
             request.session.flash("Unable to modify another users run!", "error")
             return home(request)
 
-        run["deleted"] = True
-        run["finished"] = True
         request.rundb.set_inactive_run(run)
+        run["deleted"] = True
+        try:
+            validate(runs_schema, run, "run")
+        except ValidationError as e:
+            message = f"The run object {run_id} does not validate: {str(e)}"
+            print(message, flush=True)
+            if "version" in run and run["version"] >= RUN_VERSION:
+                self.actiondb.log_message(
+                    username="fishtest.system",
+                    message=message,
+                )
         request.rundb.buffer(run, True)
         request.rundb.task_time = 0
 

@@ -286,7 +286,6 @@ class WorkerApi(GenericApi):
                 message=message,
             )
             if error == "":
-                run["finished"] = True
                 run["failed"] = True
                 self.request.rundb.stop_run(self.run_id())
             else:
