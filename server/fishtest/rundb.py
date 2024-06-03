@@ -777,11 +777,7 @@ class RunDb:
         unfinished_runs = self.get_unfinished_runs(username=username)
         runs = {"pending": [], "active": []}
         for run in unfinished_runs:
-            state = (
-                "active"
-                if any(task["active"] for task in reversed(run["tasks"]))
-                else "pending"
-            )
+            state = "active" if run["workers"] > 0 else "pending"
             runs[state].append(run)
         runs["pending"].sort(
             key=lambda run: (
@@ -807,11 +803,11 @@ class RunDb:
         games_per_minute = 0.0
         machines_count = 0
         for run in runs["active"]:
+            machines_count += run["workers"]
+            cores += run["cores"]
             for task_id, task in enumerate(run["tasks"]):
                 if task["active"]:
-                    machines_count += 1
                     concurrency = int(task["worker_info"]["concurrency"])
-                    cores += concurrency
                     nps += concurrency * task["worker_info"]["nps"]
                     if task["worker_info"]["nps"] != 0:
                         games_per_minute += (
@@ -830,15 +826,6 @@ class RunDb:
                 pending_hours += eta
             results = run["results"]
             run["results_info"] = format_results(results, run)
-            if "Pending..." in run["results_info"]["info"]:
-                if cores > 0:
-                    run["results_info"]["info"][0] += " ({:.1f} hrs)".format(eta)
-                if "sprt" in run["args"]:
-                    sprt = run["args"]["sprt"]
-                    elo_model = sprt.get("elo_model", "BayesElo")
-                    run["results_info"]["info"].append(
-                        format_bounds(elo_model, sprt["elo0"], sprt["elo1"])
-                    )
         return (runs, pending_hours, cores, nps, games_per_minute, machines_count)
 
     def get_finished_runs(
