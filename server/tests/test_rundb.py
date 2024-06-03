@@ -11,6 +11,7 @@ run_id = None
 
 class CreateRunDBTest(unittest.TestCase):
     def setUp(self):
+        self.remote_addr = "127.0.0.1"
         self.rundb = util.get_rundb()
         self.rundb.runs.create_index(
             [("last_updated", DESCENDING), ("tc_base", DESCENDING)],
@@ -41,6 +42,7 @@ class CreateRunDBTest(unittest.TestCase):
             "modified": True,
             "ARCH": "?",
             "nps": 0.0,
+            "remote_addr": self.remote_addr,
         }
 
     def tearDown(self):
@@ -151,6 +153,7 @@ class CreateRunDBTest(unittest.TestCase):
         run["tasks"][0]["worker_info"] = self.worker_info
         run["workers"] = run["cores"] = 1
         self.rundb.buffer(run, True)
+        self.rundb.connections_counter[self.remote_addr] = 1
         run = self.rundb.update_task(
             self.worker_info,
             run_id,
@@ -166,6 +169,7 @@ class CreateRunDBTest(unittest.TestCase):
         )
         self.assertFalse(run["task_alive"])
         self.assertTrue("error" in run)
+        self.rundb.connections_counter[self.remote_addr] = 1
         run = self.rundb.update_task(
             self.worker_info,
             run_id,
@@ -185,6 +189,7 @@ class CreateRunDBTest(unittest.TestCase):
         run_ = self.rundb.get_run(run_id)
         run_["tasks"][0]["active"] = True
         self.rundb.buffer(run_, True)
+        self.rundb.connections_counter[self.remote_addr] = 1
         run = self.rundb.update_task(
             self.worker_info,
             run_id,

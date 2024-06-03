@@ -70,6 +70,9 @@ class RunDb:
         self.port = port
         self.task_runs = []
 
+        self.connections_counter = {}
+        self.connections_lock = threading.Lock()
+
         self.task_duration = 1800  # 30 minutes
         self.ltc_lower_bound = 40  # Beware: this is used as a filter in an index!
         self.pt_info = {
@@ -153,6 +156,12 @@ class RunDb:
                     + stats["losses"]
                     + stats["draws"]
                 )
+                with self.connections_lock:
+                    remote_addr = task["worker_info"]["remote_addr"]
+                    self.connections_counter[remote_addr] -= 1
+                    assert self.connections_counter[remote_addr] >= 0
+                    if self.connections_counter[remote_addr] == 0:
+                        del self.connections_counter[remote_addr]
                 task["active"] = False
 
     def update_aggregated_data(self):
@@ -211,8 +220,19 @@ class RunDb:
                     )
                     run["total_games"] = total_games
                     changed = True
+
+                for task_id, task in enumerate(run["tasks"]):
+                    if task["active"]:
+                        with self.connections_lock:
+                            remote_addr = task["worker_info"]["remote_addr"]
+                            if remote_addr in self.connections_counter:
+                                self.connections_counter[remote_addr] += 1
+                            else:
+                                self.connections_counter[remote_addr] = 1
+
             if changed:
                 self.buffer(run, False)
+
         validate(cache_schema_fast, self.run_cache)
 
     def new_run(
@@ -950,21 +970,18 @@ After fixing the issues you can unblock the worker at
                     print(error, flush=True)
                     return {"task_waiting": False, "error": error}
 
-        # We go through the list of active tasks to see if the worker
-        # has reached the number of allowed connections from the same ip
+        # We see if the worker has reached the number of allowed connections from the same ip
         # address.
 
-        connections = 0
-        connections_limit = self.userdb.get_machine_limit(worker_info["username"])
-        for _, _, task in active_tasks:
-            if task["worker_info"]["remote_addr"] == worker_info["remote_addr"]:
-                connections += 1
-                if connections >= connections_limit:
-                    error = "Request_task: Machine limit reached for user {}".format(
-                        worker_info["username"]
-                    )
-                    print(error, flush=True)
-                    return {"task_waiting": False, "error": error}
+        with self.connections_lock:
+            connections_limit = self.userdb.get_machine_limit(worker_info["username"])
+            connections = self.connections_counter.get(worker_info["remote_addr"], 0)
+            if connections >= connections_limit:
+                error = "Request_task: Machine limit reached for user {}".format(
+                    worker_info["username"]
+                )
+                print(error, flush=True)
+                return {"task_waiting": False, "error": error}
 
         # Now go through the sorted list of unfinished runs.
         # We will add a task to the first run that is suitable.
@@ -1094,6 +1111,13 @@ After fixing the issues you can unblock the worker at
                 },
             }
             run["tasks"].append(task)
+
+            with self.connections_lock:
+                remote_addr = worker_info["remote_addr"]
+                if remote_addr in self.connections_counter:
+                    self.connections_counter[remote_addr] += 1
+                else:
+                    self.connections_counter[remote_addr] = 1
 
             task_id = len(run["tasks"]) - 1
 

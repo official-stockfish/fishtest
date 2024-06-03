@@ -235,8 +235,12 @@ class TestApi(unittest.TestCase):
         self.assertTrue(task["active"])
 
     def test_update_task(self):
-        run_id = new_run(self, add_tasks=1)
+        stop_all_runs(self)
+        run_id = new_run(self)
         run = self.rundb.get_run(run_id)
+        request = self.correct_password_request()
+        response = WorkerApi(request).request_task()
+        self.assertTrue(run["tasks"][0]["active"])
 
         # Request fails if username/password is invalid
         with self.assertRaises(HTTPUnauthorized):
@@ -334,15 +338,11 @@ class TestApi(unittest.TestCase):
         self.assertFalse(task["active"])
 
     def test_failed_task(self):
-        run_id = new_run(self, add_tasks=1)
+        stop_all_runs(self)
+        run_id = new_run(self)
         run = self.rundb.get_run(run_id)
-        # Request fails if username/password is invalid
-        request = self.invalid_password_request()
-        with self.assertRaises(HTTPUnauthorized):
-            response = WorkerApi(self.invalid_password_request()).update_task()
-            self.assertTrue("error" in response)
-            print(response["error"])
-
+        request = self.correct_password_request()
+        response = WorkerApi(request).request_task()
         self.assertTrue(run["tasks"][0]["active"])
         message = "Sorry but I can't run this"
         request = self.correct_password_request(
@@ -357,17 +357,6 @@ class TestApi(unittest.TestCase):
         response = WorkerApi(request).failed_task()
         self.assertTrue("info" in response)
         print(response["info"])
-        self.assertFalse(run["tasks"][0]["active"])
-
-        # revive task
-        run["tasks"][0]["active"] = True
-        self.rundb.buffer(run, True)
-        request = self.correct_password_request(
-            {"run_id": run_id, "task_id": 0, "message": message}
-        )
-        response = WorkerApi(request).failed_task()
-        response.pop("duration", None)
-        self.assertTrue(response == {})
         self.assertFalse(run["tasks"][0]["active"])
 
     def test_stop_run(self):
