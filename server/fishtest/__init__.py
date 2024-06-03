@@ -101,7 +101,7 @@ def main(global_config, **settings):
             signal.signal(signal.SIGINT, rundb.exit_run)
             signal.signal(signal.SIGTERM, rundb.exit_run)
             rundb.schedule_tasks()
-            rundb.update_workers_cores()
+            rundb.update_aggregated_data()
 
     config.add_subscriber(add_rundb, NewRequest)
     config.add_subscriber(add_renderer_globals, BeforeRender)

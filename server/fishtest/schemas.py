@@ -474,7 +474,7 @@ if_bad_then_zero_stats_and_not_active = ifthen(
 )
 
 
-def final_results_must_match(run):
+def compute_results(run):
     rr = copy.deepcopy(zero_results)
     for t in run["tasks"]:
         r = t["stats"]
@@ -484,33 +484,66 @@ def final_results_must_match(run):
             else:
                 for i, p in enumerate(r["pentanomial"]):
                     rr[k][i] += p
-    if rr != run["results"]:
+    return rr
+
+
+def compute_cores(run):
+    cores = 0
+    for t in run["tasks"]:
+        if t["active"]:
+            cores += t["worker_info"]["concurrency"]
+    return cores
+
+
+def compute_workers(run):
+    workers = 0
+    for t in run["tasks"]:
+        if t["active"]:
+            workers += 1
+    return workers
+
+
+def compute_committed_games(run):
+    committed_games = 0
+    for task in run["tasks"]:
+        if not task["active"]:
+            if "stats" in task:
+                stats = task["stats"]
+                committed_games += stats["wins"] + stats["losses"] + stats["draws"]
+        else:
+            committed_games += task["num_games"]
+    return committed_games
+
+
+def compute_total_games(run):
+    total_games = 0
+    for t in run["tasks"]:
+        total_games += t["num_games"]
+    return total_games
+
+
+def final_results_must_match(run):
+    results = compute_results(run)
+    if results != run["results"]:
         raise Exception(
-            f"The final results {run['results']} do not match the computed results {rr}"
+            f"The final results {run['results']} do not match the computed results {results}"
         )
 
     return True
 
 
 def cores_must_match(run):
-    cores = 0
-    for t in run["tasks"]:
-        if t["active"]:
-            cores += t["worker_info"]["concurrency"]
+    cores = compute_cores(run)
     if cores != run["cores"]:
         raise Exception(
-            f"Cores mismatch. Cores from tasks: {cores}. Cores from "
-            f"run: {run['cores']}"
+            f"Cores from tasks: {cores}. Cores from " f"run: {run['cores']}"
         )
 
     return True
 
 
 def workers_must_match(run):
-    workers = 0
-    for t in run["tasks"]:
-        if t["active"]:
-            workers += 1
+    workers = compute_workers(run)
     if workers != run["workers"]:
         raise Exception(
             f"Workers mismatch. Workers from tasks: {workers}. Workers from "
@@ -520,10 +553,34 @@ def workers_must_match(run):
     return True
 
 
+def committed_games_must_match(run):
+    committed_games = compute_committed_games(run)
+    if committed_games != run["committed_games"]:
+        raise Exception(
+            f"Committed games mismatch. Committed games from tasks: {committed_games}. Committed games from "
+            f"run: {run['committed_games']}"
+        )
+
+    return True
+
+
+def total_games_must_match(run):
+    total_games = compute_total_games(run)
+    if total_games != run["total_games"]:
+        raise Exception(
+            f"Total games mismatch. Total games from tasks: {total_games}. Total games from "
+            f"run: {run['total_games']}"
+        )
+
+    return True
+
+
 valid_aggregated_data = intersect(
     final_results_must_match,
     cores_must_match,
     workers_must_match,
+    committed_games_must_match,
+    total_games_must_match,
 )
 
 # The following schema only matches new runs. The old runs
@@ -536,7 +593,7 @@ valid_aggregated_data = intersect(
 # about non-validation of runs created with the prior
 # schema.
 
-RUN_VERSION = 0
+RUN_VERSION = 1
 
 runs_schema = intersect(
     {
@@ -556,6 +613,8 @@ runs_schema = intersect(
         "is_yellow": bool,
         "workers": uint,
         "cores": uint,
+        "committed_games": uint,
+        "total_games": uint,
         "results": results_schema,
         "results_info?": {
             "style": str,
@@ -694,13 +753,17 @@ runs_schema = intersect(
     valid_aggregated_data,
 )
 
-# For documentation. Currently not used.
+# For documentation. Not fully used.
 cache_schema = {
     run_id: {
         "run": runs_schema,
         "is_changed": bool,  # Indicates if the run has changed since last_sync_time.
         "last_sync_time": ufloat,  # Last sync time (reading from or writing to db). If never synced then creation time.
         "last_access_time": ufloat,  # Last time the cache entry was touched (via buffer() or get_run()).
-        "last_scavenge_time?": ufloat,  # Last time the run was scanned for dead tasks.
     },
 }
+
+# A version that does not validate the embedded runs
+cache_schema_fast = {}
+cache_schema_fast[run_id] = copy.deepcopy(cache_schema[run_id])
+cache_schema_fast[run_id]["run"] = dict
