@@ -17,6 +17,12 @@ from bson.objectid import ObjectId
 from fishtest.actiondb import ActionDb
 from fishtest.schemas import (
     RUN_VERSION,
+    cache_schema_fast,
+    compute_committed_games,
+    compute_cores,
+    compute_results,
+    compute_total_games,
+    compute_workers,
     nn_schema,
     pgns_schema,
     runs_schema,
@@ -86,7 +92,7 @@ class RunDb:
         self.scheduler.add_task(1.0, self.flush_buffers)
         self.scheduler.add_task(60.0, self.clean_cache)
         self.scheduler.add_task(60.0, self.scavenge_dead_tasks)
-        self.scheduler.add_task(180.0, self.validate_random_run)
+        self.scheduler.add_task(180.0, self.validate_random_run, initial_delay=60.0)
 
     def validate_random_run(self):
         # Excess of caution. Another thread may change run_cache
@@ -130,9 +136,8 @@ class RunDb:
         run_id = run["_id"]
         with self.active_run_lock(str(run_id)):
             run["finished"] = True
-            run["workers"] = run["cores"] = 0
-            for task in run["tasks"]:
-                task["active"] = False
+            for task_id in range(len(run["tasks"])):
+                self.set_inactive_task(task_id, run)
 
     def set_inactive_task(self, task_id, run):
         run_id = run["_id"]
@@ -141,29 +146,74 @@ class RunDb:
             if task["active"]:
                 run["workers"] -= 1
                 run["cores"] -= task["worker_info"]["concurrency"]
+                stats = task["stats"]
+                run["committed_games"] += (
+                    -task["num_games"]
+                    + stats["wins"]
+                    + stats["losses"]
+                    + stats["draws"]
+                )
                 task["active"] = False
 
-    def update_workers_cores(self):
+    def update_aggregated_data(self):
         """
         If the code is correct then this should be a noop, unless after a crash.
         """
         for r in self.get_unfinished_runs_id():
-            workers = cores = 0
-            run_id = r["_id"]
+            run_id = str(r["_id"])
             run = self.get_run(run_id)
-            with self.active_run_lock(str(run_id)):
-                for task in run["tasks"]:
-                    if task["active"]:
-                        workers += 1
-                        cores += int(task["worker_info"]["concurrency"])
-                if (run["workers"], run["cores"]) != (workers, cores):
+            changed = False
+            with self.active_run_lock(run_id):
+                results = compute_results(run)
+                if results != run["results"]:
                     print(
-                        f"Warning: correcting (workers, cores) for f{str(run['_id'])}",
-                        f"db: {(run['workers'], run['cores'])} computed: {(workers, cores)}",
+                        f"Warning: correcting results for {run_id}",
+                        f"db: {run['results']} computed:{results}",
                         flush=True,
                     )
-                    run["workers"], run["cores"] = workers, cores
-                    self.buffer(run, False)
+                    run["results"] = results
+                    changed = True
+                cores = compute_cores(run)
+                if cores != run["cores"]:
+                    print(
+                        f"Warning: correcting cores for {run_id}",
+                        f"db: {run['cores']} computed:{cores}",
+                        flush=True,
+                    )
+                    run["cores"] = cores
+                    changed = True
+                workers = compute_workers(run)
+                if workers != run["workers"]:
+                    print(
+                        f"Warning: correcting workers for {run_id}",
+                        f"db: {run['workers']} computed:{workers}",
+                        flush=True,
+                    )
+                    run["workers"] = workers
+                    changed = True
+                committed_games = compute_committed_games(run)
+                committed_games_run = run.get("committed_games", None)
+                if committed_games != committed_games_run:
+                    print(
+                        f"Warning: correcting committed_games for {run_id}",
+                        f"db: {committed_games_run} computed:{committed_games}",
+                        flush=True,
+                    )
+                    run["committed_games"] = committed_games
+                    changed = True
+                total_games = compute_total_games(run)
+                total_games_run = run.get("total_games", None)
+                if total_games != total_games_run:
+                    print(
+                        f"Warning: correcting total_games for {run_id}",
+                        f"db: {total_games_run} computed:{total_games}",
+                        flush=True,
+                    )
+                    run["total_games"] = total_games
+                    changed = True
+            if changed:
+                self.buffer(run, False)
+        validate(cache_schema_fast, self.run_cache)
 
     def new_run(
         self,
@@ -255,7 +305,9 @@ class RunDb:
             # Will be filled in by tasks, indexed by task-id.
             # Starts as an empty list.
             "tasks": [],
-            # Aggregated results
+            "approved": False,
+            "approver": "",
+            # Aggregated data
             "results": {
                 "wins": 0,
                 "losses": 0,
@@ -264,10 +316,10 @@ class RunDb:
                 "time_losses": 0,
                 "pentanomial": 5 * [0],
             },
-            "approved": False,
-            "approver": "",
             "workers": 0,
             "cores": 0,
+            "committed_games": 0,
+            "total_games": 0,
         }
 
         # administrative flags
@@ -682,36 +734,6 @@ class RunDb:
         runs_list = [run for run in c if not run.get("deleted")]
         return [runs_list, count]
 
-    def compute_results(self, run):
-        """
-        This is used in purge_run and also to verify the incrementally updated results
-        when a run is finished."""
-
-        results = {"wins": 0, "losses": 0, "draws": 0, "crashes": 0, "time_losses": 0}
-
-        has_pentanomial = True
-        pentanomial = 5 * [0]
-        for task in run["tasks"]:
-            if "bad" in task:
-                continue
-            if "stats" in task:
-                stats = task["stats"]
-                results["wins"] += stats["wins"]
-                results["losses"] += stats["losses"]
-                results["draws"] += stats["draws"]
-                results["crashes"] += stats.get("crashes", 0)
-                results["time_losses"] += stats.get("time_losses", 0)
-                if "pentanomial" in stats.keys() and has_pentanomial:
-                    pentanomial = [
-                        pentanomial[i] + stats["pentanomial"][i] for i in range(0, 5)
-                    ]
-                else:
-                    has_pentanomial = False
-        if has_pentanomial:
-            results["pentanomial"] = pentanomial
-
-        return results
-
     def calc_itp(self, run, count):
         # Tests default to 100% base throughput, but we have several adjustments behind the scenes to get internal throughput.
         base_tp = run["args"]["throughput"]
@@ -964,16 +986,7 @@ After fixing the issues you can unblock the worker at
 
             # Check if there aren't already enough workers
             # working on this run.
-            committed_games = 0
-            for task in run["tasks"]:
-                if not task["active"]:
-                    if "stats" in task:
-                        stats = task["stats"]
-                        committed_games += (
-                            stats["wins"] + stats["losses"] + stats["draws"]
-                        )
-                else:
-                    committed_games += task["num_games"]
+            committed_games = run["committed_games"]
 
             remaining = run["args"]["num_games"] - committed_games
             if remaining <= 0:
@@ -1030,16 +1043,7 @@ After fixing the issues you can unblock the worker at
             else:
                 limit_cores = 1000000  # infinity
 
-            cores = 0
-            core_limit_reached = False
-            for task in run["tasks"]:
-                if task["active"]:
-                    cores += task["worker_info"]["concurrency"]
-                    if cores > limit_cores:
-                        core_limit_reached = True
-                        break
-
-            if core_limit_reached:
+            if run["cores"] > limit_cores:
                 continue
 
             # If we make it here, it means we have found a run
@@ -1065,9 +1069,7 @@ After fixing the issues you can unblock the worker at
                 print(info, flush=True)
                 return {"task_waiting": False, "info": info}
 
-            opening_offset = 0
-            for task in run["tasks"]:
-                opening_offset += task["num_games"]
+            opening_offset = run["total_games"]
 
             if "sprt" in run["args"]:
                 sprt_batch_size_games = 2 * run["args"]["sprt"]["batch_size"]
@@ -1097,6 +1099,8 @@ After fixing the issues you can unblock the worker at
 
             run["workers"] += 1
             run["cores"] += task["worker_info"]["concurrency"]
+            run["committed_games"] += task["num_games"]
+            run["total_games"] += task["num_games"]
 
         self.buffer(run, False)
 
@@ -1517,7 +1521,7 @@ After fixing the issues you can unblock the worker at
                 task["stats"] = copy.deepcopy(zero_stats)
 
         if message == "":
-            results = self.compute_results(run)
+            results = compute_results(run)
             run["results"] = results
             revived = True
             if "sprt" in run["args"] and "state" in run["args"]["sprt"]:
