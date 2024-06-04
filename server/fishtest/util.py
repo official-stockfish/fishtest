@@ -15,6 +15,146 @@ from zxcvbn import zxcvbn
 
 FISH_URL = "https://tests.stockfishchess.org/tests/view/"
 
+# ============================================================================
+# Time control utility functions
+
+BASE_NPS = 691680
+
+
+class TC:
+    def __init__(self, base, inc=0, moves=0, nodestime=None):
+        self.base = base
+        self.inc = inc
+        self.moves = moves
+        self.nodestime = nodestime
+
+    def __str__(self):
+        tc_str = ""
+        if self.moves > 0:
+            tc_str += "{:d}/".format(self.moves)
+
+        tc_str += "{:.3f}".format(self.base)
+
+        if self.inc > 0:
+            tc_str += "+{:.3f}".format(self.inc)
+
+        return tc_str
+
+    def scale(self, factor):
+        self.base *= factor
+        self.inc *= factor
+
+    def total_time(self, moves):
+        t = self.base
+        if self.moves > 0:
+            t *= moves / self.moves
+        t += self.inc * (moves - 1)
+        if self.nodestime is not None:
+            t *= self.nodestime * 1000 / BASE_NPS
+        return t
+
+    @staticmethod
+    def parse(tc):
+        chunks = tc.split("+")
+        increment = 0.0
+        if len(chunks) == 2:
+            increment = float(chunks[1])
+
+        chunks = chunks[0].split("/")
+        num_moves = 0
+        if len(chunks) == 2:
+            num_moves = int(chunks[0])
+
+        t = chunks[-1]
+        chunks = t.split(":")
+        if len(chunks) == 2:
+            base = float(chunks[0]) * 60 + float(chunks[1])
+        else:
+            base = float(chunks[0])
+
+        return TC(base, increment, num_moves)
+
+
+def _tc_estimate_engine_time(tc: TC):
+    # Estimated number of moves for each game. (fishtest LTC results)
+    game_moves = 68
+
+    return tc.total_time(game_moves)
+
+
+def _tc_estimate_game_duration(test_tc: TC, base_tc: TC = None):
+    # Reduced to 92% because on average a game is stopped earlier (LTC fishtest result).
+    scale = 0.92
+
+    if base_tc is None:
+        return _tc_estimate_engine_time(test_tc) * 2 * scale
+    else:
+        return (
+            _tc_estimate_engine_time(test_tc) + _tc_estimate_engine_time(base_tc)
+        ) * scale
+
+
+def _tc_ratio(tc: TC, base_tc: TC = None, threads: int = 1):
+    """Get TC ratio relative to the `base`, which defaults to standard STC.
+    Example: standard LTC is 6x, SMP-STC is 4x."""
+
+    if base_tc is None:
+        base_tc = TC(10, 0.1)
+
+    return threads * _tc_estimate_engine_time(tc) / _tc_estimate_engine_time(base_tc)
+
+
+def estimate_game_duration(
+    tc: str, nodestime: int = None, base_tc: str = None, base_nodestime: int = None
+):
+    _test = TC.parse(tc)
+    _test.nodestime = nodestime
+
+    if base_tc is None:
+        _base = None
+    else:
+        _base = TC.parse(base_tc)
+        _base.nodestime = base_nodestime
+
+    return _tc_estimate_game_duration(_test, _base)
+
+
+def estimate_game_duration_from_run(run):
+    base_tc = run["args"]["tc"]
+    base_nodestime = get_nodestime(run["args"]["base_options"])
+    test_tc = run["args"].get("new_tc", base_tc)
+    test_nodestime = get_nodestime(run["args"]["new_options"])
+    return estimate_game_duration(test_tc, test_nodestime, base_tc, base_nodestime)
+
+
+def get_tc_ratio(tc, nodestime=None, threads=1, base="10+0.1", base_nodestime=None):
+    """Get TC ratio relative to the `base`, which defaults to standard STC.
+    Example: standard LTC is 6x, SMP-STC is 4x."""
+    _tc = TC.parse(tc)
+    _tc.nodestime = nodestime
+    _base = TC.parse(base)
+    _base.nodestime = base_nodestime
+    return _tc_ratio(_tc, _base, threads)
+
+
+def get_tc_ratio_from_run(run, base: str = "10+0.1", base_nodestime: int = None):
+    threads = run["args"]["threads"]
+    _base = TC.parse(base)
+    _base.nodestime = base_nodestime
+
+    _tc = TC.parse(run["args"]["tc"])
+    _tc.nodestime = get_nodestime(run["args"]["base_options"])
+    base_ratio = _tc_ratio(_tc, _base, threads)
+
+    _tc = TC.parse(run["args"].get("new_tc", run["args"]["tc"]))
+    _tc.nodestime = get_nodestime(run["args"]["new_options"])
+    test_ratio = _tc_ratio(_tc, _base, threads)
+
+    return (base_ratio + test_ratio) / 2
+
+
+# ============================================================================
+
 
 class GeneratorAsFileReader:
     def __init__(self, generator):
@@ -313,48 +453,9 @@ def format_results(run_results, run):
     return result
 
 
-@cache  # A single hash lookup should be much cheaper than parsing a string
-def estimate_game_duration(tc):
-    # Total time for a game is assumed to be the double of tc for each player
-    # reduced for 92% because on average a game is stopped earlier (LTC fishtest result).
-    scale = 2 * 0.92
-    # estimated number of moves per game (LTC fishtest result)
-    game_moves = 68
-
-    chunks = tc.split("+")
-    increment = 0.0
-    if len(chunks) == 2:
-        increment = float(chunks[1])
-
-    chunks = chunks[0].split("/")
-    num_moves = 0
-    if len(chunks) == 2:
-        num_moves = int(chunks[0])
-
-    time_tc = chunks[-1]
-    chunks = time_tc.split(":")
-    if len(chunks) == 2:
-        time_tc = float(chunks[0]) * 60 + float(chunks[1])
-    else:
-        time_tc = float(chunks[0])
-
-    if num_moves > 0:
-        time_tc = time_tc * (game_moves / num_moves)
-
-    return (time_tc + (increment * game_moves)) * scale
-
-
-def get_tc_ratio(tc, threads=1, base="10+0.1"):
-    """Get TC ratio relative to the `base`, which defaults to standard STC.
-    Example: standard LTC is 6x, SMP-STC is 4x."""
-    return threads * estimate_game_duration(tc) / estimate_game_duration(base)
-
-
 def is_active_sprt_ltc(run):
     return (
-        not run["finished"]
-        and "sprt" in run["args"]
-        and get_tc_ratio(run["args"]["tc"], run["args"]["threads"]) > 4
+        not run["finished"] and "sprt" in run["args"] and get_tc_ratio_from_run(run) > 4
     )  # SMP-STC ratio is 4
 
 
@@ -429,7 +530,7 @@ def remaining_hours(run):
             return 0
 
         # Assume all tests use default book (UHO_4060_v3).
-        book_positions = 242201
+        book_positions = 2632036
         t = scipy.stats.beta(1, 15).cdf(min(N / book_positions, 1.0))
         expected_games_llr = int(2 * N * llr_bound / llr)
         expected_games = min(
@@ -440,7 +541,7 @@ def remaining_hours(run):
     else:
         expected_games = run["args"]["num_games"]
         remaining_games = max(0, expected_games - r["wins"] - r["losses"] - r["draws"])
-    game_secs = estimate_game_duration(run["args"]["tc"])
+    game_secs = estimate_game_duration_from_run(run)
     return game_secs * remaining_games * int(run["args"].get("threads", 1)) / (60 * 60)
 
 
@@ -540,6 +641,13 @@ def get_hash(s):
     if h:
         return int(h.group(1))
     return 0
+
+
+def get_nodestime(s):
+    h = re.search("nodestime=([0-9]+)", s)
+    if h:
+        return int(h.group(1))
+    return None
 
 
 # Avoids exposing sensitive data about the workers to the client and skips some heavy data.
