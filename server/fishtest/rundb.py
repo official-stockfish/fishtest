@@ -69,6 +69,8 @@ class RunDb:
         self.deltas = self.db["deltas"]
         self.port = port
         self.task_runs = []
+        self.wtt_map = {}
+        self.wtt_lock = threading.RLock()
 
         self.connections_counter = {}
         self.connections_lock = threading.Lock()
@@ -95,7 +97,35 @@ class RunDb:
         self.scheduler.add_task(1.0, self.flush_buffers)
         self.scheduler.add_task(60.0, self.clean_cache)
         self.scheduler.add_task(60.0, self.scavenge_dead_tasks)
+        # short intial delay to make testing more pleasant
         self.scheduler.add_task(180.0, self.validate_random_run, initial_delay=60.0)
+        self.scheduler.add_task(180.0, self.clean_wtt_map, initial_delay=60.0)
+
+    def clean_wtt_map(self):
+        with self.wtt_lock:
+            for short_worker_name in list(self.wtt_map):
+                run, task_id = self.wtt_map[short_worker_name]
+                task = run["tasks"][task_id]
+                if not task["active"]:
+                    del self.wtt_map[short_worker_name]
+        print(f"Clean_wtt_map: {len(self.wtt_map)} active workers...")
+
+    # Do not use this while holding an active_run_lock!
+    def insert_in_wtt_map(self, run, task_id):
+        task = run["tasks"][task_id]
+        if not task["active"]:
+            return
+        short_worker_name = worker_name(task["worker_info"], short=True)
+        with self.wtt_lock:
+            if short_worker_name in self.wtt_map:
+                wtt_run, wtt_task_id = self.wtt_map[short_worker_name]
+                wtt_task = wtt_run["tasks"][wtt_task_id]
+                with self.active_run_lock(wtt_run["_id"]):
+                    if wtt_task["active"]:
+                        self.failed_task(
+                            wtt_run["_id"], wtt_task_id, message="Stale active task"
+                        )
+            self.wtt_map[short_worker_name] = run, task_id
 
     def validate_random_run(self):
         # Excess of caution. Another thread may change run_cache
@@ -164,12 +194,14 @@ class RunDb:
                         if self.connections_counter[remote_addr] == 0:
                             del self.connections_counter[remote_addr]
                     except Exception as e:
-                        print(f"Error while deleting connection: {str(e)}")
+                        print(f"Error while deleting connection: {str(e)}", flush=True)
 
     def update_aggregated_data(self):
         """
         If the code is correct then this should be a noop, unless after a crash.
         """
+        init_connections_counter = True
+        init_wtt_map = True
         for r in self.get_unfinished_runs_id():
             run_id = str(r["_id"])
             run = self.get_run(run_id)
@@ -226,6 +258,9 @@ class RunDb:
                 for task_id, task in enumerate(run["tasks"]):
                     if task["active"]:
                         with self.connections_lock:
+                            if init_connections_counter:
+                                self.connections_counter = {}
+                                init_connections_counter = False
                             remote_addr = task["worker_info"]["remote_addr"]
                             if remote_addr in self.connections_counter:
                                 self.connections_counter[remote_addr] += 1
@@ -234,6 +269,13 @@ class RunDb:
 
             if changed:
                 self.buffer(run, False)
+
+            with self.wtt_lock:
+                if init_wtt_map:
+                    self.wtt_map = {}
+                    init_wtt_map = False
+                for task_id in range(len(run["tasks"])):
+                    self.insert_in_wtt_map(run, task_id)
 
         validate(cache_schema_fast, self.run_cache)
 
@@ -936,41 +978,27 @@ After fixing the issues you can unblock the worker at
 
         self.task_runs.sort(key=priority)
 
-        # get the list of active tasks
-
-        active_tasks = [
-            (run, task_id, task)
-            for run in self.task_runs
-            for task_id, task in enumerate(run["tasks"])
-            if task["active"]
-        ]
-
-        # We go through the list of active tasks to see if a worker with the same
-        # name is already connected.
+        # Now we see if a worker with the same name is already connected.
 
         now = datetime.now(timezone.utc)
-        for run, task_id, task in active_tasks:
-            task_name = worker_name(task["worker_info"], short=True)
-            if my_name == task_name:
-                task_name_long = worker_name(task["worker_info"])
-                my_name_long = worker_name(worker_info)
-                task_unique_key = task["worker_info"]["unique_key"]
-                if unique_key == task_unique_key:
-                    # It seems that this worker was unable to update an old task
-                    # (perhaps because of server issues).
-                    # Set the task to inactive and print a message in the event log.
-                    self.failed_task(run["_id"], task_id, message="Stale active task")
-                    continue
-                last_update = (now - task["last_updated"]).seconds
-                # 120 = period of heartbeat in worker.
-                if last_update <= 120:
-                    error = (
-                        f'Request_task: There is already a worker running with name "{task_name_long}" '
-                        f'which {last_update} seconds ago sent an update for task {str(run["_id"])}/{task_id} '
-                        f'(my name is "{my_name_long}")'
-                    )
-                    print(error, flush=True)
-                    return {"task_waiting": False, "error": error}
+        my_name_long = worker_name(worker_info)
+        with self.wtt_lock:
+            if my_name in self.wtt_map:
+                wtt_run, wtt_task_id = self.wtt_map[my_name]
+                wtt_task = wtt_run["tasks"][wtt_task_id]
+                if wtt_task["active"]:
+                    task_name_long = worker_name(wtt_task["worker_info"])
+                    wtt_task_unique_key = wtt_task["worker_info"]["unique_key"]
+                    if unique_key != wtt_task_unique_key:
+                        last_update = (now - wtt_task["last_updated"]).seconds
+                        if last_update <= 120:
+                            error = (
+                                f'Request_task: There is already a worker running with name "{task_name_long}" '
+                                f'which {last_update} seconds ago sent an update for task {str(wtt_run["_id"])}/{wtt_task_id} '
+                                f'(my name is "{my_name_long}")'
+                            )
+                            print(error, flush=True)
+                            return {"task_waiting": False, "error": error}
 
         # We see if the worker has reached the number of allowed connections from the same ip
         # address.
@@ -1077,13 +1105,19 @@ After fixing the issues you can unblock the worker at
         # Now we create a new task for this run.
         run_id = run["_id"]
         with self.active_run_lock(run_id):
-            # It may happen that the run we have selected is now finished.
+            # It may happen that the run we have selected is now finished or
+            # has enough games.
             # Since this is very rare we just return instead of cluttering the
             # code with remedial actions.
-            if run["finished"]:
+
+            # First recompute "remaining" because the value computed above was not
+            # synchronized.
+            remaining = run["args"]["num_games"] - run["committed_games"]
+
+            if run["finished"] or remaining <= 0:
                 info = (
                     f"Request_task: alas the run {run_id} corresponding to the "
-                    "assigned task has meanwhile finished. Please try again..."
+                    "assigned task no longer needs games. Please try again..."
                 )
                 print(info, flush=True)
                 return {"task_waiting": False, "info": info}
@@ -1127,6 +1161,10 @@ After fixing the issues you can unblock the worker at
             run["cores"] += task["worker_info"]["concurrency"]
             run["committed_games"] += task["num_games"]
             run["total_games"] += task["num_games"]
+
+        # We give up the lock to avoid deadlock
+
+        self.insert_in_wtt_map(run, task_id)
 
         self.buffer(run, False)
 
