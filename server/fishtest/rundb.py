@@ -134,14 +134,14 @@ class RunDb:
 
     def set_inactive_run(self, run):
         run_id = run["_id"]
-        with self.active_run_lock(str(run_id)):
+        with self.active_run_lock(run_id):
             run["finished"] = True
             for task_id in range(len(run["tasks"])):
                 self.set_inactive_task(task_id, run)
 
     def set_inactive_task(self, task_id, run):
         run_id = run["_id"]
-        with self.active_run_lock(str(run_id)):
+        with self.active_run_lock(run_id):
             task = run["tasks"][task_id]
             if task["active"]:
                 run["workers"] -= 1
@@ -1057,7 +1057,7 @@ After fixing the issues you can unblock the worker at
 
         # Now we create a new task for this run.
         run_id = run["_id"]
-        with self.active_run_lock(str(run_id)):
+        with self.active_run_lock(run_id):
             # It may happen that the run we have selected is now finished.
             # Since this is very rare we just return instead of cluttering the
             # code with remedial actions.
@@ -1124,6 +1124,7 @@ After fixing the issues you can unblock the worker at
     purge_count = 0
 
     def active_run_lock(self, id):
+        id = str(id)
         with self.run_lock:
             self.purge_count = self.purge_count + 1
             if self.purge_count > 100000:
@@ -1210,7 +1211,7 @@ After fixing the issues you can unblock the worker at
             )
 
     def update_task(self, worker_info, run_id, task_id, stats, spsa):
-        lock = self.active_run_lock(str(run_id))
+        lock = self.active_run_lock(run_id)
         with lock:
             return self.sync_update_task(worker_info, run_id, task_id, stats, spsa)
 
