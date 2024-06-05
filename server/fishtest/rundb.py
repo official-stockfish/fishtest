@@ -156,13 +156,15 @@ class RunDb:
                     + stats["losses"]
                     + stats["draws"]
                 )
-                with self.connections_lock:
-                    remote_addr = task["worker_info"]["remote_addr"]
-                    self.connections_counter[remote_addr] -= 1
-                    assert self.connections_counter[remote_addr] >= 0
-                    if self.connections_counter[remote_addr] == 0:
-                        del self.connections_counter[remote_addr]
                 task["active"] = False
+                with self.connections_lock:
+                    try:
+                        remote_addr = task["worker_info"]["remote_addr"]
+                        self.connections_counter[remote_addr] -= 1
+                        if self.connections_counter[remote_addr] == 0:
+                            del self.connections_counter[remote_addr]
+                    except Exception as e:
+                        print(f"Error while deleting connection: {str(e)}")
 
     def update_aggregated_data(self):
         """
