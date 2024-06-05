@@ -269,56 +269,83 @@ class TestApi(unittest.TestCase):
         # Task is still active
         cs = self.chunk_size
         w, d = cs // 2 - 10, cs // 2
-        request.json_body["stats"] = {
-            "wins": w,
-            "draws": d,
-            "losses": 0,
-            "crashes": 0,
-            "time_losses": 0,
-            "pentanomial": [0, 0, d // 2, 0, w // 2],
-        }
+
+        request = self.correct_password_request(
+            {
+                "run_id": run_id,
+                "task_id": 0,
+                "stats": {
+                    "wins": w,
+                    "draws": d,
+                    "losses": 0,
+                    "crashes": 0,
+                    "time_losses": 0,
+                    "pentanomial": [0, 0, d // 2, 0, w // 2],
+                },
+            }
+        )
         response = WorkerApi(cleanup(request)).update_task()
         self.assertTrue(response["task_alive"])
 
         # Task is still active. Odd update.
-        request.json_body["stats"] = {
-            "wins": w + 1,
-            "draws": d,
-            "losses": 0,
-            "crashes": 0,
-            "time_losses": 0,
-            "pentanomial": [0, 0, d // 2, 0, w // 2],
-        }
+
+        request = self.correct_password_request(
+            {
+                "run_id": run_id,
+                "task_id": 0,
+                "stats": {
+                    "wins": w + 1,
+                    "draws": d,
+                    "losses": 0,
+                    "crashes": 0,
+                    "time_losses": 0,
+                    "pentanomial": [0, 0, d // 2, 0, w // 2],
+                },
+            }
+        )
         with self.assertRaises(HTTPBadRequest):
             response = WorkerApi(cleanup(request)).update_task()
 
-        request.json_body["stats"] = {
-            "wins": w + 2,
-            "draws": d,
-            "losses": 0,
-            "crashes": 0,
-            "time_losses": 0,
-            "pentanomial": [0, 0, d // 2, 0, w // 2 + 1],
-        }
-
+        request = self.correct_password_request(
+            {
+                "run_id": run_id,
+                "task_id": 0,
+                "stats": {
+                    "wins": w + 2,
+                    "draws": d,
+                    "losses": 0,
+                    "crashes": 0,
+                    "time_losses": 0,
+                    "pentanomial": [0, 0, d // 2, 0, w // 2 + 1],
+                },
+            }
+        )
         response = WorkerApi(cleanup(request)).update_task()
         self.assertTrue(response["task_alive"])
 
         # Go back in time
-        request.json_body["stats"] = {
-            "wins": w,
-            "draws": d,
-            "losses": 0,
-            "crashes": 0,
-            "time_losses": 0,
-            "pentanomial": [0, 0, d // 2, 0, w // 2],
-        }
+        request = self.correct_password_request(
+            {
+                "run_id": run_id,
+                "task_id": 0,
+                "stats": {
+                    "wins": w,
+                    "draws": d,
+                    "losses": 0,
+                    "crashes": 0,
+                    "time_losses": 0,
+                    "pentanomial": [0, 0, d // 2, 0, w // 2],
+                },
+            }
+        )
+
         response = WorkerApi(cleanup(request)).update_task()
         self.assertFalse(response["task_alive"])
 
         # revive the task
         run["tasks"][0]["active"] = True
         self.rundb.buffer(run, True)
+        self.rundb.connections_counter[self.remote_addr] = 1
 
         # Task is finished when calling /api/update_task with results where the number of
         # games played is the same as the number of games in the task

@@ -131,8 +131,8 @@ class WorkerApi(GenericApi):
                 self.handle_error("Invalid run_id: {}".format(run_id))
             self.__run = run
 
-        # if a task_id is present then the unique_key should correspond
-        # to the unique_key of the task
+        # if a task_id is present then the unique_key, username and remote_addr
+        # should be correct
 
         if "task_id" in self.request_body:
             task_id = self.request_body["task_id"]
@@ -143,13 +143,20 @@ class WorkerApi(GenericApi):
                 )
 
             task = run["tasks"][task_id]
-            unique_key = self.request_body["worker_info"]["unique_key"]
-            if unique_key != task["worker_info"]["unique_key"]:
-                self.handle_error(
-                    "Invalid unique key {} for task_id {} for run_id {}".format(
-                        unique_key, task_id, run_id
+            for key in ("unique_key", "username", "remote_addr"):
+
+                if key == "remote_addr":
+                    value_request = self.request.remote_addr
+                else:
+                    value_request = self.request_body["worker_info"][key]
+                value_task = task["worker_info"][key]
+
+                if value_request != value_task:
+                    self.handle_error(
+                        f"Invalid {key} for task {run_id}/{task_id}. From task: "
+                        f"{value_task}. From request: {value_request}."
                     )
-                )
+
             self.__task = task
 
     def get_username(self):
@@ -290,7 +297,7 @@ class WorkerApi(GenericApi):
                 self.request.rundb.stop_run(self.run_id())
             else:
                 task = self.task()
-                task["active"] = False
+                self.request.rundb.set_inactive_task(self.task_id(), run)
                 self.request.rundb.buffer(run, True)
 
         self.handle_error(error, exception=HTTPUnauthorized)
