@@ -151,8 +151,11 @@ class TestApi(unittest.TestCase):
             {"username": cls.username, "cpu_hours": 0}
         )
 
+        cls.rundb.schedule_tasks()
+
     @classmethod
     def tearDownClass(cls):
+        cls.rundb.scheduler.stop()
         cls.rundb.runs.delete_many({})
         cls.rundb.userdb.users.delete_many({"username": cls.username})
         cls.rundb.userdb.clear_cache()
@@ -535,9 +538,11 @@ class TestRunFinished(unittest.TestCase):
         cls.rundb.userdb.user_cache.insert_one(
             {"username": cls.username, "cpu_hours": 0}
         )
+        cls.rundb.schedule_tasks()
 
     @classmethod
     def tearDownClass(cls):
+        cls.rundb.scheduler.stop()
         cls.rundb.userdb.users.delete_many({"username": cls.username})
         cls.rundb.userdb.clear_cache()
         cls.rundb.userdb.user_cache.delete_many({"username": cls.username})

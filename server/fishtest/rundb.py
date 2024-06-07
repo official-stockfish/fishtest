@@ -68,7 +68,8 @@ class RunDb:
         self.runs = self.db["runs"]
         self.deltas = self.db["deltas"]
         self.port = port
-        self.task_runs = []
+        self.unfinished_runs = []
+        self.unfinished_runs_lock = threading.Lock()
         self.wtt_map = {}
         self.wtt_lock = threading.RLock()
 
@@ -94,12 +95,32 @@ class RunDb:
     def schedule_tasks(self):
         if self.scheduler is None:
             self.scheduler = Scheduler(jitter=0.05)
-        self.scheduler.add_task(1.0, self.flush_buffers)
-        self.scheduler.add_task(60.0, self.clean_cache)
-        self.scheduler.add_task(60.0, self.scavenge_dead_tasks)
+        self.scheduler.create_task(1.0, self.flush_buffers)
+        self.scheduler.create_task(60.0, self.clean_cache)
+        self.scheduler.create_task(60.0, self.scavenge_dead_tasks)
         # short intial delay to make testing more pleasant
-        self.scheduler.add_task(180.0, self.validate_random_run, initial_delay=60.0)
-        self.scheduler.add_task(180.0, self.clean_wtt_map, initial_delay=60.0)
+        self.scheduler.create_task(180.0, self.validate_random_run, initial_delay=60.0)
+        self.scheduler.create_task(180.0, self.clean_wtt_map, initial_delay=60.0)
+        self.update_unfinished_runs_task = self.scheduler.create_task(
+            60.0, self.update_unfinished_runs
+        )
+
+    def update_unfinished_runs(self):
+        with self.unfinished_runs_lock:
+            # list user names for active runs
+            user_active = []
+            unfinished_runs = []
+            for r in self.get_unfinished_runs_id():
+                run = self.get_run(r["_id"])
+                unfinished_runs.append(run)
+                if run["workers"] > 0:
+                    user_active.append(run["args"].get("username"))
+
+            for run in unfinished_runs:
+                self.calc_itp(run, user_active.count(run["args"].get("username")))
+                self.buffer(run, False)
+
+            self.unfinished_runs = unfinished_runs
 
     def clean_wtt_map(self):
         with self.wtt_lock:
@@ -845,9 +866,6 @@ class RunDb:
 
     task_semaphore = threading.Semaphore(2)
 
-    task_time = 0
-    task_runs = None
-
     worker_runs = {}
 
     def worker_cap(self, run, worker_info):
@@ -911,85 +929,10 @@ After fixing the issues you can unblock the worker at
         worker_info = copy.copy(worker_info)
         worker_info.pop("host_url", None)
 
-        unique_key = worker_info["unique_key"]
-
-        # We get the list of unfinished runs.
-        # To limit db access the list is cached for
-        # 60 seconds.
-
-        runs_finished = True
-        for run in self.task_runs:
-            if not run["finished"]:
-                runs_finished = False
-                break
-
-        if runs_finished:
-            print("Request_task: no useful cached runs left", flush=True)
-
-        if runs_finished or time.time() > self.task_time + 60:
-            print("Request_task: refresh queue", flush=True)
-
-            # list user names for active runs
-            user_active = []
-            for r in self.get_unfinished_runs_id():
-                run = self.get_run(r["_id"])
-                if any(task["active"] for task in reversed(run["tasks"])):
-                    user_active.append(run["args"].get("username"))
-
-            # now compute their itp
-            self.task_runs = []
-            for r in self.get_unfinished_runs_id():
-                run = self.get_run(r["_id"])
-                self.calc_itp(run, user_active.count(run["args"].get("username")))
-                self.task_runs.append(run)
-            self.task_time = time.time()
-
-        # We sort the list of unfinished runs according to priority.
-        # Note that because of the caching, the properties of the
-        # runs may have changed, so resorting is necessary.
-        # Changes can be created by the code below or else in update_task().
-        # Note that update_task() uses the same objects as here
-        # (they are not copies).
-
-        last_run_id = self.worker_runs.get(unique_key, {}).get("last_run", None)
-
-        # Collect some data about the worker that will be used below.
-        max_threads = int(worker_info["concurrency"])
-        min_threads = int(worker_info.get("min_threads", 1))
-        max_memory = int(worker_info.get("max_memory", 0))
-
-        near_github_api_limit = worker_info["near_github_api_limit"]
-
-        def priority(run):  # lower is better
-            return (
-                -run["args"]["priority"],
-                # Try to avoid repeatedly working on the same test
-                run["_id"] == last_run_id,
-                # Tests with low itp/workers-per-test can cause granularity issues.
-                # If we simply use oldcores-per-itp, then low-core tests will be
-                # overweighted when they're assigned large workers. If we simply
-                # use newcores-per-itp, then low-core tests will be underweighted
-                # when they're *not* assigned large workers. Instead we split the
-                # difference and ensure at least one worker at all times. (The 2:1
-                # old:new weighting seems slightly more practical than 1:1 weighting?)
-                # This does result in some bias where smaller workers are more likely
-                # to get low itp tests and vice versa, however no one has *yet*
-                # demonstrated any resulting data quality issues.
-                # (Perhaps we should investigate that either way -- but then this is
-                # hardly the only source of bias either).
-                run["cores"] > 0,
-                (run["cores"] + max_threads / 2) / run["args"]["itp"],
-                # Tiebreakers!
-                -run["args"]["itp"],
-                run["_id"],
-            )
-
-        self.task_runs.sort(key=priority)
-
         # Now we see if a worker with the same name is already connected.
-
         now = datetime.now(timezone.utc)
         my_name_long = worker_name(worker_info)
+        unique_key = worker_info["unique_key"]
         with self.wtt_lock:
             if my_name in self.wtt_map:
                 wtt_run, wtt_task_id = self.wtt_map[my_name]
@@ -1010,7 +953,6 @@ After fixing the issues you can unblock the worker at
 
         # We see if the worker has reached the number of allowed connections from the same ip
         # address.
-
         with self.connections_lock:
             connections_limit = self.userdb.get_machine_limit(worker_info["username"])
             connections = self.connections_counter.get(worker_info["remote_addr"], 0)
@@ -1021,12 +963,44 @@ After fixing the issues you can unblock the worker at
                 print(error, flush=True)
                 return {"task_waiting": False, "error": error}
 
+        # Collect some data about the worker that will be used below.
+        max_threads = int(worker_info["concurrency"])
+        min_threads = int(worker_info.get("min_threads", 1))
+        max_memory = int(worker_info.get("max_memory", 0))
+        near_github_api_limit = worker_info["near_github_api_limit"]
+
+        # Make sure we have some runs left to work with
+        runs_finished = all(run["finished"] for run in self.unfinished_runs)
+        if runs_finished:
+            print("No useful cached runs left", flush=True)
+            self.update_unfinished_runs()
+
+        # Now we sort the list of unfinished runs according to priority.
+        last_run_id = self.worker_runs.get(unique_key, {}).get("last_run", None)
+
+        def priority(run):  # lower is better
+            return (
+                # Always consider the higher priority runs first
+                -run["args"]["priority"],
+                # Try to avoid repeatedly working on the same test
+                run["_id"] == last_run_id,
+                # Make sure all runs at this priority level get _some_ cores
+                run["cores"] > 0,
+                # Try to match run["args"]["itp"].
+                # Add max_threads/2 to mitigate granularity issues with large core workers.
+                (run["cores"] + max_threads / 2) / run["args"]["itp"],
+            )
+
+        # Use a local copy of (the sorted) unfinished runs list so that it does
+        # not change under our nose.
+        unfinished_runs = sorted(self.unfinished_runs, key=priority)
+
         # Now go through the sorted list of unfinished runs.
         # We will add a task to the first run that is suitable.
 
         run_found = False
 
-        for run in self.task_runs:
+        for run in unfinished_runs:
             if run["finished"]:
                 continue
 
@@ -1476,7 +1450,9 @@ After fixing the issues you can unblock the worker at
                     message=message,
                 )
         self.buffer(run, True)
-        self.task_time = 0  # triggers a reload of self.task_runs
+
+        self.update_unfinished_runs_task.schedule_now()
+
         # Auto-purge runs here. This may revive the run.
         if run["args"].get("auto_purge", True) and "spsa" not in run["args"]:
             message = self.purge_run(run)
@@ -1511,7 +1487,7 @@ After fixing the issues you can unblock the worker at
             run["approved"] = True
             run["approver"] = approver
             self.buffer(run, True)
-            self.task_time = 0
+            self.update_unfinished_runs_task.schedule_now()
             return run, f"Run {str(run_id)} approved"
         else:
             return None, f"Run {str(run_id)} already approved!"
