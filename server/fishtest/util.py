@@ -597,7 +597,7 @@ When the second task is scheduled, the scheduler will interrupt the
 
 class Task:
     """This is an opaque class representing a task. Instances should be created via
-    Scheduler.add_task().
+    Scheduler.create_task(). Some public methods are documented below.
     """
 
     def __init__(
@@ -607,6 +607,7 @@ class Task:
         initial_delay=None,
         one_shot=False,
         jitter=0.0,
+        scheduler=None,
         args=(),
         kwargs={},
     ):
@@ -624,28 +625,47 @@ class Task:
         )
         self.one_shot = one_shot
         self.__expired = False
+        self.__scheduler = scheduler
+        self.__lock = threading.Lock()
         self.args = args
         self.kwargs = kwargs
 
-    def do_work(self):
-        if self.__expired:
-            return
-        try:
-            self.worker(*self.args, *self.kwargs)
-        except Exception as e:
-            print(f"{type(e).__name__} while executing task: {str(e)}", flush=True)
-        if not self.one_shot:
-            self.__next_schedule += self.period + uniform(
-                -self.__rel_jitter, self.__rel_jitter
-            )
-        else:
-            self.__expired = True
+    def _do_work(self):
+        if not self.__expired:
+            try:
+                self.worker(*self.args, *self.kwargs)
+            except Exception as e:
+                print(f"{type(e).__name__} while executing task: {str(e)}", flush=True)
+            if not self.one_shot:
+                jitter = uniform(-self.__rel_jitter, self.__rel_jitter)
+                with self.__lock:
+                    self.__next_schedule += self.period + jitter
+            else:
+                self.__expired = True
 
-    def next_schedule(self):
+    def _next_schedule(self):
         return self.__next_schedule
 
+    def schedule_now(self):
+        """Schedule the task now. Note that this happens asynchronously."""
+        if not self.__expired:
+            with self.__lock:
+                self.__next_schedule = datetime.now(timezone.utc)
+            self.__scheduler._refresh()
+
     def expired(self):
+        """Indicates if the task has stopped
+
+        :rtype: bool
+        """
         return self.__expired
+
+    def stop(self):
+        """This stops the task"""
+        if self.__expired:
+            return
+        self.__expired = True
+        self.__scheduler._refresh()
 
 
 class Scheduler:
@@ -664,7 +684,7 @@ class Scheduler:
         self.__worker_thread = threading.Thread(target=self.__next_schedule)
         self.__worker_thread.start()
 
-    def add_task(
+    def create_task(
         self,
         period,
         worker,
@@ -707,26 +727,25 @@ class Scheduler:
             initial_delay=initial_delay,
             one_shot=one_shot,
             jitter=jitter,
+            scheduler=self,
             args=args,
             kwargs=kwargs,
         )
         self.__tasks.append(task)
-        self.__event.set()
+        self._refresh()
         return task
-
-    def del_task(self, task):
-        """This deletes a task
-
-        :param task: The task to be deleted
-        :type task: Task
-        """
-        self.__del_task(task)
-        self.__event.set()
 
     def stop(self):
         """This stops the scheduler"""
         self.__thread_stopped = True
+        self._refresh()
+
+    def _refresh(self):
         self.__event.set()
+
+    def _del_task(self, task):
+        self.__del_task(task)
+        self._refresh()
 
     def __del_task(self, task):
         try:
@@ -741,14 +760,14 @@ class Scheduler:
                 if task.expired():
                     self.__del_task(task)
                 else:
-                    if next_schedule is None or task.next_schedule() < next_schedule:
+                    if next_schedule is None or task._next_schedule() < next_schedule:
                         next_task = task
-                        next_schedule = task.next_schedule()
+                        next_schedule = task._next_schedule()
             if next_schedule is not None:
                 delay = (next_schedule - datetime.now(timezone.utc)).total_seconds()
                 self.__event.wait(delay)
                 if not self.__event.is_set():
-                    next_task.do_work()
+                    next_task._do_work()
             else:
                 self.__event.wait()
             self.__event.clear()

@@ -1279,7 +1279,7 @@ def tests_modify(request):
     ):
         run["args"]["info"] = request.POST["info"].strip()
     request.rundb.buffer(run, True)
-    request.rundb.task_time = 0
+    request.rundb.update_unfinished_runs_task.schedule_now()
 
     after = del_tasks(run)
     message = []
@@ -1407,7 +1407,7 @@ def tests_delete(request):
                     message=message,
                 )
         request.rundb.buffer(run, True)
-        request.rundb.task_time = 0
+        request.rundb.update_unfinished_runs_task.schedule_now()
 
         request.actiondb.delete_run(
             username=request.authenticated_userid,
