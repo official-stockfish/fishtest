@@ -32,6 +32,7 @@ from vtjson import (
     one_of,
     quote,
     regex,
+    set_label,
     set_name,
     size,
     union,
@@ -753,17 +754,11 @@ runs_schema = intersect(
     valid_aggregated_data,
 )
 
-# For documentation. Not fully used.
 cache_schema = {
     run_id: {
-        "run": runs_schema,
+        "run": set_label(runs_schema, "runs_schema"),
         "is_changed": bool,  # Indicates if the run has changed since last_sync_time.
         "last_sync_time": ufloat,  # Last sync time (reading from or writing to db). If never synced then creation time.
         "last_access_time": ufloat,  # Last time the cache entry was touched (via buffer() or get_run()).
     },
 }
-
-# A version that does not validate the embedded runs
-cache_schema_fast = {}
-cache_schema_fast[run_id] = copy.deepcopy(cache_schema[run_id])
-cache_schema_fast[run_id]["run"] = dict

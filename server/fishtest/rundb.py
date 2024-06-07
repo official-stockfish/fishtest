@@ -17,7 +17,7 @@ from bson.objectid import ObjectId
 from fishtest.actiondb import ActionDb
 from fishtest.schemas import (
     RUN_VERSION,
-    cache_schema_fast,
+    cache_schema,
     compute_committed_games,
     compute_cores,
     compute_results,
@@ -277,7 +277,15 @@ class RunDb:
                 for task_id in range(len(run["tasks"])):
                     self.insert_in_wtt_map(run, task_id)
 
-        validate(cache_schema_fast, self.run_cache)
+        try:
+            validate(
+                cache_schema,
+                self.run_cache,
+                name="run_cache",
+                subs={"runs_schema": dict},
+            )
+        except ValidationError as e:
+            print(f"Validation of run_cache failed: {str(e)}")
 
     def new_run(
         self,
