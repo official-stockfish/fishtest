@@ -68,7 +68,7 @@ class RunDb:
         self.runs = self.db["runs"]
         self.deltas = self.db["deltas"]
         self.port = port
-        self.unfinished_runs = []
+        self.unfinished_runs = set()
         self.unfinished_runs_lock = threading.Lock()
         self.wtt_map = {}
         self.wtt_lock = threading.RLock()
@@ -101,26 +101,24 @@ class RunDb:
         # short intial delay to make testing more pleasant
         self.scheduler.create_task(180.0, self.validate_random_run, initial_delay=60.0)
         self.scheduler.create_task(180.0, self.clean_wtt_map, initial_delay=60.0)
-        self.update_unfinished_runs_task = self.scheduler.create_task(
-            60.0, self.update_unfinished_runs
-        )
+        self.update_itp_task = self.scheduler.create_task(60.0, self.update_itp)
 
-    def update_unfinished_runs(self):
+    def update_itp(self):
         with self.unfinished_runs_lock:
-            # list user names for active runs
-            user_active = []
-            unfinished_runs = []
-            for r in self.get_unfinished_runs_id():
-                run = self.get_run(r["_id"])
-                unfinished_runs.append(run)
-                if run["workers"] > 0:
-                    user_active.append(run["args"].get("username"))
+            unfinished_runs = [self.get_run(run_id) for run_id in self.unfinished_runs]
 
-            for run in unfinished_runs:
-                self.calc_itp(run, user_active.count(run["args"].get("username")))
-                self.buffer(run, False)
+        user_active = [
+            run["args"].get("username") for run in unfinished_runs if run["workers"] > 0
+        ]
 
-            self.unfinished_runs = unfinished_runs
+        for run in unfinished_runs:
+            self.calc_itp(run, user_active.count(run["args"].get("username")))
+            self.buffer(run, False)
+
+        print(
+            f"Update_itp: {len(unfinished_runs)} unfinished runs...",
+            f"{len(set(user_active))} authors have active runs..",
+        )
 
     def clean_wtt_map(self):
         with self.wtt_lock:
@@ -187,11 +185,22 @@ class RunDb:
                 )
 
     def set_inactive_run(self, run):
-        run_id = run["_id"]
+        run_id = str(run["_id"])
         with self.active_run_lock(run_id):
-            run["finished"] = True
             for task_id in range(len(run["tasks"])):
                 self.set_inactive_task(task_id, run)
+            self.unfinished_runs.discard(run_id)
+            run["finished"] = True
+
+    def set_active_run(self, run):
+        run_id = str(run["_id"])
+        with self.active_run_lock(run_id):
+            self.unfinished_runs.add(run_id)
+            run["deleted"] = False
+            run["failed"] = False
+            run["is_green"] = False
+            run["is_yellow"] = False
+            run["finished"] = False
 
     def set_inactive_task(self, task_id, run):
         run_id = run["_id"]
@@ -217,12 +226,15 @@ class RunDb:
                     except Exception as e:
                         print(f"Error while deleting connection: {str(e)}", flush=True)
 
+    # Do not run two copies of this function in parallel!
     def update_aggregated_data(self):
-        """
-        If the code is correct then this should be a noop, unless after a crash.
-        """
-        init_connections_counter = True
-        init_wtt_map = True
+        with self.wtt_lock:
+            self.wtt_map = {}
+        with self.connections_lock:
+            self.connections_counter = {}
+        with self.unfinished_runs_lock:
+            self.unfinished_runs = set()
+
         for r in self.get_unfinished_runs_id():
             run_id = str(r["_id"])
             run = self.get_run(run_id)
@@ -276,12 +288,12 @@ class RunDb:
                     run["total_games"] = total_games
                     changed = True
 
+                with self.unfinished_runs_lock:
+                    self.unfinished_runs.add(run_id)
+
                 for task_id, task in enumerate(run["tasks"]):
                     if task["active"]:
                         with self.connections_lock:
-                            if init_connections_counter:
-                                self.connections_counter = {}
-                                init_connections_counter = False
                             remote_addr = task["worker_info"]["remote_addr"]
                             if remote_addr in self.connections_counter:
                                 self.connections_counter[remote_addr] += 1
@@ -292,12 +304,13 @@ class RunDb:
                 self.buffer(run, False)
 
             with self.wtt_lock:
-                if init_wtt_map:
-                    self.wtt_map = {}
-                    init_wtt_map = False
                 for task_id in range(len(run["tasks"])):
                     self.insert_in_wtt_map(run, task_id)
 
+        self.update_itp()
+
+        # This will be moved to a more suitable place once we have documented more
+        # internal Fishtest data structures.
         try:
             validate(
                 cache_schema,
@@ -451,7 +464,13 @@ class RunDb:
             print(message, flush=True)
             raise Exception(message)
 
-        return self.runs.insert_one(new_run).inserted_id
+        # We cannot use self.buffer since new_run does not have an id yet.
+        run_id = self.runs.insert_one(new_run).inserted_id
+
+        with self.unfinished_runs_lock:
+            self.unfinished_runs.add(str(run_id))
+
+        return run_id
 
     def is_primary_instance(self):
         return self.__is_primary_instance
@@ -969,12 +988,6 @@ After fixing the issues you can unblock the worker at
         max_memory = int(worker_info.get("max_memory", 0))
         near_github_api_limit = worker_info["near_github_api_limit"]
 
-        # Make sure we have some runs left to work with
-        runs_finished = all(run["finished"] for run in self.unfinished_runs)
-        if runs_finished:
-            print("No useful cached runs left", flush=True)
-            self.update_unfinished_runs()
-
         # Now we sort the list of unfinished runs according to priority.
         last_run_id = self.worker_runs.get(unique_key, {}).get("last_run", None)
 
@@ -993,7 +1006,9 @@ After fixing the issues you can unblock the worker at
 
         # Use a local copy of (the sorted) unfinished runs list so that it does
         # not change under our nose.
-        unfinished_runs = sorted(self.unfinished_runs, key=priority)
+        with self.unfinished_runs_lock:
+            unfinished_runs = [self.get_run(run_id) for run_id in self.unfinished_runs]
+        unfinished_runs = sorted(unfinished_runs, key=priority)
 
         # Now go through the sorted list of unfinished runs.
         # We will add a task to the first run that is suitable.
@@ -1451,7 +1466,7 @@ After fixing the issues you can unblock the worker at
                 )
         self.buffer(run, True)
 
-        self.update_unfinished_runs_task.schedule_now()
+        self.update_itp_task.schedule_now()
 
         # Auto-purge runs here. This may revive the run.
         if run["args"].get("auto_purge", True) and "spsa" not in run["args"]:
@@ -1487,7 +1502,7 @@ After fixing the issues you can unblock the worker at
             run["approved"] = True
             run["approver"] = approver
             self.buffer(run, True)
-            self.update_unfinished_runs_task.schedule_now()
+            self.update_itp_task.schedule_now()
             return run, f"Run {str(run_id)} approved"
         else:
             return None, f"Run {str(run_id)} already approved!"
@@ -1580,9 +1595,7 @@ After fixing the issues you can unblock the worker at
 
             run["results_info"] = format_results(results, run)
             if revived:
-                run["finished"] = False
-                run["is_green"] = False
-                run["is_yellow"] = False
+                self.set_active_run(run)
             else:
                 # Copied code. Must be refactored.
                 style = run["results_info"]["style"]

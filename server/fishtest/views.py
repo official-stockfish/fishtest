@@ -1263,11 +1263,7 @@ def tests_modify(request):
         run["approver"] = ""
 
     before = del_tasks(run)
-    run["finished"] = False
-    run["deleted"] = False
-    run["failed"] = False
-    run["is_green"] = False
-    run["is_yellow"] = False
+    request.rundb.set_active_run(run)
     run["args"]["num_games"] = int(request.POST["num-games"])
     run["args"]["priority"] = int(request.POST["priority"])
     run["args"]["throughput"] = int(request.POST["throughput"])
@@ -1279,7 +1275,7 @@ def tests_modify(request):
     ):
         run["args"]["info"] = request.POST["info"].strip()
     request.rundb.buffer(run, True)
-    request.rundb.update_unfinished_runs_task.schedule_now()
+    request.rundb.update_itp_task.schedule_now()
 
     after = del_tasks(run)
     message = []
@@ -1322,7 +1318,6 @@ def tests_stop(request):
             request.session.flash("Unable to modify another users run!", "error")
             return home(request)
 
-        run["finished"] = True
         request.rundb.stop_run(request.POST["run-id"])
         request.actiondb.stop_run(
             username=request.authenticated_userid,
@@ -1407,7 +1402,7 @@ def tests_delete(request):
                     message=message,
                 )
         request.rundb.buffer(run, True)
-        request.rundb.update_unfinished_runs_task.schedule_now()
+        request.rundb.update_itp_task.schedule_now()
 
         request.actiondb.delete_run(
             username=request.authenticated_userid,
