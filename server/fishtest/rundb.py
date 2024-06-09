@@ -98,10 +98,10 @@ class RunDb:
         self.scheduler.create_task(1.0, self.flush_buffers)
         self.scheduler.create_task(60.0, self.clean_cache)
         self.scheduler.create_task(60.0, self.scavenge_dead_tasks)
+        self.scheduler.create_task(60.0, self.update_itp)
         # short intial delay to make testing more pleasant
         self.scheduler.create_task(180.0, self.validate_random_run, initial_delay=60.0)
         self.scheduler.create_task(180.0, self.clean_wtt_map, initial_delay=60.0)
-        self.update_itp_task = self.scheduler.create_task(60.0, self.update_itp)
 
     def update_itp(self):
         with self.unfinished_runs_lock:
@@ -114,11 +114,6 @@ class RunDb:
         for run in unfinished_runs:
             self.calc_itp(run, user_active.count(run["args"].get("username")))
             self.buffer(run, False)
-
-        print(
-            f"Update_itp: {len(unfinished_runs)} unfinished runs...",
-            f"{len(set(user_active))} authors have active runs..",
-        )
 
     def clean_wtt_map(self):
         with self.wtt_lock:
@@ -1466,8 +1461,6 @@ After fixing the issues you can unblock the worker at
                 )
         self.buffer(run, True)
 
-        self.update_itp_task.schedule_now()
-
         # Auto-purge runs here. This may revive the run.
         if run["args"].get("auto_purge", True) and "spsa" not in run["args"]:
             message = self.purge_run(run)
@@ -1502,7 +1495,6 @@ After fixing the issues you can unblock the worker at
             run["approved"] = True
             run["approver"] = approver
             self.buffer(run, True)
-            self.update_itp_task.schedule_now()
             return run, f"Run {str(run_id)} approved"
         else:
             return None, f"Run {str(run_id)} already approved!"
