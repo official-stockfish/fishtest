@@ -26,7 +26,6 @@ from fishtest.schemas import (
     nn_schema,
     pgns_schema,
     runs_schema,
-    valid_aggregated_data,
 )
 from fishtest.stats.stat_util import SPRT_elo
 from fishtest.userdb import UserDb
@@ -162,12 +161,9 @@ class RunDb:
             # Make sure that the run object does not change while we are
             # validating it
             with self.active_run_lock(run_id):
-                # We verify only the aggregated data since the other
-                # data is not synchronized and may be in a transient
-                # inconsistent state
-                validate(valid_aggregated_data, run, "run")
+                validate(runs_schema, run, "run")
                 print(
-                    f"Validate_random_run: validated aggregated data in cache run {run_id}...",
+                    f"Validate_random_run: validated cache run {run_id}...",
                     flush=True,
                 )
         except ValidationError as e:
