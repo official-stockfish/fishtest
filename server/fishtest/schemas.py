@@ -747,10 +747,18 @@ runs_schema = intersect(
     lax(ifthen({"approved": True}, {"approver": username}, {"approver": ""})),
     lax(ifthen({"is_green": True}, {"is_yellow": False})),
     lax(ifthen({"is_yellow": True}, {"is_green": False})),
-    lax(ifthen({"failed": True}, {"finished": True})),
-    lax(ifthen({"deleted": True}, {"finished": True})),
-    lax(ifthen({"finished": True}, {"workers": 0, "cores": 0})),
-    lax(ifthen({"finished": True}, {"tasks": [{"active": False}, ...]})),
+    lax(
+        ifthen(
+            {"finished": False},
+            {"is_green": False, "is_yellow": False, "failed": False, "deleted": False},
+        )
+    ),
+    lax(
+        ifthen(
+            {"finished": True},
+            {"workers": 0, "cores": 0, "tasks": [{"active": False}, ...]},
+        )
+    ),
     valid_aggregated_data,
 )
 

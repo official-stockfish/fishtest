@@ -423,30 +423,31 @@ class RunDb:
             "total_games": 0,
         }
 
-        # administrative flags
+        # Administrative flags.
+        # If the following comments are incorrect then that's a bug!
 
-        # "finished"
-        # set in stop_run(), /api/stop_run, /tests/delete
-        # cleared in purge_run(), /tests/modify
+        # set in set_inactive_run()
+        # cleared in set_active_run()
         new_run["finished"] = False
 
         # "deleted"
         # set in /tests/delete
+        # cleared in set_active_run()
         new_run["deleted"] = False
 
         # "failed"
         # set in /api/stop_run
-        # cleared in /tests/modify
+        # cleared in set_active_run()
         new_run["failed"] = False
 
         # "is_green"
-        # set in stop_run()
-        # cleared in purge_run(), /tests/modify
+        # set in stop_run(), purge_run()
+        # cleared in purge_run(), set_active_run()
         new_run["is_green"] = False
 
         # "is_yellow"
-        # set in stop_run()
-        # cleared in purge_run(), /tests/modify
+        # set in stop_run(), purge_run()
+        # cleared in purge_run(), set_active_run()
         new_run["is_yellow"] = False
 
         if rescheduled_from:
