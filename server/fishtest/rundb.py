@@ -221,6 +221,46 @@ class RunDb:
                     except Exception as e:
                         print(f"Error while deleting connection: {str(e)}", flush=True)
 
+    def set_bad_task(self, task_id, run, residual=None, residual_color=None):
+        zero_stats = {
+            "wins": 0,
+            "losses": 0,
+            "draws": 0,
+            "crashes": 0,
+            "time_losses": 0,
+            "pentanomial": 5 * [0],
+        }
+        run_id = str(run["_id"])
+        with self.active_run_lock(run_id):
+            task = run["tasks"][task_id]
+            if "bad" in task:
+                return
+            self.set_inactive_task(task_id, run)
+
+            if "bad_tasks" not in run:
+                run["bad_tasks"] = []
+            bad_task = copy.deepcopy(task)
+            run["bad_tasks"].append(bad_task)
+            bad_task["task_id"] = task_id
+            bad_task["bad"] = True
+
+            if residual is not None:
+                bad_task["residual"] = residual
+            if residual_color is not None:
+                bad_task["residual_color"] = residual_color
+
+            stats = task["stats"]
+            run["committed_games"] -= stats["wins"] + stats["losses"] + stats["draws"]
+
+            # Rather than removing the task, we mark
+            # it as bad.
+            # In this way the numbering of tasks
+            # does not change.
+            # For safety we also set the stats
+            # to zero.
+            task["bad"] = True
+            task["stats"] = copy.deepcopy(zero_stats)
+
     # Do not run two copies of this function in parallel!
     def update_aggregated_data(self):
         with self.wtt_lock:
@@ -1531,24 +1571,8 @@ After fixing the issues you can unblock the worker at
             # Special cases: crashes or time losses.
             if crash_or_time(task):
                 message = ""
-                bad_task = copy.deepcopy(task)
-                # The next two lines are a bit hacky but
-                # the correct residual and color may not have
-                # been set yet.
-                bad_task["residual"] = 10.0
-                bad_task["residual_color"] = "#FF6A6A"
-                bad_task["task_id"] = task_id
-                bad_task["bad"] = True
-                run["bad_tasks"].append(bad_task)
-                # Rather than removing the task, we mark
-                # it as bad.
-                # In this way the numbering of tasks
-                # does not change.
-                # For safety we also set the stats
-                # to zero.
-                task["bad"] = True
-                self.set_inactive_task(task_id, run)
-                task["stats"] = copy.deepcopy(zero_stats)
+                # The residual or residual color my not have been set yet
+                self.set_bad_task(task_id, run, residual=10.0, residual_color="#FF6A6A")
 
         chi2 = get_chi2(run["tasks"])
         # Make sure the residuals are up to date.
@@ -1568,13 +1592,7 @@ After fixing the issues you can unblock the worker at
                 continue
             if task["worker_info"]["unique_key"] in bad_workers:
                 message = ""
-                bad_task = copy.deepcopy(task)
-                bad_task["task_id"] = task_id
-                bad_task["bad"] = True
-                run["bad_tasks"].append(bad_task)
-                task["bad"] = True
-                self.set_inactive_task(task_id, run)
-                task["stats"] = copy.deepcopy(zero_stats)
+                self.set_bad_task(task_id, run)
 
         if message == "":
             results = compute_results(run)
