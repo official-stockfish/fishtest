@@ -49,7 +49,7 @@ long_worker_name = regex(
     r".*-[\d]+cores-[a-zA-Z0-9]{2,8}-[a-f0-9]{4}\*?", name="long_worker_name"
 )
 username = regex(r"[!-~][ -~]{0,30}[!-~]", name="username")
-net_name = regex(r"nn-[a-f0-9]{12}.nnue", name="net_name")
+net_name = regex(r"nn-[a-f0-9]{12}.network", name="net_name")
 tc = regex(r"([1-9]\d*/)?\d+(\.\d+)?(\+\d+(\.\d+)?)?", name="tc")
 str_int = regex(r"[1-9]\d*", name="str_int")
 sha = regex(r"[a-f0-9]{40}", name="sha")

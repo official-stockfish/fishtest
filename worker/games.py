@@ -233,7 +233,7 @@ def github_api(repo):
 
 def required_nets(engine):
     nets = {}
-    pattern = re.compile(r"(EvalFile\w*)\s+.*\s+(nn-[a-f0-9]{12}.nnue)")
+    pattern = re.compile(r"(EvalFile\w*)\s+.*\s+(nn-[a-f0-9]{12}.network)")
     print("Obtaining EvalFile of {} ...".format(os.path.basename(engine)))
     try:
         with subprocess.Popen(
@@ -262,7 +262,7 @@ def required_nets(engine):
 
 
 def required_value_from_source():
-    pattern = re.compile("value-[a-f0-9]{12}.network")
+    pattern = re.compile("nn-[a-f0-9]{12}.network")
 
     with open("networks/value.rs", "r") as srcfile:
         for line in srcfile:
@@ -273,7 +273,7 @@ def required_value_from_source():
 
 
 def required_policy_from_source():
-    pattern = re.compile("policy-[a-f0-9]{12}.network")
+    pattern = re.compile("nn-[a-f0-9]{12}.network")
 
     with open("networks/policy.rs", "r") as srcfile:
         for line in srcfile:
@@ -1098,7 +1098,7 @@ def run_games(
     # Clean up the old networks (keeping the num_bkps most recent)
     num_bkps = 10
     for old_net in sorted(
-        testing_dir.glob("nn-*.nnue"), key=os.path.getmtime, reverse=True
+        testing_dir.glob("nn-*.network"), key=os.path.getmtime, reverse=True
     )[num_bkps:]:
         try:
             old_net.unlink()

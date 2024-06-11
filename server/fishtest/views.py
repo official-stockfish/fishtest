@@ -288,8 +288,8 @@ def upload(request):
     errors = []
     if len(network) >= 120000000:
         errors.append("Network must be < 120MB")
-    if not re.match(r"^nn-[0-9a-f]{12}\.nnue$", filename):
-        errors.append('Name must match "nn-[SHA256 first 12 digits].nnue"')
+    if not re.match(r"^nn-[0-9a-f]{12}\.network$", filename):
+        errors.append('Name must match "nn-[SHA256 first 12 digits].network"')
     hash = hashlib.sha256(network).hexdigest()
     if hash[:12] != filename[3:15]:
         errors.append(
@@ -776,7 +776,7 @@ def get_nets(commit_sha, repo_url):
     )
     try:
         nets = []
-        pattern = re.compile("nn-[a-f0-9]{12}.nnue")
+        pattern = re.compile("nn-[a-f0-9]{12}.network")
 
         url1 = api_url + "/" + commit_sha + "/src/evaluate.h"
         options = requests.get(url1).content.decode("utf-8")

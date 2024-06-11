@@ -102,7 +102,7 @@ def update(restart=True, test=False):
                     file=sys.stderr,
                 )
         # Delete old networks.
-        for network in bkp_testing_dir.glob("nn-*.nnue"):
+        for network in bkp_testing_dir.glob("nn-*.network"):
             try:
                 network.unlink()
             except Exception as e:
