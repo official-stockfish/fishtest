@@ -10,7 +10,7 @@ import requests
 
 start_dir = Path().cwd()
 
-WORKER_URL = "https://github.com/official-stockfish/fishtest/archive/master.zip"
+WORKER_URL = "https://github.com/official-monty/fishtest/archive/master.zip"
 
 
 def do_restart():
@@ -91,7 +91,7 @@ def update(restart=True, test=False):
         testing_dir.replace(bkp_testing_dir)
         testing_dir.mkdir()
         # Delete old engine binaries
-        for engine in bkp_testing_dir.glob("stockfish_*"):
+        for engine in bkp_testing_dir.glob("monty_*"):
             try:
                 engine.unlink()
             except Exception as e:
