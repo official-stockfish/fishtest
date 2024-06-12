@@ -30,16 +30,17 @@ from fishtest.schemas import (
 from fishtest.stats.stat_util import SPRT_elo
 from fishtest.userdb import UserDb
 from fishtest.util import (
+    BASE_NPS,
     GeneratorAsFileReader,
     Scheduler,
     crash_or_time,
-    estimate_game_duration,
+    estimate_game_duration_from_run,
     format_bounds,
     format_results,
     get_bad_workers,
     get_chi2,
     get_hash,
-    get_tc_ratio,
+    get_tc_ratio_from_run,
     remaining_hours,
     update_residuals,
     worker_name,
@@ -811,8 +812,8 @@ class RunDb:
                     nps += concurrency * task["worker_info"]["nps"]
                     if task["worker_info"]["nps"] != 0:
                         games_per_minute += (
-                            (task["worker_info"]["nps"] / 691680)
-                            * (60.0 / estimate_game_duration(run["args"]["tc"]))
+                            (task["worker_info"]["nps"] / BASE_NPS)
+                            * (60.0 / estimate_game_duration_from_run(run))
                             * (
                                 int(task["worker_info"]["concurrency"])
                                 // run["args"].get("threads", 1)
@@ -872,7 +873,7 @@ class RunDb:
 
         # The primary adjustment is derived from a power law of test TC relative to STC, so that long TCs compromise
         # between worse latency and chewing too many cores.
-        tc_ratio = get_tc_ratio(run["args"]["tc"], run["args"]["threads"])
+        tc_ratio = get_tc_ratio_from_run(run)
         # Discount longer test itp-per-TC without boosting sub-STC tests
         if tc_ratio > 1:
             # LTC/STC tc_ratio = 6, target latency ratio = 3/2,
@@ -911,7 +912,7 @@ class RunDb:
         # during the time interval determined by "self.task_duration".
         # Make sure the result is properly quantized and not zero.
 
-        game_time = estimate_game_duration(run["args"]["tc"])
+        game_time = estimate_game_duration_from_run(run)
         concurrency = worker_info["concurrency"] // run["args"]["threads"]
         assert concurrency >= 1
         # as we have more tasks done (>250), make them longer to avoid
@@ -1088,14 +1089,14 @@ After fixing the issues you can unblock the worker at
             # and windows workers only to LTC jobs
             if max_threads >= 29:
                 if "windows" in worker_info["uname"].lower():
-                    tc_too_short = get_tc_ratio(run["args"]["tc"], base="55+0.5") < 1.0
-                else:
                     tc_too_short = (
-                        get_tc_ratio(
-                            run["args"]["tc"], run["args"]["threads"], "35+0.3"
-                        )
+                        get_tc_ratio_from_run(run, base="55+0.5")
+                        / run["args"]["threads"]
                         < 1.0
                     )
+                else:
+                    tc_too_short = get_tc_ratio_from_run(run, base="35+0.3") < 1.0
+
                 if tc_too_short:
                     continue
 

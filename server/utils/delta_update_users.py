@@ -4,7 +4,12 @@ import sys
 from datetime import datetime, timedelta, timezone
 
 from fishtest.rundb import RunDb
-from fishtest.util import delta_date, diff_date, estimate_game_duration
+from fishtest.util import (
+    BASE_NPS,
+    delta_date,
+    diff_date,
+    estimate_game_duration_from_run,
+)
 from pymongo import DESCENDING
 
 
@@ -48,8 +53,8 @@ def compute_games_rates(rundb, info_tuple):
     # use the reference core nps, also set in rundb.py and games.py
     for machine in rundb.get_machines():
         games_per_hour = (
-            (machine["nps"] / 691680)
-            * (3600.0 / estimate_game_duration(machine["run"]["args"]["tc"]))
+            (machine["nps"] / BASE_NPS)
+            * (3600.0 / estimate_game_duration_from_run(machine["run"]))
             * (int(machine["concurrency"]) // machine["run"]["args"].get("threads", 1))
         )
         for info in info_tuple:
@@ -66,7 +71,7 @@ def process_run(run, info):
         return
 
     # Update the information for the workers contributed by the users
-    tc = estimate_game_duration(run["args"]["tc"])
+    tc = estimate_game_duration_from_run(run)
     for task in run["tasks"]:
         if "worker_info" not in task:
             continue

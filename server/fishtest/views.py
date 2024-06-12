@@ -19,6 +19,7 @@ from fishtest.util import (
     format_results,
     get_chi2,
     get_hash,
+    get_nodestime,
     get_tc_ratio,
     github_repo_valid,
     password_strength,
@@ -1049,7 +1050,26 @@ def validate_form(request):
         # This means a batch with be completed in roughly 2 minutes on a 8 core worker.
         # This expression adjusts the batch size for threads and TC, to keep timings somewhat similar.
         sprt_batch_size_games = 2 * max(
-            1, int(0.5 + 16 / get_tc_ratio(data["tc"], data["threads"]))
+            1,
+            int(
+                0.5
+                + 16
+                / (
+                    (
+                        get_tc_ratio(
+                            data["tc"],
+                            get_nodestime(data["base_options"]),
+                            data["threads"],
+                        )
+                        + get_tc_ratio(
+                            data.get("new_tc", data["tc"]),
+                            get_nodestime(data["new_options"]),
+                            data["threads"],
+                        )
+                    )
+                    / 2
+                )
+            ),
         )
         assert sprt_batch_size_games % 2 == 0
         elo_model = request.POST["elo_model"]

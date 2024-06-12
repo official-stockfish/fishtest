@@ -810,7 +810,6 @@ def adjust_tc(tc, factor):
         scaled_tc = "{}/{}".format(num_moves, scaled_tc)
         tc_limit *= 100.0 / num_moves
 
-    print("CPU factor : {} - tc adjusted to {}".format(factor, scaled_tc))
     return scaled_tc, tc_limit
 
 
@@ -1417,14 +1416,39 @@ def run_games(
     # 0.7 Mnps as threshold for the slow worker.
     # also set in rundb.py and delta_update_users.py
     factor = 691680 / base_nps
+    print("CPU factor: {:.6f}".format(factor))
 
     # Adjust CPU scaling.
     _, tc_limit_ltc = adjust_tc("60+0.6", factor)
-    scaled_tc, tc_limit = adjust_tc(run["args"]["tc"], factor)
-    scaled_new_tc = scaled_tc
-    if "new_tc" in run["args"]:
-        scaled_new_tc, new_tc_limit = adjust_tc(run["args"]["new_tc"], factor)
-        tc_limit = (tc_limit + new_tc_limit) / 2
+    tc_limit, new_tc_limit = None, None
+    scaled_tc = run["args"]["tc"]
+    scaled_new_tc = (
+        run["args"]["new_tc"] if "new_tc" in run["args"] else run["args"]["tc"]
+    )
+
+    for option in base_options:
+        if "nodestime" in option:
+            nodestime = int(option.split("=")[1])
+            real_tc, tc_limit = adjust_tc(scaled_tc, nodestime * 1000 / 691680)
+            print("Base TC using {} in real time".format(real_tc))
+            break
+
+    if tc_limit is None:
+        scaled_tc, tc_limit = adjust_tc(scaled_tc, factor)
+        print("Base TC adjusted to {}".format(scaled_tc))
+
+    for option in new_options:
+        if "nodestime" in option:
+            nodestime = int(option.split("=")[1])
+            real_tc, new_tc_limit = adjust_tc(scaled_new_tc, nodestime * 1000 / 691680)
+            print("New TC using {} in real time".format(real_tc))
+            break
+
+    if new_tc_limit is None:
+        scaled_new_tc, new_tc_limit = adjust_tc(scaled_new_tc, factor)
+        print("New TC adjusted to {}".format(scaled_new_tc))
+
+    tc_limit = (tc_limit + new_tc_limit) / 2
 
     result["worker_info"]["nps"] = float(base_nps)
     result["worker_info"]["ARCH"] = cpu_features
@@ -1432,12 +1456,6 @@ def run_games(
     threads_cmd = []
     if not any("Threads" in s for s in new_options + base_options):
         threads_cmd = ["option.Threads={}".format(threads)]
-
-    # If nodestime is being used, give engines extra grace time to
-    # make time losses virtually impossible.
-    nodestime_cmd = []
-    if any("nodestime" in s for s in new_options + base_options):
-        nodestime_cmd = ["timemargin=10000"]
 
     def make_player(arg):
         return run["args"][arg].split(" ")[0]
@@ -1546,7 +1564,6 @@ def run_games(
             + base_options
             + ["_spsa_"]
             + ["-each", "proto=uci"]
-            + nodestime_cmd
             + threads_cmd
             + book_cmd
         )
