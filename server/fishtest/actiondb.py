@@ -16,6 +16,10 @@ class ActionDb:
     def __init__(self, db):
         self.db = db
         self.actions = self.db["actions"]
+        self.logger = None
+
+    def set_logger(self, logger):
+        self.logger = logger
 
     def get_actions(
         self,
@@ -219,13 +223,10 @@ class ActionDb:
         try:
             validate(action_schema, action, "action")
         except ValidationError as e:
-            message = (
-                f"Internal Error. Request {str(action)} does not validate: {str(e)}"
-            )
-            print(message, flush=True)
-            self.log_message(
-                username="fishtest.system",
-                message=message,
-            )
+            message = f"Request {str(action)} does not validate: {str(e)}"
+            if self.logger is not None:
+                self.logger.error(message)
+            else:
+                print(message, flush=True)
             return
         self.actions.insert_one(action)

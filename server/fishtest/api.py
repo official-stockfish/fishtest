@@ -52,6 +52,7 @@ class GenericApi:
     def __init__(self, request):
         self.request = request
         self.__t0 = datetime.now(timezone.utc)
+        self.logger = request.rundb.logger
 
     def timestamp(self):
         return self.__t0
@@ -69,7 +70,7 @@ class GenericApi:
             )
             api = urlparse(full_url).path
             error = f"{api}: {error}"
-            print(error, flush=True)
+            self.logger.info(error)
             raise exception(self.add_time({"error": error}))
 
 

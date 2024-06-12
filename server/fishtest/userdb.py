@@ -10,25 +10,35 @@ from vtjson import ValidationError, validate
 DEFAULT_MACHINE_LIMIT = 16
 
 
-def validate_user(user):
-    try:
-        validate(user_schema, user, "user")
-    except ValidationError as e:
-        message = f"The user object does not validate: {str(e)}"
-        print(message, flush=True)
-        raise Exception(message)
-
-
 class UserDb:
     def __init__(self, db):
         self.db = db
         self.users = self.db["users"]
         self.user_cache = self.db["user_cache"]
         self.top_month = self.db["top_month"]
+        self.logger = None
 
     # Cache user lookups for 120s
     user_lock = threading.Lock()
     cache = {}
+
+    def log(self, message):
+        if self.logger is None:
+            print(message, flush=True)
+        else:
+            # Not self.logger.error() since this may expose passwords.
+            self.logger.info(message)
+
+    def validate_user(self, user):
+        try:
+            validate(user_schema, user, "user")
+        except ValidationError as e:
+            message = f"The user object does not validate: {str(e)}"
+            self.log(message)
+            raise Exception(message)
+
+    def set_logger(self, logger):
+        self.logger = logger
 
     def find_by_username(self, name):
         with self.user_lock:
@@ -101,7 +111,7 @@ class UserDb:
     def add_user_group(self, username, group):
         user = self.get_user(username)
         user["groups"].append(group)
-        validate_user(user)
+        self.validate_user(user)
         self.users.replace_one({"_id": user["_id"]}, user)
         self.clear_cache()
 
@@ -121,7 +131,7 @@ class UserDb:
                 "tests_repo": tests_repo,
                 "machine_limit": DEFAULT_MACHINE_LIMIT,
             }
-            validate_user(user)
+            self.validate_user(user)
             self.users.insert_one(user)
             self.last_pending_time = 0
             self.last_blocked_time = 0
@@ -131,7 +141,7 @@ class UserDb:
             return None
 
     def save_user(self, user):
-        validate_user(user)
+        self.validate_user(user)
         self.users.replace_one({"_id": user["_id"]}, user)
         self.last_pending_time = 0
         self.last_blocked_time = 0
@@ -145,9 +155,8 @@ class UserDb:
             self.last_pending_time = 0
             self.clear_cache()
             # logs rejected users to the server
-            print(
-                f"user: {user['username']} with email: {user['email']} was rejected by: {rejector}",
-                flush=True,
+            self.log(
+                f"user: {user['username']} with email: {user['email']} was rejected by: {rejector}"
             )
             return True
         else:
