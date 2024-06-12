@@ -1513,6 +1513,7 @@ def run_games(
                     "-resign",
                     "movecount=3",
                     "score=600",
+                    "twosided=true",
                     "-draw",
                     "movenumber=34",
                     "movecount=8",
