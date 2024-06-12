@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from fishtest.schemas import action_schema
-from fishtest.util import hex_print, worker_name
+from fishtest.util import event_log, hex_print, logger, worker_name
 from pymongo import DESCENDING
 from vtjson import ValidationError, validate
 
@@ -219,13 +219,7 @@ class ActionDb:
         try:
             validate(action_schema, action, "action")
         except ValidationError as e:
-            message = (
-                f"Internal Error. Request {str(action)} does not validate: {str(e)}"
-            )
-            print(message, flush=True)
-            self.log_message(
-                username="fishtest.system",
-                message=message,
-            )
+            message = f"Request {str(action)} does not validate: {str(e)}"
+            event_log.error(message)
             return
         self.actions.insert_one(action)
