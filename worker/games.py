@@ -264,7 +264,7 @@ def required_nets(engine):
 def required_value_from_source():
     pattern = re.compile("nn-[a-f0-9]{12}.network")
 
-    with open("networks/value.rs", "r") as srcfile:
+    with open("src/networks/value.rs", "r") as srcfile:
         for line in srcfile:
             if "ValueFileDefaultName" in line:
                 m = pattern.search(line)
@@ -275,7 +275,7 @@ def required_value_from_source():
 def required_policy_from_source():
     pattern = re.compile("nn-[a-f0-9]{12}.network")
 
-    with open("networks/policy.rs", "r") as srcfile:
+    with open("src/networks/policy.rs", "r") as srcfile:
         for line in srcfile:
             if "PolicyFileDefaultName" in line:
                 m = pattern.search(line)
