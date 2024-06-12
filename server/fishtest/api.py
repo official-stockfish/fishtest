@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 
 from fishtest.schemas import api_access_schema, api_schema, gzip_data
 from fishtest.stats.stat_util import SPRT_elo, get_elo
-from fishtest.util import strip_run, worker_name
+from fishtest.util import event_log, logger, strip_run, worker_name
 from pyramid.httpexceptions import (
     HTTPBadRequest,
     HTTPException,
@@ -69,7 +69,7 @@ class GenericApi:
             )
             api = urlparse(full_url).path
             error = f"{api}: {error}"
-            print(error, flush=True)
+            logger.info(error)
             raise exception(self.add_time({"error": error}))
 
 

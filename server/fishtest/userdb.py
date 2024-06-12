@@ -4,6 +4,7 @@ import time
 from datetime import datetime, timezone
 
 from fishtest.schemas import user_schema
+from fishtest.util import event_log, logger
 from pymongo import ASCENDING
 from vtjson import ValidationError, validate
 
@@ -15,7 +16,7 @@ def validate_user(user):
         validate(user_schema, user, "user")
     except ValidationError as e:
         message = f"The user object does not validate: {str(e)}"
-        print(message, flush=True)
+        logger.error(message)
         raise Exception(message)
 
 
@@ -145,9 +146,8 @@ class UserDb:
             self.last_pending_time = 0
             self.clear_cache()
             # logs rejected users to the server
-            print(
-                f"user: {user['username']} with email: {user['email']} was rejected by: {rejector}",
-                flush=True,
+            logger.info(
+                f"user: {user['username']} with email: {user['email']} was rejected by: {rejector}"
             )
             return True
         else:
