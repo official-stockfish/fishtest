@@ -62,7 +62,7 @@ MIN_GCC_MINOR = 3
 MIN_CLANG_MAJOR = 8
 MIN_CLANG_MINOR = 0
 
-WORKER_VERSION = 239
+WORKER_VERSION = 240
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -661,6 +661,7 @@ def setup_parameters(worker_dir):
         ("parameters", "uuid_prefix", "_hw", _alpha_numeric, None),
         ("parameters", "min_threads", "1", int, None),
         ("parameters", "fleet", "False", _bool, None),
+        ("parameters", "global_cache", "", str, None),
         ("parameters", "compiler", default_compiler, compiler_names, None),
         ("private", "hw_seed", str(random.randint(0, 0xFFFFFFFF)), int, None),
     ]
@@ -747,6 +748,17 @@ def setup_parameters(worker_dir):
         type=_bool,
         choices=[False, True],  # useful for usage message
         help="if 'True', quit in case of errors or if no task is available",
+    )
+    parser.add_argument(
+        "-g",
+        "--global_cache",
+        dest="global_cache",
+        default=config.get("parameters", "global_cache"),
+        type=str,
+        help="""Useful only when running multiple workers concurrently:
+                an existing absolute path to be used to globally cache on disk
+                certain downloads, reducing load on github or net server.
+                A empty string ("") disables using a cache.""",
     )
     parser.add_argument(
         "-C",
@@ -869,6 +881,7 @@ def setup_parameters(worker_dir):
     )
     config.set("parameters", "min_threads", str(options.min_threads))
     config.set("parameters", "fleet", str(options.fleet))
+    config.set("parameters", "global_cache", str(options.global_cache))
     config.set("parameters", "compiler", options.compiler_)
 
     with open(config_file, "w") as f:
@@ -1345,7 +1358,13 @@ def verify_worker_version(remote, username, password):
 
 
 def fetch_and_handle_task(
-    worker_info, password, remote, lock_file, current_state, clear_binaries
+    worker_info,
+    password,
+    remote,
+    lock_file,
+    current_state,
+    clear_binaries,
+    global_cache,
 ):
     # This function should normally not raise exceptions.
     # Unusual conditions are handled by returning False.
@@ -1443,6 +1462,7 @@ def fetch_and_handle_task(
             task_id,
             pgn_file,
             clear_binaries,
+            global_cache,
         )
         success = True
     except FatalException as e:
@@ -1675,6 +1695,7 @@ def worker():
             lock_file,
             current_state,
             clear_binaries,
+            options.global_cache,
         )
         if not current_state["alive"]:  # the user may have pressed Ctrl-C...
             break
