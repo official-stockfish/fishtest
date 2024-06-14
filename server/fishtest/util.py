@@ -286,10 +286,10 @@ def format_results(run_results, run):
 
         result["info"].append(eloInfo + " " + losInfo)
 
-        if los < 0.05:
-            state = "rejected"
-        elif los > 0.95:
+        if los >= 0.95:
             state = "accepted"
+        else:
+            state = "rejected"
 
     result["info"].append(
         "Total: {:d} W: {:d} L: {:d} D: {:d}".format(sum(WLD), WLD[0], WLD[1], WLD[2])

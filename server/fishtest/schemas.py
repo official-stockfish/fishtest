@@ -9,6 +9,7 @@ import math
 import threading
 from datetime import datetime, timezone
 
+import fishtest.stats.stat_util
 from bson.binary import Binary
 from bson.objectid import ObjectId
 from vtjson import (
@@ -526,6 +527,35 @@ def compute_total_games(run):
     return total_games
 
 
+def compute_flags(run):
+    no_flags = {"is_green": False, "is_yellow": False}
+    green_flag = {"is_green": True, "is_yellow": False}
+    yellow_flag = {"is_green": False, "is_yellow": True}
+    results = run["results"]
+    WLD = [results["wins"], results["losses"], results["draws"]]
+    if not run["finished"]:
+        return no_flags
+    if "spsa" in run["args"]:
+        return no_flags
+    state = ""
+    if "sprt" in run["args"]:
+        state = run["args"]["sprt"].get("state", "")
+    else:
+        _, _, los = fishtest.stats.stat_util.get_elo(results["pentanomial"])
+        if los >= 0.95:
+            state = "accepted"
+        else:
+            state = "rejected"
+
+    if state == "accepted":
+        return green_flag
+    elif state == "rejected" and WLD[0] > WLD[1]:
+        return yellow_flag
+    else:
+        # Stopped SPRT test
+        return no_flags
+
+
 def final_results_must_match(run):
     results = compute_results(run)
     if results != run["results"]:
@@ -579,12 +609,23 @@ def total_games_must_match(run):
     return True
 
 
+def flags_must_match(run):
+    flags = compute_flags(run)
+    run_flags = {"is_green": run["is_green"], "is_yellow": run["is_yellow"]}
+    if flags != run_flags:
+        raise Exception(
+            f"Flags mismatch. Computed flags: {flags}. Flags from run: {run_flags}"
+        )
+    return True
+
+
 valid_aggregated_data = intersect(
     final_results_must_match,
     cores_must_match,
     workers_must_match,
     committed_games_must_match,
     total_games_must_match,
+    flags_must_match,
 )
 
 # The following schema only matches new runs. The old runs
@@ -597,7 +638,7 @@ valid_aggregated_data = intersect(
 # about non-validation of runs created with the prior
 # schema.
 
-RUN_VERSION = 1
+RUN_VERSION = 2
 
 runs_schema = intersect(
     {

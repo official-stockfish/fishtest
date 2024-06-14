@@ -21,6 +21,7 @@ from fishtest.schemas import (
     cache_schema,
     compute_committed_games,
     compute_cores,
+    compute_flags,
     compute_results,
     compute_total_games,
     compute_workers,
@@ -241,6 +242,8 @@ class RunDb:
                 self.set_inactive_task(task_id, run)
             self.unfinished_runs.discard(run_id)
             run["finished"] = True
+            flags = compute_flags(run)
+            run.update(flags)
 
     def set_active_run(self, run):
         run_id = str(run["_id"])
@@ -330,6 +333,14 @@ class RunDb:
             run = self.get_run(run_id)
             changed = False
             with self.active_run_lock(run_id):
+                version = run.get("version", 0)
+                if version < RUN_VERSION:
+                    print(
+                        f"Warning: upgrading run {run_id} to version {RUN_VERSION}",
+                        flush=True,
+                    )
+                    run["version"] = RUN_VERSION
+                    changed = True
                 results = compute_results(run)
                 if results != run["results"]:
                     print(
@@ -376,6 +387,16 @@ class RunDb:
                         flush=True,
                     )
                     run["total_games"] = total_games
+                    changed = True
+                flags = compute_flags(run)
+                flags_run = {"is_green": run["is_green"], "is_yellow": run["is_yellow"]}
+                if flags != flags_run:
+                    print(
+                        f"Warning: correcting flags for {run_id}",
+                        f"db: {flags_run} computed:{flags}",
+                        flush=True,
+                    )
+                    run.update(flags)
                     changed = True
 
                 with self.unfinished_runs_lock:
@@ -1627,10 +1648,8 @@ After fixing the issues you can unblock the worker at
             if revived:
                 self.set_active_run(run)
             else:
-                # Copied code. Must be refactored.
-                style = run["results_info"]["style"]
-                run["is_green"] = style == "#44EB44"
-                run["is_yellow"] = style == "yellow"
+                flags = compute_flags(run)
+                run.update(flags)
             self.buffer(run, True)
         return message
 
