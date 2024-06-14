@@ -34,7 +34,7 @@ Proper configuration of `nginx` is crucial for this, and should be done
 according to the route/URL mapping defined in `__init__.py`.
 """
 
-WORKER_VERSION = 239
+WORKER_VERSION = 0
 
 
 @exception_view_config(HTTPException)
@@ -616,7 +616,7 @@ class UserApi(GenericApi):
             self.request.rundb.increment_nn_downloads(self.request.matchdict["id"])
 
         return HTTPFound(
-            "https://data.montychess.org/nn/" + self.request.matchdict["id"]
+            "https://montychess.org/nn/" + self.request.matchdict["id"]
         )
 
 

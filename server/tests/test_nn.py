@@ -13,7 +13,7 @@ def show(mc):
 class TestNN(unittest.TestCase):
     def setUp(self):
         self.rundb = get_rundb()
-        self.name = "nn-0000000000a0.nnue"
+        self.name = "nn-0000000000a0.network"
         self.user = "user00"
         self.first_test = datetime(2024, 1, 1, tzinfo=timezone.utc)
         self.last_test = datetime(2024, 3, 24, tzinfo=timezone.utc)

@@ -55,14 +55,11 @@ from updater import update
 # Several packages are called "expression".
 # So we make sure to use the locally installed one.
 
-# Minimum requirement of compiler version for Stockfish.
-MIN_GCC_MAJOR = 7
-MIN_GCC_MINOR = 3
+# Minimum requirement of compiler version for Monty.
+MIN_CARGO_MAJOR = 1
+MIN_CARGO_MINOR = 77
 
-MIN_CLANG_MAJOR = 8
-MIN_CLANG_MINOR = 0
-
-WORKER_VERSION = 239
+WORKER_VERSION = 0
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -292,7 +289,7 @@ def download_sri():
     try:
         return json.loads(
             download_from_github(
-                "worker/sri.txt", owner="official-stockfish", repo="fishtest"
+                "worker/sri.txt", owner="official-monty", repo="montytest"
             )
         )
     except:
@@ -632,10 +629,10 @@ def setup_parameters(worker_dir):
     # ones by defaults.
 
     compiler_names = list(compilers.keys())
-    if "g++" not in compiler_names:
+    if "cargo" not in compiler_names:
         default_compiler = compiler_names[0]
     else:
-        default_compiler = "g++"
+        default_compiler = "cargo"
 
     schema = [
         # (<section>, <option>, <default>, <type>, <preprocessor>),
@@ -1018,11 +1015,11 @@ def get_remaining_github_api_calls():
         return 0
 
 
-def gcc_version():
-    """Parse the output of g++ -E -dM -"""
+def cargo_version():
+    """Parse the output of cargo --version"""
     try:
         with subprocess.Popen(
-            ["g++", "-E", "-dM", "-"],
+            ["cargo", "--version"],
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             universal_newlines=True,
@@ -1030,108 +1027,45 @@ def gcc_version():
             close_fds=not IS_WINDOWS,
         ) as p:
             for line in iter(p.stdout.readline, ""):
-                if "__clang_major__" in line:
-                    print("clang++ poses as g++")
-                    return None
-                if "__GNUC__" in line:
-                    major = line.split()[2]
-                if "__GNUC_MINOR__" in line:
-                    minor = line.split()[2]
-                if "__GNUC_PATCHLEVEL__" in line:
-                    patchlevel = line.split()[2]
+                if "cargo" in line:
+                    ver = line.split(' ')[1].split('.')
+                    major = ver[0]
+                    minor = ver[1]
+                    patchlevel = ver[2]
     except (OSError, subprocess.SubprocessError):
-        print("No g++ or g++ is not executable")
+        print("No cargo or cargo is not executable")
         return None
     if p.returncode != 0:
-        print("g++ version query failed with return code {}".format(p.returncode))
+        print("cargo version query failed with return code {}".format(p.returncode))
         return None
 
     try:
         major = int(major)
         minor = int(minor)
         patchlevel = int(patchlevel)
-        compiler = "g++"
+        compiler = "cargo"
     except:
-        print("Failed to parse g++ version.")
+        print("Failed to parse cargo version.")
         return None
 
-    if (major, minor) < (MIN_GCC_MAJOR, MIN_GCC_MINOR):
+    if (major, minor) < (MIN_CARGO_MAJOR, MIN_CARGO_MINOR):
         print(
-            "Found g++ version {}.{}.{}. First usable version is {}.{}.0".format(
-                major, minor, patchlevel, MIN_GCC_MAJOR, MIN_GCC_MINOR
+            "Found cargo version {}.{}.{}. First usable version is {}.{}.0".format(
+                major, minor, patchlevel, MIN_CARGO_MAJOR, MIN_CARGO_MINOR
             )
         )
         return None
-    print("Found {} version {}.{}.{}".format(compiler, major, minor, patchlevel))
-    return (compiler, major, minor, patchlevel)
-
-
-def clang_version():
-    """Parse the output of clang++ -E -dM -"""
-    try:
-        with subprocess.Popen(
-            ["clang++", "-E", "-dM", "-"],
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            universal_newlines=True,
-            bufsize=1,
-            close_fds=not IS_WINDOWS,
-        ) as p:
-            for line in iter(p.stdout.readline, ""):
-                if "__clang_major__" in line:
-                    clang_major = line.split()[2]
-                if "__clang_minor__" in line:
-                    clang_minor = line.split()[2]
-                if "__clang_patchlevel__" in line:
-                    clang_patchlevel = line.split()[2]
-    except (OSError, subprocess.SubprocessError):
-        print("No clang++ or clang++ is not executable")
-        return None
-    if p.returncode != 0:
-        print("clang++ version query failed with return code {}".format(p.returncode))
-        return None
-    try:
-        major = int(clang_major)
-        minor = int(clang_minor)
-        patchlevel = int(clang_patchlevel)
-        compiler = "clang++"
-    except:
-        print("Failed to parse clang++ version.")
-        return None
-
-    if (major, minor) < (MIN_CLANG_MAJOR, MIN_CLANG_MINOR):
-        print(
-            "Found clang++ version {}.{}.{}. First usable version is {}.{}.0".format(
-                major, minor, patchlevel, MIN_CLANG_MAJOR, MIN_CLANG_MINOR
-            )
-        )
-        return None
-
-    # Check for a common toolchain issue
-    try:
-        subprocess.run(
-            (["xcrun"] if IS_MACOS else []) + ["llvm-profdata", "--help"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-    except (OSError, subprocess.SubprocessError):
-        print(
-            "clang++ is present but misconfigured: the command 'llvm-profdata' is missing"
-        )
-        return None
-
     print("Found {} version {}.{}.{}".format(compiler, major, minor, patchlevel))
     return (compiler, major, minor, patchlevel)
 
 
 def detect_compilers():
     ret = {}
-    gcc_version_ = gcc_version()
-    if gcc_version_ is not None:
-        ret["g++"] = gcc_version_
-    clang_version_ = clang_version()
-    if clang_version_ is not None:
-        ret["clang++"] = clang_version_
+
+    cargo_version_ = cargo_version()
+    if cargo_version_ is not None:
+        ret["cargo"] = cargo_version_
+
     return ret
 
 
@@ -1629,7 +1563,7 @@ def worker():
             sys.version_info.minor,
             sys.version_info.micro,
         ),
-        "gcc_version": (
+        "cargo_version": (
             major,
             minor,
             patchlevel,

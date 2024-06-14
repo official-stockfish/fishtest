@@ -29,8 +29,8 @@
   <tbody>
     % for machine in machines_list:
       <%
-        gcc_version = ".".join([str(m) for m in machine['gcc_version']])
-        compiler = machine.get('compiler', 'g++')
+        cargo_version = ".".join([str(m) for m in machine['gcc_version']])
+        compiler = machine.get('compiler', 'cargo')
         python_version = ".".join([str(m) for m in machine['python_version']])
         version = str(machine['version']) + "*" * machine['modified']
         worker_name_ = worker_name(machine, short=True)
@@ -53,7 +53,7 @@
         <td>${f"{machine['nps'] / 1000000:.2f}"}</td>
         <td>${machine['max_memory']}</td>
         <td>${machine['uname']}</td>
-        <td>${compiler} ${gcc_version}</td>
+        <td>${compiler} ${cargo_version}</td>
         <td>${python_version}</td>
         <td>${version}</td>
         <td>

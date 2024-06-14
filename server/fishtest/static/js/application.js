@@ -344,10 +344,10 @@ function comparer(idx, asc) {
             : v1 !== "" &&
                 v2 !== "" &&
                 !isNaN(
-                  padDotVersion(v1.replace("clang++ ", "").replace("g++ ", "")),
+                  padDotVersion(v1.replace("cargo", "")),
                 ) &&
                 !isNaN(
-                  padDotVersion(v2.replace("clang++ ", "").replace("g++ ", "")),
+                  padDotVersion(v2.replace("cargo", "")),
                 )
               ? padDotVersionStr(v1)
                   .toString()

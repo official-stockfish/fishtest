@@ -41,14 +41,14 @@
   >
     <div class="mb-3">
       <label for="network" class="form-label">
-        Select your Network file (nn-[SHA256 first 12 digits].nnue)
+        Select your Network file (nn-[SHA256 first 12 digits].network)
       </label>
       <input
         class="form-control"
         id="network"
         name="network"
         type="file"
-        accept=".nnue"
+        accept=".network"
       >
     </div>
 

@@ -68,7 +68,7 @@ worker_info_default = {
     "username": "Unknown_worker",
     "version": 0,
     "python_version": [],
-    "gcc_version": [],
+    "cargo_version": [],
     "unique_key": "xxxxxxxx",
     "rate": {"limit": 5000, "remaining": 5000},
     "ARCH": "?",
