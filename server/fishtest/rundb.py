@@ -17,15 +17,20 @@ from bson.objectid import ObjectId
 from fishtest.actiondb import ActionDb
 from fishtest.schemas import (
     RUN_VERSION,
+    active_runs_schema,
     cache_schema,
     compute_committed_games,
     compute_cores,
     compute_results,
     compute_total_games,
     compute_workers,
+    connections_counter_schema,
     nn_schema,
     pgns_schema,
     runs_schema,
+    unfinished_runs_schema,
+    worker_runs_schema,
+    wtt_map_schema,
 )
 from fishtest.stats.stat_util import SPRT_elo
 from fishtest.userdb import UserDb
@@ -87,6 +92,10 @@ class RunDb:
 
         self.__is_primary_instance = is_primary_instance
 
+        # Create a lock for each active run
+        self.run_lock = threading.Lock()
+        self.active_runs = {}
+
         self.request_task_lock = threading.Lock()
         self.scheduler = None
 
@@ -100,6 +109,57 @@ class RunDb:
         # short intial delay to make testing more pleasant
         self.scheduler.create_task(180.0, self.validate_random_run, initial_delay=60.0)
         self.scheduler.create_task(180.0, self.clean_wtt_map, initial_delay=60.0)
+        self.scheduler.create_task(
+            900.0, self.validate_data_structures, initial_delay=60.0
+        )
+
+    def validate_data_structures(self):
+        # The main purpose of task is to ensure that the schemas
+        # in schemas.py are kept up-to-date.
+        print(
+            "Validate_data_structures: validating Fishtest's internal data structures...",
+            flush=True,
+        )
+        try:
+            validate(
+                cache_schema,
+                self.run_cache,
+                name="run_cache",
+                subs={"runs_schema": dict},
+            )
+            validate(
+                wtt_map_schema,
+                self.wtt_map,
+                name="wtt_map",
+                subs={"runs_schema": dict},
+            )
+            validate(
+                connections_counter_schema,
+                self.connections_counter,
+                name="connections_counter",
+            )
+            validate(
+                unfinished_runs_schema,
+                self.unfinished_runs,
+                name="unfinished_runs",
+            )
+            validate(
+                active_runs_schema,
+                self.active_runs,
+                name="active_runs",
+            )
+            validate(
+                worker_runs_schema,
+                self.worker_runs,
+                name="worker_runs",
+            )
+        except ValidationError as e:
+            message = f"Validation of internal data structures failed: {str(e)}"
+            print(message, flush=True)
+            self.actiondb.log_message(
+                username="fishtest.system",
+                message=message,
+            )
 
     def update_itp(self):
         with self.unfinished_runs_lock:
@@ -338,18 +398,6 @@ class RunDb:
                     self.insert_in_wtt_map(run, task_id)
 
         self.update_itp()
-
-        # This will be moved to a more suitable place once we have documented more
-        # internal Fishtest data structures.
-        try:
-            validate(
-                cache_schema,
-                self.run_cache,
-                name="run_cache",
-                subs={"runs_schema": dict},
-            )
-        except ValidationError as e:
-            print(f"Validation of run_cache failed: {str(e)}")
 
     def new_run(
         self,
@@ -1013,7 +1061,7 @@ After fixing the issues you can unblock the worker at
                 # Always consider the higher priority runs first
                 -run["args"]["priority"],
                 # Try to avoid repeatedly working on the same test
-                run["_id"] == last_run_id,
+                str(run["_id"]) == last_run_id,
                 # Make sure all runs at this priority level get _some_ cores
                 run["cores"] > 0,
                 # Try to match run["args"]["itp"].
@@ -1033,6 +1081,8 @@ After fixing the issues you can unblock the worker at
         run_found = False
 
         for run in unfinished_runs:
+            run_id = str(run["_id"])
+
             if run["finished"]:
                 continue
 
@@ -1075,7 +1125,7 @@ After fixing the issues you can unblock the worker at
             if near_github_api_limit:
                 have_binary = (
                     unique_key in self.worker_runs
-                    and run["_id"] in self.worker_runs[unique_key]
+                    and run_id in self.worker_runs[unique_key]
                 )
                 if not have_binary:
                     continue
@@ -1117,7 +1167,7 @@ After fixing the issues you can unblock the worker at
             return {"task_waiting": False}
 
         # Now we create a new task for this run.
-        run_id = run["_id"]
+        run_id = str(run["_id"])
         with self.active_run_lock(run_id):
             # It may happen that the run we have selected is now finished or
             # has enough games.
@@ -1188,29 +1238,25 @@ After fixing the issues you can unblock the worker at
 
         if unique_key not in self.worker_runs:
             self.worker_runs[unique_key] = {}
-
-        if run["_id"] not in self.worker_runs[unique_key]:
-            self.worker_runs[unique_key][run["_id"]] = True
-
-        self.worker_runs[unique_key]["last_run"] = run["_id"]
+        self.worker_runs[unique_key][run_id] = True
+        self.worker_runs[unique_key]["last_run"] = run_id
 
         return {"run": run, "task_id": task_id}
-
-    # Create a lock for each active run
-    run_lock = threading.Lock()
-    active_runs = {}
-    purge_count = 0
 
     def active_run_lock(self, id):
         id = str(id)
         with self.run_lock:
-            self.purge_count = self.purge_count + 1
-            if self.purge_count > 100000:
+            if "purge_count" not in self.active_runs:
+                self.active_runs["purge_count"] = 0
+            self.active_runs["purge_count"] += 1
+            if self.active_runs["purge_count"] > 100000:
                 old = time.time() - 10000
                 self.active_runs = dict(
-                    (k, v) for k, v in self.active_runs.items() if v["time"] >= old
+                    (k, v)
+                    for k, v in self.active_runs.items()
+                    if (k != "purge_count" and v["time"] >= old)
                 )
-                self.purge_count = 0
+                self.active_runs["purge_count"] = 0
             if id in self.active_runs:
                 active_lock = self.active_runs[id]["lock"]
                 self.active_runs[id]["time"] = time.time()
