@@ -2,7 +2,7 @@
 [![CI server](https://github.com/official-stockfish/fishtest/actions/workflows/server.yaml/badge.svg)](https://github.com/official-stockfish/fishtest/actions/workflows/server.yaml) [![CI worker posix](https://github.com/official-stockfish/fishtest/actions/workflows/worker_posix.yaml/badge.svg)](https://github.com/official-stockfish/fishtest/actions/workflows/worker_posix.yaml) [![CI worker msys2](https://github.com/official-stockfish/fishtest/actions/workflows/worker_msys2.yaml/badge.svg)](https://github.com/official-stockfish/fishtest/actions/workflows/worker_msys2.yaml) [![CI lint](https://github.com/official-stockfish/fishtest/actions/workflows/lint.yaml/badge.svg)](https://github.com/official-stockfish/fishtest/actions/workflows/lint.yaml)
 
 Fishtest is a distributed task queue for testing chess engines. The main instance
-for testing the chess engine [Stockfish](https://github.com/official-stockfish/Stockfish) is at this web page https://tests.stockfishchess.org
+for testing the chess engine [Stockfish](https://github.com/official-stockfish/Stockfish) is at this web page https://montychess.org
 
 Developers submit patches with new ideas and improvements, CPU contributors install a fishtest worker on their computers to play some chess games in the background to help the developers testing the patches.
 

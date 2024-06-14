@@ -113,7 +113,7 @@
     </div>
 
     <div class="g-recaptcha mb-3"
-         data-sitekey="6LePs8YUAAAAABMmqHZVyVjxat95Z1c_uHrkugZM"></div>
+         data-sitekey="6LcnefYpAAAAAFIklIgGGdKKOWc7Dl9ARq7U71U5"></div>
 
     <button type="submit" class="btn btn-primary w-100">Register</button>
   </form>

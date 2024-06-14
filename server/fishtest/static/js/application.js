@@ -150,7 +150,7 @@ function notify(title, body, link, fallback) {
     const notification = new Notification(title, {
       body: body,
       requireInteraction: true,
-      icon: "https://tests.stockfishchess.org/img/stockfish.png",
+      icon: "https://montychess.org/img/stockfish.png",
     });
     notification.onclick = () => {
       window.open(link, "_blank");

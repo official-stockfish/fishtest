@@ -341,7 +341,7 @@
                   <ul class="list-unstyled fw-normal small">
                     <li>
                       <a
-                        href="https://stockfishchess.org/download/"
+                        href="https://montychess.org/download/"
                         target="_blank"
                         rel="noopener"
                         class="links-link rounded release"
@@ -359,7 +359,7 @@
                     </li>
                     <li>
                       <a
-                        href="https://stockfishchess.org/get-involved/"
+                        href="https://montychess.org/get-involved/"
                         target="_blank"
                         rel="noopener"
                         class="links-link rounded get-involved"

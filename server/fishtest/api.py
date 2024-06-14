@@ -616,7 +616,7 @@ class UserApi(GenericApi):
             self.request.rundb.increment_nn_downloads(self.request.matchdict["id"])
 
         return HTTPFound(
-            "https://data.stockfishchess.org/nn/" + self.request.matchdict["id"]
+            "https://data.montychess.org/nn/" + self.request.matchdict["id"]
         )
 
 

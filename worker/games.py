@@ -1500,7 +1500,7 @@ def run_games(
                 "gauntlet",
             ]
             + pgnout
-            + ["-site", "https://tests.stockfishchess.org/tests/view/" + run["_id"]]
+            + ["-site", "https://montychess.org/tests/view/" + run["_id"]]
             + [
                 "-event",
                 "Batch {}: {} vs {}".format(

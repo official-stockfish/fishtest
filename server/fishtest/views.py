@@ -776,12 +776,20 @@ def get_nets(commit_sha, repo_url):
     )
     try:
         nets = []
-        pattern = re.compile("nn-[a-f0-9]{12}.nnue")
+        pattern = re.compile("nn-[a-f0-9]{12}.network")
 
-        url1 = api_url + "/" + commit_sha + "/src/evaluate.h"
+        url1 = api_url + "/" + commit_sha + "/src/networks/policy.rs"
         options = requests.get(url1).content.decode("utf-8")
         for line in options.splitlines():
-            if "EvalFileDefaultName" in line and "define" in line:
+            if "PolicyFileDefaultName" in line:
+                m = pattern.search(line)
+                if m:
+                    nets.append(m.group(0))
+
+        url1 = api_url + "/" + commit_sha + "/src/networks/value.rs"
+        options = requests.get(url1).content.decode("utf-8")
+        for line in options.splitlines():
+            if "ValueFileDefaultName" in line:
                 m = pattern.search(line)
                 if m:
                     nets.append(m.group(0))
@@ -895,7 +903,7 @@ def validate_form(request):
             )
         )
         data["official_master_sha"] = get_master_sha(
-            "https://api.github.com/repos/official-stockfish/Stockfish"
+            "https://api.github.com/repos/official-monty/Monty"
         )
     except Exception as e:
         raise Exception("Error occurred while fetching master commit signatures") from e
