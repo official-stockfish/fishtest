@@ -1,6 +1,7 @@
 import copy
 import hashlib
 import html
+import json
 import os
 import re
 import threading
@@ -84,8 +85,17 @@ def pagination(page_idx, num, page_size, query_params):
 
 @notfound_view_config(renderer="notfound.mak")
 def notfound_view(request):
+    json_ = False
+    json_body = ""
+    try:
+        json_body = str(request.exception).replace("'", '"')
+        json.loads(json_body)  # exception if not valid json
+        json_ = True
+        request.response.content_type = "application/json"
+    except Exception:
+        pass
     request.response.status = 404
-    return {}
+    return {"json_body": json_body, "json": json_}
 
 
 @view_config(route_name="home")
