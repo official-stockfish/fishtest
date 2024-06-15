@@ -321,75 +321,64 @@ def establish_validated_net(remote, testing_dir, net):
                 time.sleep(waitTime)
 
 
-def verify_signature(engine, signature, active_cores):
-    with ExitStack() as stack:
-        if active_cores > 1:
-            busy_process = stack.enter_context(
-                subprocess.Popen(
-                    [engine],
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.DEVNULL,
-                    universal_newlines=True,
-                    bufsize=1,
-                    close_fds=not IS_WINDOWS,
-                )
-            )
-            busy_process.stdin.write(
-                "setoption name Threads value {}\n".format(active_cores - 1)
-            )
-            busy_process.stdin.write("go infinite\n")
-            busy_process.stdin.flush()
-            time.sleep(1)  # wait CPU loading
+def run_single_bench(engine, queue):
+    bench_sig = None
+    bench_nps = None
 
-        bench_sig = None
-        bench_nps = None
-        print("Verifying signature of {} ...".format(os.path.basename(engine)))
-        p = stack.enter_context(
-            subprocess.Popen(
-                [engine, "bench"],
-                stderr=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                universal_newlines=True,
-                bufsize=1,
-                close_fds=not IS_WINDOWS,
-            )
+    try:
+        p = subprocess.Popen(
+            [engine, "bench"],
+            stderr=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            universal_newlines=True,
+            bufsize=1,
+            close_fds=not IS_WINDOWS,
         )
+
         for line in iter(p.stdout.readline, ""):
             if "Bench: " in line:
                 spl = line.split(' ')
                 bench_sig = int(spl[1].strip())
                 bench_nps = float(spl[3].strip())
 
-        if active_cores > 1:
-            busy_process.communicate("quit\n")
+        queue.put((bench_sig, bench_nps))
+    except:
+        queue.put((None, None))
 
-    if p.returncode != 0:
-        if p.returncode == 1:  # EXIT_FAILURE
+
+def verify_signature(engine, signature, active_cores):
+    queue = multiprocessing.Queue()
+
+    processes = [
+        multiprocessing.Process(
+            target=run_single_bench,
+            args=(engine, queue),
+        ) for _ in range(active_cores)
+    ]
+
+    for p in processes:
+        p.start()
+
+    results = [queue.get() for _ in range(active_cores)]
+    bench_nps = 0.0
+
+    for sig, nps in results:
+        bench_nps += nps
+
+        if sig is None or bench_nps is None:
             raise RunException(
-                "Bench of {} exited with EXIT_FAILURE".format(os.path.basename(engine))
-            )
-        else:  # Signal? It could be user generated so be careful.
-            raise WorkerException(
-                "Bench of {} exited with error code {}".format(
-                    os.path.basename(engine), format_return_code(p.returncode)
-                )
+                "Unable to parse bench output of {}".format(os.path.basename(engine))
             )
 
-    # Now we know that bench finished without error we check that its
-    # output is correct.
+        if int(sig) != int(signature):
+            message = "Wrong bench in {}, user expected: {} but worker got: {}".format(
+                os.path.basename(engine),
+                signature,
+                sig,
+            )
+            raise RunException(message)
 
-    if bench_sig is None or bench_nps is None:
-        raise RunException(
-            "Unable to parse bench output of {}".format(os.path.basename(engine))
-        )
-
-    if int(bench_sig) != int(signature):
-        message = "Wrong bench in {}, user expected: {} but worker got: {}".format(
-            os.path.basename(engine),
-            signature,
-            bench_sig,
-        )
-        raise RunException(message)
+    bench_nps /= active_cores
 
     return bench_nps
 
