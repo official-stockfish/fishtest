@@ -343,14 +343,6 @@ class RunDb:
             run = self.get_run(run_id)
             changed = False
             with self.active_run_lock(run_id):
-                version = run.get("version", 0)
-                if version < RUN_VERSION:
-                    print(
-                        f"Warning: upgrading run {run_id} to version {RUN_VERSION}",
-                        flush=True,
-                    )
-                    run["version"] = RUN_VERSION
-                    changed = True
                 results = compute_results(run)
                 if results != run["results"]:
                     print(
@@ -876,7 +868,6 @@ class RunDb:
             ),
         )
 
-        # Calculate but don't save results_info on runs using info on current machines
         cores = 0
         nps = 0
         games_per_minute = 0.0
@@ -904,8 +895,14 @@ class RunDb:
                 eta = remaining_hours(run) / cores
                 pending_hours += eta
             results = run["results"]
-            run["results_info"] = format_results(results, run)
-        return (runs, pending_hours, cores, nps, games_per_minute, machines_count)
+        return (
+            runs,
+            pending_hours,
+            cores,
+            nps,
+            games_per_minute,
+            machines_count,
+        )
 
     def get_finished_runs(
         self,
@@ -1542,12 +1539,6 @@ After fixing the issues you can unblock the worker at
         self.set_inactive_run(run)
 
         results = run["results"]
-        run["results_info"] = format_results(results, run)
-        # De-couple the styling of the run from its finished status
-        if run["results_info"]["style"] == "#44EB44":
-            run["is_green"] = True
-        elif run["results_info"]["style"] == "yellow":
-            run["is_yellow"] = True
         try:
             validate(runs_schema, run, "run")
         except ValidationError as e:
@@ -1654,7 +1645,6 @@ After fixing the issues you can unblock the worker at
                 if run["args"]["sprt"]["state"] != "":
                     revived = False
 
-            run["results_info"] = format_results(results, run)
             if revived:
                 self.set_active_run(run)
             else:

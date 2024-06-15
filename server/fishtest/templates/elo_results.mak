@@ -1,11 +1,11 @@
 <%page args="run, show_gauge=False"/>
 
 <%!
-  from fishtest.util import is_active_sprt_ltc
+  from fishtest.util import is_active_sprt_ltc, format_results
 
-  def results_pre_attrs(run):
+  def results_pre_attrs(results_info, run):
     ret = ''
-    style = run['results_info'].get('style', '')
+    style = results_info.get('style', '')
     if style:
       ret = f'style="background-color: {style};"'
 
@@ -18,10 +18,12 @@
 
     return ret
 %>
-
+<%
+    results_info = format_results(run)
+%>
 <%def name="list_info(run)">
   <%
-    info = run['results_info']['info']
+    info = results_info['info']
     l = len(info)
     elo_ptnml_run = (
         "sprt" not in run["args"]
@@ -68,23 +70,23 @@
   % endif
 </%def>
 
-% if 'sprt' in run['args'] and 'Pending' not in run['results_info']['info'][0]:
+% if 'sprt' in run['args'] and 'Pending' not in results_info['info'][0]:
   <a href="/tests/live_elo/${str(run['_id'])}" style="color: inherit;">
 % endif
 % if show_gauge:
   <div id="chart_div_${str(run['_id'])}" style="width:90px;float:left;"></div>
-  % if 'sprt' in run['args'] and 'Pending' not in run['results_info']['info'][0]:
+  % if 'sprt' in run['args'] and 'Pending' not in results_info['info'][0]:
     <div style="margin-left:90px;padding: 30px 0;">
   % else:
     <div style="margin-left:90px;">
   % endif
 % endif
-<pre ${results_pre_attrs(run)|n}>
+<pre ${results_pre_attrs(results_info, run)|n}>
   ${list_info(run)}
 </pre>
 % if show_gauge:
   </div>
 % endif
-% if 'sprt' in run['args'] and 'Pending' not in run['results_info']['info'][0]:
+% if 'sprt' in run['args'] and 'Pending' not in results_info['info'][0]:
   </a>
 % endif
