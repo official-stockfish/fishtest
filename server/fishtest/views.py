@@ -592,6 +592,9 @@ def user_management(request):
         "all_users": users,
         "pending_users": request.userdb.get_pending(),
         "blocked_users": request.userdb.get_blocked(),
+        "approvers_users": [
+            user for user in users if "group:approvers" in user.get("groups", [])
+        ],
         "idle_users": get_idle_users(users, request),  # depends on cache too
     }
 
