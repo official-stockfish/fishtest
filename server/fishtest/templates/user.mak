@@ -1,5 +1,9 @@
 <%inherit file="base.mak"/>
 
+<%!
+  from fishtest.util import format_group
+%>
+
 % if profile:
   <script>
     document.title = "Profile | Stockfish Testing";
@@ -49,7 +53,7 @@
           </li>
         % endif
         <li class="list-group-item bg-transparent text-break">
-          Groups: ${', '.join([group.replace('group:', '') for group in user['groups']]) if user['groups'] and len(user['groups']) > 0 else "No group"}
+          Groups: ${format_group(user['groups'])}
         </li>
         <li class="list-group-item bg-transparent text-break">Machine Limit: ${limit}</li>
         <li class="list-group-item bg-transparent text-break">CPU-Hours: ${hours}</li>

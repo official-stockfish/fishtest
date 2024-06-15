@@ -468,6 +468,14 @@ def delta_date(diff):
     return "seconds ago"
 
 
+def format_group(groups):
+    return (
+        ", ".join([group.replace("group:", "") for group in groups])
+        if groups and len(groups) > 0
+        else "No group"
+    )
+
+
 def password_strength(password, *args):
     if len(password) > 0:
         # add given username and email to user_inputs
