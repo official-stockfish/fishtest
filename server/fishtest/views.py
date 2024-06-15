@@ -17,7 +17,6 @@ from fishtest.util import (
     extract_repo_from_link,
     format_bounds,
     format_date,
-    format_results,
     get_chi2,
     get_hash,
     get_tc_ratio,
@@ -1489,7 +1488,6 @@ def tests_view(request):
         raise HTTPNotFound()
     follow = 1 if "follow" in request.params else 0
     results = run["results"]
-    run["results_info"] = format_results(results, run)
     run_args = [("id", str(run["_id"]), "")]
     if run.get("rescheduled_from"):
         run_args.append(("rescheduled_from", run["rescheduled_from"], ""))
