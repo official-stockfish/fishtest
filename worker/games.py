@@ -1048,8 +1048,8 @@ def run_games(
     new_engine_name = "monty_" + sha_new
     base_engine_name = "monty_" + sha_base
 
-    new_engine = testing_dir / new_engine_name
-    base_engine = testing_dir / base_engine_name
+    new_engine = testing_dir / (new_engine_name + EXE_SUFFIX)
+    base_engine = testing_dir / (base_engine_name + EXE_SUFFIX)
 
     # Build from sources new and base engines as needed.
     if not new_engine.exists():
