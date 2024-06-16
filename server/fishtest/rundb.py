@@ -702,7 +702,7 @@ class RunDb:
                 # this was not always true in the past.
                 if (
                     not cache_entry["is_changed"]
-                    and (run["cores"] <= 0 or run["finished"])
+                    and (run["finished"] or run["cores"] <= 0)
                     and cache_entry["last_access_time"] < now - 300
                 ):
                     del self.run_cache[r_id]
