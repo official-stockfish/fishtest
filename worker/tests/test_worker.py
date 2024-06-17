@@ -49,9 +49,9 @@ class workerTest(unittest.TestCase):
         self.assertTrue(config.has_option("parameters", "port"))
         self.assertTrue(config.has_option("parameters", "concurrency"))
 
-    def test_worker_script_with_no_args(self):
+    def test_worker_script_with_bad_args(self):
         assert not (Path.cwd() / "fishtest.cfg").exists()
-        p = subprocess.run(["python", "worker.py"])
+        p = subprocess.run(["python", "worker.py", "--no-validation"])
         self.assertEqual(p.returncode, 1)
 
     def test_setup_exception(self):
