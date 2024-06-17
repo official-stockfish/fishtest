@@ -49,11 +49,17 @@ from games import (
     str_signal,
     unzip,
 )
-from packages import expression
+from packages import expression, openlock
 from updater import update
 
+# Note: the comment below should be above the last
+# two imports but isort insists on putting it here.
+#
 # Several packages are called "expression".
 # So we make sure to use the locally installed one.
+
+
+LOCK_FILE = Path(__file__).resolve().parent / "worker.lock"
 
 # Minimum requirement of compiler version for Stockfish.
 MIN_GCC_MAJOR = 7
@@ -1224,99 +1230,6 @@ def heartbeat(worker_info, password, remote, current_state):
         print("Heartbeat stopped")
 
 
-def read_int(file):
-    try:
-        return int(file.read_text())
-    except:
-        return None
-
-
-def write_int(file, n):
-    try:
-        file.write_text("{}\n".format(n))
-        return True
-    except:
-        return False
-
-
-def create_lock_file(lock_file):
-    print("Creating lock file {}".format(lock_file))
-    atexit.register(delete_lock_file, lock_file)
-    return write_int(lock_file, os.getpid())
-
-
-def delete_lock_file(lock_file):
-    pid = read_int(lock_file)
-    if pid is None or pid == os.getpid():
-        print("Deleting lock file {}".format(lock_file))
-        try:
-            lock_file.unlink()
-        except Exception as e:
-            print("Exception deleting the lock file\n", e, sep="", file=sys.stderr)
-
-
-def pid_valid(pid, name):
-    with ExitStack() as stack:
-        if IS_WINDOWS:
-            cmdlet = (
-                "(Get-CimInstance Win32_Process "
-                "-Filter 'ProcessId = {}').CommandLine"
-            ).format(pid)
-            p = stack.enter_context(
-                subprocess.Popen(
-                    [
-                        "powershell",
-                        cmdlet,
-                    ],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.DEVNULL,
-                    universal_newlines=True,
-                    bufsize=1,
-                    close_fds=not IS_WINDOWS,
-                )
-            )
-        else:
-            p = stack.enter_context(
-                subprocess.Popen(
-                    # for busybox these options are undocumented...
-                    ["ps", "-f", "-a"],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.DEVNULL,
-                    universal_newlines=True,
-                    bufsize=1,
-                    close_fds=not IS_WINDOWS,
-                )
-            )
-        for line in iter(p.stdout.readline, ""):
-            if name in line and str(pid) in line:
-                return True
-    return False
-
-
-def locked_by_others(lock_file, require_valid=True):
-    # At the start of the worker we tolerate an
-    # invalid or non existing lock file since we
-    # intend to replace it with one of our own.
-    # Once we have started, we only accept a
-    # valid lock file containing our own PID.
-    pid = read_int(lock_file)
-    if pid is None:
-        if require_valid:
-            print(
-                "\n*** Worker (PID={}) stopped! ***\n"
-                "Unable to read the lock file:\n{}.".format(os.getpid(), lock_file)
-            )
-        return require_valid
-    if pid != os.getpid() and (require_valid or pid_valid(pid, "worker.py")):
-        print(
-            "\n*** Worker (PID={}) stopped! ***\n"
-            "Another worker (PID={}) is already running in this directory, "
-            "using the lock file:\n{}".format(os.getpid(), pid, lock_file)
-        )
-        return True
-    return False
-
-
 def utcoffset():
     dst = time.localtime().tm_isdst == 1 and time.daylight != 0
     utcoffset = -time.altzone if dst else -time.timezone
@@ -1361,7 +1274,6 @@ def fetch_and_handle_task(
     worker_info,
     password,
     remote,
-    lock_file,
     current_state,
     clear_binaries,
     global_cache,
@@ -1370,12 +1282,6 @@ def fetch_and_handle_task(
     # Unusual conditions are handled by returning False.
     # If an immediate exit is necessary then one can set
     # current_state["alive"] to False.
-
-    # The following check can be triggered theoretically
-    # but probably not in practice.
-    if locked_by_others(lock_file):
-        current_state["alive"] = False
-        return False
 
     # Print the current time for log purposes
     print(
@@ -1537,32 +1443,23 @@ def fetch_and_handle_task(
 
 
 def worker():
-    if Path(__file__).name != "worker.py":
-        print("The script must be named 'worker.py'!")
-        return 1
-
     print(LOGO)
+    worker_lock = None
+    try:
+        worker_lock = openlock.FileLock(LOCK_FILE)
+        worker_lock.acquire(timeout=0)
+    except openlock.Timeout:
+        print(
+            f"\n*** Another worker (with PID={worker_lock.getpid()}) is already running in this "
+            "directory ***"
+        )
+        return 1
+    # Make sure that the worker can upgrade!
+    except Exception as e:
+        print("\n *** Unexpected exception: {} ***\n".format(str(e)))
 
     worker_dir = Path(__file__).resolve().parent
     print("Worker started in {} ... (PID={})".format(worker_dir, os.getpid()))
-
-    # Python doesn't have a cross platform file locking api.
-    # So we check periodically for the existence
-    # of a lock file.
-    lock_file = worker_dir / "worker.lock"
-    if locked_by_others(lock_file, require_valid=False):
-        return 1
-    if not create_lock_file(lock_file):
-        print("Creating lock file failed")
-        return 1
-    # The start of the worker is racy so after a small
-    # delay we check that we still have a valid
-    # lock file containing our own PID.
-    # This will stop duplicate workers right here,
-    # except on extremely slow systems.
-    time.sleep(0.5)
-    if locked_by_others(lock_file):
-        return 1
 
     # We record some state that is shared by the three
     # parallel event handling mechanisms:
@@ -1692,7 +1589,6 @@ def worker():
             worker_info,
             options.password,
             remote,
-            lock_file,
             current_state,
             clear_binaries,
             options.global_cache,
@@ -1713,7 +1609,11 @@ def worker():
             delay = INITIAL_RETRY_TIME
 
     if fish_exit:
+        print("Removing fish.exit file")
         (worker_dir / "fish.exit").unlink()
+
+    print("Releasing the worker lock")
+    worker_lock.release()
 
     print("Waiting for the heartbeat thread to finish...")
     heartbeat_thread.join(THREAD_JOIN_TIMEOUT)
