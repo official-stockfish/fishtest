@@ -56,6 +56,28 @@
       min="0"
     >
   </div>
+  <div class="col-6 col-md-auto mb-3">
+    <label for="alpha" class="form-label">Alpha</label>
+    <input
+      id="alpha"
+      class="form-control number no-arrows"
+      type="number"
+      step="0.01"
+      min="0"
+      max="1"
+    >
+  </div>
+  <div class="col-6 col-md-auto mb-3">
+    <label for="beta" class="form-label">Beta</label>
+    <input
+      id="beta"
+      class="form-control number no-arrows"
+      type="number"
+      step="0.01"
+      min="0"
+      max="1"
+    >
+  </div>
   <div class="col-12 col-md-auto mb-3 d-flex align-items-end">
     <input
       class="btn btn-success w-100"
@@ -79,10 +101,10 @@
       <a href="https://en.wikipedia.org/wiki/Sequential_probability_ratio_test"
         >SPRT test</a
       >
-      with &alpha;=&beta;=0.05. In other words, if the true Elo is less than
-      Elo0 then the probability of the test passing is less than 5%. On the
+      with error probabilities &alpha; and &beta;. If the true Elo is less than
+      Elo0 then the probability of the test passing is less than &alpha;. On the
       other hand if the true Elo is more than Elo1 then the pass probability is
-      more than 95%.
+      more than (1-&beta;).
     </li>
     <li>
       If the Elo model is <b>Logistic</b> then the pass/fail probabilities are
