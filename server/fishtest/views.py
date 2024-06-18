@@ -746,7 +746,7 @@ def get_master_info(url):
 
 def get_valid_books():
     response = requests.get(
-        "https://api.github.com/repos/official-stockfish/books/git/trees/master?recursive=1"
+        "https://api.github.com/repos/official-monty/books/git/trees/master?recursive=1"
     ).json()
     books_list = (
         str(Path(item["path"]).stem)
@@ -1018,7 +1018,7 @@ def validate_form(request):
     stop_rule = request.POST["stop_rule"]
 
     # Check if the base branch of the test repo matches official master
-    api_url = "https://api.github.com/repos/official-stockfish/Stockfish"
+    api_url = "https://api.github.com/repos/official-monty/Monty"
     api_url += "/compare/master..." + data["resolved_base"][:10]
     master_diff = requests.get(
         api_url, headers={"Accept": "application/vnd.github.v3.diff"}
@@ -1215,7 +1215,7 @@ def tests_run(request):
     username = request.authenticated_userid
     u = request.userdb.get_user(username)
     master_commits_url = (
-        "https://api.github.com/repos/official-stockfish/Stockfish/commits"
+        "https://api.github.com/repos/official-monty/Monty/commits"
     )
     return {
         "args": run_args,

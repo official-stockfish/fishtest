@@ -3,7 +3,7 @@ from fishtest.util import get_hash, get_tc_ratio
 
 def tests_repo(run):
     return run["args"].get(
-        "tests_repo", "https://github.com/official-stockfish/Stockfish"
+        "tests_repo", "https://github.com/official-monty/Monty"
     )
 
 

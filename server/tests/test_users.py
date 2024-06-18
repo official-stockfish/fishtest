@@ -29,7 +29,7 @@ class Create10UsersTest(unittest.TestCase):
                 "password": "secret",
                 "password2": "secret",
                 "email": "joe@user.net",
-                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+                "tests_repo": "https://github.com/official-monty/Monty",
             },
         )
         response = signup(request)

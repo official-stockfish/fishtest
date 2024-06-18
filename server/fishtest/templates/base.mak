@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <title>Stockfish Testing Framework</title>
+    <title>Monty Testing Framework</title>
     <meta name="csrf-token" content="${request.session.get_csrf_token()}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -96,7 +96,7 @@
           aria-label="Bootstrap"
         >
           <div class="brand-logo d-inline me-lg-2"></div>
-          <p class="d-none d-lg-inline h-5 mb-0">Stockfish Testing Framework</p>
+          <p class="d-none d-lg-inline h-5 mb-0">Monty Testing Framework</p>
         </a>
 
         <button
@@ -336,7 +336,7 @@
                 <li class="links-group">
                   <strong
                     class="links-heading d-flex w-100 align-items-center fw-semibold"
-                    >Stockfish</strong
+                    >Monty</strong
                   >
                   <ul class="list-unstyled fw-normal small">
                     <li>
@@ -350,7 +350,7 @@
                     </li>
                     <li>
                       <a
-                        href="https://github.com/official-stockfish/Stockfish/releases?q=prerelease%3Atrue"
+                        href="https://github.com/official-monty/Monty/releases?q=prerelease%3Atrue"
                         target="_blank"
                         rel="noopener"
                         class="links-link rounded release"
@@ -368,7 +368,7 @@
                     </li>
                     <li>
                       <a
-                        href="https://github.com/official-stockfish/Stockfish/wiki/Regression-Tests"
+                        href="https://github.com/official-monty/Monty/wiki/Regression-Tests"
                         target="_blank"
                         rel="noopener"
                         class="links-link rounded regression"
@@ -400,7 +400,7 @@
                     </li>
                     <li>
                       <a
-                        href="https://github.com/official-stockfish/fishtest/wiki"
+                        href="https://github.com/official-monty/fishtest/wiki"
                         target="_blank"
                         rel="noopener"
                         class="links-link rounded wiki"
@@ -409,16 +409,16 @@
                     </li>
                     <li>
                       <a
-                        href="https://github.com/official-stockfish/Stockfish/wiki"
+                        href="https://github.com/official-monty/Monty/wiki"
                         target="_blank"
                         rel="noopener"
                         class="links-link rounded wiki"
-                        >Stockfish Wiki</a
+                        >Monty Wiki</a
                       >
                     </li>
                     <li>
                       <a
-                        href="https://github.com/official-stockfish/nnue-pytorch/wiki"
+                        href="https://github.com/official-monty/nnue-pytorch/wiki"
                         target="_blank"
                         rel="noopener"
                         class="links-link rounded wiki"
@@ -443,16 +443,16 @@
                   <ul class="list-unstyled fw-normal small">
                     <li>
                       <a
-                        href="https://github.com/official-stockfish/Stockfish"
+                        href="https://github.com/official-monty/Monty"
                         target="_blank"
                         rel="noopener"
-                        class="links-link rounded stockfish-repo"
-                        >Stockfish</a
+                        class="links-link rounded Monty-repo"
+                        >Monty</a
                       >
                     </li>
                     <li>
                       <a
-                        href="https://github.com/official-stockfish/fishtest"
+                        href="https://github.com/official-monty/fishtest"
                         target="_blank"
                         rel="noopener"
                         class="links-link rounded"
@@ -461,7 +461,7 @@
                     </li>
                     <li>
                       <a
-                        href="https://github.com/official-stockfish/nnue-pytorch"
+                        href="https://github.com/official-monty/nnue-pytorch"
                         target="_blank"
                         rel="noopener"
                         class="links-link rounded"
@@ -470,7 +470,7 @@
                     </li>
                     <li>
                       <a
-                        href="https://github.com/official-stockfish/books"
+                        href="https://github.com/official-monty/books"
                         target="_blank"
                         rel="noopener"
                         class="links-link rounded"

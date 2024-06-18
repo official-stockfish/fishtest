@@ -102,7 +102,7 @@ Apis used by the worker
 
 <fishtest>     = https://montychess.org
 <github>       = https://api.github.com
-<github-books> = <github>/repos/official-stockfish/books
+<github-books> = <github>/repos/official-monty/books
 
 Heartbeat           <fishtest>/api/beat                                         POST
 

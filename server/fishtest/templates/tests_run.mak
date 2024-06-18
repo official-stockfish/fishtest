@@ -34,7 +34,7 @@
   <h2>Create New Test</h2>
   <div class="instructions" style="margin-bottom: 35px">
     Please read the
-    <a href="https://github.com/official-stockfish/fishtest/wiki/Creating-my-first-test">Testing Guidelines</a>
+    <a href="https://github.com/official-monty/montytest/wiki/Creating-my-first-test">Testing Guidelines</a>
     before creating your test.
   </div>
 </header>

@@ -12,7 +12,7 @@
         Please read the
         <a
           class="alert-link"
-          href="https://github.com/official-stockfish/fishtest/wiki/Creating-my-first-test"
+          href="https://github.com/official-monty/montytest/wiki/Creating-my-first-test"
           >Testing Guidelines</a
         >
         before uploading your network.

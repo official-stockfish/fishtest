@@ -140,7 +140,7 @@ class TestApi(unittest.TestCase):
             cls.username,
             cls.password,
             "email@email.email",
-            "https://github.com/official-stockfish/Stockfish",
+            "https://github.com/official-monty/Monty",
         )
         user = cls.rundb.userdb.get_user(cls.username)
         user["pending"] = False
@@ -528,7 +528,7 @@ class TestRunFinished(unittest.TestCase):
             cls.username,
             cls.password,
             "email@email.email",
-            "https://github.com/official-stockfish/Stockfish",
+            "https://github.com/official-monty/Monty",
         )
         user = cls.rundb.userdb.get_user(cls.username)
         user["pending"] = False

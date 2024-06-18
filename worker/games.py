@@ -384,7 +384,7 @@ def verify_signature(engine, signature, active_cores):
 
 
 def download_from_github_raw(
-    item, owner="official-stockfish", repo="books", branch="master"
+    item, owner="official-monty", repo="books", branch="master"
 ):
     item_url = "{}/{}/{}/{}/{}".format(RAWCONTENT_HOST, owner, repo, branch, item)
     print("Downloading {}".format(item_url))
@@ -392,7 +392,7 @@ def download_from_github_raw(
 
 
 def download_from_github_api(
-    item, owner="official-stockfish", repo="books", branch="master"
+    item, owner="official-monty", repo="books", branch="master"
 ):
     item_url = "{}/repos/{}/{}/contents/{}?ref={}".format(
         API_HOST, owner, repo, item, branch
@@ -403,7 +403,7 @@ def download_from_github_api(
 
 
 def download_from_github(
-    item, owner="official-stockfish", repo="books", branch="master"
+    item, owner="official-monty", repo="books", branch="master"
 ):
     try:
         blob = download_from_github_raw(item, owner=owner, repo=repo, branch=branch)

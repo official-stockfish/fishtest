@@ -338,19 +338,18 @@ legend {
   content: "\f1ec";
 }
 
-.mainnavbar [href="https://github.com/official-stockfish/fishtest"]::before
+.mainnavbar [href="https://github.com/official-monty/montytest"]::before
 {
   content: "\f441";
 }
 
-.mainnavbar [href="https://github.com/official-stockfish/nnue-pytorch"]::before
-{
-  content: "\f3e2";
-  font-family: "Font Awesome 5 Brands";
-  font-weight: 400;
+.mainnavbar [href="https://github.com/official-monty/Monty/tree/master/train"]::before {
+    content: "\f3e2";
+    font-family: "Font Awesome 5 Brands";
+    font-weight: 400;
 }
 
-.mainnavbar [href="https://github.com/official-stockfish/books"]::before
+.mainnavbar [href="https://github.com/official-monty/books"]::before
 {
   content: "\f02d";
 }

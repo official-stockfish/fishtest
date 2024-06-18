@@ -860,7 +860,7 @@
     );
 
     const diffNew  = "${run["args"]["resolved_new"][:10]}";
-    const apiOfficialMaster = "https://api.github.com/repos/official-stockfish/Stockfish";
+    const apiOfficialMaster = "https://api.github.com/repos/official-monty/Monty";
     const baseOfficialMaster = "${run["args"]["official_master_sha"][:10] if run["args"].get("official_master_sha") else ""}";
 
     % if run["args"].get("spsa"):
