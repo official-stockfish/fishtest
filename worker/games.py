@@ -1140,16 +1140,16 @@ def run_games(
     if run_errors:
         raise RunException("\n".join(run_errors))
 
-    if base_nps < 45541 / (1 + math.tanh((worker_concurrency - 1) / 8)):
+    if base_nps < 122725 / (1 + math.tanh((worker_concurrency - 1) / 8)):
         raise FatalException(
             "This machine is too slow ({} nps / thread) to run fishtest effectively - sorry!".format(
                 base_nps
             )
         )
-    # fishtest with Stockfish 11 had 1.6 Mnps as reference nps and
-    # 0.7 Mnps as threshold for the slow worker.
+    
+    # Value from running bench on 32 processes on Ryzen 9 7950X
     # also set in rundb.py and delta_update_users.py
-    factor = 136622 / base_nps
+    factor = 368174 / base_nps
 
     # Adjust CPU scaling.
     _, tc_limit_ltc = adjust_tc("60+0.6", factor)

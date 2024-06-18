@@ -48,7 +48,7 @@ def compute_games_rates(rundb, info_tuple):
     # use the reference core nps, also set in rundb.py and games.py
     for machine in rundb.get_machines():
         games_per_hour = (
-            (machine["nps"] / 136622)
+            (machine["nps"] / 368174)
             * (3600.0 / estimate_game_duration(machine["run"]["args"]["tc"]))
             * (int(machine["concurrency"]) // machine["run"]["args"].get("threads", 1))
         )

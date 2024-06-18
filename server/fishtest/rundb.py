@@ -811,7 +811,7 @@ class RunDb:
                     nps += concurrency * task["worker_info"]["nps"]
                     if task["worker_info"]["nps"] != 0:
                         games_per_minute += (
-                            (task["worker_info"]["nps"] / 136622)
+                            (task["worker_info"]["nps"] / 368174)
                             * (60.0 / estimate_game_duration(run["args"]["tc"]))
                             * (
                                 int(task["worker_info"]["concurrency"])
