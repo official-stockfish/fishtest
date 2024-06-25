@@ -7,7 +7,7 @@ import sys
 import textwrap
 import threading
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 import fishtest.stats.stat_util
 from bson.binary import Binary
@@ -34,7 +34,6 @@ from fishtest.util import (
     Scheduler,
     crash_or_time,
     estimate_game_duration,
-    format_bounds,
     format_results,
     get_bad_workers,
     get_chi2,
@@ -681,7 +680,6 @@ class RunDb:
         old = float("inf")
         with self.run_cache_lock:
             for cache_entry in self.run_cache.values():
-                run = cache_entry["run"]
                 if cache_entry["is_changed"] and cache_entry["last_sync_time"] < old:
                     old = cache_entry["last_sync_time"]
                     oldest_entry = cache_entry
@@ -1540,14 +1538,6 @@ After fixing the issues you can unblock the worker at
             run["bad_tasks"] = []
 
         tasks = copy.copy(run["tasks"])
-        zero_stats = {
-            "wins": 0,
-            "losses": 0,
-            "draws": 0,
-            "crashes": 0,
-            "time_losses": 0,
-            "pentanomial": 5 * [0],
-        }
 
         for task_id, task in enumerate(tasks):
             if "bad" in task:
