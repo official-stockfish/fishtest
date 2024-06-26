@@ -242,6 +242,53 @@ def format_bounds(elo_model, elo0, elo1):
     )
 
 
+def interpolate_color(c1, c2, t):
+    # blend two colors c1 and c2 in the format "#44EB44"
+    # t must be a real 0 <= t <= 1
+
+    c1 = c1.lstrip('#')
+    c2 = c2.lstrip('#')
+    rgb1 = tuple(int(c1[i:i+2], 16) for i in (0, 2, 4))
+    rgb2 = tuple(int(c2[i:i+2], 16) for i in (0, 2, 4))
+    r = int((1-t) * rgb1[0] + t * rgb2[0])
+    g = int((1-t) * rgb1[1] + t * rgb2[1])
+    b = int((1-t) * rgb1[2] + t * rgb2[2])
+    color = '#{:02x}{:02x}{:02x}'.format(r, g, b)
+
+    return color.upper()
+
+
+def color_run(run, WLD):
+    color = ""
+
+    if "sprt" in run["args"] :
+        sprt = run["args"]["sprt"]
+        llr  = float(sprt["llr"])
+        low  = float(sprt["lower_bound"])
+        up   = float(sprt["upper_bound"])
+        percent = 1.0 * (llr - low) / (up - low)
+        percent = max(0.0, min(1.0, percent))
+
+        # rejection color
+        # yellow (#FFFF00) or red (#FF6A6A)
+        if WLD[0] > WLD[1] :
+            color_low = "#FFFF00"
+        else :
+            color_low = "#FF6A6A"
+
+        # acceptation color 
+        # blue (#66CCFF) or green (#44EB44)
+        if (float(sprt["elo0"]) + float(sprt["elo1"])) < 0.0 :
+            color_up = "#66CCFF"
+        else :
+            color_up = "#44EB44"
+
+        # calculate interpolated color
+        color = interpolate_color(color_low, color_up, percent)
+
+    return color
+
+
 def format_results(run_results, run):
     result = {"style": "", "info": []}
 
@@ -300,6 +347,7 @@ def format_results(run_results, run):
             + ", ".join(str(run_results["pentanomial"][i]) for i in range(0, 5))
         )
 
+    # color the result
     if state == "rejected":
         if WLD[0] > WLD[1]:
             result["style"] = "yellow"
@@ -310,6 +358,9 @@ def format_results(run_results, run):
             result["style"] = "#66CCFF"
         else:
             result["style"] = "#44EB44"
+    else:
+        result["style"] = color_run(run, WLD)
+
     return result
 
 
