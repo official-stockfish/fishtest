@@ -128,34 +128,74 @@ class RunDb:
                 name="run_cache",
                 subs={"runs_schema": dict},
             )
+        except ValidationError as e:
+            message = f"Validation of run_cache failed: {str(e)}"
+            print(message, flush=True)
+            self.actiondb.log_message(
+                username="fishtest.system",
+                message=message,
+            )
+        try:
             validate(
                 wtt_map_schema,
                 self.wtt_map,
                 name="wtt_map",
                 subs={"runs_schema": dict},
             )
+        except ValidationError as e:
+            message = f"Validation of wtt_map failed: {str(e)}"
+            print(message, flush=True)
+            self.actiondb.log_message(
+                username="fishtest.system",
+                message=message,
+            )
+        try:
             validate(
                 connections_counter_schema,
                 self.connections_counter,
                 name="connections_counter",
             )
+        except ValidationError as e:
+            message = f"Validation of connection_counter failed: {str(e)}"
+            print(message, flush=True)
+            self.actiondb.log_message(
+                username="fishtest.system",
+                message=message,
+            )
+        try:
             validate(
                 unfinished_runs_schema,
                 self.unfinished_runs,
                 name="unfinished_runs",
             )
+        except ValidationError as e:
+            message = f"Validation of unfinished_runs failed: {str(e)}"
+            print(message, flush=True)
+            self.actiondb.log_message(
+                username="fishtest.system",
+                message=message,
+            )
+        try:
             validate(
                 active_runs_schema,
                 self.active_runs,
                 name="active_runs",
             )
+        except ValidationError as e:
+            message = f"Validation of active_runs_schema failed: {str(e)}"
+            print(message, flush=True)
+            self.actiondb.log_message(
+                username="fishtest.system",
+                message=message,
+            )
+        try:
             validate(
                 worker_runs_schema,
                 self.worker_runs,
                 name="worker_runs",
             )
         except ValidationError as e:
-            message = f"Validation of internal data structures failed: {str(e)}"
+            message = f"Validation of work_runs_schema failed: {str(e)}"
             print(message, flush=True)
             self.actiondb.log_message(
                 username="fishtest.system",
