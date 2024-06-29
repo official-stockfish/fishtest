@@ -1408,7 +1408,7 @@ def tests_delete(request):
             validate(runs_schema, run, "run")
         except ValidationError as e:
             message = (
-                f"The run object {request.POST["run-id"]} does not validate: {str(e)}"
+                f"The run object {request.POST['run-id']} does not validate: {str(e)}"
             )
             print(message, flush=True)
             if "version" in run and run["version"] >= RUN_VERSION:
