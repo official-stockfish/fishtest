@@ -288,7 +288,7 @@ def format_results(run_results, run):
 
         if los >= 0.95:
             state = "accepted"
-        else:
+        elif run["approved"]:
             state = "rejected"
 
     result["info"].append(
