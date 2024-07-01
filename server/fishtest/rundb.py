@@ -565,10 +565,10 @@ class RunDb:
             raise Exception(message)
 
         # We cannot use self.buffer since new_run does not have an id yet.
-        run_id = self.runs.insert_one(new_run).inserted_id
+        run_id = str(self.runs.insert_one(new_run).inserted_id)
 
         with self.unfinished_runs_lock:
-            self.unfinished_runs.add(str(run_id))
+            self.unfinished_runs.add(run_id)
 
         return run_id
 
