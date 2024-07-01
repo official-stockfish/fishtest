@@ -103,7 +103,7 @@ class RunDb:
     def schedule_tasks(self):
         if self.scheduler is None:
             self.scheduler = Scheduler(jitter=0.05)
-        self.scheduler.create_task(1.0, self.flush_buffers)
+        self.scheduler.create_task(1.0, self.flush_buffers, min_delay=1.0)
         self.scheduler.create_task(60.0, self.clean_cache)
         self.scheduler.create_task(60.0, self.scavenge_dead_tasks)
         self.scheduler.create_task(60.0, self.update_itp)
