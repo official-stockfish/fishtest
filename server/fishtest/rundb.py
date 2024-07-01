@@ -659,7 +659,6 @@ class RunDb:
     # Cache runs
     run_cache = {}
     run_cache_lock = threading.Lock()
-    run_cache_write_lock = threading.Lock()
 
     # handle termination
     def exit_run(self, signum, frame):
@@ -702,8 +701,8 @@ class RunDb:
                 flush=True,
             )
             return
+        r_id = str(run["_id"])
         with self.run_cache_lock:
-            r_id = str(run["_id"])
             if flush:
                 self.run_cache[r_id] = {
                     "is_changed": False,
@@ -711,8 +710,6 @@ class RunDb:
                     "last_sync_time": time.time(),
                     "run": run,
                 }
-                with self.run_cache_write_lock:
-                    self.runs.replace_one({"_id": ObjectId(r_id)}, run)
             else:
                 if r_id in self.run_cache:
                     last_sync_time = self.run_cache[r_id]["last_sync_time"]
@@ -724,6 +721,9 @@ class RunDb:
                     "last_sync_time": last_sync_time,
                     "run": run,
                 }
+        if flush:
+            with self.active_run_lock(r_id):
+                self.runs.replace_one({"_id": ObjectId(r_id)}, run)
 
     def stop(self):
         self.flush_all()
@@ -754,10 +754,13 @@ class RunDb:
                     oldest_entry = cache_entry
             if oldest_entry is not None:
                 oldest_run = oldest_entry["run"]
+                oldest_run_id = oldest_run["_id"]
                 oldest_entry["is_changed"] = False
                 oldest_entry["last_sync_time"] = time.time()
-                with self.run_cache_write_lock:
-                    self.runs.replace_one({"_id": oldest_run["_id"]}, oldest_run)
+
+        if oldest_entry is not None:
+            with self.active_run_lock(str(oldest_run_id)):
+                self.runs.replace_one({"_id": oldest_run_id}, oldest_run)
 
     def clean_cache(self):
         now = time.time()
@@ -806,11 +809,10 @@ class RunDb:
             self.buffer(run, False)
 
     def get_unfinished_runs_id(self):
-        with self.run_cache_write_lock:
-            unfinished_runs = self.runs.find(
-                {"finished": False}, {"_id": 1}, sort=[("last_updated", DESCENDING)]
-            )
-            return unfinished_runs
+        unfinished_runs = self.runs.find(
+            {"finished": False}, {"_id": 1}, sort=[("last_updated", DESCENDING)]
+        )
+        return unfinished_runs
 
     def get_unfinished_runs(self, username=None):
         # Note: the result can be only used once.
