@@ -5,6 +5,7 @@ import bz2
 import requests
 from bson.binary import Binary
 from pymongo import ASCENDING, MongoClient
+from urllib.parse import urljoin
 
 # fish_host = 'http://localhost:6543'
 fish_host = "http://94.198.98.239"  # 'http://tests.stockfishchess.org'
@@ -29,7 +30,9 @@ def main():
     in_sync = False
     loaded = {}
     while True:
-        pgn_list = requests.get(fish_host + "/api/pgn_100/" + str(skip)).json()
+        api_url = urljoin(fish_host, f"/api/pgn_100/{skip}")
+        pgn_list = requests.get(api_url).json()
+
         for pgn_file in pgn_list:
             print(pgn_file)
             if pgndb.find_one({"run_id": pgn_file}):
@@ -41,9 +44,11 @@ def main():
                 run_id = pgn_file.split("-")[0]
                 if not runs.find_one({"_id": run_id}):
                     print("New run: " + run_id)
-                    run = requests.get(fish_host + "/api/get_run/" + run_id).json()
+                    run_url = urljoin(fish_host, f"/api/get_run/{run_id}")
+                    run = requests.get(api_url).json()
                     runs.insert(run)
-                pgn = requests.get(fish_host + "/api/pgn/" + pgn_file)
+                pgn_url = urljoin(fish_host, f"/api/pgn/{pgn_file}")
+                pgn = requests.get(api_url)
                 pgndb.insert(
                     dict(pgn_bz2=Binary(bz2.compress(pgn.content)), run_id=pgn_file)
                 )

@@ -26,6 +26,7 @@ from contextlib import ExitStack
 from datetime import datetime, timedelta, timezone
 from functools import partial
 from pathlib import Path
+from urllib.parse import urljoin
 
 # Fall back to the provided packages if missing in the local system.
 
@@ -341,7 +342,7 @@ def verify_credentials(remote, username, password, cached):
         payload = {"worker_info": {"username": username}, "password": password}
         try:
             req = send_api_post_request(
-                remote + "/api/request_version", payload, quiet=True
+                urljoin(remote, "/api/request_version"), payload, quiet=True
             )
         except:
             return None  # network problem (unrecoverable)
@@ -1201,7 +1202,9 @@ def heartbeat(worker_info, password, remote, current_state):
                 print("Skipping heartbeat ...")
                 continue
             try:
-                req = send_api_post_request(remote + "/api/beat", payload, quiet=True)
+                req = send_api_post_request(
+                    urljoin(remote, "/api/beat"), payload, quiet=True
+                )
             except Exception as e:
                 print("Exception calling heartbeat:\n", e, sep="", file=sys.stderr)
             else:
@@ -1322,7 +1325,7 @@ def verify_worker_version(remote, username, password):
     print("Verify worker version...")
     payload = {"worker_info": {"username": username}, "password": password}
     try:
-        req = send_api_post_request(remote + "/api/request_version", payload)
+        req = send_api_post_request(urljoin(remote, "/api/request_version"), payload)
     except WorkerException:
         return None  # the error message has already been written
     if "error" in req:
@@ -1389,7 +1392,7 @@ def fetch_and_handle_task(
     print("Fetching task...")
     payload = {"worker_info": worker_info, "password": password}
     try:
-        req = send_api_post_request(remote + "/api/request_task", payload)
+        req = send_api_post_request(urljoin(remote, "/api/request_task"), payload)
     except WorkerException:
         return False  # error message has already been printed
 
@@ -1431,7 +1434,7 @@ def fetch_and_handle_task(
     success = False
     message = ""
     server_message = ""
-    api = remote + "/api/failed_task"
+    api = urljoin(remote, "/api/failed_task")
     pgn_file = [None]
     try:
         run_games(
@@ -1452,7 +1455,7 @@ def fetch_and_handle_task(
     except RunException as e:
         message = str(e)
         server_message = message
-        api = remote + "/api/stop_run"
+        api = urljoin(remote, "/api/stop_run")
     except WorkerException as e:
         message = str(e)
         server_message = message
@@ -1500,7 +1503,9 @@ def fetch_and_handle_task(
                             len(payload["pgn"])
                         )
                     )
-                    req = send_api_post_request(remote + "/api/upload_pgn", payload)
+                    req = send_api_post_request(
+                        urljoin(remote, "/api/upload_pgn"), payload
+                    )
                 except Exception as e:
                     print(
                         "\nException uploading PGN file:\n", e, sep="", file=sys.stderr

@@ -21,6 +21,7 @@ from contextlib import ExitStack
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from queue import Empty, Queue
+from urllib.parse import urljoin
 from zipfile import ZipFile
 
 import requests
@@ -287,7 +288,7 @@ def required_nets_from_source():
 
 
 def download_net(remote, testing_dir, net):
-    url = remote + "/api/nn/" + net
+    url = urljoin(remote, f"/api/nn/{net}")
     print("Downloading {}".format(net))
     r = requests_get(url, allow_redirects=True, timeout=HTTP_TIMEOUT)
     (testing_dir / net).write_bytes(r.content)
@@ -672,7 +673,7 @@ def setup_engine(
     tmp_dir = Path(tempfile.mkdtemp(dir=worker_dir))
 
     try:
-        item_url = github_api(repo_url) + "/zipball/" + sha
+        item_url = urljoin(github_api(repo_url), f"/zipball/{sha}")
         print("Downloading {}".format(item_url))
         blob = requests_get(item_url).content
         file_list = unzip(blob, tmp_dir)
@@ -1023,9 +1024,7 @@ def parse_cutechess_output(
                 update_succeeded = False
                 for _ in range(5):
                     try:
-                        response = send_api_post_request(
-                            remote + "/api/update_task", result
-                        )
+                        requests.post(urljoin(remote, "/api/update_task"), json=result)
                         if "error" in response:
                             break
                     except Exception as e:
@@ -1071,7 +1070,7 @@ def launch_cutechess(
 ):
     if spsa_tuning:
         # Request parameters for next game.
-        req = send_api_post_request(remote + "/api/request_spsa", result)
+        req = send_api_post_request(urljoin(remote, "/api/request_spsa"), result)
         if "error" in req:
             raise WorkerException(req["error"])
 
