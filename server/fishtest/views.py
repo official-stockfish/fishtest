@@ -1443,7 +1443,7 @@ def get_page_title(run):
 @view_config(route_name="tests_live_elo", renderer="tests_live_elo.mak")
 def tests_live_elo(request):
     run = request.rundb.get_run(request.matchdict["id"])
-    if run is None:
+    if run is None or "sprt" not in run["args"]:
         raise HTTPNotFound()
     return {"run": run, "page_title": get_page_title(run)}
 
