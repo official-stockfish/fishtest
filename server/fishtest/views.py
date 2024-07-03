@@ -1,6 +1,7 @@
 import copy
 import hashlib
 import html
+import json
 import os
 import re
 import threading
@@ -10,7 +11,7 @@ from pathlib import Path
 
 import fishtest.stats.stat_util
 import requests
-from fishtest.schemas import runs_schema, short_worker_name
+from fishtest.schemas import RUN_VERSION, runs_schema, short_worker_name
 from fishtest.util import (
     email_valid,
     extract_repo_from_link,
@@ -85,6 +86,16 @@ def pagination(page_idx, num, page_size, query_params):
 @notfound_view_config(renderer="notfound.mak")
 def notfound_view(request):
     request.response.status = 404
+    if request.exception:
+        try:
+            json_body = str(request.exception).replace("'", '"')
+            # Check if json_body is a valid JSON
+            parsed_json = json.loads(json_body)
+            request.response.content_type = "application/json"
+            request.response.body = json.dumps(parsed_json).encode("utf-8")
+            return request.response
+        except json.JSONDecodeError:
+            pass
     return {}
 
 
@@ -581,6 +592,9 @@ def user_management(request):
         "all_users": users,
         "pending_users": request.userdb.get_pending(),
         "blocked_users": request.userdb.get_blocked(),
+        "approvers_users": [
+            user for user in users if "group:approvers" in user.get("groups", [])
+        ],
         "idle_users": get_idle_users(users, request),  # depends on cache too
     }
 
@@ -598,7 +612,7 @@ def user(request):
 
     user_data = request.userdb.get_user(user_name)
     if user_data is None:
-        raise HTTPNotFound("Resource not found")
+        raise HTTPNotFound()
     if "user" in request.POST:
         if profile:
             old_password = request.params.get("old_password").strip()
@@ -1196,7 +1210,7 @@ def tests_run(request):
     if "id" in request.params:
         run = request.rundb.get_run(request.params["id"])
         if run is None:
-            raise HTTPNotFound("Resource not found")
+            raise HTTPNotFound()
         run_args = copy.deepcopy(run["args"])
         if "spsa" in run_args:
             # needs deepcopy
@@ -1393,10 +1407,12 @@ def tests_delete(request):
         try:
             validate(runs_schema, run, "run")
         except ValidationError as e:
-            message = f"The run object {run_id} does not validate: {str(e)}"
+            message = (
+                f"The run object {request.POST['run-id']} does not validate: {str(e)}"
+            )
             print(message, flush=True)
             if "version" in run and run["version"] >= RUN_VERSION:
-                self.actiondb.log_message(
+                request.actiondb.log_message(
                     username="fishtest.system",
                     message=message,
                 )
@@ -1428,7 +1444,7 @@ def get_page_title(run):
 def tests_live_elo(request):
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None:
-        raise HTTPNotFound("Resource not found")
+        raise HTTPNotFound()
     return {"run": run, "page_title": get_page_title(run)}
 
 
@@ -1436,7 +1452,7 @@ def tests_live_elo(request):
 def tests_stats(request):
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None:
-        raise HTTPNotFound("Resource not found")
+        raise HTTPNotFound()
     return {"run": run, "page_title": get_page_title(run)}
 
 
@@ -1444,7 +1460,7 @@ def tests_stats(request):
 def tests_tasks(request):
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None:
-        raise HTTPNotFound("Resource not found")
+        raise HTTPNotFound()
 
     try:
         show_task = int(request.params.get("show_task", -1))
@@ -1469,7 +1485,7 @@ def tests_machines(request):
 def tests_view(request):
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None:
-        raise HTTPNotFound("Resource not found")
+        raise HTTPNotFound()
     follow = 1 if "follow" in request.params else 0
     results = run["results"]
     run["results_info"] = format_results(results, run)
@@ -1677,8 +1693,13 @@ def tests_user(request):
     username = request.matchdict.get("username", "")
     user_data = request.userdb.get_user(username)
     if user_data is None:
-        raise HTTPNotFound("Resource not found")
-    response = {**get_paginated_finished_runs(request), "username": username}
+        raise HTTPNotFound()
+    is_approver = request.has_permission("approve_run")
+    response = {
+        **get_paginated_finished_runs(request),
+        "username": username,
+        "is_approver": is_approver,
+    }
     page_param = request.params.get("page", "")
     if not page_param.isdigit() or int(page_param) <= 1:
         response["runs"] = request.rundb.aggregate_unfinished_runs(

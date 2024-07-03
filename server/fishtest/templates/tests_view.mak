@@ -126,7 +126,7 @@
                       <td>
                         <a href="/tests/user/${arg[1]}">${arg[1]}</a>
                         % if approver:
-                          (<a href="/user/${arg[1]}">user admin</a>)
+                          (<a href="/user/${arg[1]}">info</a>)
                         % endif
                       </td>
                     % elif arg[0] == 'spsa':

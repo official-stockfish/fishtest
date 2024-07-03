@@ -7,7 +7,7 @@ import sys
 import textwrap
 import threading
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 import fishtest.stats.stat_util
 from bson.binary import Binary
@@ -17,15 +17,21 @@ from bson.objectid import ObjectId
 from fishtest.actiondb import ActionDb
 from fishtest.schemas import (
     RUN_VERSION,
+    active_runs_schema,
     cache_schema,
     compute_committed_games,
     compute_cores,
+    compute_flags,
     compute_results,
     compute_total_games,
     compute_workers,
+    connections_counter_schema,
     nn_schema,
     pgns_schema,
     runs_schema,
+    unfinished_runs_schema,
+    worker_runs_schema,
+    wtt_map_schema,
 )
 from fishtest.stats.stat_util import SPRT_elo
 from fishtest.userdb import UserDb
@@ -34,7 +40,6 @@ from fishtest.util import (
     Scheduler,
     crash_or_time,
     estimate_game_duration,
-    format_bounds,
     format_results,
     get_bad_workers,
     get_chi2,
@@ -88,19 +93,74 @@ class RunDb:
 
         self.__is_primary_instance = is_primary_instance
 
+        # Create a lock for each active run
+        self.run_lock = threading.Lock()
+        self.active_runs = {}
+
         self.request_task_lock = threading.Lock()
         self.scheduler = None
 
     def schedule_tasks(self):
         if self.scheduler is None:
             self.scheduler = Scheduler(jitter=0.05)
-        self.scheduler.create_task(1.0, self.flush_buffers)
+        self.scheduler.create_task(1.0, self.flush_buffers, min_delay=1.0)
         self.scheduler.create_task(60.0, self.clean_cache)
         self.scheduler.create_task(60.0, self.scavenge_dead_tasks)
         self.scheduler.create_task(60.0, self.update_itp)
         # short intial delay to make testing more pleasant
         self.scheduler.create_task(180.0, self.validate_random_run, initial_delay=60.0)
         self.scheduler.create_task(180.0, self.clean_wtt_map, initial_delay=60.0)
+        self.scheduler.create_task(
+            900.0, self.validate_data_structures, initial_delay=60.0
+        )
+
+    def validate_data_structures(self):
+        # The main purpose of task is to ensure that the schemas
+        # in schemas.py are kept up-to-date.
+        print(
+            "Validate_data_structures: validating Fishtest's internal data structures...",
+            flush=True,
+        )
+        try:
+            validate(
+                cache_schema,
+                self.run_cache,
+                name="run_cache",
+                subs={"runs_schema": dict},
+            )
+            validate(
+                wtt_map_schema,
+                self.wtt_map,
+                name="wtt_map",
+                subs={"runs_schema": dict},
+            )
+            validate(
+                connections_counter_schema,
+                self.connections_counter,
+                name="connections_counter",
+            )
+            validate(
+                unfinished_runs_schema,
+                self.unfinished_runs,
+                name="unfinished_runs",
+            )
+            validate(
+                active_runs_schema,
+                self.active_runs,
+                name="active_runs",
+            )
+            validate(
+                worker_runs_schema,
+                self.worker_runs,
+                name="worker_runs",
+            )
+        except ValidationError as e:
+            message = f"Validation of internal data structures failed: {str(e)}"
+            print(message, flush=True)
+            self.actiondb.log_message(
+                username="fishtest.system",
+                message=message,
+            )
 
     def update_itp(self):
         with self.unfinished_runs_lock:
@@ -182,6 +242,8 @@ class RunDb:
                 self.set_inactive_task(task_id, run)
             self.unfinished_runs.discard(run_id)
             run["finished"] = True
+            flags = compute_flags(run)
+            run.update(flags)
 
     def set_active_run(self, run):
         run_id = str(run["_id"])
@@ -271,6 +333,14 @@ class RunDb:
             run = self.get_run(run_id)
             changed = False
             with self.active_run_lock(run_id):
+                version = run.get("version", 0)
+                if version < RUN_VERSION:
+                    print(
+                        f"Warning: upgrading run {run_id} to version {RUN_VERSION}",
+                        flush=True,
+                    )
+                    run["version"] = RUN_VERSION
+                    changed = True
                 results = compute_results(run)
                 if results != run["results"]:
                     print(
@@ -318,6 +388,16 @@ class RunDb:
                     )
                     run["total_games"] = total_games
                     changed = True
+                flags = compute_flags(run)
+                flags_run = {"is_green": run["is_green"], "is_yellow": run["is_yellow"]}
+                if flags != flags_run:
+                    print(
+                        f"Warning: correcting flags for {run_id}",
+                        f"db: {flags_run} computed:{flags}",
+                        flush=True,
+                    )
+                    run.update(flags)
+                    changed = True
 
                 with self.unfinished_runs_lock:
                     self.unfinished_runs.add(run_id)
@@ -339,18 +419,6 @@ class RunDb:
                     self.insert_in_wtt_map(run, task_id)
 
         self.update_itp()
-
-        # This will be moved to a more suitable place once we have documented more
-        # internal Fishtest data structures.
-        try:
-            validate(
-                cache_schema,
-                self.run_cache,
-                name="run_cache",
-                subs={"runs_schema": dict},
-            )
-        except ValidationError as e:
-            print(f"Validation of run_cache failed: {str(e)}")
 
     def new_run(
         self,
@@ -497,10 +565,10 @@ class RunDb:
             raise Exception(message)
 
         # We cannot use self.buffer since new_run does not have an id yet.
-        run_id = self.runs.insert_one(new_run).inserted_id
+        run_id = str(self.runs.insert_one(new_run).inserted_id)
 
         with self.unfinished_runs_lock:
-            self.unfinished_runs.add(str(run_id))
+            self.unfinished_runs.add(run_id)
 
         return run_id
 
@@ -591,7 +659,6 @@ class RunDb:
     # Cache runs
     run_cache = {}
     run_cache_lock = threading.Lock()
-    run_cache_write_lock = threading.Lock()
 
     # handle termination
     def exit_run(self, signum, frame):
@@ -634,8 +701,8 @@ class RunDb:
                 flush=True,
             )
             return
+        r_id = str(run["_id"])
         with self.run_cache_lock:
-            r_id = str(run["_id"])
             if flush:
                 self.run_cache[r_id] = {
                     "is_changed": False,
@@ -643,8 +710,6 @@ class RunDb:
                     "last_sync_time": time.time(),
                     "run": run,
                 }
-                with self.run_cache_write_lock:
-                    self.runs.replace_one({"_id": ObjectId(r_id)}, run)
             else:
                 if r_id in self.run_cache:
                     last_sync_time = self.run_cache[r_id]["last_sync_time"]
@@ -656,6 +721,9 @@ class RunDb:
                     "last_sync_time": last_sync_time,
                     "run": run,
                 }
+        if flush:
+            with self.active_run_lock(r_id):
+                self.runs.replace_one({"_id": ObjectId(r_id)}, run)
 
     def stop(self):
         self.flush_all()
@@ -681,16 +749,18 @@ class RunDb:
         old = float("inf")
         with self.run_cache_lock:
             for cache_entry in self.run_cache.values():
-                run = cache_entry["run"]
                 if cache_entry["is_changed"] and cache_entry["last_sync_time"] < old:
                     old = cache_entry["last_sync_time"]
                     oldest_entry = cache_entry
             if oldest_entry is not None:
                 oldest_run = oldest_entry["run"]
+                oldest_run_id = oldest_run["_id"]
                 oldest_entry["is_changed"] = False
                 oldest_entry["last_sync_time"] = time.time()
-                with self.run_cache_write_lock:
-                    self.runs.replace_one({"_id": oldest_run["_id"]}, oldest_run)
+
+        if oldest_entry is not None:
+            with self.active_run_lock(str(oldest_run_id)):
+                self.runs.replace_one({"_id": oldest_run_id}, oldest_run)
 
     def clean_cache(self):
         now = time.time()
@@ -739,11 +809,10 @@ class RunDb:
             self.buffer(run, False)
 
     def get_unfinished_runs_id(self):
-        with self.run_cache_write_lock:
-            unfinished_runs = self.runs.find(
-                {"finished": False}, {"_id": 1}, sort=[("last_updated", DESCENDING)]
-            )
-            return unfinished_runs
+        unfinished_runs = self.runs.find(
+            {"finished": False}, {"_id": 1}, sort=[("last_updated", DESCENDING)]
+        )
+        return unfinished_runs
 
     def get_unfinished_runs(self, username=None):
         # Note: the result can be only used once.
@@ -1015,7 +1084,7 @@ After fixing the issues you can unblock the worker at
                 # Always consider the higher priority runs first
                 -run["args"]["priority"],
                 # Try to avoid repeatedly working on the same test
-                run["_id"] == last_run_id,
+                str(run["_id"]) == last_run_id,
                 # Make sure all runs at this priority level get _some_ cores
                 run["cores"] > 0,
                 # Try to match run["args"]["itp"].
@@ -1035,6 +1104,8 @@ After fixing the issues you can unblock the worker at
         run_found = False
 
         for run in unfinished_runs:
+            run_id = str(run["_id"])
+
             if run["finished"]:
                 continue
 
@@ -1077,7 +1148,7 @@ After fixing the issues you can unblock the worker at
             if near_github_api_limit:
                 have_binary = (
                     unique_key in self.worker_runs
-                    and run["_id"] in self.worker_runs[unique_key]
+                    and run_id in self.worker_runs[unique_key]
                 )
                 if not have_binary:
                     continue
@@ -1119,7 +1190,7 @@ After fixing the issues you can unblock the worker at
             return {"task_waiting": False}
 
         # Now we create a new task for this run.
-        run_id = run["_id"]
+        run_id = str(run["_id"])
         with self.active_run_lock(run_id):
             # It may happen that the run we have selected is now finished or
             # has enough games.
@@ -1190,29 +1261,25 @@ After fixing the issues you can unblock the worker at
 
         if unique_key not in self.worker_runs:
             self.worker_runs[unique_key] = {}
-
-        if run["_id"] not in self.worker_runs[unique_key]:
-            self.worker_runs[unique_key][run["_id"]] = True
-
-        self.worker_runs[unique_key]["last_run"] = run["_id"]
+        self.worker_runs[unique_key][run_id] = True
+        self.worker_runs[unique_key]["last_run"] = run_id
 
         return {"run": run, "task_id": task_id}
-
-    # Create a lock for each active run
-    run_lock = threading.Lock()
-    active_runs = {}
-    purge_count = 0
 
     def active_run_lock(self, id):
         id = str(id)
         with self.run_lock:
-            self.purge_count = self.purge_count + 1
-            if self.purge_count > 100000:
+            if "purge_count" not in self.active_runs:
+                self.active_runs["purge_count"] = 0
+            self.active_runs["purge_count"] += 1
+            if self.active_runs["purge_count"] > 100000:
                 old = time.time() - 10000
                 self.active_runs = dict(
-                    (k, v) for k, v in self.active_runs.items() if v["time"] >= old
+                    (k, v)
+                    for k, v in self.active_runs.items()
+                    if (k != "purge_count" and v["time"] >= old)
                 )
-                self.purge_count = 0
+                self.active_runs["purge_count"] = 0
             if id in self.active_runs:
                 active_lock = self.active_runs[id]["lock"]
                 self.active_runs[id]["time"] = time.time()
@@ -1540,14 +1607,6 @@ After fixing the issues you can unblock the worker at
             run["bad_tasks"] = []
 
         tasks = copy.copy(run["tasks"])
-        zero_stats = {
-            "wins": 0,
-            "losses": 0,
-            "draws": 0,
-            "crashes": 0,
-            "time_losses": 0,
-            "pentanomial": 5 * [0],
-        }
 
         for task_id, task in enumerate(tasks):
             if "bad" in task:
@@ -1591,10 +1650,8 @@ After fixing the issues you can unblock the worker at
             if revived:
                 self.set_active_run(run)
             else:
-                # Copied code. Must be refactored.
-                style = run["results_info"]["style"]
-                run["is_green"] = style == "#44EB44"
-                run["is_yellow"] = style == "yellow"
+                flags = compute_flags(run)
+                run.update(flags)
             self.buffer(run, True)
         return message
 

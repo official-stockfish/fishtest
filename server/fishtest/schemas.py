@@ -6,8 +6,10 @@
 
 import copy
 import math
+import threading
 from datetime import datetime, timezone
 
+import fishtest.stats.stat_util
 from bson.binary import Binary
 from bson.objectid import ObjectId
 from vtjson import (
@@ -66,6 +68,8 @@ suint = intersect(int, gt(0))
 ufloat = intersect(float, ge(0))
 unumber = intersect(number, ge(0))
 sunumber = intersect(number, gt(0))
+
+task_id = set_name(uint, "task_id")
 
 
 def size_is_length(x):
@@ -196,7 +200,7 @@ action_schema = intersect(
                 "worker": long_worker_name,
                 "run_id": run_id,
                 "run": run_name,
-                "task_id": uint,
+                "task_id": task_id,
                 "message": action_message,
             },
         ),
@@ -210,7 +214,7 @@ action_schema = intersect(
                 "worker": long_worker_name,
                 "run_id": run_id,
                 "run": run_name,
-                "task_id": uint,
+                "task_id": task_id,
                 "message": action_message,
             },
         ),
@@ -224,7 +228,7 @@ action_schema = intersect(
                 "worker": long_worker_name,
                 "run_id": run_id,
                 "run": run_name,
-                "task_id": uint,
+                "task_id": task_id,
             },
         ),
         (
@@ -294,7 +298,7 @@ action_schema = intersect(
                     "run": run_name,
                     "message": action_message,
                     "worker?": long_worker_name,
-                    "task_id?": uint,
+                    "task_id?": task_id,
                 },
                 ifthen(at_least_one_of("worker", "task_id"), keys("worker", "task_id")),
             ),
@@ -441,7 +445,7 @@ api_schema = intersect(
     {
         "password": str,
         "run_id?": run_id,
-        "task_id?": uint,
+        "task_id?": task_id,
         "pgn?": str,
         "message?": str,
         "worker_info": worker_info_schema_api,
@@ -523,6 +527,36 @@ def compute_total_games(run):
     return total_games
 
 
+def compute_flags(run):
+    no_flags = {"is_green": False, "is_yellow": False}
+    green_flag = {"is_green": True, "is_yellow": False}
+    yellow_flag = {"is_green": False, "is_yellow": True}
+    results = run["results"]
+    WLD = [results["wins"], results["losses"], results["draws"]]
+    if not run["finished"]:
+        return no_flags
+    if "spsa" in run["args"]:
+        return no_flags
+    state = ""
+    if "sprt" in run["args"]:
+        state = run["args"]["sprt"].get("state", "")
+    else:
+        _, _, los = fishtest.stats.stat_util.get_elo(results["pentanomial"])
+
+        if los < 0.05:
+            state = "rejected"
+        elif los > 0.95:
+            state = "accepted"
+
+    if state == "accepted":
+        return green_flag
+    elif state == "rejected" and WLD[0] > WLD[1]:
+        return yellow_flag
+    else:
+        # Stopped SPRT test
+        return no_flags
+
+
 def final_results_must_match(run):
     results = compute_results(run)
     if results != run["results"]:
@@ -576,12 +610,23 @@ def total_games_must_match(run):
     return True
 
 
+def flags_must_match(run):
+    flags = compute_flags(run)
+    run_flags = {"is_green": run["is_green"], "is_yellow": run["is_yellow"]}
+    if flags != run_flags:
+        raise Exception(
+            f"Flags mismatch. Computed flags: {flags}. Flags from run: {run_flags}"
+        )
+    return True
+
+
 valid_aggregated_data = intersect(
     final_results_must_match,
     cores_must_match,
     workers_must_match,
     committed_games_must_match,
     total_games_must_match,
+    flags_must_match,
 )
 
 # The following schema only matches new runs. The old runs
@@ -594,7 +639,7 @@ valid_aggregated_data = intersect(
 # about non-validation of runs created with the prior
 # schema.
 
-RUN_VERSION = 1
+RUN_VERSION = 3
 
 runs_schema = intersect(
     {
@@ -737,7 +782,7 @@ runs_schema = intersect(
                 "residual": number,
                 "residual_color": str,
                 "bad": True,
-                "task_id": uint,
+                "task_id": task_id,
                 "stats": results_schema,
                 "worker_info": worker_info_schema_runs,
             },
@@ -762,11 +807,40 @@ runs_schema = intersect(
     valid_aggregated_data,
 )
 
+runs_schema = set_label(runs_schema, "runs_schema")
+
 cache_schema = {
     run_id: {
-        "run": set_label(runs_schema, "runs_schema"),
+        "run": runs_schema,
         "is_changed": bool,  # Indicates if the run has changed since last_sync_time.
         "last_sync_time": ufloat,  # Last sync time (reading from or writing to db). If never synced then creation time.
         "last_access_time": ufloat,  # Last time the cache entry was touched (via buffer() or get_run()).
     },
+}
+
+wtt_map_schema = {
+    short_worker_name: (runs_schema, task_id),
+}
+
+connections_counter_schema = {
+    ip_address: suint,
+}
+
+unfinished_runs_schema = {
+    run_id,
+}
+
+active_runs_schema = {
+    "purge_count?": suint,
+    run_id: {
+        "time": ufloat,
+        "lock": threading.RLock,
+    },
+}
+
+worker_runs_schema = {
+    uuid: {
+        run_id: True,
+        "last_run": run_id,
+    }
 }
