@@ -70,6 +70,7 @@ unumber = intersect(number, ge(0))
 sunumber = intersect(number, gt(0))
 
 task_id = set_name(uint, "task_id")
+timestamp = set_name(ufloat, "timestamp")
 
 
 def size_is_length(x):
@@ -194,7 +195,7 @@ action_schema = intersect(
             action_is("failed_task"),
             {
                 "_id?": ObjectId,
-                "time": float,
+                "time": timestamp,
                 "action": "failed_task",
                 "username": username,
                 "worker": long_worker_name,
@@ -208,7 +209,7 @@ action_schema = intersect(
             action_is("crash_or_time"),
             {
                 "_id?": ObjectId,
-                "time": float,
+                "time": timestamp,
                 "action": "crash_or_time",
                 "username": username,
                 "worker": long_worker_name,
@@ -222,7 +223,7 @@ action_schema = intersect(
             action_is("dead_task"),
             {
                 "_id?": ObjectId,
-                "time": float,
+                "time": timestamp,
                 "action": "dead_task",
                 "username": username,
                 "worker": long_worker_name,
@@ -235,7 +236,7 @@ action_schema = intersect(
             action_is("system_event"),
             {
                 "_id?": ObjectId,
-                "time": float,
+                "time": timestamp,
                 "action": "system_event",
                 "username": "fishtest.system",
                 "message": action_message,
@@ -245,7 +246,7 @@ action_schema = intersect(
             action_is("new_run"),
             {
                 "_id?": ObjectId,
-                "time": float,
+                "time": timestamp,
                 "action": "new_run",
                 "username": username,
                 "run_id": run_id,
@@ -257,7 +258,7 @@ action_schema = intersect(
             action_is("upload_nn"),
             {
                 "_id?": ObjectId,
-                "time": float,
+                "time": timestamp,
                 "action": "upload_nn",
                 "username": username,
                 "nn": net_name,
@@ -267,7 +268,7 @@ action_schema = intersect(
             action_is("modify_run"),
             {
                 "_id?": ObjectId,
-                "time": float,
+                "time": timestamp,
                 "action": "modify_run",
                 "username": username,
                 "run_id": run_id,
@@ -279,7 +280,7 @@ action_schema = intersect(
             action_is("delete_run"),
             {
                 "_id?": ObjectId,
-                "time": float,
+                "time": timestamp,
                 "action": "delete_run",
                 "username": username,
                 "run_id": run_id,
@@ -291,7 +292,7 @@ action_schema = intersect(
             intersect(
                 {
                     "_id?": ObjectId,
-                    "time": float,
+                    "time": timestamp,
                     "action": "stop_run",
                     "username": username,
                     "run_id": run_id,
@@ -307,7 +308,7 @@ action_schema = intersect(
             action_is("finished_run"),
             {
                 "_id?": ObjectId,
-                "time": float,
+                "time": timestamp,
                 "action": "finished_run",
                 "username": username,
                 "run_id": run_id,
@@ -319,7 +320,7 @@ action_schema = intersect(
             action_is("approve_run"),
             {
                 "_id?": ObjectId,
-                "time": float,
+                "time": timestamp,
                 "action": "approve_run",
                 "username": username,
                 "run_id": run_id,
@@ -331,7 +332,7 @@ action_schema = intersect(
             action_is("purge_run"),
             {
                 "_id?": ObjectId,
-                "time": float,
+                "time": timestamp,
                 "action": "purge_run",
                 "username": username,
                 "run_id": run_id,
@@ -343,7 +344,7 @@ action_schema = intersect(
             action_is("block_user"),
             {
                 "_id?": ObjectId,
-                "time": float,
+                "time": timestamp,
                 "action": "block_user",
                 "username": username,
                 "user": str,
@@ -354,7 +355,7 @@ action_schema = intersect(
             action_is("accept_user"),
             {
                 "_id?": ObjectId,
-                "time": float,
+                "time": timestamp,
                 "action": "accept_user",
                 "username": username,
                 "user": str,
@@ -365,7 +366,7 @@ action_schema = intersect(
             action_is("block_worker"),
             {
                 "_id?": ObjectId,
-                "time": float,
+                "time": timestamp,
                 "action": "block_worker",
                 "username": username,
                 "worker": short_worker_name,
@@ -376,7 +377,7 @@ action_schema = intersect(
             action_is("log_message"),
             {
                 "_id?": ObjectId,
-                "time": float,
+                "time": timestamp,
                 "action": "log_message",
                 "username": username,
                 "message": action_message,
@@ -813,8 +814,8 @@ cache_schema = {
     run_id: {
         "run": runs_schema,
         "is_changed": bool,  # Indicates if the run has changed since last_sync_time.
-        "last_sync_time": ufloat,  # Last sync time (reading from or writing to db). If never synced then creation time.
-        "last_access_time": ufloat,  # Last time the cache entry was touched (via buffer() or get_run()).
+        "last_sync_time": timestamp,  # Last sync time (reading from or writing to db). If never synced then creation time.
+        "last_access_time": timestamp,  # Last time the cache entry was touched (via buffer() or get_run()).
     },
 }
 
@@ -833,7 +834,7 @@ unfinished_runs_schema = {
 active_runs_schema = {
     "purge_count?": suint,
     run_id: {
-        "time": ufloat,
+        "time": timestamp,
         "lock": threading.RLock,
     },
 }
