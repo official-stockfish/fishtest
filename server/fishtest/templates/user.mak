@@ -81,6 +81,30 @@
         <label for="email" class="d-flex align-items-end">Email</label>
       </div>
 
+      <div class="form-floating mb-3">
+        <input
+          type="text"
+          class="form-control mb-3"
+          id="firstname"
+          name="firstname"
+          value="${user['firstname']}"
+          placeholder="First Name"
+        />
+        <label for="firstname" class="d-flex align-items-end">First Name</label>
+      </div>
+
+      <div class="form-floating mb-3">
+        <input
+          type="text"
+          class="form-control mb-3"
+          id="lastname"
+          name="lastname"
+          value="${user['lastname']}"
+          placeholder="Last Name"
+        />
+        <label for="lastname" class="d-flex align-items-end">Last Name</label>
+      </div>
+
       <div class="input-group mb-3">
         <div class="form-floating">
           <input

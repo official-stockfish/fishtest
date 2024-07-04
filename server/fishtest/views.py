@@ -380,6 +380,8 @@ def signup(request):
     errors = []
 
     signup_username = request.POST.get("username", "").strip()
+    signup_firstname = request.POST.get("firstname", "").strip()
+    signup_lastname = request.POST.get("lastname", "").strip()
     signup_password = request.POST.get("password", "").strip()
     signup_password_verify = request.POST.get("password2", "").strip()
     signup_email = request.POST.get("email", "").strip()
@@ -397,6 +399,10 @@ def signup(request):
         errors.append("Error! Invalid email: " + validated_email)
     if len(signup_username) == 0:
         errors.append("Error! Username required")
+    if len(signup_firstname) > 30:
+        errors.append("Error! too long first name")
+    if len(signup_lastname) > 30:
+        errors.append("Error! too long last name")
     if not signup_username.isalnum():
         errors.append("Error! Alphanumeric username required")
     if not github_repo_valid(tests_repo):
@@ -428,6 +434,8 @@ def signup(request):
 
     result = request.userdb.create_user(
         username=signup_username,
+        firstname=signup_firstname,
+        lastname=signup_lastname,
         password=signup_password,
         email=validated_email,
         tests_repo=tests_repo,

@@ -105,13 +105,15 @@ class UserDb:
         self.users.replace_one({"_id": user["_id"]}, user)
         self.clear_cache()
 
-    def create_user(self, username, password, email, tests_repo):
+    def create_user(self, username, firstname, lastname, password, email, tests_repo):
         try:
             if self.find_by_username(username) or self.find_by_email(email):
                 return False
             # insert the new user in the db
             user = {
                 "username": username,
+                "firstname": firstname,
+                "lastname": lastname,
                 "password": password,
                 "registration_time": datetime.now(timezone.utc),
                 "pending": True,
