@@ -55,6 +55,7 @@ class UserDb:
         with self.user_lock:
             self.cache.clear()
 
+    @lru_cache(maxsize=128)
     def hash_password(
         self,
         password,
@@ -64,7 +65,6 @@ class UserDb:
     ):
         return PasswordHasher(time_cost, memory_cost, parallelism).hash(password)
 
-    @lru_cache(maxsize=128)
     def check_password(self, hashed_password, password):
         try:
             return PasswordHasher().verify(hashed_password, password)
@@ -85,11 +85,9 @@ class UserDb:
         if not user:
             sys.stderr.write("Invalid username: '{}'\n".format(username))
             return {"error": "Invalid username: {}".format(username)}
-        if user["password"] != password:
-            sys.stderr.write("Invalid login (plaintext): '{}'\n".format(username))
-            if not self.check_password(user["password"], password):
-                sys.stderr.write("Invalid login (hashed): '{}'\n".format(username))
-                return {"error": "Invalid password for user: {}".format(username)}
+        if not self.check_password(user["hashed_password"], password):
+            sys.stderr.write("Invalid login: '{}'\n".format(username))
+            return {"error": "Invalid password for user: {}".format(username)}
         if "blocked" in user and user["blocked"]:
             sys.stderr.write("Blocked account: '{}'\n".format(username))
             return {"error": "Account blocked for user: {}".format(username)}
@@ -154,7 +152,7 @@ class UserDb:
             # insert the new user in the db
             user = {
                 "username": username,
-                "password": password,
+                "hashed_password": password,
                 "registration_time": datetime.now(timezone.utc),
                 "pending": True,
                 "blocked": False,
