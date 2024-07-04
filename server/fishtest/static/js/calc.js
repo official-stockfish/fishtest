@@ -6,6 +6,8 @@ const defaultParameters = {
   "elo-1": "2.0",
   "draw-ratio": "0.49",
   "rms-bias": "191",
+  "alpha": "0.05",
+  "beta": "0.05",
 };
 
 let validSprt = null;
@@ -64,10 +66,12 @@ function drawCharts(resize) {
   let elo1 = parseFloat(document.getElementById("elo-1").value);
   const drawRatio = parseFloat(document.getElementById("draw-ratio").value);
   const rmsBias = parseFloat(document.getElementById("rms-bias").value);
+  let alpha = parseFloat(document.getElementById("alpha").value);
+  let beta = parseFloat(document.getElementById("beta").value);
   let error = "";
   let sprt = null;
 
-  if (isNaN(elo0) || isNaN(elo1) || isNaN(drawRatio) || isNaN(rmsBias)) {
+  if (isNaN(elo0) || isNaN(elo1) || isNaN(drawRatio) || isNaN(rmsBias) || isNaN(alpha) || isNaN(beta)) {
     error = "Unreadable input.";
   } else if (elo1 < elo0 + 0.5) {
     error = "The difference between Elo1 and Elo0 must be at least 0.5.";
@@ -77,8 +81,12 @@ function drawCharts(resize) {
     error = "The draw ratio must be strictly between 0.0 and 1.0.";
   } else if (rmsBias < 0) {
     error = "The RMS bias must be positive.";
+  } else if (alpha <= 0.0 || alpha >= 1.0 || beta <= 0.0 || beta >= 1.0) {
+    error = "The value of alpha and beta must be strictly between 0.0 and 1.0.";
+  } else if (alpha + beta >= 1.0) {
+    error = "The sum of alpha and beta must be strictly below 1.0";
   } else {
-    sprt = new Sprt(0.05, 0.05, elo0, elo1, drawRatio, rmsBias, eloModel);
+    sprt = new Sprt(alpha, beta, elo0, elo1, drawRatio, rmsBias, eloModel);
     if (sprt.variance <= 0) {
       error = "The draw ratio and the RMS bias are not compatible.";
     }
