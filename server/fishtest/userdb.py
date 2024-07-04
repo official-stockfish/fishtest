@@ -85,7 +85,7 @@ class UserDb:
         if not user:
             sys.stderr.write("Invalid username: '{}'\n".format(username))
             return {"error": "Invalid username: {}".format(username)}
-        if not self.check_password(user["hashed_password"], password):
+        if not self.check_password(user["password"], password):
             sys.stderr.write("Invalid login: '{}'\n".format(username))
             return {"error": "Invalid password for user: {}".format(username)}
         if "blocked" in user and user["blocked"]:
@@ -95,10 +95,6 @@ class UserDb:
             sys.stderr.write("Pending account: '{}'\n".format(username))
             return {"error": "Account pending for user: {}".format(username)}
 
-        # temp: remove after all the passwords in userdb are hashed
-        if user["password"] == password:
-            user["password"] = self.hash_password(user["password"])
-            self.save_user(user)
         return {"username": username, "authenticated": True}
 
     def get_users(self):
@@ -152,7 +148,7 @@ class UserDb:
             # insert the new user in the db
             user = {
                 "username": username,
-                "hashed_password": password,
+                "password": password,
                 "registration_time": datetime.now(timezone.utc),
                 "pending": True,
                 "blocked": False,

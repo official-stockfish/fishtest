@@ -15,9 +15,7 @@ class Create10UsersTest(unittest.TestCase):
 
     def tearDown(self):
         self.rundb.userdb.users.delete_many({"username": "JoeUser"})
-        self.rundb.userdb.users.delete_many({"username": "JoeUser2"})
         self.rundb.userdb.user_cache.delete_many({"username": "JoeUser"})
-        self.rundb.userdb.user_cache.delete_many({"username": "JoeUser2"})
         self.rundb.stop()
         testing.tearDown()
 
@@ -37,21 +35,6 @@ class Create10UsersTest(unittest.TestCase):
         response = signup(request)
         self.assertTrue("The resource was found at", response)
 
-        request2 = testing.DummyRequest(
-            userdb=self.rundb.userdb,
-            method="POST",
-            remote_addr="127.0.0.1",
-            params={
-                "username": "JoeUser2",
-                "password": "secret2",
-                "password2": "secret2",
-                "email": "joe2@user.net",
-                "tests_repo": "https://github.com/official-stockfish/Stockfish2",
-            },
-        )
-        response2 = signup(request2)
-        self.assertTrue("The resource was found at", response2)
-
 
 class Create50LoginTest(unittest.TestCase):
     def setUp(self):
@@ -62,20 +45,12 @@ class Create50LoginTest(unittest.TestCase):
             "email@email.email",
             "https://github.com/official-stockfish/Stockfish",
         )
-        self.rundb.userdb.create_user(
-            "JoeUser2",
-            "$argon2id$v=19$m=12288,t=3,p=1$9tW9uRY6ijZ0PEiOcldWoQ$f5YCuVMP77x8Wlrcue0Jn7JGjCmgKy76WQynuIfitdA",
-            "email2@email.email",
-            "https://github.com/official-stockfish/Stockfish2",
-        )
         self.config = testing.setUp()
         self.config.add_route("login", "/login")
 
     def tearDown(self):
         self.rundb.userdb.users.delete_many({"username": "JoeUser"})
-        self.rundb.userdb.users.delete_many({"username": "JoeUser2"})
         self.rundb.userdb.user_cache.delete_many({"username": "JoeUser"})
-        self.rundb.userdb.user_cache.delete_many({"username": "JoeUser2"})
         self.rundb.stop()
         testing.tearDown()
 
