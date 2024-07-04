@@ -242,7 +242,9 @@ def format_bounds(elo_model, elo0, elo1):
     )
 
 
-def format_results(run_results, run):
+def format_results(run):
+    run_results = run["results"]
+
     result = {"style": "", "info": []}
 
     # win/loss/draw count
@@ -350,12 +352,14 @@ def get_tc_ratio(tc, threads=1, base="10+0.1"):
     return threads * estimate_game_duration(tc) / estimate_game_duration(base)
 
 
-def is_active_sprt_ltc(run):
+def is_sprt_ltc_data(args):
     return (
-        not run["finished"]
-        and "sprt" in run["args"]
-        and get_tc_ratio(run["args"]["tc"], run["args"]["threads"]) > 4
+        "sprt" in args and get_tc_ratio(args["tc"], args["threads"]) > 4
     )  # SMP-STC ratio is 4
+
+
+def is_active_sprt_ltc(run):
+    return not run["finished"] and is_sprt_ltc_data(run["args"])
 
 
 def format_date(date):

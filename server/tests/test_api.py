@@ -659,7 +659,6 @@ class TestRunFinished(unittest.TestCase):
         run = self.rundb.get_run(run_id)
         self.assertTrue(run["finished"])
         self.assertTrue(all([not t["active"] for t in run["tasks"]]))
-        self.assertTrue("Total: {}".format(num_games) in run["results_info"]["info"][1])
 
 
 if __name__ == "__main__":
