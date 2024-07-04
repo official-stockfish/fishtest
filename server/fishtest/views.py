@@ -17,11 +17,11 @@ from fishtest.util import (
     extract_repo_from_link,
     format_bounds,
     format_date,
-    format_results,
     get_chi2,
     get_hash,
     get_tc_ratio,
     github_repo_valid,
+    is_sprt_ltc_data,
     password_strength,
     update_residuals,
 )
@@ -427,7 +427,7 @@ def signup(request):
 
     result = request.userdb.create_user(
         username=signup_username,
-        password=signup_password,
+        password=request.userdb.hash_password(signup_password),
         email=validated_email,
         tests_repo=tests_repo,
     )
@@ -621,8 +621,7 @@ def user(request):
             new_email = request.params.get("email").strip()
             tests_repo = request.params.get("tests_repo").strip()
 
-            # Temporary comparison until passwords are hashed.
-            if old_password != user_data["password"].strip():
+            if not request.userdb.check_password(user["hashed_password"], old_password):
                 request.session.flash("Invalid password!", "error")
                 return home(request)
 
@@ -635,7 +634,9 @@ def user(request):
                         (new_email if len(new_email) > 0 else None),
                     )
                     if strong_password:
-                        user_data["password"] = new_password
+                        user_data["hashed_password"] = request.userdb.hash_password(
+                            new_password
+                        )
                         request.session.flash("Success! Password updated")
                     else:
                         request.session.flash(
@@ -965,9 +966,7 @@ def validate_form(request):
                     "This commit has no signature: please supply it manually."
                 )
         if len(data["info"]) == 0:
-            data["info"] = (
-                "" if re.match(r"^[012]?[0-9][^0-9].*", data["tc"]) else "LTC: "
-            ) + strip_message(c["commit"]["message"])
+            data["info"] = strip_message(c["commit"]["message"])
 
     # Check that the book exists in the official books repo
     if len(data["book"]) > 0:
@@ -1194,6 +1193,8 @@ def tests_run(request):
     if request.method == "POST":
         try:
             data = validate_form(request)
+            if is_sprt_ltc_data(data):
+                data["info"] = "LTC: " + data["info"]
             run_id = request.rundb.new_run(**data)
             run = request.rundb.get_run(run_id)
             request.actiondb.new_run(
@@ -1443,7 +1444,7 @@ def get_page_title(run):
 @view_config(route_name="tests_live_elo", renderer="tests_live_elo.mak")
 def tests_live_elo(request):
     run = request.rundb.get_run(request.matchdict["id"])
-    if run is None:
+    if run is None or "sprt" not in run["args"]:
         raise HTTPNotFound()
     return {"run": run, "page_title": get_page_title(run)}
 
@@ -1488,7 +1489,6 @@ def tests_view(request):
         raise HTTPNotFound()
     follow = 1 if "follow" in request.params else 0
     results = run["results"]
-    run["results_info"] = format_results(results, run)
     run_args = [("id", str(run["_id"]), "")]
     if run.get("rescheduled_from"):
         run_args.append(("rescheduled_from", run["rescheduled_from"], ""))
@@ -1694,7 +1694,12 @@ def tests_user(request):
     user_data = request.userdb.get_user(username)
     if user_data is None:
         raise HTTPNotFound()
-    response = {**get_paginated_finished_runs(request), "username": username}
+    is_approver = request.has_permission("approve_run")
+    response = {
+        **get_paginated_finished_runs(request),
+        "username": username,
+        "is_approver": is_approver,
+    }
     page_param = request.params.get("page", "")
     if not page_param.isdigit() or int(page_param) <= 1:
         response["runs"] = request.rundb.aggregate_unfinished_runs(

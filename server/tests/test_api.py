@@ -138,7 +138,7 @@ class TestApi(unittest.TestCase):
         }
         cls.rundb.userdb.create_user(
             cls.username,
-            cls.password,
+            "$argon2id$v=19$m=12288,t=3,p=1$CBZVlx94y2hWHPm1D6Vo3A$19cJ5J4prNe6aObbgFBHpwzyeg1DwiuWHWXG6srMq7w",
             "email@email.email",
             "https://github.com/official-stockfish/Stockfish",
         )
@@ -526,7 +526,7 @@ class TestRunFinished(unittest.TestCase):
         }
         cls.rundb.userdb.create_user(
             cls.username,
-            cls.password,
+            "$argon2id$v=19$m=12288,t=3,p=1$CBZVlx94y2hWHPm1D6Vo3A$19cJ5J4prNe6aObbgFBHpwzyeg1DwiuWHWXG6srMq7w",
             "email@email.email",
             "https://github.com/official-stockfish/Stockfish",
         )
@@ -659,7 +659,6 @@ class TestRunFinished(unittest.TestCase):
         run = self.rundb.get_run(run_id)
         self.assertTrue(run["finished"])
         self.assertTrue(all([not t["active"] for t in run["tasks"]]))
-        self.assertTrue("Total: {}".format(num_games) in run["results_info"]["info"][1])
 
 
 if __name__ == "__main__":

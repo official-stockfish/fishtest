@@ -97,13 +97,17 @@ class RunDb:
         self.run_lock = threading.Lock()
         self.active_runs = {}
 
+        # Keep some data about the workers
+        self.worker_runs = {}
+        self.worker_runs_lock = threading.Lock()
+
         self.request_task_lock = threading.Lock()
         self.scheduler = None
 
     def schedule_tasks(self):
         if self.scheduler is None:
             self.scheduler = Scheduler(jitter=0.05)
-        self.scheduler.create_task(1.0, self.flush_buffers)
+        self.scheduler.create_task(1.0, self.flush_buffers, min_delay=1.0)
         self.scheduler.create_task(60.0, self.clean_cache)
         self.scheduler.create_task(60.0, self.scavenge_dead_tasks)
         self.scheduler.create_task(60.0, self.update_itp)
@@ -122,38 +126,44 @@ class RunDb:
             flush=True,
         )
         try:
-            validate(
-                cache_schema,
-                self.run_cache,
-                name="run_cache",
-                subs={"runs_schema": dict},
-            )
-            validate(
-                wtt_map_schema,
-                self.wtt_map,
-                name="wtt_map",
-                subs={"runs_schema": dict},
-            )
-            validate(
-                connections_counter_schema,
-                self.connections_counter,
-                name="connections_counter",
-            )
-            validate(
-                unfinished_runs_schema,
-                self.unfinished_runs,
-                name="unfinished_runs",
-            )
-            validate(
-                active_runs_schema,
-                self.active_runs,
-                name="active_runs",
-            )
-            validate(
-                worker_runs_schema,
-                self.worker_runs,
-                name="worker_runs",
-            )
+            with self.run_cache_lock:
+                validate(
+                    cache_schema,
+                    self.run_cache,
+                    name="run_cache",
+                    subs={"runs_schema": dict},
+                )
+            with self.wtt_lock:
+                validate(
+                    wtt_map_schema,
+                    self.wtt_map,
+                    name="wtt_map",
+                    subs={"runs_schema": dict},
+                )
+            with self.connections_lock:
+                validate(
+                    connections_counter_schema,
+                    self.connections_counter,
+                    name="connections_counter",
+                )
+            with self.unfinished_runs_lock:
+                validate(
+                    unfinished_runs_schema,
+                    self.unfinished_runs,
+                    name="unfinished_runs",
+                )
+            with self.run_lock:
+                validate(
+                    active_runs_schema,
+                    self.active_runs,
+                    name="active_runs",
+                )
+            with self.worker_runs_lock:
+                validate(
+                    worker_runs_schema,
+                    self.worker_runs,
+                    name="worker_runs",
+                )
         except ValidationError as e:
             message = f"Validation of internal data structures failed: {str(e)}"
             print(message, flush=True)
@@ -333,14 +343,6 @@ class RunDb:
             run = self.get_run(run_id)
             changed = False
             with self.active_run_lock(run_id):
-                version = run.get("version", 0)
-                if version < RUN_VERSION:
-                    print(
-                        f"Warning: upgrading run {run_id} to version {RUN_VERSION}",
-                        flush=True,
-                    )
-                    run["version"] = RUN_VERSION
-                    changed = True
                 results = compute_results(run)
                 if results != run["results"]:
                     print(
@@ -565,10 +567,10 @@ class RunDb:
             raise Exception(message)
 
         # We cannot use self.buffer since new_run does not have an id yet.
-        run_id = self.runs.insert_one(new_run).inserted_id
+        run_id = str(self.runs.insert_one(new_run).inserted_id)
 
         with self.unfinished_runs_lock:
-            self.unfinished_runs.add(str(run_id))
+            self.unfinished_runs.add(run_id)
 
         return run_id
 
@@ -659,7 +661,6 @@ class RunDb:
     # Cache runs
     run_cache = {}
     run_cache_lock = threading.Lock()
-    run_cache_write_lock = threading.Lock()
 
     # handle termination
     def exit_run(self, signum, frame):
@@ -702,8 +703,8 @@ class RunDb:
                 flush=True,
             )
             return
+        r_id = str(run["_id"])
         with self.run_cache_lock:
-            r_id = str(run["_id"])
             if flush:
                 self.run_cache[r_id] = {
                     "is_changed": False,
@@ -711,8 +712,6 @@ class RunDb:
                     "last_sync_time": time.time(),
                     "run": run,
                 }
-                with self.run_cache_write_lock:
-                    self.runs.replace_one({"_id": ObjectId(r_id)}, run)
             else:
                 if r_id in self.run_cache:
                     last_sync_time = self.run_cache[r_id]["last_sync_time"]
@@ -724,6 +723,9 @@ class RunDb:
                     "last_sync_time": last_sync_time,
                     "run": run,
                 }
+        if flush:
+            with self.active_run_lock(r_id):
+                self.runs.replace_one({"_id": ObjectId(r_id)}, run)
 
     def stop(self):
         self.flush_all()
@@ -754,10 +756,13 @@ class RunDb:
                     oldest_entry = cache_entry
             if oldest_entry is not None:
                 oldest_run = oldest_entry["run"]
+                oldest_run_id = oldest_run["_id"]
                 oldest_entry["is_changed"] = False
                 oldest_entry["last_sync_time"] = time.time()
-                with self.run_cache_write_lock:
-                    self.runs.replace_one({"_id": oldest_run["_id"]}, oldest_run)
+
+        if oldest_entry is not None:
+            with self.active_run_lock(str(oldest_run_id)):
+                self.runs.replace_one({"_id": oldest_run_id}, oldest_run)
 
     def clean_cache(self):
         now = time.time()
@@ -806,11 +811,10 @@ class RunDb:
             self.buffer(run, False)
 
     def get_unfinished_runs_id(self):
-        with self.run_cache_write_lock:
-            unfinished_runs = self.runs.find(
-                {"finished": False}, {"_id": 1}, sort=[("last_updated", DESCENDING)]
-            )
-            return unfinished_runs
+        unfinished_runs = self.runs.find(
+            {"finished": False}, {"_id": 1}, sort=[("last_updated", DESCENDING)]
+        )
+        return unfinished_runs
 
     def get_unfinished_runs(self, username=None):
         # Note: the result can be only used once.
@@ -864,7 +868,6 @@ class RunDb:
             ),
         )
 
-        # Calculate but don't save results_info on runs using info on current machines
         cores = 0
         nps = 0
         games_per_minute = 0.0
@@ -892,8 +895,14 @@ class RunDb:
                 eta = remaining_hours(run) / cores
                 pending_hours += eta
             results = run["results"]
-            run["results_info"] = format_results(results, run)
-        return (runs, pending_hours, cores, nps, games_per_minute, machines_count)
+        return (
+            runs,
+            pending_hours,
+            cores,
+            nps,
+            games_per_minute,
+            machines_count,
+        )
 
     def get_finished_runs(
         self,
@@ -970,8 +979,6 @@ class RunDb:
     # with a value strictly less than the number of Waitress threads.
 
     task_semaphore = threading.Semaphore(2)
-
-    worker_runs = {}
 
     def worker_cap(self, run, worker_info):
         # Estimate how many games a worker will be able to run
@@ -1256,11 +1263,11 @@ After fixing the issues you can unblock the worker at
         # Cache some data. Currently we record the id's
         # the worker has seen, as well as the last id that was seen.
         # Note that "worker_runs" is empty after a server restart.
-
-        if unique_key not in self.worker_runs:
-            self.worker_runs[unique_key] = {}
-        self.worker_runs[unique_key][run_id] = True
-        self.worker_runs[unique_key]["last_run"] = run_id
+        with self.worker_runs_lock:
+            if unique_key not in self.worker_runs:
+                self.worker_runs[unique_key] = {}
+            self.worker_runs[unique_key][run_id] = True
+            self.worker_runs[unique_key]["last_run"] = run_id
 
         return {"run": run, "task_id": task_id}
 
@@ -1532,12 +1539,6 @@ After fixing the issues you can unblock the worker at
         self.set_inactive_run(run)
 
         results = run["results"]
-        run["results_info"] = format_results(results, run)
-        # De-couple the styling of the run from its finished status
-        if run["results_info"]["style"] == "#44EB44":
-            run["is_green"] = True
-        elif run["results_info"]["style"] == "yellow":
-            run["is_yellow"] = True
         try:
             validate(runs_schema, run, "run")
         except ValidationError as e:
@@ -1644,7 +1645,6 @@ After fixing the issues you can unblock the worker at
                 if run["args"]["sprt"]["state"] != "":
                     revived = False
 
-            run["results_info"] = format_results(results, run)
             if revived:
                 self.set_active_run(run)
             else:

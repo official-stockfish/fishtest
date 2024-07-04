@@ -242,7 +242,9 @@ def format_bounds(elo_model, elo0, elo1):
     )
 
 
-def format_results(run_results, run):
+def format_results(run):
+    run_results = run["results"]
+
     result = {"style": "", "info": []}
 
     # win/loss/draw count
@@ -286,10 +288,10 @@ def format_results(run_results, run):
 
         result["info"].append(eloInfo + " " + losInfo)
 
-        if los >= 0.95:
-            state = "accepted"
-        else:
+        if los < 0.05:
             state = "rejected"
+        elif los > 0.95:
+            state = "accepted"
 
     result["info"].append(
         "Total: {:d} W: {:d} L: {:d} D: {:d}".format(sum(WLD), WLD[0], WLD[1], WLD[2])
@@ -350,12 +352,14 @@ def get_tc_ratio(tc, threads=1, base="10+0.1"):
     return threads * estimate_game_duration(tc) / estimate_game_duration(base)
 
 
-def is_active_sprt_ltc(run):
+def is_sprt_ltc_data(args):
     return (
-        not run["finished"]
-        and "sprt" in run["args"]
-        and get_tc_ratio(run["args"]["tc"], run["args"]["threads"]) > 4
+        "sprt" in args and get_tc_ratio(args["tc"], args["threads"]) > 4
     )  # SMP-STC ratio is 4
+
+
+def is_active_sprt_ltc(run):
+    return not run["finished"] and is_sprt_ltc_data(run["args"])
 
 
 def format_date(date):
@@ -613,6 +617,7 @@ class Task:
         period,
         worker,
         initial_delay=None,
+        min_delay=0.0,
         one_shot=False,
         jitter=0.0,
         scheduler=None,
@@ -625,6 +630,7 @@ class Task:
             initial_delay = self.period
         else:
             initial_delay = timedelta(seconds=initial_delay)
+        self.min_delay = timedelta(seconds=min_delay)
         self.__rel_jitter = jitter * self.period
         self.__next_schedule = (
             datetime.now(timezone.utc)
@@ -647,7 +653,13 @@ class Task:
             if not self.one_shot:
                 jitter = uniform(-self.__rel_jitter, self.__rel_jitter)
                 with self.__lock:
-                    self.__next_schedule += self.period + jitter
+                    self.__next_schedule = (
+                        max(
+                            self.__next_schedule + self.period,
+                            datetime.now(timezone.utc) + self.min_delay,
+                        )
+                        + jitter
+                    )
             else:
                 self.__expired = True
 
@@ -697,6 +709,7 @@ class Scheduler:
         period,
         worker,
         initial_delay=None,
+        min_delay=0.0,
         one_shot=False,
         jitter=None,
         args=(),
@@ -712,6 +725,9 @@ class Scheduler:
 
         :param initial_delay: The delay before the first execution of the task, defaults to period
         :type initial_delay: float, optional
+
+        :param min_delay: The minimum delay before the same task is repeated, defaults to 0.0
+        :type min_delay: float, optional
 
         :param one_shot: If true, execute the task only once, defaults to False
         :type one_shot: bool, optional
@@ -733,6 +749,7 @@ class Scheduler:
             period,
             worker,
             initial_delay=initial_delay,
+            min_delay=min_delay,
             one_shot=one_shot,
             jitter=jitter,
             scheduler=self,

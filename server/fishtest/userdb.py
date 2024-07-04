@@ -2,7 +2,15 @@ import sys
 import threading
 import time
 from datetime import datetime, timezone
+from functools import lru_cache
 
+from argon2 import PasswordHasher
+from argon2.exceptions import (
+    HashingError,
+    InvalidHash,
+    VerificationError,
+    VerifyMismatchError,
+)
 from fishtest.schemas import user_schema
 from pymongo import ASCENDING
 from vtjson import ValidationError, validate
@@ -47,16 +55,44 @@ class UserDb:
         with self.user_lock:
             self.cache.clear()
 
+    @lru_cache(maxsize=128)
+    def hash_password(
+        self,
+        password,
+        time_cost: int = 3,
+        memory_cost: int = 12288,
+        parallelism: int = 1,
+    ):
+        return PasswordHasher(time_cost, memory_cost, parallelism).hash(password)
+
+    def check_password(self, hashed_password, password):
+        try:
+            return PasswordHasher().verify(hashed_password, password)
+        except InvalidHash as e:
+            print("InvalidHash:", e, sep="\n")
+        except VerifyMismatchError as e:
+            print("VerifyMismatchError:", e, sep="\n")
+        except HashingError as e:
+            print("HashingError:", e, sep="\n")
+        except VerificationError as e:
+            print("VerificationError:", e, sep="\n")
+        except Exception as e:
+            print("Exception:", e, sep="\n")
+        return False
+
     def authenticate(self, username, password):
         user = self.get_user(username)
-        if not user or user["password"] != password:
-            sys.stderr.write("Invalid login: '{}' '{}'\n".format(username, password))
+        if not user:
+            sys.stderr.write("Invalid username: '{}'\n".format(username))
+            return {"error": "Invalid username: {}".format(username)}
+        if not self.check_password(user["hashed_password"], password):
+            sys.stderr.write("Invalid login: '{}'\n".format(username))
             return {"error": "Invalid password for user: {}".format(username)}
         if "blocked" in user and user["blocked"]:
-            sys.stderr.write("Blocked account: '{}' '{}'\n".format(username, password))
+            sys.stderr.write("Blocked account: '{}'\n".format(username))
             return {"error": "Account blocked for user: {}".format(username)}
         if "pending" in user and user["pending"]:
-            sys.stderr.write("Pending account: '{}' '{}'\n".format(username, password))
+            sys.stderr.write("Pending account: '{}'\n".format(username))
             return {"error": "Account pending for user: {}".format(username)}
 
         return {"username": username, "authenticated": True}
@@ -112,7 +148,7 @@ class UserDb:
             # insert the new user in the db
             user = {
                 "username": username,
-                "password": password,
+                "hashed_password": password,
                 "registration_time": datetime.now(timezone.utc),
                 "pending": True,
                 "blocked": False,
