@@ -160,7 +160,7 @@ def login(request):
 # limited.
 
 
-def worker_email(worker_name, blocker_name, message, host_url, blocked):
+def worker_email(worker_name, blocker_name, message, host_url, blocked_by):
     owner_name = worker_name.split("-")[0]
     body = f"""\
 Dear {owner_name},
@@ -204,7 +204,7 @@ def workers(request):
                 blocker_name,
                 w["message"],
                 request.host_url,
-                w["blocked"],
+                w["blocked_by"],
             )
             w["subject"] = f"Issue(s) with worker {w['worker_name']}"
 
@@ -247,26 +247,46 @@ def workers(request):
                 )
                 message = message[:max_chars]
             message = normalize_lf(message)
-            was_blocked = request.workerdb.get_worker(worker_name)["blocked"]
-            request.rundb.workerdb.update_worker(
-                worker_name, blocked=blocked, message=message
-            )
-            if blocked != was_blocked:
+            blocked_by = request.workerdb.get_worker(worker_name)["blocked_by"]
+            new_worker_info = {
+                "worker_name": worker_name,
+                "blocked_by": blocked_by,
+                "message": message,
+            }
+            if blocked and not blocked_by:
+                new_worker_info["blocked_by"] = blocker_name
                 request.session.flash(
-                    f"Worker {worker_name} {'blocked' if blocked else 'unblocked'}!",
+                    f"Worker {worker_name} blocked!",
                 )
                 request.actiondb.block_worker(
                     username=blocker_name,
                     worker=worker_name,
-                    message="blocked" if blocked else "unblocked",
+                    message="blocked",
                 )
+            elif not blocked and blocked_by:
+                # Prevent users from abusing unblocking workers.
+                if not is_approver and blocked_by != blocker_name:
+                    request.session.flash(
+                        f"Contact approvers to unblock worker {worker_name}!",
+                    )
+                else:
+                    new_worker_info["blocked_by"] = None
+                    request.session.flash(
+                        f"Worker {worker_name} unblocked!",
+                    )
+                    request.actiondb.block_worker(
+                        username=blocker_name,
+                        worker=worker_name,
+                        message="unblocked",
+                    )
+            request.workerdb.update_worker(**new_worker_info)
         return HTTPFound(location=request.route_url("workers", worker_name="show"))
 
     w = request.rundb.workerdb.get_worker(worker_name)
     return {
         "show_admin": True,
         "worker_name": worker_name,
-        "blocked": w["blocked"],
+        "blocked": w["blocked_by"] is not None,
         "message": w["message"],
         "show_email": is_approver,
         "last_updated": w["last_updated"],
