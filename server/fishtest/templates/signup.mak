@@ -38,6 +38,30 @@
       <label for="username" class="d-flex align-items-end">Username</label>
     </div>
 
+    <div class="form-floating mb-3">
+      <input
+        type="text"
+        class="form-control mb-3"
+        id="firstname"
+        name="firstname"
+        placeholder="First Name"
+        maxlength="30"
+      >
+      <label for="firstname" class="d-flex align-items-end">First Name</label>
+    </div>
+
+    <div class="form-floating mb-3">
+      <input
+        type="text"
+        class="form-control mb-3"
+        id="lastname"
+        name="lastname"
+        placeholder="Last Name"
+        maxlength="30"
+      >
+      <label for="lastname" class="d-flex align-items-end">Last Name</label>
+    </div>
+
     <div class="input-group mb-3">
       <div class="form-floating">
         <input
