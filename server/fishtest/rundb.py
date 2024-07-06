@@ -978,7 +978,7 @@ class RunDb:
     # It is very important that the following semaphore is initialized
     # with a value strictly less than the number of Waitress threads.
 
-    task_semaphore = threading.Semaphore(2)
+    task_semaphore = threading.Semaphore(5)
 
     def worker_cap(self, run, worker_info):
         # Estimate how many games a worker will be able to run
