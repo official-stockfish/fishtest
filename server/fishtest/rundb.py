@@ -238,11 +238,16 @@ class RunDb:
                 )
         except ValidationError as e:
             message = f"The run object {run_id} does not validate: {str(e)}"
-            print(message, flush=True)
             if "version" in run and run["version"] >= RUN_VERSION:
+                print(message, flush=True)
                 self.actiondb.log_message(
                     username="fishtest.system",
                     message=message,
+                )
+            else:
+                print(
+                    f"{message} (this is likely not an error as the run object has an older version)",
+                    flush=True,
                 )
 
     def set_inactive_run(self, run):
@@ -1528,12 +1533,18 @@ After fixing the issues you can unblock the worker at
             validate(runs_schema, run, "run")
         except ValidationError as e:
             message = f"The run object {run_id} does not validate: {str(e)}"
-            print(message, flush=True)
             if "version" in run and run["version"] >= RUN_VERSION:
+                print(message, flush=True)
                 self.actiondb.log_message(
                     username="fishtest.system",
                     message=message,
                 )
+            else:
+                print(
+                    f"{message} (this is likely not an error as the run object has an older version)",
+                    flush=True,
+                )
+
         self.buffer(run, True)
 
         # Auto-purge runs here. This may revive the run.
