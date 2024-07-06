@@ -104,6 +104,8 @@ class RunDb:
         self.request_task_lock = threading.Lock()
         self.scheduler = None
 
+        self.dead_task_throttle = 500
+
     def schedule_tasks(self):
         if self.scheduler is None:
             self.scheduler = Scheduler(jitter=0.05)
@@ -782,8 +784,11 @@ class RunDb:
     def scavenge_dead_tasks(self):
         now = time.time()
         dead_tasks = []
+        done = False
         with self.run_cache_lock:
             for cache_entry in self.run_cache.values():
+                if done:
+                    break
                 run = cache_entry["run"]
                 if not run["finished"]:
                     for task_id, task in enumerate(run["tasks"]):
@@ -792,6 +797,9 @@ class RunDb:
                             and task["last_updated"].timestamp() < now - 360
                         ):
                             dead_tasks.append((task_id, run))
+                            if len(dead_tasks) >= self.dead_task_throttle:
+                                done = True
+                                break
         # We release the lock to avoid deadlock
         for task_id, run in dead_tasks:
             task = run["tasks"][task_id]
