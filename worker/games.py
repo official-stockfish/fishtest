@@ -328,7 +328,9 @@ def download_net(remote, testing_dir, net, global_cache):
         url = remote + "/api/nn/" + net
         print("Downloading {}".format(net))
         content = requests_get(url, allow_redirects=True, timeout=HTTP_TIMEOUT).content
-        cache_write(global_cache, net, content)
+        hash = hashlib.sha256(content).hexdigest()
+        if hash[:12] == net[3:15]:
+            cache_write(global_cache, net, content)
     else:
         print("Using {} from global cache".format(net))
 
@@ -728,11 +730,16 @@ def setup_engine(
             item_url = github_api(repo_url) + "/zipball/" + sha
             print("Downloading {}".format(item_url))
             blob = requests_get(item_url).content
-            cache_write(global_cache, sha + ".zip", blob)
+            blob_needs_write = True
         else:
+            blob_needs_write = False
             print("Using {} from global cache".format(sha + ".zip"))
 
         file_list = unzip(blob, tmp_dir)
+        # once unzipped without error we can write as needed
+        if blob_needs_write:
+            cache_write(global_cache, sha + ".zip", blob)
+
         prefix = os.path.commonprefix([n.filename for n in file_list])
         os.chdir(tmp_dir / prefix / "src")
 
