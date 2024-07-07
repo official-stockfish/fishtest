@@ -640,7 +640,7 @@ valid_aggregated_data = intersect(
 # about non-validation of runs created with the prior
 # schema.
 
-RUN_VERSION = 5
+RUN_VERSION = 6
 
 runs_schema = intersect(
     {
@@ -663,6 +663,8 @@ runs_schema = intersect(
         "committed_games": uint,
         "total_games": uint,
         "results": results_schema,
+        "nps": ufloat,
+        "games_per_minute": ufloat,
         "args": intersect(
             {
                 "base_tag": str,
@@ -798,7 +800,13 @@ runs_schema = intersect(
     lax(
         ifthen(
             {"finished": True},
-            {"workers": 0, "cores": 0, "tasks": [{"active": False}, ...]},
+            {
+                "workers": 0,
+                "cores": 0,
+                "nps": 0.0,
+                "games_per_minute": 0.0,
+                "tasks": [{"active": False}, ...],
+            },
         )
     ),
     valid_aggregated_data,
