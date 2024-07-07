@@ -27,13 +27,23 @@ class WorkerDb:
         else:
             return r
 
-    def update_worker(self, worker_name, blocked=None, message=None):
+    def update_worker(self, worker_name, blocked=None, message=None, username=None):
+        current_worker = self.get_worker(worker_name)
+
+        new_message = message
+        if message and current_worker and current_worker.get("message") != message:
+            timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S %Z")
+            new_message = (
+                f"{current_worker['message']}\n{username} {timestamp}\n{message}\n"
+            )
+
         r = {
             "worker_name": worker_name,
             "blocked": blocked,
-            "message": message,
+            "message": new_message,
             "last_updated": datetime.now(timezone.utc),
         }
+
         validate(worker_schema, r, "worker")  # may throw exception
         self.workers.replace_one({"worker_name": worker_name}, r, upsert=True)
 
