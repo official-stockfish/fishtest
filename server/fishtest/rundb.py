@@ -1,4 +1,5 @@
 import copy
+import logging
 import math
 import os
 import random
@@ -15,6 +16,7 @@ from bson.codec_options import CodecOptions
 from bson.errors import InvalidId
 from bson.objectid import ObjectId
 from fishtest.actiondb import ActionDb
+from fishtest.scheduler import Scheduler
 from fishtest.schemas import (
     RUN_VERSION,
     active_runs_schema,
@@ -37,14 +39,15 @@ from fishtest.stats.stat_util import SPRT_elo
 from fishtest.userdb import UserDb
 from fishtest.util import (
     GeneratorAsFileReader,
-    Scheduler,
     crash_or_time,
     estimate_game_duration,
+    event_log,
     format_results,
     get_bad_workers,
     get_chi2,
     get_hash,
     get_tc_ratio,
+    logger,
     remaining_hours,
     update_residuals,
     worker_name,
@@ -53,12 +56,10 @@ from fishtest.workerdb import WorkerDb
 from pymongo import DESCENDING, MongoClient
 from vtjson import ValidationError, validate
 
-boot_time = datetime.now(timezone.utc)
 
+class OpenDb:
 
-class RunDb:
-
-    def __init__(self, db_name="fishtest_new", port=-1, is_primary_instance=True):
+    def __init__(self, db_name="fishtest_new"):
         # MongoDB server is assumed to be on the same machine, if not user should
         # use ssh with port forwarding to access the remote host.
         self.conn = MongoClient(os.getenv("FISHTEST_HOST") or "localhost")
@@ -71,6 +72,20 @@ class RunDb:
         self.nndb = self.db["nns"]
         self.runs = self.db["runs"]
         self.deltas = self.db["deltas"]
+
+
+class RunDb:
+
+    def __init__(self, db_name="fishtest_new", port=-1, is_primary_instance=True):
+        opendb = OpenDb(db_name=db_name)
+        self.userdb = opendb.userdb
+        self.actiondb = opendb.actiondb
+        self.workerdb = opendb.workerdb
+        self.pgndb = opendb.pgndb
+        self.nndb = opendb.nndb
+        self.runs = opendb.runs
+        self.deltas = opendb.deltas
+
         self.port = port
         self.unfinished_runs = set()
         self.unfinished_runs_lock = threading.Lock()
@@ -106,7 +121,7 @@ class RunDb:
 
     def schedule_tasks(self):
         if self.scheduler is None:
-            self.scheduler = Scheduler(jitter=0.05)
+            self.scheduler = Scheduler(jitter=0.05, logger=logger)
         self.scheduler.create_task(1.0, self.flush_buffers, min_delay=1.0)
         self.scheduler.create_task(60.0, self.clean_cache)
         self.scheduler.create_task(60.0, self.scavenge_dead_tasks)
@@ -121,9 +136,8 @@ class RunDb:
     def validate_data_structures(self):
         # The main purpose of task is to ensure that the schemas
         # in schemas.py are kept up-to-date.
-        print(
-            "Validate_data_structures: validating Fishtest's internal data structures...",
-            flush=True,
+        logger.info(
+            "Validate_data_structures: validating Fishtest's internal data structures..."
         )
         try:
             with self.run_cache_lock:
@@ -166,11 +180,8 @@ class RunDb:
                 )
         except ValidationError as e:
             message = f"Validation of internal data structures failed: {str(e)}"
-            print(message, flush=True)
-            self.actiondb.log_message(
-                username="fishtest.system",
-                message=message,
-            )
+            logger.error(message)
+            event_log.error(message)
 
     def update_itp(self):
         with self.unfinished_runs_lock:
@@ -191,7 +202,7 @@ class RunDb:
                 task = run["tasks"][task_id]
                 if not task["active"]:
                     del self.wtt_map[short_worker_name]
-        print(f"Clean_wtt_map: {len(self.wtt_map)} active workers...")
+        logger.info(f"Clean_wtt_map: {len(self.wtt_map)} active workers...")
 
     # Do not use this while holding an active_run_lock!
     def insert_in_wtt_map(self, run, task_id):
@@ -220,9 +231,8 @@ class RunDb:
                 if not cache_entry["run"]["finished"]
             ]
         if len(run_list) == 0:
-            print(
+            logger.info(
                 "Validate_random_run: no unfinished cache runs. No runs to validate...",
-                flush=True,
             )
             return
         run = random.choice(run_list)
@@ -232,18 +242,15 @@ class RunDb:
             # validating it
             with self.active_run_lock(run_id):
                 validate(runs_schema, run, "run")
-                print(
+                logger.info(
                     f"Validate_random_run: validated cache run {run_id}...",
-                    flush=True,
                 )
         except ValidationError as e:
             message = f"The run object {run_id} does not validate: {str(e)}"
-            print(message, flush=True)
             if "version" in run and run["version"] >= RUN_VERSION:
-                self.actiondb.log_message(
-                    username="fishtest.system",
-                    message=message,
-                )
+                event_log.error(message)
+            else:
+                logger.info(message)
 
     def set_inactive_run(self, run):
         run_id = str(run["_id"])
@@ -287,7 +294,7 @@ class RunDb:
                         if self.connections_counter[remote_addr] == 0:
                             del self.connections_counter[remote_addr]
                     except Exception as e:
-                        print(f"Error while deleting connection: {str(e)}", flush=True)
+                        event_log.error(f"Error while deleting connection: {str(e)}")
 
     def set_bad_task(self, task_id, run, residual=None, residual_color=None):
         zero_stats = {
@@ -345,58 +352,52 @@ class RunDb:
             with self.active_run_lock(run_id):
                 results = compute_results(run)
                 if results != run["results"]:
-                    print(
+                    logger.warning(
                         f"Warning: correcting results for {run_id}",
                         f"db: {run['results']} computed:{results}",
-                        flush=True,
                     )
                     run["results"] = results
                     changed = True
                 cores = compute_cores(run)
                 if cores != run["cores"]:
-                    print(
+                    logger.warning(
                         f"Warning: correcting cores for {run_id}",
                         f"db: {run['cores']} computed:{cores}",
-                        flush=True,
                     )
                     run["cores"] = cores
                     changed = True
                 workers = compute_workers(run)
                 if workers != run["workers"]:
-                    print(
+                    logger.warning(
                         f"Warning: correcting workers for {run_id}",
                         f"db: {run['workers']} computed:{workers}",
-                        flush=True,
                     )
                     run["workers"] = workers
                     changed = True
                 committed_games = compute_committed_games(run)
                 committed_games_run = run.get("committed_games", None)
                 if committed_games != committed_games_run:
-                    print(
+                    logger.warning(
                         f"Warning: correcting committed_games for {run_id}",
                         f"db: {committed_games_run} computed:{committed_games}",
-                        flush=True,
                     )
                     run["committed_games"] = committed_games
                     changed = True
                 total_games = compute_total_games(run)
                 total_games_run = run.get("total_games", None)
                 if total_games != total_games_run:
-                    print(
+                    logger.warning(
                         f"Warning: correcting total_games for {run_id}",
                         f"db: {total_games_run} computed:{total_games}",
-                        flush=True,
                     )
                     run["total_games"] = total_games
                     changed = True
                 flags = compute_flags(run)
                 flags_run = {"is_green": run["is_green"], "is_yellow": run["is_yellow"]}
                 if flags != flags_run:
-                    print(
-                        f"Warning: correcting flags for {run_id}",
-                        f"db: {flags_run} computed:{flags}",
-                        flush=True,
+                    logger.warning(
+                        f"Warning: correcting flags for {run_id} "
+                        f"db: {flags_run} computed:{flags}"
                     )
                     run.update(flags)
                     changed = True
@@ -563,7 +564,7 @@ class RunDb:
             validate(runs_schema, new_run, "run")
         except ValidationError as e:
             message = f"The new run object does not validate: {str(e)}"
-            print(message, flush=True)
+            logger.error(message)
             raise Exception(message)
 
         # We cannot use self.buffer since new_run does not have an id yet.
@@ -583,11 +584,7 @@ class RunDb:
             validate(pgns_schema, record)
         except ValidationError as e:
             message = f"Internal Error. Pgn record has the wrong format: {str(e)}"
-            print(message, flush=True)
-            self.actiondb.log_message(
-                username="fishtest.system",
-                message=message,
-            )
+            event_log.error(message)
         self.pgndb.insert_one(
             record,
         )
@@ -697,10 +694,9 @@ class RunDb:
 
     def buffer(self, run, flush):
         if not self.is_primary_instance():
-            print(
+            logger.warning(
                 "Warning: attempt to use the run_cache on the",
                 f"secondary instance with port number {self.port}!",
-                flush=True,
             )
             return
         r_id = str(run["_id"])
@@ -734,6 +730,7 @@ class RunDb:
         time.sleep(1.1)
 
     def flush_all(self):
+        # Logging is not safe in an event handler
         print("flush", flush=True)
         # Note that we do not grab locks because this method is
         # called from a signal handler and grabbing locks might deadlock
@@ -795,11 +792,10 @@ class RunDb:
         # We release the lock to avoid deadlock
         for task_id, run in dead_tasks:
             task = run["tasks"][task_id]
-            print(
+            logger.info(
                 "dead task: run: https://tests.stockfishchess.org/tests/view/{} task_id: {} worker: {}".format(
                     run["_id"], task_id, worker_name(task["worker_info"])
                 ),
-                flush=True,
             )
             self.handle_crash_or_time(run, task_id)
             self.actiondb.dead_task(
@@ -1022,7 +1018,7 @@ After fixing the issues you can unblock the worker at
                 self.task_semaphore.release()
         else:
             message = "Request_task: the server is currently too busy..."
-            print(message, flush=True)
+            logger.info(message)
             return {"task_waiting": False, "info": message}
 
     def sync_request_task(self, worker_info):
@@ -1060,7 +1056,7 @@ After fixing the issues you can unblock the worker at
                                 f'which {last_update} seconds ago sent an update for task {str(wtt_run["_id"])}/{wtt_task_id} '
                                 f'(my name is "{my_name_long}")'
                             )
-                            print(error, flush=True)
+                            logger.info(error)
                             return {"task_waiting": False, "error": error}
 
         # We see if the worker has reached the number of allowed connections from the same ip
@@ -1072,7 +1068,7 @@ After fixing the issues you can unblock the worker at
                 error = "Request_task: Machine limit reached for user {}".format(
                     worker_info["username"]
                 )
-                print(error, flush=True)
+                logger.info(error)
                 return {"task_waiting": False, "error": error}
 
         # Collect some data about the worker that will be used below.
@@ -1211,7 +1207,7 @@ After fixing the issues you can unblock the worker at
                     f"Request_task: alas the run {run_id} corresponding to the "
                     "assigned task no longer needs games. Please try again..."
                 )
-                print(info, flush=True)
+                logger.info(info)
                 return {"task_waiting": False, "info": info}
 
             opening_offset = run["total_games"]
@@ -1393,7 +1389,7 @@ After fixing the issues you can unblock the worker at
             # Only log the case where the run is not yet finished,
             # otherwise it is expected behavior
             if not run["finished"]:
-                print(info, flush=True)
+                logger.info(info)
             return {"task_alive": False, "info": info}
 
         # Guard against incorrect results
@@ -1422,7 +1418,7 @@ After fixing the issues you can unblock the worker at
                 )
 
         if error != "":
-            print(error, flush=True)
+            logger.error(error)
             self.set_inactive_task(task_id, run)
             return {"task_alive": False, "error": error}
 
@@ -1506,18 +1502,17 @@ After fixing the issues you can unblock the worker at
         # Check if the worker is still working on this task.
         if not task["active"]:
             info = "Failed_task: task {}/{} is not active".format(run_id, task_id)
-            print(info, flush=True)
+            logger.info(info)
             return {"task_alive": False, "info": info}
         # Mark the task as inactive.
         self.set_inactive_task(task_id, run)
         self.handle_crash_or_time(run, task_id)
         self.buffer(run, False)
-        print(
+        logger.info(
             "Failed_task: failure for: https://tests.stockfishchess.org/tests/view/{}, "
             "task_id: {}, worker: {}, reason: '{}'".format(
                 run_id, task_id, worker_name(task["worker_info"]), message
             ),
-            flush=True,
         )
         self.actiondb.failed_task(
             username=task["worker_info"]["username"],
@@ -1543,12 +1538,10 @@ After fixing the issues you can unblock the worker at
             validate(runs_schema, run, "run")
         except ValidationError as e:
             message = f"The run object {run_id} does not validate: {str(e)}"
-            print(message, flush=True)
             if "version" in run and run["version"] >= RUN_VERSION:
-                self.actiondb.log_message(
-                    username="fishtest.system",
-                    message=message,
-                )
+                event_log.error(message)
+            else:
+                logger.info(message)
         self.buffer(run, True)
 
         # Auto-purge runs here. This may revive the run.
@@ -1564,13 +1557,12 @@ After fixing the issues you can unblock the worker at
                 ),
             )
             if message == "":
-                print("Run {} was auto-purged".format(str(run_id)), flush=True)
+                logger.info("Run {} was auto-purged".format(str(run_id)))
             else:
-                print(
+                logger.info(
                     "Run {} was not auto-purged. Message: {}.".format(
                         str(run_id), message
                     ),
-                    flush=True,
                 )
 
     def approve_run(self, run_id, approver):
@@ -1683,7 +1675,7 @@ After fixing the issues you can unblock the worker at
         # Check if the worker is still working on this task.
         if not task["active"]:
             info = "Request_spsa: task {}/{} is not active".format(run_id, task_id)
-            print(info, flush=True)
+            logger.info(info)
             return {"task_alive": False, "info": info}
 
         result = self.generate_spsa(run)
