@@ -41,7 +41,7 @@ class Create50LoginTest(unittest.TestCase):
         self.rundb = util.get_rundb()
         self.rundb.userdb.create_user(
             "JoeUser",
-            "secret",
+            "$argon2id$v=19$m=12288,t=3,p=1$CBZVlx94y2hWHPm1D6Vo3A$19cJ5J4prNe6aObbgFBHpwzyeg1DwiuWHWXG6srMq7w",
             "email@email.email",
             "https://github.com/official-stockfish/Stockfish",
         )
@@ -55,6 +55,7 @@ class Create50LoginTest(unittest.TestCase):
         testing.tearDown()
 
     def test_login(self):
+        # Pending user, wrong password
         request = testing.DummyRequest(
             userdb=self.rundb.userdb,
             method="POST",
@@ -65,20 +66,50 @@ class Create50LoginTest(unittest.TestCase):
             "Invalid password for user: JoeUser" in request.session.pop_flash("error")
         )
 
-        # Correct password, but still pending from logging in
+        # Pending user, correct password
         request.params["password"] = "secret"
         login(request)
         self.assertTrue(
             "Account pending for user: JoeUser" in request.session.pop_flash("error")[0]
         )
 
-        # Unblock, then user can log in successfully
+        # Approved user, wrong password
         user = self.rundb.userdb.get_user("JoeUser")
         user["pending"] = False
+        self.rundb.userdb.save_user(user)
+        request.params["password"] = "badsecret"
+        response = login(request)
+        self.assertTrue(
+            "Invalid password for user: JoeUser" in request.session.pop_flash("error")
+        )
+
+        # Approved user, correct password
+        request.params["password"] = "secret"
+        response = login(request)
+        self.assertEqual(response.code, 302)
+        self.assertTrue("The resource was found at" in str(response))
+
+        # User is blocked, correct password
+        user["blocked"] = True
+        self.rundb.userdb.save_user(user)
+        response = login(request)
+        self.assertTrue(
+            "Account blocked for user: JoeUser" in request.session.pop_flash("error")[0]
+        )
+
+        # User is unblocked, correct password
+        user["blocked"] = False
         self.rundb.userdb.save_user(user)
         response = login(request)
         self.assertEqual(response.code, 302)
         self.assertTrue("The resource was found at" in str(response))
+
+        # Invalid username, correct password
+        request.params["username"] = "UserJoe"
+        response = login(request)
+        self.assertTrue(
+            "Invalid username: UserJoe" in request.session.pop_flash("error")[0]
+        )
 
 
 class Create90APITest(unittest.TestCase):
