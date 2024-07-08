@@ -38,6 +38,7 @@ from games import (
     IS_MACOS,
     IS_WINDOWS,
     FatalException,
+    Remote,
     RunException,
     WorkerException,
     backup_log,
@@ -68,7 +69,7 @@ MIN_GCC_MINOR = 3
 MIN_CLANG_MAJOR = 8
 MIN_CLANG_MINOR = 0
 
-WORKER_VERSION = 241
+WORKER_VERSION = 242
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -341,14 +342,15 @@ def verify_credentials(remote, username, password, cached):
     if username != "" and password != "":
         print(
             "Confirming {} credentials with {}".format(
-                "cached" if cached else "supplied", remote
+                "cached" if cached else "supplied", remote.origin
             )
         )
         payload = {"worker_info": {"username": username}, "password": password}
         try:
             req = send_api_post_request(
-                remote + "/api/request_version", payload, quiet=True
+                remote, "/api/request_version", payload, quiet=True
             )
+            print("And now we are after api post request ", req)
         except:
             return None  # network problem (unrecoverable)
         if "error" in req:
@@ -358,9 +360,8 @@ def verify_credentials(remote, username, password, cached):
     return False  # empty username or password
 
 
-def get_credentials(config, options, args):
-    remote = "{}://{}:{}".format(options.protocol, options.host, options.port)
-    print("Worker version {} connecting to {}".format(WORKER_VERSION, remote))
+def get_credentials(remote, config, options, args):
+    print("Worker version {} connecting to {}".format(WORKER_VERSION, remote.origin))
 
     username = config.get("login", "username")
     password = config.get("login", "password", raw=True)
@@ -618,7 +619,7 @@ def setup_parameters(worker_dir):
         mem = int(re.search(r"\d+", mem_str).group())
     except Exception as e:
         print("Exception checking HW info:\n", e, sep="", file=sys.stderr)
-        return None
+        return None, None
 
     # Step 2b: determine the number of cores.
     max_cpu_count = 0
@@ -626,13 +627,13 @@ def setup_parameters(worker_dir):
         max_cpu_count = multiprocessing.cpu_count()
     except Exception as e:
         print("Exception checking the CPU cores count:\n", e, sep="", file=sys.stderr)
-        return None
+        return None, None
 
     # Step 2c: detect the available compilers.
     compilers = detect_compilers()
     if compilers == {}:
         print("No usable compilers found")
-        return None
+        return None, None
 
     # Step 3: validate config options and replace missing or invalid
     # ones by defaults.
@@ -798,12 +799,12 @@ def setup_parameters(worker_dir):
         (options, args) = parser.parse_known_args()
     except Exception as e:
         print(str(e))
-        return None
+        return None, None
 
     if len(args) not in [0, 2]:
         print("Unparsed command line arguments: {}".format(" ".join(args)))
         parser.print_usage()
-        return None
+        return None, None
 
     # Step 5: fixup the config options.
 
@@ -829,7 +830,7 @@ def setup_parameters(worker_dir):
         print(
             "You need to reserve at least {} MiB to run the worker!".format(STC_memory)
         )
-        return None
+        return None, None
     options.concurrency_reduced = False
     if max_concurrency < options.concurrency:
         print(
@@ -851,12 +852,12 @@ def setup_parameters(worker_dir):
     print("Default uuid_prefix: {}".format(options.hw_id))
 
     # Step 6: determine credentials.
-
-    username, password = get_credentials(config, options, args)
+    remote = Remote(options.host, options.protocol, options.port)
+    username, password = get_credentials(remote, config, options, args)
 
     if username == "":
         print("Invalid or missing credentials")
-        return None
+        return remote, None
 
     options.username = username
     options.password = password
@@ -905,7 +906,7 @@ def setup_parameters(worker_dir):
     )
     print("Config file {} written".format(config_file))
 
-    return options
+    return remote, options
 
 
 def on_sigint(current_state, signal, frame):
@@ -1220,7 +1221,7 @@ def heartbeat(worker_info, password, remote, current_state):
                 print("Skipping heartbeat ...")
                 continue
             try:
-                req = send_api_post_request(remote + "/api/beat", payload, quiet=True)
+                req = send_api_post_request(remote, "/api/beat", payload, quiet=True)
             except Exception as e:
                 print("Exception calling heartbeat:\n", e, sep="", file=sys.stderr)
             else:
@@ -1248,7 +1249,7 @@ def verify_worker_version(remote, username, password):
     print("Verify worker version...")
     payload = {"worker_info": {"username": username}, "password": password}
     try:
-        req = send_api_post_request(remote + "/api/request_version", payload)
+        req = send_api_post_request(remote, "/api/request_version", payload)
     except WorkerException:
         return None  # the error message has already been written
     if "error" in req:
@@ -1314,7 +1315,7 @@ def fetch_and_handle_task(
     print("Fetching task...")
     payload = {"worker_info": worker_info, "password": password}
     try:
-        req = send_api_post_request(remote + "/api/request_task", payload)
+        req = send_api_post_request(remote, "/api/request_task", payload)
     except WorkerException:
         return False  # error message has already been printed
 
@@ -1331,7 +1332,9 @@ def fetch_and_handle_task(
     current_state["task_id"] = task_id
 
     print(
-        "Working on task {} from {}/tests/view/{}".format(task_id, remote, run["_id"])
+        "Working on task {} from {}/tests/view/{}".format(
+            task_id, remote.origin, run["_id"]
+        )
     )
     if "sprt" in run["args"]:
         type = "sprt"
@@ -1356,7 +1359,7 @@ def fetch_and_handle_task(
     success = False
     message = ""
     server_message = ""
-    api = remote + "/api/failed_task"
+    api = "/api/failed_task"
     pgn_file = [None]
     try:
         run_games(
@@ -1378,7 +1381,7 @@ def fetch_and_handle_task(
     except RunException as e:
         message = str(e)
         server_message = message
-        api = remote + "/api/stop_run"
+        api = "/api/stop_run"
     except WorkerException as e:
         message = str(e)
         server_message = message
@@ -1402,7 +1405,7 @@ def fetch_and_handle_task(
         print("\nException running games:\n", message, sep="", file=sys.stderr)
         print("Informing the server")
         try:
-            req = send_api_post_request(api, payload)
+            req = send_api_post_request(remote, api, payload)
         except Exception as e:
             print("Exception posting failed_task:\n", e, sep="", file=sys.stderr)
     # Upload PGN file.
@@ -1426,7 +1429,7 @@ def fetch_and_handle_task(
                             len(payload["pgn"])
                         )
                     )
-                    req = send_api_post_request(remote + "/api/upload_pgn", payload)
+                    req = send_api_post_request(remote, "/api/upload_pgn", payload)
                 except Exception as e:
                     print(
                         "\nException uploading PGN file:\n", e, sep="", file=sys.stderr
@@ -1490,7 +1493,7 @@ def worker():
         pass
 
     # Handle command line parameters and the config file.
-    options = setup_parameters(worker_dir)
+    remote, options = setup_parameters(worker_dir)
 
     if options is None:
         print("Error parsing options. Config file not written.")
@@ -1501,8 +1504,6 @@ def worker():
 
     if options.only_config:
         return 0
-
-    remote = "{}://{}:{}".format(options.protocol, options.host, options.port)
 
     # Check the worker version and upgrade if necessary
     try:

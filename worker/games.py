@@ -54,6 +54,12 @@ class RunException(WorkerException):
     pass
 
 
+class Remote:
+    def __init__(self, host, protocol="https", port="443"):
+        self.origin = "{}://{}:{}".format(protocol, host, port)
+        self.session = requests.Session()
+
+
 def is_windows_64bit():
     if "PROCESSOR_ARCHITEW6432" in os.environ:
         return True
@@ -70,8 +76,8 @@ HTTP_TIMEOUT = 30.0
 CUTECHESS_KILL_TIMEOUT = 15.0
 UPDATE_RETRY_TIME = 15.0
 
-RAWCONTENT_HOST = "https://raw.githubusercontent.com"
-API_HOST = "https://api.github.com"
+RAWCONTENT_HOST = "raw.githubusercontent.com"
+API_HOST = "api.github.com"
 EXE_SUFFIX = ".exe" if IS_WINDOWS else ""
 
 
@@ -175,10 +181,10 @@ def cache_write(cache, name, data):
 # It may be useful to introduce more refined http exception handling in the future.
 
 
-def requests_get(remote, *args, **kw):
+def requests_get(remote, api, *args, **kw):
     # A lightweight wrapper around requests.get()
     try:
-        result = requests.get(remote, *args, **kw)
+        result = remote.session.get(remote.origin + api, *args, **kw)
         result.raise_for_status()  # also catch return codes >= 400
     except Exception as e:
         print(
@@ -187,15 +193,17 @@ def requests_get(remote, *args, **kw):
             sep="",
             file=sys.stderr,
         )
-        raise WorkerException("Get request to {} failed".format(remote), e=e)
+        raise WorkerException(
+            "Get request to {} failed".format(remote.origin + api), e=e
+        )
 
     return result
 
 
-def requests_post(remote, *args, **kw):
+def requests_post(remote, api, *args, **kw):
     # A lightweight wrapper around requests.post()
     try:
-        result = requests.post(remote, *args, **kw)
+        result = remote.session.post(remote.origin + api, *args, **kw)
     except Exception as e:
         print(
             "Exception in requests.post():\n",
@@ -203,15 +211,18 @@ def requests_post(remote, *args, **kw):
             sep="",
             file=sys.stderr,
         )
-        raise WorkerException("Post request to {} failed".format(remote), e=e)
+        raise WorkerException(
+            "Post request to {} failed".format(remote.origin + api), e=e
+        )
 
     return result
 
 
-def send_api_post_request(api_url, payload, quiet=False):
+def send_api_post_request(remote, api, payload, quiet=False):
     t0 = datetime.now(timezone.utc)
     response = requests_post(
-        api_url,
+        remote,
+        api,
         data=json.dumps(payload),
         headers={"Content-Type": "application/json"},
         timeout=HTTP_TIMEOUT,
@@ -226,7 +237,7 @@ def send_api_post_request(api_url, payload, quiet=False):
     if not valid_response:
         message = (
             "The reply to post request {} was not a json encoded dictionary".format(
-                api_url
+                remote.origin + api
             )
         )
         print(
@@ -246,7 +257,7 @@ def send_api_post_request(api_url, payload, quiet=False):
         "{:6.2f} ms (s)  {:7.2f} ms (w)  {}".format(
             s,
             w,
-            api_url,
+            remote.origin + api,
         )
     )
     if not quiet:
@@ -254,7 +265,7 @@ def send_api_post_request(api_url, payload, quiet=False):
             print("Info from remote: {}".format(response["info"]))
         print(
             "Post request {} handled in {:.2f}ms (server: {:.2f}ms)".format(
-                api_url, w, s
+                remote.origin + api, w, s
             )
         )
     return response
@@ -263,7 +274,7 @@ def send_api_post_request(api_url, payload, quiet=False):
 def github_api(repo):
     """Convert from https://github.com/<user>/<repo>
     To https://api.github.com/repos/<user>/<repo>"""
-    return repo.replace("https://github.com", "https://api.github.com/repos")
+    return repo.replace("https://github.com", "/repos")
 
 
 def required_nets(engine):
@@ -325,9 +336,11 @@ def download_net(remote, testing_dir, net, global_cache):
     content = cache_read(global_cache, net)
 
     if content is None:
-        url = remote + "/api/nn/" + net
+        api = "/api/nn/" + net
         print("Downloading {}".format(net))
-        content = requests_get(url, allow_redirects=True, timeout=HTTP_TIMEOUT).content
+        content = requests_get(
+            remote, api, allow_redirects=True, timeout=HTTP_TIMEOUT
+        ).content
         cache_write(global_cache, net, content)
     else:
         print("Using {} from global cache".format(net))
@@ -461,20 +474,20 @@ def verify_signature(engine, signature, active_cores):
 def download_from_github_raw(
     item, owner="official-stockfish", repo="books", branch="master"
 ):
-    item_url = "{}/{}/{}/{}/{}".format(RAWCONTENT_HOST, owner, repo, branch, item)
-    print("Downloading {}".format(item_url))
-    return requests_get(item_url, timeout=HTTP_TIMEOUT).content
+    item_api = "/{}/{}/{}/{}".format(owner, repo, branch, item)
+    remote = Remote(RAWCONTENT_HOST)
+    print("Downloading {}".format(remote.origin + item_api))
+    return requests_get(remote, item_api, timeout=HTTP_TIMEOUT).content
 
 
 def download_from_github_api(
     item, owner="official-stockfish", repo="books", branch="master"
 ):
-    item_url = "{}/repos/{}/{}/contents/{}?ref={}".format(
-        API_HOST, owner, repo, item, branch
-    )
-    print("Downloading {}".format(item_url))
-    git_url = requests_get(item_url, timeout=HTTP_TIMEOUT).json()["git_url"]
-    return b64decode(requests_get(git_url, timeout=HTTP_TIMEOUT).json()["content"])
+    item_api = "/repos/{}/{}/contents/{}?ref={}".format(owner, repo, item, branch)
+    remote = Remote(API_HOST)
+    print("Downloading {}".format(remote.origin + item_api))
+    git_url = requests_get(remote, item_api, timeout=HTTP_TIMEOUT).json()["git_url"]
+    return b64decode(requests.get(git_url, timeout=HTTP_TIMEOUT).json()["content"])
 
 
 def download_from_github(
@@ -725,9 +738,10 @@ def setup_engine(
         blob = cache_read(global_cache, sha + ".zip")
 
         if blob is None:
-            item_url = github_api(repo_url) + "/zipball/" + sha
-            print("Downloading {}".format(item_url))
-            blob = requests_get(item_url).content
+            item_api = github_api(repo_url) + "/zipball/" + sha
+            remote = Remote("api.github.com")
+            print("Downloading {}".format(remote.origin + item_api))
+            blob = requests_get(remote, item_api).content
             cache_write(global_cache, sha + ".zip", blob)
         else:
             print("Using {} from global cache".format(sha + ".zip"))
@@ -1081,7 +1095,7 @@ def parse_cutechess_output(
                 for _ in range(5):
                     try:
                         response = send_api_post_request(
-                            remote + "/api/update_task", result
+                            remote, "/api/update_task", result
                         )
                         if "error" in response:
                             break
@@ -1128,7 +1142,7 @@ def launch_cutechess(
 ):
     if spsa_tuning:
         # Request parameters for next game.
-        req = send_api_post_request(remote + "/api/request_spsa", result)
+        req = send_api_post_request(remote, "/api/request_spsa", result)
         if "error" in req:
             raise WorkerException(req["error"])
 
