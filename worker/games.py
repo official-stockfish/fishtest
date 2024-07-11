@@ -325,7 +325,7 @@ def download_net(remote, testing_dir, net, global_cache):
     content = cache_read(global_cache, net)
 
     if content is None:
-        url = remote + "/api/nn/" + net
+        url = remote.rstrip("/") + "/api/nn/" + net
         print("Downloading {}".format(net))
         content = requests_get(url, allow_redirects=True, timeout=HTTP_TIMEOUT).content
         cache_write(global_cache, net, content)
@@ -725,7 +725,7 @@ def setup_engine(
         blob = cache_read(global_cache, sha + ".zip")
 
         if blob is None:
-            item_url = github_api(repo_url) + "/zipball/" + sha
+            item_url = github_api(repo_url).rstrip("/") + "/zipball/" + sha
             print("Downloading {}".format(item_url))
             blob = requests_get(item_url).content
             cache_write(global_cache, sha + ".zip", blob)
@@ -1081,7 +1081,7 @@ def parse_cutechess_output(
                 for _ in range(5):
                     try:
                         response = send_api_post_request(
-                            remote + "/api/update_task", result
+                            remote.rstrip("/") + "/api/update_task", result
                         )
                         if "error" in response:
                             break
@@ -1128,7 +1128,7 @@ def launch_cutechess(
 ):
     if spsa_tuning:
         # Request parameters for next game.
-        req = send_api_post_request(remote + "/api/request_spsa", result)
+        req = send_api_post_request(remote.rstrip("/") + "/api/request_spsa", result)
         if "error" in req:
             raise WorkerException(req["error"])
 
