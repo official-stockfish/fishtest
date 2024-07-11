@@ -1,4 +1,4 @@
-async function handleSPSA() {
+async function handleSPSA(spsaData) {
   let raw = [],
     chart_object,
     chart_data,
