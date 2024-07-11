@@ -8,9 +8,11 @@
 ></script>
 
 <script>
-  document.title = "Live Elo - ${page_title} | Stockfish Testing";
-  const testId = "${str(run['_id'])}";
-  followLive(testId);
+  (() => {
+    document.title = "Live Elo - ${page_title} | Stockfish Testing";
+    const testId = "${str(run['_id'])}";
+    followLive(testId);
+  })();
 </script>
 
 <h2>Live Elo for SPRT test <a href="/tests/view/${str(run['_id'])}">${str(run['_id'])}</a></h2>

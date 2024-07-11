@@ -673,315 +673,6 @@
   </div>
 </form>
 
-<script>
-  let submitted = false;
-  window.addEventListener("pageshow", () => {
-    // make sure submitted is set back to false
-    submitted = false;
-
-    // make sure the submit test button is enabled again and has the correct text.
-    document.getElementById('submit-test').disabled = false;
-    document.getElementById('submit-test').textContent = 'Submit test';
-
-    // Also make sure that the fields have the right visibility.
-    updateOdds(document.getElementById('checkbox-time-odds'));
-    toggleBook(document.getElementById('checkbox-book-visibility'));
-  });
-
-  let stopRule = null;
-
-  const presetBounds = {
-    'standard STC': [ 0.0, 2.0],
-    'standard LTC': [ 0.5, 2.5],
-    'regression STC': [-1.75, 0.25],
-    'regression LTC': [-1.75, 0.25],
-  };
-
-  const isRun = ${'true' if is_rerun else 'false'};
-
-  function updateSprtBounds(selectedBounds) {
-    if (selectedBounds === "custom") {
-      document
-        .querySelectorAll(".custom-bounds")
-        .forEach((bound) => (bound.style.display = ""));
-    } else {
-      document
-        .querySelectorAll(".custom-bounds")
-        .forEach((bound) => (bound.style.display = "none"));
-      const bounds = presetBounds[selectedBounds];
-      document.getElementById("sprt_elo0").value = bounds[0];
-      document.getElementById("sprt_elo1").value = bounds[1];
-    }
-  }
-
-  function toggleBookDepth(book) {
-    if (book.match('\\.pgn$')) {
-      document.querySelector('.book-depth').style.display = "";
-    } else {
-      document.querySelector('.book-depth').style.display = "none";
-    }
-  }
-
-  document
-    .getElementById("bounds")
-    .addEventListener("change", (e) => {
-      updateSprtBounds(e.target.value);
-    });
-
-  let initialBaseBranch = document.getElementById("base-branch").value;
-  let initialBaseSignature = document.getElementById("base-signature").value;
-  let spsa = false;
-
-  // Test type is changed
-  document.querySelectorAll("[name=test-type]").forEach((btn) =>
-    btn.addEventListener("click", (e) => {
-      if (!spsa) {
-        initialBaseBranch = document.getElementById("base-branch").value;
-        initialBaseSignature = document.getElementById("base-signature").value;
-      }
-      const btn = e.target;
-
-      // choose test type - STC, LTC - sets preset values
-      let testOptions = null;
-      if (btn.dataset.options) testOptions = btn.dataset.options;
-
-      if (testOptions) {
-        const {
-          name,
-          tc,
-          new_tc,
-          throughput,
-          threads,
-          options,
-          book,
-          stop_rule,
-          bounds,
-          games,
-          test_branch,
-          base_branch,
-          test_signature,
-          base_signature,
-        } = JSON.parse(testOptions);
-        document.getElementById("tc").value = tc;
-        document.getElementById("new_tc").value = new_tc;
-        document.getElementById("throughput").value = throughput;
-        document.getElementById("threads").value = threads;
-        document.getElementById("new-options").value = (
-          options + " " +
-          document
-            .getElementById("new-options")
-            .value.replace(/Hash=[0-9]+ ?/, "")
-        ).replace(/ $/, "");
-        document.getElementById("base-options").value = (
-          options + " " +
-          document
-            .getElementById("base-options")
-            .value.replace(/Hash=[0-9]+ ?/, "")
-        ).replace(/ $/, "");
-
-        document.getElementById("book").value = book;
-        toggleBookDepth(book);
-
-        document.getElementById("checkbox-book-visibility").checked = (book != "${test_book}");
-        toggleBook(document.getElementById("checkbox-book-visibility"));
-
-        document.getElementById(stop_rule).click();
-
-        if (bounds) {
-          document.getElementById("bounds").value = bounds;
-          updateSprtBounds(bounds);
-        }
-
-        if (games) {
-          document.getElementById("num-games").value = games;
-        }
-
-        if (!isRun) {
-          if (test_branch) {
-            document.getElementById("test-branch").value = test_branch;
-          }
-          if (test_signature) {
-            document.getElementById("test-signature").value = test_signature;
-          }
-
-          if (base_branch) {
-            document.getElementById("base-branch").value = base_branch;
-          }
-          if (base_signature) {
-            document.getElementById("base-signature").value = base_signature;
-          }
-        }
-
-        if (name === "PT" || name === "PT SMP") {
-          let info = (name === "PT SMP") ? "SMP " : "";
-          info +=
-            'Progression test of "${master_info["message"]}" of ${master_info["date"]} vs ${pt_version}.';
-          document.getElementById("run-info").value = info;
-        }
-
-        spsaWork();
-      }
-    })
-  );
-
-  function testBranchHandler() {
-    document.getElementById("base-branch").value =
-      document.getElementById("test-branch").value;
-  }
-
-  function testSignatureHandler() {
-    document.getElementById("base-signature").value =
-      document.getElementById("test-signature").value;
-  }
-
-  // Stop rule is changed
-  document.querySelectorAll("[name=stop-rule]").forEach((btn) =>
-    btn.addEventListener("click", function () {
-      stopRule = btn.value;
-
-      if (stopRule) {
-        // Hide all elements that have the class "stop-rule"
-        document
-          .querySelectorAll(".stop-rule")
-          .forEach((el) => (el.style.display = "none"));
-
-        document.getElementById("stop_rule_field").value = stopRule.substring(10);
-
-        // Show all elements that have the class with the same name as the selected stop rule
-        document
-          .querySelectorAll("." + stopRule)
-          .forEach((el) => (el.style.display = ""));
-
-        if (!isRun) {
-          if (stopRule === "stop-rule-spsa") {
-            // base branch and test branch should be the same for SPSA tests
-            document.getElementById("base-branch").readOnly = true;
-            document.getElementById("base-branch").value = document.getElementById("test-branch").value;
-            document
-              .getElementById("test-branch")
-              .addEventListener("input", testBranchHandler);
-            document.getElementById("base-signature").readOnly = true;
-            document.getElementById("base-signature").value = document.getElementById("test-signature").value;
-            document
-              .getElementById("test-signature")
-              .addEventListener("input", testSignatureHandler);
-            spsa = true;
-          } else {
-            document.getElementById("base-branch").removeAttribute("readonly");
-            document.getElementById("base-branch").value = initialBaseBranch;
-            document.getElementById("base-signature").removeAttribute("readonly");
-            document.getElementById("base-signature").value = initialBaseSignature;
-            document
-              .getElementById("test-branch")
-              .removeEventListener("input", testBranchHandler);
-            document
-              .getElementById("test-signature")
-              .removeEventListener("input", testSignatureHandler);
-            spsa = false;
-          }
-        }
-        if (stopRule === "stop-rule-sprt") {
-          updateSprtBounds(document.getElementById("bounds").value);
-        }
-      }
-    })
-  );
-
-  // Only .pgn book types have a book_depth field
-  toggleBookDepth(document.getElementById("book").value);
-  document.getElementById("book").addEventListener("input", (e) => {
-    toggleBookDepth(e.target.value);
-  });
-
-  document
-    .getElementById("create-new-test")
-    .addEventListener("submit", function (e) {
-      const ret = spsaWork(); // Last check that all spsa data are consistent.
-      if (!ret) {
-        return false;
-      }
-      // we want to be able to register users for their own tests
-      if (supportsNotifications() && Notification.permission === "default") {
-        Notification.requestPermission();
-      }
-      if (submitted) {
-        // Don't allow submitting the form more than once
-        e.preventDefault();
-        return;
-      }
-      submitted = true;
-      const submitButton = document.getElementById("submit-test");
-      submitButton.setAttribute("disabled","");
-      submitButton.replaceChildren();
-      const spinner = document.createElement("div");
-      spinner.className = "spinner-border spinner-border-sm";
-      spinner.role = "status";
-      submitButton.append(spinner, " Submitting...");
-    });
-
-  // If the test is a reschedule
-  if (isRun) {
-    // Select the correct fields by default for re-runs
-    const tc = '${args.get('tc')}';
-    if (tc === "10+0.1") {
-      document.getElementById("stc_test").checked = true;
-    } else if (tc === "5+0.05") {
-      document.getElementById("stc_smp_test").checked = true;
-    } else if (tc === "20+0.2") {
-      document.getElementById("ltc_smp_test").checked = true;
-    } else if (tc === "180+1.8") {
-      document.getElementById("vltc_test").checked = true;
-    }
-
-    const threads = '${args.get('threads')}';
-    if (tc === "60+0.6") {
-      if (threads === "1") {
-        document.getElementById("ltc_test").checked = true;
-      } else if (threads === "8") {
-        document.getElementById("vltc_smp_test").checked = true;
-      }
-    }
-
-    % if args.get('spsa'):
-      document.getElementById('stop-rule-spsa').click();
-    % elif not args.get('sprt'):
-      document.getElementById('stop-rule-games').click();
-    % endif
-  } else {
-    // Focus the "Test branch" field on page load for new tests
-    document.getElementById('test-branch').focus();
-  }
-
-  function updateOdds(checkbox) {
-    if (checkbox.checked) {
-      document.querySelector('.new_tc').style.display = "";
-      document.querySelector('[for=tc]').textContent = "Base TC";
-    } else {
-      document.querySelector('.new_tc').style.display = "none";
-      document.getElementById('new_tc').value = document.getElementById('tc').value;
-      document.querySelector('[for=tc]').textContent = "TC";
-    }
-  }
-
-  document.getElementById('checkbox-time-odds').addEventListener("change", (e) => {
-    updateOdds(e.target);
-  });
-
-  function toggleBook(checkbox) {
-    if (checkbox.checked) {
-      document.getElementById('test-book').style.display = "";
-    } else {
-      document.getElementById('test-book').style.display = "none";
-      document.getElementById('book').value = "${test_book}";
-      toggleBookDepth(document.getElementById('book').value);
-    }
-  }
-
-  document.getElementById('checkbox-book-visibility').addEventListener("change", (e) => {
-    toggleBook(e.target);
-  });
-</script>
-
 <script
   src="/js/spsa_new.js?5&?v=${cache_busters['js/spsa_new.js']}"
   integrity="sha384-${cache_busters['js/spsa_new.js']}"
@@ -989,73 +680,382 @@
 ></script>
 
 <script>
-  function spsaWork() {
-    /* parsing/computing */
-    if (!document.getElementById('autoselect').checked) {
+  (() => {
+    let submitted = false;
+    window.addEventListener("pageshow", () => {
+      // make sure submitted is set back to false
+      submitted = false;
+
+      // make sure the submit test button is enabled again and has the correct text.
+      document.getElementById('submit-test').disabled = false;
+      document.getElementById('submit-test').textContent = 'Submit test';
+
+      // Also make sure that the fields have the right visibility.
+      updateOdds(document.getElementById('checkbox-time-odds'));
+      toggleBook(document.getElementById('checkbox-book-visibility'));
+    });
+
+    let stopRule = null;
+
+    const presetBounds = {
+      'standard STC': [ 0.0, 2.0],
+      'standard LTC': [ 0.5, 2.5],
+      'regression STC': [-1.75, 0.25],
+      'regression LTC': [-1.75, 0.25],
+    };
+
+    const isRun = ${'true' if is_rerun else 'false'};
+
+    function updateSprtBounds(selectedBounds) {
+      if (selectedBounds === "custom") {
+        document
+          .querySelectorAll(".custom-bounds")
+          .forEach((bound) => (bound.style.display = ""));
+      } else {
+        document
+          .querySelectorAll(".custom-bounds")
+          .forEach((bound) => (bound.style.display = "none"));
+        const bounds = presetBounds[selectedBounds];
+        document.getElementById("sprt_elo0").value = bounds[0];
+        document.getElementById("sprt_elo1").value = bounds[1];
+      }
+    }
+
+    function toggleBookDepth(book) {
+      if (book.match('\\.pgn$')) {
+        document.querySelector('.book-depth').style.display = "";
+      } else {
+        document.querySelector('.book-depth').style.display = "none";
+      }
+    }
+
+    document
+      .getElementById("bounds")
+      .addEventListener("change", (e) => {
+        updateSprtBounds(e.target.value);
+      });
+
+    let initialBaseBranch = document.getElementById("base-branch").value;
+    let initialBaseSignature = document.getElementById("base-signature").value;
+    let spsa = false;
+
+    // Test type is changed
+    document.querySelectorAll("[name=test-type]").forEach((btn) =>
+      btn.addEventListener("click", (e) => {
+        if (!spsa) {
+          initialBaseBranch = document.getElementById("base-branch").value;
+          initialBaseSignature = document.getElementById("base-signature").value;
+        }
+        const btn = e.target;
+
+        // choose test type - STC, LTC - sets preset values
+        let testOptions = null;
+        if (btn.dataset.options) testOptions = btn.dataset.options;
+
+        if (testOptions) {
+          const {
+            name,
+            tc,
+            new_tc,
+            throughput,
+            threads,
+            options,
+            book,
+            stop_rule,
+            bounds,
+            games,
+            test_branch,
+            base_branch,
+            test_signature,
+            base_signature,
+          } = JSON.parse(testOptions);
+          document.getElementById("tc").value = tc;
+          document.getElementById("new_tc").value = new_tc;
+          document.getElementById("throughput").value = throughput;
+          document.getElementById("threads").value = threads;
+          document.getElementById("new-options").value = (
+            options + " " +
+            document
+              .getElementById("new-options")
+              .value.replace(/Hash=[0-9]+ ?/, "")
+          ).replace(/ $/, "");
+          document.getElementById("base-options").value = (
+            options + " " +
+            document
+              .getElementById("base-options")
+              .value.replace(/Hash=[0-9]+ ?/, "")
+          ).replace(/ $/, "");
+
+          document.getElementById("book").value = book;
+          toggleBookDepth(book);
+
+          document.getElementById("checkbox-book-visibility").checked = (book != "${test_book}");
+          toggleBook(document.getElementById("checkbox-book-visibility"));
+
+          document.getElementById(stop_rule).click();
+
+          if (bounds) {
+            document.getElementById("bounds").value = bounds;
+            updateSprtBounds(bounds);
+          }
+
+          if (games) {
+            document.getElementById("num-games").value = games;
+          }
+
+          if (!isRun) {
+            if (test_branch) {
+              document.getElementById("test-branch").value = test_branch;
+            }
+            if (test_signature) {
+              document.getElementById("test-signature").value = test_signature;
+            }
+
+            if (base_branch) {
+              document.getElementById("base-branch").value = base_branch;
+            }
+            if (base_signature) {
+              document.getElementById("base-signature").value = base_signature;
+            }
+          }
+
+          if (name === "PT" || name === "PT SMP") {
+            let info = (name === "PT SMP") ? "SMP " : "";
+            info +=
+              'Progression test of "${master_info["message"]}" of ${master_info["date"]} vs ${pt_version}.';
+            document.getElementById("run-info").value = info;
+          }
+
+          spsaWork();
+        }
+      })
+    );
+
+    function testBranchHandler() {
+      document.getElementById("base-branch").value =
+        document.getElementById("test-branch").value;
+    }
+
+    function testSignatureHandler() {
+      document.getElementById("base-signature").value =
+        document.getElementById("test-signature").value;
+    }
+
+    // Stop rule is changed
+    document.querySelectorAll("[name=stop-rule]").forEach((btn) =>
+      btn.addEventListener("click", function () {
+        stopRule = btn.value;
+
+        if (stopRule) {
+          // Hide all elements that have the class "stop-rule"
+          document
+            .querySelectorAll(".stop-rule")
+            .forEach((el) => (el.style.display = "none"));
+
+          document.getElementById("stop_rule_field").value = stopRule.substring(10);
+
+          // Show all elements that have the class with the same name as the selected stop rule
+          document
+            .querySelectorAll("." + stopRule)
+            .forEach((el) => (el.style.display = ""));
+
+          if (!isRun) {
+            if (stopRule === "stop-rule-spsa") {
+              // base branch and test branch should be the same for SPSA tests
+              document.getElementById("base-branch").readOnly = true;
+              document.getElementById("base-branch").value = document.getElementById("test-branch").value;
+              document
+                .getElementById("test-branch")
+                .addEventListener("input", testBranchHandler);
+              document.getElementById("base-signature").readOnly = true;
+              document.getElementById("base-signature").value = document.getElementById("test-signature").value;
+              document
+                .getElementById("test-signature")
+                .addEventListener("input", testSignatureHandler);
+              spsa = true;
+            } else {
+              document.getElementById("base-branch").removeAttribute("readonly");
+              document.getElementById("base-branch").value = initialBaseBranch;
+              document.getElementById("base-signature").removeAttribute("readonly");
+              document.getElementById("base-signature").value = initialBaseSignature;
+              document
+                .getElementById("test-branch")
+                .removeEventListener("input", testBranchHandler);
+              document
+                .getElementById("test-signature")
+                .removeEventListener("input", testSignatureHandler);
+              spsa = false;
+            }
+          }
+          if (stopRule === "stop-rule-sprt") {
+            updateSprtBounds(document.getElementById("bounds").value);
+          }
+        }
+      })
+    );
+
+    // Only .pgn book types have a book_depth field
+    toggleBookDepth(document.getElementById("book").value);
+    document.getElementById("book").addEventListener("input", (e) => {
+      toggleBookDepth(e.target.value);
+    });
+
+    document
+      .getElementById("create-new-test")
+      .addEventListener("submit", function (e) {
+        const ret = spsaWork(); // Last check that all spsa data are consistent.
+        if (!ret) {
+          return false;
+        }
+        // we want to be able to register users for their own tests
+        if (supportsNotifications() && Notification.permission === "default") {
+          Notification.requestPermission();
+        }
+        if (submitted) {
+          // Don't allow submitting the form more than once
+          e.preventDefault();
+          return;
+        }
+        submitted = true;
+        const submitButton = document.getElementById("submit-test");
+        submitButton.setAttribute("disabled","");
+        submitButton.replaceChildren();
+        const spinner = document.createElement("div");
+        spinner.className = "spinner-border spinner-border-sm";
+        spinner.role = "status";
+        submitButton.append(spinner, " Submitting...");
+      });
+
+    // If the test is a reschedule
+    if (isRun) {
+      // Select the correct fields by default for re-runs
+      const tc = '${args.get('tc')}';
+      if (tc === "10+0.1") {
+        document.getElementById("stc_test").checked = true;
+      } else if (tc === "5+0.05") {
+        document.getElementById("stc_smp_test").checked = true;
+      } else if (tc === "20+0.2") {
+        document.getElementById("ltc_smp_test").checked = true;
+      } else if (tc === "180+1.8") {
+        document.getElementById("vltc_test").checked = true;
+      }
+
+      const threads = '${args.get('threads')}';
+      if (tc === "60+0.6") {
+        if (threads === "1") {
+          document.getElementById("ltc_test").checked = true;
+        } else if (threads === "8") {
+          document.getElementById("vltc_smp_test").checked = true;
+        }
+      }
+
+      % if args.get('spsa'):
+        document.getElementById('stop-rule-spsa').click();
+      % elif not args.get('sprt'):
+        document.getElementById('stop-rule-games').click();
+      % endif
+    } else {
+      // Focus the "Test branch" field on page load for new tests
+      document.getElementById('test-branch').focus();
+    }
+
+    function updateOdds(checkbox) {
+      if (checkbox.checked) {
+        document.querySelector('.new_tc').style.display = "";
+        document.querySelector('[for=tc]').textContent = "Base TC";
+      } else {
+        document.querySelector('.new_tc').style.display = "none";
+        document.getElementById('new_tc').value = document.getElementById('tc').value;
+        document.querySelector('[for=tc]').textContent = "TC";
+      }
+    }
+
+    document.getElementById('checkbox-time-odds').addEventListener("change", (e) => {
+      updateOdds(e.target);
+    });
+
+    function toggleBook(checkbox) {
+      if (checkbox.checked) {
+        document.getElementById('test-book').style.display = "";
+      } else {
+        document.getElementById('test-book').style.display = "none";
+        document.getElementById('book').value = "${test_book}";
+        toggleBookDepth(document.getElementById('book').value);
+      }
+    }
+
+    document.getElementById('checkbox-book-visibility').addEventListener("change", (e) => {
+      toggleBook(e.target);
+    });
+
+    function spsaWork() {
+      /* parsing/computing */
+      if (!document.getElementById('autoselect').checked) {
+        return true;
+      }
+      const params = document.getElementById('spsa_raw_params').value;
+      let s = fishtestToSpsa(params);
+      if (s === null) {
+        alertError("Unable to parse spsa parameters.");
+        return false;
+      }
+      /* estimate the draw ratio */
+      const tc = document.getElementById('tc').value;
+      const dr = drawRatio(tc);
+      if (dr === null) {
+        alertError("Unable to parse time control.");
+        return false;
+      }
+      s.draw_ratio = dr;
+      s = spsaCompute(s);
+      const fs = spsaToFishtest(s);
+      /* Let's go */
+      document.getElementById("spsa_A").value = 0;
+      document.getElementById("spsa_alpha").value = 0.0;
+      document.getElementById("spsa_gamma").value = 0.0;
+      document.getElementById("num-games").value = 1000 * Math.round(s.num_games / 1000);
+      document.getElementById("spsa_raw_params").value = fs.trim();
       return true;
     }
-    const params = document.getElementById('spsa_raw_params').value;
-    let s = fishtestToSpsa(params);
-    if (s === null) {
-      alertError("Unable to parse spsa parameters.");
-      return false;
-    }
-    /* estimate the draw ratio */
-    const tc = document.getElementById('tc').value;
-    const dr = drawRatio(tc);
-    if (dr === null) {
-      alertError("Unable to parse time control.");
-      return false;
-    }
-    s.draw_ratio = dr;
-    s = spsaCompute(s);
-    const fs = spsaToFishtest(s);
-    /* Let's go */
-    document.getElementById("spsa_A").value = 0;
-    document.getElementById("spsa_alpha").value = 0.0;
-    document.getElementById("spsa_gamma").value = 0.0;
-    document.getElementById("num-games").value = 1000 * Math.round(s.num_games / 1000);
-    document.getElementById("spsa_raw_params").value = fs.trim();
-    return true;
-  }
 
-  let saved_A = null;
-  let saved_alpha = null;
-  let saved_gamma = null;
-  let saved_games = null;
-  let saved_params = null;
+    let saved_A = null;
+    let saved_alpha = null;
+    let saved_gamma = null;
+    let saved_games = null;
+    let saved_params = null;
 
-  function spsaEvents() {
-    if (document.getElementById('autoselect')["checked"]) {
-      /* save old stuff */
-      saved_A = document.getElementById("spsa_A").value;
-      saved_alpha = document.getElementById("spsa_alpha").value;
-      saved_gamma = document.getElementById("spsa_gamma").value;
-      saved_games = document.getElementById("num-games").value;
-      saved_params = document.getElementById("spsa_raw_params").value;
-      const ret = spsaWork();
-      if (!ret) {
-        document.getElementById('autoselect').checked = false;
+    function spsaEvents() {
+      if (document.getElementById('autoselect')["checked"]) {
+        /* save old stuff */
+        saved_A = document.getElementById("spsa_A").value;
+        saved_alpha = document.getElementById("spsa_alpha").value;
+        saved_gamma = document.getElementById("spsa_gamma").value;
+        saved_games = document.getElementById("num-games").value;
+        saved_params = document.getElementById("spsa_raw_params").value;
+        const ret = spsaWork();
+        if (!ret) {
+          document.getElementById('autoselect').checked = false;
+        }
+      } else {
+        document.getElementById("spsa_A").value = saved_A;
+        document.getElementById("spsa_alpha").value = saved_alpha;
+        document.getElementById("spsa_gamma").value = saved_gamma;
+        document.getElementById("num-games").value = saved_games;
+        document.getElementById("spsa_raw_params").value = saved_params;
       }
-    } else {
-      document.getElementById("spsa_A").value = saved_A;
-      document.getElementById("spsa_alpha").value = saved_alpha;
-      document.getElementById("spsa_gamma").value = saved_gamma;
-      document.getElementById("num-games").value = saved_games;
-      document.getElementById("spsa_raw_params").value = saved_params;
     }
-  }
 
-  document.getElementById('autoselect').addEventListener("change", spsaEvents);
+    document.getElementById('autoselect').addEventListener("change", spsaEvents);
 
-  document.getElementById('tc').addEventListener("input", (e) => {
-    if (!document.getElementById('autoselect').checked) {
-      return;
-    }
-    const tc = e.target.value;
-    const tc_seconds = tcToSeconds(tc);
-    if (tc_seconds !== null) {
-      spsaWork();
-    }
-  });
+    document.getElementById('tc').addEventListener("input", (e) => {
+      if (!document.getElementById('autoselect').checked) {
+        return;
+      }
+      const tc = e.target.value;
+      const tc_seconds = tcToSeconds(tc);
+      if (tc_seconds !== null) {
+        spsaWork();
+      }
+    });
+  })();
 </script>

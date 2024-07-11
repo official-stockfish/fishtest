@@ -5,29 +5,30 @@
 %>
 
 <script>
-  document.title = "User Management | Stockfish Testing";
-  async function handleToggleUsers() {
-    await DOMContentLoaded();
-    const tableHandlers =
-      [...document.getElementById("users-table-handler").querySelectorAll(".dropdown-item")];
-    tableHandlers.forEach((tableHandler) => {
-      tableHandler.addEventListener("click", (e) => {
-        const tableBodies =
-          [...document.getElementById("users-table").querySelectorAll("tbody")];
+  (() => {
+    document.title = "User Management | Stockfish Testing";
+    async function handleToggleUsers() {
+      await DOMContentLoaded();
+      const tableHandlers =
+        [...document.getElementById("users-table-handler").querySelectorAll(".dropdown-item")];
+      tableHandlers.forEach((tableHandler) => {
+        tableHandler.addEventListener("click", (e) => {
+          const tableBodies =
+            [...document.getElementById("users-table").querySelectorAll("tbody")];
 
-        tableBodies.forEach((tableBody) => {
-          tableBody.classList.add("d-none");
+          tableBodies.forEach((tableBody) => {
+            tableBody.classList.add("d-none");
+          })
+
+          const selectedTbodyId = e.target.dataset.handleTargetCustom;
+          document.getElementById(selectedTbodyId).classList.remove("d-none");
+          document.getElementById("users-table-toggle").textContent = e.target.textContent;
         })
-
-        const selectedTbodyId = e.target.dataset.handleTargetCustom;
-        document.getElementById(selectedTbodyId).classList.remove("d-none");
-        document.getElementById("users-table-toggle").textContent = e.target.textContent;
       })
-    })
-  }
+    }
 
-  handleToggleUsers();
-
+    handleToggleUsers();
+  })();
 </script>
 
 <h2>User Management</h2>

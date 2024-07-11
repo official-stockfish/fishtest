@@ -7,56 +7,58 @@
 %>
 
 <script>
-  document.title = "Workers Management | Stockfish Testing";
+  (() => {
+    document.title = "Workers Management | Stockfish Testing";
 
-  async function handleToggleWorkers() {
-    await DOMContentLoaded();
-    const originalTable = document
-      .getElementById("workers-table")
-      .cloneNode(true);
+    async function handleToggleWorkers() {
+      await DOMContentLoaded();
+      const originalTable = document
+        .getElementById("workers-table")
+        .cloneNode(true);
 
-    const originalRows = Array.from(originalTable.querySelectorAll("tbody tr"));
+      const originalRows = Array.from(originalTable.querySelectorAll("tbody tr"));
 
-    const all = (row, _inputValue) => true;
-    const olderThan5Days = (row, _inputValue) => {
-      const cells = Array.from(row.querySelectorAll("td"));
-      return cells.some((cell) => {
-        const cellText = cell.textContent || cell.innerText;
-        if (cellText.toLowerCase().includes("days ago")) {
-          const daysAgo = parseInt(cellText);
-          return daysAgo > 5;
-        }
-        return false;
-      });
-    };
+      const all = (row, _inputValue) => true;
+      const olderThan5Days = (row, _inputValue) => {
+        const cells = Array.from(row.querySelectorAll("td"));
+        return cells.some((cell) => {
+          const cellText = cell.textContent || cell.innerText;
+          if (cellText.toLowerCase().includes("days ago")) {
+            const daysAgo = parseInt(cellText);
+            return daysAgo > 5;
+          }
+          return false;
+        });
+      };
 
-    const notOlderThan5Days = (row, _inputValue) => {
-      return !olderThan5Days(row, _inputValue);
-    };
+      const notOlderThan5Days = (row, _inputValue) => {
+        return !olderThan5Days(row, _inputValue);
+      };
 
-    filterTable("dummy", "workers-table", originalRows, notOlderThan5Days);
-    document
-      .getElementById("workers-table").classList.remove("d-none");
+      const workerTable = document.getElementById("workers-table");
+      filterTable("dummy", workerTable, originalRows, notOlderThan5Days);
+      workerTable.classList.remove("d-none");
 
-    const tableHandlers =
-      [...document.getElementById("workers-table-handler").querySelectorAll(".dropdown-item")];
-    tableHandlers.forEach((tableHandler) => {
-      tableHandler.addEventListener("click", (e) => {
-        const selected = e.target.dataset.handleTargetCustom;
-        if (selected === "all-workers")
-          filterTable("dummy", "workers-table", originalRows, all);
-        else if (selected === "gt-5days")
-          filterTable("dummy", "workers-table", originalRows, olderThan5Days);
-        else if (selected === "le-5days")
-          filterTable("dummy", "workers-table", originalRows, notOlderThan5Days);
+      const tableHandlers =
+        [...document.getElementById("workers-table-handler").querySelectorAll(".dropdown-item")];
+      tableHandlers.forEach((tableHandler) => {
+        tableHandler.addEventListener("click", (e) => {
+          const workerTable = document.getElementById("workers-table");
+          const selected = e.target.dataset.handleTargetCustom;
+          if (selected === "all-workers")
+            filterTable("dummy", workerTable, originalRows, all);
+          else if (selected === "gt-5days")
+            filterTable("dummy", workerTable, originalRows, olderThan5Days);
+          else if (selected === "le-5days")
+            filterTable("dummy", workerTable, originalRows, notOlderThan5Days);
 
-        document.getElementById("workers-table-toggle").textContent = e.target.textContent;
+          document.getElementById("workers-table-toggle").textContent = e.target.textContent;
+        })
       })
-    })
-  }
+    }
 
-  handleToggleWorkers();
-
+    handleToggleWorkers();
+  })();
 </script>
 
 <h2>Workers Management</h2>

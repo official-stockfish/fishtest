@@ -4,26 +4,26 @@
   from fishtest.util import format_group
 %>
 
-% if profile:
-  <script>
-    document.title = "Profile | Stockfish Testing";
-    async function handleGitHubToken() {
-      await DOMContentLoaded();
-      document.getElementById("github_token").value = localStorage.getItem("github_token") || "";
-      document.getElementById("profile_form").addEventListener("submit", (e) => {
-          e.preventDefault();
-          const githubToken = document.getElementById("github_token").value;
-          localStorage.setItem("github_token", githubToken);
-          e.target.submit();
-      });
-    }
-    handleGitHubToken();
-  </script>
-% else:
-  <script>
-    document.title = "User Management | Stockfish Testing";
-  </script>
-% endif
+<script>
+  (() => {
+    % if profile:
+      document.title = "Profile | Stockfish Testing";
+      async function handleGitHubToken() {
+        await DOMContentLoaded();
+        document.getElementById("github_token").value = localStorage.getItem("github_token") || "";
+        document.getElementById("profile_form").addEventListener("submit", (e) => {
+            e.preventDefault();
+            const githubToken = document.getElementById("github_token").value;
+            localStorage.setItem("github_token", githubToken);
+            e.target.submit();
+        });
+      }
+      handleGitHubToken();
+    % else:
+      document.title = "User Management | Stockfish Testing";
+    % endif
+  })();
+</script>
 
 <div class="col-limited-size">
   <header class="text-md-center py-2">
