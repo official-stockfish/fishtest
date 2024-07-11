@@ -1563,7 +1563,7 @@ def run_games(
                 "-repeat",
                 "-games",
                 "2",
-                "rounds",
+                "-rounds",
                 str(int(games_to_play) // 2),
                 "-tournament",
                 "gauntlet",
