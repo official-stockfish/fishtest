@@ -160,7 +160,7 @@ function notifyElo(entryStart, entryFinished) {
   });
 }
 
-const designCapacity = 15;
+const designCapacity = 20;
 
 function getNotifications() {
   let notifications;
