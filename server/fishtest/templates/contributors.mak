@@ -29,7 +29,8 @@
 
     const searchInput = document.getElementById("search_contributors");
     searchInput.addEventListener("input", (e) => {
-      filterTable(e.target.value, "contributors_table", originalRows, includes);
+      const contributorsTable = document.getElementById("contributors_table");
+      filterTable(e.target.value, contributorsTable, originalRows, includes);
     });
   })();
 </script>
