@@ -52,7 +52,7 @@ def pagination(page_idx, num, page_size, query_params):
     pages = [
         {
             "idx": "Prev",
-            "url": "?page={}".format(page_idx),
+            "url": "?page={}".format(page_idx) + query_params,
             "state": "disabled" if page_idx == 0 else "",
         }
     ]
