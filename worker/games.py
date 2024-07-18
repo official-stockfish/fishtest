@@ -858,88 +858,6 @@ def enqueue_output(stream, queue):
         queue.put(line)
 
 
-def update_pentanomial(line, rounds):
-    saved_rounds = copy.deepcopy(rounds)
-    saved_line = line
-
-    def result_to_score(_result):
-        if _result == "1-0":
-            return 2
-        elif _result == "0-1":
-            return 0
-        elif _result == "1/2-1/2":
-            return 1
-        else:
-            return -1
-
-    if "pentanomial" not in rounds.keys():
-        rounds["pentanomial"] = 5 * [0]
-    if "trinomial" not in rounds.keys():
-        rounds["trinomial"] = 3 * [0]
-
-    saved_sum_trinomial = sum(rounds["trinomial"])
-    current = {}
-
-    # Parse line like this:
-    # Finished game 4 (Base-SHA vs New-SHA): 1/2-1/2 {Draw by adjudication}
-    line = line.split()
-    if line[0] == "Finished" and line[1] == "game" and len(line) >= 7:
-        round_ = int(line[2])
-        rounds[round_] = current
-        current["white"] = line[3][1:]
-        current["black"] = line[5][:-2]
-        i = current["result"] = result_to_score(line[6])
-        if round_ % 2 == 0:
-            if i != -1:
-                rounds["trinomial"][2 - i] += 1  # reversed colors
-            odd = round_ - 1
-            even = round_
-        else:
-            if i != -1:
-                rounds["trinomial"][i] += 1
-            odd = round_
-            even = round_ + 1
-        if odd in rounds.keys() and even in rounds.keys():
-            assert rounds[odd]["white"][0:3] == "New"
-            assert rounds[odd]["white"] == rounds[even]["black"]
-            assert rounds[odd]["black"] == rounds[even]["white"]
-            i = rounds[odd]["result"]
-            j = rounds[even]["result"]  # even is reversed colors
-            if i != -1 and j != -1:
-                rounds["pentanomial"][i + 2 - j] += 1
-                del rounds[odd]
-                del rounds[even]
-                rounds["trinomial"][i] -= 1
-                rounds["trinomial"][2 - j] -= 1
-                assert rounds["trinomial"][i] >= 0
-                assert rounds["trinomial"][2 - j] >= 0
-
-    # make sure something happened, but not too much
-    # this sometimes fails: we want to understand why
-    assertion = (
-        current.get("result", -1000) == -1
-        or abs(sum(rounds["trinomial"]) - saved_sum_trinomial) == 1
-    )
-    if not assertion:
-        raise WorkerException(
-            "update_pentanomial() failed. line={}; rounds before={}; rounds after={}".format(
-                saved_line, saved_rounds, rounds
-            )
-        )
-
-
-def validate_pentanomial(wld, rounds):
-    def results_to_score(results):
-        return sum([results[i] * (i / 2.0) for i in range(len(results))])
-
-    LDW = [wld[1], wld[2], wld[0]]
-    s3 = results_to_score(LDW)
-    s5 = results_to_score(rounds["pentanomial"]) + results_to_score(rounds["trinomial"])
-    assert sum(LDW) == 2 * sum(rounds["pentanomial"]) + sum(rounds["trinomial"])
-    epsilon = 1e-4
-    assert abs(s5 - s3) < epsilon
-
-
 def parse_fastchess_output(
     p, current_state, remote, result, spsa_tuning, games_to_play, batch_size, tc_limit
 ):
@@ -951,6 +869,23 @@ def parse_fastchess_output(
 
     saved_stats = copy.deepcopy(result["stats"])
     rounds = {}
+
+    # patterns used to obtain fastchess WLD and ptnml results from the following block of info:
+    # --------------------------------------------------
+    # Results of New-e443b2459e vs Base-e443b2459e (0.601+0.006, 1t, 16MB, UHO_Lichess_4852_v1.epd):
+    # Elo: -9.20 +/- 20.93, nElo: -11.50 +/- 26.11
+    # LOS: 19.41 %, DrawRatio: 42.35 %, PairsRatio: 0.88
+    # Games: 680, Wins: 248, Losses: 266, Draws: 166, Points: 331.0 (48.68 %)
+    # Ptnml(0-2): [43, 61, 144, 55, 37], WL/DD Ratio: 4.76
+    # --------------------------------------------------
+    pattern_WLD = re.compile(
+        r"Games: ([0-9]+), Wins: ([0-9]+), Losses: ([0-9]+), Draws: ([0-9]+), Points: ([0-9.]+) \("
+    )
+    pattern_ptnml = re.compile(
+        r"Ptnml\(0-2\): \[([0-9]+), ([0-9]+), ([0-9]+), ([0-9]+), ([0-9]+)\]"
+    )
+    fastchess_WLD_results = None
+    fastchess_ptnml_results = None
 
     q = Queue()
     t_output = threading.Thread(target=enqueue_output, args=(p.stdout, q), daemon=True)
@@ -968,7 +903,7 @@ def parse_fastchess_output(
         except Empty:
             if p.poll() is not None:
                 break
-            time.sleep(1)
+            time.sleep(0.1)
             continue
 
         line = hash_pattern.sub(shorten_hash, line)
@@ -979,7 +914,11 @@ def parse_fastchess_output(
             if num_games_updated == games_to_play:
                 print("Finished match cleanly")
             else:
-                raise WorkerException("Finished match uncleanly")
+                raise WorkerException(
+                    "Finished match uncleanly {} vs. required {}".format(
+                        num_games_updated, games_to_play
+                    )
+                )
 
         # Parse line like this:
         # Warning: New-SHA doesn't have option ThreatBySafePawn
@@ -1001,48 +940,60 @@ def parse_fastchess_output(
         if "on time" in line:
             result["stats"]["time_losses"] += 1
 
-        # Parse line like this:
-        # Score of stockfish vs base: 0 - 0 - 1  [0.500] 1
-        if "Score" in line:
-            # Parsing sometimes fails. We want to understand why.
+        # fast-chess WLD and pentanomial output parsing
+        m = pattern_WLD.search(line)
+        if m:
             try:
-                chunks = line.split(":")
-                chunks = chunks[1].split()
-                wld = [int(chunks[0]), int(chunks[2]), int(chunks[4])]
-            except:
-                raise WorkerException("Failed to parse score line: {}".format(line))
+                fastchess_WLD_results = {
+                    "games": int(m.group(1)),
+                    "wins": int(m.group(2)),
+                    "losses": int(m.group(3)),
+                    "draws": int(m.group(4)),
+                    "points": float(m.group(5)),
+                }
+            except Exception as e:
+                raise WorkerException(
+                    "Failed to parse WLD line: {} leading to: {}".format(line, str(e))
+                )
 
-            validate_pentanomial(
-                wld, rounds
-            )  # check if fast-chess result is compatible with
-            # our own bookkeeping
+        m = pattern_ptnml.search(line)
+        if m:
+            try:
+                fastchess_ptnml_results = [int(m.group(i)) for i in range(1, 6)]
+            except Exception as e:
+                raise WorkerException(
+                    "Failed to parse ptnml line: {} leading to: {}".format(line, str(e))
+                )
 
-            pentanomial = [
-                rounds["pentanomial"][i] + saved_stats["pentanomial"][i]
+        # if we have parsed the block properly let's update results
+        if (fastchess_ptnml_results is not None) and (
+            fastchess_WLD_results is not None
+        ):
+            result["stats"]["pentanomial"] = [
+                fastchess_ptnml_results[i] + saved_stats["pentanomial"][i]
                 for i in range(5)
             ]
-            result["stats"]["pentanomial"] = pentanomial
 
-            wld_pairs = {}  # trinomial frequencies of completed game pairs
-
-            # rounds['trinomial'] is ordered ldw
-            wld_pairs["wins"] = wld[0] - rounds["trinomial"][2]
-            wld_pairs["losses"] = wld[1] - rounds["trinomial"][0]
-            wld_pairs["draws"] = wld[2] - rounds["trinomial"][1]
-
-            result["stats"]["wins"] = wld_pairs["wins"] + saved_stats["wins"]
-            result["stats"]["losses"] = wld_pairs["losses"] + saved_stats["losses"]
-            result["stats"]["draws"] = wld_pairs["draws"] + saved_stats["draws"]
+            result["stats"]["wins"] = (
+                fastchess_WLD_results["wins"] + saved_stats["wins"]
+            )
+            result["stats"]["losses"] = (
+                fastchess_WLD_results["losses"] + saved_stats["losses"]
+            )
+            result["stats"]["draws"] = (
+                fastchess_WLD_results["draws"] + saved_stats["draws"]
+            )
 
             if spsa_tuning:
                 spsa = result["spsa"]
-                spsa["wins"] = wld_pairs["wins"]
-                spsa["losses"] = wld_pairs["losses"]
-                spsa["draws"] = wld_pairs["draws"]
+                spsa["wins"] = fastchess_WLD_results["wins"]
+                spsa["losses"] = fastchess_WLD_results["losses"]
+                spsa["draws"] = fastchess_WLD_results["draws"]
 
-            num_games_finished = (
-                wld_pairs["wins"] + wld_pairs["losses"] + wld_pairs["draws"]
-            )
+            num_games_finished = fastchess_WLD_results["games"]
+
+            fastchess_ptnml_results = None
+            fastchess_WLD_results = None
 
             assert (
                 2 * sum(result["stats"]["pentanomial"])
@@ -1050,7 +1001,7 @@ def parse_fastchess_output(
                 + result["stats"]["losses"]
                 + result["stats"]["draws"]
             )
-            assert num_games_finished == 2 * sum(rounds["pentanomial"])
+            assert num_games_finished == 2 * sum(result["stats"]["pentanomial"])
             assert num_games_finished <= num_games_updated + batch_size
             assert num_games_finished <= games_to_play
 
@@ -1093,10 +1044,6 @@ def parse_fastchess_output(
                 else:
                     current_state["last_updated"] = datetime.now(timezone.utc)
 
-        # Act on line like this:
-        # Finished game 4 (Base-SHA vs New-SHA): 1/2-1/2 {Draw by adjudication}
-        if line.startswith("Finished game"):
-            update_pentanomial(line, rounds)
     else:
         raise WorkerException(
             "{} is past end time {}".format(datetime.now(timezone.utc), end_time)
@@ -1544,6 +1491,16 @@ def run_games(
                 str(int(games_to_play) // 2),
                 "-tournament",
                 "gauntlet",
+            ]
+            + [
+                "-ratinginterval",
+                "1",
+                "-scoreinterval",
+                "1",
+                "-autosaveinterval",
+                "0",
+                "-report",
+                "penta=true",
             ]
             + pgnout
             + ["-site", "https://tests.stockfishchess.org/tests/view/" + run["_id"]]
