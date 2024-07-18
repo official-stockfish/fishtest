@@ -415,7 +415,7 @@ def verify_required_fastchess(fastchess_path, fastchess_sha):
         ) as p:
             errors = p.stderr.read()
             pattern = re.compile(
-                r"fast-chess alpha [0-9]*.[0-9]*.[0-9]* [0-9]*-([0-9a-f-]*) \(compiled with cutechess output\)"
+                r"fast-chess alpha [0-9]*.[0-9]*.[0-9]* [0-9]*-([0-9a-f-]*)$"
             )
             short_sha = ""
             for line in iter(p.stdout.readline, ""):
@@ -499,7 +499,7 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache):
             f"make -j{concurrency} tests CXX={compiler} GIT_SHA={fastchess_sha[0:8]} GIT_DATE=01010101",
             str(tmp_dir / prefix / ("fast-chess-tests" + EXE_SUFFIX)),
             "make clean",
-            f"make -j{concurrency} USE_CUTE=true CXX={compiler} GIT_SHA={fastchess_sha[0:8]} GIT_DATE=01010101",
+            f"make -j{concurrency} CXX={compiler} GIT_SHA={fastchess_sha[0:8]} GIT_DATE=01010101",
         ]
 
         for cmd in cmds:
