@@ -425,24 +425,29 @@ def signup(request):
                 request.session.flash("Captcha failed", "error")
                 return {}
 
-    result = request.userdb.create_user(
-        username=signup_username,
-        password=signup_password,
-        email=validated_email,
-        tests_repo=tests_repo,
-    )
-    if result is None:
-        request.session.flash("Error! Invalid username or password", "error")
-    elif not result:
+    if (
+        request.userdb.find_by_username(signup_username)
+        or request.userdb.find_by_email(validated_email)
+        or request.actiondb.action_related_to_user(signup_username)
+    ):
         request.session.flash("Username or email is already registered", "error")
     else:
-        request.session.flash(
-            "Account created! "
-            "To avoid spam, a person will now manually approve your new account. "
-            "This is usually quick but sometimes takes a few hours. "
-            "Thank you for contributing!"
+        result = request.userdb.create_user(
+            username=signup_username,
+            password=signup_password,
+            email=validated_email,
+            tests_repo=tests_repo,
         )
-        return HTTPFound(location=request.route_url("login"))
+        if result is None:
+            request.session.flash("Error! Invalid username or password", "error")
+        else:
+            request.session.flash(
+                "Account created! "
+                "To avoid spam, a person will now manually approve your new account. "
+                "This is usually quick but sometimes takes a few hours. "
+                "Thank you for contributing!"
+            )
+            return HTTPFound(location=request.route_url("login"))
     return {}
 
 
@@ -613,6 +618,16 @@ def user(request):
     user_data = request.userdb.get_user(user_name)
     if user_data is None:
         raise HTTPNotFound()
+
+    if (
+        profile
+        and "delete_own_account" in request.POST
+        and request.POST["delete_own_account"] == user_name
+    ):
+        removed = request.userdb.remove_user(user_data)
+        if removed:
+            logout(request)
+
     if "user" in request.POST:
         if profile:
             old_password = request.params.get("old_password").strip()
