@@ -58,6 +58,11 @@ class ActionDb:
 
         return actions_list, count
 
+    def action_related_to_user(self, username):
+        q = {"username": username}
+        action_exists = self.actions.find_one(q)
+        return action_exists is not None
+
     def failed_task(self, username=None, run=None, task_id=None, message=None):
         task = run["tasks"][task_id]
         self.insert_action(
