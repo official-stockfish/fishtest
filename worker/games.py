@@ -1299,7 +1299,7 @@ def run_games(
     start_game_index = opening_offset + input_total_games
     run_seed = int(hashlib.sha1(run["_id"].encode("utf-8")).hexdigest(), 16) % (2**30)
 
-    # Format options according to fastchess syntax.
+    # Format options according to fast-chess syntax.
     def parse_options(s):
         results = []
         chunks = s.split("=")
@@ -1531,7 +1531,7 @@ def run_games(
         if any(substring in book.upper() for substring in ["FRC", "960"]):
             variant = "fischerandom"
 
-        # Run fastchess binary.
+        # Run fast-chess binary.
         fastchess = "fast-chess" + EXE_SUFFIX
         cmd = (
             [

@@ -397,7 +397,7 @@ def get_credentials(config, options, args):
 
 
 def verify_required_fastchess(fastchess_path, fastchess_sha):
-    # Verify that fastchess is working and has the required minimum version.
+    # Verify that fast-chess is working and has the required minimum version.
 
     if not fastchess_path.exists():
         return False
@@ -473,7 +473,7 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache):
             + fastchess_sha
         )
 
-        print("Building fast chess from sources at {}".format(item_url))
+        print("Building fast-chess from sources at {}".format(item_url))
 
         should_cache = False
         blob = cache_read(global_cache, fastchess_sha + ".zip")
