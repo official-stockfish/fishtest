@@ -1612,6 +1612,10 @@ def tests_view(request):
     if show_task >= len(run["tasks"]) or show_task < -1:
         show_task = -1
 
+    is_pt = (
+        run["args"]["new_tag"] == "master"
+        and run["args"]["base_tag"] == request.rundb.pt_info["pt_branch"]
+    )
     same_user = is_same_user(request, run)
 
     return {
@@ -1628,7 +1632,7 @@ def tests_view(request):
         "follow": follow,
         "can_modify_run": can_modify_run(request, run),
         "same_user": same_user,
-        "pt_info": request.rundb.pt_info,
+        "is_pt": is_pt,
     }
 
 

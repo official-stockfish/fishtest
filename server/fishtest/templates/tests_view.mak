@@ -637,7 +637,7 @@
   async function toggleTasks() {
     const button = document.getElementById("tasks-button");
     const active = button.textContent.trim() === "Hide";
-    if (active){
+    if (active) {
       button.textContent = "Show";
     }
     else {
@@ -872,7 +872,7 @@
           dots = 3; // fall back to the three dot diff request as the diff will be rebased
       % endif
     % else:
-      % if run["args"]["new_tag"] == "master" and run["args"]["base_tag"] == pt_info["pt_branch"]:
+      % if is_pt:
           dots = 3; // fall back to the three dot in case of PTs since official is always rebased
       % endif
       const apiUrlBase = apiUrlNew;
@@ -907,7 +907,9 @@
           console.warn("Could not save diff in localStorage");
         }
       }
-      fetchComments(diffApiUrl, options);
+      % if not is_pt:
+        fetchComments(diffApiUrl, options);
+      % endif
     } catch (e) {
       console.error(e);
       text = e + "\n" + "Suggested Fix: Most probably API limit rate exceeded, please try to add a GitHub personal token in your profile or 'View on GitHub'.";
