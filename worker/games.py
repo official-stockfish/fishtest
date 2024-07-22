@@ -1244,7 +1244,7 @@ def run_games(
     if "start" in task:
         print("Variable task sizes used. Opening offset = {}".format(opening_offset))
     start_game_index = opening_offset + input_total_games
-    run_seed = int(hashlib.sha1(run["_id"].encode("utf-8")).hexdigest(), 16) % (2**30)
+    run_seed = int(hashlib.sha1(run["_id"].encode("utf-8")).hexdigest(), 16) % (2**64)
 
     # Format options according to fast-chess syntax.
     def parse_options(s):

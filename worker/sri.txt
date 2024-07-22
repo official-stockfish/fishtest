@@ -1,5 +1,9 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 {"__version": 243, "updater.py": "Mg+pWOgGA0gSo2TuXuuLCWLzwGwH91rsW1W3ixg3jYauHQpRMtNdGnCfuD1GqOhV", "worker.py": "0XzbFWIVnI8/XA6Lvu4ZsPdrP2pR6+5blf7insff0J2a0heeiagkQ6uv3q8S1SUO", "games.py": "9dFaa914vpqT7q4LLx2LlDdYwK6QFVX3h7+XRt18ATX0lt737rvFeBIiqakkttNC"}
 =======
 {"__version": 242, "updater.py": "Mg+pWOgGA0gSo2TuXuuLCWLzwGwH91rsW1W3ixg3jYauHQpRMtNdGnCfuD1GqOhV", "worker.py": "MCl1VBsGmNS09sPurO7+yEczSqeGA2PV44EBHyDqA5UFhEiDxKkoGbuqhw38hbDz", "games.py": "2ZEQMyBYdSIk7e7Z1jsorBD33E9cKqrryCci0NfYDhoKdZCWbKH8tNqQnhNSFgDL"}
 >>>>>>> dc51a478 (Switch to native fast-chess output.)
+=======
+{"__version": 242, "updater.py": "Mg+pWOgGA0gSo2TuXuuLCWLzwGwH91rsW1W3ixg3jYauHQpRMtNdGnCfuD1GqOhV", "worker.py": "MCl1VBsGmNS09sPurO7+yEczSqeGA2PV44EBHyDqA5UFhEiDxKkoGbuqhw38hbDz", "games.py": "BzNVX1zlHRuMtutT24IaZHA1O0f8EOL0aiPQUB3ET9G8vf4ig6W+FSza3JRdIi6M"}
+>>>>>>> 1596988e (run_seed to 64bit)
