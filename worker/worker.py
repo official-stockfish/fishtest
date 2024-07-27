@@ -125,7 +125,7 @@ Setup task          <github>/rate_limit                                         
                     <fishtest>/api/nn/<nnue>                                    GET
                     <github-books>/git/trees/master                             GET
                     <github-books>/git/trees/master/blobs/<sha-book>            GET
-                    <github>/repos/Disservin/fast-chess/zipball/<sha>           GET
+                    <github>/repos/Disservin/fastchess/zipball/<sha>           GET
                     <github>/repos/<user-repo>/zipball/<sha>                    GET
 
 Main loop           <fishtest>/api/update_task                                  POST
@@ -397,7 +397,7 @@ def get_credentials(config, options, args):
 
 
 def verify_required_fastchess(fastchess_path, fastchess_sha):
-    # Verify that fast-chess is working and has the required minimum version.
+    # Verify that fastchess is working and has the required minimum version.
 
     if not fastchess_path.exists():
         return False
@@ -415,7 +415,7 @@ def verify_required_fastchess(fastchess_path, fastchess_sha):
         ) as p:
             errors = p.stderr.read()
             pattern = re.compile(
-                r"fast-chess alpha [0-9]*.[0-9]*.[0-9]* [0-9]*-([0-9a-f-]*)$"
+                r"fastchess alpha [0-9]*.[0-9]*.[0-9]* [0-9]*-([0-9a-f-]*)$"
             )
             short_sha = ""
             for line in iter(p.stdout.readline, ""):
@@ -424,12 +424,12 @@ def verify_required_fastchess(fastchess_path, fastchess_sha):
                     print("Found", line.strip())
                     short_sha = m.group(1)
     except (OSError, subprocess.SubprocessError) as e:
-        print("Unable to run fast-chess. Error: {}".format(str(e)))
+        print("Unable to run fastchess. Error: {}".format(str(e)))
         return False
 
     if p.returncode != 0:
         print(
-            "Unable to run fast-chess. Return code: {}. Error: {}".format(
+            "Unable to run fastchess. Return code: {}. Error: {}".format(
                 format_return_code(p.returncode), errors
             )
         )
@@ -437,13 +437,13 @@ def verify_required_fastchess(fastchess_path, fastchess_sha):
 
     if len(short_sha) < 7:
         print(
-            "Unable to find a suitable sha of length 7 or more in the fast-chess version."
+            "Unable to find a suitable sha of length 7 or more in the fastchess version."
         )
         return False
 
     if not fastchess_sha.startswith(short_sha):
         print(
-            "fast-chess sha {} required but the version shows {}".format(
+            "fastchess sha {} required but the version shows {}".format(
                 fastchess_sha, short_sha
             )
         )
@@ -457,10 +457,10 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache):
     testing_dir = worker_dir / "testing"
     testing_dir.mkdir(exist_ok=True)
 
-    fastchess_sha = "f1ae6f8e13f49fd649c350d70d3e1ef24d01f373"
+    fastchess_sha = "58c8fb35c26fe5afffc21364afa7dbadc0afa909"
     username = "Disservin"
 
-    fastchess = "fast-chess" + EXE_SUFFIX
+    fastchess = "fastchess" + EXE_SUFFIX
     if verify_required_fastchess(testing_dir / fastchess, fastchess_sha):
         return True
 
@@ -469,11 +469,11 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache):
         item_url = (
             "https://api.github.com/repos/"
             + username
-            + "/fast-chess/zipball/"
+            + "/fastchess/zipball/"
             + fastchess_sha
         )
 
-        print("Building fast-chess from sources at {}".format(item_url))
+        print("Building fastchess from sources at {}".format(item_url))
 
         should_cache = False
         blob = cache_read(global_cache, fastchess_sha + ".zip")
@@ -497,7 +497,7 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache):
 
         cmds = [
             f"make -j{concurrency} tests CXX={compiler} GIT_SHA={fastchess_sha[0:8]} GIT_DATE=01010101",
-            str(tmp_dir / prefix / ("fast-chess-tests" + EXE_SUFFIX)),
+            str(tmp_dir / prefix / ("fastchess-tests" + EXE_SUFFIX)),
             "make clean",
             f"make -j{concurrency} CXX={compiler} GIT_SHA={fastchess_sha[0:8]} GIT_DATE=01010101",
         ]
@@ -520,13 +520,13 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache):
                     "Executing {} failed. Error: {}".format(cmd, errors)
                 )
 
-        shutil.copy("fast-chess" + EXE_SUFFIX, testing_dir)
+        shutil.copy("fastchess" + EXE_SUFFIX, testing_dir)
         os.chdir(cd)
         shutil.rmtree(tmp_dir)
 
     except Exception as e:
         print(
-            "Exception downloading, extracting or building fast-chess:\n",
+            "Exception downloading, extracting or building fastchess:\n",
             e,
             sep="",
             file=sys.stderr,
@@ -829,7 +829,7 @@ def setup_parameters(worker_dir):
 
     # Limit concurrency so that at least STC tests can run with the evailable memory
     # The memory need per engine is 16 for the TT Hash, 10 for the process 138 for the net and 16 per thread
-    # 60 is the need for fast-chess
+    # 60 is the need for fastchess
     # These numbers need to be up-to-date with the server values
     STC_memory = 2 * (16 + 10 + 138 + 16)
     max_concurrency = int((options.max_memory - 60) / STC_memory)
@@ -1531,7 +1531,7 @@ def worker():
     if not verify_toolchain():
         return 1
 
-    # Make sure we have a working fast-chess
+    # Make sure we have a working fastchess
     if not setup_fastchess(
         worker_dir, compiler, options.concurrency, options.global_cache
     ):
