@@ -202,7 +202,7 @@ def workers(request):
             w["body"] = worker_email(
                 w["worker_name"],
                 blocker_name,
-                w["message"],
+                w.get("notes", [{}])[-1].get("message", "No message available"),
                 request.host_url,
                 w["blocked"],
             )
@@ -247,9 +247,17 @@ def workers(request):
                 )
                 message = message[:max_chars]
             message = normalize_lf(message)
+            if message.strip() == "":
+                request.session.flash(
+                    "A new message is required for unblocking/blocking workers", "error"
+                )
+                return home(request)
             was_blocked = request.workerdb.get_worker(worker_name)["blocked"]
             request.rundb.workerdb.update_worker(
-                worker_name, blocked=blocked, message=message
+                worker_name,
+                blocked=blocked,
+                message=message,
+                username=blocker_name,
             )
             if blocked != was_blocked:
                 request.session.flash(
@@ -267,7 +275,7 @@ def workers(request):
         "show_admin": True,
         "worker_name": worker_name,
         "blocked": w["blocked"],
-        "message": w["message"],
+        "notes": w.get("notes", []),
         "show_email": is_approver,
         "last_updated": w["last_updated"],
         "blocked_workers": blocked_workers,
