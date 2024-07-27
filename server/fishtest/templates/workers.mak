@@ -66,14 +66,20 @@
   <form method="POST">
     <div class="mb-3">Last changed: ${delta_date(diff_date(last_updated)) if last_updated is not None else "Never"}</div>
     <div class="mb-3">
-      % if message:
-        <label for="messageView" class="form-label">Issues</label>
-        <textarea
-          id="messageView"
-          rows="6"
-          class="form-control mb-4"
-          readonly
-          >${message}</textarea>
+      % if notes and len(notes) > 0:
+        <label for="messageView" class="form-label">Notes</label>
+          <textarea
+            id="messageView"
+            rows="7"
+            class="form-control mb-4"
+            readonly
+          >
+          % for note in notes:
+${note["username"]} ${note["time"].strftime("%Y-%m-%d %H:%M:%S %Z")}
+${note["message"]}
+
+           % endfor
+           </textarea>
       % endif
   
       <label for="messageInput" class="form-label">New Notes</label>
