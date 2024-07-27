@@ -923,13 +923,13 @@ def parse_fastchess_output(
         # Parse line like this:
         # Warning: New-SHA doesn't have option ThreatBySafePawn
         if "Warning:" in line and "doesn't have option" in line:
-            message = r'fast-chess says: "{}"'.format(line)
+            message = r'fastchess says: "{}"'.format(line)
             raise RunException(message)
 
         # Parse line like this:
         # Warning: Invalid value for option P: -354
         if "Warning:" in line and "Invalid value" in line:
-            message = r'fast-chess says: "{}"'.format(line)
+            message = r'fastchess says: "{}"'.format(line)
             raise RunException(message)
 
         # Parse line like this:
@@ -940,7 +940,7 @@ def parse_fastchess_output(
         if "on time" in line:
             result["stats"]["time_losses"] += 1
 
-        # fast-chess WLD and pentanomial output parsing
+        # fastchess WLD and pentanomial output parsing
         m = pattern_WLD.search(line)
         if m:
             try:
@@ -1083,7 +1083,7 @@ def launch_fastchess(
         w_params = []
         b_params = []
 
-    # Run fast-chess binary.
+    # Run fastchess binary.
     # Stochastic rounding and probability for float N.p: (N, 1-p); (N+1, p)
     idx = cmd.index("_spsa_")
     cmd = (
@@ -1141,13 +1141,13 @@ def launch_fastchess(
                     tc_limit,
                 )
             finally:
-                # We nicely ask fast-chess to stop.
+                # We nicely ask fastchess to stop.
                 try:
                     send_sigint(p)
                 except Exception as e:
                     print("\nException in send_sigint:\n", e, sep="", file=sys.stderr)
                 # now wait...
-                print("\nWaiting for fast-chess to finish ... ", end="", flush=True)
+                print("\nWaiting for fastchess to finish ... ", end="", flush=True)
                 try:
                     p.wait(timeout=FASTCHESS_KILL_TIMEOUT)
                 except subprocess.TimeoutExpired:
@@ -1157,12 +1157,12 @@ def launch_fastchess(
                     print("done", flush=True)
     except (OSError, subprocess.SubprocessError) as e:
         print(
-            "Exception starting fast-chess:\n",
+            "Exception starting fastchess:\n",
             e,
             sep="",
             file=sys.stderr,
         )
-        raise WorkerException("Unable to start fast-chess. Error: {}".format(str(e)))
+        raise WorkerException("Unable to start fastchess. Error: {}".format(str(e)))
 
     return task_alive
 
@@ -1178,7 +1178,7 @@ def run_games(
     clear_binaries,
     global_cache,
 ):
-    # This is the main fast-chess driver.
+    # This is the main fastchess driver.
     # It is ok, and even expected, for this function to
     # raise exceptions, implicitly or explicitly, if a
     # task cannot be completed.
@@ -1246,7 +1246,7 @@ def run_games(
     start_game_index = opening_offset + input_total_games
     run_seed = int(hashlib.sha1(run["_id"].encode("utf-8")).hexdigest(), 16) % (2**64)
 
-    # Format options according to fast-chess syntax.
+    # Format options according to fastchess syntax.
     def parse_options(s):
         results = []
         chunks = s.split("=")
@@ -1348,7 +1348,7 @@ def run_games(
                 file=sys.stderr,
             )
 
-    # Add EvalFile* with full path to fast-chess options, and download the networks if missing.
+    # Add EvalFile* with full path to fastchess options, and download the networks if missing.
     for option, net in required_nets(base_engine).items():
         base_options.append("option.{}={}".format(option, net))
         establish_validated_net(remote, testing_dir, net, global_cache)
@@ -1478,8 +1478,8 @@ def run_games(
         if any(substring in book.upper() for substring in ["FRC", "960"]):
             variant = "fischerandom"
 
-        # Run fast-chess binary.
-        fastchess = "fast-chess" + EXE_SUFFIX
+        # Run fastchess binary.
+        fastchess = "fastchess" + EXE_SUFFIX
         cmd = (
             [
                 os.path.join(testing_dir, fastchess),
