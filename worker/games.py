@@ -990,7 +990,12 @@ def parse_fastchess_output(
                 spsa["losses"] = fastchess_WLD_results["losses"]
                 spsa["draws"] = fastchess_WLD_results["draws"]
 
-            num_games_finished = fastchess_WLD_results["games"]
+            num_games_finished = (
+                fastchess_WLD_results["games"]
+                + saved_stats["wins"]
+                + saved_stats["losses"]
+                + saved_stats["draws"]
+            )
 
             fastchess_ptnml_results = None
             fastchess_WLD_results = None
