@@ -71,7 +71,12 @@
 </%def>
 
 % if 'sprt' in run['args'] and 'Pending' not in results_info['info'][0]:
-  <a href="/tests/live_elo/${str(run['_id'])}" style="color: inherit;">
+  <a
+    href="/tests/live_elo/${str(run['_id'])}"
+    title="View live Elo for ${run['args']['new_tag']}"
+    aria-label="View live Elo for ${run['args']['new_tag']}"
+    style="color: inherit;"
+  >
 % endif
 % if show_gauge:
   <div id="chart_div_${str(run['_id'])}" style="width:90px;float:left;"></div>

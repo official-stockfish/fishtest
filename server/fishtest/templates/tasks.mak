@@ -54,7 +54,11 @@
       worker: ${version};
       arch: ${ARCH}
     </td>
-    <td>${str(task.get('last_updated', '-')).split('.')[0]}</td>
+    <td>
+      <time datetime="${str(task.get('last_updated', '-')).split('.')[0]}" aria-label="Last updated">
+        ${str(task.get('last_updated', '-')).split('.')[0]}
+      </time>
+    </td>
     <td>${f"{total:03d} / {task['num_games']:03d}"}</td>
     % if 'pentanomial' not in run['results']:
       <td>${stats.get('wins', '-')}</td>
@@ -83,6 +87,6 @@
 
 % if len(run['tasks'] + run.get('bad_tasks', [])) == 0:
   <tr id="no-tasks">
-    <td colspan=20>No tasks running</td>
+    <td colspan="8">No tasks running</td>
   </tr>
 % endif

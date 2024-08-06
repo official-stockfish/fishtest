@@ -13,32 +13,52 @@
   <div class="mw-xxl">
     <div class="row g-3 mb-3">
       <div class="col-6 col-sm">
-        <div class="card card-lg-sm text-center">
-          <div class="card-header text-nowrap" title="Cores">Cores</div>
+        <div class="card card-lg-sm text-center" role="region">
+          <div
+            class="card-header text-nowrap"
+            id="cores-header"
+            title="Total cores connected to the framework"
+            aria-label="Total cores connected to the framework"
+          >Cores</div>
           <div class="card-body">
             <h4 class="card-title mb-0 monospace">${cores}</h4>
           </div>
         </div>
       </div>
       <div class="col-6 col-sm">
-        <div class="card card-lg-sm text-center">
-          <div class="card-header text-nowrap" title="Nodes per second">Nodes / sec</div>
+        <div class="card card-lg-sm text-center" role="region">
+          <div
+            class="card-header text-nowrap"
+            id="nps-header"
+            title="Total nodes per second running"
+            aria-label="Total nodes per second running"
+          >Nodes / sec</div>
           <div class="card-body">
             <h4 class="card-title mb-0 monospace">${f"{nps / (1000000 + 1):.0f}"}M</h4>
           </div>
         </div>
       </div>
       <div class="col-6 col-sm">
-        <div class="card card-lg-sm text-center">
-          <div class="card-header text-nowrap" title="Games per minute">Games / min</div>
+        <div class="card card-lg-sm text-center" role="region">
+          <div
+            class="card-header text-nowrap"
+            id="games-header"
+            title="Games per minute"
+            aria-label="Games per minute"
+          >Games / min</div>
           <div class="card-body">
             <h4 class="card-title mb-0 monospace">${games_per_minute}</h4>
           </div>
         </div>
       </div>
       <div class="col-6 col-sm">
-        <div class="card card-lg-sm text-center">
-          <div class="card-header text-nowrap" title="Time remaining">Time remaining</div>
+        <div class="card card-lg-sm text-center" role="region">
+          <div
+            class="card-header text-nowrap"
+            id="time-header"
+            title="Time remaining to finish the runs"
+            aria-label="Time remaining to finish the runs"
+          >Time remaining</div>
           <div class="card-body">
             <h4 class="card-title mb-0 monospace">${pending_hours}h</h4>
           </div>
@@ -115,7 +135,10 @@
 
   <h4>
     <a id="machines-button" class="btn btn-sm btn-light border"
-      data-bs-toggle="collapse" href="#machines" role="button" aria-expanded="false"
+      data-bs-toggle="collapse"
+      href="#machines"
+      role="button"
+      aria-expanded=${'true' if machines_shown else 'false'}
       aria-controls="machines">
       ${'Hide' if machines_shown else 'Show'}
     </a>
@@ -129,15 +152,16 @@
     max_height = str(34.7) + "vh"
   %>
   <section id="machines"
-      class="overflow-auto ${'collapse show' if machines_shown else 'collapse'}">
+      class="overflow-auto ${'collapse show' if machines_shown else 'collapse'}"
+      aria-labelledby="machines-button" aria-live="polite">
       <div class="ssc-card ssc-wrapper">
         <div class="ssc-head-line"></div>
         <div
           class="ssc-square"
           style="height: clamp(${min_height}, ${height}, ${max_height});">
-          </div>
+        </div>
       </div>
-  </div>
+  </section>
 % endif
 
 <%include file="run_tables.mak"/>

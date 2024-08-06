@@ -37,9 +37,11 @@
     filterTable("dummy", "workers-table", originalRows, notOlderThan5Days);
     document
       .getElementById("workers-table").classList.remove("d-none");
+    document
+      .getElementById("workers-table").removeAttribute("aria-hidden");
 
     const tableHandlers =
-      [...document.getElementById("workers-table-handler").querySelectorAll(".dropdown-item")];
+      Array.from(document.getElementById("workers-table-handler").querySelectorAll(".dropdown-item"));
     tableHandlers.forEach((tableHandler) => {
       tableHandler.addEventListener("click", (e) => {
         const selected = e.target.dataset.handleTargetCustom;
@@ -111,7 +113,11 @@
   </ul>
 </div>
 
-<table id="workers-table" class="table table-striped table-sm d-none">
+<table
+  id="workers-table"
+  class="table table-striped table-sm d-none"
+  aria-hidden="true"
+>
   <thead>
     <tr>
       <th>Worker</th>

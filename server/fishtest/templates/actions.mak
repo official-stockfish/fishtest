@@ -4,16 +4,16 @@
   import datetime
 %>
 
-<h2>Events Log</h2>
+<h2 id="events-log-heading">Events Log</h2>
 
 <script>
   document.title = "Events Log | Stockfish Testing";
 </script>
 
-<form class="row mb-3">
+<form class="row mb-3" aria-labelledby="events-log-heading" id="filter-form">
   <div class="col-12 col-md-auto mb-3">
     <label for="restrict" class="form-label">Show only</label>
-    <select id="restrict" class="form-select" name="action">
+    <select id="restrict" class="form-select" name="action" aria-controls="events-table">
       <option value="">All</option>
       <option value="new_run">New Run</option>
       <option value="approve_run">Approve Run</option>
@@ -45,6 +45,7 @@
       name="user"
       list="users-list"
       value="${username_param}"
+      aria-controls="events-table"
     >
     <datalist id="users-list">
       % for user in request.userdb.get_users():
@@ -60,17 +61,20 @@
       role="button"
       data-bs-toggle="modal"
       data-bs-target="#autoselect-modal"
+      aria-haspopup="dialog"
+      aria-label="Free text search information"
     ></i>
     <div
       class="modal fade"
       id="autoselect-modal"
       tabindex="-1"
-      aria-hidden="true"
+      aria-labelledby="autoselect-modal-label"
+      role="dialog"
     >
       <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">Free text search information</h5>
+            <h5 class="modal-title" id="autoselect-modal-label">Free text search information</h5>
             <button
               type="button"
               class="btn-close"
@@ -105,18 +109,19 @@
       type="text"
       name="text"
       value="${text_param}"
+      aria-controls="events-table"
     >
   </div>
 
   <div class="col-12 col-md-auto mb-3 d-flex align-items-end">
-    <button type="submit" class="btn btn-success w-100">Search</button>
+    <button type="submit" class="btn btn-success w-100" aria-label="Search">Search</button>
   </div>
 </form>
 
 <%include file="pagination.mak" args="pages=pages"/>
 
 <div class="table-responsive-lg">
-  <table class="table table-striped table-sm">
+  <table class="table table-striped table-sm" id="events-table" aria-label="Events Log Table">
     <thead class="sticky-top">
       <tr>
         <th>Time</th>
@@ -133,8 +138,11 @@
           <td>
             <a
               href="/actions?max_actions=1&amp;action=${action_param}&amp;user=${username_param|u,n}&amp;text=${text_param|u,n}&amp;before=${action['time']}&amp;run_id=${run_id_param}"
+              aria-label="Action performed at ${datetime.datetime.utcfromtimestamp(action['time']).strftime('%Y-%m-%d %H:%M:%S')}"
             >
-                 ${datetime.datetime.utcfromtimestamp(action['time']).strftime(r"%y&#8209;%m&#8209;%d %H:%M:%S")|n}
+              <time datetime="${datetime.datetime.utcfromtimestamp(action['time']).strftime('%Y-%m-%dT%H:%M:%SZ')}">
+                ${datetime.datetime.utcfromtimestamp(action['time']).strftime(r"%y&#8209;%m&#8209;%d %H:%M:%S")|n}
+              </time>
             </a>
           </td>
           <td>${action['action']}</td>
@@ -168,7 +176,7 @@
       % endfor
       % if "idx" not in locals():
         <tr>
-          <td colspan=20>No actions available</td>
+          <td colspan="8">No actions available</td>
         </tr>
       % endif
     </tbody>
