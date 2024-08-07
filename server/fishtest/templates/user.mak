@@ -143,12 +143,24 @@
           >
           <label for="tests_repo" class="d-flex align-items-end">Tests Repository</label>
         </div>
-        <span class="input-group-text" role="button" data-bs-toggle="modal" data-bs-target="#tests_repo_info_modal">
+        <span
+          class="input-group-text"
+          role="button"
+          data-bs-toggle="modal"
+          data-bs-target="#tests_repo_info_modal"
+          aria-haspopup="dialog"
+        >
           <i class="fas fa-question-circle fa-lg pe-none" style="width: 30px"></i>
         </span>
       </div>
 
-      <div id="tests_repo_info_modal" class="modal fade" tabindex="-1" aria-labelledby="tests_repo_info_modal_label" aria-hidden="true">
+      <div
+        id="tests_repo_info_modal"
+        class="modal fade"
+        tabindex="-1"
+        aria-labelledby="tests_repo_info_modal_label"
+        role="dialog"
+      >
         <div class="modal-dialog modal-dialog-centered">
           <div class="modal-content">
             <div class="modal-body">
@@ -170,12 +182,24 @@
           />
         <label for="github_token" class="d-flex align-items-end">GitHub's fine-grained personal access token</label>
         </div>
-        <span class="input-group-text" role="button" data-bs-toggle="modal" data-bs-target="#github_token_info_modal">
+        <span
+          class="input-group-text"
+          role="button"
+          data-bs-toggle="modal"
+          data-bs-target="#github_token_info_modal"
+          aria-haspopup="dialog"
+        >
           <i class="fas fa-question-circle fa-lg pe-none" style="width: 30px"></i>
         </span>
       </div>
 
-      <div id="github_token_info_modal" class="modal fade" tabindex="-1" aria-labelledby="github_token_info_modal_label" aria-hidden="true">
+      <div
+        id="github_token_info_modal"
+        class="modal fade"
+        tabindex="-1"
+        aria-labelledby="github_token_info_modal_label"
+        role="dialog"
+      >
         <div class="modal-dialog modal-dialog-centered">
           <div class="modal-content">
             <div class="modal-body">
@@ -220,7 +244,9 @@
             id="reject_user"
             type="button"
             class="btn btn-danger"
-            data-bs-toggle="modal" data-bs-target="#reject_modal"
+            data-bs-toggle="modal"
+            data-bs-target="#reject_modal"
+            aria-haspopup="dialog"
             style="width: 48%;"
           >Reject</button>
 
@@ -233,8 +259,14 @@
             style="width: 48%;"
           >Accept</button>
 
-          <div id="reject_modal" class="modal fade" tabindex="-1" aria-labelledby="reject_modal" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
+          <div
+            id="reject_modal"
+            class="modal fade"
+            tabindex="-1"
+            aria-labelledby="reject_modal"
+            aria-haspopup="dialog"
+          >
+            <div class="modal-dialog modal-dialog-centered" role="dialog">
               <div class="modal-content">
                 <div class="modal-header">
                   <h5 class="modal-title">Confirmation Required</h5>

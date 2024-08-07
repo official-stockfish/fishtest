@@ -22,7 +22,6 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.1/css/bootstrap.min.css"
       integrity="sha512-Z/def5z5u2aR89OuzYcxmDJ0Bnd5V1cKqBEbvLOiUNWdg9PQeXVvXLI90SE4QOHGlfLqUnDNVAYyZi8UwUTmWQ=="
       crossorigin="anonymous"
-      crossorigin="anonymous"
       referrerpolicy="no-referrer"
     >
 
@@ -52,7 +51,6 @@
     <script
       src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.1/js/bootstrap.bundle.min.js"
       integrity="sha512-ToL6UYWePxjhDQKNioSi4AyJ5KkRxY+F1+Fi7Jgh0Hp5Kk2/s8FD7zusJDdonfe5B00Qw+B8taXxF6CFLnqNCw=="
-      crossorigin="anonymous"
       crossorigin="anonymous"
       referrerpolicy="no-referrer"
     ></script>
@@ -93,9 +91,9 @@
         <a
           class="navbar-brand p-0 me-0 me-lg-2 d-flex align-items-center"
           href="/"
-          aria-label="Bootstrap"
+          aria-label="Stockfish Testing Framework"
         >
-          <div class="brand-logo d-inline me-lg-2"></div>
+          <div class="brand-logo d-inline me-lg-2" aria-hidden="true"></div>
           <p class="d-none d-lg-inline h-5 mb-0">Stockfish Testing Framework</p>
         </a>
 
@@ -116,6 +114,7 @@
           id="rightsidebar"
           aria-labelledby="rightsidebarOffcanvasLabel"
           data-bs-scroll="true"
+          role="dialog"
         >
           <div class="offcanvas-header px-4 pb-0">
             <h5 class="offcanvas-title" id="rightsidebarOffcanvasLabel">
@@ -135,11 +134,12 @@
 
             <ul class="navbar-nav flex-row flex-wrap ms-md-auto">
               % if request.authenticated_userid:
-                <li class="nav-item col-6 col-lg-auto order-lg-2">
+                <li class="nav-item col-6 col-lg-auto order-lg-2" role="menuitem">
                   <a
                     class="nav-link py-2 px-0 px-lg-2"
                     href="/tests/user/${request.authenticated_userid}"
                     title="My Tests"
+                    aria-label="My Tests"
                   >
                     <i class="fa-solid fa-flask d-inline me-2 mx-lg-1"></i>
                     <span class="d-inline d-lg-none">My Tests</span>
@@ -150,6 +150,7 @@
                     class="nav-link py-2 px-0 px-lg-2"
                     href="/tests/run"
                     title="New Test"
+                    aria-label="New Test"
                   >
                     <i class="fa-solid fa-plus d-inline me-2 mx-lg-1"></i>
                     <span class="d-inline d-lg-none">New Test</span>
@@ -160,6 +161,7 @@
                     class="nav-link py-2 px-0 px-lg-2"
                     href="/upload"
                     title="Upload Neural Network"
+                    aria-label="Upload Neural Network"
                   >
                     <i
                       class="fa-solid fa-cloud-arrow-up d-inline me-2 mx-lg-1"
@@ -168,41 +170,37 @@
                   </a>
                 </li>
                 <li class="nav-item py-1 col-12 col-lg-auto order-lg-2">
-                  <div class="vr d-none d-lg-flex h-100 mx-lg-2"></div>
+                  <div class="vr d-none d-lg-flex h-100 mx-lg-2" aria-hidden="true"></div>
                   <hr class="d-lg-none">
                 </li>
                 <li class="nav-item col-6 col-lg-auto order-lg-2">
                   <a class="nav-link py-2 px-0 px-lg-2" href="/user"
-                    ><i class="fa-solid fa-user d-inline d-lg-none me-2"></i
-                    >Profile
+                    aria-label="Profile"><i class="fa-solid fa-user d-inline d-lg-none me-2"></i>Profile
                   </a>
                 </li>
                 <li class="nav-item col-6 col-lg-auto order-lg-2">
-                  <a class="nav-link py-2 px-0 px-lg-2" href="/logout" id="logout"
+                  <a class="nav-link py-2 px-0 px-lg-2" href="/logout" id="logout" aria-label="Logout"
                     ><i
                       class="fa-solid fa-arrow-right-from-bracket d-inline d-lg-none me-2"
-                    ></i
-                    >Logout
+                    ></i>Logout
                   </a>
                 </li>
               % else:
                 <li class="nav-item col-6 col-lg-auto order-lg-2">
-                  <a class="nav-link py-2 px-0 px-lg-2" href="/login"
+                  <a class="nav-link py-2 px-0 px-lg-2" href="/login" aria-label="Login"
                     ><i
                       class="fa-solid fa-arrow-right-to-bracket d-inline d-lg-none me-2"
-                    ></i
-                    >Login</a
+                    ></i>Login</a
                   >
                 </li>
                 <li class="nav-item col-6 col-lg-auto order-lg-2">
-                  <a class="nav-link py-2 px-0 px-lg-2" href="/signup"
-                    ><i class="fa-solid fa-user-plus d-inline d-lg-none me-2"></i
-                    >Register</a
+                  <a class="nav-link py-2 px-0 px-lg-2" href="/signup" aria-label="Register"
+                    ><i class="fa-solid fa-user-plus d-inline d-lg-none me-2"></i>Register</a
                   >
                 </li>
               % endif
               <li class="nav-item py-1 col-12 col-lg-auto order-lg-2">
-                <div class="vr d-none d-lg-flex h-100 mx-lg-2"></div>
+                <div class="vr d-none d-lg-flex h-100 mx-lg-2" aria-hidden="true"></div>
                 <hr class="d-lg-none">
               </li>
               <li
@@ -214,6 +212,7 @@
                   style="display: ${'none;' if request.cookies.get('theme') != 'dark' else 'inline-block;'}"
                   class="nav-link py-2 px-0 px-lg-2"
                   title="Light Theme"
+                  aria-label="Light Theme"
                 >
                   <i class="fa fa-sun"></i
                   ><span class="d-inline d-lg-none ms-2">Light Theme</span>
@@ -223,6 +222,7 @@
                   style="display: ${'none;' if request.cookies.get('theme') == 'dark' else 'inline-block;'}"
                   class="nav-link py-2 px-0 px-lg-2"
                   title="Dark Theme"
+                  aria-label="Dark Theme"
                 >
                   <i class="fa fa-moon"></i>
                   <span class="d-inline d-lg-none ms-2">Dark Theme</span>
@@ -240,6 +240,7 @@
           class="offcanvas-lg offcanvas-start"
           id="leftsidebar"
           aria-labelledby="leftsidebarOffcanvasLabel"
+          role="dialog"
         >
           <div class="offcanvas-header border-bottom">
             <h5 class="offcanvas-title" id="leftsidebarOffcanvasLabel">
@@ -254,7 +255,7 @@
             ></button>
           </div>
           <div class="offcanvas-body pt-lg-2">
-            <nav class="links w-100">
+            <nav class="links w-100" aria-label="Sidebar navigation">
               <ul class="links-nav list-unstyled mb-0 pb-3 pb-md-2 pe-lg-1">
                 <li class="links-group">
                   <strong
@@ -493,6 +494,9 @@
                 id="fallback_div"
                 class="alert alert-success alert-dismissible alert-success-non-transparent fixed-top"
                 style="display: none"
+                role="alert"
+                aria-live="assertive"
+                aria-atomic="true"
               >
                 <span id="fallback">Notification!</span>
                 <button
@@ -513,6 +517,9 @@
                 id="error_div"
                 class="alert alert-danger alert-dismissible alert-danger-non-transparent fixed-top"
                 style="display: none"
+                role="alert"
+                aria-live="assertive"
+                aria-atomic="true"
               >
                 <span id="error"></span>
                 <button
@@ -532,7 +539,7 @@
               % if request.session.peek_flash('error'):
                 <% flash = request.session.pop_flash('error') %>
                 % for message in flash:
-                <div class="alert alert-danger alert-dismissible">
+                <div class="alert alert-danger alert-dismissible" role="alert" aria-live="assertive" aria-atomic="true">
                   ${message}
                   <button
                     type="button"
@@ -546,7 +553,7 @@
               % if request.session.peek_flash():
                 <% flash = request.session.pop_flash() %>
                 % for message in flash:
-                  <div class="alert alert-success alert-dismissible">
+                  <div class="alert alert-success alert-dismissible" role="alert" aria-live="assertive" aria-atomic="true">
                     ${message}
                     <button
                       type="button"

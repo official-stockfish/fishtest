@@ -13,32 +13,32 @@
   <div class="mw-xxl">
     <div class="row g-3 mb-3">
       <div class="col-6 col-sm">
-        <div class="card card-lg-sm text-center">
-          <div class="card-header text-nowrap" title="Cores">Cores</div>
+        <div class="card card-lg-sm text-center" role="region" aria-labelledby="cores-header">
+          <div class="card-header text-nowrap" id="cores-header" title="Cores">Cores</div>
           <div class="card-body">
             <h4 class="card-title mb-0 monospace">${cores}</h4>
           </div>
         </div>
       </div>
       <div class="col-6 col-sm">
-        <div class="card card-lg-sm text-center">
-          <div class="card-header text-nowrap" title="Nodes per second">Nodes / sec</div>
+        <div class="card card-lg-sm text-center" role="region" aria-labelledby="nps-header">
+          <div class="card-header text-nowrap" id="nps-header" title="Nodes per second">Nodes / sec</div>
           <div class="card-body">
             <h4 class="card-title mb-0 monospace">${f"{nps / (1000000 + 1):.0f}"}M</h4>
           </div>
         </div>
       </div>
       <div class="col-6 col-sm">
-        <div class="card card-lg-sm text-center">
-          <div class="card-header text-nowrap" title="Games per minute">Games / min</div>
+        <div class="card card-lg-sm text-center" role="region" aria-labelledby="games-header">
+          <div class="card-header text-nowrap" id="games-header" title="Games per minute">Games / min</div>
           <div class="card-body">
             <h4 class="card-title mb-0 monospace">${games_per_minute}</h4>
           </div>
         </div>
       </div>
       <div class="col-6 col-sm">
-        <div class="card card-lg-sm text-center">
-          <div class="card-header text-nowrap" title="Time remaining">Time remaining</div>
+        <div class="card card-lg-sm text-center" role="region" aria-labelledby="time-header">
+          <div class="card-header text-nowrap" id="time-header" title="Time remaining">Time remaining</div>
           <div class="card-body">
             <h4 class="card-title mb-0 monospace">${pending_hours}h</h4>
           </div>
@@ -129,15 +129,16 @@
     max_height = str(34.7) + "vh"
   %>
   <section id="machines"
-      class="overflow-auto ${'collapse show' if machines_shown else 'collapse'}">
+      class="overflow-auto ${'collapse show' if machines_shown else 'collapse'}"
+      aria-labelledby="machines-button" aria-live="polite">
       <div class="ssc-card ssc-wrapper">
         <div class="ssc-head-line"></div>
         <div
           class="ssc-square"
           style="height: clamp(${min_height}, ${height}, ${max_height});">
-          </div>
+        </div>
       </div>
-  </div>
+  </section>
 % endif
 
 <%include file="run_tables.mak"/>

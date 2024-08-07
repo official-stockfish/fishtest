@@ -56,7 +56,7 @@
   <%include file="pagination.mak" args="pages=pages"/>
 
   <div class="table-responsive-lg">
-    <table class="table table-striped table-sm run-table">
+    <table class="table table-striped table-sm run-table" aria-labelledby="run-table-heading" role="presentation">
       <thead></thead>
       <tbody>
         % for run in runs:
@@ -64,8 +64,8 @@
             % if show_delete:
               <td style="width: 1%;" class="run-button run-deny">
                 <div class="dropdown">
-                  <button type="submit" class="btn btn-danger btn-sm" data-bs-toggle="dropdown">
-                    <i class="fas fa-trash-alt"></i>
+                  <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="dropdown">
+                    <i class="fas fa-trash-alt"></i><span class="sr-only">Delete</span>
                   </button>
                   <div class="dropdown-menu" role="menu">
                     <form
@@ -84,7 +84,7 @@
             % endif
 
             <td style="width: 6%;" class="run-date">
-              ${run['start_time'].strftime("%y-%m-%d")}
+              <time datetime="${run['start_time'].strftime('%Y-%m-%dT%H:%M:%SZ')}">${run['start_time'].strftime('%y-%m-%d')}</time>
             </td>
 
             <td style="width: 2%;" class="run-user">
@@ -95,7 +95,7 @@
             </td>
             % if not run["finished"]:
               <td class="run-notification" style="width:3em;text-align:center;">
-                <div id=notification_${run['_id']} class='notifications' onclick='handleNotification(this)' style='display:inline-block;cursor:pointer;'>
+                <div id="notification_${run['_id']}" class="notifications" onclick="handleNotification(this)" style="display:inline-block;cursor:pointer;" role="button" aria-label="Notification for ${run['_id']}">
                 </div>
                 <script>
                   setNotificationStatus_("${run['_id']}");   // no broadcast since this is at initialization
@@ -103,11 +103,11 @@
               </td>
             % endif
             <td style="width: 16%;" class="run-view">
-              <a href="/tests/view/${run['_id']}">${run['args']['new_tag'][:23]}</a>
+              <a href="/tests/view/${run['_id']}" aria-label="View test for ${run['args']['new_tag']}">${run['args']['new_tag'][:23]}</a>
             </td>
 
             <td style="width: 2%;" class="run-diff">
-              <a href="${h.diff_url(run)}" target="_blank" rel="noopener">diff</a>
+              <a href="${h.diff_url(run)}" target="_blank" rel="noopener" aria-label="View diff for ${run['args']['new_tag']}">diff</a>
             </td>
 
             <td style="width: 1%;" class="run-elo">
@@ -117,7 +117,7 @@
             <td style="width: 13%;" class="run-live">
               <span class="${'rounded ltc-highlight me-1' if is_active_sprt_ltc(run) else 'me-1'}">
               % if 'sprt' in run['args']:
-                <a href="/tests/live_elo/${str(run['_id'])}" target="_blank">sprt</a>
+                <a href="/tests/live_elo/${str(run['_id'])}" target="_blank" aria-label="View live ELO for ${run['args']['new_tag']}">sprt</a>
               % else:
                 ${run['args']['num_games']}
               % endif
@@ -137,7 +137,7 @@
         % endfor
         % if alt and count == 0:
           <tr>
-            <td> ${alt} </td>
+            <td colspan="8">${alt}</td>
           </tr>
         % endif
       </tbody>

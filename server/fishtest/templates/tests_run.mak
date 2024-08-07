@@ -213,7 +213,12 @@
               </div>
 
               <div class="mb-2">
-                <label for="tests-repo" class="form-label">Test repository</label>
+                <label for="tests-repo" class="form-label">Test repository
+                  <i
+                    class="fa-solid fa-circle-info"
+                    role="button"
+                    title="Provide the URL of the test repository."></i>
+                </label>
                 <input
                   type="url"
                   name="tests-repo"
@@ -225,7 +230,9 @@
               </div>
 
               <div class="mb-2 col-6">
-                <label for="test-branch" class="form-label">Test Branch</label>
+                <label for="test-branch" class="form-label">Test Branch
+                  <i class="fa-solid fa-circle-info" role="button" title="Specify the branch of the repository you want to test."></i>
+                </label>
                 <input
                   type="text"
                   name="test-branch"
@@ -237,7 +244,9 @@
               </div>
 
               <div class="mb-2 col-6">
-                <label for="base-branch" class="form-label">Base Branch</label>
+                <label for="base-branch" class="form-label">Base Branch
+                  <i class="fa-solid fa-circle-info" role="button" title="Specify the base branch to test against."></i>
+                </label>
                 <input
                   type="text"
                   name="base-branch"
@@ -248,7 +257,9 @@
               </div>
 
               <div class="mb-2 col-6">
-                <label for="test-signature" class="form-label">Test Signature</label>
+                <label for="test-signature" class="form-label">Test Signature
+                  <i class="fa-solid fa-circle-info" role="button" title="Provide a signature for the test."></i>
+                </label>
                 <input
                   type="number"
                   name="test-signature"
@@ -262,7 +273,9 @@
               </div>
 
               <div class="mb-2 col-6">
-                <label for="base-signature" class="form-label">Base Signature</label>
+                <label for="base-signature" class="form-label">Base Signature
+                  <i class="fa-solid fa-circle-info" role="button" title="Provide the signature of the base branch for comparison."></i>
+                </label>
                 <input
                   type="number"
                   name="base-signature"
@@ -275,7 +288,9 @@
               </div>
 
               <div class="mb-2 col-6">
-                <label for="new-options" class="form-label">Test Options</label>
+                <label for="new-options" class="form-label">Test Options
+                  <i class="fa-solid fa-circle-info" role="button" title="Provide the UCI options of the new engine."></i>
+                </label>
                 <input
                   type="text"
                   name="new-options"
@@ -286,7 +301,9 @@
               </div>
 
               <div class="mb-2 col-6">
-                <label for="base-options" class="form-label">Base Options</label>
+                <label for="base-options" class="form-label">Base Options
+                  <i class="fa-solid fa-circle-info" role="button" title="Provide the UCI options of the old engine."></i>
+                </label>
                 <input
                   type="text"
                   name="base-options"
@@ -297,7 +314,9 @@
               </div>
 
               <div>
-                <label for="run-info" class="form-label">Info</label>
+                <label for="run-info" class="form-label">Info
+                  <i class="fa-solid fa-circle-info" role="button" title="Provide any additional information for the test, or explain the purpose of the test."></i>
+                </label>
                 <textarea
                   name="run-info"
                   placeholder="Defaults to commit message"
@@ -314,7 +333,9 @@
           <div class="col-12 col-md-6 mb-2">
             <div class="mb-2">
               <input type="hidden" name="stop_rule" id="stop_rule_field" value="sprt">
-              <label class="form-label">Stop rule</label>
+              <label class="form-label" for="stop-rule">Stop rule
+                <i class="fa-solid fa-circle-info" role="button" title="Select the stopping rule for the test."></i>
+              </label>
               <div class="list-group list-group-checkable flex-row row row-cols-3 g-1 text-center">
                 <div class="col">
                   <input class="list-group-item-check pe-none" type="radio" name="stop-rule" id="stop-rule-sprt"
@@ -349,7 +370,9 @@
 
             ## This only appears when games or spsa is selected
             <div class="mb-2 stop-rule stop-rule-games stop-rule-spsa" style="${'display: none' if (args.get('sprt') or not is_rerun) else ''}">
-              <label for="num-games" class="form-label">Amount of games</label>
+              <label for="num-games" class="form-label">Amount of games
+                <i class="fa-solid fa-circle-info" role="button" title="Specify the number of games to be played."></i>
+              </label>
               <input
                 type="number"
                 name="num-games"
@@ -366,7 +389,9 @@
               <input type="hidden" name="elo_model" id="elo_model_field" value=${elo_model}>
               <div class="row gx-1">
                 <div class="col-12 col-md">
-                  <label for="bounds" class="form-label">SPRT Bounds</label>
+                  <label for="bounds" class="form-label">SPRT Bounds
+                    <i class="fa-solid fa-circle-info" role="button" title="Select the SPRT bounds."></i>
+                  </label>
                   <select class="form-select" id="bounds" name="bounds">
                     <option value="standard STC">Standard STC ${fb(0.0, 2.0)}</option>
                     <option value="standard LTC">Standard LTC ${fb(0.5, 2.5)}</option>
@@ -380,7 +405,9 @@
                   class="col-6 col-md-4 col-lg-3 mt-2 mt-md-0 custom-bounds"
                   style="${args.get('sprt') or 'display: none'}"
                 >
-                  <label for="sprt_elo0" class="form-label">SPRT Elo0</label>
+                  <label for="sprt_elo0" class="form-label">SPRT Elo0
+                    <i class="fa-solid fa-circle-info" role="button" title="Provide the lower bound for SPRT Elo."></i>
+                  </label>
                   <input
                     type="number"
                     step="0.05"
@@ -394,7 +421,9 @@
                   class="col-6 col-md-4 col-lg-3 mt-2 mt-md-0 custom-bounds"
                   style="${args.get('sprt') or 'display: none'}"
                 >
-                  <label for="sprt_elo1" class="form-label">SPRT Elo1</label>
+                  <label for="sprt_elo1" class="form-label">SPRT Elo1
+                    <i class="fa-solid fa-circle-info" role="button" title="Provide the upper bound for SPRT Elo."></i>
+                  </label>
                   <input
                     type="number"
                     step="0.05"
@@ -415,7 +444,9 @@
               <div class="row gx-1">
                 <div class="col-4">
                   <div class="mb-2">
-                    <label for="spsa_A" class="form-label">SPSA A ratio</label>
+                    <label for="spsa_A" class="form-label">SPSA A ratio
+                      <i class="fa-solid fa-circle-info" role="button" title="Provide the SPSA A ratio."></i>
+                    </label>
                     <input
                       type="number"
                       min="0"
@@ -430,7 +461,9 @@
                 </div>
                 <div class="col-4">
                   <div class="mb-2">
-                    <label for="spsa_alpha" class="form-label">SPSA Alpha</label>
+                    <label for="spsa_alpha" class="form-label">SPSA Alpha
+                      <i class="fa-solid fa-circle-info" role="button" title="Provide the SPSA Alpha value."></i>
+                    </label>
                     <input
                       type="number"
                       min="0"
@@ -444,7 +477,9 @@
                 </div>
                 <div class="col-4">
                   <div class="mb-2">
-                    <label for="spsa_gamma" class="form-label">SPSA Gamma</label>
+                    <label for="spsa_gamma" class="form-label">SPSA Gamma
+                      <i class="fa-solid fa-circle-info" role="button" title="Provide the SPSA Gamma value."></i>
+                    </label>
                     <input
                       type="number"
                       min="0"
@@ -459,7 +494,9 @@
               </div>
 
               <div class="mb-2">
-                <label for="spsa_raw_params" class="form-label">SPSA parameters</label>
+                <label for="spsa_raw_params" class="form-label">SPSA parameters
+                  <i class="fa-solid fa-circle-info" role="button" title="Paste the SPSA parameters here."></i>
+                </label>
                 <textarea
                   name="spsa_raw_params"
                   id="spsa_raw_params"
@@ -481,8 +518,9 @@
                   role="button"
                   data-bs-toggle="modal"
                   data-bs-target="#autoselect-modal"
+                  aria-haspopup="dialog"
                 ></i>
-                <div class="modal fade" id="autoselect-modal" tabindex="-1" aria-hidden="true">
+                <div class="modal fade" id="autoselect-modal" tabindex="-1" role="dialog">
                   <div class="modal-dialog modal-dialog-scrollable">
                     <div class="modal-content">
                       <div class="modal-header">
@@ -526,7 +564,9 @@
             <div>
               <div class="row gx-1">
                 <div class="col mb-2">
-                  <label for="threads" class="form-label">Threads</label>
+                  <label for="threads" class="form-label">Threads
+                    <i class="fa-solid fa-circle-info" role="button" title="Specify the number of threads."></i>
+                  </label>
                   <input
                     type="number"
                     min="1"
@@ -537,7 +577,9 @@
                   >
                 </div>
                 <div class="col mb-2">
-                  <label for="tc" class="form-label" title="Time control">TC</label>
+                  <label for="tc" class="form-label" title="Time control">TC
+                    <i class="fa-solid fa-circle-info" role="button" title="Specify the time control."></i>
+                  </label>
                   <input
                     type="text"
                     name="tc"
@@ -547,7 +589,9 @@
                   >
                 </div>
                 <div class="col mb-2 new_tc" style="display: none;">
-                  <label for="new_tc" class="form-label">Test TC</label>
+                  <label for="new_tc" class="form-label">Test TC
+                    <i class="fa-solid fa-circle-info" role="button" title="Specify the time control for the new engine."></i>
+                  </label>
                   <input
                     type="text"
                     name="new_tc"
@@ -557,7 +601,9 @@
                   >
                 </div>
                 <div class="col mb-2">
-                  <label for="priority" class="form-label">Priority</label>
+                  <label for="priority" class="form-label">Priority
+                    <i class="fa-solid fa-circle-info" role="button" title="Specify the time control for the base engine."></i>
+                  </label>
                   <input
                     type="number"
                     name="priority"
@@ -567,7 +613,9 @@
                   >
                 </div>
                 <div class="col mb-2">
-                  <label for="throughput" class="form-label">Throughput</label>
+                  <label for="throughput" class="form-label">Throughput
+                    <i class="fa-solid fa-circle-info" role="button" title="Specify the external throughput as a percentage."></i>
+                  </label>
                   <select class="form-select" id="throughput" name="throughput">
                     <option value="10">10%</option>
                     <option value="25">25%</option>
@@ -582,7 +630,9 @@
             <div id="test-book" class="mb-2" style="display: none;">
               <div class="row gx-1">
                 <div class="col">
-                  <label for="book" class="form-label">Book</label>
+                  <label for="book" class="form-label">Book
+                    <i class="fa-solid fa-circle-info" role="button" title="Select the book to use for the test."></i>
+                  </label>
                   <select name="book" id="book" class="form-select">
                     % for book in valid_books:
                       <option value="${book}" ${"selected" if default_book == book else ""}>${book}</option>
@@ -590,7 +640,9 @@
                   </select>
                 </div>
                 <div class="col-12 col-md-4 mt-2 mt-md-0 book-depth">
-                  <label for="book-depth" class="form-label">Book depth</label>
+                  <label for="book-depth" class="form-label">Book depth
+                    <i class="fa-solid fa-circle-info" role="button" title="Specify the book depth."></i>
+                  </label>
                   <input
                     type="number"
                     min="1"
@@ -609,48 +661,56 @@
               <div class="row">
                 <div class="col text-nowrap">
                   <div class="mb-2 form-check">
-                    <label class="form-check-label" for="checkbox-auto-purge">Auto-purge</label>
                     <input
                       type="checkbox"
                       class="form-check-input"
                       id="checkbox-auto-purge"
                       name="auto-purge"
+                      aria-describedby="auto-purge-description"
                     >
+                    <label class="form-check-label" for="checkbox-auto-purge">Auto-purge</label>
+                    <i class="fa-solid fa-circle-info" role="button" title="Auto-purge the results of bad-workers after the run finishes."></i>
                   </div>
                 </div>
                 <div class="col text-nowrap">
                   <div class="mb-2 form-check">
-                    <label class="form-check-label" for="checkbox-time-odds">Time odds</label>
                     <input
                       type="checkbox"
                       class="form-check-input"
                       id="checkbox-time-odds"
                       name="odds"
                       ${'checked' if is_odds else ''}
+                      aria-describedby="time-odds-description"
                     >
+                    <label class="form-check-label" for="checkbox-time-odds">Time odds</label>
+                    <i class="fa-solid fa-circle-info" role="button" title="Enable time odds for the test."></i>
                   </div>
                 </div>
                 <div class="col text-nowrap">
                   <div class="mb-2 form-check">
-                    <label class="form-check-label" for="checkbox-book-visibility">Custom book</label>
                     <input
                       type="checkbox"
                       class="form-check-input"
                       id="checkbox-book-visibility"
                       ${'checked' if default_book != test_book else ''}
+                      aria-describedby="custom-book-description"
                     >
+                    <label class="form-check-label" for="checkbox-book-visibility">Custom book</label>
+                    <i class="fa-solid fa-circle-info" role="button" title="Enable custom book for the test."></i>
                   </div>
                 </div>
                 <div class="col text-nowrap">
                   <div class="mb-2 form-check">
-                    <label class="form-check-label" for="checkbox-adjudication">Disable adjudication</label>
                     <input
                       type="checkbox"
                       class="form-check-input"
                       id="checkbox-adjudication"
                       name="adjudication"
                       ${'checked' if not args.get("adjudication", True) else ''}
+                      aria-describedby="adjudication-description"
                     >
+                    <label class="form-check-label" for="checkbox-adjudication">Disable adjudication</label>
+                    <i class="fa-solid fa-circle-info" role="button" title="Play games until a checkmate or a draw."></i>
                   </div>
                 </div>
               </div>

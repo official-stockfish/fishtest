@@ -34,7 +34,7 @@
   })();
 </script>
 
-<h2>
+<h2 id="contributors-heading">
   Contributors
   % if 'monthly' in request.url:
     - Top Month
@@ -111,34 +111,38 @@
 
 <div class="row g-3 mb-1">
   <div class="col-12 col-md-auto">
-    <label class="form-label">Search</label>
+    <label class="form-label" for="search_contributors">Search</label>
     <input
       id="search_contributors"
       class="form-control"
       placeholder="Search some text"
       type="text"
+      aria-describedby="search-help"
     >
+    <div id="search-help" class="form-text">
+      Type to search in the contributors table.
+    </div>
   </div>
 </div>
 
 <div class="table-responsive-lg">
-  <table id="contributors_table" class="table table-striped table-sm">
+  <table id="contributors_table" class="table table-striped table-sm" aria-describedby="contributors-heading">
     <thead class="sticky-top">
       <tr>
-        <th></th>
-        <th>Username</th>
-        <th class="text-end">Last active</th>
-        <th class="text-end">Games/Hour</th>
-        <th class="text-end">CPU Hours</th>
-        <th class="text-end">Games played</th>
-        <th class="text-end">Tests submitted</th>
-        <th>Tests repository</th>
+        <th aria-sort="ascending">Rank</th>
+        <th aria-sort="none">Username</th>
+        <th aria-sort="none" class="text-end">Last active</th>
+        <th aria-sort="none" class="text-end">Games/Hour</th>
+        <th aria-sort="none" class="text-end">CPU Hours</th>
+        <th aria-sort="none" class="text-end">Games played</th>
+        <th aria-sort="none" class="text-end">Tests submitted</th>
+        <th aria-sort="none">Tests repository</th>
       </tr>
     </thead>
     <tbody>
       % for index, user in enumerate(users):
         <tr>
-          <td class="rank">${index + 1}</td>
+          <td class="rank text-center">${index + 1}</td>
           <td>
           % if approver:
             <a href="/user/${user['username']}">
@@ -163,7 +167,7 @@
     
       % if len(users) == 0:
         <tr>
-          <td colspan=20>No users exist</td>
+          <td colspan="8">No users exist</td>
         </tr>
       % endif
     </tbody>

@@ -42,10 +42,16 @@
 </style>
 
 <div class="error-container">
-  <div class="error-content">
+  <div class="error-content" role="alert" tabindex="-1">
     <h1 class="error-heading">404</h1>
     <h2 class="error-message">Oops! Page not found.</h2>
     <p class="lead">The page you are looking for might have been removed, had its name changed, or is temporarily unavailable.</p>
     <a href="/" class="error-button">Go to Home</a>
   </div>
 </div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", (e) => {
+    document.querySelector(".error-content").focus();
+  });
+</script>

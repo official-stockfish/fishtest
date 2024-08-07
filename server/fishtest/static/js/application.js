@@ -308,6 +308,7 @@ function handleSortingTables() {
       const th = target;
       const table = th.closest("table");
       const body = table.querySelector("tbody");
+      const headers = table.querySelectorAll("th");
       Array.from(body.querySelectorAll("tr"))
         .sort(
           comparer(
@@ -322,6 +323,11 @@ function handleSortingTables() {
           }
           body.append(tr);
         });
+
+      headers.forEach((header) => {
+        header.removeAttribute("aria-sort");
+      });
+      th.setAttribute("aria-sort", this.asc ? "ascending" : "descending");
     }
   });
 }
