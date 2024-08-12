@@ -484,7 +484,7 @@ class TestApi(unittest.TestCase):
         request = self.correct_password_request({"run_id": run_id, "task_id": 0})
         response = WorkerApi(request).beat()
         response.pop("duration", None)
-        self.assertEqual(response, {})
+        self.assertEqual(response, {"task_alive": True})
 
 
 class TestRunFinished(unittest.TestCase):

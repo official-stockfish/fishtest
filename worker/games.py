@@ -861,6 +861,9 @@ def enqueue_output(stream, queue):
 def parse_fastchess_output(
     p, current_state, remote, result, spsa_tuning, games_to_play, batch_size, tc_limit
 ):
+    finished_task_message = (
+        "The server told us that no more games are needed for the current task."
+    )
     hash_pattern = re.compile(r"(Base|New)-[a-f0-9]+")
 
     def shorten_hash(match):
@@ -897,6 +900,10 @@ def parse_fastchess_output(
 
     num_games_updated = 0
     while datetime.now(timezone.utc) < end_time:
+        if current_state["task_id"] is None:
+            # This task is no longer necessary
+            print(finished_task_message)
+            return False
         try:
             line = q.get_nowait().strip()
         except Empty:
@@ -1029,10 +1036,7 @@ def parse_fastchess_output(
                     else:
                         if not response["task_alive"]:
                             # This task is no longer necessary
-                            print(
-                                "The server told us that no more games"
-                                " are needed for the current task."
-                            )
+                            print(finished_task_message)
                             return False
                         update_succeeded = True
                         num_games_updated = num_games_finished

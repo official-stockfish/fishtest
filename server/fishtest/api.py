@@ -34,7 +34,7 @@ Proper configuration of `nginx` is crucial for this, and should be done
 according to the route/URL mapping defined in `__init__.py`.
 """
 
-WORKER_VERSION = 244
+WORKER_VERSION = 245
 
 
 @exception_view_config(HTTPException)
@@ -316,7 +316,7 @@ class WorkerApi(GenericApi):
         task = self.task()
         task["last_updated"] = datetime.now(timezone.utc)
         self.request.rundb.buffer(run, False)
-        return self.add_time({})
+        return self.add_time({"task_alive": task["active"]})
 
     @view_config(route_name="api_request_spsa")
     def request_spsa(self):
