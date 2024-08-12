@@ -69,7 +69,7 @@ MIN_GCC_MINOR = 3
 MIN_CLANG_MAJOR = 8
 MIN_CLANG_MINOR = 0
 
-WORKER_VERSION = 244
+WORKER_VERSION = 245
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -1234,6 +1234,10 @@ def heartbeat(worker_info, password, remote, current_state):
             else:
                 if "error" not in req:
                     print("(received)")
+                    task_alive = req.get("task_alive", True)
+                    if not task_alive:
+                        current_state["task_id"] = None
+                        current_state["run"] = None
     else:
         print("Heartbeat stopped")
 
