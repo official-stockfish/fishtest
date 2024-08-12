@@ -990,15 +990,7 @@ def parse_fastchess_output(
                 spsa["losses"] = fastchess_WLD_results["losses"]
                 spsa["draws"] = fastchess_WLD_results["draws"]
 
-            num_games_finished = (
-                fastchess_WLD_results["games"]
-                + saved_stats["wins"]
-                + saved_stats["losses"]
-                + saved_stats["draws"]
-            )
-
-            fastchess_ptnml_results = None
-            fastchess_WLD_results = None
+            num_games_finished = fastchess_WLD_results["games"]
 
             assert (
                 2 * sum(result["stats"]["pentanomial"])
@@ -1006,9 +998,12 @@ def parse_fastchess_output(
                 + result["stats"]["losses"]
                 + result["stats"]["draws"]
             )
-            assert num_games_finished == 2 * sum(result["stats"]["pentanomial"])
+            assert num_games_finished == 2 * sum(fastchess_ptnml_results)
             assert num_games_finished <= num_games_updated + batch_size
             assert num_games_finished <= games_to_play
+
+            fastchess_ptnml_results = None
+            fastchess_WLD_results = None
 
             # Send an update_task request after a batch is full or if we have played all games.
             if (num_games_finished == num_games_updated + batch_size) or (
