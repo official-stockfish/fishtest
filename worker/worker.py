@@ -1226,6 +1226,10 @@ def heartbeat(worker_info, password, remote, current_state):
             else:
                 if "error" not in req:
                     print("(received)")
+                    task_alive = req.get("task_alive", True)
+                    if not task_alive:
+                        current_state["task_id"] = None
+                        current_state["run"] = None
     else:
         print("Heartbeat stopped")
 
