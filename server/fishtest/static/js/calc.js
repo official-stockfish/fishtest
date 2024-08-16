@@ -109,7 +109,7 @@ function drawCharts(resize) {
   history.replaceState(
     null,
     "",
-    `/sprt_calc?elo-model=${eloModel}&elo-0=${elo0}&elo-1=${elo1}&draw-ratio=${drawRatio}&rms-bias=${rmsBias}`,
+    `/sprt_calc?elo-model=${eloModel}&elo-0=${elo0}&elo-1=${elo1}&draw-ratio=${drawRatio}&rms-bias=${rmsBias}&alpha=${alpha}&beta=${beta}`,
   );
   elo0 = sprt.elo0;
   elo1 = sprt.elo1;
