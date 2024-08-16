@@ -4,18 +4,36 @@
   document.title = "Chess SPRT Calculator | Stockfish Testing";
 </script>
 
-<h2>Chess SPRT Calculator</h2>
+<h2 id="page-heading">Chess SPRT Calculator</h2>
 
-<form id="parameters" class="row">
+<form id="parameters" class="row" aria-labelledby="page-heading">
   <div class="col-12 col-md-auto mb-3">
-    <label for="elo-model" class="form-label">Elo model</label>
+    <label for="elo-model" class="form-label">
+      Elo model
+      <span
+        class="help-tooltip"
+        tabindex="0"
+        title="Select the Elo model type."
+      >
+        <i class="fas fa-info-circle"></i>
+      </span>
+    </label>
     <select id="elo-model" class="form-select">
       <option>Normalized</option>
       <option>Logistic</option>
     </select>
   </div>
   <div class="col-6 col-md-auto mb-3">
-    <label for="elo-0" class="form-label">Elo0</label>
+    <label for="elo-0" class="form-label">
+      Elo0
+      <span
+        class="help-tooltip"
+        tabindex="0"
+        title="Lower bound for the Elo range."
+      >
+        <i class="fas fa-info-circle"></i>
+      </span>
+    </label>
     <input
       id="elo-0"
       class="form-control number no-arrows"
@@ -26,7 +44,16 @@
     >
   </div>
   <div class="col-6 col-md-auto mb-3">
-    <label for="elo-1" class="form-label">Elo1</label>
+    <label for="elo-1" class="form-label">
+      Elo1
+      <span
+        class="help-tooltip"
+        tabindex="0"
+        title="Upper bound for the Elo range."
+      >
+        <i class="fas fa-info-circle"></i>
+      </span>
+    </label>
     <input
       id="elo-1"
       class="form-control number no-arrows"
@@ -37,7 +64,16 @@
     >
   </div>
   <div class="col-6 col-md-auto mb-3">
-    <label for="draw-ratio" class="form-label">Draw ratio</label>
+    <label for="draw-ratio" class="form-label">
+      Draw ratio
+      <span
+        class="help-tooltip"
+        tabindex="0"
+        title="Expected draw ratio between 0 and 1."
+      >
+        <i class="fas fa-info-circle"></i>
+      </span>
+    </label>
     <input
       id="draw-ratio"
       class="form-control number no-arrows"
@@ -48,7 +84,16 @@
     >
   </div>
   <div class="col-6 col-md-auto mb-3">
-    <label for="rms-bias" class="form-label">RMS bias</label>
+    <label for="rms-bias" class="form-label">
+      RMS bias
+      <span
+        class="help-tooltip"
+        tabindex="0"
+        title="Root Mean Square bias of the openings."
+      >
+        <i class="fas fa-info-circle"></i>
+      </span>
+    </label>
     <input
       id="rms-bias"
       class="form-control number no-arrows"
@@ -62,6 +107,7 @@
       type="button"
       value="Calculate"
       onclick="drawCharts()"
+      aria-label="Calculate SPRT results"
     >
   </div>
 </form>
@@ -69,10 +115,10 @@
   <hr>
 </div>
 <div id="mouse_screen" class="row g-0">
-  <div id="pass_prob_chart_div" class="sprt-calc-chart col-12 col-md-6"></div>
-  <div id="expected_chart_div" class="sprt-calc-chart col-12 col-md-6"></div>
+  <div id="pass_prob_chart_div" class="sprt-calc-chart col-12 col-md-6" aria-label="Pass Probability Chart"></div>
+  <div id="expected_chart_div" class="sprt-calc-chart col-12 col-md-6" aria-label="Expected Duration Chart"></div>
 </div>
-<div id="sprt-calc-description">
+<div id="sprt-calc-description" aria-labelledby="page-heading">
   <ul>
     <li>
       The fields <b>Elo0</b> and <b>Elo1</b> represent the bounds for an
@@ -140,7 +186,7 @@
 <script
   src="/js/sprt.js?v=${cache_busters['js/sprt.js']}"
   integrity="sha384-${cache_busters['js/sprt.js']}"
-  rossorigin="anonymous"
+  crossorigin="anonymous"
 ></script>
 
 <script

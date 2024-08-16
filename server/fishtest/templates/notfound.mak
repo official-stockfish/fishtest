@@ -28,7 +28,7 @@
     display: inline-block;
     padding: 0.75rem 1.5rem;
     background-color: #77828f;
-    color: #fff;
+    color: #fff !important;
     text-decoration: none;
     border-radius: 5px;
     transition: background-color 0.3s;
@@ -41,11 +41,19 @@
   }
 </style>
 
-<div class="error-container">
-  <div class="error-content">
+<div class="error-container" tabindex="-1">
+  <div class="error-content" role="alert">
     <h1 class="error-heading">404</h1>
     <h2 class="error-message">Oops! Page not found.</h2>
     <p class="lead">The page you are looking for might have been removed, had its name changed, or is temporarily unavailable.</p>
-    <a href="/" class="error-button">Go to Home</a>
+    <a href="/" id="error-button" class="btn btn-lg btn-light border" role="button">Go to Home</a>
   </div>
 </div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", (e) => {
+    setTimeout(() => {
+      document.getElementById("error-button").focus();
+    }, 600);
+  });
+</script>

@@ -254,24 +254,25 @@ async function handleSPSA() {
   }
 
   for (let j = 0; j < spsaParams.length; j++) {
-    const dropdownItem = document.createElement("li");
-    const anchorItem = document.createElement("a");
-    anchorItem.className = "dropdown-item";
-    anchorItem.href = "javascript:";
-    anchorItem.param_id = j + 1;
-    anchorItem.append(spsaParams[j].name);
-    dropdownItem.append(anchorItem);
-    document.getElementById("dropdown_individual").append(dropdownItem);
+    const li = document.createElement("li");
+    const button = document.createElement("button");
+    button.className = "dropdown-item";
+    button.dataset.paramId = j + 1;
+    button.append(spsaParams[j].name);
+    li.append(button);
+    document.getElementById("dropdown_individual").append(li);
   }
 
   document
     .getElementById("dropdown_individual")
     .addEventListener("click", (e) => {
-      if (!e.target.matches("a")) return;
       const { target } = e;
-      const param_id = target.param_id;
+      if (!target.classList.includes("dropdown-item")) {
+        return;
+      }
+      const paramId = target.dataset.paramId;
       for (let i = 1; i < chart_data.getNumberOfColumns(); i++) {
-        updateColumnVisibility(i, i == param_id);
+        updateColumnVisibility(i, i == paramId);
       }
 
       viewAll = false;
@@ -304,7 +305,9 @@ async function handleSPSA() {
   });
 
   document.getElementById("btn_view_all").addEventListener("click", () => {
-    if (viewAll) return;
+    if (viewAll) {
+      return;
+    }
     viewAll = true;
     for (let i = 0; i < chart_data.getNumberOfColumns(); i++) {
       updateColumnVisibility(i, true);

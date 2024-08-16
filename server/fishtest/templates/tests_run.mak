@@ -143,7 +143,12 @@
                         "stop_rule": "stop-rule-sprt",
                         "bounds": "standard STC"
                       }'>
-                    <label class="list-group-item rounded-3" for="vltc_test" title="Very long time control | Single-threaded">
+                    <label
+                      class="list-group-item rounded-3"
+                      for="vltc_test"
+                      title="Very long time control | Single-threaded"
+                      aria-label="Very long time control | Single-threaded"
+                    >
                       VLTC
                     </label>
                   </div>
@@ -161,7 +166,12 @@
                         "stop_rule": "stop-rule-sprt",
                         "bounds": "standard LTC"
                       }'>
-                    <label class="list-group-item rounded-3" for="vltc_smp_test" title="Very long time control | Multi-threaded">
+                    <label
+                      class="list-group-item rounded-3"
+                      for="vltc_smp_test"
+                      title="Very long time control | Multi-threaded"
+                      aria-label="Very long time control | Multi-threaded"
+                    >
                       VLTC SMP
                     </label>
                   </div>
@@ -183,7 +193,12 @@
                         "test_signature": ${latest_bench},
                         "base_signature": ${pt_signature}
                       }'>
-                    <label class="list-group-item rounded-3" for="pt_test" title="Progression test | Single-threaded">
+                    <label
+                      class="list-group-item rounded-3"
+                      for="pt_test"
+                      title="Progression test | Single-threaded"
+                      aria-label="Progression test | Single-threaded"
+                    >
                       PT
                     </label>
                   </div>
@@ -205,7 +220,12 @@
                         "test_signature": ${latest_bench},
                         "base_signature": ${pt_signature}
                       }'>
-                    <label class="list-group-item rounded-3" for="pt_smp_test" title="Progression test | Multi-threaded">
+                    <label
+                      class="list-group-item rounded-3"
+                      for="pt_smp_test"
+                      title="Progression test | Multi-threaded"
+                      aria-label="Progression test | Multi-threaded"
+                    >
                       PT SMP
                     </label>
                   </div>
@@ -213,7 +233,12 @@
               </div>
 
               <div class="mb-2">
-                <label for="tests-repo" class="form-label">Test repository</label>
+                <label
+                  for="tests-repo"
+                  class="form-label"
+                  title="Provide the URL of the test repository."
+                  aria-label="Provide the URL of the test repository."
+                >Test repository</label>
                 <input
                   type="url"
                   name="tests-repo"
@@ -225,7 +250,12 @@
               </div>
 
               <div class="mb-2 col-6">
-                <label for="test-branch" class="form-label">Test Branch</label>
+                <label
+                  for="test-branch"
+                  class="form-label"
+                  title="Specify the branch of the repository you want to test."
+                  aria-label="Specify the branch of the repository you want to test."
+                >Test Branch</label>
                 <input
                   type="text"
                   name="test-branch"
@@ -237,7 +267,12 @@
               </div>
 
               <div class="mb-2 col-6">
-                <label for="base-branch" class="form-label">Base Branch</label>
+                <label
+                  for="base-branch"
+                  class="form-label"
+                  title="Specify the base branch to test against."
+                  aria-label="Specify the base branch to test against."
+                >Base Branch</label>
                 <input
                   type="text"
                   name="base-branch"
@@ -248,7 +283,12 @@
               </div>
 
               <div class="mb-2 col-6">
-                <label for="test-signature" class="form-label">Test Signature</label>
+                <label
+                  for="test-signature"
+                  class="form-label"
+                  title="Provide a signature for the test."
+                  aria-label="Provide a signature for the test."
+                >Test Signature</label>
                 <input
                   type="number"
                   name="test-signature"
@@ -262,7 +302,12 @@
               </div>
 
               <div class="mb-2 col-6">
-                <label for="base-signature" class="form-label">Base Signature</label>
+                <label
+                  for="base-signature"
+                  class="form-label"
+                  title="Provide the signature of the base branch for comparison."
+                  aria-label="Provide the signature of the base branch for comparison."
+                >Base Signature</label>
                 <input
                   type="number"
                   name="base-signature"
@@ -275,7 +320,12 @@
               </div>
 
               <div class="mb-2 col-6">
-                <label for="new-options" class="form-label">Test Options</label>
+                <label
+                  for="new-options"
+                  class="form-label"
+                  title="Provide the UCI options of the new engine."
+                  aria-label="Provide the UCI options of the new engine."
+                >Test Options</label>
                 <input
                   type="text"
                   name="new-options"
@@ -286,7 +336,12 @@
               </div>
 
               <div class="mb-2 col-6">
-                <label for="base-options" class="form-label">Base Options</label>
+                <label
+                  for="base-options"
+                  class="form-label"
+                  title="Provide the UCI options of the old engine."
+                  aria-label="Provide the UCI options of the old engine."
+                >Base Options</label>
                 <input
                   type="text"
                   name="base-options"
@@ -297,7 +352,12 @@
               </div>
 
               <div>
-                <label for="run-info" class="form-label">Info</label>
+                <label
+                  for="run-info"
+                  class="form-label"
+                  title="Provide any additional information for the test, or explain the purpose of the test."
+                  aria-label="Provide any additional information for the test, or explain the purpose of the test."
+                >Info</label>
                 <textarea
                   name="run-info"
                   placeholder="Defaults to commit message"
@@ -314,12 +374,22 @@
           <div class="col-12 col-md-6 mb-2">
             <div class="mb-2">
               <input type="hidden" name="stop_rule" id="stop_rule_field" value="sprt">
-              <label class="form-label">Stop rule</label>
+              <label
+                class="form-label"
+                for="stop-rule"
+                title="Select the stopping rule for the test."
+                aria-label="Select the stopping rule for the test."
+              >Stop rule</label>
               <div class="list-group list-group-checkable flex-row row row-cols-3 g-1 text-center">
                 <div class="col">
                   <input class="list-group-item-check pe-none" type="radio" name="stop-rule" id="stop-rule-sprt"
                     value="stop-rule-sprt" checked>
-                  <label class="list-group-item rounded-3" for="stop-rule-sprt" title="Sequential probability ratio test">
+                  <label
+                    class="list-group-item rounded-3"
+                    for="stop-rule-sprt"
+                    title="Sequential probability ratio test"
+                    aria-label="Sequential probability ratio test"
+                  >
                     SPRT
                   </label>
                 </div>
@@ -327,7 +397,12 @@
                 <div class="col">
                   <input class="list-group-item-check pe-none" type="radio" name="stop-rule" id="stop-rule-games"
                     value="stop-rule-games">
-                  <label class="list-group-item rounded-3" for="stop-rule-games" title="Fixed amount of games">
+                  <label
+                    class="list-group-item rounded-3"
+                    for="stop-rule-games"
+                    title="Fixed amount of games"
+                    aria-label="Fixed amount of games"
+                  >
                     Games
                   </label>
                 </div>
@@ -340,7 +415,12 @@
                     id="stop-rule-spsa"
                     value="stop-rule-spsa"
                   >
-                  <label class="list-group-item rounded-3" for="stop-rule-spsa" title="Simultaneous perturbation stochastic approximation">
+                  <label
+                    class="list-group-item rounded-3"
+                    for="stop-rule-spsa"
+                    title="Simultaneous perturbation stochastic approximation"
+                    aria-label="Simultaneous perturbation stochastic approximation"
+                  >
                     SPSA
                   </label>
                 </div>
@@ -349,7 +429,12 @@
 
             ## This only appears when games or spsa is selected
             <div class="mb-2 stop-rule stop-rule-games stop-rule-spsa" style="${'display: none' if (args.get('sprt') or not is_rerun) else ''}">
-              <label for="num-games" class="form-label">Amount of games</label>
+              <label
+                for="num-games"
+                class="form-label"
+                title="Specify the number of games to be played."
+                aria-label="Specify the number of games to be played."
+              >Amount of games</label>
               <input
                 type="number"
                 name="num-games"
@@ -366,7 +451,12 @@
               <input type="hidden" name="elo_model" id="elo_model_field" value=${elo_model}>
               <div class="row gx-1">
                 <div class="col-12 col-md">
-                  <label for="bounds" class="form-label">SPRT Bounds</label>
+                  <label
+                    for="bounds"
+                    class="form-label"
+                    title="Select the SPRT bounds."
+                    aria-label="Select the SPRT bounds."
+                  >SPRT Bounds</label>
                   <select class="form-select" id="bounds" name="bounds">
                     <option value="standard STC">Standard STC ${fb(0.0, 2.0)}</option>
                     <option value="standard LTC">Standard LTC ${fb(0.5, 2.5)}</option>
@@ -380,7 +470,12 @@
                   class="col-6 col-md-4 col-lg-3 mt-2 mt-md-0 custom-bounds"
                   style="${args.get('sprt') or 'display: none'}"
                 >
-                  <label for="sprt_elo0" class="form-label">SPRT Elo0</label>
+                  <label
+                    for="sprt_elo0"
+                    class="form-label"
+                    title="Provide the lower bound for SPRT Elo."
+                    aria-label="Provide the lower bound for SPRT Elo."
+                  >SPRT Elo0</label>
                   <input
                     type="number"
                     step="0.05"
@@ -394,7 +489,12 @@
                   class="col-6 col-md-4 col-lg-3 mt-2 mt-md-0 custom-bounds"
                   style="${args.get('sprt') or 'display: none'}"
                 >
-                  <label for="sprt_elo1" class="form-label">SPRT Elo1</label>
+                  <label
+                    for="sprt_elo1"
+                    class="form-label"
+                    title="Provide the upper bound for SPRT Elo."
+                    aria-label="Provide the upper bound for SPRT Elo."
+                  >SPRT Elo1</label>
                   <input
                     type="number"
                     step="0.05"
@@ -415,7 +515,12 @@
               <div class="row gx-1">
                 <div class="col-4">
                   <div class="mb-2">
-                    <label for="spsa_A" class="form-label">SPSA A ratio</label>
+                    <label
+                      for="spsa_A"
+                      class="form-label"
+                      title="Provide the SPSA A ratio."
+                      aria-label="Provide the SPSA A ratio."
+                    >SPSA A ratio</label>
                     <input
                       type="number"
                       min="0"
@@ -430,7 +535,12 @@
                 </div>
                 <div class="col-4">
                   <div class="mb-2">
-                    <label for="spsa_alpha" class="form-label">SPSA Alpha</label>
+                    <label
+                      for="spsa_alpha"
+                      class="form-label"
+                      title="Provide the SPSA Alpha value."
+                      aria-label="Provide the SPSA Alpha value."
+                    >SPSA Alpha</label>
                     <input
                       type="number"
                       min="0"
@@ -444,7 +554,12 @@
                 </div>
                 <div class="col-4">
                   <div class="mb-2">
-                    <label for="spsa_gamma" class="form-label">SPSA Gamma</label>
+                    <label
+                      for="spsa_gamma"
+                      class="form-label"
+                      title="Provide the SPSA Gamma value."
+                      aria-label="Provide the SPSA Gamma value."
+                    >SPSA Gamma</label>
                     <input
                       type="number"
                       min="0"
@@ -459,7 +574,12 @@
               </div>
 
               <div class="mb-2">
-                <label for="spsa_raw_params" class="form-label">SPSA parameters</label>
+                <label
+                  for="spsa_raw_params"
+                  class="form-label"
+                  title="Paste the SPSA parameters here."
+                  aria-label="Paste the SPSA parameters here."
+                >SPSA parameters</label>
                 <textarea
                   name="spsa_raw_params"
                   id="spsa_raw_params"
@@ -481,8 +601,9 @@
                   role="button"
                   data-bs-toggle="modal"
                   data-bs-target="#autoselect-modal"
+                  aria-haspopup="dialog"
                 ></i>
-                <div class="modal fade" id="autoselect-modal" tabindex="-1" aria-hidden="true">
+                <div class="modal fade" id="autoselect-modal" tabindex="-1" role="dialog">
                   <div class="modal-dialog modal-dialog-scrollable">
                     <div class="modal-content">
                       <div class="modal-header">
@@ -526,7 +647,12 @@
             <div>
               <div class="row gx-1">
                 <div class="col mb-2">
-                  <label for="threads" class="form-label">Threads</label>
+                  <label
+                    for="threads"
+                    class="form-label"
+                    title="Specify the number of threads."
+                    aria-label="Specify the number of threads."
+                  >Threads</label>
                   <input
                     type="number"
                     min="1"
@@ -537,7 +663,12 @@
                   >
                 </div>
                 <div class="col mb-2">
-                  <label for="tc" class="form-label" title="Time control">TC</label>
+                  <label
+                    for="tc"
+                    class="form-label"
+                    title="Specify the time control."
+                    aria-label="Specify the time control."
+                  >TC</label>
                   <input
                     type="text"
                     name="tc"
@@ -547,7 +678,12 @@
                   >
                 </div>
                 <div class="col mb-2 new_tc" style="display: none;">
-                  <label for="new_tc" class="form-label">Test TC</label>
+                  <label
+                    for="new_tc"
+                    class="form-label"
+                    title="Specify the time control for the new engine."
+                    aria-label="Specify the time control for the new engine."
+                  >Test TC</label>
                   <input
                     type="text"
                     name="new_tc"
@@ -557,7 +693,12 @@
                   >
                 </div>
                 <div class="col mb-2">
-                  <label for="priority" class="form-label">Priority</label>
+                  <label
+                    for="priority"
+                    class="form-label"
+                    title="The priority of the test run. Higher values indicate more urgency."
+                    aria-label="The priority of the test run. Higher values indicate more urgency."
+                  >Priority</label>
                   <input
                     type="number"
                     name="priority"
@@ -567,7 +708,12 @@
                   >
                 </div>
                 <div class="col mb-2">
-                  <label for="throughput" class="form-label">Throughput</label>
+                  <label
+                    for="throughput"
+                    class="form-label"
+                    title="Specify the external throughput as a percentage."
+                    aria-label="Specify the external throughput as a percentage."
+                  >Throughput</label>
                   <select class="form-select" id="throughput" name="throughput">
                     <option value="10">10%</option>
                     <option value="25">25%</option>
@@ -582,7 +728,7 @@
             <div id="test-book" class="mb-2" style="display: none;">
               <div class="row gx-1">
                 <div class="col">
-                  <label for="book" class="form-label">Book</label>
+                  <label for="book" class="form-label" title="Select the book to use for the test.">Book</label>
                   <select name="book" id="book" class="form-select">
                     % for book in valid_books:
                       <option value="${book}" ${"selected" if default_book == book else ""}>${book}</option>
@@ -590,7 +736,12 @@
                   </select>
                 </div>
                 <div class="col-12 col-md-4 mt-2 mt-md-0 book-depth">
-                  <label for="book-depth" class="form-label">Book depth</label>
+                  <label
+                    for="book-depth"
+                    class="form-label"
+                    title="Specify the book depth."
+                    aria-label="Specify the book depth."
+                  >Book depth</label>
                   <input
                     type="number"
                     min="1"
@@ -609,18 +760,22 @@
               <div class="row">
                 <div class="col text-nowrap">
                   <div class="mb-2 form-check">
-                    <label class="form-check-label" for="checkbox-auto-purge">Auto-purge</label>
                     <input
                       type="checkbox"
                       class="form-check-input"
                       id="checkbox-auto-purge"
                       name="auto-purge"
                     >
+                    <label
+                      class="form-check-label"
+                      for="checkbox-auto-purge"
+                      title="Auto-purge the results of bad-workers after the run finishes."
+                      aria-label="Auto-purge the results of bad-workers after the run finishes."
+                    >Auto-purge</label>
                   </div>
                 </div>
                 <div class="col text-nowrap">
                   <div class="mb-2 form-check">
-                    <label class="form-check-label" for="checkbox-time-odds">Time odds</label>
                     <input
                       type="checkbox"
                       class="form-check-input"
@@ -628,22 +783,32 @@
                       name="odds"
                       ${'checked' if is_odds else ''}
                     >
+                    <label
+                      class="form-check-label"
+                      for="checkbox-time-odds"
+                      title="Enable time odds for the test."
+                      aria-label="Enable time odds for the test."
+                    >Time odds</label>
                   </div>
                 </div>
                 <div class="col text-nowrap">
                   <div class="mb-2 form-check">
-                    <label class="form-check-label" for="checkbox-book-visibility">Custom book</label>
                     <input
                       type="checkbox"
                       class="form-check-input"
                       id="checkbox-book-visibility"
                       ${'checked' if default_book != test_book else ''}
                     >
+                    <label
+                      class="form-check-label"
+                      for="checkbox-book-visibility"
+                      title="Enable custom book for the test."
+                      aria-label="Enable custom book for the test."
+                    >Custom book</label>
                   </div>
                 </div>
                 <div class="col text-nowrap">
                   <div class="mb-2 form-check">
-                    <label class="form-check-label" for="checkbox-adjudication">Disable adjudication</label>
                     <input
                       type="checkbox"
                       class="form-check-input"
@@ -651,6 +816,12 @@
                       name="adjudication"
                       ${'checked' if not args.get("adjudication", True) else ''}
                     >
+                    <label
+                      class="form-check-label"
+                      for="checkbox-adjudication"
+                      title="Play games until a checkmate or a draw."
+                      aria-label="Play games until a checkmate or a draw."
+                    >Disable adjudication</label>
                   </div>
                 </div>
               </div>
