@@ -49,8 +49,14 @@
 
   <script>
     let fetchedMachinesBefore = false;
+    let machinesSkeleton = null;
+    let machinesBody = null;
     async function handleRenderMachines(){
         await DOMContentLoaded();
+        machinesBody = document.getElementById("machines");
+        if (!machinesSkeleton) {
+          machinesSkeleton = document.querySelector("#machines .ssc-wrapper").cloneNode(true);
+        }
         const machinesButton = document.getElementById("machines-button");
         machinesButton?.addEventListener("click", async () => {
           await toggleMachines();
@@ -61,18 +67,21 @@
 
     async function renderMachines() {
       await DOMContentLoaded();
-      if (fetchedMachinesBefore)
+      if (fetchedMachinesBefore) {
         return Promise.resolve();
-      const machinesBody = document.getElementById("machines");
+      }
       try {
+        if (document.querySelector("#machines .retry")) {
+          machinesBody.replaceChildren(machinesSkeleton);
+        }
         const html = await fetchText("/tests/machines");
-        machines.replaceChildren();
-        machines.insertAdjacentHTML("beforeend", html);
+        machinesBody.replaceChildren();
+        machinesBody.insertAdjacentHTML("beforeend", html);
         const machinesTbody = document.querySelector("#machines tbody");
         let newMachinesCount = machinesTbody?.childElementCount;
 
         if (newMachinesCount === 1) {
-          const noMachines = machinesTbody.getElementById("no-machines");
+          const noMachines = document.getElementById("no-machines");
           if (noMachines) newMachinesCount = 0;
         }
 
@@ -81,6 +90,8 @@
         fetchedMachinesBefore = true;
       } catch (error) {
         console.log("Request failed: " + error);
+        machinesBody.replaceChildren();
+        createRetryMessage(machinesBody, renderMachines);
       }
     }
 

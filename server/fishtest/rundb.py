@@ -97,6 +97,10 @@ class RunDb:
         self.run_lock = threading.Lock()
         self.active_runs = {}
 
+        # Keep some data about the workers
+        self.worker_runs = {}
+        self.worker_runs_lock = threading.Lock()
+
         self.request_task_lock = threading.Lock()
         self.scheduler = None
 
@@ -122,38 +126,44 @@ class RunDb:
             flush=True,
         )
         try:
-            validate(
-                cache_schema,
-                self.run_cache,
-                name="run_cache",
-                subs={"runs_schema": dict},
-            )
-            validate(
-                wtt_map_schema,
-                self.wtt_map,
-                name="wtt_map",
-                subs={"runs_schema": dict},
-            )
-            validate(
-                connections_counter_schema,
-                self.connections_counter,
-                name="connections_counter",
-            )
-            validate(
-                unfinished_runs_schema,
-                self.unfinished_runs,
-                name="unfinished_runs",
-            )
-            validate(
-                active_runs_schema,
-                self.active_runs,
-                name="active_runs",
-            )
-            validate(
-                worker_runs_schema,
-                self.worker_runs,
-                name="worker_runs",
-            )
+            with self.run_cache_lock:
+                validate(
+                    cache_schema,
+                    self.run_cache,
+                    name="run_cache",
+                    subs={"runs_schema": dict},
+                )
+            with self.wtt_lock:
+                validate(
+                    wtt_map_schema,
+                    self.wtt_map,
+                    name="wtt_map",
+                    subs={"runs_schema": dict},
+                )
+            with self.connections_lock:
+                validate(
+                    connections_counter_schema,
+                    self.connections_counter,
+                    name="connections_counter",
+                )
+            with self.unfinished_runs_lock:
+                validate(
+                    unfinished_runs_schema,
+                    self.unfinished_runs,
+                    name="unfinished_runs",
+                )
+            with self.run_lock:
+                validate(
+                    active_runs_schema,
+                    self.active_runs,
+                    name="active_runs",
+                )
+            with self.worker_runs_lock:
+                validate(
+                    worker_runs_schema,
+                    self.worker_runs,
+                    name="worker_runs",
+                )
         except ValidationError as e:
             message = f"Validation of internal data structures failed: {str(e)}"
             print(message, flush=True)
@@ -333,14 +343,6 @@ class RunDb:
             run = self.get_run(run_id)
             changed = False
             with self.active_run_lock(run_id):
-                version = run.get("version", 0)
-                if version < RUN_VERSION:
-                    print(
-                        f"Warning: upgrading run {run_id} to version {RUN_VERSION}",
-                        flush=True,
-                    )
-                    run["version"] = RUN_VERSION
-                    changed = True
                 results = compute_results(run)
                 if results != run["results"]:
                     print(
@@ -866,7 +868,6 @@ class RunDb:
             ),
         )
 
-        # Calculate but don't save results_info on runs using info on current machines
         cores = 0
         nps = 0
         games_per_minute = 0.0
@@ -894,8 +895,14 @@ class RunDb:
                 eta = remaining_hours(run) / cores
                 pending_hours += eta
             results = run["results"]
-            run["results_info"] = format_results(results, run)
-        return (runs, pending_hours, cores, nps, games_per_minute, machines_count)
+        return (
+            runs,
+            pending_hours,
+            cores,
+            nps,
+            games_per_minute,
+            machines_count,
+        )
 
     def get_finished_runs(
         self,
@@ -971,9 +978,7 @@ class RunDb:
     # It is very important that the following semaphore is initialized
     # with a value strictly less than the number of Waitress threads.
 
-    task_semaphore = threading.Semaphore(2)
-
-    worker_runs = {}
+    task_semaphore = threading.Semaphore(5)
 
     def worker_cap(self, run, worker_info):
         # Estimate how many games a worker will be able to run
@@ -1258,11 +1263,11 @@ After fixing the issues you can unblock the worker at
         # Cache some data. Currently we record the id's
         # the worker has seen, as well as the last id that was seen.
         # Note that "worker_runs" is empty after a server restart.
-
-        if unique_key not in self.worker_runs:
-            self.worker_runs[unique_key] = {}
-        self.worker_runs[unique_key][run_id] = True
-        self.worker_runs[unique_key]["last_run"] = run_id
+        with self.worker_runs_lock:
+            if unique_key not in self.worker_runs:
+                self.worker_runs[unique_key] = {}
+            self.worker_runs[unique_key][run_id] = True
+            self.worker_runs[unique_key]["last_run"] = run_id
 
         return {"run": run, "task_id": task_id}
 
@@ -1534,12 +1539,6 @@ After fixing the issues you can unblock the worker at
         self.set_inactive_run(run)
 
         results = run["results"]
-        run["results_info"] = format_results(results, run)
-        # De-couple the styling of the run from its finished status
-        if run["results_info"]["style"] == "#44EB44":
-            run["is_green"] = True
-        elif run["results_info"]["style"] == "yellow":
-            run["is_yellow"] = True
         try:
             validate(runs_schema, run, "run")
         except ValidationError as e:
@@ -1646,7 +1645,6 @@ After fixing the issues you can unblock the worker at
                 if run["args"]["sprt"]["state"] != "":
                     revived = False
 
-            run["results_info"] = format_results(results, run)
             if revived:
                 self.set_active_run(run)
             else:
