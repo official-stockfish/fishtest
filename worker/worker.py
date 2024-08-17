@@ -68,7 +68,7 @@ MIN_GCC_MINOR = 3
 MIN_CLANG_MAJOR = 8
 MIN_CLANG_MINOR = 0
 
-WORKER_VERSION = 241
+WORKER_VERSION = 242
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -1238,7 +1238,7 @@ def utcoffset():
     return "{}{:02d}:{:02d}".format("+" if utcoffset >= 0 else "-", hh, mm)
 
 
-def verify_worker_version(remote, username, password):
+def verify_worker_version(remote, username, password, worker_lock):
     # Returns:
     # True: we are the right version and have the correct credentials
     # False: incorrect credentials (the user may have been blocked in the meantime)
@@ -1257,6 +1257,7 @@ def verify_worker_version(remote, username, password):
         print("Updating worker version to {}".format(req["version"]))
         backup_log()
         try:
+            worker_lock.release()
             update()
         except Exception as e:
             print(
@@ -1277,6 +1278,7 @@ def fetch_and_handle_task(
     current_state,
     clear_binaries,
     global_cache,
+    worker_lock,
 ):
     # This function should normally not raise exceptions.
     # Unusual conditions are handled by returning False.
@@ -1291,7 +1293,7 @@ def fetch_and_handle_task(
     )
 
     # Check the worker version and upgrade if necessary
-    ret = verify_worker_version(remote, worker_info["username"], password)
+    ret = verify_worker_version(remote, worker_info["username"], password, worker_lock)
     if ret is False:
         current_state["alive"] = False
     if not ret:
@@ -1506,7 +1508,12 @@ def worker():
 
     # Check the worker version and upgrade if necessary
     try:
-        if verify_worker_version(remote, options.username, options.password) is False:
+        if (
+            verify_worker_version(
+                remote, options.username, options.password, worker_lock
+            )
+            is False
+        ):
             return 1
     except Exception as e:
         print("Exception verifying worker version:\n", e, sep="", file=sys.stderr)
@@ -1592,6 +1599,7 @@ def worker():
             current_state,
             clear_binaries,
             options.global_cache,
+            worker_lock,
         )
         if not current_state["alive"]:  # the user may have pressed Ctrl-C...
             break
