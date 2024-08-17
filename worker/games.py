@@ -868,7 +868,6 @@ def parse_fastchess_output(
         return "-".join([word[0], word[1][:10]])
 
     saved_stats = copy.deepcopy(result["stats"])
-    rounds = {}
 
     # patterns used to obtain fastchess WLD and ptnml results from the following block of info:
     # --------------------------------------------------
