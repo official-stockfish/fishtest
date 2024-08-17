@@ -40,7 +40,7 @@
         <li class="list-group-item bg-transparent text-break">Registered: ${format_date(user['registration_time'] if 'registration_time' in user else 'Unknown')}</li>
         % if not profile:
           <li class="list-group-item bg-transparent text-break">Tests Repository: 
-            % if user['tests_repo']:
+            % if 'tests_repo' in user and user['tests_repo']:
               <a class="alert-link" href="${user['tests_repo']}">${extract_repo_from_link(user['tests_repo'])}</a>
             % else:
               <span>-</span>
@@ -54,6 +54,14 @@
         % endif
         <li class="list-group-item bg-transparent text-break">
           Groups: ${format_group(user['groups'])}
+        </li>
+        <li class="list-group-item bg-transparent text-break">
+        Linked GitHub user: 
+        % if 'linked_github_username' in user and user['linked_github_username']:
+          <a class="alert-link" href="https://github.com/${user["linked_github_username"]}">GitHub/${user["linked_github_username"]}</a>
+        % else:
+          <span>No accounts linked</span>
+        % endif
         </li>
         <li class="list-group-item bg-transparent text-break">Machine Limit: ${limit}</li>
         <li class="list-group-item bg-transparent text-break">CPU-Hours: ${hours}</li>
@@ -273,6 +281,14 @@
       % endif
     % endif
   </form>
+  % if profile and not 'linked_github_username' in user:
+    <form action="${request.route_url('github_oauth')}" method="post">
+      <input type="hidden" name="action" value="link">
+      <button type="submit" class="btn btn-secondary w-100">
+        <i class="fa-brands fa-github"></i> Link GitHub Account
+      </button>
+    </form>
+  % endif
 </div>
 
 <script

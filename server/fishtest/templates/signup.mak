@@ -117,6 +117,15 @@
 
     <button type="submit" class="btn btn-primary w-100">Register</button>
   </form>
+  <div class="text-md-center my-4">
+    <p>Or</p>
+    <form action="${request.route_url('github_oauth')}" method="post">
+      <input type="hidden" name="action" value="signup">
+      <button type="submit" class="btn btn-secondary w-100">
+        <i class="fa-brands fa-github"></i> Sign up with GitHub
+      </button>
+    </form>
+  </div>
 </div>
 
 <script

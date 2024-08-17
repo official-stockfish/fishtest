@@ -177,5 +177,9 @@ def main(global_config, **settings):
     config.add_route("api_actions", "/api/actions")
     config.add_route("api_calc_elo", "/api/calc_elo")
 
+    # GitHub OAuth Routes
+    config.add_route("github_oauth", "/github/oauth")
+    config.add_route("github_callback", "/github/callback")
+
     config.scan()
     return config.make_wsgi_app()
