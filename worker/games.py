@@ -933,10 +933,10 @@ def parse_fastchess_output(
 
         # Parse line like this:
         # Finished game 1 (stockfish vs base): 0-1 {White disconnects}
-        if "disconnects" in line or "connection stalls" in line:
+        if "disconnect" in line or "stall" in line:
             result["stats"]["crashes"] += 1
 
-        if "on time" in line:
+        if "on time" in line or "timeout" in line:
             result["stats"]["time_losses"] += 1
 
         # fastchess WLD and pentanomial output parsing
