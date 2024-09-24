@@ -58,7 +58,7 @@ def MLE_expected(pdfhat, s):
     The theory behind this function can be found in the online
     document
 
-    http://hardy.uhasselt.be/Fishtest/support_MLE_multinomial.pdf
+    https://www.cantate.be/Fishtest/support_MLE_multinomial.pdf
 
     (see Proposition 1.1)."""
     pdf1 = [(ai - s, pi) for ai, pi in pdfhat]
@@ -78,7 +78,7 @@ def MLE_t_value(pdfhat, ref, s):
     The theory behind this function can be found in the online
     document
 
-    https://hardy.uhasselt.be/Fishtest/normalized_elo_practical.pdf
+    https://www.cantate.be/Fishtest/normalized_elo_practical.pdf
 
     (see Section 4.1)."""
     N = len(pdfhat)
@@ -154,7 +154,7 @@ def LLR_alt(pdf, s0, s1):
     distribution and s is the expectation value of the true
     distribution. See
 
-    http://hardy.uhasselt.be/Fishtest/support_MLE_multinomial.pdf
+    https://www.cantate.be/Fishtest/support_MLE_multinomial.pdf
     """
     r0, r1 = [sum([prob * (value - s) ** 2 for value, prob in pdf]) for s in (s0, s1)]
     return 1 / 2 * math.log(r0 / r1)
@@ -167,7 +167,7 @@ def LLR_alt2(pdf, s0, s1):
     distribution and s is the expectation value of the true
     distribution. See
 
-    http://hardy.uhasselt.be/Fishtest/GSPRT_approximation.pdf
+    https://www.cantate.be/Fishtest/GSPRT_approximation.pdf
     """
     s, var = stats(pdf)
     return (s1 - s0) * (2 * s - s0 - s1) / var / 2.0
@@ -193,7 +193,7 @@ def LLR_drift_variance_alt2(pdf, s0, s1, s=None):
     the argument s. If s is not given the it is assumed that pdf is the
     true distribution. See
 
-    http://hardy.uhasselt.be/Fishtest/GSPRT_approximation.pdf
+    https://www.cantate.be/Fishtest/GSPRT_approximation.pdf
     """
     s_, v_ = stats(pdf)
     # replace v_ by its MLE if requested
@@ -239,7 +239,7 @@ def LLR_normalized_alt(nelo0, nelo1, results):
     This function computes the generalized log-likelihood ratio for "results"
     using the approximation in
 
-    https://hardy.uhasselt.be/Fishtest/normalized_elo_practical.pdf
+    https://www.cantate.be/Fishtest/normalized_elo_practical.pdf
 
     (see Section 4.2).
 
