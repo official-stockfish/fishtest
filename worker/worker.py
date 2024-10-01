@@ -455,7 +455,7 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache):
     testing_dir = worker_dir / "testing"
     testing_dir.mkdir(exist_ok=True)
 
-    fastchess_sha = "af0f905a0420f881bcbafbb904a3647eacd950ff"
+    fastchess_sha = "a2a9dabfc15237fb90a309b07c21a1f23625e125"
     username = "Disservin"
 
     fastchess = "fastchess" + EXE_SUFFIX
