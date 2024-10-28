@@ -640,11 +640,11 @@ valid_aggregated_data = intersect(
 # about non-validation of runs created with the prior
 # schema.
 
-RUN_VERSION = 4
+RUN_VERSION = 5
 
 runs_schema = intersect(
     {
-        "_id?": ObjectId,
+        "_id": ObjectId,
         "version": uint,
         "start_time": datetime_utc,
         "last_updated": datetime_utc,
