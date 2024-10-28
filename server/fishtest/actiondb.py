@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+from bson.objectid import ObjectId
 from fishtest.schemas import action_schema
 from fishtest.util import hex_print, worker_name
 from pymongo import DESCENDING
@@ -216,6 +217,7 @@ class ActionDb:
         if "run_id" in action:
             action["run_id"] = str(action["run_id"])
         action["time"] = datetime.now(timezone.utc).timestamp()
+        action["_id"] = ObjectId()
         try:
             validate(action_schema, action, "action")
         except ValidationError as e:

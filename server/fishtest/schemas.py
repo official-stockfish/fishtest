@@ -194,7 +194,7 @@ action_schema = intersect(
         (
             action_is("failed_task"),
             {
-                "_id?": ObjectId,
+                "_id": ObjectId,
                 "time": timestamp,
                 "action": "failed_task",
                 "username": username,
@@ -208,7 +208,7 @@ action_schema = intersect(
         (
             action_is("crash_or_time"),
             {
-                "_id?": ObjectId,
+                "_id": ObjectId,
                 "time": timestamp,
                 "action": "crash_or_time",
                 "username": username,
@@ -222,7 +222,7 @@ action_schema = intersect(
         (
             action_is("dead_task"),
             {
-                "_id?": ObjectId,
+                "_id": ObjectId,
                 "time": timestamp,
                 "action": "dead_task",
                 "username": username,
@@ -235,7 +235,7 @@ action_schema = intersect(
         (
             action_is("system_event"),
             {
-                "_id?": ObjectId,
+                "_id": ObjectId,
                 "time": timestamp,
                 "action": "system_event",
                 "username": "fishtest.system",
@@ -245,7 +245,7 @@ action_schema = intersect(
         (
             action_is("new_run"),
             {
-                "_id?": ObjectId,
+                "_id": ObjectId,
                 "time": timestamp,
                 "action": "new_run",
                 "username": username,
@@ -257,7 +257,7 @@ action_schema = intersect(
         (
             action_is("upload_nn"),
             {
-                "_id?": ObjectId,
+                "_id": ObjectId,
                 "time": timestamp,
                 "action": "upload_nn",
                 "username": username,
@@ -267,7 +267,7 @@ action_schema = intersect(
         (
             action_is("modify_run"),
             {
-                "_id?": ObjectId,
+                "_id": ObjectId,
                 "time": timestamp,
                 "action": "modify_run",
                 "username": username,
@@ -279,7 +279,7 @@ action_schema = intersect(
         (
             action_is("delete_run"),
             {
-                "_id?": ObjectId,
+                "_id": ObjectId,
                 "time": timestamp,
                 "action": "delete_run",
                 "username": username,
@@ -291,7 +291,7 @@ action_schema = intersect(
             action_is("stop_run"),
             intersect(
                 {
-                    "_id?": ObjectId,
+                    "_id": ObjectId,
                     "time": timestamp,
                     "action": "stop_run",
                     "username": username,
@@ -307,7 +307,7 @@ action_schema = intersect(
         (
             action_is("finished_run"),
             {
-                "_id?": ObjectId,
+                "_id": ObjectId,
                 "time": timestamp,
                 "action": "finished_run",
                 "username": username,
@@ -319,7 +319,7 @@ action_schema = intersect(
         (
             action_is("approve_run"),
             {
-                "_id?": ObjectId,
+                "_id": ObjectId,
                 "time": timestamp,
                 "action": "approve_run",
                 "username": username,
@@ -331,7 +331,7 @@ action_schema = intersect(
         (
             action_is("purge_run"),
             {
-                "_id?": ObjectId,
+                "_id": ObjectId,
                 "time": timestamp,
                 "action": "purge_run",
                 "username": username,
@@ -343,7 +343,7 @@ action_schema = intersect(
         (
             action_is("block_user"),
             {
-                "_id?": ObjectId,
+                "_id": ObjectId,
                 "time": timestamp,
                 "action": "block_user",
                 "username": username,
@@ -354,7 +354,7 @@ action_schema = intersect(
         (
             action_is("accept_user"),
             {
-                "_id?": ObjectId,
+                "_id": ObjectId,
                 "time": timestamp,
                 "action": "accept_user",
                 "username": username,
@@ -365,7 +365,7 @@ action_schema = intersect(
         (
             action_is("block_worker"),
             {
-                "_id?": ObjectId,
+                "_id": ObjectId,
                 "time": timestamp,
                 "action": "block_worker",
                 "username": username,
@@ -376,7 +376,7 @@ action_schema = intersect(
         (
             action_is("log_message"),
             {
-                "_id?": ObjectId,
+                "_id": ObjectId,
                 "time": timestamp,
                 "action": "log_message",
                 "username": username,
