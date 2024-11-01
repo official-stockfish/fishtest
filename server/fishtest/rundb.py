@@ -567,7 +567,7 @@ class RunDb:
             print(message, flush=True)
             raise Exception(message)
 
-        self.buffer(new_run, True)
+        self.buffer(new_run, True, create=True)
 
         run_id = str(new_run["_id"])
         with self.unfinished_runs_lock:
@@ -695,7 +695,7 @@ class RunDb:
         else:
             return self.runs.find_one({"_id": r_id_obj})
 
-    def buffer(self, run, flush):
+    def buffer(self, run, flush, create=False):
         if not self.is_primary_instance():
             print(
                 "Warning: attempt to use the run_cache on the",
@@ -725,7 +725,9 @@ class RunDb:
                 }
         if flush:
             with self.active_run_lock(r_id):
-                self.runs.replace_one({"_id": ObjectId(r_id)}, run, upsert=True)
+                r = self.runs.replace_one({"_id": ObjectId(r_id)}, run, upsert=create)
+                if not create and r.matched_count == 0:
+                    print(f"Buffer: update of {r_id} failed", flush=True)
 
     def stop(self):
         self.flush_all()
