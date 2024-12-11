@@ -461,6 +461,17 @@ def plural(n, s):
     return s + (n != 1) * "s"
 
 
+def non_negative_params(*args):
+    return all(int(arg) >= 0 for arg in args)
+
+
+def numeric_params(*args):
+    return all(
+        arg is not None and arg.replace(".", "").replace("-", "").isdigit()
+        for arg in args
+    )
+
+
 def delta_date(diff):
     if diff == timedelta.max:
         return "Never"

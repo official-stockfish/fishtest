@@ -22,6 +22,7 @@ from fishtest.util import (
     get_tc_ratio,
     github_repo_valid,
     is_sprt_ltc_data,
+    numeric_params,
     password_strength,
     update_residuals,
 )
@@ -844,13 +845,8 @@ def validate_modify(request, run):
         request.session.flash("Unable to modify with no number of games!", "error")
         raise home(request)
 
-    bad_values = not all(
-        value is not None and value.replace("-", "").isdigit()
-        for value in [
-            request.POST["priority"],
-            request.POST["num-games"],
-            request.POST["throughput"],
-        ]
+    bad_values = not numeric_params(
+        request.POST["priority"], request.POST["num-games"], request.POST["throughput"]
     )
 
     if bad_values:
