@@ -1192,7 +1192,9 @@ def tests_run(request):
     if request.method == "POST":
         try:
             data = validate_form(request)
-            if is_sprt_ltc_data(data):
+            if is_sprt_ltc_data(data) and not data["info"].lower().startswith(
+                ("ltc", "vltc", "vvltc", "[ltc", "[vltc", "[vvltc")
+            ):
                 data["info"] = "LTC: " + data["info"]
             run_id = request.rundb.new_run(**data)
             run = request.rundb.get_run(run_id)
