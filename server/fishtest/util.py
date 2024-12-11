@@ -472,6 +472,10 @@ def delta_date(diff):
     return "seconds ago"
 
 
+def format_fullname(firstname, lastname):
+    return " ".join(filter(None, [firstname, lastname])).strip() or "No full Name"
+
+
 def format_group(groups):
     return (
         ", ".join([group.replace("group:", "") for group in groups])
