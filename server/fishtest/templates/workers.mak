@@ -66,12 +66,30 @@
   <form method="POST">
     <div class="mb-3">Last changed: ${delta_date(diff_date(last_updated)) if last_updated is not None else "Never"}</div>
     <div class="mb-3">
-      <label for="messageInput" class="form-label">Issue</label>
+      % if notes and len(notes) > 0:
+        <label for="messageView" class="form-label">Notes</label>
+          <textarea
+            id="messageView"
+            rows="7"
+            class="form-control mb-4"
+            readonly
+          >
+          % for note in notes:
+${note["username"]} ${note["time"].strftime("%Y-%m-%d %H:%M:%S %Z")}
+${note["message"]}
+
+           % endfor
+           </textarea>
+      % endif
+  
+      <label for="messageInput" class="form-label">New Notes</label>
       <textarea
         id="messageInput"
+        name="message"
         rows="4" class="form-control"
         placeholder="Describe the issue here" name="message"
-      >${message}</textarea>
+        required
+      ></textarea>
     </div>
     <div class="mb-3 form-check">
       <label class="form-check-label" for="blockWorker">Blocked</label>
@@ -148,3 +166,15 @@
     % endif
   </tbody>
 </table>
+
+
+<script>
+  async function handleScrollTextArea () {
+    await DOMContentLoaded();
+    const messageView = document.getElementById('messageView');
+    if (messageView) {
+      messageView.scrollTop = messageView.scrollHeight;
+    }
+  }
+  handleScrollTextArea();
+</script>
