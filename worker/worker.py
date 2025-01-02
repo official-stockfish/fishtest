@@ -1257,7 +1257,8 @@ def verify_worker_version(remote, username, password, worker_lock):
         print("Updating worker version to {}".format(req["version"]))
         backup_log()
         try:
-            worker_lock.release()
+            ### TEMPORARY DISABLED
+            # worker_lock.release()
             update()
         except Exception as e:
             print(
@@ -1447,18 +1448,19 @@ def fetch_and_handle_task(
 def worker():
     print(LOGO)
     worker_lock = None
-    try:
-        worker_lock = openlock.FileLock(LOCK_FILE)
-        worker_lock.acquire(timeout=0)
-    except openlock.Timeout:
-        print(
-            f"\n*** Another worker (with PID={worker_lock.getpid()}) is already running in this "
-            "directory ***"
-        )
-        return 1
+    ### TEMPORARY DISABLED
+    # try:
+    #     worker_lock = openlock.FileLock(LOCK_FILE)
+    #     worker_lock.acquire(timeout=0)
+    # except openlock.Timeout:
+    #     print(
+    #         f"\n*** Another worker (with PID={worker_lock.getpid()}) is already running in this "
+    #         "directory ***"
+    #     )
+    #     return 1
     # Make sure that the worker can upgrade!
-    except Exception as e:
-        print("\n *** Unexpected exception: {} ***\n".format(str(e)))
+    # except Exception as e:
+    #     print("\n *** Unexpected exception: {} ***\n".format(str(e)))
 
     worker_dir = Path(__file__).resolve().parent
     print("Worker started in {} ... (PID={})".format(worker_dir, os.getpid()))
@@ -1621,7 +1623,8 @@ def worker():
         (worker_dir / "fish.exit").unlink()
 
     print("Releasing the worker lock")
-    worker_lock.release()
+    ### TEMPORARY DISABLED
+    # worker_lock.release()
 
     print("Waiting for the heartbeat thread to finish...")
     heartbeat_thread.join(THREAD_JOIN_TIMEOUT)
