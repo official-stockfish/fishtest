@@ -828,7 +828,7 @@ unfinished_runs_schema = {
 }
 
 active_runs_schema = {
-    "purge_count?": suint,
+    "purge_count?": uint,
     run_id: {
         "time": timestamp,
         "lock": threading.RLock,
