@@ -462,7 +462,7 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache):
     if verify_required_fastchess(testing_dir / fastchess, fastchess_sha):
         return True
 
-    # build it ourselves
+    # Build it ourselves
     try:
         item_url = (
             "https://api.github.com/repos/"
@@ -1536,9 +1536,10 @@ def worker():
     if not verify_toolchain():
         return 1
 
-    # Make sure we have a working fastchess
+    # Make sure we have a working fastchess.
+    # Reduce the concurrency to compile on low memory workers.
     if not setup_fastchess(
-        worker_dir, compiler, options.concurrency, options.global_cache
+        worker_dir, compiler, max(1, options.concurrency // 2), options.global_cache
     ):
         return 1
 

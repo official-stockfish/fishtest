@@ -932,7 +932,7 @@ def parse_fastchess_output(
             raise RunException(message)
 
         # Parse line like this:
-        # Finished game 1 (stockfish vs base): 0-1 {White disconnects}
+        # Finished game 1 (stockfish vs base): 0-1 {White disconnect}
         if "disconnect" in line or "stall" in line:
             result["stats"]["crashes"] += 1
 
