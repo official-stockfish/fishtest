@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import atexit
 import base64
 import getpass
 import gzip
@@ -22,7 +21,6 @@ import traceback
 import uuid
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 from configparser import ConfigParser
-from contextlib import ExitStack
 from datetime import datetime, timedelta, timezone
 from functools import partial
 from pathlib import Path
@@ -68,7 +66,7 @@ MIN_GCC_MINOR = 3
 MIN_CLANG_MAJOR = 8
 MIN_CLANG_MINOR = 0
 
-WORKER_VERSION = 242
+WORKER_VERSION = 243
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -1257,8 +1255,7 @@ def verify_worker_version(remote, username, password, worker_lock):
         print("Updating worker version to {}".format(req["version"]))
         backup_log()
         try:
-            ### TEMPORARY DISABLED
-            # worker_lock.release()
+            worker_lock.release()
             update()
         except Exception as e:
             print(
@@ -1448,19 +1445,18 @@ def fetch_and_handle_task(
 def worker():
     print(LOGO)
     worker_lock = None
-    ### TEMPORARY DISABLED
-    # try:
-    #     worker_lock = openlock.FileLock(LOCK_FILE)
-    #     worker_lock.acquire(timeout=0)
-    # except openlock.Timeout:
-    #     print(
-    #         f"\n*** Another worker (with PID={worker_lock.getpid()}) is already running in this "
-    #         "directory ***"
-    #     )
-    #     return 1
+    try:
+        worker_lock = openlock.FileLock(LOCK_FILE)
+        worker_lock.acquire(timeout=0)
+    except openlock.Timeout:
+        print(
+            f"\n*** Another worker (with PID={worker_lock.getpid()}) is already running in this "
+            "directory ***"
+        )
+        return 1
     # Make sure that the worker can upgrade!
-    # except Exception as e:
-    #     print("\n *** Unexpected exception: {} ***\n".format(str(e)))
+    except Exception as e:
+        print("\n *** Unexpected exception: {} ***\n".format(str(e)))
 
     worker_dir = Path(__file__).resolve().parent
     print("Worker started in {} ... (PID={})".format(worker_dir, os.getpid()))
@@ -1623,8 +1619,7 @@ def worker():
         (worker_dir / "fish.exit").unlink()
 
     print("Releasing the worker lock")
-    ### TEMPORARY DISABLED
-    # worker_lock.release()
+    worker_lock.release()
 
     print("Waiting for the heartbeat thread to finish...")
     heartbeat_thread.join(THREAD_JOIN_TIMEOUT)
