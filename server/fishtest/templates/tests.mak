@@ -47,72 +47,6 @@
     </div>
   </div>
 
-  <script>
-    let fetchedMachinesBefore = false;
-    let machinesSkeleton = null;
-    let machinesBody = null;
-    async function handleRenderMachines(){
-        await DOMContentLoaded();
-        machinesBody = document.getElementById("machines");
-        if (!machinesSkeleton) {
-          machinesSkeleton = document.querySelector("#machines .ssc-wrapper").cloneNode(true);
-        }
-        const machinesButton = document.getElementById("machines-button");
-        machinesButton?.addEventListener("click", async () => {
-          await toggleMachines();
-        })
-        if (${str(machines_shown).lower()})
-          await renderMachines();
-      }
-
-    async function renderMachines() {
-      await DOMContentLoaded();
-      if (fetchedMachinesBefore) {
-        return Promise.resolve();
-      }
-      try {
-        if (document.querySelector("#machines .retry")) {
-          machinesBody.replaceChildren(machinesSkeleton);
-        }
-        const html = await fetchText("/tests/machines");
-        machinesBody.replaceChildren();
-        machinesBody.insertAdjacentHTML("beforeend", html);
-        const machinesTbody = document.querySelector("#machines tbody");
-        let newMachinesCount = machinesTbody?.childElementCount;
-
-        if (newMachinesCount === 1) {
-          const noMachines = document.getElementById("no-machines");
-          if (noMachines) newMachinesCount = 0;
-        }
-
-        const countSpan = document.getElementById("workers-count");
-        countSpan.textContent = `Workers - ${"${newMachinesCount}"} machines`;
-        fetchedMachinesBefore = true;
-      } catch (error) {
-        console.log("Request failed: " + error);
-        machinesBody.replaceChildren();
-        createRetryMessage(machinesBody, renderMachines);
-      }
-    }
-
-    async function toggleMachines() {
-      const button = document.getElementById("machines-button");
-      const active = button.textContent.trim() === "Hide";
-      if (active) {
-        button.textContent = "Show";
-      }
-      else {
-        button.textContent = "Hide";
-        await renderMachines();
-      }
-
-      document.cookie =
-        "machines_state" + "=" + button.textContent.trim() + "; max-age=${60 * 60}; SameSite=Lax";
-    }
-
-    handleRenderMachines();
-  </script>
-
   <h4>
     <a id="machines-button" class="btn btn-sm btn-light border"
       data-bs-toggle="collapse" href="#machines" role="button" aria-expanded="false"
@@ -138,6 +72,74 @@
           </div>
       </div>
   </div>
+
+  <script>
+    (() => {
+      let fetchedMachinesBefore = false;
+      let machinesSkeleton = null;
+      let machinesBody = null;
+      async function handleRenderMachines(){
+          await DOMContentLoaded();
+          machinesBody = document.getElementById("machines");
+          if (!machinesSkeleton) {
+            machinesSkeleton = document.querySelector("#machines .ssc-wrapper").cloneNode(true);
+          }
+          const machinesButton = document.getElementById("machines-button");
+          machinesButton?.addEventListener("click", async () => {
+            await toggleMachines();
+          })
+          if (${str(machines_shown).lower()})
+            await renderMachines();
+        }
+
+      async function renderMachines() {
+        await DOMContentLoaded();
+        if (fetchedMachinesBefore) {
+            return Promise.resolve();
+        }
+        try {
+          if (document.querySelector("#machines .retry")) {
+            machinesBody.replaceChildren(machinesSkeleton);
+          }
+          const html = await fetchText("/tests/machines");
+          machinesBody.replaceChildren();
+          machinesBody.insertAdjacentHTML("beforeend", html);
+          const machinesTbody = document.querySelector("#machines tbody");
+          let newMachinesCount = machinesTbody?.childElementCount;
+
+          if (newMachinesCount === 1) {
+            const noMachines = document.getElementById("no-machines");
+            if (noMachines) newMachinesCount = 0;
+          }
+
+          const countSpan = document.getElementById("workers-count");
+          countSpan.textContent = `Workers - ${"${newMachinesCount}"} machines`;
+          fetchedMachinesBefore = true;
+        } catch (error) {
+          console.log("Request failed: " + error);
+          machinesBody.replaceChildren();
+          createRetryMessage(machinesBody, renderMachines);
+        }
+      }
+
+      async function toggleMachines() {
+        const button = document.getElementById("machines-button");
+        const active = button.textContent.trim() === "Hide";
+        if (active) {
+          button.textContent = "Show";
+        }
+        else {
+          button.textContent = "Hide";
+          await renderMachines();
+        }
+
+        document.cookie =
+          "machines_state" + "=" + button.textContent.trim() + "; max-age=${60 * 60}; SameSite=Lax";
+      }
+
+      handleRenderMachines();
+    })();
+  </script>
 % endif
 
 <%include file="run_tables.mak"/>

@@ -375,8 +375,7 @@ function padDotVersionStr(dn) {
 }
 
 // Filters tables client-side
-function filterTable(inputValue, tableId, originalRows, predicate) {
-  const table = document.getElementById(tableId);
+function filterTable(inputValue, table, originalRows, predicate) {
   const tbody = table.querySelector("tbody");
   let noDataRow = table.querySelector(".no-data");
   inputValue = inputValue.toLowerCase();
@@ -442,13 +441,12 @@ function filterTable(inputValue, tableId, originalRows, predicate) {
       });
     };
 
-    const originalTable = document
-      .getElementById("my_table")
-      .cloneNode(true);
+    const originalTable = document.getElementById("my_table").cloneNode(true);
     const originalRows = Array.from(originalTable.querySelectorAll("tbody tr"));
-
     const searchInput = document.getElementById("my_input");
+
     searchInput.addEventListener("input", (e) => {
+      const myTable = document.getElementById("my_table");
       filterTable(e.target.value, "my_table", originalRows, myPredicate);
     });
   })();
