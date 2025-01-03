@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 
 from fishtest.schemas import api_access_schema, api_schema, gzip_data
 from fishtest.stats.stat_util import SPRT_elo, get_elo
-from fishtest.util import strip_run, worker_name
+from fishtest.util import non_negative_params, numeric_params, strip_run, worker_name
 from pyramid.httpexceptions import (
     HTTPBadRequest,
     HTTPException,
@@ -467,109 +467,82 @@ class UserApi(GenericApi):
 
     @view_config(route_name="api_calc_elo")
     def calc_elo(self):
-        W = self.request.params.get("W")
-        D = self.request.params.get("D")
-        L = self.request.params.get("L")
-        LL = self.request.params.get("LL")
-        LD = self.request.params.get("LD")
-        DDWL = self.request.params.get("DDWL")
-        WD = self.request.params.get("WD")
-        WW = self.request.params.get("WW")
-        elo0 = self.request.params.get("elo0", "")
-        elo1 = self.request.params.get("elo1", "")
+        FIXED_GAMES_PTNML = 1
+        SPRT_PTNML = 2
+        FIXED_GAMES_WDL = 3
+        SPRT_WDL = 4
 
-        is_ptnml = all(
-            value is not None and value.replace(".", "").replace("-", "").isdigit()
-            for value in (LL, LD, DDWL, WD, WW)
-        )
+        def handle_pentanomial():
+            values = [int(params.get(key)) for key in ("LL", "LD", "DDWL", "WD", "WW")]
+            if sum(values) * 2 > 2**32 or not sum(values):
+                self.handle_error("Invalid number of games to calculate Elo.")
+            return {"pentanomial": values}
 
-        is_ptnml = is_ptnml and all(int(value) >= 0 for value in (LL, LD, DDWL, WD, WW))
+        def handle_wdl():
+            values = [int(params.get(key)) for key in ("W", "D", "L")]
+            if sum(values) > 2**32 or not sum(values):
+                self.handle_error("Invalid number of games to calculate Elo.")
+            return dict(zip(["wins", "draws", "losses"], values))
 
-        is_wdl = not is_ptnml and all(
-            value is not None and value.replace(".", "").replace("-", "").isdigit()
-            for value in (W, D, L)
-        )
-
-        is_wdl = is_wdl and all(int(value) >= 0 for value in (W, D, L))
-
-        if not is_ptnml and not is_wdl:
-            self.handle_error(
-                "Invalid or missing parameters. Please provide all values as valid numbers."
-            )
-
-        if is_ptnml:
-            LL = int(LL)
-            LD = int(LD)
-            DDWL = int(DDWL)
-            WD = int(WD)
-            WW = int(WW)
-            if (LL + LD + DDWL + WD + WW) * 2 > 2**32:
-                self.handle_error("Number of games exceeds the limit.")
-            if LL + LD + DDWL + WD + WW == 0:
-                self.handle_error("No games to calculate Elo.")
-            results = {
-                "pentanomial": [LL, LD, DDWL, WD, WW],
-            }
-        if is_wdl:
-            W = int(W)
-            D = int(D)
-            L = int(L)
-            if W + D + L > 2**32:
-                self.handle_error("Number of games exceeds the limit.")
-            if W + D + L == 0:
-                self.handle_error("No games to calculate Elo.")
-            results = {
-                "wins": W,
-                "draws": D,
-                "losses": L,
-            }
-
-        is_sprt = elo0 != "" and elo1 != ""
-
-        if not is_sprt:  # fixed games
-            if "pentanomial" in results:
-                elo5, elo95_5, LOS5 = get_elo(results["pentanomial"])
-                elo5_l = elo5 - elo95_5
-                elo5_u = elo5 + elo95_5
-                return {"elo": elo5, "ci": [elo5_l, elo5_u], "LOS": LOS5}
-            else:
-                WLD = [results["wins"], results["losses"], results["draws"]]
-                elo3, elo95_3, LOS3 = get_elo([WLD[1], WLD[2], WLD[0]])
-                elo3_l = elo3 - elo95_3
-                elo3_u = elo3 + elo95_3
-                return {"elo": elo3, "ci": [elo3_l, elo3_u], "LOS": LOS3}
-        else:
-            badEloValues = (
-                not all(
-                    value.replace(".", "").replace("-", "").isdigit()
-                    for value in (elo0, elo1)
-                )
-                or float(elo1) < float(elo0) + 0.5
-                or abs(float(elo0)) > 10
-                or abs(float(elo1)) > 10
-            )
-            if badEloValues:
-                self.handle_error("Bad elo0, and elo1 values.")
-
-            elo_model = self.request.params.get("elo_model", "normalized")
-
+        def handle_sprt(results):
+            if not (
+                elo0
+                and elo1
+                and numeric_params(elo0, elo1)
+                and float(elo1) >= float(elo0) + 0.5
+                and abs(float(elo0)) <= 10
+                and abs(float(elo1)) <= 10
+            ):
+                self.handle_error("Bad elo0 and elo1 values.")
+            elo_model = params.get("elo_model", "normalized")
             if elo_model not in ["BayesElo", "logistic", "normalized"]:
                 self.handle_error(
                     "Valid Elo models are: BayesElo, logistic, and normalized."
                 )
-
-            elo0 = float(elo0)
-            elo1 = float(elo1)
-            alpha = 0.05
-            beta = 0.05
             return SPRT_elo(
                 results,
-                alpha=alpha,
-                beta=beta,
-                elo0=elo0,
-                elo1=elo1,
+                alpha=0.05,
+                beta=0.05,
+                elo0=float(elo0),
+                elo1=float(elo1),
                 elo_model=elo_model,
             )
+
+        def handle_fixed_games(results):
+            if "pentanomial" in results:
+                elo, elo95, LOS = get_elo(results["pentanomial"])
+            else:
+                WLD = [results["wins"], results["losses"], results["draws"]]
+                elo, elo95, LOS = get_elo([WLD[1], WLD[2], WLD[0]])
+            return {"elo": elo, "ci": [elo - elo95, elo + elo95], "LOS": LOS}
+
+        calc_elo_types_handlers = {
+            FIXED_GAMES_PTNML: lambda: handle_fixed_games(handle_pentanomial()),
+            SPRT_PTNML: lambda: handle_sprt(handle_pentanomial()),
+            FIXED_GAMES_WDL: lambda: handle_fixed_games(handle_wdl()),
+            SPRT_WDL: lambda: handle_sprt(handle_wdl()),
+        }
+
+        params = self.request.params
+        elo0, elo1 = params.get("elo0", ""), params.get("elo1", "")
+        calculation_type = None
+
+        WDL = {key: params.get(key) for key in ("W", "D", "L")}
+        PTNML = {key: params.get(key) for key in ("LL", "LD", "DDWL", "WD", "WW")}
+
+        if any(WDL.values()) and any(PTNML.values()):
+            self.handle_error(
+                "Cannot provide WDL parameters when PTNML parameters are present, and vice versa."
+            )
+
+        if numeric_params(*PTNML.values()) and non_negative_params(*PTNML.values()):
+            calculation_type = SPRT_PTNML if elo0 and elo1 else FIXED_GAMES_PTNML
+        elif numeric_params(*WDL.values()) and non_negative_params(*WDL.values()):
+            calculation_type = SPRT_WDL if elo0 and elo1 else FIXED_GAMES_WDL
+        else:
+            self.handle_error("Invalid or missing parameters.")
+
+        return calc_elo_types_handlers[calculation_type]()
 
     @view_config(route_name="api_download_pgn", renderer="string")
     def download_pgn(self):
