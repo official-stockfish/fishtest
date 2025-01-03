@@ -68,7 +68,7 @@
 
   <h2>
     <span>${page_title}</span>
-    <a href="${h.diff_url(run)}" target="_blank" rel="noopener">diff</a>
+    <a href="${h.diff_url(run)}" target="_blank" rel="noopener" aria-label="View diff on GitHub" title="View diff on GitHub">diff</a>
   </h2>
 
   <div class="elo-results-top">
@@ -79,43 +79,52 @@
     <div class="col-12 col-lg-9">
       <div id="diff-section">
         <h4>
-          <button id="diff-toggle" class="btn btn-sm btn-light border mb-2">Show</button>
+          <button
+            id="diff-toggle"
+            class="btn btn-sm btn-light border mb-2"
+            aria-expanded="true"
+            aria-controls="diff-contents"
+          >Show</button>
           Diff
-          <span id="diff-num-comments">(0 comments)</span>
+          <span id="diff-num-comments" aria-live="polite">(0 comments)</span>
           <a
             href="${h.diff_url(run)}"
             class="btn btn-primary bg-light-primary border-0 mb-2"
             target="_blank" rel="noopener"
+            aria-label="View diff on GitHub"
+            title="View diff on GitHub"
           >
             View on GitHub
           </a>
 
-          <a
-            href="javascript:"
+          <button
             id="copy-diff"
             class="btn btn-secondary bg-light-secondary border-0 mb-2"
             style="display: none"
+            aria-label="Copy apply-diff command"
+            title="Copy apply-diff command"
           >
             Copy apply-diff command
-          </a>
+          </button>
 
-          <a
-            href="javascript:" 
-            id="master_vs_official_master" class="btn btn-danger  border-0 mb-2"
+          <button
+            id="master_vs_official_master"
+            class="btn btn-danger border-0 mb-2"
             title="Compares master to official-master at the time of submission"
-            style="display: none">
+            style="display: none"
+          >
             <i class="fa-solid fa-triangle-exclamation"></i>
-              <span> master vs official</span>
-            </a>
+            <span>master vs official</span>
+          </button>
 
-          <span class="text-success copied text-nowrap" style="display: none">Copied!</span>
+          <span class="text-success copied text-nowrap" style="display: none" aria-live="assertive">Copied!</span>
         </h4>
         <pre id="diff-contents" style="display: none;"><code class="diff"></code></pre>
       </div>
       <div>
         <h4 style="margin-top: 9px;">Details</h4>
         <div class="table-responsive">
-          <table class="table table-striped table-sm">
+          <table class="table table-striped table-sm" aria-labelledby="details-heading">
             <thead></thead>
             <tbody>
               % for arg in run_args:
@@ -124,9 +133,9 @@
                     <td>${arg[0]}</td>
                     % if arg[0] == 'username':
                       <td>
-                        <a href="/tests/user/${arg[1]}">${arg[1]}</a>
+                        <a href="/tests/user/${arg[1]}" aria-label="View user ${arg[1]}" title="View user ${arg[1]}">${arg[1]}</a>
                         % if approver:
-                          (<a href="/user/${arg[1]}">info</a>)
+                          (<a href="/user/${arg[1]}" aria-label="View user info for ${arg[1]}" title="View user info for ${arg[1]}">info</a>)
                         % endif
                       </td>
                     % elif arg[0] == 'spsa':
@@ -160,7 +169,7 @@
                     % elif arg[0] in ['resolved_new', 'resolved_base']:
                       <td>${arg[1][:10]}</td>
                     % elif arg[0] == 'rescheduled_from':
-                      <td><a href="/tests/view/${arg[1]}">${arg[1]}</a></td>
+                      <td><a href="/tests/view/${arg[1]}" aria-label="View rescheduled test ${arg[1]}" title="View rescheduled test ${arg[1]}">${arg[1]}</a></td>
                     % elif arg[0] == 'itp':
                       <td>${f"{float(arg[1]):.2f}"}</td>
                     % else:
@@ -173,21 +182,19 @@
                   <tr>
                     <td>${arg[0]}</td>
                     <td>
-                      <a href="${arg[2]}" target="_blank" rel="noopener">
-                        ${arg[1]|n}
-                      </a>
+                      <a href="${arg[2]}" target="_blank" rel="noopener" aria-label="Open ${arg[1]}" title="Open ${arg[1]}">${arg[1]|n}</a>
                     </td>
                   </tr>
                 % endif
               % endfor
               <tr>
                 <td>events</td>
-                <td><a href="/actions?run_id=${str(run['_id'])}">/actions?run_id=${run['_id']}</a></td>
+                <td><a href="/actions?run_id=${str(run['_id'])}" aria-label="View events for related to run" title="View events for related to run">/actions?run_id=${run['_id']}</a></td>
               </tr>
               % if 'spsa' not in run['args']:
                 <tr>
                   <td>raw statistics</td>
-                  <td><a href="/tests/stats/${str(run['_id'])}">/tests/stats/${run['_id']}</a></td>
+                  <td><a href="/tests/stats/${str(run['_id'])}" aria-label="View raw statistics for run" title="View raw statistics for run">/tests/stats/${run['_id']}</a></td>
                 </tr>
               % endif
             </tbody>
@@ -208,7 +215,7 @@
                 onsubmit="handleStopDeleteButton('${run['_id']}'); return true;"
               >
                 <input type="hidden" name="run-id" value="${run['_id']}">
-                <button type="submit" class="btn btn-danger w-100">
+                <button type="submit" class="btn btn-danger w-100" aria-label="Stop run" title="Stop run">
                   Stop
                 </button>
               </form>
@@ -219,7 +226,9 @@
                 <form action="/tests/approve" method="POST">
                   <input type="hidden" name="run-id" value="${run['_id']}">
                   <button type="submit" id="approve-btn"
-                          class="btn ${'btn-success' if run['base_same_as_master'] or 'spsa' in run['args'] else 'btn-warning'} w-100">
+                          class="btn ${'btn-success' if run['base_same_as_master'] or 'spsa' in run['args'] else 'btn-warning'} w-100"
+                          aria-label="Approve run"
+                          title="Approve run">
                     Approve
                   </button>
                 </form>
@@ -229,7 +238,12 @@
             <div class="col-12 col-sm">
               <form action="/tests/purge" method="POST">
                 <input type="hidden" name="run-id" value="${run['_id']}">
-                <button type="submit" class="btn btn-danger w-100">Purge</button>
+                <button
+                  type="submit"
+                  class="btn btn-danger w-100"
+                  aria-label="Manually purges the current bad results of the run"
+                  title="Manually purges the current bad results of the run"
+                >Purge</button>
               </form>
             </div>
           % endif
@@ -240,12 +254,18 @@
             <button 
               id="download_games"
               class="btn btn-primary text-nowrap w-100"
+              aria-label="Downloads all the PGNs available for this run"
+              title="Downloads all the PGNs available for this run"
             >Download games</button>
           </div>
         % endif
 
         <div class="col-12 col-sm">
-          <a class="btn btn-light border w-100" href="/tests/run?id=${run['_id']}">Reschedule</a>
+          <a class="btn btn-light border w-100"
+              href="/tests/run?id=${run['_id']}"
+              aria-label="Reschedule a new run for the opponents"
+              title="Reschedule a new run for the same opponents"
+          >Reschedule</a>
         </div>
       </div>
 
@@ -303,7 +323,7 @@
       % if can_modify_run:
         <form class="form" action="/tests/modify" method="POST">
           <div class="mb-3">
-            <label class="form-label" for="modify-num-games">Number of games</label>
+            <label class="form-label" for="modify-num-games" title="The number of games to be played.">Number of games</label>
             <input
               type="number"
               class="form-control"
@@ -312,21 +332,23 @@
               min="0"
               step="1000"
               value="${run['args']['num_games']}"
+              aria-describedby="num-games-help"
             >
           </div>
 
           <div class="mb-3">
-            <label class="form-label" for="modify-priority">Priority (higher is more urgent)</label>
+            <label class="form-label" for="modify-priority" title="The priority of the test run. Higher values indicate more urgency.">Priority (higher is more urgent)</label>
             <input
               type="number"
               class="form-control"
               name="priority"
               id="modify-priority"
               value="${run['args']['priority']}"
+              aria-describedby="priority-help"
             >
           </div>
 
-          <label class="form-label" for="modify-throughput">Throughput</label>
+          <label class="form-label" for="modify-throughput" title="The external throughput as a percentage.">Throughput</label>
           <div class="mb-3 input-group">
             <input
               type="number"
@@ -351,6 +373,8 @@
                 class="form-control"
                 rows="4"
                 style="height: 149px;"
+                aria-label="Modify information about this run."
+                title="Modify information about this run."
               ></textarea>
             </div>
           % endif
@@ -362,7 +386,7 @@
               id="auto-purge"
               name="auto_purge" ${'checked' if run['args'].get('auto_purge') else ''}
             >
-            <label class="form-check-label" for="auto-purge">Auto-purge</label>
+            <label class="form-check-label" for="auto-purge" title="Auto-purge the results of bad-workers after the run finishes.">Auto-purge</label>
           </div>
 
           <input type="hidden" name="run" value="${run['_id']}">
@@ -373,8 +397,8 @@
       % if 'spsa' not in run['args']:
         <hr>
 
-        <h4>Stats</h4>
-        <table class="table table-striped table-sm">
+        <h4>Stats of workers</h4>
+        <table class="table table-striped table-sm" aria-labelledby="stats-heading">
           <thead></thead>
           <tbody>
             <tr><td>chi^2</td><td>${f"{chi2['chi2']:.2f}"}</td></tr>
@@ -387,11 +411,25 @@
       <hr>
 
       <h4>Time</h4>
-      <table class="table table-striped table-sm">
+      <table class="table table-striped table-sm" aria-labelledby="time-heading">
         <thead></thead>
         <tbody>
-          <tr><td>start time</td><td>${run['start_time'].strftime("%Y-%m-%d %H:%M:%S")}</td></tr>
-          <tr><td>last updated</td><td>${run['last_updated'].strftime("%Y-%m-%d %H:%M:%S")}</td></tr>
+          <tr>
+            <td>start time</td>
+            <td>
+              <time
+                datatime="${run['start_time'].strftime("%Y-%m-%d %H:%M:%S")}"
+              >${run['start_time'].strftime("%Y-%m-%d %H:%M:%S")}</time>
+            </td>
+          </tr>
+          <tr>
+            <td>last updated</td>
+            <td>
+              <time
+                datatime="${run['last_updated'].strftime("%Y-%m-%d %H:%M:%S")}"
+              >${run['last_updated'].strftime("%Y-%m-%d %H:%M:%S")}</time>
+            </td>
+          </tr>
         </tbody>
       </table>
 
@@ -402,7 +440,10 @@
           id="follow_button_${run['_id']}"
           class="btn btn-primary col-12 col-md-auto"
           onclick="handleFollowButton(this)"
-          style="display:none; margin-top:0.2em;"></button>
+          style="display:none; margin-top:0.2em;"
+          aria-label="Follow test"
+          title="Follow test"
+        ></button>
         <hr style="visibility:hidden;">
       % endif
     </div>
@@ -410,7 +451,7 @@
 
   % if 'spsa' in run['args']:
     <div id="spsa_preload" class="col-lg-3">
-      <div class="pt-1 text-center">
+      <div class="pt-1 text-center" aria-live="polite">
         Loading graph...
       </div>
     </div>
@@ -418,32 +459,37 @@
     <div id="chart_toolbar" style="display: none">
       Gaussian Kernel Smoother&nbsp;&nbsp;
       <div class="btn-group">
-        <button id="btn_smooth_plus" class="btn">&nbsp;&nbsp;&nbsp;+&nbsp;&nbsp;&nbsp;</button>
-        <button id="btn_smooth_minus" class="btn">&nbsp;&nbsp;&nbsp;−&nbsp;&nbsp;&nbsp;</button>
+        <button id="btn_smooth_plus" class="btn" aria-label="Increase smoothing" title="Increase smoothing">&nbsp;&nbsp;&nbsp;+&nbsp;&nbsp;&nbsp;</button>
+        <button id="btn_smooth_minus" class="btn" aria-label="Decrease smoothing" title="Decrease smoothing">>&nbsp;&nbsp;&nbsp;−&nbsp;&nbsp;&nbsp;</button>
       </div>
 
       <div class="btn-group">
         <button
           id="btn_view_individual"
           type="button"
-          class="btn btn-default dropdown-toggle" data-bs-toggle="dropdown"
+          class="btn btn-default dropdown-toggle" data-bs-toggle="dropdown" aria-haspopup="menu" aria-expanded="false"
+          aria-label="View individual parameter"
+          title="View individual parameter"
         >
           View Individual Parameter<span class="caret"></span>
         </button>
         <ul class="dropdown-menu" role="menu" id="dropdown_individual"></ul>
       </div>
 
-      <button id="btn_view_all" class="btn">View All</button>
+      <button id="btn_view_all" class="btn" aria-label="View all parameters">View All</button>
     </div>
     <div class="overflow-auto">
-      <div id="spsa_history_plot"></div>
+      <div id="spsa_history_plot" role="img" aria-label="SPSA history plot"></div>
     </div>
   % endif
 
   <h4>
       <a
         id="tasks-button" class="btn btn-sm btn-light border"
-        data-bs-toggle="collapse" href="#tasks" role="button" aria-expanded="false"
+        data-bs-toggle="collapse"
+        href="#tasks"
+        role="button"
+        aria-expanded="${'true' if tasks_shown else 'false'}"
         aria-controls="tasks"
       >
         ${'Hide' if tasks_shown else 'Show'}
@@ -451,8 +497,8 @@
     Tasks ${totals}
   </h4>
   <section id="tasks"
-       class="overflow-auto ${'collapse show' if tasks_shown else 'collapse'}">
-    <table class='table table-striped table-sm'>
+       class="overflow-auto ${'collapse show' if tasks_shown else 'collapse'}" aria-labelledby="tasks-button">
+    <table class='table table-striped table-sm' aria-labelledby="tasks-heading">
       <thead id="tasks-head" class="sticky-top">
         <tr>
           <th>Idx</th>
@@ -922,8 +968,12 @@
         if (copyDiffBtn)
           copyDiffBtn.style.display =
             copyDiffBtn.style.display === "none" ? "" : "none";
-        if (toggleBtn.textContent === "Hide") toggleBtn.textContent = "Show";
-        else toggleBtn.textContent = "Hide";
+        if (toggleBtn.textContent === "Hide") {
+          toggleBtn.textContent = "Show";
+        }
+        else {
+          toggleBtn.textContent = "Hide";
+        }
       });
     document.getElementById("diff-section").style.display = "";
 

@@ -197,7 +197,9 @@ async function followLive(testId) {
 
   async function mainWorker() {
     while (true) {
-      if (isTabFocused) {
+      const switchElement = document.getElementById("auto-refresh-switch");
+      const autoRefresh = switchElement.checked;
+      if (autoRefresh && isTabFocused) {
         update();
       }
       await asyncSleep(20000);
@@ -210,7 +212,9 @@ async function followLive(testId) {
     try {
       const m = await fetchJson("/api/get_elo/" + testId + "?" + timestamp);
       displayData(m);
-      if (m.args.sprt.state) return;
+      if (m.args.sprt.state) {
+        return;
+      }
     } catch (e) {
       console.log("Network error: " + e);
     }
