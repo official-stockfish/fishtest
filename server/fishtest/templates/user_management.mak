@@ -1,7 +1,7 @@
 <%inherit file="base.mak"/>
 
 <%!
-  from fishtest.util import delta_date, diff_date, format_group
+  from fishtest.util import delta_date, diff_date, format_fullname, format_group
 %>
 
 <script>
@@ -99,51 +99,55 @@
   <thead>
     <tr>
       <th style="width:20%">Username</th>
+      <th style="width:20%">Full Name</th>
       <th style="width:20%">Registration Time</th>
       <th style="width:20%">Groups</th>
-      <th style="width:40%">Email</th>
+      <th style="width:20%">Email</th>
     </tr>
   </thead>
 
   <tbody id="all-users" class="d-none">
-      % for user in all_users:
-        <tr>
-          <td style="width:20%"><a href="/user/${user['username']}">${user['username']}</a></td>
-          <td style="width:20%">${user['registration_time'].strftime("%y-%m-%d %H:%M:%S") if 'registration_time' in user else 'Unknown'}</td>
-          <td style="width:20%">${format_group(user['groups'])}</td>
-          <td style="width:40%">${user['email']}</td>
-        </tr>
-      % endfor
-      % if len(all_users) == 0:
-        <tr>
-          <td colspan=20>No users found</td>
-        </tr>
-      % endif
+    % for user in all_users:
+      <tr>
+        <td style="width:20%"><a href="/user/${user['username']}">${user['username']}</a></td>
+        <td style="width:20%">${format_fullname(user['firstname'], user['lastname'])}</td>
+        <td style="width:20%">${user['registration_time'].strftime("%y-%m-%d %H:%M:%S") if 'registration_time' in user else 'Unknown'}</td>
+        <td style="width:20%">${format_group(user['groups'])}</td>
+        <td style="width:20%">${user['email']}</td>
+      </tr>
+    % endfor
+    % if len(all_users) == 0:
+      <tr>
+        <td colspan=20>No users found</td>
+      </tr>
+    % endif
   </tbody>
 
   <tbody id="pending-users">
-      % for user in pending_users:
-        <tr>
-          <td style="width:20%"><a href="/user/${user['username']}">${user['username']}</a></td>
-          <td style="width:20%">${user['registration_time'].strftime("%y-%m-%d %H:%M:%S") if 'registration_time' in user else 'Unknown'}</td>
-          <td style="width:20%">${format_group(user['groups'])}</td>
-          <td style="width:40%">${user['email']}</td>
-        </tr>
-      % endfor
-      % if len(pending_users) == 0:
-        <tr>
-          <td colspan=20>No pending users</td>
-        </tr>
-      % endif
+    % for user in pending_users:
+      <tr>
+        <td style="width:20%"><a href="/user/${user['username']}">${user['username']}</a></td>
+        <td style="width:20%">${format_fullname(user['firstname'], user['lastname'])}</td>
+        <td style="width:20%">${user['registration_time'].strftime("%y-%m-%d %H:%M:%S") if 'registration_time' in user else 'Unknown'}</td>
+        <td style="width:20%">${format_group(user['groups'])}</td>
+        <td style="width:20%">${user['email']}</td>
+      </tr>
+    % endfor
+    % if len(pending_users) == 0:
+      <tr>
+        <td colspan=20>No pending users</td>
+      </tr>
+    % endif
   </tbody>
 
   <tbody id="blocked-users" class="d-none">
     % for user in blocked_users:
       <tr>
         <td style="width:20%"><a href="/user/${user['username']}">${user['username']}</a></td>
+        <td style="width:20%">${format_fullname(user['firstname'], user['lastname'])}</td>
         <td style="width:20%">${user['registration_time'].strftime("%y-%m-%d %H:%M:%S") if 'registration_time' in user else 'Unknown'}</td>
         <td style="width:20%">${format_group(user['groups'])}</td>
-        <td style="width:40%">${user['email']}</td>
+        <td style="width:20%">${user['email']}</td>
       </tr>
     % endfor
     % if len(blocked_users) == 0:
@@ -157,9 +161,10 @@
     % for user in idle_users:
       <tr>
         <td style="width:20%"><a href="/user/${user['username']}">${user['username']}</a></td>
+        <td style="width:20%">${format_fullname(user['firstname'], user['lastname'])}</td>
         <td style="width:20%">${user['registration_time'].strftime("%y-%m-%d %H:%M:%S") if 'registration_time' in user else 'Unknown'}</td>
         <td style="width:20%">${format_group(user['groups'])}</td>
-        <td style="width:40%">${user['email']}</td>
+        <td style="width:20%">${user['email']}</td>
       </tr>
     % endfor
     % if len(idle_users) == 0:
@@ -173,10 +178,11 @@
   <tbody id="approvers-users" class="d-none">
     % for user in approvers_users:
       <tr>
-          <td style="width:20%"><a href="/user/${user['username']}">${user['username']}</a></td>
-          <td style="width:20%">${user['registration_time'].strftime("%y-%m-%d %H:%M:%S") if 'registration_time' in user else 'Unknown'}</td>
-          <td style="width:20%">${format_group(user['groups'])}</td>
-          <td style="width:40%">${user['email']}</td>
+        <td style="width:20%"><a href="/user/${user['username']}">${user['username']}</a></td>
+        <td style="width:20%">${format_fullname(user['firstname'], user['lastname'])}</td>
+        <td style="width:20%">${user['registration_time'].strftime("%y-%m-%d %H:%M:%S") if 'registration_time' in user else 'Unknown'}</td>
+        <td style="width:20%">${format_group(user['groups'])}</td>
+        <td style="width:20%">${user['email']}</td>
       </tr>
     % endfor
     % if len(approvers_users) == 0:

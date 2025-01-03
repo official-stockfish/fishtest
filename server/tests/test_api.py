@@ -138,6 +138,8 @@ class TestApi(unittest.TestCase):
         }
         cls.rundb.userdb.create_user(
             cls.username,
+            "John",
+            "Doe",
             cls.password,
             "email@email.email",
             "https://github.com/official-stockfish/Stockfish",
@@ -526,6 +528,8 @@ class TestRunFinished(unittest.TestCase):
         }
         cls.rundb.userdb.create_user(
             cls.username,
+            "Jane",
+            "Doe",
             cls.password,
             "email@email.email",
             "https://github.com/official-stockfish/Stockfish",

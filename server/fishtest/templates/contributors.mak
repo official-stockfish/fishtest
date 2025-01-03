@@ -2,6 +2,7 @@
 
 <%!
   import urllib
+  from fishtest.util import format_fullname
 %>
 
 <script>
@@ -127,6 +128,7 @@
       <tr>
         <th></th>
         <th>Username</th>
+        <th>Full Name</th>
         <th class="text-end">Last active</th>
         <th class="text-end">Games/Hour</th>
         <th class="text-end">CPU Hours</th>
@@ -148,6 +150,7 @@
           ${user['username']}
           % endif
           </td>
+          <td>${format_fullname(user['firstname'], user['lastname'])}</td>
           <td data-diff="${user['diff']}" class="text-end">${user['str_last_updated']}</td>
           <td class="text-end">${int(user['games_per_hour'])}</td>
           <td class="text-end">${int(user['cpu_hours'])}</td>

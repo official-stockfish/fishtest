@@ -26,6 +26,8 @@ class Create10UsersTest(unittest.TestCase):
             remote_addr="127.0.0.1",
             params={
                 "username": "JoeUser",
+                "firstname": "Joe",
+                "lastname": "Blow",
                 "password": "secret",
                 "password2": "secret",
                 "email": "joe@user.net",
@@ -41,6 +43,8 @@ class Create50LoginTest(unittest.TestCase):
         self.rundb = util.get_rundb()
         self.rundb.userdb.create_user(
             "JoeUser",
+            "Joe",
+            "Blow",
             "secret",
             "email@email.email",
             "https://github.com/official-stockfish/Stockfish",
