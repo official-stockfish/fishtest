@@ -92,6 +92,9 @@ class UserDb:
     def get_user(self, username):
         return self.find_by_username(username)
 
+    def get_user_by_github_id(self, github_id):
+        return self.users.find_one({"github_id": github_id})
+
     def get_user_groups(self, username):
         user = self.get_user(username)
         if user is not None:
@@ -105,27 +108,51 @@ class UserDb:
         self.users.replace_one({"_id": user["_id"]}, user)
         self.clear_cache()
 
-    def create_user(self, username, password, email, tests_repo):
+    def create_user(
+        self,
+        username,
+        password=None,
+        email="",
+        tests_repo="",
+        linked_github_username=None,
+        github_id=None,
+        github_access_token=None,
+    ):
         try:
             if self.find_by_username(username) or self.find_by_email(email):
                 return False
             # insert the new user in the db
-            user = {
-                "username": username,
-                "password": password,
-                "registration_time": datetime.now(timezone.utc),
-                "pending": True,
-                "blocked": False,
-                "email": email,
-                "groups": [],
-                "tests_repo": tests_repo,
-                "machine_limit": DEFAULT_MACHINE_LIMIT,
-            }
+            if github_id is not None and github_access_token is not None:
+                user = {
+                    "username": username,
+                    "registration_time": datetime.now(timezone.utc),
+                    "pending": True,
+                    "blocked": False,
+                    "github_id": github_id,
+                    "github_access_token": github_access_token,
+                    "linked_github_username": linked_github_username,
+                    "email": email,
+                    "groups": [],
+                    "tests_repo": tests_repo,
+                    "machine_limit": DEFAULT_MACHINE_LIMIT,
+                }
+            else:
+                user = {
+                    "username": username,
+                    "password": password,
+                    "registration_time": datetime.now(timezone.utc),
+                    "pending": True,
+                    "blocked": False,
+                    "email": email,
+                    "groups": [],
+                    "tests_repo": tests_repo,
+                    "machine_limit": DEFAULT_MACHINE_LIMIT,
+                }
+
             validate_user(user)
             self.users.insert_one(user)
             self.last_pending_time = 0
             self.last_blocked_time = 0
-
             return True
         except:
             return None

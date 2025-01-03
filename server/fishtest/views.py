@@ -4,6 +4,7 @@ import html
 import json
 import os
 import re
+import subprocess
 import threading
 import time
 from datetime import datetime, timezone
@@ -25,7 +26,7 @@ from fishtest.util import (
     password_strength,
     update_residuals,
 )
-from pyramid.httpexceptions import HTTPFound, HTTPNotFound
+from pyramid.httpexceptions import HTTPBadRequest, HTTPFound, HTTPNotFound
 from pyramid.security import forget, remember
 from pyramid.view import forbidden_view_config, notfound_view_config, view_config
 from requests.exceptions import ConnectionError, HTTPError
@@ -154,6 +155,186 @@ def login(request):
             )
         request.session.flash(message, "error")
     return {}
+
+
+# Hide these
+GITHUB_CLIENT_ID = ""
+GITHUB_CLIENT_SECRET = ""
+
+
+def get_github_access_token(code, redirect_uri):
+    token_url = "https://github.com/login/oauth/access_token"
+    curl_command = [
+        "curl",
+        "-X",
+        "POST",
+        token_url,
+        "-H",
+        "Accept: application/json",
+        "-d",
+        f"client_id={GITHUB_CLIENT_ID}",
+        "-d",
+        f"client_secret={GITHUB_CLIENT_SECRET}",
+        "-d",
+        f"code={code}",
+        "-d",
+        f"redirect_uri={redirect_uri}",
+    ]
+    result = subprocess.run(curl_command, stdout=subprocess.PIPE, text=True)
+    return json.loads(result.stdout)["access_token"]
+
+
+def extract_primary_email(emails):
+    if isinstance(emails, list):
+        return next(
+            (
+                email.get("email")
+                for email in emails
+                if isinstance(email, dict) and email.get("primary")
+            ),
+            None,
+        )
+    return None
+
+
+def get_github_user_data(access_token):
+    user_url = "https://api.github.com/user"
+    emails_url = "https://api.github.com/user/emails"
+
+    user_command = [
+        "curl",
+        "-H",
+        f"Authorization: bearer {access_token}",
+        "-H",
+        "Accept: application/json",
+        user_url,
+    ]
+    user_result = subprocess.run(user_command, stdout=subprocess.PIPE, text=True)
+    user_data = json.loads(user_result.stdout)
+
+    emails_command = [
+        "curl",
+        "-H",
+        f"Authorization: bearer {access_token}",
+        "-H",
+        "Accept: application/json",
+        emails_url,
+    ]
+    emails_result = subprocess.run(emails_command, stdout=subprocess.PIPE, text=True)
+
+    try:
+        emails = json.loads(emails_result.stdout)
+    except json.JSONDecodeError:
+        emails = []
+
+    primary_email = extract_primary_email(emails)
+
+    user_data["primary_email"] = primary_email
+    return user_data, emails
+
+
+@view_config(route_name="github_oauth", request_method="POST")
+def github_oauth(request):
+    action = request.POST.get("action")
+    request.session["github_action"] = action  # Store action in session
+
+    github_authorize_url = "https://github.com/login/oauth/authorize"
+    redirect_uri = request.route_url("github_callback")
+
+    params = {
+        "client_id": GITHUB_CLIENT_ID,
+        "redirect_uri": redirect_uri,
+        "scope": "user:email",
+    }
+    url = requests.Request("GET", github_authorize_url, params=params).prepare().url
+    return HTTPFound(location=url)
+
+
+@view_config(route_name="github_callback")
+def github_callback(request):
+    code = request.params.get("code")
+    if not code:
+        return HTTPBadRequest("No code provided")
+
+    action = request.session.get("github_action", "login")  # Default to login
+    github_access_token = get_github_access_token(
+        code, request.route_url("github_callback")
+    )
+    user_data, user_email_data = get_github_user_data(github_access_token)
+    username = user_data.get("login")
+    if not username:
+        request.session.flash("Failed to retrieve GitHub username", "error")
+        return HTTPFound(location=request.route_url("login"))
+
+    github_id = str(user_data.get("id"))
+    email = extract_primary_email(user_email_data)
+
+    if action == "login":
+        return handle_github_login(
+            request, github_id, username, email, github_access_token
+        )
+    elif action == "signup":
+        return handle_github_signup(
+            request, github_id, username, email, github_access_token
+        )
+    elif action == "link":
+        return handle_github_link(request, github_id, username, github_access_token)
+    else:
+        return HTTPBadRequest("Invalid action specified")
+
+
+def handle_github_login(request, github_id, username, email, github_access_token):
+    user = request.userdb.get_user_by_github_id(github_id)
+    if user is None:
+        request.session.flash("User not found. Please register first.", "error")
+        return HTTPFound(location=request.route_url("signup"))
+
+    # Remember the user in the session
+    headers = remember(request, user["username"], max_age=60 * 60 * 24 * 365)
+    return HTTPFound(location=request.route_url("home"), headers=headers)
+
+
+def handle_github_signup(request, github_id, username, email, github_access_token):
+    user = request.userdb.get_user_by_github_id(github_id)
+    if user:
+        request.session.flash("User already exists. Please login instead.", "error")
+        return HTTPFound(location=request.route_url("login"))
+
+    request.userdb.create_user(
+        username=username,
+        email=email,
+        github_id=github_id,
+        github_access_token=github_access_token,
+        linked_github_username=username,
+    )
+
+    headers = remember(request, username, max_age=60 * 60 * 24 * 365)
+    return HTTPFound(location=request.route_url("home"), headers=headers)
+
+
+def handle_github_link(request, github_id, username, github_access_token):
+    existing_user = request.userdb.get_user_by_github_id(github_id)
+    if existing_user:
+        request.session.flash(
+            "This GitHub account is already linked with another user.", "error"
+        )
+        return HTTPFound(location=request.route_url("profile"))
+
+    auth_user_id = request.authenticated_userid
+    if not auth_user_id:
+        request.session.flash(
+            "You need to be logged in to link a GitHub account.", "error"
+        )
+        return HTTPFound(location=request.route_url("login"))
+
+    user = request.userdb.get_user(auth_user_id)
+    user["github_id"] = github_id
+    user["github_access_token"] = github_access_token
+    user["linked_github_username"] = username
+    request.userdb.save_user(user)
+
+    request.session.flash("GitHub account linked successfully.", "success")
+    return HTTPFound(location=request.route_url("profile"))
 
 
 # Note that the allowed length of mailto URLs on Chrome/Windows is severely

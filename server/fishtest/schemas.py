@@ -87,18 +87,25 @@ pgns_schema = intersect(
     size_is_length,
 )
 
-user_schema = {
-    "_id?": ObjectId,
-    "username": username,
-    "password": str,
-    "registration_time": datetime_utc,
-    "pending": bool,
-    "blocked": bool,
-    "email": email,
-    "groups": [str, ...],
-    "tests_repo": union("", url),
-    "machine_limit": uint,
-}
+user_schema = intersect(
+    {
+        "_id?": ObjectId,
+        "username": username,
+        "password?": str,
+        "registration_time": datetime_utc,
+        "pending": bool,
+        "blocked": bool,
+        "email?": email,
+        "github_id?": str,
+        "linked_github_username?": str,
+        "github_access_token?": str,
+        "groups": [str, ...],
+        "tests_repo?": union("", url),
+        "machine_limit": uint,
+    },
+    at_least_one_of("email", "github_id"),
+    at_least_one_of("password", "github_access_token"),
+)
 
 
 worker_schema = {
