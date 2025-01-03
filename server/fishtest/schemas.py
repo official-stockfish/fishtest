@@ -101,13 +101,25 @@ user_schema = {
 }
 
 
-worker_schema = {
-    "_id?": ObjectId,
-    "worker_name": short_worker_name,
-    "blocked": bool,
-    "message": worker_message,
-    "last_updated": datetime_utc,
-}
+worker_schema = intersect(
+    {
+        "_id?": ObjectId,
+        "worker_name": short_worker_name,
+        "blocked": bool,
+        "message?": worker_message,  # old field, todo: remove this field from db records if exists
+        "notes?": intersect(
+            [
+                {"time": datetime_utc, "username": username, "message": worker_message},
+                ...,
+            ],
+            size(
+                0, 100
+            ),  # new field, todo: add this field to the db records if it doesn't exists
+        ),
+        "last_updated": datetime_utc,
+    },
+    at_least_one_of("message", "notes"),
+)
 
 
 def first_test_before_last(x):
