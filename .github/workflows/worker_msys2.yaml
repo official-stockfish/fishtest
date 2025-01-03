@@ -6,6 +6,7 @@ jobs:
   test:
     runs-on: windows-latest
     strategy:
+      fail-fast: false
       matrix:
         include:
           - { sys: mingw64, env: x86_64,       comp: gcc }
