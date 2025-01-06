@@ -91,16 +91,18 @@
       </div>
     </article>
     <iframe
-      src="https://lichess.org/training/frame?theme=marble&pieceSet=horsey&bg=dark"
+      src="https://lichess.org/training/frame?theme=marble&bg=dark"
       style="width: 300px; height: 345px"
       allowtransparency="true"
       frameborder="0"
     ></iframe>
     <script>
       const countDown = () => {
-        // write a stop date in ISO8601-compliant format (UTC)
+        // Write a stop date in ISO8601-compliant format (UTC)
         // "YYYY-MM-DDTHH:mm:ssZ"
-        const countDay = new Date("2023-01-01T00:00:00Z");
+        const countDay = new Date(
+          new Date().getFullYear() + "-01-01T00:00:00Z",
+        );
         const now = new Date();
         const second = 1000;
         const minute = second * 60;
