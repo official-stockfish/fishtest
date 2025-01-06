@@ -794,7 +794,12 @@ runs_schema = intersect(
     lax(
         ifthen(
             {"finished": False},
-            {"is_green": False, "is_yellow": False, "failed": False, "deleted": False},
+            {
+                "is_green": False,
+                "is_yellow": False,
+                "failed": False,
+                "deleted": False,
+            },
         )
     ),
     lax(

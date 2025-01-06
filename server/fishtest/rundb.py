@@ -126,7 +126,8 @@ class RunDb:
             nps = 0.0
             games_per_minute = 0.0
             # excess of caution
-            with self.active_run_lock(str(run["_id"])):
+            run_id = str(run["_id"])
+            with self.active_run_lock(run_id):
                 tasks = copy.copy(run["tasks"])
             for task in tasks:
                 if task["active"]:
@@ -141,9 +142,12 @@ class RunDb:
                                 // run["args"].get("threads", 1)
                             )
                         )
-            run["nps"] = nps
-            run["games_per_minute"] = games_per_minute
-            self.buffer(run, False)
+            with self.active_run_lock(run_id):
+                # the run may finish during the time the lock is released
+                if not run["finished"]:
+                    run["nps"] = nps
+                    run["games_per_minute"] = games_per_minute
+                    self.buffer(run, False)
 
     def validate_data_structures(self):
         # The main purpose of task is to ensure that the schemas
