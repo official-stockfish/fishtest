@@ -7,8 +7,8 @@ for testing the chess engine [Stockfish](https://github.com/official-stockfish/S
 Developers submit patches with new ideas and improvements, CPU contributors install a fishtest worker on their computers to play some chess games in the background to help the developers testing the patches.
 
 The fishtest worker:
-- Automatically connects to the server to download a chess opening book, the [cutechess-cli](https://github.com/cutechess/cutechess) chess game manager and the chess engine sources (both for the current Stockfish and for the patch with the new idea). The sources will be compiled according to the type of the worker platform.
-- Starts a batch of games using cutechess-cli.
+- Automatically connects to the server to download a chess opening book, the [fastchess](https://github.com/Disservin/fastchess) chess game manager sources and the chess engine sources (both for the current Stockfish and for the patch with the new idea). The sources will be compiled according to the type of the worker platform.
+- Starts a batch of games using fastchess.
 - Uploads the games results on the server.
 
 The fishtest server:
