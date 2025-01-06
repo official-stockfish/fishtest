@@ -17,7 +17,6 @@ import tempfile
 import threading
 import time
 from base64 import b64decode
-from contextlib import ExitStack
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from queue import Empty, Queue
@@ -387,7 +386,7 @@ def establish_validated_net(remote, testing_dir, net, global_cache):
             )
             time.sleep(waitTime)
 
-                
+
 def run_single_bench(engine, queue):
     bench_sig = None
     bench_nps = None
@@ -439,7 +438,8 @@ def verify_signature(engine, signature, active_cores):
         multiprocessing.Process(
             target=run_single_bench,
             args=(engine, queue),
-        ) for _ in range(active_cores)
+        )
+        for _ in range(active_cores)
     ]
 
     for p in processes:
@@ -462,7 +462,7 @@ def verify_signature(engine, signature, active_cores):
                 sig,
             )
             raise RunException(message)
-        
+
         bench_nps += nps
 
     bench_nps /= active_cores
