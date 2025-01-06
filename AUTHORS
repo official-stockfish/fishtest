@@ -1,4 +1,4 @@
-# List of authors for fishtest, as of December 14, 2023
+# List of authors for fishtest, as of January 6, 2025
 
 Gary Linscott (glinscott)
 
@@ -8,7 +8,7 @@ Chess13234
 chuckstables
 David (dav1312)
 David Zar
-dubslow
+Dubslow
 Fabian Fichter (ianfab)
 Fanael Linithien (Fanael)
 Fauzi Akram Dabat (FauziAkram)
@@ -26,6 +26,7 @@ Joost VandeVondele (vondele)
 Julian Willemer (NightlyKing)
 Jörg Oster (joergoster)
 Kamyar Kaviani
+LightningThunder1
 Linmiao Xu (linrock)
 Lucas Braesch (lucasart)
 Malcolm Campbell (xoto10)
@@ -53,11 +54,13 @@ theo77186
 Tom Vijlbrief (tomtor)
 Unai Corzo (unaiic)
 Vince Negri (cuddlestmonkey)
+Viren
 Werner Fenchel (wfenchel)
 
 Thanks to:
-Ilari Pihlajisto - https://github.com/cutechess/cutechess, which drives all the games!
+Ilari Pihlajisto - https://github.com/cutechess/cutechess, which played over 8.5 billion games
+Max Allendorf - https://github.com/Disservin/fastchess, which drives all the games
 Tord Romstad - for Glaurung
-Dariusz Orzechowski - opening book idea (perft generation + position score filtering)
-Stefan Pohl - Unbalanced Human Openings books
+Dariusz Orzechowski - for the opening book idea (perft generation + position score filtering)
+Stefan Pohl - for the Unbalanced Human Openings books
 https://flag-sprites.com - for the great flag sprites
