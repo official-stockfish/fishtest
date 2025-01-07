@@ -170,6 +170,17 @@ def cache_write(cache, name, data):
         return
 
 
+def cache_remove(cache, name):
+    """Remove a file from the global cache on disk"""
+    if cache == "":
+        return
+
+    try:
+        (Path(cache) / name).unlink()
+    except Exception as e:
+        return
+
+
 # See https://stackoverflow.com/questions/16511337/correct-way-to-try-except-using-python-requests-module
 # for background.
 # It may be useful to introduce more refined http exception handling in the future.
@@ -321,51 +332,60 @@ def required_nets_from_source():
     return nets
 
 
-def download_net(remote, testing_dir, net, global_cache):
+def fetch_validated_net(remote, testing_dir, net, global_cache):
     content = cache_read(global_cache, net)
 
     if content is None:
-        url = remote + "/api/nn/" + net
-        print("Downloading {}".format(net))
+        url = f"{remote}/api/nn/{net}"
+        print(f"Downloading {net}")
         content = requests_get(url, allow_redirects=True, timeout=HTTP_TIMEOUT).content
-        hash = hashlib.sha256(content).hexdigest()
-        if hash[:12] == net[3:15]:
-            cache_write(global_cache, net, content)
+        if not is_valid_net(content, net):
+            return False
+        cache_write(global_cache, net, content)
     else:
-        print("Using {} from global cache".format(net))
+        if not is_valid_net(content, net):
+            print(f"Removing invalid {net} from global cache")
+            cache_remove(global_cache, net)
+            return False
+        print(f"Using {net} from global cache")
 
     (testing_dir / net).write_bytes(content)
+    return True
 
 
-def validate_net(testing_dir, net):
-    hash = hashlib.sha256((testing_dir / net).read_bytes()).hexdigest()
+def is_valid_net(content, net):
+    hash = hashlib.sha256(content).hexdigest()
     return hash[:12] == net[3:15]
 
 
+def validate_net(testing_dir, net):
+    content = (testing_dir / net).read_bytes()
+    return is_valid_net(content, net)
+
+
 def establish_validated_net(remote, testing_dir, net, global_cache):
-    if not (testing_dir / net).exists() or not validate_net(testing_dir, net):
-        attempt = 0
-        while True:
-            try:
-                attempt += 1
-                download_net(remote, testing_dir, net, global_cache)
-                if not validate_net(testing_dir, net):
-                    raise WorkerException(
-                        "Failed to validate the network: {}".format(net)
-                    )
-                break
-            except FatalException:
+    if (testing_dir / net).exists() and validate_net(testing_dir, net):
+        return
+
+    attempt = 0
+    while True:
+        attempt += 1
+        try:
+            if fetch_validated_net(remote, testing_dir, net, global_cache):
+                return
+            else:
+                raise WorkerException(f"Failed to validate the network: {net}")
+        except FatalException:
+            raise
+        except WorkerException:
+            if attempt > 5:
                 raise
-            except WorkerException:
-                if attempt > 5:
-                    raise
-                waitTime = UPDATE_RETRY_TIME * attempt
-                print(
-                    "Failed to download {} in attempt {}, trying in {} seconds.".format(
-                        net, attempt, waitTime
-                    )
-                )
-                time.sleep(waitTime)
+            waitTime = UPDATE_RETRY_TIME * attempt
+            print(
+                f"Failed to fetch {net} in attempt {attempt},",
+                f"trying in {waitTime} seconds",
+            )
+            time.sleep(waitTime)
 
 
 def verify_signature(engine, signature, active_cores):
