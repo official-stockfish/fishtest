@@ -7,8 +7,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.12"]
-        node-version: ["21.x"]
+        python-version: ["3.13"]
+        node-version: ["23.x"]
 
     steps:
       - uses: actions/checkout@v4
