@@ -1074,6 +1074,9 @@ def parse_fastchess_output(
                 else:
                     current_state["last_updated"] = datetime.now(timezone.utc)
 
+                if (Path(__file__).resolve().parent / "fish.exit").is_file():
+                    raise WorkerException("Task stopped by 'fish.exit'")
+
     else:
         raise WorkerException(
             "{} is past end time {}".format(datetime.now(timezone.utc), end_time)

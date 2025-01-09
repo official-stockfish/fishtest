@@ -69,7 +69,7 @@ MIN_GCC_MINOR = 3
 MIN_CLANG_MAJOR = 8
 MIN_CLANG_MINOR = 0
 
-WORKER_VERSION = 249
+WORKER_VERSION = 250
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -1611,11 +1611,6 @@ def worker():
     fish_exit = False
     clear_binaries = True
     while current_state["alive"]:
-        if (worker_dir / "fish.exit").is_file():
-            current_state["alive"] = False
-            print("Stopped by 'fish.exit' file")
-            fish_exit = True
-            break
         success = fetch_and_handle_task(
             worker_info,
             options.password,
@@ -1625,7 +1620,12 @@ def worker():
             options.global_cache,
             worker_lock,
         )
-        if not current_state["alive"]:  # the user may have pressed Ctrl-C...
+        if (worker_dir / "fish.exit").is_file():
+            current_state["alive"] = False
+            print("Stopped by 'fish.exit' file")
+            fish_exit = True
+            break
+        elif not current_state["alive"]:  # the user may have pressed Ctrl-C...
             break
         elif not success:
             if options.fleet:
