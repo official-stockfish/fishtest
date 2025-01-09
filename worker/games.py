@@ -388,13 +388,13 @@ def establish_validated_net(remote, testing_dir, net, global_cache):
             time.sleep(waitTime)
 
 
-def run_single_bench(engine):
+def run_single_bench(engine, threads):
     bench_sig = None
     bench_nps = None
 
     try:
         p = subprocess.Popen(
-            [engine, "bench"],
+            [engine, "bench", "16", str(threads), "13", "default", "depth"],
             stderr=subprocess.PIPE,
             stdout=subprocess.DEVNULL,
             universal_newlines=True,
@@ -415,7 +415,37 @@ def run_single_bench(engine):
     return bench_sig, bench_nps
 
 
-def verify_signature(engine, signature, active_cores):
+def run_parallel_benches(engine, concurrency, threads, signature=None):
+    with ProcessPoolExecutor(max_workers=concurrency) as executor:
+        try:
+            results = list(
+                executor.map(
+                    run_single_bench, [engine] * concurrency, [threads] * concurrency
+                )
+            )
+        except Exception as e:
+            raise WorkerException("Failed to run engine bench: {}".format(str(e)), e=e)
+
+    bench_nps = 0.0
+    for sig, nps in results:
+        if sig is None or nps is None:
+            raise RunException(
+                "Unable to parse bench output of {}".format(os.path.basename(engine))
+            )
+
+        if threads == 1 and signature is not None and int(sig) != int(signature):
+            raise RunException(
+                "Wrong bench in {}, user expected: {} but worker got: {}".format(
+                    os.path.basename(engine), signature, sig
+                )
+            )
+
+        bench_nps += nps
+
+    return bench_nps / (concurrency * threads)
+
+
+def verify_signature(engine, signature, games_concurrency, threads):
     cpu_features = "?"
     with subprocess.Popen(
         [engine, "compiler"],
@@ -435,30 +465,12 @@ def verify_signature(engine, signature, active_cores):
             )
         )
 
-    with ProcessPoolExecutor(max_workers=active_cores) as executor:
-        try:
-            results = list(executor.map(run_single_bench, [engine] * active_cores))
-        except Exception as e:
-            raise WorkerException("Failed to run engine bench: {}".format(str(e)), e=e)
+    # Run the benches with threads = 1 and validate the signature
+    bench_nps = run_parallel_benches(engine, games_concurrency, 1, signature)
 
-    bench_nps = 0.0
-
-    for sig, nps in results:
-        if sig is None or nps is None:
-            raise RunException(
-                "Unable to parse bench output of {}".format(os.path.basename(engine))
-            )
-
-        if int(sig) != int(signature):
-            raise RunException(
-                "Wrong bench in {}, user expected: {} but worker got: {}".format(
-                    os.path.basename(engine), signature, sig
-                )
-            )
-
-        bench_nps += nps
-
-    bench_nps /= active_cores
+    # SMP test: run the benches with the requested number of threads
+    if threads > 1:
+        bench_nps = run_parallel_benches(engine, games_concurrency, threads)
 
     return bench_nps, cpu_features
 
@@ -1411,7 +1423,8 @@ def run_games(
         base_nps, cpu_features = verify_signature(
             base_engine,
             run["args"]["base_signature"],
-            games_concurrency * threads,
+            games_concurrency,
+            threads,
         )
     except RunException as e:
         run_errors.append(str(e))
@@ -1426,7 +1439,8 @@ def run_games(
             verify_signature(
                 new_engine,
                 run["args"]["new_signature"],
-                games_concurrency * threads,
+                games_concurrency,
+                threads,
             )
         except RunException as e:
             run_errors.append(str(e))
