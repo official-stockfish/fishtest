@@ -69,7 +69,7 @@ MIN_GCC_MINOR = 3
 MIN_CLANG_MAJOR = 8
 MIN_CLANG_MINOR = 0
 
-WORKER_VERSION = 247
+WORKER_VERSION = 248
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -462,6 +462,8 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache):
         return True
 
     # build it ourselves
+    tmp_dir = Path(tempfile.mkdtemp(dir=testing_dir))
+    cd = os.getcwd()
     try:
         item_url = (
             "https://api.github.com/repos/"
@@ -482,14 +484,12 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache):
         else:
             print("Using {} from global cache".format(fastchess_sha + ".zip"))
 
-        tmp_dir = Path(tempfile.mkdtemp(dir=testing_dir))
         file_list = unzip(blob, tmp_dir)
         prefix = os.path.commonprefix([n.filename for n in file_list])
 
         if should_cache:
             cache_write(global_cache, fastchess_sha + ".zip", blob)
 
-        cd = os.getcwd()
         os.chdir(tmp_dir / prefix)
 
         cmds = [
@@ -505,12 +505,21 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache):
                 cmd,
                 shell=True,
                 env=os.environ,
+                start_new_session=False if IS_WINDOWS else True,
                 stderr=subprocess.PIPE,
                 universal_newlines=True,
                 bufsize=1,
                 close_fds=not IS_WINDOWS,
             ) as p:
-                errors = p.stderr.readlines()
+                try:
+                    errors = p.stderr.readlines()
+                except Exception as e:
+                    if not IS_WINDOWS:
+                        os.killpg(p.pid, signal.SIGINT)
+                    raise WorkerException(
+                        f"Executing {cmd} raised Exception: {type(e).__name__}: {e}",
+                        e=e,
+                    )
 
             if p.returncode:
                 raise WorkerException(
@@ -518,8 +527,6 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache):
                 )
 
         shutil.copy("fastchess" + EXE_SUFFIX, testing_dir)
-        os.chdir(cd)
-        shutil.rmtree(tmp_dir)
 
     except Exception as e:
         print(
@@ -528,6 +535,9 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache):
             sep="",
             file=sys.stderr,
         )
+    finally:
+        os.chdir(cd)
+        shutil.rmtree(tmp_dir, ignore_errors=True)
 
     return verify_required_fastchess(testing_dir / fastchess, fastchess_sha)
 
