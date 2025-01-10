@@ -729,6 +729,7 @@ class RunDb:
                     self.run_cache[r_id] = {
                         "last_access_time": time.time(),
                         "last_sync_time": time.time(),
+                        "priority": 0,
                         "run": run,
                         "is_changed": False,
                     }
@@ -736,7 +737,7 @@ class RunDb:
         else:
             return self.runs.find_one({"_id": r_id_obj})
 
-    def buffer(self, run, flush, create=False):
+    def buffer(self, run, flush, priority=0, create=False):
         if not self.is_primary_instance():
             print(
                 "Warning: attempt to use the run_cache on the",
@@ -751,17 +752,20 @@ class RunDb:
                     "is_changed": False,
                     "last_access_time": time.time(),
                     "last_sync_time": time.time(),
+                    "priority": 0,
                     "run": run,
                 }
             else:
                 if r_id in self.run_cache:
                     last_sync_time = self.run_cache[r_id]["last_sync_time"]
+                    priority = max(priority, self.run_cache[r_id]["priority"])
                 else:
                     last_sync_time = time.time()
                 self.run_cache[r_id] = {
                     "is_changed": True,
                     "last_access_time": time.time(),
                     "last_sync_time": last_sync_time,
+                    "priority": priority,
                     "run": run,
                 }
         if flush:
@@ -794,14 +798,18 @@ class RunDb:
         old = float("inf")
         with self.run_cache_lock:
             for cache_entry in self.run_cache.values():
-                if cache_entry["is_changed"] and cache_entry["last_sync_time"] < old:
-                    old = cache_entry["last_sync_time"]
+                # Make sure that every run will be saved to disk eventually,
+                # even if there are always cache entries with priority 1.
+                t = -60 * cache_entry["priority"] + cache_entry["last_sync_time"]
+                if cache_entry["is_changed"] and t < old:
+                    old = t
                     oldest_entry = cache_entry
             if oldest_entry is not None:
                 oldest_run = oldest_entry["run"]
                 oldest_run_id = oldest_run["_id"]
                 oldest_entry["is_changed"] = False
                 oldest_entry["last_sync_time"] = time.time()
+                oldest_entry["priority"] = 0
 
         if oldest_entry is not None:
             with self.active_run_lock(str(oldest_run_id)):
@@ -1273,7 +1281,7 @@ After fixing the issues you can unblock the worker at
 
         self.insert_in_wtt_map(run, task_id)
 
-        self.buffer(run, False)
+        self.buffer(run, False, priority=1)
 
         # Cache some data. Currently we record the id's
         # the worker has seen, as well as the last id that was seen.
