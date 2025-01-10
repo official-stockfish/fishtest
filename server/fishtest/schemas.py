@@ -825,6 +825,7 @@ cache_schema = {
         "is_changed": bool,  # Indicates if the run has changed since last_sync_time.
         "last_sync_time": timestamp,  # Last sync time (reading from or writing to db). If never synced then creation time.
         "last_access_time": timestamp,  # Last time the cache entry was touched (via buffer() or get_run()).
+        "priority": int,  # Entries with higher priority are synced first.
     },
 }
 
