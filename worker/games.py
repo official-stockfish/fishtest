@@ -954,14 +954,14 @@ def parse_fastchess_output(
                 )
 
         # Parse line like this:
-        # Warning: New-SHA doesn't have option ThreatBySafePawn
-        if "Warning:" in line and "doesn't have option" in line:
+        # Warning; New-SHA doesn't have option ThreatBySafePawn
+        if "Warning;" in line and "doesn't have option" in line:
             message = r'fastchess says: "{}"'.format(line)
             raise RunException(message)
 
         # Parse line like this:
-        # Warning: Invalid value for option P: -354
-        if "Warning:" in line and "Invalid value" in line:
+        # Warning; Invalid value for option P: -354
+        if "Warning;" in line and "Invalid value" in line:
             message = r'fastchess says: "{}"'.format(line)
             raise RunException(message)
 
