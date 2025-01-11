@@ -69,7 +69,7 @@ MIN_GCC_MINOR = 3
 MIN_CLANG_MAJOR = 8
 MIN_CLANG_MINOR = 0
 
-WORKER_VERSION = 248
+WORKER_VERSION = 249
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -454,7 +454,7 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache):
     testing_dir = worker_dir / "testing"
     testing_dir.mkdir(exist_ok=True)
 
-    fastchess_sha = "37c6e12feaef484cd5eff1313d794532aa0bff14"
+    fastchess_sha = "d053a83d641ace390d9079bdab7f7b94f103727f"
     username = "Disservin"
 
     fastchess = "fastchess" + EXE_SUFFIX
