@@ -1202,7 +1202,7 @@ After fixing the issues you can unblock the worker at
             # Limit the number of cores.
             # Currently this is only done for spsa.
             if "spsa" in run["args"]:
-                limit_cores = 40000 / math.sqrt(len(run["args"]["spsa"]["params"]))
+                limit_cores = 200000 / math.sqrt(len(run["args"]["spsa"]["params"]))
             else:
                 limit_cores = 1000000  # infinity
 
