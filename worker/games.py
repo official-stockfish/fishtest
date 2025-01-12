@@ -1451,7 +1451,7 @@ def run_games(
     if run_errors:
         raise RunException("\n".join(run_errors))
 
-    if base_nps < 208082 / (1 + math.tanh((worker_concurrency - 1) / 8)):
+    if base_nps < 208082 / (1 + 3 * math.tanh((worker_concurrency - 1) / 8)):
         raise FatalException(
             "This machine is too slow ({} nps / thread) to run fishtest effectively - sorry!".format(
                 base_nps
