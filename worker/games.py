@@ -721,6 +721,7 @@ def setup_engine(
     concurrency,
     compiler,
     global_cache,
+    env,
 ):
     """Download and build sources in a temporary directory then move exe to destination"""
     tmp_dir = Path(tempfile.mkdtemp(dir=worker_dir))
@@ -767,10 +768,6 @@ def setup_engine(
             f"ARCH={arch}",
             f"COMP={comp}",
         ]
-
-        # append -DNNUE_EMBEDDING_OFF to existing CXXFLAGS environment variable, if any
-        cxx = os.environ.get("CXXFLAGS", "") + " -DNNUE_EMBEDDING_OFF"
-        env = dict(os.environ, CXXFLAGS=cxx.strip())
 
         with subprocess.Popen(
             cmd,
@@ -1208,7 +1205,6 @@ def run_games(
     run,
     task_id,
     pgn_file,
-    clear_binaries,
     global_cache,
 ):
     # This is the main fastchess driver.
@@ -1298,7 +1294,7 @@ def run_games(
     # Clean up old engines (keeping the num_bkps most recent).
     worker_dir = Path(__file__).resolve().parent
     testing_dir = worker_dir / "testing"
-    num_bkps = 0 if clear_binaries else 50
+    num_bkps = 50
     try:
         engines = sorted(
             testing_dir.glob("stockfish_*" + EXE_SUFFIX),
@@ -1323,11 +1319,36 @@ def run_games(
                     sep="",
                     file=sys.stderr,
                 )
+
+    def create_environment():
+        # OS and TEMP are necessary for msys2
+        white_set = {"PATH", "OS", "TEMP"}
+        env = {k: v for k, v in os.environ.items() if k in white_set}
+        env["CXXFLAGS"] = "-DNNUE_EMBEDDING_OFF"
+
+        # Do not hash directories such as PATH and TEMP
+        hash_set = {"OS", "CXXFLAGS"}
+        hashed_env = {k: v for k, v in env.items() if k in hash_set}
+
+        env_hash = hashlib.sha256(str(hashed_env).encode()).hexdigest()[0:10]
+        return env, env_hash
+
+    env, env_hash = create_environment()
+
+    # build signature
+    bs = (
+        worker_info["compiler"]
+        + "_"
+        + str(".".join([str(s) for s in worker_info["gcc_version"]]))
+        + "_env_"
+        + env_hash
+    )
     # Create new engines.
     sha_new = run["args"]["resolved_new"]
     sha_base = run["args"]["resolved_base"]
-    new_engine_name = "stockfish_" + sha_new
-    base_engine_name = "stockfish_" + sha_base
+
+    new_engine_name = "stockfish_" + sha_new + "_" + bs
+    base_engine_name = "stockfish_" + sha_base + "_" + bs
 
     new_engine = testing_dir / (new_engine_name + EXE_SUFFIX)
     base_engine = testing_dir / (base_engine_name + EXE_SUFFIX)
@@ -1344,6 +1365,7 @@ def run_games(
             worker_info["concurrency"],
             worker_info["compiler"],
             global_cache,
+            env,
         )
     if not base_engine.exists():
         setup_engine(
@@ -1356,6 +1378,7 @@ def run_games(
             worker_info["concurrency"],
             worker_info["compiler"],
             global_cache,
+            env,
         )
 
     os.chdir(testing_dir)
@@ -1565,7 +1588,7 @@ def run_games(
                 "-engine",
                 "name=New-" + run["args"]["resolved_new"],
                 "tc={}".format(scaled_new_tc),
-                "cmd=./{}".format(new_engine_name),
+                "cmd={}".format(new_engine),
                 "dir=.",
             ]
             + new_options
@@ -1574,7 +1597,7 @@ def run_games(
                 "-engine",
                 "name=Base-" + run["args"]["resolved_base"],
                 "tc={}".format(scaled_tc),
-                "cmd=./{}".format(base_engine_name),
+                "cmd={}".format(base_engine),
                 "dir=.",
             ]
             + base_options

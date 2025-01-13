@@ -69,7 +69,7 @@ MIN_GCC_MINOR = 3
 MIN_CLANG_MAJOR = 8
 MIN_CLANG_MINOR = 0
 
-WORKER_VERSION = 250
+WORKER_VERSION = 251
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -1298,7 +1298,6 @@ def fetch_and_handle_task(
     password,
     remote,
     current_state,
-    clear_binaries,
     global_cache,
     worker_lock,
 ):
@@ -1391,7 +1390,6 @@ def fetch_and_handle_task(
             run,
             task_id,
             pgn_file,
-            clear_binaries,
             global_cache,
         )
         success = True
@@ -1609,14 +1607,12 @@ def worker():
     # Start the main loop.
     delay = INITIAL_RETRY_TIME
     fish_exit = False
-    clear_binaries = True
     while current_state["alive"]:
         success = fetch_and_handle_task(
             worker_info,
             options.password,
             remote,
             current_state,
-            clear_binaries,
             options.global_cache,
             worker_lock,
         )
@@ -1637,7 +1633,6 @@ def worker():
                 safe_sleep(delay)
                 delay = min(MAX_RETRY_TIME, delay * 2)
         else:
-            clear_binaries = False
             delay = INITIAL_RETRY_TIME
 
     if fish_exit:
