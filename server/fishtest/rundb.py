@@ -40,7 +40,6 @@ from fishtest.util import (
     Scheduler,
     crash_or_time,
     estimate_game_duration,
-    format_results,
     get_bad_workers,
     get_chi2,
     get_hash,
@@ -935,7 +934,6 @@ class RunDb:
             if cores > 0:
                 eta = remaining_hours(run) / cores
                 pending_hours += eta
-            results = run["results"]
         return (
             runs,
             pending_hours,
@@ -1562,7 +1560,6 @@ After fixing the issues you can unblock the worker at
         run = self.get_run(run_id)
         self.set_inactive_run(run)
 
-        results = run["results"]
         try:
             validate(runs_schema, run, "run")
         except ValidationError as e:

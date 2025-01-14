@@ -24,10 +24,10 @@ Important note
 ==============
 
 APIs hosted on the primary Fishtest instance have read and write access
-to the `run_cache` via `rundb.get_run()` and `rundb.buffer()` 
+to the `run_cache` via `rundb.get_run()` and `rundb.buffer()`
 
-APIs hosted on secondary instances have read access to the `run` 
-from the database via `rundb.get_run()`. However, they should not 
+APIs hosted on secondary instances have read access to the `run`
+from the database via `rundb.get_run()`. However, they should not
 attempt to write to `run_cache` using `rundb.buffer()`.
 
 Proper configuration of `nginx` is crucial for this, and should be done

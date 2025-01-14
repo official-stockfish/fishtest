@@ -1488,7 +1488,6 @@ def tests_view(request):
     if run is None:
         raise HTTPNotFound()
     follow = 1 if "follow" in request.params else 0
-    results = run["results"]
     run_args = [("id", str(run["_id"]), "")]
     if run.get("rescheduled_from"):
         run_args.append(("rescheduled_from", run["rescheduled_from"], ""))
