@@ -1121,7 +1121,7 @@ After fixing the issues you can unblock the worker at
         near_github_api_limit = worker_info["near_github_api_limit"]
 
         # Now we sort the list of unfinished runs according to priority.
-        last_run_id = self.worker_runs.get(unique_key, {}).get("last_run", None)
+        last_run_id = self.worker_runs.get(my_name, {}).get("last_run", None)
 
         def priority(run):  # lower is better
             return (
@@ -1191,8 +1191,7 @@ After fixing the issues you can unblock the worker at
             # GitHub API limit...
             if near_github_api_limit:
                 have_binary = (
-                    unique_key in self.worker_runs
-                    and run_id in self.worker_runs[unique_key]
+                    my_name in self.worker_runs and run_id in self.worker_runs[my_name]
                 )
                 if not have_binary:
                     continue
@@ -1286,10 +1285,10 @@ After fixing the issues you can unblock the worker at
         # the worker has seen, as well as the last id that was seen.
         # Note that "worker_runs" is empty after a server restart.
         with self.worker_runs_lock:
-            if unique_key not in self.worker_runs:
-                self.worker_runs[unique_key] = {}
-            self.worker_runs[unique_key][run_id] = True
-            self.worker_runs[unique_key]["last_run"] = run_id
+            if my_name not in self.worker_runs:
+                self.worker_runs[my_name] = {}
+            self.worker_runs[my_name][run_id] = True
+            self.worker_runs[my_name]["last_run"] = run_id
 
         return {"run": run, "task_id": task_id}
 

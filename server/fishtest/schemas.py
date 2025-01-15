@@ -849,7 +849,7 @@ active_runs_schema = {
 }
 
 worker_runs_schema = {
-    uuid: {
+    short_worker_name: {
         run_id: True,
         "last_run": run_id,
     }
