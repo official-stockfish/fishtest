@@ -1729,6 +1729,15 @@ def homepage_results(request):
     }
 
 
+# For caching the homepage tests output
+cache_time = 2
+last_tests = None
+last_time = 0
+
+# Guard against parallel builds of main page
+building = threading.Semaphore()
+
+
 @view_config(route_name="tests", renderer="tests.mak")
 def tests(request):
     request.response.headerlist.extend(
@@ -1742,7 +1751,27 @@ def tests(request):
         # page 2 and beyond only show finished test results
         return get_paginated_finished_runs(request)
 
-    last_tests = homepage_results(request)
+    global last_tests, last_time
+    if time.time() - last_time > cache_time:
+        acquired = building.acquire(last_tests is None)
+        if not acquired:
+            # We have a current cache and another thread is rebuilding,
+            # so return the current cache
+            pass
+        elif time.time() - last_time < cache_time:
+            # Another thread has built the cache for us, so we are done
+            building.release()
+        else:
+            # Not cached, so calculate and fetch homepage results
+            try:
+                last_tests = homepage_results(request)
+            except Exception as e:
+                print("Overview exception: " + str(e))
+                if not last_tests:
+                    raise e
+            finally:
+                last_time = time.time()
+                building.release()
 
     return {
         **last_tests,
