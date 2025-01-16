@@ -325,6 +325,7 @@ class RunDb:
                             del self.connections_counter[remote_addr]
                     except Exception as e:
                         print(f"Error while deleting connection: {str(e)}", flush=True)
+        self.buffer(run, False, priority=1)
 
     def set_bad_task(self, task_id, run, residual=None, residual_color=None):
         zero_stats = {
@@ -365,6 +366,7 @@ class RunDb:
             # to zero.
             task["bad"] = True
             task["stats"] = copy.deepcopy(zero_stats)
+            self.buffer(run, False, priority=1)
 
     # Do not run two copies of this function in parallel!
     def update_aggregated_data(self):
@@ -738,6 +740,12 @@ class RunDb:
             return self.runs.find_one({"_id": r_id_obj})
 
     def buffer(self, run, flush, priority=0, create=False):
+        """
+        Guidelines
+        ==========
+        priority=1 : finished task
+        priority=2 : new task
+        """
         if not self.is_primary_instance():
             print(
                 "Warning: attempt to use the run_cache on the",
@@ -859,7 +867,6 @@ class RunDb:
                 task_id=task_id,
             )
             self.set_inactive_task(task_id, run)
-            self.buffer(run, False)
 
     def get_unfinished_runs_id(self):
         unfinished_runs = self.runs.find(
@@ -1279,7 +1286,7 @@ After fixing the issues you can unblock the worker at
 
         self.insert_in_wtt_map(run, task_id)
 
-        self.buffer(run, False, priority=1)
+        self.buffer(run, False, priority=2)
 
         # Cache some data. Currently we record the id's
         # the worker has seen, as well as the last id that was seen.
@@ -1532,7 +1539,6 @@ After fixing the issues you can unblock the worker at
         # Mark the task as inactive.
         self.set_inactive_task(task_id, run)
         self.handle_crash_or_time(run, task_id)
-        self.buffer(run, False)
         print(
             "Failed_task: failure for: https://tests.stockfishchess.org/tests/view/{}, "
             "task_id: {}, worker: {}, reason: '{}'".format(
