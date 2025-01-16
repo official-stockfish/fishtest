@@ -24,7 +24,7 @@
         <div class="card card-lg-sm text-center">
           <div class="card-header text-nowrap" title="Nodes per second">Nodes / sec</div>
           <div class="card-body">
-            <h4 class="card-title mb-0 monospace">${f"{nps / (1000000 + 1):.0f}"}M</h4>
+            <h4 class="card-title mb-0 monospace">${f"{nps / 1000000:.0f}"}M</h4>
           </div>
         </div>
       </div>
