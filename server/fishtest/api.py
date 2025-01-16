@@ -297,7 +297,6 @@ class WorkerApi(GenericApi):
                 self.request.rundb.stop_run(self.run_id())
             else:
                 self.request.rundb.set_inactive_task(self.task_id(), run)
-                self.request.rundb.buffer(run, True)
 
         self.handle_error(error, exception=HTTPUnauthorized)
         return self.add_time({})
