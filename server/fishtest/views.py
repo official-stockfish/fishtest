@@ -13,6 +13,7 @@ import fishtest.stats.stat_util
 import requests
 from fishtest.schemas import RUN_VERSION, runs_schema, short_worker_name
 from fishtest.util import (
+    Prio,
     email_valid,
     extract_repo_from_link,
     format_bounds,
@@ -1405,7 +1406,7 @@ def tests_delete(request):
                     username="fishtest.system",
                     message=message,
                 )
-        request.rundb.buffer(run, True)
+        request.rundb.buffer(run, priority=Prio.SAVE_NOW)
 
         request.actiondb.delete_run(
             username=request.authenticated_userid,
