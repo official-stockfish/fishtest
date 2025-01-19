@@ -4,6 +4,7 @@ import math
 import re
 import threading
 from datetime import datetime, timedelta, timezone
+from enum import IntEnum
 from functools import cache
 from random import uniform
 
@@ -14,6 +15,13 @@ from email_validator import EmailNotValidError, caching_resolver, validate_email
 from zxcvbn import zxcvbn
 
 FISH_URL = "https://tests.stockfishchess.org/tests/view/"
+
+
+class Prio(IntEnum):
+    NORMAL = 0
+    MEDIUM = 1
+    HIGH = 2
+    SAVE_NOW = 1000
 
 
 class GeneratorAsFileReader:

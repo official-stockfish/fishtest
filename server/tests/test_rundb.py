@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 import util
 from fishtest.api import WORKER_VERSION
+from fishtest.util import Prio
 from pymongo import DESCENDING
 
 run_id = None
@@ -96,7 +97,7 @@ class CreateRunDBTest(unittest.TestCase):
         }
         run["tasks"].append(task)
 
-        self.rundb.buffer(run, True)
+        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
 
         # LTC
         run_id = self.rundb.new_run(
@@ -152,7 +153,7 @@ class CreateRunDBTest(unittest.TestCase):
         run["tasks"][0]["active"] = True
         run["tasks"][0]["worker_info"] = self.worker_info
         run["workers"] = run["cores"] = 1
-        self.rundb.buffer(run, True)
+        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
         self.rundb.connections_counter[self.remote_addr] = 1
         run = self.rundb.update_task(
             self.worker_info,
@@ -188,7 +189,7 @@ class CreateRunDBTest(unittest.TestCase):
         # revive task
         run_ = self.rundb.get_run(run_id)
         run_["tasks"][0]["active"] = True
-        self.rundb.buffer(run_, True)
+        self.rundb.buffer(run_, priority=Prio.SAVE_NOW)
         self.rundb.connections_counter[self.remote_addr] = 1
         run = self.rundb.update_task(
             self.worker_info,
@@ -223,7 +224,7 @@ class CreateRunDBTest(unittest.TestCase):
         print("run_id: {}".format(run_id))
         run = self.rundb.get_run(run_id)
         run["finished"] = True
-        self.rundb.buffer(run, True)
+        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
 
     def test_40_list_LTC(self):
         finished_runs = self.rundb.get_finished_runs(limit=3, ltc_only=True)[0]
@@ -238,7 +239,7 @@ class CreateRunDBTest(unittest.TestCase):
                 run["finished"] = True
                 for w in run["tasks"]:
                     w["pending"] = False
-                self.rundb.buffer(run, True)
+                self.rundb.buffer(run, priority=Prio.SAVE_NOW)
 
 
 if __name__ == "__main__":

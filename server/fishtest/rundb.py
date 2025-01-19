@@ -37,6 +37,7 @@ from fishtest.stats.stat_util import SPRT_elo
 from fishtest.userdb import UserDb
 from fishtest.util import (
     GeneratorAsFileReader,
+    Prio,
     Scheduler,
     crash_or_time,
     estimate_game_duration,
@@ -146,7 +147,7 @@ class RunDb:
                 if not run["finished"]:
                     run["nps"] = nps
                     run["games_per_minute"] = games_per_minute
-                    self.buffer(run, False)
+                    self.buffer(run)
 
     def validate_data_structures(self):
         # The main purpose of task is to ensure that the schemas
@@ -212,7 +213,7 @@ class RunDb:
 
         for run in unfinished_runs:
             self.calc_itp(run, user_active.count(run["args"].get("username")))
-            self.buffer(run, False)
+            self.buffer(run)
 
     def clean_wtt_map(self):
         with self.wtt_lock:
@@ -291,7 +292,7 @@ class RunDb:
             run["games_per_minute"] = 0.0
             flags = compute_flags(run)
             run.update(flags)
-        self.buffer(run, True)
+        self.buffer(run, priority=Prio.SAVE_NOW)
 
     def set_active_run(self, run):
         run_id = str(run["_id"])
@@ -302,7 +303,7 @@ class RunDb:
             run["is_green"] = False
             run["is_yellow"] = False
             run["finished"] = False
-        self.buffer(run, True)
+        self.buffer(run, priority=Prio.SAVE_NOW)
 
     def set_inactive_task(self, task_id, run):
         run_id = run["_id"]
@@ -327,7 +328,7 @@ class RunDb:
                             del self.connections_counter[remote_addr]
                     except Exception as e:
                         print(f"Error while deleting connection: {str(e)}", flush=True)
-        self.buffer(run, False, priority=1)
+        self.buffer(run, priority=Prio.MEDIUM)
 
     def set_bad_task(self, task_id, run, residual=None, residual_color=None):
         zero_stats = {
@@ -368,7 +369,7 @@ class RunDb:
             # to zero.
             task["bad"] = True
             task["stats"] = copy.deepcopy(zero_stats)
-            self.buffer(run, False, priority=1)
+            self.buffer(run, priority=Prio.MEDIUM)
 
     # Do not run two copies of this function in parallel!
     def update_aggregated_data(self):
@@ -455,7 +456,7 @@ class RunDb:
                                 self.connections_counter[remote_addr] = 1
 
             if changed:
-                self.buffer(run, False)
+                self.buffer(run)
 
             with self.wtt_lock:
                 for task_id in range(len(run["tasks"])):
@@ -612,7 +613,7 @@ class RunDb:
             print(message, flush=True)
             raise Exception(message)
 
-        self.buffer(new_run, True, create=True)
+        self.buffer(new_run, priority=Prio.SAVE_NOW, create=True)
 
         run_id = str(new_run["_id"])
         with self.unfinished_runs_lock:
@@ -741,12 +742,15 @@ class RunDb:
         else:
             return self.runs.find_one({"_id": r_id_obj})
 
-    def buffer(self, run, flush, priority=0, create=False):
+    def buffer(self, run, *, priority=Prio.NORMAL, create=False):
         """
-        Guidelines
-        ==========
-        priority=1 : finished task
-        priority=2 : new task
+        Guidelines for priority
+        =======================
+        Prio.MEDIUM: finished task
+        Prio.HIGH: new task
+        Prio.SAVE_NOW: new run (combined with create=True),
+                       finished run, modify/approve/purge run
+        Prio.NORMAL: all other uses
         """
         if not self.is_primary_instance():
             print(
@@ -755,6 +759,15 @@ class RunDb:
                 flush=True,
             )
             return
+
+        if create and priority != Prio.SAVE_NOW:
+            print(
+                "Warning: setting create=True in buffer() without",
+                "using priority=Prio.SAVE_NOW has no effect.",
+                flush=True,
+            )
+
+        flush = priority == Prio.SAVE_NOW
         r_id = str(run["_id"])
         with self.run_cache_lock:
             if flush:
@@ -1288,7 +1301,7 @@ After fixing the issues you can unblock the worker at
 
         self.insert_in_wtt_map(run, task_id)
 
-        self.buffer(run, False, priority=2)
+        self.buffer(run, priority=Prio.HIGH)
 
         # Cache some data. Currently we record the id's
         # the worker has seen, as well as the last id that was seen.
@@ -1525,7 +1538,7 @@ After fixing the issues you can unblock the worker at
             # done by stop_run.
             ret = {"task_alive": False}
         else:
-            self.buffer(run, False)
+            self.buffer(run)
             ret = {"task_alive": task["active"]}
 
         return ret
@@ -1616,7 +1629,7 @@ After fixing the issues you can unblock the worker at
         if not run["approved"]:
             run["approved"] = True
             run["approver"] = approver
-            self.buffer(run, True)
+            self.buffer(run, priority=Prio.SAVE_NOW)
             return run, f"Run {str(run_id)} approved"
         else:
             return None, f"Run {str(run_id)} already approved!"
@@ -1688,7 +1701,7 @@ After fixing the issues you can unblock the worker at
             else:
                 flags = compute_flags(run)
                 run.update(flags)
-                self.buffer(run, True)
+                self.buffer(run, priority=Prio.SAVE_NOW)
         return message
 
     def spsa_param_clip(self, param, increment):

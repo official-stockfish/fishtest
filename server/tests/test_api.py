@@ -7,6 +7,7 @@ import unittest
 from datetime import datetime, timezone
 
 from fishtest.api import WORKER_VERSION, UserApi, WorkerApi
+from fishtest.util import Prio
 from pyramid.httpexceptions import HTTPBadRequest, HTTPUnauthorized
 from pyramid.testing import DummyRequest
 from util import get_rundb
@@ -81,7 +82,7 @@ def new_run(self, add_tasks=0):
             run["workers"] += 1
             run["cores"] += self.worker_info["concurrency"]
             run["tasks"].append(task)
-    self.rundb.buffer(run, True)
+    self.rundb.buffer(run, priority=Prio.SAVE_NOW)
     return str(run_id)
 
 
@@ -94,7 +95,7 @@ def stop_all_runs(self):
         for task in run_["tasks"]:
             task["active"] = False
         stopped.append(str(run_["_id"]))
-        self.rundb.buffer(run_, True)
+        self.rundb.buffer(run_, priority=Prio.SAVE_NOW)
     return stopped
 
 
@@ -347,7 +348,7 @@ class TestApi(unittest.TestCase):
 
         # revive the task
         run["tasks"][0]["active"] = True
-        self.rundb.buffer(run, True)
+        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
         self.rundb.connections_counter[self.remote_addr] = 1
 
         # Task is finished when calling /api/update_task with results where the number of
@@ -571,7 +572,7 @@ class TestRunFinished(unittest.TestCase):
         stop_all_runs(self)
         run_id = new_run(self)
         run = self.rundb.get_run(run_id)
-        self.rundb.buffer(run, True)
+        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
         # Request task 1 of 2
         request = self.correct_password_request()
         response = WorkerApi(request).request_task()
@@ -588,7 +589,7 @@ class TestRunFinished(unittest.TestCase):
         run = self.rundb.get_run(run_id)
         num_games = 1200
         run["args"]["num_games"] = num_games
-        self.rundb.buffer(run, True)
+        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
 
         # Request task 1 of 2
         request = self.correct_password_request()

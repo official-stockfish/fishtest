@@ -314,7 +314,7 @@ class WorkerApi(GenericApi):
         run = self.run()
         task = self.task()
         task["last_updated"] = datetime.now(timezone.utc)
-        self.request.rundb.buffer(run, False)
+        self.request.rundb.buffer(run)
         return self.add_time({"task_alive": task["active"]})
 
     @view_config(route_name="api_request_spsa")
