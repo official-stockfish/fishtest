@@ -1267,7 +1267,6 @@ def tests_modify(request):
         run["approver"] = ""
 
     before = del_tasks(run)
-    request.rundb.set_active_run(run)
     run["args"]["num_games"] = int(request.POST["num-games"])
     run["args"]["priority"] = int(request.POST["priority"])
     run["args"]["throughput"] = int(request.POST["throughput"])
@@ -1278,7 +1277,7 @@ def tests_modify(request):
         and request.POST["info"].strip() != ""
     ):
         run["args"]["info"] = request.POST["info"].strip()
-    request.rundb.buffer(run, True)
+    request.rundb.set_active_run(run)
 
     after = del_tasks(run)
     message = []

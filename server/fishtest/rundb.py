@@ -291,6 +291,7 @@ class RunDb:
             run["games_per_minute"] = 0.0
             flags = compute_flags(run)
             run.update(flags)
+        self.buffer(run, True)
 
     def set_active_run(self, run):
         run_id = str(run["_id"])
@@ -301,6 +302,7 @@ class RunDb:
             run["is_green"] = False
             run["is_yellow"] = False
             run["finished"] = False
+        self.buffer(run, True)
 
     def set_inactive_task(self, task_id, run):
         run_id = run["_id"]
@@ -1581,8 +1583,6 @@ After fixing the issues you can unblock the worker at
                     flush=True,
                 )
 
-        self.buffer(run, True)
-
         # Auto-purge runs here. This may revive the run.
         if run["args"].get("auto_purge", True) and "spsa" not in run["args"]:
             message = self.purge_run(run)
@@ -1688,7 +1688,7 @@ After fixing the issues you can unblock the worker at
             else:
                 flags = compute_flags(run)
                 run.update(flags)
-            self.buffer(run, True)
+                self.buffer(run, True)
         return message
 
     def spsa_param_clip(self, param, increment):
