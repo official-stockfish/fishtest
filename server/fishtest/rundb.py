@@ -1069,6 +1069,8 @@ Request_task: This worker has been blocked!
 {wrapped_message}
 You may possibly find more information at
 {host_url}/actions?text=%22{worker_name}%22.
+If you require help, feel free to contact the #fishtest-dev channel on
+the Stockfish Discord server: https://discord.com/invite/awnh2qZfTT.
 After fixing the issues you can unblock the worker at
 {host_url}/workers/{worker_name}.
 **********************************************************************
