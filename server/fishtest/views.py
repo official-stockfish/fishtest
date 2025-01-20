@@ -162,7 +162,7 @@ Thank you for contributing to the development of Stockfish. Unfortunately, it se
 
 You may possibly find more information about this in our event log at {host_url}/actions
 
-Feel free to reply to this email if you require any help, or else contact the #fishtest channel on the Stockfish Discord server: https://discord.com/invite/awnh2qZfTT
+Feel free to reply to this email if you require any help, or else contact the #fishtest-dev channel on the Stockfish Discord server: https://discord.com/invite/awnh2qZfTT
 
 Enjoy your day,
 
