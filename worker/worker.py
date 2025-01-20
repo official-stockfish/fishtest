@@ -69,7 +69,7 @@ MIN_GCC_MINOR = 3
 MIN_CLANG_MAJOR = 8
 MIN_CLANG_MINOR = 0
 
-WORKER_VERSION = 251
+WORKER_VERSION = 252
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -1357,11 +1357,11 @@ def fetch_and_handle_task(
         "Working on task {} from {}/tests/view/{}".format(task_id, remote, run["_id"])
     )
     if "sprt" in run["args"]:
-        type = "sprt"
+        run_type = "sprt"
     elif "spsa" in run["args"]:
-        type = "spsa"
+        run_type = "spsa"
     else:
-        type = "num_games"
+        run_type = "num_games"
     log(
         "run: {} task: {} size: {} tc: {} concurrency: {} threads: {} [ {} : {} ]".format(
             run["_id"],
@@ -1370,7 +1370,7 @@ def fetch_and_handle_task(
             run["args"]["tc"],
             worker_info["concurrency"],
             run["args"]["threads"],
-            type,
+            run_type,
             run["args"]["num_games"],
         )
     )
