@@ -7,6 +7,7 @@ from pathlib import Path
 from zipfile import ZipFile
 
 import requests
+from games import EXE_SUFFIX
 
 start_dir = Path().cwd()
 
@@ -112,6 +113,21 @@ def update(restart=True, test=False):
                     sep="",
                     file=sys.stderr,
                 )
+        # Salvage fastchess binary
+        fastchess_binary = Path("fastchess" + EXE_SUFFIX)
+        old_fast_chess = bkp_testing_dir / fastchess_binary
+        if old_fast_chess.exists():
+            new_fast_chess = testing_dir / fastchess_binary
+            try:
+                old_fast_chess.replace(new_fast_chess)
+            except Exception as e:
+                print(
+                    "Failed to preserve fastchess binary:\n",
+                    e,
+                    sep="",
+                    file=sys.stderr,
+                )
+
         # Clean up old folder backups (keeping the num_bkps most recent).
         num_bkps = 3
         for old_bkp_dir in sorted(
