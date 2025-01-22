@@ -69,7 +69,9 @@ MIN_GCC_MINOR = 3
 MIN_CLANG_MAJOR = 8
 MIN_CLANG_MINOR = 0
 
-WORKER_VERSION = 253
+FASTCHESS_SHA = "894616028492ae6114835195f14a899f6fa237d3"
+
+WORKER_VERSION = 254
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -122,7 +124,7 @@ Setup task          <github>/rate_limit                                         
                     <fishtest>/api/nn/<nnue>                                    GET
                     <github-books>/git/trees/master                             GET
                     <github-books>/git/trees/master/blobs/<sha-book>            GET
-                    <github>/repos/Disservin/fastchess/zipball/<sha>           GET
+                    <github>/repos/Disservin/fastchess/zipball/<sha>            GET
                     <github>/repos/<user-repo>/zipball/<sha>                    GET
 
 Main loop           <fishtest>/api/update_task                                  POST
@@ -454,11 +456,10 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache):
     testing_dir = worker_dir / "testing"
     testing_dir.mkdir(exist_ok=True)
 
-    fastchess_sha = "d053a83d641ace390d9079bdab7f7b94f103727f"
     username = "Disservin"
 
     fastchess = "fastchess" + EXE_SUFFIX
-    if verify_required_fastchess(testing_dir / fastchess, fastchess_sha):
+    if verify_required_fastchess(testing_dir / fastchess, FASTCHESS_SHA):
         return True
 
     # build it ourselves
@@ -469,34 +470,34 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache):
             "https://api.github.com/repos/"
             + username
             + "/fastchess/zipball/"
-            + fastchess_sha
+            + FASTCHESS_SHA
         )
 
         print("Building fastchess from sources at {}".format(item_url))
 
         should_cache = False
-        blob = cache_read(global_cache, fastchess_sha + ".zip")
+        blob = cache_read(global_cache, FASTCHESS_SHA + ".zip")
 
         if blob is None:
             print("Downloading {}".format(item_url))
             blob = requests_get(item_url).content
             should_cache = True
         else:
-            print("Using {} from global cache".format(fastchess_sha + ".zip"))
+            print("Using {} from global cache".format(FASTCHESS_SHA + ".zip"))
 
         file_list = unzip(blob, tmp_dir)
         prefix = os.path.commonprefix([n.filename for n in file_list])
 
         if should_cache:
-            cache_write(global_cache, fastchess_sha + ".zip", blob)
+            cache_write(global_cache, FASTCHESS_SHA + ".zip", blob)
 
         os.chdir(tmp_dir / prefix)
 
         cmds = [
-            f"make -j{concurrency} tests CXX={compiler} GIT_SHA={fastchess_sha[0:8]} GIT_DATE=01010101",
+            f"make -j{concurrency} tests CXX={compiler} GIT_SHA={FASTCHESS_SHA[0:8]} GIT_DATE=01010101",
             str(tmp_dir / prefix / ("fastchess-tests" + EXE_SUFFIX)),
             "make clean",
-            f"make -j{concurrency} CXX={compiler} GIT_SHA={fastchess_sha[0:8]} GIT_DATE=01010101",
+            f"make -j{concurrency} CXX={compiler} GIT_SHA={FASTCHESS_SHA[0:8]} GIT_DATE=01010101",
         ]
 
         for cmd in cmds:
@@ -539,7 +540,7 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache):
         os.chdir(cd)
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
-    return verify_required_fastchess(testing_dir / fastchess, fastchess_sha)
+    return verify_required_fastchess(testing_dir / fastchess, FASTCHESS_SHA)
 
 
 def validate(config, schema):
