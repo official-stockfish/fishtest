@@ -1,10 +1,10 @@
 async function handleSPSA() {
   let raw = [],
-    chart_object,
-    chart_data,
-    data_cache = [],
-    smoothing_factor = 0,
-    smoothing_max = 20,
+    chartObject,
+    chartData,
+    dataCache = [],
+    smoothingFactor = 0,
+    smoothingMax = 20,
     columns = [],
     viewAll = false;
 
@@ -111,25 +111,25 @@ async function handleSPSA() {
     seriesType: "line",
   };
 
-  function gaussianKernelRegression(y, h) {
-    if (!h) return y;
+  function gaussianKernelRegression(values, bandwidth) {
+    if (!bandwidth) return values;
 
-    let rf = [];
-    for (let i = 0; i < y.length; i++) {
-      let yt = 0;
-      let zt = 0;
-      for (let j = 0; j < y.length; j++) {
-        const p = (i - j) / h;
-        const z = Math.exp((p * -1 * p) / 2);
-        zt += z;
-        yt += z * y[j];
+    let smoothedValues = [];
+    for (let i = 0; i < values.length; i++) {
+      let weightedSum = 0;
+      let weightTotal = 0;
+      for (let j = 0; j < values.length; j++) {
+        const distance = (i - j) / bandwidth;
+        const weight = Math.exp(-0.5 * distance * distance);
+        weightTotal += weight;
+        weightedSum += weight * values[j];
       }
-      rf.push(yt / zt);
+      smoothedValues.push(weightedSum / weightTotal);
     }
-    return rf;
+    return smoothedValues;
   }
 
-  function smoothData(b) {
+  function smoothData(smoothingFactor) {
     const spsaParams = spsaData.params;
     const spsaHistory = spsaData.param_history;
     const spsaIterRatio = Math.min(spsaData.iter / spsaData.num_iter, 1);
@@ -144,45 +144,46 @@ async function handleSPSA() {
       }
     }
     //cache data table to avoid recomputing the smoothed graph
-    if (!data_cache[b]) {
+    if (!dataCache[smoothingFactor]) {
       let dt = new google.visualization.DataTable();
       dt.addColumn("number", "Iteration");
       for (let i = 0; i < spsaParams.length; i++) {
         dt.addColumn("number", spsaParams[i].name);
       }
       // adjust the bandwidth for tests with samples != 101
-      const h = b * ((spsaHistory.length - 1) / (spsaIterRatio * 100));
-      let d = [];
+      const bandwidth =
+        smoothingFactor * ((spsaHistory.length - 1) / (spsaIterRatio * 100));
+      let data = [];
       for (let j = 0; j < spsaParams.length; j++) {
-        d.push(gaussianKernelRegression(raw[j], h));
+        data.push(gaussianKernelRegression(raw[j], bandwidth));
       }
-      let googleformat = [];
+      let googleFormat = [];
       for (let i = 0; i < spsaHistory.length; i++) {
-        let c = [(i / (spsaHistory.length - 1)) * spsaIterRatio];
+        let rowData = [(i / (spsaHistory.length - 1)) * spsaIterRatio];
         for (let j = 0; j < spsaParams.length; j++) {
-          c.push(d[j][i]);
+          rowData.push(data[j][i]);
         }
-        googleformat.push(c);
+        googleFormat.push(rowData);
       }
-      dt.addRows(googleformat);
-      data_cache[b] = dt;
+      dt.addRows(googleFormat);
+      dataCache[smoothingFactor] = dt;
     }
-    chart_data = data_cache[b];
+    chartData = dataCache[smoothingFactor];
     redraw(true);
   }
 
   function redraw(animate) {
     chartOptions.animation = animate ? { duration: 800, easing: "out" } : {};
-    let view = new google.visualization.DataView(chart_data);
+    let view = new google.visualization.DataView(chartData);
     view.setColumns(columns);
-    chart_object.draw(view, chartOptions);
+    chartObject.draw(view, chartOptions);
   }
 
   function updateColumnVisibility(col, visibility) {
     if (!visibility) {
       columns[col] = {
-        label: chart_data.getColumnLabel(col),
-        type: chart_data.getColumnType(col),
+        label: chartData.getColumnLabel(col),
+        type: chartData.getColumnType(col),
         calc: function () {
           return null;
         },
@@ -223,33 +224,33 @@ async function handleSPSA() {
     return;
   }
 
-  for (let i = 0; i < smoothing_max; i++) data_cache.push(false);
+  for (let i = 0; i < smoothingMax; i++) dataCache.push(false);
 
-  let googleformat = [];
+  let googleFormat = [];
   for (let i = 0; i < spsaHistory.length; i++) {
-    let d = [(i / (spsaHistory.length - 1)) * spsaIterRatio];
+    let rowData = [(i / (spsaHistory.length - 1)) * spsaIterRatio];
     for (let j = 0; j < spsaParams.length; j++) {
-      d.push(spsaHistory[i][j].theta);
+      rowData.push(spsaHistory[i][j].theta);
     }
-    googleformat.push(d);
+    googleFormat.push(rowData);
   }
 
-  chart_data = new google.visualization.DataTable();
+  chartData = new google.visualization.DataTable();
 
-  chart_data.addColumn("number", "Iteration");
+  chartData.addColumn("number", "Iteration");
   for (let i = 0; i < spsaParams.length; i++) {
-    chart_data.addColumn("number", spsaParams[i].name);
+    chartData.addColumn("number", spsaParams[i].name);
   }
-  chart_data.addRows(googleformat);
+  chartData.addRows(googleFormat);
 
-  data_cache[0] = chart_data;
-  chart_object = new google.visualization.LineChart(
+  dataCache[0] = chartData;
+  chartObject = new google.visualization.LineChart(
     document.getElementById("spsa_history_plot"),
   );
-  chart_object.draw(chart_data, chartOptions);
+  chartObject.draw(chartData, chartOptions);
   document.getElementById("chart_toolbar").style.display = "";
 
-  for (let i = 0; i < chart_data.getNumberOfColumns(); i++) {
+  for (let i = 0; i < chartData.getNumberOfColumns(); i++) {
     columns.push(i);
   }
 
@@ -269,9 +270,9 @@ async function handleSPSA() {
     .addEventListener("click", (e) => {
       if (!e.target.matches("a")) return;
       const { target } = e;
-      const param_id = target.param_id;
-      for (let i = 1; i < chart_data.getNumberOfColumns(); i++) {
-        updateColumnVisibility(i, i == param_id);
+      const paramId = target.param_id;
+      for (let i = 1; i < chartData.getNumberOfColumns(); i++) {
+        updateColumnVisibility(i, i == paramId);
       }
 
       viewAll = false;
@@ -279,8 +280,8 @@ async function handleSPSA() {
     });
 
   //show/hide functionality
-  google.visualization.events.addListener(chart_object, "select", function (e) {
-    let sel = chart_object.getSelection();
+  google.visualization.events.addListener(chartObject, "select", function (e) {
+    let sel = chartObject.getSelection();
     if (sel.length > 0 && sel[0].row == null) {
       const col = sel[0].column;
       updateColumnVisibility(col, columns[col] != col);
@@ -292,21 +293,21 @@ async function handleSPSA() {
   document.getElementById("spsa_preload").style.display = "none";
 
   document.getElementById("btn_smooth_plus").addEventListener("click", () => {
-    if (smoothing_factor < smoothing_max) {
-      smoothData(++smoothing_factor);
+    if (smoothingFactor < smoothingMax) {
+      smoothData(++smoothingFactor);
     }
   });
 
   document.getElementById("btn_smooth_minus").addEventListener("click", () => {
-    if (smoothing_factor > 0) {
-      smoothData(--smoothing_factor);
+    if (smoothingFactor > 0) {
+      smoothData(--smoothingFactor);
     }
   });
 
   document.getElementById("btn_view_all").addEventListener("click", () => {
     if (viewAll) return;
     viewAll = true;
-    for (let i = 0; i < chart_data.getNumberOfColumns(); i++) {
+    for (let i = 0; i < chartData.getNumberOfColumns(); i++) {
       updateColumnVisibility(i, true);
     }
 
