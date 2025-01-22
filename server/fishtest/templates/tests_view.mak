@@ -434,6 +434,15 @@
       </div>
 
       <button id="btn_view_all" class="btn">View All</button>
+      <div class="form-check form-check-inline">
+        <input
+          type="checkbox"
+          class="form-check-input"
+          id="spsa_percentage"
+          name="spsa-percentage"
+        />
+        <label class="form-check-label" for="spsa_percentage">c_end %</label>
+      </div>
     </div>
     <div class="overflow-auto">
       <div id="spsa_history_plot"></div>

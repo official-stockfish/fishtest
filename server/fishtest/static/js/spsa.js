@@ -2,7 +2,7 @@ async function handleSPSA() {
   let raw = [],
     chartObject,
     chartData,
-    dataCache = [],
+    dataCache = { absolute: [], percentage: [] },
     smoothingFactor = 0,
     smoothingMax = 20,
     columns = [],
@@ -77,6 +77,7 @@ async function handleSPSA() {
   const chartTextStyle = { color: "#888" };
   const gridlinesStyle = { color: "#666" };
   const minorGridlinesStyle = { color: "#ccc" };
+  let usePercentage = false;
 
   let chartOptions = {
     backgroundColor: {
@@ -98,6 +99,7 @@ async function handleSPSA() {
       minorGridlines: minorGridlinesStyle,
     },
     vAxis: {
+      format: usePercentage ? "percent" : "decimal",
       viewWindowMode: "maximized",
       textStyle: chartTextStyle,
       gridlines: gridlinesStyle,
@@ -144,7 +146,8 @@ async function handleSPSA() {
       }
     }
     //cache data table to avoid recomputing the smoothed graph
-    if (!dataCache[smoothingFactor]) {
+    const cacheType = usePercentage ? "percentage" : "absolute";
+    if (!dataCache[cacheType][smoothingFactor]) {
       let dt = new google.visualization.DataTable();
       dt.addColumn("number", "Iteration");
       for (let i = 0; i < spsaParams.length; i++) {
@@ -161,14 +164,21 @@ async function handleSPSA() {
       for (let i = 0; i < spsaHistory.length; i++) {
         let rowData = [(i / (spsaHistory.length - 1)) * spsaIterRatio];
         for (let j = 0; j < spsaParams.length; j++) {
-          rowData.push(data[j][i]);
+          if (usePercentage) {
+            rowData.push(
+              (data[j][i] - spsaParams[j].start) / spsaParams[j].c_end,
+            );
+          } else {
+            rowData.push(data[j][i]);
+          }
         }
         googleFormat.push(rowData);
       }
       dt.addRows(googleFormat);
-      dataCache[smoothingFactor] = dt;
+      dataCache[cacheType][smoothingFactor] = dt;
     }
-    chartData = dataCache[smoothingFactor];
+    chartData = dataCache[cacheType][smoothingFactor];
+    chartOptions.vAxis.format = usePercentage ? "percent" : "decimal";
     redraw(true);
   }
 
@@ -195,6 +205,7 @@ async function handleSPSA() {
         chartColors[(col - 1) % chartColors.length];
     }
   }
+
   await DOMContentLoaded();
   //fade in loader
   const loader = document.getElementById("spsa_preload");
@@ -224,13 +235,20 @@ async function handleSPSA() {
     return;
   }
 
-  for (let i = 0; i < smoothingMax; i++) dataCache.push(false);
+  for (let i = 0; i < smoothingMax; i++) dataCache.absolute.push(false);
+  for (let i = 0; i < smoothingMax; i++) dataCache.percentage.push(false);
 
   let googleFormat = [];
   for (let i = 0; i < spsaHistory.length; i++) {
     let rowData = [(i / (spsaHistory.length - 1)) * spsaIterRatio];
     for (let j = 0; j < spsaParams.length; j++) {
-      rowData.push(spsaHistory[i][j].theta);
+      if (usePercentage) {
+        rowData.push(
+          (spsaHistory[i][j].theta - spsaParams[j].start) / spsaParams[j].c_end,
+        );
+      } else {
+        rowData.push(spsaHistory[i][j].theta);
+      }
     }
     googleFormat.push(rowData);
   }
@@ -243,7 +261,7 @@ async function handleSPSA() {
   }
   chartData.addRows(googleFormat);
 
-  dataCache[0] = chartData;
+  dataCache.absolute[0] = chartData;
   chartObject = new google.visualization.LineChart(
     document.getElementById("spsa_history_plot"),
   );
@@ -312,5 +330,10 @@ async function handleSPSA() {
     }
 
     redraw(false);
+  });
+
+  document.getElementById("spsa_percentage").addEventListener("change", (e) => {
+    usePercentage = e.target.checked;
+    smoothData(smoothingFactor);
   });
 }
