@@ -142,7 +142,7 @@ def cache_read(cache, name):
 
     try:
         return (Path(cache) / name).read_bytes()
-    except Exception as e:
+    except Exception:
         return None
 
 
@@ -166,7 +166,7 @@ def cache_write(cache, name, data):
 
         # Remove the temporary file
         os.remove(temp_file.name)
-    except Exception as e:
+    except Exception:
         return
 
 
@@ -177,7 +177,7 @@ def cache_remove(cache, name):
 
     try:
         (Path(cache) / name).unlink()
-    except Exception as e:
+    except Exception:
         return
 
 
@@ -230,7 +230,7 @@ def send_api_post_request(api_url, payload, quiet=False):
     valid_response = True
     try:
         response = response.json()
-    except:
+    except json.JSONDecodeError:
         valid_response = False
     if valid_response and not isinstance(response, dict):
         valid_response = False
