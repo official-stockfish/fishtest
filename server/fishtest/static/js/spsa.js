@@ -161,13 +161,14 @@ async function handleSPSA() {
         data.push(gaussianKernelRegression(raw[j], bandwidth));
       }
       let googleFormat = [];
+      let sumC = Array(spsaParams.length).fill(0);
       for (let i = 0; i < spsaHistory.length; i++) {
         let rowData = [(i / (spsaHistory.length - 1)) * spsaIterRatio];
         for (let j = 0; j < spsaParams.length; j++) {
+          sumC[j] += spsaHistory[i][j].c;
+          const avgC = sumC[j] / (i + 1);
           if (usePercentage) {
-            rowData.push(
-              (data[j][i] - spsaParams[j].start) / spsaParams[j].c_end,
-            );
+            rowData.push((data[j][i] - spsaParams[j].start) / avgC);
           } else {
             rowData.push(data[j][i]);
           }
@@ -239,13 +240,14 @@ async function handleSPSA() {
   for (let i = 0; i < smoothingMax; i++) dataCache.percentage.push(false);
 
   let googleFormat = [];
+  let sumC = Array(spsaParams.length).fill(0);
   for (let i = 0; i < spsaHistory.length; i++) {
     let rowData = [(i / (spsaHistory.length - 1)) * spsaIterRatio];
     for (let j = 0; j < spsaParams.length; j++) {
+      sumC[j] += spsaHistory[i][j].c;
+      const avgC = sumC[j] / (i + 1);
       if (usePercentage) {
-        rowData.push(
-          (spsaHistory[i][j].theta - spsaParams[j].start) / spsaParams[j].c_end,
-        );
+        rowData.push((spsaHistory[i][j].theta - spsaParams[j].start) / avgC);
       } else {
         rowData.push(spsaHistory[i][j].theta);
       }

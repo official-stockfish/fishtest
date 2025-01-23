@@ -441,7 +441,7 @@
           id="spsa_percentage"
           name="spsa-percentage"
         />
-        <label class="form-check-label" for="spsa_percentage">c_end %</label>
+        <label class="form-check-label" for="spsa_percentage">% c</label>
       </div>
     </div>
     <div class="overflow-auto">
