@@ -2,7 +2,7 @@ async function handleSPSA() {
   let raw = [],
     chartObject,
     chartData,
-    dataCache = { absolute: [], percentage: [] },
+    dataCache = [],
     smoothingFactor = 0,
     smoothingMax = 20,
     columns = [],
@@ -136,7 +136,7 @@ async function handleSPSA() {
     const spsaHistory = spsaData.param_history;
     const spsaIterRatio = Math.min(spsaData.iter / spsaData.num_iter, 1);
 
-    //cache the raw data
+    // cache the raw data
     if (!raw.length) {
       for (let j = 0; j < spsaParams.length; j++) raw.push([]);
       for (let i = 0; i < spsaHistory.length; i++) {
@@ -145,9 +145,8 @@ async function handleSPSA() {
         }
       }
     }
-    //cache data table to avoid recomputing the smoothed graph
-    const cacheType = usePercentage ? "percentage" : "absolute";
-    if (!dataCache[cacheType][smoothingFactor]) {
+    // cache data table to avoid recomputing the smoothed graph
+    if (!dataCache[smoothingFactor]) {
       let dt = new google.visualization.DataTable();
       dt.addColumn("number", "Iteration");
       for (let i = 0; i < spsaParams.length; i++) {
@@ -161,25 +160,36 @@ async function handleSPSA() {
         data.push(gaussianKernelRegression(raw[j], bandwidth));
       }
       let googleFormat = [];
-      let sumC = Array(spsaParams.length).fill(0);
       for (let i = 0; i < spsaHistory.length; i++) {
         let rowData = [(i / (spsaHistory.length - 1)) * spsaIterRatio];
         for (let j = 0; j < spsaParams.length; j++) {
-          sumC[j] += spsaHistory[i][j].c;
-          const avgC = sumC[j] / (i + 1);
-          if (usePercentage) {
-            rowData.push((data[j][i] - spsaParams[j].start) / avgC);
-          } else {
-            rowData.push(data[j][i]);
-          }
+          rowData.push(data[j][i]);
         }
         googleFormat.push(rowData);
       }
       dt.addRows(googleFormat);
-      dataCache[cacheType][smoothingFactor] = dt;
+      dataCache[smoothingFactor] = dt;
     }
-    chartData = dataCache[cacheType][smoothingFactor];
+    chartData = dataCache[smoothingFactor];
     chartOptions.vAxis.format = usePercentage ? "percent" : "decimal";
+    if (usePercentage) {
+      let view = new google.visualization.DataView(chartData);
+      view.setColumns([
+        0,
+        ...spsaParams.map((_, i) => ({
+          calc: function (dt, row) {
+            // column 0 is the iteration number, the parameter columns start from index 1
+            return (
+              (dt.getValue(row, i + 1) - spsaParams[i].start) /
+              spsaHistory[row][i].c
+            );
+          },
+          type: "number",
+          label: spsaParams[i].name,
+        })),
+      ]);
+      chartData = view;
+    }
     redraw(true);
   }
 
@@ -208,7 +218,7 @@ async function handleSPSA() {
   }
 
   await DOMContentLoaded();
-  //fade in loader
+  // fade in loader
   const loader = document.getElementById("spsa_preload");
   loader.style.display = "";
   loader.classList.add("fade");
@@ -216,7 +226,7 @@ async function handleSPSA() {
     loader.classList.add("show");
   }, 150);
 
-  //load google library
+  // load google library
   await google.charts.load("current", { packages: ["corechart"] });
   const spsaParams = spsaData.params;
   const spsaHistory = spsaData.param_history;
@@ -236,18 +246,16 @@ async function handleSPSA() {
     return;
   }
 
-  for (let i = 0; i < smoothingMax; i++) dataCache.absolute.push(false);
-  for (let i = 0; i < smoothingMax; i++) dataCache.percentage.push(false);
+  for (let i = 0; i < smoothingMax; i++) dataCache.push(false);
 
   let googleFormat = [];
-  let sumC = Array(spsaParams.length).fill(0);
   for (let i = 0; i < spsaHistory.length; i++) {
     let rowData = [(i / (spsaHistory.length - 1)) * spsaIterRatio];
     for (let j = 0; j < spsaParams.length; j++) {
-      sumC[j] += spsaHistory[i][j].c;
-      const avgC = sumC[j] / (i + 1);
       if (usePercentage) {
-        rowData.push((spsaHistory[i][j].theta - spsaParams[j].start) / avgC);
+        rowData.push(
+          (spsaHistory[i][j].theta - spsaParams[j].start) / spsaHistory[i][j].c,
+        );
       } else {
         rowData.push(spsaHistory[i][j].theta);
       }
@@ -263,7 +271,7 @@ async function handleSPSA() {
   }
   chartData.addRows(googleFormat);
 
-  dataCache.absolute[0] = chartData;
+  dataCache[0] = chartData;
   chartObject = new google.visualization.LineChart(
     document.getElementById("spsa_history_plot"),
   );
@@ -299,7 +307,7 @@ async function handleSPSA() {
       redraw(false);
     });
 
-  //show/hide functionality
+  // show/hide functionality
   google.visualization.events.addListener(chartObject, "select", function (e) {
     let sel = chartObject.getSelection();
     if (sel.length > 0 && sel[0].row == null) {
