@@ -7,8 +7,8 @@
 <%namespace name="base" file="base.mak"/>
 
 <script
-  src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/5.2.0/diff.js"
-  integrity="sha512-Ubw08LwzeoACkP9I1L0LqwnhiVs6Vg9LWeTFDj0leZIVp5XG28xcxK0lrlFvaL8ZqR8oMOBnFdZLo6agy5+SgQ=="
+  src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/7.0.0/diff.js"
+  integrity="sha512-k/4LzqOGM8IQvjcYz1JBMgcEN+CHUkxlppZVu9cqd9Hne0XBN6tl3b3FSqaTmvvNaN/rk1hlM74GwlS9gTh7yA=="
   crossorigin="anonymous"
   referrerpolicy="no-referrer"
 ></script>
@@ -491,8 +491,8 @@
 </div>
 
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"
-        integrity="sha512-rdhY3cbXURo13l/WU9VlaRyaIYeJ/KBakckXIvJNAQde8DgpOmE+eZf7ha4vdqVjTtwQt69bD2wH2LXob/LB7Q=="
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"
+        integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw=="
         crossorigin="anonymous"
         referrerpolicy="no-referrer"
 ></script>
@@ -513,7 +513,7 @@
       link["crossOrigin"] = "anonymous";
       link["referrerPolicy"] = "no-referrer";
       link["href"] =
-        "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github-dark.min.css";
+        "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css";
       link["integrity"] =
         "sha512-rO+olRTkcf304DQBxSWxln8JXCzTHlKnIdnMUwYvQa9/Jd4cQaNkItIUj6Z4nvW1dqK0SKXLbn9h4KwZTNtAyw==";
     } else {
@@ -524,7 +524,7 @@
       link["crossOrigin"] = "anonymous";
       link["referrerPolicy"] = "no-referrer";
       link["href"] =
-        "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github.min.css";
+        "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css";
       link["integrity"] =
         "sha512-0aPQyyeZrWj9sCA46UlmWgKOP0mUipLQ6OZXu8l4IcAmD2u31EPEy9VcIMvl7SoAaKe8bLXZhYoMaE/in+gcgA==";
     }
