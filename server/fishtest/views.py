@@ -1246,6 +1246,7 @@ def tests_modify(request):
         request.session.flash("Unable to modify another user's run!", "error")
         return home(request)
 
+    run_id = run["_id"]
     is_approver = request.has_permission("approve_run")
     if (
         not is_approver
@@ -1262,20 +1263,22 @@ def tests_modify(request):
         )
     ):
         request.actiondb.approve_run(username=userid, run=run, message="unapproved")
-        run["approved"] = False
-        run["approver"] = ""
+        with request.rundb.active_run_lock(run_id):
+            run["approved"] = False
+            run["approver"] = ""
 
     before = del_tasks(run)
-    run["args"]["num_games"] = int(request.POST["num-games"])
-    run["args"]["priority"] = int(request.POST["priority"])
-    run["args"]["throughput"] = int(request.POST["throughput"])
-    run["args"]["auto_purge"] = True if request.POST.get("auto_purge") else False
-    if (
-        is_same_user(request, run)
-        and "info" in request.POST
-        and request.POST["info"].strip() != ""
-    ):
-        run["args"]["info"] = request.POST["info"].strip()
+    with request.rundb.active_run_lock(run_id):
+        run["args"]["num_games"] = int(request.POST["num-games"])
+        run["args"]["priority"] = int(request.POST["priority"])
+        run["args"]["throughput"] = int(request.POST["throughput"])
+        run["args"]["auto_purge"] = True if request.POST.get("auto_purge") else False
+        if (
+            is_same_user(request, run)
+            and "info" in request.POST
+            and request.POST["info"].strip() != ""
+        ):
+            run["args"]["info"] = request.POST["info"].strip()
     request.rundb.set_active_run(run)
 
     after = del_tasks(run)
@@ -1304,7 +1307,7 @@ def tests_modify(request):
     if run["approved"]:
         cached_flash(request, "Run successfully modified!")
     else:
-        cached_flash(request, "Run successfully modified!, please wait for approval.")
+        cached_flash(request, "Run successfully modified! Please wait for approval.")
     return home(request)
 
 
