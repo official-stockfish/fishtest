@@ -1628,13 +1628,14 @@ After fixing the issues you can unblock the worker at
         if run["args"]["username"] == approver:
             return None, f"Run {str(run_id)}: Self approval is disabled!"
         # Only one approval per run
-        if not run["approved"]:
-            run["approved"] = True
-            run["approver"] = approver
-            self.buffer(run, priority=Prio.SAVE_NOW)
-            return run, f"Run {str(run_id)} approved"
-        else:
-            return None, f"Run {str(run_id)} already approved!"
+        with self.active_run_lock(run_id):
+            if not run["approved"]:
+                run["approved"] = True
+                run["approver"] = approver
+                self.buffer(run, priority=Prio.SAVE_NOW)
+                return run, f"Run {str(run_id)} approved"
+            else:
+                return None, f"Run {str(run_id)} already approved!"
 
     def purge_run(self, run, p=0.001, res=7.0, iters=1):
         # Only purge finished runs
