@@ -1,12 +1,13 @@
 async function handleSPSA() {
-  let raw = [],
-    chartObject,
-    chartData,
+  const raw = [],
     dataCache = [],
-    smoothingFactor = 0,
-    smoothingMax = 20,
     columns = [],
-    viewAll = false;
+    smoothingMax = 20;
+  let chartObject,
+    chartData,
+    smoothingFactor = 0,
+    viewAll = false,
+    usePercentage = false;
 
   const chartColors = [
     "#3366cc",
@@ -77,9 +78,8 @@ async function handleSPSA() {
   const chartTextStyle = { color: "#888" };
   const gridlinesStyle = { color: "#666" };
   const minorGridlinesStyle = { color: "#ccc" };
-  let usePercentage = false;
 
-  let chartOptions = {
+  const chartOptions = {
     backgroundColor: {
       fill: "transparent",
     },
@@ -116,7 +116,7 @@ async function handleSPSA() {
   function gaussianKernelRegression(values, bandwidth) {
     if (!bandwidth) return values;
 
-    let smoothedValues = [];
+    const smoothedValues = [];
     for (let i = 0; i < values.length; i++) {
       let weightedSum = 0;
       let weightTotal = 0;
@@ -147,7 +147,7 @@ async function handleSPSA() {
     }
     // cache data table to avoid recomputing the smoothed graph
     if (!dataCache[smoothingFactor]) {
-      let dt = new google.visualization.DataTable();
+      const dt = new google.visualization.DataTable();
       dt.addColumn("number", "Iteration");
       for (let i = 0; i < spsaParams.length; i++) {
         dt.addColumn("number", spsaParams[i].name);
@@ -155,13 +155,13 @@ async function handleSPSA() {
       // adjust the bandwidth for tests with samples != 101
       const bandwidth =
         smoothingFactor * ((spsaHistory.length - 1) / (spsaIterRatio * 100));
-      let data = [];
+      const data = [];
       for (let j = 0; j < spsaParams.length; j++) {
         data.push(gaussianKernelRegression(raw[j], bandwidth));
       }
-      let googleFormat = [];
+      const googleFormat = [];
       for (let i = 0; i < spsaHistory.length; i++) {
-        let rowData = [(i / (spsaHistory.length - 1)) * spsaIterRatio];
+        const rowData = [(i / (spsaHistory.length - 1)) * spsaIterRatio];
         for (let j = 0; j < spsaParams.length; j++) {
           rowData.push(data[j][i]);
         }
@@ -173,7 +173,7 @@ async function handleSPSA() {
     chartData = dataCache[smoothingFactor];
     chartOptions.vAxis.format = usePercentage ? "percent" : "decimal";
     if (usePercentage) {
-      let view = new google.visualization.DataView(chartData);
+      const view = new google.visualization.DataView(chartData);
       view.setColumns([
         0,
         ...spsaParams.map((_, i) => ({
@@ -195,7 +195,7 @@ async function handleSPSA() {
 
   function redraw(animate) {
     chartOptions.animation = animate ? { duration: 800, easing: "out" } : {};
-    let view = new google.visualization.DataView(chartData);
+    const view = new google.visualization.DataView(chartData);
     view.setColumns(columns);
     chartObject.draw(view, chartOptions);
   }
@@ -248,9 +248,9 @@ async function handleSPSA() {
 
   for (let i = 0; i < smoothingMax; i++) dataCache.push(false);
 
-  let googleFormat = [];
+  const googleFormat = [];
   for (let i = 0; i < spsaHistory.length; i++) {
-    let rowData = [(i / (spsaHistory.length - 1)) * spsaIterRatio];
+    const rowData = [(i / (spsaHistory.length - 1)) * spsaIterRatio];
     for (let j = 0; j < spsaParams.length; j++) {
       if (usePercentage) {
         rowData.push(
@@ -309,7 +309,7 @@ async function handleSPSA() {
 
   // show/hide functionality
   google.visualization.events.addListener(chartObject, "select", function (e) {
-    let sel = chartObject.getSelection();
+    const sel = chartObject.getSelection();
     if (sel.length > 0 && sel[0].row == null) {
       const col = sel[0].column;
       updateColumnVisibility(col, columns[col] != col);
