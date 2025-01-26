@@ -15,6 +15,7 @@ from bson.codec_options import CodecOptions
 from bson.errors import InvalidId
 from bson.objectid import ObjectId
 from fishtest.actiondb import ActionDb
+from fishtest.scheduler import Scheduler
 from fishtest.schemas import (
     RUN_VERSION,
     active_runs_schema,
@@ -38,7 +39,6 @@ from fishtest.userdb import UserDb
 from fishtest.util import (
     GeneratorAsFileReader,
     Prio,
-    Scheduler,
     crash_or_time,
     estimate_game_duration,
     get_bad_workers,
