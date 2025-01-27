@@ -4,16 +4,19 @@ from datetime import datetime, timezone
 
 import util
 from fishtest.api import WORKER_VERSION
-from fishtest.util import Prio
+from fishtest.run_cache import Prio
 from pymongo import DESCENDING
 
 run_id = None
 
 
 class CreateRunDBTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.rundb = util.get_rundb()
+
     def setUp(self):
         self.remote_addr = "127.0.0.1"
-        self.rundb = util.get_rundb()
         self.rundb.runs.create_index(
             [("last_updated", DESCENDING), ("tc_base", DESCENDING)],
             name="finished_ltc_runs",
@@ -48,8 +51,6 @@ class CreateRunDBTest(unittest.TestCase):
 
     def tearDown(self):
         self.rundb.runs.delete_many({"args.username": "travis"})
-        # Shutdown flush thread:
-        self.rundb.stop()
 
     def test_10_create_run(self):
         global run_id
