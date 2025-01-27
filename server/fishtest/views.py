@@ -9,9 +9,9 @@ from pathlib import Path
 
 import fishtest.stats.stat_util
 import requests
+from fishtest.run_cache import Prio
 from fishtest.schemas import RUN_VERSION, runs_schema, short_worker_name
 from fishtest.util import (
-    Prio,
     email_valid,
     extract_repo_from_link,
     format_bounds,

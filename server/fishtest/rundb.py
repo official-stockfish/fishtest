@@ -9,17 +9,17 @@ import threading
 import time
 from datetime import datetime, timezone
 
+import fishtest.run_cache
 import fishtest.stats.stat_util
 from bson.binary import Binary
 from bson.codec_options import CodecOptions
 from bson.errors import InvalidId
 from bson.objectid import ObjectId
 from fishtest.actiondb import ActionDb
+from fishtest.run_cache import Prio
 from fishtest.scheduler import Scheduler
 from fishtest.schemas import (
     RUN_VERSION,
-    active_runs_schema,
-    cache_schema,
     compute_committed_games,
     compute_cores,
     compute_flags,
@@ -38,7 +38,6 @@ from fishtest.stats.stat_util import SPRT_elo
 from fishtest.userdb import UserDb
 from fishtest.util import (
     GeneratorAsFileReader,
-    Prio,
     crash_or_time,
     estimate_game_duration,
     get_bad_workers,
@@ -93,9 +92,10 @@ class RunDb:
 
         self.__is_primary_instance = is_primary_instance
 
-        # Create a lock for each active run
-        self.run_lock = threading.Lock()
-        self.active_runs = {}
+        self.run_cache = fishtest.run_cache.RunCache(self.runs)
+        self.active_run_lock = self.run_cache.active_run_lock
+        if is_primary_instance:
+            self.buffer = self.run_cache.buffer
 
         # Keep some data about the workers
         self.worker_runs = {}
@@ -104,11 +104,17 @@ class RunDb:
         self.request_task_lock = threading.Lock()
         self.scheduler = None
 
+    def get_run(self, run_id):
+        if self.__is_primary_instance:
+            return self.run_cache.get_run(run_id)
+        else:
+            return self.runs.find_one({"_id": ObjectId(run_id)})
+
     def schedule_tasks(self):
         if self.scheduler is None:
             self.scheduler = Scheduler(jitter=0.05)
-        self.scheduler.create_task(1.0, self.flush_buffers, min_delay=1.0)
-        self.scheduler.create_task(60.0, self.clean_cache)
+        self.scheduler.create_task(1.0, self.run_cache.flush_buffers, min_delay=1.0)
+        self.scheduler.create_task(60.0, self.run_cache.clean_cache)
         self.scheduler.create_task(60.0, self.scavenge_dead_tasks)
         self.scheduler.create_task(60.0, self.update_itp)
         # short intial delay to make testing more pleasant
@@ -157,13 +163,7 @@ class RunDb:
             flush=True,
         )
         try:
-            with self.run_cache_lock:
-                validate(
-                    cache_schema,
-                    self.run_cache,
-                    name="run_cache",
-                    subs={"runs_schema": dict},
-                )
+            self.run_cache.validate()
             with self.wtt_lock:
                 validate(
                     wtt_map_schema,
@@ -182,12 +182,6 @@ class RunDb:
                     unfinished_runs_schema,
                     self.unfinished_runs,
                     name="unfinished_runs",
-                )
-            with self.run_lock:
-                validate(
-                    active_runs_schema,
-                    self.active_runs,
-                    name="active_runs",
                 )
             with self.worker_runs_lock:
                 validate(
@@ -242,44 +236,21 @@ class RunDb:
             self.wtt_map[short_worker_name] = run, task_id
 
     def validate_random_run(self):
-        # Excess of caution. Another thread may change run_cache
-        # while we are iterating over it.
-        with self.run_cache_lock:
-            run_list = [
-                cache_entry["run"]
-                for cache_entry in self.run_cache.values()
-                if not cache_entry["run"]["finished"]
-            ]
-        if len(run_list) == 0:
+        ret = self.run_cache.validate_random_run()
+        if ret is None:
+            return
+        run, message = ret
+        if "version" in run and run["version"] >= RUN_VERSION:
+            print(message, flush=True)
+            self.actiondb.log_message(
+                username="fishtest.system",
+                message=message,
+            )
+        else:
             print(
-                "Validate_random_run: no unfinished cache runs. No runs to validate...",
+                f"{message} (this is likely not an error as the run object has an older version)",
                 flush=True,
             )
-            return
-        run = random.choice(run_list)
-        run_id = str(run["_id"])
-        try:
-            # Make sure that the run object does not change while we are
-            # validating it
-            with self.active_run_lock(run_id):
-                validate(runs_schema, run, "run")
-                print(
-                    f"Validate_random_run: validated cache run {run_id}...",
-                    flush=True,
-                )
-        except ValidationError as e:
-            message = f"The run object {run_id} does not validate: {str(e)}"
-            if "version" in run and run["version"] >= RUN_VERSION:
-                print(message, flush=True)
-                self.actiondb.log_message(
-                    username="fishtest.system",
-                    message=message,
-                )
-            else:
-                print(
-                    f"{message} (this is likely not an error as the run object has an older version)",
-                    flush=True,
-                )
 
     def set_inactive_run(self, run):
         run_id = str(run["_id"])
@@ -704,169 +675,22 @@ class RunDb:
         )
         return nns_list, count
 
-    # Cache runs
-    run_cache = {}
-    run_cache_lock = threading.Lock()
-
     # handle termination
     def exit_run(self, signum, frame):
+        print("\n", flush=True, end="")
         if self.scheduler is not None:
+            print("Stopping scheduler... ", flush=True)
             self.scheduler.stop()
-        self.flush_all()
+        if self.__is_primary_instance:
+            print("Flushing cache... ", flush=True)
+            self.run_cache.flush_all()
         if self.port >= 0:
             self.actiondb.system_event(message=f"stop fishtest@{self.port}")
+        print("Quitting...", flush=True)
         sys.exit(0)
 
-    def get_run(self, r_id):
-        r_id = str(r_id)
-        try:
-            r_id_obj = ObjectId(r_id)
-        except InvalidId:
-            return None
-
-        if self.is_primary_instance():
-            with self.run_cache_lock:
-                if r_id in self.run_cache:
-                    self.run_cache[r_id]["last_access_time"] = time.time()
-                    return self.run_cache[r_id]["run"]
-                run = self.runs.find_one({"_id": r_id_obj})
-                if run is not None:
-                    self.run_cache[r_id] = {
-                        "last_access_time": time.time(),
-                        "last_sync_time": time.time(),
-                        "priority": 0,
-                        "run": run,
-                        "is_changed": False,
-                    }
-                return run
-        else:
-            return self.runs.find_one({"_id": r_id_obj})
-
-    def buffer(self, run, *, priority=Prio.NORMAL, create=False):
-        """
-        Guidelines for priority
-        =======================
-        Prio.MEDIUM: finished task
-        Prio.HIGH: new task
-        Prio.SAVE_NOW: new run (combined with create=True),
-                       finished run, modify/approve/purge run
-        Prio.NORMAL: all other uses
-        """
-        if not self.is_primary_instance():
-            print(
-                "Warning: attempt to use the run_cache on the",
-                f"secondary instance with port number {self.port}!",
-                flush=True,
-            )
-            return
-
-        if create and priority != Prio.SAVE_NOW:
-            print(
-                "Warning: setting create=True in buffer() without",
-                "using priority=Prio.SAVE_NOW has no effect.",
-                flush=True,
-            )
-
-        flush = priority == Prio.SAVE_NOW
-        r_id = str(run["_id"])
-        with self.run_cache_lock:
-            if flush:
-                self.run_cache[r_id] = {
-                    "is_changed": False,
-                    "last_access_time": time.time(),
-                    "last_sync_time": time.time(),
-                    "priority": 0,
-                    "run": run,
-                }
-            else:
-                if r_id in self.run_cache:
-                    last_sync_time = self.run_cache[r_id]["last_sync_time"]
-                    priority = max(priority, self.run_cache[r_id]["priority"])
-                else:
-                    last_sync_time = time.time()
-                self.run_cache[r_id] = {
-                    "is_changed": True,
-                    "last_access_time": time.time(),
-                    "last_sync_time": last_sync_time,
-                    "priority": priority,
-                    "run": run,
-                }
-        if flush:
-            with self.active_run_lock(r_id):
-                r = self.runs.replace_one({"_id": ObjectId(r_id)}, run, upsert=create)
-                if not create and r.matched_count == 0:
-                    print(f"Buffer: update of {r_id} failed", flush=True)
-
-    def stop(self):
-        self.flush_all()
-        with self.run_cache_lock:
-            self.timer = None
-        time.sleep(1.1)
-
-    def flush_all(self):
-        print("flush", flush=True)
-        # Note that we do not grab locks because this method is
-        # called from a signal handler and grabbing locks might deadlock
-        for r_id in list(self.run_cache):
-            entry = self.run_cache.get(r_id, None)
-            if entry is not None and entry["is_changed"]:
-                self.runs.replace_one({"_id": ObjectId(r_id)}, entry["run"])
-                print(".", end="", flush=True)
-        print("done", flush=True)
-
-    # For documentation of the cache format see "cache_schema" in schemas.py.
-
-    def flush_buffers(self):
-        oldest_entry = None
-        old = float("inf")
-        with self.run_cache_lock:
-            for cache_entry in self.run_cache.values():
-                # Make sure that every run will be saved to disk eventually,
-                # even if there are always cache entries with priority 1.
-                t = -60 * cache_entry["priority"] + cache_entry["last_sync_time"]
-                if cache_entry["is_changed"] and t < old:
-                    old = t
-                    oldest_entry = cache_entry
-            if oldest_entry is not None:
-                oldest_run = oldest_entry["run"]
-                oldest_run_id = oldest_run["_id"]
-                oldest_entry["is_changed"] = False
-                oldest_entry["last_sync_time"] = time.time()
-                oldest_entry["priority"] = 0
-
-        if oldest_entry is not None:
-            with self.active_run_lock(str(oldest_run_id)):
-                self.runs.replace_one({"_id": oldest_run_id}, oldest_run)
-
-    def clean_cache(self):
-        now = time.time()
-        with self.run_cache_lock:
-            # We make this a list to be able to change run_cache during iteration
-            for r_id, cache_entry in list(self.run_cache.items()):
-                run = cache_entry["run"]
-                # Presently run["finished"] implies run["cores"]==0 but
-                # this was not always true in the past.
-                if (
-                    not cache_entry["is_changed"]
-                    and (run["cores"] <= 0 or run["finished"])
-                    and cache_entry["last_access_time"] < now - 300
-                ):
-                    del self.run_cache[r_id]
-
     def scavenge_dead_tasks(self):
-        now = time.time()
-        dead_tasks = []
-        with self.run_cache_lock:
-            for cache_entry in self.run_cache.values():
-                run = cache_entry["run"]
-                if not run["finished"]:
-                    for task_id, task in enumerate(run["tasks"]):
-                        if (
-                            task["active"]
-                            and task["last_updated"].timestamp() < now - 360
-                        ):
-                            dead_tasks.append((task_id, run))
-        # We release the lock to avoid deadlock
+        dead_tasks = self.run_cache.collect_dead_tasks()
         for task_id, run in dead_tasks:
             task = run["tasks"][task_id]
             print(
@@ -1315,28 +1139,6 @@ After fixing the issues you can unblock the worker at
             self.worker_runs[my_name]["last_run"] = run_id
 
         return {"run": run, "task_id": task_id}
-
-    def active_run_lock(self, id):
-        id = str(id)
-        with self.run_lock:
-            if "purge_count" not in self.active_runs:
-                self.active_runs["purge_count"] = 0
-            self.active_runs["purge_count"] += 1
-            if self.active_runs["purge_count"] > 100000:
-                old = time.time() - 10000
-                self.active_runs = dict(
-                    (k, v)
-                    for k, v in self.active_runs.items()
-                    if (k != "purge_count" and v["time"] >= old)
-                )
-                self.active_runs["purge_count"] = 0
-            if id in self.active_runs:
-                active_lock = self.active_runs[id]["lock"]
-                self.active_runs[id]["time"] = time.time()
-            else:
-                active_lock = threading.RLock()
-                self.active_runs[id] = {"time": time.time(), "lock": active_lock}
-            return active_lock
 
     def finished_run_message(self, run):
         if "spsa" in run["args"]:

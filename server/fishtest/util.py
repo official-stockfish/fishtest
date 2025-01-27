@@ -15,13 +15,6 @@ from zxcvbn import zxcvbn
 FISH_URL = "https://tests.stockfishchess.org/tests/view/"
 
 
-class Prio(IntEnum):
-    NORMAL = 0
-    MEDIUM = 1
-    HIGH = 2
-    SAVE_NOW = 1000
-
-
 class GeneratorAsFileReader:
     def __init__(self, generator):
         self.generator = generator

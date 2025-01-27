@@ -7,7 +7,7 @@ import unittest
 from datetime import datetime, timezone
 
 from fishtest.api import WORKER_VERSION, UserApi, WorkerApi
-from fishtest.util import Prio
+from fishtest.run_cache import Prio
 from pyramid.httpexceptions import HTTPBadRequest, HTTPUnauthorized
 from pyramid.testing import DummyRequest
 from util import get_rundb
@@ -161,7 +161,6 @@ class TestApi(unittest.TestCase):
         cls.rundb.userdb.users.delete_many({"username": cls.username})
         cls.rundb.userdb.clear_cache()
         cls.rundb.userdb.user_cache.delete_many({"username": cls.username})
-        cls.rundb.stop()
         cls.rundb.runs.drop()
 
     def build_json_request(self, json_body):
@@ -547,7 +546,6 @@ class TestRunFinished(unittest.TestCase):
         cls.rundb.userdb.users.delete_many({"username": cls.username})
         cls.rundb.userdb.clear_cache()
         cls.rundb.userdb.user_cache.delete_many({"username": cls.username})
-        cls.rundb.stop()
         cls.rundb.runs.drop()
 
     def build_json_request(self, json_body):

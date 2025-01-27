@@ -16,7 +16,6 @@ class Create10UsersTest(unittest.TestCase):
     def tearDown(self):
         self.rundb.userdb.users.delete_many({"username": "JoeUser"})
         self.rundb.userdb.user_cache.delete_many({"username": "JoeUser"})
-        self.rundb.stop()
         testing.tearDown()
 
     def test_create_user(self):
@@ -51,7 +50,6 @@ class Create50LoginTest(unittest.TestCase):
     def tearDown(self):
         self.rundb.userdb.users.delete_many({"username": "JoeUser"})
         self.rundb.userdb.user_cache.delete_many({"username": "JoeUser"})
-        self.rundb.stop()
         testing.tearDown()
 
     def test_login(self):
@@ -108,7 +106,6 @@ class Create90APITest(unittest.TestCase):
     def tearDown(self):
         self.rundb.userdb.users.delete_many({"username": "JoeUser"})
         self.rundb.userdb.user_cache.delete_many({"username": "JoeUser"})
-        self.rundb.stop()
         testing.tearDown()
 
 
