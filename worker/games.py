@@ -17,7 +17,7 @@ import tempfile
 import threading
 import time
 from base64 import b64decode
-from contextlib import ExitStack
+from concurrent.futures import ProcessPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from queue import Empty, Queue
@@ -388,7 +388,64 @@ def establish_validated_net(remote, testing_dir, net, global_cache):
             time.sleep(waitTime)
 
 
-def verify_signature(engine, signature, active_cores):
+def run_single_bench(engine, threads):
+    bench_sig = None
+    bench_nps = None
+
+    try:
+        p = subprocess.Popen(
+            [engine, "bench", "16", str(threads), "13", "default", "depth"],
+            stderr=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,
+            universal_newlines=True,
+            bufsize=1,
+            close_fds=not IS_WINDOWS,
+        )
+
+        for line in iter(p.stderr.readline, ""):
+            if "Nodes searched" in line:
+                bench_sig = line.split(": ")[1].strip()
+            if "Nodes/second" in line:
+                bench_nps = float(line.split(": ")[1].strip())
+
+        p.wait()
+    except (OSError, subprocess.SubprocessError) as e:
+        raise e
+
+    return bench_sig, bench_nps
+
+
+def run_parallel_benches(engine, concurrency, threads, signature=None):
+    with ProcessPoolExecutor(max_workers=concurrency) as executor:
+        try:
+            results = list(
+                executor.map(
+                    run_single_bench, [engine] * concurrency, [threads] * concurrency
+                )
+            )
+        except Exception as e:
+            raise WorkerException("Failed to run engine bench: {}".format(str(e)), e=e)
+
+    bench_nps = 0.0
+    for sig, nps in results:
+        if sig is None or nps is None:
+            raise RunException(
+                "Unable to parse bench output of {}".format(os.path.basename(engine))
+            )
+
+        if threads == 1 and signature is not None and int(sig) != int(signature):
+            raise RunException(
+                "Wrong bench in {}, user expected: {} but worker got: {}".format(
+                    os.path.basename(engine), signature, sig
+                )
+            )
+
+        bench_nps += nps
+
+    return bench_nps / (concurrency * threads)
+
+
+def verify_signature(engine, signature, games_concurrency, threads):
     cpu_features = "?"
     with subprocess.Popen(
         [engine, "compiler"],
@@ -408,74 +465,12 @@ def verify_signature(engine, signature, active_cores):
             )
         )
 
-    with ExitStack() as stack:
-        if active_cores > 1:
-            busy_process = stack.enter_context(
-                subprocess.Popen(
-                    [engine],
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.DEVNULL,
-                    universal_newlines=True,
-                    bufsize=1,
-                    close_fds=not IS_WINDOWS,
-                )
-            )
-            busy_process.stdin.write(
-                "setoption name Threads value {}\n".format(active_cores - 1)
-            )
-            busy_process.stdin.write("go infinite\n")
-            busy_process.stdin.flush()
-            time.sleep(1)  # wait CPU loading
+    # Run the benches with threads = 1 and validate the signature
+    bench_nps = run_parallel_benches(engine, games_concurrency, 1, signature)
 
-        bench_sig = None
-        bench_nps = None
-        print("Verifying signature of {} ...".format(os.path.basename(engine)))
-        p = stack.enter_context(
-            subprocess.Popen(
-                [engine, "bench"],
-                stderr=subprocess.PIPE,
-                stdout=subprocess.DEVNULL,
-                universal_newlines=True,
-                bufsize=1,
-                close_fds=not IS_WINDOWS,
-            )
-        )
-        for line in iter(p.stderr.readline, ""):
-            if "Nodes searched" in line:
-                bench_sig = line.split(": ")[1].strip()
-            if "Nodes/second" in line:
-                bench_nps = float(line.split(": ")[1].strip())
-
-        if active_cores > 1:
-            busy_process.communicate("quit\n")
-
-    if p.returncode != 0:
-        if p.returncode == 1:  # EXIT_FAILURE
-            raise RunException(
-                "Bench of {} exited with EXIT_FAILURE".format(os.path.basename(engine))
-            )
-        else:  # Signal? It could be user generated so be careful.
-            raise WorkerException(
-                "Bench of {} exited with error code {}".format(
-                    os.path.basename(engine), format_return_code(p.returncode)
-                )
-            )
-
-    # Now we know that bench finished without error we check that its
-    # output is correct.
-
-    if bench_sig is None or bench_nps is None:
-        raise RunException(
-            "Unable to parse bench output of {}".format(os.path.basename(engine))
-        )
-
-    if int(bench_sig) != int(signature):
-        message = "Wrong bench in {}, user expected: {} but worker got: {}".format(
-            os.path.basename(engine),
-            signature,
-            bench_sig,
-        )
-        raise RunException(message)
+    # SMP test: run the benches with the requested number of threads
+    if threads > 1:
+        bench_nps = run_parallel_benches(engine, games_concurrency, threads)
 
     return bench_nps, cpu_features
 
@@ -1428,7 +1423,8 @@ def run_games(
         base_nps, cpu_features = verify_signature(
             base_engine,
             run["args"]["base_signature"],
-            games_concurrency * threads,
+            games_concurrency,
+            threads,
         )
     except RunException as e:
         run_errors.append(str(e))
@@ -1443,7 +1439,8 @@ def run_games(
             verify_signature(
                 new_engine,
                 run["args"]["new_signature"],
-                games_concurrency * threads,
+                games_concurrency,
+                threads,
             )
         except RunException as e:
             run_errors.append(str(e))
@@ -1454,7 +1451,7 @@ def run_games(
     if run_errors:
         raise RunException("\n".join(run_errors))
 
-    if base_nps < 208082 / (1 + math.tanh((worker_concurrency - 1) / 8)):
+    if base_nps < 208082 / (1 + 3 * math.tanh((worker_concurrency - 1) / 8)):
         raise FatalException(
             "This machine is too slow ({} nps / thread) to run fishtest effectively - sorry!".format(
                 base_nps
