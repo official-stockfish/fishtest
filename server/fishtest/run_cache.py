@@ -156,12 +156,11 @@ class RunCache:
                 self.runs.replace_one({"_id": oldest_run_id}, oldest_run)
 
     def flush_all(self):
-        # Note that we do not grab locks because this method is
-        # called from a signal handler and grabbing locks might deadlock
-        for run_id in list(self.run_cache):
-            entry = self.run_cache.get(run_id, None)
-            if entry is not None and entry["is_changed"]:
-                self.runs.replace_one({"_id": ObjectId(run_id)}, entry["run"])
+        with self.run_cache_lock:
+            for run_id, entry in self.run_cache.items():
+                if entry["is_changed"]:
+                    with self.active_run_lock(run_id):
+                        self.runs.replace_one({"_id": ObjectId(run_id)}, entry["run"])
 
     def clean_cache(self):
         now = time.time()
