@@ -681,7 +681,7 @@ class RunDb:
         if self.scheduler is not None:
             print("Stopping scheduler... ", flush=True)
             self.scheduler.stop()
-        if self.__is_primary_instance:
+        if self.is_primary_instance():
             print("Flushing cache... ", flush=True)
             self.run_cache.flush_all()
         if self.port >= 0:

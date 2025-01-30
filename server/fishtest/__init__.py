@@ -98,9 +98,12 @@ def main(global_config, **settings):
         # We do not want to do the following in the constructor of rundb since
         # it writes to the db and starts the flush timer.
         if rundb.is_primary_instance():
+            rundb.update_aggregated_data()
+            # We install signal handlers when all cache sensitive code in the
+            # main thread is finished. In that way we can safely use
+            # locks in the signal handlers (which also run in the main thread).
             signal.signal(signal.SIGINT, rundb.exit_run)
             signal.signal(signal.SIGTERM, rundb.exit_run)
-            rundb.update_aggregated_data()
             rundb.schedule_tasks()
 
     config.add_subscriber(add_rundb, NewRequest)
