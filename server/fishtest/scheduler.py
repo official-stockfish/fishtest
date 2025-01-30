@@ -182,10 +182,16 @@ class Scheduler:
         self._refresh()
         return task
 
+    def join(self):
+        """Join worker thread - if possible"""
+        if threading.current_thread() != self.__worker_thread:
+            self.__worker_thread.join()
+
     def stop(self):
         """This stops the scheduler"""
         self.__thread_stopped = True
         self._refresh()
+        self.join()
 
     def _refresh(self):
         self.__event.set()
