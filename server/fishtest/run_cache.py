@@ -80,6 +80,7 @@ class RunCache:
                 "using priority=Prio.SAVE_NOW has no effect.",
                 flush=True,
             )
+            return
 
         flush = priority == Prio.SAVE_NOW
         run_id = str(run["_id"])
@@ -156,11 +157,17 @@ class RunCache:
                 self.runs.replace_one({"_id": oldest_run_id}, oldest_run)
 
     def flush_all(self):
+        flush_list = []
         with self.run_cache_lock:
             for run_id, entry in self.run_cache.items():
                 if entry["is_changed"]:
-                    with self.active_run_lock(run_id):
-                        self.runs.replace_one({"_id": ObjectId(run_id)}, entry["run"])
+                    entry["is_changed"] = False
+                    entry["last_sync_time"] = time.time()
+                    entry["priority"] = 0
+                    flush_list.append((run_id, entry))
+        for run_id, entry in flush_list:
+            with self.active_run_lock(run_id):
+                self.runs.replace_one({"_id": ObjectId(run_id)}, entry["run"])
 
     def clean_cache(self):
         now = time.time()
