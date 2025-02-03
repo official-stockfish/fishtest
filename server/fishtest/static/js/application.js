@@ -77,9 +77,7 @@ function formatBytes(bytes) {
 }
 
 function handleApplicationThemes() {
-  if (!getCookie("theme")) {
-    setTheme(mediaTheme());
-  }
+  setTheme(getCookie("theme") ?? mediaTheme());
 
   try {
     window
