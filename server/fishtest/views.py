@@ -1,4 +1,5 @@
 import copy
+import gzip
 import hashlib
 import html
 import json
@@ -283,7 +284,7 @@ def upload(request):
         request.session.flash("Error reading the network file", "error")
         return {}
     if request.rundb.get_nn(filename):
-        request.session.flash("Network already exists", "error")
+        request.session.flash(f"Network {filename} already exists", "error")
         return {}
     errors = []
     if len(network) >= 120000000:
@@ -292,48 +293,40 @@ def upload(request):
         errors.append('Name must match "nn-[SHA256 first 12 digits].nnue"')
     hash = hashlib.sha256(network).hexdigest()
     if hash[:12] != filename[3:15]:
-        errors.append(
-            "Wrong SHA256 hash: " + hash[:12] + " Filename: " + filename[3:15]
-        )
+        errors.append(f"Wrong SHA256 hash: {hash[:12]} Filename: {filename[3:15]}")
     if errors:
         for error in errors:
             request.session.flash(error, "error")
         return {}
+    net_file_gz = Path("/var/www/fishtest/nn") / f"{filename}.gz"
     try:
-        with open(os.path.expanduser("~/fishtest.upload"), "r") as f:
-            upload_server = f.read().strip()
+        with gzip.open(net_file_gz, "xb") as f:
+            f.write(network)
+    except FileExistsError as e:
+        print(f"Network {filename} already uploaded:", e)
+        request.session.flash(f"Network {filename} already uploaded", "error")
+        return {}
     except Exception as e:
-        print("Network upload not configured:", e)
-        request.session.flash("Network upload not configured", "error")
+        net_file_gz.unlink(missing_ok=True)
+        print(f"Failed to write network {filename}:", e)
+        request.session.flash(f"Failed to write network {filename}", "error")
         return {}
     try:
-        error = ""
-        files = {"upload": (filename, network)}
-        response = requests.post(upload_server, files=files, timeout=HTTP_TIMEOUT * 20)
-        response.raise_for_status()
-    except ConnectionError as e:
-        print("Failed to connect to the net server:", e)
-        error = "Failed to connect to the net server"
-    except HTTPError as e:
-        print("Network upload failed:", e)
-        if response.status_code == 409:
-            error = "Post request failed: network {} already uploaded".format(filename)
-        elif response.status_code == 500:
-            error = "Post request failed: net server failed to write {}".format(
-                filename
-            )
-        else:
-            error = "Post request failed: other HTTP error"
+        net_data = gzip.decompress(net_file_gz.read_bytes())
     except Exception as e:
-        print("Error during connection:", e)
-        error = "Post request for the network upload failed"
+        net_file_gz.unlink()
+        print(f"Failed to read uploaded network {filename}:", e)
+        request.session.flash(f"Failed to read uploaded network {filename}", "error")
+        return {}
 
-    if error:
-        request.session.flash(error, "error")
+    hash = hashlib.sha256(net_data).hexdigest()
+    if hash[:12] != filename[3:15]:
+        net_file_gz.unlink()
+        request.session.flash(f"Invalid hash for uploaded network {filename}", "error")
         return {}
 
     if request.rundb.get_nn(filename):
-        request.session.flash("Network already exists", "error")
+        request.session.flash(f"Network {filename} already exists", "error")
         return {}
 
     request.rundb.upload_nn(request.authenticated_userid, filename)
