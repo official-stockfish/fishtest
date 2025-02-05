@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-
 """Build CIDR configuration for Nginx.
 
 Download the IP address ranges from the ipverse/rir-ip repository
 and build the Nginx configuration file.
 """
+from __future__ import annotations
 
 import argparse
 import json
@@ -14,12 +14,15 @@ import sys
 import tempfile
 from pathlib import Path
 
+logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(message)s")
+logger = logging.getLogger(__name__)
+
 
 def clone_repo(dest_dir: Path) -> Path:
     """Clone the ipverse/rir-ip repository into the destination directory."""
     repo_url = "https://github.com/ipverse/rir-ip.git"
     repo_dest = dest_dir / "rir-ip"
-    logging.info("Cloning repository %s into %s", repo_url, repo_dest)
+    logger.info("Cloning repository %s into %s", repo_url, repo_dest)
     try:
         subprocess.run(
             ["git", "clone", "--depth", "1", repo_url, str(repo_dest)],
@@ -28,7 +31,7 @@ def clone_repo(dest_dir: Path) -> Path:
             text=True,
         )
     except subprocess.CalledProcessError as e:
-        logging.exception("Failed to clone the repository. Output: %s", e.stdout)
+        logger.exception("Failed to clone the repository. Output: %s", e.stdout)
         raise
     return repo_dest
 
@@ -39,9 +42,9 @@ def read_aggregated(aggregated_file: Path) -> dict | None:
         with aggregated_file.open("r", encoding="utf-8") as f:
             return json.load(f)
     except json.JSONDecodeError:
-        logging.exception("Invalid JSON in %s", aggregated_file)
+        logger.exception("Invalid JSON in %s", aggregated_file)
     except Exception:
-        logging.exception("Failed to process aggregated file %s", aggregated_file)
+        logger.exception("Failed to process aggregated file %s", aggregated_file)
     return None
 
 
@@ -111,7 +114,6 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     """Build the CIDR configuration for Nginx."""
-    logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
     args = parse_args()
     output_conf: Path = args.output
 
@@ -121,14 +123,14 @@ def main() -> None:
             repo_path = clone_repo(temp_path)
             nginx_conf = build_nginx_conf(repo_path)
         except Exception:
-            logging.exception("Error building Nginx configuration")
+            logger.exception("Error building Nginx configuration")
             sys.exit(1)
 
     try:
         output_conf.write_text(nginx_conf, encoding="utf-8")
-        logging.info("Configuration successfully written to %s", output_conf)
+        logger.info("Configuration successfully written to %s", output_conf)
     except Exception:
-        logging.exception("Failed to write configuration file")
+        logger.exception("Failed to write configuration file")
         sys.exit(1)
 
 
