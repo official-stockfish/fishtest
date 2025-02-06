@@ -4,7 +4,6 @@
 Download the IP address ranges from the ipverse/rir-ip repository
 and build the Nginx configuration file.
 """
-from __future__ import annotations
 
 import argparse
 import json
