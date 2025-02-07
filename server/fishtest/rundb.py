@@ -216,7 +216,7 @@ class RunDb:
                 task = run["tasks"][task_id]
                 if not task["active"]:
                     del self.wtt_map[short_worker_name]
-        print(f"Clean_wtt_map: {len(self.wtt_map)} active workers...")
+        print(f"Clean_wtt_map: {len(self.wtt_map)} active workers...", flush=True)
 
     # Do not use this while holding an active_run_lock!
     def insert_in_wtt_map(self, run, task_id):
