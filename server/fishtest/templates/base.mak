@@ -40,15 +40,6 @@
       crossorigin="anonymous"
     >
 
-    % if request.cookies.get('theme') == 'dark':
-    <link
-      rel="stylesheet"
-      href="/css/theme.dark.css?v=${cache_busters['css/theme.dark.css']}"
-      integrity="sha384-${cache_busters['css/theme.dark.css']}"
-      crossorigin="anonymous"
-    >
-    % endif
-
     <script
       src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"
       integrity="sha512-7Pi/otdlbbCR+LnW+F7PwFcSDJOuUJB3OxtEHbg4vSMvzvJjde4Po1v4BR9Gdc9aXNUNFVUY+SK51wWT8WF0Gg=="
