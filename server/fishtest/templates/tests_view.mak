@@ -193,7 +193,12 @@
               % if run['approver'] != '':
               <tr>
                 <td>approver</td>
-                <td>${run['approver']}</td>
+                <td>
+                  <a href="/tests/user/${run['approver']}">${run['approver']}</a>
+                  % if approver:
+                    (<a href="/user/${run['approver']}">info</a>)
+                  % endif
+                </td>
               </tr>
               % endif
             </tbody>
