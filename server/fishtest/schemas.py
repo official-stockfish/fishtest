@@ -572,9 +572,7 @@ def final_results_must_match(run):
 def cores_must_match(run):
     cores = compute_cores(run)
     if cores != run["cores"]:
-        raise Exception(
-            f"Cores from tasks: {cores}. Cores from " f"run: {run['cores']}"
-        )
+        raise Exception(f"Cores from tasks: {cores}. Cores from run: {run['cores']}")
 
     return True
 

@@ -5,6 +5,8 @@ on: [push, pull_request, workflow_dispatch]
 jobs:
   test:
     runs-on: windows-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}/worker/packages
     strategy:
       fail-fast: false
       matrix:
@@ -29,13 +31,6 @@ jobs:
             mingw-w64-${{ matrix.env }}-${{ matrix.comp }}
 
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Add packages folder to PYTHONPATH
-        run: |
-          echo "PYTHONPATH=$(pwd)/packages" >> $GITHUB_ENV
 
       - name: Run worker tests
-        run: |
-          python -m unittest discover -vb -s tests
+        run: python -m unittest discover -vb -s tests

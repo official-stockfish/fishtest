@@ -5,6 +5,8 @@ on: [push, pull_request, workflow_dispatch]
 jobs:
   test:
     runs-on: ${{ matrix.os }}
+    env:
+      PYTHONPATH: ${{ github.workspace }}/worker/packages
     strategy:
       fail-fast: false
       matrix:
@@ -41,25 +43,17 @@ jobs:
             python-version: "3.12"
           - os: macos-15
             python-version: "3.13"
-
     defaults:
       run:
         working-directory: worker
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Add packages folder to PYTHONPATH
-        run: |
-          echo "PYTHONPATH=$(pwd)/packages" >> $GITHUB_ENV
-
       - name: Run worker tests
-        run: |
-          python -m unittest discover -vb -s tests
+        run: python -m unittest discover -vb -s tests

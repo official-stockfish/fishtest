@@ -271,7 +271,9 @@ def LLR_normalized(nelo0, nelo1, results):
     t0, t1 = (
         (nt0, nt1)
         if len(results) == 3
-        else (nt0 * sqrt2, nt1 * sqrt2) if len(results) == 5 else None
+        else (nt0 * sqrt2, nt1 * sqrt2)
+        if len(results) == 5
+        else None
     )
     N, pdf = results_to_pdf(results)
     return N * LLR(pdf, t0, t1, ref=1 / 2, statistic="t_value")

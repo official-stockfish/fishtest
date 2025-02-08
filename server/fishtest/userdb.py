@@ -138,7 +138,6 @@ class UserDb:
         self.clear_cache()
 
     def remove_user(self, user, rejector):
-
         result = self.users.delete_one({"_id": user["_id"]})
         if result.deleted_count > 0:
             # User successfully deleted

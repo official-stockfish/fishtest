@@ -54,7 +54,6 @@ boot_time = datetime.now(timezone.utc)
 
 
 class RunDb:
-
     def __init__(self, db_name="fishtest_new", port=-1, is_primary_instance=True):
         # MongoDB server is assumed to be on the same machine, if not user should
         # use ssh with port forwarding to access the remote host.
@@ -939,7 +938,7 @@ After fixing the issues you can unblock the worker at
                         if last_update <= 120:
                             error = (
                                 f'Request_task: There is already a worker running with name "{task_name_long}" '
-                                f'which {last_update} seconds ago sent an update for task {str(wtt_run["_id"])}/{wtt_task_id} '
+                                f"which {last_update} seconds ago sent an update for task {str(wtt_run['_id'])}/{wtt_task_id} "
                                 f'(my name is "{my_name_long}")'
                             )
                             print(error, flush=True)
@@ -1176,13 +1175,13 @@ After fixing the issues you can unblock the worker at
                 result = "rejected"
 
             ret = f"Result:{result}"
-            ret += f" Elo:{elo:.2f}[{elo-elo95:.2f},{elo+elo95:.2f}]"
+            ret += f" Elo:{elo:.2f}[{elo - elo95:.2f},{elo + elo95:.2f}]"
             ret += f" LOS:{los:.0%}"
 
         results = run["results"]
         pentanomial = results["pentanomial"]
         total = 2 * sum(pentanomial)
-        ret += f" Games:{total} Ptnml:{str(pentanomial).replace(' ','')}"
+        ret += f" Games:{total} Ptnml:{str(pentanomial).replace(' ', '')}"
         return ret
 
     def handle_crash_or_time(self, run, task_id):
@@ -1196,7 +1195,7 @@ After fixing the issues you can unblock the worker at
                 return
             crashes = stats.get("crashes", 0)
             time_losses = stats.get("time_losses", 0)
-            message = f"Time losses:{time_losses}({time_losses/total:.1%}) Crashes:{crashes}({crashes/total:.1%})"
+            message = f"Time losses:{time_losses}({time_losses / total:.1%}) Crashes:{crashes}({crashes / total:.1%})"
             self.actiondb.crash_or_time(
                 username=task["worker_info"]["username"],
                 run=run,
