@@ -23,47 +23,52 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
-      - name: Set up pipx
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install pipx
-
-      - name: Run flake8
-        id: flake8
+      - name: Ruff lint
+        uses: astral-sh/ruff-action@v3
+        id: ruff-lint
         continue-on-error: true
-        run: |
-          pipx run flake8 --count --statistics --max-line-length=88 --exclude worker/packages .
+        with:
+          args: "check"
 
-      - name: Run black
-        id: black
+      - name: Ruff lint statistics
+        uses: astral-sh/ruff-action@v3
+        id: ruff-lint-statistics
         continue-on-error: true
-        run: |
-          pipx run black --check --exclude="packages" .
+        with:
+          args: "check --output-format full --statistics"
 
-      - name: Run isort
-        id: isort
+      - name: Ruff sort
+        uses: astral-sh/ruff-action@v3
+        id: ruff-sort
         continue-on-error: true
-        run: |
-          pipx run isort --check --profile black --skip worker/packages .
+        with:
+          args: "check --select I"
 
-      - name: Run prettier
-        id: prettier
+      - name: Ruff format
+        uses: astral-sh/ruff-action@v3
+        id: ruff-format
+        continue-on-error: true
+        with:
+          args: "format --check"
+
+      - name: Prettier format
+        id: prettier-format
         continue-on-error: true
         run: |
           npx prettier --check "server/fishtest/static/{css/*.css,html/*.html,js/*.js}"
 
       - name: Check linters and formatters status
         run: |
-          if [[ "${{ steps.flake8.outcome }}" == "success" ]]; then echo "✔️ flake8"; else echo "❌ flake8"; fi
-          if [[ "${{ steps.black.outcome }}" == "success" ]]; then echo "✔️ black"; else echo "❌ black"; fi
-          if [[ "${{ steps.isort.outcome }}" == "success" ]]; then echo "✔️ isort"; else echo "❌ isort"; fi
-          if [[ "${{ steps.prettier.outcome }}" == "success" ]]; then echo "✔️ prettier"; else echo "❌ prettier"; fi
-          if [[ "${{ steps.black.outcome }}" == "failure" || "${{ steps.isort.outcome }}" == "failure" || "${{ steps.prettier.outcome }}" == "failure" ]]; then exit 1; fi
+          if [[ "${{ steps.ruff-lint.outcome }}" == "success" ]]; then echo "✔️ lint"; else echo "❌ lint"; fi
+          if [[ "${{ steps.ruff-sort.outcome }}" == "success" ]]; then echo "✔️ sort"; else echo "❌ sort"; fi
+          if [[ "${{ steps.ruff-format.outcome }}" == "success" ]]; then echo "✔️ format"; else echo "❌ format"; fi
+          if [[ "${{ steps.prettier-format.outcome }}" == "success" ]]; then echo "✔️ prettier"; else echo "❌ prettier"; fi
+          if [[ "${{ steps.ruff-sort.outcome }}" == "failure" || "${{ steps.ruff-format.outcome }}" == "failure" || "${{ steps.prettier-format.outcome }}" == "failure" ]]; then exit 1; fi
 
       - name: Print formatting instructions
         if: ${{ failure() }}
         run: |
           echo "Run the following commands to format the code:"
-          echo "pipx run black --exclude='env|packages' ."
-          echo "pipx run isort --profile black --skip env --skip venv --skip worker/packages ."
+          echo "uv run ruff check --fix"
+          echo "uv run ruff format"
           echo "npx prettier --write 'server/fishtest/static/{css/*.css,html/*.html,js/*.js}'"

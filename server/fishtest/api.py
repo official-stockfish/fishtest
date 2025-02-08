@@ -144,7 +144,6 @@ class WorkerApi(GenericApi):
 
             task = run["tasks"][task_id]
             for key in ("unique_key", "username", "remote_addr"):
-
                 if key == "remote_addr":
                     value_request = self.request.remote_addr
                 else:

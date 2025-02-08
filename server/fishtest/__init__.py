@@ -6,6 +6,7 @@ import threading
 import traceback
 from pathlib import Path
 
+from fishtest import helpers
 from fishtest.rundb import RunDb
 from pyramid.authentication import AuthTktAuthenticationPolicy
 from pyramid.authorization import ACLAuthorizationPolicy
@@ -14,8 +15,6 @@ from pyramid.events import ApplicationCreated, BeforeRender, NewRequest
 from pyramid.httpexceptions import HTTPFound
 from pyramid.security import forget
 from pyramid.session import SignedCookieSessionFactory
-
-from fishtest import helpers
 
 
 def thread_stack_dump(sig, frame):

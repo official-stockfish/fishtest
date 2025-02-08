@@ -25,11 +25,14 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip setuptools wheel
-          python -m pip install .
+      - name: Set up uv with cache
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Sync project
+        run: uv sync
 
       - name: Run server tests
-        run: |
-          python -m unittest discover -vb -s tests
+        run: uv run python -m unittest discover -vb -s tests

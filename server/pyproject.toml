@@ -1,0 +1,80 @@
+[project]
+name = "fishtest-server"
+version = "0.1.0"
+description = "fishtest-server"
+readme = "README.md"
+requires-python = ">=3.13"
+classifiers = [
+    "Development Status :: Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: Linux",
+    "Environment :: Web Environment",
+    "Framework :: MongoDB",
+    "Framework :: Mako",
+    "Framework :: Numpy",
+    "Framework :: Pyramid",
+    "Framework :: Scipy",
+    "Framework :: Waitress",
+    "Topic :: Computer Chess Development",
+    "Topic :: Computer Chess Development :: Statistical Testing Framework",
+    "Topic :: Internet",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+    "Topic :: Software Development",
+    "Topic :: Software Development :: Application Frameworks",
+]
+dependencies = [
+    "awscli>=1.37.16",
+    "email-validator>=2.2.0",
+    "numpy>=2.2.2",
+    "pymongo>=4.11",
+    "pyramid>=2.0.2",
+    "pyramid-debugtoolbar>=4.12.1",
+    "pyramid-mako>=1.1.0",
+    "requests>=2.32.3",
+    "scipy>=1.15.1",
+    "vtjson>=2.2.4",
+    "waitress>=3.0.2",
+    "zxcvbn>=4.4.28",
+]
+
+[project.urls]
+Homepage = "https://tests.stockfishchess.org"
+Documentation = "https://github.com/official-stockfish/fishtest/wiki"
+Repository = "https://github.com/official-stockfish/fishtest"
+Issues = "https://github.com/official-stockfish/fishtest"
+
+[project.entry-points."paste.app_factory"]
+main = "fishtest:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.data-files]
+"." = [
+    "*.cfg",
+    "*.ini",
+    "*.rst",
+    "*.txt",
+]
+
+[tool.setuptools.package-data]
+fishtest = [
+    "*.css",
+    "*.gif",
+    "*.html",
+    "*.ico",
+    "*.js",
+    "*.jpg",
+    "*.mak",
+    "*.mako",
+    "*.mem",
+    "*.png",
+    "*.pt",
+    "*.txt",
+    "*.xml",
+]

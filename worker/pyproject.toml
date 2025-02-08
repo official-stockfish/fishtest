@@ -1,0 +1,11 @@
+[project]
+name = "fishtest-worker"
+version = "0.1.0"
+description = "fishtest-worker"
+readme = "README.md"
+requires-python = ">=3.6"
+dependencies = [
+    "expression-parser>=0.0.5",
+    "openlock>=1.1.5",
+    "requests>=2.25.1",
+]

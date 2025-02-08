@@ -53,7 +53,6 @@ class RunLock:
 
 
 class RunCache:
-
     def __init__(self, runs):
         # For documentation of the cache format see "cache_schema" in schemas.py.
         self.runs = runs
