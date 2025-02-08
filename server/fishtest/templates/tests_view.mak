@@ -190,6 +190,12 @@
                   <td><a href="/tests/stats/${str(run['_id'])}">/tests/stats/${run['_id']}</a></td>
                 </tr>
               % endif
+              % if run['approver'] != '':
+              <tr>
+                <td>approver</td>
+                <td>${run['approver']}</td>
+              </tr>
+              % endif
             </tbody>
           </table>
         </div>
