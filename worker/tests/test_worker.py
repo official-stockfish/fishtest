@@ -24,7 +24,7 @@ class workerTest(unittest.TestCase):
         blob = None
         try:
             blob = games.download_from_github("README.md")
-        except:
+        except Exception:
             pass
         self.assertFalse(blob is None)
 
