@@ -271,6 +271,17 @@ def send_api_post_request(api_url, payload, quiet=False):
     return response
 
 
+def send_api_log_run(api_url, payload, message):
+    payload["message"] = message
+
+    requests_post(
+        api_url,
+        data=json.dumps(payload),
+        headers={"Content-Type": "application/json"},
+        timeout=HTTP_TIMEOUT,
+    )
+
+
 def github_api(repo):
     """Convert from https://github.com/<user>/<repo>
     To https://api.github.com/repos/<user>/<repo>"""
@@ -922,6 +933,8 @@ def parse_fastchess_output(
     end_time = datetime.now(timezone.utc) + timedelta(seconds=tc_limit)
     print("TC limit {} End time: {}".format(tc_limit, end_time))
 
+    log_run_cache = set()
+
     num_games_updated = 0
     while datetime.now(timezone.utc) < end_time:
         if current_state["task_id"] is None:
@@ -969,6 +982,24 @@ def parse_fastchess_output(
 
         if "on time" in line or "timeout" in line:
             result["stats"]["time_losses"] += 1
+
+        # avoid spamming the server with the same error type
+
+        if (
+            line.startswith("Warning; Illegal move")
+            and "illegal_moves" not in log_run_cache
+        ):
+            log_run_cache.add("illegal_moves")
+            message = r'fastchess says: "{}"'.format(line)
+            send_api_log_run(remote + "/api/log_run", result, message)
+
+        if (
+            line.startswith("Warning; Illegal pv move")
+            and "illegal_pv_moves" not in log_run_cache
+        ):
+            log_run_cache.add("illegal_pv_moves")
+            message = r'fastchess says: "{}"'.format(line)
+            send_api_log_run(remote + "/api/log_run", result, message)
 
         # fastchess WLD and pentanomial output parsing
         m = pattern_WLD.search(line)

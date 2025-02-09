@@ -174,6 +174,7 @@ action_name = set_name(
         "accept_user",
         "block_worker",
         "log_message",
+        "log_run",
     ),
     "action_name",
 )
@@ -295,6 +296,23 @@ action_schema = intersect(
                     "_id": ObjectId,
                     "time": timestamp,
                     "action": "stop_run",
+                    "username": username,
+                    "run_id": run_id,
+                    "run": run_name,
+                    "message": action_message,
+                    "worker?": long_worker_name,
+                    "task_id?": task_id,
+                },
+                ifthen(at_least_one_of("worker", "task_id"), keys("worker", "task_id")),
+            ),
+        ),
+        (
+            action_is("log_run"),
+            intersect(
+                {
+                    "_id": ObjectId,
+                    "time": timestamp,
+                    "action": "log_run",
                     "username": username,
                     "run_id": run_id,
                     "run": run_name,

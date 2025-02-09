@@ -165,6 +165,7 @@ def main(global_config, **settings):
     config.add_route("api_update_task", "/api/update_task")
     config.add_route("api_failed_task", "/api/failed_task")
     config.add_route("api_stop_run", "/api/stop_run")
+    config.add_route("api_log_run", "/api/log_run")
     config.add_route("api_request_version", "/api/request_version")
     config.add_route("api_beat", "/api/beat")
     config.add_route("api_request_spsa", "/api/request_spsa")

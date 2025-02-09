@@ -213,6 +213,18 @@ class ActionDb:
             message=message,
         )
 
+    def log_run(self, username, run, task_id, message):
+        task = run["tasks"][task_id]
+        self.insert_action(
+            action="log_run",
+            username=username,
+            worker=worker_name(task["worker_info"]),
+            run_id=run["_id"],
+            run=run_name(run),
+            task_id=task_id,
+            message=message[:1024],
+        )
+
     def insert_action(self, **action):
         if "run_id" in action:
             action["run_id"] = str(action["run_id"])

@@ -301,6 +301,19 @@ class WorkerApi(GenericApi):
         self.handle_error(error, exception=HTTPUnauthorized)
         return self.add_time({})
 
+    @view_config(route_name="api_log_run")
+    def log_run(self):
+        self.validate_request()
+        run = self.run()
+        message = self.message()
+        self.request.actiondb.log_run(
+            username=self.get_username(),
+            run=run,
+            task_id=self.task_id(),
+            message=message,
+        )
+        return self.add_time({})
+
     @view_config(route_name="api_request_version")
     def request_version(self):
         # By being mor lax here we can be more strict
