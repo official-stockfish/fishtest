@@ -3,7 +3,6 @@ import hashlib
 import math
 import re
 from datetime import datetime, timedelta, timezone
-from enum import IntEnum
 from functools import cache
 
 import fishtest.stats.stat_util

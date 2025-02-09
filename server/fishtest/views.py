@@ -27,7 +27,6 @@ from fishtest.util import (
 from pyramid.httpexceptions import HTTPFound, HTTPNotFound
 from pyramid.security import forget, remember
 from pyramid.view import forbidden_view_config, notfound_view_config, view_config
-from requests.exceptions import ConnectionError, HTTPError
 from vtjson import ValidationError, union, validate
 
 HTTP_TIMEOUT = 15.0
@@ -757,7 +756,7 @@ def get_sha(branch, repo_url):
     api_url = repo_url.replace("https://github.com", "https://api.github.com/repos")
     try:
         commit = requests.get(api_url + "/commits/" + branch).json()
-    except:
+    except Exception:
         raise Exception("Unable to access developer repository")
     if "sha" in commit:
         return commit["sha"], commit["commit"]["message"].split("\n")[0]
@@ -793,7 +792,7 @@ def get_nets(commit_sha, repo_url):
                 if m:
                     nets.append(m.group(0))
         return nets
-    except:
+    except Exception:
         raise Exception("Unable to access developer repository: " + api_url)
 
 
@@ -930,7 +929,7 @@ def validate_form(request):
         api_url += "/commits" + "/" + data["new_tag"]
         try:
             c = requests.get(api_url).json()
-        except:
+        except Exception:
             raise Exception("Unable to access developer repository")
         if "commit" not in c:
             raise Exception("Cannot find branch in developer repository")
@@ -1449,7 +1448,7 @@ def tests_tasks(request):
 
     try:
         show_task = int(request.params.get("show_task", -1))
-    except:
+    except ValueError:
         show_task = -1
     if show_task >= len(run["tasks"]) or show_task < -1:
         show_task = -1

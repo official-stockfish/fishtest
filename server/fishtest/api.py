@@ -82,7 +82,7 @@ class WorkerApi(GenericApi):
         # is the request valid json?
         try:
             self.request_body = request.json_body
-        except:
+        except Exception:
             self.handle_error("request is not json encoded")
 
     def validate_username_password(self):
@@ -385,7 +385,7 @@ class UserApi(GenericApi):
         try:
             query = self.request.json_body
             actions = self.request.rundb.db["actions"].find(query).limit(200)
-        except:
+        except Exception:
             actions = []
         ret = []
         for action in actions:
@@ -417,7 +417,7 @@ class UserApi(GenericApi):
             else:
                 task_id = int(task_id)
                 task = copy.deepcopy(run["tasks"][task_id])
-        except:
+        except Exception:
             self.handle_error(
                 f"The task {run_id}/{task_id} does not exist", exception=HTTPNotFound
             )
