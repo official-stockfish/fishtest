@@ -6,14 +6,12 @@ import re
 import sys
 import textwrap
 import threading
-import time
 from datetime import datetime, timezone
 
 import fishtest.run_cache
 import fishtest.stats.stat_util
 from bson.binary import Binary
 from bson.codec_options import CodecOptions
-from bson.errors import InvalidId
 from bson.objectid import ObjectId
 from fishtest.actiondb import ActionDb
 from fishtest.run_cache import Prio

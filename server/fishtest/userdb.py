@@ -127,7 +127,7 @@ class UserDb:
             self.last_blocked_time = 0
 
             return True
-        except:
+        except Exception:
             return None
 
     def save_user(self, user):
