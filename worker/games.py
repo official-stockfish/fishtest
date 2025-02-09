@@ -950,9 +950,17 @@ def parse_fastchess_output(
                     )
                 )
 
-        # Parse possible startup and game warnings
-        if "Warning:" in line or "Warning;" in line:
-            raise RunException("fastchess says: {}".format(line))
+        # Parse line like this:
+        # Warning; New-SHA doesn't have option ThreatBySafePawn
+        if "Warning;" in line and "doesn't have option" in line:
+            message = r'fastchess says: "{}"'.format(line)
+            raise RunException(message)
+
+        # Parse line like this:
+        # Warning; Invalid value for option P: -354
+        if "Warning;" in line and "Invalid value" in line:
+            message = r'fastchess says: "{}"'.format(line)
+            raise RunException(message)
 
         # Parse line like this:
         # Finished game 1 (stockfish vs base): 0-1 {White disconnects}
