@@ -71,7 +71,7 @@ MIN_CLANG_MINOR = 0
 
 FASTCHESS_SHA = "894616028492ae6114835195f14a899f6fa237d3"
 
-WORKER_VERSION = 256
+WORKER_VERSION = 257
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -83,7 +83,7 @@ try:
 
     IS_COLAB = True
     del google.colab
-except:
+except ImportError:
     pass
 CONFIGFILE = "fishtest.cfg"
 
@@ -181,7 +181,7 @@ class _memory:
         )
         try:
             ret = round(max(min(e.parse(x), self.MAX), 0))
-        except:
+        except Exception:
             print("Unable to parse expression for max_memory")
             raise ValueError(x)
 
@@ -199,7 +199,7 @@ class _concurrency:
         )
         try:
             ret = round(e.parse(x))
-        except:
+        except Exception:
             print("Unable to parse expression for concurrency")
             raise ValueError(x)
 
@@ -228,7 +228,7 @@ class _concurrency:
 def safe_sleep(f):
     try:
         time.sleep(f)
-    except:
+    except Exception:
         print("\nSleep interrupted...")
 
 
@@ -304,7 +304,7 @@ def download_sri():
                 "worker/sri.txt", owner="official-stockfish", repo="fishtest"
             )
         )
-    except:
+    except Exception:
         return None
 
 
@@ -352,7 +352,7 @@ def verify_credentials(remote, username, password, cached):
             req = send_api_post_request(
                 remote + "/api/request_version", payload, quiet=True
             )
-        except:
+        except Exception:
             return None  # network problem (unrecoverable)
         if "error" in req:
             return False  # invalid username/password
@@ -385,7 +385,7 @@ def get_credentials(config, options, args):
             if username != "":
                 password = getpass.getpass()
             print("")
-        except:
+        except Exception:
             print("\n")
             return "", ""
         else:
@@ -565,7 +565,7 @@ def validate(config, schema):
             if callable(t):
                 try:
                     _ = t(o)
-                except:
+                except Exception:
                     # v[2] is the default
                     print(
                         "The value '{}' of config option '{}' is not of type '{}'.\n"
@@ -1020,7 +1020,7 @@ def get_machine_id():
                     machine_id = f.read().strip()
                     print("machine_id {} obtained from {}".format(machine_id, file))
                     return machine_id
-            except:
+            except Exception:
                 pass
     print("Unable to obtain the machine id")
     return ""
@@ -1089,7 +1089,7 @@ def gcc_version():
         minor = int(minor)
         patchlevel = int(patchlevel)
         compiler = "g++"
-    except:
+    except Exception:
         print("Failed to parse g++ version.")
         return None
 
@@ -1133,7 +1133,7 @@ def clang_version():
         minor = int(clang_minor)
         patchlevel = int(clang_patchlevel)
         compiler = "clang++"
-    except:
+    except Exception:
         print("Failed to parse clang++ version.")
         return None
 
@@ -1214,7 +1214,7 @@ def get_exception(files):
         try:
             filename, lineno, name, line = traceback.extract_tb(tb)[i]
             filename = Path(filename).name
-        except:
+        except Exception:
             break
     return message
 
@@ -1503,12 +1503,12 @@ def worker():
     signal.signal(signal.SIGTERM, partial(on_sigint, current_state))
     try:
         signal.signal(signal.SIGQUIT, partial(on_sigint, current_state))
-    except:
+    except Exception:
         # Windows does not have SIGQUIT.
         pass
     try:
         signal.signal(signal.SIGBREAK, partial(on_sigint, current_state))
-    except:
+    except Exception:
         # Linux does not have SIGBREAK.
         pass
 
