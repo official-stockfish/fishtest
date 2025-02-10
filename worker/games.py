@@ -181,8 +181,8 @@ def cache_remove(cache, name):
         return
 
 
-# See https://stackoverflow.com/questions/16511337/correct-way-to-try-except-using-python-requests-module
-# for background.
+# For background see:
+# https://stackoverflow.com/questions/16511337/correct-way-to-try-except-using-python-requests-module
 # It may be useful to introduce more refined http exception handling in the future.
 
 
@@ -1094,8 +1094,7 @@ def launch_fastchess(
         if not req["task_alive"]:
             # This task is no longer necessary
             print(
-                "The server told us that no more games"
-                " are needed for the current task."
+                "The server told us that no more games are needed for the current task."
             )
             return False
 

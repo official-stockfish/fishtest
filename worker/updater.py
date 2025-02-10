@@ -19,7 +19,7 @@ def do_restart():
     args = sys.argv[:]
     args.insert(0, sys.executable)
     if sys.platform == "win32":
-        args = ['"{}"'.format(arg) for arg in args]
+        args = [f'"{arg}"' for arg in args]
 
     os.chdir(start_dir)
     os.execv(sys.executable, args)  # This does not return!
@@ -35,7 +35,7 @@ def update(restart=True, test=False):
         response.raise_for_status()
     except Exception as e:
         print(
-            "Failed to download {}:\n".format(WORKER_URL),
+            f"Failed to download {WORKER_URL}:\n",
             e,
             sep="",
             file=sys.stderr,
@@ -65,7 +65,7 @@ def update(restart=True, test=False):
                 shutil.rmtree(packages_dir)
             except Exception as e:
                 print(
-                    "Failed to delete the folder {}:\n".format(packages_dir),
+                    f"Failed to delete the folder {packages_dir}:\n",
                     e,
                     sep="",
                     file=sys.stderr,
@@ -97,7 +97,7 @@ def update(restart=True, test=False):
                 engine.unlink()
             except Exception as e:
                 print(
-                    "Failed to delete the engine binary {}:\n".format(engine),
+                    f"Failed to delete the engine binary {engine}:\n",
                     e,
                     sep="",
                     file=sys.stderr,
@@ -108,7 +108,7 @@ def update(restart=True, test=False):
                 network.unlink()
             except Exception as e:
                 print(
-                    "Failed to delete the network file {}:\n".format(network),
+                    f"Failed to delete the network file {network}:\n",
                     e,
                     sep="",
                     file=sys.stderr,
@@ -137,13 +137,13 @@ def update(restart=True, test=False):
                 shutil.rmtree(old_bkp_dir)
             except Exception as e:
                 print(
-                    "Failed to remove the old backup folder {}:\n".format(old_bkp_dir),
+                    f"Failed to remove the old backup folder {old_bkp_dir}:\n",
                     e,
                     sep="",
                     file=sys.stderr,
                 )
 
-    print("start_dir: {}".format(start_dir))
+    print(f"start_dir: {start_dir}")
     if restart:
         do_restart()
 
