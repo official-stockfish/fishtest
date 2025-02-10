@@ -912,6 +912,16 @@ def parse_fastchess_output(
     )
     fastchess_WLD_results = None
     fastchess_ptnml_results = None
+    patterns_fastchess_error = (
+        # Warning; New-SHA doesn't have option ThreatBySafePawn
+        re.compile(r"Warning;.*doesn't have option"),
+        # Warning; Invalid value for option P: -354
+        re.compile(r"Warning;.*Invalid value"),
+        # Warning; Illegal move e2e4 played by ...
+        re.compile(r"Warning;.*Illegal move"),
+        # Warning; Illegal pv move e2e4 pv; ...
+        re.compile(r"Warning;.*Illegal pv move"),
+    )
 
     q = Queue()
     t_output = threading.Thread(target=enqueue_output, args=(p.stdout, q), daemon=True)
@@ -950,16 +960,9 @@ def parse_fastchess_output(
                     )
                 )
 
-        # Parse line like this:
-        # Warning; New-SHA doesn't have option ThreatBySafePawn
-        if "Warning;" in line and "doesn't have option" in line:
-            message = r'fastchess says: "{}"'.format(line)
-            raise RunException(message)
-
-        # Parse line like this:
-        # Warning; Invalid value for option P: -354
-        if "Warning;" in line and "Invalid value" in line:
-            message = r'fastchess says: "{}"'.format(line)
+        # Check line for fastchess errors.
+        if any(pattern.search(line) for pattern in patterns_fastchess_error):
+            message = r"fastchess says: '{}'".format(line)
             raise RunException(message)
 
         # Parse line like this:
@@ -970,7 +973,7 @@ def parse_fastchess_output(
         if "on time" in line or "timeout" in line:
             result["stats"]["time_losses"] += 1
 
-        # fastchess WLD and pentanomial output parsing
+        # fastchess WLD and pentanomial output parsing.
         m = pattern_WLD.search(line)
         if m:
             try:
@@ -995,7 +998,7 @@ def parse_fastchess_output(
                     "Failed to parse ptnml line: {} leading to: {}".format(line, str(e))
                 )
 
-        # if we have parsed the block properly let's update results
+        # If we have parsed the block properly let's update results.
         if (fastchess_ptnml_results is not None) and (
             fastchess_WLD_results is not None
         ):
