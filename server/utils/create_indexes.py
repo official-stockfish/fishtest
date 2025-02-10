@@ -9,6 +9,7 @@ import os
 import pprint
 import sys
 
+from fishtest.rundb import RunDb
 from pymongo import ASCENDING, DESCENDING, MongoClient
 
 db_name = "fishtest_new"
@@ -20,6 +21,7 @@ db = conn[db_name]
 
 
 def create_runs_indexes():
+    rundb = RunDb()
     print("Creating indexes on runs collection")
     db["runs"].create_index(
         [("finished", ASCENDING)],
@@ -56,7 +58,10 @@ def create_runs_indexes():
             ("tc_base", DESCENDING),
         ],
         name="finished_ltc_runs",
-        partialFilterExpression={"finished": True, "tc_base": {"$gte": 40}},
+        partialFilterExpression={
+            "finished": True,
+            "tc_base": {"$gte": rundb.ltc_lower_bound},
+        },
     )
     db["runs"].create_index(
         [("args.username", DESCENDING), ("last_updated", DESCENDING)], name="user_runs"
