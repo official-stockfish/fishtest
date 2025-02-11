@@ -183,21 +183,6 @@ class RunCache:
                 ):
                     del self.run_cache[run_id]
 
-    def collect_dead_tasks(self):
-        now = time.time()
-        dead_tasks = []
-        with self.run_cache_lock:
-            for cache_entry in self.run_cache.values():
-                run = cache_entry["run"]
-                if not run["finished"]:
-                    for task_id, task in enumerate(run["tasks"]):
-                        if (
-                            task["active"]
-                            and task["last_updated"].timestamp() < now - 360
-                        ):
-                            dead_tasks.append((task_id, run))
-        return dead_tasks
-
     def validate_random_run(self):
         # Excess of caution. Another thread may change run_cache
         # while we are iterating over it.
