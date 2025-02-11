@@ -6,6 +6,7 @@ import re
 import sys
 import textwrap
 import threading
+import time
 from datetime import datetime, timezone
 
 import fishtest.run_cache
@@ -687,9 +688,19 @@ class RunDb:
         sys.exit(0)
 
     def scavenge_dead_tasks(self):
-        dead_tasks = self.run_cache.collect_dead_tasks()
-        for task_id, run in dead_tasks:
-            task = run["tasks"][task_id]
+        with self.unfinished_runs_lock:
+            unfinished_runs = [
+                (run_id, self.get_run(run_id)) for run_id in self.unfinished_runs
+            ]
+        now = time.time()
+        dead_tasks = []
+        for run_id, run in unfinished_runs:
+            with self.active_run_lock(run_id):
+                for task_id, task in enumerate(run["tasks"]):
+                    if task["active"] and task["last_updated"].timestamp() < now - 360:
+                        dead_tasks.append((task_id, task, run))
+
+        for task_id, task, run in dead_tasks:
             print(
                 "dead task: run: https://tests.stockfishchess.org/tests/view/{} task_id: {} worker: {}".format(
                     run["_id"], task_id, worker_name(task["worker_info"])
