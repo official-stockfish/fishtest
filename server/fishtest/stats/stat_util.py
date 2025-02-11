@@ -32,25 +32,25 @@ def L(x):
 
 def stats(results):
     """
-    "results" is an array of length 2*n+1 with aggregated frequences
+    "results" is an array of length 2*n+1 with aggregated frequencies
     for n games."""
-    l = len(results)
+    count = len(results)
     N = sum(results)
-    games = N * (l - 1) / 2.0
+    games = N * (count - 1) / 2.0
 
     # empirical expected score for a single game
-    mu = sum([results[i] * (i / 2.0) for i in range(0, l)]) / games
+    mu = sum([results[i] * (i / 2.0) for i in range(0, count)]) / games
 
     # empirical expected variance for a single game
-    mu_ = (l - 1) / 2.0 * mu
-    var = sum([results[i] * (i / 2.0 - mu_) ** 2.0 for i in range(0, l)]) / games
+    mu_ = (count - 1) / 2.0 * mu
+    var = sum([results[i] * (i / 2.0 - mu_) ** 2.0 for i in range(0, count)]) / games
 
     return games, mu, var
 
 
 def get_elo(results):
     """
-    "results" is an array of length 2*n+1 with aggregated frequences
+    "results" is an array of length 2*n+1 with aggregated frequencies
     for n games."""
     results = LLRcalc.regularize(results)
     games, mu, var = stats(results)
@@ -90,7 +90,7 @@ def proba_to_bayeselo(P):
 
 def draw_elo_calc(R):
     """
-    Takes trinomial frequences R[0],R[1],R[2]
+    Takes trinomial frequencies R[0],R[1],R[2]
     (loss,draw,win) and returns the corresponding
     drawelo value."""
     N = sum(R)
