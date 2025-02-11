@@ -32,8 +32,8 @@ from vtjson import ValidationError, union, validate
 HTTP_TIMEOUT = 15.0
 
 
-def cached_flash(request, requestString, *l):
-    request.session.flash(requestString, *l)
+def cached_flash(request, requestString, *flash_args):
+    request.session.flash(requestString, *flash_args)
     return
 
 
