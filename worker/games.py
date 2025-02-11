@@ -23,7 +23,10 @@ from pathlib import Path
 from queue import Empty, Queue
 from zipfile import ZipFile
 
-import requests
+try:
+    import requests
+except ImportError:
+    from packages import requests
 
 IS_WINDOWS = "windows" in platform.system().lower()
 IS_MACOS = "darwin" in platform.system().lower()

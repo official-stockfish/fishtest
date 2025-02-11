@@ -25,12 +25,19 @@ from datetime import datetime, timedelta, timezone
 from functools import partial
 from pathlib import Path
 
-# Fall back to the provided packages if missing in the local system.
+try:
+    from expression import Expression_Parser
+except ImportError:
+    from packages.expression import Expression_Parser
+try:
+    import openlock
+except (ImportError, SyntaxError):
+    from packages import openlock
+try:
+    import requests
+except ImportError:
+    from packages import requests
 
-packages_dir = Path(__file__).resolve().parent / "packages"
-sys.path.append(str(packages_dir))
-
-import requests
 from games import (
     EXE_SUFFIX,
     IS_MACOS,
@@ -50,15 +57,7 @@ from games import (
     str_signal,
     unzip,
 )
-from packages import expression, openlock
 from updater import update
-
-# Note: the comment below should be above the last
-# two imports but isort insists on putting it here.
-#
-# Several packages are called "expression".
-# So we make sure to use the locally installed one.
-
 
 LOCK_FILE = Path(__file__).resolve().parent / "fishtest_worker.lock"
 
@@ -71,20 +70,19 @@ MIN_CLANG_MINOR = 0
 
 FASTCHESS_SHA = "894616028492ae6114835195f14a899f6fa237d3"
 
-WORKER_VERSION = 259
+WORKER_VERSION = 260
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
 THREAD_JOIN_TIMEOUT = 15.0
 MAX_RETRY_TIME = 900.0  # 15 minutes
-IS_COLAB = False
 try:
     import google.colab
-
+except ImportError:
+    IS_COLAB = False
+else:
     IS_COLAB = True
     del google.colab
-except ImportError:
-    pass
 CONFIGFILE = "fishtest.cfg"
 
 LOGO = r"""
@@ -176,7 +174,7 @@ class _memory:
         self.__name__ = "memory"
 
     def __call__(self, x):
-        e = expression.Expression_Parser(
+        e = Expression_Parser(
             variables={"MAX": self.MAX}, functions={"min": min, "max": max}
         )
         try:
@@ -194,7 +192,7 @@ class _concurrency:
         self.__name__ = "concurrency"
 
     def __call__(self, x):
-        e = expression.Expression_Parser(
+        e = Expression_Parser(
             variables={"MAX": self.MAX}, functions={"min": min, "max": max}
         )
         try:

@@ -6,7 +6,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from zipfile import ZipFile
 
-import requests
+try:
+    import requests
+except ImportError:
+    from packages import requests
+
 from games import EXE_SUFFIX
 
 start_dir = Path().cwd()
