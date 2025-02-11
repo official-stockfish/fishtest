@@ -74,8 +74,8 @@ task_id = set_name(uint, "task_id")
 timestamp = set_name(ufloat, "timestamp")
 
 
-def size_is_length(x):
-    return x["size"] == len(x["pgn_zip"])
+def size_is_length(pgn_doc):
+    return pgn_doc["size"] == len(pgn_doc["pgn_zip"])
 
 
 pgns_schema = intersect(
@@ -111,14 +111,14 @@ worker_schema = {
 }
 
 
-def first_test_before_last(x):
-    f = x["first_test"]["date"]
-    l = x["last_test"]["date"]
-    if f <= l:
+def first_test_before_last(net_doc):
+    first = net_doc["first_test"]["date"]
+    last = net_doc["last_test"]["date"]
+    if first <= last:
         return True
     else:
         raise Exception(
-            f"The first test at {str(f)} is later than the last test at {str(l)}"
+            f"The first test at {str(first)} is later than the last test at {str(last)}"
         )
 
 
@@ -179,8 +179,8 @@ action_name = set_name(
 )
 
 
-def action_is(x):
-    return lax({"action": x})
+def action_is(action_name):
+    return lax({"action": action_name})
 
 
 action_schema = intersect(
@@ -414,13 +414,13 @@ worker_info_schema_runs.update(
 )
 
 
-def valid_results(R):
-    l, d, w = R["losses"], R["draws"], R["wins"]
-    R = R["pentanomial"]
+def valid_results(stats):
+    losses, draws, wins = stats["losses"], stats["draws"], stats["wins"]
+    pentas = stats["pentanomial"]
     return (
-        l + d + w == 2 * sum(R)
-        and w - l == 2 * R[4] + R[3] - R[1] - 2 * R[0]
-        and R[3] + 2 * R[2] + R[1] >= d >= R[3] + R[1]
+        losses + draws + wins == 2 * sum(pentas)
+        and wins - losses == 2 * pentas[4] + pentas[3] - pentas[1] - 2 * pentas[0]
+        and pentas[3] + 2 * pentas[2] + pentas[1] >= draws >= pentas[3] + pentas[1]
     )
 
 
@@ -437,8 +437,8 @@ results_schema = intersect(
 )
 
 
-def valid_spsa_results(R):
-    return R["wins"] + R["losses"] + R["draws"] == R["num_games"]
+def valid_spsa_results(stats):
+    return stats["wins"] + stats["losses"] + stats["draws"] == stats["num_games"]
 
 
 api_access_schema = lax({"password": str, "worker_info": {"username": username}})
@@ -482,30 +482,30 @@ if_bad_then_zero_stats_and_not_active = ifthen(
 
 
 def compute_results(run):
-    rr = copy.deepcopy(zero_results)
-    for t in run["tasks"]:
-        r = t["stats"]
-        for k in r:
-            if k != "pentanomial":
-                rr[k] += r[k]
+    results = copy.deepcopy(zero_results)
+    for task in run["tasks"]:
+        stats = task["stats"]
+        for key in stats:
+            if key != "pentanomial":
+                results[key] += stats[key]
             else:
-                for i, p in enumerate(r["pentanomial"]):
-                    rr[k][i] += p
-    return rr
+                for idx, penta in enumerate(stats["pentanomial"]):
+                    results[key][idx] += penta
+    return results
 
 
 def compute_cores(run):
     cores = 0
-    for t in run["tasks"]:
-        if t["active"]:
-            cores += t["worker_info"]["concurrency"]
+    for task in run["tasks"]:
+        if task["active"]:
+            cores += task["worker_info"]["concurrency"]
     return cores
 
 
 def compute_workers(run):
     workers = 0
-    for t in run["tasks"]:
-        if t["active"]:
+    for task in run["tasks"]:
+        if task["active"]:
             workers += 1
     return workers
 
@@ -524,8 +524,8 @@ def compute_committed_games(run):
 
 def compute_total_games(run):
     total_games = 0
-    for t in run["tasks"]:
-        total_games += t["num_games"]
+    for task in run["tasks"]:
+        total_games += task["num_games"]
     return total_games
 
 
