@@ -1,12 +1,11 @@
-import random
 import threading
 import time
 from enum import IntEnum
 
 from bson.errors import InvalidId
 from bson.objectid import ObjectId
-from fishtest.schemas import active_runs_schema, cache_schema, runs_schema
-from vtjson import ValidationError, validate
+from fishtest.schemas import active_runs_schema, cache_schema
+from vtjson import validate
 
 
 class Prio(IntEnum):
@@ -132,6 +131,7 @@ class RunCache:
                     "is_changed": False,
                 }
                 return run
+        return None
 
     def flush_buffers(self):
         oldest_entry = None
@@ -182,29 +182,6 @@ class RunCache:
                     and cache_entry["last_access_time"] < now - 300
                 ):
                     del self.run_cache[run_id]
-
-    def validate_random_run(self):
-        # Excess of caution. Another thread may change run_cache
-        # while we are iterating over it.
-        with self.run_cache_lock:
-            run_list = [
-                cache_entry["run"]
-                for cache_entry in self.run_cache.values()
-                if not cache_entry["run"]["finished"]
-            ]
-        if len(run_list) == 0:
-            return None
-        run = random.choice(run_list)
-        run_id = str(run["_id"])
-        try:
-            # Make sure that the run object does not change while we are
-            # validating it
-            with self.active_run_lock(run_id):
-                validate(runs_schema, run, "run")
-        except ValidationError as e:
-            message = f"The run object {run_id} does not validate: {str(e)}"
-            return run, message
-        return None
 
     def validate(self):
         self.run_lock.validate()
