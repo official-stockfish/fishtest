@@ -282,21 +282,23 @@ class WorkerApi(GenericApi):
             )
         with self.request.rundb.active_run_lock(self.run_id()):
             run = self.run()
-            message = self.message()[:1024] + (
-                " (not authorized)" if error != "" else ""
-            )
-            self.request.actiondb.stop_run(
-                username=self.get_username(),
-                run=run,
-                task_id=self.task_id(),
-                message=message,
-            )
-            if error == "":
-                run["failed"] = True
-                self.request.rundb.stop_run(self.run_id())
+            if not run["finished"]:
+                message = self.message()[:1024] + (
+                    " (not authorized)" if error != "" else ""
+                )
+                self.request.actiondb.stop_run(
+                    username=self.get_username(),
+                    run=run,
+                    task_id=self.task_id(),
+                    message=message,
+                )
+                if error == "":
+                    run["failed"] = True
+                    self.request.rundb.stop_run(self.run_id())
+                else:
+                    self.request.rundb.set_inactive_task(self.task_id(), run)
             else:
-                self.request.rundb.set_inactive_task(self.task_id(), run)
-
+                error = f"Run {self.run_id()} is already finished."
         self.handle_error(error, exception=HTTPUnauthorized)
         return self.add_time({})
 
