@@ -234,21 +234,29 @@ class RunDb:
             self.wtt_map[short_worker_name] = run, task_id
 
     def validate_random_run(self):
-        ret = self.run_cache.validate_random_run()
-        if ret is None:
-            return
-        run, message = ret
-        if "version" in run and run["version"] >= RUN_VERSION:
-            print(message, flush=True)
-            self.actiondb.log_message(
-                username="fishtest.system",
-                message=message,
-            )
-        else:
-            print(
-                f"{message} (this is likely not an error as the run object has an older version)",
-                flush=True,
-            )
+        with self.unfinished_runs_lock:
+            if len(self.unfinished_runs) == 0:
+                return
+            run_id = random.choice(list(self.unfinished_runs))
+
+        run = self.get_run(run_id)
+        try:
+            with self.active_run_lock(run_id):
+                print(f"Validating random run {run_id}...")
+                validate(runs_schema, run, "run")
+        except ValidationError as e:
+            message = f"The run object {run_id} does not validate: {str(e)}"
+            if "version" in run and run["version"] >= RUN_VERSION:
+                print(message, flush=True)
+                self.actiondb.log_message(
+                    username="fishtest.system",
+                    message=message,
+                )
+            else:
+                print(
+                    f"{message} (this is likely not an error as the run object has an older version)",
+                    flush=True,
+                )
 
     def set_inactive_run(self, run):
         run_id = str(run["_id"])
