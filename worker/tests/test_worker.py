@@ -1,6 +1,8 @@
 import subprocess
 import sys
+import tempfile
 import unittest
+from configparser import ConfigParser
 from pathlib import Path
 
 import games
@@ -9,16 +11,14 @@ import updater
 import worker
 
 
-class workerTest(unittest.TestCase):
+class WorkerTest(unittest.TestCase):
+    def setUp(self):
+        self.tempdir_obj = tempfile.TemporaryDirectory()
+        self.tempdir = Path(self.tempdir_obj.name)
+        self.original_cwd = Path.cwd()
+
     def tearDown(self):
-        try:
-            (Path.cwd() / "foo.txt").unlink()
-        except FileNotFoundError:
-            pass
-        try:
-            (Path.cwd() / "README.md").unlink()
-        except FileNotFoundError:
-            pass
+        self.tempdir_obj.cleanup()
 
     def test_item_download(self):
         blob = None
@@ -26,21 +26,14 @@ class workerTest(unittest.TestCase):
             blob = games.download_from_github("README.md")
         except Exception:
             pass
-        self.assertFalse(blob is None)
+        self.assertIsNotNone(blob)
 
     def test_config_setup(self):
         sys.argv = [sys.argv[0], "user", "pass", "--no_validation"]
-        try:
-            (Path.cwd() / "foo.txt").unlink()
-        except FileNotFoundError:
-            pass
-
-        worker.CONFIGFILE = "foo.txt"
-        worker.setup_parameters(Path.cwd())
-        from configparser import ConfigParser
-
+        worker.CONFIGFILE = str(self.tempdir / "foo.txt")
+        worker.setup_parameters(self.tempdir)
         config = ConfigParser(inline_comment_prefixes=";", interpolation=None)
-        config.read("foo.txt")
+        config.read(worker.CONFIGFILE)
         self.assertTrue(config.has_section("login"))
         self.assertTrue(config.has_section("parameters"))
         self.assertTrue(config.has_option("login", "username"))
@@ -50,22 +43,21 @@ class workerTest(unittest.TestCase):
         self.assertTrue(config.has_option("parameters", "concurrency"))
 
     def test_worker_script_with_bad_args(self):
-        assert not (Path.cwd() / "fishtest.cfg").exists()
+        self.assertFalse((self.original_cwd / "fishtest.cfg").exists())
         p = subprocess.run(["python", "worker.py", "--no-validation"])
         self.assertEqual(p.returncode, 1)
 
     def test_setup_exception(self):
-        cwd = Path.cwd()
+        cwd = self.tempdir
         with self.assertRaises(Exception):
             games.setup_engine("foo", cwd, cwd, "https://foo", "foo", "https://foo", 1)
 
     def test_updater(self):
         file_list = updater.update(restart=False, test=True)
-        print(file_list)
-        self.assertTrue("worker.py" in file_list)
+        self.assertIn("worker.py", file_list)
 
     def test_sri(self):
-        self.assertTrue(worker.verify_sri(Path.cwd()))
+        self.assertTrue(worker.verify_sri(self.original_cwd))
 
     def test_toolchain_verification(self):
         self.assertTrue(worker.verify_toolchain())
@@ -73,7 +65,11 @@ class workerTest(unittest.TestCase):
     def test_setup_fastchess(self):
         self.assertTrue(
             worker.setup_fastchess(
-                Path.cwd(), list(worker.detect_compilers().keys())[0], 4, ""
+                self.tempdir,
+                list(worker.detect_compilers())[0],
+                4,
+                "",
+                test=True,
             )
         )
 
