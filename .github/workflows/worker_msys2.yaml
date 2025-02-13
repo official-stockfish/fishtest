@@ -20,6 +20,8 @@ jobs:
         working-directory: worker
 
     steps:
+      - uses: actions/checkout@v4
+
       - name: Setup msys and install required packages
         uses: msys2/setup-msys2@v2
         with:
@@ -29,8 +31,6 @@ jobs:
             make
             mingw-w64-${{ matrix.env }}-python3
             mingw-w64-${{ matrix.env }}-${{ matrix.comp }}
-
-      - uses: actions/checkout@v4
 
       - name: Run worker tests
         run: python -m unittest discover -vb -s tests
