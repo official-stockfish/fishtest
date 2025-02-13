@@ -70,7 +70,7 @@ MIN_CLANG_MINOR = 0
 
 FASTCHESS_SHA = "894616028492ae6114835195f14a899f6fa237d3"
 
-WORKER_VERSION = 260
+WORKER_VERSION = 261
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -449,7 +449,7 @@ def verify_required_fastchess(fastchess_path, fastchess_sha):
     return True
 
 
-def setup_fastchess(worker_dir, compiler, concurrency, global_cache):
+def setup_fastchess(worker_dir, compiler, concurrency, global_cache, test=False):
     # Create the testing directory if missing.
     testing_dir = worker_dir / "testing"
     testing_dir.mkdir(exist_ok=True)
@@ -462,7 +462,7 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache):
 
     # build it ourselves
     tmp_dir = Path(tempfile.mkdtemp(dir=testing_dir))
-    cd = os.getcwd()
+    cd = Path.cwd()
     try:
         item_url = (
             "https://api.github.com/repos/"
@@ -491,12 +491,15 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache):
 
         os.chdir(tmp_dir / prefix)
 
-        cmds = [
+        cmds = (
             f"make -j{concurrency} tests CXX={compiler} GIT_SHA={FASTCHESS_SHA[0:8]} GIT_DATE=01010101",
             str(tmp_dir / prefix / ("fastchess-tests" + EXE_SUFFIX)),
             "make clean",
             f"make -j{concurrency} CXX={compiler} GIT_SHA={FASTCHESS_SHA[0:8]} GIT_DATE=01010101",
-        ]
+        )
+
+        if test:
+            cmds = cmds[-1:]
 
         for cmd in cmds:
             print(cmd)
@@ -505,6 +508,7 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache):
                 shell=True,
                 env=os.environ,
                 start_new_session=False if IS_WINDOWS else True,
+                stdout=subprocess.DEVNULL if test else None,
                 stderr=subprocess.PIPE,
                 universal_newlines=True,
                 bufsize=1,
