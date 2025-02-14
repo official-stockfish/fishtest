@@ -70,7 +70,7 @@ MIN_CLANG_MINOR = 0
 
 FASTCHESS_SHA = "894616028492ae6114835195f14a899f6fa237d3"
 
-WORKER_VERSION = 261
+WORKER_VERSION = 262
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -449,7 +449,7 @@ def verify_required_fastchess(fastchess_path, fastchess_sha):
     return True
 
 
-def setup_fastchess(worker_dir, compiler, concurrency, global_cache, test=False):
+def setup_fastchess(worker_dir, compiler, concurrency, global_cache, tests=False):
     # Create the testing directory if missing.
     testing_dir = worker_dir / "testing"
     testing_dir.mkdir(exist_ok=True)
@@ -491,15 +491,15 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache, test=False)
 
         os.chdir(tmp_dir / prefix)
 
-        cmds = (
-            f"make -j{concurrency} tests CXX={compiler} GIT_SHA={FASTCHESS_SHA[0:8]} GIT_DATE=01010101",
-            str(tmp_dir / prefix / ("fastchess-tests" + EXE_SUFFIX)),
-            "make clean",
-            f"make -j{concurrency} CXX={compiler} GIT_SHA={FASTCHESS_SHA[0:8]} GIT_DATE=01010101",
-        )
-
-        if test:
-            cmds = cmds[-1:]
+        cmds = [
+            f"make -j{concurrency} CXX={compiler} GIT_SHA={FASTCHESS_SHA[:8]} GIT_DATE=01010101",
+        ]
+        if tests:
+            cmds[:0] = [
+                f"make -j{concurrency} tests CXX={compiler} GIT_SHA={FASTCHESS_SHA[:8]} GIT_DATE=01010101",
+                str(tmp_dir / prefix / f"fastchess-tests{EXE_SUFFIX}"),
+                "make clean",
+            ]
 
         for cmd in cmds:
             print(cmd)
@@ -508,7 +508,7 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache, test=False)
                 shell=True,
                 env=os.environ,
                 start_new_session=False if IS_WINDOWS else True,
-                stdout=subprocess.DEVNULL if test else None,
+                stdout=None if tests else subprocess.DEVNULL,
                 stderr=subprocess.PIPE,
                 universal_newlines=True,
                 bufsize=1,
@@ -1555,7 +1555,7 @@ def worker():
 
     # Make sure we have a working fastchess
     if not setup_fastchess(
-        worker_dir, compiler, options.concurrency, options.global_cache
+        worker_dir, compiler, options.concurrency, options.global_cache, tests=True
     ):
         return 1
 
