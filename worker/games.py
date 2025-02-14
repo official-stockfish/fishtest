@@ -11,6 +11,7 @@ import random
 import re
 import shutil
 import signal
+import statistics
 import subprocess
 import sys
 import tempfile
@@ -391,13 +392,12 @@ def establish_validated_net(remote, testing_dir, net, global_cache):
             time.sleep(waitTime)
 
 
-def run_single_bench(engine, threads):
-    bench_sig = None
-    bench_nps = None
+def run_single_bench(engine, threads, depth):
+    bench_time, bench_nodes = None, None
 
     try:
         p = subprocess.Popen(
-            [engine, "bench", "16", str(threads), "13", "default", "depth"],
+            [engine, "bench", "16", str(threads), str(depth), "default", "depth"],
             stderr=subprocess.PIPE,
             stdout=subprocess.DEVNULL,
             universal_newlines=True,
@@ -406,46 +406,64 @@ def run_single_bench(engine, threads):
         )
 
         for line in iter(p.stderr.readline, ""):
+            if "Total time (ms)" in line:
+                bench_time = float(line.split(": ")[1].strip())
             if "Nodes searched" in line:
-                bench_sig = line.split(": ")[1].strip()
-            if "Nodes/second" in line:
-                bench_nps = float(line.split(": ")[1].strip())
+                bench_nodes = float(line.split(": ")[1].strip())
 
         p.wait()
     except (OSError, subprocess.SubprocessError) as e:
         raise e
 
-    return bench_sig, bench_nps
+    if bench_time is None or bench_nodes is None:
+        message = f"Unable to parse bench output of {engine.name}"
+        raise RunException(message)
+
+    return bench_time, bench_nodes
 
 
-def run_parallel_benches(engine, concurrency, threads, signature=None):
+def run_parallel_benches(engine, concurrency, threads, depth):
     with ProcessPoolExecutor(max_workers=concurrency) as executor:
         try:
             results = list(
                 executor.map(
-                    run_single_bench, [engine] * concurrency, [threads] * concurrency
+                    run_single_bench,
+                    [engine] * concurrency,
+                    [threads] * concurrency,
+                    [depth] * concurrency,
                 )
             )
         except Exception as e:
-            raise WorkerException("Failed to run engine bench: {}".format(str(e)), e=e)
+            message = f"Failed to run engine bench: {str(e)}"
+            raise WorkerException(message, e=e)
 
-    bench_nps = 0.0
-    for sig, nps in results:
-        if sig is None or nps is None:
-            raise RunException(
-                "Unable to parse bench output of {}".format(os.path.basename(engine))
-            )
+    bench_nodes_values = [bn for _, bn in results]
+    bench_time_values = [bt for bt, _ in results]
+    bench_nps_values = [1000 * bn / bt / threads for bt, bn in results]
 
-        if threads == 1 and signature is not None and int(sig) != int(signature):
-            raise RunException(
-                "Wrong bench in {}, user expected: {} but worker got: {}".format(
-                    os.path.basename(engine), signature, sig
-                )
-            )
+    mean_nodes = statistics.mean(bench_nodes_values)
+    bench_nodes = bench_nodes_values[0]
+    mean_time = statistics.mean(bench_time_values)
+    mean_nps = statistics.mean(bench_nps_values)
+    min_nps = min(bench_nps_values)
+    max_nps = max(bench_nps_values)
+    median_nps = statistics.median(bench_nps_values)
+    std_nps = statistics.stdev(bench_nps_values) if len(bench_nps_values) > 1 else 0
 
-        bench_nps += nps
-
-    return bench_nps / (concurrency * threads)
+    print(
+        f"Statistic at depth {depth} for {engine.name}:\n"
+        f"{'Threads':<15}: {threads:15.2f}\n"
+        f"{'Depth':<15}: {depth:15.2f}\n"
+        f"{'Mean nodes':<15}: {mean_nodes:15.2f}\n"
+        f"{'Mean time (ms)':<15}: {mean_time:15.2f}\n"
+        f"{'Mean nps':<15}: {mean_nps:15.2f}\n"
+        f"{'Median nps':<15}: {median_nps:15.2f}\n"
+        f"{'Min nps':<15}: {min_nps:15.2f}\n"
+        f"{'Max nps':<15}: {max_nps:15.2f}\n"
+        f"{'Std nps':<15}: {std_nps:15.2f}\n"
+        f"{'Std (%)':<15}: {100 * std_nps / mean_nps:15.2f}"
+    )
+    return bench_nodes, mean_nps
 
 
 def verify_signature(engine, signature, games_concurrency, threads):
@@ -462,18 +480,23 @@ def verify_signature(engine, signature, games_concurrency, threads):
             if "settings" in line:
                 cpu_features = line.split(": ")[1].strip()
     if p.returncode:
-        raise WorkerException(
-            "Compiler info exited with non-zero code {}".format(
-                format_return_code(p.returncode)
-            )
+        message = (
+            f"Compiler info exited with non-zero code "
+            f"{format_return_code(p.returncode)}"
         )
+        raise WorkerException(message)
 
-    # Run the benches with threads = 1 and validate the signature
-    bench_nps = run_parallel_benches(engine, games_concurrency, 1, signature)
+    # Run the benches with threads = 1 and depth = 13 to validate the signature
+    bench_nodes, _ = run_parallel_benches(engine, games_concurrency, 1, 13)
+    if int(bench_nodes) != int(signature):
+        message = (
+            f"Wrong bench in {engine.name}, "
+            f"user expected: {signature} but worker got: {bench_nodes}"
+        )
+        raise RunException(message)
 
-    # SMP test: run the benches with the requested number of threads
-    if threads > 1:
-        bench_nps = run_parallel_benches(engine, games_concurrency, threads)
+    # Run the benches with the required number of threads and depth = 15
+    _, bench_nps = run_parallel_benches(engine, games_concurrency, threads, 15)
 
     return bench_nps, cpu_features
 
@@ -1457,11 +1480,11 @@ def run_games(
         raise RunException("\n".join(run_errors))
 
     if base_nps < 208082 / (1 + 3 * math.tanh((worker_concurrency - 1) / 8)):
-        raise FatalException(
-            "This machine is too slow ({} nps / thread) to run fishtest effectively - sorry!".format(
-                base_nps
-            )
+        message = (
+            f"This machine is too slow ({base_nps} nps / thread) "
+            f"to run fishtest effectively - sorry!"
         )
+        raise FatalException(message)
     # fishtest with Stockfish 11 had 1.6 Mnps as reference nps and
     # 0.7 Mnps as threshold for the slow worker.
     # also set in rundb.py and delta_update_users.py
