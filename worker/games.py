@@ -451,7 +451,8 @@ def run_parallel_benches(engine, concurrency, threads, depth):
     std_nps = statistics.stdev(bench_nps_values) if len(bench_nps_values) > 1 else 0
 
     print(
-        f"Statistic at depth {depth} for {engine.name}:\n"
+        f"Statistic for {engine.name}:\n"
+        f"{'Concurrency':<15}: {concurrency:15.2f}\n"
         f"{'Threads':<15}: {threads:15.2f}\n"
         f"{'Depth':<15}: {depth:15.2f}\n"
         f"{'Mean nodes':<15}: {mean_nodes:15.2f}\n"
@@ -494,6 +495,10 @@ def verify_signature(engine, signature, games_concurrency, threads):
             f"user expected: {signature} but worker got: {bench_nodes}"
         )
         raise RunException(message)
+
+    if threads > 1:
+        # Run the benches with the required number of threads and depth = 13
+        _, bench_nps = run_parallel_benches(engine, games_concurrency, threads, 13)
 
     # Run the benches with the required number of threads and depth = 15
     _, bench_nps = run_parallel_benches(engine, games_concurrency, threads, 15)
