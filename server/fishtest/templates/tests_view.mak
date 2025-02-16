@@ -100,7 +100,7 @@
           </a>
 
           <a
-            href="javascript:" 
+            href="javascript:"
             id="master_vs_official_master" class="btn btn-danger  border-0 mb-2"
             title="Compares master to official-master at the time of submission"
             style="display: none">
@@ -246,14 +246,11 @@
           % endif
         % endif
 
-        % if approver:
-          <div class="col-12 col-sm">
-            <button 
-              id="download_games"
-              class="btn btn-primary text-nowrap w-100"
-            >Download games</button>
-          </div>
-        % endif
+        <div class="col-12 col-sm">
+          <button id="download_games" class="btn btn-primary text-nowrap w-100">
+            Download games
+          </button>
+        </div>
 
         <div class="col-12 col-sm">
           <a class="btn btn-light border w-100" href="/tests/run?id=${run['_id']}">Reschedule</a>
@@ -264,7 +261,7 @@
         <div class="alert alert-danger mb-2">
           Hash options are too low or too high for this TC
         </div>
-      % endif 
+      % endif
 
       % if 'spsa' not in run['args'] and run['args'].get('base_options', 'Hash=16').replace(" ", "") != run['args'].get('new_options', 'Hash=16').replace(" ", ""):
           <div class="alert alert-danger mb-2">
@@ -283,10 +280,10 @@
           </div>
         % endif
       % endif
-      
+
       % if run["args"]["throughput"] > 100 or run["args"]["priority"] > 0:
         <div class="alert alert-warning">
-          Warning: 
+          Warning:
           % if run["args"]["throughput"] > 100 and run["args"]["priority"] > 0:
             <span>Throughput and priority exceed the normal limits.</span>
           % elif run["args"]["throughput"] > 100:
@@ -409,7 +406,7 @@
       <hr>
       % if not run['finished']:
         <h4>Notifications</h4>
-        <button 
+        <button
           id="follow_button_${run['_id']}"
           class="btn btn-primary col-12 col-md-auto"
           onclick="handleFollowButton(this)"
@@ -610,7 +607,7 @@
         alertError("Blob is empty!");
         return;
       }
-      
+
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -749,14 +746,14 @@
         return null;
       }
       const data = await response.json();
-      
+
       const filesMap = new Map();
       data.tree.forEach((entry) => {
         if (entry.type === "blob") {
           filesMap.set(entry.path, entry.sha);
         }
       });
-      
+
       return filesMap;
     } catch (error) {
       console.error("Error fetching files in branch " +  branch + ": ", error);
@@ -764,7 +761,7 @@
     }
   }
 
-  
+
   const diffContents = document.getElementById("diff-contents");
   const diffText = diffContents.querySelector("code");
   const toggleBtn = document.getElementById("diff-toggle");
@@ -863,7 +860,7 @@
       "//github.com/",
       "//api.github.com/repos/"
     );
-    
+
     let dots = 2;
 
     const token = localStorage.getItem("github_token");
