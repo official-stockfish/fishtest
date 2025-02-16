@@ -1,6 +1,5 @@
 async function handleSPSA() {
-  const raw = [],
-    dataCache = [],
+  const dataCache = [],
     columns = [],
     smoothingMax = 10;
   let chartObject,
@@ -132,66 +131,100 @@ async function handleSPSA() {
     return smoothedValues;
   }
 
-  function smoothData(smoothingFactor) {
+  function buildData(smoothingFactor) {
     const spsaParams = spsaData.params;
     const spsaHistory = spsaData.param_history;
     const spsaIterRatio = Math.min(spsaData.iter / spsaData.num_iter, 1);
 
-    // cache the raw data
-    if (!raw.length) {
-      for (let j = 0; j < spsaParams.length; j++) raw.push([]);
-      for (let i = 0; i < spsaHistory.length; i++) {
-        for (let j = 0; j < spsaParams.length; j++) {
-          raw[j].push(spsaHistory[i][j].theta);
-        }
-      }
-    }
-    // cache data table to avoid recomputing the smoothed graph
-    if (!dataCache[smoothingFactor]) {
-      const dt = new google.visualization.DataTable();
-      dt.addColumn("number", "Iteration");
+    // Cache raw data in dataCache[0]
+    if (!dataCache[0]) {
+      const dt0 = new google.visualization.DataTable();
+      dt0.addColumn("number", "Iteration");
       for (let i = 0; i < spsaParams.length; i++) {
-        dt.addColumn("number", spsaParams[i].name);
+        dt0.addColumn("number", spsaParams[i].name);
       }
-      // adjust the bandwidth for tests with samples != 101
-      const bandwidth =
-        2 *
-        smoothingFactor *
-        ((spsaHistory.length - 1) / (spsaIterRatio * 100));
-      const data = [];
-      for (let j = 0; j < spsaParams.length; j++) {
-        data.push(gaussianKernelRegression(raw[j], bandwidth));
-      }
-      const googleFormat = [];
-      for (let i = 0; i < spsaHistory.length; i++) {
-        const rowData = [(i / (spsaHistory.length - 1)) * spsaIterRatio];
+      const unsmoothedData = [];
+      for (let i = 0; i <= spsaHistory.length; i++) {
+        // For first row, use spsaParams.start; then use history values.
+        const rowData = [(i / spsaHistory.length) * spsaIterRatio];
         for (let j = 0; j < spsaParams.length; j++) {
-          rowData.push(data[j][i]);
+          rowData.push(
+            i === 0 ? spsaParams[j].start : spsaHistory[i - 1][j].theta,
+          );
         }
-        googleFormat.push(rowData);
+        unsmoothedData.push(rowData);
       }
-      dt.addRows(googleFormat);
-      dataCache[smoothingFactor] = dt;
+      dt0.addRows(unsmoothedData);
+      dataCache[0] = dt0;
+    }
+
+    // Build (or retrieve) the DataTable for the current smoothingFactor
+    if (!dataCache[smoothingFactor]) {
+      if (smoothingFactor !== 0) {
+        // Derive raw data from dataCache[0]
+        const dt0 = dataCache[0];
+        const dt = new google.visualization.DataTable();
+        dt.addColumn("number", "Iteration");
+        for (let i = 0; i < spsaParams.length; i++) {
+          dt.addColumn("number", spsaParams[i].name);
+        }
+        const bandwidth =
+          2 * smoothingFactor * (spsaHistory.length / (spsaIterRatio * 100));
+        // Extract raw arrays for each parameter column (columns 1..n)
+        const rawArrays = [];
+        for (let col = 1; col < dt0.getNumberOfColumns(); col++) {
+          const colData = [];
+          for (let row = 0; row < dt0.getNumberOfRows(); row++) {
+            colData.push(dt0.getValue(row, col));
+          }
+          rawArrays.push(colData);
+        }
+        // Apply smoothing
+        const smoothedArrays = rawArrays.map((arr) =>
+          gaussianKernelRegression(arr, bandwidth),
+        );
+        // Rebuild the smoothed rows using the original iteration values
+        const newData = [];
+        for (let row = 0; row < dt0.getNumberOfRows(); row++) {
+          const rowArray = [dt0.getValue(row, 0)];
+          for (let i = 0; i < smoothedArrays.length; i++) {
+            rowArray.push(smoothedArrays[i][row]);
+          }
+          newData.push(rowArray);
+        }
+        dt.addRows(newData);
+        dataCache[smoothingFactor] = dt;
+      }
     }
     chartData = dataCache[smoothingFactor];
+
     chartOptions.vAxis.format = usePercentage ? "percent" : "decimal";
+    // Compute percentage values from the raw/smoothed data
     if (usePercentage) {
       const view = new google.visualization.DataView(chartData);
       view.setColumns([
         0,
         ...spsaParams.map((_, i) => ({
-          calc: function (dt, row) {
-            // column 0 is the iteration number, the parameter columns start from index 1
-            return (
-              (dt.getValue(row, i + 1) - spsaParams[i].start) /
-              spsaHistory[row][i].c
-            );
-          },
+          calc: (dt, row) =>
+            row === 0
+              ? 0
+              : (dt.getValue(row, i + 1) - dt.getValue(0, i + 1)) /
+                spsaHistory[row - 1][i].c,
           type: "number",
           label: spsaParams[i].name,
         })),
       ]);
       chartData = view;
+    }
+    // Rebuild the columns array with the updated number of columns
+    columns.length = 0;
+    for (let i = 0; i < chartData.getNumberOfColumns(); i++) {
+      columns.push(i);
+    }
+    if (!viewAll && lastSelectedParam != null) {
+      for (let i = 1; i < chartData.getNumberOfColumns(); i++) {
+        updateColumnVisibility(i, i === lastSelectedParam);
+      }
     }
     redraw();
   }
@@ -221,7 +254,7 @@ async function handleSPSA() {
   }
 
   await DOMContentLoaded();
-  // fade in loader
+  // Fade in loader
   const loader = document.getElementById("spsa_preload");
   loader.style.display = "";
   loader.classList.add("fade");
@@ -229,13 +262,14 @@ async function handleSPSA() {
     loader.classList.add("show");
   }, 150);
 
-  // load google library
+  // Load google library
   await google.charts.load("current", { packages: ["corechart"] });
   const spsaParams = spsaData.params;
   const spsaHistory = spsaData.param_history;
-  const spsaIterRatio = Math.min(spsaData.iter / spsaData.num_iter, 1);
 
-  if (!spsaHistory || spsaHistory.length < 2) {
+  usePercentage = document.getElementById("spsa_percentage").checked;
+
+  if (!spsaHistory || spsaHistory.length < 1) {
     document.getElementById("spsa_preload").style.display = "none";
     const alertElement = document.createElement("div");
     alertElement.className = "alert alert-warning";
@@ -251,40 +285,13 @@ async function handleSPSA() {
 
   for (let i = 0; i < smoothingMax; i++) dataCache.push(false);
 
-  const googleFormat = [];
-  for (let i = 0; i < spsaHistory.length; i++) {
-    const rowData = [(i / (spsaHistory.length - 1)) * spsaIterRatio];
-    for (let j = 0; j < spsaParams.length; j++) {
-      if (usePercentage) {
-        rowData.push(
-          (spsaHistory[i][j].theta - spsaParams[j].start) / spsaHistory[i][j].c,
-        );
-      } else {
-        rowData.push(spsaHistory[i][j].theta);
-      }
-    }
-    googleFormat.push(rowData);
-  }
-
-  chartData = new google.visualization.DataTable();
-
-  chartData.addColumn("number", "Iteration");
-  for (let i = 0; i < spsaParams.length; i++) {
-    chartData.addColumn("number", spsaParams[i].name);
-  }
-  chartData.addRows(googleFormat);
-
-  dataCache[0] = chartData;
   chartObject = new google.visualization.LineChart(
     document.getElementById("spsa_history_plot"),
   );
-  chartObject.draw(chartData, chartOptions);
+  buildData(smoothingFactor);
   document.getElementById("chart_toolbar").style.display = "";
 
-  for (let i = 0; i < chartData.getNumberOfColumns(); i++) {
-    columns.push(i);
-  }
-
+  // Build dropdown using parameters only (skip iteration column)
   for (let j = 0; j < spsaParams.length; j++) {
     const dropdownItem = document.createElement("li");
     const anchorItem = document.createElement("a");
@@ -326,7 +333,7 @@ async function handleSPSA() {
     .getElementById("dropdown_individual")
     .addEventListener("click", handleDropdownClick);
 
-  // show/hide functionality
+  // Show/Hide functionality
   google.visualization.events.addListener(chartObject, "select", function (e) {
     const sel = chartObject.getSelection();
     if (sel.length > 0 && sel[0].row == null) {
@@ -341,13 +348,13 @@ async function handleSPSA() {
 
   document.getElementById("btn_smooth_plus").addEventListener("click", () => {
     if (smoothingFactor < smoothingMax) {
-      smoothData(++smoothingFactor);
+      buildData(++smoothingFactor);
     }
   });
 
   document.getElementById("btn_smooth_minus").addEventListener("click", () => {
     if (smoothingFactor > 0) {
-      smoothData(--smoothingFactor);
+      buildData(--smoothingFactor);
     }
   });
 
@@ -368,6 +375,6 @@ async function handleSPSA() {
 
   document.getElementById("spsa_percentage").addEventListener("change", (e) => {
     usePercentage = e.target.checked;
-    smoothData(smoothingFactor);
+    buildData(smoothingFactor);
   });
 }
