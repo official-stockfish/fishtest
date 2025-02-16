@@ -298,7 +298,7 @@ class WorkerApi(GenericApi):
                 else:
                     self.request.rundb.set_inactive_task(self.task_id(), run)
             else:
-                error = f"Run {self.run_id()} is already finished."
+                error = f"Run {self.run_id()} is already finished"
         self.handle_error(error, exception=HTTPUnauthorized)
         return self.add_time({})
 
@@ -314,9 +314,11 @@ class WorkerApi(GenericApi):
         self.validate_request()
         run = self.run()
         task = self.task()
-        task["last_updated"] = datetime.now(timezone.utc)
-        self.request.rundb.buffer(run)
-        return self.add_time({"task_alive": task["active"]})
+        with self.request.rundb.active_run_lock(self.run_id()):
+            if task["active"]:
+                task["last_updated"] = datetime.now(timezone.utc)
+                self.request.rundb.buffer(run)
+            return self.add_time({"task_alive": task["active"]})
 
     @view_config(route_name="api_request_spsa")
     def request_spsa(self):
