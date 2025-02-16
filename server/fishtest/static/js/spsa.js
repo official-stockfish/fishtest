@@ -2,12 +2,13 @@ async function handleSPSA() {
   const raw = [],
     dataCache = [],
     columns = [],
-    smoothingMax = 20;
+    smoothingMax = 10;
   let chartObject,
     chartData,
     smoothingFactor = 0,
     viewAll = false,
-    usePercentage = false;
+    usePercentage = false,
+    lastSelectedParam = null;
 
   const chartColors = [
     "#3366cc",
@@ -154,7 +155,9 @@ async function handleSPSA() {
       }
       // adjust the bandwidth for tests with samples != 101
       const bandwidth =
-        smoothingFactor * ((spsaHistory.length - 1) / (spsaIterRatio * 100));
+        2 *
+        smoothingFactor *
+        ((spsaHistory.length - 1) / (spsaIterRatio * 100));
       const data = [];
       for (let j = 0; j < spsaParams.length; j++) {
         data.push(gaussianKernelRegression(raw[j], bandwidth));
@@ -190,11 +193,11 @@ async function handleSPSA() {
       ]);
       chartData = view;
     }
-    redraw(true);
+    redraw();
   }
 
-  function redraw(animate) {
-    chartOptions.animation = animate ? { duration: 800, easing: "out" } : {};
+  function redraw() {
+    chartOptions.animation = {};
     const view = new google.visualization.DataView(chartData);
     view.setColumns(columns);
     chartObject.draw(view, chartOptions);
@@ -287,25 +290,41 @@ async function handleSPSA() {
     const anchorItem = document.createElement("a");
     anchorItem.className = "dropdown-item";
     anchorItem.href = "javascript:";
-    anchorItem.param_id = j + 1;
+    anchorItem.dataset.paramId = j + 1;
     anchorItem.append(spsaParams[j].name);
     dropdownItem.append(anchorItem);
     document.getElementById("dropdown_individual").append(dropdownItem);
   }
 
+  function handleDropdownClick(e) {
+    if (!e.target.matches("a")) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const dropdown = document.getElementById("dropdown_individual");
+    const currentScroll = dropdown.scrollTop;
+    const target = e.target;
+    const paramId = Number(target.dataset.paramId);
+
+    Array.from(dropdown.querySelectorAll("a.active")).forEach((el) =>
+      el.classList.remove("active"),
+    );
+    target.classList.add("active");
+    lastSelectedParam = paramId;
+
+    for (let i = 1; i < chartData.getNumberOfColumns(); i++) {
+      updateColumnVisibility(i, i === paramId);
+    }
+
+    viewAll = false;
+    redraw();
+    dropdown.scrollTop = currentScroll;
+  }
+
   document
     .getElementById("dropdown_individual")
-    .addEventListener("click", (e) => {
-      if (!e.target.matches("a")) return;
-      const { target } = e;
-      const paramId = target.param_id;
-      for (let i = 1; i < chartData.getNumberOfColumns(); i++) {
-        updateColumnVisibility(i, i == paramId);
-      }
-
-      viewAll = false;
-      redraw(false);
-    });
+    .addEventListener("click", handleDropdownClick);
 
   // show/hide functionality
   google.visualization.events.addListener(chartObject, "select", function (e) {
@@ -313,7 +332,7 @@ async function handleSPSA() {
     if (sel.length > 0 && sel[0].row == null) {
       const col = sel[0].column;
       updateColumnVisibility(col, columns[col] != col);
-      redraw(false);
+      redraw();
     }
     viewAll = false;
   });
@@ -335,11 +354,16 @@ async function handleSPSA() {
   document.getElementById("btn_view_all").addEventListener("click", () => {
     if (viewAll) return;
     viewAll = true;
+    lastSelectedParam = null;
+    Array.from(
+      document
+        .getElementById("dropdown_individual")
+        .querySelectorAll("a.active"),
+    ).forEach((el) => el.classList.remove("active"));
     for (let i = 0; i < chartData.getNumberOfColumns(); i++) {
       updateColumnVisibility(i, true);
     }
-
-    redraw(false);
+    redraw();
   });
 
   document.getElementById("spsa_percentage").addEventListener("change", (e) => {
