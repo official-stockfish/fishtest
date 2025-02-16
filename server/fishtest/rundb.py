@@ -296,6 +296,7 @@ class RunDb:
                     + stats["losses"]
                     + stats["draws"]
                 )
+                task["last_updated"] = datetime.now(timezone.utc)
                 task["active"] = False
                 with self.connections_lock:
                     try:
