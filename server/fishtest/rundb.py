@@ -1598,9 +1598,9 @@ After fixing the issues you can unblock the worker at
         if "param_history" not in spsa:
             spsa["param_history"] = []
         n_params = len(spsa["params"])
-        samples = 101 if n_params < 100 else 10000 / n_params if n_params < 1000 else 1
-        freq = run["args"]["num_games"] / 2 / samples
-        grow_summary = len(spsa["param_history"]) < spsa["iter"] / freq
+        samples = 100 if n_params < 100 else 10000 / n_params if n_params < 1000 else 1
+        period = run["args"]["num_games"] / 2 / samples
+        grow_summary = len(spsa["param_history"]) + 1 <= spsa["iter"] / period
 
         # Update the current theta based on the results from the worker
         # Worker wins/losses are always in terms of w_params
