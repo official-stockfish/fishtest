@@ -267,8 +267,6 @@ async function handleSPSA() {
   const spsaParams = spsaData.params;
   const spsaHistory = spsaData.param_history;
 
-  usePercentage = document.getElementById("spsa_percentage").checked;
-
   if (!spsaHistory || spsaHistory.length < 1) {
     document.getElementById("spsa_preload").style.display = "none";
     const alertElement = document.createElement("div");
@@ -284,24 +282,12 @@ async function handleSPSA() {
   }
 
   for (let i = 0; i < smoothingMax; i++) dataCache.push(false);
-
+  usePercentage = document.getElementById("spsa_percentage").checked;
   chartObject = new google.visualization.LineChart(
     document.getElementById("spsa_history_plot"),
   );
   buildData(smoothingFactor);
   document.getElementById("chart_toolbar").style.display = "";
-
-  // Build dropdown using parameters only (skip iteration column)
-  for (let j = 0; j < spsaParams.length; j++) {
-    const dropdownItem = document.createElement("li");
-    const anchorItem = document.createElement("a");
-    anchorItem.className = "dropdown-item";
-    anchorItem.href = "javascript:";
-    anchorItem.dataset.paramId = j + 1;
-    anchorItem.append(spsaParams[j].name);
-    dropdownItem.append(anchorItem);
-    document.getElementById("dropdown_individual").append(dropdownItem);
-  }
 
   function handleDropdownClick(e) {
     if (!e.target.matches("a")) return;
@@ -332,6 +318,18 @@ async function handleSPSA() {
   document
     .getElementById("dropdown_individual")
     .addEventListener("click", handleDropdownClick);
+
+  // Build dropdown using parameters only (skip iteration column)
+  for (let j = 0; j < spsaParams.length; j++) {
+    const dropdownItem = document.createElement("li");
+    const anchorItem = document.createElement("a");
+    anchorItem.className = "dropdown-item";
+    anchorItem.href = "javascript:";
+    anchorItem.dataset.paramId = j + 1;
+    anchorItem.append(spsaParams[j].name);
+    dropdownItem.append(anchorItem);
+    document.getElementById("dropdown_individual").append(dropdownItem);
+  }
 
   // Show/Hide functionality
   google.visualization.events.addListener(chartObject, "select", function (e) {
