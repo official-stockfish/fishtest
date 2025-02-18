@@ -49,11 +49,7 @@
     const spsaData = ${json.dumps(run["args"]["spsa"])|n};
   </script>
 
-  <script
-    src="/js/spsa.js?v=${cache_busters['js/spsa.js']}"
-    integrity="sha384-${cache_busters['js/spsa.js']}"
-    crossorigin="anonymous"
-  ></script>
+  <script src="${request.static_url('fishtest:static/js/spsa.js')}"></script>
 
   <script>
     const spsaPromise = handleSPSA();

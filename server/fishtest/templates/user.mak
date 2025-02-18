@@ -39,14 +39,14 @@
       <ul class="list-group list-group-flush">
         <li class="list-group-item bg-transparent text-break">Registered: ${format_date(user['registration_time'] if 'registration_time' in user else 'Unknown')}</li>
         % if not profile:
-          <li class="list-group-item bg-transparent text-break">Tests Repository: 
+          <li class="list-group-item bg-transparent text-break">Tests Repository:
             % if user['tests_repo']:
               <a class="alert-link" href="${user['tests_repo']}">${extract_repo_from_link(user['tests_repo'])}</a>
             % else:
               <span>-</span>
             % endif
           </li>
-          <li class="list-group-item bg-transparent text-break">Email: 
+          <li class="list-group-item bg-transparent text-break">Email:
             <a href="mailto:${user['email']}?Subject=Fishtest%20Account" class="alert-link">
               ${user['email']}
             </a>
@@ -180,22 +180,22 @@
           <div class="modal-content">
             <div class="modal-body">
               <!-- Explanation about token purpose -->
-              <p>The purpose of this token is to authenticate your requests to GitHub's API, 
-              which has a rate limit of 60 requests per hour for unauthenticated users. By using this token, 
-              you can increase this limit to 5000 requests per hour. More information about GitHub's rate limits can be found 
+              <p>The purpose of this token is to authenticate your requests to GitHub's API,
+              which has a rate limit of 60 requests per hour for unauthenticated users. By using this token,
+              you can increase this limit to 5000 requests per hour. More information about GitHub's rate limits can be found
               <a href="https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting" target="_blank">here</a>.
               </p>
-              
+
               <!-- Information about storage -->
               <p>This token will be stored in your local storage, not in the server database.
               This ensures that the token is only accessible to you, reducing the risk of unauthorized access.
               </p>
-              
+
               <!-- Permissions and access information -->
-              <p>The token should be granted the minimum permissions necessary for your use case. 
+              <p>The token should be granted the minimum permissions necessary for your use case.
               This reduces the potential impact if the token is accidentally exposed or misused.
               </p>
-              
+
               <!-- Instructions on how to obtain the token -->
               <h4>Instructions:</h4>
               <ol>
@@ -275,8 +275,4 @@
   </form>
 </div>
 
-<script
-  src="/js/toggle_password.js?v=${cache_busters['js/toggle_password.js']}"
-  integrity="sha384-${cache_busters['js/toggle_password.js']}"
-  crossorigin="anonymous"
-></script>
+<script src="${request.static_url('fishtest:static/js/toggle_password.js')}"></script>

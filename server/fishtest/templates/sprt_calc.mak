@@ -137,14 +137,6 @@
 
 <script src="https://www.gstatic.com/charts/loader.js"></script>
 
-<script
-  src="/js/sprt.js?v=${cache_busters['js/sprt.js']}"
-  integrity="sha384-${cache_busters['js/sprt.js']}"
-  crossorigin="anonymous"
-></script>
+<script src="${request.static_url('fishtest:static/js/sprt.js')}"></script>
 
-<script
-  src="/js/calc.js?1&v=${cache_busters['js/calc.js']}"
-  integrity="sha384-${cache_busters['js/calc.js']}"
-  crossorigin="anonymous"
-></script>
+<script src="${request.static_url('fishtest:static/js/calc.js')}"></script>
