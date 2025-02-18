@@ -821,6 +821,16 @@ def parse_spsa_params(raw, spsa):
 
 
 def validate_modify(request, run):
+    now = datetime.now(timezone.utc)
+    if "start_time" not in run or (now - run["start_time"]).days > 30:
+        request.session.flash("Run too old to be modified", "error")
+        raise home(request)
+
+    # Do not revive failed runs
+    if run["failed"]:
+        request.session.flash("You cannot modify a failed run", "error")
+        raise home(request)
+
     if "num-games" not in request.POST:
         request.session.flash("Unable to modify with no number of games!", "error")
         raise home(request)
@@ -859,11 +869,6 @@ def validate_modify(request, run):
     max_games = 3200000
     if num_games > max_games:
         request.session.flash("Number of games must be <= " + str(max_games), "error")
-        raise home(request)
-
-    now = datetime.now(timezone.utc)
-    if "start_time" not in run or (now - run["start_time"]).days > 30:
-        request.session.flash("Run too old to be modified", "error")
         raise home(request)
 
 
