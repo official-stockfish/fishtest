@@ -982,11 +982,7 @@
   });
 </script>
 
-<script
-  src="/js/spsa_new.js?5&?v=${cache_busters['js/spsa_new.js']}"
-  integrity="sha384-${cache_busters['js/spsa_new.js']}"
-  crossorigin="anonymous"
-></script>
+<script src="${request.static_url('fishtest:static/js/spsa_new.js')}"></script>
 
 <script>
   function spsaWork() {

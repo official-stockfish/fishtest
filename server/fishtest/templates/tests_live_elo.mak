@@ -2,10 +2,7 @@
 
 <script src="https://www.gstatic.com/charts/loader.js"></script>
 
-<script src="/js/live_elo.js?v=${cache_busters['js/live_elo.js']}"
-        integrity="sha384-${cache_busters['js/live_elo.js']}"
-        crossorigin="anonymous"
-></script>
+<script src="${request.static_url('fishtest:static/js/live_elo.js')}"></script>
 
 <script>
   document.title = "Live Elo - ${page_title} | Stockfish Testing";

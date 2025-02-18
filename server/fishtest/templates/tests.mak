@@ -2,9 +2,7 @@
 
 <link
   rel="stylesheet"
-  href="/css/flags.css?v=${cache_busters['css/flags.css']}"
-  integrity="sha384-${cache_busters['css/flags.css']}"
-  crossorigin="anonymous"
+  href="${request.static_url('fishtest:static/css/flags.css')}}"
 >
 
 <h2>Stockfish Testing Queue</h2>

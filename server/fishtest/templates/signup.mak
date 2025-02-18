@@ -119,8 +119,4 @@
   </form>
 </div>
 
-<script
-  src="/js/toggle_password.js?v=${cache_busters['js/toggle_password.js']}"
-  integrity="sha384-${cache_busters['js/toggle_password.js']}"
-  crossorigin="anonymous"
-></script>
+<script src="${request.static_url('fishtest:static/js/toggle_password.js')}"></script>

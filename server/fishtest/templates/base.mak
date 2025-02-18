@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <script>
-      const darkThemeHash = "${cache_busters['css/theme.dark.css']}";
+      const darkThemeHash = "${request.static_url('fishtest:static/css/theme.dark.css')}";
     </script>
 
     <link
@@ -35,17 +35,13 @@
 
     <link
       rel="stylesheet"
-      href="/css/application.css?v=${cache_busters['css/application.css']}"
-      integrity="sha384-${cache_busters['css/application.css']}"
-      crossorigin="anonymous"
+      href="${request.static_url('fishtest:static/css/application.css')}"
     >
 
     % if request.cookies.get('theme') == 'dark':
     <link
       rel="stylesheet"
-      href="/css/theme.dark.css?v=${cache_busters['css/theme.dark.css']}"
-      integrity="sha384-${cache_busters['css/theme.dark.css']}"
-      crossorigin="anonymous"
+      href="${request.static_url('fishtest:static/css/theme.dark.css')}"
     >
     % endif
 
@@ -57,17 +53,9 @@
       referrerpolicy="no-referrer"
     ></script>
 
-    <script
-      src="/js/application.js?v=${cache_busters['js/application.js']}"
-      integrity="sha384-${cache_busters['js/application.js']}"
-      crossorigin="anonymous"
-    ></script>
+    <script src="${request.static_url('fishtest:static/js/application.js')}"></script>
 
-    <script
-      src="/js/notifications.js?v=${cache_busters['js/notifications.js']}"
-      integrity="sha384-${cache_busters['js/notifications.js']}"
-      crossorigin="anonymous"
-    ></script>
+    <script src="${request.static_url('fishtest:static/js/notifications.js')}"></script>
 
     <%block name="head"/>
   </head>
