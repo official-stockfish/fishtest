@@ -140,7 +140,7 @@
 <script
   src="/js/sprt.js?v=${cache_busters['js/sprt.js']}"
   integrity="sha384-${cache_busters['js/sprt.js']}"
-  rossorigin="anonymous"
+  crossorigin="anonymous"
 ></script>
 
 <script
