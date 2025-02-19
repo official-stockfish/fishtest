@@ -74,6 +74,7 @@ fishtest = [
     "*.mako",
     "*.mem",
     "*.png",
+    "*.webp",
     "*.pt",
     "*.txt",
     "*.xml",
