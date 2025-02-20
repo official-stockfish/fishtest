@@ -106,17 +106,13 @@ function mediaTheme() {
 }
 
 // Click the sun/moon icons to change the color theme of the site
-// hash calculated by browser for sub-resource integrity checks:
-// https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity
 function setTheme(theme) {
   if (theme === "dark") {
     document.getElementById("sun").style.display = "";
     document.getElementById("moon").style.display = "none";
     const link = document.createElement("link");
     link["rel"] = "stylesheet";
-    link["href"] = "/css/theme.dark.css?v=" + darkThemeHash;
-    link["integrity"] = "sha384-" + darkThemeHash;
-    link["crossOrigin"] = "anonymous";
+    link["href"] = darkThemeHash;
     document.querySelector("head").append(link);
   } else {
     document.getElementById("sun").style.display = "none";
