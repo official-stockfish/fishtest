@@ -568,9 +568,7 @@ class RunDb:
 
         # "failed"
         # set in /api/stop_run
-        # in principle cleared in set_active_run() to comply with the schema
-        # but this method should never be invoked on a failed run (if it is then
-        # it is a bug)
+        # cleared in set_active_run()
         new_run["failed"] = False
 
         # "is_green"
