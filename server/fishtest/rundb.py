@@ -167,7 +167,6 @@ class RunDb:
                     wtt_map_schema,
                     self.wtt_map,
                     name="wtt_map",
-                    subs={"runs_schema": dict},
                 )
             with self.connections_lock:
                 validate(
@@ -210,28 +209,31 @@ class RunDb:
     def clean_wtt_map(self):
         with self.wtt_lock:
             for short_worker_name in list(self.wtt_map):
-                run, task_id = self.wtt_map[short_worker_name]
+                run_id, task_id = self.wtt_map[short_worker_name]
+                run = self.get_run(run_id)
                 task = run["tasks"][task_id]
                 if not task["active"]:
                     del self.wtt_map[short_worker_name]
         print(f"Clean_wtt_map: {len(self.wtt_map)} active workers...", flush=True)
 
     # Do not use this while holding an active_run_lock!
-    def insert_in_wtt_map(self, run, task_id):
+    def insert_in_wtt_map(self, run_id, task_id):
+        run = self.get_run(run_id)
         task = run["tasks"][task_id]
         if not task["active"]:
             return
         short_worker_name = worker_name(task["worker_info"], short=True)
         with self.wtt_lock:
             if short_worker_name in self.wtt_map:
-                wtt_run, wtt_task_id = self.wtt_map[short_worker_name]
+                wtt_run_id, wtt_task_id = self.wtt_map[short_worker_name]
+                wtt_run = self.get_run(wtt_run_id)
                 wtt_task = wtt_run["tasks"][wtt_task_id]
-                with self.active_run_lock(wtt_run["_id"]):
+                with self.active_run_lock(wtt_run_id):
                     if wtt_task["active"]:
                         self.failed_task(
-                            wtt_run["_id"], wtt_task_id, message="Stale active task"
+                            wtt_run_id, wtt_task_id, message="Stale active task"
                         )
-            self.wtt_map[short_worker_name] = run, task_id
+            self.wtt_map[short_worker_name] = run_id, task_id
 
     def validate_random_run(self):
         with self.unfinished_runs_lock:
@@ -438,7 +440,7 @@ class RunDb:
 
             with self.wtt_lock:
                 for task_id in range(len(run["tasks"])):
-                    self.insert_in_wtt_map(run, task_id)
+                    self.insert_in_wtt_map(run_id, task_id)
 
         self.update_itp()
         self.update_nps_gpm()
@@ -948,7 +950,8 @@ After fixing the issues you can unblock the worker at
         unique_key = worker_info["unique_key"]
         with self.wtt_lock:
             if my_name in self.wtt_map:
-                wtt_run, wtt_task_id = self.wtt_map[my_name]
+                wtt_run_id, wtt_task_id = self.wtt_map[my_name]
+                wtt_run = self.get_run(wtt_run_id)
                 wtt_task = wtt_run["tasks"][wtt_task_id]
                 if wtt_task["active"]:
                     task_name_long = worker_name(wtt_task["worker_info"])
@@ -1139,7 +1142,7 @@ After fixing the issues you can unblock the worker at
 
         # We give up the lock to avoid deadlock
 
-        self.insert_in_wtt_map(run, task_id)
+        self.insert_in_wtt_map(run_id, task_id)
 
         self.buffer(run, priority=Prio.HIGH)
 
