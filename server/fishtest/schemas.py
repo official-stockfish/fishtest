@@ -827,7 +827,7 @@ cache_schema = {
 }
 
 wtt_map_schema = {
-    short_worker_name: (runs_schema, task_id),
+    short_worker_name: (run_id, task_id),
 }
 
 connections_counter_schema = {
