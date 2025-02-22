@@ -531,6 +531,20 @@
                 </div>
                 % endfor
               % endif
+              % if request.session.peek_flash('warning'):
+                <% flash = request.session.pop_flash('warning') %>
+                % for message in flash:
+                <div class="alert alert-warning alert-dismissible">
+                  ${message}
+                  <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="alert"
+                    aria-label="Close"
+                  ></button>
+                </div>
+                % endfor
+              % endif
               % if request.session.peek_flash():
                 <% flash = request.session.pop_flash() %>
                 % for message in flash:
