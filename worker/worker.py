@@ -1438,20 +1438,26 @@ def fetch_and_handle_task(
                 try:
                     # Ignore non utf-8 characters in PGN file.
                     data = pgn_file.read_text(encoding="utf-8", errors="ignore")
-                    with io.BytesIO() as gz_buffer:
-                        with gzip.GzipFile(
-                            filename=f"{str(run['_id'])}-{task_id}.pgn.gz",
-                            mode="wb",
-                            fileobj=gz_buffer,
-                        ) as gz:
-                            gz.write(data.encode())
-                        payload["pgn"] = base64.b64encode(gz_buffer.getvalue()).decode()
-                    print(
-                        "Uploading compressed PGN of {} bytes".format(
-                            len(payload["pgn"])
+
+                    if data.endswith("\n\n"):
+                        with io.BytesIO() as gz_buffer:
+                            with gzip.GzipFile(
+                                filename=f"{str(run['_id'])}-{task_id}.pgn.gz",
+                                mode="wb",
+                                fileobj=gz_buffer,
+                            ) as gz:
+                                gz.write(data.encode())
+                            payload["pgn"] = base64.b64encode(
+                                gz_buffer.getvalue()
+                            ).decode()
+                        print(
+                            "Uploading compressed PGN of {} bytes".format(
+                                len(payload["pgn"])
+                            )
                         )
-                    )
-                    req = send_api_post_request(remote + "/api/upload_pgn", payload)
+                        req = send_api_post_request(remote + "/api/upload_pgn", payload)
+                    else:
+                        print("Skipping incomplete pgn upload")
                 except Exception as e:
                     print(
                         "\nException uploading PGN file:\n", e, sep="", file=sys.stderr
