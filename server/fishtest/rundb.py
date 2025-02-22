@@ -636,8 +636,22 @@ class RunDb:
         total_size = total_size_agg.next()["totalSize"] if total_size_agg.alive else 0
 
         if total_size > 0:
-            # Create a file reader from a generator that yields each pgn.gz file
-            pgns = self.pgndb.find(pgns_query, {"pgn_zip": 1, "_id": 0})
+            # Create a file reader from a generator that yields each pgn.gz file sorted for task_id
+            pipeline = [
+                {"$match": pgns_query},
+                {
+                    "$set": {
+                        "task_id": {
+                            "$toInt": {
+                                "$arrayElemAt": [{"$split": ["$run_id", "-"]}, 1]
+                            }
+                        }
+                    }
+                },
+                {"$sort": {"task_id": 1}},
+                {"$project": {"pgn_zip": 1, "_id": 0}},
+            ]
+            pgns = self.pgndb.aggregate(pipeline)
             pgns_reader = GeneratorAsFileReader(pgn["pgn_zip"] for pgn in pgns)
         else:
             pgns_reader = None
