@@ -1302,7 +1302,7 @@ def tests_modify(request):
     else:
         request.session.flash(
             "The run was successfully modified but it will have to be reapproved",
-            "error",
+            "warning",
         )
     return home(request)
 
