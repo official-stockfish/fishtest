@@ -32,11 +32,6 @@ from vtjson import ValidationError, union, validate
 HTTP_TIMEOUT = 15.0
 
 
-def cached_flash(request, requestString, *flash_args):
-    request.session.flash(requestString, *flash_args)
-    return
-
-
 def pagination(page_idx, num, page_size, query_params):
     pages = [
         {
@@ -1182,7 +1177,7 @@ def tests_run(request):
                 run=run,
                 message=new_run_message(request, run),
             )
-            cached_flash(request, "Submitted test to the queue!")
+            request.session.flash("Submitted test to the queue!")
             return HTTPFound(location="/tests/view/" + str(run_id) + "?follow=1")
         except Exception as e:
             request.session.flash(str(e), "error")
@@ -1324,7 +1319,7 @@ def tests_stop(request):
             run=run,
             message="User stop",
         )
-        cached_flash(request, "Stopped run")
+        request.session.flash("Stopped run")
     return home(request)
 
 
@@ -1346,7 +1341,7 @@ def tests_approve(request):
         except Exception as e:
             request.session.flash(str(e), "error")
         request.actiondb.approve_run(username=username, run=run, message="approved")
-        cached_flash(request, message)
+        request.session.flash(message)
     return home(request)
 
 
@@ -1374,7 +1369,7 @@ def tests_purge(request):
         request.session.flash(message)
         return home(request)
 
-    cached_flash(request, "Purged run")
+    request.session.flash("Purged run")
     return home(request)
 
 
@@ -1409,7 +1404,7 @@ def tests_delete(request):
             username=request.authenticated_userid,
             run=run,
         )
-        cached_flash(request, "Deleted run")
+        request.session.flash("Deleted run")
     return home(request)
 
 
