@@ -1459,6 +1459,7 @@ def run_games(
         pass
 
     # Verify that the signatures are correct.
+    print("Benchmarking worker and verifying signature", flush=True)
     run_errors = []
     try:
         base_nps, cpu_features = verify_signature(
