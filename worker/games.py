@@ -929,6 +929,7 @@ def parse_fastchess_output(
         return "-".join([word[0], word[1][:10]])
 
     saved_stats = copy.deepcopy(result["stats"])
+    crc = None
 
     # patterns used to obtain fastchess WLD and ptnml results from the following block of info:
     # --------------------------------------------------
@@ -971,7 +972,7 @@ def parse_fastchess_output(
         if current_state["task_id"] is None:
             # This task is no longer necessary
             print(finished_task_message)
-            return False
+            return False, crc
         try:
             line = q.get_nowait().strip()
         except Empty:
@@ -982,6 +983,10 @@ def parse_fastchess_output(
 
         line = hash_pattern.sub(shorten_hash, line)
         print(line, flush=True)
+
+        # Do we have a pgn crc?
+        if "has CRC32:" in line:
+            crc = line.split()[-1]
 
         # Have we reached the end of the match? Then just exit.
         if "Finished match" in line:
@@ -1098,7 +1103,7 @@ def parse_fastchess_output(
                         if not response["task_alive"]:
                             # This task is no longer necessary
                             print(finished_task_message)
-                            return False
+                            return False, crc
                         update_succeeded = True
                         num_games_updated = num_games_finished
                         break
@@ -1116,12 +1121,13 @@ def parse_fastchess_output(
             "{} is past end time {}".format(datetime.now(timezone.utc), end_time)
         )
 
-    return True
+    return True, crc
 
 
 def launch_fastchess(
     cmd, current_state, remote, result, spsa_tuning, games_to_play, batch_size, tc_limit
 ):
+    crc = None
     if spsa_tuning:
         # Request parameters for next game.
         req = send_api_post_request(remote + "/api/request_spsa", result)
@@ -1133,7 +1139,7 @@ def launch_fastchess(
             print(
                 "The server told us that no more games are needed for the current task."
             )
-            return False
+            return False, crc
 
         result["spsa"] = {
             "num_games": games_to_play,
@@ -1196,7 +1202,7 @@ def launch_fastchess(
             close_fds=not IS_WINDOWS,
         ) as p:
             try:
-                task_alive = parse_fastchess_output(
+                task_alive, crc = parse_fastchess_output(
                     p,
                     current_state,
                     remote,
@@ -1230,7 +1236,7 @@ def launch_fastchess(
         )
         raise WorkerException("Unable to start fastchess. Error: {}".format(str(e)))
 
-    return task_alive
+    return task_alive, crc
 
 
 def run_games(
@@ -1451,10 +1457,10 @@ def run_games(
 
     # PGN files output setup.
     pgn_name = "results-" + worker_info["unique_key"] + ".pgn"
-    pgn_file[0] = testing_dir / pgn_name
-    pgn_file = pgn_file[0]
+    pgn_file["name"] = testing_dir / pgn_name
+    pgn_file["CRC"] = None
     try:
-        pgn_file.unlink()
+        pgn_file["name"].unlink()
     except FileNotFoundError:
         pass
 
@@ -1595,6 +1601,7 @@ def run_games(
                 "penta=true",
             ]
             + pgnout
+            + ["-crc32", "pgn=true"]
             + ["-site", "https://tests.stockfishchess.org/tests/view/" + run["_id"]]
             + [
                 "-event",
@@ -1646,7 +1653,7 @@ def run_games(
             + book_cmd
         )
 
-        task_alive = launch_fastchess(
+        task_alive, crc = launch_fastchess(
             cmd,
             current_state,
             remote,
@@ -1659,6 +1666,8 @@ def run_games(
 
         games_remaining -= games_to_play
         start_game_index += games_to_play
+
+        pgn_file["CRC"] = crc
 
         if not task_alive:
             break

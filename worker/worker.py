@@ -19,6 +19,7 @@ import threading
 import time
 import traceback
 import uuid
+import zlib
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 from configparser import ConfigParser
 from datetime import datetime, timedelta, timezone
@@ -68,7 +69,7 @@ MIN_GCC_MINOR = 3
 MIN_CLANG_MAJOR = 8
 MIN_CLANG_MINOR = 0
 
-FASTCHESS_SHA = "894616028492ae6114835195f14a899f6fa237d3"
+FASTCHESS_SHA = "584c074be5fb5636fb4138162d96f02dda4076a8"
 
 WORKER_VERSION = 263
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
@@ -1383,7 +1384,8 @@ def fetch_and_handle_task(
     message = ""
     server_message = ""
     api = remote + "/api/failed_task"
-    pgn_file = [None]
+    pgn_file = {"name": None, "CRC": None}
+
     try:
         run_games(
             worker_info,
@@ -1431,11 +1433,16 @@ def fetch_and_handle_task(
         except Exception as e:
             print("Exception posting failed_task:\n", e, sep="", file=sys.stderr)
     # Upload PGN file.
-    if pgn_file[0] is not None:
-        pgn_file = pgn_file[0]
+    if pgn_file["name"] is not None:
+        crc_fc = pgn_file["CRC"]
+        pgn_file = pgn_file["name"]
         if pgn_file.exists():
             if "spsa" not in run["args"]:
                 try:
+                    # checksum the pgn file first
+                    crc = hex(zlib.crc32(pgn_file.read_bytes()))
+                    print("Have ", crc, " and ", crc_fc)
+
                     # Ignore non utf-8 characters in PGN file.
                     data = pgn_file.read_text(encoding="utf-8", errors="ignore")
                     with io.BytesIO() as gz_buffer:
