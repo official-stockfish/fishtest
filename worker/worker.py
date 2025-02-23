@@ -19,6 +19,7 @@ import threading
 import time
 import traceback
 import uuid
+import zlib
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
 from configparser import ConfigParser
 from datetime import datetime, timedelta, timezone
@@ -68,9 +69,9 @@ MIN_GCC_MINOR = 3
 MIN_CLANG_MAJOR = 8
 MIN_CLANG_MINOR = 0
 
-FASTCHESS_SHA = "894616028492ae6114835195f14a899f6fa237d3"
+FASTCHESS_SHA = "3bc5bffd4b64a439755a19507aba1b9a23a72f77"
 
-WORKER_VERSION = 263
+WORKER_VERSION = 264
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -1383,7 +1384,8 @@ def fetch_and_handle_task(
     message = ""
     server_message = ""
     api = remote + "/api/failed_task"
-    pgn_file = [None]
+    pgn_file = {"name": None, "CRC": None}
+
     try:
         run_games(
             worker_info,
@@ -1430,40 +1432,50 @@ def fetch_and_handle_task(
             req = send_api_post_request(api, payload)
         except Exception as e:
             print("Exception posting failed_task:\n", e, sep="", file=sys.stderr)
-    # Upload PGN file.
-    if pgn_file[0] is not None:
-        pgn_file = pgn_file[0]
-        if pgn_file.exists():
-            if "spsa" not in run["args"]:
-                try:
-                    # Ignore non utf-8 characters in PGN file.
-                    data = pgn_file.read_text(encoding="utf-8", errors="ignore")
-                    with io.BytesIO() as gz_buffer:
-                        with gzip.GzipFile(
-                            filename=f"{str(run['_id'])}-{task_id}.pgn.gz",
-                            mode="wb",
-                            fileobj=gz_buffer,
-                        ) as gz:
-                            gz.write(data.encode())
-                        payload["pgn"] = base64.b64encode(gz_buffer.getvalue()).decode()
-                    print(
-                        "Uploading compressed PGN of {} bytes".format(
-                            len(payload["pgn"])
-                        )
-                    )
-                    req = send_api_post_request(remote + "/api/upload_pgn", payload)
-                except Exception as e:
-                    print(
-                        "\nException uploading PGN file:\n", e, sep="", file=sys.stderr
-                    )
 
-            try:
-                pgn_file.unlink()
-            except Exception as e:
-                print("Exception deleting PGN file:\n", e, sep="", file=sys.stderr)
+    def upload_pgn_data(pgn_data, run_id, task_id, remote, payload):
+        with io.BytesIO() as gz_buffer:
+            with gzip.GzipFile(
+                filename=f"{str(run_id)}-{task_id}.pgn.gz",
+                mode="wb",
+                fileobj=gz_buffer,
+            ) as gz:
+                gz.write(pgn_data.encode())
+            payload["pgn"] = base64.b64encode(gz_buffer.getvalue()).decode()
+
+        print("Uploading compressed PGN of {} bytes".format(len(payload["pgn"])))
+        return send_api_post_request(remote + "/api/upload_pgn", payload)
+
+    if not pgn_file["name"] or not pgn_file["name"].exists():
+        print("Task exited")
+        return success
+
+    crc_expected = pgn_file["CRC"]
+    pgn_file = pgn_file["name"]
+
+    # Upload PGN file.
+    if "spsa" not in run["args"]:
+        try:
+            crc_actual = hex(zlib.crc32(pgn_file.read_bytes()))
+
+            # Check that the file is not corrupted
+            if crc_actual != crc_expected:
+                print(
+                    f"Checksum of file ({crc_actual}) does not match expected value ({crc_expected}).\nSkipping upload."
+                )
+            else:
+                # Ignore non UTF-8 characters in PGN file
+                data = pgn_file.read_text(encoding="utf-8", errors="ignore")
+                upload_pgn_data(data, run["_id"], task_id, remote, payload)
+        except Exception as e:
+            print("\nException uploading PGN file:\n", e, sep="", file=sys.stderr)
+
+    try:
+        pgn_file.unlink()
+    except Exception as e:
+        print("Exception deleting PGN file:\n", e, sep="", file=sys.stderr)
 
     print("Task exited")
-
     return success
 
 
