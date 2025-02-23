@@ -476,11 +476,6 @@ zero_results = {
 }
 
 
-if_bad_then_zero_stats_and_not_active = ifthen(
-    keys("bad"), lax({"active": False, "stats": quote(zero_results)})
-)
-
-
 def compute_results(run):
     results = copy.deepcopy(zero_results)
     for task in run["tasks"]:
@@ -639,7 +634,7 @@ valid_aggregated_data = intersect(
 # about non-validation of runs created with the prior
 # schema.
 
-RUN_VERSION = 7
+RUN_VERSION = 8
 
 runs_schema = intersect(
     {
@@ -763,9 +758,19 @@ runs_schema = intersect(
                     "start": uint,
                     "bad?": True,
                     "stats": results_schema,
+                    "spsa_params?": [
+                        {
+                            "R": unumber,
+                            "c": unumber,
+                            "flip": union(-1, 1),
+                        }
+                    ],
                     "worker_info": worker_info_schema_runs,
                 },
-                if_bad_then_zero_stats_and_not_active,
+                ifthen(
+                    keys("bad"), lax({"active": False, "stats": quote(zero_results)})
+                ),
+                ifthen(keys("spsa_params"), lax({"active": True})),
             ),
             ...,
         ],
