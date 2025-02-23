@@ -1153,7 +1153,7 @@ def launch_fastchess(
             print(
                 "The server told us that no more games are needed for the current task."
             )
-            return False, crc
+            return False
 
         result["spsa"] = {
             "num_games": games_to_play,
