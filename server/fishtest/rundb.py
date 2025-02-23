@@ -299,6 +299,8 @@ class RunDb:
                     + stats["draws"]
                 )
                 task["last_updated"] = datetime.now(timezone.utc)
+                if "spsa_params" in task:
+                    del task["spsa_params"]
                 task["active"] = False
                 with self.connections_lock:
                     try:
@@ -1325,30 +1327,29 @@ After fixing the issues you can unblock the worker at
         task["last_updated"] = update_time
         task["worker_info"] = worker_info  # updates rate, ARCH, nps
 
+        if "spsa" in run["args"] and spsa_games == spsa["num_games"]:
+            self.sync_update_spsa(run_id, task_id, spsa)
+
         task_finished = False
-        if num_games >= task["num_games"]:
-            # This task is now finished
-            task_finished = True
-            self.set_inactive_task(task_id, run)
-
-        # Now update the current run.
-
-        run["last_updated"] = update_time
 
         if "sprt" in run["args"]:
             sprt = run["args"]["sprt"]
             fishtest.stats.stat_util.update_SPRT(run["results"], sprt)
             if sprt["state"] != "":
                 task_finished = True
-                self.set_inactive_task(task_id, run)
 
-        if "spsa" in run["args"] and spsa_games == spsa["num_games"]:
-            self.update_spsa(task["worker_info"]["unique_key"], run, spsa)
-
-        # Record tasks with an excessive amount of crashes or time losses in the event log
+        if num_games >= task["num_games"]:
+            # This task is now finished
+            task_finished = True
 
         if task_finished:
+            self.set_inactive_task(task_id, run)
+            # Record tasks with an excessive amount of crashes or time losses in the event log
             self.handle_crash_or_time(run, task_id)
+
+        # Now update the current run.
+
+        run["last_updated"] = update_time
 
         # Check if the run is finished.
 
@@ -1411,7 +1412,6 @@ After fixing the issues you can unblock the worker at
           - for stopping SPRT runs if the test is accepted or rejected
           - for stopping a run after all games are finished
         """
-        self.clear_params(run_id)  # spsa stuff
         run = self.get_run(run_id)
         self.set_inactive_run(run)
 
@@ -1543,28 +1543,11 @@ After fixing the issues you can unblock the worker at
     def spsa_param_clip(self, param, increment):
         return min(max(param["theta"] + increment, param["min"]), param["max"])
 
-    # Store SPSA parameters for each worker
-    spsa_params = {}
-
-    def store_params(self, run_id, worker, params):
-        run_id = str(run_id)
-        if run_id not in self.spsa_params:
-            self.spsa_params[run_id] = {}
-        self.spsa_params[run_id][worker] = params
-
-    def get_params(self, run_id, worker):
-        run_id = str(run_id)
-        if run_id not in self.spsa_params or worker not in self.spsa_params[run_id]:
-            # Should only happen after server restart
-            return self.generate_spsa(self.get_run(run_id))["w_params"]
-        return self.spsa_params[run_id][worker]
-
-    def clear_params(self, run_id):
-        run_id = str(run_id)
-        if run_id in self.spsa_params:
-            del self.spsa_params[run_id]
-
     def request_spsa(self, run_id, task_id):
+        with self.active_run_lock(run_id):
+            return self.sync_request_spsa(run_id, task_id)
+
+    def sync_request_spsa(self, run_id, task_id):
         run = self.get_run(run_id)
         task = run["tasks"][task_id]
         # Check if the worker is still working on this task.
@@ -1573,14 +1556,16 @@ After fixing the issues you can unblock the worker at
             print(info, flush=True)
             return {"task_alive": False, "info": info}
 
-        result = self.generate_spsa(run)
-        self.store_params(
-            run["_id"], task["worker_info"]["unique_key"], result["w_params"]
-        )
+        result = self.sync_generate_spsa(run_id)
+        task["spsa_params"] = [
+            {k: v for k, v in w_param.items() if k in ["R", "c", "flip"]}
+            for w_param in result["w_params"]
+        ]
         return result
 
-    def generate_spsa(self, run):
+    def sync_generate_spsa(self, run_id):
         result = {"task_alive": True, "w_params": [], "b_params": []}
+        run = self.get_run(run_id)
         spsa = run["args"]["spsa"]
 
         # Generate the next set of tuning parameters
@@ -1606,7 +1591,9 @@ After fixing the issues you can unblock the worker at
 
         return result
 
-    def update_spsa(self, worker, run, spsa_results):
+    def sync_update_spsa(self, run_id, task_id, spsa_results):
+        run = self.get_run(run_id)
+        task = run["tasks"][task_id]
         spsa = run["args"]["spsa"]
         spsa["iter"] += int(spsa_results["num_games"] / 2)
 
@@ -1624,7 +1611,7 @@ After fixing the issues you can unblock the worker at
         # Worker wins/losses are always in terms of w_params
         result = spsa_results["wins"] - spsa_results["losses"]
         summary = []
-        w_params = self.get_params(run["_id"], worker)
+        w_params = task["spsa_params"]
         for idx, param in enumerate(spsa["params"]):
             R = w_params[idx]["R"]
             c = w_params[idx]["c"]
