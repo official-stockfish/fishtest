@@ -1432,45 +1432,50 @@ def fetch_and_handle_task(
             req = send_api_post_request(api, payload)
         except Exception as e:
             print("Exception posting failed_task:\n", e, sep="", file=sys.stderr)
+
+    def upload_pgn_data(pgn_data, run_id, task_id, remote, payload):
+        with io.BytesIO() as gz_buffer:
+            with gzip.GzipFile(
+                filename=f"{str(run_id)}-{task_id}.pgn.gz",
+                mode="wb",
+                fileobj=gz_buffer,
+            ) as gz:
+                gz.write(pgn_data.encode())
+            payload["pgn"] = base64.b64encode(gz_buffer.getvalue()).decode()
+
+        print("Uploading compressed PGN of {} bytes".format(len(payload["pgn"])))
+        return send_api_post_request(remote + "/api/upload_pgn", payload)
+
+    if not pgn_file["name"] or not pgn_file["name"].exists():
+        print("Task exited")
+        return success
+
+    crc_expected = pgn_file["CRC"]
+    pgn_file = pgn_file["name"]
+
     # Upload PGN file.
-    if pgn_file["name"] is not None:
-        crc_fc = pgn_file["CRC"]
-        pgn_file = pgn_file["name"]
-        if pgn_file.exists():
-            if "spsa" not in run["args"]:
-                try:
-                    # checksum the pgn file first
-                    crc = hex(zlib.crc32(pgn_file.read_bytes()))
-                    print("Have ", crc, " and ", crc_fc)
+    if "spsa" not in run["args"]:
+        try:
+            crc_actual = hex(zlib.crc32(pgn_file.read_bytes()))
 
-                    # Ignore non utf-8 characters in PGN file.
-                    data = pgn_file.read_text(encoding="utf-8", errors="ignore")
-                    with io.BytesIO() as gz_buffer:
-                        with gzip.GzipFile(
-                            filename=f"{str(run['_id'])}-{task_id}.pgn.gz",
-                            mode="wb",
-                            fileobj=gz_buffer,
-                        ) as gz:
-                            gz.write(data.encode())
-                        payload["pgn"] = base64.b64encode(gz_buffer.getvalue()).decode()
-                    print(
-                        "Uploading compressed PGN of {} bytes".format(
-                            len(payload["pgn"])
-                        )
-                    )
-                    req = send_api_post_request(remote + "/api/upload_pgn", payload)
-                except Exception as e:
-                    print(
-                        "\nException uploading PGN file:\n", e, sep="", file=sys.stderr
-                    )
+            # Check that the file is not corrupted
+            if crc_actual != crc_expected:
+                print(
+                    f"Checksum of file ({crc_actual}) does not match expected value ({crc_expected}).\nSkipping upload."
+                )
+            else:
+                # Ignore non UTF-8 characters in PGN file
+                data = pgn_file.read_text(encoding="utf-8", errors="ignore")
+                upload_pgn_data(data, run["_id"], task_id, remote, payload)
+        except Exception as e:
+            print("\nException uploading PGN file:\n", e, sep="", file=sys.stderr)
 
-            try:
-                pgn_file.unlink()
-            except Exception as e:
-                print("Exception deleting PGN file:\n", e, sep="", file=sys.stderr)
+    try:
+        pgn_file.unlink()
+    except Exception as e:
+        print("Exception deleting PGN file:\n", e, sep="", file=sys.stderr)
 
     print("Task exited")
-
     return success
 
 
