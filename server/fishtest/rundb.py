@@ -1561,6 +1561,9 @@ After fixing the issues you can unblock the worker at
             {k: v for k, v in w_param.items() if k in ["R", "c", "flip"]}
             for w_param in result["w_params"]
         ]
+        # We use Prio.HIGH until we have implemented a better
+        # way to protect against server SIGKILL.
+        self.buffer(run, priority=Prio.HIGH)
         return result
 
     def sync_generate_spsa(self, run_id):
@@ -1611,6 +1614,13 @@ After fixing the issues you can unblock the worker at
         # Worker wins/losses are always in terms of w_params
         result = spsa_results["wins"] - spsa_results["losses"]
         summary = []
+        # The following error can be triggered if the server is killed with SIGKILL
+        if "spsa_params" not in task:
+            print(
+                f"Update_task: spsa_params not found for {run_id}/{task_id}. Skipping update...",
+                flush=True,
+            )
+            return
         w_params = task["spsa_params"]
         for idx, param in enumerate(spsa["params"]):
             R = w_params[idx]["R"]
