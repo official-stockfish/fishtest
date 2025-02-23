@@ -919,7 +919,15 @@ def enqueue_output(stream, queue):
 
 
 def parse_fastchess_output(
-    p, current_state, remote, result, spsa_tuning, games_to_play, batch_size, tc_limit
+    p,
+    current_state,
+    remote,
+    result,
+    spsa_tuning,
+    games_to_play,
+    batch_size,
+    tc_limit,
+    pgn_file,
 ):
     finished_task_message = (
         "The server told us that no more games are needed for the current task."
@@ -984,6 +992,10 @@ def parse_fastchess_output(
 
         line = hash_pattern.sub(shorten_hash, line)
         print(line, flush=True)
+
+        # Do we have a pgn crc?
+        if "has CRC32:" in line:
+            pgn_file["CRC"] = line.split()[-1]
 
         # Have we reached the end of the match? Then just exit.
         if "Finished match" in line:
@@ -1122,7 +1134,15 @@ def parse_fastchess_output(
 
 
 def launch_fastchess(
-    cmd, current_state, remote, result, spsa_tuning, games_to_play, batch_size, tc_limit
+    cmd,
+    current_state,
+    remote,
+    result,
+    spsa_tuning,
+    games_to_play,
+    batch_size,
+    tc_limit,
+    pgn_file,
 ):
     if spsa_tuning:
         # Request parameters for next game.
@@ -1207,6 +1227,7 @@ def launch_fastchess(
                     games_to_play,
                     batch_size,
                     tc_limit,
+                    pgn_file,
                 )
             finally:
                 # We nicely ask fastchess to stop.
@@ -1449,10 +1470,10 @@ def run_games(
 
     # PGN files output setup.
     pgn_name = "results-" + worker_info["unique_key"] + ".pgn"
-    pgn_file[0] = testing_dir / pgn_name
-    pgn_file = pgn_file[0]
+    pgn_file["name"] = testing_dir / pgn_name
+    pgn_file["CRC"] = None
     try:
-        pgn_file.unlink()
+        pgn_file["name"].unlink()
     except FileNotFoundError:
         pass
 
@@ -1594,6 +1615,7 @@ def run_games(
                 "penta=true",
             ]
             + pgnout
+            + ["-crc32", "pgn=true"]
             + ["-site", "https://tests.stockfishchess.org/tests/view/" + run["_id"]]
             + [
                 "-event",
@@ -1654,6 +1676,7 @@ def run_games(
             games_to_play,
             batch_size,
             tc_limit * max(8, games_to_play / games_concurrency),
+            pgn_file,
         )
 
         games_remaining -= games_to_play
