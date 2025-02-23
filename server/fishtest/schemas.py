@@ -763,7 +763,8 @@ runs_schema = intersect(
                             "R": unumber,
                             "c": unumber,
                             "flip": union(-1, 1),
-                        }
+                        },
+                        ...,
                     ],
                     "worker_info": worker_info_schema_runs,
                 },
