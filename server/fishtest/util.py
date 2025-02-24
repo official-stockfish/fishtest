@@ -591,3 +591,7 @@ def strip_run(run):
         stripped[key] = str(run[key])
 
     return stripped
+
+
+def count_games(d):
+    return d["wins"] + d["losses"] + d["draws"]

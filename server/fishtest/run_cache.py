@@ -67,7 +67,7 @@ class RunCache:
         Guidelines for priority
         =======================
         Prio.MEDIUM: finished task
-        Prio.HIGH: new task, request spsa
+        Prio.HIGH: new task
         Prio.SAVE_NOW: new run (combined with create=True),
                        finished run, modify/approve/purge run
         Prio.NORMAL: all other uses

@@ -634,7 +634,7 @@ valid_aggregated_data = intersect(
 # about non-validation of runs created with the prior
 # schema.
 
-RUN_VERSION = 8
+RUN_VERSION = 9
 
 runs_schema = intersect(
     {
@@ -758,14 +758,17 @@ runs_schema = intersect(
                     "start": uint,
                     "bad?": True,
                     "stats": results_schema,
-                    "spsa_params?": [
-                        {
-                            "R": unumber,
-                            "c": unumber,
-                            "flip": union(-1, 1),
-                        },
-                        ...,
-                    ],
+                    "spsa_params?": {
+                        "start": uint,
+                        "w_params": [
+                            {
+                                "R": unumber,
+                                "c": unumber,
+                                "flip": union(-1, 1),
+                            },
+                            ...,
+                        ],
+                    },
                     "worker_info": worker_info_schema_runs,
                 },
                 ifthen(
