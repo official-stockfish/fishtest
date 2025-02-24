@@ -118,12 +118,11 @@ def update(restart=True, test=False):
                     file=sys.stderr,
                 )
         # Salvage fastchess binary
-        fastchess_binary = Path("fastchess" + EXE_SUFFIX)
-        old_fast_chess = bkp_testing_dir / fastchess_binary
-        if old_fast_chess.exists():
-            new_fast_chess = testing_dir / fastchess_binary
+        bkp_fastchess = (bkp_testing_dir / "fastchess").with_suffix(EXE_SUFFIX)
+        if bkp_fastchess.exists():
+            fastchess_path = (testing_dir / "fastchess").with_suffix(EXE_SUFFIX)
             try:
-                old_fast_chess.replace(new_fast_chess)
+                bkp_fastchess.replace(fastchess_path)
             except Exception as e:
                 print(
                     "Failed to preserve fastchess binary:\n",

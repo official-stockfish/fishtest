@@ -70,7 +70,7 @@ MIN_CLANG_MINOR = 0
 
 FASTCHESS_SHA = "894616028492ae6114835195f14a899f6fa237d3"
 
-WORKER_VERSION = 263
+WORKER_VERSION = 264
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -399,7 +399,7 @@ def verify_required_fastchess(fastchess_path, fastchess_sha):
     if not fastchess_path.exists():
         return False
 
-    print("Obtaining version info for {} ...".format(fastchess_path))
+    print("Obtaining version info for {}...".format(fastchess_path))
 
     try:
         with subprocess.Popen(
@@ -450,33 +450,25 @@ def verify_required_fastchess(fastchess_path, fastchess_sha):
 
 
 def setup_fastchess(worker_dir, compiler, concurrency, global_cache, tests=False):
-    # Create the testing directory if missing.
-    testing_dir = worker_dir / "testing"
-    testing_dir.mkdir(exist_ok=True)
-
-    username = "Disservin"
-
-    fastchess = "fastchess" + EXE_SUFFIX
-    if verify_required_fastchess(testing_dir / fastchess, FASTCHESS_SHA):
+    fastchess_path = (worker_dir / "testing" / "fastchess").with_suffix(EXE_SUFFIX)
+    if verify_required_fastchess(fastchess_path, FASTCHESS_SHA):
         return True
 
     # build it ourselves
-    tmp_dir = Path(tempfile.mkdtemp(dir=testing_dir))
-    cd = Path.cwd()
+    tmp_dir = Path(tempfile.mkdtemp(dir=worker_dir))
+
     try:
-        item_url = (
-            "https://api.github.com/repos/"
-            + username
-            + "/fastchess/zipball/"
-            + FASTCHESS_SHA
-        )
-
-        print("Building fastchess from sources at {}".format(item_url))
-
+        print("Building fastchess from sources...")
         should_cache = False
         blob = cache_read(global_cache, FASTCHESS_SHA + ".zip")
 
         if blob is None:
+            item_url = (
+                "https://api.github.com/repos/"
+                + "Disservin"
+                + "/fastchess/zipball/"
+                + FASTCHESS_SHA
+            )
             print("Downloading {}".format(item_url))
             blob = requests_get(item_url).content
             should_cache = True
@@ -484,12 +476,12 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache, tests=False
             print("Using {} from global cache".format(FASTCHESS_SHA + ".zip"))
 
         file_list = unzip(blob, tmp_dir)
-        prefix = os.path.commonprefix([n.filename for n in file_list])
+        build_dir = tmp_dir / os.path.commonprefix([n.filename for n in file_list])
 
         if should_cache:
             cache_write(global_cache, FASTCHESS_SHA + ".zip", blob)
 
-        os.chdir(tmp_dir / prefix)
+        os.chdir(build_dir)
 
         cmds = [
             f"make -j{concurrency} CXX={compiler} GIT_SHA={FASTCHESS_SHA[:8]} GIT_DATE=01010101",
@@ -497,7 +489,7 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache, tests=False
         if tests:
             cmds[:0] = [
                 f"make -j{concurrency} tests CXX={compiler} GIT_SHA={FASTCHESS_SHA[:8]} GIT_DATE=01010101",
-                str(tmp_dir / prefix / f"fastchess-tests{EXE_SUFFIX}"),
+                str((build_dir / "fastchess-tests").with_suffix(EXE_SUFFIX)),
                 "make clean",
             ]
 
@@ -529,7 +521,7 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache, tests=False
                     "Executing {} failed. Error: {}".format(cmd, errors)
                 )
 
-        shutil.copy("fastchess" + EXE_SUFFIX, testing_dir)
+        (build_dir / "fastchess").with_suffix(EXE_SUFFIX).rename(fastchess_path)
 
     except Exception as e:
         print(
@@ -539,10 +531,10 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache, tests=False
             file=sys.stderr,
         )
     finally:
-        os.chdir(cd)
+        os.chdir(worker_dir)
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
-    return verify_required_fastchess(testing_dir / fastchess, FASTCHESS_SHA)
+    return verify_required_fastchess(fastchess_path, FASTCHESS_SHA)
 
 
 def validate(config, schema):
@@ -1231,14 +1223,14 @@ def heartbeat(worker_info, password, remote, current_state):
         time.sleep(1)
         now = datetime.now(timezone.utc)
         if current_state["last_updated"] + timedelta(seconds=120) < now:
-            print("  Send heartbeat for", worker_info["unique_key"], end=" ... ")
+            print("  Send heartbeat for", worker_info["unique_key"], end="... ")
             current_state["last_updated"] = now
             run = current_state["run"]
             payload["run_id"] = str(run["_id"]) if run else None
             task_id = current_state["task_id"]
             payload["task_id"] = task_id
             if payload["run_id"] is None or payload["task_id"] is None:
-                print("Skipping heartbeat ...")
+                print("Skipping heartbeat...")
                 continue
             try:
                 req = send_api_post_request(remote + "/api/beat", payload, quiet=True)
@@ -1484,7 +1476,10 @@ def worker():
         print("\n *** Unexpected exception: {} ***\n".format(str(e)))
 
     worker_dir = Path(__file__).resolve().parent
-    print("Worker started in {} ... (PID={})".format(worker_dir, os.getpid()))
+    print("Worker started in {} with PID={}".format(worker_dir, os.getpid()))
+
+    # Create the testing directory if missing.
+    (worker_dir / "testing").mkdir(exist_ok=True)
 
     # We record some state that is shared by the three
     # parallel event handling mechanisms:
