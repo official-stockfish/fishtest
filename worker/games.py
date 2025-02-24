@@ -284,7 +284,7 @@ def github_api(repo):
 def required_nets(engine):
     nets = {}
     pattern = re.compile(r"(EvalFile\w*)\s+.*\s+(nn-[a-f0-9]{12}.nnue)")
-    print("Obtaining EvalFile of {} ...".format(os.path.basename(engine)))
+    print("Obtaining EvalFile of {}...".format(engine.name))
     try:
         with subprocess.Popen(
             [engine, "uci"],
@@ -499,7 +499,7 @@ def verify_signature(engine, signature, games_concurrency, threads):
     if int(bench_nodes) != int(signature):
         message = (
             f"Wrong bench in {engine.name}, "
-            f"user expected: {signature} but worker got: {bench_nodes}"
+            f"user expected: {signature} but worker got: {int(bench_nodes)}"
         )
         raise RunException(message)
 
@@ -550,7 +550,7 @@ def download_from_github(
 
 
 def unzip(blob, save_dir):
-    cd = os.getcwd()
+    cd = Path.cwd()
     os.chdir(save_dir)
     zipball = io.BytesIO(blob)
     with ZipFile(zipball) as zip_file:
@@ -746,9 +746,7 @@ def find_arch(compiler):
 
 
 def setup_engine(
-    destination,
-    worker_dir,
-    testing_dir,
+    engine_path,
     remote,
     sha,
     repo_url,
@@ -757,7 +755,9 @@ def setup_engine(
     global_cache,
     env,
 ):
-    """Download and build sources in a temporary directory then move exe to destination"""
+    """Download and build sources in a temporary directory then move exe as engine_path"""
+    worker_dir = engine_path.parents[1]
+    testing_dir = engine_path.parent
     tmp_dir = Path(tempfile.mkdtemp(dir=worker_dir))
 
     try:
@@ -777,8 +777,10 @@ def setup_engine(
         if blob_needs_write:
             cache_write(global_cache, sha + ".zip", blob)
 
-        prefix = os.path.commonprefix([n.filename for n in file_list])
-        os.chdir(tmp_dir / prefix / "src")
+        build_dir = (
+            tmp_dir / os.path.commonprefix([n.filename for n in file_list]) / "src"
+        )
+        os.chdir(build_dir)
 
         for net in required_nets_from_source():
             print("Build uses default net:", net)
@@ -843,10 +845,10 @@ def setup_engine(
 
         # We called setup_engine() because the engine was not cached.
         # Only another worker running in the same folder can have built the engine.
-        if os.path.exists(destination):
+        if engine_path.exists():
             raise FatalException("Another worker is running in the same directory!")
         else:
-            shutil.move("stockfish" + EXE_SUFFIX, destination)
+            (build_dir / "stockfish").with_suffix(EXE_SUFFIX).rename(engine_path)
     finally:
         os.chdir(worker_dir)
         shutil.rmtree(tmp_dir)
@@ -854,7 +856,7 @@ def setup_engine(
 
 def kill_process(p):
     p_name = os.path.basename(p.args[0])
-    print("Killing {} with pid {} ... ".format(p_name, p.pid), end="", flush=True)
+    print("Killing {} with PID {}... ".format(p_name, p.pid), end="", flush=True)
     try:
         if IS_WINDOWS:
             # p.kill() doesn't kill subprocesses on Windows.
@@ -867,7 +869,7 @@ def kill_process(p):
             p.kill()
     except Exception as e:
         print(
-            "\nException killing {} with pid {}, possibly already terminated:\n".format(
+            "\nException killing {} with PID {}, possibly already terminated:\n".format(
                 p_name, p.pid
             ),
             e,
@@ -1213,7 +1215,7 @@ def launch_fastchess(
                 except Exception as e:
                     print("\nException in send_sigint:\n", e, sep="", file=sys.stderr)
                 # now wait...
-                print("\nWaiting for fastchess to finish ... ", end="", flush=True)
+                print("\nWaiting for fastchess to finish... ", end="", flush=True)
                 try:
                     p.wait(timeout=FASTCHESS_KILL_TIMEOUT)
                 except subprocess.TimeoutExpired:
@@ -1386,15 +1388,13 @@ def run_games(
     new_engine_name = "stockfish_" + sha_new + "_" + bs
     base_engine_name = "stockfish_" + sha_base + "_" + bs
 
-    new_engine = testing_dir / (new_engine_name + EXE_SUFFIX)
-    base_engine = testing_dir / (base_engine_name + EXE_SUFFIX)
+    new_engine = (testing_dir / new_engine_name).with_suffix(EXE_SUFFIX)
+    base_engine = (testing_dir / base_engine_name).with_suffix(EXE_SUFFIX)
 
     # Build from sources new and base engines as needed.
     if not new_engine.exists():
         setup_engine(
             new_engine,
-            worker_dir,
-            testing_dir,
             remote,
             sha_new,
             repo_url,
@@ -1406,8 +1406,6 @@ def run_games(
     if not base_engine.exists():
         setup_engine(
             base_engine,
-            worker_dir,
-            testing_dir,
             remote,
             sha_base,
             repo_url,
@@ -1459,7 +1457,7 @@ def run_games(
         pass
 
     # Verify that the signatures are correct.
-    print("Benchmarking worker and verifying signature", flush=True)
+    print("Benchmarking worker and verifying signature...", flush=True)
     run_errors = []
     try:
         base_nps, cpu_features = verify_signature(
@@ -1574,10 +1572,10 @@ def run_games(
             variant = "fischerandom"
 
         # Run fastchess binary.
-        fastchess = "fastchess" + EXE_SUFFIX
+        fastchess_path = (testing_dir / "fastchess").with_suffix(EXE_SUFFIX)
         cmd = (
             [
-                os.path.join(testing_dir, fastchess),
+                str(fastchess_path),
                 "-recover",
                 "-repeat",
                 "-games",

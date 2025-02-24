@@ -1,3 +1,5 @@
+import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -13,12 +15,19 @@ import worker
 
 class WorkerTest(unittest.TestCase):
     def setUp(self):
+        self.worker_dir = Path(__file__).resolve().parents[1]
         self.tempdir_obj = tempfile.TemporaryDirectory()
         self.tempdir = Path(self.tempdir_obj.name)
-        self.original_cwd = Path.cwd()
+        (self.tempdir / "testing").mkdir()
 
     def tearDown(self):
-        self.tempdir_obj.cleanup()
+        try:
+            self.tempdir_obj.cleanup()
+        except PermissionError as e:
+            if os.name == "nt":
+                shutil.rmtree(self.tempdir, ignore_errors=True)
+            else:
+                raise e
 
     def test_item_download(self):
         blob = None
@@ -43,7 +52,7 @@ class WorkerTest(unittest.TestCase):
         self.assertTrue(config.has_option("parameters", "concurrency"))
 
     def test_worker_script_with_bad_args(self):
-        self.assertFalse((self.original_cwd / "fishtest.cfg").exists())
+        self.assertFalse((self.worker_dir / "fishtest.cfg").exists())
         p = subprocess.run(["python", "worker.py", "--no-validation"])
         self.assertEqual(p.returncode, 1)
 
@@ -57,7 +66,7 @@ class WorkerTest(unittest.TestCase):
         self.assertIn("worker.py", file_list)
 
     def test_sri(self):
-        self.assertTrue(worker.verify_sri(self.original_cwd))
+        self.assertTrue(worker.verify_sri(self.worker_dir))
 
     def test_toolchain_verification(self):
         self.assertTrue(worker.verify_toolchain())
