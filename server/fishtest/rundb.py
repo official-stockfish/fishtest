@@ -37,6 +37,7 @@ from fishtest.stats.stat_util import SPRT_elo
 from fishtest.userdb import UserDb
 from fishtest.util import (
     GeneratorAsFileReader,
+    count_games,
     crash_or_time,
     estimate_game_duration,
     get_bad_workers,
@@ -50,8 +51,6 @@ from fishtest.util import (
 from fishtest.workerdb import WorkerDb
 from pymongo import DESCENDING, MongoClient
 from vtjson import ValidationError, validate
-
-boot_time = datetime.now(timezone.utc)
 
 
 class RunDb:
@@ -1254,9 +1253,6 @@ After fixing the issues you can unblock the worker at
 
         error = ""
 
-        def count_games(d):
-            return d["wins"] + d["losses"] + d["draws"]
-
         num_games = count_games(stats)
         old_num_games = count_games(task["stats"]) if "stats" in task else 0
         spsa_games = count_games(spsa) if "spsa" in run["args"] else 0
@@ -1550,6 +1546,7 @@ After fixing the issues you can unblock the worker at
     def sync_request_spsa(self, run_id, task_id):
         run = self.get_run(run_id)
         task = run["tasks"][task_id]
+
         # Check if the worker is still working on this task.
         if not task["active"]:
             info = "Request_spsa: task {}/{} is not active".format(run_id, task_id)
@@ -1557,13 +1554,13 @@ After fixing the issues you can unblock the worker at
             return {"task_alive": False, "info": info}
 
         result = self.sync_generate_spsa(run_id)
-        task["spsa_params"] = [
+        task["spsa_params"] = {}
+        task["spsa_params"]["start"] = count_games(task["stats"])
+        task["spsa_params"]["w_params"] = [
             {k: v for k, v in w_param.items() if k in ["R", "c", "flip"]}
             for w_param in result["w_params"]
         ]
-        # We use Prio.HIGH until we have implemented a better
-        # way to protect against server SIGKILL.
-        self.buffer(run, priority=Prio.HIGH)
+        self.buffer(run)
         return result
 
     def sync_generate_spsa(self, run_id):
@@ -1598,7 +1595,8 @@ After fixing the issues you can unblock the worker at
         run = self.get_run(run_id)
         task = run["tasks"][task_id]
         spsa = run["args"]["spsa"]
-        spsa["iter"] += int(spsa_results["num_games"] / 2)
+        new_iter = spsa["iter"] + spsa_results["num_games"] // 2
+        games = count_games(task["stats"]) - count_games(spsa_results)
 
         # Store the history every 'freq' iterations.
         # More tuned parameters result in a lower update frequency,
@@ -1608,7 +1606,7 @@ After fixing the issues you can unblock the worker at
         n_params = len(spsa["params"])
         samples = 100 if n_params < 100 else 10000 / n_params if n_params < 1000 else 1
         period = run["args"]["num_games"] / 2 / samples
-        grow_summary = len(spsa["param_history"]) + 1 <= spsa["iter"] / period
+        grow_summary = len(spsa["param_history"]) + 1 <= new_iter / period
 
         # Update the current theta based on the results from the worker
         # Worker wins/losses are always in terms of w_params
@@ -1621,7 +1619,25 @@ After fixing the issues you can unblock the worker at
                 flush=True,
             )
             return
-        w_params = task["spsa_params"]
+        # The next check may be deleted after a couple of days
+        if not isinstance(task["spsa_params"], dict):
+            print(
+                "Update_task: type mismatch for spsa_params for",
+                f"{run_id}/{task_id}. Skipping update...",
+                flush=True,
+            )
+            return
+        if task["spsa_params"]["start"] != games:
+            print(
+                f"Update_task: spsa_params for {run_id}/{task_id}",
+                "do not match the worker. Skipping update...",
+                flush=True,
+            )
+            return
+
+        spsa["iter"] = new_iter
+
+        w_params = task["spsa_params"]["w_params"]
         for idx, param in enumerate(spsa["params"]):
             R = w_params[idx]["R"]
             c = w_params[idx]["c"]
