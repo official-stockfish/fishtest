@@ -1572,7 +1572,7 @@ After fixing the issues you can unblock the worker at
         iter_local = spsa["iter"] + 1  # start from 1 to avoid division by zero
         for param in spsa["params"]:
             c = param["c"] / iter_local ** spsa["gamma"]
-            flip = 1 if random.getrandbits(1) else -1
+            flip = random.choice((-1, 1))
             result["w_params"].append(
                 {
                     "name": param["name"],
@@ -1582,6 +1582,7 @@ After fixing the issues you can unblock the worker at
                     "flip": flip,
                 }
             )
+            # These are only used by the worker
             result["b_params"].append(
                 {
                     "name": param["name"],
@@ -1595,38 +1596,15 @@ After fixing the issues you can unblock the worker at
         run = self.get_run(run_id)
         task = run["tasks"][task_id]
         spsa = run["args"]["spsa"]
-        new_iter = spsa["iter"] + spsa_results["num_games"] // 2
-        games = count_games(task["stats"]) - count_games(spsa_results)
 
-        # Store the history every 'freq' iterations.
-        # More tuned parameters result in a lower update frequency,
-        # so that the required storage (performance) remains constant.
-        if "param_history" not in spsa:
-            spsa["param_history"] = []
-        n_params = len(spsa["params"])
-        samples = 100 if n_params < 100 else 10000 / n_params if n_params < 1000 else 1
-        period = run["args"]["num_games"] / 2 / samples
-        grow_summary = len(spsa["param_history"]) + 1 <= new_iter / period
-
-        # Update the current theta based on the results from the worker
-        # Worker wins/losses are always in terms of w_params
-        result = spsa_results["wins"] - spsa_results["losses"]
-        summary = []
-        # The following error can be triggered if the server is killed with SIGKILL
+        # Catch some issues which may occur after a server crash
         if "spsa_params" not in task:
             print(
                 f"Update_task: spsa_params not found for {run_id}/{task_id}. Skipping update...",
                 flush=True,
             )
             return
-        # The next check may be deleted after a couple of days
-        if not isinstance(task["spsa_params"], dict):
-            print(
-                "Update_task: type mismatch for spsa_params for",
-                f"{run_id}/{task_id}. Skipping update...",
-                flush=True,
-            )
-            return
+        games = count_games(task["stats"]) - count_games(spsa_results)
         if task["spsa_params"]["start"] != games:
             print(
                 f"Update_task: spsa_params for {run_id}/{task_id}",
@@ -1635,16 +1613,35 @@ After fixing the issues you can unblock the worker at
             )
             return
 
-        spsa["iter"] = new_iter
-
+        # Update the current theta based on the results from the worker
+        result = spsa_results["wins"] - spsa_results["losses"]
+        spsa["iter"] += spsa_results["num_games"] // 2
         w_params = task["spsa_params"]["w_params"]
         for idx, param in enumerate(spsa["params"]):
             R = w_params[idx]["R"]
             c = w_params[idx]["c"]
             flip = w_params[idx]["flip"]
             param["theta"] = self.spsa_param_clip(param, R * c * result * flip)
-            if grow_summary:
-                summary.append({"theta": param["theta"], "R": R, "c": c})
 
-        if grow_summary:
+        self.sync_add_to_spsa_history(run_id, w_params)
+
+    def sync_add_to_spsa_history(self, run_id, w_params):
+        run = self.get_run(run_id)
+        spsa = run["args"]["spsa"]
+
+        # Compute the update frequency so that the required storage does not depend
+        # on the the number of parameters. We have to recompute this every time since
+        # the user may have modified the run.
+        n_params = len(spsa["params"])
+        samples = 100 if n_params < 100 else 10000 / n_params if n_params < 1000 else 1
+        period = run["args"]["num_games"] / 2 / samples
+
+        # Now update if the time has come...
+        if "param_history" not in spsa:
+            spsa["param_history"] = []
+        if len(spsa["param_history"]) + 1 <= spsa["iter"] / period:
+            summary = [
+                {"theta": spsa_param["theta"], "R": w_param["R"], "c": w_param["c"]}
+                for w_param, spsa_param in zip(w_params, spsa["params"])
+            ]
             spsa["param_history"].append(summary)
