@@ -32,8 +32,8 @@ class GeneratorAsFileReader:
         pass  # No cleanup needed, but method is required
 
 
-def hex_print(s):
-    return hashlib.md5(str(s).encode("utf-8")).digest().hex()
+def hex_print(run_id):
+    return hashlib.md5(str(run_id).encode("utf-8")).digest().hex()
 
 
 def worker_name(worker_info, short=False):
@@ -417,14 +417,13 @@ def format_date(date):
 
 
 def remaining_hours(run):
-    r = run["results"]
     if "sprt" in run["args"]:
         # Current average number of games. The number should be regularly updated.
         average_total_games = 95000
 
         # SPRT tests always have pentanomial stats.
-        p = r["pentanomial"]
-        N = sum(p)
+        played_pairs = sum(run["results"]["pentanomial"])
+        played_games = played_pairs * 2
 
         sprt = run["args"]["sprt"]
         llr, alpha, beta = sprt["llr"], sprt["alpha"], sprt["beta"]
@@ -444,18 +443,19 @@ def remaining_hours(run):
         if llr >= llr_bound:
             return 0
 
-        # Assume all tests use default book (UHO_4060_v3).
-        book_positions = 242201
-        t = scipy.stats.beta(1, 15).cdf(min(N / book_positions, 1.0))
-        expected_games_llr = int(2 * N * llr_bound / llr)
+        # Assume all tests use default book (UHO_Lichess_4852_v1).
+        book_positions = 2632036
+        t = scipy.stats.beta(1, 15).cdf(min(played_pairs / book_positions, 1.0))
+        expected_games_llr = int(played_games * llr_bound / llr)
         expected_games = min(
             run["args"]["num_games"],
             int(expected_games_llr * t + average_total_games * (1 - t)),
         )
-        remaining_games = max(0, expected_games - 2 * N)
+        remaining_games = max(0, expected_games - played_games)
     else:
+        played_games = sum(run["results"][key] for key in ("wins", "losses", "draws"))
         expected_games = run["args"]["num_games"]
-        remaining_games = max(0, expected_games - r["wins"] - r["losses"] - r["draws"])
+        remaining_games = max(0, expected_games - played_games)
     game_secs = estimate_game_duration(run["args"]["tc"])
     return game_secs * remaining_games * int(run["args"].get("threads", 1)) / (60 * 60)
 
@@ -469,18 +469,15 @@ def diff_date(date):
     return diff
 
 
-def plural(n, s):
-    return s + (n != 1) * "s"
-
-
 def delta_date(diff):
     if diff == timedelta.max:
         return "Never"
-    tv = diff.days, diff.seconds // 3600, diff.seconds // 60
-    td = "day", "hour", "minute"
-    for v, d in zip(tv, td):
-        if v >= 1:
-            return "{:d} {} ago".format(v, plural(v, d))
+    time_values = diff.days, diff.seconds // 3600, diff.seconds // 60
+    time_units = "day", "hour", "minute"
+    for value, unit in zip(time_values, time_units):
+        if value >= 1:
+            unit_label = unit if value == 1 else unit + "s"
+            return f"{value:d} {unit_label} ago"
     return "seconds ago"
 
 
@@ -559,10 +556,10 @@ def extract_repo_from_link(url):
     return None
 
 
-def get_hash(s):
-    h = re.search("Hash=([0-9]+)", s)
-    if h:
-        return int(h.group(1))
+def get_hash(engine_options):
+    match = re.search("Hash=([0-9]+)", engine_options)
+    if match:
+        return int(match.group(1))
     return 0
 
 
@@ -593,5 +590,5 @@ def strip_run(run):
     return stripped
 
 
-def count_games(d):
-    return d["wins"] + d["losses"] + d["draws"]
+def count_games(stats):
+    return stats["wins"] + stats["losses"] + stats["draws"]
