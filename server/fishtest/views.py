@@ -8,6 +8,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
+import bson
 import fishtest.stats.stat_util
 import requests
 from fishtest.run_cache import Prio
@@ -1611,6 +1612,7 @@ def tests_view(request):
         "can_modify_run": can_modify_run(request, run),
         "same_user": same_user,
         "pt_info": request.rundb.pt_info,
+        "document_size": len(bson.BSON.encode(run)),
     }
 
 
