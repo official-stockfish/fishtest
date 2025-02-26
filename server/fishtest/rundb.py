@@ -1546,6 +1546,7 @@ After fixing the issues you can unblock the worker at
     def sync_request_spsa(self, run_id, task_id):
         run = self.get_run(run_id)
         task = run["tasks"][task_id]
+        spsa = run["args"]["spsa"]
 
         # Check if the worker is still working on this task.
         if not task["active"]:
@@ -1556,20 +1557,23 @@ After fixing the issues you can unblock the worker at
         result = self.sync_generate_spsa(run_id)
         task["spsa_params"] = {}
         task["spsa_params"]["start"] = count_games(task["stats"])
-        task["spsa_params"]["w_params"] = [
-            {k: v for k, v in w_param.items() if k in ["R", "c", "flip"]}
-            for w_param in result["w_params"]
+        task["spsa_params"]["iter"] = spsa["iter"]
+        task["spsa_params"]["flips"] = [
+            w_param["flip"] == 1 for w_param in result["w_params"]
         ]
         self.buffer(run)
         return result
 
-    def sync_generate_spsa(self, run_id):
+    def sync_generate_spsa(self, run_id, iter=None):
         result = {"task_alive": True, "w_params": [], "b_params": []}
         run = self.get_run(run_id)
         spsa = run["args"]["spsa"]
 
+        if iter is None:
+            iter = spsa["iter"]
+
         # Generate the next set of tuning parameters
-        iter_local = spsa["iter"] + 1  # start from 1 to avoid division by zero
+        iter_local = iter + 1  # start from 1 to avoid division by zero
         for param in spsa["params"]:
             c = param["c"] / iter_local ** spsa["gamma"]
             flip = random.choice((-1, 1))
@@ -1612,11 +1616,27 @@ After fixing the issues you can unblock the worker at
                 flush=True,
             )
             return
+        # Check for old format. This can be deleted after a couple of days
+        if "flips" not in task["spsa_params"]:
+            print(
+                f"Update_task: spsa_params for {run_id}/{task_id}",
+                "have an old format. Skipping update...",
+                flush=True,
+            )
+            return
+
+        # Reconstruct spsa data from the task data
+        w_params = self.sync_generate_spsa(run_id, iter=task["spsa_params"]["iter"])[
+            "w_params"
+        ]
+        for idx, w_param in enumerate(w_params):
+            w_param["flip"] = 1 if task["spsa_params"]["flips"][idx] else -1
+            del w_param["value"]  # for safety!
 
         # Update the current theta based on the results from the worker
         result = spsa_results["wins"] - spsa_results["losses"]
         spsa["iter"] += spsa_results["num_games"] // 2
-        w_params = task["spsa_params"]["w_params"]
+
         for idx, param in enumerate(spsa["params"]):
             R = w_params[idx]["R"]
             c = w_params[idx]["c"]
