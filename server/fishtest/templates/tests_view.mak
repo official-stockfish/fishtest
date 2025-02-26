@@ -177,6 +177,10 @@
                 % endif
               % endfor
               <tr>
+                <td>document size</td>
+                <td>${document_size} bytes</td>
+              </tr>
+              <tr>
                 <td>events</td>
                 <td><a href="/actions?run_id=${str(run['_id'])}">/actions?run_id=${run['_id']}</a></td>
               </tr>
