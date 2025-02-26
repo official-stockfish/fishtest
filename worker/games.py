@@ -110,7 +110,7 @@ def str_signal(signal_):
         return "SIG<{}>".format(signal_)
 
 
-def format_return_code(r):
+def format_returncode(r):
     if r < 0:
         return str_signal(-r)
     elif r >= 256:
@@ -305,7 +305,7 @@ def required_nets(engine):
 
     if p.returncode != 0:
         raise WorkerException(
-            "UCI exited with non-zero code {}".format(format_return_code(p.returncode))
+            "UCI exited with non-zero code {}".format(format_returncode(p.returncode))
         )
 
     return nets
@@ -484,10 +484,9 @@ def verify_signature(engine, signature, games_concurrency, threads):
         for line in iter(p.stdout.readline, ""):
             if "settings" in line:
                 cpu_features = line.split(": ")[1].strip()
-    if p.returncode:
+    if p.returncode != 0:
         message = (
-            f"Compiler info exited with non-zero code "
-            f"{format_return_code(p.returncode)}"
+            f"Compiler info exited with non-zero code {format_returncode(p.returncode)}"
         )
         raise WorkerException(message)
 
@@ -588,7 +587,7 @@ def clang_props():
     if p.returncode != 0:
         raise FatalException(
             "clang++ target query failed with return code {}".format(
-                format_return_code(p.returncode)
+                format_returncode(p.returncode)
             )
         )
 
@@ -615,7 +614,7 @@ def gcc_props():
     if p.returncode != 0:
         raise FatalException(
             "g++ target query failed with return code {}".format(
-                format_return_code(p.returncode)
+                format_returncode(p.returncode)
             )
         )
 
@@ -655,7 +654,7 @@ def make_targets():
     if p.returncode != 0:
         raise WorkerException(
             "make help failed with return code {}".format(
-                format_return_code(p.returncode)
+                format_returncode(p.returncode)
             )
         )
 
@@ -823,7 +822,7 @@ def setup_engine(
                     f"Executing {cmd} raised Exception: {type(e).__name__}: {e}",
                     e=e,
                 )
-        if p.returncode:
+        if p.returncode != 0:
             raise WorkerException("Executing {} failed. Error: {}".format(cmd, errors))
 
         cmd = ["make", "strip", f"COMP={comp}"]
@@ -848,7 +847,7 @@ def setup_engine(
         if engine_path.exists():
             raise FatalException("Another worker is running in the same directory!")
         else:
-            (build_dir / "stockfish").with_suffix(EXE_SUFFIX).rename(engine_path)
+            (build_dir / "stockfish").with_suffix(EXE_SUFFIX).replace(engine_path)
     finally:
         os.chdir(worker_dir)
         shutil.rmtree(tmp_dir)

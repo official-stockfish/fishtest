@@ -50,7 +50,7 @@ from games import (
     cache_read,
     cache_write,
     download_from_github,
-    format_return_code,
+    format_returncode,
     log,
     requests_get,
     run_games,
@@ -71,7 +71,7 @@ MIN_CLANG_MINOR = 0
 
 FASTCHESS_SHA = "eda8b0040d030306dfe1aec63f5437b7d234eb30"
 
-WORKER_VERSION = 265
+WORKER_VERSION = 266
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -394,14 +394,9 @@ def get_credentials(config, options, args):
     return username, password
 
 
-def verify_required_fastchess(fastchess_path, fastchess_sha):
+def verify_fastchess(fastchess_path, fastchess_sha):
     # Verify that fastchess is working and has the required minimum version.
-
-    if not fastchess_path.exists():
-        return False
-
-    print("Obtaining version info for {}...".format(fastchess_path))
-
+    print(f"Obtaining version info for {fastchess_path}...")
     try:
         with subprocess.Popen(
             [fastchess_path, "--version"],
@@ -422,28 +417,24 @@ def verify_required_fastchess(fastchess_path, fastchess_sha):
                     print("Found", line.strip())
                     short_sha = m.group(1)
     except (OSError, subprocess.SubprocessError) as e:
-        print("Unable to run fastchess. Error: {}".format(str(e)))
+        print(f"Running fastchess raised {type(e).__name__}: {e}")
         return False
 
     if p.returncode != 0:
         print(
-            "Unable to run fastchess. Return code: {}. Error: {}".format(
-                format_return_code(p.returncode), errors
-            )
+            f"Unable to run fastchess. Return code: {format_returncode(p.returncode)}. Error: {errors}"
         )
         return False
 
     if len(short_sha) < 7:
         print(
-            "Unable to find a suitable sha of length 7 or more in the fastchess version."
+            "Unable to find a suitable sha of length 7 or more in the fastchess version"
         )
         return False
 
     if not fastchess_sha.startswith(short_sha):
         print(
-            "fastchess sha {} required but the version shows {}".format(
-                fastchess_sha, short_sha
-            )
+            f"fastchess sha {fastchess_sha} required but the version shows {short_sha}"
         )
         return False
 
@@ -452,12 +443,16 @@ def verify_required_fastchess(fastchess_path, fastchess_sha):
 
 def setup_fastchess(worker_dir, compiler, concurrency, global_cache, tests=False):
     fastchess_path = (worker_dir / "testing" / "fastchess").with_suffix(EXE_SUFFIX)
-    if verify_required_fastchess(fastchess_path, FASTCHESS_SHA):
-        return True
-
-    # build it ourselves
+    if fastchess_path.exists():
+        if verify_fastchess(fastchess_path, FASTCHESS_SHA):
+            return True
+        else:
+            try:
+                fastchess_path.unlink()
+            except Exception as e:
+                print(f"Removing fastchess raised {type(e).__name__}: {e}")
+                return False
     tmp_dir = Path(tempfile.mkdtemp(dir=worker_dir))
-
     try:
         print("Building fastchess from sources...")
         should_cache = False
@@ -512,17 +507,17 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache, tests=False
                 except Exception as e:
                     if not IS_WINDOWS:
                         os.killpg(p.pid, signal.SIGINT)
-                    raise WorkerException(
-                        f"Executing {cmd} raised Exception: {type(e).__name__}: {e}",
-                        e=e,
-                    )
+                    raise Exception(
+                        f"Executing {cmd} raised {type(e).__name__}: {e}"
+                    ) from e
 
-            if p.returncode:
-                raise WorkerException(
-                    "Executing {} failed. Error: {}".format(cmd, errors)
+            if p.returncode != 0:
+                raise Exception(
+                    f"Executing {cmd} failed. Return code: "
+                    f"{format_returncode(p.returncode)}. Error: {errors}"
                 )
 
-        (build_dir / "fastchess").with_suffix(EXE_SUFFIX).rename(fastchess_path)
+        (build_dir / "fastchess").with_suffix(EXE_SUFFIX).replace(fastchess_path)
 
     except Exception as e:
         print(
@@ -531,11 +526,16 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache, tests=False
             sep="",
             file=sys.stderr,
         )
+        return False
+    else:
+        return (
+            verify_fastchess(fastchess_path, FASTCHESS_SHA)
+            if fastchess_path.exists()
+            else False
+        )
     finally:
         os.chdir(worker_dir)
         shutil.rmtree(tmp_dir, ignore_errors=True)
-
-    return verify_required_fastchess(fastchess_path, FASTCHESS_SHA)
 
 
 def validate(config, schema):
@@ -1184,7 +1184,7 @@ def verify_toolchain():
         if ret and p.returncode != 0:
             print(
                 f"Executing '{cmd_str}' failed with return code "
-                f"{format_return_code(p.returncode)}. Error: {p.stderr.decode().strip()}"
+                f"{format_returncode(p.returncode)}. Error: {p.stderr.decode().strip()}"
             )
             ret = False
         if not ret:

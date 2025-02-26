@@ -34,7 +34,7 @@ Proper configuration of `nginx` is crucial for this, and should be done
 according to the route/URL mapping defined in `__init__.py`.
 """
 
-WORKER_VERSION = 265
+WORKER_VERSION = 266
 
 
 @exception_view_config(HTTPException)
