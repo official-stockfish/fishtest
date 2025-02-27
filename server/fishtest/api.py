@@ -440,6 +440,11 @@ class UserApi(GenericApi):
             # json does not know about infinity
             if task.get("residual", None) == float("inf"):
                 task["residual"] = "inf"
+        if "spsa_params" in task:
+            spsa_params = task["spsa_params"]
+            if "packed_flips" in spsa_params:
+                # json has no binary type
+                spsa_params["packed_flips"] = list(spsa_params["packed_flips"])
         return task
 
     @view_config(route_name="api_get_elo")
