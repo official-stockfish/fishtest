@@ -592,3 +592,28 @@ def strip_run(run):
 
 def count_games(stats):
     return stats["wins"] + stats["losses"] + stats["draws"]
+
+
+def pack_flips(flips):
+    """
+    This transforms a list of +-1 into a sequence of bytes
+    with the meaning of the indivual bits being 1:1, 0:-1.
+    """
+    a1 = [x == 1 for x in flips]
+    # Work around numpy wart
+    if a1 == []:
+        a1 = [0]
+    return numpy.packbits(a1).tobytes()
+
+
+def unpack_flips(packed_flips, length=None):
+    """
+    The inverse function.
+    """
+    a0 = numpy.array(list(packed_flips), dtype=numpy.uint8)
+    a1 = numpy.unpackbits(a0).tolist()
+    a2 = [1 if x else -1 for x in a1]
+    if length is None:
+        return a2
+    else:
+        return a2[0:length]

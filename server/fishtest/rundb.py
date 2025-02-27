@@ -44,8 +44,10 @@ from fishtest.util import (
     get_chi2,
     get_hash,
     get_tc_ratio,
+    pack_flips,
     remaining_hours,
     residual_to_color,
+    unpack_flips,
     worker_name,
 )
 from fishtest.workerdb import WorkerDb
@@ -1558,9 +1560,9 @@ After fixing the issues you can unblock the worker at
         task["spsa_params"] = {}
         task["spsa_params"]["start"] = count_games(task["stats"])
         task["spsa_params"]["iter"] = spsa["iter"]
-        task["spsa_params"]["flips"] = [
-            w_param["flip"] == 1 for w_param in result["w_params"]
-        ]
+        task["spsa_params"]["packed_flips"] = Binary(
+            pack_flips([w_param["flip"] for w_param in result["w_params"]])
+        )
         self.buffer(run)
         return result
 
@@ -1608,16 +1610,20 @@ After fixing the issues you can unblock the worker at
                 flush=True,
             )
             return
+        task_spsa_params = task["spsa_params"]
+        # Make sure we cannot call update_spsa again with these data
+        del task["spsa_params"]
         games = count_games(task["stats"]) - count_games(spsa_results)
-        if task["spsa_params"]["start"] != games:
+        if task_spsa_params["start"] != games:
             print(
                 f"Update_task: spsa_params for {run_id}/{task_id}",
                 "do not match the worker. Skipping update...",
                 flush=True,
             )
             return
+
         # Check for old format. This can be deleted after a couple of days
-        if "flips" not in task["spsa_params"]:
+        if "packed_flips" not in task_spsa_params:
             print(
                 f"Update_task: spsa_params for {run_id}/{task_id}",
                 "have an old format. Skipping update...",
@@ -1626,11 +1632,12 @@ After fixing the issues you can unblock the worker at
             return
 
         # Reconstruct spsa data from the task data
-        w_params = self.sync_generate_spsa(run_id, iter=task["spsa_params"]["iter"])[
+        w_params = self.sync_generate_spsa(run_id, iter=task_spsa_params["iter"])[
             "w_params"
         ]
+        flips = unpack_flips(task_spsa_params["packed_flips"], length=len(w_params))
         for idx, w_param in enumerate(w_params):
-            w_param["flip"] = 1 if task["spsa_params"]["flips"][idx] else -1
+            w_param["flip"] = flips[idx]
             del w_param["value"]  # for safety!
 
         # Update the current theta based on the results from the worker

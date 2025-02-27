@@ -1,3 +1,4 @@
+import random
 import sys
 import unittest
 from datetime import datetime, timezone
@@ -5,6 +6,7 @@ from datetime import datetime, timezone
 import util
 from fishtest.api import WORKER_VERSION
 from fishtest.run_cache import Prio
+from fishtest.util import pack_flips, unpack_flips
 from pymongo import DESCENDING
 
 run_id = None
@@ -16,6 +18,7 @@ class CreateRunDBTest(unittest.TestCase):
         cls.rundb = util.get_rundb()
 
     def setUp(self):
+        random.seed()
         self.remote_addr = "127.0.0.1"
         self.rundb.runs.create_index(
             [("last_updated", DESCENDING), ("tc_base", DESCENDING)],
@@ -244,6 +247,16 @@ class CreateRunDBTest(unittest.TestCase):
                 for w in run["tasks"]:
                     w["pending"] = False
                 self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+
+    def test_flips(self):
+        random.seed(0)
+        for _ in range(0, 100):
+            L = random.randint(0, 1000)
+            a = [random.choice([-1, 1]) for _ in range(0, L)]
+            b = pack_flips(a)
+            self.assertTrue(isinstance(b, bytes))
+            c = unpack_flips(b, length=L)
+            self.assertEqual(a, c)
 
 
 if __name__ == "__main__":
