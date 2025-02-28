@@ -27,7 +27,7 @@ classifiers = [
     "Topic :: Software Development :: Application Frameworks",
 ]
 dependencies = [
-    "awscli>=1.37.21",
+    "awscli>=1.38.3",
     "email-validator>=2.2.0",
     "numpy>=2.2.3",
     "pymongo>=4.11.1",
@@ -35,10 +35,10 @@ dependencies = [
     "pyramid-debugtoolbar>=4.12.1",
     "pyramid-mako>=1.1.0",
     "requests>=2.32.3",
-    "scipy>=1.15.1",
+    "scipy>=1.15.2",
     "vtjson>=2.2.4",
     "waitress>=3.0.2",
-    "zxcvbn>=4.4.28",
+    "zxcvbn>=4.5.0",
 ]
 
 [project.urls]
