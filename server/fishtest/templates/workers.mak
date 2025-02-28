@@ -3,7 +3,7 @@
 <%!
   import datetime
   from urllib.parse import quote
-  from fishtest.util import delta_date, diff_date
+  from fishtest.util import format_time_ago
 %>
 
 <script>
@@ -64,7 +64,7 @@
 % if show_admin:
   <h3>${worker_name}</h3>
   <form method="POST">
-    <div class="mb-3">Last changed: ${delta_date(diff_date(last_updated)) if last_updated is not None else "Never"}</div>
+    <div class="mb-3">Last changed: ${format_time_ago(last_updated) if last_updated is not None else "Never"}</div>
     <div class="mb-3">
       <label for="messageInput" class="form-label">Issue</label>
       <textarea
@@ -131,7 +131,7 @@
       % for w in blocked_workers:
         <tr>
           <td><a href="/workers/${w['worker_name']}">${w["worker_name"]}</td>
-          <td>${delta_date(diff_date(w["last_updated"])) if w["last_updated"] is not None else "Never"}</td>
+          <td>${format_time_ago(w["last_updated"]) if w["last_updated"] is not None else "Never"}</td>
           <td>
             <a
               href="/actions?text=%22${w['worker_name']}%22">/actions?text="${w['worker_name']}"</a

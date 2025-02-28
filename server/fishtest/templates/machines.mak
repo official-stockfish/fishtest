@@ -1,7 +1,5 @@
 <%!
-  from fishtest.util import delta_date
-  from fishtest.util import diff_date
-  from fishtest.util import worker_name
+  from fishtest.util import format_time_ago, worker_name
 
   def clip_long(text, max_length=20):
       if len(text) > max_length:
@@ -34,8 +32,8 @@
         python_version = ".".join([str(m) for m in machine['python_version']])
         version = str(machine['version']) + "*" * machine['modified']
         worker_name_ = worker_name(machine, short=True)
-        diff_time = diff_date(machine["last_updated"])
-        delta_time = delta_date(diff_time)
+        formatted_time_ago = format_time_ago(machine["last_updated"])
+        sort_value_time_ago = -machine['last_updated'].timestamp()
         branch = machine['run']['args']['new_tag']
         task_id = str(machine['task_id'])
         run_id = str(machine['run']['_id'])
@@ -59,7 +57,7 @@
         <td>
           <a href="/tests/view/${run_id + '?show_task=' + task_id}" title="${branch + "/" + task_id}">${clip_long(branch) + "/" + task_id}</a>
         </td>
-        <td>${delta_time}</td>
+        <td data-sort-value="${sort_value_time_ago}">${formatted_time_ago}</td>
       </tr>
     % endfor
     % if "version" not in locals():

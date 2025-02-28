@@ -17,8 +17,7 @@ User data is stored in two dictionaries:
 
 Each user record includes:
   "username", "cpu_hours", "games", "games_per_hour",
-  "tests", "tests_repo", "last_updated", "diff",
-  and "str_last_updated" (e.g. "Never" or "12 days ago").
+  "tests", "tests_repo", "last_updated".
 
 Deltas:
   The new_deltas dict holds IDs of newly finished runs.
@@ -32,14 +31,16 @@ import sys
 from datetime import UTC, datetime, timedelta
 
 from fishtest.rundb import RunDb
-from fishtest.util import delta_date, diff_date, estimate_game_duration
+from fishtest.util import estimate_game_duration
 from pymongo import DESCENDING
+from pymongo.collection import Collection
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(message)s")
 logger = logging.getLogger(__name__)
 
 MAX_SKIP_COUNT = 10
 RECENT_DAYS_THRESHOLD = 30
+REFERENCE_CORE_NPS = 691680
 
 
 def initialize_info(rundb: RunDb, *, clear_stats: bool) -> tuple[dict, dict]:
@@ -56,8 +57,6 @@ def initialize_info(rundb: RunDb, *, clear_stats: bool) -> tuple[dict, dict]:
     utc_datetime_min = datetime.min.replace(tzinfo=UTC)
     info_total = {}
     info_top_month = {}
-    diff_ini = diff_date(utc_datetime_min).total_seconds()
-    last_ini = delta_date(diff_date(utc_datetime_min))
 
     for u in rundb.userdb.get_users():
         username = u["username"]
@@ -70,8 +69,6 @@ def initialize_info(rundb: RunDb, *, clear_stats: bool) -> tuple[dict, dict]:
             "tests": 0,
             "tests_repo": u.get("tests_repo", ""),
             "last_updated": utc_datetime_min,
-            "diff": diff_ini,
-            "str_last_updated": last_ini,
         }
         if clear_stats:
             info_total[username] = info_top_month[username].copy()
@@ -88,22 +85,23 @@ def initialize_info(rundb: RunDb, *, clear_stats: bool) -> tuple[dict, dict]:
     return info_total, info_top_month
 
 
-def compute_games_rates(rundb: RunDb, info_tuple: tuple[dict, dict]) -> None:
+def compute_games_rates(rundb: RunDb, info_total: dict, info_top_month: dict) -> None:
     """Compute the games per hour rate for each machine and update user info.
 
     Args:
         rundb: The database object.
-        info_tuple (tuple): A tuple of dictionaries to update games_per_hour.
+        info_total (dict): Dictionary with total user stats.
+        info_top_month (dict): Dictionary with top month user stats.
 
     """
-    # use the reference core nps, also set in rundb.py and games.py
+    # Use the reference core nps, also set in rundb.py and games.py
     for machine in rundb.get_machines():
         games_per_hour = (
-            (machine["nps"] / 691680)
-            * (3600.0 / estimate_game_duration(machine["run"]["args"]["tc"]))
+            (machine["nps"] / REFERENCE_CORE_NPS)
+            * (3600 / estimate_game_duration(machine["run"]["args"]["tc"]))
             * (int(machine["concurrency"]) // machine["run"]["args"].get("threads", 1))
         )
-        for info in info_tuple:
+        for info in (info_total, info_top_month):
             info[machine["username"]]["games_per_hour"] += games_per_hour
 
 
@@ -173,10 +171,10 @@ def update_info(
 
     Args:
         rundb: The database object.
-        clear_stats (bool): Flag to determine whether to reset stats.
         deltas (dict): Previously processed run IDs.
         info_total (dict): Dictionary with total user stats.
         info_top_month (dict): Dictionary with top month user stats.
+        clear_stats (bool): Flag to determine whether to reset stats.
 
     Returns:
         dict: New deltas containing newly processed run IDs.
@@ -184,7 +182,7 @@ def update_info(
     """
     for run in rundb.get_unfinished_runs():
         try:
-            # Update info_top_month with the contribution of the unfinished runs
+            # Update info_top_month with the contribution of the unfinished run
             process_run(run, info_top_month)
         except Exception:
             logger.exception(
@@ -210,7 +208,7 @@ def update_info(
         if not skip:
             new_deltas |= {str(run["_id"]): None}
             try:
-                # Update info_total with the contribution of the finished runs
+                # Update info_total with the contribution of the finished run
                 process_run(run, info_total)
             except Exception:
                 logger.exception(
@@ -221,7 +219,7 @@ def update_info(
             skip = False
             skip_count += 1
 
-        # Update info_top_month with finished runs having start_time
+        # Update info_top_month with finished run having start_time
         # in the last RECENT_DAYS_THRESHOLD days
         if (now - run["start_time"]).days < RECENT_DAYS_THRESHOLD:
             try:
@@ -234,33 +232,7 @@ def update_info(
         elif not clear_stats and skip:
             break
 
-    compute_games_rates(rundb, (info_total, info_top_month))
     return new_deltas
-
-
-def build_users(info: dict) -> list[dict]:
-    """Build a list of user records from the info dictionary.
-
-    Args:
-        info (dict): A dictionary containing user statistics.
-
-    Returns:
-        list: A list of user records with non-zero games or tests.
-
-    """
-    users = []
-    # diff_date(given_date) = datetime.now(timezone.utc) - given_date
-    # delta_date(diff: timedelta) -> str:
-    for username, info_user in info.items():
-        try:
-            diff = diff_date(info_user["last_updated"])
-            info_user["diff"] = diff.total_seconds()
-            info_user["str_last_updated"] = delta_date(diff)
-        except Exception:
-            logger.exception("Exception updating 'diff' for username=%s:", username)
-        users.append(info_user)
-
-    return [u for u in users if u["games"] > 0 or u["tests"] > 0]
 
 
 def update_deltas(rundb: RunDb, deltas: dict, new_deltas: dict) -> None:
@@ -294,37 +266,29 @@ def update_deltas(rundb: RunDb, deltas: dict, new_deltas: dict) -> None:
     rundb.deltas.insert_many(docs)
 
 
-def update_users(
-    rundb: RunDb,
-    users_total: list[dict],
-    users_top_month: list[dict],
+def filter_users(info: dict) -> list[dict]:
+    """Filter user records that have non-zero games or tests."""
+    return [user for user in info.values() if user.get("games") or user.get("tests")]
+
+
+def update_collection(
+    collection: Collection,
+    documents: list[dict],
 ) -> None:
-    """Update user cache collections with new user data.
-
-    Args:
-        rundb: The database object.
-        users_total (list): List of total user records.
-        users_top_month (list): List of top month user records.
-
-    """
-    rundb.userdb.user_cache.delete_many({})
-    if users_total:
-        rundb.userdb.user_cache.insert_many(users_total)
-        rundb.userdb.user_cache.create_index("username", unique=True)
-        logger.info("Successfully updated %s users", len(users_total))
-    rundb.userdb.top_month.delete_many({})
-    if users_top_month:
-        rundb.userdb.top_month.insert_many(users_top_month)
-        logger.info("Successfully updated %s top month users", len(users_top_month))
+    """Replace all documents in a collection and create a unique index."""
+    collection.delete_many({})
+    if documents:
+        collection.insert_many(documents)
+        collection.create_index("username", unique=True)
+        logger.info(
+            "Successfully updated %s documents in '%s'",
+            len(documents),
+            collection.name,
+        )
 
 
 def cleanup_users(rundb: RunDb) -> None:
-    """Clean up inactive users and remove outdated admin group assignments.
-
-    Args:
-        rundb: The database object.
-
-    """
+    """Clean up inactive users and remove outdated admin group assignments."""
     idle = {}
     now = datetime.now(UTC)
     for u in rundb.userdb.get_users():
@@ -388,10 +352,15 @@ def main() -> None:
     )
     if new_deltas:
         update_deltas(rundb, deltas, new_deltas)
-
-    users_total = build_users(info_total)
-    users_top_month = build_users(info_top_month)
-    update_users(rundb, users_total, users_top_month)
+    compute_games_rates(rundb, info_total, info_top_month)
+    update_collection(
+        rundb.userdb.user_cache,
+        filter_users(info_total),
+    )
+    update_collection(
+        rundb.userdb.top_month,
+        filter_users(info_top_month),
+    )
     cleanup_users(rundb)
     # Record this update run
     rundb.actiondb.system_event(message="Update user statistics")
