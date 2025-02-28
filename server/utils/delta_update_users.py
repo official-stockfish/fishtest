@@ -1,15 +1,60 @@
 #!/usr/bin/env python3
+"""Compute full and incremental user contributions.
 
+This script supports two modes:
+  • Full scan: processes all runs from scratch.
+  • Update scan: processes only newly finished runs since the last run.
+
+Note:
+  • Update scan does not capture runs that flip between unfinished and finished.
+  • It may underestimate monthly contributions due to the exit condition.
+
+User data is stored in two dictionaries:
+  info_total:
+    Data from all finished runs.
+  info_top_month:
+    Data from unfinished runs and finished runs started within 30 days.
+
+Each user record includes:
+  "username", "cpu_hours", "games", "games_per_hour",
+  "tests", "tests_repo", "last_updated", "diff",
+  and "str_last_updated" (e.g. "Never" or "12 days ago").
+
+Deltas:
+  The new_deltas dict holds IDs of newly finished runs.
+  The deltas dict contains all finish IDs processed previously,
+  avoiding duplicate processing.
+
+"""
+
+import logging
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+
+from pymongo import DESCENDING
 
 from fishtest.rundb import RunDb
 from fishtest.util import delta_date, diff_date, estimate_game_duration
-from pymongo import DESCENDING
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(message)s")
+logger = logging.getLogger(__name__)
+
+MAX_SKIP_COUNT = 10
+RECENT_DAYS_THRESHOLD = 30
 
 
-def initialize_info(rundb, clear_stats):
-    utc_datetime_min = datetime.min.replace(tzinfo=timezone.utc)
+def initialize_info(rundb: RunDb, *, clear_stats: bool) -> tuple[dict, dict]:
+    """Initialize user statistics dictionaries with default or cached values.
+
+    Args:
+        rundb: The database object containing user data.
+        clear_stats (bool): If True, reset stats to default values.
+
+    Returns:
+        tuple: Two dictionaries, (info_total, info_top_month), with user statistics.
+
+    """
+    utc_datetime_min = datetime.min.replace(tzinfo=UTC)
     info_total = {}
     info_top_month = {}
     diff_ini = diff_date(utc_datetime_min).total_seconds()
@@ -34,7 +79,7 @@ def initialize_info(rundb, clear_stats):
         else:
             # Load user data from the user_cache
             info_total[username] = rundb.userdb.user_cache.find_one(
-                {"username": username}
+                {"username": username},
             )
             if info_total[username]:
                 info_total[username]["games_per_hour"] = 0.0
@@ -44,7 +89,14 @@ def initialize_info(rundb, clear_stats):
     return info_total, info_top_month
 
 
-def compute_games_rates(rundb, info_tuple):
+def compute_games_rates(rundb: RunDb, info_tuple: tuple[dict, dict]) -> None:
+    """Compute the games per hour rate for each machine and update user info.
+
+    Args:
+        rundb: The database object.
+        info_tuple (tuple): A tuple of dictionaries to update games_per_hour.
+
+    """
     # use the reference core nps, also set in rundb.py and games.py
     for machine in rundb.get_machines():
         games_per_hour = (
@@ -56,13 +108,24 @@ def compute_games_rates(rundb, info_tuple):
             info[machine["username"]]["games_per_hour"] += games_per_hour
 
 
-def process_run(run, info):
+def process_run(run: dict, info: dict) -> None:
+    """Process a single run and update corresponding user statistics.
+
+    Args:
+        run: A dictionary representing a run.
+        info (dict): The user statistics dictionary to update.
+
+    """
     # Update the number of tests contributed by the user
     r_username = run["args"].get("username")
     if r_username in info:
         info[r_username]["tests"] += 1
     else:
-        print(f"not in userdb: {r_username=}; {run['_id']=}")
+        logger.warning(
+            "Not in userdb: r_username=%s; run['_id']=%s",
+            r_username,
+            run["_id"],
+        )
         return
 
     # Update the information for the workers contributed by the users
@@ -74,8 +137,11 @@ def process_run(run, info):
         if t_username is None:
             continue
         if t_username not in info:
-            print(
-                f"not in userdb: {t_username=}; {run['_id']=}; {task['worker_info']=}"
+            logger.warning(
+                "Not in userdb: t_username=%s; run['_id']=%s; task['worker_info']=%s",
+                t_username,
+                run["_id"],
+                task["worker_info"],
             )
             continue
 
@@ -88,23 +154,46 @@ def process_run(run, info):
         info_user = info[t_username]
         info_user["last_updated"] = max(
             info_user["last_updated"],
-            task.get("last_updated", datetime.min.replace(tzinfo=timezone.utc)),
+            task.get("last_updated", datetime.min.replace(tzinfo=UTC)),
         )
         info_user["cpu_hours"] += float(
-            num_games * int(run["args"].get("threads", 1)) * tc / (60 * 60)
+            num_games * int(run["args"].get("threads", 1)) * tc / (60 * 60),
         )
         info_user["games"] += num_games
 
 
-def update_info(rundb, clear_stats, deltas, info_total, info_top_month):
+def update_info(
+    rundb: RunDb,
+    deltas: dict,
+    info_total: dict,
+    info_top_month: dict,
+    *,
+    clear_stats: bool,
+) -> dict:
+    """Update user statistics based on finished and unfinished runs.
+
+    Args:
+        rundb: The database object.
+        clear_stats (bool): Flag to determine whether to reset stats.
+        deltas (dict): Previously processed run IDs.
+        info_total (dict): Dictionary with total user stats.
+        info_top_month (dict): Dictionary with top month user stats.
+
+    Returns:
+        dict: New deltas containing newly processed run IDs.
+
+    """
     for run in rundb.get_unfinished_runs():
         try:
             # Update info_top_month with the contribution of the unfinished runs
             process_run(run, info_top_month)
-        except Exception as e:
-            print(f"Exception on unfinished run {run['_id']=} for info_top_month:\n{e}")
+        except Exception:
+            logger.exception(
+                "Exception on unfinished run run['_id']=%s for info_top_month:",
+                run["_id"],
+            )
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     skip = False
     skip_count = 0
     new_deltas = {}
@@ -112,7 +201,7 @@ def update_info(rundb, clear_stats, deltas, info_total, info_top_month):
     for run in rundb.runs.find({"finished": True}, sort=[("last_updated", DESCENDING)]):
         if str(run["_id"]) in new_deltas:
             # Lazy reads of an indexed collection, skip a repeated new finished run
-            print("Warning: skipping repeated finished run!")
+            logger.warning("Skipping repeated finished run!")
             continue
 
         if not clear_stats and not skip and str(run["_id"]) in deltas:
@@ -124,19 +213,24 @@ def update_info(rundb, clear_stats, deltas, info_total, info_top_month):
             try:
                 # Update info_total with the contribution of the finished runs
                 process_run(run, info_total)
-            except Exception as e:
-                print(f"Exception on finished run {run['_id']=} for info_total:\n{e}")
-        if skip and skip_count < 10:
+            except Exception:
+                logger.exception(
+                    "Exception on finished run run['_id']=%s for info_total:",
+                    run["_id"],
+                )
+        if skip and skip_count < MAX_SKIP_COUNT:
             skip = False
             skip_count += 1
 
-        # Update info_top_month with finished runs having start_time in the last 30 days
-        if (now - run["start_time"]).days < 30:
+        # Update info_top_month with finished runs having start_time
+        # in the last RECENT_DAYS_THRESHOLD days
+        if (now - run["start_time"]).days < RECENT_DAYS_THRESHOLD:
             try:
                 process_run(run, info_top_month)
-            except Exception as e:
-                print(
-                    f"Exception on finished run {run['_id']=} for info_top_month:\n{e}"
+            except Exception:
+                logger.exception(
+                    "Exception on finished run run['_id']=%s for info_top_month:",
+                    run["_id"],
                 )
         elif not clear_stats and skip:
             break
@@ -145,7 +239,16 @@ def update_info(rundb, clear_stats, deltas, info_total, info_top_month):
     return new_deltas
 
 
-def build_users(info):
+def build_users(info: dict) -> list[dict]:
+    """Build a list of user records from the info dictionary.
+
+    Args:
+        info (dict): A dictionary containing user statistics.
+
+    Returns:
+        list: A list of user records with non-zero games or tests.
+
+    """
     users = []
     # diff_date(given_date) = datetime.now(timezone.utc) - given_date
     # delta_date(diff: timedelta) -> str:
@@ -154,20 +257,34 @@ def build_users(info):
             diff = diff_date(info_user["last_updated"])
             info_user["diff"] = diff.total_seconds()
             info_user["str_last_updated"] = delta_date(diff)
-        except Exception as e:
-            print(f"Exception updating 'diff' for {username=}:\n{e}")
+        except Exception:
+            logger.exception("Exception updating 'diff' for username=%s:", username)
         users.append(info_user)
 
     return [u for u in users if u["games"] > 0 or u["tests"] > 0]
 
 
-def update_deltas(rundb, deltas, new_deltas):
-    # Write the new deltas to the database in batches to speed up the collection operations,
-    # set directly the value to None for speed, change to new_deltas[k] if needed
-    print("update deltas:")
-    print(f"{len(new_deltas)=}\n{next(iter(new_deltas))=}")
+def update_deltas(rundb: RunDb, deltas: dict, new_deltas: dict) -> None:
+    """Update the database collection with new run deltas.
+
+    Args:
+        rundb: The database object.
+        deltas (dict): Previously processed run IDs.
+        new_deltas (dict): Newly processed run IDs.
+
+    """
+    logger.info("Update deltas:")
+    logger.info(
+        "len(new_deltas)=%s, next(iter(new_deltas))=%s",
+        len(new_deltas),
+        next(iter(new_deltas)),
+    )
     new_deltas |= deltas
-    print(f"{len(new_deltas)=}\n{next(iter(new_deltas))=}")
+    logger.info(
+        "len(new_deltas)=%s, next(iter(new_deltas))=%s",
+        len(new_deltas),
+        next(iter(new_deltas)),
+    )
     rundb.deltas.delete_many({})
     n = 10000
     keys = tuple(new_deltas.keys())
@@ -178,22 +295,39 @@ def update_deltas(rundb, deltas, new_deltas):
     rundb.deltas.insert_many(docs)
 
 
-def update_users(rundb, users_total, users_top_month):
+def update_users(
+    rundb: RunDb,
+    users_total: list[dict],
+    users_top_month: list[dict],
+) -> None:
+    """Update user cache collections with new user data.
+
+    Args:
+        rundb: The database object.
+        users_total (list): List of total user records.
+        users_top_month (list): List of top month user records.
+
+    """
     rundb.userdb.user_cache.delete_many({})
     if users_total:
         rundb.userdb.user_cache.insert_many(users_total)
         rundb.userdb.user_cache.create_index("username", unique=True)
-        print(f"Successfully updated {len(users_total)} users")
+        logger.info("Successfully updated %s users", len(users_total))
     rundb.userdb.top_month.delete_many({})
     if users_top_month:
         rundb.userdb.top_month.insert_many(users_top_month)
-        print(f"Successfully updated {len(users_top_month)} top month users")
+        logger.info("Successfully updated %s top month users", len(users_top_month))
 
 
-def cleanup_users(rundb):
-    # Delete users that have never been active and old admins group
+def cleanup_users(rundb: RunDb) -> None:
+    """Clean up inactive users and remove outdated admin group assignments.
+
+    Args:
+        rundb: The database object.
+
+    """
     idle = {}
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     for u in rundb.userdb.get_users():
         update = False
         while "group:admins" in u["groups"]:
@@ -202,7 +336,7 @@ def cleanup_users(rundb):
         if update:
             rundb.userdb.save_user(u)
         if "registration_time" not in u or u["registration_time"] < now - timedelta(
-            days=28
+            days=28,
         ):
             idle[u["username"]] = u
     for u in rundb.userdb.user_cache.find():
@@ -211,47 +345,20 @@ def cleanup_users(rundb):
     for u in idle.values():
         # A safe guard against deleting long time users
         if "registration_time" not in u or u["registration_time"] < now - timedelta(
-            days=38
+            days=38,
         ):
-            print("Warning: Found old user to delete:", str(u["_id"]))
+            logger.warning("Found old user to delete: %s", u["_id"])
         else:
-            print("Delete:", str(u["_id"]))
+            logger.info("Delete: %s", u["_id"])
             rundb.userdb.users.delete_one({"_id": u["_id"]})
 
 
-def main():
-    # The script computes the total and top month contributions of all users in two modes:
-    # - full scan  : from scratch, starting from a clean status.
-    # - update scan: incrementally, using the status from previous executions of the script
-    # Note that the update scan is not perfect:
-    # - It does not account for the additional contribution of runs that have switched
-    #   from finished to unfinished and back to finished in the meantime.
-    # - It underestimates the top month contribution compared to the full scan
-    #   due to the exit condition.
+def main() -> None:
+    """Update user statistics.
 
-    # "info_total" and "info_top_month" are dictionaries with the username as the key.
-    # They are used to collect information about the contributions of each user for these runs
-    # "info_total"    : all finished runs.
-    # "info_top_month": unfinished runs and finished runs started within the previous 30 days.
-    # Each username/key has a nested dictionary with the following structure:
-    # info[username] = {
-    #     "username": username,
-    #     "cpu_hours": 0,
-    #     "games": 0,
-    #     "games_per_hour": 0.0,
-    #     "tests": 0,
-    #     "tests_repo": u.get("tests_repo", ""),
-    #     "last_updated": utc_datetime_min,    # latest datetime of all user's tasks
-    #     "diff": diff_date(utc_datetime_min), # used to sort in the users table
-    #     "str_last_updated": delta_date(diff_date(utc_datetime_min)), # e.g. "Never", "12 days ago"
-
-    # "new_deltas": dictionary with keys representing the IDs of newly finished runs
-    # since the previous script execution. It is used to update the "deltas" collection.
-    # "deltas"    : dictionary with keys representing the IDs of all finished runs that
-    # have already been processed in previous script executions to avoid double counting.
-    # It is loaded from the "deltas" collection in update scan mode,
-    # it is an empty dictionary in full scan mode.
-
+    Reads command-line arguments, processes run deltas, updates user statistics,
+    and records the update operation.
+    """
     rundb = RunDb()
     deltas = {}
     if len(sys.argv) == 1:
@@ -260,16 +367,26 @@ def main():
             deltas |= doc
 
     if deltas:
-        print("update scan")
+        logger.info("Update scan")
         clear_stats = False
-        print("load deltas:")
-        print(f"{len(deltas)=}\n{next(iter(deltas))=}")
+        logger.info("Load deltas:")
+        logger.info(
+            "len(deltas)=%s, next(iter(deltas))=%s",
+            len(deltas),
+            next(iter(deltas)),
+        )
     else:
-        print("full scan")
+        logger.info("Full scan")
         clear_stats = True
 
-    info_total, info_top_month = initialize_info(rundb, clear_stats)
-    new_deltas = update_info(rundb, clear_stats, deltas, info_total, info_top_month)
+    info_total, info_top_month = initialize_info(rundb, clear_stats=clear_stats)
+    new_deltas = update_info(
+        rundb,
+        deltas,
+        info_total,
+        info_top_month,
+        clear_stats=clear_stats,
+    )
     if new_deltas:
         update_deltas(rundb, deltas, new_deltas)
 
