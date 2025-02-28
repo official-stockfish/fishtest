@@ -405,20 +405,11 @@ def compute_bench_statistics(results, threads, depth, *, bench_nps=False):
     median_nps = statistics.median(bench_nps_values)
     std_nps = statistics.stdev(bench_nps_values) if len(bench_nps_values) > 1 else 0
 
-    print(
-        f"Bench for {'nps' if bench_nps else 'nodes'}\n"
-        f"{'Concurrency':<15}: {len(results):15.2f}\n"
-        f"{'Threads':<15}: {threads:15.2f}\n"
-        f"{'Depth':<15}: {depth:15.2f}\n"
-        f"{'Mean nodes':<15}: {mean_nodes:15.2f}\n"
-        f"{'Mean time (ms)':<15}: {mean_time:15.2f}\n"
-        f"{'Mean nps':<15}: {mean_nps:15.2f}\n"
-        f"{'Median nps':<15}: {median_nps:15.2f}\n"
-        f"{'Min nps':<15}: {min_nps:15.2f}\n"
-        f"{'Max nps':<15}: {max_nps:15.2f}\n"
-        f"{'Std nps':<15}: {std_nps:15.2f}\n"
-        f"{'Std (%)':<15}: {100 * std_nps / mean_nps:15.2f}"
-    )
+    if bench_nps:
+        print(
+            f"{'Mean nps':<15}: {mean_nps:15.2f}\n"
+            f"{'Std (%)':<15}: {100 * std_nps / mean_nps:15.2f}"
+        )
 
     return mean_nps if bench_nps else None
 
@@ -1478,6 +1469,8 @@ def run_games(
 
     # Verify that the signatures are correct.
     print("Benchmarking worker and verifying signature...", flush=True)
+    print(f"{'Concurrency':<15}: {games_concurrency:15d}", flush=True)
+    print(f"{'Threads':<15}: {threads:15d}", flush=True)
     run_errors = []
     try:
         base_nps, cpu_features = verify_signature(
