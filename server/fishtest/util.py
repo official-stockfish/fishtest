@@ -2,7 +2,7 @@ import copy
 import hashlib
 import math
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime
 from functools import cache
 
 import fishtest.stats.stat_util
@@ -55,7 +55,7 @@ def worker_name(worker_info, short=False):
 
 
 def get_chi2(tasks, exclude_workers=set()):
-    """Perform chi^2 test on the stats from each worker"""
+    """Perform chi^2 test on the stats from each worker."""
 
     default_results = {
         "chi2": float("nan"),
@@ -460,19 +460,15 @@ def remaining_hours(run):
     return game_secs * remaining_games * int(run["args"].get("threads", 1)) / (60 * 60)
 
 
-def diff_date(date):
-    diff = (
-        datetime.now(timezone.utc) - date
-        if date != datetime.min.replace(tzinfo=timezone.utc)
-        else timedelta.max
-    )
-    return diff
-
-
-def delta_date(diff):
-    if diff == timedelta.max:
+def format_time_ago(date):
+    if date == datetime.min.replace(tzinfo=UTC):
         return "Never"
-    time_values = diff.days, diff.seconds // 3600, diff.seconds // 60
+    elapsed_time = datetime.now(UTC) - date
+    time_values = (
+        elapsed_time.days,
+        elapsed_time.seconds // 3600,
+        elapsed_time.seconds // 60,
+    )
     time_units = "day", "hour", "minute"
     for value, unit in zip(time_values, time_units):
         if value >= 1:
@@ -490,28 +486,29 @@ def format_group(groups):
 
 
 def password_strength(password, *args):
-    if len(password) > 0:
-        # add given username and email to user_inputs
-        # such that the chosen password isn't similar to either
-        password_analysis = zxcvbn(password, user_inputs=[i for i in args])
-        # strength scale: [0-weakest <-> 4-strongest]
-        # values below 3 will give suggestions and an (optional) warning
-        if password_analysis["score"] > 2:
-            return True, ""
-        else:
-            suggestions = password_analysis["feedback"]["suggestions"][0]
-            warning = password_analysis["feedback"]["warning"]
-            return False, suggestions + " " + warning
-    else:
+    if len(password) < 1:
         return False, "Non-empty password required"
 
+    # Add given username and email to user_inputs
+    # such that the chosen password isn't similar to either
+    password_analysis = zxcvbn(password, user_inputs=[i for i in args])
+    # Strength scale: [0-weakest <-> 4-strongest]
+    # values below 3 will give suggestions and an (optional) warning
+    if password_analysis["score"] > 2:
+        return True, ""
+    else:
+        suggestions = password_analysis["feedback"]["suggestions"][0]
+        warning = password_analysis["feedback"]["warning"]
+        return False, suggestions + " " + warning
 
-# Workaround for a bug in pyramid.request.cookies.
-# Chrome may send different cookies with the same name.
-# The one that applies is the first one (the one with the
-# most specific path).
-# But pyramid.request.cookies picks the last one.
+
 def get_cookie(request, name):
+    """Workaround for a bug in pyramid.request.cookies.
+    Chrome may send different cookies with the same name.
+    The one that applies is the first one
+    (the one with the most specific path).
+    But pyramid.request.cookies picks the last one."""
+
     name = name.strip()
     if "Cookie" not in request.headers:
         return None
@@ -551,21 +548,17 @@ def extract_repo_from_link(url):
 
     # Regular expression to capture the username/repository part of the URL
     match = re.search(r"github\.com\/([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)\/?", url)
-    if match:
-        return match.group(1)
-    return None
+    return match.group(1) if match else None
 
 
 def get_hash(engine_options):
     match = re.search("Hash=([0-9]+)", engine_options)
-    if match:
-        return int(match.group(1))
-    return 0
+    return int(match.group(1)) if match else 0
 
 
-# Avoids exposing sensitive data about the workers to the client and skips some heavy data.
 def strip_run(run):
-    # a deep copy, avoiding copies of a few large lists.
+    """Expose only non-sensitive workers data and skip deepcopying some heavy data."""
+
     stripped = {}
     for k1, v1 in run.items():
         if k1 in ("tasks", "bad_tasks"):
@@ -595,17 +588,12 @@ def count_games(stats):
 
 
 def pack_flips(flips):
-    """
-    This transforms a list of +-1 into a sequence of bytes
-    with the meaning of the indivual bits being 1:1, 0:-1.
-    """
+    """Transform a list of +-1 into a sequence of bytes
+    with the meaning of the indivual bits being 1:1, 0:-1."""
     return np.packbits(np.array(flips, dtype=np.int8) == 1).tobytes() if flips else b""
 
 
 def unpack_flips(packed_flips, length=None):
-    """
-    The inverse function.
-    """
     if not packed_flips:
         return []
     bits = np.unpackbits(np.frombuffer(packed_flips, dtype=np.uint8))

@@ -1,7 +1,7 @@
 <%inherit file="base.mak"/>
 
 <%!
-  from fishtest.util import delta_date, diff_date, format_group
+  from fishtest.util import format_group
 %>
 
 <script>
@@ -184,5 +184,5 @@
           <td colspan=20>No approver users</td>
       </tr>
     % endif
-  </tbody> 
+  </tbody>
 </table>

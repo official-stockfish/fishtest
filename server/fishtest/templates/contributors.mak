@@ -1,7 +1,9 @@
 <%inherit file="base.mak"/>
 
 <%!
+  from datetime import UTC, datetime
   import urllib
+  from fishtest.util import format_time_ago
 %>
 
 <script>
@@ -47,7 +49,7 @@
       <div class="card-header text-nowrap" title="Testers">Testers</div>
       <div class="card-body">
         <h4 class="card-title mb-0 monospace">
-          ${sum(u['str_last_updated'] != 'Never' for u in users)}
+          ${sum(u['last_updated'] != datetime.min.replace(tzinfo=UTC) for u in users)}
         </h4>
       </div>
     </div>
@@ -102,7 +104,7 @@
       <div class="card-header text-nowrap" title="Tests submitted">Tests submitted</div>
       <div class="card-body">
         <h4 class="card-title mb-0 monospace">
-          ${sum(u['tests'] for u in users)}  
+          ${sum(u['tests'] for u in users)}
         </h4>
       </div>
     </div>
@@ -148,7 +150,7 @@
           ${user['username']}
           % endif
           </td>
-          <td data-diff="${user['diff']}" class="text-end">${user['str_last_updated']}</td>
+          <td data-sort-value="${-user['last_updated'].timestamp()}" class="text-end">${format_time_ago(user['last_updated'])}</td>
           <td class="text-end">${int(user['games_per_hour'])}</td>
           <td class="text-end">${int(user['cpu_hours'])}</td>
           <td class="text-end">${int(user['games'])}</td>
@@ -160,7 +162,7 @@
           </td>
         </tr>
       % endfor
-    
+
       % if len(users) == 0:
         <tr>
           <td colspan=20>No users exist</td>

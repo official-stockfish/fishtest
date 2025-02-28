@@ -355,7 +355,7 @@ function comparer(idx, asc) {
 }
 function getCellValue(tr, idx) {
   return (
-    tr.children[idx].dataset.diff ||
+    tr.children[idx].dataset.sortValue ||
     tr.children[idx].innerText ||
     tr.children[idx].textContent
   );
