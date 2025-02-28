@@ -67,7 +67,7 @@ def process_run(run, info):
 
     # Update the information for the workers contributed by the users
     tc = estimate_game_duration(run["args"]["tc"])
-    for task in run["tasks"]:
+    for task in run.get("tasks", {}):
         if "worker_info" not in task:
             continue
         t_username = task["worker_info"].get("username")
