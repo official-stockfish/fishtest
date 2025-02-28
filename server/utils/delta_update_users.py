@@ -31,10 +31,9 @@ import logging
 import sys
 from datetime import UTC, datetime, timedelta
 
-from pymongo import DESCENDING
-
 from fishtest.rundb import RunDb
 from fishtest.util import delta_date, diff_date, estimate_game_duration
+from pymongo import DESCENDING
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(message)s")
 logger = logging.getLogger(__name__)
