@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from functools import cache
 
 import fishtest.stats.stat_util
-import numpy
+import numpy as np
 import scipy.stats
 from email_validator import EmailNotValidError, caching_resolver, validate_email
 from zxcvbn import zxcvbn
@@ -111,15 +111,15 @@ def get_chi2(tasks, exclude_workers=set()):
         if len(users) <= 1:
             return default_results
         # Now do the matrix computations with numpy.
-        observed = numpy.array(list(users.values()))
+        observed = np.array(list(users.values()))
         rows, columns = observed.shape
-        column_sums = numpy.sum(observed, axis=0)
-        row_sums = numpy.sum(observed, axis=1)
-        grand_total = numpy.sum(column_sums)
+        column_sums = np.sum(observed, axis=0)
+        row_sums = np.sum(observed, axis=1)
+        grand_total = np.sum(column_sums)
         # if no games have been received, we cannot continue
         if grand_total == 0:
             return default_results
-        expected = numpy.outer(row_sums, column_sums) / grand_total
+        expected = np.outer(row_sums, column_sums) / grand_total
         filtering_done = True
         for key, expected_row in zip(list(users), expected):
             if min(expected_row) <= 5:
@@ -130,8 +130,8 @@ def get_chi2(tasks, exclude_workers=set()):
     df = (rows - 1) * (columns - 1)
     raw_residual = observed - expected
     ratio = raw_residual**2 / expected
-    row_chi2 = numpy.sum(ratio, axis=1)
-    chi2 = numpy.sum(row_chi2)
+    row_chi2 = np.sum(ratio, axis=1)
+    chi2 = np.sum(row_chi2)
     p_value = 1 - scipy.stats.chi2.cdf(chi2, df)
 
     # Finally we also compute for each qualifying worker a "residual"
@@ -599,21 +599,15 @@ def pack_flips(flips):
     This transforms a list of +-1 into a sequence of bytes
     with the meaning of the indivual bits being 1:1, 0:-1.
     """
-    a1 = [x == 1 for x in flips]
-    # Work around numpy wart
-    if a1 == []:
-        a1 = [0]
-    return numpy.packbits(a1).tobytes()
+    return np.packbits(np.array(flips, dtype=np.int8) == 1).tobytes() if flips else b""
 
 
 def unpack_flips(packed_flips, length=None):
     """
     The inverse function.
     """
-    a0 = numpy.array(list(packed_flips), dtype=numpy.uint8)
-    a1 = numpy.unpackbits(a0).tolist()
-    a2 = [1 if x else -1 for x in a1]
-    if length is None:
-        return a2
-    else:
-        return a2[0:length]
+    if not packed_flips:
+        return []
+    bits = np.unpackbits(np.frombuffer(packed_flips, dtype=np.uint8))
+    flips = np.where(bits, 1, -1)
+    return flips.tolist() if length is None else flips[:length].tolist()
