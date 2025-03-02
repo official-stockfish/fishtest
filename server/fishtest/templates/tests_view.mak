@@ -46,7 +46,7 @@
 % if 'spsa' in run['args']:
   <script src="https://www.gstatic.com/charts/loader.js"></script>
   <script>
-    const spsaData = ${json.dumps(run["args"]["spsa"])|n};
+    const spsaData = ${json.dumps(spsa_data)|n};
   </script>
 
   <script src="${request.static_url('fishtest:static/js/spsa.js')}"></script>

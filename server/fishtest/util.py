@@ -583,17 +583,3 @@ def strip_run(run):
 
 def count_games(stats):
     return stats["wins"] + stats["losses"] + stats["draws"]
-
-
-def pack_flips(flips):
-    """Transform a list of +-1 into a sequence of bytes
-    with the meaning of the indivual bits being 1:1, 0:-1."""
-    return np.packbits(np.array(flips, dtype=np.int8) == 1).tobytes() if flips else b""
-
-
-def unpack_flips(packed_flips, length=None):
-    if not packed_flips:
-        return []
-    bits = np.unpackbits(np.frombuffer(packed_flips, dtype=np.uint8))
-    flips = np.where(bits, 1, -1)
-    return flips.tolist() if length is None else flips[:length].tolist()
