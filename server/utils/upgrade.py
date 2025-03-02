@@ -1,6 +1,6 @@
 import pprint
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pymongo
 from fishtest.util import worker_name
@@ -105,7 +105,7 @@ if __name__ == "__main__":
     runs = runs_collection.find({}).sort("_id", 1)
     count = 0
     print("Starting conversion...")
-    t0 = datetime.now(timezone.utc)
+    t0 = datetime.now(UTC)
     for r in runs:
         count += 1
         r_id = r["_id"]
@@ -113,7 +113,7 @@ if __name__ == "__main__":
         convert_task_list(r["tasks"])
         runs_collection.replace_one({"_id": r_id}, r)
         print("Runs converted: {}.".format(count), end="\r")
-    t1 = datetime.now(timezone.utc)
+    t1 = datetime.now(UTC)
     duration = (t1 - t0).total_seconds()
     time_per_run = duration / count
     print("")

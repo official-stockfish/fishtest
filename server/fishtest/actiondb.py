@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from bson.objectid import ObjectId
 from fishtest.schemas import action_schema
@@ -216,7 +216,7 @@ class ActionDb:
     def insert_action(self, **action):
         if "run_id" in action:
             action["run_id"] = str(action["run_id"])
-        action["time"] = datetime.now(timezone.utc).timestamp()
+        action["time"] = datetime.now(UTC).timestamp()
         action["_id"] = ObjectId()
         try:
             validate(action_schema, action, "action")

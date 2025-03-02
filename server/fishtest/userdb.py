@@ -1,7 +1,7 @@
 import sys
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fishtest.schemas import user_schema
 from pymongo import ASCENDING
@@ -113,7 +113,7 @@ class UserDb:
             user = {
                 "username": username,
                 "password": password,
-                "registration_time": datetime.now(timezone.utc),
+                "registration_time": datetime.now(UTC),
                 "pending": True,
                 "blocked": False,
                 "email": email,

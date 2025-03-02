@@ -4,7 +4,7 @@ import gzip
 import io
 import sys
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fishtest.api import WORKER_VERSION, UserApi, WorkerApi
 from fishtest.run_cache import Prio
@@ -54,7 +54,7 @@ def new_run(self, add_tasks=0):
         tests_repo="https://google.com",
         auto_purge=False,
         username="travis",
-        start_time=datetime.now(timezone.utc),
+        start_time=datetime.now(UTC),
     )
     run = self.rundb.get_run(run_id)
     run["approved"] = True
@@ -75,7 +75,7 @@ def new_run(self, add_tasks=0):
                     "pentanomial": [0, 0, 0, 0, 0],
                 },
                 "active": True,
-                "last_updated": datetime.now(timezone.utc),
+                "last_updated": datetime.now(UTC),
                 "start": 1234,
                 "worker_info": worker_info,
             }

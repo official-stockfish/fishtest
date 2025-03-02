@@ -2,7 +2,7 @@ import base64
 import copy
 import io
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from urllib.parse import urlparse
 
 from fishtest.schemas import api_access_schema, api_schema, gzip_data
@@ -51,15 +51,13 @@ def exception_handler(error, request):
 class GenericApi:
     def __init__(self, request):
         self.request = request
-        self.__t0 = datetime.now(timezone.utc)
+        self.__t0 = datetime.now(UTC)
 
     def timestamp(self):
         return self.__t0
 
     def add_time(self, result):
-        result["duration"] = (
-            datetime.now(timezone.utc) - self.timestamp()
-        ).total_seconds()
+        result["duration"] = (datetime.now(UTC) - self.timestamp()).total_seconds()
         return result
 
     def handle_error(self, error, exception=HTTPBadRequest):
@@ -316,7 +314,7 @@ class WorkerApi(GenericApi):
         task = self.task()
         with self.request.rundb.active_run_lock(self.run_id()):
             if task["active"]:
-                task["last_updated"] = datetime.now(timezone.utc)
+                task["last_updated"] = datetime.now(UTC)
                 self.request.rundb.buffer(run)
             return self.add_time({"task_alive": task["active"]})
 

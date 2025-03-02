@@ -5,7 +5,7 @@ import html
 import json
 import os
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import bson
@@ -817,7 +817,7 @@ def parse_spsa_params(raw, spsa):
 
 
 def validate_modify(request, run):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if "start_time" not in run or (now - run["start_time"]).days > 30:
         request.session.flash("Run too old to be modified", "error")
         raise home(request)
@@ -1121,8 +1121,8 @@ def update_nets(request, run):
 
     for net in new_nets:
         if "first_test" not in net:
-            net["first_test"] = {"id": run_id, "date": datetime.now(timezone.utc)}
-        net["last_test"] = {"id": run_id, "date": datetime.now(timezone.utc)}
+            net["first_test"] = {"id": run_id, "date": datetime.now(UTC)}
+        net["last_test"] = {"id": run_id, "date": datetime.now(UTC)}
         request.rundb.update_nn(net)
 
 

@@ -7,7 +7,7 @@ import sys
 import textwrap
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import fishtest.run_cache
 import fishtest.stats.stat_util
@@ -60,7 +60,7 @@ class RunDb:
         # MongoDB server is assumed to be on the same machine, if not user should
         # use ssh with port forwarding to access the remote host.
         self.conn = MongoClient(os.getenv("FISHTEST_HOST") or "localhost")
-        codec_options = CodecOptions(tz_aware=True, tzinfo=timezone.utc)
+        codec_options = CodecOptions(tz_aware=True, tzinfo=UTC)
         self.db = self.conn[db_name].with_options(codec_options=codec_options)
         self.userdb = UserDb(self.db)
         self.actiondb = ActionDb(self.db)
@@ -299,7 +299,7 @@ class RunDb:
                     + stats["losses"]
                     + stats["draws"]
                 )
-                task["last_updated"] = datetime.now(timezone.utc)
+                task["last_updated"] = datetime.now(UTC)
                 if "spsa_params" in task:
                     del task["spsa_params"]
                 task["active"] = False
@@ -484,7 +484,7 @@ class RunDb:
         adjudication=True,
     ):
         if start_time is None:
-            start_time = datetime.now(timezone.utc)
+            start_time = datetime.now(UTC)
 
         run_args = {
             "base_tag": base_tag,
@@ -962,7 +962,7 @@ After fixing the issues you can unblock the worker at
         worker_info.pop("host_url", None)
 
         # Now we see if a worker with the same name is already connected.
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         my_name_long = worker_name(worker_info)
         unique_key = worker_info["unique_key"]
         with self.wtt_lock:
@@ -1130,7 +1130,7 @@ After fixing the issues you can unblock the worker at
                 "num_games": task_size,
                 "active": True,
                 "worker_info": worker_info,
-                "last_updated": datetime.now(timezone.utc),
+                "last_updated": datetime.now(UTC),
                 "start": opening_offset,
                 "stats": {
                     "wins": 0,
@@ -1251,7 +1251,7 @@ After fixing the issues you can unblock the worker at
     def sync_update_task(self, worker_info, run_id, task_id, stats, spsa):
         run = self.get_run(run_id)
         task = run["tasks"][task_id]
-        update_time = datetime.now(timezone.utc)
+        update_time = datetime.now(UTC)
 
         error = ""
 
@@ -1473,7 +1473,7 @@ After fixing the issues you can unblock the worker at
         if not run["finished"]:
             return "Can only purge completed run"
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if "start_time" not in run or (now - run["start_time"]).days > 30:
             return "Run too old to be purged"
         # Do not revive failed runs
