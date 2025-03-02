@@ -21,7 +21,7 @@
       <th>Python</th>
       <th>Worker</th>
       <th>Running on</th>
-      <th>Last updated</th>
+      <th>Last active</th>
     </tr>
   </thead>
   <tbody>
