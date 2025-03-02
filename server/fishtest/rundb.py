@@ -10,6 +10,7 @@ import time
 from datetime import UTC, datetime
 
 import fishtest.run_cache
+import fishtest.spsa_handler
 import fishtest.stats.stat_util
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
@@ -43,10 +44,8 @@ from fishtest.util import (
     get_chi2,
     get_hash,
     get_tc_ratio,
-    pack_flips,
     remaining_hours,
     residual_to_color,
-    unpack_flips,
     worker_name,
 )
 from fishtest.workerdb import WorkerDb
@@ -105,6 +104,8 @@ class RunDb:
         self.request_task_lock = threading.Lock()
         self.scheduler = None
         self._shutdown = False
+
+        self.spsa_handler = fishtest.spsa_handler.SPSAHandler(self)
 
     def get_run(self, run_id):
         if self.__is_primary_instance:
@@ -1254,12 +1255,14 @@ After fixing the issues you can unblock the worker at
                 message=message,
             )
 
-    def update_task(self, worker_info, run_id, task_id, stats, spsa):
+    def update_task(self, worker_info, run_id, task_id, stats, spsa_results):
         lock = self.active_run_lock(run_id)
         with lock:
-            return self.sync_update_task(worker_info, run_id, task_id, stats, spsa)
+            return self.sync_update_task(
+                worker_info, run_id, task_id, stats, spsa_results
+            )
 
-    def sync_update_task(self, worker_info, run_id, task_id, stats, spsa):
+    def sync_update_task(self, worker_info, run_id, task_id, stats, spsa_results):
         run = self.get_run(run_id)
         task = run["tasks"][task_id]
         update_time = datetime.now(UTC)
@@ -1268,7 +1271,7 @@ After fixing the issues you can unblock the worker at
 
         num_games = count_games(stats)
         old_num_games = count_games(task["stats"]) if "stats" in task else 0
-        spsa_games = count_games(spsa) if "spsa" in run["args"] else 0
+        spsa_games = count_games(spsa_results) if "spsa" in run["args"] else 0
 
         # First some sanity checks on the update
         # If something is wrong we return early.
@@ -1336,8 +1339,8 @@ After fixing the issues you can unblock the worker at
         task["last_updated"] = update_time
         task["worker_info"] = worker_info  # updates rate, ARCH, nps
 
-        if "spsa" in run["args"] and spsa_games == spsa["num_games"]:
-            self.sync_update_spsa(run_id, task_id, spsa)
+        if "spsa" in run["args"] and spsa_games == spsa_results["num_games"]:
+            self.spsa_handler.update_spsa_data(run_id, task_id, stats, spsa_results)
 
         task_finished = False
 
@@ -1552,130 +1555,3 @@ After fixing the issues you can unblock the worker at
                 run.update(flags)
                 self.buffer(run, priority=Prio.SAVE_NOW)
         return message
-
-    def spsa_param_clip(self, param, increment):
-        return min(max(param["theta"] + increment, param["min"]), param["max"])
-
-    def request_spsa(self, run_id, task_id):
-        with self.active_run_lock(run_id):
-            return self.sync_request_spsa(run_id, task_id)
-
-    def sync_request_spsa(self, run_id, task_id):
-        run = self.get_run(run_id)
-        task = run["tasks"][task_id]
-        spsa = run["args"]["spsa"]
-
-        # Check if the worker is still working on this task.
-        if not task["active"]:
-            info = "Request_spsa: task {}/{} is not active".format(run_id, task_id)
-            print(info, flush=True)
-            return {"task_alive": False, "info": info}
-
-        result = self.sync_generate_spsa(run_id)
-        task["spsa_params"] = {}
-        task["spsa_params"]["start"] = count_games(task["stats"])
-        task["spsa_params"]["iter"] = spsa["iter"]
-        task["spsa_params"]["packed_flips"] = pack_flips(
-            [w_param["flip"] for w_param in result["w_params"]]
-        )
-
-        self.buffer(run)
-        return result
-
-    def sync_generate_spsa(self, run_id, iter=None):
-        result = {"task_alive": True, "w_params": [], "b_params": []}
-        run = self.get_run(run_id)
-        spsa = run["args"]["spsa"]
-
-        if iter is None:
-            iter = spsa["iter"]
-
-        # Generate the next set of tuning parameters
-        iter_local = iter + 1  # start from 1 to avoid division by zero
-        for param in spsa["params"]:
-            c = param["c"] / iter_local ** spsa["gamma"]
-            flip = random.choice((-1, 1))
-            result["w_params"].append(
-                {
-                    "name": param["name"],
-                    "value": self.spsa_param_clip(param, c * flip),
-                    "R": param["a"] / (spsa["A"] + iter_local) ** spsa["alpha"] / c**2,
-                    "c": c,
-                    "flip": flip,
-                }
-            )
-            # These are only used by the worker
-            result["b_params"].append(
-                {
-                    "name": param["name"],
-                    "value": self.spsa_param_clip(param, -c * flip),
-                }
-            )
-
-        return result
-
-    def sync_update_spsa(self, run_id, task_id, spsa_results):
-        run = self.get_run(run_id)
-        task = run["tasks"][task_id]
-        spsa = run["args"]["spsa"]
-
-        # Catch some issues which may occur after a server crash
-        if "spsa_params" not in task:
-            print(
-                f"Update_task: spsa_params not found for {run_id}/{task_id}. Skipping update...",
-                flush=True,
-            )
-            return
-        task_spsa_params = task["spsa_params"]
-        # Make sure we cannot call update_spsa again with these data
-        del task["spsa_params"]
-        games = count_games(task["stats"]) - count_games(spsa_results)
-        if task_spsa_params["start"] != games:
-            print(
-                f"Update_task: spsa_params for {run_id}/{task_id}",
-                "do not match the worker. Skipping update...",
-                flush=True,
-            )
-            return
-
-        # Reconstruct spsa data from the task data
-        w_params = self.sync_generate_spsa(run_id, iter=task_spsa_params["iter"])[
-            "w_params"
-        ]
-        flips = unpack_flips(task_spsa_params["packed_flips"], length=len(w_params))
-        for idx, w_param in enumerate(w_params):
-            w_param["flip"] = flips[idx]
-            del w_param["value"]  # for safety!
-
-        # Update the current theta based on the results from the worker
-        result = spsa_results["wins"] - spsa_results["losses"]
-        spsa["iter"] += spsa_results["num_games"] // 2
-
-        for idx, param in enumerate(spsa["params"]):
-            R = w_params[idx]["R"]
-            c = w_params[idx]["c"]
-            flip = w_params[idx]["flip"]
-            param["theta"] = self.spsa_param_clip(param, R * c * result * flip)
-
-        self.sync_add_to_spsa_history(run_id, w_params)
-
-    def sync_add_to_spsa_history(self, run_id, w_params):
-        run = self.get_run(run_id)
-        spsa = run["args"]["spsa"]
-
-        # Compute the update frequency so that the required storage does not depend
-        # on the the number of parameters. We have to recompute this every time since
-        # the user may have modified the run.
-        n_params = len(spsa["params"])
-        samples = 100 if n_params < 100 else 10000 / n_params if n_params < 1000 else 1
-        period = run["args"]["num_games"] / 2 / samples
-
-        # Now update if the time has come...
-        if "param_history" not in spsa:
-            spsa["param_history"] = []
-        if len(spsa["param_history"]) + 1 <= spsa["iter"] / period:
-            summary = [
-                {"theta": spsa_param["theta"], "R": w_param["R"], "c": w_param["c"]}
-                for w_param, spsa_param in zip(w_params, spsa["params"])
-            ]
-            spsa["param_history"].append(summary)

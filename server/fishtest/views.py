@@ -792,7 +792,8 @@ def get_nets(commit_sha, repo_url):
         raise Exception("Unable to access developer repository: " + api_url)
 
 
-def parse_spsa_params(raw, spsa):
+def parse_spsa_params(spsa):
+    raw = spsa["raw_params"]
     params = []
     for line in raw.split("\n"):
         chunks = line.strip().split(",")
@@ -1067,9 +1068,7 @@ def validate_form(request):
             "iter": 0,
             "num_iter": int(data["num_games"] / 2),
         }
-        data["spsa"]["params"] = parse_spsa_params(
-            request.POST["spsa_raw_params"], data["spsa"]
-        )
+        data["spsa"]["params"] = parse_spsa_params(data["spsa"])
         if len(data["spsa"]["params"]) == 0:
             raise Exception("Number of params must be > 0")
     else:
@@ -1472,6 +1471,7 @@ def tests_view(request):
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None:
         raise HTTPNotFound()
+    run_id = str(run["_id"])
     follow = 1 if "follow" in request.params else 0
     run_args = [("id", str(run["_id"]), "")]
     if run.get("rescheduled_from"):
@@ -1598,6 +1598,8 @@ def tests_view(request):
 
     same_user = is_same_user(request, run)
 
+    spsa_data = request.rundb.spsa_handler.get_spsa_data(run_id)
+
     return {
         "run": run,
         "run_args": run_args,
@@ -1614,6 +1616,7 @@ def tests_view(request):
         "same_user": same_user,
         "pt_info": request.rundb.pt_info,
         "document_size": len(bson.BSON.encode(run)),
+        "spsa_data": spsa_data,
     }
 
 

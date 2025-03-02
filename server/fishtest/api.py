@@ -245,7 +245,7 @@ class WorkerApi(GenericApi):
             run_id=self.run_id(),
             task_id=self.task_id(),
             stats=self.stats(),
-            spsa=self.spsa(),
+            spsa_results=self.spsa(),
         )
         return self.add_time(result)
 
@@ -322,7 +322,9 @@ class WorkerApi(GenericApi):
     @view_config(route_name="api_request_spsa")
     def request_spsa(self):
         self.validate_request()
-        result = self.request.rundb.request_spsa(self.run_id(), self.task_id())
+        result = self.request.rundb.spsa_handler.request_spsa_data(
+            self.run_id(), self.task_id()
+        )
         return self.add_time(result)
 
 
