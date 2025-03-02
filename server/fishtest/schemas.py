@@ -7,7 +7,7 @@
 import copy
 import math
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import fishtest.stats.stat_util
 from bson.binary import Binary
@@ -60,7 +60,7 @@ country_code = regex(r"[A-Z][A-Z]", name="country_code")
 epd_file = glob("*.epd", name="epd_file")
 pgn_file = glob("*.pgn", name="pgn_file")
 even = div(2, name="even")
-datetime_utc = intersect(datetime, fields({"tzinfo": timezone.utc}))
+datetime_utc = intersect(datetime, fields({"tzinfo": UTC}))
 gzip_data = magic("application/gzip", name="gzip_data")
 residual_color = set_name(union("green", "yellow", "red"), "residual_color")
 

@@ -1,6 +1,6 @@
 import copy
 import threading
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from random import uniform
 
 """
@@ -55,7 +55,7 @@ class Task:
         self.min_delay = timedelta(seconds=min_delay)
         self.__rel_jitter = jitter * self.period
         self.__next_schedule = (
-            datetime.now(timezone.utc)
+            datetime.now(UTC)
             + initial_delay
             + uniform(-self.__rel_jitter, self.__rel_jitter)
         )
@@ -78,7 +78,7 @@ class Task:
                     self.__next_schedule = (
                         max(
                             self.__next_schedule + self.period,
-                            datetime.now(timezone.utc) + self.min_delay,
+                            datetime.now(UTC) + self.min_delay,
                         )
                         + jitter
                     )
@@ -92,7 +92,7 @@ class Task:
         """Schedule the task now. Note that this happens asynchronously."""
         if not self.__expired:
             with self.__lock:
-                self.__next_schedule = datetime.now(timezone.utc)
+                self.__next_schedule = datetime.now(UTC)
             self.__scheduler._refresh()
 
     def expired(self):
@@ -217,7 +217,7 @@ class Scheduler:
                         next_task = task
                         next_schedule = task._next_schedule()
             if next_schedule is not None:
-                delay = (next_schedule - datetime.now(timezone.utc)).total_seconds()
+                delay = (next_schedule - datetime.now(UTC)).total_seconds()
                 self.__event.wait(delay)
                 if not self.__event.is_set():
                     next_task._do_work()

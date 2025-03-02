@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fishtest.rundb import RunDb
 from pymongo import DESCENDING
@@ -9,7 +9,7 @@ from pymongo import DESCENDING
 def purge_pgns(rundb, finished, deleted, days, days_ltc=60):
     kept_runs = kept_tasks = kept_pgns = 0
     purged_runs = purged_tasks = purged_pgns = 0
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     cutoff_date_ltc = now - timedelta(days=days_ltc)
     cutoff_date = now - timedelta(days=days)
     tc_regex = re.compile("^([2-9][0-9])|([1-9][0-9][0-9])")

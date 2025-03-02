@@ -1,7 +1,7 @@
 import random
 import sys
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import util
 from fishtest.api import WORKER_VERSION
@@ -91,7 +91,7 @@ class CreateRunDBTest(unittest.TestCase):
             tests_repo="https://google.com",
             auto_purge=False,
             username="travis",
-            start_time=datetime.now(timezone.utc),
+            start_time=datetime.now(UTC),
         )
 
         run = self.rundb.get_run(run_id_stc)
@@ -134,7 +134,7 @@ class CreateRunDBTest(unittest.TestCase):
             tests_repo="https://google.com",
             auto_purge=False,
             username="travis",
-            start_time=datetime.now(timezone.utc),
+            start_time=datetime.now(UTC),
         )
         run = self.rundb.get_run(run_id)
         task = {
