@@ -11,7 +11,6 @@ from datetime import UTC, datetime
 
 import fishtest.run_cache
 import fishtest.stats.stat_util
-from bson.binary import Binary
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from fishtest.actiondb import ActionDb
@@ -607,7 +606,7 @@ class RunDb:
         return self.__is_primary_instance
 
     def upload_pgn(self, run_id, pgn_zip):
-        record = {"run_id": run_id, "pgn_zip": Binary(pgn_zip), "size": len(pgn_zip)}
+        record = {"run_id": run_id, "pgn_zip": pgn_zip, "size": len(pgn_zip)}
         try:
             validate(pgns_schema, record)
         except ValidationError as e:
@@ -1560,9 +1559,10 @@ After fixing the issues you can unblock the worker at
         task["spsa_params"] = {}
         task["spsa_params"]["start"] = count_games(task["stats"])
         task["spsa_params"]["iter"] = spsa["iter"]
-        task["spsa_params"]["packed_flips"] = Binary(
-            pack_flips([w_param["flip"] for w_param in result["w_params"]])
+        task["spsa_params"]["packed_flips"] = pack_flips(
+            [w_param["flip"] for w_param in result["w_params"]]
         )
+
         self.buffer(run)
         return result
 
