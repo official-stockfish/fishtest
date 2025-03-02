@@ -10,7 +10,6 @@ import threading
 from datetime import UTC, datetime
 
 import fishtest.stats.stat_util
-from bson.binary import Binary
 from bson.objectid import ObjectId
 from vtjson import (
     anything,
@@ -82,7 +81,7 @@ pgns_schema = intersect(
     {
         "_id?": ObjectId,
         "run_id": run_id_pgns,
-        "pgn_zip": intersect(Binary, gzip_data),
+        "pgn_zip": intersect(bytes, gzip_data),
         "size": uint,
     },
     size_is_length,
@@ -761,7 +760,7 @@ runs_schema = intersect(
                     "spsa_params?": {
                         "start": uint,
                         "iter": uint,
-                        "packed_flips": Binary,  # TODO: check length
+                        "packed_flips": bytes,  # TODO: check length
                     },
                     "worker_info": worker_info_schema_runs,
                 },

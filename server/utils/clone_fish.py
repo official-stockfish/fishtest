@@ -3,7 +3,6 @@
 import bz2
 
 import requests
-from bson.binary import Binary
 from pymongo import ASCENDING, MongoClient
 
 # fish_host = 'http://localhost:6543'
@@ -44,9 +43,7 @@ def main():
                     run = requests.get(fish_host + "/api/get_run/" + run_id).json()
                     runs.insert(run)
                 pgn = requests.get(fish_host + "/api/pgn/" + pgn_file)
-                pgndb.insert(
-                    dict(pgn_bz2=Binary(bz2.compress(pgn.content)), run_id=pgn_file)
-                )
+                pgndb.insert(dict(pgn_bz2=bz2.compress(pgn.content), run_id=pgn_file))
                 loaded[pgn_file] = True
                 count += 1
         skip += len(pgn_list)
