@@ -1622,15 +1622,6 @@ After fixing the issues you can unblock the worker at
             )
             return
 
-        # Check for old format. This can be deleted after a couple of days
-        if "packed_flips" not in task_spsa_params:
-            print(
-                f"Update_task: spsa_params for {run_id}/{task_id}",
-                "have an old format. Skipping update...",
-                flush=True,
-            )
-            return
-
         # Reconstruct spsa data from the task data
         w_params = self.sync_generate_spsa(run_id, iter=task_spsa_params["iter"])[
             "w_params"
