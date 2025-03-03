@@ -272,7 +272,7 @@
                 <th>Score</th>
               </tr>
             </thead>
-            <tbody>  
+            <tbody>
               <tr>
                 <td>H0</td>
                 <td>${f"{lelo0:.3f}"}</td>
@@ -318,7 +318,7 @@
                 <tr><td>Logistic (alt)</td><td>${f"{LLR5_alt:.5f}"}</td></tr>
                 <tr><td>Logistic (alt2)</td><td>${f"{LLR5_alt2:.5f}"}</td></tr>
                 <tr><td>Normalized (exact)</td><td>${f"{LLR5_normalized:.5f}"}</td></tr>
-                <tr><td>Normalized (alt)</td><td>${f"{LLR5_normalized_alt:.5f}"}</td></tr>              
+                <tr><td>Normalized (alt)</td><td>${f"{LLR5_normalized_alt:.5f}"}</td></tr>
               </tbody>
             </table>
             <em>
