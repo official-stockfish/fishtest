@@ -146,7 +146,7 @@ function notify(title, body, link, fallback) {
     const notification = new Notification(title, {
       body: body,
       requireInteraction: true,
-      icon: "https://tests.stockfishchess.org/img/stockfish.webp",
+      icon: "/img/stockfish.webp",
     });
     notification.onclick = () => {
       window.open(link, "_blank");

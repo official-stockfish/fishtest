@@ -1,8 +1,8 @@
+import os
 import signal
 import sys
 import threading
 import traceback
-from pathlib import Path
 
 from fishtest import helpers
 from fishtest.routes import setup_routes
@@ -87,16 +87,27 @@ def main(global_config, **settings):
             signal.signal(signal.SIGTERM, rundb.exit_run)
             rundb.schedule_tasks()
 
+    def set_default_base_url(event):
+        if not rundb._base_url_set:
+            rundb.base_url = f"{event.request.scheme}://{event.request.host}"
+            rundb._base_url_set = True
+
     config.add_subscriber(add_rundb, NewRequest)
     config.add_subscriber(add_renderer_globals, BeforeRender)
     config.add_subscriber(check_blocked_user, NewRequest)
     config.add_subscriber(init_rundb, ApplicationCreated)
+    config.add_subscriber(set_default_base_url, NewRequest)
 
     # Authentication
     def group_finder(username, request):
         return request.userdb.get_user_groups(username)
 
-    secret = Path("~/fishtest.secret").expanduser().read_text()
+    secret = os.environ.get("FISHTEST_AUTHENTICATION_SECRET", "")
+    if not secret:
+        print(
+            "FISHTEST_AUTHENTICATION_SECRET is missing, using an insecure default for authentication.",
+            flush=True,
+        )
     config.set_authentication_policy(
         AuthTktAuthenticationPolicy(
             secret, callback=group_finder, hashalg="sha512", http_only=True

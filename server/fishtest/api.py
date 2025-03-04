@@ -1,6 +1,7 @@
 import base64
 import copy
 import io
+import os
 import re
 from datetime import UTC, datetime
 from urllib.parse import urlparse
@@ -616,12 +617,13 @@ class UserApi(GenericApi):
             self.handle_error(
                 f"The network {nn_id} does not exist", exception=HTTPNotFound
             )
-        else:
-            self.request.rundb.increment_nn_downloads(self.request.matchdict["id"])
 
-        return HTTPFound(
-            "https://data.stockfishchess.org/nn/" + self.request.matchdict["id"]
-        )
+        self.request.rundb.increment_nn_downloads(nn_id)
+        nn_base_url = os.environ.get(
+            "FISHTEST_NN_URL", f"{self.request.scheme}://{self.request.host}"
+        ).rstrip("/")
+
+        return HTTPFound(f"{nn_base_url}/nn/{nn_id}")
 
 
 class InternalApi(GenericApi):
