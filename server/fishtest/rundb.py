@@ -58,7 +58,7 @@ class RunDb:
     def __init__(self, db_name="fishtest_new", port=-1, is_primary_instance=True):
         # MongoDB server is assumed to be on the same machine, if not user should
         # use ssh with port forwarding to access the remote host.
-        self.conn = MongoClient(os.getenv("FISHTEST_HOST") or "localhost")
+        self.conn = MongoClient("localhost")
         codec_options = CodecOptions(tz_aware=True, tzinfo=UTC)
         self.db = self.conn[db_name].with_options(codec_options=codec_options)
         self.userdb = UserDb(self.db)
@@ -94,6 +94,9 @@ class RunDb:
         self.active_run_lock = self.run_cache.active_run_lock
         if is_primary_instance:
             self.buffer = self.run_cache.buffer
+        url = os.getenv("FISHTEST_URL")
+        self.base_url = url.rstrip("/") if url else "http://127.0.0.1"
+        self._base_url_set = bool(url)
 
         # Keep some data about the workers
         self.worker_runs = {}
@@ -729,8 +732,11 @@ class RunDb:
 
         for task_id, task, run in dead_tasks:
             print(
-                "dead task: run: https://tests.stockfishchess.org/tests/view/{} task_id: {} worker: {}".format(
-                    run["_id"], task_id, worker_name(task["worker_info"])
+                "dead task: run: {}/tests/view/{} task_id: {} worker: {}".format(
+                    self.base_url,
+                    run["_id"],
+                    task_id,
+                    worker_name(task["worker_info"]),
                 ),
                 flush=True,
             )
@@ -1388,9 +1394,13 @@ After fixing the issues you can unblock the worker at
         self.set_inactive_task(task_id, run)
         self.handle_crash_or_time(run, task_id)
         print(
-            "Failed_task: failure for: https://tests.stockfishchess.org/tests/view/{}, "
+            "Failed_task: failure for: {}/tests/view/{}, "
             "task_id: {}, worker: {}, reason: '{}'".format(
-                run_id, task_id, worker_name(task["worker_info"]), message
+                self.base_url,
+                run_id,
+                task_id,
+                worker_name(task["worker_info"]),
+                message,
             ),
             flush=True,
         )

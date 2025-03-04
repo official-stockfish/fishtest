@@ -382,25 +382,25 @@ def signup(request):
             request.session.flash(error, "error")
         return {}
 
-    path = os.path.expanduser("~/fishtest.captcha.secret")
-    if os.path.exists(path):
-        with open(path, "r") as f:
-            secret = f.read()
-            payload = {
-                "secret": secret,
-                "response": request.POST.get("g-recaptcha-response", ""),
-                "remoteip": request.remote_addr,
-            }
-            response = requests.post(
-                "https://www.google.com/recaptcha/api/siteverify",
-                data=payload,
-                timeout=HTTP_TIMEOUT,
-            ).json()
-            if "success" not in response or not response["success"]:
-                if "error-codes" in response:
-                    print(response["error-codes"])
-                request.session.flash("Captcha failed", "error")
-                return {}
+    secret = os.environ.get("FISHTEST_CAPTCHA_SECRET")
+    if not secret:
+        print("FISHTEST_CAPTCHA_SECRET is missing.", flush=True)
+    else:
+        payload = {
+            "secret": secret,
+            "response": request.POST.get("g-recaptcha-response", ""),
+            "remoteip": request.remote_addr,
+        }
+        response = requests.post(
+            "https://www.google.com/recaptcha/api/siteverify",
+            data=payload,
+            timeout=HTTP_TIMEOUT,
+        ).json()
+        if "success" not in response or not response["success"]:
+            if "error-codes" in response:
+                print(response["error-codes"])
+            request.session.flash("Captcha failed", "error")
+            return {}
 
     result = request.userdb.create_user(
         username=signup_username,

@@ -7,7 +7,6 @@
 # system currently is.
 #
 
-import os
 import pprint
 import subprocess
 import sys
@@ -18,7 +17,7 @@ db_name = "fishtest_new"
 
 # MongoDB server is assumed to be on the same machine, if not user should use
 # ssh with port forwarding to access the remote host.
-conn = MongoClient(os.getenv("FISHTEST_HOST") or "localhost")
+conn = MongoClient("localhost")
 db = conn[db_name]
 runs = db["runs"]
 
