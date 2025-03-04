@@ -5,7 +5,6 @@
 # Run this script manually to create the indexes, it could take a few
 # seconds/minutes to run.
 
-import os
 import pprint
 import sys
 
@@ -16,7 +15,7 @@ db_name = "fishtest_new"
 
 # MongoDB server is assumed to be on the same machine, if not user should use
 # ssh with port forwarding to access the remote host.
-conn = MongoClient(os.getenv("FISHTEST_HOST") or "localhost")
+conn = MongoClient("localhost")
 db = conn[db_name]
 
 
