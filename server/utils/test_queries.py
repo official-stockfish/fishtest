@@ -3,7 +3,6 @@
 # test_queries.py - run some sample queries to check db speed
 #
 
-import os
 import pprint
 import time
 
@@ -15,7 +14,7 @@ rundb = RunDb()
 
 # MongoDB server is assumed to be on the same machine, if not user should use
 # ssh with port forwarding to access the remote host.
-conn = MongoClient(os.getenv("FISHTEST_HOST") or "localhost")
+conn = MongoClient("localhost")
 db = conn[db_name]
 runs = db["runs"]
 pgns = db["pgns"]
