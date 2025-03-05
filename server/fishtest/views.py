@@ -1178,7 +1178,9 @@ def tests_run(request):
                 run=run,
                 message=new_run_message(request, run),
             )
-            request.session.flash("Submitted test to the queue!")
+            request.session.flash(
+                "The test was submitted to the queue. Please wait for approval."
+            )
             return HTTPFound(location="/tests/view/" + str(run_id) + "?follow=1")
         except Exception as e:
             request.session.flash(str(e), "error")
@@ -1236,18 +1238,13 @@ def tests_modify(request):
 
     run_id = run["_id"]
     is_approver = request.has_permission("approve_run")
+    was_approved = run["approved"]
     if (
         not is_approver
-        and run["approved"]
+        and was_approved
         and (
-            (
-                run["args"]["throughput"] != int(request.POST["throughput"])
-                and int(request.POST["throughput"]) > 100
-            )
-            or (
-                run["args"]["priority"] != int(request.POST["priority"])
-                and int(request.POST["priority"]) > 0
-            )
+            (int(request.POST["throughput"]) > max(run["args"]["throughput"], 100))
+            or (int(request.POST["priority"]) > max(run["args"]["priority"], 0))
             or run["failed"]
         )
     ):
@@ -1294,11 +1291,15 @@ def tests_modify(request):
         message=message,
     )
     if run["approved"]:
-        request.session.flash("Run successfully modified!")
+        request.session.flash("The test was successfully modified!")
+    elif was_approved:
+        request.session.flash(
+            "The test was successfully modified but it will have to be reapproved...",
+            "warning",
+        )
     else:
         request.session.flash(
-            "The run was successfully modified but it will have to be reapproved",
-            "warning",
+            "The test was successfully modified. Please wait for approval.",
         )
     return home(request)
 
