@@ -11,7 +11,7 @@ from pyramid.authentication import AuthTktAuthenticationPolicy
 from pyramid.authorization import ACLAuthorizationPolicy
 from pyramid.config import Configurator
 from pyramid.events import ApplicationCreated, BeforeRender, NewRequest
-from pyramid.httpexceptions import HTTPFound
+from pyramid.httpexceptions import HTTPFound, HTTPServiceUnavailable
 from pyramid.security import forget
 from pyramid.session import SignedCookieSessionFactory
 
@@ -68,6 +68,10 @@ def main(global_config, **settings):
                 session.invalidate()
                 raise HTTPFound(location=request.route_url("tests"), headers=headers)
 
+    def check_shutdown(event):
+        if rundb._shutdown:
+            raise HTTPServiceUnavailable()
+
     def is_user_blocked(auth_user_id, userdb):
         blocked_users = userdb.get_blocked()
         for user in blocked_users:
@@ -93,6 +97,7 @@ def main(global_config, **settings):
             rundb._base_url_set = True
 
     config.add_subscriber(add_rundb, NewRequest)
+    config.add_subscriber(check_shutdown, NewRequest)
     config.add_subscriber(add_renderer_globals, BeforeRender)
     config.add_subscriber(check_blocked_user, NewRequest)
     config.add_subscriber(init_rundb, ApplicationCreated)

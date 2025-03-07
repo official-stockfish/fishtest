@@ -104,6 +104,7 @@ class RunDb:
 
         self.request_task_lock = threading.Lock()
         self.scheduler = None
+        self._shutdown = False
 
     def get_run(self, run_id):
         if self.__is_primary_instance:
@@ -705,7 +706,12 @@ class RunDb:
 
     # handle termination
     def exit_run(self, signum, frame):
-        print("\n", flush=True, end="")
+        if os.isatty(sys.stdout.fileno()):
+            print("\n", flush=True, end="")
+        print("Stop handling requests... ", flush=True)
+        self._shutdown = True
+        # Small delay to finish pending requests
+        time.sleep(0.5)
         if self.scheduler is not None:
             print("Stopping scheduler... ", flush=True)
             self.scheduler.stop()
