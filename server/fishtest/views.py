@@ -864,6 +864,22 @@ def validate_modify(request, run):
         raise home(request)
 
 
+def sanitize_options(options):
+    try:
+        options.encode("ascii")
+    except UnicodeEncodeError:
+        raise ValueError("Options must contain only ascii characters")
+
+    tokens = options.split()
+    token_regex = re.compile(r"^[^\s=]+=[^\s=]+$", flags=re.ASCII)
+    for token in tokens:
+        if not token_regex.fullmatch(token):
+            raise ValueError(
+                "Each option must be a 'key=value' pair with no extra spaces and exactly one '='"
+            )
+    return " ".join(tokens)
+
+
 def validate_form(request):
     data = {
         "base_tag": request.POST["base-branch"],
@@ -874,8 +890,8 @@ def validate_form(request):
         "book_depth": request.POST["book-depth"],
         "base_signature": request.POST["base-signature"],
         "new_signature": request.POST["test-signature"],
-        "base_options": request.POST["base-options"],
-        "new_options": request.POST["new-options"],
+        "base_options": sanitize_options(request.POST["base-options"]),
+        "new_options": sanitize_options(request.POST["new-options"]),
         "username": request.authenticated_userid,
         "tests_repo": request.POST["tests-repo"],
         "info": request.POST["run-info"],
