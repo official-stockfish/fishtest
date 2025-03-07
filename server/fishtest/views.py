@@ -868,7 +868,7 @@ def sanitize_options(options):
     try:
         options.encode("ascii")
     except UnicodeEncodeError:
-        raise ValueError("Options must contain only ascii characters")
+        raise ValueError("Options must contain only ASCII characters")
 
     tokens = options.split()
     token_regex = re.compile(r"^[^\s=]+=[^\s=]+$", flags=re.ASCII)

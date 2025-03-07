@@ -1333,21 +1333,15 @@ def run_games(
     start_game_index = opening_offset + input_total_games
     run_seed = int(hashlib.sha1(run["_id"].encode("utf-8")).hexdigest(), 16) % (2**64)
 
-    # Format options according to fastchess syntax.
-    def parse_options(s):
-        results = []
-        chunks = s.split("=")
-        if len(chunks) == 0:
-            return results
-        param = chunks[0]
-        for c in chunks[1:]:
-            val = c.split()
-            results.append("option.{}={}".format(param, val[0]))
-            param = " ".join(val[1:])
-        return results
+    def format_fastchess_options(options):
+        return [
+            f"option.{key}={value}"
+            for token in options.split()
+            for key, value in [token.split("=")]
+        ]
 
-    new_options = parse_options(new_options)
-    base_options = parse_options(base_options)
+    new_options = format_fastchess_options(new_options)
+    base_options = format_fastchess_options(base_options)
 
     # Clean up old engines (keeping the num_bkps most recent).
     worker_dir = Path(__file__).resolve().parent
