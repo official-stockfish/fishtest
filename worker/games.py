@@ -1609,7 +1609,11 @@ def run_games(
             ]
             + pgnout
             + ["-crc32", "pgn=true"]
-            + ["-site", "https://tests.stockfishchess.org/tests/view/" + run["_id"]]
+            + [
+                "-site",
+                f"{remote.replace(':80', '').replace(':443', '')}/tests/view/"
+                + run["_id"],
+            ]
             + [
                 "-event",
                 "Batch {}: {} vs {}".format(
