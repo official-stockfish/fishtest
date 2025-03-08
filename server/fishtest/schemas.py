@@ -633,7 +633,7 @@ valid_aggregated_data = intersect(
 # about non-validation of runs created with the prior
 # schema.
 
-RUN_VERSION = 11
+RUN_VERSION = 12
 
 runs_schema = intersect(
     {
@@ -649,6 +649,7 @@ runs_schema = intersect(
         "finished": bool,
         "deleted": bool,
         "failed": bool,
+        "failures": uint,
         "is_green": bool,
         "is_yellow": bool,
         "workers": uint,

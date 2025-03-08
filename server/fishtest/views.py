@@ -1616,6 +1616,17 @@ def tests_view(request):
 
     spsa_data = request.rundb.spsa_handler.get_spsa_data(run_id)
 
+    warnings = []
+    if run["args"]["throughput"] > 100:
+        warnings.append("Throughput exceeds the normal limit.")
+    if run["args"]["priority"] > 0:
+        warnings.append("Priority exceeds the normal limit.")
+    # Check for run["failed"] for backward compatibility
+    if run["failed"] or run.get("failures", 0) > 0:
+        warnings.append("This is a failed test.")
+
+    warnings = "</br>".join(warnings)
+
     return {
         "run": run,
         "run_args": run_args,
@@ -1633,6 +1644,7 @@ def tests_view(request):
         "pt_info": request.rundb.pt_info,
         "document_size": len(bson.BSON.encode(run)),
         "spsa_data": spsa_data,
+        "warnings": warnings,
     }
 
 

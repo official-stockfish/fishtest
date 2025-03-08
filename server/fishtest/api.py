@@ -293,6 +293,7 @@ class WorkerApi(GenericApi):
                 )
                 if error == "":
                     run["failed"] = True
+                    run["failures"] = run.get("failures", 0) + 1
                     self.request.rundb.stop_run(self.run_id())
                 else:
                     self.request.rundb.set_inactive_task(self.task_id(), run)
