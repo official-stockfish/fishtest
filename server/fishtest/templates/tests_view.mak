@@ -281,16 +281,10 @@
         % endif
       % endif
 
-      % if run["args"]["throughput"] > 100 or run["args"]["priority"] > 0:
+      % if warnings != "":
         <div class="alert alert-warning">
-          Warning:
-          % if run["args"]["throughput"] > 100 and run["args"]["priority"] > 0:
-            <span>Throughput and priority exceed the normal limits.</span>
-          % elif run["args"]["throughput"] > 100:
-            <span>Throughput exceeds the normal limit.</span>
-          % elif run["args"]["priority"] > 0:
-            <span>Priority exceeds the normal limit.</span>
-          % endif
+          Warning: </br>
+          ${warnings|n}
         </div>
       % endif
 

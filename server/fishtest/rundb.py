@@ -563,7 +563,7 @@ class RunDb:
             "games_per_minute": 0.0,
         }
 
-        # Administrative flags.
+        # Administrative flags/data
         # If the following comments are incorrect then that's a bug!
 
         # set in set_inactive_run()
@@ -579,6 +579,10 @@ class RunDb:
         # set in /api/stop_run
         # cleared in set_active_run()
         new_run["failed"] = False
+
+        # "failures"
+        # incremented in /api/stop_run
+        new_run["failures"] = 0
 
         # "is_green"
         # set in stop_run(), purge_run()
