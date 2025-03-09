@@ -456,6 +456,7 @@ api_schema = intersect(
                 "losses": uint,
                 "draws": uint,
                 "num_games": intersect(uint, even),
+                "sig": uint,
             },
             valid_spsa_results,
         ),
@@ -633,7 +634,7 @@ valid_aggregated_data = intersect(
 # about non-validation of runs created with the prior
 # schema.
 
-RUN_VERSION = 12
+RUN_VERSION = 13
 
 runs_schema = intersect(
     {
@@ -759,7 +760,6 @@ runs_schema = intersect(
                     "bad?": True,
                     "stats": results_schema,
                     "spsa_params?": {
-                        "start": uint,
                         "iter": uint,
                         "packed_flips": bytes,  # TODO: check length
                     },
@@ -788,6 +788,7 @@ runs_schema = intersect(
             ...,
         ],
     },
+    lax(ifthen({"failed": True}, {"failures": suint})),
     lax(ifthen({"approved": True}, {"approver": username}, {"approver": ""})),
     lax(ifthen({"is_green": True}, {"is_yellow": False})),
     lax(ifthen({"is_yellow": True}, {"is_green": False})),

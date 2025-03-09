@@ -1169,6 +1169,8 @@ def launch_fastchess(
         w_params = req["w_params"]
         b_params = req["b_params"]
 
+        result["spsa"]["sig"] = req.get("sig", 0)
+
     else:
         w_params = []
         b_params = []

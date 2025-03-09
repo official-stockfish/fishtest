@@ -1,7 +1,7 @@
 import random
+import zlib
 
 import numpy as np
-from fishtest.util import count_games
 
 
 def _pack_flips(flips):
@@ -28,12 +28,12 @@ def _param_clip(param, increment):
 
 
 def _generate_data(spsa, iter=None):
-    result = {"task_alive": True, "w_params": [], "b_params": []}
+    result = {"w_params": [], "b_params": []}
 
     if iter is None:
         iter = spsa["iter"]
 
-    # Generate the next set of tuning parameters
+    # Generate a set of tuning parameters
     iter_local = iter + 1  # start from 1 to avoid division by zero
     for param in spsa["params"]:
         c = param["c"] / iter_local ** spsa["gamma"]
@@ -100,20 +100,22 @@ class SPSAHandler:
             return {"task_alive": False, "info": info}
 
         result = _generate_data(spsa)
+        packed_flips = _pack_flips([w_param["flip"] for w_param in result["w_params"]])
         task["spsa_params"] = {}
-        task["spsa_params"]["start"] = count_games(task["stats"])
         task["spsa_params"]["iter"] = spsa["iter"]
-        task["spsa_params"]["packed_flips"] = _pack_flips(
-            [w_param["flip"] for w_param in result["w_params"]]
-        )
+        task["spsa_params"]["packed_flips"] = packed_flips
         self.buffer(run)
+        # The signature defends against server crashes and worker bugs
+        sig = zlib.crc32(packed_flips)
+        result["sig"] = sig
+        result["task_alive"] = True
         return result
 
-    def update_spsa_data(self, run_id, task_id, stats, spsa_results):
+    def update_spsa_data(self, run_id, task_id, spsa_results):
         with self.active_run_lock(run_id):
-            return self.__update_spsa_data(run_id, task_id, stats, spsa_results)
+            return self.__update_spsa_data(run_id, task_id, spsa_results)
 
-    def __update_spsa_data(self, run_id, task_id, stats, spsa_results):
+    def __update_spsa_data(self, run_id, task_id, spsa_results):
         run = self.get_run(run_id)
         task = run["tasks"][task_id]
         spsa = run["args"]["spsa"]
@@ -128,11 +130,13 @@ class SPSAHandler:
         task_spsa_params = task["spsa_params"]
         # Make sure we cannot call update_spsa_data again with these data
         del task["spsa_params"]
-        games = count_games(stats) - count_games(spsa_results)
-        if task_spsa_params["start"] != games:
+
+        sig = spsa_results.get("sig", 0)
+        if sig != zlib.crc32(task_spsa_params["packed_flips"]):
             print(
                 f"update_spsa_data: spsa_params for {run_id}/{task_id}",
-                "do not match the worker. Skipping update...",
+                "do not match the signature sent by the worker.",
+                "Skipping update...",
                 flush=True,
             )
             return

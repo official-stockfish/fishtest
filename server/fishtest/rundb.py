@@ -1344,7 +1344,7 @@ After fixing the issues you can unblock the worker at
         task["worker_info"] = worker_info  # updates rate, ARCH, nps
 
         if "spsa" in run["args"] and spsa_games == spsa_results["num_games"]:
-            self.spsa_handler.update_spsa_data(run_id, task_id, stats, spsa_results)
+            self.spsa_handler.update_spsa_data(run_id, task_id, spsa_results)
 
         task_finished = False
 
