@@ -1198,7 +1198,6 @@ def launch_fastchess(
         + cmd[idx + 1 :]
     )
 
-    # print(cmd)
     try:
         with subprocess.Popen(
             cmd,
@@ -1564,7 +1563,6 @@ def run_games(
 
         # Handle book or PGN file.
         pgn_cmd = []
-        book_cmd = []
         if int(book_depth) <= 0:
             pass
         elif book.endswith(".pgn") or book.endswith(".epd"):
@@ -1590,6 +1588,7 @@ def run_games(
         cmd = (
             [
                 str(fastchess_path),
+                "-testEnv",
                 "-recover",
                 "-repeat",
                 "-games",
@@ -1661,7 +1660,6 @@ def run_games(
             + ["-each", "proto=uci"]
             + nodestime_cmd
             + threads_cmd
-            + book_cmd
         )
 
         task_alive = launch_fastchess(
