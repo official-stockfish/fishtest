@@ -282,9 +282,9 @@ class WorkerApi(GenericApi):
         with self.request.rundb.active_run_lock(self.run_id()):
             run = self.run()
             if not run["finished"]:
-                message = self.message()[:1024] + (
-                    " (not authorized)" if error != "" else ""
-                )
+                message = self.message()
+                if error != "":
+                    message = message + " (not authorized)"
                 self.request.actiondb.stop_run(
                     username=self.get_username(),
                     run=run,
