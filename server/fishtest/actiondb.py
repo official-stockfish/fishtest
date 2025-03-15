@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 
 from bson.objectid import ObjectId
-from fishtest.schemas import action_schema
+from fishtest.schemas import ACTION_MESSAGE_SIZE, action_schema
 from fishtest.util import hex_print, worker_name
 from pymongo import DESCENDING
 from vtjson import ValidationError, validate
@@ -68,7 +68,7 @@ class ActionDb:
             run_id=run["_id"],
             run=run_name(run),
             task_id=task_id,
-            message=message[:1024],
+            message=message[:ACTION_MESSAGE_SIZE],
         )
 
     def crash_or_time(self, username=None, run=None, task_id=None, message=None):
@@ -80,7 +80,7 @@ class ActionDb:
             run_id=run["_id"],
             run=run_name(run),
             task_id=task_id,
-            message=message[:1024],
+            message=message[:ACTION_MESSAGE_SIZE],
         )
 
     def stop_run(self, username=None, run=None, task_id=None, message=None):
@@ -93,7 +93,7 @@ class ActionDb:
                 run_id=run["_id"],
                 run=run_name(run),
                 task_id=task_id,
-                message=message[:1024],
+                message=message[:ACTION_MESSAGE_SIZE],
             )
         else:
             self.insert_action(
@@ -101,7 +101,7 @@ class ActionDb:
                 username=username,
                 run_id=run["_id"],
                 run=run_name(run),
-                message=message[:1024],
+                message=message[:ACTION_MESSAGE_SIZE],
             )
 
     def dead_task(self, username=None, run=None, task_id=None):
