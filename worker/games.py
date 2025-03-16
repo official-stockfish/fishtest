@@ -1395,20 +1395,17 @@ def run_games(
 
     env, env_hash = create_environment()
 
-    # build signature
-    bs = (
+    compiler_ver = (
         worker_info["compiler"]
         + "_"
-        + str(".".join([str(s) for s in worker_info["gcc_version"]]))
-        + "_env_"
-        + env_hash
+        + str("_".join([str(s) for s in worker_info["gcc_version"]]))
     )
     # Create new engines.
     sha_new = run["args"]["resolved_new"]
     sha_base = run["args"]["resolved_base"]
 
-    new_engine_name = "stockfish_" + sha_new + "_" + bs
-    base_engine_name = "stockfish_" + sha_base + "_" + bs
+    new_engine_name = "-".join(["stockfish", sha_new, compiler_ver, env_hash])
+    base_engine_name = "-".join(["stockfish", sha_base, compiler_ver, env_hash])
 
     new_engine = (testing_dir / new_engine_name).with_suffix(EXE_SUFFIX)
     base_engine = (testing_dir / base_engine_name).with_suffix(EXE_SUFFIX)
