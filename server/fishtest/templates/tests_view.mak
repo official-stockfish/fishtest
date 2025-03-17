@@ -276,7 +276,7 @@
           </div>
         % elif 'spsa' not in run['args']:
           <div id="master-diff" class="alert alert-danger mb-2">
-            Base branch not same as Stockfish master
+            Base branch not same as Stockfish master: <a class="alert-link" href="${h.master_diff_url(run)}" target="_blank" rel="noopener">diff</a>
           </div>
         % endif
       % endif
@@ -291,12 +291,6 @@
       % if 'spsa' not in run['args'] and run['args']['base_signature'] == run['args']['new_signature']:
         <div class="alert alert-info mb-2">
           Note: The new signature is the same as base signature.
-        </div>
-      % endif
-
-      % if 'spsa' not in run['args'] and not run.get('base_same_as_master'):
-        <div class="alert alert-warning">
-          <a class="alert-link" href="${h.master_diff_url(run)}" target="_blank" rel="noopener">Master diff</a>
         </div>
       % endif
 
