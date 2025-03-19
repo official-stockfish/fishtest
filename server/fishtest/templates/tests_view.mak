@@ -269,22 +269,14 @@
           </div>
       % endif
 
-      % if run.get('base_same_as_master') is not None:
-        % if run['base_same_as_master']:
-          <div id="master-diff" class="alert alert-success">
-            Base branch same as Stockfish master
-          </div>
-        % elif 'spsa' not in run['args']:
-          <div id="master-diff" class="alert alert-danger mb-2">
-            Base branch not same as Stockfish master: <a class="alert-link" href="${h.master_diff_url(run)}" target="_blank" rel="noopener">diff</a>
-          </div>
-        % endif
-      % endif
-
-      % if warnings != "":
-        <div class="alert alert-warning">
-          Warning: </br>
-          ${warnings|n}
+      % if warnings != []:
+        <div class="alert alert-danger">
+          % for idx, warning in enumerate(warnings):
+            ${warning|n}
+            % if idx != len(warnings)-1:
+              <hr style="margin: 0.3em auto;">
+            % endif
+          % endfor
         </div>
       % endif
 

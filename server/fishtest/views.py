@@ -11,6 +11,7 @@ from pathlib import Path
 import bson
 import fishtest.stats.stat_util
 import requests
+from fishtest.helpers import master_diff_url
 from fishtest.run_cache import Prio
 from fishtest.schemas import RUN_VERSION, runs_schema, short_worker_name
 from fishtest.util import (
@@ -1624,8 +1625,10 @@ def tests_view(request):
     # Check for run["failed"] for backward compatibility
     if run["failed"] or run.get("failures", 0) > 0:
         warnings.append("This is a failed test.")
-
-    warnings = "</br>".join(warnings)
+    base_same_as_master = run.get("base_same_as_master", True)
+    if not base_same_as_master and "spsa" not in run["args"]:
+        anchor = f'<a class="alert-link" href="{master_diff_url(run)}" target="_blank" rel="noopener">diff</a>'
+        warnings.append(f"The base branch is different from master: {anchor}")
 
     return {
         "run": run,
