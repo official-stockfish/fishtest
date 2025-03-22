@@ -71,7 +71,7 @@ MIN_CLANG_MINOR = 0
 
 FASTCHESS_SHA = "f8e58066992e5e130f07fb3ba49b89b603e32f21"
 
-WORKER_VERSION = 272
+WORKER_VERSION = 273
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -1173,34 +1173,28 @@ def verify_toolchain():
     cmds = {
         "strip": ["strip", "-V"],
         "make": ["make", "-v"],
-        "curl": ["curl", "--version"],
-        "wget": ["wget", "--version"],
     }
     if IS_MACOS:
         # MacOSX appears not to have a method to detect strip
         cmds["strip"] = ["which", "strip"]
 
-    failures = []
+    missing_tools = []
     for name, cmd in cmds.items():
         cmd_str = " ".join(cmd)
         try:
             p = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
             if p.returncode != 0:
                 print(
-                    f"Executing '{cmd_str}' failed with return code "
-                    f"{format_returncode(p.returncode)}. Error: {p.stderr.decode().strip()}"
+                    f"'{cmd_str}' returned code: {p.returncode} and error: {p.stderr.decode().strip()}"
                 )
-                print(f"It appears '{name}' is not installed")
-                failures.append(name)
+                missing_tools.append(name)
         except (OSError, subprocess.SubprocessError) as e:
-            print(f"'{cmd_str}' raised Exception: {type(e).__name__}: {e}")
-            print(f"It appears '{name}' is not installed")
-            failures.append(name)
+            print(f"'{cmd_str}' raised: {type(e).__name__}: {e}")
+            missing_tools.append(name)
 
-    if set(failures) >= {"curl", "wget"} or set(failures) - {"curl", "wget"}:
+    if missing_tools:
+        print(f"Missing required tools: {', '.join(missing_tools)}")
         return False
-
-    print("done")
     return True
 
 
