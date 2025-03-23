@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from zipfile import ZipFile
 
-from games import IS_WINDOWS
+from games import EXE_SUFFIX
 
 try:
     import requests
@@ -97,22 +97,15 @@ def update(restart=True, test=False):
         bkp_testing_dir = worker_dir / ("_testing_" + time_stamp)
         testing_dir.replace(bkp_testing_dir)
         testing_dir.mkdir()
-        # Delete old engine binaries
-        for engine in bkp_testing_dir.glob("stockfish_*"):
-            try:
-                engine.unlink()
-            except Exception as e:
-                print(
-                    f"Failed to delete the engine binary {engine}:\n",
-                    e,
-                    sep="",
-                    file=sys.stderr,
-                )
-        # Preserve some old files
+
+        # Preserve/delete some old files
         backup_pattern = (
             # (pattern, num_bkps, expiration_in_days)
-            ("fastchess.exe" if IS_WINDOWS else "fastchess", 1, math.inf),
+            ("fastchess" + EXE_SUFFIX, 1, math.inf),
+            ("stockfish-*-old" + EXE_SUFFIX, 0, -1),
+            ("stockfish-*" + EXE_SUFFIX, 50, 30),
             ("nn-*.nnue", 10, 30),
+            ("results-*.pgn", 0, -1),
             ("*.epd", 4, 30),
             ("*.pgn", 4, 30),
         )
