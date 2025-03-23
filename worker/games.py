@@ -368,7 +368,13 @@ def validate_net(testing_dir, net):
 
 
 def establish_validated_net(remote, testing_dir, net, global_cache):
-    if (testing_dir / net).exists() and validate_net(testing_dir, net):
+    network = testing_dir / net
+    if network.exists() and validate_net(testing_dir, net):
+        # make sure atime is updated even if the fs is mounted with
+        # noatime
+        atime = time.time()
+        mtime = os.stat(network).st_mtime
+        os.utime(network, times=(atime, mtime))
         return
 
     attempt = 0

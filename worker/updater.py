@@ -106,13 +106,23 @@ def update(restart=True, test=False):
                     sep="",
                     file=sys.stderr,
                 )
-        # Delete old networks.
-        for network in bkp_testing_dir.glob("nn-*.nnue"):
+        # Preserve some old networks
+        num_bkps = 10
+        # the worker updates atime while validating the net, so this works even
+        # if the fs is mounted with noatime
+        for idx, network in enumerate(
+            sorted(
+                bkp_testing_dir.glob("nn-*.nnue"), key=os.path.getatime, reverse=True
+            )
+        ):
             try:
-                network.unlink()
+                if idx < num_bkps:
+                    shutil.move(network, testing_dir)
+                else:
+                    network.unlink()
             except Exception as e:
                 print(
-                    f"Failed to delete the network file {network}:\n",
+                    f"Failed to preserve/delete the network file {network}:\n",
                     e,
                     sep="",
                     file=sys.stderr,
