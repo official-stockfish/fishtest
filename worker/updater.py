@@ -1,17 +1,19 @@
+import math
 import os
 import shutil
 import sys
 import tempfile
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from zipfile import ZipFile
+
+from games import IS_WINDOWS
 
 try:
     import requests
 except ImportError:
     from packages import requests
-
-from games import EXE_SUFFIX
 
 start_dir = Path().cwd()
 
@@ -106,31 +108,39 @@ def update(restart=True, test=False):
                     sep="",
                     file=sys.stderr,
                 )
-        # Delete old networks.
-        for network in bkp_testing_dir.glob("nn-*.nnue"):
-            try:
-                network.unlink()
-            except Exception as e:
-                print(
-                    f"Failed to delete the network file {network}:\n",
-                    e,
-                    sep="",
-                    file=sys.stderr,
+        # Preserve some old files
+        backup_pattern = (
+            # (pattern, num_bkps, expiration_in_days)
+            ("fastchess.exe" if IS_WINDOWS else "fastchess", 1, math.inf),
+            ("nn-*.nnue", 10, 30),
+            ("*.epd", 4, 30),
+            ("*.pgn", 4, 30),
+        )
+        for pattern, num_bkps, expiration_days in backup_pattern:
+            expiration_time = time.time() - 24 * 3600 * expiration_days
+            # the worker updates atime while validating files, so this works
+            # on modern Linux systems which update atime very lazily
+            for idx, path in enumerate(
+                sorted(
+                    bkp_testing_dir.glob(pattern), key=os.path.getatime, reverse=True
                 )
-        # Salvage fastchess binary
-        bkp_fastchess = (bkp_testing_dir / "fastchess").with_suffix(EXE_SUFFIX)
-        if bkp_fastchess.exists():
-            fastchess_path = (testing_dir / "fastchess").with_suffix(EXE_SUFFIX)
-            try:
-                bkp_fastchess.replace(fastchess_path)
-            except Exception as e:
-                print(
-                    "Failed to preserve fastchess binary:\n",
-                    e,
-                    sep="",
-                    file=sys.stderr,
-                )
-
+            ):
+                try:
+                    if idx >= num_bkps:
+                        path.unlink()
+                    elif os.stat(path).st_atime < expiration_time:
+                        path.unlink()
+                    else:
+                        # str(...) is necessary for compatibility with
+                        # Python 3.6
+                        shutil.move(str(path), testing_dir)
+                except Exception as e:
+                    print(
+                        f"Failed to preserve/delete the file {path}:\n",
+                        e,
+                        sep="",
+                        file=sys.stderr,
+                    )
         # Clean up old folder backups (keeping the num_bkps most recent).
         num_bkps = 3
         for old_bkp_dir in sorted(
