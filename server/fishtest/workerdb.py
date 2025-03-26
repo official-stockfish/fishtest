@@ -20,17 +20,17 @@ class WorkerDb:
         if r is None:
             return {
                 "worker_name": worker_name,
-                "blocked": False,
+                "blocked_by": None,
                 "message": "",
                 "last_updated": None,
             }
         else:
             return r
 
-    def update_worker(self, worker_name, blocked=None, message=None):
+    def update_worker(self, worker_name, blocked_by=None, message=None):
         r = {
             "worker_name": worker_name,
-            "blocked": blocked,
+            "blocked_by": blocked_by,
             "message": message,
             "last_updated": datetime.now(UTC),
         }
@@ -38,5 +38,5 @@ class WorkerDb:
         self.workers.replace_one({"worker_name": worker_name}, r, upsert=True)
 
     def get_blocked_workers(self):
-        q = {"blocked": True}
+        q = {"blocked": {"$ne": None}}
         return list(self.workers.find(q))
