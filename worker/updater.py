@@ -108,11 +108,13 @@ def update(restart=True, test=False):
                     sep="",
                     file=sys.stderr,
                 )
-        # Preserve some old files
+        # Preserve/delete some old files
         backup_pattern = (
             # (pattern, num_bkps, expiration_in_days)
             ("fastchess.exe" if IS_WINDOWS else "fastchess", 1, math.inf),
+            ("stockfish-*-native", 40, 30),
             ("nn-*.nnue", 10, 30),
+            ("results-*.pgn", 0, -1),
             ("*.epd", 4, 30),
             ("*.pgn", 4, 30),
         )

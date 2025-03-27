@@ -765,19 +765,43 @@ def find_arch(compiler):
     return arch
 
 
+def create_environment():
+    # OS and TEMP are necessary for msys2
+    white_set = {"PATH", "OS", "TEMP"}
+    env = {k: v for k, v in os.environ.items() if k in white_set}
+    env["CXXFLAGS"] = "-DNNUE_EMBEDDING_OFF"
+
+    # Do not hash directories such as PATH and TEMP
+    hash_set = {"OS", "CXXFLAGS"}
+    hashed_env = {k: v for k, v in env.items() if k in hash_set}
+
+    env_hash = hashlib.sha256(str(hashed_env).encode()).hexdigest()[0:10]
+    return env, env_hash
+
+
 def setup_engine(
-    engine_path,
+    testing_dir,
     remote,
     sha,
     repo_url,
     concurrency,
-    compiler,
+    compiler_ver,
     global_cache,
-    env,
 ):
+    compiler = compiler_ver.split("_")[0]
+    env, env_hash = create_environment()
+    engine_name = "-".join(["stockfish", sha, compiler_ver, env_hash])
+    engine_path = (testing_dir / engine_name).with_suffix(EXE_SUFFIX)
+    engine_path_native = (testing_dir / (engine_name + "-native")).with_suffix(
+        EXE_SUFFIX
+    )
+    for path in (engine_path_native, engine_path):
+        if path.exists():
+            update_atime(path)
+            return path
+
     """Download and build sources in a temporary directory then move exe as engine_path"""
-    worker_dir = engine_path.parents[1]
-    testing_dir = engine_path.parent
+    worker_dir = testing_dir.parents[1]
     tmp_dir = Path(tempfile.mkdtemp(dir=worker_dir))
 
     try:
@@ -808,6 +832,9 @@ def setup_engine(
             shutil.copyfile(testing_dir / net, net)
 
         arch = find_arch(compiler)
+
+        if arch == "native":
+            engine_path = engine_path_native
 
         if compiler == "g++":
             comp = "mingw" if IS_WINDOWS else "gcc"
@@ -872,6 +899,8 @@ def setup_engine(
     finally:
         os.chdir(worker_dir)
         shutil.rmtree(tmp_dir)
+
+    return engine_path
 
 
 def kill_process(p):
@@ -1398,21 +1427,6 @@ def run_games(
                     file=sys.stderr,
                 )
 
-    def create_environment():
-        # OS and TEMP are necessary for msys2
-        white_set = {"PATH", "OS", "TEMP"}
-        env = {k: v for k, v in os.environ.items() if k in white_set}
-        env["CXXFLAGS"] = "-DNNUE_EMBEDDING_OFF"
-
-        # Do not hash directories such as PATH and TEMP
-        hash_set = {"OS", "CXXFLAGS"}
-        hashed_env = {k: v for k, v in env.items() if k in hash_set}
-
-        env_hash = hashlib.sha256(str(hashed_env).encode()).hexdigest()[0:10]
-        return env, env_hash
-
-    env, env_hash = create_environment()
-
     compiler_ver = (
         worker_info["compiler"]
         + "_"
@@ -1422,35 +1436,25 @@ def run_games(
     sha_new = run["args"]["resolved_new"]
     sha_base = run["args"]["resolved_base"]
 
-    new_engine_name = "-".join(["stockfish", sha_new, compiler_ver, env_hash])
-    base_engine_name = "-".join(["stockfish", sha_base, compiler_ver, env_hash])
-
-    new_engine = (testing_dir / new_engine_name).with_suffix(EXE_SUFFIX)
-    base_engine = (testing_dir / base_engine_name).with_suffix(EXE_SUFFIX)
-
     # Build from sources new and base engines as needed.
-    if not new_engine.exists():
-        setup_engine(
-            new_engine,
-            remote,
-            sha_new,
-            repo_url,
-            worker_info["concurrency"],
-            worker_info["compiler"],
-            global_cache,
-            env,
-        )
-    if not base_engine.exists():
-        setup_engine(
-            base_engine,
-            remote,
-            sha_base,
-            repo_url,
-            worker_info["concurrency"],
-            worker_info["compiler"],
-            global_cache,
-            env,
-        )
+    new_engine = setup_engine(
+        testing_dir,
+        remote,
+        sha_new,
+        repo_url,
+        worker_info["concurrency"],
+        compiler_ver,
+        global_cache,
+    )
+    base_engine = setup_engine(
+        testing_dir,
+        remote,
+        sha_base,
+        repo_url,
+        worker_info["concurrency"],
+        compiler_ver,
+        global_cache,
+    )
 
     os.chdir(testing_dir)
 
