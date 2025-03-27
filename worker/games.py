@@ -765,19 +765,42 @@ def find_arch(compiler):
     return arch
 
 
+def create_environment():
+    # OS and TEMP are necessary for msys2
+    white_set = {"PATH", "OS", "TEMP"}
+    env = {k: v for k, v in os.environ.items() if k in white_set}
+    env["CXXFLAGS"] = "-DNNUE_EMBEDDING_OFF"
+
+    # Do not hash directories such as PATH and TEMP
+    hash_set = {"OS", "CXXFLAGS"}
+    hashed_env = {k: v for k, v in env.items() if k in hash_set}
+
+    env_hash = hashlib.sha256(str(hashed_env).encode()).hexdigest()[0:10]
+    return env, env_hash
+
+
 def setup_engine(
-    engine_path,
+    testing_dir,
     remote,
     sha,
     repo_url,
     concurrency,
     compiler,
+    version,
     global_cache,
-    env,
 ):
+    compiler_ver = compiler + "_" + str("_".join([str(s) for s in version]))
+    env, env_hash = create_environment()
+    engine_name = "-".join(["stockfish", sha, compiler_ver, env_hash])
+    engine_path = (testing_dir / (engine_name + "-old")).with_suffix(EXE_SUFFIX)
+    engine_path_native = (testing_dir / engine_name).with_suffix(EXE_SUFFIX)
+    for path in (engine_path_native, engine_path):
+        if path.exists():
+            update_atime(path)
+            return path
+
     """Download and build sources in a temporary directory then move exe as engine_path"""
-    worker_dir = engine_path.parents[1]
-    testing_dir = engine_path.parent
+    worker_dir = testing_dir.parent
     tmp_dir = Path(tempfile.mkdtemp(dir=worker_dir))
 
     try:
@@ -808,6 +831,9 @@ def setup_engine(
             shutil.copyfile(testing_dir / net, net)
 
         arch = find_arch(compiler)
+
+        if arch == "native":
+            engine_path = engine_path_native
 
         if compiler == "g++":
             comp = "mingw" if IS_WINDOWS else "gcc"
@@ -872,6 +898,8 @@ def setup_engine(
     finally:
         os.chdir(worker_dir)
         shutil.rmtree(tmp_dir)
+
+    return engine_path
 
 
 def kill_process(p):
@@ -1375,13 +1403,13 @@ def run_games(
     num_bkps = 50
     try:
         engines = sorted(
-            testing_dir.glob("stockfish_*" + EXE_SUFFIX),
-            key=os.path.getmtime,
+            testing_dir.glob("stockfish-*" + EXE_SUFFIX),
+            key=os.path.getatime,
             reverse=True,
         )
     except Exception as e:
         print(
-            "Failed to obtain modification time of old engine binary:\n",
+            "Failed to obtain access time of old engine binary:\n",
             e,
             sep="",
             file=sys.stderr,
@@ -1398,59 +1426,31 @@ def run_games(
                     file=sys.stderr,
                 )
 
-    def create_environment():
-        # OS and TEMP are necessary for msys2
-        white_set = {"PATH", "OS", "TEMP"}
-        env = {k: v for k, v in os.environ.items() if k in white_set}
-        env["CXXFLAGS"] = "-DNNUE_EMBEDDING_OFF"
-
-        # Do not hash directories such as PATH and TEMP
-        hash_set = {"OS", "CXXFLAGS"}
-        hashed_env = {k: v for k, v in env.items() if k in hash_set}
-
-        env_hash = hashlib.sha256(str(hashed_env).encode()).hexdigest()[0:10]
-        return env, env_hash
-
-    env, env_hash = create_environment()
-
-    compiler_ver = (
-        worker_info["compiler"]
-        + "_"
-        + str("_".join([str(s) for s in worker_info["gcc_version"]]))
-    )
-    # Create new engines.
-    sha_new = run["args"]["resolved_new"]
-    sha_base = run["args"]["resolved_base"]
-
-    new_engine_name = "-".join(["stockfish", sha_new, compiler_ver, env_hash])
-    base_engine_name = "-".join(["stockfish", sha_base, compiler_ver, env_hash])
-
-    new_engine = (testing_dir / new_engine_name).with_suffix(EXE_SUFFIX)
-    base_engine = (testing_dir / base_engine_name).with_suffix(EXE_SUFFIX)
-
     # Build from sources new and base engines as needed.
-    if not new_engine.exists():
-        setup_engine(
-            new_engine,
-            remote,
-            sha_new,
-            repo_url,
-            worker_info["concurrency"],
-            worker_info["compiler"],
-            global_cache,
-            env,
-        )
-    if not base_engine.exists():
-        setup_engine(
-            base_engine,
-            remote,
-            sha_base,
-            repo_url,
-            worker_info["concurrency"],
-            worker_info["compiler"],
-            global_cache,
-            env,
-        )
+    concurrency = worker_info["concurrency"]
+    compiler = worker_info["compiler"]
+    version = worker_info["gcc_version"]
+
+    new_engine = setup_engine(
+        testing_dir,
+        remote,
+        run["args"]["resolved_new"],
+        repo_url,
+        concurrency,
+        compiler,
+        version,
+        global_cache,
+    )
+    base_engine = setup_engine(
+        testing_dir,
+        remote,
+        run["args"]["resolved_base"],
+        repo_url,
+        concurrency,
+        compiler,
+        version,
+        global_cache,
+    )
 
     os.chdir(testing_dir)
 
