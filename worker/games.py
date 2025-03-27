@@ -139,6 +139,23 @@ def send_sigint(p):
         p.send_signal(signal.SIGINT)
 
 
+def update_atime(path):
+    # atime is used by the updater to check which files should be preserved
+    # but on a modern Linux system it is updated very lazily. Therefore we
+    # update it manually when required.
+    atime = time.time()
+    try:
+        mtime = os.stat(path).st_mtime
+        os.utime(path, times=(atime, mtime))
+    except OSError as e:
+        print(
+            f"Failed to update the atime of {path}:\n",
+            e,
+            sep="",
+            file=sys.stderr,
+        )
+
+
 def cache_read(cache, name):
     """Read a binary blob of data from a global cache on disk, None if not available"""
     if cache == "":
@@ -369,6 +386,7 @@ def validate_net(testing_dir, net):
 
 def establish_validated_net(remote, testing_dir, net, global_cache):
     if (testing_dir / net).exists() and validate_net(testing_dir, net):
+        update_atime(testing_dir / net)
         return
 
     attempt = 0
@@ -1441,11 +1459,13 @@ def run_games(
         zipball = book + ".zip"
         blob = download_from_github(zipball)
         unzip(blob, testing_dir)
+    else:
+        update_atime(testing_dir / book)
 
     # Clean up the old networks (keeping the num_bkps most recent)
     num_bkps = 10
     for old_net in sorted(
-        testing_dir.glob("nn-*.nnue"), key=os.path.getmtime, reverse=True
+        testing_dir.glob("nn-*.nnue"), key=os.path.getatime, reverse=True
     )[num_bkps:]:
         try:
             old_net.unlink()
