@@ -256,35 +256,29 @@
           <a class="btn btn-light border w-100" href="/tests/run?id=${run['_id']}">Reschedule</a>
         </div>
       </div>
-
-      % if not h.reasonable_run_hashes(run):
-        <div class="alert alert-danger mb-2">
-          Hash options are too low or too high for this TC
-        </div>
-      % endif
-
-      % if 'spsa' not in run['args'] and run['args'].get('base_options', 'Hash=16').replace(" ", "") != run['args'].get('new_options', 'Hash=16').replace(" ", ""):
-          <div class="alert alert-danger mb-2">
-            Base engine options are not the same as the new engine options
-          </div>
-      % endif
-
+      <hr>
       % if warnings != []:
         <div class="alert alert-danger">
           % for idx, warning in enumerate(warnings):
-            ${warning|n}
+            Warning: ${warning|n}
             % if idx != len(warnings)-1:
-              <hr style="margin: 0.3em auto;">
+              <hr style="margin: 0.4em auto;">
             % endif
           % endfor
         </div>
       % endif
 
-      % if 'spsa' not in run['args'] and run['args']['base_signature'] == run['args']['new_signature']:
-        <div class="alert alert-info mb-2">
-          Note: The new signature is the same as base signature.
+      % if notes != []:
+        <div class="alert alert-info">
+          % for idx, note in enumerate(notes):
+            Note: ${note|n}
+            % if idx != len(notes)-1:
+              <hr style="margin: 0.4em auto;">
+            % endif
+          % endfor
         </div>
       % endif
+
 
       <hr>
 
