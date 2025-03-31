@@ -11,7 +11,7 @@ from pathlib import Path
 import bson
 import fishtest.stats.stat_util
 import requests
-from fishtest.helpers import master_diff_url
+from fishtest.helpers import master_diff_url, reasonable_run_hashes
 from fishtest.run_cache import Prio
 from fishtest.schemas import RUN_VERSION, runs_schema, short_worker_name
 from fishtest.util import (
@@ -25,6 +25,7 @@ from fishtest.util import (
     github_repo_valid,
     is_sprt_ltc_data,
     password_strength,
+    plural,
 )
 from pyramid.httpexceptions import HTTPFound, HTTPNotFound
 from pyramid.security import forget, remember
@@ -1617,18 +1618,42 @@ def tests_view(request):
 
     spsa_data = request.rundb.spsa_handler.get_spsa_data(run_id)
 
+    same_options = True
+    try:
+        # use sanitize_options for compatibility with old tests
+        same_options = sanitize_options(run["args"]["new_options"]) == sanitize_options(
+            run["args"]["base_options"]
+        )
+    except Exception:
+        pass
+
+    notes = []
+    if (
+        "spsa" not in run["args"]
+        and run["args"]["base_signature"] == run["args"]["new_signature"]
+    ):
+        notes.append("new signature and base signature are identical")
+    if run["deleted"]:
+        notes.append("this test has been deleted")
+
     warnings = []
     if run["args"]["throughput"] > 100:
-        warnings.append("Throughput exceeds the normal limit.")
+        warnings.append("throughput exceeds the normal limit")
     if run["args"]["priority"] > 0:
-        warnings.append("Priority exceeds the normal limit.")
-    # Check for run["failed"] for backward compatibility
-    if run["failed"] or run.get("failures", 0) > 0:
-        warnings.append("This is a failed test.")
+        warnings.append("priority exceeds the normal limit")
+    if not reasonable_run_hashes(run):
+        warnings.append("hash options are too low or too high for this TC")
+    if not same_options and "spsa" not in run["args"]:
+        warnings.append("base options differ from new options")
+    if (f := run.get("failures", 0)) > 0:
+        warnings.append(f"this test had {f} {plural(f, 'failure')}")
+    elif run["failed"]:
+        # for backward compatibility
+        warnings.append("this is a failed test")
     base_same_as_master = run.get("base_same_as_master", True)
     if not base_same_as_master and "spsa" not in run["args"]:
         anchor = f'<a class="alert-link" href="{master_diff_url(run)}" target="_blank" rel="noopener">diff</a>'
-        warnings.append(f"The base branch is different from master: {anchor}")
+        warnings.append(f"the base branch is different from master: {anchor}")
 
     return {
         "run": run,
@@ -1647,6 +1672,7 @@ def tests_view(request):
         "pt_info": request.rundb.pt_info,
         "document_size": len(bson.BSON.encode(run)),
         "spsa_data": spsa_data,
+        "notes": notes,
         "warnings": warnings,
     }
 

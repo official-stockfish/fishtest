@@ -458,6 +458,10 @@ def remaining_hours(run):
     return game_secs * remaining_games * int(run["args"].get("threads", 1)) / (60 * 60)
 
 
+def plural(quantity, word):
+    return word if quantity == 1 else word + "s"
+
+
 def format_time_ago(date):
     if date == datetime.min.replace(tzinfo=UTC):
         return "Never"
@@ -470,7 +474,7 @@ def format_time_ago(date):
     time_units = "day", "hour", "minute"
     for value, unit in zip(time_values, time_units):
         if value >= 1:
-            unit_label = unit if value == 1 else unit + "s"
+            unit_label = plural(value, unit)
             return f"{value:d} {unit_label} ago"
     return "seconds ago"
 
