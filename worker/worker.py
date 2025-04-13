@@ -63,15 +63,15 @@ from updater import update
 LOCK_FILE = Path(__file__).resolve().parent / "fishtest_worker.lock"
 
 # Minimum requirement of compiler version for Stockfish.
-MIN_GCC_MAJOR = 7
+MIN_GCC_MAJOR = 9
 MIN_GCC_MINOR = 3
 
-MIN_CLANG_MAJOR = 8
+MIN_CLANG_MAJOR = 10
 MIN_CLANG_MINOR = 0
 
 FASTCHESS_SHA = "f8e58066992e5e130f07fb3ba49b89b603e32f21"
 
-WORKER_VERSION = 274
+WORKER_VERSION = 275
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
