@@ -27,10 +27,10 @@ classifiers = [
     "Topic :: Software Development :: Application Frameworks",
 ]
 dependencies = [
-    "awscli>=1.38.3",
+    "awscli>=1.38.37",
     "email-validator>=2.2.0",
-    "numpy>=2.2.3",
-    "pymongo>=4.11.1",
+    "numpy>=2.2.5",
+    "pymongo>=4.12.0",
     "pyramid>=2.0.2",
     "pyramid-debugtoolbar>=4.12.1",
     "pyramid-mako>=1.1.0",
