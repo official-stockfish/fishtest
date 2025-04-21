@@ -1643,7 +1643,7 @@ def tests_view(request):
         warnings.append("priority exceeds the normal limit")
     if not reasonable_run_hashes(run):
         warnings.append("hash options are too low or too high for this TC")
-    if not same_options and "spsa" not in run["args"]:
+    if not same_options:
         warnings.append("base options differ from new options")
     if (f := run.get("failures", 0)) > 0:
         warnings.append(f"this test had {f} {plural(f, 'failure')}")
