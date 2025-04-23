@@ -5,7 +5,7 @@
   elo_model = "normalized"
   fb = lambda e0, e1: format_bounds(elo_model, e0, e1)
   test_book = "UHO_Lichess_4852_v1.epd"
-  pt_book = "UHO_4060_v3.epd"
+  pt_book = "UHO_4060_v4.epd"
 %>
 <%
   base_branch = args.get('base_tag', 'master')
@@ -512,7 +512,7 @@
                         <a href="https://github.com/vdbergh/spsa_simul" target="_blank">
                           https://github.com/vdbergh/spsa_simul</a
                         >. Currently this option should be used with the book
-                        'UHO_4060_v3.epd' and in addition the option should not be used with
+                        'UHO_4060_v4.epd' and in addition the option should not be used with
                         nodestime or with more than one thread.
                       </div>
                     </div>
