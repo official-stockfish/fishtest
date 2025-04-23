@@ -95,7 +95,7 @@ function spsaCompute(spsa_setup) {
 /*
 Below is some code to estimate the draw ratio from the time
 control. The algorithm is very naive. It uses interpolation for
-a few data points valid for the book "UHO_4060_v3.epd".
+a few data points valid for the book "UHO_4060_v4.epd".
 */
 
 function tcToSeconds(tc) {
@@ -153,7 +153,7 @@ function logistic(x) {
 
 function drawRatio(tc) {
   /*
-  Formula approximately valid for the book "UHO_4060_v3.epd".
+  Formula approximately valid for the book "UHO_4060_v4.epd".
   The "virtual" draw ratio of an unbalanced book is defined as
   1 - 4 * ("pentanomial variance/game")
   */
