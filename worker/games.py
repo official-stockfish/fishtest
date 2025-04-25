@@ -163,6 +163,55 @@ def update_atime(path):
         )
 
 
+def trim_files(testing_dir, source_dir=None):
+    # This is used by updater.py.
+    # If you change this function, make sure
+    # that the update process still works.
+
+    # Preserve/delete some old files
+    backup_pattern = (
+        # (pattern, num_bkps, expiration_in_days, only_update)
+        ("fastchess" + EXE_SUFFIX, 1, math.inf, False),
+        ("stockfish-*-old" + EXE_SUFFIX, 0, -1, True),
+        ("stockfish-*" + EXE_SUFFIX, 50, 30, False),
+        ("nn-*.nnue", 10, 30, False),
+        ("results-*.pgn", 0, -1, True),
+        ("*.epd", 4, 365, False),
+        ("*.pgn", 4, 365, False),
+    )
+    num_deleted = 0
+    for pattern, num_bkps, expiration_days, only_update in backup_pattern:
+        if only_update and source_dir is None:
+            continue
+        expiration_time = time.time() - 24 * 3600 * expiration_days
+        # the worker updates atime while validating files, so this works
+        # on modern Linux systems which update atime very lazily
+        file_dir = testing_dir if source_dir is None else source_dir
+        for idx, path in enumerate(
+            sorted(file_dir.glob(pattern), key=os.path.getatime, reverse=True)
+        ):
+            try:
+                if idx >= num_bkps:
+                    path.unlink()
+                    num_deleted += 1
+                elif os.stat(path).st_atime < expiration_time:
+                    path.unlink()
+                    num_deleted += 1
+                else:
+                    # str(...) is necessary for compatibility with
+                    # Python 3.6
+                    if source_dir is not None:
+                        shutil.move(str(path), testing_dir)
+            except Exception as e:
+                print(
+                    f"Failed to preserve/delete the file {path}:\n",
+                    e,
+                    sep="",
+                    file=sys.stderr,
+                )
+    print(f"Cleaning up old files: {num_deleted} old files removed...")
+
+
 def cache_read(cache, name):
     """Read a binary blob of data from a global cache on disk, None if not available"""
     if cache == "":
@@ -1327,6 +1376,7 @@ def launch_fastchess(
 
 
 def run_games(
+    worker_dir,
     worker_info,
     current_state,
     password,
@@ -1419,36 +1469,8 @@ def run_games(
     new_options = format_fastchess_options(new_options)
     base_options = format_fastchess_options(base_options)
 
-    # Clean up old engines (keeping the num_bkps most recent).
-    worker_dir = Path(__file__).resolve().parent
-    testing_dir = worker_dir / "testing"
-    num_bkps = 50
-    try:
-        engines = sorted(
-            testing_dir.glob("stockfish-*" + EXE_SUFFIX),
-            key=os.path.getatime,
-            reverse=True,
-        )
-    except Exception as e:
-        print(
-            "Failed to obtain access time of old engine binary:\n",
-            e,
-            sep="",
-            file=sys.stderr,
-        )
-    else:
-        for old_engine in engines[num_bkps:]:
-            try:
-                old_engine.unlink()
-            except Exception as e:
-                print(
-                    "Failed to remove an old engine binary {}:\n".format(old_engine),
-                    e,
-                    sep="",
-                    file=sys.stderr,
-                )
-
     # Build from sources new and base engines as needed.
+    testing_dir = worker_dir / "testing"
     concurrency = worker_info["concurrency"]
     compiler = worker_info["compiler"]
     version = worker_info["gcc_version"]
@@ -1512,21 +1534,6 @@ def run_games(
         except Exception as e:
             raise WorkerException(
                 f"Failed to remove local book {testing_dir / book}", e=e
-            )
-
-    # Clean up the old networks (keeping the num_bkps most recent)
-    num_bkps = 10
-    for old_net in sorted(
-        testing_dir.glob("nn-*.nnue"), key=os.path.getatime, reverse=True
-    )[num_bkps:]:
-        try:
-            old_net.unlink()
-        except Exception as e:
-            print(
-                "Failed to remove an old network {}:\n".format(old_net),
-                e,
-                sep="",
-                file=sys.stderr,
             )
 
     # Add EvalFile* with full path to fastchess options, and download the networks if missing.
