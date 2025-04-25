@@ -57,6 +57,7 @@ from games import (
     send_api_post_request,
     str_signal,
     text_hash,
+    trim_files,
     unzip,
 )
 from updater import update
@@ -72,7 +73,7 @@ MIN_CLANG_MINOR = 0
 
 FASTCHESS_SHA = "f8e58066992e5e130f07fb3ba49b89b603e32f21"
 
-WORKER_VERSION = 278
+WORKER_VERSION = 279
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -1289,6 +1290,7 @@ def verify_worker_version(remote, username, password, worker_lock):
 
 
 def fetch_and_handle_task(
+    worker_dir,
     worker_info,
     password,
     remote,
@@ -1314,6 +1316,9 @@ def fetch_and_handle_task(
         current_state["alive"] = False
     if not ret:
         return False
+
+    # Clean up old files:
+    trim_files(worker_dir / "testing")
 
     # Verify if we still have enough GitHub api calls
     remaining = get_remaining_github_api_calls()
@@ -1379,6 +1384,7 @@ def fetch_and_handle_task(
 
     try:
         run_games(
+            worker_dir,
             worker_info,
             current_state,
             password,
@@ -1626,6 +1632,7 @@ def worker():
 
     while current_state["alive"]:
         success = fetch_and_handle_task(
+            worker_dir,
             worker_info,
             options.password,
             remote,

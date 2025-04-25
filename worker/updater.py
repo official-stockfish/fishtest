@@ -1,14 +1,12 @@
-import math
 import os
 import shutil
 import sys
 import tempfile
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 from zipfile import ZipFile
 
-from games import EXE_SUFFIX
+from games import trim_files
 
 try:
     import requests
@@ -97,43 +95,8 @@ def update(restart=True, test=False):
         bkp_testing_dir = worker_dir / ("_testing_" + time_stamp)
         testing_dir.replace(bkp_testing_dir)
         testing_dir.mkdir()
+        trim_files(testing_dir, source_dir=bkp_testing_dir)
 
-        # Preserve/delete some old files
-        backup_pattern = (
-            # (pattern, num_bkps, expiration_in_days)
-            ("fastchess" + EXE_SUFFIX, 1, math.inf),
-            ("stockfish-*-old" + EXE_SUFFIX, 0, -1),
-            ("stockfish-*" + EXE_SUFFIX, 50, 30),
-            ("nn-*.nnue", 10, 30),
-            ("results-*.pgn", 0, -1),
-            ("*.epd", 4, 365),
-            ("*.pgn", 4, 365),
-        )
-        for pattern, num_bkps, expiration_days in backup_pattern:
-            expiration_time = time.time() - 24 * 3600 * expiration_days
-            # the worker updates atime while validating files, so this works
-            # on modern Linux systems which update atime very lazily
-            for idx, path in enumerate(
-                sorted(
-                    bkp_testing_dir.glob(pattern), key=os.path.getatime, reverse=True
-                )
-            ):
-                try:
-                    if idx >= num_bkps:
-                        path.unlink()
-                    elif os.stat(path).st_atime < expiration_time:
-                        path.unlink()
-                    else:
-                        # str(...) is necessary for compatibility with
-                        # Python 3.6
-                        shutil.move(str(path), testing_dir)
-                except Exception as e:
-                    print(
-                        f"Failed to preserve/delete the file {path}:\n",
-                        e,
-                        sep="",
-                        file=sys.stderr,
-                    )
         # Clean up old folder backups (keeping the num_bkps most recent).
         num_bkps = 3
         for old_bkp_dir in sorted(
