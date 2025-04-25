@@ -56,6 +56,7 @@ from games import (
     run_games,
     send_api_post_request,
     str_signal,
+    trim_files,
     unzip,
 )
 from updater import update
@@ -1295,6 +1296,7 @@ def verify_worker_version(remote, username, password, worker_lock):
 
 
 def fetch_and_handle_task(
+    worker_dir,
     worker_info,
     password,
     remote,
@@ -1320,6 +1322,9 @@ def fetch_and_handle_task(
         current_state["alive"] = False
     if not ret:
         return False
+
+    # Clean up old files:
+    trim_files(worker_dir / "testing")
 
     # Verify if we still have enough GitHub api calls
     remaining = get_remaining_github_api_calls()
@@ -1385,6 +1390,7 @@ def fetch_and_handle_task(
 
     try:
         run_games(
+            worker_dir,
             worker_info,
             current_state,
             password,
@@ -1630,6 +1636,7 @@ def worker():
     fish_exit = False
     while current_state["alive"]:
         success = fetch_and_handle_task(
+            worker_dir,
             worker_info,
             options.password,
             remote,
