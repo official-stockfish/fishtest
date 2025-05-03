@@ -896,6 +896,24 @@
   document
     .getElementById("create-new-test")
     .addEventListener("submit", function (e) {
+      const testSig = parseInt(document.getElementById("test-signature").value);
+      const baseSig = parseInt(document.getElementById("base-signature").value);
+      const sigDiffThreshold = 50;
+
+      // Only perform check if both values are valid numbers
+      // Remember that test signature is not required
+      if (!isNaN(testSig) && !isNaN(baseSig)) {
+        let percentageDiff = baseSig ? (Math.abs(testSig - baseSig) / baseSig) * 100 : (testSig ? Infinity : 0);
+
+        if (percentageDiff > sigDiffThreshold) {
+          const message = "The test signature (" + testSig + ") and base signature (" + baseSig + ") differ by more than " + sigDiffThreshold + "%.\n\nThis is highly unusual. Are you sure you want to proceed?\n\nPlease join our Discord server if you have any questions.";
+          if (!confirm(message)) {
+            e.preventDefault(); // Stop the form submission
+            return; // Exit the event handler
+          }
+        }
+      }
+
       const ret = spsaWork(); // Last check that all spsa data are consistent.
       if (!ret) {
         return false;
