@@ -50,7 +50,6 @@ def new_run(self, add_tasks=0):
         base_nets=["nn-0000000000a0.nnue"],
         new_nets=["nn-0000000000a0.nnue", "nn-0000000000a1.nnue"],
         rescheduled_from="653db116cc309ae839563103",
-        base_same_as_master=False,
         tests_repo="https://google.com",
         auto_purge=False,
         username="travis",

@@ -635,7 +635,7 @@ valid_aggregated_data = intersect(
 # about non-validation of runs created with the prior
 # schema.
 
-RUN_VERSION = 13
+RUN_VERSION = 14
 
 runs_schema = intersect(
     {
@@ -644,7 +644,6 @@ runs_schema = intersect(
         "start_time": datetime_utc,
         "last_updated": datetime_utc,
         "tc_base": unumber,
-        "base_same_as_master": bool,
         "rescheduled_from?": run_id,
         "approved": bool,
         "approver": union(username, ""),

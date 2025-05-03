@@ -476,7 +476,6 @@ class RunDb:
         base_nets=None,
         new_nets=None,
         rescheduled_from=None,
-        base_same_as_master=None,
         start_time=None,
         sprt=None,
         spsa=None,
@@ -539,7 +538,6 @@ class RunDb:
             # This tc_base is redundant,
             # but it is used for an index.
             "tc_base": tc_base,
-            "base_same_as_master": base_same_as_master,
             # Will be filled in by tasks, indexed by task-id.
             # Starts as an empty list.
             "tasks": [],

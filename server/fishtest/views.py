@@ -882,6 +882,12 @@ def sanitize_options(options):
     return " ".join(tokens)
 
 
+def base_same_as_master(run):
+    if "official_master_sha" in run["args"] and "resolved_base" in run["args"]:
+        return run["args"]["official_master_sha"] == run["args"]["resolved_base"]
+    return True
+
+
 def validate_form(request):
     data = {
         "base_tag": request.POST["base-branch"],
@@ -1017,14 +1023,6 @@ def validate_form(request):
 
     stop_rule = request.POST["stop_rule"]
 
-    # Check if the base branch of the test repo matches official master
-    api_url = "https://api.github.com/repos/official-stockfish/Stockfish"
-    api_url += "/compare/master..." + data["resolved_base"][:10]
-    master_diff = requests.get(
-        api_url, headers={"Accept": "application/vnd.github.v3.diff"}
-    )
-    data["base_same_as_master"] = master_diff.text == ""
-
     # Store nets info
     data["base_nets"] = get_nets(data["resolved_base"], data["tests_repo"])
     data["new_nets"] = get_nets(data["resolved_new"], data["tests_repo"])
@@ -1130,7 +1128,7 @@ def update_nets(request, run):
             )
         )
 
-    if run["base_same_as_master"]:
+    if base_same_as_master(run):
         for net in base_nets:
             if "is_master" not in net:
                 net["is_master"] = True
@@ -1650,8 +1648,7 @@ def tests_view(request):
     elif run["failed"]:
         # for backward compatibility
         warnings.append("this is a failed test")
-    base_same_as_master = run.get("base_same_as_master", True)
-    if not base_same_as_master and "spsa" not in run["args"]:
+    if not base_same_as_master(run) and "spsa" not in run["args"]:
         anchor = f'<a class="alert-link" href="{master_diff_url(run)}" target="_blank" rel="noopener">diff</a>'
         warnings.append(f"the base branch is different from master: {anchor}")
 
@@ -1672,6 +1669,7 @@ def tests_view(request):
         "pt_info": request.rundb.pt_info,
         "document_size": len(bson.BSON.encode(run)),
         "spsa_data": spsa_data,
+        "base_same_as_master": base_same_as_master(run),
         "notes": notes,
         "warnings": warnings,
     }

@@ -230,7 +230,7 @@
                 <form action="/tests/approve" method="POST">
                   <input type="hidden" name="run-id" value="${run['_id']}">
                   <button type="submit" id="approve-btn"
-                          class="btn ${'btn-success' if run['base_same_as_master'] or 'spsa' in run['args'] else 'btn-warning'} w-100">
+                          class="btn ${'btn-success' if base_same_as_master or 'spsa' in run['args'] else 'btn-warning'} w-100">
                     Approve
                   </button>
                 </form>
