@@ -143,6 +143,14 @@ def login(request):
     return {}
 
 
+def base_same_as_master(run):
+    if "merge_base_commit" in run["args"]:
+        return run["args"]["merge_base_commit"] == run["args"]["resolved_base"]
+    else:
+        # For backward compatibility
+        return run.get("base_same_as_master", True)
+
+
 # Note that the allowed length of mailto URLs on Chrome/Windows is severely
 # limited.
 
@@ -1024,7 +1032,7 @@ def validate_form(request):
         api_url, headers={"Accept": "application/vnd.github+json"}
     )
     merge_base_commit = master_diff.json()["merge_base_commit"]["sha"]
-    data["base_same_as_master"] = data["resolved_base"] == merge_base_commit
+    data["merge_base_commit"] = merge_base_commit
 
     # Store nets info
     data["base_nets"] = get_nets(data["resolved_base"], data["tests_repo"])
@@ -1131,7 +1139,7 @@ def update_nets(request, run):
             )
         )
 
-    if run["base_same_as_master"]:
+    if base_same_as_master(run):
         for net in base_nets:
             if "is_master" not in net:
                 net["is_master"] = True
@@ -1651,12 +1659,14 @@ def tests_view(request):
     elif run["failed"]:
         # for backward compatibility
         warnings.append("this is a failed test")
-    base_same_as_master = run.get("base_same_as_master", True)
-    if not base_same_as_master and "spsa" not in run["args"]:
-        anchor = f'<a class="alert-link" href="{official_master_diff_url(run)}" target="_blank" rel="noopener">base diff</a>'
-        warnings.append(
-            f"base is not the latest common ancestor of test and master: {anchor}"
-        )
+    anchor = f'<a class="alert-link" href="{official_master_diff_url(run)}" target="_blank" rel="noopener">base diff</a>'
+    if not base_same_as_master(run) and "spsa" not in run["args"]:
+        if "merge_base_commit" in run["args"]:
+            warnings.append(
+                f"base is not the latest common ancestor of test and master: {anchor}"
+            )
+        else:
+            warnings.append(f"base is not an ancestor of master: {anchor}")
 
     return {
         "run": run,
@@ -1677,6 +1687,7 @@ def tests_view(request):
         "spsa_data": spsa_data,
         "notes": notes,
         "warnings": warnings,
+        "base_same_as_master": base_same_as_master(run),
     }
 
 
