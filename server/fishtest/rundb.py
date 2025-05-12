@@ -480,6 +480,7 @@ class RunDb:
         resolved_new="",
         master_sha="",
         official_master_sha="",
+        merge_base_commit="",
         msg_base="",
         msg_new="",
         base_signature="",
@@ -487,7 +488,6 @@ class RunDb:
         base_nets=None,
         new_nets=None,
         rescheduled_from=None,
-        base_same_as_master=None,
         start_time=None,
         sprt=None,
         spsa=None,
@@ -519,6 +519,7 @@ class RunDb:
             "official_master_sha": official_master_sha,
             "msg_base": msg_base,
             "msg_new": msg_new,
+            "merge_base_commit": merge_base_commit,
             "base_options": base_options,
             "new_options": new_options,
             "info": info,
@@ -551,7 +552,6 @@ class RunDb:
             # This tc_base is redundant,
             # but it is used for an index.
             "tc_base": tc_base,
-            "base_same_as_master": base_same_as_master,
             # Will be filled in by tasks, indexed by task-id.
             # Starts as an empty list.
             "tasks": [],
