@@ -1,15 +1,21 @@
 from fishtest.util import get_hash, get_tc_ratio
 
+OFFICIALSTOCKFISH_URL = "https://github.com/official-stockfish/Stockfish"
+
 
 def tests_repo(run):
-    return run["args"].get(
-        "tests_repo", "https://github.com/official-stockfish/Stockfish"
-    )
+    return run["args"].get("tests_repo", OFFICIALSTOCKFISH_URL)
 
 
 def master_diff_url(run):
     return "{}/compare/master...{}".format(
         tests_repo(run), run["args"]["resolved_base"][:10]
+    )
+
+
+def official_master_diff_url(run):
+    return "{}/compare/master...{}".format(
+        OFFICIALSTOCKFISH_URL, run["args"]["resolved_base"][:10]
     )
 
 

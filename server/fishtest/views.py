@@ -11,7 +11,7 @@ from pathlib import Path
 import bson
 import fishtest.stats.stat_util
 import requests
-from fishtest.helpers import master_diff_url, reasonable_run_hashes
+from fishtest.helpers import official_master_diff_url, reasonable_run_hashes
 from fishtest.run_cache import Prio
 from fishtest.schemas import RUN_VERSION, runs_schema, short_worker_name
 from fishtest.util import (
@@ -141,6 +141,14 @@ def login(request):
             )
         request.session.flash(message, "error")
     return {}
+
+
+def base_same_as_master(run):
+    if "merge_base_commit" in run["args"]:
+        return run["args"]["merge_base_commit"] == run["args"]["resolved_base"]
+    else:
+        # For backward compatibility
+        return run.get("base_same_as_master", True)
 
 
 # Note that the allowed length of mailto URLs on Chrome/Windows is severely
@@ -1019,11 +1027,12 @@ def validate_form(request):
 
     # Check if the base branch of the test repo matches official master
     api_url = "https://api.github.com/repos/official-stockfish/Stockfish"
-    api_url += "/compare/master..." + data["resolved_base"][:10]
+    api_url += "/compare/master..." + data["resolved_new"][:10]
     master_diff = requests.get(
-        api_url, headers={"Accept": "application/vnd.github.v3.diff"}
+        api_url, headers={"Accept": "application/vnd.github+json"}
     )
-    data["base_same_as_master"] = master_diff.text == ""
+    merge_base_commit = master_diff.json()["merge_base_commit"]["sha"]
+    data["merge_base_commit"] = merge_base_commit
 
     # Store nets info
     data["base_nets"] = get_nets(data["resolved_base"], data["tests_repo"])
@@ -1130,7 +1139,7 @@ def update_nets(request, run):
             )
         )
 
-    if run["base_same_as_master"]:
+    if base_same_as_master(run):
         for net in base_nets:
             if "is_master" not in net:
                 net["is_master"] = True
@@ -1650,10 +1659,14 @@ def tests_view(request):
     elif run["failed"]:
         # for backward compatibility
         warnings.append("this is a failed test")
-    base_same_as_master = run.get("base_same_as_master", True)
-    if not base_same_as_master and "spsa" not in run["args"]:
-        anchor = f'<a class="alert-link" href="{master_diff_url(run)}" target="_blank" rel="noopener">diff</a>'
-        warnings.append(f"the base branch is different from master: {anchor}")
+    anchor = f'<a class="alert-link" href="{official_master_diff_url(run)}" target="_blank" rel="noopener">base diff</a>'
+    if not base_same_as_master(run) and "spsa" not in run["args"]:
+        if "merge_base_commit" in run["args"]:
+            warnings.append(
+                f"base is not the latest common ancestor of test and master: {anchor}"
+            )
+        else:
+            warnings.append(f"base is not an ancestor of master: {anchor}")
 
     return {
         "run": run,
@@ -1674,6 +1687,7 @@ def tests_view(request):
         "spsa_data": spsa_data,
         "notes": notes,
         "warnings": warnings,
+        "base_same_as_master": base_same_as_master(run),
     }
 
 
