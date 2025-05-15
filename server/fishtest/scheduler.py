@@ -29,6 +29,19 @@ When the second task is scheduled, the scheduler will interrupt the
 """
 
 
+def _execute(worker, *args, _background=False, **kwargs):
+    if not _background:
+        try:
+            worker(*args, **kwargs)
+        except Exception as e:
+            print(f"{e.__class__.__name__} in {worker.__name__}: {str(e)}", flush=True)
+    else:
+        kwargs["_background"] = False
+        args = (worker,) + args
+        t = threading.Thread(target=_execute, args=args, kwargs=kwargs, daemon=True)
+        t.start()
+
+
 class Task:
     """This is an opaque class representing a task. Instances should be created via
     Scheduler.create_task(). Some public methods are documented below.
@@ -43,6 +56,7 @@ class Task:
         one_shot=False,
         jitter=0.0,
         scheduler=None,
+        background=False,
         args=(),
         kwargs={},
     ):
@@ -63,15 +77,15 @@ class Task:
         self.__expired = False
         self.__scheduler = scheduler
         self.__lock = threading.Lock()
+        self.__background = background
         self.args = args
         self.kwargs = kwargs
 
     def _do_work(self):
         if not self.__expired:
-            try:
-                self.worker(*self.args, *self.kwargs)
-            except Exception as e:
-                print(f"{type(e).__name__} while executing task: {str(e)}", flush=True)
+            _execute(
+                self.worker, *self.args, _background=self.__background, **self.kwargs
+            )
             if not self.one_shot:
                 jitter = uniform(-self.__rel_jitter, self.__rel_jitter)
                 with self.__lock:
@@ -134,6 +148,7 @@ class Scheduler:
         min_delay=0.0,
         one_shot=False,
         jitter=None,
+        background=False,
         args=(),
         kwargs={},
     ):
@@ -175,6 +190,7 @@ class Scheduler:
             one_shot=one_shot,
             jitter=jitter,
             scheduler=self,
+            background=background,
             args=args,
             kwargs=kwargs,
         )
