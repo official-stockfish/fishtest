@@ -617,6 +617,21 @@ def flags_must_match(run):
     return True
 
 
+def is_undecided(run):
+    completed_games = (
+        run["results"]["wins"] + run["results"]["losses"] + run["results"]["draws"]
+    )
+    if completed_games >= run["args"]["num_games"]:
+        return False
+    if (
+        "sprt" in run["args"]
+        and "state" in run["args"]["sprt"]
+        and run["args"]["sprt"]["state"] != ""
+    ):
+        return False
+    return True
+
+
 valid_aggregated_data = intersect(
     final_results_must_match,
     cores_must_match,
@@ -636,7 +651,7 @@ valid_aggregated_data = intersect(
 # about non-validation of runs created with the prior
 # schema.
 
-RUN_VERSION = 14
+RUN_VERSION = 15
 
 runs_schema = intersect(
     {
@@ -797,17 +812,6 @@ runs_schema = intersect(
     lax(ifthen({"is_yellow": True}, {"is_green": False})),
     lax(
         ifthen(
-            {"finished": False},
-            {
-                "is_green": False,
-                "is_yellow": False,
-                "failed": False,
-                "deleted": False,
-            },
-        )
-    ),
-    lax(
-        ifthen(
             {"finished": True},
             {
                 "workers": 0,
@@ -816,6 +820,15 @@ runs_schema = intersect(
                 "games_per_minute": 0.0,
                 "tasks": [{"active": False}, ...],
             },
+            intersect(
+                {
+                    "is_green": False,
+                    "is_yellow": False,
+                    "failed": False,
+                    "deleted": False,
+                },
+                is_undecided,
+            ),
         )
     ),
     valid_aggregated_data,

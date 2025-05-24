@@ -26,6 +26,7 @@ from fishtest.schemas import (
     compute_total_games,
     compute_workers,
     connections_counter_schema,
+    is_undecided,
     nn_schema,
     pgns_schema,
     runs_schema,
@@ -441,6 +442,15 @@ class RunDb:
                                 self.connections_counter[remote_addr] += 1
                             else:
                                 self.connections_counter[remote_addr] = 1
+
+                if not is_undecided(run):
+                    print(
+                        f"Warning: unfinished run {run_id} is already decided...",
+                        "corrected!",
+                        flush=True,
+                    )
+                    changed = True
+                    self.set_inactive_run(run)
 
             if changed:
                 self.buffer(run)
@@ -1348,19 +1358,7 @@ After fixing the issues you can unblock the worker at
         if "spsa" in run["args"] and spsa_games == spsa_results["num_games"]:
             self.spsa_handler.update_spsa_data(run_id, task_id, spsa_results)
 
-        task_finished = False
-
-        if "sprt" in run["args"]:
-            sprt = run["args"]["sprt"]
-            fishtest.stats.stat_util.update_SPRT(run["results"], sprt)
-            if sprt["state"] != "":
-                task_finished = True
-
         if num_games >= task["num_games"]:
-            # This task is now finished
-            task_finished = True
-
-        if task_finished:
             self.set_inactive_task(task_id, run)
             # Record tasks with an excessive amount of crashes or time losses in the event log
             self.handle_crash_or_time(run, task_id)
@@ -1369,17 +1367,13 @@ After fixing the issues you can unblock the worker at
 
         run["last_updated"] = update_time
 
-        # Check if the run is finished.
+        if "sprt" in run["args"]:
+            sprt = run["args"]["sprt"]
+            fishtest.stats.stat_util.update_SPRT(run["results"], sprt)
 
-        run_finished = False
-        if count_games(run["results"]) >= run["args"]["num_games"]:
-            run_finished = True
-        elif "sprt" in run["args"] and sprt["state"] != "":
-            run_finished = True
+        # Stop the run if finished.
 
-        # Return.
-
-        if run_finished:
+        if not is_undecided(run):
             self.stop_run(run_id)
             # stop run may not actually stop a run because of autopurging!
             if run["finished"]:
@@ -1505,13 +1499,6 @@ After fixing the issues you can unblock the worker at
             return "You cannot purge a failed run"
         message = "No bad workers"
 
-        # The following is necessary to be able to purge
-        # old runs. It can be deleted after 30 days
-        # (cfr above).
-
-        if "bad_tasks" not in run:
-            run["bad_tasks"] = []
-
         tasks = copy.copy(run["tasks"])
 
         for task_id, task in enumerate(tasks):
@@ -1544,17 +1531,13 @@ After fixing the issues you can unblock the worker at
                 self.set_bad_task(
                     task_id, run, residual=residual, residual_color=residual_color
                 )
-
         if message == "":
             results = compute_results(run)
             run["results"] = results
-            revived = True
             if "sprt" in run["args"] and "state" in run["args"]["sprt"]:
                 fishtest.stats.stat_util.update_SPRT(results, run["args"]["sprt"])
-                if run["args"]["sprt"]["state"] != "":
-                    revived = False
 
-            if revived:
+            if is_undecided(run):
                 self.set_active_run(run)
             else:
                 flags = compute_flags(run)
