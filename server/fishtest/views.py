@@ -13,7 +13,7 @@ import fishtest.stats.stat_util
 import requests
 from fishtest.helpers import master_diff_url, reasonable_run_hashes
 from fishtest.run_cache import Prio
-from fishtest.schemas import RUN_VERSION, runs_schema, short_worker_name
+from fishtest.schemas import RUN_VERSION, is_undecided, runs_schema, short_worker_name
 from fishtest.util import (
     email_valid,
     extract_repo_from_link,
@@ -1293,7 +1293,9 @@ def tests_modify(request):
             and request.POST["info"].strip() != ""
         ):
             run["args"]["info"] = request.POST["info"].strip()
-    request.rundb.set_active_run(run)
+
+    if is_undecided(run):
+        request.rundb.set_active_run(run)
 
     after = del_tasks(run)
     message = []
