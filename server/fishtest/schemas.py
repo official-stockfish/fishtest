@@ -55,6 +55,7 @@ net_name = regex(r"nn-[a-f0-9]{12}.nnue", name="net_name")
 tc = regex(r"([1-9]\d*/)?\d+(\.\d+)?(\+\d+(\.\d+)?)?", name="tc")
 str_int = regex(r"[1-9]\d*", name="str_int")
 sha = regex(r"[a-f0-9]{40}", name="sha")
+sri384 = regex(r"(sha384-)?[0-9A-Za-z+/]{64}", name="sri384")
 uuid = regex(r"[0-9a-zA-Z]{2,8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}", name="uuid")
 country_code = regex(r"[A-Z][A-Z]", name="country_code")
 epd_file = glob("*.epd", name="epd_file")
@@ -635,7 +636,7 @@ valid_aggregated_data = intersect(
 # about non-validation of runs created with the prior
 # schema.
 
-RUN_VERSION = 13
+RUN_VERSION = 14
 
 runs_schema = intersect(
     {
@@ -672,6 +673,7 @@ runs_schema = intersect(
                 "new_tc": tc,
                 "book": union(epd_file, pgn_file),
                 "book_depth": str_int,
+                "book_sri": sri384,
                 "threads": suint,
                 "resolved_base": sha,
                 "resolved_new": sha,
