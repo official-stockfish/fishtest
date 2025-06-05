@@ -148,7 +148,13 @@
               agent_link = "/user/"+agent
           %>
           % if action['action'] in ('system_event', 'log_message'):
-            <td>${action['username']}</td>
+            <td>
+              % if 'worker' in action:
+                ${action['worker']}
+              % else:
+                ${action['username']}
+              % endif
+            </td>
           % else:
             <td><a href="${agent_link|n}">${agent|n}</a></td>
           % endif

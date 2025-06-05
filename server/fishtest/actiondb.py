@@ -206,12 +206,20 @@ class ActionDb:
             message=message,
         )
 
-    def log_message(self, username=None, message=None):
-        self.insert_action(
-            action="log_message",
-            username=username,
-            message=message,
-        )
+    def log_message(self, username=None, worker=None, message=None):
+        if worker is None:
+            self.insert_action(
+                action="log_message",
+                username=username,
+                message=message,
+            )
+        else:
+            self.insert_action(
+                action="log_message",
+                username=username,
+                worker=worker,
+                message=message,
+            )
 
     def insert_action(self, **action):
         if "run_id" in action:

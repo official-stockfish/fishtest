@@ -382,6 +382,7 @@ action_schema = intersect(
                 "time": timestamp,
                 "action": "log_message",
                 "username": username,
+                "worker?": long_worker_name,
                 "message": action_message,
             },
         ),
