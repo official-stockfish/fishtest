@@ -1,3 +1,4 @@
+import base64
 import copy
 import ctypes
 import hashlib
@@ -17,7 +18,6 @@ import sys
 import tempfile
 import threading
 import time
-from base64 import b64decode
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -34,6 +34,13 @@ IS_MACOS = "darwin" in platform.system().lower()
 LOGFILE = "api.log"
 
 LOG_LOCK = threading.Lock()
+
+
+def text_hash(file):
+    # text mode to have newline translation!
+    return base64.b64encode(
+        hashlib.sha384(file.read_text().encode("utf8")).digest()
+    ).decode("utf8")
 
 
 class WorkerException(Exception):
@@ -550,7 +557,9 @@ def download_from_github_api(
     )
     print("Downloading {}".format(item_url))
     git_url = requests_get(item_url, timeout=HTTP_TIMEOUT).json()["git_url"]
-    return b64decode(requests_get(git_url, timeout=HTTP_TIMEOUT).json()["content"])
+    return base64.b64decode(
+        requests_get(git_url, timeout=HTTP_TIMEOUT).json()["content"]
+    )
 
 
 def download_from_github(
@@ -1369,6 +1378,7 @@ def run_games(
 
     book = run["args"]["book"]
     book_depth = run["args"]["book_depth"]
+    book_sri = run["args"].get("book_sri")
     new_options = run["args"]["new_options"]
     base_options = run["args"]["base_options"]
     threads = int(run["args"]["threads"])
@@ -1454,13 +1464,42 @@ def run_games(
 
     os.chdir(testing_dir)
 
-    # Download the opening book if missing in the directory.
-    if not (testing_dir / book).exists() or (testing_dir / book).stat().st_size == 0:
-        zipball = book + ".zip"
-        blob = download_from_github(zipball)
-        unzip(blob, testing_dir)
-    else:
-        update_atime(testing_dir / book)
+    downloaded_book = False
+    while not downloaded_book:
+        # Download the opening book if missing in the directory.
+        if (
+            not (testing_dir / book).exists()
+            or (testing_dir / book).stat().st_size == 0
+        ):
+            zipball = book + ".zip"
+            blob = download_from_github(zipball)
+            unzip(blob, testing_dir)
+            downloaded_book = True
+        else:
+            update_atime(testing_dir / book)
+            print(f"Re-using local book {testing_dir / book}.")
+
+        # very old tests (stopped/restarted) may lack the book_sri key
+        if book_sri is None:
+            print("Failed to obtain book_sri from server.", file=sys.stderr)
+            break
+
+        sri = text_hash(testing_dir / book)
+        if book_sri == sri:
+            print(f"Book sri for {book} matches.")
+            break
+
+        print(f"Book sri mismatch: {book_sri} != {sri}.", file=sys.stderr)
+        if downloaded_book:
+            raise WorkerException(f"Failed to match sri for book {book}")
+
+        try:
+            (testing_dir / book).unlink()
+            print(f"Deleted local book {testing_dir / book}.")
+        except Exception as e:
+            raise WorkerException(
+                f"Failed to remove local book {testing_dir / book}", e=e
+            )
 
     # Clean up the old networks (keeping the num_bkps most recent)
     num_bkps = 10

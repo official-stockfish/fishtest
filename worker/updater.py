@@ -106,8 +106,8 @@ def update(restart=True, test=False):
             ("stockfish-*" + EXE_SUFFIX, 50, 30),
             ("nn-*.nnue", 10, 30),
             ("results-*.pgn", 0, -1),
-            ("*.epd", 4, 30),
-            ("*.pgn", 4, 30),
+            ("*.epd", 4, 365),
+            ("*.pgn", 4, 365),
         )
         for pattern, num_bkps, expiration_days in backup_pattern:
             expiration_time = time.time() - 24 * 3600 * expiration_days
