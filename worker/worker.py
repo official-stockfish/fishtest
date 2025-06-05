@@ -72,7 +72,7 @@ MIN_CLANG_MINOR = 0
 
 FASTCHESS_SHA = "f8e58066992e5e130f07fb3ba49b89b603e32f21"
 
-WORKER_VERSION = 277
+WORKER_VERSION = 278
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -1600,6 +1600,7 @@ def worker():
         "modified": not unmodified,
         "ARCH": "?",
         "nps": 0.0,
+        "near_github_api_limit": False,
     }
 
     print("UUID:", worker_info["unique_key"])
@@ -1622,6 +1623,7 @@ def worker():
     # Start the main loop.
     delay = INITIAL_RETRY_TIME
     fish_exit = False
+
     while current_state["alive"]:
         success = fetch_and_handle_task(
             worker_info,

@@ -299,6 +299,18 @@ def send_api_post_request(api_url, payload, quiet=False):
     return response
 
 
+def post_to_worker_log(worker_info, password, remote, message):
+    payload = {
+        "password": password,
+        "worker_info": worker_info,
+        "message": message,
+    }
+    try:
+        send_api_post_request(remote + "/api/worker_log", payload)
+    except Exception as e:
+        print("Exception while posting to worker log:\n", e, sep="", file=sys.stderr)
+
+
 def github_api(repo):
     """Convert from https://github.com/<user>/<repo>
     To https://api.github.com/repos/<user>/<repo>"""
