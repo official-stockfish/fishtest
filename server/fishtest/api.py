@@ -257,6 +257,16 @@ class WorkerApi(GenericApi):
         )
         return self.add_time(result)
 
+    @view_config(route_name="api_worker_log")
+    def worker_log(self):
+        self.validate_request()
+        self.request.actiondb.log_message(
+            username=self.get_username(),
+            message=self.message(),
+            worker=self.worker_name(),
+        )
+        return self.add_time({})
+
     @view_config(route_name="api_upload_pgn")
     def upload_pgn(self):
         self.validate_request()
