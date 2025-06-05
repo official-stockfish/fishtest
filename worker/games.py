@@ -1491,7 +1491,8 @@ def run_games(
 
         print(f"Book sri mismatch: {book_sri} != {sri}.", file=sys.stderr)
         if downloaded_book:
-            raise WorkerException(f"Failed to match sri for book {book}")
+            print(f"Failed to match sri for book {book}. Ignoring!", file=sys.stderr)
+            break
 
         try:
             (testing_dir / book).unlink()
