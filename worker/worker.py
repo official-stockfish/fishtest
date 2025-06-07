@@ -73,7 +73,7 @@ MIN_CLANG_MINOR = 0
 
 FASTCHESS_SHA = "f8e58066992e5e130f07fb3ba49b89b603e32f21"
 
-WORKER_VERSION = 280
+WORKER_VERSION = 281
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -161,7 +161,7 @@ def _alpha_numeric(x):
     if x == "_hw":
         return x
     if len(x) <= 1:
-        print("The prefix {} is too short".format(x))
+        print(f"The prefix {x} is too short.")
         raise ValueError(x)
     if not all(ord(c) < 128 for c in x) or not x.isalnum():
         raise ValueError(x)
@@ -183,7 +183,7 @@ class _memory:
         try:
             ret = round(max(min(e.parse(x), self.MAX), 0))
         except Exception:
-            print("Unable to parse expression for max_memory")
+            print("Unable to parse expression for max_memory.")
             raise ValueError(x)
 
         return x, ret
@@ -201,25 +201,19 @@ class _concurrency:
         try:
             ret = round(e.parse(x))
         except Exception:
-            print("Unable to parse expression for concurrency")
+            print("Unable to parse expression for concurrency.")
             raise ValueError(x)
 
         if ret <= 0:
-            print("concurrency must be at least 1")
+            print("concurrency must be at least 1.")
             raise ValueError(x)
 
         if ("MAX" not in x and ret >= self.MAX) or ret > self.MAX:
             print(
-                (
-                    "\nYou cannot have concurrency {} but at most:\n"
-                    "  a) {} with '--concurrency MAX';\n"
-                    "  b) {} otherwise.\n"
-                    "Please use option a) only if your computer is very lightly loaded.\n"
-                ).format(
-                    ret,
-                    self.MAX,
-                    self.MAX - 1,
-                )
+                f"\nYou cannot have concurrency {ret} but at most:\n"
+                f"  a) {self.MAX} with '--concurrency MAX';\n"
+                f"  b) {self.MAX - 1} otherwise.\n"
+                "Please use option a) only if your computer is very lightly loaded.\n"
             )
             raise ValueError(x)
 
@@ -242,12 +236,7 @@ def generate_sri(install_dir):
         try:
             sri[file] = text_hash(item)
         except Exception as e:
-            print(
-                "Exception computing sri hash of {}:\n".format(item),
-                e,
-                sep="",
-                file=sys.stderr,
-            )
+            print(f"Exception computing sri hash of {item}:\n{e}", file=sys.stderr)
             return None
     return sri
 
@@ -255,7 +244,7 @@ def generate_sri(install_dir):
 def write_sri(install_dir):
     sri = generate_sri(install_dir)
     sri_file = install_dir / "sri.txt"
-    print("Writing sri hashes to {}".format(sri_file))
+    print(f"Writing sri hashes to {sri_file}.")
     with open(sri_file, "w") as f:
         json.dump(sri, f)
         f.write("\n")
@@ -273,10 +262,10 @@ def verify_sri(install_dir):
         with open(sri_file, "r") as f:
             sri_ = json.load(f)
     except Exception as e:
-        print("Exception reading {}:\n".format(sri_file), e, sep="", file=sys.stderr)
+        print(f"Exception reading {sri_file}:\n{e}", file=sys.stderr)
         return False
     if not isinstance(sri_, dict):
-        print("The file {} does not contain a dictionary".format(sri_file))
+        print(f"The file {sri_file} does not contain a dictionary.")
         return False
     for k, v in sri.items():
         # When we update, the running worker is not the same as the one we are verifying.
@@ -285,19 +274,15 @@ def verify_sri(install_dir):
         if k == "__version":
             continue
         if k not in sri_ or v != sri_[k]:
-            print("The value for {} is incorrect in {}".format(k, sri_file))
+            print(f"The value for {k} is incorrect in {sri_file}.")
             return False
-    print("The file {} matches the worker files!".format(sri_file))
+    print(f"The file {sri_file} matches the worker files!")
     return True
 
 
 def download_sri():
     try:
-        return json.loads(
-            download_from_github(
-                "worker/sri.txt", owner="official-stockfish", repo="fishtest"
-            )
-        )
+        return json.loads(download_from_github("worker/sri.txt", repo="fishtest"))
     except Exception:
         return None
 
@@ -318,7 +303,7 @@ def verify_remote_sri(install_dir):
     tainted = False
     for k, v in sri_.items():
         if k not in sri or v != sri[k]:
-            print("{} has been modified!".format(k))
+            print(f"{k} has been modified!")
             tainted = True
     if tainted:
         print("This worker is tainted...")
@@ -337,9 +322,7 @@ def verify_credentials(remote, username, password, cached):
     req = {}
     if username != "" and password != "":
         print(
-            "Confirming {} credentials with {}".format(
-                "cached" if cached else "supplied", remote
-            )
+            f"Confirming {'cached' if cached else 'supplied'} credentials with {remote}."
         )
         payload = {"worker_info": {"username": username}, "password": password}
         try:
@@ -356,8 +339,8 @@ def verify_credentials(remote, username, password, cached):
 
 
 def get_credentials(config, options, args):
-    remote = "{}://{}:{}".format(options.protocol, options.host, options.port)
-    print("Worker version {} connecting to {}".format(WORKER_VERSION, remote))
+    remote = f"{options.protocol}://{options.host}:{options.port}"
+    print(f"Worker version {WORKER_VERSION} connecting to {remote}.")
 
     username = config.get("login", "username")
     password = config.get("login", "password", raw=True)
@@ -374,8 +357,7 @@ def get_credentials(config, options, args):
         return "", ""
     elif not ret:
         try:
-            print("")
-            username = input("Username: ")
+            username = input("\nUsername: ")
             if username != "":
                 password = getpass.getpass()
             print("")
@@ -423,13 +405,13 @@ def verify_fastchess(fastchess_path, fastchess_sha):
 
     if len(short_sha) < 7:
         print(
-            "Unable to find a suitable sha of length 7 or more in the fastchess version"
+            "Unable to find a suitable sha of length 7 or more in the fastchess version."
         )
         return False
 
     if not fastchess_sha.startswith(short_sha):
         print(
-            f"fastchess sha {fastchess_sha} required but the version shows {short_sha}"
+            f"fastchess sha {fastchess_sha} required but the version shows {short_sha}."
         )
         return False
 
@@ -451,26 +433,25 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache, tests=False
     try:
         print("Building fastchess from sources...")
         should_cache = False
-        blob = cache_read(global_cache, FASTCHESS_SHA + ".zip")
+        fastchess_zip = FASTCHESS_SHA + ".zip"
+        blob = cache_read(global_cache, fastchess_zip)
 
         if blob is None:
             item_url = (
-                "https://api.github.com/repos/"
-                + "Disservin"
-                + "/fastchess/zipball/"
+                "https://api.github.com/repos/Disservin/fastchess/zipball/"
                 + FASTCHESS_SHA
             )
-            print("Downloading {}".format(item_url))
+            print(f"Downloading {item_url}.")
             blob = requests_get(item_url).content
             should_cache = True
         else:
-            print("Using {} from global cache".format(FASTCHESS_SHA + ".zip"))
+            print(f"Using {fastchess_zip} from global cache.")
 
         file_list = unzip(blob, tmp_dir)
         build_dir = tmp_dir / os.path.commonprefix([n.filename for n in file_list])
 
         if should_cache:
-            cache_write(global_cache, FASTCHESS_SHA + ".zip", blob)
+            cache_write(global_cache, fastchess_zip, blob)
 
         os.chdir(build_dir)
 
@@ -516,9 +497,7 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache, tests=False
 
     except Exception as e:
         print(
-            "Exception downloading, extracting or building fastchess:\n",
-            e,
-            sep="",
+            f"Exception downloading, extracting or building fastchess:\n{e}",
             file=sys.stderr,
         )
         return False
@@ -545,9 +524,7 @@ def validate(config, schema):
                 o1 = v[4](o)
                 if o1 != o:
                     print(
-                        "Replacing the value '{}' of config option '{}' by '{}'".format(
-                            o, v[1], o1
-                        )
+                        f"Replacing the value '{o}' of config option '{v[1]}' by '{o1}'."
                     )
                     config.set(v[0], v[1], o1)
                     o = o1
@@ -558,16 +535,14 @@ def validate(config, schema):
                 except Exception:
                     # v[2] is the default
                     print(
-                        "The value '{}' of config option '{}' is not of type '{}'.\n"
-                        "Replacing it by the default value '{}'".format(
-                            o, v[1], v[3].__name__, v[2]
-                        )
+                        f"The value '{o}' of config option '{v[1]}' is not of type '{v[3].__name__}'.\n"
+                        f"Replacing it by the default value '{v[2]}'."
                     )
                     config.set(*v[:3])
             elif o not in t:  # choices
                 print(
-                    "The value '{}' of config option '{}' is not in {}.\n"
-                    "Replacing it by the default value '{}'".format(o, v[1], v[3], v[2])
+                    f"The value '{o}' of config option '{v[1]}' is not in {v[3]}.\n"
+                    f"Replacing it by the default value '{v[2]}'."
                 )
                 config.set(*v[:3])
 
@@ -576,12 +551,12 @@ def validate(config, schema):
     schema_options = [v[:2] for v in schema]
     for section in config.sections():
         if section not in schema_sections:
-            print("Removing unknown config section '{}'".format(section))
+            print(f"Removing unknown config section '{section}'.")
             config.remove_section(section)
             continue
         for option in config.options(section):
             if (section, option) not in schema_options:
-                print("Removing unknown config option '{}'".format(option))
+                print(f"Removing unknown config option '{option}'.")
                 config.remove_option(section, option)
 
 
@@ -592,13 +567,8 @@ def setup_parameters(worker_dir):
     try:
         config.read(config_file)
     except Exception as e:
-        print(
-            "Exception reading configfile {}:\n".format(config_file),
-            e,
-            sep="",
-            file=sys.stderr,
-        )
-        print("Initializing configfile")
+        print(f"Exception reading configfile {config_file}:\n{e}", file=sys.stderr)
+        print("Initializing configfile...")
         config = ConfigParser(inline_comment_prefixes=";", interpolation=None)
 
     # Step 2: probe the host system.
@@ -618,12 +588,12 @@ def setup_parameters(worker_dir):
             cmd = "sysctl hw.memsize"
         else:
             cmd = ""
-            print("Unknown system")
+            print("Unknown system.")
         with os.popen(cmd) as proc:
             mem_str = str(proc.readlines())
         mem = int(re.search(r"\d+", mem_str).group())
     except Exception as e:
-        print("Exception checking HW info:\n", e, sep="", file=sys.stderr)
+        print(f"Exception checking HW info:\n{e}", file=sys.stderr)
         return None
 
     # Step 2b: determine the number of cores.
@@ -631,13 +601,13 @@ def setup_parameters(worker_dir):
     try:
         max_cpu_count = multiprocessing.cpu_count()
     except Exception as e:
-        print("Exception checking the CPU cores count:\n", e, sep="", file=sys.stderr)
+        print(f"Exception checking the CPU cores count:\n{e}", file=sys.stderr)
         return None
 
     # Step 2c: detect the available compilers.
     compilers = detect_compilers()
     if compilers == {}:
-        print("No usable compilers found")
+        print("No usable compilers found.")
         return None
 
     # Step 3: validate config options and replace missing or invalid
@@ -807,7 +777,7 @@ def setup_parameters(worker_dir):
         return None
 
     if len(args) not in [0, 2]:
-        print("Unparsed command line arguments: {}".format(" ".join(args)))
+        print(f"Unparsed command line arguments: {' '.join(args)}")
         parser.print_usage()
         return None
 
@@ -818,11 +788,11 @@ def setup_parameters(worker_dir):
 
     if options.protocol == "http" and options.port == 443:
         # Rewrite old port 443 to 80
-        print("Changing port to 80")
+        print("Changing port to 80.")
         options.port = 80
     elif options.protocol == "https" and options.port == 80:
         # Rewrite old port 80 to 443
-        print("Changing port to 443")
+        print("Changing port to 443.")
         options.port = 443
 
     # Limit concurrency so that at least STC tests can run with the evailable memory
@@ -834,37 +804,33 @@ def setup_parameters(worker_dir):
     max_concurrency = int((options.max_memory - fc_memory) / STC_memory)
     if max_concurrency < 1:
         print(
-            "You need to reserve at least {} MiB to run the worker!".format(
-                STC_memory + fc_memory
-            )
+            f"You need to reserve at least {STC_memory + fc_memory} MiB to run the worker!"
         )
         return None
     options.concurrency_reduced = False
     if max_concurrency < options.concurrency:
         print(
-            "Changing concurrency to allow for running STC tests with the available memory"
+            "Changing concurrency to allow for running STC tests with the available memory."
         )
         print(
-            "The required memory to run with {} concurrency is {} MiB".format(
-                options.concurrency, STC_memory * options.concurrency + fc_memory
-            )
+            f"The required memory to run with {options.concurrency} concurrency is {STC_memory * options.concurrency + fc_memory} MiB."
         )
-        print("The concurrency has been reduced to {}".format(max_concurrency))
-        print("Consider increasing max_memory if possible")
+        print(f"The concurrency has been reduced to {max_concurrency}.")
+        print("Consider increasing max_memory if possible.")
         options.concurrency = max_concurrency
         options.concurrency_reduced = True
 
     options.compiler = compilers[options.compiler_]
 
     options.hw_id = hw_id(config.getint("private", "hw_seed"))
-    print("Default uuid_prefix: {}".format(options.hw_id))
+    print(f"Default uuid_prefix: {options.hw_id}")
 
     # Step 6: determine credentials.
 
     username, password = get_credentials(config, options, args)
 
     if username == "":
-        print("Invalid or missing credentials")
+        print("Invalid or missing credentials.")
         return None
 
     options.username = username
@@ -880,19 +846,19 @@ def setup_parameters(worker_dir):
         "parameters",
         "concurrency",
         options.concurrency_
-        + " ; = {} cores".format(options.concurrency)
+        + f" ; = {options.concurrency} cores"
         + (" (reduced)" if options.concurrency_reduced else ""),
     )
     config.set(
         "parameters",
         "max_memory",
-        options.max_memory_ + " ; = {} MiB".format(options.max_memory),
+        options.max_memory_ + f" ; = {options.max_memory} MiB",
     )
     config.set(
         "parameters",
         "uuid_prefix",
         options.uuid_prefix
-        + (" ; = {}".format(options.hw_id) if options.uuid_prefix == "_hw" else ""),
+        + (f" ; = {options.hw_id}" if options.uuid_prefix == "_hw" else ""),
     )
     config.set("parameters", "min_threads", str(options.min_threads))
     config.set("parameters", "fleet", str(options.fleet))
@@ -904,22 +870,18 @@ def setup_parameters(worker_dir):
 
     # Step 8: give some feedback to the user.
 
+    print(f"System memory determined to be: {mem / 1024**3:.3f}GiB.")
     print(
-        "System memory determined to be: {:.3f}GiB".format(mem / (1024 * 1024 * 1024))
+        f"Worker constraints: {{'concurrency': {options.concurrency}, 'max_memory': {options.max_memory}, 'min_threads': {options.min_threads}}}"
     )
-    print(
-        "Worker constraints: {{'concurrency': {}, 'max_memory': {}, 'min_threads': {}}}".format(
-            options.concurrency, options.max_memory, options.min_threads
-        )
-    )
-    print("Config file {} written".format(config_file))
+    print(f"Config file {config_file} written.")
 
     return options
 
 
 def on_sigint(current_state, signal, frame):
     current_state["alive"] = False
-    raise FatalException("Terminated by signal {}".format(str_signal(signal)))
+    raise FatalException(f"Terminated by signal {str_signal(signal)}.")
 
 
 def fingerprint(s):
@@ -957,9 +919,7 @@ def get_machine_id():
         machine_id = read_winreg(path, name)
         if machine_id is not None:
             print(
-                "machine_id {} obtained from HKEY_LOCAL_MACHINE\\{}\\{}".format(
-                    machine_id, path, name
-                )
+                f"machine_id {machine_id} obtained from HKEY_LOCAL_MACHINE\\{path}\\{name}."
             )
             return machine_id
     elif IS_MACOS:
@@ -983,12 +943,7 @@ def get_machine_id():
                         break
                     machine_uuid_str += line
         except Exception as e:
-            print(
-                "Exception while reading the machine_id:\n",
-                e,
-                sep="",
-                file=sys.stderr,
-            )
+            print(f"Exception while reading the machine_id:\n{e}", file=sys.stderr)
         if machine_uuid_str != "":
             match_obj = re.compile(
                 "[A-Z,0-9]{8,8}-"
@@ -1000,7 +955,7 @@ def get_machine_id():
             result = match_obj.findall(machine_uuid_str)
             if len(result) > 0:
                 machine_id = result[0]
-                print("machine_id {} obtained via '{}'".format(machine_id, cmd))
+                print(f"machine_id {machine_id} obtained via '{cmd}'.")
                 return machine_id
     elif os.name == "posix":
         host_ids = ["/etc/machine-id", "/var/lib/dbus/machine-id"]
@@ -1008,11 +963,11 @@ def get_machine_id():
             try:
                 with open(file) as f:
                     machine_id = f.read().strip()
-                    print("machine_id {} obtained from {}".format(machine_id, file))
+                    print(f"machine_id {machine_id} obtained from {file}.")
                     return machine_id
             except Exception:
                 pass
-    print("Unable to obtain the machine id")
+    print("Unable to obtain the machine id.")
     return ""
 
 
@@ -1038,10 +993,7 @@ def get_remaining_github_api_calls():
         return rate.json()["resources"]["core"]["remaining"]
     except Exception as e:
         print(
-            "Exception fetching rate_limit (invalid ~/.netrc?):\n",
-            e,
-            sep="",
-            file=sys.stderr,
+            f"Exception fetching rate_limit (invalid ~/.netrc?):\n{e}", file=sys.stderr
         )
         return 0
 
@@ -1059,7 +1011,7 @@ def gcc_version():
         ) as p:
             for line in iter(p.stdout.readline, ""):
                 if "__clang_major__" in line:
-                    print("clang++ poses as g++")
+                    print("clang++ poses as g++.")
                     return None
                 if "__GNUC__" in line:
                     major = line.split()[2]
@@ -1068,10 +1020,10 @@ def gcc_version():
                 if "__GNUC_PATCHLEVEL__" in line:
                     patchlevel = line.split()[2]
     except (OSError, subprocess.SubprocessError):
-        print("No g++ or g++ is not executable")
+        print("No g++ or g++ is not executable.")
         return None
     if p.returncode != 0:
-        print("g++ version query failed with return code {}".format(p.returncode))
+        print(f"g++ version query failed with return code {p.returncode}.")
         return None
 
     try:
@@ -1085,12 +1037,10 @@ def gcc_version():
 
     if (major, minor) < (MIN_GCC_MAJOR, MIN_GCC_MINOR):
         print(
-            "Found g++ version {}.{}.{}. First usable version is {}.{}.0".format(
-                major, minor, patchlevel, MIN_GCC_MAJOR, MIN_GCC_MINOR
-            )
+            f"Found g++ version {major}.{minor}.{patchlevel}. First usable version is {MIN_GCC_MAJOR}.{MIN_GCC_MINOR}.0."
         )
         return None
-    print("Found {} version {}.{}.{}".format(compiler, major, minor, patchlevel))
+    print(f"Found {compiler} version {major}.{minor}.{patchlevel}.")
     return (compiler, major, minor, patchlevel)
 
 
@@ -1113,10 +1063,10 @@ def clang_version():
                 if "__clang_patchlevel__" in line:
                     clang_patchlevel = line.split()[2]
     except (OSError, subprocess.SubprocessError):
-        print("No clang++ or clang++ is not executable")
+        print("No clang++ or clang++ is not executable.")
         return None
     if p.returncode != 0:
-        print("clang++ version query failed with return code {}".format(p.returncode))
+        print(f"clang++ version query failed with return code {p.returncode}.")
         return None
     try:
         major = int(clang_major)
@@ -1129,9 +1079,7 @@ def clang_version():
 
     if (major, minor) < (MIN_CLANG_MAJOR, MIN_CLANG_MINOR):
         print(
-            "Found clang++ version {}.{}.{}. First usable version is {}.{}.0".format(
-                major, minor, patchlevel, MIN_CLANG_MAJOR, MIN_CLANG_MINOR
-            )
+            f"Found clang++ version {major}.{minor}.{patchlevel}. First usable version is {MIN_CLANG_MAJOR}.{MIN_CLANG_MINOR}.0."
         )
         return None
 
@@ -1144,11 +1092,11 @@ def clang_version():
         )
     except (OSError, subprocess.SubprocessError):
         print(
-            "clang++ is present but misconfigured: the command 'llvm-profdata' is missing"
+            "clang++ is present but misconfigured: the command 'llvm-profdata' is missing."
         )
         return None
 
-    print("Found {} version {}.{}.{}".format(compiler, major, minor, patchlevel))
+    print(f"Found {compiler} version {major}.{minor}.{patchlevel}.")
     return (compiler, major, minor, patchlevel)
 
 
@@ -1198,13 +1146,9 @@ def get_exception(files):
     exc_type, exc_obj, tb = sys.exc_info()
     filename, lineno, name, line = traceback.extract_tb(tb)[i]
     filename = Path(filename).name
-    message = "Exception {} at {}:{} WorkerVersion: {}".format(
-        exc_type.__name__, filename, lineno, WORKER_VERSION
-    )
+    message = f"Exception {exc_type.__name__} at {filename}:{lineno} WorkerVersion: {WORKER_VERSION}"
     while filename in files:
-        message = "Exception {} at {}:{} WorkerVersion: {}".format(
-            exc_type.__name__, filename, lineno, WORKER_VERSION
-        )
+        message = f"Exception {exc_type.__name__} at {filename}:{lineno} WorkerVersion: {WORKER_VERSION}"
         i += 1
         try:
             filename, lineno, name, line = traceback.extract_tb(tb)[i]
@@ -1215,7 +1159,7 @@ def get_exception(files):
 
 
 def heartbeat(worker_info, password, remote, current_state):
-    print("Start heartbeat")
+    print("Start heartbeat.")
     payload = {
         "password": password,
         "worker_info": worker_info,
@@ -1224,7 +1168,7 @@ def heartbeat(worker_info, password, remote, current_state):
         time.sleep(1)
         now = datetime.now(timezone.utc)
         if current_state["last_updated"] + timedelta(seconds=120) < now:
-            print("  Send heartbeat for", worker_info["unique_key"], end="... ")
+            print(f"  Send heartbeat for {worker_info['unique_key']}... ", end="")
             current_state["last_updated"] = now
             run = current_state["run"]
             payload["run_id"] = str(run["_id"]) if run else None
@@ -1236,7 +1180,7 @@ def heartbeat(worker_info, password, remote, current_state):
             try:
                 req = send_api_post_request(remote + "/api/beat", payload, quiet=True)
             except Exception as e:
-                print("Exception calling heartbeat:\n", e, sep="", file=sys.stderr)
+                print(f"Exception calling heartbeat:\n{e}", file=sys.stderr)
             else:
                 if "error" not in req:
                     print("(received)")
@@ -1245,7 +1189,7 @@ def heartbeat(worker_info, password, remote, current_state):
                         current_state["task_id"] = None
                         current_state["run"] = None
     else:
-        print("Heartbeat stopped")
+        print("Heartbeat stopped.")
 
 
 def utcoffset():
@@ -1253,7 +1197,7 @@ def utcoffset():
     utcoffset = -time.altzone if dst else -time.timezone
     abs_utcoffset_min = abs(utcoffset // 60)
     hh, mm = divmod(abs_utcoffset_min, 60)
-    return "{}{:02d}:{:02d}".format("+" if utcoffset >= 0 else "-", hh, mm)
+    return f"{'+' if utcoffset >= 0 else '-'}{hh:02d}:{mm:02d}"
 
 
 def verify_worker_version(remote, username, password, worker_lock):
@@ -1272,19 +1216,17 @@ def verify_worker_version(remote, username, password, worker_lock):
     if "error" in req:
         return False  # likewise
     if req["version"] > WORKER_VERSION:
-        print("Updating worker version to {}".format(req["version"]))
+        print(f"Updating worker version to {req['version']}.")
         backup_log()
         try:
             worker_lock.release()
             update()
         except Exception as e:
             print(
-                "Exception while updating to version {}:\n".format(req["version"]),
-                e,
-                sep="",
+                f"Exception while updating to version {req['version']}:\n{e}",
                 file=sys.stderr,
             )
-        print("Attempted update to worker version {} failed!".format(req["version"]))
+        print(f"Attempted update to worker version {req['version']} failed!")
         return False
     return True
 
@@ -1305,9 +1247,7 @@ def fetch_and_handle_task(
 
     # Print the current time for log purposes
     print(
-        "Current time is {} UTC (local offset: {}) ".format(
-            datetime.now(timezone.utc), utcoffset()
-        )
+        f"Current time is {datetime.now(timezone.utc)} UTC (local offset: {utcoffset()})."
     )
 
     # Check the worker version and upgrade if necessary
@@ -1322,7 +1262,7 @@ def fetch_and_handle_task(
 
     # Verify if we still have enough GitHub api calls
     remaining = get_remaining_github_api_calls()
-    print("Remaining number of GitHub api calls = {}".format(remaining))
+    print(f"Remaining number of GitHub api calls = {remaining}.")
     near_github_api_limit = remaining <= 10
     if near_github_api_limit:
         print(
@@ -1353,9 +1293,7 @@ def fetch_and_handle_task(
     current_state["run"] = run
     current_state["task_id"] = task_id
 
-    print(
-        "Working on task {} from {}/tests/view/{}".format(task_id, remote, run["_id"])
-    )
+    print(f"Working on task {task_id} from {remote}/tests/view/{run['_id']}.")
     if "sprt" in run["args"]:
         run_type = "sprt"
     elif "spsa" in run["args"]:
@@ -1374,7 +1312,7 @@ def fetch_and_handle_task(
             run["args"]["num_games"],
         )
     )
-    print("Running {} vs {}".format(run["args"]["new_tag"], run["args"]["base_tag"]))
+    print(f"Running {run['args']['new_tag']} vs {run['args']['base_tag']}.")
 
     success = False
     message = ""
@@ -1408,7 +1346,7 @@ def fetch_and_handle_task(
         server_message = message
     except Exception as e:
         server_message = get_exception(["worker.py", "games.py"])
-        message = "{} ({})".format(server_message, str(e))
+        message = f"{server_message} ({e})"
         current_state["alive"] = False
 
     current_state["task_id"] = None
@@ -1423,12 +1361,12 @@ def fetch_and_handle_task(
     }
 
     if not success:
-        print("\nException running games:\n", message, sep="", file=sys.stderr)
-        print("Informing the server")
+        print(f"\nException running games:\n{message}", file=sys.stderr)
+        print("Informing the server.")
         try:
             req = send_api_post_request(api, payload)
         except Exception as e:
-            print("Exception posting failed_task:\n", e, sep="", file=sys.stderr)
+            print(f"Exception posting failed_task:\n{e}", file=sys.stderr)
 
     def upload_pgn_data(pgn_data, run_id, task_id, remote, payload):
         with io.BytesIO() as gz_buffer:
@@ -1440,7 +1378,7 @@ def fetch_and_handle_task(
                 gz.write(pgn_data.encode())
             payload["pgn"] = base64.b64encode(gz_buffer.getvalue()).decode()
 
-        print("Uploading compressed PGN of {} bytes".format(len(payload["pgn"])))
+        print(f"Uploading compressed PGN of {len(payload['pgn'])} bytes.")
         send_api_post_request(remote + "/api/upload_pgn", payload)
 
     if (
@@ -1471,14 +1409,14 @@ def fetch_and_handle_task(
                 data = file_content.decode("utf-8", errors="ignore")
                 upload_pgn_data(data, run["_id"], task_id, remote, payload)
         except Exception as e:
-            print("\nException uploading PGN file:\n", e, sep="", file=sys.stderr)
+            print(f"\nException uploading PGN file:\n{e}", file=sys.stderr)
 
     try:
         pgn_file.unlink()
     except Exception as e:
-        print("Exception deleting PGN file:\n", e, sep="", file=sys.stderr)
+        print(f"Exception deleting PGN file:\n{e}", file=sys.stderr)
 
-    print("Task exited")
+    print("Task exited.")
     return success
 
 
@@ -1491,15 +1429,15 @@ def worker():
     except openlock.Timeout:
         print(
             f"\n*** Another worker (with PID={worker_lock.getpid()}) is already running in this "
-            "directory ***"
+            "directory. ***"
         )
         return 1
     # Make sure that the worker can upgrade!
     except Exception as e:
-        print("\n *** Unexpected exception: {} ***\n".format(str(e)))
+        print(f"\n *** Unexpected exception: {e} ***\n")
 
     worker_dir = Path(__file__).resolve().parent
-    print("Worker started in {} with PID={}".format(worker_dir, os.getpid()))
+    print(f"Worker started in {worker_dir} with PID={os.getpid()}.")
 
     # Create the testing directory if missing.
     (worker_dir / "testing").mkdir(exist_ok=True)
@@ -1545,7 +1483,7 @@ def worker():
     if options.only_config:
         return 0
 
-    remote = "{}://{}:{}".format(options.protocol, options.host, options.port)
+    remote = f"{options.protocol}://{options.host}:{options.port}"
 
     # Check the worker version and upgrade if necessary
     try:
@@ -1557,7 +1495,7 @@ def worker():
         ):
             return 1
     except Exception as e:
-        print("Exception verifying worker version:\n", e, sep="", file=sys.stderr)
+        print(f"Exception verifying worker version:\n{e}", file=sys.stderr)
         return 1
 
     # Assemble the config/options data as well as some other data in a
@@ -1565,7 +1503,7 @@ def worker():
     # This data will be sent to the server when a new task is requested.
 
     compiler, major, minor, patchlevel = options.compiler
-    print("Using {} {}.{}.{}".format(compiler, major, minor, patchlevel))
+    print(f"Using {compiler} {major}.{minor}.{patchlevel}.")
 
     # Check for common tool chain issues
     if not verify_toolchain():
@@ -1642,7 +1580,7 @@ def worker():
         )
         if (worker_dir / "fish.exit").is_file():
             current_state["alive"] = False
-            print("Stopped by 'fish.exit' file")
+            print("Stopped by 'fish.exit' file.")
             fish_exit = True
             break
         elif not current_state["alive"]:  # the user may have pressed Ctrl-C...
@@ -1650,20 +1588,20 @@ def worker():
         elif not success:
             if options.fleet:
                 current_state["alive"] = False
-                print("Exiting the worker since fleet==True and an error occurred")
+                print("Exiting the worker since fleet==True and an error occurred.")
                 break
             else:
-                print("Waiting {} seconds before retrying".format(delay))
+                print(f"Waiting {delay} seconds before retrying.")
                 safe_sleep(delay)
                 delay = min(MAX_RETRY_TIME, delay * 2)
         else:
             delay = INITIAL_RETRY_TIME
 
     if fish_exit:
-        print("Removing fish.exit file")
+        print("Removing fish.exit file.")
         (worker_dir / "fish.exit").unlink()
 
-    print("Releasing the worker lock")
+    print("Releasing the worker lock.")
     worker_lock.release()
 
     print("Waiting for the heartbeat thread to finish...")

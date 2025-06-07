@@ -90,7 +90,7 @@ def log(s):
     logfile = Path(__file__).resolve().parent / LOGFILE
     with LOG_LOCK:
         with open(logfile, "a") as f:
-            f.write("{} : {}\n".format(datetime.now(timezone.utc), s))
+            f.write(f"{datetime.now(timezone.utc)} : {s}\n")
 
 
 def backup_log():
@@ -98,23 +98,18 @@ def backup_log():
         logfile = Path(__file__).resolve().parent / LOGFILE
         logfile_previous = logfile.with_suffix(logfile.suffix + ".previous")
         if logfile.exists():
-            print("Moving logfile {} to {}".format(logfile, logfile_previous))
+            print(f"Moving logfile {logfile} to {logfile_previous}.")
             with LOG_LOCK:
                 logfile.replace(logfile_previous)
     except Exception as e:
-        print(
-            "Exception moving log:\n",
-            e,
-            sep="",
-            file=sys.stderr,
-        )
+        print(f"Exception moving log:\n{e}", file=sys.stderr)
 
 
 def str_signal(signal_):
     try:
         return signal.Signals(signal_).name
     except (ValueError, AttributeError):
-        return "SIG<{}>".format(signal_)
+        return f"SIG<{signal_}>"
 
 
 def format_returncode(r):
@@ -155,12 +150,7 @@ def update_atime(path):
         mtime = os.stat(path).st_mtime
         os.utime(path, times=(atime, mtime))
     except OSError as e:
-        print(
-            f"Failed to update the atime of {path}:\n",
-            e,
-            sep="",
-            file=sys.stderr,
-        )
+        print(f"Failed to update the atime of {path}:\n{e}", file=sys.stderr)
 
 
 def trim_files(testing_dir, source_dir=None):
@@ -170,7 +160,7 @@ def trim_files(testing_dir, source_dir=None):
 
     # Preserve/delete some old files
     backup_pattern = (
-        # (pattern, num_bkps, expiration_in_days, only_update)
+        # (pattern, num_backups, expiration_in_days, only_update)
         ("fastchess" + EXE_SUFFIX, 1, math.inf, False),
         ("stockfish-*-old" + EXE_SUFFIX, 0, -1, True),
         ("stockfish-*" + EXE_SUFFIX, 50, 30, False),
@@ -180,7 +170,7 @@ def trim_files(testing_dir, source_dir=None):
         ("*.pgn", 4, 365, False),
     )
     num_deleted = 0
-    for pattern, num_bkps, expiration_days, only_update in backup_pattern:
+    for pattern, num_backups, expiration_days, only_update in backup_pattern:
         if only_update and source_dir is None:
             continue
         expiration_time = time.time() - 24 * 3600 * expiration_days
@@ -191,7 +181,7 @@ def trim_files(testing_dir, source_dir=None):
             sorted(file_dir.glob(pattern), key=os.path.getatime, reverse=True)
         ):
             try:
-                if idx >= num_bkps:
+                if idx >= num_backups:
                     path.unlink()
                     num_deleted += 1
                 elif os.stat(path).st_atime < expiration_time:
@@ -204,10 +194,7 @@ def trim_files(testing_dir, source_dir=None):
                         shutil.move(str(path), testing_dir)
             except Exception as e:
                 print(
-                    f"Failed to preserve/delete the file {path}:\n",
-                    e,
-                    sep="",
-                    file=sys.stderr,
+                    f"Failed to preserve/delete the file {path}:\n{e}", file=sys.stderr
                 )
     print(f"Cleaning up old files: {num_deleted} old files removed...")
 
@@ -269,13 +256,8 @@ def requests_get(remote, *args, **kw):
         result = requests.get(remote, *args, **kw)
         result.raise_for_status()  # also catch return codes >= 400
     except Exception as e:
-        print(
-            "Exception in requests.get():\n",
-            e,
-            sep="",
-            file=sys.stderr,
-        )
-        raise WorkerException("Get request to {} failed".format(remote), e=e)
+        print(f"Exception in requests.get():\n{e}", file=sys.stderr)
+        raise WorkerException(f"Get request to {remote} failed.", e=e)
 
     return result
 
@@ -285,13 +267,8 @@ def requests_post(remote, *args, **kw):
     try:
         result = requests.post(remote, *args, **kw)
     except Exception as e:
-        print(
-            "Exception in requests.post():\n",
-            e,
-            sep="",
-            file=sys.stderr,
-        )
-        raise WorkerException("Post request to {} failed".format(remote), e=e)
+        print(f"Exception in requests.post():\n{e}", file=sys.stderr)
+        raise WorkerException(f"Post request to {remote} failed.", e=e)
 
     return result
 
@@ -313,38 +290,21 @@ def send_api_post_request(api_url, payload, quiet=False):
         valid_response = False
     if not valid_response:
         message = (
-            "The reply to post request {} was not a json encoded dictionary".format(
-                api_url
-            )
+            f"The reply to post request {api_url} was not a json encoded dictionary."
         )
-        print(
-            "Exception in send_api_post_request():\n",
-            message,
-            sep="",
-            file=sys.stderr,
-        )
+        print(f"Exception in send_api_post_request():\n{message}", file=sys.stderr)
         raise WorkerException(message)
     if "error" in response:
-        print("Error from remote: {}".format(response["error"]))
+        print(f"Error from remote: {response['error']}")
 
     t1 = datetime.now(timezone.utc)
     w = 1000 * (t1 - t0).total_seconds()
     s = 1000 * response["duration"]
-    log(
-        "{:6.2f} ms (s)  {:7.2f} ms (w)  {}".format(
-            s,
-            w,
-            api_url,
-        )
-    )
+    log(f"{s:6.2f} ms (s)  {w:7.2f} ms (w)  {api_url}")
     if not quiet:
         if "info" in response:
-            print("Info from remote: {}".format(response["info"]))
-        print(
-            "Post request {} handled in {:.2f}ms (server: {:.2f}ms)".format(
-                api_url, w, s
-            )
-        )
+            print(f"Info from remote: {response['info']}")
+        print(f"Post request {api_url} handled in {w:.2f}ms (server: {s:.2f}ms).")
     return response
 
 
@@ -357,7 +317,7 @@ def post_to_worker_log(worker_info, password, remote, message):
     try:
         send_api_post_request(remote + "/api/worker_log", payload)
     except Exception as e:
-        print("Exception while posting to worker log:\n", e, sep="", file=sys.stderr)
+        print(f"Exception while posting to worker log:\n{e}", file=sys.stderr)
 
 
 def github_api(repo):
@@ -369,7 +329,7 @@ def github_api(repo):
 def required_nets(engine):
     nets = {}
     pattern = re.compile(r"(EvalFile\w*)\s+.*\s+(nn-[a-f0-9]{12}.nnue)")
-    print("Obtaining EvalFile of {}...".format(engine.name))
+    print(f"Obtaining EvalFile of {engine.name}...")
     try:
         with subprocess.Popen(
             [engine, "uci"],
@@ -384,13 +344,11 @@ def required_nets(engine):
                     nets[match.group(1)] = match.group(2)
 
     except (OSError, subprocess.SubprocessError) as e:
-        raise WorkerException(
-            "Unable to obtain name for required net. Error: {}".format(str(e))
-        )
+        raise WorkerException(f"Unable to obtain name for required net. Error: {e}")
 
     if p.returncode != 0:
         raise WorkerException(
-            "UCI exited with non-zero code {}".format(format_returncode(p.returncode))
+            f"UCI exited with non-zero code {format_returncode(p.returncode)}."
         )
 
     return nets
@@ -426,17 +384,17 @@ def fetch_validated_net(remote, testing_dir, net, global_cache):
 
     if content is None:
         url = f"{remote}/api/nn/{net}"
-        print(f"Downloading {net}")
+        print(f"Downloading {net}...")
         content = requests_get(url, allow_redirects=True, timeout=HTTP_TIMEOUT).content
         if not is_valid_net(content, net):
             return False
         cache_write(global_cache, net, content)
     else:
         if not is_valid_net(content, net):
-            print(f"Removing invalid {net} from global cache")
+            print(f"Removing invalid {net} from global cache.")
             cache_remove(global_cache, net)
             return False
-        print(f"Using {net} from global cache")
+        print(f"Using {net} from global cache.")
 
     (testing_dir / net).write_bytes(content)
     return True
@@ -473,7 +431,7 @@ def establish_validated_net(remote, testing_dir, net, global_cache):
             waitTime = UPDATE_RETRY_TIME * attempt
             print(
                 f"Failed to fetch {net} in attempt {attempt},",
-                f"trying in {waitTime} seconds",
+                f"trying in {waitTime} seconds.",
             )
             time.sleep(waitTime)
 
@@ -506,7 +464,7 @@ def run_single_bench(engine, hash_size, threads, depth):
         raise e
 
     if bench_time is None or bench_nodes is None:
-        message = f"Unable to parse bench output of {engine.name}"
+        message = f"Unable to parse bench output of {engine.name}."
         raise RunException(message)
 
     return bench_time, bench_nodes
@@ -525,7 +483,7 @@ def run_parallel_benches(engine, concurrency, threads, hash_size, depth):
                 )
             )
     except Exception as e:
-        message = f"Failed to run engine bench: {str(e)}"
+        message = f"Failed to run engine bench: {e}"
         raise WorkerException(message, e=e)
 
     return results
@@ -537,7 +495,7 @@ def get_bench_nps(engine, games_concurrency, threads, hash_size):
     results = run_parallel_benches(
         engine, games_concurrency, threads, hash_size, _depth
     )
-    print(f"...done in {results[0][0]:.2f}ms")
+    print(f"...done in {results[0][0]:.2f}ms.")
     print("Running bench...")
     results = run_parallel_benches(engine, games_concurrency, threads, hash_size, depth)
 
@@ -572,7 +530,7 @@ def verify_signature(engine, signature):
     hash_size, threads, depth = 16, 1, 13
     print("Computing engine signature...")
     bench_time, bench_nodes = run_single_bench(engine, hash_size, threads, depth)
-    print(f"...done in {bench_time:.2f}ms")
+    print(f"...done in {bench_time:.2f}ms.")
     if int(bench_nodes) != int(signature):
         message = (
             f"Wrong bench in {engine.name}, "
@@ -595,9 +553,7 @@ def get_cpu_features(engine):
             if "settings" in line:
                 cpu_features = line.split(": ")[1].strip()
     if p.returncode != 0:
-        message = (
-            f"Compiler info exited with non-zero code {format_returncode(p.returncode)}"
-        )
+        message = f"Compiler info exited with non-zero code {format_returncode(p.returncode)}."
         raise WorkerException(message)
     return cpu_features
 
@@ -605,18 +561,16 @@ def get_cpu_features(engine):
 def download_from_github_raw(
     item, owner="official-stockfish", repo="books", branch="master"
 ):
-    item_url = "{}/{}/{}/{}/{}".format(RAWCONTENT_HOST, owner, repo, branch, item)
-    print("Downloading {}".format(item_url))
+    item_url = f"{RAWCONTENT_HOST}/{owner}/{repo}/{branch}/{item}"
+    print(f"Downloading {item_url}...")
     return requests_get(item_url, timeout=HTTP_TIMEOUT).content
 
 
 def download_from_github_api(
     item, owner="official-stockfish", repo="books", branch="master"
 ):
-    item_url = "{}/repos/{}/{}/contents/{}?ref={}".format(
-        API_HOST, owner, repo, item, branch
-    )
-    print("Downloading {}".format(item_url))
+    item_url = f"{API_HOST}/repos/{owner}/{repo}/contents/{item}?ref={branch}"
+    print(f"Downloading {item_url}...")
     git_url = requests_get(item_url, timeout=HTTP_TIMEOUT).json()["git_url"]
     return base64.b64decode(
         requests_get(git_url, timeout=HTTP_TIMEOUT).json()["content"]
@@ -635,7 +589,7 @@ def download_from_github(
         try:
             blob = download_from_github_api(item, owner=owner, repo=repo, branch=branch)
         except Exception as e:
-            raise WorkerException(f"Unable to download {item}", e=e)
+            raise WorkerException(f"Unable to download {item}.", e=e)
     return blob
 
 
@@ -677,9 +631,7 @@ def clang_props():
 
     if p.returncode != 0:
         raise FatalException(
-            "clang++ target query failed with return code {}".format(
-                format_returncode(p.returncode)
-            )
+            f"clang++ target query failed with return code {format_returncode(p.returncode)}."
         )
 
     return {"flags": flags, "arch": arch}
@@ -704,9 +656,7 @@ def gcc_props():
 
     if p.returncode != 0:
         raise FatalException(
-            "g++ target query failed with return code {}".format(
-                format_returncode(p.returncode)
-            )
+            f"g++ target query failed with return code {format_returncode(p.returncode)}."
         )
 
     return {"flags": flags, "arch": arch}
@@ -739,14 +689,12 @@ def make_targets():
                     break
 
     except (OSError, subprocess.SubprocessError) as e:
-        print("Exception while executing make help:\n", e, sep="", file=sys.stderr)
-        raise FatalException("It appears 'make' is not properly installed")
+        print(f"Exception while executing make help:\n{e}", file=sys.stderr)
+        raise FatalException("It appears 'make' is not properly installed.")
 
     if p.returncode != 0:
         raise WorkerException(
-            "make help failed with return code {}".format(
-                format_returncode(p.returncode)
-            )
+            f"make help failed with return code {format_returncode(p.returncode)}."
         )
 
     return targets
@@ -758,7 +706,7 @@ def find_arch(compiler):
 
     # recent SF support a native target
     if "native" in targets:
-        print("Using native target architecture")
+        print("Using native target architecture.")
         return "native"
 
     # older SF will need to fall back to this implementation
@@ -878,12 +826,12 @@ def setup_engine(
 
         if blob is None:
             item_url = github_api(repo_url) + "/zipball/" + sha
-            print("Downloading {}".format(item_url))
+            print(f"Downloading {item_url}...")
             blob = requests_get(item_url).content
             blob_needs_write = True
         else:
             blob_needs_write = False
-            print("Using {} from global cache".format(sha + ".zip"))
+            print(f"Using {sha + '.zip'} from global cache.")
 
         file_list = unzip(blob, tmp_dir)
         # once unzipped without error we can write as needed
@@ -896,7 +844,7 @@ def setup_engine(
         os.chdir(build_dir)
 
         for net in required_nets_from_source():
-            print("Build uses default net:", net)
+            print(f"Build uses default net: {net}")
             establish_validated_net(remote, testing_dir, net, global_cache)
             shutil.copyfile(testing_dir / net, net)
 
@@ -940,7 +888,7 @@ def setup_engine(
                     e=e,
                 )
         if p.returncode != 0:
-            raise WorkerException("Executing {} failed. Error: {}".format(cmd, errors))
+            raise WorkerException(f"Executing {cmd} failed. Error: {errors}")
 
         cmd = ["make", "strip", f"COMP={comp}"]
         try:
@@ -974,7 +922,7 @@ def setup_engine(
 
 def kill_process(p):
     p_name = os.path.basename(p.args[0])
-    print("Killing {} with PID {}... ".format(p_name, p.pid), end="", flush=True)
+    print(f"Killing {p_name} with PID {p.pid}... ", end="", flush=True)
     try:
         if IS_WINDOWS:
             # p.kill() doesn't kill subprocesses on Windows.
@@ -987,15 +935,11 @@ def kill_process(p):
             p.kill()
     except Exception as e:
         print(
-            "\nException killing {} with PID {}, possibly already terminated:\n".format(
-                p_name, p.pid
-            ),
-            e,
-            sep="",
+            f"\nException killing {p_name} with PID {p.pid}, possibly already terminated:\n{e}",
             file=sys.stderr,
         )
     else:
-        print("killed", flush=True)
+        print("killed.", flush=True)
 
 
 def adjust_tc(tc, factor):
@@ -1018,16 +962,16 @@ def adjust_tc(tc, factor):
         time_tc = float(chunks[0])
 
     # Rebuild scaled_tc now: cutechess-cli and stockfish parse 3 decimal places.
-    scaled_tc = "{:.3f}".format(time_tc * factor)
+    scaled_tc = f"{time_tc * factor:.3f}"
     tc_limit = time_tc * factor * 3
     if increment > 0.0:
-        scaled_tc += "+{:.3f}".format(increment * factor)
+        scaled_tc += f"+{increment * factor:.3f}"
         tc_limit += increment * factor * 200
     if num_moves > 0:
-        scaled_tc = "{}/{}".format(num_moves, scaled_tc)
+        scaled_tc = f"{num_moves}/{scaled_tc}"
         tc_limit *= 100.0 / num_moves
 
-    print("CPU factor : {} - tc adjusted to {}".format(factor, scaled_tc))
+    print(f"CPU factor : {factor} - tc adjusted to {scaled_tc}")
     return scaled_tc, tc_limit
 
 
@@ -1092,7 +1036,7 @@ def parse_fastchess_output(
     t_error.start()
 
     end_time = datetime.now(timezone.utc) + timedelta(seconds=tc_limit)
-    print("TC limit {} End time: {}".format(tc_limit, end_time))
+    print(f"TC limit {tc_limit} End time: {end_time}")
 
     num_games_updated = 0
     while datetime.now(timezone.utc) < end_time:
@@ -1118,17 +1062,15 @@ def parse_fastchess_output(
         # Have we reached the end of the match? Then just exit.
         if "Finished match" in line:
             if num_games_updated == games_to_play:
-                print("Finished match cleanly")
+                print("Finished match cleanly.")
             else:
                 raise WorkerException(
-                    "Finished match uncleanly {} vs. required {}".format(
-                        num_games_updated, games_to_play
-                    )
+                    f"Finished match uncleanly {num_games_updated} vs. required {games_to_play}."
                 )
 
         # Check line for fastchess errors.
         if any(pattern.search(line) for pattern in patterns_fastchess_error):
-            message = r"fastchess says: '{}'".format(line)
+            message = f"fastchess says: '{line}'"
             raise RunException(message)
 
         # Parse line like this:
@@ -1152,7 +1094,7 @@ def parse_fastchess_output(
                 }
             except Exception as e:
                 raise WorkerException(
-                    "Failed to parse WLD line: {} leading to: {}".format(line, str(e))
+                    f"Failed to parse WLD line: {line} leading to:\n{e}"
                 )
 
         m = pattern_ptnml.search(line)
@@ -1161,7 +1103,7 @@ def parse_fastchess_output(
                 fastchess_ptnml_results = [int(m.group(i)) for i in range(1, 6)]
             except Exception as e:
                 raise WorkerException(
-                    "Failed to parse ptnml line: {} leading to: {}".format(line, str(e))
+                    f"Failed to parse ptnml line: {line} leading to:\n{e}"
                 )
 
         # If we have parsed the block properly let's update results.
@@ -1218,12 +1160,7 @@ def parse_fastchess_output(
                         if "error" in response:
                             break
                     except Exception as e:
-                        print(
-                            "Exception calling update_task:\n",
-                            e,
-                            sep="",
-                            file=sys.stderr,
-                        )
+                        print(f"Exception calling update_task:\n{e}", file=sys.stderr)
                         if isinstance(e, FatalException):  # signal
                             raise e
                     else:
@@ -1236,16 +1173,16 @@ def parse_fastchess_output(
                         break
                     time.sleep(UPDATE_RETRY_TIME)
                 if not update_succeeded:
-                    raise WorkerException("Too many failed update attempts")
+                    raise WorkerException("Too many failed update attempts.")
                 else:
                     current_state["last_updated"] = datetime.now(timezone.utc)
 
                 if (Path(__file__).resolve().parent / "fish.exit").is_file():
-                    raise WorkerException("Task stopped by 'fish.exit'")
+                    raise WorkerException("Task stopped by 'fish.exit'.")
 
     else:
         raise WorkerException(
-            "{} is past end time {}".format(datetime.now(timezone.utc), end_time)
+            f"{datetime.now(timezone.utc)} is past end time {end_time}."
         )
 
     return True
@@ -1297,9 +1234,7 @@ def launch_fastchess(
     cmd = (
         cmd[:idx]
         + [
-            "option.{}={}".format(
-                x["name"], math.floor(x["value"] + random.uniform(0, 1))
-            )
+            f"option.{x['name']}={math.floor(x['value'] + random.uniform(0, 1))}"
             for x in w_params
         ]
         + cmd[idx + 1 :]
@@ -1308,9 +1243,7 @@ def launch_fastchess(
     cmd = (
         cmd[:idx]
         + [
-            "option.{}={}".format(
-                x["name"], math.floor(x["value"] + random.uniform(0, 1))
-            )
+            f"option.{x['name']}={math.floor(x['value'] + random.uniform(0, 1))}"
             for x in b_params
         ]
         + cmd[idx + 1 :]
@@ -1353,7 +1286,7 @@ def launch_fastchess(
                 try:
                     send_sigint(p)
                 except Exception as e:
-                    print("\nException in send_sigint:\n", e, sep="", file=sys.stderr)
+                    print(f"\nException in send_sigint:\n{e}", file=sys.stderr)
                 # now wait...
                 print("\nWaiting for fastchess to finish... ", end="", flush=True)
                 try:
@@ -1362,15 +1295,10 @@ def launch_fastchess(
                     print("timeout", flush=True)
                     kill_process(p)
                 else:
-                    print("done", flush=True)
+                    print("done.", flush=True)
     except (OSError, subprocess.SubprocessError) as e:
-        print(
-            "Exception starting fastchess:\n",
-            e,
-            sep="",
-            file=sys.stderr,
-        )
-        raise WorkerException("Unable to start fastchess. Error: {}".format(str(e)))
+        print(f"Exception starting fastchess:\n{e}", file=sys.stderr)
+        raise WorkerException(f"Unable to start fastchess. Error: {e}")
 
     return task_alive
 
@@ -1455,7 +1383,7 @@ def run_games(
 
     opening_offset = task.get("start", task_id * task["num_games"])
     if "start" in task:
-        print("Variable task sizes used. Opening offset = {}".format(opening_offset))
+        print(f"Variable task sizes used. Opening offset = {opening_offset}.")
     start_game_index = opening_offset + input_total_games
     run_seed = int(hashlib.sha1(run["_id"].encode("utf-8")).hexdigest(), 16) % (2**64)
 
@@ -1531,7 +1459,7 @@ def run_games(
                 password,
                 remote,
                 f"Downloaded book {book} has sri {sri} whereas "
-                f"the server says it should be {book_sri}",
+                f"the server says it should be {book_sri}.",
             )
             break
 
@@ -1540,16 +1468,16 @@ def run_games(
             print(f"Deleted local book {testing_dir / book}.")
         except Exception as e:
             raise WorkerException(
-                f"Failed to remove local book {testing_dir / book}", e=e
+                f"Failed to remove local book {testing_dir / book}.", e=e
             )
 
     # Add EvalFile* with full path to fastchess options, and download the networks if missing.
     for option, net in required_nets(base_engine).items():
-        base_options.append("option.{}={}".format(option, net))
+        base_options.append(f"option.{option}={net}")
         establish_validated_net(remote, testing_dir, net, global_cache)
 
     for option, net in required_nets(new_engine).items():
-        new_options.append("option.{}={}".format(option, net))
+        new_options.append(f"option.{option}={net}")
         establish_validated_net(remote, testing_dir, net, global_cache)
 
     # PGN files output setup.
@@ -1613,7 +1541,7 @@ def run_games(
 
     threads_cmd = []
     if not any("Threads" in s for s in new_options + base_options):
-        threads_cmd = ["option.Threads={}".format(threads)]
+        threads_cmd = [f"option.Threads={threads}"]
 
     # If nodestime is being used, give engines extra grace time to
     # make time losses virtually impossible.
@@ -1654,11 +1582,11 @@ def run_games(
             plies = 2 * int(book_depth)
             pgn_cmd = [
                 "-openings",
-                "file={}".format(book),
-                "format={}".format(book[-3:]),
+                f"file={book}",
+                f"format={book[-3:]}",
                 "order=random",
-                "plies={}".format(plies),
-                "start={}".format(1 + start_game_index // 2),
+                f"plies={plies}",
+                f"start={1 + start_game_index // 2}",
             ]
         else:
             assert False
@@ -1700,11 +1628,9 @@ def run_games(
             ]
             + [
                 "-event",
-                "Batch {}: {} vs {}".format(
-                    task_id, make_player("new_tag"), make_player("base_tag")
-                ),
+                f"Batch {task_id}: {make_player('new_tag')} vs {make_player('base_tag')}",
             ]
-            + ["-srand", "{}".format(run_seed)]
+            + ["-srand", f"{run_seed}"]
             + (
                 [
                     "-resign",
@@ -1718,7 +1644,7 @@ def run_games(
                 if run["args"].get("adjudication", True)
                 else []
             )
-            + ["-variant", "{}".format(variant)]
+            + ["-variant", f"{variant}"]
             + [
                 "-concurrency",
                 str(int(games_concurrency)),
@@ -1727,8 +1653,8 @@ def run_games(
             + [
                 "-engine",
                 "name=New-" + run["args"]["resolved_new"],
-                "tc={}".format(scaled_new_tc),
-                "cmd={}".format(new_engine),
+                f"tc={scaled_new_tc}",
+                f"cmd={new_engine}",
                 "dir=.",
             ]
             + new_options
@@ -1736,8 +1662,8 @@ def run_games(
             + [
                 "-engine",
                 "name=Base-" + run["args"]["resolved_base"],
-                "tc={}".format(scaled_tc),
-                "cmd={}".format(base_engine),
+                f"tc={scaled_tc}",
+                f"cmd={base_engine}",
                 "dir=.",
             ]
             + base_options
