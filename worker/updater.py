@@ -38,12 +38,7 @@ def update(restart=True, test=False):
         response = requests.get(WORKER_URL)
         response.raise_for_status()
     except Exception as e:
-        print(
-            f"Failed to download {WORKER_URL}:\n",
-            e,
-            sep="",
-            file=sys.stderr,
-        )
+        print(f"Failed to download {WORKER_URL}:\n{e}", file=sys.stderr)
         shutil.rmtree(update_dir)
         return None
     else:
@@ -69,10 +64,7 @@ def update(restart=True, test=False):
                 shutil.rmtree(packages_dir)
             except Exception as e:
                 print(
-                    f"Failed to delete the folder {packages_dir}:\n",
-                    e,
-                    sep="",
-                    file=sys.stderr,
+                    f"Failed to delete the folder {packages_dir}:\n{e}", file=sys.stderr
                 )
         if sys.version_info < (3, 8):
             from distutils.dir_util import copy_tree
@@ -92,23 +84,21 @@ def update(restart=True, test=False):
     testing_dir = worker_dir / "testing"
     if testing_dir.exists():
         time_stamp = str(datetime.now(timezone.utc).timestamp())
-        bkp_testing_dir = worker_dir / ("_testing_" + time_stamp)
-        testing_dir.replace(bkp_testing_dir)
+        backup_testing_dir = worker_dir / ("_testing_" + time_stamp)
+        testing_dir.replace(backup_testing_dir)
         testing_dir.mkdir()
-        trim_files(testing_dir, source_dir=bkp_testing_dir)
+        trim_files(testing_dir, source_dir=backup_testing_dir)
 
-        # Clean up old folder backups (keeping the num_bkps most recent).
-        num_bkps = 3
-        for old_bkp_dir in sorted(
+        # Clean up old folder backups (keeping the num_backups most recent).
+        num_backups = 3
+        for old_backup_dir in sorted(
             worker_dir.glob("_testing_*"), key=os.path.getmtime, reverse=True
-        )[num_bkps:]:
+        )[num_backups:]:
             try:
-                shutil.rmtree(old_bkp_dir)
+                shutil.rmtree(old_backup_dir)
             except Exception as e:
                 print(
-                    f"Failed to remove the old backup folder {old_bkp_dir}:\n",
-                    e,
-                    sep="",
+                    f"Failed to remove the old backup folder {old_backup_dir}:\n{e}",
                     file=sys.stderr,
                 )
 
