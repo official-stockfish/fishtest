@@ -35,7 +35,6 @@ def new_run(self, add_tasks=0):
         "10+0.01",
         "book.pgn",
         "10",
-        "QHAU1P3LurcJr7UTRI7HZCVFsoYBWC3OTsBqZY/FfQA6VQo3MmECWtByB4gVACW5",
         1,
         "",
         "",

@@ -757,12 +757,6 @@ def get_valid_books():
     return books_list
 
 
-def get_book_sri(book):
-    url = "https://raw.githubusercontent.com/official-stockfish/books/master/books.json"
-    response = requests.get(url).json()
-    return response[book]["sri"]
-
-
 def get_sha(branch, repo_url):
     """Resolves the git branch to sha commit"""
     api_url = repo_url.replace("https://github.com", "https://api.github.com/repos")
@@ -981,11 +975,6 @@ def validate_form(request):
     if len(data["book"]) > 0:
         if data["book"] not in get_valid_books():
             raise Exception("Invalid book - " + data["book"])
-
-    try:
-        data["book_sri"] = get_book_sri(data["book"])
-    except Exception as e:
-        raise Exception(f"Unable to get the sri for {data['book']}") from e
 
     if request.POST["stop_rule"] == "spsa":
         data["base_signature"] = data["new_signature"]

@@ -60,6 +60,7 @@ uuid = regex(r"[0-9a-zA-Z]{2,8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}", name="uuid")
 country_code = regex(r"[A-Z][A-Z]", name="country_code")
 epd_file = glob("*.epd", name="epd_file")
 pgn_file = glob("*.pgn", name="pgn_file")
+book = union(epd_file, pgn_file)
 even = div(2, name="even")
 datetime_utc = intersect(datetime, fields({"tzinfo": UTC}))
 gzip_data = magic("application/gzip", name="gzip_data")
@@ -652,7 +653,7 @@ valid_aggregated_data = intersect(
 # about non-validation of runs created with the prior
 # schema.
 
-RUN_VERSION = 16
+RUN_VERSION = 17
 
 runs_schema = intersect(
     {
@@ -686,9 +687,8 @@ runs_schema = intersect(
                 "num_games": intersect(uint, even),
                 "tc": tc,
                 "new_tc": tc,
-                "book": union(epd_file, pgn_file),
+                "book": book,
                 "book_depth": str_int,
-                "book_sri": sri384,
                 "threads": suint,
                 "resolved_base": sha,
                 "resolved_new": sha,
@@ -871,5 +871,16 @@ worker_runs_schema = {
     short_worker_name: {
         run_id: True,
         "last_run": run_id,
+    }
+}
+
+books_schema = {
+    book: {
+        "total": uint,
+        "white": uint,
+        "black": uint,
+        "min_depth": union(uint, None),
+        "max_depth": union(uint, None),
+        "sri": sri384,
     }
 }
