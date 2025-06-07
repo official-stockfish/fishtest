@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 import fishtest.run_cache
 import fishtest.spsa_handler
 import fishtest.stats.stat_util
+import requests
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from fishtest.actiondb import ActionDb
@@ -19,6 +20,7 @@ from fishtest.run_cache import Prio
 from fishtest.scheduler import Scheduler
 from fishtest.schemas import (
     RUN_VERSION,
+    books_schema,
     compute_committed_games,
     compute_cores,
     compute_flags,
@@ -98,6 +100,8 @@ class RunDb:
         self.base_url = url.rstrip("/") if url else "http://127.0.0.1"
         self._base_url_set = bool(url)
 
+        self.books = {}
+
         # Keep some data about the workers
         self.worker_runs = {}
         self.worker_runs_lock = threading.Lock()
@@ -128,6 +132,16 @@ class RunDb:
             900.0, self.validate_data_structures, initial_delay=60.0
         )
         self.scheduler.create_task(60.0, self.update_nps_gpm)
+        self.scheduler.create_task(
+            900.0, self.update_books, initial_delay=60.0, background=True
+        )
+
+    def update_books(self):
+        url = "https://raw.githubusercontent.com/official-stockfish/books/master/books.json"
+        try:
+            self.books = requests.get(url, timeout=2).json()
+        except Exception as e:
+            print(f"Unable to download book metadata from GitHub: {str(e)}")
 
     def update_nps_gpm(self):
         with self.unfinished_runs_lock:
@@ -192,6 +206,11 @@ class RunDb:
                     self.worker_runs,
                     name="worker_runs",
                 )
+            validate(
+                books_schema,
+                self.books,
+                name="books",
+            )
         except ValidationError as e:
             message = f"Validation of internal data structures failed: {str(e)}"
             print(message, flush=True)
@@ -461,6 +480,7 @@ class RunDb:
 
         self.update_itp()
         self.update_nps_gpm()
+        self.update_books()
 
     def new_run(
         self,
@@ -471,7 +491,6 @@ class RunDb:
         new_tc,
         book,
         book_depth,
-        book_sri,
         threads,
         base_options,
         new_options,
@@ -511,7 +530,6 @@ class RunDb:
             "new_tc": new_tc,
             "book": book,
             "book_depth": book_depth,
-            "book_sri": book_sri,
             "threads": threads,
             "resolved_base": resolved_base,
             "resolved_new": resolved_new,
