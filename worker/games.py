@@ -1526,6 +1526,13 @@ def run_games(
         print(f"Book sri mismatch: {book_sri} != {sri}.", file=sys.stderr)
         if downloaded_book:
             print(f"Failed to match sri for book {book}. Ignoring!", file=sys.stderr)
+            post_to_worker_log(
+                worker_info,
+                password,
+                remote,
+                f"Downloaded book {book} has sri {sri} whereas "
+                f"the server says it should be {book_sri}",
+            )
             break
 
         try:
