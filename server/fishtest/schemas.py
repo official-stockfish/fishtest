@@ -874,14 +874,22 @@ worker_runs_schema = {
     }
 }
 
+
+def total_is_white_plus_black(book):
+    return book["total"] == book["white"] + book["black"]
+
+
 books_schema = {
     "_id": "books",
-    book: {
-        "total": uint,
-        "white": uint,
-        "black": uint,
-        "min_depth": union(uint, None),
-        "max_depth": union(uint, None),
-        "sri": sri384,
-    },
+    book: intersect(
+        {
+            "total": uint,
+            "white": uint,
+            "black": uint,
+            "min_depth": union(uint, None),
+            "max_depth": union(uint, None),
+            "sri": sri384,
+        },
+        total_is_white_plus_black,
+    ),
 }

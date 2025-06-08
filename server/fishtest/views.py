@@ -1656,6 +1656,11 @@ def tests_view(request):
             )
         else:
             warnings.append(f"base is not an ancestor of master: {anchor}")
+    if run["args"]["tc"] != run["args"]["new_tc"]:
+        warnings.append("this is a test with time odds")
+    book_exits = request.rundb.books.get(run["args"]["book"], {}).get("total", 100000)
+    if book_exits < 100000:
+        warnings.append(f"this test uses a small book with only {book_exits} exits")
 
     return {
         "run": run,
