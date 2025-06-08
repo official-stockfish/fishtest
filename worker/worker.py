@@ -73,7 +73,7 @@ MIN_CLANG_MINOR = 0
 
 FASTCHESS_SHA = "f8e58066992e5e130f07fb3ba49b89b603e32f21"
 
-WORKER_VERSION = 281
+WORKER_VERSION = 282
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -269,7 +269,7 @@ def verify_sri(install_dir):
         return False
     for k, v in sri.items():
         # When we update, the running worker is not the same as the one we are verifying.
-        # If the running worker and the verified worker are the same then a version check is
+        # If the running worker and the verified worker are the same, then a version check is
         # still redundant as different version numbers must result in different worker hashes.
         if k == "__version":
             continue
@@ -740,7 +740,7 @@ def setup_parameters(worker_dir):
         help="""Useful only when running multiple workers concurrently:
                 an existing absolute path to be used to globally cache on disk
                 certain downloads, reducing load on github or net server.
-                A empty string ("") disables using a cache.""",
+                An empty string ("") disables using a cache.""",
     )
     parser.add_argument(
         "-C",
@@ -795,8 +795,9 @@ def setup_parameters(worker_dir):
         print("Changing port to 443.")
         options.port = 443
 
-    # Limit concurrency so that at least STC tests can run with the evailable memory
-    # The memory need per engine is 16 for the TT Hash, 10 for the process 138 for the net and 16 per thread
+    # Limit concurrency so that at least STC tests can run with the available memory
+    # The memory needs per engine are:
+    # 16 for the TT Hash, 10 for the process, 138 for the net, and 16 per thread
     # 60 is the need for fastchess
     # These numbers need to be up-to-date with the server values
     STC_memory = 2 * (16 + 10 + 138 + 16)
@@ -911,7 +912,7 @@ def read_winreg(path, name):
 
 def get_machine_id():
     if IS_WINDOWS:
-        # Get windows machine_id from the registry key:
+        # Get Windows machine_id from the registry key:
         # HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Cryptography\MachineGuid
         # See https://www.medo64.com/2020/04/unique-machine-id/ .
         path = r"SOFTWARE\Microsoft\Cryptography"
@@ -1562,7 +1563,7 @@ def worker():
     # next iteration of the main loop.
     # The reason for the existence of this parameter is that it allows
     # a fleet of workers to quickly quit as soon as the queue is empty
-    # or the server down.
+    # or the server is down.
 
     # Start the main loop.
     delay = INITIAL_RETRY_TIME
