@@ -70,6 +70,7 @@ class RunDb:
         self.nndb = self.db["nns"]
         self.runs = self.db["runs"]
         self.deltas = self.db["deltas"]
+        self.booksdb = self.db["books"]
         self.port = port
         self.unfinished_runs = set()
         self.unfinished_runs_lock = threading.Lock()
@@ -138,10 +139,20 @@ class RunDb:
 
     def update_books(self):
         url = "https://raw.githubusercontent.com/official-stockfish/books/master/books.json"
+        books = None
         try:
-            self.books = requests.get(url, timeout=2).json()
+            books = requests.get(url, timeout=2).json()
         except Exception as e:
-            print(f"Unable to download book metadata from GitHub: {str(e)}")
+            print(f"Unable to download book metadata from GitHub: {str(e)}", flush=True)
+        if books is not None:
+            books["_id"] = "books"
+            self.booksdb.replace_one({"_id": "books"}, books, upsert=True)
+        else:
+            books = self.booksdb.find_one({"_id": "books"})
+            if books is None:
+                print("Unable to initialize metadata for books")
+
+        self.books = books
 
     def update_nps_gpm(self):
         with self.unfinished_runs_lock:
