@@ -875,6 +875,7 @@ worker_runs_schema = {
 }
 
 books_schema = {
+    "_id": "books",
     book: {
         "total": uint,
         "white": uint,
@@ -882,5 +883,5 @@ books_schema = {
         "min_depth": union(uint, None),
         "max_depth": union(uint, None),
         "sri": sri384,
-    }
+    },
 }
