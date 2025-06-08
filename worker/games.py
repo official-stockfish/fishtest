@@ -1397,7 +1397,7 @@ def run_games(
     new_options = format_fastchess_options(new_options)
     base_options = format_fastchess_options(base_options)
 
-    # Build from sources new and base engines as needed.
+    # Build new and base engines from sources as needed.
     testing_dir = worker_dir / "testing"
     concurrency = worker_info["concurrency"]
     compiler = worker_info["compiler"]
