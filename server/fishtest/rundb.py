@@ -150,7 +150,8 @@ class RunDb:
         else:
             books = self.booksdb.find_one({"_id": "books"})
             if books is None:
-                print("Unable to initialize metadata for books")
+                print("Unable to initialize metadata for books", flush=True)
+                books = {"_id": "books"}
 
         self.books = books
 

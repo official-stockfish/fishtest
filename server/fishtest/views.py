@@ -745,18 +745,6 @@ def get_master_info(url):
     return latest_bench_match
 
 
-def get_valid_books():
-    response = requests.get(
-        "https://api.github.com/repos/official-stockfish/books/git/trees/master?recursive=1"
-    ).json()
-    books_list = (
-        str(Path(item["path"]).stem)
-        for item in response["tree"]
-        if item["type"] == "blob" and item["path"].endswith((".epd.zip", ".pgn.zip"))
-    )
-    return books_list
-
-
 def get_sha(branch, repo_url):
     """Resolves the git branch to sha commit"""
     api_url = repo_url.replace("https://github.com", "https://api.github.com/repos")
@@ -970,11 +958,6 @@ def validate_form(request):
                 )
         if len(data["info"]) == 0:
             data["info"] = strip_message(c["commit"]["message"])
-
-    # Check that the book exists in the official books repo
-    if len(data["book"]) > 0:
-        if data["book"] not in get_valid_books():
-            raise Exception("Invalid book - " + data["book"])
 
     if request.POST["stop_rule"] == "spsa":
         data["base_signature"] = data["new_signature"]
@@ -1228,13 +1211,17 @@ def tests_run(request):
     master_commits_url = (
         "https://api.github.com/repos/official-stockfish/Stockfish/commits"
     )
+
+    # Make sure that a newly committed book can be used immediately
+    request.rundb.update_books()
+
     return {
         "args": run_args,
         "is_rerun": len(run_args) > 0,
         "rescheduled_from": request.params["id"] if "id" in request.params else None,
         "tests_repo": u.get("tests_repo", ""),
         "master_info": get_master_info(master_commits_url),
-        "valid_books": get_valid_books(),
+        "valid_books": [x for x in request.rundb.books.keys() if x != "_id"],
         "pt_info": request.rundb.pt_info,
     }
 
