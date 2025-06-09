@@ -233,11 +233,14 @@ class WorkerApi(GenericApi):
         min_task = {"num_games": task["num_games"], "start": task["start"]}
         if "stats" in task:
             min_task["stats"] = task["stats"]
-            args = copy.copy(run["args"])
-            book = args["book"]
-            books = self.request.rundb.books
-            if book in books:
-                args["book_sri"] = books[book]["sri"]
+
+        # Add book checksum
+        args = copy.copy(run["args"])
+        book = args["book"]
+        books = self.request.rundb.books
+        if book in books:
+            args["book_sri"] = books[book]["sri"]
+
         min_run = {"_id": str(run["_id"]), "args": args, "my_task": min_task}
         result["run"] = min_run
         return self.add_time(result)
