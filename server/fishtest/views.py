@@ -1014,7 +1014,13 @@ def validate_form(request):
     master_diff = requests.get(
         api_url, headers={"Accept": "application/vnd.github+json"}
     )
-    merge_base_commit = master_diff.json()["merge_base_commit"]["sha"]
+    merge_base_commit = data["resolved_base"]
+    json = None
+    try:
+        json = master_diff.json()
+        merge_base_commit = json["merge_base_commit"]["sha"]
+    except Exception as e:
+        print(f"Api call {api_url} failed: {str(e)}. Result = {json}", flush=True)
     data["merge_base_commit"] = merge_base_commit
 
     # Store nets info
