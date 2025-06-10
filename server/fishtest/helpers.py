@@ -1,4 +1,4 @@
-from fishtest.util import get_hash, get_tc_ratio
+from fishtest.util import get_hash, get_tc_ratio, github_username
 
 OFFICIALSTOCKFISH_URL = "https://github.com/official-stockfish/Stockfish"
 
@@ -13,9 +13,10 @@ def master_diff_url(run):
     )
 
 
-def official_master_diff_url(run):
-    return "{}/compare/master...{}".format(
-        OFFICIALSTOCKFISH_URL, run["args"]["resolved_base"][:10]
+def official_master_diff_url(tests_repo, sha):
+    username = github_username(tests_repo)
+    return "{}/compare/official-stockfish:master...{}:{}".format(
+        OFFICIALSTOCKFISH_URL, username, sha[:10]
     )
 
 

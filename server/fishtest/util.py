@@ -4,6 +4,8 @@ import math
 import re
 from datetime import UTC, datetime
 from functools import cache
+from pathlib import Path
+from urllib.parse import urlparse
 
 import fishtest.stats.stat_util
 import numpy as np
@@ -587,3 +589,7 @@ def strip_run(run):
 
 def count_games(stats):
     return stats["wins"] + stats["losses"] + stats["draws"]
+
+
+def github_username(repo_url):
+    return Path(urlparse(repo_url).path).parts[1]
