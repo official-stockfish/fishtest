@@ -900,11 +900,18 @@ def validate_form(request):
                 "https://github.com", "https://api.github.com/repos"
             )
         )
+    except Exception as e:
+        raise Exception(
+            f"Error occurred while fetching master commit signature: {str(e)}"
+        ) from e
+    try:
         data["official_master_sha"] = get_master_sha(
             "https://api.github.com/repos/official-stockfish/Stockfish"
         )
     except Exception as e:
-        raise Exception("Error occurred while fetching master commit signatures") from e
+        raise Exception(
+            f"Error occurred while fetching official master commit signature: {str(e)}"
+        ) from e
 
     odds = request.POST.get("odds", "off")  # off checkboxes are not posted
     if odds == "off":
@@ -1009,19 +1016,20 @@ def validate_form(request):
     stop_rule = request.POST["stop_rule"]
 
     # Check if the base branch of the test repo matches official master
-    api_url = "https://api.github.com/repos/official-stockfish/Stockfish"
-    api_url += "/compare/master..." + data["resolved_new"][:10]
-    master_diff = requests.get(
-        api_url, headers={"Accept": "application/vnd.github+json"}
-    )
-    merge_base_commit = data["resolved_base"]
-    json = None
+
+    url = official_master_diff_url(data["tests_repo"], data["resolved_new"])
+    api_url = url.replace("https://github.com", "https://api.github.com/repos")
+
     try:
+        json = None
+        master_diff = requests.get(
+            api_url, headers={"Accept": "application/vnd.github+json"}
+        )
         json = master_diff.json()
-        merge_base_commit = json["merge_base_commit"]["sha"]
+        data["merge_base_commit"] = json["merge_base_commit"]["sha"]
     except Exception as e:
         print(f"Api call {api_url} failed: {str(e)}. Result = {json}", flush=True)
-    data["merge_base_commit"] = merge_base_commit
+        data["merge_base_commit"] = data["resolved_base"]
 
     # Store nets info
     data["base_nets"] = get_nets(data["resolved_base"], data["tests_repo"])
@@ -1654,7 +1662,7 @@ def tests_view(request):
     elif run["failed"]:
         # for backward compatibility
         warnings.append("this is a failed test")
-    anchor = f'<a class="alert-link" href="{official_master_diff_url(run)}" target="_blank" rel="noopener">base diff</a>'
+    anchor = f'<a class="alert-link" href="{official_master_diff_url(run["args"]["tests_repo"], run["args"]["resolved_base"])}" target="_blank" rel="noopener">base diff</a>'
     if not base_same_as_master(run) and "spsa" not in run["args"]:
         if "merge_base_commit" in run["args"]:
             warnings.append(
