@@ -895,6 +895,17 @@ def validate_form(request):
         "info": request.POST["run-info"],
     }
     try:
+        # Deal with people that have changed their GitHub username
+        # but still use the old repo url
+        r = requests.head(data["tests_repo"], allow_redirects=True)
+        r.raise_for_status()
+        data["tests_repo"] = r.url
+    except Exception as e:
+        raise Exception(
+            f"Unable to access developer repository {data['tests_repo']}: {str(e)}"
+        ) from e
+
+    try:
         data["master_sha"] = get_master_sha(
             data["tests_repo"].replace(
                 "https://github.com", "https://api.github.com/repos"
