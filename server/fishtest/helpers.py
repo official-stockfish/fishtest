@@ -1,6 +1,5 @@
-from fishtest.util import get_hash, get_tc_ratio, github_username
-
-OFFICIALSTOCKFISH_URL = "https://github.com/official-stockfish/Stockfish"
+from fishtest.github_api import compare_branches_url, parse_repo
+from fishtest.util import get_hash, get_tc_ratio
 
 
 def tests_repo(run):
@@ -10,31 +9,20 @@ def tests_repo(run):
     else:
         # very old tests didn't have a separate
         # tests repo
-        return OFFICIALSTOCKFISH_URL
-
-
-def master_diff_url(run):
-    return "{}/compare/master...{}".format(
-        tests_repo(run), run["args"]["resolved_base"][:10]
-    )
-
-
-def official_master_diff_url(tests_repo, sha):
-    username = github_username(tests_repo)
-    return "{}/compare/official-stockfish:master...{}:{}".format(
-        OFFICIALSTOCKFISH_URL, username, sha[:10]
-    )
+        return "https://github.com/official-stockfish/Stockfish"
 
 
 def diff_url(run):
-    if run["args"].get("spsa"):
-        return master_diff_url(run)
+    tests_repo_ = tests_repo(run)
+    user2, repo = parse_repo(tests_repo_)
+    sha2 = run["args"]["resolved_new"]
+    if "spsa" in run["args"]:
+        user1 = "offficial-stockfish"
+        sha1 = run["args"].get("official_master_sha", "master")
     else:
-        return "{}/compare/{}...{}".format(
-            tests_repo(run),
-            run["args"]["resolved_base"][:10],
-            run["args"]["resolved_new"][:10],
-        )
+        user1 = user2
+        sha1 = run["args"]["resolved_base"]
+    return compare_branches_url(user1=user1, branch1=sha1, user2=user2, branch2=sha2)
 
 
 def ok_hash(tc_ratio, hash):

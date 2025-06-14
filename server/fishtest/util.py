@@ -4,8 +4,6 @@ import math
 import re
 from datetime import UTC, datetime
 from functools import cache
-from pathlib import Path
-from urllib.parse import urlparse
 
 import fishtest.stats.stat_util
 import numpy as np
@@ -535,26 +533,6 @@ def email_valid(email):
         return False, str(e)
 
 
-def github_repo_valid(url):
-    # Accept no repo for resources contribution
-    if not url:
-        return True
-
-    # Regular expression to match the GitHub repository URL pattern, with optional 'www.'
-    pattern = r"^https:\/\/(www\.)?github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/?$"
-    return re.match(pattern, url) is not None
-
-
-def extract_repo_from_link(url):
-    # Validate the URL
-    if not github_repo_valid(url):
-        return None
-
-    # Regular expression to capture the username/repository part of the URL
-    match = re.search(r"github\.com\/([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)\/?", url)
-    return match.group(1) if match else None
-
-
 def get_hash(engine_options):
     match = re.search("Hash=([0-9]+)", engine_options)
     return int(match.group(1)) if match else 0
@@ -589,7 +567,3 @@ def strip_run(run):
 
 def count_games(stats):
     return stats["wins"] + stats["losses"] + stats["draws"]
-
-
-def github_username(repo_url):
-    return Path(urlparse(repo_url).path).parts[1]

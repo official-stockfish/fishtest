@@ -37,7 +37,6 @@ from vtjson import (
     set_name,
     size,
     union,
-    url,
 )
 
 run_id = intersect(str, set_name(ObjectId.is_valid, "valid_object_id"))
@@ -65,6 +64,9 @@ even = div(2, name="even")
 datetime_utc = intersect(datetime, fields({"tzinfo": UTC}))
 gzip_data = magic("application/gzip", name="gzip_data")
 residual_color = set_name(union("green", "yellow", "red"), "residual_color")
+github_repo = regex(
+    r"https:\/\/(www\.)?github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/?", "github_repo"
+)
 
 uint = intersect(int, ge(0))
 suint = intersect(int, gt(0))
@@ -99,10 +101,14 @@ user_schema = {
     "blocked": bool,
     "email": email,
     "groups": [str, ...],
-    "tests_repo": union("", url),
+    "tests_repo": union(github_repo, ""),
     "machine_limit": uint,
 }
 
+kvstore_schema = {
+    "_id": str,
+    "value": anything,
+}
 
 worker_schema = {
     "_id?": ObjectId,
@@ -153,7 +159,7 @@ contributors_schema = {
     "last_updated": datetime_utc,
     "str_last_updated": str,
     "tests": uint,
-    "tests_repo": union(url, ""),
+    "tests_repo": union(github_repo, ""),
     "username": username,
 }
 
@@ -653,7 +659,7 @@ valid_aggregated_data = intersect(
 # about non-validation of runs created with the prior
 # schema.
 
-RUN_VERSION = 17
+RUN_VERSION = 18
 
 runs_schema = intersect(
     {
@@ -692,9 +698,7 @@ runs_schema = intersect(
                 "threads": suint,
                 "resolved_base": sha,
                 "resolved_new": sha,
-                "master_sha": sha,
                 "official_master_sha": sha,
-                "merge_base_commit": sha,
                 "msg_base": str,
                 "msg_new": str,
                 "base_options": str,
@@ -703,7 +707,7 @@ runs_schema = intersect(
                 "base_signature": str_int,
                 "new_signature": str_int,
                 "username": username,
-                "tests_repo": url,
+                "tests_repo": github_repo,
                 "auto_purge": bool,
                 "throughput": unumber,
                 "itp": unumber,
@@ -880,7 +884,6 @@ def total_is_white_plus_black(book):
 
 
 books_schema = {
-    "_id": "books",
     book: intersect(
         {
             "total": uint,
