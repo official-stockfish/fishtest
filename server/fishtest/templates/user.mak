@@ -41,7 +41,7 @@
         % if not profile:
           <li class="list-group-item bg-transparent text-break">Tests Repository:
             % if user['tests_repo']:
-              <a class="alert-link" href="${user['tests_repo']}">${extract_repo_from_link(user['tests_repo'])}</a>
+              <a class="alert-link" href="${user['tests_repo']}">${extract_repo_from_link}</a>
             % else:
               <span>-</span>
             % endif

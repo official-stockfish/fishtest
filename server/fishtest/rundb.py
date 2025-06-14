@@ -1,4 +1,5 @@
 import copy
+import json
 import math
 import os
 import random
@@ -12,10 +13,11 @@ from datetime import UTC, datetime
 import fishtest.run_cache
 import fishtest.spsa_handler
 import fishtest.stats.stat_util
-import requests
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from fishtest.actiondb import ActionDb
+from fishtest.github_api import download_from_github, get_commit
+from fishtest.kvstore import KeyValueStore
 from fishtest.run_cache import Prio
 from fishtest.scheduler import Scheduler
 from fishtest.schemas import (
@@ -70,7 +72,7 @@ class RunDb:
         self.nndb = self.db["nns"]
         self.runs = self.db["runs"]
         self.deltas = self.db["deltas"]
-        self.booksdb = self.db["books"]
+        self.kvstore = KeyValueStore(self.db)
         self.port = port
         self.unfinished_runs = set()
         self.unfinished_runs_lock = threading.Lock()
@@ -79,6 +81,10 @@ class RunDb:
 
         self.connections_counter = {}
         self.connections_lock = threading.Lock()
+
+        self.books = self.kvstore.get("books", {})
+        self.official_master_sha = self.kvstore.get("official_master_sha", 40 * "f")
+        self.worker_runs = self.kvstore.get("worker_runs", {})
 
         self.task_duration = 1800  # 30 minutes
         self.ltc_lower_bound = 40  # Beware: this is used as a filter in an index!
@@ -101,10 +107,6 @@ class RunDb:
         self.base_url = url.rstrip("/") if url else "http://127.0.0.1"
         self._base_url_set = bool(url)
 
-        self.books = {}
-
-        # Keep some data about the workers
-        self.worker_runs = {}
         self.worker_runs_lock = threading.Lock()
 
         self.request_task_lock = threading.Lock()
@@ -126,34 +128,82 @@ class RunDb:
         self.scheduler.create_task(60.0, self.run_cache.clean_cache)
         self.scheduler.create_task(60.0, self.scavenge_dead_tasks)
         self.scheduler.create_task(60.0, self.update_itp)
-        # short intial delay to make testing more pleasant
+        # short initial delay to make testing more pleasant
         self.scheduler.create_task(180.0, self.validate_random_run, initial_delay=60.0)
         self.scheduler.create_task(180.0, self.clean_wtt_map, initial_delay=60.0)
         self.scheduler.create_task(
             900.0, self.validate_data_structures, initial_delay=60.0
         )
         self.scheduler.create_task(60.0, self.update_nps_gpm)
+        self.scheduler.create_task(300.0, self.clean_worker_runs, initial_delay=60.0)
         self.scheduler.create_task(
             900.0, self.update_books, initial_delay=60.0, background=True
         )
+        self.scheduler.create_task(
+            900.0, self.update_official_master_sha, initial_delay=60.0, background=True
+        )
+
+    def clean_worker_runs(self):
+        with self.worker_runs_lock:
+            for v in self.worker_runs.values():
+                run_ids = copy.copy(v)
+                for run_id in run_ids:
+                    if run_id != "last_run" and run_id not in self.unfinished_runs:
+                        del v[run_id]
+
+            wr = copy.copy(self.worker_runs)
+            for k, v in wr.items():
+                if len(v) == 1 and v["last_run"] not in self.unfinished_runs:
+                    del self.worker_runs[k]
+
+        self.kvstore["worker_runs"] = self.worker_runs
 
     def update_books(self):
-        url = "https://raw.githubusercontent.com/official-stockfish/books/master/books.json"
         books = None
         try:
-            books = requests.get(url, timeout=2).json()
+            books = json.loads(
+                download_from_github("books.json", repo="books").decode()
+            )
         except Exception as e:
             print(f"Unable to download book metadata from GitHub: {str(e)}", flush=True)
         if books is not None:
-            books["_id"] = "books"
-            self.booksdb.replace_one({"_id": "books"}, books, upsert=True)
+            self.kvstore["books"] = books
         else:
-            books = self.booksdb.find_one({"_id": "books"})
-            if books is None:
+            books = self.kvstore.get("books", {})
+            if books == {}:
                 print("Unable to initialize metadata for books", flush=True)
-                books = {"_id": "books"}
 
         self.books = books
+
+    def update_official_master_sha(self):
+        """
+        Return value:
+        True: the api call succeeded
+        False: the api call failed but a backup in the kvstore was found
+        None: the api call failed and no backup was found
+        """
+        dummy_sha = 40 * "f"
+        official_master_sha = None
+        try:
+            response = get_commit()
+            official_master_sha = response["sha"]
+        except Exception as e:
+            print(
+                f"Unable to obtain the official stockfish master sha: {str(e)}",
+                flush=True,
+            )
+            ret = False
+        if official_master_sha is not None:
+            self.kvstore["official_master_sha"] = official_master_sha
+            ret = True
+        else:
+            official_master_sha = self.kvstore.get("official_master_sha", dummy_sha)
+            if official_master_sha == dummy_sha:
+                print("Unable to initialize the official master sha", flush=True)
+            ret = None
+
+        self.official_master_sha = official_master_sha
+        return ret
 
     def update_nps_gpm(self):
         with self.unfinished_runs_lock:
@@ -493,6 +543,7 @@ class RunDb:
         self.update_itp()
         self.update_nps_gpm()
         self.update_books()
+        self.update_official_master_sha()
 
     def new_run(
         self,
@@ -509,9 +560,7 @@ class RunDb:
         info="",
         resolved_base="",
         resolved_new="",
-        master_sha="",
         official_master_sha="",
-        merge_base_commit="",
         msg_base="",
         msg_new="",
         base_signature="",
@@ -545,11 +594,9 @@ class RunDb:
             "threads": threads,
             "resolved_base": resolved_base,
             "resolved_new": resolved_new,
-            "master_sha": master_sha,
             "official_master_sha": official_master_sha,
             "msg_base": msg_base,
             "msg_new": msg_new,
-            "merge_base_commit": merge_base_commit,
             "base_options": base_options,
             "new_options": new_options,
             "info": info,
@@ -1223,7 +1270,6 @@ After fixing the issues you can unblock the worker at
 
         # Cache some data. Currently we record the id's
         # the worker has seen, as well as the last id that was seen.
-        # Note that "worker_runs" is empty after a server restart.
         with self.worker_runs_lock:
             if my_name not in self.worker_runs:
                 self.worker_runs[my_name] = {}
