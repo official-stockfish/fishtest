@@ -615,6 +615,7 @@
                       class="form-check-input"
                       id="checkbox-auto-purge"
                       name="auto-purge"
+                      checked
                     >
                   </div>
                 </div>
