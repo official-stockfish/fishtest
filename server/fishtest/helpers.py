@@ -4,7 +4,13 @@ OFFICIALSTOCKFISH_URL = "https://github.com/official-stockfish/Stockfish"
 
 
 def tests_repo(run):
-    return run["args"].get("tests_repo", OFFICIALSTOCKFISH_URL)
+    tests_repo = run["args"]["tests_repo"]
+    if tests_repo != "":
+        return tests_repo
+    else:
+        # very old tests didn't have a separate
+        # tests repo
+        return OFFICIALSTOCKFISH_URL
 
 
 def master_diff_url(run):

@@ -11,7 +11,7 @@ from pathlib import Path
 import bson
 import fishtest.stats.stat_util
 import requests
-from fishtest.helpers import official_master_diff_url, reasonable_run_hashes
+from fishtest.helpers import official_master_diff_url, reasonable_run_hashes, tests_repo
 from fishtest.run_cache import Prio
 from fishtest.schemas import RUN_VERSION, is_undecided, runs_schema, short_worker_name
 from fishtest.util import (
@@ -1604,17 +1604,11 @@ def tests_view(request):
                 )
         if "tests_repo" in run["args"]:
             if name == "new_tag":
-                url = (
-                    run["args"]["tests_repo"] + "/commit/" + run["args"]["resolved_new"]
-                )
+                url = tests_repo(run) + "/commit/" + run["args"]["resolved_new"]
             elif name == "base_tag":
-                url = (
-                    run["args"]["tests_repo"]
-                    + "/commit/"
-                    + run["args"]["resolved_base"]
-                )
+                url = tests_repo(run) + "/commit/" + run["args"]["resolved_base"]
             elif name == "tests_repo":
-                url = value
+                url = tests_repo(run)
 
         if name == "spsa":
             run_args.append(("spsa", value, ""))
@@ -1673,7 +1667,7 @@ def tests_view(request):
     elif run["failed"]:
         # for backward compatibility
         warnings.append("this is a failed test")
-    anchor = f'<a class="alert-link" href="{official_master_diff_url(run["args"]["tests_repo"], run["args"]["resolved_base"])}" target="_blank" rel="noopener">base diff</a>'
+    anchor = f'<a class="alert-link" href="{official_master_diff_url(tests_repo(run), run["args"]["resolved_base"])}" target="_blank" rel="noopener">base diff</a>'
     if not base_same_as_master(run) and "spsa" not in run["args"]:
         if "merge_base_commit" in run["args"]:
             warnings.append(
