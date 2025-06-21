@@ -19,7 +19,6 @@ from fishtest.github_api import (
     get_commits,
     parse_repo,
 )
-from fishtest.helpers import reasonable_run_hashes, tests_repo
 from fishtest.run_cache import Prio
 from fishtest.schemas import (
     RUN_VERSION,
@@ -39,6 +38,8 @@ from fishtest.util import (
     is_sprt_ltc_data,
     password_strength,
     plural,
+    reasonable_run_hashes,
+    tests_repo,
 )
 from pyramid.httpexceptions import HTTPFound, HTTPNotFound
 from pyramid.security import forget, remember
@@ -951,14 +952,6 @@ def validate_form(request):
 
     user, repo = parse_repo(data["tests_repo"])
 
-    request.rundb.update_official_master_sha()
-    try:
-        data["official_master_sha"] = request.rundb.official_master_sha
-    except Exception as e:
-        raise Exception(
-            f"Error occurred while fetching official master commit signature: {str(e)}"
-        ) from e
-
     odds = request.POST.get("odds", "off")  # off checkboxes are not posted
     if odds == "off":
         data["new_tc"] = data["tc"]
@@ -1237,6 +1230,9 @@ def tests_run(request):
 
     # Make sure that a newly committed book can be used immediately
     request.rundb.update_books()
+    # Make sure that when the test is viewed after submission,
+    # official_master_sha is up to date
+    request.rundb.update_official_master_sha()
 
     return {
         "args": run_args,

@@ -7,7 +7,7 @@ import requests
 from fishtest.schemas import sha as sha_schema
 from vtjson import validate
 
-TIMEOUT = 2
+TIMEOUT = 3
 
 
 def _download_from_github_raw(
@@ -46,7 +46,7 @@ def download_from_github(
 
 def get_commit(user="official-stockfish", repo="Stockfish", branch="master"):
     url = f"https://api.github.com/repos/{user}/{repo}/commits/{branch}"
-    r = requests.get(url)
+    r = requests.get(url, timeout=TIMEOUT)
     r.raise_for_status()
     commit = r.json()
     return commit
@@ -54,7 +54,7 @@ def get_commit(user="official-stockfish", repo="Stockfish", branch="master"):
 
 def get_commits(user="official-stockfish", repo="Stockfish"):
     url = f"https://api.github.com/repos/{user}/{repo}/commits"
-    r = requests.get(url)
+    r = requests.get(url, timeout=TIMEOUT)
     r.raise_for_status()
     commit = r.json()
     return commit
@@ -62,7 +62,7 @@ def get_commits(user="official-stockfish", repo="Stockfish"):
 
 def rate_limit():
     url = "https://api.github.com/rate_limit"
-    r = requests.get(url)
+    r = requests.get(url, timeout=TIMEOUT)
     r.raise_for_status()
     rate_limit = r.json()["resources"]["core"]
     return rate_limit
@@ -100,6 +100,8 @@ def parse_repo(repo_url):
 def compare_branches_url(
     user1="stockfish-chess", branch1="master", user2=None, branch2=None
 ):
+    if user2 is None:
+        user2 = user1
     return (
         "https://github.com/official-stockfish/Stockfish/"
         f"compare/{user1}:{branch1}...{user2}:{branch2}"

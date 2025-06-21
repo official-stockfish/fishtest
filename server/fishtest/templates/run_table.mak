@@ -3,7 +3,7 @@
 <%namespace name="base" file="base.mak"/>
 
 <%!
-  from fishtest.util import get_cookie, is_active_sprt_ltc
+  from fishtest.util import diff_url, get_cookie, is_active_sprt_ltc
 %>
 <%
   if toggle:
@@ -107,7 +107,7 @@
             </td>
 
             <td style="width: 2%;" class="run-diff">
-              <a href="${h.diff_url(run)}" target="_blank" rel="noopener">diff</a>
+              <a href="${diff_url(run)}" target="_blank" rel="noopener">diff</a>
             </td>
 
             <td style="width: 1%;" class="run-elo">
