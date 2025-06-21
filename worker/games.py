@@ -1446,8 +1446,13 @@ def run_games(
             print("Failed to obtain book_sri from server.", file=sys.stderr)
             break
 
-        sri = text_hash(testing_dir / book)
-        if book_sri == sri:
+        try:
+            sri = text_hash(testing_dir / book)
+        except Exception as e:
+            print(f"Exception computing book's sri:\n{e}", file=sys.stderr)
+            sri = None
+
+        if sri is not None and book_sri == sri:
             print(f"Book sri for {book} matches.")
             break
 
