@@ -659,7 +659,7 @@ valid_aggregated_data = intersect(
 # about non-validation of runs created with the prior
 # schema.
 
-RUN_VERSION = 18
+RUN_VERSION = 19
 
 runs_schema = intersect(
     {
@@ -698,7 +698,6 @@ runs_schema = intersect(
                 "threads": suint,
                 "resolved_base": sha,
                 "resolved_new": sha,
-                "official_master_sha": sha,
                 "msg_base": str,
                 "msg_new": str,
                 "base_options": str,
