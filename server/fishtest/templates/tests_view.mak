@@ -2,6 +2,7 @@
 
 <%!
   import json
+  from fishtest.util import diff_url, tests_repo
 %>
 
 <%namespace name="base" file="base.mak"/>
@@ -64,7 +65,7 @@
 
   <h2>
     <span>${page_title}</span>
-    <a href="${h.diff_url(run)}" target="_blank" rel="noopener">diff</a>
+    <a href="${diff_url(run)}" target="_blank" rel="noopener">diff</a>
   </h2>
 
   <div class="elo-results-top">
@@ -79,7 +80,7 @@
           Diff
           <span id="diff-num-comments">(0 comments)</span>
           <a
-            href="${h.diff_url(run)}"
+            href="${diff_url(run)}"
             class="btn btn-primary bg-light-primary border-0 mb-2"
             target="_blank" rel="noopener"
           >
@@ -814,7 +815,7 @@
       copyDiffBtn.addEventListener("click", () => {
         const textarea = document.createElement("textarea");
         textarea.style.position = "fixed";
-        textarea.textContent = "curl -s ${h.diff_url(run)}.diff | git apply";
+        textarea.textContent = "curl -s ${diff_url(run)}.diff | git apply";
         document.body.append(textarea);
         textarea.select();
         try {
@@ -830,7 +831,7 @@
       copyDiffBtn = null;
     }
 
-    const diffApiUrl = "${h.diff_url(run)}".replace(
+    const diffApiUrl = "${diff_url(run)}".replace(
       "//github.com/",
       "//api.github.com/repos/"
     );
@@ -844,7 +845,7 @@
       }
     } : {};
 
-    const testRepo = "${h.tests_repo(run)}";
+    const testRepo = "${tests_repo(run)}";
     const apiUrlNew = testRepo.replace(
       "//github.com/",
       "//api.github.com/repos/"
