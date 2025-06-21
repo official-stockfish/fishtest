@@ -1237,6 +1237,9 @@ def tests_run(request):
 
     # Make sure that a newly committed book can be used immediately
     request.rundb.update_books()
+    # Make sure that when the test is viewed after submission,
+    # official_master_sha is up to date
+    request.rundb.update_official_master_sha()
 
     return {
         "args": run_args,
