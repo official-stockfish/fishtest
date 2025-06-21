@@ -41,7 +41,6 @@ def new_run(self, add_tasks=0):
         info="The ultimate patch",
         resolved_base="347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
         resolved_new="347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
-        official_master_sha="347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
         msg_base="Bad stuff",
         msg_new="Super stuff",
         base_signature="123456",
