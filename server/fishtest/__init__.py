@@ -4,7 +4,6 @@ import sys
 import threading
 import traceback
 
-from fishtest import helpers
 from fishtest.routes import setup_routes
 from fishtest.rundb import RunDb
 from pyramid.authentication import AuthTktAuthenticationPolicy
@@ -56,7 +55,7 @@ def main(global_config, **settings):
         event.request.workerdb = rundb.workerdb
 
     def add_renderer_globals(event):
-        event["h"] = helpers
+        pass
 
     def check_blocked_user(event):
         request = event.request

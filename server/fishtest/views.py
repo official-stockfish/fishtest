@@ -19,7 +19,6 @@ from fishtest.github_api import (
     get_commits,
     parse_repo,
 )
-from fishtest.helpers import reasonable_run_hashes, tests_repo
 from fishtest.run_cache import Prio
 from fishtest.schemas import (
     RUN_VERSION,
@@ -39,6 +38,8 @@ from fishtest.util import (
     is_sprt_ltc_data,
     password_strength,
     plural,
+    reasonable_run_hashes,
+    tests_repo,
 )
 from pyramid.httpexceptions import HTTPFound, HTTPNotFound
 from pyramid.security import forget, remember
