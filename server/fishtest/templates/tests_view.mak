@@ -853,7 +853,7 @@
 
     const diffNew  = "${run["args"]["resolved_new"][:10]}";
     const apiOfficialMaster = "https://api.github.com/repos/official-stockfish/Stockfish";
-    const baseOfficialMaster = request.rundb.official_master_sha;
+    const baseOfficialMaster = ${json.dumps(request.rundb.official_master_sha) | n};
 
     % if run["args"].get("spsa"):
       const apiUrlBase = apiOfficialMaster;
