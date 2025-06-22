@@ -919,7 +919,9 @@
       });
     document.getElementById("diff-section").style.display = "";
 
-    % if run["args"]["base_tag"] == "master":
+    ## The code below is temporarily disabled since after retiring run["args"]["official_master_sha"]
+    ## the fetchDiffTwoDots should be replaced by a 3-dot comparison.
+    % if False and run["args"]["base_tag"] == "master":
       if (baseOfficialMaster) {
         // Check if the diff is already in localStorage and use it if it is
         let run = localStorageDiffs.find(diff => diff["id"] === "${run['_id']}" && diff["masterVsBase"] === true);
