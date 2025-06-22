@@ -12,6 +12,7 @@ import bson
 import fishtest.stats.stat_util
 import requests
 from fishtest.github_api import (
+    commit_url,
     compare_branches_url,
     compare_sha,
     download_from_github,
@@ -1597,14 +1598,16 @@ def tests_view(request):
                     ]
                 )
 
+        tests_repo_ = tests_repo(run)
+        user, repo = parse_repo(tests_repo_)
         if name == "tests_repo":
-            value = tests_repo(run)
+            value = tests_repo_
             url = value
 
         if name == "new_tag":
-            url = tests_repo(run) + "/commit/" + run["args"]["resolved_new"]
+            url = commit_url(user=user, repo=repo, branch=run["args"]["resolved_new"])
         elif name == "base_tag":
-            url = tests_repo(run) + "/commit/" + run["args"]["resolved_base"]
+            url = commit_url(user=user, repo=repo, branch=run["args"]["resolved_base"])
 
         if name == "spsa":
             run_args.append(("spsa", value, ""))
