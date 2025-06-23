@@ -436,7 +436,7 @@ def establish_validated_net(remote, testing_dir, net, global_cache):
             time.sleep(waitTime)
 
 
-def run_single_bench(engine, hash_size, threads, depth):
+def run_single_bench(engine, hash_size, threads, depth, timeout=90):
     bench_time, bench_nodes = None, None
     try:
         with subprocess.Popen(
@@ -455,7 +455,13 @@ def run_single_bench(engine, hash_size, threads, depth):
             bufsize=1,
             close_fds=not IS_WINDOWS,
         ) as p:
-            for line in iter(p.stderr.readline, ""):
+            try:
+                _, stderr_data = p.communicate(timeout=timeout)
+            except subprocess.TimeoutExpired as e:
+                p.kill()
+                message = f"Bench of {engine.name} timed out after {timeout} seconds."
+                raise RunException(message) from e
+            for line in stderr_data.splitlines():
                 if "Total time (ms)" in line:
                     bench_time = float(line.split(": ")[1].strip())
                 if "Nodes searched" in line:
