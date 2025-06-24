@@ -14,10 +14,11 @@ import requests
 from fishtest.github_api import (
     commit_url,
     compare_branches_url,
-    compare_sha,
     download_from_github,
     get_commit,
     get_commits,
+    get_merge_base_commit,
+    is_ancestor,
     parse_repo,
 )
 from fishtest.run_cache import Prio
@@ -156,32 +157,6 @@ def login(request):
             )
         request.session.flash(message, "error")
     return {}
-
-
-def get_merge_base_commit(request, data):
-    user1, sha1, user2, sha2, master_diff = None, None, None, None, None
-    # hack
-    run = {"args": data}
-    user, repo = parse_repo(tests_repo(run))
-    try:
-        user1 = "official-stockfish"
-        sha1 = request.rundb.official_master_sha
-        user2 = user
-        sha2 = data["resolved_new"]
-        master_diff = compare_sha(user1=user1, sha1=sha1, user2=user2, sha2=sha2)
-        merge_base_commit = master_diff["merge_base_commit"]["sha"]
-    except Exception as e:
-        print(
-            f"Compare {user1}:{sha1}...{user2}:{sha2} failed: {str(e)}. Result = {master_diff}",
-            flush=True,
-        )
-        merge_base_commit = data["resolved_base"]
-    return merge_base_commit
-
-
-def base_same_as_master(request, run):
-    merge_base_commit = get_merge_base_commit(request, run["args"])  # cached!
-    return merge_base_commit == run["args"]["resolved_base"]
 
 
 # Note that the allowed length of mailto URLs on Chrome/Windows is severely
@@ -1153,7 +1128,14 @@ def update_nets(request, run):
             )
         )
 
-    if base_same_as_master(request, run):
+    tests_repo_ = tests_repo(run)
+    user, repo = parse_repo(tests_repo_)
+    if is_ancestor(
+        user1=user,
+        sha1=run["args"]["resolved_base"],
+        user2="official-stockfish",
+        sha2=request.rundb.official_master_sha,
+    ):
         for net in base_nets:
             if "is_master" not in net:
                 net["is_master"] = True
@@ -1652,10 +1634,6 @@ def tests_view(request):
     if run["deleted"]:
         notes.append("this test has been deleted")
 
-    # Check if the base branch of the test repo matches official master
-
-    merge_base_commit = get_merge_base_commit(request, run["args"])
-
     warnings = []
     if run["args"]["throughput"] > 100:
         warnings.append("throughput exceeds the normal limit")
@@ -1672,6 +1650,7 @@ def tests_view(request):
         warnings.append("this is a failed test")
 
     user, repo = parse_repo(tests_repo(run))
+
     anchor_url = compare_branches_url(
         user1="official-stockfish",
         branch1=request.rundb.official_master_sha,
@@ -1679,15 +1658,40 @@ def tests_view(request):
         branch2=run["args"]["resolved_base"],
     )
     anchor = f'<a class="alert-link" href="{anchor_url}" target="_blank" rel="noopener">base diff</a>'
-    if merge_base_commit != run["args"]["resolved_new"]:
-        # new hasn't been merged
-        if (
-            merge_base_commit != run["args"]["resolved_base"]
-            and "spsa" not in run["args"]
-        ):
-            warnings.append(
-                f"base is not the latest common ancestor of test and master: {anchor}"
-            )
+    if "spsa" not in run["args"]:
+        try:
+            if not is_ancestor(
+                user1=user,
+                sha1=run["args"]["resolved_new"],
+                user2="official-stockfish",
+                sha2=request.rundb.official_master_sha,
+            ):
+                # new hasn't been merged
+                if not is_ancestor(
+                    user1=user,
+                    sha1=run["args"]["resolved_base"],
+                    user2="official-stockfish",
+                    sha2=request.rundb.official_master_sha,
+                ):
+                    warnings.append(f"base is not an ancestor of master: {anchor}")
+                elif not is_ancestor(
+                    user1=user,
+                    sha1=run["args"]["resolved_base"],
+                    sha2=run["args"]["resolved_new"],
+                ):
+                    warnings.append("base is not an ancestor of test")
+                else:
+                    merge_base_commit = get_merge_base_commit(
+                        sha1=request.rundb.official_master_sha,
+                        user2=user,
+                        sha2=run["args"]["resolved_new"],
+                    )
+                    if merge_base_commit != run["args"]["resolved_base"]:
+                        warnings.append(
+                            "base is not the latest common ancestor of test and master"
+                        )
+        except Exception as e:
+            print(f"Unable to generate github api warnings for {run['_id']}: {str(e)}")
 
     if run["args"]["tc"] != run["args"]["new_tc"]:
         warnings.append("this is a test with time odds")
@@ -1714,7 +1718,6 @@ def tests_view(request):
         "spsa_data": spsa_data,
         "notes": notes,
         "warnings": warnings,
-        "base_same_as_master": base_same_as_master(request, run),
     }
 
 

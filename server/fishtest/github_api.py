@@ -97,6 +97,22 @@ def parse_repo(repo_url):
     return (p[1], p[2])
 
 
+def get_merge_base_commit(user1="official-stockfish", sha1=None, user2=None, sha2=None):
+    if user2 is None:
+        user2 = user1
+    master_diff = compare_sha(user1=user1, sha1=sha1, user2=user2, sha2=sha2)
+    return master_diff["merge_base_commit"]["sha"]
+
+
+def is_ancestor(user1="official-stockfish", sha1=None, user2=None, sha2=None):
+    if user2 is None:
+        user2 = user1
+    merge_base_commit = get_merge_base_commit(
+        user1=user1, sha1=sha1, user2=user2, sha2=sha2
+    )
+    return merge_base_commit == sha1
+
+
 def compare_branches_url(
     user1="stockfish-chess", branch1="master", user2=None, branch2=None
 ):
