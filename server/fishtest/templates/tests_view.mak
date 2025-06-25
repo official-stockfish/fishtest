@@ -856,17 +856,10 @@
     const baseOfficialMaster = ${json.dumps(request.rundb.official_master_sha) | n};
 
     % if run["args"].get("spsa"):
-      const apiUrlBase = apiOfficialMaster;
-      % if run["args"].get("official_master_sha"):
-          const diffBase = baseOfficialMaster;
-      % else: # old tests before this field
-          const diffBase = "master";
-          dots = 3; // fall back to the three dot diff request as the diff will be rebased
-      % endif
+      dots = 3;
+    % elif use_3dot_diff:
+      dots = 3;
     % else:
-      % if run["args"]["new_tag"] == "master" and run["args"]["base_tag"] == pt_info["pt_branch"]:
-          dots = 3; // fall back to the three dot in case of PTs since official is always rebased
-      % endif
       const apiUrlBase = apiUrlNew;
       const diffBase = "${run["args"]["resolved_base"][:10]}";
     % endif

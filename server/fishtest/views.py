@@ -1699,6 +1699,18 @@ def tests_view(request):
     if book_exits < 100000:
         warnings.append(f"this test uses a small book with only {book_exits} exits")
 
+    use_3dot_diff = False
+    try:
+        use_3dot_diff = is_ancestor(
+            user1=user,
+            sha1=run["args"]["resolved_base"],
+            sha2=run["args"]["resolved_new"],
+        )
+    except Exception as e:
+        print(
+            f"Unable to determine use_3dot_diff for {run['_id']}: {str(e)}", flush=True
+        )
+
     return {
         "run": run,
         "run_args": run_args,
@@ -1718,6 +1730,7 @@ def tests_view(request):
         "spsa_data": spsa_data,
         "notes": notes,
         "warnings": warnings,
+        "use_3dot_diff": use_3dot_diff,
     }
 
 

@@ -586,7 +586,7 @@ def diff_url(run):
     sha2 = run["args"]["resolved_new"]
     if "spsa" in run["args"]:
         user1 = "offficial-stockfish"
-        sha1 = run["args"].get("official_master_sha", "master")
+        sha1 = "master"
     else:
         user1 = user2
         sha1 = run["args"]["resolved_base"]
