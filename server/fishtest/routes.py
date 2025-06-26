@@ -25,6 +25,7 @@ def setup_routes(config):
     config.add_route("actions", "/actions")
     config.add_route("nns", "/nns")
     config.add_route("sprt_calc", "/sprt_calc")
+    config.add_route("rate_limits", "/rate_limits")
     config.add_route("workers", "/workers/{worker_name}")
 
     config.add_route("tests", "/tests")

@@ -20,6 +20,7 @@ from fishtest.github_api import (
     get_merge_base_commit,
     is_ancestor,
     parse_repo,
+    rate_limit,
 )
 from fishtest.run_cache import Prio
 from fishtest.schemas import (
@@ -483,6 +484,14 @@ def nns(request):
 @view_config(route_name="sprt_calc", renderer="sprt_calc.mak")
 def sprt_calc(request):
     return {}
+
+
+@view_config(route_name="rate_limits", renderer="rate_limits.mak")
+def rate_limits(request):
+    rate_limit_ = rate_limit()["remaining"]
+    return {
+        "remaining": rate_limit_,
+    }
 
 
 # Different LOCALES may have different quotation marks.

@@ -417,6 +417,9 @@
                       <a href="/sprt_calc" class="links-link rounded"
                         >SPRT Calc</a
                       >
+                      <a href="/rate_limits" class="links-link rounded ratelimit"
+                        >GitHub Rate Limits</a
+                      >
                     </li>
                   </ul>
                 </li>
