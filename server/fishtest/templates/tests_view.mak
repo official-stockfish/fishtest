@@ -252,7 +252,6 @@
             Download games
           </button>
         </div>
-
         <div class="col-12 col-sm">
           <a class="btn btn-light border w-100" href="/tests/run?id=${run['_id']}">Reschedule</a>
         </div>

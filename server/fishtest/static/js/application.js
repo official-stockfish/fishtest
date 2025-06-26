@@ -481,3 +481,28 @@ function createRetryMessage(parentElement, callback) {
   // Add event listener after appending
   button.addEventListener("click", callback);
 }
+
+async function rateLimit() {
+  await DOMContentLoaded();
+  const url = "https://api.github.com/rate_limit";
+  try {
+    const token = localStorage.getItem("github_token");
+    const options = {
+      headers: {
+        Authorization: token ? "token " + token : null,
+        Accept: "application/vnd.github.diff",
+      },
+    };
+    const rateLimit_ = await fetchJson(url, options);
+    return rateLimit_["resources"]["core"]["remaining"];
+  } catch (e) {
+    log(e);
+    return null;
+  }
+}
+
+function showRateLimit(elt) {
+  rateLimit().then((v) => {
+    elt.innerHTML = v;
+  });
+}

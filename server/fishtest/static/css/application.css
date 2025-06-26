@@ -338,6 +338,10 @@ legend {
   content: "\f1ec";
 }
 
+.mainnavbar [href^="/rate_limit"]::before {
+  content: "\f1ec";
+}
+
 .mainnavbar [href="https://github.com/official-stockfish/fishtest"]::before
 {
   content: "\f441";
