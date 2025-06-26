@@ -585,7 +585,7 @@ def diff_url(run):
     user2, repo = parse_repo(tests_repo_)
     sha2 = run["args"]["resolved_new"]
     if "spsa" in run["args"]:
-        user1 = "offficial-stockfish"
+        user1 = "official-stockfish"
         sha1 = "master"
     else:
         user1 = user2
