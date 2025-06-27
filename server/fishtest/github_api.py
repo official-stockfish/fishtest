@@ -9,6 +9,8 @@ from vtjson import validate
 
 TIMEOUT = 3
 
+_official_master_sha = None
+
 
 def _download_from_github_raw(
     item, user="official-stockfish", repo="Stockfish", branch="master"
@@ -111,6 +113,29 @@ def is_ancestor(user1="official-stockfish", sha1=None, user2=None, sha2=None):
         user1=user1, sha1=sha1, user2=user2, sha2=sha2
     )
     return merge_base_commit == sha1
+
+
+@lru_cache(maxsize=1000)
+def _is_master(sha, official_master_sha):
+    try:
+        return is_ancestor(sha1=sha, sha2=official_master_sha)
+    except requests.HTTPError as e:
+        if e.response.status_code == 404:
+            return False
+
+
+def is_master(sha):
+    try:
+        # Non sha arguments cannot be safely cached
+        validate(sha_schema, sha)
+        # Protect against DOS'ing
+        rate_limit_ = rate_limit()
+        if rate_limit_["used"] > rate_limit_["remaining"]:
+            raise Exception(r"Rate limit more than 50% consumed.")
+        return _is_master(sha, _official_master_sha)
+    except Exception as e:
+        print(f"Unable to evaluate is_master({sha}): {str(e)}", flush=True)
+        return False
 
 
 def compare_branches_url(

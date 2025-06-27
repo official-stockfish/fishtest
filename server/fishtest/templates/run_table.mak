@@ -107,7 +107,7 @@
             </td>
 
             <td style="width: 2%;" class="run-diff">
-              <a href="${diff_url(run)}" target="_blank" rel="noopener">diff</a>
+              <a href="${diff_url(run, master_check=False)}" target="_blank" rel="noopener">diff</a>
             </td>
 
             <td style="width: 1%;" class="run-elo">
