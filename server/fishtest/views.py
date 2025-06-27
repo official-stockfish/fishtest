@@ -488,7 +488,11 @@ def sprt_calc(request):
 
 @view_config(route_name="rate_limits", renderer="rate_limits.mak")
 def rate_limits(request):
-    rate_limit_ = rate_limit()["remaining"]
+    rate_limit_ = -1
+    try:
+        rate_limit_ = rate_limit()["remaining"]
+    except Exception as e:
+        print(f"Failed to determine rate limit: {str(e)}")
     return {
         "remaining": rate_limit_,
     }

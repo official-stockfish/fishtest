@@ -24,6 +24,10 @@
 </table>
 
 <script>
+  async function showRateLimit(elt) {
+    await DOMContentLoaded();
+    elt.innerHTML = await rateLimit();
+  }
   const elt = document.getElementById("client_rate_limit");
   showRateLimit(elt);
 </script>
