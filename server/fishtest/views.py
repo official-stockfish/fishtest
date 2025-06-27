@@ -19,6 +19,7 @@ from fishtest.github_api import (
     get_commits,
     get_merge_base_commit,
     is_ancestor,
+    is_master,
     parse_repo,
     rate_limit,
 )
@@ -1143,11 +1144,8 @@ def update_nets(request, run):
 
     tests_repo_ = tests_repo(run)
     user, repo = parse_repo(tests_repo_)
-    if is_ancestor(
-        user1=user,
-        sha1=run["args"]["resolved_base"],
-        user2="official-stockfish",
-        sha2=request.rundb.official_master_sha,
+    if is_master(
+        run["args"]["resolved_base"],
     ):
         for net in base_nets:
             if "is_master" not in net:
@@ -1673,18 +1671,12 @@ def tests_view(request):
     anchor = f'<a class="alert-link" href="{anchor_url}" target="_blank" rel="noopener">base diff</a>'
     if "spsa" not in run["args"]:
         try:
-            if not is_ancestor(
-                user1=user,
-                sha1=run["args"]["resolved_new"],
-                user2="official-stockfish",
-                sha2=request.rundb.official_master_sha,
+            if not is_master(
+                run["args"]["resolved_new"],
             ):
                 # new hasn't been merged
-                if not is_ancestor(
-                    user1=user,
-                    sha1=run["args"]["resolved_base"],
-                    user2="official-stockfish",
-                    sha2=request.rundb.official_master_sha,
+                if not is_master(
+                    run["args"]["resolved_base"],
                 ):
                     warnings.append(f"base is not an ancestor of master: {anchor}")
                 elif not is_ancestor(

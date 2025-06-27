@@ -10,6 +10,7 @@ import threading
 import time
 from datetime import UTC, datetime
 
+import fishtest.github_api
 import fishtest.run_cache
 import fishtest.spsa_handler
 import fishtest.stats.stat_util
@@ -203,6 +204,7 @@ class RunDb:
             ret = None
 
         self.official_master_sha = official_master_sha
+        fishtest.github_api._official_master_sha = official_master_sha
         return ret
 
     def update_nps_gpm(self):

@@ -5,11 +5,12 @@ import re
 from datetime import UTC, datetime
 from functools import cache
 
+import fishtest.github_api
 import fishtest.stats.stat_util
 import numpy as np
 import scipy.stats
 from email_validator import EmailNotValidError, caching_resolver, validate_email
-from fishtest.github_api import compare_branches_url, parse_repo
+from fishtest.github_api import compare_branches_url, is_master, parse_repo
 from zxcvbn import zxcvbn
 
 
@@ -580,16 +581,21 @@ def tests_repo(run):
         return "https://github.com/official-stockfish/Stockfish"
 
 
-def diff_url(run):
+def diff_url(run, master_check=True):
     tests_repo_ = tests_repo(run)
     user2, repo = parse_repo(tests_repo_)
     sha2 = run["args"]["resolved_new"]
     if "spsa" in run["args"]:
         user1 = "official-stockfish"
-        sha1 = "master"
+        sha1 = fishtest.github_api._official_master_sha
     else:
         user1 = user2
         sha1 = run["args"]["resolved_base"]
+    if master_check:
+        if is_master(sha1):
+            user1 = "official-stockfish"
+        if is_master(sha2):
+            user2 = "official-stockfish"
     return compare_branches_url(user1=user1, branch1=sha1, user2=user2, branch2=sha2)
 
 
