@@ -483,26 +483,18 @@ function createRetryMessage(parentElement, callback) {
 }
 
 async function rateLimit() {
-  await DOMContentLoaded();
   const url = "https://api.github.com/rate_limit";
   try {
     const token = localStorage.getItem("github_token");
     const options = {
       headers: {
-        Authorization: token ? "token " + token : null,
-        Accept: "application/vnd.github.diff",
+        Authorization: token ? "Bearer " + token : null,
       },
     };
     const rateLimit_ = await fetchJson(url, options);
     return rateLimit_["resources"]["core"]["remaining"];
   } catch (e) {
     log(e);
-    return null;
+    return -1;
   }
-}
-
-function showRateLimit(elt) {
-  rateLimit().then((v) => {
-    elt.innerHTML = v;
-  });
 }
