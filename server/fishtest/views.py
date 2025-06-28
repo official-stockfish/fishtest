@@ -17,6 +17,7 @@ from fishtest.github_api import (
     download_from_github,
     get_commit,
     get_commits,
+    get_master_repo,
     get_merge_base_commit,
     is_ancestor,
     is_master,
@@ -941,7 +942,19 @@ def validate_form(request):
         ) from e
 
     user, repo = parse_repo(data["tests_repo"])
-
+    # Deal with people that have forked from "mcostalba/Stockfish" instead
+    # of from "official-stockfish/Stockfish".
+    master_repo = get_master_repo(user, repo)
+    official_repo = "https://github.com/official-stockfish/Stockfish"
+    if master_repo != official_repo:
+        request.session.flash(
+            f"It seems that your repo {data['tests_repo']} has been forked from "
+            f" {master_repo} and not from {official_repo} "
+            "as recommended in the wiki. As such, some functionality may be broken. "
+            "Please consider replacing your repo with one forked from the official "
+            "Stockfish repo!",
+            "warning",
+        )
     odds = request.POST.get("odds", "off")  # off checkboxes are not posted
     if odds == "off":
         data["new_tc"] = data["tc"]
