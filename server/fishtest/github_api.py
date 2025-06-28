@@ -126,12 +126,6 @@ def _is_master(sha, official_master_sha):
 
 def is_master(sha):
     try:
-        # Non sha arguments cannot be safely cached
-        validate(sha_schema, sha)
-        # Protect against DOS'ing
-        rate_limit_ = rate_limit()
-        if rate_limit_["used"] > rate_limit_["remaining"]:
-            raise Exception(r"Rate limit more than 50% consumed.")
         return _is_master(sha, _official_master_sha)
     except Exception as e:
         print(f"Unable to evaluate is_master({sha}): {str(e)}", flush=True)
