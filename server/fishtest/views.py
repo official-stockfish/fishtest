@@ -944,8 +944,15 @@ def validate_form(request):
     user, repo = parse_repo(data["tests_repo"])
     # Deal with people that have forked from "mcostalba/Stockfish" instead
     # of from "official-stockfish/Stockfish".
-    master_repo = get_master_repo(user, repo)
     official_repo = "https://github.com/official-stockfish/Stockfish"
+    master_repo = official_repo
+    try:
+        master_repo = get_master_repo(user, repo)
+    except Exception as e:
+        print(
+            f"Unable to determine master repo for {data['tests_repo']}: {str(e)}",
+            flush=True,
+        )
     if master_repo != official_repo:
         request.session.flash(
             f"It seems that your repo {data['tests_repo']} has been forked from "

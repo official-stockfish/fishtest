@@ -143,10 +143,9 @@ def is_master(sha):
 
 def get_master_repo(user="official-stockfish", repo="Stockfish"):
     api_url = f"https://api.github.com/repos/{user}/{repo}"
-    try:
-        r = call(api_url).json()
-    except Exception:
-        return None
+    r = call(api_url, timeout=TIMEOUT)
+    r.raise_for_status()
+    r = r.json()
     while True:
         if "fork" not in r:
             return None
