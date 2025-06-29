@@ -30,10 +30,9 @@
   <a href="/user"> profile </a>.
 </p>
 <script>
-  async function showRateLimit(elt) {
+  (async () => {
     await DOMContentLoaded();
+    const elt = document.getElementById("client_rate_limit");
     elt.innerHTML = await rateLimit();
-  }
-  const elt = document.getElementById("client_rate_limit");
-  showRateLimit(elt);
+  })();
 </script>

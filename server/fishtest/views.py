@@ -21,6 +21,7 @@ from fishtest.github_api import (
     get_merge_base_commit,
     is_ancestor,
     is_master,
+    normalize_repo,
     parse_repo,
     rate_limit,
 )
@@ -750,9 +751,11 @@ def contributors_monthly(request):
     }
 
 
-def get_master_info(user="official-stockfish", repo="Stockfish"):
+def get_master_info(
+    user="official-stockfish", repo="Stockfish", ignore_rate_limit=False
+):
     try:
-        commits = get_commits(user=user, repo=repo)
+        commits = get_commits(user=user, repo=repo, ignore_rate_limit=ignore_rate_limit)
     except Exception as e:
         print(f"Exception getting commits:\n{e}")
         return None
@@ -933,35 +936,49 @@ def validate_form(request):
     try:
         # Deal with people that have changed their GitHub username
         # but still use the old repo url
-        r = requests.head(data["tests_repo"], allow_redirects=True)
-        r.raise_for_status()
-        data["tests_repo"] = r.url
+        data["tests_repo"] = normalize_repo(data["tests_repo"])
     except Exception as e:
         raise Exception(
             f"Unable to access developer repository {data['tests_repo']}: {str(e)}"
         ) from e
 
     user, repo = parse_repo(data["tests_repo"])
+    username = request.authenticated_userid
+    u = request.userdb.get_user(username)
+
     # Deal with people that have forked from "mcostalba/Stockfish" instead
     # of from "official-stockfish/Stockfish".
     official_repo = "https://github.com/official-stockfish/Stockfish"
     master_repo = official_repo
     try:
-        master_repo = get_master_repo(user, repo)
+        master_repo = get_master_repo(user, repo, ignore_rate_limit=True)
     except Exception as e:
         print(
             f"Unable to determine master repo for {data['tests_repo']}: {str(e)}",
             flush=True,
         )
-    if master_repo != official_repo:
-        request.session.flash(
-            f"It seems that your repo {data['tests_repo']} has been forked from "
-            f" {master_repo} and not from {official_repo} "
-            "as recommended in the wiki. As such, some functionality may be broken. "
-            "Please consider replacing your repo with one forked from the official "
-            "Stockfish repo!",
-            "warning",
-        )
+    else:
+        if master_repo != official_repo:
+            message = (
+                f"It seems that your repo {data['tests_repo']} has been forked from "
+                f"{master_repo} and not from {official_repo} "
+                "as recommended in the wiki. As such, some functionality may be broken. "
+            )
+            suffix_soft = (
+                "Please consider replacing your repo with one forked from the official "
+                "Stockfish repo!"
+            )
+            suffix_hard = (
+                "Please replace your repo with one forked from the official "
+                "Stockfish repo!"
+            )
+            if u["registration_time"] >= datetime(2025, 7, 1, tzinfo=UTC):
+                raise Exception(message + " " + suffix_hard)
+            else:
+                request.session.flash(
+                    message + " " + suffix_soft,
+                    "warning",
+                )
     odds = request.POST.get("odds", "off")  # off checkboxes are not posted
     if odds == "off":
         data["new_tc"] = data["tc"]
@@ -988,7 +1005,9 @@ def validate_form(request):
     # Fill new_signature/info from commit info if left blank
     if len(data["new_signature"]) == 0 or len(data["info"]) == 0:
         try:
-            c = get_commit(user=user, repo=repo, branch=data["new_tag"])
+            c = get_commit(
+                user=user, repo=repo, branch=data["new_tag"], ignore_rate_limit=True
+            )
         except Exception as e:
             raise Exception(
                 f"Unable to access developer repository {data['tests_repo']}: {str(e)}"
@@ -1048,7 +1067,7 @@ def validate_form(request):
 
     # Check entered bench
     if data["base_tag"] == "master":
-        master_info = get_master_info(user=user, repo=repo)
+        master_info = get_master_info(user=user, repo=repo, ignore_rate_limit=True)
         if master_info is None or master_info["bench"] != data["base_signature"]:
             raise Exception(
                 "Bench signature of Base master does not match, "
@@ -1164,13 +1183,16 @@ def update_nets(request, run):
 
     tests_repo_ = tests_repo(run)
     user, repo = parse_repo(tests_repo_)
-    if is_master(
-        run["args"]["resolved_base"],
-    ):
-        for net in base_nets:
-            if "is_master" not in net:
-                net["is_master"] = True
-                request.rundb.update_nn(net)
+    try:
+        if is_master(
+            run["args"]["resolved_base"],
+        ):
+            for net in base_nets:
+                if "is_master" not in net:
+                    net["is_master"] = True
+                    request.rundb.update_nn(net)
+    except Exception as e:
+        print(f"Unable to evaluate is_master({run['args']['resolved_base']}): {str(e)}")
 
     for net in new_nets:
         if "first_test" not in net:
@@ -1253,7 +1275,7 @@ def tests_run(request):
         "is_rerun": len(run_args) > 0,
         "rescheduled_from": request.params["id"] if "id" in request.params else None,
         "tests_repo": u.get("tests_repo", ""),
-        "master_info": get_master_info(),
+        "master_info": get_master_info(ignore_rate_limit=True),
         "valid_books": request.rundb.books.keys(),
         "pt_info": request.rundb.pt_info,
     }

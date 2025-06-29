@@ -10,9 +10,11 @@ class CreateRunTest(unittest.TestCase):
             re.match(
                 r"[1-9]\d{5,7}|None",
                 str(
-                    get_master_info(user="official-stockfish", repo="Stockfish")[
-                        "bench"
-                    ]
+                    get_master_info(
+                        user="official-stockfish",
+                        repo="Stockfish",
+                        ignore_rate_limit=True,
+                    )["bench"]
                 ),
             )
         )
