@@ -592,10 +592,19 @@ def diff_url(run, master_check=True):
         user1 = user2
         sha1 = run["args"]["resolved_base"]
     if master_check:
-        if is_master(sha1):
-            user1 = "official-stockfish"
-        if is_master(sha2):
-            user2 = "official-stockfish"
+        im1 = im2 = False
+        try:
+            im1 = is_master(sha1)
+            im2 = is_master(sha2)
+        except Exception as e:
+            print(
+                f"Unable to evaluate is_master({sha1}) or is_master({sha2}): {str(e)}"
+            )
+        else:
+            if im1:
+                user1 = "official-stockfish"
+            if im2:
+                user2 = "official-stockfish"
     return compare_branches_url(user1=user1, branch1=sha1, user2=user2, branch2=sha2)
 
 

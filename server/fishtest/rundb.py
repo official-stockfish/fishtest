@@ -74,6 +74,8 @@ class RunDb:
         self.runs = self.db["runs"]
         self.deltas = self.db["deltas"]
         self.kvstore = KeyValueStore(self.db)
+        if is_primary_instance:
+            fishtest.github_api.init(self.kvstore)
         self.port = port
         self.unfinished_runs = set()
         self.unfinished_runs_lock = threading.Lock()
@@ -163,7 +165,9 @@ class RunDb:
         books = None
         try:
             books = json.loads(
-                download_from_github("books.json", repo="books").decode()
+                download_from_github(
+                    "books.json", repo="books", ignore_rate_limit=True
+                ).decode()
             )
         except Exception as e:
             print(f"Unable to download book metadata from GitHub: {str(e)}", flush=True)
@@ -186,7 +190,7 @@ class RunDb:
         dummy_sha = 40 * "f"
         official_master_sha = None
         try:
-            response = get_commit()
+            response = get_commit(ignore_rate_limit=True)
             official_master_sha = response["sha"]
         except Exception as e:
             print(
@@ -798,6 +802,11 @@ class RunDb:
         )
         return nns_list, count
 
+    def flush_kvstore(self):
+        self.kvstore["books"] = self.books
+        self.kvstore["worker_runs"] = self.worker_runs
+        fishtest.github_api.save()
+
     # handle termination
     def exit_run(self, signum, frame):
         if os.isatty(sys.stdout.fileno()):
@@ -810,8 +819,10 @@ class RunDb:
             print("Stopping scheduler... ", flush=True)
             self.scheduler.stop()
         if self.is_primary_instance():
-            print("Flushing cache... ", flush=True)
+            print("Flushing run cache... ", flush=True)
             self.run_cache.flush_all()
+            print("Flushing kvstore...", flush=True)
+            self.flush_kvstore()
         if self.port >= 0:
             self.actiondb.system_event(message=f"stop fishtest@{self.port}")
         print("Quitting...", flush=True)
