@@ -647,12 +647,18 @@
   const fetchDiffThreeDots = async (diffApiUrl) => {
     try {
       const token = localStorage.getItem("github_token");
-      const options = {
-        headers: {
-          "Authorization": token ? "token " + token : null,
-          "Accept": "application/vnd.github.diff",
-        }
-      };
+      const options = token
+        ? {
+            headers: {
+              Authorization: "Bearer " + token,
+              Accept: "application/vnd.github.diff",
+            },
+          }
+        : {
+            headers: {
+              Accept: "application/vnd.github.diff",
+            },
+          };
       const text = await fetchText(diffApiUrl, options);
       return {text: text, count: text?.split("\n")?.length || 0};
     } catch(e) {
@@ -840,7 +846,7 @@
     const token = localStorage.getItem("github_token");
     const options = token ? {
       headers: {
-        "Authorization": "token " + token
+        Authorization: "Bearer " + token
       }
     } : {};
 
