@@ -486,11 +486,13 @@ async function rateLimit() {
   const url = "https://api.github.com/rate_limit";
   try {
     const token = localStorage.getItem("github_token");
-    const options = {
-      headers: {
-        Authorization: token ? "Bearer " + token : null,
-      },
-    };
+    const options = token
+      ? {
+          headers: {
+            Authorization: "Bearer " + token,
+          },
+        }
+      : {};
     const rateLimit_ = await fetchJson(url, options);
     return rateLimit_["resources"]["core"]["remaining"];
   } catch (e) {
