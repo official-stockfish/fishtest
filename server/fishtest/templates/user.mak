@@ -166,9 +166,9 @@
             id="github_token"
             name="github_token"
             autocomplete="off"
-           placeholder="GitHub's fine-grained personal access token"
+           placeholder="GitHub personal access token"
           />
-        <label for="github_token" class="d-flex align-items-end">GitHub's fine-grained personal access token</label>
+        <label for="github_token" class="d-flex align-items-end">GitHub personal access token</label>
         </div>
         <span class="input-group-text" role="button" data-bs-toggle="modal" data-bs-target="#github_token_info_modal">
           <i class="fas fa-question-circle fa-lg pe-none" style="width: 30px"></i>
@@ -192,20 +192,22 @@
               </p>
 
               <!-- Permissions and access information -->
-              <p>The token should be granted the minimum permissions necessary for your use case.
+              <p>Any token, classic or fine-grained, that allows read access to public repositories will work.
+              It is recommended however to generate a new token with minimum permissions.
               This reduces the potential impact if the token is accidentally exposed or misused.
               </p>
-
+              <!-- Verification that things are working as expected -->
+              <p>After installing the token you may check <a href=/rate_limits>here</a> to verify that the procedure has worked.</p>
               <!-- Instructions on how to obtain the token -->
-              <h4>Instructions:</h4>
+              <h4>Instructions for generating a new token:</h4>
               <ol>
-                <li>Access the Github's link <a href="https://github.com/settings/tokens?type=beta" target="_blank">here</a>, login if required.</li>
+                <li>Access the <a href="https://github.com/settings/tokens?type=beta" target="_blank">Github link</a> (login if required).</li>
                 <li>Press "Generate a new token".</li>
                 <li>Set a "Token name".</li>
                 <li>Set your preferred "Expiration" time.</li>
                 <li>Set "Repository access" to "Public Repositories (read-only)".</li>
                 <li>Press "Generate token" at the bottom of the page.</li>
-                <li>Copy the token and paste it into this input field. Remember, GitHub will not show the token again for security reasons, so make sure to save it somewhere safe.</li>
+                <li>Copy the token and paste it into this input field. Remember that for security reasons GitHub will show the token only once.</li>
               </ol>
             </div>
           </div>
