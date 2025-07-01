@@ -900,7 +900,7 @@
       fetchComments(diffApiUrl, options);
     } catch (e) {
       console.error(e);
-      text = e + "\n" + "Suggested Fix: Most probably API limit rate exceeded, please try to add a GitHub personal token in your profile or 'View on GitHub'.";
+      text = e + "\n" + "Suggested Fix: Most probably API limit rate exceeded, please try to add a GitHub personal access token in your profile or 'View on GitHub'.";
     }
 
     addDiff(diffText, text);

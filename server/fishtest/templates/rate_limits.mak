@@ -22,7 +22,11 @@
     </tr>
   </tbody>
 </table>
-
+<p>
+If you are frequently hitting the client rate limit then it is recommended to install
+a <a href="https://github.com/settings/tokens?type=beta" target="_blank">GitHub person\
+al access token</a> in your <a href=/user>profile</a>.
+</p>
 <script>
   async function showRateLimit(elt) {
     await DOMContentLoaded();
