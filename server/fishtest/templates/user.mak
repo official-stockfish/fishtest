@@ -201,7 +201,7 @@
               <!-- Instructions on how to obtain the token -->
               <h4>Instructions for generating a new token:</h4>
               <ol>
-                <li>Access the <a href="https://github.com/settings/tokens?type=beta" target="_blank">Github link</a> (login if required).</li>
+                <li>Access the <a href="https://github.com/settings/personal-access-tokens" target="_blank">Github link</a> (login if required).</li>
                 <li>Press "Generate a new token".</li>
                 <li>Set a "Token name".</li>
                 <li>Set your preferred "Expiration" time.</li>
