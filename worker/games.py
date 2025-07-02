@@ -436,7 +436,7 @@ def establish_validated_net(remote, testing_dir, net, global_cache):
             time.sleep(waitTime)
 
 
-def run_single_bench(engine, hash_size, threads, depth, timeout=90):
+def run_single_bench(engine, hash_size, threads, depth, timeout=600):
     bench_time, bench_nodes = None, None
     try:
         with subprocess.Popen(
