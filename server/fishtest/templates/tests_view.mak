@@ -649,10 +649,10 @@
     const options = {
       headers: {
         Accept: "application/vnd.github.diff",
-      }
-    }
+      },
+    };
     if (token) {
-      headers.Authorization = "Bearer " + token;
+      options.headers.Authorization = "Bearer " + token;
     }
     const text = await fetchText(diffApiUrl, options);
     return {text: text, count: text?.split("\n")?.length || 0};
