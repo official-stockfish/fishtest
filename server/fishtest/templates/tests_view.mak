@@ -645,26 +645,17 @@
   }
 
   const fetchDiffThreeDots = async (diffApiUrl) => {
-    try {
-      const token = localStorage.getItem("github_token");
-      const options = token
-        ? {
-            headers: {
-              Authorization: "Bearer " + token,
-              Accept: "application/vnd.github.diff",
-            },
-          }
-        : {
-            headers: {
-              Accept: "application/vnd.github.diff",
-            },
-          };
-      const text = await fetchText(diffApiUrl, options);
-      return {text: text, count: text?.split("\n")?.length || 0};
-    } catch(e) {
-      console.log("Error fetching diff: " + e);
-      return {text: "", count: 0};
+    const token = localStorage.getItem("github_token");
+    const options = {
+      headers: {
+        Accept: "application/vnd.github.diff",
+      }
     }
+    if (token) {
+      headers.Authorization = "Bearer " + token;
+    }
+    const text = await fetchText(diffApiUrl, options);
+    return {text: text, count: text?.split("\n")?.length || 0};
   };
 
   function loadingButton() {
