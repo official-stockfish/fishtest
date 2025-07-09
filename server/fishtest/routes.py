@@ -56,6 +56,7 @@ def setup_routes(config):
     config.add_route("api_worker_log", "/api/worker_log")
 
     # UserApi
+    config.add_route("api_rate_limit", "/api/rate_limit")
     config.add_route("api_active_runs", "/api/active_runs")
     config.add_route("api_finished_runs", "/api/finished_runs")
     config.add_route("api_get_run", "/api/get_run/{id}")

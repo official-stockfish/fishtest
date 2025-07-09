@@ -1,4 +1,5 @@
 import base64
+import time
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -20,7 +21,14 @@ TIMEOUT = 3
 INITIAL_RATELIMIT = 5000
 LRU_CACHE_SIZE = 6000
 
-_github_rate_limit = None
+_github_rate_limit = {
+    "limit": INITIAL_RATELIMIT,
+    "remaining": INITIAL_RATELIMIT,
+    "reset": int(time.time()),
+    "used": 0,
+    "resource": "core",
+    "_uninitialized": True,
+}
 _lru_cache = None
 _kvstore = None
 
@@ -45,11 +53,9 @@ def init(kvstore):
     except Exception as e:
         print(f"Unable to restore github_api_cache from kvstore: {str(e)}", flush=True)
     try:
-        _github_rate_limit = rate_limit()["remaining"]
+        rate_limit()  # sets _github_rate_limit
     except Exception as e:
-        print(
-            f"Unable to initialize github rate limit :{str(e)}. Assuming {INITIAL_RATELIMIT}."
-        )
+        print(f"Unable to initialize github rate limit :{str(e)}")
 
 
 def save():
@@ -62,15 +68,28 @@ def save():
 
 def call(url, *args, _method="GET", _ignore_rate_limit=False, **kwargs):
     global _github_rate_limit
-    if not _ignore_rate_limit and _github_rate_limit < INITIAL_RATELIMIT / 2:
+    if (
+        not _ignore_rate_limit
+        and time.time() <= _github_rate_limit["reset"]
+        and _github_rate_limit["remaining"] < _github_rate_limit["used"]
+    ):
         raise Exception(r"Rate limit more than 50% consumed.")
-
     r = requests.request(_method, url, *args, **kwargs)
     resource = r.headers.get("X-RateLimit-Resource", "")
     if resource == "core":
-        _github_rate_limit = int(
-            r.headers.get("X-RateLimit-Remaining", _github_rate_limit)
+        _github_rate_limit["remaining"] = int(
+            r.headers.get("X-RateLimit-Remaining", _github_rate_limit["remaining"])
         )
+        _github_rate_limit["used"] = int(
+            r.headers.get("X-RateLimit-Used", _github_rate_limit["used"])
+        )
+        _github_rate_limit["reset"] = int(
+            r.headers.get("X-RateLimit-Reset", _github_rate_limit["reset"])
+        )
+        _github_rate_limit["limit"] = int(
+            r.headers.get("X-RateLimit-Limit", _github_rate_limit["limit"])
+        )
+        _github_rate_limit.pop("_uninitialized", None)
     return r
 
 
@@ -145,11 +164,22 @@ def get_commits(user="official-stockfish", repo="Stockfish", ignore_rate_limit=F
 
 
 def rate_limit():
-    url = "https://api.github.com/rate_limit"
-    r = call(url, timeout=TIMEOUT, _ignore_rate_limit=True)
-    r.raise_for_status()
-    rate_limit = r.json()["resources"]["core"]
-    return rate_limit
+    if (
+        "_uninitialized" not in _github_rate_limit
+        and _github_rate_limit["remaining"] == _github_rate_limit["limit"]
+    ):
+        _github_rate_limit["reset"] = time.time() + 3600
+    elif (
+        "_uninitialized" in _github_rate_limit
+        or time.time() > _github_rate_limit["reset"]
+    ):
+        url = "https://api.github.com/rate_limit"
+        try:
+            # sets _github_rate_limit
+            call(url, timeout=TIMEOUT, _ignore_rate_limit=True)
+        except Exception as e:
+            print(f"Unable to get rate limit: {str(e)}")
+    return _github_rate_limit
 
 
 def compare_sha(
@@ -270,7 +300,13 @@ def get_master_repo(
 
 
 def normalize_repo(repo):
-    r = call(repo, _method="HEAD", allow_redirects=True, _ignore_rate_limit=True)
+    r = call(
+        repo,
+        _method="HEAD",
+        timeout=TIMEOUT,
+        allow_redirects=True,
+        _ignore_rate_limit=True,
+    )
     r.raise_for_status()
     return r.url
 

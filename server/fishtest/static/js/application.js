@@ -494,9 +494,9 @@ async function rateLimit() {
         }
       : {};
     const rateLimit_ = await fetchJson(url, options);
-    return rateLimit_["resources"]["core"]["remaining"];
+    return rateLimit_["resources"]["core"];
   } catch (e) {
     log(e);
-    return -1;
+    return { remaining: -1, reset: 0 };
   }
 }
