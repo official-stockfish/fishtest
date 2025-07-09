@@ -6,6 +6,7 @@ import re
 from datetime import UTC, datetime
 from urllib.parse import urlparse
 
+import fishtest.github_api as gh
 from fishtest.schemas import api_access_schema, api_schema, gzip_data
 from fishtest.stats.stat_util import SPRT_elo, get_elo
 from fishtest.util import strip_run, worker_name
@@ -349,6 +350,10 @@ class WorkerApi(GenericApi):
 
 @view_defaults(renderer="json")
 class UserApi(GenericApi):
+    @view_config(route_name="api_rate_limit")
+    def rate_limit(self):
+        return gh.rate_limit()
+
     @view_config(route_name="api_active_runs")
     def active_runs(self):
         runs = self.request.rundb.runs.find(
