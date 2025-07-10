@@ -482,21 +482,27 @@ function createRetryMessage(parentElement, callback) {
   button.addEventListener("click", callback);
 }
 
+const abortTimeout = (timeout) => {
+  if (AbortSignal.timeout) {
+    return AbortSignal.timeout(timeout);
+  } else {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), timeout);
+    return controller.signal;
+  }
+};
+
 async function rateLimit() {
   const url = "https://api.github.com/rate_limit";
-  try {
-    const token = localStorage.getItem("github_token");
-    const options = token
-      ? {
-          headers: {
-            Authorization: "Bearer " + token,
-          },
-        }
-      : {};
-    const rateLimit_ = await fetchJson(url, options);
-    return rateLimit_["resources"]["core"];
-  } catch (e) {
-    log(e);
-    return { remaining: -1, reset: 0 };
-  }
+  const token = localStorage.getItem("github_token");
+  const options = token
+    ? {
+        headers: {
+          Authorization: "Bearer " + token,
+        },
+      }
+    : {};
+  options.signal = abortTimeout(3000);
+  const rateLimit_ = await fetchJson(url, options);
+  return rateLimit_["resources"]["core"];
 }
