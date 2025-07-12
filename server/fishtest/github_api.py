@@ -1,4 +1,3 @@
-import base64
 import time
 from pathlib import Path
 from urllib.parse import urlparse
@@ -112,12 +111,14 @@ def _download_from_github_api(
     item_url = (
         f"https://api.github.com/repos/{user}/{repo}/contents/{item}?ref={branch}"
     )
-    r = call(item_url, timeout=TIMEOUT, _ignore_rate_limit=ignore_rate_limit)
+    r = call(
+        item_url,
+        headers={"Accept": "application/vnd.github.raw+json"},
+        timeout=TIMEOUT,
+        _ignore_rate_limit=ignore_rate_limit,
+    )
     r.raise_for_status()
-    git_url = r.json()["git_url"]
-    r = call(git_url, timeout=TIMEOUT, _ignore_rate_limit=True)
-    r.raise_for_status()
-    return base64.b64decode(r.json()["content"])
+    return r.content
 
 
 def download_from_github(
