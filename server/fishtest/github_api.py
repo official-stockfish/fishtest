@@ -20,6 +20,8 @@ TIMEOUT = 3
 INITIAL_RATELIMIT = 5000
 LRU_CACHE_SIZE = 6000
 
+_module_initialized = False
+
 _github_rate_limit = {
     "limit": INITIAL_RATELIMIT,
     "remaining": INITIAL_RATELIMIT,
@@ -36,25 +38,22 @@ _official_master_sha = None
 
 
 def init(kvstore):
-    global _github_rate_limit, _kvstore, _lru_cache
+    global _github_rate_limit, _kvstore, _lru_cache, _module_initialized
     _kvstore = kvstore
     _lru_cache = LRUCache(LRU_CACHE_SIZE)
-    github_api_cache = {"version": GITHUB_API_VERSION, "lru_cache": []}
     try:
         if "github_api_cache" in _kvstore:
             github_api_cache = _kvstore["github_api_cache"]
         else:
-            print("Initializing github_api_cache", flush=True)
+            raise Exception("No previously saved github_api_cache")
         if github_api_cache["version"] != GITHUB_API_VERSION:
             raise Exception("Stored github_api_cache has different version")
         for k, v in github_api_cache["lru_cache"]:
             _lru_cache[tuple(k)] = v
     except Exception as e:
         print(f"Unable to restore github_api_cache from kvstore: {str(e)}", flush=True)
-    try:
-        rate_limit()  # sets _github_rate_limit
-    except Exception as e:
-        print(f"Unable to initialize github rate limit :{str(e)}")
+
+    _module_initialized = True
 
 
 def save():
@@ -67,6 +66,8 @@ def save():
 
 def call(url, *args, _method="GET", _ignore_rate_limit=False, **kwargs):
     global _github_rate_limit
+    if not _module_initialized:
+        raise Exception("github_api.py was not properly initialized")
     if (
         not _ignore_rate_limit
         and time.time() <= _github_rate_limit["reset"]
@@ -164,7 +165,7 @@ def get_commits(user="official-stockfish", repo="Stockfish", ignore_rate_limit=F
     return commit
 
 
-def rate_limit():
+def _update_rate_limit():
     if (
         "_uninitialized" not in _github_rate_limit
         and _github_rate_limit["remaining"] == _github_rate_limit["limit"]
@@ -179,7 +180,11 @@ def rate_limit():
             # sets _github_rate_limit
             call(url, timeout=TIMEOUT, _ignore_rate_limit=True)
         except Exception as e:
-            print(f"Unable to get rate limit: {str(e)}")
+            print(f"Unable to get rate limit: {str(e)}", flush=True)
+
+
+def rate_limit():
+    _update_rate_limit()
     return _github_rate_limit
 
 

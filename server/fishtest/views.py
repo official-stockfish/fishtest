@@ -9,21 +9,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import bson
+import fishtest.github_api as gh
 import fishtest.stats.stat_util
 import requests
-from fishtest.github_api import (
-    commit_url,
-    compare_branches_url,
-    download_from_github,
-    get_commit,
-    get_commits,
-    get_master_repo,
-    get_merge_base_commit,
-    is_ancestor,
-    is_master,
-    normalize_repo,
-    parse_repo,
-)
 from fishtest.run_cache import Prio
 from fishtest.schemas import (
     RUN_VERSION,
@@ -708,7 +696,7 @@ def user(request):
     hours = int(userc["cpu_hours"]) if userc is not None else 0
 
     if user_data["tests_repo"] != "":
-        user, repo = parse_repo(user_data["tests_repo"])
+        user, repo = gh.parse_repo(user_data["tests_repo"])
         extract_repo_from_link = f"{user}/{repo}"
     else:
         extract_repo_from_link = ""
@@ -747,7 +735,9 @@ def get_master_info(
     user="official-stockfish", repo="Stockfish", ignore_rate_limit=False
 ):
     try:
-        commits = get_commits(user=user, repo=repo, ignore_rate_limit=ignore_rate_limit)
+        commits = gh.get_commits(
+            user=user, repo=repo, ignore_rate_limit=ignore_rate_limit
+        )
     except Exception as e:
         print(f"Exception getting commits:\n{e}")
         return None
@@ -778,9 +768,9 @@ def get_master_info(
 
 def get_sha(branch, repo_url):
     """Resolves the git branch to sha commit"""
-    user, repo = parse_repo(repo_url)
+    user, repo = gh.parse_repo(repo_url)
     try:
-        commit = get_commit(user=user, repo=repo, branch=branch)
+        commit = gh.get_commit(user=user, repo=repo, branch=branch)
     except Exception as e:
         raise Exception(f"Unable to access developer repository {repo_url}: {str(e)}")
     if "sha" in commit:
@@ -795,8 +785,8 @@ def get_nets(commit_sha, repo_url):
         nets = []
         pattern = re.compile("nn-[a-f0-9]{12}.nnue")
 
-        user, repo = parse_repo(repo_url)
-        options = download_from_github(
+        user, repo = gh.parse_repo(repo_url)
+        options = gh.download_from_github(
             "/src/evaluate.h", user=user, repo=repo, branch=commit_sha, method="raw"
         ).decode()
         for line in options.splitlines():
@@ -808,7 +798,7 @@ def get_nets(commit_sha, repo_url):
         if nets:
             return nets
 
-        options = download_from_github(
+        options = gh.download_from_github(
             "/src/ucioption.cpp", user=user, repo=repo, branch=commit_sha, method="raw"
         ).decode()
         for line in options.splitlines():
@@ -928,13 +918,13 @@ def validate_form(request):
     try:
         # Deal with people that have changed their GitHub username
         # but still use the old repo url
-        data["tests_repo"] = normalize_repo(data["tests_repo"])
+        data["tests_repo"] = gh.normalize_repo(data["tests_repo"])
     except Exception as e:
         raise Exception(
             f"Unable to access developer repository {data['tests_repo']}: {str(e)}"
         ) from e
 
-    user, repo = parse_repo(data["tests_repo"])
+    user, repo = gh.parse_repo(data["tests_repo"])
     username = request.authenticated_userid
     u = request.userdb.get_user(username)
 
@@ -943,7 +933,7 @@ def validate_form(request):
     official_repo = "https://github.com/official-stockfish/Stockfish"
     master_repo = official_repo
     try:
-        master_repo = get_master_repo(user, repo, ignore_rate_limit=True)
+        master_repo = gh.get_master_repo(user, repo, ignore_rate_limit=True)
     except Exception as e:
         print(
             f"Unable to determine master repo for {data['tests_repo']}: {str(e)}",
@@ -997,7 +987,7 @@ def validate_form(request):
     # Fill new_signature/info from commit info if left blank
     if len(data["new_signature"]) == 0 or len(data["info"]) == 0:
         try:
-            c = get_commit(
+            c = gh.get_commit(
                 user=user, repo=repo, branch=data["new_tag"], ignore_rate_limit=True
             )
         except Exception as e:
@@ -1174,9 +1164,9 @@ def update_nets(request, run):
         )
 
     tests_repo_ = tests_repo(run)
-    user, repo = parse_repo(tests_repo_)
+    user, repo = gh.parse_repo(tests_repo_)
     try:
-        if is_master(
+        if gh.is_master(
             run["args"]["resolved_base"],
         ):
             for net in base_nets:
@@ -1626,15 +1616,19 @@ def tests_view(request):
                 )
 
         tests_repo_ = tests_repo(run)
-        user, repo = parse_repo(tests_repo_)
+        user, repo = gh.parse_repo(tests_repo_)
         if name == "tests_repo":
             value = tests_repo_
             url = value
 
         if name == "new_tag":
-            url = commit_url(user=user, repo=repo, branch=run["args"]["resolved_new"])
+            url = gh.commit_url(
+                user=user, repo=repo, branch=run["args"]["resolved_new"]
+            )
         elif name == "base_tag":
-            url = commit_url(user=user, repo=repo, branch=run["args"]["resolved_base"])
+            url = gh.commit_url(
+                user=user, repo=repo, branch=run["args"]["resolved_base"]
+            )
 
         if name == "spsa":
             run_args.append(("spsa", value, ""))
@@ -1694,33 +1688,34 @@ def tests_view(request):
         # for backward compatibility
         warnings.append("this is a failed test")
 
-    user, repo = parse_repo(tests_repo(run))
+    user, repo = gh.parse_repo(tests_repo(run))
 
-    anchor_url = compare_branches_url(
+    anchor_url = gh.compare_branches_url(
         user1="official-stockfish",
         branch1=request.rundb.official_master_sha,
         user2=user,
         branch2=run["args"]["resolved_base"],
     )
     anchor = f'<a class="alert-link" href="{anchor_url}" target="_blank" rel="noopener">base diff</a>'
+    _exception_github_api_warnings = False
     if "spsa" not in run["args"]:
         try:
-            if not is_master(
+            if not gh.is_master(
                 run["args"]["resolved_new"],
             ):
                 # new hasn't been merged
-                if not is_master(
+                if not gh.is_master(
                     run["args"]["resolved_base"],
                 ):
                     warnings.append(f"base is not an ancestor of master: {anchor}")
-                elif not is_ancestor(
+                elif not gh.is_ancestor(
                     user1=user,
                     sha1=run["args"]["resolved_base"],
                     sha2=run["args"]["resolved_new"],
                 ):
                     warnings.append("base is not an ancestor of test")
                 else:
-                    merge_base_commit = get_merge_base_commit(
+                    merge_base_commit = gh.get_merge_base_commit(
                         sha1=request.rundb.official_master_sha,
                         user2=user,
                         sha2=run["args"]["resolved_new"],
@@ -1730,6 +1725,7 @@ def tests_view(request):
                             "base is not the latest common ancestor of test and master"
                         )
         except Exception as e:
+            _exception_github_api_warnings = True
             print(f"Unable to generate github api warnings for {run['_id']}: {str(e)}")
 
     if run["args"]["tc"] != run["args"]["new_tc"]:
@@ -1739,16 +1735,18 @@ def tests_view(request):
         warnings.append(f"this test uses a small book with only {book_exits} exits")
 
     use_3dot_diff = False
-    try:
-        use_3dot_diff = is_ancestor(
-            user1=user,
-            sha1=run["args"]["resolved_base"],
-            sha2=run["args"]["resolved_new"],
-        )
-    except Exception as e:
-        print(
-            f"Unable to determine use_3dot_diff for {run['_id']}: {str(e)}", flush=True
-        )
+    if not _exception_github_api_warnings:  # prevent doomed github_api call
+        try:
+            use_3dot_diff = gh.is_ancestor(
+                user1=user,
+                sha1=run["args"]["resolved_base"],
+                sha2=run["args"]["resolved_new"],
+            )
+        except Exception as e:
+            print(
+                f"Unable to determine use_3dot_diff for {run['_id']}: {str(e)}",
+                flush=True,
+            )
 
     return {
         "run": run,

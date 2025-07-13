@@ -4,6 +4,7 @@ import sys
 import threading
 import traceback
 
+import fishtest.github_api as gh
 from fishtest.routes import setup_routes
 from fishtest.rundb import RunDb
 from pyramid.authentication import AuthTktAuthenticationPolicy
@@ -78,17 +79,22 @@ def main(global_config, **settings):
                 return True
         return False
 
-    def init_rundb(event):
-        # We do not want to do the following in the constructor of rundb since
-        # it writes to the db and starts the flush timer.
+    def init_app(event):
         if rundb.is_primary_instance():
+            # Some initialization stuff that
+            # - uses the network;
+            # - accesses the db;
+            # - starts new threads.
+            gh.init(rundb.kvstore)
             rundb.update_aggregated_data()
-            # We install signal handlers when all cache-sensitive code in the
-            # main thread is finished. In that way we can safely use
-            # locks in the signal handlers (which also run in the main thread).
-            signal.signal(signal.SIGINT, rundb.exit_run)
-            signal.signal(signal.SIGTERM, rundb.exit_run)
             rundb.schedule_tasks()
+
+        # We install signal handlers when all code in the
+        # main thread is finished. In that way we can safely use
+        # locks in the signal handlers (which also run in the
+        # main thread).
+        signal.signal(signal.SIGINT, rundb.exit_run)
+        signal.signal(signal.SIGTERM, rundb.exit_run)
 
     def set_default_base_url(event):
         if not rundb._base_url_set:
@@ -99,7 +105,7 @@ def main(global_config, **settings):
     config.add_subscriber(check_shutdown, NewRequest)
     config.add_subscriber(add_renderer_globals, BeforeRender)
     config.add_subscriber(check_blocked_user, NewRequest)
-    config.add_subscriber(init_rundb, ApplicationCreated)
+    config.add_subscriber(init_app, ApplicationCreated)
     config.add_subscriber(set_default_base_url, NewRequest)
 
     # Authentication

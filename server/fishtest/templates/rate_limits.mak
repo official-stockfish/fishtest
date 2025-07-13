@@ -59,7 +59,7 @@
           serverRateLimitDom.style.cssText = "";
           serverResetDom.style.cssText = "";
           lastServerRefreshTime = now;
-	}
+        }
       } catch(e) {
         serverRateLimitDom.style.cssText = errorCSS;
         serverResetDom.style.cssText = errorCSS;
@@ -73,7 +73,7 @@
           clientRateLimitDom.style.cssText = "";
           clientResetDom.style.cssText = "";
           lastClientRefreshTime = now;
-	}
+        }
       } catch(e) {
         clientRateLimitDom.style.cssText = errorCSS;
         clientResetDom.style.cssText = errorCSS;

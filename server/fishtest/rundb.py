@@ -10,14 +10,13 @@ import threading
 import time
 from datetime import UTC, datetime
 
-import fishtest.github_api
+import fishtest.github_api as gh
 import fishtest.run_cache
 import fishtest.spsa_handler
 import fishtest.stats.stat_util
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from fishtest.actiondb import ActionDb
-from fishtest.github_api import download_from_github, get_commit
 from fishtest.kvstore import KeyValueStore
 from fishtest.run_cache import Prio
 from fishtest.scheduler import Scheduler
@@ -74,8 +73,6 @@ class RunDb:
         self.runs = self.db["runs"]
         self.deltas = self.db["deltas"]
         self.kvstore = KeyValueStore(self.db)
-        if is_primary_instance:
-            fishtest.github_api.init(self.kvstore)
         self.port = port
         self.unfinished_runs = set()
         self.unfinished_runs_lock = threading.Lock()
@@ -165,7 +162,7 @@ class RunDb:
         books = None
         try:
             books = json.loads(
-                download_from_github(
+                gh.download_from_github(
                     "books.json", repo="books", ignore_rate_limit=True
                 ).decode()
             )
@@ -190,7 +187,7 @@ class RunDb:
         dummy_sha = 40 * "f"
         official_master_sha = None
         try:
-            response = get_commit(ignore_rate_limit=True)
+            response = gh.get_commit(ignore_rate_limit=True)
             official_master_sha = response["sha"]
         except Exception as e:
             print(
@@ -208,7 +205,7 @@ class RunDb:
             ret = None
 
         self.official_master_sha = official_master_sha
-        fishtest.github_api._official_master_sha = official_master_sha
+        gh._official_master_sha = official_master_sha
         return ret
 
     def update_nps_gpm(self):
@@ -802,10 +799,10 @@ class RunDb:
         )
         return nns_list, count
 
-    def flush_kvstore(self):
+    def save_persistent_data(self):
         self.kvstore["books"] = self.books
         self.kvstore["worker_runs"] = self.worker_runs
-        fishtest.github_api.save()
+        gh.save()
 
     # handle termination
     def exit_run(self, signum, frame):
@@ -821,8 +818,8 @@ class RunDb:
         if self.is_primary_instance():
             print("Flushing run cache... ", flush=True)
             self.run_cache.flush_all()
-            print("Flushing kvstore...", flush=True)
-            self.flush_kvstore()
+            print("Saving persistent data...", flush=True)
+            self.save_persistent_data()
         if self.port >= 0:
             self.actiondb.system_event(message=f"stop fishtest@{self.port}")
         print("Quitting...", flush=True)
