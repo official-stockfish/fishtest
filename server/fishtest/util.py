@@ -5,12 +5,11 @@ import re
 from datetime import UTC, datetime
 from functools import cache
 
-import fishtest.github_api
+import fishtest.github_api as gh
 import fishtest.stats.stat_util
 import numpy as np
 import scipy.stats
 from email_validator import EmailNotValidError, caching_resolver, validate_email
-from fishtest.github_api import compare_branches_url, is_master, parse_repo
 from zxcvbn import zxcvbn
 
 
@@ -583,19 +582,19 @@ def tests_repo(run):
 
 def diff_url(run, master_check=True):
     tests_repo_ = tests_repo(run)
-    user2, repo = parse_repo(tests_repo_)
+    user2, repo = gh.parse_repo(tests_repo_)
     sha2 = run["args"]["resolved_new"]
     if "spsa" in run["args"]:
         user1 = "official-stockfish"
-        sha1 = fishtest.github_api._official_master_sha
+        sha1 = gh._official_master_sha
     else:
         user1 = user2
         sha1 = run["args"]["resolved_base"]
     if master_check:
         im1 = im2 = False
         try:
-            im1 = is_master(sha1)
-            im2 = is_master(sha2)
+            im1 = gh.is_master(sha1)
+            im2 = gh.is_master(sha2)
         except Exception as e:
             print(
                 f"Unable to evaluate is_master({sha1}) or is_master({sha2}): {str(e)}"
@@ -605,7 +604,7 @@ def diff_url(run, master_check=True):
                 user1 = "official-stockfish"
             if im2:
                 user2 = "official-stockfish"
-    return compare_branches_url(user1=user1, branch1=sha1, user2=user2, branch2=sha2)
+    return gh.compare_branches_url(user1=user1, branch1=sha1, user2=user2, branch2=sha2)
 
 
 def ok_hash(tc_ratio, hash):
