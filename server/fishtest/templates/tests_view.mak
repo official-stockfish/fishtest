@@ -108,6 +108,7 @@
           <span class="text-success copied text-nowrap" style="display: none">Copied!</span>
         </h4>
         <pre id="diff-contents" style="display: none;"><code class="diff"></code></pre>
+        <div id="diff-error" class="text-danger" hidden></div>
       </div>
       <div>
         <h4 style="margin-top: 9px;">Details</h4>
@@ -644,6 +645,11 @@
     diffText.textContent = text;
   }
 
+  function showDiffError(diffError, text) {
+    diffError.innerHTML = text;
+    diffError.hidden = false;
+  }
+
   const fetchDiffThreeDots = async (diffApiUrl) => {
     const token = localStorage.getItem("github_token");
     const options = {
@@ -687,53 +693,40 @@
   }
 
   async function getFileContentFromGitHubApi(url, options) {
+    options.headers = options.headers || {};
+    options.headers["Accept"] = "application/vnd.github.raw+json";
     try {
-      options.headers = options.headers || {};
-      options.headers["Accept"] = "application/vnd.github.v3.raw";
-      const response = await fetch(url, options);
-      if (!response.ok) {
-        if (response.status === 404) {
+      const text = await fetchText(url, options);
+      return text;
+    } catch(e) {
+      if (e instanceof HTTPError) {
+        const status = e.response.status;
+        if (status === 404) {
           return "";
         } else {
-          throw new Error(
-            "Failed to fetch " + url + ": " + response.status + " " + response.statusText
-          );
+          throw e;
         }
       }
-      const text = await response.text();
-      return text;
-    } catch (error) {
-        throw new Error(
-          "Failed to fetch file: " + error
-        );
     }
   }
 
   async function getFilesInBranch(apiUrl, branch, options) {
-    try {
-      const url = apiUrl + "/git/trees/" + branch + "?recursive=1";
-      const response = await fetch(url, options);
-      if (!response.ok) {
-        return null;
+    const url = apiUrl + "/git/trees/" + branch + "?recursive=1";
+    const data = await fetchJson(url, options);
+
+    const filesMap = new Map();
+    data.tree.forEach((entry) => {
+      if (entry.type === "blob") {
+        filesMap.set(entry.path, entry.sha);
       }
-      const data = await response.json();
+    });
 
-      const filesMap = new Map();
-      data.tree.forEach((entry) => {
-        if (entry.type === "blob") {
-          filesMap.set(entry.path, entry.sha);
-        }
-      });
-
-      return filesMap;
-    } catch (error) {
-      console.error("Error fetching files in branch " +  branch + ": ", error);
-      return null;
-    }
+    return filesMap;
   }
 
 
   const diffContents = document.getElementById("diff-contents");
+  const diffError = document.getElementById("diff-error");
   const diffText = diffContents.querySelector("code");
   const toggleBtn = document.getElementById("diff-toggle");
 
@@ -742,10 +735,6 @@
       getFilesInBranch(apiUrlBase, diffBase, options),
       getFilesInBranch(apiUrlNew, diffNew, options),
     ]);
-
-    if (files1 === null || files2 === null) {
-        throw new Error("Failed to fetch files from branches");
-    }
 
     const allFiles = new Set([...files1.keys(), ...files2.keys()]);
 
@@ -891,8 +880,30 @@
       fetchComments(diffApiUrl, options);
     } catch (e) {
       console.error(e);
-      text = e + "\n" + "Suggested Fix: Most probably API limit rate exceeded, please try to add a GitHub personal access token in your profile or 'View on GitHub'.";
+      text = e;
+      if(e instanceof HTTPError) {
+        const response = e.response;
+        const status = response.status;
+        try {
+          const json = await response.json();
+          if (json.message) {
+            text += "<br>GitHub error message: <em>" + escapeHtml(json.message) + "</em>";
+          }
+        } catch(e) {
+          console.error(e);
+        }
+        if(remainingApiCalls(response) === 0) {
+          text += "<br>Note: Apparently the <a href='/rate_limits'>GitHub API rate limit</a> was exceeded. \
+                  Try to add a <a href='https://github.com/settings/personal-access-tokens' \
+                  target='_blank'>GitHub personal access token</a> to your <a href='/user'>profile</a> \
+                  or else use 'View on GitHub'."
+        }
+      }
+      showDiffError(diffError, text);
+      toggleBtn.hidden = true;
+      return;
     }
+
 
     addDiff(diffText, text);
     showDiff(diffContents, diffText, count, copyDiffBtn, toggleBtn);
