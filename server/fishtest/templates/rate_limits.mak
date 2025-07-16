@@ -5,7 +5,7 @@
 </script>
 
 
-<div id="rate_limits_div" hidden="true">
+<div id="rate_limits_div" hidden>
   <h2>GitHub Rate Limits</h2>
   <table class="table table-striped table-sm">
     <thead>
