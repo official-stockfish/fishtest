@@ -32,7 +32,7 @@
     GitHub personal access token
     </a>
     in your
-    <a href="/user"> profile</a>.
+    <a href="/user">profile</a>.
   </p>
 </div>
 <script>
