@@ -39,3 +39,5 @@ jobs:
 
       - name: Run server tests
         run: uv run python -m unittest discover -vb -s tests
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

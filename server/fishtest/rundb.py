@@ -140,7 +140,7 @@ class RunDb:
             900.0, self.update_books, initial_delay=60.0, background=True
         )
         self.scheduler.create_task(
-            900.0, self.update_official_master_sha, initial_delay=60.0, background=True
+            900.0, gh.update_official_master_sha, initial_delay=60.0, background=True
         )
 
     def clean_worker_runs(self):
@@ -176,37 +176,6 @@ class RunDb:
                 print("Unable to initialize metadata for books", flush=True)
 
         self.books = books
-
-    def update_official_master_sha(self):
-        """
-        Return value:
-        True: the api call succeeded
-        False: the api call failed but a backup in the kvstore was found
-        None: the api call failed and no backup was found
-        """
-        dummy_sha = 40 * "f"
-        official_master_sha = None
-        try:
-            response = gh.get_commit(ignore_rate_limit=True)
-            official_master_sha = response["sha"]
-        except Exception as e:
-            print(
-                f"Unable to obtain the official stockfish master sha: {str(e)}",
-                flush=True,
-            )
-            ret = False
-        if official_master_sha is not None:
-            self.kvstore["official_master_sha"] = official_master_sha
-            ret = True
-        else:
-            official_master_sha = self.kvstore.get("official_master_sha", dummy_sha)
-            if official_master_sha == dummy_sha:
-                print("Unable to initialize the official master sha", flush=True)
-            ret = None
-
-        self.official_master_sha = official_master_sha
-        gh._official_master_sha = official_master_sha
-        return ret
 
     def update_nps_gpm(self):
         with self.unfinished_runs_lock:
@@ -546,7 +515,6 @@ class RunDb:
         self.update_itp()
         self.update_nps_gpm()
         self.update_books()
-        self.update_official_master_sha()
 
     def new_run(
         self,

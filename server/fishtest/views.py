@@ -1250,7 +1250,7 @@ def tests_run(request):
     request.rundb.update_books()
     # Make sure that when the test is viewed after submission,
     # official_master_sha is up to date
-    request.rundb.update_official_master_sha()
+    gh.update_official_master_sha()
 
     return {
         "args": run_args,
