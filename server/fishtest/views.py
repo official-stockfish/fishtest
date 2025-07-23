@@ -1687,6 +1687,23 @@ def tests_view(request):
     elif run["failed"]:
         # for backward compatibility
         warnings.append("this is a failed test")
+    if run["args"]["tc"] != run["args"]["new_tc"]:
+        warnings.append("this is a test with time odds")
+    book_exits = request.rundb.books.get(run["args"]["book"], {}).get("total", 100000)
+    if book_exits < 100000:
+        warnings.append(f"this test uses a small book with only {book_exits} exits")
+
+    def allow_github_api_calls():
+        # Avoid making pointless GitHub api calls on behalf of
+        # crawlers
+        if request.authenticated_userid:
+            return True
+        now = datetime.now(UTC)
+        # Period should be short enough so that it can be
+        # served from the api cache!
+        if (now - run["last_updated"]).days > 30:
+            return False
+        return True
 
     user, repo = gh.parse_repo(tests_repo(run))
 
@@ -1697,8 +1714,9 @@ def tests_view(request):
         branch2=run["args"]["resolved_base"],
     )
     anchor = f'<a class="alert-link" href="{anchor_url}" target="_blank" rel="noopener">base diff</a>'
-    _exception_github_api_warnings = False
-    if "spsa" not in run["args"]:
+    use_3dot_diff = False
+    if "spsa" not in run["args"] and allow_github_api_calls():
+        irl = bool(request.authenticated_userid)
         try:
             if not gh.is_master(
                 run["args"]["resolved_new"],
@@ -1706,47 +1724,35 @@ def tests_view(request):
                 # new hasn't been merged
                 if not gh.is_master(
                     run["args"]["resolved_base"],
+                    ignore_rate_limit=irl,
                 ):
                     warnings.append(f"base is not an ancestor of master: {anchor}")
                 elif not gh.is_ancestor(
                     user1=user,
                     sha1=run["args"]["resolved_base"],
                     sha2=run["args"]["resolved_new"],
+                    ignore_rate_limit=irl,
                 ):
-                    warnings.append("base is not an ancestor of test")
+                    warnings.append("base is not an ancestor of new")
                 else:
                     merge_base_commit = gh.get_merge_base_commit(
                         sha1=request.rundb.official_master_sha,
                         user2=user,
                         sha2=run["args"]["resolved_new"],
+                        ignore_rate_limit=irl,
                     )
                     if merge_base_commit != run["args"]["resolved_base"]:
                         warnings.append(
-                            "base is not the latest common ancestor of test and master"
+                            "base is not the latest common ancestor of new and master"
                         )
-        except Exception as e:
-            _exception_github_api_warnings = True
-            print(f"Unable to generate github api warnings for {run['_id']}: {str(e)}")
-
-    if run["args"]["tc"] != run["args"]["new_tc"]:
-        warnings.append("this is a test with time odds")
-    book_exits = request.rundb.books.get(run["args"]["book"], {}).get("total", 100000)
-    if book_exits < 100000:
-        warnings.append(f"this test uses a small book with only {book_exits} exits")
-
-    use_3dot_diff = False
-    if not _exception_github_api_warnings:  # prevent doomed github_api call
-        try:
             use_3dot_diff = gh.is_ancestor(
                 user1=user,
                 sha1=run["args"]["resolved_base"],
                 sha2=run["args"]["resolved_new"],
+                ignore_rate_limit=irl,
             )
         except Exception as e:
-            print(
-                f"Unable to determine use_3dot_diff for {run['_id']}: {str(e)}",
-                flush=True,
-            )
+            print(f"Exception processing api calls for {run['_id']}: {str(e)}")
 
     return {
         "run": run,
