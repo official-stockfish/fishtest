@@ -5,6 +5,8 @@ from fishtest.schemas import kvstore_schema
 from pymongo import MongoClient
 from vtjson import validate
 
+_missing_default = object()
+
 
 class KeyValueStore:
     def __init__(self, db=None, db_name=None, collection="kvstore"):
@@ -38,11 +40,25 @@ class KeyValueStore:
             return False
         return True
 
-    def get(self, key, default):
+    def get(self, key, default=_missing_default):
         try:
             return self[key]
         except KeyError:
-            return default
+            if default != _missing_default:
+                return default
+            else:
+                raise
+
+    def pop(self, key, default=_missing_default):
+        try:
+            value = self[key]
+            del self[key]
+            return value
+        except KeyError:
+            if default != _missing_default:
+                return default
+            else:
+                raise
 
     def items(self):
         documents = self.__kvstore.find()

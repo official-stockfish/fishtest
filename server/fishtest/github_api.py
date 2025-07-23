@@ -1,3 +1,4 @@
+import os
 import time
 from pathlib import Path
 from urllib.parse import urlparse
@@ -20,7 +21,7 @@ TIMEOUT = 3
 INITIAL_RATELIMIT = 5000
 LRU_CACHE_SIZE = 6000
 
-_module_initialized = False
+_api_initialized = False
 
 _github_rate_limit = {
     "limit": INITIAL_RATELIMIT,
@@ -33,12 +34,12 @@ _github_rate_limit = {
 _lru_cache = None
 _kvstore = None
 
-# This one is set externally
-_official_master_sha = None
+_dummy_sha = 40 * "f"
+official_master_sha = _dummy_sha
 
 
 def init(kvstore):
-    global _github_rate_limit, _kvstore, _lru_cache, _module_initialized
+    global _github_rate_limit, _kvstore, _lru_cache, _api_initialized
     _kvstore = kvstore
     _lru_cache = LRUCache(LRU_CACHE_SIZE)
     try:
@@ -53,7 +54,8 @@ def init(kvstore):
     except Exception as e:
         print(f"Unable to restore github_api_cache from kvstore: {str(e)}", flush=True)
 
-    _module_initialized = True
+    _api_initialized = True
+    update_official_master_sha()
 
 
 def save():
@@ -66,7 +68,7 @@ def save():
 
 def call(url, *args, _method="GET", _ignore_rate_limit=False, **kwargs):
     global _github_rate_limit
-    if not _module_initialized:
+    if not _api_initialized:
         raise Exception("github_api.py was not properly initialized")
     if (
         not _ignore_rate_limit
@@ -74,7 +76,12 @@ def call(url, *args, _method="GET", _ignore_rate_limit=False, **kwargs):
         and _github_rate_limit["remaining"] < _github_rate_limit["used"]
     ):
         raise Exception(r"Rate limit more than 50% consumed.")
-    r = requests.request(_method, url, *args, **kwargs)
+
+    headers = kwargs.pop("headers", {})
+    if "GH_TOKEN" in os.environ:
+        headers["Authorization"] = "Bearer " + os.environ["GH_TOKEN"]
+
+    r = requests.request(_method, url, *args, headers=headers, **kwargs)
     resource = r.headers.get("X-RateLimit-Resource", "")
     if resource == "core":
         _github_rate_limit["remaining"] = int(
@@ -288,7 +295,7 @@ def _is_master(sha, official_master_sha, ignore_rate_limit=False):
 
 
 def is_master(sha, ignore_rate_limit=False):
-    return _is_master(sha, _official_master_sha, ignore_rate_limit=ignore_rate_limit)
+    return _is_master(sha, official_master_sha, ignore_rate_limit=ignore_rate_limit)
 
 
 def get_master_repo(
@@ -330,3 +337,21 @@ def compare_branches_url(
 
 def commit_url(user="official-stockfish", repo="Stockfish", branch="master"):
     return f"https://github.com/{user}/{repo}/commit/{branch}"
+
+
+def update_official_master_sha():
+    global official_master_sha
+    try:
+        response = get_commit(ignore_rate_limit=True)
+        official_master_sha = response["sha"]
+    except Exception as e:
+        print(
+            f"Unable to obtain the official stockfish master sha: {str(e)}",
+            flush=True,
+        )
+    if official_master_sha != _dummy_sha:
+        _kvstore["official_master_sha"] = official_master_sha
+    else:
+        official_master_sha = _kvstore.get("official_master_sha", _dummy_sha)
+        if official_master_sha == _dummy_sha:
+            print("Unable to initialize the official master sha", flush=True)
