@@ -1774,6 +1774,7 @@ def tests_view(request):
         "notes": notes,
         "warnings": warnings,
         "use_3dot_diff": use_3dot_diff,
+        "allow_github_api_calls": allow_github_api_calls(),
     }
 
 
