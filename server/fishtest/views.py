@@ -941,6 +941,7 @@ def validate_form(request):
         )
     else:
         if master_repo != official_repo:
+            data["master_repo"] = master_repo
             message = (
                 f"It seems that your repo {data['tests_repo']} has been forked from "
                 f"{master_repo} and not from {official_repo} "
@@ -1557,6 +1558,7 @@ def tests_view(request):
         "throughput",
         "username",
         "tests_repo",
+        "master_repo",
         "adjudication",
         "info",
     ):
@@ -1619,6 +1621,9 @@ def tests_view(request):
         user, repo = gh.parse_repo(tests_repo_)
         if name == "tests_repo":
             value = tests_repo_
+            url = value
+
+        if name == "master_repo":
             url = value
 
         if name == "new_tag":
@@ -1692,10 +1697,16 @@ def tests_view(request):
     book_exits = request.rundb.books.get(run["args"]["book"], {}).get("total", 100000)
     if book_exits < 100000:
         warnings.append(f"this test uses a small book with only {book_exits} exits")
+    if "master_repo" in run["args"]:  # if present then it is non-standard
+        warnings.append(
+            "the developer repository is not forked from official-stockfish/Stockfish"
+        )
 
     def allow_github_api_calls():
         # Avoid making pointless GitHub api calls on behalf of
         # crawlers
+        if "master_repo" in run["args"]:  # if present then it is non-standard
+            return False
         if request.authenticated_userid:
             return True
         now = datetime.now(UTC)

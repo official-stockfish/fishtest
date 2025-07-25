@@ -659,7 +659,7 @@ valid_aggregated_data = intersect(
 # about non-validation of runs created with the prior
 # schema.
 
-RUN_VERSION = 19
+RUN_VERSION = 20
 
 runs_schema = intersect(
     {
@@ -707,6 +707,7 @@ runs_schema = intersect(
                 "new_signature": str_int,
                 "username": username,
                 "tests_repo": github_repo,
+                "master_repo?": github_repo,  # present only when non-standard (rare)
                 "auto_purge": bool,
                 "throughput": unumber,
                 "itp": unumber,
