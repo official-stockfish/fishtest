@@ -543,6 +543,7 @@ class RunDb:
         spsa=None,
         username=None,
         tests_repo=None,
+        master_repo=None,
         auto_purge=False,
         throughput=100,
         priority=0,
@@ -579,6 +580,9 @@ class RunDb:
             "priority": priority,
             "adjudication": adjudication,
         }
+
+        if master_repo is not None:
+            run_args["master_repo"] = master_repo
 
         if sprt is not None:
             run_args["sprt"] = sprt
