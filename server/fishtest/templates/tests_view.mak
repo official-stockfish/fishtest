@@ -896,11 +896,16 @@
         } catch(e) {
           console.error(e);
         }
-        if(remainingApiCalls(response) === 0) {
-          text += "<br>Note: Apparently the <a href='/rate_limits'>GitHub API rate limit</a> was exceeded. \
-                  Try to add a <a href='https://github.com/settings/personal-access-tokens' \
-                  target='_blank'>GitHub personal access token</a> to your <a href='/user'>profile</a> \
-                  or else use 'View on GitHub'."
+        if(status == 401) {
+          text += `<br>Note: Apparently you are not allowed to use the GitHub API.
+                  This may be caused by an expired, revoked or otherwise invalid
+                  <a href='https://github.com/settings/personal-access-tokens'
+                  target='_blank'>GitHub personal access token</a> in your <a href='/user'>profile</a>.`
+        } else if(remainingApiCalls(response) === 0) {
+          text += `<br>Note: Apparently the <a href='/rate_limits'>GitHub API rate limit</a> was exceeded.
+                  Try to add a <a href='https://github.com/settings/personal-access-tokens'
+                  target='_blank'>GitHub personal access token</a> to your <a href='/user'>profile</a>
+                  or else use 'View on GitHub'.`
         }
       }
       showDiffError(diffError, text);
