@@ -83,7 +83,6 @@ class RunDb:
         self.connections_lock = threading.Lock()
 
         self.books = self.kvstore.get("books", {})
-        self.official_master_sha = self.kvstore.get("official_master_sha", 40 * "f")
         self.worker_runs = self.kvstore.get("worker_runs", {})
 
         self.task_duration = 1800  # 30 minutes
