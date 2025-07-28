@@ -2,6 +2,7 @@
 
 <%!
   import json
+  import fishtest.github_api as gh
   from fishtest.util import diff_url, tests_repo
 %>
 
@@ -842,7 +843,7 @@
 
     const diffNew  = "${run["args"]["resolved_new"][:10]}";
     const apiOfficialMaster = "https://api.github.com/repos/official-stockfish/Stockfish";
-    const baseOfficialMaster = ${json.dumps(request.rundb.official_master_sha) | n};
+    const baseOfficialMaster = ${json.dumps(gh.official_master_sha) | n};
 
     % if run["args"].get("spsa"):
       dots = 3;

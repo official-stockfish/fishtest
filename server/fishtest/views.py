@@ -1709,7 +1709,7 @@ def tests_view(request):
 
     anchor_url = gh.compare_branches_url(
         user1="official-stockfish",
-        branch1=request.rundb.official_master_sha,
+        branch1=gh.official_master_sha,
         user2=user,
         branch2=run["args"]["resolved_base"],
     )
@@ -1736,7 +1736,7 @@ def tests_view(request):
                     warnings.append("base is not an ancestor of new")
                 else:
                     merge_base_commit = gh.get_merge_base_commit(
-                        sha1=request.rundb.official_master_sha,
+                        sha1=gh.official_master_sha,
                         user2=user,
                         sha2=run["args"]["resolved_new"],
                         ignore_rate_limit=irl,
