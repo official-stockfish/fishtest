@@ -6,7 +6,9 @@ from urllib.parse import urlparse
 import requests
 from fishtest.lru_cache import LRUCache
 from fishtest.schemas import sha as sha_schema
-from vtjson import validate
+from fishtest.schemas import str_int, uint
+from vtjson import ValidationError, union, validate
+from vtjson import url as url_schema
 
 """
 We treat this module as a singleton.
@@ -38,9 +40,10 @@ _dummy_sha = 40 * "f"
 official_master_sha = _dummy_sha
 
 
-def init(kvstore):
-    global _github_rate_limit, _kvstore, _lru_cache, _api_initialized
+def init(kvstore, actiondb):
+    global _actiondb, _github_rate_limit, _kvstore, _lru_cache, _api_initialized
     _kvstore = kvstore
+    _actiondb = actiondb
     _lru_cache = LRUCache(LRU_CACHE_SIZE)
     try:
         if "github_api_cache" in _kvstore:
@@ -56,6 +59,11 @@ def init(kvstore):
 
     _api_initialized = True
     update_official_master_sha()
+
+
+def clear_api_cache():
+    global _lru_cache
+    _lru_cache = LRUCache(LRU_CACHE_SIZE)
 
 
 def save():
@@ -207,14 +215,30 @@ def compare_sha(
     validate(sha_schema, sha1)
     validate(sha_schema, sha2)
 
+    github_error = {"message": str, "documentation_url": url_schema, "status": str_int}
+    cache_schema = union(
+        {"merge_base_commit": {"sha": sha_schema}},
+        {
+            "__error__": True,
+            "http_error": str,
+            "status": uint,
+            "url": url_schema,
+            "github_error": github_error,
+            "timestamp": float,
+        },
+    )
+
     if user2 is None:
         user2 = user1
 
     # it's not necessary to include user1, user2 as shas
     # are globally unique
     inputs = ("compare_sha", sha1, sha2)
+    previous_value = None
     if inputs in _lru_cache:
-        return _lru_cache[inputs]
+        previous_value = _lru_cache[inputs]
+        if "__error__" not in previous_value:
+            return _lru_cache[inputs]
     url = (
         "https://api.github.com/repos/official-stockfish/"
         f"Stockfish/compare/{user1}:{sha1}...{user2}:{sha2}"
@@ -225,13 +249,48 @@ def compare_sha(
         timeout=TIMEOUT,
         _ignore_rate_limit=ignore_rate_limit,
     )
-    r.raise_for_status()
-    json = r.json()
-    json1 = {}
-    json1["merge_base_commit"] = {}
-    json1["merge_base_commit"]["sha"] = json["merge_base_commit"]["sha"]
-    _lru_cache[inputs] = json1
-    return json1
+    saved_http_exception = None
+    try:
+        r.raise_for_status()
+        json = {"merge_base_commit": {"sha": r.json()["merge_base_commit"]["sha"]}}
+        if previous_value is not None:
+            message = (
+                f"The previous attempt with url {previous_value['url']} failed with "
+                f"HTTP error {previous_value['http_error']} and GitHub error "
+                f"{previous_value['github_error']} but now {url} succeeded"
+            )
+            print(message, flush=True)
+            _actiondb.log_message(
+                username="fishtest.system",
+                message=message,
+            )
+    except requests.HTTPError as e:
+        json = {
+            "__error__": True,
+            "http_error": str(e),
+            "url": url,
+            "status": e.response.status_code,
+            "github_error": r.json(),
+            "timestamp": time.time(),
+        }
+        saved_http_exception = e
+    try:
+        validate(cache_schema, json)
+    except ValidationError as e:
+        message = (
+            f"Validation of cache entry for GitHub API call {url} failed: {str(e)}"
+        )
+        print(message, flush=True)
+        _actiondb.log_message(
+            username="fishtest.system",
+            message=message,
+        )
+
+    _lru_cache[inputs] = json
+    if saved_http_exception is None:
+        return json
+    else:
+        raise saved_http_exception
 
 
 def parse_repo(repo_url):
