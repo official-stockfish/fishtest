@@ -85,7 +85,7 @@ def main(global_config, **settings):
             # - uses the network;
             # - accesses the db;
             # - starts new threads.
-            gh.init(rundb.kvstore)
+            gh.init(rundb.kvstore, rundb.actiondb)
             rundb.update_aggregated_data()
             rundb.schedule_tasks()
 
