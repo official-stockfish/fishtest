@@ -1031,8 +1031,16 @@ def parse_fastchess_output(
         re.compile(r"Warning;.*Invalid value"),
         # Warning; Illegal move e2e4 played by ...
         re.compile(r"Warning;.*Illegal move"),
-        # Warning; Illegal pv move e2e4 pv; ...
-        re.compile(r"Warning;.*Illegal pv move"),
+        # Warning; Illegal PV move e2e4 pv; ...
+        re.compile(r"Warning;.*Illegal PV move"),
+        # Warning; Move does not match uci move format
+        re.compile(r"Warning;.*Move does not match uci move format"),
+        # Warning; PV continues after checkmate
+        re.compile(r"Warning;.*PV continues after checkmate"),
+        # Warning; PV continues after stalemate
+        re.compile(r"Warning;.*PV continues after stalemate"),
+        # Warning; PV continues after threefold repetition - move ...
+        # -> ignore for now, no error, but see https://github.com/official-stockfish/Stockfish/issues/6138
     )
 
     q = Queue()
