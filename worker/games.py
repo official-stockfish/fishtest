@@ -1536,10 +1536,16 @@ def run_games(
     if run_errors:
         raise RunException("\n".join(run_errors))
 
-    if base_nps < 208082 / (1 + 3 * math.tanh((worker_concurrency - 1) / 8)):
+    # This threshold is based on the observed ~70% slowdown of SF 16.1 vs SF 11 on
+    # old hardware (i7-3770K), ensuring that viable old machines are not excluded.
+    # The reference for time control scaling is 691680 nps, from modern hardware.
+    # See GitHub PR #1900 for the full analysis.
+    min_nps_required = 208082 / (1 + 3 * math.tanh((worker_concurrency - 1) / 8))
+    if base_nps < min_nps_required:
         message = (
-            f"This machine is too slow ({base_nps} nps / thread) "
-            f"to run fishtest effectively - sorry!"
+            f"This machine is too slow to run this task effectively - sorry!\n"
+            f"  - Your machine's speed: {base_nps:.0f} nps/thread\n"
+            f"  - Required minimum speed: {min_nps_required:.0f} nps/thread"
         )
         raise FatalException(message)
     # fishtest with Stockfish 11 had 1.6 Mnps as reference nps and
