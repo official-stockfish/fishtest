@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# current.py - list slow database queres currently running
+# current.py - list slow database queries currently running
 #
 # Run this script manually to list slow db queries. It also lists current indexes
 # on the runs collection and runs the 'uptime' command to indicate how busy the

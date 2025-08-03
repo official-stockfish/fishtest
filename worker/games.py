@@ -864,7 +864,7 @@ def setup_engine(
         elif compiler == "clang++":
             comp = "clang"
 
-        # skip temporary the profiled build for apple silicon, see
+        # skip temporarily the profiled build for apple silicon, see
         # https://stackoverflow.com/questions/71580631/how-can-i-get-code-coverage-with-clang-13-0-1-on-mac
         make_cmd = "build" if arch == "apple-silicon" else "profile-build"
         cmd = [
