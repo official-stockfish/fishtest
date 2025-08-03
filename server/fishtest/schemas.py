@@ -67,6 +67,11 @@ residual_color = set_name(union("green", "yellow", "red"), "residual_color")
 github_repo = regex(
     r"https:\/\/(www\.)?github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/?", "github_repo"
 )
+ascii = set_name(lambda x: x.isascii(), name="ascii")
+set_option = r"[^\s=]+=[^\s=]+"
+option_list = intersect(
+    str, ascii, regex(rf"(|({set_option} )*{set_option})", name="option_list")
+)
 
 uint = intersect(int, ge(0))
 suint = intersect(int, gt(0))
@@ -659,7 +664,7 @@ valid_aggregated_data = intersect(
 # about non-validation of runs created with the prior
 # schema.
 
-RUN_VERSION = 20
+RUN_VERSION = 21
 
 runs_schema = intersect(
     {
@@ -700,8 +705,8 @@ runs_schema = intersect(
                 "resolved_new": sha,
                 "msg_base": str,
                 "msg_new": str,
-                "base_options": str,
-                "new_options": str,
+                "base_options": option_list,
+                "new_options": option_list,
                 "info": str,
                 "base_signature": str_int,
                 "new_signature": str_int,
