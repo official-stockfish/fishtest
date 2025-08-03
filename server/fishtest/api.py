@@ -36,7 +36,7 @@ Proper configuration of `nginx` is crucial for this, and should be done
 according to the route/URL mapping defined in `__init__.py`.
 """
 
-WORKER_VERSION = 287
+WORKER_VERSION = 288
 
 
 @exception_view_config(HTTPException)
@@ -228,7 +228,7 @@ class WorkerApi(GenericApi):
         if "task_waiting" in result:
             return self.add_time(result)
 
-        # Strip the run of unneccesary information
+        # Strip the run of unnecessary information
         run = result["run"]
         task = run["tasks"][result["task_id"]]
         min_task = {"num_games": task["num_games"], "start": task["start"]}
@@ -323,7 +323,7 @@ class WorkerApi(GenericApi):
 
     @view_config(route_name="api_request_version")
     def request_version(self):
-        # By being mor lax here we can be more strict
+        # By being more lax here, we can be more strict
         # elsewhere since the worker will upgrade.
         self.validate_username_password()
         return self.add_time({"version": WORKER_VERSION})
