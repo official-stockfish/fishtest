@@ -8,7 +8,7 @@ from fishtest.stats import LLRcalc, sprt
 
 def Phi(q):
     """
-    Cumlative distribution function for the standard Gaussian law: quantile -> probability
+    Cumulative distribution function for the standard Gaussian law: quantile -> probability
     """
     return scipy.stats.norm.cdf(q)
 

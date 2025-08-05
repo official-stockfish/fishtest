@@ -7,7 +7,7 @@ import numpy as np
 def _pack_flips(flips):
     """
     This transforms a list of +-1 into a sequence of bytes
-    with the meaning of the indivual bits being 1:1, 0:-1.
+    with the meaning of the individual bits being 1:1, 0:-1.
     """
     return np.packbits(np.array(flips, dtype=np.int8) == 1).tobytes() if flips else b""
 
