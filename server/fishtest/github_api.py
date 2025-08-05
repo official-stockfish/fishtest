@@ -336,25 +336,33 @@ def is_ancestor(
     return merge_base_commit == sha1
 
 
-def _is_master(sha, official_master_sha, ignore_rate_limit=False):
+def is_master(sha, ignore_rate_limit=False):
     global _lru_cache
-    inputs = ("_is_master", sha, official_master_sha)
+    inputs = ("is_master", sha)
     if inputs in _lru_cache:
         return _lru_cache[inputs]
     try:
-        ret = is_ancestor(
+        merge_base_commit = get_merge_base_commit(
             sha1=sha, sha2=official_master_sha, ignore_rate_limit=ignore_rate_limit
         )
     except requests.HTTPError as e:
         if e.response.status_code == 404:
-            ret = False
-            # Positive answers are already cached in compare_sha
-            _lru_cache[inputs] = ret
-    return ret
+            # sha has been deleted so it can never become master
+            _lru_cache[inputs] = False
+            return False
 
+    if merge_base_commit == sha:
+        # once master, forever master
+        _lru_cache[inputs] = True
+        return True
 
-def is_master(sha, ignore_rate_limit=False):
-    return _is_master(sha, official_master_sha, ignore_rate_limit=ignore_rate_limit)
+    if merge_base_commit != official_master_sha:
+        # sha can never become master
+        _lru_cache[inputs] = False
+        return False
+
+    # there is a theoretical possibility that sha becomes master in the future
+    return False
 
 
 def get_master_repo(
