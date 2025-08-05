@@ -51,7 +51,7 @@ def uniform(pdf):
 
 def MLE_expected(pdfhat, s):
     """
-    Compute the maximum likelood estimate for
+    Compute the maximum likelihood estimate for
     a discrete distribution with expectation value s,
     given an observed (i.e. empirical) distribution pdfhat.
 
@@ -71,7 +71,7 @@ def MLE_expected(pdfhat, s):
 
 def MLE_t_value(pdfhat, ref, s):
     """
-    Compute the maximum likelood estimate for
+    Compute the maximum likelihood estimate for
     a discrete distribution with t-value ((mu-ref)/sigma),
     given an observed (i.e. empirical) distribution pdfhat.
 

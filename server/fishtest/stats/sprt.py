@@ -126,7 +126,7 @@ class sprt:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--alpha", help="probability of a false positve", type=float, default=0.05
+        "--alpha", help="probability of a false positive", type=float, default=0.05
     )
     parser.add_argument(
         "--beta", help="probability of a false negative", type=float, default=0.05
