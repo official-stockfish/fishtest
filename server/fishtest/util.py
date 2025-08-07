@@ -571,9 +571,9 @@ def count_games(stats):
 
 
 def tests_repo(run):
-    tests_repo = run["args"]["tests_repo"]
-    if tests_repo != "":
-        return tests_repo
+    tests_repo_ = run["args"]["tests_repo"]
+    if tests_repo_ != "":
+        return tests_repo_
     else:
         # very old tests didn't have a separate
         # tests repo
@@ -624,3 +624,74 @@ def reasonable_run_hashes(run):
     new_hash = get_hash(run["args"]["new_options"])
     tc_ratio = get_tc_ratio(run["args"]["tc"], run["args"]["threads"])
     return ok_hash(tc_ratio, base_hash) and ok_hash(tc_ratio, new_hash)
+
+
+def pull_state(request, run):
+    messages = []
+    official_stockfish_fork = True
+    info = format_results(run)["info"]
+    info = "\n".join(info) + "\n"
+    game_duration = estimate_game_duration(run["args"]["tc"])
+    duration = game_duration * run["args"]["threads"]
+
+    if (
+        "sprt" in run["args"]
+        and (run["args"]["sprt"]["elo0"] + run["args"]["sprt"]["elo1"]) < 0.0
+    ):
+        non_regression = True
+    else:
+        non_regression = False
+
+    tc_strings = [
+        ("10+0.1", "VSTC"),
+        ("60+0.6", "STC"),
+        ("180+1.8", "LTC"),
+        ("480+4.8", "VLTC"),
+        ("_", "VVLTC"),
+    ]
+    for tc, tc_string in tc_strings:
+        if tc == "_" or duration < estimate_game_duration(tc):
+            break
+
+    if "master_repo" in run["args"]:
+        official_stockfish_fork = False
+    if run["args"]["new_tc"] and run["args"]["tc"] != run["args"]["new_tc"]:
+        messages.append("This is a time odds tests")
+    if request.authenticated_userid:
+        try:
+            if gh.is_master(run["args"]["resolved_new"], ignore_rate_limit=True):
+                messages.append("New is part of master")
+            if not gh.is_master(
+                run["args"]["resolved_base"],
+                ignore_rate_limit=True,
+            ):
+                messages.append("Base is not an ancestor of master")
+            user, repo = gh.parse_repo(gh.normalize_repo(tests_repo(run)))
+            if not gh.is_ancestor(
+                user1=user,
+                sha1=run["args"]["resolved_base"],
+                sha2=run["args"]["resolved_new"],
+                ignore_rate_limit=True,
+            ):
+                messages.append("Base is not an ancestor of new")
+            merge_base_commit = gh.get_merge_base_commit(
+                sha1=gh.official_master_sha,
+                user2=user,
+                sha2=run["args"]["resolved_new"],
+                ignore_rate_limit=True,
+            )
+            if merge_base_commit != run["args"]["resolved_base"]:
+                messages.append(
+                    "Base is not the latest common ancestor of new and master"
+                )
+        except Exception as e:
+            messages.append(
+                f"There was an exception processing api calls for this run: {str(e)}"
+            )
+    return {
+        "messages": messages,
+        "info": info,
+        "non_regression": non_regression,
+        "official_stockfish_fork": official_stockfish_fork,
+        "tc_string": tc_string,
+    }

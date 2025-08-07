@@ -180,20 +180,21 @@
           <div class="modal-content">
             <div class="modal-body">
               <!-- Explanation about token purpose -->
-              <p>The purpose of this token is to authenticate your requests to GitHub's API,
-              which has a rate limit of 60 requests per hour for unauthenticated users. By using this token,
-              you can increase this limit to 5000 requests per hour. More information about GitHub's rate limits can be found
-              <a href="https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting" target="_blank">here</a>.
-              </p>
-
+              <p>The purpose of this token is to authenticate your requests to GitHub's API. You may want to do
+              this for the following reasons:
+              <ul>
+                <li> GitHub has a rate limit of 60 requests per hour for unauthenticated users. When using a valid token
+                this limit is raised to 5000 requests per hour. More information about GitHub's rate limits can be found
+                <a href="https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting" target="_blank">here</a>.
+                </li>
+                <li> Using a token with appropriate permissions, a user can make a pull request directly from the tests page.
+                </li>
+              </ul>
               <!-- Information about storage -->
-              <p>This token will be stored in your local storage, not in the server database.
-              This ensures that the token is only accessible to you, reducing the risk of unauthorized access.
+              <p>The token is stored in your local storage, not in the server database, reducing the risk of unauthorized access.
               </p>
-
               <!-- Permissions and access information -->
-              <p>Any token, classic or fine-grained, that allows read access to public repositories will work.
-              It is recommended however to generate a new token with minimum permissions.
+              <p>It is recommended to generate a new token with minimum permissions.
               This reduces the potential impact if the token is accidentally exposed or misused.
               </p>
               <!-- Verification that things are working as expected -->
@@ -201,14 +202,17 @@
               <!-- Instructions on how to obtain the token -->
               <h4>Instructions for generating a new token:</h4>
               <ol>
-                <li>Access the <a href="https://github.com/settings/personal-access-tokens" target="_blank">Github link</a> (login if required).</li>
-                <li>Press "Generate a new token".</li>
-                <li>Set a "Token name".</li>
-                <li>Set your preferred "Expiration" time.</li>
-                <li>Set "Repository access" to "Public Repositories (read-only)".</li>
+                <li>Go to <a href="https://github.com/settings/tokens" target="_blank">Github</a> (login if required).</li>
+                <li>Press "Generate a new token (classic)".</li>
+                <li>Fill in the  "Note" field.</li>
+                <li>Set your preferred expiration time.</li>
+                <li>If you want to do automated pull requests, select scope "repo". Otherwise leave everything unselected.</li>
                 <li>Press "Generate token" at the bottom of the page.</li>
                 <li>Copy the token and paste it into this input field. Remember that for security reasons GitHub will show the token only once.</li>
               </ol>
+              <p> Note: if you only want to increase the rate limit you may also use a
+              <a href=https://github.com/settings/personal-access-tokens>fine grained personal access token</a> with read-only access to public repositories.
+              </p>
             </div>
           </div>
         </div>
