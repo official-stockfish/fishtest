@@ -22,7 +22,6 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css"
       integrity="sha512-jnSuA4Ss2PkkikSOLtYs8BlYIeeIK1h99ty4YfvRPAlzr377vr3CXDb7sb7eEEBYjDtcYj+AjBH3FLv5uSJuXg=="
       crossorigin="anonymous"
-      crossorigin="anonymous"
       referrerpolicy="no-referrer"
     >
 
@@ -49,13 +48,14 @@
       src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"
       integrity="sha512-7Pi/otdlbbCR+LnW+F7PwFcSDJOuUJB3OxtEHbg4vSMvzvJjde4Po1v4BR9Gdc9aXNUNFVUY+SK51wWT8WF0Gg=="
       crossorigin="anonymous"
-      crossorigin="anonymous"
       referrerpolicy="no-referrer"
     ></script>
 
     <script src="${request.static_url('fishtest:static/js/application.js')}"></script>
 
     <script src="${request.static_url('fishtest:static/js/notifications.js')}"></script>
+
+    <script src="${request.static_url('fishtest:static/js/pull_request.js')}"></script>
 
     <%block name="head"/>
   </head>
@@ -145,15 +145,43 @@
                 </li>
                 <li class="nav-item col-6 col-lg-auto order-lg-0">
                   <a
-                    class="nav-link py-2 px-0 px-lg-2"
+                    class="nav-link py-2 px-0 px-lg-1"
                     href="/upload"
                     title="Upload Neural Network"
                   >
                     <i
-                      class="fa-solid fa-cloud-arrow-up d-inline me-2 mx-lg-1"
+                      class="fa-solid fa-cloud-arrow-up d-inline me-2 px-lg-1"
                     ></i>
                     <span class="d-inline d-lg-none">NN Upload</span>
                   </a>
+                </li>
+                <li class="nav-item col-6 col-lg-auto order-lg-0">
+                  <a
+                    class="nav-link py-2 px-0 px-lg-2"
+                    href="/pull_request"
+                    title="Prepare and submit a pull request"
+                  >
+                    <i
+                      class="fa-solid fa-flag-checkered d-inline me-2 mx-lg-1" id="pull-request-icon"
+                     ></i>
+                     <span class="d-inline d-lg-none">Pull Request</span>
+                  </a>
+                  <script>
+                    const pullRequestIcon = document.getElementById("pull-request-icon");
+                    function updatePullRequestIcon() {
+                      const PR = new PullRequest();
+                      PR.load();
+                      if(PR.getRunIds().length != 0){
+	                pullRequestIcon.style.color = "red";
+	              } else {
+	                pullRequestIcon.style.color = "";
+	              }
+                    }
+                    document.addEventListener("visibilitychange", async () => {
+                      updatePullRequestIcon();
+                    });
+                    updatePullRequestIcon();
+                  </script>
                 </li>
                 <li class="nav-item py-1 col-12 col-lg-auto order-lg-2">
                   <div class="vr d-none d-lg-flex h-100 mx-lg-2"></div>
@@ -500,26 +528,50 @@
                   });
                 </script>
               </div>
+
               <div
-                id="error_div"
+                id="alert_error_div"
                 class="alert alert-danger alert-dismissible alert-danger-non-transparent fixed-top"
                 style="display: none"
               >
-                <span id="error"></span>
+                <span id="alert_error"></span>
                 <button
                   type="button"
-                  id="error_button"
+                  id="alert_error_button"
                   class="btn-close"
                   aria-label="Close"
                 ></button>
                 <script>
-                  const error_button =
-                    document.getElementById("error_button");
-                  error_button.addEventListener("click", () => {
-                      error_button.parentElement.style.display="none";
+                  const alert_error_button =
+                    document.getElementById("alert_error_button");
+                  alert_error_button.addEventListener("click", () => {
+                      alert_error_button.parentElement.style.display="none";
                   });
                 </script>
               </div>
+
+              <div
+                id="alert_message_div"
+                class="alert alert-success alert-dismissible alert-success-non-transparent fixed-top"
+                style="display: none"
+              >
+                <span id="alert_message"></span>
+                <button
+                  type="button"
+                  id="alert_message_button"
+                  class="btn-close"
+                  aria-label="Close"
+                ></button>
+                <script>
+                  const alert_message_button =
+                    document.getElementById("alert_message_button");
+                  alert_message_button.addEventListener("click", () => {
+                      alert_message_button.parentElement.style.display="none";
+                  });
+                </script>
+              </div>
+
+
               % if request.session.peek_flash('error'):
                 <% flash = request.session.pop_flash('error') %>
                 % for message in flash:

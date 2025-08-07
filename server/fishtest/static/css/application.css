@@ -69,7 +69,7 @@
 }
 
 @media (max-width: 991.98px) {
-  header .nav-item > * {
+  header .nav-item > :not(script) {
     display: flex;
     align-items: center;
   }

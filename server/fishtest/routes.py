@@ -26,6 +26,7 @@ def setup_routes(config):
     config.add_route("nns", "/nns")
     config.add_route("sprt_calc", "/sprt_calc")
     config.add_route("rate_limits", "/rate_limits")
+    config.add_route("pull_request", "/pull_request")
     config.add_route("workers", "/workers/{worker_name}")
 
     config.add_route("tests", "/tests")
@@ -68,6 +69,7 @@ def setup_routes(config):
     config.add_route("api_get_elo", "/api/get_elo/{id}")
     config.add_route("api_actions", "/api/actions")
     config.add_route("api_calc_elo", "/api/calc_elo")
+    config.add_route("api_pull_state", "/api/pull_state/{id}")
 
 
 class FileHashCacheBuster(QueryStringCacheBuster):
