@@ -167,6 +167,45 @@ function log(message, trace) {
   }
 }
 
+async function processError(e) {
+  let text = e.message;
+  if (e instanceof HTTPError) {
+    const response = e.response;
+    const status = response.status;
+    try {
+      const json = await response.json();
+      if (json.message) {
+        text +=
+          "<br>GitHub error message: <em>" + escapeHtml(json.message) + "</em>";
+      }
+      if (json.errors) {
+        for (const error of json.errors) {
+          if (error.message) {
+            text +=
+              "<br>GitHub error message: <em>" +
+              escapeHtml(error.message) +
+              "</em>";
+          }
+        }
+      }
+    } catch (e) {
+      text += "<br> reply is not JSON";
+    }
+    if (status == 401) {
+      text += `<br>Note: Apparently you are not allowed to use the GitHub API.
+                   This may be caused by an expired, revoked or otherwise invalid
+                    <a href='https://github.com/settings/personal-access-tokens'
+                   target='_blank'>GitHub personal access token</a> in your <a href='/user'>profile</a>.`;
+    } else if (remainingApiCalls(response) === 0) {
+      text += `<br>Note: Apparently the <a href='/rate_limits'>GitHub API rate limit</a> was exceeded.
+                Try to add a <a href='https://github.com/settings/personal-access-tokens'
+                 target='_blank'>GitHub personal access token</a> to your <a href='/user'>profile</a>
+                 or else use 'View on GitHub'.`;
+    }
+  }
+  return text;
+}
+
 // Convert HTTP status code into status text
 function getStatusText(code) {
   return (
@@ -252,7 +291,7 @@ function raiseForStatus(response) {
   if (response.ok) {
     return;
   }
-  options = { response: response };
+  const options = { response: response };
   throw new HTTPError(
     `request ${response.url} failed with status code ${response.status} (${getStatusText(response.status)})`,
     options,
@@ -321,8 +360,14 @@ function handleApplicationLogout() {
 
 // Alerts errors to the UI
 function alertError(message) {
-  document.getElementById("error_div").style.display = "";
-  document.getElementById("error").textContent = message;
+  document.getElementById("alert_error_div").style.display = "";
+  document.getElementById("alert_error").innerHTML = message;
+}
+
+// Alerts errors to the UI
+function alertMessage(message) {
+  document.getElementById("alert_message_div").style.display = "";
+  document.getElementById("alert_message").innerHTML = message;
 }
 
 async function logout_() {
@@ -604,4 +649,19 @@ function remainingApiCalls(response) {
     }
   }
   return Number.MAX_VALUE;
+}
+
+// URL.parse is too recent to use
+
+function parseRepo(url) {
+  // First check that this is a github repo
+  const re =
+    /^https:\/\/(www\.)?github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/?$/;
+  if (!url.match(re)) {
+    throw new Error(`The url ${url} is not a GitHub repo`);
+  }
+  const chunks = url.split("/");
+  const user = chunks[3];
+  const repo = chunks[4];
+  return [user, repo];
 }

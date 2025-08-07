@@ -481,6 +481,11 @@ def rate_limits(request):
     return {}
 
 
+@view_config(route_name="pull_request", renderer="pull_request.mak")
+def pull_request(request):
+    return {}
+
+
 # Different LOCALES may have different quotation marks.
 # See https://op.europa.eu/en/web/eu-vocabularies/formex/physical-specifications/character-encoding/quotation-marks
 
