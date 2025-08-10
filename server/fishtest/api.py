@@ -431,6 +431,8 @@ class UserApi(GenericApi):
             self.handle_error(
                 f"The run {run_id} does not exist", exception=HTTPNotFound
             )
+        self.request.response.headers["access-control-allow-origin"] = "*"
+        self.request.response.headers["access-control-allow-headers"] = "content-type"
         return strip_run(run)
 
     @view_config(route_name="api_get_task")
