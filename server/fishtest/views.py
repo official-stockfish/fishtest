@@ -1565,6 +1565,12 @@ def tests_view(request):
         if name not in run["args"]:
             continue
 
+        display_name = name
+            if name == "new_signature":
+                display_name = "new_signature (bench)"
+            elif name == "base_signature":
+                display_name = "base_signature (bench)"
+
         value = run["args"][name]
         url = ""
 
@@ -1638,7 +1644,7 @@ def tests_view(request):
         if name == "spsa":
             run_args.append(("spsa", value, ""))
         else:
-            run_args.append((name, html.escape(str(value)), url))
+            run_args.append((display_name, html.escape(str(value)), url))
 
     active = 0
     cores = 0
