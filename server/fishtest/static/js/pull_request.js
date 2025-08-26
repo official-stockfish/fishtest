@@ -1,5 +1,10 @@
 "use strict";
 
+// set in templates/pull_request.mak
+
+let pullRequestDevUser;
+let pullRequestDevRepo;
+
 let pullRequestServerURL;
 try {
   pullRequestServerURL = `${window.location.protocol}//${window.location.hostname}`;
@@ -320,20 +325,6 @@ function normalizeText(text) {
   return out;
 }
 
-function removeBlankLines(text) {
-  // Removes blank lines.
-  // Strips lines
-  // Makes sure that string ends with \n
-  const lines = text.split("\n");
-  let out = "";
-  for (const line of lines) {
-    if (line.trim() != "") {
-      out += line.trim() + "\n";
-    }
-  }
-  return out;
-}
-
 function renderResults(run) {
   let results = "";
   const tcString = run.pullState.tc_string;
@@ -355,10 +346,10 @@ function renderResults(run) {
   results += info;
   const url = `${pullRequestServerURL}/tests/view/${run._id}`;
   results += `<a href="${url}">${url}</a>\n`;
-  const messages = run.pullState.messages;
-  for (const message of messages) {
-    results += `Note: ${message.toLowerCase()}\n`;
-  }
+  //  const messages = run.pullState.messages;
+  //  for (const message of messages) {
+  //    results += `Note: ${message.toLowerCase()}\n`;
+  //  }
   return results;
 }
 
@@ -379,7 +370,7 @@ function getRunIds(body) {
 class PullRequest {
   constructor() {
     this.saveName = "pull-request-v1";
-    this._title = "";
+    this.title = "";
     this._body = "";
     this.srcUser = "";
     this.srcRepo = "";
@@ -398,29 +389,12 @@ class PullRequest {
   set body(body) {
     if (body != this._body) {
       this.renderedBodyCache = null;
-    }
-    const saved_body = this._body;
-    this._body = normalizeText(body);
-    if (
-      JSON.stringify(getRunIds(body)) != JSON.stringify(getRunIds(saved_body))
-    ) {
-      const runIdsChangeEvent = new CustomEvent("runidschange", {
-        detail: { PR: this },
-      });
-      document.dispatchEvent(runIdsChangeEvent);
+      this._body = body;
     }
   }
 
   get body() {
     return this._body;
-  }
-
-  set title(title) {
-    this._title = title;
-  }
-
-  get title() {
-    return this._title;
   }
 
   save() {
@@ -439,9 +413,8 @@ class PullRequest {
   load() {
     const o = loadObject(this.saveName);
     if (o) {
-      this.title = o.title;
-      this.body = o.body;
-      // For backward compatibility
+      this.title = o.title ?? "";
+      this.body = o.body ?? "";
       this.srcUser = o.srcUser ?? "";
       this.srcRepo = o.srcRepo ?? "";
       this.srcBranch = o.srcBranch ?? "";
@@ -464,7 +437,8 @@ class PullRequest {
   }
 
   add(runId) {
-    this.body += `\n#${runId}\n`;
+    const body = this.body + `\n#${runId}\n`;
+    this.body = normalizeText(body);
   }
 
   remove(runId) {
@@ -478,7 +452,12 @@ class PullRequest {
       }
       body += line + "\n";
     }
-    this.body = body;
+    this.body = normalizeText(body);
+  }
+
+  async prLink(number) {
+    const userData = await this.getUserData();
+    return `https://github.com/${userData.dstUser}/${userData.dstRepo}/pull/${number}`;
   }
 
   async pullState(runId) {
@@ -558,14 +537,17 @@ class PullRequest {
     if (tests_repo) {
       [user, repo] = parseRepo(tests_repo);
     }
-    user = this.srcUser || user;
-    repo = this.srcRepo || repo;
+    user = this.srcUser || user || pullRequestDevUser;
+    repo = this.srcRepo || repo || pullRequestDevRepo;
     if (this.srcBranch) {
       nonUniqueBranch = false;
       branch = this.srcBranch;
     }
 
     const userBranchKey = `${user}:${branch}`;
+
+    const dstUser = this.dstUser || "official-stockfish";
+    const dstRepo = this.dstRepo || "Stockfish";
 
     return {
       bench: bench,
@@ -576,6 +558,8 @@ class PullRequest {
       nonUniqueBranch: nonUniqueBranch,
       noFunctionalChange: noFunctionalChange,
       runCount: runs.length,
+      dstUser: dstUser,
+      dstRepo: dstRepo,
     };
   }
 
@@ -698,14 +682,15 @@ class PullRequest {
   }
 
   async renderBody(token) {
+    const userData = this.getUserData();
     if (this.renderedBodyCache) {
       return this.renderedBodyCache;
     }
     const text = await this.renderBodyText(token);
     const markDown = await renderMarkDownAPI(
       text,
-      this.dstUser,
-      this.dstRepo,
+      userData.dstUser,
+      userData.dstRepo,
       token,
       this.timeout,
     );
@@ -725,8 +710,8 @@ class PullRequest {
     const options = {
       state: "all",
       timeout: this.timeout,
-      dst_user: this.dstUser,
-      dst_repo: this.dstRepo,
+      dst_user: userData.dstUser,
+      dst_repo: userData.dstRepo,
       src_user: userData.user,
       src_ref: userData.branch,
       token: token,
@@ -744,8 +729,8 @@ class PullRequest {
       src_user: userData.user,
       src_repo: userData.repo,
       src_ref: userData.branch,
-      dst_user: this.dstUser,
-      dst_repo: this.dstRepo,
+      dst_user: userData.dstUser,
+      dst_repo: userData.dstRepo,
       dst_ref: "master",
       token: token,
       timeout: this.timeout,

@@ -420,14 +420,17 @@ function loadObject(key) {
   return JSON.parse(value_);
 }
 
-function escapeHtml(unsafe) {
-  return unsafe
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;")
-    .replace(/\n/g, "<br>");
+// Escapes &, <, >, ", '  — idempotently
+function escapeHtml(input) {
+  return (
+    String(input)
+      // & → &amp; (but skip existing entities like &amp; &lt; &#123; &#x1F4A9;)
+      .replace(/&(?!#\d+;|#x[0-9A-Fa-f]+;|\w+;)/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;")
+  );
 }
 
 function handleSortingTables() {
@@ -686,4 +689,15 @@ function isFineGrainedPAT(token) {
 function isClassicPAT(token) {
   const pattern = /^ghp_[a-zA-Z0-9]{36}$/;
   return token.match(pattern) != null;
+}
+
+// Inserts a blank line after every paragraph.
+// Note that innerHTML removes tags but not text even if it is white
+// space.
+
+function htmlToText(html) {
+  const html2 = html.replace(/<\/p[\s]*>/g, "</p>\n\n");
+  const temp = document.createElement("div");
+  temp.innerHTML = html2;
+  return temp.innerText;
 }
