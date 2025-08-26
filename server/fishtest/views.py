@@ -483,9 +483,9 @@ def rate_limits(request):
 @view_config(route_name="pull_request", renderer="pull_request.mak")
 def pull_request(request):
     userid = ensure_logged_in(request)
-    user = request.userdb.get_user(userid)
+    user_ = request.userdb.get_user(userid)
     try:
-        tests_repo = user["tests_repo"]
+        tests_repo = user_["tests_repo"]
         user, repo = gh.parse_repo(tests_repo)
     except Exception as e:
         raise Exception(f"Unable to determine dev user or repo: {str(e)}")
