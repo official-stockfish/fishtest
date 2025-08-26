@@ -168,6 +168,9 @@ function log(message, trace) {
 }
 
 async function processError(e) {
+  if (!(e instanceof Error)) {
+    return String(e);
+  }
   let text = e.message;
   if (e instanceof HTTPError) {
     const response = e.response;
@@ -206,6 +209,8 @@ async function processError(e) {
                  target='_blank'>GitHub personal access token</a> to your <a href='/user'>profile</a>
                  or else use 'View on GitHub'.`;
     }
+  } else if (e.cause) {
+    text += `<br>This error is caused by:<br>${await processError(e.cause)}`;
   }
   return text;
 }
@@ -420,14 +425,17 @@ function loadObject(key) {
   return JSON.parse(value_);
 }
 
-function escapeHtml(unsafe) {
-  return unsafe
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;")
-    .replace(/\n/g, "<br>");
+// Escapes &, <, >, ", '  — idempotently
+function escapeHtml(input) {
+  return (
+    String(input)
+      // & → &amp; (but skip existing entities like &amp; &lt; &#123; &#x1F4A9;)
+      .replace(/&(?!#\d+;|#x[0-9A-Fa-f]+;|\w+;)/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;")
+  );
 }
 
 function handleSortingTables() {
@@ -686,4 +694,16 @@ function isFineGrainedPAT(token) {
 function isClassicPAT(token) {
   const pattern = /^ghp_[a-zA-Z0-9]{36}$/;
   return token.match(pattern) != null;
+}
+
+function htmlToText(html) {
+  const htmlViewer = document.createElement("div");
+  // FF can use overflow:hidden but Safari on iPad does not render it
+  htmlViewer.textCSS =
+    "height:0;position:fixed;top:0;font-size:xx-small;opacity:0;";
+  document.body.prepend(htmlViewer);
+  htmlViewer.innerHTML = html;
+  const text = htmlViewer.innerText;
+  htmlViewer.remove();
+  return text;
 }
