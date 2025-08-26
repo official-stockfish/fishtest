@@ -235,8 +235,10 @@
             renderedTitle.innerHTML= "";
          }
       }
+      pullRequestTab.innerHTML = '<i class="fa fa-spinner fa-spin" aria-hidden="true"></i> Pull request';
       await updateGUI();
       await updatePreview();
+      pullRequestTab.innerHTML = 'Pull request';
       actOnInput([titleElt, bodyElt, srcUser, srcRepo, srcBranch, dstUser, dstRepo], async () => {
         PR.title = titleElt.value;
         PR.body = bodyElt.value;
