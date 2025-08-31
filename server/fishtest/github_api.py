@@ -22,6 +22,8 @@ GITHUB_API_VERSION = 1
 TIMEOUT = 3
 INITIAL_RATELIMIT = 5000
 LRU_CACHE_SIZE = 6000
+NORMALIZE_REPO_CACHE_SIZE = 128
+NORMALIZE_REPO_CACHE_EXPIRY_SECONDS = 600
 
 _api_initialized = False
 
@@ -379,7 +381,15 @@ def get_master_repo(
             r = r["parent"]
 
 
+normalize_repo_cache = LRUCache(NORMALIZE_REPO_CACHE_SIZE)
+
+
 def normalize_repo(repo):
+    global normalize_repo_cache
+    if repo in normalize_repo_cache:
+        cache = normalize_repo_cache[repo]
+        if time.time() - cache[0] < NORMALIZE_REPO_CACHE_EXPIRY_SECONDS:
+            return cache[1]
     r = call(
         repo,
         _method="HEAD",
@@ -388,6 +398,7 @@ def normalize_repo(repo):
         _ignore_rate_limit=True,
     )
     r.raise_for_status()
+    normalize_repo_cache[repo] = (time.time(), r.url)
     return r.url
 
 
