@@ -1727,7 +1727,9 @@ def tests_view(request):
             return False
         return True
 
-    user, repo = gh.parse_repo(gh.normalize_repo(tests_repo(run)))
+    # Prefer the stored repo first (no network). Normalize and retry only if checks fail.
+    tests_repo_url = tests_repo(run)
+    user, repo = gh.parse_repo(tests_repo_url)
 
     anchor_url = gh.compare_branches_url(
         user1="official-stockfish",
@@ -1739,7 +1741,9 @@ def tests_view(request):
     use_3dot_diff = False
     if "spsa" not in run["args"] and allow_github_api_calls():
         irl = bool(request.authenticated_userid)
-        try:
+
+        def run_github_checks():
+            nonlocal use_3dot_diff
             if not gh.is_master(
                 run["args"]["resolved_new"],
             ):
@@ -1773,8 +1777,42 @@ def tests_view(request):
                 sha2=run["args"]["resolved_new"],
                 ignore_rate_limit=irl,
             )
-        except Exception as e:
-            print(f"Exception processing api calls for {run['_id']}: {str(e)}")
+
+        try:
+            # Fast path: use the stored repo owner/repo (no network normalization).
+            run_github_checks()
+        except requests.exceptions.HTTPError as e:
+            status = getattr(getattr(e, "response", None), "status_code", None)
+            # Retry once with normalization only when the repo is likely missing/renamed.
+            if status in (404, 410):
+                try:
+                    normalized = gh.normalize_repo(tests_repo_url)
+                    user, repo = gh.parse_repo(normalized)
+                    # Recompute the anchor based on the possibly updated owner.
+                    anchor_url = gh.compare_branches_url(
+                        user1="official-stockfish",
+                        branch1=gh.official_master_sha,
+                        user2=user,
+                        branch2=run["args"]["resolved_base"],
+                    )
+                    anchor = f'<a class="alert-link" href="{anchor_url}" target="_blank" rel="noopener">base diff</a>'
+                    if normalized != tests_repo_url:
+                        request.session.flash(
+                            "Detected repository rename; using normalized URL",
+                            "warning",
+                        )
+                    run_github_checks()
+                except requests.exceptions.RequestException as e2:
+                    # Final fallback: don't break the page, just log the issue.
+                    print(
+                        f"GitHub network/HTTP error while retrying after normalization for {run['_id']}: {e2}"
+                    )
+            else:
+                # Non-rename HTTP error (e.g., 403 rate limit, 5xx). Log and continue.
+                print(f"GitHub HTTP error during checks for {run['_id']}: {e}")
+        except requests.exceptions.RequestException as e:
+            # Network-level issue (timeout, DNS, connection). Don't retry with normalization.
+            print(f"GitHub network error during checks for {run['_id']}: {e}")
 
     return {
         "run": run,
