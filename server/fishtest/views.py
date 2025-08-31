@@ -1727,7 +1727,11 @@ def tests_view(request):
             return False
         return True
 
-    user, repo = gh.parse_repo(gh.normalize_repo(tests_repo(run)))
+    try:
+        user, repo = gh.parse_repo(gh.normalize_repo(tests_repo(run)))
+    except Exception as e:
+        user, repo = gh.parse_repo(tests_repo(run))
+        print(f"Unable to normalize_repo: {str(e)}")
 
     anchor_url = gh.compare_branches_url(
         user1="official-stockfish",
