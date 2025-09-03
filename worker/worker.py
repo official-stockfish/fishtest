@@ -73,7 +73,7 @@ MIN_CLANG_MINOR = 0
 
 FASTCHESS_SHA = "66cac47f06dc1a09d3d1865cdbf560a7814f82ea"
 
-WORKER_VERSION = 291
+WORKER_VERSION = 292
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -1411,11 +1411,6 @@ def fetch_and_handle_task(
                 upload_pgn_data(data, run["_id"], task_id, remote, payload)
         except Exception as e:
             print(f"\nException uploading PGN file:\n{e}", file=sys.stderr)
-
-    try:
-        pgn_file.unlink()
-    except Exception as e:
-        print(f"Exception deleting PGN file:\n{e}", file=sys.stderr)
 
     print("Task exited.")
     return success

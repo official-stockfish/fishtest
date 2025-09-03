@@ -165,7 +165,7 @@ def trim_files(testing_dir, source_dir=None):
         ("stockfish-*-old" + EXE_SUFFIX, 0, -1, True),
         ("stockfish-*" + EXE_SUFFIX, 50, 30, False),
         ("nn-*.nnue", 10, 30, False),
-        ("results-*.pgn", 0, -1, True),
+        ("results-*.pgn", 0, -1, False),
         ("*.epd", 4, 365, False),
         ("*.pgn", 4, 365, False),
     )
@@ -1503,13 +1503,9 @@ def run_games(
         establish_validated_net(remote, testing_dir, net, global_cache)
 
     # PGN files output setup.
-    pgn_name = "results-" + worker_info["unique_key"] + ".pgn"
+    pgn_name = f"results-{run['_id']}-{task_id}.pgn"
     pgn_file["name"] = testing_dir / pgn_name
     pgn_file["CRC"] = None
-    try:
-        pgn_file["name"].unlink()
-    except FileNotFoundError:
-        pass
 
     # Verify that the signatures are correct.
     run_errors = []
