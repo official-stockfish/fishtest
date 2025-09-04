@@ -29,7 +29,7 @@ try:
 except ImportError:
     from packages import requests
 
-IS_WINDOWS = "windows" in platform.system().lower()
+IS_WINDOWS = "windows" in platform.system().lower() or "mingw" in platform.system().lower()
 IS_MACOS = "darwin" in platform.system().lower()
 LOGFILE = "api.log"
 
