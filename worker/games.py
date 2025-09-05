@@ -165,21 +165,24 @@ def trim_files(testing_dir, source_dir=None):
         ("stockfish-*-old" + EXE_SUFFIX, 0, -1, True),
         ("stockfish-*" + EXE_SUFFIX, 50, 30, False),
         ("nn-*.nnue", 10, 30, False),
-        ("results-*.pgn", 0, -1, False),
+        ("results-*.pgn", 10, 30, False),
         ("*.epd", 4, 365, False),
         ("*.pgn", 4, 365, False),
     )
+    handled = set()
     num_deleted = 0
     for pattern, num_backups, expiration_days, only_update in backup_pattern:
         if only_update and source_dir is None:
             continue
         expiration_time = time.time() - 24 * 3600 * expiration_days
-        # the worker updates atime while validating files, so this works
+        # The worker updates atime while validating files, so this works
         # on modern Linux systems which update atime very lazily
         file_dir = testing_dir if source_dir is None else source_dir
-        for idx, path in enumerate(
-            sorted(file_dir.glob(pattern), key=os.path.getatime, reverse=True)
-        ):
+        # Collect matches once and filter out anything already handled
+        matches = sorted(file_dir.glob(pattern), key=os.path.getatime, reverse=True)
+        matches = [p for p in matches if p not in handled]
+        handled.update(matches)
+        for idx, path in enumerate(matches):
             try:
                 if idx >= num_backups:
                     path.unlink()
@@ -188,8 +191,7 @@ def trim_files(testing_dir, source_dir=None):
                     path.unlink()
                     num_deleted += 1
                 else:
-                    # str(...) is necessary for compatibility with
-                    # Python 3.6
+                    # str(...) is necessary for compatibility with Python 3.6
                     if source_dir is not None:
                         shutil.move(str(path), testing_dir)
             except Exception as e:
