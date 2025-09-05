@@ -165,7 +165,7 @@ def trim_files(testing_dir, source_dir=None):
         ("stockfish-*-old" + EXE_SUFFIX, 0, -1, True),
         ("stockfish-*" + EXE_SUFFIX, 50, 30, False),
         ("nn-*.nnue", 10, 30, False),
-        ("results-*.pgn", 0, -1, False),
+        ("results-*.pgn", 10, 30, False),
         ("*.epd", 4, 365, False),
         ("*.pgn", 4, 365, False),
     )
