@@ -3,7 +3,7 @@
 <%!
   import json
   import fishtest.github_api as gh
-  from fishtest.util import count_games, diff_url, tests_repo
+  from fishtest.util import diff_url, tests_repo
 %>
 
 <%namespace name="base" file="base.mak"/>
@@ -91,6 +91,7 @@
           >
             View on GitHub
           </a>
+
           <a
             href="javascript:"
             id="copy-diff"
@@ -108,63 +109,8 @@
             <i class="fa-solid fa-triangle-exclamation"></i>
               <span> master vs official</span>
             </a>
+
           <span class="text-success copied text-nowrap" style="display: none">Copied!</span>
-          % if request.authenticated_userid:
-            <button id="add-to-pull-request" class="btn btn-secondary btn-light-secondary border mb-2"></button>
-            <script>
-              const btnLabelAdd = "Add to pull request";
-              const btnLabelRemove = "Remove from pull request";
-              const runId = "${run['_id']}";
-              const addToPullRequestBtn = document.getElementById("add-to-pull-request");
-              function updateAddToPullRequestBtn () {
-                const master_repo = "${run['args'].get('master_repo',"")}";
-                if (master_repo != "") {
-                  addToPullRequestBtn.hidden = true;
-                  return
-                }
-                let finished = true;
-                % if not run["finished"]:
-                  finished = false;
-                % elif "sprt" in run["args"]:
-                  % if run["args"]["sprt"]["state"] == "":
-                    finished = false;
-                  % endif
-                % elif "spsa" not in run["args"] and count_games(run["results"]) < run["args"]["num_games"]:
-                  finished = false;
-                % endif
-                if (!finished) {
-                  addToPullRequestBtn.disabled = true;
-                }
-                const PR = new PullRequest();
-                PR.load();
-                if(!PR.contains(runId)) {
-                  addToPullRequestBtn.textContent = btnLabelAdd;
-                } else {
-                  addToPullRequestBtn.textContent = btnLabelRemove;
-                }
-              }
-              updateAddToPullRequestBtn();
-              addToPullRequestBtn.addEventListener("click", async () => {
-                const PR = new PullRequest();
-                PR.load();
-                if(addToPullRequestBtn.textContent === btnLabelAdd) {
-                  try {
-                    await PR.getRun(runId);
-                    PR.add(runId);
-                  } catch(e) {
-                    console.error(e);
-                    const text = await processError(e);
-                    alertError(text);
-                  }
-                } else {
-                  PR.remove(runId);
-                }
-                PR.save();
-                updateAddToPullRequestBtn();
-                updatePullRequestIcon();
-              });
-            </script>
-          %endif
         </h4>
         <pre id="diff-contents" style="display: none;"><code class="diff"></code></pre>
         <div id="diff-error" class="text-danger" hidden></div>
@@ -939,7 +885,30 @@
       fetchComments(diffApiUrl, options);
     } catch (e) {
       console.error(e);
-      const text = await processError(e);
+      text = e;
+      if(e instanceof HTTPError) {
+        const response = e.response;
+        const status = response.status;
+        try {
+          const json = await response.json();
+          if (json.message) {
+            text += "<br>GitHub error message: <em>" + escapeHtml(json.message) + "</em>";
+          }
+        } catch(e) {
+          console.error(e);
+        }
+        if(status == 401) {
+          text += `<br>Note: Apparently you are not allowed to use the GitHub API.
+                  This may be caused by an expired, revoked or otherwise invalid
+                  <a href='https://github.com/settings/personal-access-tokens'
+                  target='_blank'>GitHub personal access token</a> in your <a href='/user'>profile</a>.`
+        } else if(remainingApiCalls(response) === 0) {
+          text += `<br>Note: Apparently the <a href='/rate_limits'>GitHub API rate limit</a> was exceeded.
+                  Try to add a <a href='https://github.com/settings/personal-access-tokens'
+                  target='_blank'>GitHub personal access token</a> to your <a href='/user'>profile</a>
+                  or else use 'View on GitHub'.`
+        }
+      }
       showDiffError(diffError, text);
       toggleBtn.hidden = true;
       return;

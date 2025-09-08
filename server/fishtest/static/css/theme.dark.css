@@ -466,7 +466,3 @@ pre[class*="time-odds"] {
 .alert-danger.alert-danger-non-transparent {
   --bs-alert-bg: rgba(108, 20, 29, 1);
 }
-
-.nav-tabs {
-  --bs-nav-tabs-link-active-color: var(--color-dark-1);
-}

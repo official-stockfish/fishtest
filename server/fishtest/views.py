@@ -271,6 +271,7 @@ def workers(request):
 @view_config(route_name="nn_upload", renderer="nn_upload.mak", require_csrf=True)
 def upload(request):
     ensure_logged_in(request)
+
     if request.method != "POST":
         return {}
     try:
@@ -478,18 +479,6 @@ def sprt_calc(request):
 @view_config(route_name="rate_limits", renderer="rate_limits.mak")
 def rate_limits(request):
     return {}
-
-
-@view_config(route_name="pull_request", renderer="pull_request.mak")
-def pull_request(request):
-    userid = ensure_logged_in(request)
-    user = request.userdb.get_user(userid)
-    try:
-        tests_repo = user["tests_repo"]
-        user, repo = gh.parse_repo(tests_repo)
-    except Exception as e:
-        raise Exception(f"Unable to determine dev user or repo: {str(e)}")
-    return {"src_user": user, "src_repo": repo}
 
 
 # Different LOCALES may have different quotation marks.
