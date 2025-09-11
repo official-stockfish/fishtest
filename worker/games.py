@@ -808,6 +808,20 @@ def create_environment():
     return env, env_hash
 
 
+def engine_is_healthy(path: Path, timeout_s: float = 5.0):
+    try:
+        r = subprocess.run(
+            [str(path), "bench", "16", "1", "5", "default", "depth"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+            timeout=timeout_s,
+        )
+        return r.returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
 def setup_engine(
     testing_dir,
     remote,
@@ -824,9 +838,18 @@ def setup_engine(
     engine_path = (testing_dir / (engine_name + "-old")).with_suffix(EXE_SUFFIX)
     engine_path_native = (testing_dir / engine_name).with_suffix(EXE_SUFFIX)
     for path in (engine_path_native, engine_path):
-        if path.exists():
+        if not path.exists():
+            continue
+
+        if engine_is_healthy(path):
             update_atime(path)
             return path
+
+        print(f"Removing invalid engine {path}")
+        try:
+            path.unlink()
+        except Exception as e:
+            raise WorkerException(f"Failed to remove cached engine {path}:\n{e}")
 
     """Download and build sources in a temporary directory then move exe as engine_path"""
     worker_dir = testing_dir.parent
