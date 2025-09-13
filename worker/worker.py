@@ -73,7 +73,7 @@ MIN_CLANG_MINOR = 0
 
 FASTCHESS_SHA = "66cac47f06dc1a09d3d1865cdbf560a7814f82ea"
 
-WORKER_VERSION = 292
+WORKER_VERSION = 293
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -797,11 +797,11 @@ def setup_parameters(worker_dir):
 
     # Limit concurrency so that at least STC tests can run with the available memory
     # The memory needs per engine are:
-    # 16 for the TT Hash, 10 for the process, 138 for the net, and 16 per thread
-    # 60 is the need for fastchess
+    # 16 for the TT Hash, 12 for the process, 139 for the net, and 16 per thread
+    # 220 is the need for fastchess, 2 * 80 for the binaries, 64 for python
     # These numbers need to be up-to-date with the server values
-    STC_memory = 2 * (16 + 10 + 138 + 16)
-    fc_memory = 60
+    STC_memory = 2 * (16 + 12 + 139 + 16)
+    fc_memory = 220 + 2 * 80 + 64
     max_concurrency = int((options.max_memory - fc_memory) / STC_memory)
     if max_concurrency < 1:
         print(
