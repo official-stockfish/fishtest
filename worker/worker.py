@@ -73,7 +73,7 @@ MIN_CLANG_MINOR = 0
 
 FASTCHESS_SHA = "66cac47f06dc1a09d3d1865cdbf560a7814f82ea"
 
-WORKER_VERSION = 295
+WORKER_VERSION = 296
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -1024,7 +1024,9 @@ def gcc_version():
         print("No g++ or g++ is not executable.")
         return None
     if p.returncode != 0:
-        print(f"g++ version query failed with return code {p.returncode}.")
+        print(
+            f"g++ version query failed with return code {format_returncode(p.returncode)}."
+        )
         return None
 
     try:
@@ -1067,7 +1069,9 @@ def clang_version():
         print("No clang++ or clang++ is not executable.")
         return None
     if p.returncode != 0:
-        print(f"clang++ version query failed with return code {p.returncode}.")
+        print(
+            f"clang++ version query failed with return code {format_returncode(p.returncode)}."
+        )
         return None
     try:
         major = int(clang_major)
@@ -1129,7 +1133,7 @@ def verify_toolchain():
             p = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
             if p.returncode != 0:
                 print(
-                    f"'{cmd_str}' returned code: {p.returncode} and error: {p.stderr.decode().strip()}"
+                    f"'{cmd_str}' returned code: {format_returncode(p.returncode)} and error: {p.stderr.decode().strip()}"
                 )
                 missing_tools.append(name)
         except (OSError, subprocess.SubprocessError) as e:

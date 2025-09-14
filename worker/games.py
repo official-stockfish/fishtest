@@ -464,7 +464,7 @@ def run_single_bench(engine, hash_size, threads, depth, timeout=600):
                 message = f"Bench of {engine.name} timed out after {timeout} seconds."
                 raise RunException(message) from e
             if p.returncode != 0:
-                message = f"Bench run failed with exit code {p.returncode}."
+                message = f"Bench run failed with exit code {format_returncode(p.returncode)}."
                 raise RunException(message)
             for line in stderr_data.splitlines():
                 if "Total time (ms)" in line:
