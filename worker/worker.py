@@ -3,6 +3,7 @@ import base64
 import getpass
 import gzip
 import hashlib
+import importlib
 import io
 import json
 import multiprocessing
@@ -73,19 +74,23 @@ MIN_CLANG_MINOR = 0
 
 FASTCHESS_SHA = "47e686f604e6b6f1f872d6e8b2831b4a47d70dae"
 
-WORKER_VERSION = 297
+WORKER_VERSION = 298
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
 THREAD_JOIN_TIMEOUT = 15.0
 MAX_RETRY_TIME = 900.0  # 15 minutes
-try:
-    import google.colab
-except ImportError:
-    IS_COLAB = False
-else:
-    IS_COLAB = True
-    del google.colab
+
+# We do not import "google.colab" directly since it is not used
+# and there are subtleties involved in deleting it after import
+# (see #2395).
+# Note that checking for "google.colab" implies importing "google".
+# So we first check for the latter to avoid an ImportError.
+IS_COLAB = (
+    importlib.util.find_spec("google") is not None
+    and importlib.util.find_spec("google.colab") is not None
+)
+
 CONFIGFILE = "fishtest.cfg"
 
 LOGO = r"""
