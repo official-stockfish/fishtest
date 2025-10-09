@@ -28,9 +28,10 @@ from functools import partial
 from pathlib import Path
 
 try:
-    from expression import Expression_Parser
+    from simpleeval import simple_eval
 except ImportError:
-    from packages.expression import Expression_Parser
+    from packages.simpleeval import simple_eval
+
 try:
     import openlock
 except (ImportError, SyntaxError):
@@ -182,11 +183,11 @@ class _memory:
         self.__name__ = "memory"
 
     def __call__(self, x):
-        e = Expression_Parser(
-            variables={"MAX": self.MAX}, functions={"min": min, "max": max}
-        )
         try:
-            ret = round(max(min(e.parse(x), self.MAX), 0))
+            val = simple_eval(
+                x, names={"MAX": self.MAX}, functions={"min": min, "max": max}
+            )
+            ret = round(max(min(val, self.MAX), 0))
         except Exception:
             print("Unable to parse expression for max_memory.")
             raise ValueError(x)
@@ -200,11 +201,11 @@ class _concurrency:
         self.__name__ = "concurrency"
 
     def __call__(self, x):
-        e = Expression_Parser(
-            variables={"MAX": self.MAX}, functions={"min": min, "max": max}
-        )
         try:
-            ret = round(e.parse(x))
+            val = simple_eval(
+                x, names={"MAX": self.MAX}, functions={"min": min, "max": max}
+            )
+            ret = round(val)
         except Exception:
             print("Unable to parse expression for concurrency.")
             raise ValueError(x)
