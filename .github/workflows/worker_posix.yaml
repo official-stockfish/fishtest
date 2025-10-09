@@ -26,8 +26,6 @@ jobs:
             python-version: "3.12"
           - os: ubuntu-24.04
             python-version: "3.13"
-          - os: ubuntu-24.04
-            python-version: "3.14"
           - os: macos-15
             python-version: "3.8"
           - os: macos-15
@@ -40,8 +38,6 @@ jobs:
             python-version: "3.12"
           - os: macos-15
             python-version: "3.13"
-          - os: macos-15
-            python-version: "3.14"
           - os: macos-15-intel
             python-version: "3.8"
           - os: macos-15-intel
@@ -54,8 +50,6 @@ jobs:
             python-version: "3.12"
           - os: macos-15-intel
             python-version: "3.13"
-          - os: macos-15-intel
-            python-version: "3.14"
     defaults:
       run:
         working-directory: worker
