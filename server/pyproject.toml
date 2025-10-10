@@ -3,13 +3,13 @@ name = "fishtest-server"
 version = "0.1.0"
 description = "fishtest-server"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 classifiers = [
     "Development Status :: Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: Information Technology",
     "Intended Audience :: System Administrators",
-    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Operating System :: Linux",
     "Environment :: Web Environment",
     "Framework :: MongoDB",
@@ -27,10 +27,10 @@ classifiers = [
     "Topic :: Software Development :: Application Frameworks",
 ]
 dependencies = [
-    "awscli>=1.42.35",
+    "awscli>=1.42.49",
     "email-validator>=2.3.0",
     "numpy>=2.3.3",
-    "pymongo>=4.15.1",
+    "pymongo>=4.15.3",
     "pyramid>=2.0.2",
     "pyramid-debugtoolbar>=4.12.1",
     "pyramid-mako>=1.1.0",
