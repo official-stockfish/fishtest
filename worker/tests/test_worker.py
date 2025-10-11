@@ -53,7 +53,7 @@ class WorkerTest(unittest.TestCase):
 
     def test_worker_script_with_bad_args(self):
         self.assertFalse((self.worker_dir / "fishtest.cfg").exists())
-        p = subprocess.run(["python", "worker.py", "--no-validation"])
+        p = subprocess.run([sys.executable, "worker.py", "--no-validation"])
         self.assertEqual(p.returncode, 1)
 
     def test_setup_exception(self):
@@ -77,6 +77,32 @@ class WorkerTest(unittest.TestCase):
                 self.tempdir, list(worker.detect_compilers())[0], 4, ""
             )
         )
+
+    def test_memory_expression(self):
+        mem = worker._memory(MAX=1024)
+        expr, ret = mem("MAX/2")
+        self.assertEqual(expr, "MAX/2")
+        self.assertEqual(ret, 512)
+
+        # Clamped to [0, MAX]
+        _, ret2 = mem("-10")
+        self.assertEqual(ret2, 0)
+        _, ret3 = mem("MAX*2")
+        self.assertEqual(ret3, 1024)
+
+    def test_concurrency_expression(self):
+        conc = worker._concurrency(MAX=8)
+        expr, ret = conc("max(1,min(3,MAX-1))")
+        self.assertEqual(expr, "max(1,min(3,MAX-1))")
+        self.assertEqual(ret, 3)
+
+        # Invalid: <= 0
+        with self.assertRaises(ValueError):
+            conc("0")
+
+        # Invalid: over MAX without explicit MAX variable in expression
+        with self.assertRaises(ValueError):
+            conc("999")
 
 
 if __name__ == "__main__":

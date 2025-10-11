@@ -74,7 +74,7 @@ MIN_CLANG_MINOR = 0
 
 FASTCHESS_SHA = "47e686f604e6b6f1f872d6e8b2831b4a47d70dae"
 
-WORKER_VERSION = 299
+WORKER_VERSION = 300
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -182,10 +182,10 @@ class _memory:
         self.__name__ = "memory"
 
     def __call__(self, x):
-        e = Expression_Parser(
-            variables={"MAX": self.MAX}, functions={"min": min, "max": max}
-        )
         try:
+            e = Expression_Parser(
+                variables={"MAX": self.MAX}, functions={"min": min, "max": max}
+            )
             ret = round(max(min(e.parse(x), self.MAX), 0))
         except Exception:
             print("Unable to parse expression for max_memory.")
@@ -200,10 +200,10 @@ class _concurrency:
         self.__name__ = "concurrency"
 
     def __call__(self, x):
-        e = Expression_Parser(
-            variables={"MAX": self.MAX}, functions={"min": min, "max": max}
-        )
         try:
+            e = Expression_Parser(
+                variables={"MAX": self.MAX}, functions={"min": min, "max": max}
+            )
             ret = round(e.parse(x))
         except Exception:
             print("Unable to parse expression for concurrency.")
