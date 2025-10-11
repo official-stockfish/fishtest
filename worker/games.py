@@ -1614,7 +1614,7 @@ def run_games(
             pgnout = []
         else:
             games_to_play = games_remaining
-            pgnout = ["-pgnout", pgn_name]
+            pgnout = ["-pgnout", f"file={pgn_name}"]
 
         if "sprt" in run["args"]:
             batch_size = 2 * run["args"]["sprt"].get("batch_size", 1)
