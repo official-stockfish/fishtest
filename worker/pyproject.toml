@@ -5,7 +5,7 @@ description = "fishtest-worker"
 readme = "README.md"
 requires-python = ">=3.6"
 dependencies = [
-    "expression-parser>=0.0.5",
+    "expression-parser>=0.0.6",
     "openlock>=1.1.5",
     "requests>=2.25.1",
 ]

@@ -22,16 +22,16 @@ wheels = [
 
 [[package]]
 name = "certifi"
-version = "2025.8.3"
+version = "2025.10.5"
 source = { registry = "https://pypi.org/simple" }
 resolution-markers = [
     "python_full_version >= '3.9'",
     "python_full_version == '3.8.*'",
     "python_full_version == '3.7.*'",
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/dc/67/960ebe6bf230a96cda2e0abcf73af550ec4f090005363542f0765df162e0/certifi-2025.8.3.tar.gz", hash = "sha256:e564105f78ded564e3ae7c923924435e1daa7463faeab5bb932bc53ffae63407", size = 162386, upload-time = "2025-08-03T03:07:47.08Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4c/5b/b6ce21586237c77ce67d01dc5507039d444b630dd76611bbca2d8e5dcd91/certifi-2025.10.5.tar.gz", hash = "sha256:47c09d31ccf2acf0be3f701ea53595ee7e0b8fa08801c6624be771df09ae7b43", size = 164519, upload-time = "2025-10-05T04:12:15.808Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e5/48/1549795ba7742c948d2ad169c1c8cdbae65bc450d6cd753d124b17c8cd32/certifi-2025.8.3-py3-none-any.whl", hash = "sha256:f6c12493cfb1b06ba2ff328595af9350c65d6644968e5d3a2ffd78699af217a5", size = 161216, upload-time = "2025-08-03T03:07:45.777Z" },
+    { url = "https://files.pythonhosted.org/packages/e4/37/af0d2ef3967ac0d6113837b44a4f0bfe1328c2b9763bd5b1744520e5cfed/certifi-2025.10.5-py3-none-any.whl", hash = "sha256:0f212c2744a9bb6de0c56639a6f68afe01ecd92d91f14ae897c4fe7bbeeef0de", size = 163286, upload-time = "2025-10-05T04:12:14.03Z" },
 ]
 
 [[package]]
@@ -139,11 +139,11 @@ wheels = [
 
 [[package]]
 name = "expression-parser"
-version = "0.0.5"
+version = "0.0.6"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/44/fc/357eba12b9009f8b2702b5ed33bfdd40a25525a9210aae5c44eef6dfbdcb/expression-parser-0.0.5.tar.gz", hash = "sha256:3482056c561bdb1e397c750eff229b732ff369488d127761ccd2e8bd6ef51f9d", size = 6556, upload-time = "2018-01-29T12:50:39.362Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/49/c5/6013a06039617ba326999d5b7377e7bdf6893baecfb85f4f23f6de123070/expression_parser-0.0.6.tar.gz", hash = "sha256:1e3be22698999b680bca314443f4e78f66c79f231b732082f2fddd2a9829ba7c", size = 13150, upload-time = "2025-10-11T15:34:05.083Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d6/84/cc619dcc14e1cde59155d0746179808af716168f40ebcb8f4976a97f68a3/expression_parser-0.0.5-py2.py3-none-any.whl", hash = "sha256:71008539c018fef7c6b05b79bc5a3943b1dbd758600ef7958a36b55ee8c58520", size = 7720, upload-time = "2018-01-29T12:50:37.288Z" },
+    { url = "https://files.pythonhosted.org/packages/95/61/68de2ed03fa764537f6584df302ed543b85e514371fa92aa419699cc58f3/expression_parser-0.0.6-py2.py3-none-any.whl", hash = "sha256:66afa793d9632c9d7fbedcd60712de51d13976acf07f515d5735380e6bb6aa43", size = 11374, upload-time = "2025-10-11T15:34:03.802Z" },
 ]
 
 [[package]]
@@ -161,7 +161,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "expression-parser", specifier = ">=0.0.5" },
+    { name = "expression-parser", specifier = ">=0.0.6" },
     { name = "openlock", specifier = ">=1.1.5" },
     { name = "requests", specifier = ">=2.25.1" },
 ]
@@ -210,7 +210,7 @@ resolution-markers = [
     "python_full_version == '3.7.*'",
 ]
 dependencies = [
-    { name = "certifi", version = "2025.8.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.7.*'" },
+    { name = "certifi", version = "2025.10.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.7.*'" },
     { name = "charset-normalizer", version = "3.4.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.7.*'" },
     { name = "idna", marker = "python_full_version == '3.7.*'" },
     { name = "urllib3", version = "2.0.7", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.7.*'" },
@@ -228,7 +228,7 @@ resolution-markers = [
     "python_full_version == '3.8.*'",
 ]
 dependencies = [
-    { name = "certifi", version = "2025.8.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.8.*'" },
+    { name = "certifi", version = "2025.10.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.8.*'" },
     { name = "charset-normalizer", version = "3.4.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.8.*'" },
     { name = "idna", marker = "python_full_version == '3.8.*'" },
     { name = "urllib3", version = "2.2.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.8.*'" },
@@ -246,7 +246,7 @@ resolution-markers = [
     "python_full_version >= '3.9'",
 ]
 dependencies = [
-    { name = "certifi", version = "2025.8.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
+    { name = "certifi", version = "2025.10.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
     { name = "charset-normalizer", version = "3.4.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
     { name = "idna", marker = "python_full_version >= '3.9'" },
     { name = "urllib3", version = "2.5.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },

@@ -22,7 +22,9 @@ from __future__ import print_function
 import cmd
 import sys
 import traceback
+
 import expression
+
 
 class Expression_Interpreter(cmd.Cmd):
     """
@@ -32,14 +34,14 @@ class Expression_Interpreter(cmd.Cmd):
 
     def __init__(self):
         cmd.Cmd.__init__(self)
-        self.prompt = '>> '
+        self.prompt = ">> "
         self.parser = expression.Expression_Parser(assignment=True)
 
     def default(self, line):
         try:
             output = self.parser.parse(line)
             if output is not None:
-                self.stdout.write(str(output) + '\n')
+                self.stdout.write(str(output) + "\n")
 
             variables = self.parser.variables
             variables.update(self.parser.modified_variables)
@@ -52,13 +54,14 @@ class Expression_Interpreter(cmd.Cmd):
         Exit the interpreter.
         """
 
-        if line != '' and line != '()':
-            self.stdout.write(line + '\n')
+        if line != "" and line != "()":
+            self.stdout.write(line + "\n")
         self._quit()
 
     @staticmethod
     def _quit():
         sys.exit(1)
+
 
 def main():
     """
@@ -67,5 +70,6 @@ def main():
 
     Expression_Interpreter().cmdloop()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

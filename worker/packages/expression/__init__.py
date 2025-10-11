@@ -18,5 +18,5 @@ limitations under the License.
 
 from .parser import Expression_Parser
 
-__all__ = ['Expression_Parser']
-__version__ = '0.0.5'
+__all__ = ["Expression_Parser"]
+__version__ = "0.0.6"
