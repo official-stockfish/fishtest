@@ -1152,7 +1152,7 @@ After fixing the issues you can unblock the worker at
             need_base += (
                 2
                 * (max_threads // run["args"]["threads"])
-                * (12 + 139 + 16 * run["args"]["threads"])
+                * (12 + 139 + 31 * run["args"]["threads"])
             )
 
             if need_base + need_tt > max_memory:
