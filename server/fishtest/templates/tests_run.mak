@@ -700,6 +700,34 @@
 
   const isRun = ${'true' if is_rerun else 'false'};
 
+  function handleLtcSpsaThroughput() {
+    const ltcTestRadio = document.getElementById("ltc_test");
+    const spsaRadio = document.getElementById("stop-rule-spsa");
+    const throughputSelect = document.getElementById("throughput");
+    if (!ltcTestRadio || !spsaRadio || !throughputSelect) return;
+
+    // Non-LTC test selected: leave throughput as already set elsewhere.
+    if (!ltcTestRadio.checked) return;
+
+    if (spsaRadio.checked) {
+      // Case: LTC + SPSA → set recommended 50% throughput.
+      if ([...throughputSelect.options].some(o => o.value === "50")) {
+        throughputSelect.value = "50";
+      }
+      return;
+    }
+
+    // Case: LTC without SPSA → restore LTC default from its data-options.
+    try {
+      const ltcOptions = JSON.parse(ltcTestRadio.dataset.options || "{}");
+      if (ltcOptions.throughput) {
+        throughputSelect.value = ltcOptions.throughput;
+      }
+    } catch (_) {
+      // Malformed/missing data-options: keep current throughput.
+    }
+  }
+
   function updateSprtBounds(selectedBounds) {
     if (selectedBounds === "custom") {
       document
@@ -821,6 +849,7 @@
         }
 
         spsaWork();
+        handleLtcSpsaThroughput();
       }
     })
   );
@@ -839,6 +868,7 @@
   document.querySelectorAll("[name=stop-rule]").forEach((btn) =>
     btn.addEventListener("click", function () {
       stopRule = btn.value;
+      handleLtcSpsaThroughput();
 
       if (stopRule) {
         // Hide all elements that have the class "stop-rule"
