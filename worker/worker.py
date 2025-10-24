@@ -74,7 +74,7 @@ MIN_CLANG_MINOR = 0
 
 FASTCHESS_SHA = "47e686f604e6b6f1f872d6e8b2831b4a47d70dae"
 
-WORKER_VERSION = 301
+WORKER_VERSION = 302
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -1196,8 +1196,15 @@ def heartbeat(worker_info, password, remote, current_state):
                     print("(received)")
                     task_alive = req.get("task_alive", True)
                     if not task_alive:
+                        print(
+                            "The server told us that no more games are needed for the current task."
+                        )
                         current_state["task_id"] = None
                         current_state["run"] = None
+                else:
+                    # Error message has already been printed.
+                    current_state["task_id"] = None
+                    current_state["run"] = None
     else:
         print("Heartbeat stopped.")
 

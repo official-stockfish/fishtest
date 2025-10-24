@@ -1083,8 +1083,8 @@ def parse_fastchess_output(
     num_games_updated = 0
     while datetime.now(timezone.utc) < end_time:
         if current_state["task_id"] is None:
-            # This task is no longer necessary
-            print(finished_task_message)
+            # This task is no longer necessary.
+            # Error message has already been printed.
             return False
         try:
             line = q.get_nowait().strip()
