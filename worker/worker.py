@@ -584,10 +584,10 @@ def setup_parameters(worker_dir):
     try:
         if "linux" in system_type:
             cmd = "free -b"
-        elif "windows" in system_type:
+        elif "windows" in system_type or "mingw" in system_type: #MSYS2
             cmd = (
-                "powershell (Get-CimInstance Win32_OperatingSystem)"
-                ".TotalVisibleMemorySize*1024"
+                "powershell.exe -NoProfile -Command \"(Get-CimInstance Win32_OperatingSystem)"
+                ".TotalVisibleMemorySize * 1024\""
             )
         elif "darwin" in system_type:
             cmd = "sysctl hw.memsize"
