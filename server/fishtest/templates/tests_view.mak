@@ -9,8 +9,8 @@
 <%namespace name="base" file="base.mak"/>
 
 <script
-  src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/7.0.0/diff.js"
-  integrity="sha512-k/4LzqOGM8IQvjcYz1JBMgcEN+CHUkxlppZVu9cqd9Hne0XBN6tl3b3FSqaTmvvNaN/rk1hlM74GwlS9gTh7yA=="
+  src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/8.0.2/diff.min.js"
+  integrity="sha512-8pp155siHVmN5FYcqWNSFYn8Efr61/7mfg/F15auw8MCL3kvINbNT7gT8LldYPq3i/GkSADZd4IcUXPBoPP8gA=="
   crossorigin="anonymous"
   referrerpolicy="no-referrer"
 ></script>
