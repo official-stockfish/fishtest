@@ -72,9 +72,9 @@ MIN_GCC_MINOR = 3
 MIN_CLANG_MAJOR = 10
 MIN_CLANG_MINOR = 0
 
-FASTCHESS_SHA = "47e686f604e6b6f1f872d6e8b2831b4a47d70dae"
+FASTCHESS_SHA = "e892ad92a74c8a4fd7184b9e4867b97ae8952685"
 
-WORKER_VERSION = 302
+WORKER_VERSION = 303
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -381,7 +381,7 @@ def verify_fastchess(fastchess_path, fastchess_sha):
     print(f"Obtaining version info for {fastchess_path}...")
     try:
         with subprocess.Popen(
-            [fastchess_path, "--version"],
+            [fastchess_path, "-version"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             universal_newlines=True,
