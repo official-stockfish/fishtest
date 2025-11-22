@@ -126,6 +126,11 @@ header.navbar {
   border-color: var(--bg-dark-5);
 }
 
+.form-floating > .form-control ~ label,
+.form-floating > .form-select ~ label {
+  color: var(--color-dark-1);
+}
+
 .form-control[readonly] {
   background: var(--bg-dark-5);
 }
