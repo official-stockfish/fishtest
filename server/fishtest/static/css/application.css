@@ -287,7 +287,7 @@ legend {
   text-align: center;
   margin-right: 4px;
   font-weight: 900;
-  font-family: "Font Awesome 5 Free";
+  font-family: "Font Awesome 7 Free";
 }
 
 .mainnavbar [href="/tests"]::before {
@@ -350,7 +350,7 @@ legend {
 .mainnavbar [href="https://github.com/official-stockfish/nnue-pytorch"]::before
 {
   content: "\f3e2";
-  font-family: "Font Awesome 5 Brands";
+  font-family: "Font Awesome 7 Brands";
   font-weight: 400;
 }
 
@@ -365,7 +365,7 @@ legend {
 
 .mainnavbar .wiki::before {
   content: "\f266";
-  font-family: "Font Awesome 5 Brands";
+  font-family: "Font Awesome 7 Brands";
   font-weight: 400;
 }
 
@@ -383,7 +383,7 @@ legend {
 
 .mainnavbar .discord::before {
   content: "\f392";
-  font-family: "Font Awesome 5 Brands";
+  font-family: "Font Awesome 7 Brands";
   font-weight: 400;
 }
 
@@ -447,7 +447,7 @@ legend {
 
 #diff-num-comments + a::before {
   content: "\f09b";
-  font-family: "Font Awesome 5 Brands";
+  font-family: "Font Awesome 7 Brands";
   font-weight: 400;
 }
 
