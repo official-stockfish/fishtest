@@ -461,11 +461,11 @@ def setup_fastchess(worker_dir, compiler, concurrency, global_cache, tests=False
         os.chdir(build_dir)
 
         cmds = [
-            f"make -j{concurrency} CXX={compiler} GIT_SHA={FASTCHESS_SHA[:8]} GIT_DATE=01010101",
+            f"make -j{concurrency} build=release CXX={compiler} GIT_SHA={FASTCHESS_SHA[:8]} GIT_DATE=01010101",
         ]
         if tests:
             cmds[:0] = [
-                f"make -j{concurrency} tests CXX={compiler} GIT_SHA={FASTCHESS_SHA[:8]} GIT_DATE=01010101",
+                f"make -j{concurrency} tests build=release CXX={compiler} GIT_SHA={FASTCHESS_SHA[:8]} GIT_DATE=01010101",
                 str((build_dir / "fastchess-tests").with_suffix(EXE_SUFFIX)),
                 "make clean",
             ]
