@@ -1089,7 +1089,13 @@ def parse_fastchess_output(
         try:
             line = q.get_nowait().strip()
         except Empty:
-            if p.poll() is not None:
+            returncode = p.poll()
+            if returncode is not None:
+                if returncode != 0:
+                    raise WorkerException(
+                        "Fastchess failed with error code "
+                        f"{format_returncode(returncode)}"
+                    )
                 break
             time.sleep(0.1)
             continue
