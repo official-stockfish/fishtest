@@ -115,10 +115,14 @@ def str_signal(signal_):
 def format_returncode(r):
     if r < 0:
         return str_signal(-r)
-    elif r >= 256:
-        return str(hex(r))
-    else:
+    elif r == 0:
+        return "EXIT_SUCCESS"
+    elif r == 1:
+        return "EXIT_FAILURE"
+    elif r < 256:
         return str(r)
+    else:
+        return str(hex(r))
 
 
 def send_ctrl_c(pid):
