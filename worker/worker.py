@@ -1205,6 +1205,7 @@ def heartbeat(worker_info, password, remote, current_state):
                     # Error message has already been printed.
                     current_state["task_id"] = None
                     current_state["run"] = None
+                    current_state["last_error"] = req["error"]
     else:
         print("Heartbeat stopped.")
 
@@ -1309,6 +1310,7 @@ def fetch_and_handle_task(
     run, task_id = req["run"], req["task_id"]
     current_state["run"] = run
     current_state["task_id"] = task_id
+    current_state["last_error"] = None
 
     print(f"Working on task {task_id} from {remote}/tests/view/{run['_id']}.")
     if "sprt" in run["args"]:
@@ -1368,6 +1370,7 @@ def fetch_and_handle_task(
 
     current_state["task_id"] = None
     current_state["run"] = None
+    current_state["last_error"] = None
 
     payload = {
         "password": password,
@@ -1462,6 +1465,7 @@ def worker():
     current_state = {
         "run": None,  # the current run
         "task_id": None,  # the id of the current task
+        "last_error": None,  # set in the hearbeat loop
         "alive": True,  # controls the main and heartbeat loop
         "last_updated": datetime.now(
             timezone.utc

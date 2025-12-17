@@ -1089,7 +1089,12 @@ def parse_fastchess_output(
         if current_state["task_id"] is None:
             # This task is no longer necessary.
             # Error message has already been printed.
-            return False
+            error = current_state["last_error"]
+            if error is not None:
+                current_state["last_error"] = None
+                raise WorkerException(error)
+            else:
+                return False
         try:
             line = q.get_nowait().strip()
         except Empty:
