@@ -1369,11 +1369,18 @@ def fetch_and_handle_task(
     current_state["task_id"] = None
     current_state["run"] = None
 
+    def censor(s):
+        ipv4 = re.compile(r"(?:[0-9]{1,3}\.){3}[0-9]{1,3}")
+        ipv6 = re.compile(r"(?:[A-F0-9]{1,4}:){7}[A-F0-9]{1,4}")
+        s = re.sub(ipv6, "?.?.?.?.?.?.?.?", s)
+        s = re.sub(ipv4, "?.?.?.?", s)
+        return s
+
     payload = {
         "password": password,
         "run_id": str(run["_id"]),
         "task_id": task_id,
-        "message": server_message,
+        "message": censor(server_message),
         "worker_info": worker_info,
     }
 
