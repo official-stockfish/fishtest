@@ -131,7 +131,7 @@ class WorkerApi(GenericApi):
                 self.handle_error("Invalid run_id: {}".format(run_id))
             self.__run = run
 
-        # if a task_id is present then the unique_key, username and remote_addr
+        # if a task_id is present then the unique_key and username
         # should be correct
 
         if "task_id" in self.request_body:
@@ -143,11 +143,8 @@ class WorkerApi(GenericApi):
                 )
 
             task = run["tasks"][task_id]
-            for key in ("unique_key", "username", "remote_addr"):
-                if key == "remote_addr":
-                    value_request = self.request.remote_addr
-                else:
-                    value_request = self.request_body["worker_info"][key]
+            for key in ("unique_key", "username"):
+                value_request = self.request_body["worker_info"][key]
                 value_task = task["worker_info"][key]
 
                 if value_request != value_task:
@@ -193,7 +190,10 @@ class WorkerApi(GenericApi):
 
     def worker_info(self):
         worker_info = self.request_body["worker_info"]
-        worker_info["remote_addr"] = self.request.remote_addr
+        if self.__task is None:
+            worker_info["remote_addr"] = self.request.remote_addr
+        else:
+            worker_info["remote_addr"] = self.__task["worker_info"]["remote_addr"]
         worker_info["country_code"] = self.get_country_code()
         return worker_info
 

@@ -367,7 +367,13 @@ class RunDb:
                         if self.connections_counter[remote_addr] == 0:
                             del self.connections_counter[remote_addr]
                     except Exception as e:
-                        print(f"Error while deleting connection: {str(e)}", flush=True)
+                        message = f"Error while deleting connection: {str(e)}"
+                        print(message, flush=True)
+                        self.actiondb.log_message(
+                            username="fishtest.system",
+                            message=message,
+                        )
+
         self.buffer(run, priority=Prio.MEDIUM)
 
     def set_bad_task(self, task_id, run, residual=None, residual_color=None):
