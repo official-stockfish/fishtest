@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 import fishtest.github_api as gh
 from fishtest.schemas import api_access_schema, api_schema, gzip_data
 from fishtest.stats.stat_util import SPRT_elo, get_elo
-from fishtest.util import pull_state, strip_run, worker_name
+from fishtest.util import strip_run, worker_name
 from pyramid.httpexceptions import (
     HTTPBadRequest,
     HTTPException,
@@ -652,17 +652,6 @@ class UserApi(GenericApi):
         ).rstrip("/")
 
         return HTTPFound(f"{nn_base_url}/nn/{nn_id}")
-
-    @view_config(route_name="api_pull_state")
-    def pull_state_(self):
-        run_id = self.request.matchdict["id"]
-        run = self.request.rundb.get_run(run_id)
-        if run is None:
-            self.handle_error(
-                f"The run {run_id} does not exist", exception=HTTPNotFound
-            )
-        pull_state_ = pull_state(self.request, run)
-        return self.add_time(pull_state_)
 
 
 class InternalApi(GenericApi):
