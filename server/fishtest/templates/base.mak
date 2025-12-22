@@ -171,13 +171,13 @@
                     function updatePullRequestIcon() {
                       const PR = new PullRequest();
                       PR.load();
-                      if(PR.body.trim() != ""){
+                      if(PR.getRunIds().length != 0){
 	                pullRequestIcon.style.color = "red";
 	              } else {
 	                pullRequestIcon.style.color = "";
 	              }
                     }
-                    document.addEventListener("visibilitychange", () => {
+                    document.addEventListener("visibilitychange", async () => {
                       updatePullRequestIcon();
                     });
                     updatePullRequestIcon();

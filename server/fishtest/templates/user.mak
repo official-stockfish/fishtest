@@ -184,10 +184,10 @@
               this for the following reasons:
               <ul>
                 <li> GitHub has a rate limit of 60 requests per hour for unauthenticated users. When using a valid token
-                this limit is raised to 5000. More information about GitHub's rate limits can be found
+                this limit is raised to 5000 requests per hour. More information about GitHub's rate limits can be found
                 <a href="https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting" target="_blank">here</a>.
                 </li>
-                <li> Using a token with appropriate permissions (see below), a user can create pull requests directly from the test pages.
+                <li> Using a token with appropriate permissions, a user can make a pull request directly from the tests page.
                 </li>
               </ul>
               <!-- Information about storage -->
@@ -206,7 +206,7 @@
                 <li>Press "Generate a new token (classic)".</li>
                 <li>Fill in the  "Note" field.</li>
                 <li>Set your preferred expiration time.</li>
-                <li>If you want to do automated pull requests, select scopes "repo" and "user". Otherwise leave everything unselected.</li>
+                <li>If you want to do automated pull requests, select scope "repo". Otherwise leave everything unselected.</li>
                 <li>Press "Generate token" at the bottom of the page.</li>
                 <li>Copy the token and paste it into this input field. Remember that for security reasons GitHub will show the token only once.</li>
               </ol>
