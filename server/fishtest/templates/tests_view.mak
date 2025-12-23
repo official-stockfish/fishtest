@@ -364,6 +364,9 @@
               class="form-control"
               name="priority"
               id="modify-priority"
+            % if not approver:
+              max="0"
+            % endif
               value="${run['args']['priority']}"
             >
           </div>
