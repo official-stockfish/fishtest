@@ -158,6 +158,10 @@ def login(request):
     request_method=("GET", "POST"),
 )
 def forgot_password(request):
+    userid = request.authenticated_userid
+    if userid:
+        return home(request)
+
     if request.method == "POST":
         email = request.POST.get("email", "").strip()
         email_is_valid, validated_email = email_valid(email)

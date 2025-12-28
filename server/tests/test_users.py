@@ -167,10 +167,10 @@ class ForgotResetPasswordTest(unittest.TestCase):
         self.assertIn("password_reset", user)
         self.assertIn("token", user["password_reset"])
         self.assertIn("expires_at", user["password_reset"])
-        self.assertTrue(user["password_reset"]["expires_at"] > datetime.now(UTC))
-        self.assertTrue(
-            "If that email exists, a reset link has been sent."
-            in request.session.pop_flash("info")
+        self.assertGreater(user["password_reset"]["expires_at"], datetime.now(UTC))
+        self.assertIn(
+            "If that email exists, a reset link has been sent.",
+            request.session.pop_flash("info")[0],
         )
 
     def test_forgot_password_invalid_email(self):
@@ -183,9 +183,7 @@ class ForgotResetPasswordTest(unittest.TestCase):
         )
         forgot_password(request)
         self.assertEqual(len(email_sender.sent), 0)
-        self.assertTrue(
-            "Error! Invalid email:" in request.session.pop_flash("error")[0]
-        )
+        self.assertIn("Error! Invalid email:", request.session.pop_flash("error")[0])
 
     def test_forgot_password_email_send_error(self):
         email_sender = _DummyEmailSender(should_fail=True)
@@ -198,13 +196,13 @@ class ForgotResetPasswordTest(unittest.TestCase):
         forgot_password(request)
         user = self.rundb.userdb.find_by_email(self.test_user["email"])
         self.assertIn("password_reset", user)
-        self.assertTrue(
-            "If that email exists, a reset link has been sent."
-            in request.session.pop_flash("info")
+        self.assertIn(
+            "If that email exists, a reset link has been sent.",
+            request.session.pop_flash("info")[0],
         )
 
     def test_reset_password_expired_token(self):
-        token = secrets.token_urlsafe(16)
+        token = secrets.token_urlsafe(32)
         user = self.rundb.userdb.find_by_email(self.test_user["email"])
         expires_at = datetime.now(UTC) - timedelta(minutes=1)
         self.rundb.userdb.set_password_reset(user, token, expires_at)
@@ -217,12 +215,10 @@ class ForgotResetPasswordTest(unittest.TestCase):
         self.assertEqual(response.location, request.route_url("forgot_password"))
         user = self.rundb.userdb.find_by_email(self.test_user["email"])
         self.assertNotIn("password_reset", user)
-        self.assertTrue(
-            "Reset link has expired." in request.session.pop_flash("error")[0]
-        )
+        self.assertIn("Reset link has expired.", request.session.pop_flash("error")[0])
 
     def test_reset_password_token_invalid_after_use(self):
-        token = secrets.token_urlsafe(16)
+        token = secrets.token_urlsafe(32)
         user = self.rundb.userdb.find_by_email(self.test_user["email"])
         expires_at = datetime.now(UTC) + timedelta(hours=1)
         self.rundb.userdb.set_password_reset(user, token, expires_at)
@@ -246,13 +242,13 @@ class ForgotResetPasswordTest(unittest.TestCase):
         )
         response = reset_password(request)
         self.assertEqual(response.location, request.route_url("login"))
-        self.assertTrue(
-            "Invalid reset link. It may have been replaced by a newer reset request."
-            in request.session.pop_flash("error")[0]
+        self.assertIn(
+            "Invalid reset link. It may have been replaced by a newer reset request.",
+            request.session.pop_flash("error")[0],
         )
 
     def test_reset_password_weak_password(self):
-        token = "weak-token"
+        token = secrets.token_urlsafe(32)
         user = self.rundb.userdb.find_by_email(self.test_user["email"])
         expires_at = datetime.now(UTC) + timedelta(hours=1)
         self.rundb.userdb.set_password_reset(user, token, expires_at)
@@ -266,9 +262,7 @@ class ForgotResetPasswordTest(unittest.TestCase):
         self.assertEqual(response, {"token": token})
         user = self.rundb.userdb.find_by_email(self.test_user["email"])
         self.assertIn("password_reset", user)
-        self.assertTrue(
-            "Error! Weak password:" in request.session.pop_flash("error")[0]
-        )
+        self.assertIn("Error! Weak password:", request.session.pop_flash("error")[0])
 
 
 if __name__ == "__main__":
