@@ -185,12 +185,7 @@ def forgot_password(request):
                     body,
                 )
             except Exception as e:
-                print("failed to send email")
-                print(e)
-                request.session.flash(
-                    "Unable to send reset email. Please try again later.", "error"
-                )
-                return {}
+                print(f"failed to send password reset email to {validated_email}: {e}")
 
         request.session.flash(
             "If that email exists, a reset link has been sent.", "info"
