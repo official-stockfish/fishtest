@@ -212,7 +212,6 @@ def forgot_password(request):
             )
             try:
                 request.email_sender.send(
-                    user["username"],
                     user["email"],
                     "Fishtest password reset",
                     body,

@@ -45,7 +45,6 @@ class EmailSender:
     # ideally only allow a limited number of emails per user per time period
     def send(
         self,
-        _username,
         to_email,
         subject,
         text,
