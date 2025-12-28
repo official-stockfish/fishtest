@@ -22,6 +22,18 @@ class EmailSender:
         self.from_email = from_email or os.getenv("FISHTEST_RESEND_FROM_EMAIL")
         self.from_name = from_name or os.getenv("FISHTEST_RESEND_FROM_NAME", "Fishtest")
         self.session = session or requests.Session()
+        missing_settings = []
+        if not self.api_key:
+            missing_settings.append("FISHTEST_RESEND_API_KEY")
+        if not self.from_email:
+            missing_settings.append("FISHTEST_RESEND_FROM_EMAIL")
+        if missing_settings:
+            print(
+                "Email sending is not configured; missing {}.".format(
+                    ", ".join(missing_settings)
+                ),
+                flush=True,
+            )
 
     def _from_field(self):
         if not self.from_email:
