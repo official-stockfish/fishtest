@@ -42,9 +42,10 @@ class EmailSender:
             return f"{self.from_name} <{self.from_email}>"
         return self.from_email
 
+    # ideally only allow a limited number of emails per user per time period
     def send(
         self,
-        username,
+        _username,
         to_email,
         subject,
         text,
