@@ -1,6 +1,7 @@
 import secrets
 import unittest
 from datetime import UTC, datetime, timedelta
+from unittest.mock import patch
 
 import util
 from fishtest.views import forgot_password, login, reset_password, signup
@@ -185,6 +186,25 @@ class ForgotResetPasswordTest(unittest.TestCase):
         self.assertEqual(len(email_sender.sent), 0)
         self.assertIn("Error! Invalid email:", request.session.pop_flash("error")[0])
 
+    def test_forgot_password_nonexistent_email(self):
+        email_sender = _DummyEmailSender()
+        request = testing.DummyRequest(
+            userdb=self.rundb.userdb,
+            email_sender=email_sender,
+            method="POST",
+            params={"email": "missing-user@example.net"},
+        )
+        with patch(
+            "fishtest.views.email_valid",
+            return_value=(True, "missing-user@example.net"),
+        ):
+            forgot_password(request)
+        self.assertEqual(len(email_sender.sent), 0)
+        self.assertIn(
+            "If that email exists, a reset link has been sent.",
+            request.session.pop_flash("info")[0],
+        )
+
     def test_forgot_password_email_send_error(self):
         email_sender = _DummyEmailSender(should_fail=True)
         request = testing.DummyRequest(
@@ -216,6 +236,20 @@ class ForgotResetPasswordTest(unittest.TestCase):
         user = self.rundb.userdb.find_by_email(self.test_user["email"])
         self.assertNotIn("password_reset", user)
         self.assertIn("Reset link has expired.", request.session.pop_flash("error")[0])
+
+    def test_reset_password_invalid_token(self):
+        token = secrets.token_urlsafe(32)
+        request = testing.DummyRequest(
+            userdb=self.rundb.userdb,
+            method="GET",
+            matchdict={"token": token},
+        )
+        response = reset_password(request)
+        self.assertEqual(response.location, request.route_url("login"))
+        self.assertIn(
+            "Invalid reset link. It may have been replaced by a newer reset request.",
+            request.session.pop_flash("error")[0],
+        )
 
     def test_reset_password_token_invalid_after_use(self):
         token = secrets.token_urlsafe(32)
@@ -263,6 +297,26 @@ class ForgotResetPasswordTest(unittest.TestCase):
         user = self.rundb.userdb.find_by_email(self.test_user["email"])
         self.assertIn("password_reset", user)
         self.assertIn("Error! Weak password:", request.session.pop_flash("error")[0])
+
+    def test_reset_password_mismatch(self):
+        token = secrets.token_urlsafe(32)
+        user = self.rundb.userdb.find_by_email(self.test_user["email"])
+        expires_at = datetime.now(UTC) + timedelta(hours=1)
+        self.rundb.userdb.set_password_reset(user, token, expires_at)
+        request = testing.DummyRequest(
+            userdb=self.rundb.userdb,
+            method="POST",
+            matchdict={"token": token},
+            params={"password": "MismatchPassword123!", "password2": "Different123!"},
+        )
+        response = reset_password(request)
+        self.assertEqual(response, {"token": token})
+        user = self.rundb.userdb.find_by_email(self.test_user["email"])
+        self.assertNotEqual(user["password"], "MismatchPassword123!")
+        self.assertIn(
+            "Error! Matching verify password required",
+            request.session.pop_flash("error")[0],
+        )
 
 
 if __name__ == "__main__":
