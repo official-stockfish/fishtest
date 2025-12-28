@@ -395,7 +395,7 @@ def fetch_validated_net(remote, testing_dir, net, global_cache):
 
     if content is None:
         url = f"{remote}/api/nn/{net}"
-        print(f"Downloading {net} {url}...")
+        print(f"Downloading {net}...")
         content = requests_get(url, allow_redirects=True, timeout=HTTP_TIMEOUT).content
         if not is_valid_net(content, net):
             return False
