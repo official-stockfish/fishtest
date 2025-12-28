@@ -175,7 +175,11 @@ def forgot_password(request):
             body = (
                 "We received a request to reset your Fishtest password.\n\n"
                 f"Reset link: {reset_url}\n\n"
-                "If you did not request a reset, you can ignore this email."
+                "This link will expire in 1 hour.\n"
+                "For your security, do not share this link with anyone, as it can "
+                "be used to change your password.\n\n"
+                "If you did not request a password reset, you can ignore this "
+                "email or contact the site administrators for assistance."
             )
             try:
                 request.email_sender.send(
