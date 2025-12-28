@@ -116,12 +116,11 @@ class _DummyEmailSender:
         self.should_fail = should_fail
         self.sent = []
 
-    def send(self, username, to_email, subject, text, html=None, reply_to=None):
+    def send(self, to_email, subject, text, html=None, reply_to=None):
         if self.should_fail:
             raise Exception("boom")
         self.sent.append(
             {
-                "username": username,
                 "to_email": to_email,
                 "subject": subject,
                 "text": text,
@@ -161,6 +160,7 @@ class ForgotResetPasswordTest(unittest.TestCase):
             email_sender=email_sender,
             method="POST",
             params={"email": self.test_user["email"]},
+            remote_addr="127.0.0.1",
         )
         forgot_password(request)
         self.assertEqual(len(email_sender.sent), 1)
@@ -181,6 +181,7 @@ class ForgotResetPasswordTest(unittest.TestCase):
             email_sender=email_sender,
             method="POST",
             params={"email": "not-an-email"},
+            remote_addr="127.0.0.1",
         )
         forgot_password(request)
         self.assertEqual(len(email_sender.sent), 0)
@@ -193,6 +194,7 @@ class ForgotResetPasswordTest(unittest.TestCase):
             email_sender=email_sender,
             method="POST",
             params={"email": "missing-user@example.net"},
+            remote_addr="127.0.0.1",
         )
         with patch(
             "fishtest.views.email_valid",
@@ -212,6 +214,7 @@ class ForgotResetPasswordTest(unittest.TestCase):
             email_sender=email_sender,
             method="POST",
             params={"email": self.test_user["email"]},
+            remote_addr="127.0.0.1",
         )
         forgot_password(request)
         user = self.rundb.userdb.find_by_email(self.test_user["email"])
@@ -230,6 +233,7 @@ class ForgotResetPasswordTest(unittest.TestCase):
             userdb=self.rundb.userdb,
             method="GET",
             matchdict={"token": token},
+            remote_addr="127.0.0.1",
         )
         response = reset_password(request)
         self.assertEqual(response.location, request.route_url("forgot_password"))
@@ -246,6 +250,7 @@ class ForgotResetPasswordTest(unittest.TestCase):
             userdb=self.rundb.userdb,
             method="GET",
             matchdict={"token": token},
+            remote_addr="127.0.0.1",
         )
         response = reset_password(request)
         self.assertEqual(response.location, request.route_url("login"))
@@ -265,6 +270,7 @@ class ForgotResetPasswordTest(unittest.TestCase):
             method="POST",
             matchdict={"token": token},
             params={"password": new_password, "password2": new_password},
+            remote_addr="127.0.0.1",
         )
         response = reset_password(request)
         self.assertEqual(response.location, request.route_url("login"))
@@ -276,6 +282,7 @@ class ForgotResetPasswordTest(unittest.TestCase):
             userdb=self.rundb.userdb,
             method="GET",
             matchdict={"token": token},
+            remote_addr="127.0.0.1",
         )
         response = reset_password(request)
         self.assertEqual(response.location, request.route_url("login"))
@@ -294,6 +301,7 @@ class ForgotResetPasswordTest(unittest.TestCase):
             method="POST",
             matchdict={"token": token},
             params={"password": "short", "password2": "short"},
+            remote_addr="127.0.0.1",
         )
         response = reset_password(request)
         self.assertEqual(response, {"token": token})
@@ -311,6 +319,7 @@ class ForgotResetPasswordTest(unittest.TestCase):
             method="POST",
             matchdict={"token": token},
             params={"password": "MismatchPassword123!", "password2": "Different123!"},
+            remote_addr="127.0.0.1",
         )
         response = reset_password(request)
         self.assertEqual(response, {"token": token})

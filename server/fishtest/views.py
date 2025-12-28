@@ -100,6 +100,7 @@ def run_captcha(request):
             request.session.flash("Captcha failed", "error")
             return False
         return True
+    return True
 
 
 @notfound_view_config(renderer="notfound.mak")
@@ -187,6 +188,9 @@ def forgot_password(request):
         return home(request)
 
     if request.method == "POST":
+        if not run_captcha(request):
+            return {}
+
         email = request.POST.get("email", "").strip()
         email_is_valid, validated_email = email_valid(email)
         if not email_is_valid:
@@ -262,9 +266,6 @@ def reset_password(request):
         )
         if not strong_password:
             request.session.flash("Error! Weak password: " + password_err, "error")
-            return {"token": token}
-
-        if not run_captcha(request):
             return {"token": token}
 
         update_result = request.userdb.update_password_with_reset_token(
