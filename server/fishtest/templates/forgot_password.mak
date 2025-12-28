@@ -31,6 +31,6 @@
   </form>
 
   <div class="text-center mt-3">
-    <a href="/login" class="alert-link">Back to login</a>
+    <a href="${request.route_url('login')}" class="alert-link">Back to login</a>
   </div>
 </div>
