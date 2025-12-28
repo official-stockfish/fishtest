@@ -5,7 +5,8 @@ import html
 import json
 import os
 import re
-from datetime import UTC, datetime
+import secrets
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import bson
@@ -148,6 +149,99 @@ def login(request):
             )
         request.session.flash(message, "error")
     return {}
+
+
+@view_config(
+    route_name="forgot_password",
+    renderer="forgot_password.mak",
+    require_csrf=True,
+    request_method=("GET", "POST"),
+)
+def forgot_password(request):
+    if request.method == "POST":
+        email = request.POST.get("email", "").strip()
+        email_is_valid, validated_email = email_valid(email)
+        if not email_is_valid:
+            request.session.flash("Error! Invalid email: " + validated_email, "error")
+            return {}
+
+        user = request.userdb.find_by_email(validated_email)
+        if user is not None:
+            token = secrets.token_urlsafe(32)
+            expires_at = datetime.now(UTC) + timedelta(hours=1)
+            user["password_reset"] = {"token": token, "expires_at": expires_at}
+            request.userdb.save_user(user)
+            reset_url = request.route_url("reset_password", token=token)
+            body = (
+                "We received a request to reset your Fishtest password.\n\n"
+                f"Reset link: {reset_url}\n\n"
+                "If you did not request a reset, you can ignore this email."
+            )
+            try:
+                request.email_sender.send(
+                    user["username"],
+                    user["email"],
+                    "Fishtest password reset",
+                    body,
+                )
+            except Exception as e:
+                print("failed to send email")
+                print(e)
+                request.session.flash(
+                    "Unable to send reset email. Please try again later.", "error"
+                )
+                return {}
+
+        request.session.flash(
+            "If that email exists, a reset link has been sent.", "info"
+        )
+    return {}
+
+
+@view_config(
+    route_name="reset_password",
+    renderer="reset_password.mak",
+    require_csrf=True,
+    request_method=("GET", "POST"),
+)
+def reset_password(request):
+    token = request.matchdict.get("token", "")
+    if not token:
+        raise HTTPNotFound()
+
+    user = request.userdb.users.find_one({"password_reset.token": token})
+    if not user:
+        request.session.flash("Invalid or expired reset link.", "error")
+        return HTTPFound(location=request.route_url("login"))
+
+    reset_info = user.get("password_reset", {})
+    expires_at = reset_info.get("expires_at")
+    if not expires_at or expires_at < datetime.now(UTC):
+        user.pop("password_reset", None)
+        request.userdb.save_user(user)
+        request.session.flash("Reset link has expired.", "error")
+        return HTTPFound(location=request.route_url("forgot_password"))
+
+    if request.method == "POST":
+        new_password = request.POST.get("password", "").strip()
+        new_password_verify = request.POST.get("password2", "").strip()
+        if new_password != new_password_verify:
+            request.session.flash("Error! Matching verify password required", "error")
+            return {"token": token}
+        strong_password, password_err = password_strength(
+            new_password, user["username"], user["email"]
+        )
+        if not strong_password:
+            request.session.flash("Error! Weak password: " + password_err, "error")
+            return {"token": token}
+
+        user["password"] = new_password
+        user.pop("password_reset", None)
+        request.userdb.save_user(user)
+        request.session.flash("Success! Password updated. Please login.")
+        return HTTPFound(location=request.route_url("login"))
+
+    return {"token": token}
 
 
 # Note that the allowed length of mailto URLs on Chrome/Windows is severely

@@ -5,6 +5,7 @@ import threading
 import traceback
 
 import fishtest.github_api as gh
+from fishtest.emailer import EmailSender
 from fishtest.routes import setup_routes
 from fishtest.rundb import RunDb
 from pyramid.authentication import AuthTktAuthenticationPolicy
@@ -47,6 +48,8 @@ def main(global_config, **settings):
     # assume the instance is primary for backward compatibility.
     is_primary_instance = port == primary_port
 
+    email_sender = EmailSender()
+
     rundb = RunDb(port=port, is_primary_instance=is_primary_instance)
 
     def add_rundb(event):
@@ -54,6 +57,7 @@ def main(global_config, **settings):
         event.request.userdb = rundb.userdb
         event.request.actiondb = rundb.actiondb
         event.request.workerdb = rundb.workerdb
+        event.request.email_sender = email_sender
 
     def add_renderer_globals(event):
         pass

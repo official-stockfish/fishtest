@@ -14,6 +14,8 @@ def setup_routes(config):
 
     config.add_route("home", "/")
     config.add_route("login", "/login")
+    config.add_route("forgot_password", "/forgot_password")
+    config.add_route("reset_password", "/reset_password/{token}")
     config.add_route("nn_upload", "/upload")
     config.add_route("logout", "/logout")
     config.add_route("signup", "/signup")

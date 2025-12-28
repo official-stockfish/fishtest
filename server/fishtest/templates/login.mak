@@ -58,6 +58,10 @@
 
     <button type="submit" class="btn btn-primary w-100">Login</button>
   </form>
+
+  <div class="mt-3">
+    <a href="/forgot_password" class="btn btn-outline-secondary w-100">Reset password</a>
+  </div>
 </div>
 
 <script src="${request.static_url('fishtest:static/js/toggle_password.js')}"></script>
