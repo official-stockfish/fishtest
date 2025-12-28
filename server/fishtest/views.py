@@ -226,7 +226,7 @@ def forgot_password(request):
         request.session.flash(
             "If that email exists, a reset link has been sent, please check your inbox."
         )
-        return HTTPFound(location=request.route_url("home"))
+        return HTTPFound(location=request.route_url("tests"))
     return {}
 
 

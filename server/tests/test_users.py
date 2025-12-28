@@ -138,6 +138,7 @@ class ForgotResetPasswordTest(unittest.TestCase):
         self.config.add_route("forgot_password", "/forgot_password")
         self.config.add_route("reset_password", "/reset_password/{token}")
         self.config.add_route("login", "/login")
+        self.config.add_route("tests", "/tests")
         self.test_user = {
             "username": "ResetUser",
             "password": "secret",
@@ -170,7 +171,7 @@ class ForgotResetPasswordTest(unittest.TestCase):
         self.assertIn("expires_at", user["password_reset"])
         self.assertGreater(user["password_reset"]["expires_at"], datetime.now(UTC))
         self.assertIn(
-            "If that email exists, a reset link has been sent.",
+            "If that email exists, a reset link has been sent, please check your inbox.",
             request.session.pop_flash()[0],
         )
 
@@ -203,7 +204,7 @@ class ForgotResetPasswordTest(unittest.TestCase):
             forgot_password(request)
         self.assertEqual(len(email_sender.sent), 0)
         self.assertIn(
-            "If that email exists, a reset link has been sent.",
+            "If that email exists, a reset link has been sent, please check your inbox.",
             request.session.pop_flash()[0],
         )
 
@@ -220,7 +221,7 @@ class ForgotResetPasswordTest(unittest.TestCase):
         user = self.rundb.userdb.find_by_email(self.test_user["email"])
         self.assertIn("password_reset", user)
         self.assertIn(
-            "If that email exists, a reset link has been sent.",
+            "If that email exists, a reset link has been sent, please check your inbox.",
             request.session.pop_flash()[0],
         )
 
@@ -264,12 +265,24 @@ class ForgotResetPasswordTest(unittest.TestCase):
         user = self.rundb.userdb.find_by_email(self.test_user["email"])
         expires_at = datetime.now(UTC) + timedelta(hours=1)
         self.rundb.userdb.set_password_reset(user, token, expires_at)
+        get_request = testing.DummyRequest(
+            userdb=self.rundb.userdb,
+            method="GET",
+            matchdict={"token": token},
+            remote_addr="127.0.0.1",
+        )
+        get_response = reset_password(get_request)
+        form_token = get_response["form_token"]
         new_password = "CorrectHorseBatteryStaple123!@#"
         request = testing.DummyRequest(
             userdb=self.rundb.userdb,
             method="POST",
             matchdict={"token": token},
-            params={"password": new_password, "password2": new_password},
+            params={
+                "password": new_password,
+                "password2": new_password,
+                "form_token": form_token,
+            },
             remote_addr="127.0.0.1",
         )
         response = reset_password(request)
@@ -296,15 +309,27 @@ class ForgotResetPasswordTest(unittest.TestCase):
         user = self.rundb.userdb.find_by_email(self.test_user["email"])
         expires_at = datetime.now(UTC) + timedelta(hours=1)
         self.rundb.userdb.set_password_reset(user, token, expires_at)
+        get_request = testing.DummyRequest(
+            userdb=self.rundb.userdb,
+            method="GET",
+            matchdict={"token": token},
+            remote_addr="127.0.0.1",
+        )
+        get_response = reset_password(get_request)
+        form_token = get_response["form_token"]
         request = testing.DummyRequest(
             userdb=self.rundb.userdb,
             method="POST",
             matchdict={"token": token},
-            params={"password": "short", "password2": "short"},
+            params={
+                "password": "short",
+                "password2": "short",
+                "form_token": form_token,
+            },
             remote_addr="127.0.0.1",
         )
         response = reset_password(request)
-        self.assertEqual(response, {"token": token})
+        self.assertEqual(response, {"token": token, "form_token": form_token})
         user = self.rundb.userdb.find_by_email(self.test_user["email"])
         self.assertIn("password_reset", user)
         self.assertIn("Error! Weak password:", request.session.pop_flash("error")[0])
@@ -314,15 +339,27 @@ class ForgotResetPasswordTest(unittest.TestCase):
         user = self.rundb.userdb.find_by_email(self.test_user["email"])
         expires_at = datetime.now(UTC) + timedelta(hours=1)
         self.rundb.userdb.set_password_reset(user, token, expires_at)
+        get_request = testing.DummyRequest(
+            userdb=self.rundb.userdb,
+            method="GET",
+            matchdict={"token": token},
+            remote_addr="127.0.0.1",
+        )
+        get_response = reset_password(get_request)
+        form_token = get_response["form_token"]
         request = testing.DummyRequest(
             userdb=self.rundb.userdb,
             method="POST",
             matchdict={"token": token},
-            params={"password": "MismatchPassword123!", "password2": "Different123!"},
+            params={
+                "password": "MismatchPassword123!",
+                "password2": "Different123!",
+                "form_token": form_token,
+            },
             remote_addr="127.0.0.1",
         )
         response = reset_password(request)
-        self.assertEqual(response, {"token": token})
+        self.assertEqual(response, {"token": token, "form_token": form_token})
         user = self.rundb.userdb.find_by_email(self.test_user["email"])
         self.assertNotEqual(user["password"], "MismatchPassword123!")
         self.assertIn(
