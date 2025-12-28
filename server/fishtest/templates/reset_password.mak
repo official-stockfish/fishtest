@@ -4,6 +4,11 @@
   document.title = "Reset Password | Stockfish Testing";
 </script>
 
+
+<%block name="head">
+  <script src='https://www.google.com/recaptcha/api.js'></script>
+</%block>
+
 <div class="col-limited-size">
   <header class="text-md-center py-2">
     <h2>Choose a new password</h2>
@@ -48,6 +53,9 @@
         <i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i>
       </span>
     </div>
+
+    <div class="g-recaptcha mb-3"
+         data-sitekey="6LePs8YUAAAAABMmqHZVyVjxat95Z1c_uHrkugZM"></div>
 
     <button type="submit" class="btn btn-primary w-100">Reset password</button>
   </form>

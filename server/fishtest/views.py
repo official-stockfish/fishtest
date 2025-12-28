@@ -41,6 +41,7 @@ from pyramid.view import forbidden_view_config, notfound_view_config, view_confi
 from vtjson import ValidationError, union, validate
 
 HTTP_TIMEOUT = 15.0
+PASSWORD_RESET_EXPIRY_HOURS = 1
 
 
 def pagination(page_idx, num, page_size, query_params):
@@ -76,6 +77,29 @@ def pagination(page_idx, num, page_size, query_params):
         }
     )
     return pages
+
+
+def run_captcha(request):
+    secret = os.environ.get("FISHTEST_CAPTCHA_SECRET")
+    if not secret:
+        print("FISHTEST_CAPTCHA_SECRET is missing.", flush=True)
+    else:
+        payload = {
+            "secret": secret,
+            "response": request.POST.get("g-recaptcha-response", ""),
+            "remoteip": request.remote_addr,
+        }
+        response = requests.post(
+            "https://www.google.com/recaptcha/api/siteverify",
+            data=payload,
+            timeout=HTTP_TIMEOUT,
+        ).json()
+        if "success" not in response or not response["success"]:
+            if "error-codes" in response:
+                print(response["error-codes"])
+            request.session.flash("Captcha failed", "error")
+            return False
+        return True
 
 
 @notfound_view_config(renderer="notfound.mak")
@@ -172,7 +196,9 @@ def forgot_password(request):
         user = request.userdb.find_by_email(validated_email)
         if user is not None:
             token = secrets.token_urlsafe(32)
-            expires_at = datetime.now(UTC) + timedelta(hours=1)
+            expires_at = datetime.now(UTC) + timedelta(
+                hours=PASSWORD_RESET_EXPIRY_HOURS
+            )
             request.userdb.set_password_reset(user, token, expires_at)
             reset_url = request.route_url("reset_password", token=token)
             body = (
@@ -239,13 +265,19 @@ def reset_password(request):
             request.session.flash("Error! Weak password: " + password_err, "error")
             return {"token": token}
 
+        if not run_captcha(request):
+            return {"token": token}
+
         update_result = request.userdb.update_password_with_reset_token(
             user["_id"],
             token,
             new_password,
         )
         if update_result.modified_count == 0:
-            request.session.flash("Reset link has expired.", "error")
+            request.session.flash(
+                "Unable to reset password. The reset link may have expired or already been used.",
+                "error",
+            )
             return HTTPFound(location=request.route_url("forgot_password"))
         request.session.flash("Success! Password updated. Please login.")
         return HTTPFound(location=request.route_url("login"))
@@ -498,25 +530,8 @@ def signup(request):
             request.session.flash(error, "error")
         return {}
 
-    secret = os.environ.get("FISHTEST_CAPTCHA_SECRET")
-    if not secret:
-        print("FISHTEST_CAPTCHA_SECRET is missing.", flush=True)
-    else:
-        payload = {
-            "secret": secret,
-            "response": request.POST.get("g-recaptcha-response", ""),
-            "remoteip": request.remote_addr,
-        }
-        response = requests.post(
-            "https://www.google.com/recaptcha/api/siteverify",
-            data=payload,
-            timeout=HTTP_TIMEOUT,
-        ).json()
-        if "success" not in response or not response["success"]:
-            if "error-codes" in response:
-                print(response["error-codes"])
-            request.session.flash("Captcha failed", "error")
-            return {}
+    if not run_captcha(request):
+        return {}
 
     result = request.userdb.create_user(
         username=signup_username,
