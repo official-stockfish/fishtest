@@ -216,7 +216,10 @@ def reset_password(request):
         if expired_cleanup.matched_count:
             request.session.flash("Reset link has expired.", "error")
             return HTTPFound(location=request.route_url("forgot_password"))
-        request.session.flash("Invalid or expired reset link.", "error")
+        request.session.flash(
+            "Invalid reset link. It may have been replaced by a newer reset request.",
+            "error",
+        )
         return HTTPFound(location=request.route_url("login"))
 
     if request.method == "POST":
