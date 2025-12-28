@@ -236,7 +236,7 @@ class ForgotResetPasswordTest(unittest.TestCase):
         user = self.rundb.userdb.find_by_email(self.test_user["email"])
         self.assertNotIn("password_reset", user)
         self.assertIn(
-            "Unable to reset password. The reset link may have expired or already been used.",
+            "Reset link has expired.",
             request.session.pop_flash("error")[0],
         )
 
