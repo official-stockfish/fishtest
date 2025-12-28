@@ -172,6 +172,33 @@ class UserDb:
             self.clear_cache()
         return result
 
+    def set_password_reset_form_token(self, user_id, token, form_token, opened_at):
+        result = self.users.update_one(
+            {
+                "_id": user_id,
+                "password_reset.token": token,
+                "password_reset.form_token": {"$exists": False},
+            },
+            {
+                "$set": {
+                    "password_reset.form_token": form_token,
+                    "password_reset.opened_at": opened_at,
+                }
+            },
+        )
+        if result.modified_count:
+            self.clear_cache()
+        return result
+
+    def update_password_with_reset_form_token(self, user_id, form_token, new_password):
+        result = self.users.update_one(
+            {"_id": user_id, "password_reset.form_token": form_token},
+            {"$set": {"password": new_password}, "$unset": {"password_reset": ""}},
+        )
+        if result.modified_count:
+            self.clear_cache()
+        return result
+
     def remove_user(self, user, rejector):
         result = self.users.delete_one({"_id": user["_id"]})
         if result.deleted_count > 0:

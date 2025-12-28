@@ -112,6 +112,7 @@ user_schema = {
         "token": str,
         "expires_at": datetime_utc,
         "opened_at?": datetime_utc,
+        "form_token?": str,
     },
 }
 

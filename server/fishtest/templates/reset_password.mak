@@ -10,6 +10,7 @@
   </header>
 
   <form method="POST">
+    <input type="hidden" name="form_token" value="${form_token}">
     <div class="input-group mb-3">
       <div class="form-floating">
         <input

@@ -264,31 +264,59 @@ def reset_password(request):
         return HTTPFound(location=request.route_url("login"))
 
     if request.method == "GET":
-        mark_opened = request.userdb.mark_password_reset_opened(user["_id"], token, now)
-        if mark_opened.modified_count == 0:
+        if user.get("password_reset", {}).get("form_token"):
             request.session.flash(
                 "Reset link has already been opened. Please request a new one.",
                 "error",
             )
             return HTTPFound(location=request.route_url("forgot_password"))
-        return {"token": token}
+        form_token = secrets.token_urlsafe(32)
+        set_form = request.userdb.set_password_reset_form_token(
+            user["_id"], token, form_token, now
+        )
+        if set_form.modified_count == 0:
+            request.session.flash(
+                "Reset link has already been opened. Please request a new one.",
+                "error",
+            )
+            return HTTPFound(location=request.route_url("forgot_password"))
+        return {"token": token, "form_token": form_token}
 
     if request.method == "POST":
+        form_token = request.POST.get("form_token", "").strip()
+        if not form_token:
+            request.session.flash(
+                "Reset form is invalid. Please request a new reset link.",
+                "error",
+            )
+            return HTTPFound(location=request.route_url("forgot_password"))
+        user = request.userdb.users.find_one(
+            {
+                "password_reset.form_token": form_token,
+                "password_reset.expires_at": {"$gte": now},
+            }
+        )
+        if not user:
+            request.session.flash(
+                "Reset link has expired or already been used.",
+                "error",
+            )
+            return HTTPFound(location=request.route_url("forgot_password"))
         new_password = request.POST.get("password", "").strip()
         new_password_verify = request.POST.get("password2", "").strip()
         if new_password != new_password_verify:
             request.session.flash("Error! Matching verify password required", "error")
-            return {"token": token}
+            return {"token": token, "form_token": form_token}
         strong_password, password_err = password_strength(
             new_password, user["username"], user["email"]
         )
         if not strong_password:
             request.session.flash("Error! Weak password: " + password_err, "error")
-            return {"token": token}
+            return {"token": token, "form_token": form_token}
 
-        update_result = request.userdb.update_password_with_reset_token(
+        update_result = request.userdb.update_password_with_reset_form_token(
             user["_id"],
-            token,
+            form_token,
             new_password,
         )
         if update_result.modified_count == 0:
