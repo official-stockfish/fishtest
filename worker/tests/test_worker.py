@@ -47,6 +47,7 @@ class WorkerTest(unittest.TestCase):
         self.assertTrue(config.has_section("parameters"))
         self.assertTrue(config.has_option("login", "username"))
         self.assertTrue(config.has_option("login", "password"))
+        self.assertTrue(config.has_option("login", "jwt"))
         self.assertTrue(config.has_option("parameters", "host"))
         self.assertTrue(config.has_option("parameters", "port"))
         self.assertTrue(config.has_option("parameters", "concurrency"))

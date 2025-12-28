@@ -30,6 +30,7 @@ dependencies = [
     "awscli>=1.42.76",
     "email-validator>=2.3.0",
     "numpy>=2.3.5",
+    "pyjwt>=2.10.1",
     "pymongo>=4.15.4",
     "pyramid>=2.0.2",
     "pyramid-debugtoolbar>=4.12.1",

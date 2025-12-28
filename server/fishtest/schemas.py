@@ -455,11 +455,19 @@ def valid_spsa_results(stats):
     return stats["wins"] + stats["losses"] + stats["draws"] == stats["num_games"]
 
 
-api_access_schema = lax({"password": str, "worker_info": {"username": username}})
+def has_worker_auth(request):
+    return "password" in request or "jwt" in request
+
+
+api_access_schema = intersect(
+    lax({"password?": str, "jwt?": str, "worker_info": {"username": username}}),
+    has_worker_auth,
+)
 
 api_schema = intersect(
     {
-        "password": str,
+        "password?": str,
+        "jwt?": str,
         "run_id?": run_id,
         "task_id?": task_id,
         "pgn?": str,
@@ -478,6 +486,7 @@ api_schema = intersect(
         "stats?": results_schema,
     },
     ifthen(keys("task_id"), keys("run_id")),
+    has_worker_auth,
 )
 
 
