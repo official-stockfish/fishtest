@@ -18,6 +18,7 @@
           id="password"
           name="password"
           placeholder="New Password"
+          pattern=".{8,}"
           title="Eight or more characters: a password too simple or trivial to guess will be rejected"
           autocomplete="new-password"
           required
