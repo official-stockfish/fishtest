@@ -108,7 +108,11 @@ user_schema = {
     "groups": [str, ...],
     "tests_repo": union(github_repo, ""),
     "machine_limit": uint,
-    "password_reset?": {"token": str, "expires_at": datetime_utc},
+    "password_reset?": {
+        "token": str,
+        "expires_at": datetime_utc,
+        "opened_at?": datetime_utc,
+    },
 }
 
 kvstore_schema = {

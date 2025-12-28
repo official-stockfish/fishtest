@@ -237,6 +237,13 @@ def forgot_password(request):
     request_method=("GET", "POST"),
 )
 def reset_password(request):
+    userid = request.authenticated_userid
+    if userid:
+        request.session.flash(
+            "You are already logged in. Use profile settings to change your password."
+        )
+        return home(request)
+
     token = request.matchdict.get("token", "")
     if not token:
         raise HTTPNotFound()
@@ -255,6 +262,16 @@ def reset_password(request):
             "error",
         )
         return HTTPFound(location=request.route_url("login"))
+
+    if request.method == "GET":
+        mark_opened = request.userdb.mark_password_reset_opened(user["_id"], token, now)
+        if mark_opened.modified_count == 0:
+            request.session.flash(
+                "Reset link has already been opened. Please request a new one.",
+                "error",
+            )
+            return HTTPFound(location=request.route_url("forgot_password"))
+        return {"token": token}
 
     if request.method == "POST":
         new_password = request.POST.get("password", "").strip()

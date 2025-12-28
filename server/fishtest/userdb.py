@@ -159,6 +159,19 @@ class UserDb:
             self.clear_cache()
         return result
 
+    def mark_password_reset_opened(self, user_id, token, opened_at):
+        result = self.users.update_one(
+            {
+                "_id": user_id,
+                "password_reset.token": token,
+                "password_reset.opened_at": {"$exists": False},
+            },
+            {"$set": {"password_reset.opened_at": opened_at}},
+        )
+        if result.modified_count:
+            self.clear_cache()
+        return result
+
     def remove_user(self, user, rejector):
         result = self.users.delete_one({"_id": user["_id"]})
         if result.deleted_count > 0:
