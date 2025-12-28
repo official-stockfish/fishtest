@@ -60,7 +60,7 @@
   </form>
 
   <div class="mt-3">
-    <a href="/forgot_password" class="btn btn-outline-secondary w-100">Reset password</a>
+    <a href="${request.route_url('forgot_password')}" class="btn btn-outline-secondary w-100">Reset password</a>
   </div>
 </div>
 
