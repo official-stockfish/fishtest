@@ -171,7 +171,7 @@ class ForgotResetPasswordTest(unittest.TestCase):
         self.assertGreater(user["password_reset"]["expires_at"], datetime.now(UTC))
         self.assertIn(
             "If that email exists, a reset link has been sent.",
-            request.session.pop_flash("info")[0],
+            request.session.pop_flash()[0],
         )
 
     def test_forgot_password_invalid_email(self):
@@ -204,7 +204,7 @@ class ForgotResetPasswordTest(unittest.TestCase):
         self.assertEqual(len(email_sender.sent), 0)
         self.assertIn(
             "If that email exists, a reset link has been sent.",
-            request.session.pop_flash("info")[0],
+            request.session.pop_flash()[0],
         )
 
     def test_forgot_password_email_send_error(self):
@@ -221,7 +221,7 @@ class ForgotResetPasswordTest(unittest.TestCase):
         self.assertIn("password_reset", user)
         self.assertIn(
             "If that email exists, a reset link has been sent.",
-            request.session.pop_flash("info")[0],
+            request.session.pop_flash()[0],
         )
 
     def test_reset_password_expired_token(self):

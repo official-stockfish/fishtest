@@ -19,7 +19,9 @@ class EmailSender:
         session=None,
     ):
         self.api_key = api_key or os.getenv("FISHTEST_RESEND_API_KEY")
-        self.from_email = from_email or os.getenv("FISHTEST_RESEND_FROM_EMAIL")
+        self.from_email = from_email or os.getenv(
+            "FISHTEST_RESEND_FROM_EMAIL", "fishtest@resend.dev"
+        )
         self.from_name = from_name or os.getenv("FISHTEST_RESEND_FROM_NAME", "Fishtest")
         self.session = session or requests.Session()
         missing_settings = []
