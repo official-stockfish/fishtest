@@ -169,8 +169,7 @@ def forgot_password(request):
         if user is not None:
             token = secrets.token_urlsafe(32)
             expires_at = datetime.now(UTC) + timedelta(hours=1)
-            user["password_reset"] = {"token": token, "expires_at": expires_at}
-            request.userdb.save_user(user)
+            request.userdb.set_password_reset(user, token, expires_at)
             reset_url = request.route_url("reset_password", token=token)
             body = (
                 "We received a request to reset your Fishtest password.\n\n"
@@ -213,12 +212,8 @@ def reset_password(request):
         {"password_reset.token": token, "password_reset.expires_at": {"$gte": now}}
     )
     if not user:
-        expired_cleanup = request.userdb.users.update_one(
-            {"password_reset.token": token, "password_reset.expires_at": {"$lt": now}},
-            {"$unset": {"password_reset": ""}},
-        )
+        expired_cleanup = request.userdb.clear_expired_password_reset(token, now)
         if expired_cleanup.matched_count:
-            request.userdb.clear_cache()
             request.session.flash("Reset link has expired.", "error")
             return HTTPFound(location=request.route_url("forgot_password"))
         request.session.flash("Invalid or expired reset link.", "error")
@@ -237,14 +232,14 @@ def reset_password(request):
             request.session.flash("Error! Weak password: " + password_err, "error")
             return {"token": token}
 
-        update_result = request.userdb.users.update_one(
-            {"_id": user["_id"], "password_reset.token": token},
-            {"$set": {"password": new_password}, "$unset": {"password_reset": ""}},
+        update_result = request.userdb.update_password_with_reset_token(
+            user["_id"],
+            token,
+            new_password,
         )
         if update_result.modified_count == 0:
             request.session.flash("Reset link has expired.", "error")
             return HTTPFound(location=request.route_url("forgot_password"))
-        request.userdb.clear_cache()
         request.session.flash("Success! Password updated. Please login.")
         return HTTPFound(location=request.route_url("login"))
 

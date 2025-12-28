@@ -137,6 +137,28 @@ class UserDb:
         self.last_blocked_time = 0
         self.clear_cache()
 
+    def set_password_reset(self, user, token, expires_at):
+        user["password_reset"] = {"token": token, "expires_at": expires_at}
+        self.save_user(user)
+
+    def clear_expired_password_reset(self, token, now):
+        result = self.users.update_one(
+            {"password_reset.token": token, "password_reset.expires_at": {"$lt": now}},
+            {"$unset": {"password_reset": ""}},
+        )
+        if result.matched_count:
+            self.clear_cache()
+        return result
+
+    def update_password_with_reset_token(self, user_id, token, new_password):
+        result = self.users.update_one(
+            {"_id": user_id, "password_reset.token": token},
+            {"$set": {"password": new_password}, "$unset": {"password_reset": ""}},
+        )
+        if result.modified_count:
+            self.clear_cache()
+        return result
+
     def remove_user(self, user, rejector):
         result = self.users.delete_one({"_id": user["_id"]})
         if result.deleted_count > 0:
