@@ -1,3 +1,4 @@
+from collections.abc import MutableMapping
 from datetime import UTC
 
 from bson.codec_options import CodecOptions
@@ -5,15 +6,16 @@ from fishtest.schemas import kvstore_schema
 from pymongo import MongoClient
 from vtjson import validate
 
-_missing_default = object()
 
-
-class KeyValueStore:
+class KeyValueStore(MutableMapping):
     def __init__(self, db=None, db_name=None, collection="kvstore"):
+        self.conn = None
         if db is None:
-            conn = MongoClient("localhost")
+            if db_name is None:
+                raise ValueError("You must specify a db or a db name")
+            self.conn = MongoClient("localhost")
             codec_options = CodecOptions(tz_aware=True, tzinfo=UTC)
-            db = conn[db_name].with_options(codec_options=codec_options)
+            db = self.conn[db_name].with_options(codec_options=codec_options)
         self.__kvstore = db[collection]
 
     def __setitem__(self, key, value):
@@ -33,42 +35,35 @@ class KeyValueStore:
         if d.deleted_count == 0:
             raise KeyError(key)
 
-    def __contains__(self, key):
-        try:
-            self[key]
-        except KeyError:
-            return False
-        return True
+    def __len__(self):
+        return self.__kvstore.count_documents({})
 
-    def get(self, key, default=_missing_default):
-        try:
-            return self[key]
-        except KeyError:
-            if default != _missing_default:
-                return default
-            else:
-                raise
+    def __iter__(self):
+        documents = self.__kvstore.find({}, {"value": 0, "_id": 1})
+        for d in documents:
+            yield d["_id"]
 
-    def pop(self, key, default=_missing_default):
-        try:
-            value = self[key]
-            del self[key]
-            return value
-        except KeyError:
-            if default != _missing_default:
-                return default
-            else:
-                raise
+    def values(self):
+        documents = self.__kvstore.find({}, {"value": 1, "_id": 0})
+        for d in documents:
+            yield d["value"]
 
     def items(self):
         documents = self.__kvstore.find()
         for d in documents:
             yield d["_id"], d["value"]
 
-    def keys(self):
-        for i in self.items():
-            yield i[0]
+    def clear(self):
+        self.__kvstore.delete_many({})
 
-    def values(self):
-        for i in self.items():
-            yield i[1]
+    def close(self):
+        """Close the db connection if we own it
+        but keep the underlying collection"""
+        if self.conn is not None:
+            self.conn.close()
+            self.conn = None
+
+    def drop(self):
+        """Destructor!"""
+        self.__kvstore.drop()
+        self.close()
