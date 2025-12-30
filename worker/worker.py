@@ -321,7 +321,7 @@ def verify_remote_sri(install_dir):
 
 def verify_credentials(remote, username, password, cached):
     # Returns:
-    # (True, jwt) : username/password are ok
+    # (True, api_key) : username/password are ok
     # (False, None) : username/password are not ok
     # (None, None) : network error: unable to determine the status of
     #               username/password
@@ -340,18 +340,18 @@ def verify_credentials(remote, username, password, cached):
         if "error" in req:
             return False, None  # invalid username/password
         print("Credentials ok!")
-        return True, req.get("jwt")
+        return True, req.get("api_key")
     return False, None  # empty username or password
 
 
-def verify_jwt(remote, username, jwt_token, cached):
+def verify_api_key(remote, username, api_key, cached):
     # Returns:
-    # True  : jwt is ok
-    # False : jwt is not ok
+    # True  : api_key is ok
+    # False : api_key is not ok
     # None  : network error
-    if username != "" and jwt_token != "":
-        print(f"Confirming {'cached' if cached else 'supplied'} token with {remote}.")
-        payload = {"worker_info": {"username": username}, "jwt": jwt_token}
+    if username != "" and api_key != "":
+        print(f"Confirming {'cached' if cached else 'supplied'} API key with {remote}.")
+        payload = {"worker_info": {"username": username}, "api_key": api_key}
         try:
             req = send_api_post_request(
                 remote + "/api/request_version", payload, quiet=True
@@ -371,24 +371,24 @@ def get_credentials(config, options, args):
 
     username = config.get("login", "username")
     password = config.get("login", "password", raw=True)
-    jwt_token = config.get("login", "jwt", raw=True)
+    api_key = config.get("login", "api_key", raw=True)
     cached = True
     if len(args) == 2:
         username = args[0]
         password = args[1]
-        jwt_token = ""
+        api_key = ""
         cached = False
     if options.no_validation:
-        return username, password, jwt_token
+        return username, password, api_key
 
-    if jwt_token:
-        ret = verify_jwt(remote, username, jwt_token, cached)
+    if api_key:
+        ret = verify_api_key(remote, username, api_key, cached)
         if ret is None:
             return "", "", ""
         if ret:
-            return username, password, jwt_token
+            return username, password, api_key
 
-    ret, new_jwt = verify_credentials(remote, username, password, cached)
+    ret, new_api_key = verify_credentials(remote, username, password, cached)
     if ret is None:
         return "", "", ""
     elif not ret:
@@ -401,11 +401,11 @@ def get_credentials(config, options, args):
             print("\n")
             return "", "", ""
         else:
-            ret, new_jwt = verify_credentials(remote, username, password, False)
+            ret, new_api_key = verify_credentials(remote, username, password, False)
             if not ret:
                 return "", "", ""
 
-    return username, password, new_jwt or jwt_token
+    return username, password, new_api_key or api_key
 
 
 def verify_fastchess(fastchess_path, fastchess_sha):
@@ -660,7 +660,7 @@ def setup_parameters(worker_dir):
         # (<section>, <option>, <default>, <type>, <preprocessor>),
         ("login", "username", "", str, None),
         ("login", "password", "", str, None),
-        ("login", "jwt", "", str, None),
+        ("login", "api_key", "", str, None),
         ("parameters", "protocol", "https", ["http", "https"], None),
         ("parameters", "host", "tests.stockfishchess.org", str, None),
         ("parameters", "port", "443", int, None),
@@ -866,7 +866,7 @@ def setup_parameters(worker_dir):
 
     # Step 6: determine credentials.
 
-    username, password, jwt_token = get_credentials(config, options, args)
+    username, password, api_key = get_credentials(config, options, args)
 
     if username == "":
         print("Invalid or missing credentials.")
@@ -874,12 +874,12 @@ def setup_parameters(worker_dir):
 
     options.username = username
     options.password = password
-    options.jwt = jwt_token
+    options.api_key = api_key
 
     # Step 7: write command line parameters to the config file.
     config.set("login", "username", options.username)
     config.set("login", "password", options.password)
-    config.set("login", "jwt", options.jwt)
+    config.set("login", "api_key", options.api_key)
     config.set("parameters", "protocol", options.protocol)
     config.set("parameters", "host", options.host)
     config.set("parameters", "port", str(options.port))
@@ -1216,7 +1216,7 @@ def heartbeat(worker_info, auth, remote, current_state):
             payload["run_id"] = str(run["_id"]) if run else None
             task_id = current_state["task_id"]
             payload["task_id"] = task_id
-            payload.pop("jwt", None)
+            payload.pop("api_key", None)
             payload.pop("password", None)
             add_auth(payload, auth)
             if payload["run_id"] is None or payload["task_id"] is None:
@@ -1267,8 +1267,8 @@ def verify_worker_version(remote, username, auth, worker_lock):
     except WorkerException:
         return None  # the error message has already been written
     if "error" in req:
-        if auth.get("jwt") and auth.get("password"):
-            print("Auth token rejected, retrying with password.")
+        if auth.get("api_key") and auth.get("password"):
+            print("API key rejected, retrying with password.")
             payload = {
                 "worker_info": {"username": username},
                 "password": auth["password"],
@@ -1279,12 +1279,12 @@ def verify_worker_version(remote, username, auth, worker_lock):
                 return None
             if "error" in req:
                 return False
-            if "jwt" in req:
-                auth["jwt"] = req["jwt"]
+            if "api_key" in req:
+                auth["api_key"] = req["api_key"]
         else:
             return False  # likewise
-    if "jwt" in req:
-        auth["jwt"] = req["jwt"]
+    if "api_key" in req:
+        auth["api_key"] = req["api_key"]
     if req["version"] > WORKER_VERSION:
         print(f"Updating worker version to {req['version']}.")
         backup_log()
@@ -1550,7 +1550,7 @@ def worker():
         return 0
 
     remote = f"{options.protocol}://{options.host}:{options.port}"
-    auth = {"password": options.password, "jwt": options.jwt}
+    auth = {"password": options.password, "api_key": options.api_key}
 
     # Check the worker version and upgrade if necessary
     try:

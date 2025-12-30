@@ -101,6 +101,7 @@ user_schema = {
     "_id?": ObjectId,
     "username": username,
     "password": str,
+    "api_key?": str,
     "registration_time": datetime_utc,
     "pending": bool,
     "blocked": bool,
@@ -456,18 +457,18 @@ def valid_spsa_results(stats):
 
 
 def has_worker_auth(request):
-    return "password" in request or "jwt" in request
+    return "password" in request or "api_key" in request
 
 
 api_access_schema = intersect(
-    lax({"password?": str, "jwt?": str, "worker_info": {"username": username}}),
+    lax({"password?": str, "api_key?": str, "worker_info": {"username": username}}),
     has_worker_auth,
 )
 
 api_schema = intersect(
     {
         "password?": str,
-        "jwt?": str,
+        "api_key?": str,
         "run_id?": run_id,
         "task_id?": task_id,
         "pgn?": str,

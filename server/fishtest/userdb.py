@@ -1,3 +1,4 @@
+import secrets
 import sys
 import threading
 import time
@@ -113,6 +114,7 @@ class UserDb:
             user = {
                 "username": username,
                 "password": password,
+                "api_key": self._generate_api_key(),
                 "registration_time": datetime.now(UTC),
                 "pending": True,
                 "blocked": False,
@@ -136,6 +138,21 @@ class UserDb:
         self.last_pending_time = 0
         self.last_blocked_time = 0
         self.clear_cache()
+
+    def _generate_api_key(self):
+        return f"ft_{secrets.token_urlsafe(32)}"
+
+    def ensure_worker_api_key(self, username):
+        user = self.get_user(username)
+        if user is None:
+            return None
+        api_key = user.get("api_key")
+        if api_key:
+            return api_key
+        api_key = self._generate_api_key()
+        user["api_key"] = api_key
+        self.save_user(user)
+        return api_key
 
     def remove_user(self, user, rejector):
         result = self.users.delete_one({"_id": user["_id"]})

@@ -315,8 +315,8 @@ def send_api_post_request(api_url, payload, quiet=False):
 
 
 def add_auth(payload, auth):
-    if auth.get("jwt"):
-        payload["jwt"] = auth["jwt"]
+    if auth.get("api_key"):
+        payload["api_key"] = auth["api_key"]
     else:
         payload["password"] = auth.get("password", "")
     return payload

@@ -7,7 +7,6 @@ from datetime import UTC, datetime
 from urllib.parse import urlparse
 
 import fishtest.github_api as gh
-from fishtest import jwt_token
 from fishtest.schemas import api_access_schema, api_schema, gzip_data
 from fishtest.stats.stat_util import SPRT_elo, get_elo
 from fishtest.util import strip_run, worker_name
@@ -93,9 +92,9 @@ class WorkerApi(GenericApi):
         except ValidationError as e:
             self.handle_error(str(e))
 
-        if "jwt" in self.request_body:
-            self.validate_jwt()
-            self._auth_method = "jwt"
+        if "api_key" in self.request_body:
+            self.validate_api_key()
+            self._auth_method = "api_key"
         else:
             self.validate_password()
             self._auth_method = "password"
@@ -108,23 +107,19 @@ class WorkerApi(GenericApi):
         if "error" in token:
             self.handle_error(token["error"], exception=HTTPUnauthorized)
 
-    def validate_jwt(self):
+    def validate_api_key(self):
+        api_key = self.request_body["api_key"]
         username = self.request_body["worker_info"]["username"]
-        token = self.request_body["jwt"]
-        try:
-            payload = jwt_token.decode_token(token)
-        except jwt_token.JwtError as e:
-            self.handle_error(str(e), exception=HTTPUnauthorized)
-            return
-        if payload.get("sub") != username:
-            self.handle_error(
-                "Auth token does not match username", exception=HTTPUnauthorized
-            )
         user = self.request.userdb.get_user(username)
         if user is None:
             self.handle_error(
                 "Unknown user: {}".format(username), exception=HTTPUnauthorized
             )
+        if user.get("api_key") != api_key:
+            self.handle_error("Invalid API key", exception=HTTPUnauthorized)
+        self.validate_user(user, username)
+
+    def validate_user(self, user, username):
         if user.get("blocked"):
             self.handle_error(
                 "Account blocked for user: {}".format(username),
@@ -361,7 +356,9 @@ class WorkerApi(GenericApi):
         self.validate_auth()
         response = {"version": WORKER_VERSION}
         if getattr(self, "_auth_method", None) == "password":
-            response["jwt"] = jwt_token.create_token(self.get_username())
+            response["api_key"] = self.request.userdb.ensure_worker_api_key(
+                self.get_username()
+            )
         return self.add_time(response)
 
     @view_config(route_name="api_beat")
