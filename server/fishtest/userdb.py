@@ -149,10 +149,21 @@ class UserDb:
         api_key = user.get("api_key")
         if api_key:
             return api_key
-        api_key = self._generate_api_key()
-        user["api_key"] = api_key
-        self.save_user(user)
-        return api_key
+
+        # Generate a new API key and attempt to set it atomically, but only if
+        # the user still does not have an API key. This avoids a race where
+        # two workers concurrently create and save different API keys.
+        new_api_key = self._generate_api_key()
+        result = self.users.find_one_and_update(
+            {"_id": user["_id"], "api_key": {"$exists": False}},
+            {"$set": {"api_key": new_api_key}},
+        )
+        if result is not None:
+            # Our update succeeded; the new API key was stored.
+            self.clear_cache()
+            return new_api_key
+        user = self.get_user(username)
+        return user.get("api_key") if user else None
 
     def remove_user(self, user, rejector):
         result = self.users.delete_one({"_id": user["_id"]})

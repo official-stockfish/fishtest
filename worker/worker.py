@@ -1216,8 +1216,6 @@ def heartbeat(worker_info, auth, remote, current_state):
             payload["run_id"] = str(run["_id"]) if run else None
             task_id = current_state["task_id"]
             payload["task_id"] = task_id
-            payload.pop("api_key", None)
-            payload.pop("password", None)
             add_auth(payload, auth)
             if payload["run_id"] is None or payload["task_id"] is None:
                 print("Skipping heartbeat...")

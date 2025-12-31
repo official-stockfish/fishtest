@@ -3,6 +3,7 @@ import copy
 import io
 import os
 import re
+import secrets
 from datetime import UTC, datetime
 from urllib.parse import urlparse
 
@@ -115,7 +116,7 @@ class WorkerApi(GenericApi):
             self.handle_error(
                 "Unknown user: {}".format(username), exception=HTTPUnauthorized
             )
-        if user.get("api_key") != api_key:
+        if not secrets.compare_digest(user.get("api_key", ""), api_key):
             self.handle_error("Invalid API key", exception=HTTPUnauthorized)
         self.validate_user(user, username)
 
