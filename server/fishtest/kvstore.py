@@ -62,6 +62,7 @@ class KeyValueStore(MutableMapping):
         if self.conn is not None:
             self.conn.close()
             self.conn = None
+        self.__kvstore = None
 
     def drop(self):
         """Destructor!"""
