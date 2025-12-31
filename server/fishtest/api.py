@@ -116,7 +116,10 @@ class WorkerApi(GenericApi):
             self.handle_error(
                 "Unknown user: {}".format(username), exception=HTTPUnauthorized
             )
-        if not secrets.compare_digest(user.get("api_key", ""), api_key):
+        stored_api_key = user.get("api_key")
+        if not stored_api_key:
+            self.handle_error("Invalid API key", exception=HTTPUnauthorized)
+        if not secrets.compare_digest(stored_api_key, api_key):
             self.handle_error("Invalid API key", exception=HTTPUnauthorized)
         self.validate_user(user, username)
 
