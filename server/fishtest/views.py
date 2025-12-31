@@ -601,6 +601,7 @@ def user(request):
 
     user_name = request.matchdict.get("username", userid)
     profile = user_name == userid
+    new_api_key = request.session.pop("new_api_key", None)
     if not profile and not request.has_permission("approve_run"):
         request.session.flash("You cannot inspect users", "error")
         return home(request)
@@ -610,60 +611,70 @@ def user(request):
         raise HTTPNotFound()
     if "user" in request.POST:
         if profile:
+            action = request.params.get("action", "profile_update")
             old_password = request.params.get("old_password").strip()
-            new_password = request.params.get("password").strip()
-            new_password_verify = request.params.get("password2", "").strip()
-            new_email = request.params.get("email").strip()
-            tests_repo = request.params.get("tests_repo").strip()
 
             # Temporary comparison until passwords are hashed.
             if old_password != user_data["password"].strip():
                 request.session.flash("Invalid password!", "error")
                 return home(request)
 
-            if len(new_password) > 0:
-                if new_password == new_password_verify:
-                    strong_password, password_err = password_strength(
-                        new_password,
-                        user_name,
-                        user_data["email"],
-                        (new_email if len(new_email) > 0 else None),
-                    )
-                    if strong_password:
-                        user_data["password"] = new_password
-                        request.session.flash("Success! Password updated")
+            if action == "api_key_reset":
+                new_api_key = request.userdb.generate_api_key()
+                user_data["api_key"] = new_api_key
+                request.userdb.save_user(user_data)
+                request.session.flash("Success! API key reset")
+                request.session["new_api_key"] = new_api_key
+            else:
+                new_password = request.params.get("password").strip()
+                new_password_verify = request.params.get("password2", "").strip()
+                new_email = request.params.get("email").strip()
+                tests_repo = request.params.get("tests_repo").strip()
+
+                if len(new_password) > 0:
+                    if new_password == new_password_verify:
+                        strong_password, password_err = password_strength(
+                            new_password,
+                            user_name,
+                            user_data["email"],
+                            (new_email if len(new_email) > 0 else None),
+                        )
+                        if strong_password:
+                            user_data["password"] = new_password
+                            request.session.flash("Success! Password updated")
+                        else:
+                            request.session.flash(
+                                "Error! Weak password: " + password_err, "error"
+                            )
+                            return home(request)
                     else:
                         request.session.flash(
-                            "Error! Weak password: " + password_err, "error"
+                            "Error! Matching verify password required", "error"
                         )
                         return home(request)
-                else:
+
+                try:
+                    validate(union(github_repo, ""), tests_repo, "tests_repo")
+                except ValidationError as e:
                     request.session.flash(
-                        "Error! Matching verify password required", "error"
+                        f"Error! Invalid test repo {tests_repo}: {str(e)}", "error"
                     )
                     return home(request)
 
-            try:
-                validate(union(github_repo, ""), tests_repo, "tests_repo")
-            except ValidationError as e:
-                request.session.flash(
-                    f"Error! Invalid test repo {tests_repo}: {str(e)}", "error"
-                )
-                return home(request)
+                user_data["tests_repo"] = tests_repo
 
-            user_data["tests_repo"] = tests_repo
-
-            if len(new_email) > 0 and user_data["email"] != new_email:
-                email_is_valid, validated_email = email_valid(new_email)
-                if not email_is_valid:
-                    request.session.flash(
-                        "Error! Invalid email: " + validated_email, "error"
-                    )
-                    return home(request)
-                else:
-                    user_data["email"] = validated_email
-                    request.session.flash("Success! Email updated")
-            request.userdb.save_user(user_data)
+                if len(new_email) > 0 and user_data["email"] != new_email:
+                    email_is_valid, validated_email = email_valid(new_email)
+                    if not email_is_valid:
+                        request.session.flash(
+                            "Error! Invalid email: " + validated_email, "error"
+                        )
+                        return home(request)
+                    else:
+                        user_data["email"] = validated_email
+                        request.session.flash("Success! Email updated")
+                request.userdb.save_user(user_data)
+            return HTTPFound(location=request.url)
         elif "blocked" in request.POST and request.POST["blocked"].isdigit():
             user_data["blocked"] = bool(int(request.POST["blocked"]))
             request.session.flash(
@@ -708,6 +719,7 @@ def user(request):
         "hours": hours,
         "profile": profile,
         "extract_repo_from_link": extract_repo_from_link,
+        "new_api_key": new_api_key,
     }
 
 

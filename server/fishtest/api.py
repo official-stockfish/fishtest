@@ -357,9 +357,9 @@ class WorkerApi(GenericApi):
         self.validate_auth()
         response = {"version": WORKER_VERSION}
         if getattr(self, "_auth_method", None) == "password":
-            response["api_key"] = self.request.userdb.ensure_worker_api_key(
-                self.get_username()
-            )
+            user = self.request.userdb.get_user(self.get_username())
+            if user and user.get("api_key"):
+                response["api_key"] = user["api_key"]
         return self.add_time(response)
 
     @view_config(route_name="api_beat")

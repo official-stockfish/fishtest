@@ -149,6 +149,9 @@ class UserDb:
         self.last_blocked_time = 0
         self.clear_cache()
 
+    def generate_api_key(self):
+        return self._generate_api_key()
+
     def _generate_api_key(self):
         return f"ft_{secrets.token_urlsafe(32)}"
 
