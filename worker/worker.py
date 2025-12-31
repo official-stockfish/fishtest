@@ -371,12 +371,16 @@ def get_credentials(config, options, args):
 
     username = config.get("login", "username")
     password = config.get("login", "password", raw=True)
-    api_key = config.get("login", "api_key", raw=True)
+    api_key = (
+        options.api_key
+        if options.api_key is not None
+        else config.get("login", "api_key", raw=True)
+    )
     cached = True
     if len(args) == 2:
         username = args[0]
         password = args[1]
-        api_key = ""
+        api_key = options.api_key if options.api_key is not None else ""
         cached = False
     if options.no_validation:
         return username, password, api_key
@@ -802,6 +806,12 @@ def setup_parameters(worker_dir):
         dest="no_validation",
         action="store_true",
         help="do not validate credentials with server",
+    )
+    parser.add_argument(
+        "--api_key",
+        dest="api_key",
+        default=None,
+        help="override stored API key used for worker authentication",
     )
 
     def my_error(e):
