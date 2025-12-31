@@ -57,8 +57,8 @@ class UserDb:
         if self.is_account_restricted(user):
             status = self.is_account_restricted(user)
             sys.stderr.write(
-                "Restricted account ({}): '{}' '{}'\n".format(
-                    status, username, password
+                "{} account: '{}' '{}'\n".format(
+                    status.capitalize(), username, password
                 )
             )
             return {"error": "Account {} for user: {}".format(status, username)}
