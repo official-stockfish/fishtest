@@ -38,6 +38,9 @@ from vtjson import (
     size,
     union,
 )
+from vtjson import (
+    filter as filter_,
+)
 
 run_id = intersect(str, set_name(ObjectId.is_valid, "valid_object_id"))
 run_id_pgns = regex(r"[a-f0-9]{24}-(0|[1-9]\d*)", name="run_id_pgns")
@@ -868,13 +871,15 @@ unfinished_runs_schema = {
     run_id,
 }
 
-active_runs_schema = {
-    "purge_count?": uint,
-    run_id: {
-        "time": timestamp,
-        "lock": threading.RLock,
+# threading.RLock is a factory function!
+_RLock = type(threading.RLock())
+
+active_runs_schema = filter_(
+    dict,
+    {
+        run_id: _RLock,
     },
-}
+)
 
 worker_runs_schema = {
     short_worker_name: {
