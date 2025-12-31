@@ -112,26 +112,23 @@ class WorkerApi(GenericApi):
         api_key = self.request_body["api_key"]
         username = self.request_body["worker_info"]["username"]
         user = self.request.userdb.get_user(username)
+
         if user is None:
             self.handle_error(
                 "Unknown user: {}".format(username), exception=HTTPUnauthorized
             )
+
         stored_api_key = user.get("api_key")
+
         if not stored_api_key:
             self.handle_error("Invalid API key", exception=HTTPUnauthorized)
         if not secrets.compare_digest(stored_api_key, api_key):
             self.handle_error("Invalid API key", exception=HTTPUnauthorized)
-        self.validate_user(user, username)
 
-    def validate_user(self, user, username):
-        if user.get("blocked"):
+        status = self.request.userdb.is_account_restricted(user)
+        if status:
             self.handle_error(
-                "Account blocked for user: {}".format(username),
-                exception=HTTPUnauthorized,
-            )
-        if user.get("pending"):
-            self.handle_error(
-                "Account pending for user: {}".format(username),
+                "Account {} for user: {}".format(status, username),
                 exception=HTTPUnauthorized,
             )
 

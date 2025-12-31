@@ -53,14 +53,24 @@ class UserDb:
         if not user or user["password"] != password:
             sys.stderr.write("Invalid login: '{}' '{}'\n".format(username, password))
             return {"error": "Invalid password for user: {}".format(username)}
-        if "blocked" in user and user["blocked"]:
-            sys.stderr.write("Blocked account: '{}' '{}'\n".format(username, password))
-            return {"error": "Account blocked for user: {}".format(username)}
-        if "pending" in user and user["pending"]:
-            sys.stderr.write("Pending account: '{}' '{}'\n".format(username, password))
-            return {"error": "Account pending for user: {}".format(username)}
+
+        if self.is_account_restricted(user):
+            status = self.is_account_restricted(user)
+            sys.stderr.write(
+                "Restricted account ({}): '{}' '{}'\n".format(
+                    status, username, password
+                )
+            )
+            return {"error": "Account {} for user: {}".format(status, username)}
 
         return {"username": username, "authenticated": True}
+
+    def is_account_restricted(self, user):
+        if "blocked" in user and user["blocked"]:
+            return "blocked"
+        if "pending" in user and user["pending"]:
+            return "pending"
+        return None
 
     def get_users(self):
         return self.users.find(sort=[("_id", ASCENDING)])
