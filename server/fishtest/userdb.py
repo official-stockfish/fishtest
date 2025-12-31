@@ -141,6 +141,9 @@ class UserDb:
         self.users.replace_one({"_id": user["_id"]}, user)
         self.clear_cache()
 
+    def generate_api_key(self):
+        return self._generate_api_key()
+
     def _generate_api_key(self):
         return f"ft_{secrets.token_urlsafe(32)}"
 
