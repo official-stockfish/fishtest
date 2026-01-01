@@ -1,1 +1,1 @@
-{"__version": 305, "updater.py": "eDDBPKA/vrTCadgtEJFdL06vSoiysF0JhiHKdEnjQv3zS4kfdOAqnco/DJpDWbvh", "worker.py": "Y0kkVAk+3q3+HuWmVqgcPx7/h+CoLyPihLUszUGrvphfzNn55qXwqC+xh0fPz/Zt", "games.py": "uUpIoWu/jB6IoWN4aqSmRvtb7chhVswcFqIiT+G/cKNUWTam8ARxMZARNmTqGQ9p"}
+{"__version": 306, "updater.py": "eDDBPKA/vrTCadgtEJFdL06vSoiysF0JhiHKdEnjQv3zS4kfdOAqnco/DJpDWbvh", "worker.py": "DTRnsNAvfA+F1PaVQCCDciYjWFAUSz391sqLuk6K48qDKb51NAHaDMES5P9EEDeq", "games.py": "GKRlRdrrRN2pjq3BFgfEwCJpZDfU2O0Q7LxNJLdnytMAYmm479GNBpAvjFr1kFQU"}

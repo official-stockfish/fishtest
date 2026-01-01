@@ -3,6 +3,7 @@ import copy
 import io
 import os
 import re
+import secrets
 from datetime import UTC, datetime
 from urllib.parse import urlparse
 
@@ -36,7 +37,7 @@ Proper configuration of `nginx` is crucial for this, and should be done
 according to the route/URL mapping defined in `__init__.py`.
 """
 
-WORKER_VERSION = 305
+WORKER_VERSION = 306
 
 
 @exception_view_config(HTTPException)
@@ -85,21 +86,49 @@ class WorkerApi(GenericApi):
         except Exception:
             self.handle_error("request is not json encoded")
 
-    def validate_username_password(self):
+    def validate_auth(self):
         # Is the request syntactically correct?
         try:
             validate(api_access_schema, self.request_body, "request")
         except ValidationError as e:
             self.handle_error(str(e))
 
-        # is the supplied password correct?
+        if "api_key" in self.request_body:
+            self.validate_api_key()
+            self._auth_method = "api_key"
+        else:
+            self.validate_password()
+            self._auth_method = "password"
+
+    def validate_password(self):
         token = self.request.userdb.authenticate(
             self.request_body["worker_info"]["username"],
             self.request_body["password"],
         )
         if "error" in token:
+            self.handle_error(token["error"], exception=HTTPUnauthorized)
+
+    def validate_api_key(self):
+        api_key = self.request_body["api_key"]
+        username = self.request_body["worker_info"]["username"]
+        user = self.request.userdb.get_user(username)
+
+        if user is None:
             self.handle_error(
-                token["error"],
+                "Unknown user: {}".format(username), exception=HTTPUnauthorized
+            )
+
+        stored_api_key = user.get("api_key")
+
+        if not stored_api_key:
+            self.handle_error("Invalid API key", exception=HTTPUnauthorized)
+        if not secrets.compare_digest(stored_api_key, api_key):
+            self.handle_error("Invalid API key", exception=HTTPUnauthorized)
+
+        status = self.request.userdb.is_account_restricted(user)
+        if status:
+            self.handle_error(
+                "Account {} for user: {}".format(status, username),
                 exception=HTTPUnauthorized,
             )
 
@@ -115,7 +144,7 @@ class WorkerApi(GenericApi):
         self.__task = None
 
         # Preliminary validation.
-        self.validate_username_password()
+        self.validate_auth()
 
         # Is the request syntactically correct?
         try:
@@ -325,8 +354,13 @@ class WorkerApi(GenericApi):
     def request_version(self):
         # By being more lax here, we can be more strict
         # elsewhere since the worker will upgrade.
-        self.validate_username_password()
-        return self.add_time({"version": WORKER_VERSION})
+        self.validate_auth()
+        response = {"version": WORKER_VERSION}
+        if getattr(self, "_auth_method", None) == "password":
+            user = self.request.userdb.get_user(self.get_username())
+            if user and user.get("api_key"):
+                response["api_key"] = user["api_key"]
+        return self.add_time(response)
 
     @view_config(route_name="api_beat")
     def beat(self):
