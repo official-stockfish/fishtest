@@ -66,11 +66,11 @@ class CreateLRUCacheTest(unittest.TestCase):
     def test_lru_cache_get(self):
         with self.assertRaises(KeyError):
             self.lru_cache["a"]
+        self.assertIs(self.lru_cache.get("a"), None)
         self.assertEqual(self.lru_cache.get("a", 10), 10)
-        self.lru_cache["a"] = 1
-        self.lru_cache["b"] = 2
-        self.lru_cache["a"]
-        self.assertEqual(list(self.lru_cache.keys()), ["b", "a"])
+        with self.assertRaises(TypeError):
+            self.lru_cache.get("a", refresh=False, invalid_option="dummy")
+        self.assertEqual(self.lru_cache.refresh_on_access, True)
 
     def test_lru_cache_pop(self):
         with self.assertRaises(KeyError):
@@ -95,7 +95,13 @@ class CreateLRUCacheTest(unittest.TestCase):
     def test_lru_cache_keys(self):
         self.lru_cache["a"] = 1
         self.lru_cache["b"] = 2
-        self.assertEqual(set(self.lru_cache.keys()), {"a", "b"})
+        self.assertEqual(list(self.lru_cache.keys()), ["a", "b"])
+        self.lru_cache["a"]
+        self.assertEqual(list(self.lru_cache.keys()), ["b", "a"])
+        self.lru_cache.get("b", refresh=False)
+        self.assertEqual(list(self.lru_cache.keys()), ["b", "a"])
+        self.lru_cache.get("b", refresh=True)
+        self.assertEqual(list(self.lru_cache.keys()), ["a", "b"])
 
     def test_lru_cache_values(self):
         self.lru_cache["a"] = 1
@@ -184,6 +190,16 @@ class CreateLRUCacheTest(unittest.TestCase):
         self.lru_cache["a"] = 1
         time.sleep(0.1)
         self.lru_cache["a"]  # entry is not refreshed
+        time.sleep(0.1)
+        with self.assertRaises(KeyError):
+            self.lru_cache["a"]  # entry is no longer accessible
+
+        self.lru_cache.clear()
+        self.lru_cache.refresh_on_access = True
+        self.lru_cache["a"] = 1
+        time.sleep(0.1)
+        self.lru_cache.get("a", refresh=False)  # entry is not refreshed
+        self.assertEqual(self.lru_cache.refresh_on_access, True)
         time.sleep(0.1)
         with self.assertRaises(KeyError):
             self.lru_cache["a"]  # entry is no longer accessible
