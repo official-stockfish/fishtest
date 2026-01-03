@@ -50,6 +50,15 @@ class LRUCache(MutableMapping):
             self.__purge()
             return len(self.__dict)
 
+    def get(self, *args, refresh=True, **kw):
+        with self.__lock:
+            saved_refresh_on_access = self.__refresh_on_access
+            self.__refresh_on_access = refresh
+            try:
+                return super().get(*args, **kw)
+            finally:
+                self.__refresh_on_access = saved_refresh_on_access
+
     # the default implementation is very inefficient
     def clear(self):
         with self.__lock:
