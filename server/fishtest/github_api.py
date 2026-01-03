@@ -379,12 +379,12 @@ def get_master_repo(
             r = r["parent"]
 
 
-normalize_repo_cache = LRUCache(size=128, expiration=600, refresh_on_access=False)
+normalize_repo_cache = LRUCache(size=128, expiration=600)
 
 
 def normalize_repo(repo):
     try:
-        return normalize_repo_cache[repo]
+        return normalize_repo_cache.get(repo, refresh=False)
     except KeyError:
         pass
     r = call(

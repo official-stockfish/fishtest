@@ -188,6 +188,16 @@ class CreateLRUCacheTest(unittest.TestCase):
         with self.assertRaises(KeyError):
             self.lru_cache["a"]  # entry is no longer accessible
 
+        self.lru_cache.clear()
+        self.lru_cache.refresh_on_access = True
+        self.lru_cache["a"] = 1
+        time.sleep(0.1)
+        self.lru_cache.get("a", refresh=False)  # entry is not refreshed
+        self.assertEqual(self.lru_cache.refresh_on_access, True)
+        time.sleep(0.1)
+        with self.assertRaises(KeyError):
+            self.lru_cache["a"]  # entry is no longer accessible
+
     def test_lru_cache_validation(self):
         self.lru_cache["a"] = 1
         self.lru_cache["b"] = 2
