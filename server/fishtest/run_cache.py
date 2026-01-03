@@ -4,6 +4,7 @@ from enum import IntEnum
 
 from bson.errors import InvalidId
 from bson.objectid import ObjectId
+from fishtest.lru_cache import LRUCache
 from fishtest.schemas import active_runs_schema, cache_schema
 from vtjson import validate
 
@@ -17,33 +18,20 @@ class Prio(IntEnum):
 
 class RunLock:
     def __init__(self):
-        self.run_lock = threading.Lock()
-        self.active_runs = {}
+        self.active_runs = LRUCache(expiration=10000)
 
     def active_run_lock(self, run_id):
         run_id = str(run_id)
-        with self.run_lock:
-            if "purge_count" not in self.active_runs:
-                self.active_runs["purge_count"] = 0
-            self.active_runs["purge_count"] += 1
-            if self.active_runs["purge_count"] > 100000:
-                old = time.time() - 10000
-                self.active_runs = dict(
-                    (k, v)
-                    for k, v in self.active_runs.items()
-                    if (k != "purge_count" and v["time"] >= old)
-                )
-                self.active_runs["purge_count"] = 0
-            if run_id in self.active_runs:
-                active_lock = self.active_runs[run_id]["lock"]
-                self.active_runs[run_id]["time"] = time.time()
-            else:
+        with self.active_runs.lock:
+            try:
+                active_lock = self.active_runs[run_id]
+            except KeyError:
                 active_lock = threading.RLock()
-                self.active_runs[run_id] = {"time": time.time(), "lock": active_lock}
+                self.active_runs[run_id] = active_lock
             return active_lock
 
     def validate(self):
-        with self.run_lock:
+        with self.active_runs.lock:
             validate(
                 active_runs_schema,
                 self.active_runs,
