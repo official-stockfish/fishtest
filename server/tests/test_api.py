@@ -133,6 +133,7 @@ class TestApi(unittest.TestCase):
             "near_github_api_limit": False,
             "ARCH": "?",
             "nps": 0.0,
+            "worker_arch": "x86-64-avx512icl",
         }
         cls.rundb.userdb.create_user(
             cls.username,
@@ -520,6 +521,7 @@ class TestRunFinished(unittest.TestCase):
             "modified": True,
             "ARCH": "?",
             "nps": 0.0,
+            "worker_arch": "x86-64-avx512icl",
         }
         cls.rundb.userdb.create_user(
             cls.username,
