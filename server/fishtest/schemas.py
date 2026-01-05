@@ -420,6 +420,7 @@ worker_info_schema_api = {
     "compiler": union("clang++", "g++"),
     "unique_key": uuid,
     "modified": bool,
+    "worker_arch?": str,  # can become mandatory after worker upgrade
     "ARCH": str,
     "nps": unumber,
     "near_github_api_limit": bool,

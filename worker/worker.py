@@ -74,7 +74,7 @@ MIN_CLANG_MINOR = 0
 
 FASTCHESS_SHA = "e892ad92a74c8a4fd7184b9e4867b97ae8952685"
 
-WORKER_VERSION = 305
+WORKER_VERSION = 306
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -1168,6 +1168,33 @@ def get_exception(files):
     return message
 
 
+def get_worker_arch(worker_dir):
+    working_dir = os.getcwd()
+    os.chdir(worker_dir)
+    try:
+        blob = download_from_github(
+            item="scripts/get_native_properties.sh",
+            owner="official-stockfish",
+            repo="Stockfish",
+            branch="master",
+        )
+        with open("get_native_properties.sh", "w") as f:
+            f.write(blob.decode())
+        arch = (
+            subprocess.check_output(["sh", "./get_native_properties.sh"])
+            .decode()
+            .split()[0]
+        )
+        print(f"Worker arch determined to be: {arch}")
+    except Exception as e:
+        print(f"Exception obtaining worker arch:\n{e}", file=sys.stderr)
+        print('Unable to determine worker arch. Setting it to "unknown"')
+        arch = "unknown"
+    finally:
+        os.chdir(working_dir)
+    return arch
+
+
 def heartbeat(worker_info, password, remote, current_state):
     print("Start heartbeat.")
     payload = {
@@ -1554,6 +1581,7 @@ def worker():
         "compiler": compiler,
         "unique_key": get_uuid(options),
         "modified": not unmodified,
+        "worker_arch": get_worker_arch(worker_dir),
         "ARCH": "?",
         "nps": 0.0,
         "near_github_api_limit": False,

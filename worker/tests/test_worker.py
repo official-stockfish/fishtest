@@ -37,6 +37,10 @@ class WorkerTest(unittest.TestCase):
             pass
         self.assertIsNotNone(blob)
 
+    def test_get_worker_arch(self):
+        arch = worker.get_worker_arch(self.worker_dir)
+        self.assertNotEqual(arch, "unknown")
+
     def test_config_setup(self):
         sys.argv = [sys.argv[0], "user", "pass", "--no_validation"]
         worker.CONFIGFILE = str(self.tempdir / "foo.txt")
