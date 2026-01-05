@@ -11,6 +11,7 @@ from pathlib import Path
 import bson
 import fishtest.github_api as gh
 import fishtest.stats.stat_util
+import regex
 import requests
 from fishtest.run_cache import Prio
 from fishtest.schemas import (
@@ -914,6 +915,7 @@ def validate_form(request):
         "username": request.authenticated_userid,
         "tests_repo": request.POST["tests-repo"],
         "info": request.POST["run-info"],
+        "arch_filter": request.POST["arch-filter"],
     }
     try:
         # Deal with people that have changed their GitHub username
@@ -965,6 +967,18 @@ def validate_form(request):
     odds = request.POST.get("odds", "off")  # off checkboxes are not posted
     if odds == "off":
         data["new_tc"] = data["tc"]
+
+    checkbox_arch_filter = request.POST.get(
+        "checkbox-arch-filter", "off"
+    )  # off checkboxes are not posted
+    if checkbox_arch_filter == "off":
+        data["arch_filter"] = ""
+
+    # check if arch filter is a valid regular expression
+    try:
+        regex.compile(data["arch_filter"])
+    except regex.error as e:
+        raise Exception(f"Invalid arch filter: {e}") from e
 
     validate(tc_schema, data["tc"], "data['tc']")
     validate(tc_schema, data["new_tc"], "data['new_tc']")
@@ -1018,7 +1032,7 @@ def validate_form(request):
         data["base_signature"] = data["new_signature"]
 
     for k, v in data.items():
-        if len(v) == 0:
+        if len(v) == 0 and k != "arch_filter":
             raise Exception("Missing required option: {}".format(k))
 
     # Handle boolean options
@@ -1560,6 +1574,7 @@ def tests_view(request):
         "tests_repo",
         "master_repo",
         "adjudication",
+        "arch_filter",
         "info",
     ):
         if name not in run["args"]:
@@ -1694,6 +1709,8 @@ def tests_view(request):
         warnings.append("this is a failed test")
     if run["args"]["tc"] != run["args"]["new_tc"]:
         warnings.append("this is a test with time odds")
+    if run["args"].get("arch_filter", "") != "":
+        warnings.append("this test has a non-trivial arch filter")
     book_exits = request.rundb.books.get(run["args"]["book"], {}).get("total", 100000)
     if book_exits < 100000:
         warnings.append(f"this test uses a small book with only {book_exits} exits")

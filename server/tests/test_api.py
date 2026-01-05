@@ -52,6 +52,7 @@ def new_run(self, add_tasks=0):
         auto_purge=False,
         username="travis",
         start_time=datetime.now(UTC),
+        arch_filter="avx",
     )
     run = self.rundb.get_run(run_id)
     run["approved"] = True
@@ -133,7 +134,7 @@ class TestApi(unittest.TestCase):
             "near_github_api_limit": False,
             "ARCH": "?",
             "nps": 0.0,
-            "worker_arch": "x86-64-avx512icl",
+            "worker_arch": "x86-64-avx512",
         }
         cls.rundb.userdb.create_user(
             cls.username,
@@ -521,7 +522,7 @@ class TestRunFinished(unittest.TestCase):
             "modified": True,
             "ARCH": "?",
             "nps": 0.0,
-            "worker_arch": "x86-64-avx512icl",
+            "worker_arch": "x86-64-avx512",
         }
         cls.rundb.userdb.create_user(
             cls.username,

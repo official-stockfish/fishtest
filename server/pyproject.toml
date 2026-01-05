@@ -34,6 +34,7 @@ dependencies = [
     "pyramid>=2.0.2",
     "pyramid-debugtoolbar>=4.12.1",
     "pyramid-mako>=1.1.0",
+    "regex>=2025.11.3",
     "requests>=2.32.5",
     "scipy>=1.16.3",
     "vtjson>=2.2.5",
