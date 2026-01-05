@@ -26,6 +26,10 @@
     is_odds = False
 %>
 
+<%
+  arch_filter = args.get('arch_filter',  '')
+%>
+
 <script>
   document.title = "Create New Test | Stockfish Testing";
 </script>
@@ -603,11 +607,24 @@
               </div>
             </div>
 
+            <div id="arch-filter" class="mb-2" style="display: none;">
+              <div class="row gx-1">
+                <div class="col">
+                  <label for="arch-filter" class="form-label">Arch filter (regular expression)</label>
+                  <input
+                    name="arch-filter"
+                    class="form-control"
+                    value='${arch_filter|h}'
+                  >
+                </div>
+              </div>
+            </div>
+
             <div><hr></div>
 
             <div class="mb-2">
-              <div class="row">
-                <div class="col text-nowrap">
+              <div class="row g-3">
+                <div class="col-12 col-md-6 col-lg-4 text-nowrap">
                   <div class="mb-2 form-check">
                     <label class="form-check-label" for="checkbox-auto-purge">Auto-purge</label>
                     <input
@@ -618,8 +635,21 @@
                       checked
                     >
                   </div>
+                  <div class="mb-2 form-check">
+                    <label class="form-check-label" for="checkbox-arch-filter">Arch filter</label>
+                    <input
+                      type="checkbox"
+                      class="form-check-input"
+                      name="checkbox-arch-filter"
+                      id="checkbox-arch-filter"
+                      ${'checked' if arch_filter != '' else ''}
+                    >
+                  </div>
                 </div>
-                <div class="col text-nowrap">
+
+
+
+                <div class="col-12 col-md-6 col-lg-4 text-nowrap">
                   <div class="mb-2 form-check">
                     <label class="form-check-label" for="checkbox-time-odds">Time odds</label>
                     <input
@@ -630,8 +660,6 @@
                       ${'checked' if is_odds else ''}
                     >
                   </div>
-                </div>
-                <div class="col text-nowrap">
                   <div class="mb-2 form-check">
                     <label class="form-check-label" for="checkbox-book-visibility">Custom book</label>
                     <input
@@ -642,9 +670,10 @@
                     >
                   </div>
                 </div>
-                <div class="col text-nowrap">
+
+                <div class="col-12 col-md-6 col-lg-4 text-nowrap">
                   <div class="mb-2 form-check">
-                    <label class="form-check-label" for="checkbox-adjudication">Disable adjudication</label>
+                    <label class="form-check-label" for="checkbox-adjudication">No adjudication</label>
                     <input
                       type="checkbox"
                       class="form-check-input"
@@ -687,6 +716,7 @@
     // Also make sure that the fields have the right visibility.
     updateOdds(document.getElementById('checkbox-time-odds'));
     toggleBook(document.getElementById('checkbox-book-visibility'));
+    toggleArchFilter(document.getElementById('checkbox-arch-filter'));
   });
 
   let stopRule = null;
@@ -1026,8 +1056,20 @@
     }
   }
 
+  function toggleArchFilter(checkbox) {
+    if (checkbox.checked) {
+      document.getElementById('arch-filter').style.display = "";
+    } else {
+      document.getElementById('arch-filter').style.display = "none";
+    }
+  }
+
   document.getElementById('checkbox-book-visibility').addEventListener("change", (e) => {
     toggleBook(e.target);
+  });
+
+  document.getElementById('checkbox-arch-filter').addEventListener("change", (e) => {
+    toggleArchFilter(e.target);
   });
 </script>
 

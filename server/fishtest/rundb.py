@@ -14,10 +14,12 @@ import fishtest.github_api as gh
 import fishtest.run_cache
 import fishtest.spsa_handler
 import fishtest.stats.stat_util
+import regex
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from fishtest.actiondb import ActionDb
 from fishtest.kvstore import KeyValueStore
+from fishtest.lru_cache import LRUCache
 from fishtest.run_cache import Prio
 from fishtest.scheduler import Scheduler
 from fishtest.schemas import (
@@ -113,6 +115,18 @@ class RunDb:
         self._shutdown = False
 
         self.spsa_handler = fishtest.spsa_handler.SPSAHandler(self)
+
+        self.compiled_regex_cache = LRUCache(1000)
+
+    def compile_regex(self, pattern):
+        try:
+            return self.compiled_regex_cache[pattern]
+        except KeyError:
+            pass
+        # pattern is already known to compile
+        compiled_pattern = regex.compile(pattern)
+        self.compiled_regex_cache[pattern] = compiled_pattern
+        return compiled_pattern
 
     def get_run(self, run_id):
         if self.__is_primary_instance:
@@ -553,6 +567,7 @@ class RunDb:
         throughput=100,
         priority=0,
         adjudication=True,
+        arch_filter="",
     ):
         if start_time is None:
             start_time = datetime.now(UTC)
@@ -584,6 +599,7 @@ class RunDb:
             "itp": 100,  # internal throughput
             "priority": priority,
             "adjudication": adjudication,
+            "arch_filter": arch_filter,
         }
 
         if master_repo is not None:
@@ -1091,6 +1107,7 @@ After fixing the issues you can unblock the worker at
         min_threads = int(worker_info.get("min_threads", 1))
         max_memory = int(worker_info.get("max_memory", 0))
         near_github_api_limit = worker_info["near_github_api_limit"]
+        worker_arch = worker_info["worker_arch"]
 
         # Now we sort the list of unfinished runs according to priority.
         last_run_id = self.worker_runs.get(my_name, {}).get("last_run", None)
@@ -1181,6 +1198,30 @@ After fixing the issues you can unblock the worker at
 
             if run["cores"] > limit_cores:
                 continue
+
+            # check if we satisfy the filter
+            arch_filter = run["args"].get("arch_filter", "")
+            if arch_filter != "":
+                arch_filter_re = self.compile_regex(arch_filter)
+                # We use a timeout to protect against redos attacks.
+                # The timeout of 100ms should never trigger with a legitimate
+                # arch string.
+                # See https://github.com/official-stockfish/fishtest/pull/2428#issuecomment-3715147268
+                try:
+                    if arch_filter_re.search(worker_arch, timeout=0.1) is None:
+                        continue
+                except Exception as e:
+                    message = (
+                        f"Matching {worker_arch} against {arch_filter} failed: {e}"
+                    )
+                    self.actiondb.log_message(
+                        username="fishtest.system",
+                        message=message,
+                    )
+                    print(
+                        message,
+                        flush=True,
+                    )
 
             # If we make it here, it means we have found a run
             # suitable for a new task.
