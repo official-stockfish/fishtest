@@ -46,13 +46,15 @@
         python_version = ".".join([str(m) for m in task['worker_info']['python_version']])
         version = task['worker_info']['version']
         ARCH = task['worker_info']['ARCH']
+        worker_arch = task['worker_info'].get('worker_arch', "unknown")
       %>
       os: ${task['worker_info']['uname']};
       ram: ${task['worker_info']['max_memory']}MiB;
       compiler: ${compiler} ${gcc_version};
       python: ${python_version};
       worker: ${version};
-      arch: ${ARCH}
+      arch: ${worker_arch};
+      features: ${ARCH}
     </td>
     <td>${str(task.get('last_updated', '-')).split('.')[0]}</td>
     <td>${f"{total:03d} / {task['num_games']:03d}"}</td>
