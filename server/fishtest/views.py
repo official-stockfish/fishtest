@@ -672,7 +672,7 @@ def user(request):
                 + " user "
                 + user_name
             )
-            request.userdb.last_blocked_time = 0
+            request.userdb.blocked.clear()
             request.userdb.save_user(user_data)
             request.actiondb.block_user(
                 username=userid,
@@ -681,7 +681,7 @@ def user(request):
             )
 
         elif "pending" in request.POST and user_data["pending"]:
-            request.userdb.last_pending_time = 0
+            request.userdb.pending.clear()
             if request.POST["pending"] == "0":
                 user_data["pending"] = False
                 request.userdb.save_user(user_data)
