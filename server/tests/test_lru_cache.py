@@ -170,6 +170,29 @@ class CreateLRUCacheTest(unittest.TestCase):
         with self.assertRaises(KeyError):
             self.lru_cache["a"]
 
+    def test_lru_cache_lock(self):
+        self.lru_cache.size = 1
+        self.lru_cache["a"] = 1
+        self.assertFalse(self.lru_cache.lock.locked())
+        with self.lru_cache.lock:
+            self.assertTrue(self.lru_cache.lock.locked())
+            self.lru_cache["b"] = 2
+            # the entry does not expire when we hold the lock
+            self.assertIn("a", self.lru_cache)
+        self.assertFalse(self.lru_cache.lock.locked())
+        # the entry expires after releasing the lock
+        self.assertNotIn("a", self.lru_cache)
+
+    def test_lru_cache_lock_timing(self):
+        self.lru_cache.expiration = 0.1
+        self.lru_cache["a"] = 1
+        with self.lru_cache.lock:
+            time.sleep(0.2)
+            # the entry does not expire when we hold the lock
+            self.assertIn("a", self.lru_cache)
+        # the entry expires after releasing the lock
+        self.assertNotIn("a", self.lru_cache)
+
     def test_lru_cache_refresh_on_access(self):
         self.lru_cache.refresh_on_access = False
         self.lru_cache["a"] = 1

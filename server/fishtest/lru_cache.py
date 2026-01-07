@@ -13,23 +13,49 @@ class LRUCache(MutableMapping):
         self.__refresh_on_access = refresh_on_access
         self.__dict = OrderedDict()
 
-        # All methods that modify the internal state of the
-        # object are protected by this lock.
-        # In addition the lock is exported as a property
-        # so that it can be used to make combinations of
-        # the methods atomic, if needed.
+        # The internal state of the object is protected by this lock.
+        # It is an RLock because default implementations
+        # in the super class may call back to self.
         self.__lock = threading.RLock()
+
+        # self behaves itself as a lock like object. This is the underlying
+        # Python lock:
+        self.__LOCK = threading.Lock()
+
+        # When the lock is held entries do not expire.
+        self.__relax_constraints = False
+
+    def __enter__(self):
+        self.acquire()
+
+    def __exit__(self, *args):
+        self.release()
+        return False
+
+    def acquire(self):
+        self.__LOCK.acquire()
+        with self.__lock:
+            self.__purge()
+            self.__relax_constraints = True
+
+    def release(self):
+        with self.__lock:
+            self.__relax_constraints = False
+            self.__purge()
+        self.__LOCK.release()
+
+    def locked(self):
+        with self.__lock:
+            return self.__relax_constraints
 
     def __getitem__(self, key):
         with self.__lock:
             current_time = time.monotonic()
             v, atime = self.__dict[key]
-            if (
-                self.__expiration is not None
-                and atime < current_time - self.__expiration
-            ):
-                del self.__dict[key]
-                raise KeyError(key)
+            if self.__expiration is not None and not self.__relax_constraints:
+                if atime < current_time - self.__expiration:
+                    del self.__dict[key]
+                    raise KeyError(key)
             if self.__refresh_on_access:
                 self.__dict.move_to_end(key)
                 self.__dict[key] = (v, current_time)
@@ -72,14 +98,12 @@ class LRUCache(MutableMapping):
         with self.__lock:
             if key not in self.__dict:
                 return False
-            current_time = time.monotonic()
-            v, atime = self.__dict[key]
-            if (
-                self.__expiration is not None
-                and atime < current_time - self.__expiration
-            ):
-                del self.__dict[key]
-                return False
+            if self.__expiration is not None and not self.__relax_constraints:
+                current_time = time.monotonic()
+                v, atime = self.__dict[key]
+                if atime < current_time - self.__expiration:
+                    del self.__dict[key]
+                    return False
             return True
 
     def __iter__(self):
@@ -106,23 +130,26 @@ class LRUCache(MutableMapping):
             self.__purge()
 
     def __purge(self):
-        if self.__size is not None:
-            while len(self.__dict) > self.__size:
-                self.__dict.popitem(last=False)
-        if self.__expiration is not None:
-            expired = []
-            cutoff_time = time.monotonic() - self.__expiration
-            for k, v in self.__dict.items():
-                atime = v[1]
-                if atime >= cutoff_time:
-                    break
-                expired.append(k)
-            for k in expired:
-                del self.__dict[k]
+        # Helper method. Not synchronized!
+        if not self.__relax_constraints:
+            if self.__size is not None:
+                while len(self.__dict) > self.__size:
+                    self.__dict.popitem(last=False)
+            if self.__expiration is not None:
+                expired = []
+                cutoff_time = time.monotonic() - self.__expiration
+                for k, v in self.__dict.items():
+                    atime = v[1]
+                    if atime >= cutoff_time:
+                        break
+                    expired.append(k)
+                for k in expired:
+                    del self.__dict[k]
 
     @property
     def size(self):
-        return self.__size
+        with self.__lock:
+            return self.__size
 
     @size.setter
     def size(self, val):
@@ -134,7 +161,8 @@ class LRUCache(MutableMapping):
 
     @property
     def expiration(self):
-        return self.__expiration
+        with self.__lock:
+            return self.__expiration
 
     @expiration.setter
     def expiration(self, val):
@@ -144,13 +172,24 @@ class LRUCache(MutableMapping):
 
     @property
     def refresh_on_access(self):
-        return self.__refresh_on_access
+        with self.__lock:
+            return self.__refresh_on_access
 
     @refresh_on_access.setter
     def refresh_on_access(self, val):
         with self.__lock:
             self.__refresh_on_access = val
 
+    # The "lock" property is an alias for self
+    # so it is purely cosmetic. However writing:
+    #
+    # with lru_cache.lock:
+    #   ...
+    #
+    # is clearer than
+    #
+    # with lru_cache:
+    #   ...
     @property
     def lock(self):
-        return self.__lock
+        return self
