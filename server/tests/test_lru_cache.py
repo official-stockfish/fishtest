@@ -211,10 +211,26 @@ class CreateLRUCacheTest(unittest.TestCase):
         # now deleted by other thread
         self.assertNotIn("a", self.lru_cache)
 
+    def test_lru_cache_invalid_release(self):
+        with self.assertRaises(RuntimeError):
+            self.lru_cache.lock.release()
+
+    def test_lru_cache_invalid_release_threaded(self):
+        self.lru_cache.lock.acquire()
+
+        def worker():
+            with self.assertRaises(RuntimeError):
+                self.lru_cache.lock.release()
+
+        t = threading.Thread(target=worker)
+        t.start()
+        t.join()
+        self.lru_cache.lock.release()
+
     def test_lru_cache_reacquire(self):
         with self.lru_cache.lock:
-            with self.assertRaises(RuntimeError):
-                self.lru_cache.lock.acquire()
+            with self.lru_cache.lock:
+                pass
 
     def test_lru_cache_reacquire_threaded(self):
         worker_started = threading.Event()
@@ -236,6 +252,60 @@ class CreateLRUCacheTest(unittest.TestCase):
         # After releasing the lock, the worker should acquire it and run.
         self.assertTrue(worker_has_run.wait(timeout=1.0))
         t.join()
+
+    def test_non_blocking(self):
+        with self.lru_cache.lock:
+            acquired = self.lru_cache.lock.acquire(blocking=False)
+            self.assertTrue(acquired)
+            self.lru_cache.lock.release()
+
+    def test_non_blocking_threaded(self):
+        def worker():
+            acquired = self.lru_cache.lock.acquire(blocking=False)
+            self.assertFalse(acquired)
+
+        t = threading.Thread(target=worker)
+
+        with self.lru_cache.lock:
+            t.start()
+            t.join()
+
+    def test_timeout(self):
+        with self.lru_cache.lock:
+            acquired = self.lru_cache.lock.acquire(timeout=0.1)
+            self.assertTrue(acquired)
+            self.lru_cache.lock.release()
+
+    def test_timeout_threaded(self):
+        def worker():
+            acquired = self.lru_cache.lock.acquire(timeout=0.1)
+            self.assertFalse(acquired)
+
+        t = threading.Thread(target=worker)
+
+        with self.lru_cache.lock:
+            t.start()
+            t.join()
+
+        worker_started = threading.Event()
+        lock_acquired = threading.Event()
+
+        def worker():
+            worker_started.set()
+            acquired = self.lru_cache.lock.acquire(timeout=1.0)
+            lock_acquired.set()
+            self.assertTrue(acquired)
+
+        t = threading.Thread(target=worker)
+
+        self.lru_cache.acquire()
+        t.start()
+        worker_started.wait(timeout=1.0)
+        time.sleep(0.1)
+        self.assertFalse(lock_acquired.is_set())
+        self.lru_cache.release()
+        t.join()
+        self.assertTrue(lock_acquired.is_set())
 
     def test_lru_cache_lock_timing(self):
         self.lru_cache.expiration = 0.1
