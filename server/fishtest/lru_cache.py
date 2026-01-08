@@ -14,15 +14,14 @@ class LRUCache(MutableMapping):
         self.__dict = OrderedDict()
 
         # The internal state of the object is protected by this lock.
-        # It is an RLock because default implementations
-        # in the super class may call back to self.
+        # The lock can be acquired externally by using self (or equivalently
+        # self.lock) as a context manager. In that case the object
+        # is inaccessible from other threads until the context
+        # manager exits.
         self.__lock = threading.RLock()
 
-        # self behaves itself as a lock like object. This is the underlying
-        # Python lock:
-        self.__LOCK = threading.Lock()
-
-        # When the lock is held entries do not expire.
+        # When the lock is acquired via the context manager,
+        # entries do not expire.
         self.__relax_constraints = False
 
     def __enter__(self):
@@ -33,20 +32,21 @@ class LRUCache(MutableMapping):
         return False
 
     def acquire(self):
-        self.__LOCK.acquire()
-        with self.__lock:
-            self.__purge()
-            self.__relax_constraints = True
+        self.__lock.acquire()
+        if self.__relax_constraints:
+            self.__lock.release()
+            raise RuntimeError("Attempt to reacquire a lock")
+        self.__purge()
+        self.__relax_constraints = True
 
     def release(self):
-        with self.__lock:
-            self.__relax_constraints = False
-            self.__purge()
-        self.__LOCK.release()
-
-    def locked(self):
-        with self.__lock:
-            return self.__relax_constraints
+        # This method should only be called when we hold the lock.
+        # Otherwise it produces a race condition.
+        if not self.__relax_constraints:
+            raise RuntimeError("Attempt to release an unlocked LRUCache")
+        self.__relax_constraints = False
+        self.__purge()
+        self.__lock.release()
 
     def __getitem__(self, key):
         with self.__lock:
