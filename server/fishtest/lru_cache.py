@@ -18,11 +18,10 @@ class LRUCache(MutableMapping):
         # self.lock) as a context manager. In that case the object
         # is inaccessible from other threads until the context
         # manager exits.
+        # Note, to preserve atomicity, entries do not expire
+        # when the lock is acquired through the context manager.
         self.__lock = threading.RLock()
-
-        # When the lock is acquired via the context manager,
-        # entries do not expire.
-        self.__relax_constraints = False
+        self.__lock_depth = 0
 
     def __enter__(self):
         self.acquire()
@@ -31,20 +30,24 @@ class LRUCache(MutableMapping):
         self.release()
         return False
 
-    def acquire(self):
-        self.__lock.acquire()
-        if self.__relax_constraints:
-            self.__lock.release()
-            raise RuntimeError("Attempt to reacquire a lock")
+    def acquire(self, blocking=True, timeout=-1):
+        acquired = self.__lock.acquire(blocking=blocking, timeout=timeout)
+        if not acquired:
+            return False
         self.__purge()
-        self.__relax_constraints = True
+        self.__lock_depth += 1
+        return True
 
     def release(self):
-        # This method should only be called when we hold the lock.
-        # Otherwise it produces a race condition.
-        if not self.__relax_constraints:
-            raise RuntimeError("Attempt to release an unlocked LRUCache")
-        self.__relax_constraints = False
+        acquired = self.__lock.acquire(blocking=False)
+        if not acquired:
+            raise RuntimeError("Attempt to release a lock we do not own")
+        try:
+            if self.__lock_depth == 0:
+                raise RuntimeError("Attempt to release an unlocked lock")
+        finally:
+            self.__lock.release()
+        self.__lock_depth -= 1
         self.__purge()
         self.__lock.release()
 
@@ -52,7 +55,7 @@ class LRUCache(MutableMapping):
         with self.__lock:
             current_time = time.monotonic()
             v, atime = self.__dict[key]
-            if self.__expiration is not None and not self.__relax_constraints:
+            if self.__expiration is not None and self.__lock_depth == 0:
                 if atime < current_time - self.__expiration:
                     del self.__dict[key]
                     raise KeyError(key)
@@ -98,7 +101,7 @@ class LRUCache(MutableMapping):
         with self.__lock:
             if key not in self.__dict:
                 return False
-            if self.__expiration is not None and not self.__relax_constraints:
+            if self.__expiration is not None and self.__lock_depth == 0:
                 current_time = time.monotonic()
                 v, atime = self.__dict[key]
                 if atime < current_time - self.__expiration:
@@ -131,7 +134,7 @@ class LRUCache(MutableMapping):
 
     def __purge(self):
         # Helper method. Not synchronized!
-        if not self.__relax_constraints:
+        if self.__lock_depth == 0:
             if self.__size is not None:
                 while len(self.__dict) > self.__size:
                     self.__dict.popitem(last=False)
