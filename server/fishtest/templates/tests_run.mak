@@ -252,7 +252,7 @@
               </div>
 
               <div class="mb-2 col-6">
-                <label for="test-signature" class="form-label">Test Signature</label>
+                <label for="test-signature" class="form-label">Test Signature (bench)</label>
                 <input
                   type="number"
                   name="test-signature"
@@ -266,7 +266,7 @@
               </div>
 
               <div class="mb-2 col-6">
-                <label for="base-signature" class="form-label">Base Signature</label>
+                <label for="base-signature" class="form-label">Base Signature (bench)</label>
                 <input
                   type="number"
                   name="base-signature"
