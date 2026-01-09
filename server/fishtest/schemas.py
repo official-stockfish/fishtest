@@ -2,7 +2,7 @@
 # can be statically validated before they are processed further or written
 # to the database.
 #
-# See https://github.com/vdbergh/vtjson for a description of the schema format.
+# See https://www.cantate.be/vtjson for extensive documentation on the schema format.
 
 import copy
 import math
@@ -33,6 +33,7 @@ from vtjson import (
     one_of,
     quote,
     regex,
+    regex_pattern,
     set_label,
     set_name,
     size,
@@ -723,7 +724,7 @@ runs_schema = intersect(
                 "itp": unumber,
                 "priority": number,
                 "adjudication": bool,
-                "arch_filter": str,
+                "arch_filter": regex_pattern,
                 "sprt?": intersect(
                     {
                         "alpha": 0.05,
