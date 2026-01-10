@@ -6,7 +6,6 @@
 
 import copy
 import math
-import threading
 from datetime import UTC, datetime
 
 import fishtest.stats.stat_util
@@ -38,9 +37,6 @@ from vtjson import (
     set_name,
     size,
     union,
-)
-from vtjson import (
-    filter as filter_,
 )
 
 run_id = intersect(str, set_name(ObjectId.is_valid, "valid_object_id"))
@@ -874,16 +870,6 @@ connections_counter_schema = {
 unfinished_runs_schema = {
     run_id,
 }
-
-# threading.RLock is a factory function!
-_RLock = type(threading.RLock())
-
-active_runs_schema = filter_(
-    dict,
-    {
-        run_id: _RLock,
-    },
-)
 
 worker_runs_schema = {
     short_worker_name: {
