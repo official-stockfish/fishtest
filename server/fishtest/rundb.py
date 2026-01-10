@@ -567,7 +567,7 @@ class RunDb:
         throughput=100,
         priority=0,
         adjudication=True,
-        arch_filter="",
+        arch_filter=None,
     ):
         if start_time is None:
             start_time = datetime.now(UTC)
@@ -599,11 +599,13 @@ class RunDb:
             "itp": 100,  # internal throughput
             "priority": priority,
             "adjudication": adjudication,
-            "arch_filter": arch_filter,
         }
 
         if master_repo is not None:
             run_args["master_repo"] = master_repo
+
+        if arch_filter is not None:
+            run_args["arch_filter"] = arch_filter
 
         if sprt is not None:
             run_args["sprt"] = sprt
