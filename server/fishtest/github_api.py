@@ -4,7 +4,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import requests
-from fishtest.lru_cache import LRUCache
+from fishtest.lru_cache import LRUCache, lru_cache
 from fishtest.schemas import sha as sha_schema
 from fishtest.schemas import str_int, uint
 from vtjson import ValidationError, union, validate
@@ -379,13 +379,8 @@ def get_master_repo(
             r = r["parent"]
 
 
-normalize_repo_cache = LRUCache(size=128, expiration=600)
-
-
+@lru_cache(maxsize=128, expiration=600, refresh=False)
 def normalize_repo(repo):
-    cached_url = normalize_repo_cache.get(repo, refresh=False)
-    if cached_url is not None:
-        return cached_url
     r = call(
         repo,
         _method="HEAD",
@@ -394,7 +389,6 @@ def normalize_repo(repo):
         _ignore_rate_limit=True,
     )
     r.raise_for_status()
-    normalize_repo_cache[repo] = r.url
     return r.url
 
 

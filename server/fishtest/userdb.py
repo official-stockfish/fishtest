@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from fishtest.lru_cache import LRUCache
+from fishtest.lru_cache import lru_cache
 from fishtest.schemas import user_schema
 from pymongo import ASCENDING
 from vtjson import ValidationError, validate
@@ -23,19 +23,17 @@ class UserDb:
         self.users = self.db["users"]
         self.user_cache = self.db["user_cache"]
         self.top_month = self.db["top_month"]
-        # Cache user lookups for 120s
-        self.cache = LRUCache(expiration=120)
-        # Cache pending/blocked for 1s
-        self.pending = LRUCache(size=1, expiration=1)
-        self.blocked = LRUCache(size=1, expiration=1)
 
+    def clear_cache(self):
+        self.get_pending.cache_clear()
+        self.get_blocked.cache_clear()
+        self.find_by_username.cache_clear()
+
+    @lru_cache(
+        expiration=120, refresh=False, filter=lambda f, args, kw, val: val is not None
+    )
     def find_by_username(self, name):
-        with self.cache.lock:
-            if name not in self.cache:
-                user = self.users.find_one({"username": name})
-                if user is not None:
-                    self.cache[name] = user
-            return self.cache.get(name, refresh=False)
+        return self.users.find_one({"username": name})
 
     def find_by_email(self, email):
         return self.users.find_one({"email": email})
@@ -43,7 +41,7 @@ class UserDb:
     def authenticate(self, username, password):
         user = self.get_user(username)
         if not user or user["password"] != password:
-            print(f"Invalid login: '{username}' '{password}", flush=True)
+            print(f"Invalid login: '{username}' '{password}'", flush=True)
             return {"error": f"Invalid password for user: {username}"}
         if "blocked" in user and user["blocked"]:
             print(f"Blocked account: '{username}' '{password}'", flush=True)
@@ -57,21 +55,13 @@ class UserDb:
     def get_users(self):
         return self.users.find(sort=[("_id", ASCENDING)])
 
+    @lru_cache(expiration=1, refresh=False)
     def get_pending(self):
-        with self.pending.lock:
-            if "value" not in self.pending:
-                self.pending["value"] = list(
-                    self.users.find({"pending": True}, sort=[("_id", ASCENDING)])
-                )
-            return self.pending.get("value", refresh=False)
+        return list(self.users.find({"pending": True}, sort=[("_id", ASCENDING)]))
 
+    @lru_cache(expiration=1, refresh=False)
     def get_blocked(self):
-        with self.blocked.lock:
-            if "value" not in self.blocked:
-                self.blocked["value"] = list(
-                    self.users.find({"blocked": True}, sort=[("_id", ASCENDING)])
-                )
-            return self.blocked.get("value", refresh=False)
+        return list(self.users.find({"blocked": True}, sort=[("_id", ASCENDING)]))
 
     def get_user(self, username):
         return self.find_by_username(username)
@@ -107,8 +97,7 @@ class UserDb:
             }
             validate_user(user)
             self.users.insert_one(user)
-            self.pending.clear()
-            self.blocked.clear()
+            self.clear_cache()
 
             return True
         except Exception:
@@ -117,16 +106,13 @@ class UserDb:
     def save_user(self, user):
         validate_user(user)
         self.users.replace_one({"_id": user["_id"]}, user)
-        self.pending.clear()
-        self.blocked.clear()
-        self.cache.clear()
+        self.clear_cache()
 
     def remove_user(self, user, rejector):
         result = self.users.delete_one({"_id": user["_id"]})
         if result.deleted_count > 0:
             # User successfully deleted
-            self.pending.clear()
-            self.cache.clear()
+            self.clear_cache()
             # logs rejected users to the server
             print(
                 f"user: {user['username']} with email: {user['email']} was rejected by: {rejector}",

@@ -19,7 +19,7 @@ from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from fishtest.actiondb import ActionDb
 from fishtest.kvstore import KeyValueStore
-from fishtest.lru_cache import LRUCache
+from fishtest.lru_cache import lru_cache
 from fishtest.run_cache import Prio
 from fishtest.scheduler import Scheduler
 from fishtest.schemas import (
@@ -116,17 +116,10 @@ class RunDb:
 
         self.spsa_handler = fishtest.spsa_handler.SPSAHandler(self)
 
-        self.compiled_regex_cache = LRUCache(1000)
-
+    @lru_cache(maxsize=1000)
     def compile_regex(self, pattern):
-        try:
-            return self.compiled_regex_cache[pattern]
-        except KeyError:
-            pass
         # pattern is already known to compile
-        compiled_pattern = regex.compile(pattern)
-        self.compiled_regex_cache[pattern] = compiled_pattern
-        return compiled_pattern
+        return regex.compile(pattern)
 
     def get_run(self, run_id):
         if self.__is_primary_instance:

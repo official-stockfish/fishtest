@@ -4,8 +4,9 @@ from enum import IntEnum
 
 from bson.errors import InvalidId
 from bson.objectid import ObjectId
-from fishtest.lru_cache import LRUCache
-from fishtest.schemas import active_runs_schema, cache_schema
+from fishtest.lru_cache import lru_cache
+from fishtest.schemas import cache_schema
+from fishtest.schemas import run_id as run_id_schema
 from vtjson import validate
 
 
@@ -16,39 +17,22 @@ class Prio(IntEnum):
     SAVE_NOW = 1000
 
 
-class RunLock:
-    def __init__(self):
-        self.active_runs = LRUCache(expiration=10000)
-
-    def active_run_lock(self, run_id):
-        run_id = str(run_id)
-        with self.active_runs.lock:
-            try:
-                active_lock = self.active_runs[run_id]
-            except KeyError:
-                active_lock = threading.RLock()
-                self.active_runs[run_id] = active_lock
-            return active_lock
-
-    def validate(self):
-        with self.active_runs.lock:
-            validate(
-                active_runs_schema,
-                self.active_runs,
-                name="active_runs",
-            )
-
-
 class RunCache:
     def __init__(self, runs):
         # For documentation of the cache format see "cache_schema" in schemas.py.
         self.runs = runs
-        self.run_lock = RunLock()
         self.run_cache_lock = threading.Lock()
         self.run_cache = {}
 
     def active_run_lock(self, run_id):
-        return self.run_lock.active_run_lock(run_id)
+        run_id = str(run_id)
+        return self.__active_run_lock(run_id)
+
+    @lru_cache(expiration=10000)
+    def __active_run_lock(self, run_id):
+        # assertion!
+        validate(run_id_schema, run_id)
+        return threading.RLock()
 
     def buffer(self, run, *, priority=Prio.NORMAL, create=False):
         """
@@ -172,7 +156,6 @@ class RunCache:
                     del self.run_cache[run_id]
 
     def validate(self):
-        self.run_lock.validate()
         with self.run_cache_lock:
             validate(
                 cache_schema,

@@ -2,31 +2,29 @@ import threading
 import time
 import unittest
 
-from fishtest.lru_cache import LRUCache
-from vtjson import ValidationError, validate
-from vtjson import filter as filter_
+from fishtest.lru_cache import LRUCache, lru_cache
 
 
 class CreateLRUCacheTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.size = 10
+        cls.maxsize = 10
         cls.lru_cache = LRUCache()
 
     def setUp(self):
-        self.lru_cache.size = self.size
+        self.lru_cache.maxsize = self.maxsize
         self.lru_cache.expiration = None
-        self.lru_cache.refresh_on_access = True
+        self.lru_cache.refresh = True
         self.lru_cache.clear()
 
     def test_lru_cache_size(self):
-        self.assertEqual(self.lru_cache.size, self.size)
+        self.assertEqual(self.lru_cache.maxsize, self.maxsize)
         with self.assertRaises(ValueError):
-            LRUCache(size=-1)
+            LRUCache(maxsize=-1)
         with self.assertRaises(ValueError):
-            self.lru_cache.size = -1
+            self.lru_cache.maxsize = -1
         self.lru_cache["a"] = 1
-        self.lru_cache.size = 0
+        self.lru_cache.maxsize = 0
         self.assertEqual(len(self.lru_cache), 0)
 
     def test_lru_cache_clear(self):
@@ -71,7 +69,7 @@ class CreateLRUCacheTest(unittest.TestCase):
         self.assertEqual(self.lru_cache.get("a", 10), 10)
         with self.assertRaises(TypeError):
             self.lru_cache.get("a", refresh=False, invalid_option="dummy")
-        self.assertEqual(self.lru_cache.refresh_on_access, True)
+        self.assertEqual(self.lru_cache.refresh, True)
 
     def test_lru_cache_pop(self):
         with self.assertRaises(KeyError):
@@ -115,25 +113,27 @@ class CreateLRUCacheTest(unittest.TestCase):
         self.assertEqual(set(self.lru_cache.items()), {("a", 1), ("b", 2)})
 
     def test_lru_cache_insertion(self):
-        for i in range(0, self.size + 1):
+        for i in range(0, self.maxsize + 1):
             self.lru_cache[str(i)] = i
-        self.assertEqual(len(self.lru_cache), self.size)
-        self.assertEqual(list(self.lru_cache.values()), list(range(1, self.size + 1)))
+        self.assertEqual(len(self.lru_cache), self.maxsize)
+        self.assertEqual(
+            list(self.lru_cache.values()), list(range(1, self.maxsize + 1))
+        )
 
     def test_lru_cache_reordering_get(self):
-        for i in range(0, self.size + 1):
+        for i in range(0, self.maxsize + 1):
             self.lru_cache[str(i)] = i
         self.lru_cache["5"]
-        result = list(range(1, self.size + 1))
+        result = list(range(1, self.maxsize + 1))
         del result[4]
         result.append(5)
         self.assertEqual(list(self.lru_cache.values()), result)
 
     def test_lru_cache_reordering_set(self):
-        for i in range(0, self.size + 1):
+        for i in range(0, self.maxsize + 1):
             self.lru_cache[str(i)] = i
         self.lru_cache["5"] = 11
-        result = list(range(1, self.size + 1))
+        result = list(range(1, self.maxsize + 1))
         del result[4]
         result.append(11)
         self.assertEqual(list(self.lru_cache.values()), result)
@@ -172,7 +172,7 @@ class CreateLRUCacheTest(unittest.TestCase):
             self.lru_cache["a"]
 
     def test_lru_cache_lock(self):
-        self.lru_cache.size = 1
+        self.lru_cache.maxsize = 1
         self.lru_cache["a"] = 1
         with self.lru_cache.lock:
             self.lru_cache["b"] = 2
@@ -277,11 +277,11 @@ class CreateLRUCacheTest(unittest.TestCase):
             self.lru_cache.lock.release()
 
     def test_timeout_threaded(self):
-        def worker():
+        def worker1():
             acquired = self.lru_cache.lock.acquire(timeout=0.1)
             self.assertFalse(acquired)
 
-        t = threading.Thread(target=worker)
+        t = threading.Thread(target=worker1)
 
         with self.lru_cache.lock:
             t.start()
@@ -290,13 +290,13 @@ class CreateLRUCacheTest(unittest.TestCase):
         worker_started = threading.Event()
         lock_acquired = threading.Event()
 
-        def worker():
+        def worker2():
             worker_started.set()
             acquired = self.lru_cache.lock.acquire(timeout=1.0)
             lock_acquired.set()
             self.assertTrue(acquired)
 
-        t = threading.Thread(target=worker)
+        t = threading.Thread(target=worker2)
 
         self.lru_cache.acquire()
         t.start()
@@ -317,14 +317,14 @@ class CreateLRUCacheTest(unittest.TestCase):
         # the entry expires after releasing the lock
         self.assertNotIn("a", self.lru_cache)
 
-    def test_lru_cache_refresh_on_access(self):
-        self.lru_cache.refresh_on_access = False
+    def test_lru_cache_refresh(self):
+        self.lru_cache.refresh = False
         self.lru_cache["a"] = 1
         self.lru_cache["b"] = 2
         self.lru_cache["a"]
         self.assertEqual(list(self.lru_cache.keys()), ["a", "b"])
 
-    def test_lru_cache_refresh_on_access_timing(self):
+    def test_lru_cache_refresh_timing(self):
         self.lru_cache.expiration = 0.15
         self.lru_cache["a"] = 1
         time.sleep(0.1)
@@ -333,7 +333,7 @@ class CreateLRUCacheTest(unittest.TestCase):
         self.lru_cache["a"]  # entry is still accessible
 
         self.lru_cache.clear()
-        self.lru_cache.refresh_on_access = False
+        self.lru_cache.refresh = False
         self.lru_cache["a"] = 1
         time.sleep(0.1)
         self.lru_cache["a"]  # entry is not refreshed
@@ -342,20 +342,114 @@ class CreateLRUCacheTest(unittest.TestCase):
             self.lru_cache["a"]  # entry is no longer accessible
 
         self.lru_cache.clear()
-        self.lru_cache.refresh_on_access = True
+        self.lru_cache.refresh = True
         self.lru_cache["a"] = 1
         time.sleep(0.1)
         self.lru_cache.get("a", refresh=False)  # entry is not refreshed
-        self.assertEqual(self.lru_cache.refresh_on_access, True)
+        self.assertEqual(self.lru_cache.refresh, True)
         time.sleep(0.1)
         with self.assertRaises(KeyError):
             self.lru_cache["a"]  # entry is no longer accessible
 
-    def test_lru_cache_validation(self):
-        self.lru_cache["a"] = 1
-        self.lru_cache["b"] = 2
-        schema = filter_(dict, {str: int})
-        validate(schema, self.lru_cache, "lru_cache")
-        self.lru_cache["c"] = "3"
-        with self.assertRaises(ValidationError):
-            validate(schema, self.lru_cache, "lru_cache")
+    def test_lru_cache_decorator(self):
+        @lru_cache(expiration=0.15)
+        def worker1():
+            return time.time()
+
+        t0 = worker1()
+        time.sleep(0.1)
+        t1 = worker1()  # refreshes cache
+        self.assertEqual(t0, t1)
+        time.sleep(0.1)
+        t2 = worker1()
+        self.assertEqual(t2, t0)
+        time.sleep(0.2)  # cache expires
+        t3 = worker1()
+        self.assertNotEqual(t3, t0)
+
+        @lru_cache(expiration=0.15, refresh=False)
+        def worker2():
+            return time.time()
+
+        t0 = worker2()
+        time.sleep(0.1)
+        t1 = worker2()  # does not refresh cache
+        self.assertEqual(t0, t1)
+        time.sleep(0.1)  # cache expires
+        t2 = worker2()
+        self.assertNotEqual(t2, t0)
+
+    def test_lru_cache_decorator_ambiguous_arguments(self):
+        with self.assertRaises(ValueError):
+
+            @lru_cache(refresh=True, cache=self.lru_cache)
+            def worker():
+                pass
+
+    def test_lru_cache_decorator_recycle(self):
+        self.lru_cache.expiration = 0.15
+
+        @lru_cache(cache=self.lru_cache)
+        def worker1():
+            return time.time()
+
+        self.assertEqual(self.lru_cache, worker1.cache)
+
+        t0 = worker1()
+        time.sleep(0.1)
+        t1 = worker1()  # refreshes cache
+        self.assertEqual(t0, t1)
+        time.sleep(0.1)
+        t2 = worker1()
+        self.assertEqual(t2, t0)
+        time.sleep(0.2)  # cache expires
+        t3 = worker1()
+        self.assertNotEqual(t3, t0)
+
+        self.lru_cache.refresh = False
+        self.lru_cache.clear()
+
+        @lru_cache(cache=self.lru_cache)
+        def worker2():
+            return time.time()
+
+        self.assertEqual(self.lru_cache, worker2.cache)
+
+        t0 = worker2()
+        time.sleep(0.1)
+        t1 = worker2()  # does not refresh cache
+        self.assertEqual(t0, t1)
+        time.sleep(0.1)  # cache expires
+        t2 = worker2()
+        self.assertNotEqual(t2, t0)
+
+    def test_lru_cache_decorator_filter(self):
+        def simple_key(f, args, kw):
+            return args[0]
+
+        def no_negative_caching(f, args, kw, val):
+            return val is not None
+
+        @lru_cache(key=simple_key)
+        def worker1(arg):
+            if arg == "good":
+                return "found"
+            else:
+                return None
+
+        worker1("good")
+        self.assertIn("good", worker1.cache)
+        worker1("bad")
+        self.assertIn("bad", worker1.cache)
+
+        @lru_cache(key=simple_key, filter=no_negative_caching)
+        def worker2(arg):
+            if arg == "good":
+                return "found"
+            else:
+                return None
+
+        worker2("good")
+        self.assertIn("good", worker2.cache)
+        worker2("bad")
+        self.assertNotIn("bad", worker2.cache)
