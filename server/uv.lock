@@ -130,10 +130,10 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "awscli", specifier = ">=1.42.76" },
+    { name = "awscli", specifier = ">=1.44.15" },
     { name = "email-validator", specifier = ">=2.3.0" },
-    { name = "numpy", specifier = ">=2.3.5" },
-    { name = "pymongo", specifier = ">=4.15.4" },
+    { name = "numpy", specifier = ">=2.4.1" },
+    { name = "pymongo", specifier = ">=4.16.0" },
     { name = "pyramid", specifier = ">=2.0.2" },
     { name = "pyramid-debugtoolbar", specifier = ">=4.12.1" },
     { name = "pyramid-mako", specifier = ">=1.1.0" },
