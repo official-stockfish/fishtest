@@ -724,7 +724,7 @@ runs_schema = intersect(
                 "itp": unumber,
                 "priority": number,
                 "adjudication": bool,
-                "arch_filter": regex_pattern,
+                "arch_filter?": regex_pattern,
                 "sprt?": intersect(
                     {
                         "alpha": 0.05,

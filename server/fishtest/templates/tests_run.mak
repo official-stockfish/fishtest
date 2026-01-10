@@ -622,67 +622,56 @@
 
             <div><hr></div>
 
-            <div class="mb-2">
-              <div class="row g-3">
-                <div class="col-12 col-md-6 col-lg-4 text-nowrap">
-                  <div class="mb-2 form-check">
-                    <label class="form-check-label" for="checkbox-auto-purge">Auto-purge</label>
-                    <input
-                      type="checkbox"
-                      class="form-check-input"
-                      id="checkbox-auto-purge"
-                      name="auto-purge"
-                      checked
-                    >
-                  </div>
-                  <div class="mb-2 form-check">
-                    <label class="form-check-label" for="checkbox-arch-filter">Arch filter</label>
-                    <input
-                      type="checkbox"
-                      class="form-check-input"
-                      name="checkbox-arch-filter"
-                      id="checkbox-arch-filter"
-                      ${'checked' if arch_filter != '' else ''}
-                    >
-                  </div>
-                </div>
-
-
-
-                <div class="col-12 col-md-6 col-lg-4 text-nowrap">
-                  <div class="mb-2 form-check">
-                    <label class="form-check-label" for="checkbox-time-odds">Time odds</label>
-                    <input
-                      type="checkbox"
-                      class="form-check-input"
-                      id="checkbox-time-odds"
-                      name="odds"
-                      ${'checked' if is_odds else ''}
-                    >
-                  </div>
-                  <div class="mb-2 form-check">
-                    <label class="form-check-label" for="checkbox-book-visibility">Custom book</label>
-                    <input
-                      type="checkbox"
-                      class="form-check-input"
-                      id="checkbox-book-visibility"
-                      ${'checked' if default_book != test_book else ''}
-                    >
-                  </div>
-                </div>
-
-                <div class="col-12 col-md-6 col-lg-4 text-nowrap">
-                  <div class="mb-2 form-check">
-                    <label class="form-check-label" for="checkbox-adjudication">No adjudication</label>
-                    <input
-                      type="checkbox"
-                      class="form-check-input"
-                      id="checkbox-adjudication"
-                      name="adjudication"
-                      ${'checked' if not args.get("adjudication", True) else ''}
-                    >
-                  </div>
-                </div>
+            <!-- Check boxes for advanced options -->
+            <div class="row gx-0">
+              <div class="col-6 col-lg-4 mb-2 form-check">
+                <label class="form-check-label" for="checkbox-auto-purge">Auto-purge</label>
+                <input
+                  type="checkbox"
+                  class="form-check-input"
+                  id="checkbox-auto-purge"
+                  name="auto-purge"
+                  checked
+                >
+              </div>
+              <div class="col-6 col-lg-4 mb-2 form-check">
+                <label class="form-check-label" for="checkbox-arch-filter">Arch filter</label>
+                <input
+                  type="checkbox"
+                  class="form-check-input"
+                  name="checkbox-arch-filter"
+                  id="checkbox-arch-filter"
+                  ${'checked' if arch_filter != '' else ''}
+                >
+              </div>
+              <div class="col-6 col-lg-4 mb-2 form-check">
+                <label class="form-check-label" for="checkbox-time-odds">Time odds</label>
+                <input
+                  type="checkbox"
+                  class="form-check-input"
+                  id="checkbox-time-odds"
+                  name="odds"
+                  ${'checked' if is_odds else ''}
+                >
+              </div>
+              <div class="col-6 col-lg-4 mb-2 form-check">
+                <label class="form-check-label" for="checkbox-book-visibility">Custom book</label>
+                <input
+                  type="checkbox"
+                  class="form-check-input"
+                  id="checkbox-book-visibility"
+                  ${'checked' if default_book != test_book else ''}
+                >
+              </div>
+              <div class="col-6 col-lg-4 mb-2 form-check">
+                <label class="form-check-label" for="checkbox-adjudication">No adjudication</label>
+                <input
+                  type="checkbox"
+                  class="form-check-input"
+                  id="checkbox-adjudication"
+                  name="adjudication"
+                  ${'checked' if not args.get("adjudication", True) else ''}
+                >
               </div>
             </div>
           </div>
