@@ -260,8 +260,9 @@ class lru_cache:
 
         wrapper.lock = self.__cache.lock
         wrapper.cache = self.__cache
+        wrapper.key = self.__key
+        wrapper.filter = self.__filter
 
         # for compatibility with the built-in functools.lru_cache
         wrapper.cache_clear = self.__cache.clear
-        wrapper.__wrapped__ = f
         return wrapper
