@@ -114,21 +114,26 @@ class WorkerTest(unittest.TestCase):
         username = "worker_user"
         remote = "http://example.com"
         worker_lock = mock.Mock()
-        responses = [
-            {"error": "Invalid API key"},
-            {"version": worker.WORKER_VERSION, "api_key": "new_key"},
-        ]
+        responses = iter(
+            [
+                {"error": "Invalid API key"},
+                {"version": worker.WORKER_VERSION, "api_key": "new_key"},
+            ]
+        )
+        payloads = []
 
-        with mock.patch(
-            "worker.send_api_post_request", side_effect=responses
-        ) as mock_post:
+        def fake_send(api_url, payload):
+            payloads.append(payload.copy())
+            return next(responses)
+
+        with mock.patch("worker.send_api_post_request", side_effect=fake_send):
             result = worker.verify_worker_version(remote, username, auth, worker_lock)
 
         self.assertTrue(result)
         self.assertEqual(auth["api_key"], "new_key")
-        self.assertEqual(mock_post.call_count, 2)
-        first_payload = mock_post.call_args_list[0].args[1]
-        second_payload = mock_post.call_args_list[1].args[1]
+        self.assertEqual(len(payloads), 2)
+        first_payload = payloads[0]
+        second_payload = payloads[1]
         self.assertEqual(first_payload["api_key"], "bad_key")
         self.assertNotIn("password", first_payload)
         self.assertEqual(second_payload["password"], "secret")
