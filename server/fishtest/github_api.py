@@ -6,19 +6,14 @@ from urllib.parse import urlparse
 import requests
 from fishtest.lru_cache import LRUCache, lru_cache
 from fishtest.schemas import sha as sha_schema
-from fishtest.schemas import str_int, uint
-from vtjson import ValidationError, union, validate
-from vtjson import url as url_schema
+from vtjson import validate
 
-"""
-We treat this module as a singleton.
-"""
 """
 Note: we generally don't suppress exceptions since too many things can
 go wrong. The caller should gracefully handle whatever comes their
 way.
 """
-GITHUB_API_VERSION = 1
+GITHUB_API_VERSION = 2
 TIMEOUT = 3
 INITIAL_RATELIMIT = 5000
 LRU_CACHE_SIZE = 6000
@@ -33,7 +28,7 @@ _github_rate_limit = {
     "resource": "core",
     "_uninitialized": True,
 }
-_lru_cache = None
+_lru_cache = LRUCache(LRU_CACHE_SIZE)
 _kvstore = None
 
 _dummy_sha = 40 * "f"
@@ -41,10 +36,9 @@ official_master_sha = _dummy_sha
 
 
 def init(kvstore, actiondb):
-    global _actiondb, _github_rate_limit, _kvstore, _lru_cache, _api_initialized
+    global _actiondb, _kvstore, _api_initialized
     _kvstore = kvstore
     _actiondb = actiondb
-    _lru_cache = LRUCache(LRU_CACHE_SIZE)
     try:
         if "github_api_cache" in _kvstore:
             github_api_cache = _kvstore["github_api_cache"]
@@ -62,20 +56,17 @@ def init(kvstore, actiondb):
 
 
 def clear_api_cache():
-    global _lru_cache
-    _lru_cache = LRUCache(LRU_CACHE_SIZE)
+    _lru_cache.clear()
 
 
 def save():
-    global _kvstore
     _kvstore["github_api_cache"] = {
         "version": GITHUB_API_VERSION,
-        "lru_cache": [(k, v) for k, v in _lru_cache.items()],
+        "lru_cache": list(_lru_cache.items()),
     }
 
 
 def call(url, *args, _method="GET", _ignore_rate_limit=False, **kwargs):
-    global _github_rate_limit
     if not _api_initialized:
         raise Exception("github_api.py was not properly initialized")
     if (
@@ -203,6 +194,11 @@ def rate_limit():
     return _github_rate_limit
 
 
+# it's not necessary to include user1, user2 in the key as shas
+# are globally unique
+@lru_cache(
+    cache=_lru_cache, key=lambda f, args, kw: (f.__name__, kw["sha1"], kw["sha2"])
+)
 def compare_sha(
     user1="official-stockfish",
     sha1=None,
@@ -210,35 +206,19 @@ def compare_sha(
     sha2=None,
     ignore_rate_limit=False,
 ):
-    global _lru_cache
+    # Note that although it happens very rarely, this function may give a github
+    # error and then succeed on the next try.
+    # See e.g.
+    # https://tests.stockfishchess.org/actions?max_actions=1&before=1767274733.476365
+    # This sadly prevents us from using negative caching.
+
     # Non sha arguments cannot be safely cached
     validate(sha_schema, sha1)
     validate(sha_schema, sha2)
 
-    github_error = {"message": str, "documentation_url": url_schema, "status": str_int}
-    cache_schema = union(
-        {"merge_base_commit": {"sha": sha_schema}},
-        {
-            "__error__": True,
-            "http_error": str,
-            "status": uint,
-            "url": url_schema,
-            "github_error": github_error,
-            "timestamp": float,
-        },
-    )
-
     if user2 is None:
         user2 = user1
 
-    # it's not necessary to include user1, user2 as shas
-    # are globally unique
-    inputs = ("compare_sha", sha1, sha2)
-    previous_value = None
-    if inputs in _lru_cache:
-        previous_value = _lru_cache[inputs]
-        if "__error__" not in previous_value:
-            return _lru_cache[inputs]
     url = (
         "https://api.github.com/repos/official-stockfish/"
         f"Stockfish/compare/{user1}:{sha1}...{user2}:{sha2}"
@@ -249,48 +229,8 @@ def compare_sha(
         timeout=TIMEOUT,
         _ignore_rate_limit=ignore_rate_limit,
     )
-    saved_http_exception = None
-    try:
-        r.raise_for_status()
-        json = {"merge_base_commit": {"sha": r.json()["merge_base_commit"]["sha"]}}
-        if previous_value is not None:
-            message = (
-                f"The previous attempt with url {previous_value['url']} failed with "
-                f"HTTP error {previous_value['http_error']} and GitHub error "
-                f"{previous_value['github_error']} but now {url} succeeded"
-            )
-            print(message, flush=True)
-            _actiondb.log_message(
-                username="fishtest.system",
-                message=message,
-            )
-    except requests.HTTPError as e:
-        json = {
-            "__error__": True,
-            "http_error": str(e),
-            "url": url,
-            "status": e.response.status_code,
-            "github_error": r.json(),
-            "timestamp": time.time(),
-        }
-        saved_http_exception = e
-    try:
-        validate(cache_schema, json)
-    except ValidationError as e:
-        message = (
-            f"Validation of cache entry for GitHub API call {url} failed: {str(e)}"
-        )
-        print(message, flush=True)
-        _actiondb.log_message(
-            username="fishtest.system",
-            message=message,
-        )
-
-    _lru_cache[inputs] = json
-    if saved_http_exception is None:
-        return json
-    else:
-        raise saved_http_exception
+    r.raise_for_status()
+    return {"merge_base_commit": {"sha": r.json()["merge_base_commit"]["sha"]}}
 
 
 def parse_repo(repo_url):
@@ -336,11 +276,12 @@ def is_ancestor(
     return merge_base_commit == sha1
 
 
-def is_master(sha, ignore_rate_limit=False):
-    global _lru_cache
-    inputs = ("is_master", sha)
-    if inputs in _lru_cache:
-        return _lru_cache[inputs]
+@lru_cache(
+    cache=_lru_cache,
+    key=lambda f, args, kw: (f.__name__, args[0]),
+    filter=lambda f, args, kw, val: val is not None,
+)
+def _is_master(sha, ignore_rate_limit=False):
     try:
         merge_base_commit = get_merge_base_commit(
             sha1=sha, sha2=official_master_sha, ignore_rate_limit=ignore_rate_limit
@@ -348,21 +289,27 @@ def is_master(sha, ignore_rate_limit=False):
     except requests.HTTPError as e:
         if e.response.status_code == 404:
             # sha has been deleted so it can never become master
-            _lru_cache[inputs] = False
             return False
+        raise
 
     if merge_base_commit == sha:
         # once master, forever master
-        _lru_cache[inputs] = True
         return True
 
     if merge_base_commit != official_master_sha:
         # sha can never become master
-        _lru_cache[inputs] = False
         return False
 
-    # there is a theoretical possibility that sha becomes master in the future
-    return False
+    # there is a theoretical possibility that sha becomes master in the future.
+    # do not cache!
+    return None
+
+
+def is_master(sha, ignore_rate_limit=False):
+    ret = _is_master(sha, ignore_rate_limit=ignore_rate_limit)
+    if ret is None:
+        ret = False
+    return ret
 
 
 def get_master_repo(

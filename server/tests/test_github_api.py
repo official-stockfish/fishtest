@@ -1,7 +1,6 @@
 import json
 import os
 import re
-import time
 import unittest
 
 import fishtest.github_api as gh
@@ -47,14 +46,14 @@ class CreateGitHubApiTest(unittest.TestCase):
         rate_limit = gh.rate_limit()
         # GH_TOKEN is set to GITHUB_TOKEN during ci.
         if "GH_TOKEN" in os.environ:
-            self.assertTrue(rate_limit["limit"] == 5000)
+            self.assertEqual(rate_limit["limit"], 5000)
 
     def test_kvstore(self):
-        self.assertTrue(
-            gh.official_master_sha == self.rundb.kvstore["official_master_sha"]
+        self.assertEqual(
+            gh.official_master_sha, self.rundb.kvstore["official_master_sha"]
         )
         self.rundb.update_books()
-        self.assertTrue(self.rundb.books == self.rundb.kvstore["books"])
+        self.assertEqual(self.rundb.books, self.rundb.kvstore["books"])
         # No need to manually delete kvstore or books; tearDown will handle restoration
 
     def test_download(self):
@@ -78,62 +77,33 @@ class CreateGitHubApiTest(unittest.TestCase):
                 method="raw",
             ).decode()
         )
-        self.assertTrue(books == books1)
+        self.assertEqual(books, books1)
 
     def test_sha(self):
+        def key(sha1, sha2):
+            return gh.compare_sha.key(gh.compare_sha, (), {"sha1": sha1, "sha2": sha2})
+
         # hard coded sha since the sf_10 tag is frozen forever
-        self.assertTrue(self.sf10_sha == "b4c239b625285307c5871f1104dc3fb80aa6d5d2")
+        self.assertEqual(self.sf10_sha, "b4c239b625285307c5871f1104dc3fb80aa6d5d2")
 
         master_sha = gh.get_commit()["sha"]
-        self.assertTrue(master_sha == gh.official_master_sha)
+        self.assertEqual(master_sha, gh.official_master_sha)
 
-        self.assertFalse(("compare_sha", self.sf10_sha, master_sha) in gh._lru_cache)
-        self.assertFalse(("compare_sha", master_sha, self.sf10_sha) in gh._lru_cache)
+        self.assertNotIn(key(self.sf10_sha, master_sha), gh._lru_cache)
+        self.assertNotIn(key(master_sha, self.sf10_sha), gh._lru_cache)
 
         self.assertTrue(gh.is_ancestor(sha1=self.sf10_sha, sha2=master_sha))
         self.assertFalse(gh.is_ancestor(sha1=master_sha, sha2=self.sf10_sha))
 
-        self.assertTrue(("compare_sha", self.sf10_sha, master_sha) in gh._lru_cache)
-        self.assertTrue(("compare_sha", master_sha, self.sf10_sha) in gh._lru_cache)
+        self.assertIn(key(self.sf10_sha, master_sha), gh._lru_cache)
+        self.assertIn(key(master_sha, self.sf10_sha), gh._lru_cache)
 
         self.assertTrue(gh.is_master(master_sha))
         self.assertTrue(gh.is_master(self.sf10_sha))
 
-    def test_github_not_found(self):
-        with self.assertRaises(requests.HTTPError):
-            gh.compare_sha(sha1=self.dummy_sha, sha2=self.dummy_sha)
-        self.assertTrue(
-            "__error__"
-            in gh._lru_cache[("compare_sha", self.dummy_sha, self.dummy_sha)]
-        )
-        r = gh.compare_sha(sha1=self.sf10_sha, sha2=self.sf10_sha)
-        self.assertFalse("__error__" in r)
-        print(r)
-        # Cheat!!
-        gh._lru_cache[("compare_sha", self.sf10_sha, self.sf10_sha)] = {
-            "__error__": True,
-            "status": 404,
-            "http_error": "404 Client Error: Not Found for url: https://api.github.com/repos/official-stockfish/Stockfish/compare/official-stockfish:b4c239b625285307c5871f1104dc3fb80aa6d5d2...official-stockfish:b4c239b625285307c5871f1104dc3fb80aa6d5d2",
-            "url": "https://api.github.com/repos/official-stockfish/Stockfish/compare/official-stockfish:b4c239b625285307c5871f1104dc3fb80aa6d5d2...official-stockfish:b4c239b625285307c5871f1104dc3fb80aa6d5d2",
-            "github_error": {
-                "message": "Not Found",
-                "documentation_url": "https://docs.github.com/rest/commits/commits#compare-two-commits",
-                "status": "404",
-            },
-            "timestamp": time.time(),
-        }
-        r = gh.compare_sha(sha1=self.sf10_sha, sha2=self.sf10_sha)
-        self.assertFalse("__error__" in r)
-        a = list(self.actiondb.get_actions(username="fishtest.system")[0])[0]
-        print(a)
-        self.assertTrue("The previous attempt" in a["message"])
-        self.assertTrue(
-            r == gh._lru_cache[("compare_sha", self.sf10_sha, self.sf10_sha)]
-        )
-
     def test_is_master(self):
-        def inputs(sha):
-            return ("is_master", sha)
+        def key(sha):
+            return gh._is_master.key(gh._is_master, (sha,), {})
 
         # fake official_master_sha
         gh.official_master_sha = self.official_master_hat_sha
@@ -141,22 +111,22 @@ class CreateGitHubApiTest(unittest.TestCase):
             gh.get_merge_base_commit(sha1=self.dummy_sha, sha2=gh.official_master_sha)
         self.assertFalse(gh.is_master(self.dummy_sha))
         # dummy_sha "has been deleted"
-        self.assertFalse(gh._lru_cache[inputs(self.dummy_sha)])
+        self.assertFalse(gh._lru_cache[key(self.dummy_sha)])
 
         self.assertTrue(gh.is_master(self.official_master_hathat_sha))
         # once master, forever master
-        self.assertTrue(gh._lru_cache[inputs(self.official_master_hathat_sha)])
+        self.assertTrue(gh._lru_cache[key(self.official_master_hathat_sha)])
 
         # test passes if no exception is raised
         gh.get_merge_base_commit(sha1=self.tools_sha, sha2=gh.official_master_sha)
         self.assertFalse(gh.is_master(self.tools_sha))
         # tools_sha will never become master
-        self.assertFalse(gh._lru_cache[inputs(self.tools_sha)])
+        self.assertFalse(gh._lru_cache[key(self.tools_sha)])
 
         # note that we faked gh.official_master_sha above
         self.assertFalse(gh.is_master(self.saved_official_master_sha))
         # this one may still become "master"
-        self.assertFalse(inputs(self.saved_official_master_sha) in gh._lru_cache)
+        self.assertNotIn(key(self.saved_official_master_sha), gh._lru_cache)
 
     def tearDown(self):
         if hasattr(self.rundb, "books"):
