@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from configparser import ConfigParser
 from pathlib import Path
+from unittest import mock
 
 import games
 import updater
@@ -107,6 +108,31 @@ class WorkerTest(unittest.TestCase):
         # Invalid: over MAX without explicit MAX variable in expression
         with self.assertRaises(ValueError):
             conc("999")
+
+    def test_verify_worker_version_fallback_from_api_key(self):
+        auth = {"api_key": "bad_key", "password": "secret"}
+        username = "worker_user"
+        remote = "http://example.com"
+        worker_lock = mock.Mock()
+        responses = [
+            {"error": "Invalid API key"},
+            {"version": worker.WORKER_VERSION, "api_key": "new_key"},
+        ]
+
+        with mock.patch(
+            "worker.send_api_post_request", side_effect=responses
+        ) as mock_post:
+            result = worker.verify_worker_version(remote, username, auth, worker_lock)
+
+        self.assertTrue(result)
+        self.assertEqual(auth["api_key"], "new_key")
+        self.assertEqual(mock_post.call_count, 2)
+        first_payload = mock_post.call_args_list[0].args[1]
+        second_payload = mock_post.call_args_list[1].args[1]
+        self.assertEqual(first_payload["api_key"], "bad_key")
+        self.assertNotIn("password", first_payload)
+        self.assertEqual(second_payload["password"], "secret")
+        self.assertNotIn("api_key", second_payload)
 
 
 if __name__ == "__main__":

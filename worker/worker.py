@@ -360,7 +360,7 @@ def verify_api_key(remote, username, api_key, cached):
             return None
         if "error" in req:
             return False
-        print("Auth token ok!")
+        print("API key ok!")
         return True
     return False
 
