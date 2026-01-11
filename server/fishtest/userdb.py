@@ -8,6 +8,7 @@ from fishtest.lru_cache import lru_cache
 import secrets
 from datetime import UTC, datetime
 
+from fishtest.lru_cache import lru_cache
 
 DEFAULT_MACHINE_LIMIT = 16
 
