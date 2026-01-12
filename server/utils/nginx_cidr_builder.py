@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Build CIDR configuration for Nginx.
 
-Download the IP address ranges from the ipverse/rir-ip repository
+Download the IP address ranges from the ipverse/country-ip-blocks repository
 and build the Nginx configuration file.
 """
 
 import argparse
 import json
 import logging
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -18,13 +19,18 @@ logger = logging.getLogger(__name__)
 
 
 def clone_repo(dest_dir: Path) -> Path:
-    """Clone the ipverse/rir-ip repository into the destination directory."""
-    repo_url = "https://github.com/ipverse/rir-ip.git"
-    repo_dest = dest_dir / "rir-ip"
+    """Clone the ipverse/country-ip-blocks repository into the destination directory."""
+    repo_url = "https://github.com/ipverse/country-ip-blocks.git"
+    repo_dest = dest_dir / "country-ip-blocks"
     logger.info("Cloning repository %s into %s", repo_url, repo_dest)
+
+    git_executable = shutil.which("git")
+    if git_executable is None:
+        msg = "git executable not found in PATH"
+        raise FileNotFoundError(msg)
     try:
-        subprocess.run(
-            ["git", "clone", "--depth", "1", repo_url, str(repo_dest)],
+        subprocess.run(  # noqa: S603
+            [git_executable, "clone", "--depth", "1", repo_url, str(repo_dest)],
             check=True,
             capture_output=True,
             text=True,
@@ -48,15 +54,20 @@ def read_aggregated(aggregated_file: Path) -> dict | None:
 
 
 def compute_max_length(folders: list[Path]) -> int:
-    """Compute the maximum length among all subnet lines in aggregated files."""
+    """Compute the maximum length among all prefix lines in aggregated files."""
     max_length = 0
     for folder in folders:
         aggregated_file = folder / "aggregated.json"
         if aggregated_file.exists():
             data = read_aggregated(aggregated_file)
             if data:
-                ipv4 = data.get("subnets", {}).get("ipv4", [])
-                ipv6 = data.get("subnets", {}).get("ipv6", [])
+                prefixes = data.get("prefixes")
+                if not isinstance(prefixes, dict):
+                    msg = f"Missing or invalid 'prefixes' in {aggregated_file}"
+                    raise ValueError(msg)
+
+                ipv4 = prefixes.get("ipv4", [])
+                ipv6 = prefixes.get("ipv6", [])
                 lines = [line.strip() for line in ipv4 + ipv6]
                 if lines:
                     max_length = max(max_length, *(len(line) for line in lines))
@@ -66,8 +77,8 @@ def compute_max_length(folders: list[Path]) -> int:
 def build_nginx_conf(repo_path: Path) -> str:
     """Build the Nginx configuration file from the IP address ranges.
 
-    Expects aggregated.json files containing a dict with a "subnets" key,
-    where the subnets have "ipv4" and "ipv6" lists.
+    Expects aggregated.json files containing a dict with a "prefixes" key,
+    where prefixes have "ipv4" and "ipv6" lists.
     """
     country_path = repo_path / "country"
     if not country_path.is_dir():
@@ -77,17 +88,23 @@ def build_nginx_conf(repo_path: Path) -> str:
     folders = sorted(country_path.glob("*"))
     max_length = compute_max_length(folders)
 
-    default_padding = " " * (max_length - len("default") + 1)
-    conf_lines = ["geo $region {", f"    default{default_padding}ZZ;"]
+    # Ensure padding width is at least length of "default".
+    max_length = max(max_length, len("default"))
+    conf_lines = ["geo $region {", f"    {'default':<{max_length}} ZZ;"]
 
     for folder in folders:
         country_code = folder.name.upper()
         aggregated_file = folder / "aggregated.json"
         if data := read_aggregated(aggregated_file):
-            for line in data.get("subnets", {}).get("ipv4", []) + data.get(
-                "subnets",
-                {},
-            ).get("ipv6", []):
+            prefixes = data.get("prefixes")
+            if not isinstance(prefixes, dict):
+                msg = f"Missing or invalid 'prefixes' in {aggregated_file}"
+                raise ValueError(msg)
+
+            ipv4 = prefixes.get("ipv4", [])
+            ipv6 = prefixes.get("ipv6", [])
+
+            for line in ipv4 + ipv6:
                 line_stripped = line.strip()
                 conf_lines.append(f"    {line_stripped:<{max_length}} {country_code};")
 
