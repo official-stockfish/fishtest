@@ -1,6 +1,7 @@
 <%inherit file="base.mak"/>
 
 <%!
+  import json
   from fishtest.util import format_bounds
   elo_model = "normalized"
   fb = lambda e0, e1: format_bounds(elo_model, e0, e1)
@@ -608,14 +609,20 @@
             </div>
 
             <div id="arch-filter" class="mb-2" style="display: none;">
-              <div class="row gx-1">
+              <div class="row gx-2 mb-2">
                 <div class="col">
                   <label for="arch-filter" class="form-label">Arch filter (regular expression)</label>
                   <input
+                    id="arch-filter-input"
+                    autocomplete="off"
                     name="arch-filter"
                     class="form-control"
                     value='${arch_filter|h}'
                   >
+                </div>
+              </div>
+              <div class="row gx-2">
+                <div id="supported-arches" class="col">
                 </div>
               </div>
             </div>
@@ -1045,9 +1052,31 @@
     }
   }
 
+  function updateSupportedArches() {
+    const errorCSS = "color: red;";
+    const supportedArches = ${json.dumps(supported_arches)|n};
+    const archFilterInputElement = document.getElementById('arch-filter-input');
+    let filteredArches;
+    try {
+      const archFilter = new RegExp(archFilterInputElement.value);
+      filteredArches = supportedArches.filter(str => archFilter.test(str));
+      if(filteredArches.length === 0) {
+        archFilterInputElement.style.cssText = errorCSS;
+      } else {
+        archFilterInputElement.style.cssText = "";
+      }
+    } catch(e) {
+      archFilterInputElement.style.cssText = errorCSS;
+      return;
+    }
+    const supportedArchesElement = document.getElementById('supported-arches');
+    supportedArchesElement.innerText = filteredArches.join(", ");
+  }
+
   function toggleArchFilter(checkbox) {
     if (checkbox.checked) {
       document.getElementById('arch-filter').style.display = "";
+      updateSupportedArches();
     } else {
       document.getElementById('arch-filter').style.display = "none";
     }
@@ -1059,6 +1088,10 @@
 
   document.getElementById('checkbox-arch-filter').addEventListener("change", (e) => {
     toggleArchFilter(e.target);
+  });
+
+  document.getElementById('arch-filter-input').addEventListener("input", (e) => {
+    updateSupportedArches();
   });
 </script>
 

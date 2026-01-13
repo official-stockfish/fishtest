@@ -190,6 +190,21 @@ class TestApi(unittest.TestCase):
             }
         )
 
+    def test_invalid_arch(self):
+        worker_info = copy.deepcopy(self.worker_info)
+        worker_info["worker_arch"] = "bad_arch"
+        request = self.build_json_request(
+            {
+                "password": self.password,
+                "worker_info": worker_info,
+            }
+        )
+        with self.assertRaises(HTTPBadRequest) as cm:
+            WorkerApi(request).request_task()
+
+        self.assertIn("error", str(cm.exception))
+        self.assertIn("bad_arch", str(cm.exception))
+
     def test_get_active_runs(self):
         run_id = new_run(self)
         request = DummyRequest(rundb=self.rundb)

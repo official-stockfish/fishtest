@@ -33,6 +33,7 @@ from fishtest.util import (
     password_strength,
     plural,
     reasonable_run_hashes,
+    supported_arches,
     tests_repo,
 )
 from pyramid.httpexceptions import HTTPFound, HTTPNotFound
@@ -984,6 +985,14 @@ def validate_form(request):
     except regex.error as e:
         raise Exception(f"Invalid arch filter: {e}") from e
 
+    # check if there are any remaining arches
+    if "arch_filter" in data:
+        filtered_arches = filter(
+            lambda x: regex.search(data["arch_filter"], x) is not None, supported_arches
+        )
+        if list(filtered_arches) == []:
+            raise Exception(f"filter {data['arch_filter']} has no compatible arches")
+
     validate(tc_schema, data["tc"], "data['tc']")
     validate(tc_schema, data["new_tc"], "data['new_tc']")
 
@@ -1279,6 +1288,7 @@ def tests_run(request):
         "master_info": get_master_info(ignore_rate_limit=True),
         "valid_books": request.rundb.books.keys(),
         "pt_info": request.rundb.pt_info,
+        "supported_arches": supported_arches,
     }
 
 
@@ -1586,6 +1596,17 @@ def tests_view(request):
 
         value = run["args"][name]
         url = ""
+
+        if name == "arch_filter":
+            if value != "":
+                filtered_arches = list(
+                    filter(
+                        lambda x: regex.search(value, x) is not None, supported_arches
+                    )
+                )
+                value += "  (" + ", ".join(filtered_arches) + ")"
+            else:
+                continue
 
         if name == "new_tag" and "msg_new" in run["args"]:
             value += "  (" + run["args"]["msg_new"][:50] + ")"
