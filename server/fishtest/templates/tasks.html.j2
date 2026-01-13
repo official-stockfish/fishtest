@@ -1,0 +1,45 @@
+{% for task in tasks %}
+  {% set task_id = task.task_id %}
+  {% set pgn_url = task.pgn_url %}
+  {% set worker_url = task.worker_url %}
+  {% set worker_label = task.worker_label %}
+  <tr class="{{ task.row_class }}" id="task{{ task.task_id }}">
+    <td>
+      {% if pgn_url %}
+        <a href="{{ pgn_url }}">{{ task_id }}</a>
+      {% else %}
+        {{ task_id }}
+      {% endif %}
+    </td>
+    <td>
+      {% if worker_url %}
+        <a href="{{ worker_url }}">{{ worker_label }}</a>
+      {% else %}
+        {{ worker_label }}
+      {% endif %}
+    </td>
+    <td> {{ task.info_label }} </td>
+    <td>{{ task.last_updated_label }}</td>
+    <td>{{ task.played_label }}</td>
+    {% for cell in task.results_cells %}
+      <td>{{ cell }}</td>
+    {% endfor %}
+    <td>{{ task.crashes }}</td>
+    <td>{{ task.time_losses }}</td>
+    {% if show_residual %}
+      {% if task.residual_label == '-' %}
+        <td>-</td>
+      {% else %}
+        <td style="background-color:{{ task.residual_bg }}">
+          {{ task.residual_label }}
+        </td>
+      {% endif %}
+    {% endif %}
+  </tr>
+{% endfor %}
+
+{% if tasks | length == 0 %}
+  <tr id="no-tasks">
+    <td colspan=20>No tasks running</td>
+  </tr>
+{% endif %}

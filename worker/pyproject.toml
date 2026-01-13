@@ -2,10 +2,45 @@
 name = "fishtest-worker"
 version = "0.1.0"
 description = "fishtest-worker"
-readme = "README.md"
 requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Topic :: Software Development",
+]
 dependencies = [
     "expression-parser>=0.0.6",
     "openlock>=1.2.1",
     "requests>=2.32.4",
 ]
+
+[project.urls]
+Homepage = "https://tests.stockfishchess.org"
+Repository = "https://github.com/official-stockfish/fishtest"
+Issues = "https://github.com/official-stockfish/fishtest"
+
+[build-system]
+requires = ["hatchling>=1.28.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+include = [
+    "worker.py",
+    "games.py",
+    "updater.py",
+    "fishtest.cfg",
+    "sri.txt",
+    "packages/**",
+]
+
+[tool.ruff]
+target-version = "py38"
+extend-exclude = ["packages"]
+force-exclude = true
+
+[tool.ruff.lint]
+extend-select = ["I"]

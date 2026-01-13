@@ -147,7 +147,7 @@ wheels = [
 [[package]]
 name = "fishtest-worker"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "expression-parser" },
     { name = "openlock" },

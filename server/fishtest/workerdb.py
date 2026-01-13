@@ -1,7 +1,8 @@
 from datetime import UTC, datetime
 
-from fishtest.schemas import worker_schema
 from vtjson import validate
+
+from fishtest.schemas import worker_schema
 
 
 class WorkerDb:

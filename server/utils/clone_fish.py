@@ -21,8 +21,7 @@ pgndb.ensure_index([("run_id", ASCENDING)])
 
 
 def main():
-    """clone a fishtest database with PGNs and runs with the REST API"""
-
+    """Clone a fishtest database with PGNs and runs with the REST API"""
     skip = 0
     count = 0
     in_sync = False
@@ -32,7 +31,7 @@ def main():
         for pgn_file in pgn_list:
             print(pgn_file)
             if pgndb.find_one({"run_id": pgn_file}):
-                print("Already copied: {}".format(pgn_file))
+                print(f"Already copied: {pgn_file}")
                 if pgn_file not in loaded:
                     in_sync = True
                     break
@@ -50,11 +49,11 @@ def main():
         if in_sync or len(pgn_list) < 100:
             break
 
-    print("Copied:  {:6d} PGN files (~ {:8d} games)".format(count, 250 * count))
+    print(f"Copied:  {count:6d} PGN files (~ {250 * count:8d} games)")
     count = pgndb.count()
-    print("Database:{:6d} PGN files (~ {:8d} games)".format(count, 250 * count))
+    print(f"Database:{count:6d} PGN files (~ {250 * count:8d} games)")
     count = runs.count()
-    print("Database:{:6d} runs".formt(count))
+    print("Database:{:6d} runs".format(count))
 
 
 if __name__ == "__main__":

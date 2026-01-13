@@ -2,8 +2,9 @@
 import re
 from datetime import UTC, datetime, timedelta
 
-from fishtest.rundb import RunDb
 from pymongo import DESCENDING
+
+from fishtest.rundb import RunDb
 
 
 def purge_pgns(rundb, finished, deleted, days, days_ltc=60):

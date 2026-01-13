@@ -1,0 +1,154 @@
+{% extends "base.html.j2" %}
+
+{% block title %}Statistics - {{ page_title }} | Stockfish Testing{% endblock %}
+
+{% block body %}
+{% macro render_rows(rows) -%}
+  {% for label, value in rows %}
+    <tr><td>{{ label }}</td><td>{{ value }}</td></tr>
+  {% endfor %}
+{%- endmacro %}
+
+{% macro render_bounds(rows) -%}
+  {% for row in rows %}
+    <tr>
+      <td>{{ row.label }}</td>
+      <td>{{ row.logistic }}</td>
+      <td>{{ row.normalized }}</td>
+      <td>{{ row.bayes }}</td>
+      <td>{{ row.score }}</td>
+    </tr>
+  {% endfor %}
+{%- endmacro %}
+
+{% set run_id = stats.run_id %}
+{% set has_sprt = stats.has_sprt %}
+{% set has_pentanomial = stats.has_pentanomial %}
+{% set has_spsa = stats.has_spsa %}
+
+<div>
+  {% if has_spsa %}
+    <h2>SPSA tests do not have raw statistics: <a href="/tests/view/{{ run_id }}">{{ run_id }}</a></h2>
+  {% else %}
+    <h2>Raw Statistics for test <a href="/tests/view/{{ run_id }}">{{ run_id }}</a></h2>
+    <em>Unless otherwise specified, all Elo quantities below are logistic.</em>
+    <div class="row">
+      <div class="col-12">
+        <h4>Context</h4>
+        <table class="statistics-table table table-striped table-sm">
+          <thead></thead>
+          <tbody>
+            {{ render_rows(stats.context_rows) }}
+          </tbody>
+        </table>
+        {% if has_sprt %}
+          <h4>SPRT parameters</h4>
+          <table class="table table-striped table-sm">
+            <thead></thead>
+            <tbody>
+              {{ render_rows(stats.sprt_rows) }}
+            </tbody>
+          </table>
+        {% endif %}
+        <h4>Draws</h4>
+        <table class="table table-striped table-sm">
+          <thead></thead>
+          <tbody>
+            {{ render_rows(stats.draw_rows) }}
+          </tbody>
+        </table>
+        {% if has_sprt %}
+          <h4>SPRT bounds</h4>
+          <table class="table table-striped table-sm">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Logistic</th>
+                <th>Normalized</th>
+                <th>BayesElo</th>
+                <th>Score</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{ render_bounds(stats.sprt_bounds_rows) }}
+            </tbody>
+          </table>
+          <em>
+          {{ stats.sprt_note }}
+          </em>
+        {% endif %}
+        {% if has_pentanomial %}
+          <h4>Pentanomial statistics</h4>
+          <h5>Basic statistics</h5>
+          <table class="table table-striped table-sm">
+            <thead></thead>
+            <tbody>
+              {{ render_rows(stats.pentanomial.basic_rows) }}
+            </tbody>
+          </table>
+          {% if has_sprt %}
+            <h5>Generalized Log Likelihood Ratio</h5>
+            <table class="table table-striped table-sm">
+              <thead></thead>
+              <tbody>
+                {{ render_rows(stats.pentanomial.llr_rows) }}
+              </tbody>
+            </table>
+            <em>
+            {{ stats.llr_note }}
+            </em>
+          {% endif %}
+          <h5>Auxiliary statistics</h5>
+          <table class="table table-striped table-sm">
+            <thead></thead>
+            <tbody>
+              {{ render_rows(stats.pentanomial.aux_rows) }}
+            </tbody>
+          </table>
+        {% endif %}
+        <h4>Trinomial statistics</h4>
+        {% if has_pentanomial %}
+          <em>
+          {{ stats.tri_note }}
+          </em>
+        {% endif %}
+        <h5>Basic statistics</h5>
+        <table class="table table-striped table-sm">
+          <thead></thead>
+          <tbody>
+            {{ render_rows(stats.trinomial.basic_rows) }}
+          </tbody>
+        </table>
+        {% if has_sprt %}
+          <h5>Generalized Log Likelihood Ratio</h5>
+          <table class="table table-striped table-sm">
+            <thead></thead>
+            <tbody>
+              {{ render_rows(stats.trinomial.llr_rows) }}
+            </tbody>
+          </table>
+          <em>
+          {{ stats.bayes_note }}
+          </em>
+        {% endif %}
+        <h5>Auxiliary statistics</h5>
+        <table class="table table-striped table-sm">
+          <thead></thead>
+          <tbody>
+            {{ render_rows(stats.trinomial.aux_rows) }}
+          </tbody>
+        </table>
+        {% if has_pentanomial %}
+          <h4>Comparison</h4>
+          <table class="table table-striped table-sm">
+            <thead></thead>
+            <tbody>
+              {{ render_rows(stats.pentanomial.comparison_rows) }}
+            </tbody>
+          </table>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

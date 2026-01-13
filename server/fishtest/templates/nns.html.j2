@@ -1,0 +1,136 @@
+{% extends "base.html.j2" %}
+
+{% block title %}Neural Network Repository | Stockfish Testing{% endblock %}
+
+{% block body %}
+{% set filter_source = filters if filters is defined else {} %}
+{% if filter_source is mapping %}
+  {% set network_name_filter = filter_source.get('network_name', '') %}
+  {% set user_filter = filter_source.get('user', '') %}
+  {% set master_only = filter_source.get('master_only', False) %}
+{% else %}
+  {% set network_name_filter = filter_source.network_name %}
+  {% set user_filter = filter_source.user %}
+  {% set master_only = filter_source.master_only %}
+{% endif %}
+<h2>Neural Network Repository</h2>
+
+<p>
+  These networks are freely available for download and sharing under a
+  <a href="https://creativecommons.org/share-your-work/public-domain/cc0/">CC0</a> license.<br><br>
+  Nets colored <span class="default-net">green</span> in the table have passed fishtest testing
+  and achieved the status of <i>default net</i> during the development of Stockfish.<br><br>
+  The recommended net for a given Stockfish executable can be found as the default value of the EvalFile UCI option.
+</p>
+
+<form class="row mb-3" id="search_nn">
+  <div class="col-12 col-md-auto mb-3">
+    <label for="network_name" class="form-label">Network</label>
+    <input
+      id="network_name"
+      type="text"
+      name="network_name"
+      class="form-control"
+      placeholder="Network name"
+      value="{{ network_name_filter }}"
+    >
+  </div>
+
+  <div class="col-12 col-md-auto mb-3">
+    <label for="user" class="form-label">Uploaded by</label>
+  <input
+    id="user"
+    type="text"
+    name="user"
+    class="form-control"
+    placeholder="Username"
+    value="{{ user_filter }}"
+  >
+  </div>
+
+  <div class="col-12 mb-3 d-flex align-items-end">
+    <div class="form-check form-check-inline">
+      <label class="form-check-label" for="master_only">Only master</label>
+      <input
+        type="checkbox"
+        class="form-check-input"
+        id="master_only"
+        name="master_only" {{ 'checked' if master_only else '' }}
+      >
+    </div>
+  </div>
+
+  <div class="col-12 col-md-auto mb-3 d-flex align-items-end">
+    <button type="submit" class="btn btn-success w-100">Search</button>
+  </div>
+</form>
+
+{% with pages=pages %}
+  {% include "pagination.html.j2" %}
+{% endwith %}
+
+<div class="table-responsive-lg">
+  <table class="table table-striped table-sm">
+    <thead class="sticky-top">
+      <tr>
+        <th>Time</th>
+        <th>Network</th>
+        <th>Username</th>
+        <th>First test</th>
+        <th>Last test</th>
+        <th style="text-align:right">Downloads</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for nn in nns %}
+        {% set nn_is_master = nn.get('is_master', false) if nn is mapping else (nn.is_master if nn.is_master is defined else false) %}
+        {% if not master_only or nn_is_master %}
+          <tr>
+            <td>{{ nn.time_label }}</td>
+            {% if nn_is_master %}
+              <td class="default-net">
+            {% else %}
+              <td>
+            {% endif %}
+            <a href="{{ nn.name_url }}" style="font-family:monospace">{{ nn.name }}</a></td>
+            <td>{{ nn.user }}</td>
+            <td>
+              {% if nn.first_test_url %}
+                <a href="{{ nn.first_test_url }}">{{ nn.first_test_label }}</a>
+              {% else %}
+                {{ nn.first_test_label }}
+              {% endif %}
+            </td>
+            <td>
+              {% if nn.last_test_url %}
+                <a href="{{ nn.last_test_url }}">{{ nn.last_test_label }}</a>
+              {% else %}
+                {{ nn.last_test_label }}
+              {% endif %}
+            </td>
+            <td style="text-align:right">{{ nn.downloads }}</td>
+          </tr>
+        {% endif %}
+      {% else %}
+        <tr>
+          <td colspan=20>No nets available</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% with pages=pages %}
+  {% include "pagination.html.j2" %}
+{% endwith %}
+
+<script>
+  document
+    .getElementById("search_nn")
+    .addEventListener("submit", () => {
+      const masterOnly = document.getElementById("master_only");
+      document.cookie =
+        "master_only" + "=" + masterOnly.checked + "; max-age={{ 60 * 60 * 24 * 365 * 10 }}; SameSite=Lax";
+    });
+</script>
+    {% endblock %}

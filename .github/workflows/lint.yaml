@@ -31,28 +31,28 @@ jobs:
         id: ruff-lint
         continue-on-error: true
         with:
-          args: "check"
+          args: "check server worker --config pyproject.toml"
 
       - name: Ruff lint statistics
         uses: astral-sh/ruff-action@v3
         id: ruff-lint-statistics
         continue-on-error: true
         with:
-          args: "check --output-format full --statistics"
+          args: "check server worker --config pyproject.toml --output-format full --statistics"
 
       - name: Ruff sort
         uses: astral-sh/ruff-action@v3
         id: ruff-sort
         continue-on-error: true
         with:
-          args: "check --select I"
+          args: "check server worker --select I --config pyproject.toml"
 
       - name: Ruff format
         uses: astral-sh/ruff-action@v3
         id: ruff-format
         continue-on-error: true
         with:
-          args: "format --check"
+          args: "format server worker --check --config pyproject.toml"
 
       - name: Prettier format
         id: prettier-format
@@ -66,7 +66,7 @@ jobs:
           if [[ "${{ steps.ruff-sort.outcome }}" == "success" ]]; then echo "✔️ sort"; else echo "❌ sort"; fi
           if [[ "${{ steps.ruff-format.outcome }}" == "success" ]]; then echo "✔️ format"; else echo "❌ format"; fi
           if [[ "${{ steps.prettier-format.outcome }}" == "success" ]]; then echo "✔️ prettier"; else echo "❌ prettier"; fi
-          if [[ "${{ steps.ruff-sort.outcome }}" == "failure" || "${{ steps.ruff-format.outcome }}" == "failure" || "${{ steps.prettier-format.outcome }}" == "failure" ]]; then exit 1; fi
+          if [[ "${{ steps.ruff-lint.outcome }}" == "failure" || "${{ steps.ruff-sort.outcome }}" == "failure" || "${{ steps.ruff-format.outcome }}" == "failure" || "${{ steps.prettier-format.outcome }}" == "failure" ]]; then exit 1; fi
 
       - name: Print formatting instructions
         if: ${{ failure() }}

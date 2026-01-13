@@ -6,8 +6,9 @@
 import pprint
 import time
 
-from fishtest.rundb import RunDb
 from pymongo import DESCENDING, MongoClient
+
+from fishtest.rundb import RunDb
 
 db_name = "fishtest_new"
 rundb = RunDb()
@@ -23,8 +24,7 @@ pgns = db["pgns"]
 def qlen(c):
     if c:
         return len(list(c))
-    else:
-        return 0
+    return 0
 
 
 # Extra conditions that might be applied to finished_runs:
@@ -40,29 +40,36 @@ start = time.time()
 c = rundb.get_unfinished_runs()
 end = time.time()
 
-print("{} rows {:1.4f}".format(qlen(c), end - start) + "s\nFetching machines ...")
+print(f"{qlen(c)} rows {end - start:1.4f}" + "s\nFetching machines ...")
 start = time.time()
 c = rundb.get_machines()
 end = time.time()
 
-print("{} rows {:1.4f}".format(qlen(c), end - start) + "s\nFetching finished runs ...")
+print(f"{qlen(c)} rows {end - start:1.4f}" + "s\nFetching finished runs ...")
 start = time.time()
 c, n = rundb.get_finished_runs(
-    skip=0, limit=50, username="", success_only=False, ltc_only=False
+    skip=0,
+    limit=50,
+    username="",
+    success_only=False,
+    ltc_only=False,
 )
 end = time.time()
 
 print(
-    "{} rows {:1.4f}".format(qlen(c), end - start)
-    + "s\nFetching finished runs (vdv) ..."
+    f"{qlen(c)} rows {end - start:1.4f}s\nFetching finished runs (vdv) ...",
 )
 start = time.time()
 c, n = rundb.get_finished_runs(
-    skip=0, limit=50, username="vdv", success_only=False, ltc_only=False
+    skip=0,
+    limit=50,
+    username="vdv",
+    success_only=False,
+    ltc_only=False,
 )
 end = time.time()
 
-print("{} rows {:1.4f}".format(qlen(c), end - start) + "s\nRequesting pgn ...")
+print(f"{qlen(c)} rows {end - start:1.4f}" + "s\nRequesting pgn ...")
 if n == 0:
     c.append({"_id": "abc"})
 start = time.time()
@@ -72,24 +79,25 @@ end = time.time()
 
 # Tests: Explain some queries - should show which indexes are being used
 
-print("{} rows {:1.4f}".format(qlen(c), end - start) + "s")
+print(f"{qlen(c)} rows {end - start:1.4f}" + "s")
 print("\n\nExplain queries")
 print("\nFetching unfinished runs xp ...")
 start = time.time()
 c = runs.find(
-    {"finished": False}, sort=[("last_updated", DESCENDING), ("start_time", DESCENDING)]
+    {"finished": False},
+    sort=[("last_updated", DESCENDING), ("start_time", DESCENDING)],
 ).explain()
 print(pprint.pformat(c, indent=3, width=110))
 end = time.time()
 
-print("{} rows {:1.4f}".format(qlen(c), end - start) + "s")
+print(f"{qlen(c)} rows {end - start:1.4f}" + "s")
 print("\nFetching machines xp ...")
 start = time.time()
 c = runs.find({"finished": False, "tasks": {"$elemMatch": {"active": True}}}).explain()
 print(pprint.pformat(c, indent=3, width=110))
 end = time.time()
 
-print("{} rows {:1.4f}".format(qlen(c), end - start) + "s")
+print(f"{qlen(c)} rows {end - start:1.4f}" + "s")
 print("\nFetching finished runs xp ...")
 start = time.time()
 q = {"finished": True}
@@ -97,4 +105,4 @@ c = runs.find(q, skip=0, limit=50, sort=[("last_updated", DESCENDING)]).explain(
 print(pprint.pformat(c, indent=3, width=110))
 end = time.time()
 
-print("{} rows {:1.4f}".format(qlen(c), end - start) + "s")
+print(f"{qlen(c)} rows {end - start:1.4f}" + "s")

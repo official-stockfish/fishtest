@@ -3,6 +3,7 @@ from __future__ import division
 import math
 
 import scipy.stats
+
 from fishtest.stats import LLRcalc, sprt
 
 

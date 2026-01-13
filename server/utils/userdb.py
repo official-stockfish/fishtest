@@ -16,7 +16,7 @@ def store_legacy_usernames(rundb):
     users = rundb.userdb.users
     usernames = (doc["username"] for doc in users.find({}, {"username": 1, "_id": 0}))
     legacy_usernames = list(
-        filter(lambda x: not valid_user_regex.fullmatch(x), usernames)
+        filter(lambda x: not valid_user_regex.fullmatch(x), usernames),
     )
     rundb.kvstore["legacy_usernames"] = legacy_usernames
     return legacy_usernames

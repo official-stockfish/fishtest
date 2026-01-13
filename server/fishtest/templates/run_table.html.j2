@@ -1,0 +1,144 @@
+{% set toggle = toggle if toggle is defined else None %}
+{% set runs = runs if runs is defined else [] %}
+{% set show_delete = show_delete if show_delete is defined else false %}
+{% set show_gauge = show_gauge if show_gauge is defined else false %}
+{% set header = header if header is defined else none %}
+{% set count = count if count is defined else none %}
+{% set alt = alt if alt is defined else "" %}
+{% set cookie_name = cookie_name if cookie_name is defined else (toggle ~ '_state' if toggle else '') %}
+{% set toggle_state = toggle_state if toggle_state is defined else "Show" %}
+{% set pages = pages if pages is defined else [] %}
+{% if toggle %}
+  <script>
+    function toggle{{ toggle | capitalize }}() {
+      const button = document.getElementById("{{ toggle }}-button");
+      const active = button.textContent.trim() === "Hide";
+      button.textContent = active ? "Show" : "Hide";
+      document.cookie =
+        "{{ cookie_name }}" + "=" + button.textContent.trim() + "; max-age={{ 60 * 60 * 24 * 365 * 10 }}; SameSite=Lax";
+    }
+  </script>
+{% endif %}
+
+<h4>
+{% if toggle %}
+  <a id="{{ toggle }}-button" class="btn btn-sm btn-light border"
+     data-bs-toggle="collapse" href="#{{ toggle }}" role="button" aria-expanded="false"
+      aria-controls="{{ toggle }}" onclick="toggle{{ toggle | capitalize }}()">
+  {{ 'Hide' if toggle_state == 'Hide' else 'Show' }}
+  </a>
+{% endif %}
+{% if header is not none and count is not none %}
+  {{ header }} - {{ count }} tests
+{% elif header is not none %}
+  {{ header }}
+{% elif count is not none %}
+  {{ count }} tests
+{% endif %}
+</h4>
+
+<section
+{% if toggle %}
+  id="{{ toggle }}"
+  class="{{ 'collapse show' if toggle_state == 'Hide' else 'collapse' }}"
+{% endif %}
+>
+
+  {% with pages=pages %}
+    {% include "pagination.html.j2" %}
+  {% endwith %}
+
+  <div class="table-responsive-lg">
+    <table class="table table-striped table-sm run-table">
+      <thead></thead>
+      <tbody>
+        {% for row in runs %}
+          <tr>
+            {% if show_delete %}
+              <td style="width: 1%;" class="run-button run-deny">
+                <div class="dropdown">
+                  <button type="submit" class="btn btn-danger btn-sm" data-bs-toggle="dropdown">
+                    <i class="fas fa-trash-alt"></i>
+                  </button>
+                  <div class="dropdown-menu" role="menu">
+                    <form
+                      action="/tests/delete"
+                      method="POST"
+                      style="display: inline;"
+                      onsubmit="handleStopDeleteButton({{ row.run_id | tojson }}); return true;"
+                    >
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                      <input type="hidden" name="run-id" value="{{ row.run_id }}">
+                      <button type="submit" class="btn btn-danger btn-mini">Confirm</button>
+                    </form>
+                  </div>
+                </div>
+              </td>
+            {% endif %}
+
+            <td style="width: 6%;" class="run-date">
+              {{ row.start_date_label }}
+            </td>
+
+            <td style="width: 2%;" class="run-user">
+              <a href="{{ row.user_url }}"
+                 title="{{ row.user_name }}">
+                {{ row.user_short }}
+              </a>
+            </td>
+            {% if not row.is_finished %}
+              <td class="run-notification" style="width:3em;text-align:center;">
+                <div id=notification_{{ row.run_id }} class='notifications' onclick='handleNotification(this)' style='display:inline-block;cursor:pointer;'>
+                </div>
+                <script>
+                  setNotificationStatus_({{ row.run_id | tojson }});   // no broadcast since this is at initialization
+                </script>
+              </td>
+            {% endif %}
+            <td style="width: 16%;" class="run-view">
+              <a href="{{ row.run_url }}">{{ row.new_tag_short }}</a>
+            </td>
+
+            <td style="width: 2%;" class="run-diff">
+              <a href="{{ row.diff_url }}" target="_blank" rel="noopener">diff</a>
+            </td>
+
+            <td style="width: 1%;" class="run-elo">
+              {% with run=row.run, show_gauge=show_gauge %}
+                {% include "elo_results.html.j2" %}
+              {% endwith %}
+            </td>
+
+            <td style="width: 13%;" class="run-live">
+              <span class="{{ 'rounded ltc-highlight me-1' if is_active_sprt_ltc(row.run) else 'me-1' }}">
+              {% if row.live_url %}
+                <a href="{{ row.live_url }}" target="_blank">{{ row.live_label }}</a>
+              {% else %}
+                {{ row.live_label }}
+              {% endif %}
+              @ {{ row.tc_label }} th {{ row.threads }}
+              </span>
+              {% if not row.is_finished %}
+                <div>
+                  {{ row.cores_label }}
+                </div>
+              {% endif %}
+            </td>
+
+            <td class="run-info">
+              {{ row.info_html | safe }}
+            </td>
+          </tr>
+        {% endfor %}
+        {% if alt and count == 0 %}
+          <tr>
+            <td> {{ alt }} </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+  {% with pages=pages %}
+    {% include "pagination.html.j2" %}
+  {% endwith %}
+</section>

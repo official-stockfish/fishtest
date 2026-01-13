@@ -8,14 +8,7 @@ import copy
 import math
 from datetime import UTC, datetime
 
-import fishtest.stats.stat_util
 from bson.objectid import ObjectId
-from fishtest.util import (
-    PASSWORD_MAX_LENGTH,
-    VALID_USERNAME_PATTERN,
-    supported_arches,
-    supported_compilers,
-)
 from vtjson import (
     anything,
     at_least_one_of,
@@ -44,6 +37,14 @@ from vtjson import (
     size,
     union,
     unique,
+)
+
+import fishtest.stats.stat_util
+from fishtest.util import (
+    PASSWORD_MAX_LENGTH,
+    VALID_USERNAME_PATTERN,
+    supported_arches,
+    supported_compilers,
 )
 
 run_id = intersect(str, set_name(ObjectId.is_valid, "valid_object_id"))

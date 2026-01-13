@@ -2,45 +2,44 @@
 name = "fishtest-server"
 version = "0.1.0"
 description = "fishtest-server"
-readme = "README.md"
 requires-python = ">=3.14"
 classifiers = [
-    "Development Status :: Beta",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: Information Technology",
     "Intended Audience :: System Administrators",
-    "Programming Language :: Python :: 3.14",
-    "Operating System :: Linux",
     "Environment :: Web Environment",
-    "Framework :: MongoDB",
-    "Framework :: Mako",
-    "Framework :: Numpy",
-    "Framework :: Pyramid",
-    "Framework :: Scipy",
-    "Framework :: Waitress",
-    "Topic :: Computer Chess Development",
-    "Topic :: Computer Chess Development :: Statistical Testing Framework",
+    "Framework :: FastAPI",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Internet",
     "Topic :: Internet :: WWW/HTTP",
     "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
     "Topic :: Software Development",
-    "Topic :: Software Development :: Application Frameworks",
+    "Topic :: Software Development :: Libraries",
 ]
 dependencies = [
-    "awscli>=1.44.30",
+    "awscli>=1.44.39",
     "email-validator>=2.3.0",
+    "fastapi>=0.129.0",
+    "itsdangerous>=2.2.0",
+    "jinja2>=3.1.6",
     "numpy>=2.4.2",
     "pymongo>=4.16.0",
-    "pyramid>=2.0.2",
-    "pyramid-debugtoolbar>=4.12.1",
-    "pyramid-mako>=1.1.0",
+    "python-multipart>=0.0.22",
     "regex>=2026.1.15",
     "requests>=2.32.5",
     "scipy>=1.17.0",
-    "setuptools>=61,<81",
-    "vtjson>=2.2.8",
-    "waitress>=3.0.2",
+    "uvicorn>=0.40.0",
+    "vtjson>=2.2.9",
     "zxcvbn>=4.5.0",
+]
+
+[dependency-groups]
+test = [
+    "httpx>=0.28.1",
 ]
 
 [project.urls]
@@ -49,35 +48,16 @@ Documentation = "https://github.com/official-stockfish/fishtest/wiki"
 Repository = "https://github.com/official-stockfish/fishtest"
 Issues = "https://github.com/official-stockfish/fishtest"
 
-[project.entry-points."paste.app_factory"]
-main = "fishtest:main"
-
 [build-system]
-requires = ["setuptools>=61,<81"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling>=1.28.0"]
+build-backend = "hatchling.build"
 
-[tool.setuptools.data-files]
-"." = [
-    "*.cfg",
-    "*.ini",
-    "*.rst",
-    "*.txt",
-]
+[tool.hatch.build.targets.wheel]
+packages = ["fishtest"]
 
-[tool.setuptools.package-data]
-fishtest = [
-    "*.css",
-    "*.gif",
-    "*.html",
-    "*.ico",
-    "*.js",
-    "*.jpg",
-    "*.mak",
-    "*.mako",
-    "*.mem",
-    "*.png",
-    "*.webp",
-    "*.pt",
-    "*.txt",
-    "*.xml",
-]
+[tool.ruff]
+target-version = "py314"
+force-exclude = true
+
+[tool.ruff.lint]
+extend-select = ["I"]

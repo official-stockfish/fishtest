@@ -10,13 +10,16 @@ import threading
 import time
 from datetime import UTC, datetime
 
+import regex
+from bson.codec_options import CodecOptions
+from bson.objectid import ObjectId
+from pymongo import DESCENDING, MongoClient
+from vtjson import ValidationError, validate
+
 import fishtest.github_api as gh
 import fishtest.run_cache
 import fishtest.spsa_handler
 import fishtest.stats.stat_util
-import regex
-from bson.codec_options import CodecOptions
-from bson.objectid import ObjectId
 from fishtest.actiondb import ActionDb
 from fishtest.kvstore import KeyValueStore
 from fishtest.lru_cache import lru_cache
@@ -57,8 +60,6 @@ from fishtest.util import (
     worker_name,
 )
 from fishtest.workerdb import WorkerDb
-from pymongo import DESCENDING, MongoClient
-from vtjson import ValidationError, validate
 
 
 class RunDb:

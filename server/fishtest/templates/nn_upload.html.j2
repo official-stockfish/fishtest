@@ -1,0 +1,90 @@
+{% extends "base.html.j2" %}
+
+{% block title %}Neural Network Upload | Stockfish Testing{% endblock %}
+
+{% block body %}
+{% set testing_guidelines = testing_guidelines_url %}
+{% set cc0_license_url = cc0_url %}
+{% set nn_stats_page_url = nn_stats_url %}
+<div class="col-limited-size">
+  <header class="text-md-center py-2">
+    <h2>Neural Network Upload</h2>
+    <div class="alert alert-info">
+      <p class="mb-0">
+        Please read the
+        <a
+          class="alert-link"
+          href="{{ testing_guidelines }}"
+          >Testing Guidelines</a
+        >
+        before uploading your network.
+      </p>
+      <p class="mb-0">
+        By uploading, you license your network under a
+        <a
+          class="alert-link"
+          href="{{ cc0_license_url }}"
+          >CC0</a
+        >
+        license.
+      </p>
+      <p class="mb-0">
+        Your uploaded network will be available for public download and listed
+        on the <a class="alert-link" href="{{ nn_stats_page_url }}">NN stats page</a>.
+      </p>
+    </div>
+  </header>
+
+  <form
+    id="upload-nn"
+    action="{{ request.url }}"
+    method="POST"
+    enctype="multipart/form-data"
+  >
+    <div class="mb-3">
+      <label for="network" class="form-label">
+        Select your Network file (nn-[SHA256 first 12 digits].nnue)
+      </label>
+      <input
+        class="form-control"
+        id="network"
+        name="network"
+        type="file"
+        accept=".nnue"
+      >
+    </div>
+
+    <div class="mb-3 form-check">
+      <label class="form-check-label" for="terms-checkbox">
+        You are the author of this network or have obtained the network with a
+        CC0 license.
+      </label>
+      <input
+        type="checkbox"
+        class="form-check-input"
+        id="terms-checkbox"
+        onclick="doLicense()"
+      >
+    </div>
+
+    <button
+      id="upload-button"
+      type="submit"
+      class="btn btn-primary w-100"
+      disabled
+    >
+      Upload
+    </button>
+  </form>
+</div>
+
+<script>
+  function doLicense() {
+    if (document.getElementById("terms-checkbox").checked) {
+      document.getElementById("upload-button").removeAttribute("disabled");
+    } else {
+      document.getElementById("upload-button").setAttribute("disabled", "");
+    }
+  }
+</script>
+{% endblock %}
