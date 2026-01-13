@@ -1,0 +1,173 @@
+{% extends "base.html.j2" %}
+
+{% block title %}Events Log | Stockfish Testing{% endblock %}
+
+{% block body %}
+{% set action_filter = action_param if action_param is defined else (filters.action if filters is defined and filters.action is defined else "") %}
+{% set username_filter = username_param if username_param is defined else (filters.username if filters is defined and filters.username is defined else "") %}
+{% set text_filter = text_param if text_param is defined else (filters.text if filters is defined and filters.text is defined else "") %}
+<h2>Events Log</h2>
+
+<form class="row mb-3">
+  <div class="col-12 col-md-auto mb-3">
+    <label for="restrict" class="form-label">Show only</label>
+    <select id="restrict" class="form-select" name="action">
+      <option value="">All</option>
+      <option value="new_run">New Run</option>
+      <option value="approve_run">Approve Run</option>
+      <option value="modify_run">Modify Run</option>
+      <option value="stop_run">Stop Run</option>
+      <option value="delete_run">Delete Run</option>
+      <option value="purge_run">Purge Run</option>
+      <option value="finished_run">Finished Runs</option>
+      <option value="block_user">Block/Unblock User</option>
+      <option value="block_worker">Block/Unblock Worker</option>
+      <option value="accept_user">Accept User</option>
+      <option value="upload_nn">Upload NN file</option>
+      <option value="failed_task">Failed Tasks</option>
+      <option value="crash_or_time">Crashes or Time losses</option>
+      <option value="log_message">Log Messages</option>
+      <option value="dead_task" class="grayedoutoption">Dead Tasks</option>
+      <option value="system_event" class="grayedoutoption">System Events</option>
+    </select>
+  </div>
+
+  <div class="col-12 col-md-auto mb-3">
+    <label for="user" class="form-label">From user</label>
+    <input
+      id="user"
+      class="form-control"
+      autocomplete="off"
+      placeholder="Search by username"
+      type="text"
+      name="user"
+      list="users-list"
+      value="{{ username_filter }}"
+    >
+    <datalist id="users-list">
+      {% for username in usernames %}
+        <option value="{{ username }}">{{ username }}</option>
+      {% endfor %}
+    </datalist>
+  </div>
+
+  <div class="col-12 col-md-auto mb-3">
+    <label for="text" class="form-label">Free text search</label>
+    <i
+      class="fa-solid fa-circle-info"
+      role="button"
+      data-bs-toggle="modal"
+      data-bs-target="#autoselect-modal"
+    ></i>
+    <div
+      class="modal fade"
+      id="autoselect-modal"
+      tabindex="-1"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Free text search information</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body text-break">
+            This will perform a case insensitive text search on the fields event
+            name, user name, worker name, target user, network name, branch name
+            and comment. One can only search for a list of full words, i.e.
+            strings bounded by delimiters. For example the worker name
+            <i>fishtestfan-128cores-abcdefgh-uvwx</i> matches <i>abcdefgh</i> but
+            not <i>abcde</i>. To force a word or a combination of words to be
+            included in the result, use quotes like in <i>&quot;dog cat&quot;</i>.
+            To exclude a word, precede it with a minus sign like in
+            <i>dog &minus;cat</i>. For more information see
+            <a
+              href="https://www.mongodb.com/docs/manual/reference/operator/query/text/#mongodb-query-op.-text"
+            >
+              https://www.mongodb.com/docs/manual/reference/operator/query/text/#mongodb-query-op.-text
+            </a>.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <input
+      id="text"
+      class="form-control"
+      placeholder="Enter some text"
+      type="text"
+      name="text"
+      value="{{ text_filter }}"
+    >
+  </div>
+
+  <div class="col-12 col-md-auto mb-3 d-flex align-items-end">
+    <button type="submit" class="btn btn-success w-100">Search</button>
+  </div>
+</form>
+
+{% with pages=pages %}
+  {% include "pagination.html.j2" %}
+{% endwith %}
+
+<div class="table-responsive-lg">
+  <table class="table table-striped table-sm">
+    <thead class="sticky-top">
+      <tr>
+        <th>Time</th>
+        <th>Event</th>
+        <th>Source</th>
+        <th>Target</th>
+        <th>Comment</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for action in actions %}
+        <tr>
+          <td>
+            {% if action.time_url %}
+              <a href="{{ action.time_url }}"> {{ action.time_label }} </a>
+            {% else %}
+              {{ " " ~ action.time_label ~ " " }}
+            {% endif %}
+          </td>
+          <td>{{ action.event }}</td>
+          <td>
+            {% if action.agent_url %}
+              <a href="{{ action.agent_url }}">{{ action.agent_name }}</a>
+            {% else %}
+              {{ action.agent_name }}
+            {% endif %}
+          </td>
+          <td>
+            {% if action.target_url %}
+              <a href="{{ action.target_url }}">{{ action.target_name }}</a>
+            {% else %}
+              {{ action.target_name }}
+            {% endif %}
+          </td>
+          <td class="text-break">{{ action.message }}</td>
+        </tr>
+      {% else %}
+        <tr>
+          <td colspan=20>No actions available</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% with pages=pages %}
+  {% include "pagination.html.j2" %}
+{% endwith %}
+
+<script>
+  document.getElementById('restrict').value =
+    {{ action_filter | tojson }};
+</script>
+{% endblock %}

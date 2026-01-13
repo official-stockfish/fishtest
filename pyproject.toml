@@ -3,18 +3,23 @@ name = "fishtest"
 version = "0.1.0"
 description = "fishtest framework"
 readme = "README.md"
-requires-python = ">=3.13"
-dependencies = []
+requires-python = ">=3.14"
 
 [dependency-groups]
 dev = [
     "pre-commit>=4.5.1",
-    "ruff>=0.15.0",
+    "ruff>=0.15.1",
+    "ty>=0.0.17",
 ]
 
 [tool.ruff]
+target-version = "py314"
+src = ["server", "worker"]
 extend-exclude = ["worker/packages"]
+force-exclude = true
 
 [tool.ruff.lint]
-# Sort imports (isort rules).
 extend-select = ["I"]
+
+[tool.ruff.per-file-target-version]
+"worker/**/*.py" = "py38"

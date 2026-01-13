@@ -489,7 +489,7 @@ function filterTable(inputValue, tableId, originalRows, predicate) {
   }
 
   // Usage Example:
-  // See also contributors.mak.
+  // See also contributors.html.j2.
 
   // Assuming you have an HTML structure similar to this:
   /* HTML Structure:

@@ -113,15 +113,16 @@ class CreateLRUCacheTest(unittest.TestCase):
         self.assertEqual(set(self.lru_cache.items()), {("a", 1), ("b", 2)})
 
     def test_lru_cache_insertion(self):
-        for i in range(0, self.maxsize + 1):
+        for i in range(self.maxsize + 1):
             self.lru_cache[str(i)] = i
         self.assertEqual(len(self.lru_cache), self.maxsize)
         self.assertEqual(
-            list(self.lru_cache.values()), list(range(1, self.maxsize + 1))
+            list(self.lru_cache.values()),
+            list(range(1, self.maxsize + 1)),
         )
 
     def test_lru_cache_reordering_get(self):
-        for i in range(0, self.maxsize + 1):
+        for i in range(self.maxsize + 1):
             self.lru_cache[str(i)] = i
         self.lru_cache["5"]
         result = list(range(1, self.maxsize + 1))
@@ -130,7 +131,7 @@ class CreateLRUCacheTest(unittest.TestCase):
         self.assertEqual(list(self.lru_cache.values()), result)
 
     def test_lru_cache_reordering_set(self):
-        for i in range(0, self.maxsize + 1):
+        for i in range(self.maxsize + 1):
             self.lru_cache[str(i)] = i
         self.lru_cache["5"] = 11
         result = list(range(1, self.maxsize + 1))
@@ -228,9 +229,8 @@ class CreateLRUCacheTest(unittest.TestCase):
         self.lru_cache.lock.release()
 
     def test_lru_cache_reacquire(self):
-        with self.lru_cache.lock:
-            with self.lru_cache.lock:
-                pass
+        with self.lru_cache.lock, self.lru_cache.lock:
+            pass
 
     def test_lru_cache_reacquire_threaded(self):
         worker_started = threading.Event()
@@ -453,8 +453,7 @@ class CreateLRUCacheTest(unittest.TestCase):
         def worker1(arg):
             if arg == "good":
                 return "found"
-            else:
-                return None
+            return None
 
         worker1("good")
         self.assertIn("good", worker1.cache)
@@ -465,8 +464,7 @@ class CreateLRUCacheTest(unittest.TestCase):
         def worker2(arg):
             if arg == "good":
                 return "found"
-            else:
-                return None
+            return None
 
         worker2("good")
         self.assertIn("good", worker2.cache)

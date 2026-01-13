@@ -1,0 +1,52 @@
+<table class="table table-striped table-sm">
+  <thead class="sticky-top">
+    <tr>
+      <th>Machine</th>
+      <th>Cores</th>
+      <th>UUID</th>
+      <th>MNps</th>
+      <th>RAM</th>
+      <th>System</th>
+      <th>Arch</th>
+      <th>Compiler</th>
+      <th>Python</th>
+      <th>Worker</th>
+      <th>Running on</th>
+      <th>Last active</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for machine in machines %}
+      {% set country_code = machine.country_code if machine.country_code is defined else "" %}
+      {% set worker_url = machine.worker_url %}
+      {% set worker_short = machine.worker_short %}
+      {% set run_url = machine.run_url %}
+      {% set run_label = machine.run_label %}
+      <tr>
+        <td>{{ machine.username }}</td>
+        <td>
+          {% if country_code %}
+            <div class="flag flag-{{ country_code | lower }}" style="display: inline-block"></div>
+          {% endif %}
+          {{ machine.concurrency }}
+        </td>
+        <td><a href="{{ worker_url }}">{{ worker_short }}</a></td>
+        <td>{{ machine.nps_m }}</td>
+        <td>{{ machine.max_memory }}</td>
+        <td>{{ machine.system }}</td>
+        <td>{{ machine.worker_arch }}</td>
+        <td>{{ machine.compiler_label }}</td>
+        <td>{{ machine.python_label }}</td>
+        <td>{{ machine.version_label }}</td>
+        <td>
+          <a href="{{ run_url }}" title="{{ run_label }}">{{ run_label }}</a>
+        </td>
+        <td data-sort-value="{{ machine.last_active_sort }}">{{ machine.last_active_label }}</td>
+      </tr>
+    {% else %}
+      <tr id="no-machines">
+        <td colspan=20>No machines running</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>

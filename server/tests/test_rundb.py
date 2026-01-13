@@ -3,11 +3,12 @@ import sys
 import unittest
 from datetime import UTC, datetime
 
-import util
+import test_support
+from pymongo import DESCENDING
+
 from fishtest.api import WORKER_VERSION
 from fishtest.run_cache import Prio
 from fishtest.spsa_handler import _pack_flips, _unpack_flips
-from pymongo import DESCENDING
 
 run_id = None
 
@@ -15,7 +16,7 @@ run_id = None
 class CreateRunDBTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.rundb = util.get_rundb()
+        cls.rundb = test_support.get_rundb()
 
     def setUp(self):
         random.seed()

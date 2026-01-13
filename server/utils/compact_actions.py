@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-from fishtest.actiondb import ActionDb
 from pymongo import MongoClient
+
+from fishtest.actiondb import ActionDb
 
 conn = MongoClient()
 db = conn["fishtest_new"]

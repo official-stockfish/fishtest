@@ -19,15 +19,13 @@ if __name__ == "__main__":
         if "run_id" in action and isinstance(action["run_id"], ObjectId):
             action["run_id"] = str(action["run_id"])
         actions_collection.replace_one({"_id": action_id}, action)
-        print("Actions converted: {}.".format(count), end="\r")
+        print(f"Actions converted: {count}.", end="\r")
     t1 = datetime.now(UTC)
     duration = (t1 - t0).total_seconds()
     time_per_run = duration / count
-    print("")
+    print()
     print(
-        "Conversion finished in {:.2f} seconds. Time per run: {:.2f}ms.".format(
-            duration, 1000 * time_per_run
-        )
+        f"Conversion finished in {duration:.2f} seconds. Time per run: {1000 * time_per_run:.2f}ms.",
     )
     actions.close()
     client.close()

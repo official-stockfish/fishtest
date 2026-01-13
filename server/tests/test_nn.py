@@ -1,13 +1,13 @@
 import unittest
 from datetime import UTC, datetime
 
-from util import get_rundb
+from test_support import get_rundb
 from vtjson import ValidationError
 
 
 def show(mc):
     exception = mc.exception
-    print(f"{exception.__class__.__name__}: {str(mc.exception)}")
+    print(f"{exception.__class__.__name__}: {mc.exception!s}")
 
 
 class TestNN(unittest.TestCase):

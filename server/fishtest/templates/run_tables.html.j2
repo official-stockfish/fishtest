@@ -1,0 +1,78 @@
+{% set prefix = prefix if prefix is defined else '' %}
+{% set toggle_states = toggle_states if toggle_states is defined else {} %}
+{% set pending_toggle = prefix ~ 'pending' %}
+{% set paused_toggle = prefix ~ 'paused' %}
+{% set failed_toggle = prefix ~ 'failed' %}
+{% set active_toggle = prefix ~ 'active' %}
+
+{% if page_idx == 0 %}
+
+  {% with
+    runs=pending_approval_runs,
+    show_delete=True,
+    header='Pending approval',
+    count=pending_approval_runs | length,
+    toggle=pending_toggle,
+    cookie_name=pending_toggle ~ '_state',
+    toggle_state=toggle_states.get(pending_toggle, 'Show'),
+    alt='No tests pending approval',
+    show_gauge=show_gauge
+  %}
+    {% include "run_table.html.j2" %}
+  {% endwith %}
+
+  {% with
+    runs=paused_runs,
+    show_delete=True,
+    header='Paused',
+    count=paused_runs | length,
+    toggle=paused_toggle,
+    cookie_name=paused_toggle ~ '_state',
+    toggle_state=toggle_states.get(paused_toggle, 'Show'),
+    alt='No paused tests',
+    show_gauge=show_gauge
+  %}
+    {% include "run_table.html.j2" %}
+  {% endwith %}
+
+  {% with
+    runs=failed_runs,
+    show_delete=True,
+    toggle=failed_toggle,
+    cookie_name=failed_toggle ~ '_state',
+    toggle_state=toggle_states.get(failed_toggle, 'Show'),
+    count=failed_runs | length,
+    header='Failed',
+    alt='No failed tests on this page',
+    show_gauge=show_gauge
+  %}
+    {% include "run_table.html.j2" %}
+  {% endwith %}
+
+  {% with
+    runs=active_runs,
+    header='Active',
+    toggle=active_toggle,
+    cookie_name=active_toggle ~ '_state',
+    toggle_state=toggle_states.get(active_toggle, 'Show'),
+    count=active_runs | length,
+    alt='No active tests',
+    show_gauge=show_gauge
+  %}
+    {% include "run_table.html.j2" %}
+  {% endwith %}
+{% endif %}
+
+{% with
+  runs=finished_runs,
+  header='Finished',
+  count=num_finished_runs,
+  toggle=(prefix ~ 'finished') if page_idx == 0 else None,
+  cookie_name=(prefix ~ 'finished_state') if page_idx == 0 else '',
+  toggle_state=toggle_states.get(prefix ~ 'finished', 'Show') if page_idx == 0 else 'Show',
+  pages=finished_runs_pages,
+  title_text=finished_title_text,
+  show_gauge=show_gauge
+%}
+  {% include "run_table.html.j2" %}
+{% endwith %}

@@ -35,7 +35,7 @@ jobs:
           cache-dependency-glob: "uv.lock"
 
       - name: Sync project
-        run: uv sync
+        run: uv sync --group test
 
       - name: Run server tests
         run: uv run python -m unittest discover -vb -s tests

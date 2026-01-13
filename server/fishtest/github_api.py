@@ -4,9 +4,10 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 import requests
+from vtjson import validate
+
 from fishtest.lru_cache import LRUCache, lru_cache
 from fishtest.schemas import sha as sha_schema
-from vtjson import validate
 
 """
 Note: we generally don't suppress exceptions since too many things can

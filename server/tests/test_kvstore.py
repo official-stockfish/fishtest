@@ -17,7 +17,8 @@ class CreateKeyValueStoreTest(unittest.TestCase):
 
     def test_kvstore_persistence(self):
         kvstore_tmp = KeyValueStore(
-            db_name="fishtest_tests", collection="test_kvstore_tmp"
+            db_name="fishtest_tests",
+            collection="test_kvstore_tmp",
         )
         kvstore_tmp["a"] = 1
         kvstore_tmp.close()
@@ -26,7 +27,8 @@ class CreateKeyValueStoreTest(unittest.TestCase):
         with self.assertRaises(Exception):
             kvstore_tmp["a"]
         kvstore_tmp = KeyValueStore(
-            db_name="fishtest_tests", collection="test_kvstore_tmp"
+            db_name="fishtest_tests",
+            collection="test_kvstore_tmp",
         )
         self.assertEqual(kvstore_tmp["a"], 1)
         kvstore_tmp.drop()

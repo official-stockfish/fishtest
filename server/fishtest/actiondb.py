@@ -1,11 +1,12 @@
 from datetime import UTC, datetime
 
 from bson.objectid import ObjectId
-from fishtest.schemas import ACTION_MESSAGE_SIZE, action_schema
-from fishtest.util import hex_print, worker_name
 from pymongo import DESCENDING
 from pymongo.errors import OperationFailure
 from vtjson import ValidationError, validate
+
+from fishtest.schemas import ACTION_MESSAGE_SIZE, action_schema
+from fishtest.util import hex_print, worker_name
 
 
 def run_name(run):

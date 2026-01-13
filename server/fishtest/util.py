@@ -5,12 +5,13 @@ import re
 from datetime import UTC, datetime
 from functools import cache
 
-import fishtest.github_api as gh
-import fishtest.stats.stat_util
 import numpy as np
 import scipy.stats
 from email_validator import EmailNotValidError, caching_resolver, validate_email
 from zxcvbn import zxcvbn
+
+import fishtest.github_api as gh
+import fishtest.stats.stat_util
 
 FISHTEST = "fishtest_new"
 PASSWORD_MAX_LENGTH = 72
@@ -517,26 +518,6 @@ def password_strength(password, *args):
         if details:
             return False, "Error! Weak password: " + details
         return False, "Error! Weak password"
-
-
-def get_cookie(request, name):
-    """Workaround for a bug in pyramid.request.cookies.
-    Chrome may send different cookies with the same name.
-    The one that applies is the first one
-    (the one with the most specific path).
-    But pyramid.request.cookies picks the last one."""
-
-    name = name.strip()
-    if "Cookie" not in request.headers:
-        return None
-    cookies = request.headers["Cookie"].split(";")
-    for cookie in cookies:
-        try:
-            k, v = cookie.split("=", 1)
-        except ValueError:
-            continue
-        if k.strip() == name:
-            return v.strip()
 
 
 def email_valid(email):

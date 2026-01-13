@@ -8,8 +8,9 @@
 import pprint
 import sys
 
-from fishtest.rundb import RunDb
 from pymongo import ASCENDING, DESCENDING, MongoClient
+
+from fishtest.rundb import RunDb
 
 db_name = "fishtest_new"
 
@@ -63,7 +64,8 @@ def create_runs_indexes():
         },
     )
     db["runs"].create_index(
-        [("args.username", DESCENDING), ("last_updated", DESCENDING)], name="user_runs"
+        [("args.username", DESCENDING), ("last_updated", DESCENDING)],
+        name="user_runs",
     )
 
     db["runs"].create_index(
@@ -97,7 +99,8 @@ def create_workers_indexes():
 
 def create_actions_indexes():
     db["actions"].create_index(
-        [("time", DESCENDING), ("_id", DESCENDING)], name="actions_time_id"
+        [("time", DESCENDING), ("_id", DESCENDING)],
+        name="actions_time_id",
     )
     db["actions"].create_index(
         [("username", ASCENDING), ("time", DESCENDING), ("_id", DESCENDING)],
@@ -134,17 +137,21 @@ def print_current_indexes():
         c = db[collection_name]
         print("Current indexes on " + collection_name + ":")
         pprint.pprint(
-            c.index_information(), stream=None, indent=2, width=110, depth=None
+            c.index_information(),
+            stream=None,
+            indent=2,
+            width=110,
+            depth=None,
         )
-        print("")
+        print()
 
 
 def drop_indexes(collection_name):
     # Drop all indexes on collection except _id_
-    print("\nDropping indexes on {}".format(collection_name))
+    print(f"\nDropping indexes on {collection_name}")
     collection = db[collection_name]
     index_keys = list(collection.index_information().keys())
-    print("Current indexes: {}".format(index_keys))
+    print(f"Current indexes: {index_keys}")
     for idx in index_keys:
         if idx != "_id_":
             print("Dropping " + collection_name + " index " + idx + " ...")
@@ -180,10 +187,10 @@ if __name__ == "__main__":
         print("Finished creating indexes!\n")
     print_current_indexes()
     if not collection_names:
-        print("Collections in {}: {}".format(db_name, db.list_collection_names()))
+        print(f"Collections in {db_name}: {db.list_collection_names()}")
         print(
-            "Give a list of collection names as arguments to re-create indexes. For example:\n"
+            "Give a list of collection names as arguments to re-create indexes. For example:\n",
         )
         print(
-            "  python3 create_indexes.py users runs - drops and creates indexes for runs and users\n"
+            "  python3 create_indexes.py users runs - drops and creates indexes for runs and users\n",
         )
