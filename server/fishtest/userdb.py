@@ -77,7 +77,7 @@ class UserDb:
         user["groups"].append(group)
         validate_user(user)
         self.users.replace_one({"_id": user["_id"]}, user)
-        self.cache.clear()
+        self.clear_cache()
 
     def create_user(self, username, password, email, tests_repo):
         try:
