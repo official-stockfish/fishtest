@@ -1188,8 +1188,7 @@ def get_worker_arch(worker_dir):
         print(f"Worker arch determined to be: {arch}")
     except Exception as e:
         print(f"Exception obtaining worker arch:\n{e}", file=sys.stderr)
-        print('Unable to determine worker arch. Setting it to "unknown"')
-        arch = "unknown"
+        return None
     finally:
         os.chdir(working_dir)
     return arch
@@ -1548,6 +1547,11 @@ def worker():
     if not verify_toolchain():
         return 1
 
+    # Make sure we can determine the worker arch
+    worker_arch = get_worker_arch(worker_dir)
+    if worker_arch is None:
+        return 1
+
     # Make sure we have a working fastchess
     if not setup_fastchess(
         worker_dir, compiler, options.concurrency, options.global_cache, tests=True
@@ -1581,7 +1585,7 @@ def worker():
         "compiler": compiler,
         "unique_key": get_uuid(options),
         "modified": not unmodified,
-        "worker_arch": get_worker_arch(worker_dir),
+        "worker_arch": worker_arch,
         "ARCH": "?",
         "nps": 0.0,
         "near_github_api_limit": False,
