@@ -419,7 +419,7 @@ worker_info_schema_api = {
     "compiler": union("clang++", "g++"),
     "unique_key": uuid,
     "modified": bool,
-    "worker_arch": worker_arch,
+    "worker_arch": union(worker_arch, "unknown"),
     "ARCH": str,
     "nps": unumber,
     "near_github_api_limit": bool,

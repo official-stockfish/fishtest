@@ -659,7 +659,6 @@ supported_arches = [
     "x86-64-avx512",
     "x86-64-avxvnni",
     "x86-64-bmi2",
-    #    "x86-64-modern",
     #    "x86-64-sse3-popcnt",
     "x86-64-sse41-popcnt",
     #    "x86-64-ssse3",
