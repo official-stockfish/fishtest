@@ -1108,21 +1108,22 @@ After fixing the issues you can unblock the worker at
         last_run_id = self.worker_runs.get(my_name, {}).get("last_run", None)
 
         def priority(run):
-            # A penalty term for working on the same run again. This amounts to adding the number
-            # of cores that were freed by this worker when the previous task finished.
-            # The added 1/2 * max_threads is to mitigate granularity issues with large core workers.
-            repeat_penalty = (
-                3 / 2 if str(run["_id"]) == last_run_id else 1 / 2
-            ) * max_threads
+            # We re-add the number of cores that were freed by this worker when the previous
+            # task on this run finished. If we don't do this then this worker is likely to pick
+            # up this run again, especially if it has many cores.
+            adjusted_cores = run["cores"] + (
+                max_threads if str(run["_id"]) == last_run_id else 0
+            )
 
             # lower is better
             return (
                 # Always consider the higher priority runs first
                 -run["args"]["priority"],
                 # Make sure all runs at this priority level get _some_ cores
-                run["cores"] > 0,
+                adjusted_cores > 0,
                 # Try to match run["args"]["itp"].
-                (run["cores"] + repeat_penalty) / run["args"]["itp"],
+                # The added term max_threads/2 is to mitigate granularity issues with large core workers.
+                (adjusted_cores + max_threads / 2) / run["args"]["itp"],
             )
 
         # Use a local copy of (the sorted) unfinished runs list so that it does
