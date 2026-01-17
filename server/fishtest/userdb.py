@@ -1,3 +1,5 @@
+import secrets
+import sys
 from datetime import UTC, datetime
 
 from fishtest.lru_cache import lru_cache
@@ -41,16 +43,26 @@ class UserDb:
     def authenticate(self, username, password):
         user = self.get_user(username)
         if not user or user["password"] != password:
-            print(f"Invalid login: '{username}' '{password}'", flush=True)
-            return {"error": f"Invalid password for user: {username}"}
-        if "blocked" in user and user["blocked"]:
-            print(f"Blocked account: '{username}' '{password}'", flush=True)
-            return {"error": f"Account blocked for user: {username}"}
-        if "pending" in user and user["pending"]:
-            print(f"Pending account: '{username}' '{password}'", flush=True)
-            return {"error": f"Account pending for user: {username}"}
+            sys.stderr.write("Invalid login: '{}' '{}'\n".format(username, password))
+            return {"error": "Invalid password for user: {}".format(username)}
+
+        if self.is_account_restricted(user):
+            status = self.is_account_restricted(user)
+            sys.stderr.write(
+                "{} account: '{}' '{}'\n".format(
+                    status.capitalize(), username, password
+                )
+            )
+            return {"error": "Account {} for user: {}".format(status, username)}
 
         return {"username": username, "authenticated": True}
+
+    def is_account_restricted(self, user):
+        if "blocked" in user and user["blocked"]:
+            return "blocked"
+        if "pending" in user and user["pending"]:
+            return "pending"
+        return None
 
     def get_users(self):
         return self.users.find(sort=[("_id", ASCENDING)])
@@ -87,6 +99,7 @@ class UserDb:
             user = {
                 "username": username,
                 "password": password,
+                "api_key": self._generate_api_key(),
                 "registration_time": datetime.now(UTC),
                 "pending": True,
                 "blocked": False,
@@ -107,6 +120,12 @@ class UserDb:
         validate_user(user)
         self.users.replace_one({"_id": user["_id"]}, user)
         self.clear_cache()
+
+    def generate_api_key(self):
+        return self._generate_api_key()
+
+    def _generate_api_key(self):
+        return f"ft_{secrets.token_urlsafe(32)}"
 
     def remove_user(self, user, rejector):
         result = self.users.delete_one({"_id": user["_id"]})
