@@ -34,6 +34,7 @@ from fishtest.util import (
     plural,
     reasonable_run_hashes,
     supported_arches,
+    supported_compilers,
     tests_repo,
 )
 from pyramid.httpexceptions import HTTPFound, HTTPNotFound
@@ -917,6 +918,7 @@ def validate_form(request):
         "tests_repo": request.POST["tests-repo"],
         "info": request.POST["run-info"],
         "arch_filter": request.POST["arch-filter"],
+        "compiler": request.POST["compiler"],
     }
     try:
         # Deal with people that have changed their GitHub username
@@ -968,6 +970,12 @@ def validate_form(request):
     odds = request.POST.get("odds", "off")  # off checkboxes are not posted
     if odds == "off":
         data["new_tc"] = data["tc"]
+
+    checkbox_compiler = request.POST.get(
+        "checkbox-compiler", "off"
+    )  # off checkboxes are not posted
+    if checkbox_compiler == "off":
+        del data["compiler"]
 
     checkbox_arch_filter = request.POST.get(
         "checkbox-arch-filter", "off"
@@ -1289,6 +1297,7 @@ def tests_run(request):
         "valid_books": request.rundb.books.keys(),
         "pt_info": request.rundb.pt_info,
         "supported_arches": supported_arches,
+        "supported_compilers": supported_compilers,
     }
 
 
@@ -1589,6 +1598,7 @@ def tests_view(request):
         "master_repo",
         "adjudication",
         "arch_filter",
+        "compiler",
         "info",
     ):
         if name not in run["args"]:
@@ -1736,6 +1746,8 @@ def tests_view(request):
         warnings.append("this is a test with time odds")
     if run["args"].get("arch_filter", "") != "":
         warnings.append("this test has a non-trivial arch filter")
+    if run["args"].get("compiler", "") != "":
+        warnings.append("this test has a pinned compiler")
     book_exits = request.rundb.books.get(run["args"]["book"], {}).get("total", 100000)
     if book_exits < 100000:
         warnings.append(f"this test uses a small book with only {book_exits} exits")

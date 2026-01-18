@@ -626,11 +626,14 @@ def reasonable_run_hashes(run):
     return ok_hash(tc_ratio, base_hash) and ok_hash(tc_ratio, new_hash)
 
 
+supported_compilers = ["clang++", "g++"]
+
+
 # The list below has been extracted from the output of "make help"
 # in the src directory of the SF source code.
 # However not all arches supported by the makefile are actually
 # used by the workers since they use "make ARCH=native" for compilation
-# and this means the arch is determined by the output of the
+# and this means the arch is determined by the output of
 # script/get_native_properties.sh in the SF source code.
 # The unused arches have been commented out.
 

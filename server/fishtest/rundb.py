@@ -561,6 +561,7 @@ class RunDb:
         priority=0,
         adjudication=True,
         arch_filter=None,
+        compiler=None,
     ):
         if start_time is None:
             start_time = datetime.now(UTC)
@@ -599,6 +600,9 @@ class RunDb:
 
         if arch_filter is not None:
             run_args["arch_filter"] = arch_filter
+
+        if compiler is not None:
+            run_args["compiler"] = compiler
 
         if sprt is not None:
             run_args["sprt"] = sprt
@@ -1103,6 +1107,7 @@ After fixing the issues you can unblock the worker at
         max_memory = int(worker_info.get("max_memory", 0))
         near_github_api_limit = worker_info["near_github_api_limit"]
         worker_arch = worker_info["worker_arch"]
+        worker_compiler = worker_info["compiler"]
 
         # Now we sort the list of unfinished runs according to priority.
         last_run_id = self.worker_runs.get(my_name, {}).get("last_run", None)
@@ -1200,7 +1205,7 @@ After fixing the issues you can unblock the worker at
             if run["cores"] > limit_cores:
                 continue
 
-            # check if we satisfy the filter
+            # check if we satisfy the arch filter
             arch_filter = run["args"].get("arch_filter", "")
             if arch_filter != "":
                 arch_filter_re = self.compile_regex(arch_filter)
@@ -1223,6 +1228,11 @@ After fixing the issues you can unblock the worker at
                         message,
                         flush=True,
                     )
+
+            # check if we have the correct compiler
+            compiler = run["args"].get("compiler", "")
+            if compiler != "" and compiler != worker_compiler:
+                continue
 
             # If we make it here, it means we have found a run
             # suitable for a new task.

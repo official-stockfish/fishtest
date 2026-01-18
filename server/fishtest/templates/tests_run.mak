@@ -29,6 +29,7 @@
 
 <%
   arch_filter = args.get('arch_filter',  '')
+  compiler = args.get('compiler',  '')
 %>
 
 <script>
@@ -611,7 +612,7 @@
             <div id="arch-filter" class="mb-2" style="display: none;">
               <div class="row gx-2 mb-2">
                 <div class="col">
-                  <label for="arch-filter" class="form-label">Arch filter (regular expression)</label>
+                  <label for="arch-filter-input" class="form-label">Arch filter (regular expression)</label>
                   <input
                     id="arch-filter-input"
                     autocomplete="off"
@@ -623,6 +624,19 @@
               </div>
               <div class="row gx-2">
                 <div id="supported-arches" class="col">
+                </div>
+              </div>
+            </div>
+
+            <div id="compiler" class="mb-2" style="display: none;">
+              <div class="row gx-2 mb-2">
+                <div class="col">
+                  <label for="compiler-select" class="form-label">Compiler</label>
+                  <select id="compiler-select" name="compiler" class="form-select">
+                    % for comp in supported_compilers:
+                      <option value="${comp}" ${"selected" if comp == compiler else ""}>${comp}</option>
+                    % endfor
+                  </select>
                 </div>
               </div>
             </div>
@@ -649,6 +663,16 @@
                   name="checkbox-arch-filter"
                   id="checkbox-arch-filter"
                   ${'checked' if arch_filter != '' else ''}
+                >
+              </div>
+              <div class="col-6 col-lg-4 mb-2 form-check">
+                <label class="form-check-label" for="checkbox-compiler">Pin compiler</label>
+                <input
+                  type="checkbox"
+                  class="form-check-input"
+                  name="checkbox-compiler"
+                  id="checkbox-compiler"
+                  ${'checked' if compiler != '' else ''}
                 >
               </div>
               <div class="col-6 col-lg-4 mb-2 form-check">
@@ -713,6 +737,7 @@
     updateOdds(document.getElementById('checkbox-time-odds'));
     toggleBook(document.getElementById('checkbox-book-visibility'));
     toggleArchFilter(document.getElementById('checkbox-arch-filter'));
+    toggleCompiler(document.getElementById('checkbox-compiler'));
   });
 
   let stopRule = null;
@@ -1052,6 +1077,14 @@
     }
   }
 
+  function toggleCompiler(checkbox) {
+    if (checkbox.checked) {
+      document.getElementById('compiler').style.display = "";
+    } else {
+      document.getElementById('compiler').style.display = "none";
+    }
+  }
+
   function updateSupportedArches() {
     const errorCSS = "color: red;";
     const supportedArches = ${json.dumps(supported_arches)|n};
@@ -1088,6 +1121,10 @@
 
   document.getElementById('checkbox-arch-filter').addEventListener("change", (e) => {
     toggleArchFilter(e.target);
+  });
+
+  document.getElementById('checkbox-compiler').addEventListener("change", (e) => {
+    toggleCompiler(e.target);
   });
 
   document.getElementById('arch-filter-input').addEventListener("input", (e) => {
