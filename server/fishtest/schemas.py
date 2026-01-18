@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 
 import fishtest.stats.stat_util
 from bson.objectid import ObjectId
-from fishtest.util import supported_arches
+from fishtest.util import supported_arches, supported_compilers
 from vtjson import (
     anything,
     at_least_one_of,
@@ -51,6 +51,7 @@ long_worker_name = regex(
     r".*-[\d]+cores-[a-zA-Z0-9]{2,8}-[a-f0-9]{4}\*?", name="long_worker_name"
 )
 worker_arch = set_name(union(*supported_arches), "valid_worker_arch")
+compiler = union(*supported_compilers)
 username = regex(r"[!-~][ -~]{0,30}[!-~]", name="username")
 net_name = regex(r"nn-[a-f0-9]{12}.nnue", name="net_name")
 tc = regex(r"([1-9]\d*/)?\d+(\.\d+)?(\+\d+(\.\d+)?)?", name="tc")
@@ -416,7 +417,7 @@ worker_info_schema_api = {
     "version": uint,
     "python_version": [uint, uint, uint],
     "gcc_version": [uint, uint, uint],
-    "compiler": union("clang++", "g++"),
+    "compiler": compiler,
     "unique_key": uuid,
     "modified": bool,
     "worker_arch": union(worker_arch, "unknown"),
@@ -667,7 +668,7 @@ valid_aggregated_data = intersect(
 # about non-validation of runs created with the prior
 # schema.
 
-RUN_VERSION = 22
+RUN_VERSION = 23
 
 runs_schema = intersect(
     {
@@ -722,6 +723,7 @@ runs_schema = intersect(
                 "priority": number,
                 "adjudication": bool,
                 "arch_filter?": regex_pattern,
+                "compiler?": compiler,
                 "sprt?": intersect(
                     {
                         "alpha": 0.05,
