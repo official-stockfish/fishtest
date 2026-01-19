@@ -1,3 +1,5 @@
+import sys
+
 from .openlock import (  # noqa: F401
     FileLock,
     InvalidLockFile,
@@ -10,3 +12,6 @@ from .openlock import (  # noqa: F401
     logger,
     set_defaults,
 )
+
+if sys.version_info >= (3, 11):
+    from .openlock import Defaults  # noqa: F401
