@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import atexit
 import copy
 import logging
@@ -10,15 +12,19 @@ import threading
 import time
 import warnings
 from pathlib import Path
+from typing import Any
 
-__version__ = "1.1.5"
+if sys.version_info >= (3, 11):
+    from typing import TypedDict, Unpack
+
+__version__ = "1.2.1"
 
 logger = logging.getLogger(__name__)
 
 IS_WINDOWS = "windows" in platform.system().lower()
 
 
-def pid_valid_windows(pid, name):
+def _pid_valid_windows(pid: int, name: str) -> bool:
     cmdlet = (
         "(Get-CimInstance Win32_Process " "-Filter 'ProcessId = {}').CommandLine"
     ).format(pid)
@@ -38,7 +44,7 @@ def pid_valid_windows(pid, name):
     return False
 
 
-def pid_valid_posix(pid, name):
+def _pid_valid_posix(pid: int, name: str) -> bool:
     # for busybox these options are undocumented...
     cmd = ["ps", "-f", str(pid)]
 
@@ -69,45 +75,107 @@ def pid_valid_posix(pid, name):
     return False
 
 
-def pid_valid(pid, name):
+def _pid_valid(pid: int, name: str) -> bool:
     if IS_WINDOWS:
-        return pid_valid_windows(pid, name)
+        return _pid_valid_windows(pid, name)
     else:
-        return pid_valid_posix(pid, name)
+        return _pid_valid_posix(pid, name)
 
 
 class OpenLockException(Exception):
+    """
+    Base exception raised by the openlock library.
+    """
+
     pass
 
 
 class Timeout(OpenLockException):
+    """
+    Raised when the waiting time for acquiring a
+    :py:class:`openlock.FileLock` has expired.
+    """
+
     pass
 
 
 class InvalidRelease(OpenLockException):
+    """
+    Raised when :py:meth:`openlock.FileLock.release` is called
+    on a lock we do not own.
+    """
+
     pass
 
 
 class InvalidLockFile(OpenLockException):
+    """
+    Raised when openlock is unable to create a
+    valid lock file in :py:meth:`openlock.FileLock.acquire`.
+    """
+
     pass
 
 
 class InvalidOption(OpenLockException):
+    """
+    Raised when :py:func:`openlock.set_defaults` is used to set
+    a non-existing option.
+    """
+
     pass
 
 
-_defaults = {
+if sys.version_info >= (3, 11):
+
+    class _LockState(TypedDict, total=False):
+        state: str
+        reason: str
+        pid: int
+        name: str
+
+    class Defaults(TypedDict, total=False):
+        """
+        Default options.
+        """
+
+        race_delay: float
+        """
+        delay before we check that we still have the lock file
+        """
+        tries: int
+        """
+        number of attempts to create a valid lock file
+        """
+        retry_period: float
+        """
+        delay before reattempting to acquire a lock
+        """
+
+
+_defaults: Defaults = {
     "race_delay": 0.2,
     "tries": 2,
     "retry_period": 0.3,
 }
 
 
-def get_defaults():
+def get_defaults() -> Defaults:
+    """
+    Get defaults.
+    """
     return copy.copy(_defaults)
 
 
-def set_defaults(**kw):
+def set_defaults(**kw: Unpack[Defaults]) -> None:
+    """
+    Set defaults.
+
+    :param kw: default parameters
+
+    :raises InvalidOption: raised when trying to set a non-existing
+      option
+    """
     dk = _defaults.keys()
     for k in kw.keys():
         if k not in dk:
@@ -116,11 +184,36 @@ def set_defaults(**kw):
 
 
 class FileLock:
+    """
+    The lock constructor. An :py:class:`openlock.FileLock` object
+    supports the context manager protocol.
+    """
+
+    lock_file: Path
+    """
+    The `Path` object representing the lock file.
+    """
+    timeout: float | None
+    """
+    The value of the timeout parameter.
+    """
+    __lock: threading.Lock
+    __acquired: bool
+    __retry_period: float
+    __race_delay: float
+    __tries: int
+
     def __init__(
         self,
-        lock_file="openlock.lock",
-        timeout=None,
-    ):
+        lock_file: str = "openlock.lock",
+        timeout: float | None = None,
+    ) -> None:
+        """
+        :param lock_file: the underlying file used for locking;
+          the calling process should have read/write access
+        :param timeout: the default for the corresponding argument of
+          :py:meth:`openlock.acquire`
+        """
         self.lock_file = Path(lock_file)
         self.timeout = timeout
         self.__lock = threading.Lock()
@@ -130,12 +223,15 @@ class FileLock:
         self.__tries = _defaults["tries"]
         logger.debug(f"{self} created")
 
-    def __lock_state(self, verify_pid_valid=True):
+    def __lock_state(self, verify_pid_valid: bool = True) -> _LockState:
         try:
             with open(self.lock_file) as f:
                 s = f.readlines()
         except FileNotFoundError:
-            return {"state": "unlocked", "reason": "file not found"}
+            return {
+                "state": "unlocked",
+                "reason": "file not found",
+            }
         except Exception as e:
             logger.exception(f"Error accessing '{self.lock_file}': {str(e)}")
             raise
@@ -143,7 +239,10 @@ class FileLock:
             pid = int(s[0])
             name = s[1].strip()
         except (ValueError, IndexError):
-            return {"state": "unlocked", "reason": "invalid lock file"}
+            return {
+                "state": "unlocked",
+                "reason": "invalid lock file",
+            }
 
         if not verify_pid_valid:
             return {
@@ -152,7 +251,7 @@ class FileLock:
                 "name": name,
             }
         else:
-            if not pid_valid(pid, name):
+            if not _pid_valid(pid, name):
                 retry = self.__lock_state(verify_pid_valid=False)
                 if retry["state"] == "locked" and (
                     retry["pid"] != pid or retry["name"] != name
@@ -173,14 +272,14 @@ class FileLock:
 
         return {"state": "locked", "pid": pid, "name": name}
 
-    def __remove_lock_file(self):
+    def __remove_lock_file(self) -> None:
         try:
             os.remove(self.lock_file)
             logger.debug(f"Lock file '{self.lock_file}' removed")
         except OSError:
             pass
 
-    def __create_lock_file(self, pid, name):
+    def __create_lock_file(self, pid: int, name: str) -> bool:
         if self.lock_file.exists():
             return False
 
@@ -206,7 +305,7 @@ class FileLock:
 
         return locked
 
-    def __write_lock_file(self, pid, name):
+    def __write_lock_file(self, pid: int, name: str) -> None:
         temp_file = tempfile.NamedTemporaryFile(
             dir=os.path.dirname(self.lock_file), delete=False
         )
@@ -214,7 +313,7 @@ class FileLock:
         temp_file.close()
         os.replace(temp_file.name, self.lock_file)
 
-    def __acquire_once(self):
+    def __acquire_once(self) -> None:
         pid, name = os.getpid(), sys.argv[0]
         name_ = name.split()
         if len(name_) >= 1:
@@ -256,7 +355,18 @@ class FileLock:
                 return
         raise InvalidLockFile("Unable to obtain a valid lock file")
 
-    def acquire(self, timeout=None):
+    def acquire(self, timeout: float | None = None) -> None:
+        """
+        Attempts to acquires the lock.
+
+        :param timeout: specifies the maximum waiting time in seconds
+          before a :py:exc:`Timeout` exception is raised
+
+        :raises Timeout: raised when the waiting time for acquiring
+          the lock has expired
+        :raises InvalidLockFile: raised when openlock is unable to create a
+          valid lock file
+        """
         if timeout is None:
             timeout = self.timeout
         start_time = time.time()
@@ -271,7 +381,12 @@ class FileLock:
                     raise Timeout(f"Unable to acquire {self}")
                 time.sleep(self.__retry_period)
 
-    def release(self):
+    def release(self) -> None:
+        """
+        Releases the lock.
+
+        :raises InvalidRelease: raised when we don't own the lock
+        """
         with self.__lock:
             if not self.__acquired:
                 raise InvalidRelease(f"Attempt at releasing {self} which we do not own")
@@ -280,14 +395,20 @@ class FileLock:
             atexit.unregister(self.__remove_lock_file)
             logger.debug(f"{self} released")
 
-    def locked(self):
+    def locked(self) -> bool:
+        """
+        True if we hold the lock.
+        """
         with self.__lock:
             if self.__acquired:
                 return True
             lock_state = self.__lock_state()
             return lock_state["state"] == "locked"
 
-    def getpid(self):
+    def getpid(self) -> int | None:
+        """
+        The PID of the process that holds the lock, if any. Otherwise returns `None`.
+        """
         with self.__lock:
             if self.__acquired:
                 return os.getpid()
@@ -297,14 +418,14 @@ class FileLock:
             else:
                 return None
 
-    def __enter__(self):
+    def __enter__(self) -> FileLock:
         self.acquire()
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, exc_type: Any, exc_value: Any, traceback: Any) -> None:
         self.release()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"FileLock('{self.lock_file}')"
 
     __repr__ = __str__

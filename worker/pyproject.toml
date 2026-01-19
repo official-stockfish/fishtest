@@ -3,9 +3,9 @@ name = "fishtest-worker"
 version = "0.1.0"
 description = "fishtest-worker"
 readme = "README.md"
-requires-python = ">=3.6"
+requires-python = ">=3.8"
 dependencies = [
     "expression-parser>=0.0.6",
-    "openlock>=1.1.5",
-    "requests>=2.25.1",
+    "openlock>=1.2.1",
+    "requests>=2.32.4",
 ]
