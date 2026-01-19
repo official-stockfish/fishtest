@@ -10,12 +10,17 @@
     async function handleGitHubToken() {
       await DOMContentLoaded();
       document.getElementById("github_token").value = localStorage.getItem("github_token") || "";
-      document.getElementById("profile_form").addEventListener("submit", (e) => {
-          e.preventDefault();
+      const saveTokenButton = document.getElementById("save_github_token");
+      if (saveTokenButton) {
+        saveTokenButton.addEventListener("click", () => {
           const githubToken = document.getElementById("github_token").value;
           localStorage.setItem("github_token", githubToken);
-          e.target.submit();
-      });
+          saveTokenButton.textContent = "Saved";
+          setTimeout(() => {
+            saveTokenButton.textContent = "Save GitHub token";
+          }, 1500);
+        });
+      }
     }
     handleGitHubToken();
   </script>
@@ -61,13 +66,18 @@
     </div>
   </header>
 
-  <form id="profile_form" action="${request.url}" method="POST">
-    <input
-      type="hidden"
-      name="user"
-      value="${user['username']}"
-    >
-    % if profile:
+  % if profile:
+    <form id="profile_form" action="${request.url}" method="POST">
+      <input
+        type="hidden"
+        name="user"
+        value="${user['username']}"
+      >
+      <input
+        type="hidden"
+        name="action"
+        value="profile_update"
+      >
       <div class="form-floating mb-3">
         <input
           type="email"
@@ -79,6 +89,33 @@
           required
         />
         <label for="email" class="d-flex align-items-end">Email</label>
+      </div>
+
+      <div class="input-group mb-3">
+        <div class="form-floating">
+          <input
+            class="form-control"
+            id="tests_repo"
+            name="tests_repo"
+            value="${user['tests_repo']}"
+            placeholder="GitHub Stockfish fork URL"
+          >
+          <label for="tests_repo" class="d-flex align-items-end">Tests Repository</label>
+        </div>
+        <span class="input-group-text" role="button" data-bs-toggle="modal" data-bs-target="#tests_repo_info_modal">
+          <i class="fas fa-question-circle fa-lg pe-none" style="width: 30px"></i>
+        </span>
+      </div>
+
+      <div id="tests_repo_info_modal" class="modal fade" tabindex="-1" aria-labelledby="tests_repo_info_modal_label" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-body">
+            This Github fork URL will be the default fork URL for users who want to contribute code when creating runs,
+            it is not needed for resources contribution.
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="input-group mb-3">
@@ -131,90 +168,107 @@
           <i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i>
         </span>
       </div>
-
-      <div class="input-group mb-3">
-        <div class="form-floating">
-          <input
-            class="form-control"
-            id="tests_repo"
-            name="tests_repo"
-            value="${user['tests_repo']}"
-            placeholder="GitHub Stockfish fork URL"
-          >
-          <label for="tests_repo" class="d-flex align-items-end">Tests Repository</label>
-        </div>
-        <span class="input-group-text" role="button" data-bs-toggle="modal" data-bs-target="#tests_repo_info_modal">
-          <i class="fas fa-question-circle fa-lg pe-none" style="width: 30px"></i>
-        </span>
-      </div>
-
-      <div id="tests_repo_info_modal" class="modal fade" tabindex="-1" aria-labelledby="tests_repo_info_modal_label" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-          <div class="modal-content">
-            <div class="modal-body">
-            This Github fork URL will be the default fork URL for users who want to contribute code when creating runs,
-            it is not needed for resources contribution.
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="input-group mb-3">
-        <div class="form-floating">
-          <input
-            class="form-control"
-            id="github_token"
-            name="github_token"
-            autocomplete="off"
-           placeholder="GitHub personal access token"
-          />
-        <label for="github_token" class="d-flex align-items-end">GitHub personal access token</label>
-        </div>
-        <span class="input-group-text" role="button" data-bs-toggle="modal" data-bs-target="#github_token_info_modal">
-          <i class="fas fa-question-circle fa-lg pe-none" style="width: 30px"></i>
-        </span>
-      </div>
-
-      <div id="github_token_info_modal" class="modal fade" tabindex="-1" aria-labelledby="github_token_info_modal_label" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-          <div class="modal-content">
-            <div class="modal-body">
-              <!-- Explanation about token purpose -->
-              <p>The purpose of this token is to authenticate your requests to GitHub's API,
-              which has a rate limit of 60 requests per hour for unauthenticated users. By using this token,
-              you can increase this limit to 5000 requests per hour. More information about GitHub's rate limits can be found
-              <a href="https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting" target="_blank">here</a>.
-              </p>
-
-              <!-- Information about storage -->
-              <p>This token will be stored in your local storage, not in the server database.
-              This ensures that the token is only accessible to you, reducing the risk of unauthorized access.
-              </p>
-
-              <!-- Permissions and access information -->
-              <p>Any token, classic or fine-grained, that allows read access to public repositories will work.
-              It is recommended however to generate a new token with minimum permissions.
-              This reduces the potential impact if the token is accidentally exposed or misused.
-              </p>
-              <!-- Verification that things are working as expected -->
-              <p>After installing the token you may check <a href=/rate_limits>here</a> to verify that the procedure has worked.</p>
-              <!-- Instructions on how to obtain the token -->
-              <h4>Instructions for generating a new token:</h4>
-              <ol>
-                <li>Access the <a href="https://github.com/settings/personal-access-tokens" target="_blank">Github link</a> (login if required).</li>
-                <li>Press "Generate a new token".</li>
-                <li>Set a "Token name".</li>
-                <li>Set your preferred "Expiration" time.</li>
-                <li>Set "Repository access" to "Public Repositories (read-only)".</li>
-                <li>Press "Generate token" at the bottom of the page.</li>
-                <li>Copy the token and paste it into this input field. Remember that for security reasons GitHub will show the token only once.</li>
-              </ol>
-            </div>
-          </div>
-        </div>
-      </div>
       <button type="submit" class="btn btn-primary w-100">Save</button>
-    % elif 'pending' in user and user['pending']:
+    </form>
+
+    <hr class="my-4" />
+
+    <div class="input-group mb-3">
+      <div class="form-floating">
+        <input
+          class="form-control"
+          id="github_token"
+          autocomplete="off"
+         placeholder="GitHub personal access token"
+        />
+      <label for="github_token" class="d-flex align-items-end">GitHub personal access token</label>
+      </div>
+      <span class="input-group-text" role="button" data-bs-toggle="modal" data-bs-target="#github_token_info_modal">
+        <i class="fas fa-question-circle fa-lg pe-none" style="width: 30px"></i>
+      </span>
+    </div>
+
+    <div id="github_token_info_modal" class="modal fade" tabindex="-1" aria-labelledby="github_token_info_modal_label" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-body">
+            <!-- Explanation about token purpose -->
+            <p>The purpose of this token is to authenticate your requests to GitHub's API,
+            which has a rate limit of 60 requests per hour for unauthenticated users. By using this token,
+            you can increase this limit to 5000 requests per hour. More information about GitHub's rate limits can be found
+            <a href="https://docs.github.com/en/rest/overview/resources-in-the-rest-api#rate-limiting" target="_blank">here</a>.
+            </p>
+
+            <!-- Information about storage -->
+            <p>This token will be stored in your local storage, not in the server database.
+            This ensures that the token is only accessible to you, reducing the risk of unauthorized access.
+            </p>
+
+            <!-- Permissions and access information -->
+            <p>Any token, classic or fine-grained, that allows read access to public repositories will work.
+            It is recommended however to generate a new token with minimum permissions.
+            This reduces the potential impact if the token is accidentally exposed or misused.
+            </p>
+            <!-- Verification that things are working as expected -->
+            <p>After installing the token you may check <a href=/rate_limits>here</a> to verify that the procedure has worked.</p>
+            <!-- Instructions on how to obtain the token -->
+            <h4>Instructions for generating a new token:</h4>
+            <ol>
+              <li>Access the <a href="https://github.com/settings/personal-access-tokens" target="_blank">Github link</a> (login if required).</li>
+              <li>Press "Generate a new token".</li>
+              <li>Set a "Token name".</li>
+              <li>Set your preferred "Expiration" time.</li>
+              <li>Set "Repository access" to "Public Repositories (read-only)".</li>
+              <li>Press "Generate token" at the bottom of the page.</li>
+              <li>Copy the token and paste it into this input field. Remember that for security reasons GitHub will show the token only once.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button id="save_github_token" type="button" class="btn btn-outline-primary w-100">Save GitHub token</button>
+
+    <hr class="my-4" />
+
+    <form id="api_key_form" action="${request.url}" method="POST">
+      <input
+        type="hidden"
+        name="user"
+        value="${user['username']}"
+      >
+      <input
+        type="hidden"
+        name="action"
+        value="api_key_reset"
+      >
+      <div class="alert alert-warning mb-2">
+        Resetting your API key will require updating your worker configuration.
+      </div>
+      <div class="input-group mb-3">
+        <div class="form-floating">
+          <input
+            type="password"
+            class="form-control"
+            id="api_key_old_password"
+            name="old_password"
+            placeholder="Password"
+            required
+          />
+          <label for="api_key_old_password" class="d-flex align-items-end">Password</label>
+        </div>
+        <span class="input-group-text toggle-password-visibility" role="button">
+          <i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i>
+        </span>
+      </div>
+      <button type="submit" class="btn btn-outline-primary w-100">Reset API key</button>
+    </form>
+  % elif 'pending' in user and user['pending']:
+    <form id="profile_form" action="${request.url}" method="POST">
+      <input
+        type="hidden"
+        name="user"
+        value="${user['username']}"
+      >
       <div class="alert alert-dark mb-3">
         <label class="mb-2 h5">User Approval:</label>
         <div class="w-100 d-flex justify-content-between">
@@ -254,7 +308,14 @@
           </div>
         </div>
       </div>
+    </form>
     % else:
+      <form id="profile_form" action="${request.url}" method="POST">
+        <input
+          type="hidden"
+          name="user"
+          value="${user['username']}"
+        >
       <%
         blocked = user['blocked'] if 'blocked' in user else False
       %>
@@ -273,8 +334,83 @@
           type="submit"
         >Block</button>
       % endif
+      </form>
     % endif
-  </form>
 </div>
 
+% if new_api_key:
+  <div class="modal fade" id="new_api_key_modal" tabindex="-1" aria-labelledby="new_api_key_modal_label" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="new_api_key_modal_label">New API key</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-warning mb-2">
+            This API key is only shown now. Store it in your worker configuration.
+          </div>
+          <div class="input-group">
+            <div class="form-floating">
+              <input
+                type="password"
+                class="form-control"
+                id="new_api_key"
+                value="${new_api_key}"
+                readonly
+                autocomplete="off"
+              />
+              <label for="new_api_key" class="d-flex align-items-end">New API key</label>
+            </div>
+            <span class="input-group-text toggle-password-visibility" role="button">
+              <i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i>
+            </span>
+            <button class="btn btn-outline-secondary copy-api-key" type="button" data-copy-target="new_api_key">
+              Copy
+            </button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+% endif
+
 <script src="${request.static_url('fishtest:static/js/toggle_password.js')}"></script>
+<script>
+  (() => {
+    "use strict";
+    const copyButtons = document.querySelectorAll(".copy-api-key");
+    copyButtons.forEach((button) => {
+      button.addEventListener("click", async () => {
+        const targetId = button.getAttribute("data-copy-target");
+        const input = document.getElementById(targetId);
+        if (!input) {
+          return;
+        }
+        const text = input.value;
+        try {
+          await navigator.clipboard.writeText(text);
+          button.textContent = "Copied";
+          setTimeout(() => {
+            button.textContent = "Copy";
+          }, 1500);
+        } catch (err) {
+          input.select();
+          document.execCommand("copy");
+          input.setSelectionRange(0, 0);
+        }
+      });
+    });
+    % if new_api_key:
+    if (window.bootstrap && document.getElementById("new_api_key_modal")) {
+      const modal = new bootstrap.Modal(
+        document.getElementById("new_api_key_modal"),
+      );
+      modal.show();
+    }
+    % endif
+  })();
+</script>
