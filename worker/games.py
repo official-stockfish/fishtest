@@ -24,10 +24,13 @@ from pathlib import Path
 from queue import Empty, Queue
 from zipfile import ZipFile
 
-try:
-    import requests
-except ImportError:
-    from packages import requests
+if "packages.requests" in sys.modules:
+    requests = sys.modules["packages.requests"]
+else:
+    try:
+        import requests
+    except ImportError:
+        from packages import requests
 
 IS_WINDOWS = "windows" in platform.system().lower()
 IS_MACOS = "darwin" in platform.system().lower()
@@ -195,7 +198,7 @@ def trim_files(testing_dir, source_dir=None):
                     path.unlink()
                     num_deleted += 1
                 else:
-                    # str(...) is necessary for compatibility with Python 3.6
+                    # str(path) can be removed when minimum Python version is 3.9
                     if source_dir is not None:
                         shutil.move(str(path), testing_dir)
             except Exception as e:
