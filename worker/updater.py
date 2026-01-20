@@ -8,10 +8,14 @@ from zipfile import ZipFile
 
 from games import trim_files
 
-try:
-    import requests
-except ImportError:
-    from packages import requests
+# requests import (avoid double-loading vendored requests)
+if "packages.requests" in sys.modules:
+    requests = sys.modules["packages.requests"]
+else:
+    try:
+        import requests
+    except ImportError:
+        from packages import requests
 
 start_dir = Path().cwd()
 
@@ -66,12 +70,7 @@ def update(restart=True, test=False):
                 print(
                     f"Failed to delete the folder {packages_dir}:\n{e}", file=sys.stderr
                 )
-        if sys.version_info < (3, 8):
-            from distutils.dir_util import copy_tree
-
-            copy_tree(str(worker_src), str(worker_dir))
-        else:
-            shutil.copytree(worker_src, worker_dir, dirs_exist_ok=True)
+        shutil.copytree(worker_src, worker_dir, dirs_exist_ok=True)
 
     else:
         file_list = os.listdir(worker_src)
