@@ -14,7 +14,7 @@ def validate_user(user):
     except ValidationError as e:
         message = f"The user object does not validate: {str(e)}"
         print(message, flush=True)
-        raise Exception(message)
+        raise ValidationError(message) from None
 
 
 class UserDb:

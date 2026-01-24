@@ -38,6 +38,7 @@ from vtjson import (
     set_name,
     size,
     union,
+    unique,
 )
 
 run_id = intersect(str, set_name(ObjectId.is_valid, "valid_object_id"))
@@ -108,7 +109,7 @@ user_schema = {
     "pending": bool,
     "blocked": bool,
     "email": email,
-    "groups": [str, ...],
+    "groups": intersect([str, ...], unique),
     "tests_repo": union(github_repo, ""),
     "machine_limit": uint,
 }
@@ -697,8 +698,8 @@ runs_schema = intersect(
             {
                 "base_tag": str,
                 "new_tag": str,
-                "base_nets": [net_name, ...],
-                "new_nets": [net_name, ...],
+                "base_nets": intersect([net_name, ...], unique),
+                "new_nets": intersect([net_name, ...], unique),
                 "num_games": intersect(uint, even),
                 "tc": tc,
                 "new_tc": tc,
