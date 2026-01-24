@@ -796,7 +796,9 @@ def get_nets(commit_sha, repo_url):
             if "EvalFileDefaultName" in line and "define" in line:
                 m = pattern.search(line)
                 if m:
-                    nets.append(m.group(0))
+                    net = m.group(0)
+                    if net not in nets:
+                        nets.append(net)
 
         if nets:
             return nets
@@ -808,7 +810,9 @@ def get_nets(commit_sha, repo_url):
             if "EvalFile" in line and "Option" in line:
                 m = pattern.search(line)
                 if m:
-                    nets.append(m.group(0))
+                    net = m.group(0)
+                    if net not in nets:
+                        nets.append(net)
         return nets
     except Exception as e:
         raise Exception(f"Unable to access developer repository {repo_url}: {str(e)}")

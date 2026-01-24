@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 import util
 from fishtest.views import login, signup
 from pyramid import testing
+from vtjson import ValidationError
 
 
 class Create10UsersTest(unittest.TestCase):
@@ -33,6 +34,13 @@ class Create10UsersTest(unittest.TestCase):
         )
         response = signup(request)
         self.assertTrue("The resource was found at", response)
+
+    def test_add_user_group(self):
+        self.rundb.userdb.create_user("JoeUser", "xxx", "JoeUser@gmail.com", "")
+        self.rundb.userdb.add_user_group("JoeUser", "approvers")
+        self.rundb.userdb.add_user_group("JoeUser", "dummy")
+        with self.assertRaises(ValidationError):
+            self.rundb.userdb.add_user_group("JoeUser", "approvers")
 
 
 class Create50LoginTest(unittest.TestCase):
