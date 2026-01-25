@@ -7,6 +7,7 @@ import os
 import re
 from datetime import UTC, datetime
 from pathlib import Path
+from urllib.parse import urlencode
 
 import bson
 import fishtest.github_api as gh
@@ -49,32 +50,68 @@ def pagination(page_idx, num, page_size, query_params):
     pages = [
         {
             "idx": "Prev",
-            "url": "?page={}".format(page_idx),
+            "url": "?page={}".format(page_idx) + query_params,
             "state": "disabled" if page_idx == 0 else "",
         }
     ]
+
+    if num <= 0:
+        pages.append(
+            {
+                "idx": 1,
+                "url": "?page=1" + query_params,
+                "state": "active" if page_idx == 0 else "",
+            }
+        )
+        pages.append(
+            {
+                "idx": "Next",
+                "url": "?page={}".format(page_idx + 2) + query_params,
+                "state": "disabled",
+            }
+        )
+        return pages
+
     last_idx = (num - 1) // page_size
-    for idx, _ in enumerate(range(0, num, page_size)):
-        if (
-            idx < 1
-            or (idx < 5 and page_idx < 4)
-            or abs(idx - page_idx) < 2
-            or (idx > last_idx - 5 and page_idx > last_idx - 4)
-        ):
-            pages.append(
-                {
-                    "idx": idx + 1,
-                    "url": "?page={}".format(idx + 1) + query_params,
-                    "state": "active" if page_idx == idx else "",
-                }
-            )
-        elif pages[-1]["idx"] != "...":
-            pages.append({"idx": "...", "url": "", "state": "disabled"})
+    disable_next = page_idx >= last_idx
+
+    def add_page(idx):
+        pages.append(
+            {
+                "idx": idx + 1,
+                "url": "?page={}".format(idx + 1) + query_params,
+                "state": "active" if page_idx == idx else "",
+            }
+        )
+
+    # Always show page 1.
+    add_page(0)
+
+    # Compact mobile-friendly layout:
+    # Prev, 1, ..., (current-1,current,current+1), ..., last, Next
+    if page_idx <= 2:
+        for idx in range(1, min(last_idx, 4)):
+            add_page(idx)
+    elif page_idx >= last_idx - 2:
+        pages.append({"idx": "...", "url": "", "state": "disabled"})
+        for idx in range(max(1, last_idx - 3), last_idx):
+            add_page(idx)
+    else:
+        pages.append({"idx": "...", "url": "", "state": "disabled"})
+        for idx in (page_idx - 1, page_idx, page_idx + 1):
+            add_page(idx)
+
+    if last_idx >= 5 and page_idx < last_idx - 2:
+        pages.append({"idx": "...", "url": "", "state": "disabled"})
+
+    if last_idx > 0:
+        add_page(last_idx)
+
     pages.append(
         {
             "idx": "Next",
             "url": "?page={}".format(page_idx + 2) + query_params,
-            "state": "disabled" if page_idx >= (num - 1) // page_size else "",
+            "state": "disabled" if disable_next else "",
         }
     )
     return pages
@@ -514,17 +551,35 @@ def sanitize_quotation_marks(text):
 
 @view_config(route_name="actions", renderer="actions.mak")
 def actions(request):
+    DEFAULT_MAX_ACTIONS_AUTH = 50000
+    HARD_MAX_ACTIONS_ANON = 5000
+
+    is_authenticated = request.authenticated_userid is not None
+
     search_action = request.params.get("action", "")
     username = request.params.get("user", "")
     text = sanitize_quotation_marks(request.params.get("text", ""))
     before = request.params.get("before", None)
-    max_actions = request.params.get("max_actions", None)
+    max_actions_param = request.params.get("max_actions", None)
+    max_actions = None
     run_id = request.params.get("run_id", "")
 
     if before:
         before = float(before)
-    if max_actions:
-        max_actions = int(max_actions)
+    if max_actions_param:
+        try:
+            max_actions = int(max_actions_param)
+        except ValueError:
+            max_actions = None
+        if max_actions is not None and max_actions <= 0:
+            max_actions = None
+
+    if not is_authenticated:
+        max_actions = HARD_MAX_ACTIONS_ANON if max_actions is None else max_actions
+        max_actions = min(max_actions, HARD_MAX_ACTIONS_ANON)
+    elif max_actions is None and not (username or search_action or text or run_id):
+        # Default cap for unfiltered /actions.
+        max_actions = DEFAULT_MAX_ACTIONS_AUTH
 
     page_param = request.params.get("page", "")
     page_idx = max(0, int(page_param) - 1) if page_param.isdigit() else 0
@@ -541,6 +596,18 @@ def actions(request):
         run_id=run_id,
     )
 
+    # If the requested page is out of range, redirect to the last page.
+    if num_actions > 0:
+        last_page = (num_actions - 1) // page_size + 1
+        if page_param.isdigit() and int(page_param) > last_page:
+            redirect_query = dict(request.params)
+            redirect_query["page"] = str(last_page)
+            if max_actions is not None:
+                redirect_query["max_actions"] = str(max_actions)
+            return HTTPFound(
+                location=request.path_url + "?" + urlencode(redirect_query)
+            )
+
     query_params = ""
     if username:
         query_params += "&user={}".format(username)
@@ -549,7 +616,7 @@ def actions(request):
     if text:
         query_params += "&text={}".format(text)
     if max_actions:
-        query_params += "&max_actions={}".format(num_actions)
+        query_params += "&max_actions={}".format(max_actions)
     if before:
         query_params += "&before={}".format(before)
     if run_id:

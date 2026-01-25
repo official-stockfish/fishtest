@@ -96,6 +96,21 @@ def create_workers_indexes():
 
 
 def create_actions_indexes():
+    db["actions"].create_index(
+        [("time", DESCENDING), ("_id", DESCENDING)], name="actions_time_id"
+    )
+    db["actions"].create_index(
+        [("username", ASCENDING), ("time", DESCENDING), ("_id", DESCENDING)],
+        name="actions_user_time_id",
+    )
+    db["actions"].create_index(
+        [("action", ASCENDING), ("time", DESCENDING), ("_id", DESCENDING)],
+        name="actions_action_time_id",
+    )
+    db["actions"].create_index(
+        [("run_id", ASCENDING), ("time", DESCENDING), ("_id", DESCENDING)],
+        name="actions_run_time_id",
+    )
     db["actions"].create_index([("username", ASCENDING), ("_id", DESCENDING)])
     db["actions"].create_index([("action", ASCENDING), ("_id", DESCENDING)])
     db["actions"].create_index([("run_id", ASCENDING), ("_id", DESCENDING)])
