@@ -4,6 +4,7 @@ from bson.objectid import ObjectId
 from fishtest.schemas import ACTION_MESSAGE_SIZE, action_schema
 from fishtest.util import hex_print, worker_name
 from pymongo import DESCENDING
+from pymongo.errors import OperationFailure
 from vtjson import ValidationError, validate
 
 
@@ -47,15 +48,68 @@ class ActionDb:
         if run_id:
             q["run_id"] = str(run_id)
 
+        # Prefer time-based pagination indexes for the common $nin case.
+        hint = None
+        if "$text" not in q:
+            if username:
+                hint = "actions_user_time_id"
+            elif run_id:
+                hint = "actions_run_time_id"
+            elif action and action != "system_event":
+                hint = "actions_action_time_id"
+            else:
+                hint = "actions_time_id"
+
         if max_actions:
-            count = self.actions.count_documents(q, limit=max_actions)
-            limit = min(limit, max_actions - skip)
+            count_kwargs = {"limit": max_actions}
+            if hint:
+                count_kwargs["hint"] = hint
+            try:
+                count = self.actions.count_documents(q, **count_kwargs)
+            except OperationFailure as e:
+                # Be resilient if indexes haven't been created yet (bad hint).
+                print(
+                    f"ActionDb.get_actions: count_documents hint={hint!r} failed ({e}); retrying without hint",
+                    flush=True,
+                )
+                self.log_message(
+                    username="fishtest.system",
+                    message=f"ActionDb.get_actions: count_documents hint={hint!r} failed; retrying without hint"[
+                        :ACTION_MESSAGE_SIZE
+                    ],
+                )
+                count = self.actions.count_documents(q, limit=max_actions)
+            limit = max(0, min(limit, max_actions - skip))
+
+            # Avoid find(limit=0): Mongo treats that as "no limit".
+            if skip >= max_actions or limit <= 0:
+                return [], count
         else:
             count = self.actions.count_documents(q)
 
-        actions_list = self.actions.find(
-            q, limit=limit, skip=skip, sort=[("_id", DESCENDING)]
-        )
+        find_kwargs = {
+            "limit": limit,
+            "skip": skip,
+            "sort": [("time", DESCENDING), ("_id", DESCENDING)],
+        }
+        if hint:
+            find_kwargs["hint"] = hint
+        try:
+            actions_list = self.actions.find(q, **find_kwargs)
+        except OperationFailure as e:
+            # Be resilient if indexes haven't been created yet (bad hint).
+            print(
+                f"ActionDb.get_actions: find hint={hint!r} failed ({e}); retrying without hint",
+                flush=True,
+            )
+            self.log_message(
+                username="fishtest.system",
+                message=f"ActionDb.get_actions: find hint={hint!r} failed; retrying without hint"[
+                    :ACTION_MESSAGE_SIZE
+                ],
+            )
+            find_kwargs.pop("hint", None)
+            actions_list = self.actions.find(q, **find_kwargs)
 
         return actions_list, count
 
