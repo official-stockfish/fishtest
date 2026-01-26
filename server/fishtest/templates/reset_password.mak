@@ -1,0 +1,57 @@
+<%inherit file="base.mak"/>
+
+<script>
+  document.title = "Reset Password | Stockfish Testing";
+</script>
+
+<div class="col-limited-size">
+  <header class="text-md-center py-2">
+    <h2>Choose a new password</h2>
+  </header>
+
+  <form method="POST">
+    <input type="hidden" name="form_token" value="${form_token}">
+    <div class="input-group mb-3">
+      <div class="form-floating">
+        <input
+          type="password"
+          class="form-control"
+          id="password"
+          name="password"
+          placeholder="New Password"
+          pattern=".{8,}"
+          title="Eight or more characters: a password too simple or trivial to guess will be rejected"
+          autocomplete="new-password"
+          required
+          autofocus
+        >
+        <label for="password" class="d-flex align-items-end">New Password</label>
+      </div>
+      <span class="input-group-text toggle-password-visibility" role="button">
+        <i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i>
+      </span>
+    </div>
+
+    <div class="input-group mb-3">
+      <div class="form-floating">
+        <input
+          type="password"
+          class="form-control"
+          id="password2"
+          name="password2"
+          placeholder="Repeat Password"
+          autocomplete="new-password"
+          required
+        >
+        <label for="password2" class="d-flex align-items-end">Repeat Password</label>
+      </div>
+      <span class="input-group-text toggle-password-visibility" role="button">
+        <i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i>
+      </span>
+    </div>
+
+    <button type="submit" class="btn btn-primary w-100">Reset password</button>
+  </form>
+</div>
+
+<script src="${request.static_url('fishtest:static/js/toggle_password.js')}"></script>

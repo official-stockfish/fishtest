@@ -112,6 +112,12 @@ user_schema = {
     "groups": intersect([str, ...], unique),
     "tests_repo": union(github_repo, ""),
     "machine_limit": uint,
+    "password_reset?": {
+        "token": str,
+        "expires_at": datetime_utc,
+        "opened_at?": datetime_utc,
+        "form_token?": str,
+    },
 }
 
 kvstore_schema = {
