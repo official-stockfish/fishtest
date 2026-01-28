@@ -6,16 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from zipfile import ZipFile
 
-from games import trim_files
-
-# requests import (avoid double-loading vendored requests)
-if "packages.requests" in sys.modules:
-    requests = sys.modules["packages.requests"]
-else:
-    try:
-        import requests
-    except ImportError:
-        from packages import requests
+from games import requests_get, trim_files
 
 start_dir = Path().cwd()
 
@@ -39,8 +30,7 @@ def update(restart=True, test=False):
     worker_zip = update_dir / "wk.zip"
 
     try:
-        response = requests.get(WORKER_URL)
-        response.raise_for_status()
+        response = requests_get(WORKER_URL)
     except Exception as e:
         print(f"Failed to download {WORKER_URL}:\n{e}", file=sys.stderr)
         shutil.rmtree(update_dir)

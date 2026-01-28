@@ -262,6 +262,8 @@ def cache_remove(cache, name):
 def requests_get(remote, *args, **kw):
     # A lightweight wrapper around requests.get()
     try:
+        if "timeout" not in kw:
+            kw["timeout"] = HTTP_TIMEOUT
         result = requests.get(remote, *args, **kw)
         result.raise_for_status()  # also catch return codes >= 400
     except Exception as e:
@@ -274,6 +276,8 @@ def requests_get(remote, *args, **kw):
 def requests_post(remote, *args, **kw):
     # A lightweight wrapper around requests.post()
     try:
+        if "timeout" not in kw:
+            kw["timeout"] = HTTP_TIMEOUT
         result = requests.post(remote, *args, **kw)
     except Exception as e:
         print(f"Exception in requests.post():\n{e}", file=sys.stderr)
@@ -288,7 +292,6 @@ def send_api_post_request(api_url, payload, quiet=False):
         api_url,
         data=json.dumps(payload),
         headers={"Content-Type": "application/json"},
-        timeout=HTTP_TIMEOUT,
     )
     valid_response = True
     try:
@@ -394,7 +397,7 @@ def fetch_validated_net(remote, testing_dir, net, global_cache):
     if content is None:
         url = f"{remote}/api/nn/{net}"
         print(f"Downloading {net}...")
-        content = requests_get(url, allow_redirects=True, timeout=HTTP_TIMEOUT).content
+        content = requests_get(url, allow_redirects=True).content
         if not is_valid_net(content, net):
             return False
         cache_write(global_cache, net, content)
@@ -582,7 +585,7 @@ def download_from_github_raw(
 ):
     item_url = f"{RAWCONTENT_HOST}/{owner}/{repo}/{branch}/{item}"
     print(f"Downloading {item_url}...")
-    return requests_get(item_url, timeout=HTTP_TIMEOUT).content
+    return requests_get(item_url).content
 
 
 def download_from_github_api(
@@ -590,10 +593,8 @@ def download_from_github_api(
 ):
     item_url = f"{API_HOST}/repos/{owner}/{repo}/contents/{item}?ref={branch}"
     print(f"Downloading {item_url}...")
-    git_url = requests_get(item_url, timeout=HTTP_TIMEOUT).json()["git_url"]
-    return base64.b64decode(
-        requests_get(git_url, timeout=HTTP_TIMEOUT).json()["content"]
-    )
+    git_url = requests_get(item_url).json()["git_url"]
+    return base64.b64decode(requests_get(git_url).json()["content"])
 
 
 def download_from_github(
