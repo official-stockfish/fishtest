@@ -122,7 +122,7 @@ kvstore_schema = {
 worker_schema = {
     "_id?": ObjectId,
     "worker_name": short_worker_name,
-    "blocked": bool,
+    "blocked_by": str,
     "message": worker_message,
     "last_updated": datetime_utc,
 }

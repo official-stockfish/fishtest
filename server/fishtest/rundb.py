@@ -1055,10 +1055,10 @@ After fixing the issues you can unblock the worker at
         my_name = worker_name(worker_info, short=True)
         host_url = worker_info.get("host_url", "<host_url>")
         w = self.workerdb.get_worker(my_name)
-        if w["blocked"]:
+        if w["blocked_by"]:
             # updates last_updated
             self.workerdb.update_worker(
-                my_name, blocked=w["blocked"], message=w["message"]
+                my_name, blocked_by=w["blocked_by"], message=w["message"]
             )
             error = self.blocked_worker_message(my_name, w["message"], host_url)
             return {"task_waiting": False, "error": error}
