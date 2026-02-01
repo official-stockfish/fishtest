@@ -2,6 +2,7 @@ import unittest
 from datetime import UTC, datetime
 
 import util
+from fishtest.util import PASSWORD_MAX_LENGTH
 from fishtest.views import login, signup
 from pyramid import testing
 from vtjson import ValidationError
@@ -13,6 +14,7 @@ class Create10UsersTest(unittest.TestCase):
         self.config = testing.setUp()
         self.config.add_route("login", "/login")
         self.config.add_route("signup", "/signup")
+        self.config.add_route("tests", "/tests")
 
     def tearDown(self):
         self.rundb.userdb.users.delete_many({"username": "JoeUser"})
@@ -34,6 +36,28 @@ class Create10UsersTest(unittest.TestCase):
         )
         response = signup(request)
         self.assertTrue("The resource was found at", response)
+
+    def test_create_user_password_too_long(self):
+        long_password = "A1!a" * 20
+        self.assertGreater(len(long_password), PASSWORD_MAX_LENGTH)
+        request = testing.DummyRequest(
+            userdb=self.rundb.userdb,
+            method="POST",
+            remote_addr="127.0.0.1",
+            params={
+                "username": "JoeUser",
+                "password": long_password,
+                "password2": long_password,
+                "email": "joe@user.net",
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            },
+        )
+        response = signup(request)
+        self.assertEqual(response, {})
+        self.assertIn(
+            f"Error! Password too long (max {PASSWORD_MAX_LENGTH} characters)",
+            request.session.pop_flash("error"),
+        )
 
     def test_add_user_group(self):
         self.rundb.userdb.create_user("JoeUser", "xxx", "JoeUser@gmail.com", "")
