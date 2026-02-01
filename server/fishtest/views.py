@@ -5,7 +5,8 @@ import html
 import json
 import os
 import re
-from datetime import UTC, datetime
+import secrets
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlencode
 
@@ -44,6 +45,7 @@ from pyramid.view import forbidden_view_config, notfound_view_config, view_confi
 from vtjson import ValidationError, union, validate
 
 HTTP_TIMEOUT = 15.0
+PASSWORD_RESET_EXPIRY_HOURS = 1
 
 
 def pagination(page_idx, num, page_size, query_params):
@@ -117,6 +119,30 @@ def pagination(page_idx, num, page_size, query_params):
     return pages
 
 
+def run_captcha(request):
+    secret = os.environ.get("FISHTEST_CAPTCHA_SECRET")
+    if not secret:
+        print("FISHTEST_CAPTCHA_SECRET is missing.", flush=True)
+    else:
+        payload = {
+            "secret": secret,
+            "response": request.POST.get("g-recaptcha-response", ""),
+            "remoteip": request.remote_addr,
+        }
+        response = requests.post(
+            "https://www.google.com/recaptcha/api/siteverify",
+            data=payload,
+            timeout=HTTP_TIMEOUT,
+        ).json()
+        if "success" not in response or not response["success"]:
+            if "error-codes" in response:
+                print(response["error-codes"])
+            request.session.flash("Captcha failed", "error")
+            return False
+        return True
+    return True
+
+
 @notfound_view_config(renderer="notfound.mak")
 def notfound_view(request):
     request.response.status = 404
@@ -188,6 +214,161 @@ def login(request):
             )
         request.session.flash(message, "error")
     return {}
+
+
+@view_config(
+    route_name="forgot_password",
+    renderer="forgot_password.mak",
+    require_csrf=True,
+    request_method=("GET", "POST"),
+)
+def forgot_password(request):
+    userid = request.authenticated_userid
+    if userid:
+        return home(request)
+
+    if request.method == "POST":
+        if not run_captcha(request):
+            return {}
+
+        email = request.POST.get("email", "").strip()
+        email_is_valid, validated_email = email_valid(email)
+        if not email_is_valid:
+            request.session.flash("Error! Invalid email: " + validated_email, "error")
+            return {}
+
+        user = request.userdb.find_by_email(validated_email)
+        if user is not None:
+            token = secrets.token_urlsafe(32)
+            expires_at = datetime.now(UTC) + timedelta(
+                hours=PASSWORD_RESET_EXPIRY_HOURS
+            )
+            request.userdb.set_password_reset(user, token, expires_at)
+            reset_url = request.route_url("reset_password", token=token)
+            body = (
+                "We received a request to reset your Fishtest password.\n\n"
+                f"Reset link: {reset_url}\n\n"
+                "This link will expire in 1 hour.\n"
+                "For your security, do not share this link with anyone, as it can "
+                "be used to change your password.\n\n"
+                "If you did not request a password reset, you can ignore this "
+                "email or contact the site administrators for assistance."
+            )
+            try:
+                request.email_sender.send(
+                    user["email"],
+                    "Fishtest password reset",
+                    body,
+                )
+            except Exception as e:
+                print(f"failed to send password reset email to {validated_email}: {e}")
+
+        request.session.flash(
+            "If that email exists, a reset link has been sent, please check your inbox."
+        )
+        return HTTPFound(location=request.route_url("tests"))
+    return {}
+
+
+@view_config(
+    route_name="reset_password",
+    renderer="reset_password.mak",
+    require_csrf=True,
+    request_method=("GET", "POST"),
+)
+def reset_password(request):
+    userid = request.authenticated_userid
+    if userid:
+        request.session.flash(
+            "You are already logged in. Use profile settings to change your password."
+        )
+        return home(request)
+
+    token = request.matchdict.get("token", "")
+    if not token:
+        raise HTTPNotFound()
+
+    now = datetime.now(UTC)
+    user = request.userdb.users.find_one(
+        {"password_reset.token": token, "password_reset.expires_at": {"$gte": now}}
+    )
+    if not user:
+        expired_cleanup = request.userdb.clear_expired_password_reset(token, now)
+        if expired_cleanup.matched_count:
+            request.session.flash("Reset link has expired.", "error")
+            return HTTPFound(location=request.route_url("forgot_password"))
+        request.session.flash(
+            "Invalid reset link. It may have been replaced by a newer reset request.",
+            "error",
+        )
+        return HTTPFound(location=request.route_url("login"))
+
+    if request.method == "GET":
+        if user.get("password_reset", {}).get("form_token"):
+            request.session.flash(
+                "Reset link has already been opened. Please request a new one.",
+                "error",
+            )
+            return HTTPFound(location=request.route_url("forgot_password"))
+        form_token = secrets.token_urlsafe(32)
+        set_form = request.userdb.set_password_reset_form_token(
+            user["_id"], token, form_token, now
+        )
+        if set_form.modified_count == 0:
+            request.session.flash(
+                "Reset link has already been opened. Please request a new one.",
+                "error",
+            )
+            return HTTPFound(location=request.route_url("forgot_password"))
+        return {"token": token, "form_token": form_token}
+
+    if request.method == "POST":
+        form_token = request.POST.get("form_token", "").strip()
+        if not form_token:
+            request.session.flash(
+                "Reset form is invalid. Please request a new reset link.",
+                "error",
+            )
+            return HTTPFound(location=request.route_url("forgot_password"))
+        user = request.userdb.users.find_one(
+            {
+                "password_reset.form_token": form_token,
+                "password_reset.expires_at": {"$gte": now},
+            }
+        )
+        if not user:
+            request.session.flash(
+                "Reset link has expired or already been used.",
+                "error",
+            )
+            return HTTPFound(location=request.route_url("forgot_password"))
+        new_password = request.POST.get("password", "").strip()
+        new_password_verify = request.POST.get("password2", "").strip()
+        if new_password != new_password_verify:
+            request.session.flash("Error! Matching verify password required", "error")
+            return {"token": token, "form_token": form_token}
+        strong_password, password_err = password_strength(
+            new_password, user["username"], user["email"]
+        )
+        if not strong_password:
+            request.session.flash("Error! Weak password: " + password_err, "error")
+            return {"token": token, "form_token": form_token}
+
+        update_result = request.userdb.update_password_with_reset_form_token(
+            user["_id"],
+            form_token,
+            new_password,
+        )
+        if update_result.modified_count == 0:
+            request.session.flash(
+                "Unable to reset password. The reset link may have expired or already been used.",
+                "error",
+            )
+            return HTTPFound(location=request.route_url("forgot_password"))
+        request.session.flash("Success! Password updated. Please login.")
+        return HTTPFound(location=request.route_url("login"))
+
+    return {"token": token}
 
 
 # Note that the allowed length of mailto URLs on Chrome/Windows is severely
@@ -435,25 +616,8 @@ def signup(request):
             request.session.flash(error, "error")
         return {}
 
-    secret = os.environ.get("FISHTEST_CAPTCHA_SECRET")
-    if not secret:
-        print("FISHTEST_CAPTCHA_SECRET is missing.", flush=True)
-    else:
-        payload = {
-            "secret": secret,
-            "response": request.POST.get("g-recaptcha-response", ""),
-            "remoteip": request.remote_addr,
-        }
-        response = requests.post(
-            "https://www.google.com/recaptcha/api/siteverify",
-            data=payload,
-            timeout=HTTP_TIMEOUT,
-        ).json()
-        if "success" not in response or not response["success"]:
-            if "error-codes" in response:
-                print(response["error-codes"])
-            request.session.flash("Captcha failed", "error")
-            return {}
+    if not run_captcha(request):
+        return {}
 
     result = request.userdb.create_user(
         username=signup_username,
