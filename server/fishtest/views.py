@@ -414,7 +414,7 @@ def signup(request):
         signup_password, signup_username, signup_email
     )
     if not strong_password:
-        errors.append("Error! Weak password: " + password_err)
+        errors.append(password_err)
     if signup_password != signup_password_verify:
         errors.append("Error! Matching verify password required")
     email_is_valid, validated_email = email_valid(signup_email)
@@ -703,9 +703,7 @@ def user(request):
                         user_data["password"] = new_password
                         request.session.flash("Success! Password updated")
                     else:
-                        request.session.flash(
-                            "Error! Weak password: " + password_err, "error"
-                        )
+                        request.session.flash(password_err, "error")
                         return home(request)
                 else:
                     request.session.flash(

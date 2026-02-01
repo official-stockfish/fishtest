@@ -12,6 +12,8 @@ import scipy.stats
 from email_validator import EmailNotValidError, caching_resolver, validate_email
 from zxcvbn import zxcvbn
 
+PASSWORD_MAX_LENGTH = 72
+
 
 class GeneratorAsFileReader:
     def __init__(self, generator):
@@ -489,8 +491,13 @@ def format_group(groups):
 
 
 def password_strength(password, *args):
+    # Maximum length enforced by zxcvbn.
     if len(password) < 1:
-        return False, "Non-empty password required"
+        return False, "Error! Non-empty password required"
+    if len(password) > PASSWORD_MAX_LENGTH:
+        return False, (
+            f"Error! Password too long (max {PASSWORD_MAX_LENGTH} characters)"
+        )
 
     # Add given username and email to user_inputs
     # such that the chosen password isn't similar to either
@@ -500,9 +507,14 @@ def password_strength(password, *args):
     if password_analysis["score"] > 2:
         return True, ""
     else:
-        suggestions = password_analysis["feedback"]["suggestions"][0]
-        warning = password_analysis["feedback"]["warning"]
-        return False, suggestions + " " + warning
+        feedback = password_analysis.get("feedback") or {}
+        suggestions_list = feedback.get("suggestions") or []
+        suggestions = suggestions_list[0] if suggestions_list else ""
+        warning = feedback.get("warning") or ""
+        details = " ".join(part for part in (suggestions, warning) if part)
+        if details:
+            return False, "Error! Weak password: " + details
+        return False, "Error! Weak password"
 
 
 def get_cookie(request, name):
