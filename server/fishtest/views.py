@@ -166,8 +166,8 @@ def login(request):
     came_from = request.params.get("came_from", referrer)
 
     if request.method == "POST":
-        username = request.POST.get("username")
-        password = request.POST.get("password")
+        username = request.POST.get("username", "").strip()
+        password = request.POST.get("password", "").strip()
         token = request.userdb.authenticate(username, password)
         if "error" not in token:
             if request.POST.get("stay_logged_in"):
