@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 MAX_SKIP_COUNT = 10
 RECENT_DAYS_THRESHOLD = 30
-REFERENCE_CORE_NPS = 691680
+REFERENCE_CORE_NPS = 628000
 
 
 def initialize_info(rundb: RunDb, *, clear_stats: bool) -> tuple[dict, dict]:
