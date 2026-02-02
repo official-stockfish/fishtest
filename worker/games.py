@@ -1575,11 +1575,16 @@ def run_games(
     if run_errors:
         raise RunException("\n".join(run_errors))
 
-    # This threshold is based on the observed ~70% slowdown of SF 16.1 vs SF 11 on
-    # old hardware (i7-3770K), ensuring that viable old machines are not excluded.
-    # The reference for time control scaling is 691680 nps, from modern hardware.
-    # See GitHub PR #1900 for the full analysis.
-    min_nps_required = 208082 / (1 + 3 * math.tanh((worker_concurrency - 1) / 8))
+    # Fishtest with Stockfish 11 used 1.6 Mnps as the reference and 0.7 Mnps
+    # as the slow-worker threshold. The new reference (628000 nps) and
+    # threshold (180000 nps) result from comparing Stockfish 11 vs Stockfish 18
+    # bench values across several architectures and machines.
+    # Benches employed clang++ 21.1.8, parallel bench at depth 13, 100 iterations.
+    # Reference cores are Ryzen 7 PRO 7840U / Xeon E5-2680 v3; the slow-worker
+    # threshold uses Core i7 3770K so older machines remain viable.
+    # Values also live in rundb.py and delta_update_users.py. See GitHub PR #2459.
+    factor = 628000 / base_nps
+    min_nps_required = 180000 / (1 + 3 * math.tanh((worker_concurrency - 1) / 8))
     if base_nps < min_nps_required:
         message = (
             f"This machine is too slow to run this task effectively - sorry!\n"
@@ -1587,10 +1592,6 @@ def run_games(
             f"  - Required minimum speed: {min_nps_required:.0f} nps/thread"
         )
         raise FatalException(message)
-    # fishtest with Stockfish 11 had 1.6 Mnps as reference nps and
-    # 0.7 Mnps as threshold for the slow worker.
-    # also set in rundb.py and delta_update_users.py
-    factor = 691680 / base_nps
 
     # Adjust CPU scaling.
     _, tc_limit_ltc = adjust_tc("60+0.6", factor)
