@@ -30,9 +30,9 @@ class AwsConfig:
 
     bucket: str = "s3://fishtest/backup/archive/nn/"
     bin: Path = field(
-        default_factory=lambda: Path(get_required_env_var("VENV", expand=True))
-        / "bin"
-        / "aws",
+        default_factory=lambda: (
+            Path(get_required_env_var("VENV", expand=True)) / "bin" / "aws"
+        ),
     )
     access_key_id: str = field(
         default_factory=lambda: get_required_env_var("AWS_ACCESS_KEY_ID"),
