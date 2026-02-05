@@ -761,14 +761,14 @@
     if (!ltcTestRadio.checked) return;
 
     if (spsaRadio.checked) {
-      // Case: LTC + SPSA → set recommended 50% throughput.
+      // Case: LTC + SPSA -> set recommended 50% throughput.
       if ([...throughputSelect.options].some(o => o.value === "50")) {
         throughputSelect.value = "50";
       }
       return;
     }
 
-    // Case: LTC without SPSA → restore LTC default from its data-options.
+    // Case: LTC without SPSA -> restore LTC default from its data-options.
     try {
       const ltcOptions = JSON.parse(ltcTestRadio.dataset.options || "{}");
       if (ltcOptions.throughput) {

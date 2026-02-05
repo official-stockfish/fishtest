@@ -407,7 +407,7 @@
       Gaussian Kernel Smoother&nbsp;&nbsp;
       <div class="btn-group">
         <button id="btn_smooth_plus" class="btn">&nbsp;&nbsp;&nbsp;+&nbsp;&nbsp;&nbsp;</button>
-        <button id="btn_smooth_minus" class="btn">&nbsp;&nbsp;&nbsp;−&nbsp;&nbsp;&nbsp;</button>
+        <button id="btn_smooth_minus" class="btn">&nbsp;&nbsp;&nbsp;&minus;&nbsp;&nbsp;&nbsp;</button>
       </div>
 
       <div class="btn-group">
@@ -474,7 +474,7 @@
       </thead>
       <tbody id="tasks-body"></tbody>
     </table>
-  </div>
+  </section>
 ## End of enclosing div to be able to make things invisible.
 </div>
 
