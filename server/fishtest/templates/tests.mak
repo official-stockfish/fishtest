@@ -2,7 +2,7 @@
 
 <link
   rel="stylesheet"
-  href="${request.static_url('fishtest:static/css/flags.css')}}"
+  href="${request.static_url('fishtest:static/css/flags.css')}"
 >
 
 <h2>Stockfish Testing Queue</h2>

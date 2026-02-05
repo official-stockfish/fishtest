@@ -102,7 +102,7 @@
     type="button"
     data-bs-toggle="dropdown"
     aria-expanded="false"
-  >Modified &#8804; 5 days ago</span></button>
+  >Modified &#8804; 5 days ago</button>
 
   <ul class="dropdown-menu">
     <li><span class="dropdown-item" data-handle-target-custom="all-workers">All</span></li>
