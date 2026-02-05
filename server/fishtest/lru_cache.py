@@ -221,7 +221,7 @@ class lru_cache:
         expiration=None,
         refresh=None,
         cache=None,
-        key=lambda f, args, kw: (f, tuple(kw.items())) + args,
+        key=lambda f, args, kw: (f, frozenset(kw.items())) + args,
         filter=lambda f, args, kw, val: True,
     ):
         if cache is not None:

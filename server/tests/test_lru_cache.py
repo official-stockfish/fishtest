@@ -253,13 +253,13 @@ class CreateLRUCacheTest(unittest.TestCase):
         self.assertTrue(worker_has_run.wait(timeout=1.0))
         t.join()
 
-    def test_non_blocking(self):
+    def test_lru_cache_non_blocking(self):
         with self.lru_cache.lock:
             acquired = self.lru_cache.lock.acquire(blocking=False)
             self.assertTrue(acquired)
             self.lru_cache.lock.release()
 
-    def test_non_blocking_threaded(self):
+    def test_lru_cache_non_blocking_threaded(self):
         def worker():
             acquired = self.lru_cache.lock.acquire(blocking=False)
             self.assertFalse(acquired)
@@ -270,13 +270,13 @@ class CreateLRUCacheTest(unittest.TestCase):
             t.start()
             t.join()
 
-    def test_timeout(self):
+    def test_lru_cache_timeout(self):
         with self.lru_cache.lock:
             acquired = self.lru_cache.lock.acquire(timeout=0.1)
             self.assertTrue(acquired)
             self.lru_cache.lock.release()
 
-    def test_timeout_threaded(self):
+    def test_lru_cache_timeout_threaded(self):
         def worker1():
             acquired = self.lru_cache.lock.acquire(timeout=0.1)
             self.assertFalse(acquired)
@@ -295,6 +295,7 @@ class CreateLRUCacheTest(unittest.TestCase):
             acquired = self.lru_cache.lock.acquire(timeout=1.0)
             lock_acquired.set()
             self.assertTrue(acquired)
+            self.lru_cache.lock.release()
 
         t = threading.Thread(target=worker2)
 
@@ -422,6 +423,24 @@ class CreateLRUCacheTest(unittest.TestCase):
         time.sleep(0.1)  # cache expires
         t2 = worker2()
         self.assertNotEqual(t2, t0)
+
+    def test_lru_cache_keyword_order(self):
+        evaluated = False
+
+        @lru_cache()
+        def worker(a=None, b=None):
+            nonlocal evaluated
+            evaluated = True
+
+        worker(a=1, b=1)
+        self.assertTrue(evaluated)
+        evaluated = False
+        worker(a=1, b=1)
+        self.assertFalse(evaluated)
+        worker(a=1, b=1)
+        self.assertFalse(evaluated)
+        worker(b=1, a=1)
+        self.assertFalse(evaluated)
 
     def test_lru_cache_decorator_filter(self):
         def simple_key(f, args, kw):
