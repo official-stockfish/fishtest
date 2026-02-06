@@ -86,10 +86,12 @@ def main(global_config, **settings):
             # - uses the network;
             # - accesses the db;
             # - starts new threads.
-            schemas.legacy_usernames = set(rundb.kvstore.get("legacy_usernames", []))
             gh.init(rundb.kvstore, rundb.actiondb)
             rundb.update_aggregated_data()
             rundb.schedule_tasks()
+
+        # All instances should use the same user schema.
+        schemas.legacy_usernames = set(rundb.kvstore.get("legacy_usernames", []))
 
         # We install signal handlers when all code in the
         # main thread is finished. In that way we can safely use
