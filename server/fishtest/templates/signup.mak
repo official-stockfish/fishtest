@@ -1,5 +1,9 @@
 <%inherit file="base.mak"/>
 
+<%
+from fishtest.util import VALID_USERNAME_PATTERN
+%>
+
 <script>
   document.title = "Register | Stockfish Testing";
 </script>
@@ -30,7 +34,7 @@
         id="username"
         name="username"
         placeholder="Username"
-        pattern="[A-Za-z0-9]{2,}"
+        pattern="${VALID_USERNAME_PATTERN}"
         title="Only letters and digits and at least 2 long"
         required
         autofocus

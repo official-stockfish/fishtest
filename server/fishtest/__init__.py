@@ -5,6 +5,7 @@ import threading
 import traceback
 
 import fishtest.github_api as gh
+import fishtest.schemas as schemas
 from fishtest.routes import setup_routes
 from fishtest.rundb import RunDb
 from pyramid.authentication import AuthTktAuthenticationPolicy
@@ -85,6 +86,7 @@ def main(global_config, **settings):
             # - uses the network;
             # - accesses the db;
             # - starts new threads.
+            schemas.legacy_usernames = set(rundb.kvstore.get("legacy_usernames", []))
             gh.init(rundb.kvstore, rundb.actiondb)
             rundb.update_aggregated_data()
             rundb.schedule_tasks()

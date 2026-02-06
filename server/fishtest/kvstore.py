@@ -2,7 +2,7 @@ from collections.abc import MutableMapping
 from datetime import UTC
 
 from bson.codec_options import CodecOptions
-from fishtest.schemas import kvstore_schema
+from bson.errors import InvalidDocument
 from pymongo import MongoClient
 from vtjson import validate
 
@@ -19,11 +19,20 @@ class KeyValueStore(MutableMapping):
         self.__kvstore = db[collection]
 
     def __setitem__(self, key, value):
+        if not isinstance(key, str):
+            raise ValueError(f"The key {key} is not a string")
         document = {"_id": key, "value": value}
-        validate(kvstore_schema, document)
-        self.__kvstore.replace_one({"_id": key}, document, upsert=True)
+        from fishtest.schemas import kvstore_schema  # circular import issue
+
+        validate(kvstore_schema, document)  # assertion!
+        try:
+            self.__kvstore.replace_one({"_id": key}, document, upsert=True)
+        except InvalidDocument:
+            raise ValueError(f"The value {value} cannot be converted to bson") from None
 
     def __getitem__(self, key):
+        if not isinstance(key, str):
+            raise ValueError(f"The key {key} is not a string")
         document = self.__kvstore.find_one({"_id": key})
         if document is None:
             raise KeyError(key)
@@ -31,6 +40,8 @@ class KeyValueStore(MutableMapping):
             return document["value"]
 
     def __delitem__(self, key):
+        if not isinstance(key, str):
+            raise ValueError(f"The key {key} is not a string")
         d = self.__kvstore.delete_one({"_id": key})
         if d.deleted_count == 0:
             raise KeyError(key)

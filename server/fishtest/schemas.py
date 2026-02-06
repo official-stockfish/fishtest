@@ -10,7 +10,12 @@ from datetime import UTC, datetime
 
 import fishtest.stats.stat_util
 from bson.objectid import ObjectId
-from fishtest.util import supported_arches, supported_compilers
+from fishtest.util import (
+    PASSWORD_MAX_LENGTH,
+    VALID_USERNAME_PATTERN,
+    supported_arches,
+    supported_compilers,
+)
 from vtjson import (
     anything,
     at_least_one_of,
@@ -53,7 +58,13 @@ long_worker_name = regex(
 )
 worker_arch = set_name(union(*supported_arches), "valid_worker_arch")
 compiler = union(*supported_compilers)
-username = regex(r"[!-~][ -~]{0,30}[!-~]", name="username")
+valid_username = regex(VALID_USERNAME_PATTERN, name="valid_username")
+legacy_usernames = set()  # will be updated when the application starts up
+legacy_username = intersect(
+    str, set_name(lambda x: x in legacy_usernames, "legacy_username")
+)
+username = union(valid_username, legacy_username)
+action_username = union(username, "fishtest.system")
 net_name = regex(r"nn-[a-f0-9]{12}.nnue", name="net_name")
 tc = regex(r"([1-9]\d*/)?\d+(\.\d+)?(\+\d+(\.\d+)?)?", name="tc")
 str_int = regex(r"[1-9]\d*", name="str_int")
@@ -104,7 +115,7 @@ pgns_schema = intersect(
 user_schema = {
     "_id?": ObjectId,
     "username": username,
-    "password": intersect(str, size(0, 72)),
+    "password": intersect(str, size(0, PASSWORD_MAX_LENGTH)),
     "registration_time": datetime_utc,
     "pending": bool,
     "blocked": bool,
@@ -215,7 +226,7 @@ action_schema = intersect(
                 "_id": ObjectId,
                 "time": timestamp,
                 "action": "failed_task",
-                "username": username,
+                "username": action_username,
                 "worker": long_worker_name,
                 "run_id": run_id,
                 "run": run_name,
@@ -229,7 +240,7 @@ action_schema = intersect(
                 "_id": ObjectId,
                 "time": timestamp,
                 "action": "crash_or_time",
-                "username": username,
+                "username": action_username,
                 "worker": long_worker_name,
                 "run_id": run_id,
                 "run": run_name,
@@ -243,7 +254,7 @@ action_schema = intersect(
                 "_id": ObjectId,
                 "time": timestamp,
                 "action": "dead_task",
-                "username": username,
+                "username": action_username,
                 "worker": long_worker_name,
                 "run_id": run_id,
                 "run": run_name,
@@ -266,7 +277,7 @@ action_schema = intersect(
                 "_id": ObjectId,
                 "time": timestamp,
                 "action": "new_run",
-                "username": username,
+                "username": action_username,
                 "run_id": run_id,
                 "run": run_name,
                 "message": action_message,
@@ -278,7 +289,7 @@ action_schema = intersect(
                 "_id": ObjectId,
                 "time": timestamp,
                 "action": "upload_nn",
-                "username": username,
+                "username": action_username,
                 "nn": net_name,
             },
         ),
@@ -288,7 +299,7 @@ action_schema = intersect(
                 "_id": ObjectId,
                 "time": timestamp,
                 "action": "modify_run",
-                "username": username,
+                "username": action_username,
                 "run_id": run_id,
                 "run": run_name,
                 "message": action_message,
@@ -300,7 +311,7 @@ action_schema = intersect(
                 "_id": ObjectId,
                 "time": timestamp,
                 "action": "delete_run",
-                "username": username,
+                "username": action_username,
                 "run_id": run_id,
                 "run": run_name,
             },
@@ -312,7 +323,7 @@ action_schema = intersect(
                     "_id": ObjectId,
                     "time": timestamp,
                     "action": "stop_run",
-                    "username": username,
+                    "username": action_username,
                     "run_id": run_id,
                     "run": run_name,
                     "message": action_message,
@@ -328,7 +339,7 @@ action_schema = intersect(
                 "_id": ObjectId,
                 "time": timestamp,
                 "action": "finished_run",
-                "username": username,
+                "username": action_username,
                 "run_id": run_id,
                 "run": run_name,
                 "message": action_message,
@@ -340,7 +351,7 @@ action_schema = intersect(
                 "_id": ObjectId,
                 "time": timestamp,
                 "action": "approve_run",
-                "username": username,
+                "username": action_username,
                 "run_id": run_id,
                 "run": run_name,
                 "message": union("approved", "unapproved"),
@@ -352,7 +363,7 @@ action_schema = intersect(
                 "_id": ObjectId,
                 "time": timestamp,
                 "action": "purge_run",
-                "username": username,
+                "username": action_username,
                 "run_id": run_id,
                 "run": run_name,
                 "message": action_message,
@@ -364,7 +375,7 @@ action_schema = intersect(
                 "_id": ObjectId,
                 "time": timestamp,
                 "action": "block_user",
-                "username": username,
+                "username": action_username,
                 "user": str,
                 "message": union("blocked", "unblocked"),
             },
@@ -375,7 +386,7 @@ action_schema = intersect(
                 "_id": ObjectId,
                 "time": timestamp,
                 "action": "accept_user",
-                "username": username,
+                "username": action_username,
                 "user": str,
                 "message": "accepted",
             },
@@ -386,7 +397,7 @@ action_schema = intersect(
                 "_id": ObjectId,
                 "time": timestamp,
                 "action": "block_worker",
-                "username": username,
+                "username": action_username,
                 "worker": short_worker_name,
                 "message": union("blocked", "unblocked"),
             },
@@ -397,7 +408,7 @@ action_schema = intersect(
                 "_id": ObjectId,
                 "time": timestamp,
                 "action": "log_message",
-                "username": username,
+                "username": action_username,
                 "worker?": long_worker_name,
                 "message": action_message,
             },

@@ -1,6 +1,7 @@
 import unittest
 from datetime import UTC, datetime
 
+import fishtest.schemas as schemas
 import util
 from fishtest.util import PASSWORD_MAX_LENGTH
 from fishtest.views import login, signup
@@ -65,6 +66,29 @@ class Create10UsersTest(unittest.TestCase):
         self.rundb.userdb.add_user_group("JoeUser", "dummy")
         with self.assertRaises(ValidationError):
             self.rundb.userdb.add_user_group("JoeUser", "approvers")
+
+    def test_create_user_invalid_username(self):
+        self.assertIsNone(
+            self.rundb.userdb.create_user("Joe User", "xxx", "JoeUser2@gmail.com", "")
+        )
+        self.assertIsNone(
+            self.rundb.userdb.create_user("Joe@User", "xxx", "JoeUser22@gmail.com", "")
+        )
+        self.assertIsNone(self.rundb.userdb.create_user("H", "xxx", "H2@gmail.com", ""))
+        schemas.legacy_usernames.add("H")
+        self.rundb.userdb.create_user("H", "xxx", "H2@gmail.com", "")
+        self.rundb.userdb.users.delete_many({"username": "H"})
+        schemas.legacy_usernames.remove("H")
+        self.assertIsNone(self.rundb.userdb.create_user("H", "xxx", "H2@gmail.com", ""))
+
+    def test_create_user_password_too_long_cmd(self):
+        long_password = "A1!a" * 20
+        self.assertGreater(len(long_password), PASSWORD_MAX_LENGTH)
+        self.assertIsNone(
+            self.rundb.userdb.create_user(
+                "JoeUser", long_password, "JoeUser2@gmail.com", ""
+            )
+        )
 
 
 class Create50LoginTest(unittest.TestCase):

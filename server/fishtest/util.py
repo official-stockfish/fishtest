@@ -12,7 +12,9 @@ import scipy.stats
 from email_validator import EmailNotValidError, caching_resolver, validate_email
 from zxcvbn import zxcvbn
 
+FISHTEST = "fishtest_new"
 PASSWORD_MAX_LENGTH = 72
+VALID_USERNAME_PATTERN = "[A-Za-z0-9]{2,}"
 
 
 class GeneratorAsFileReader:

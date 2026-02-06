@@ -141,7 +141,7 @@ requires-dist = [
     { name = "requests", specifier = ">=2.32.5" },
     { name = "scipy", specifier = ">=1.17.0" },
     { name = "setuptools", specifier = ">=61,<81" },
-    { name = "vtjson", specifier = ">=2.2.7" },
+    { name = "vtjson", specifier = ">=2.2.8" },
     { name = "waitress", specifier = ">=3.0.2" },
     { name = "zxcvbn", specifier = ">=4.5.0" },
 ]
@@ -593,7 +593,7 @@ wheels = [
 
 [[package]]
 name = "vtjson"
-version = "2.2.7"
+version = "2.2.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "dnspython" },
@@ -602,9 +602,9 @@ dependencies = [
     { name = "python-magic" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2b/28/b7308a4d26640a85aa8867062549570794ff4ff94a55c42e836f98a7db74/vtjson-2.2.7.tar.gz", hash = "sha256:e1f0a72df7e1a1dc790c6afe3233777eec96561c70e64d3904beaa02f3b2bcad", size = 27388, upload-time = "2026-01-24T07:45:48.546Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/af/19/3ee669449212031bc1ae3d10e90073d51a5261e09e01de445f0c8b0dad30/vtjson-2.2.8.tar.gz", hash = "sha256:a89ae77870d04d8c51df5b121cc2abdbf85a2fe0bf4b4022db81ada780bd5895", size = 27410, upload-time = "2026-02-06T11:49:47.667Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5c/f9/78abeb90f55f57d3a0982f650a8c1893228156197303a769816b06db8e58/vtjson-2.2.7-py3-none-any.whl", hash = "sha256:bdbd164d034b1a804925164e49914983d82d0f7cb633092bca81f601a12aed3d", size = 18650, upload-time = "2026-01-24T07:45:47.097Z" },
+    { url = "https://files.pythonhosted.org/packages/91/b8/354dd9233f10eb36c7bf7c789eab79e81596153c47861ab03495dd035cac/vtjson-2.2.8-py3-none-any.whl", hash = "sha256:b6dee0114804933354a5b2e2e9038f0a9fcdeefda359c931359c5aa3965114fb", size = 18676, upload-time = "2026-02-06T11:49:45.935Z" },
 ]
 
 [[package]]

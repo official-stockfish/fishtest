@@ -43,6 +43,7 @@ from fishtest.schemas import (
 from fishtest.stats.stat_util import SPRT_elo
 from fishtest.userdb import UserDb
 from fishtest.util import (
+    FISHTEST,
     GeneratorAsFileReader,
     count_games,
     crash_or_time,
@@ -61,7 +62,7 @@ from vtjson import ValidationError, validate
 
 
 class RunDb:
-    def __init__(self, db_name="fishtest_new", port=-1, is_primary_instance=True):
+    def __init__(self, db_name=FISHTEST, port=-1, is_primary_instance=True):
         # MongoDB server is assumed to be on the same machine, if not user should
         # use ssh with port forwarding to access the remote host.
         self.conn = MongoClient("localhost")
