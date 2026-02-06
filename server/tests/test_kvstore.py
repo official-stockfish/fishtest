@@ -104,6 +104,17 @@ class CreateKeyValueStoreTest(unittest.TestCase):
         self.kvstore["b"] = 2
         self.assertEqual(set(self.kvstore.items()), {("a", 1), ("b", 2)})
 
+    def test_kvstore_invalid_input(self):
+        o = object()
+        with self.assertRaisesRegex(ValueError, "not a string"):
+            self.kvstore[o]
+        with self.assertRaisesRegex(ValueError, "not a string"):
+            self.kvstore[o] = "dummy"
+        with self.assertRaisesRegex(ValueError, "cannot be converted to bson"):
+            self.kvstore["dummy"] = o
+        with self.assertRaisesRegex(ValueError, "not a string"):
+            del self.kvstore[o]
+
     @classmethod
     def tearDownClass(cls):
         cls.kvstore.drop()

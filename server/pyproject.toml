@@ -38,7 +38,7 @@ dependencies = [
     "requests>=2.32.5",
     "scipy>=1.17.0",
     "setuptools>=61,<81",
-    "vtjson>=2.2.7",
+    "vtjson>=2.2.8",
     "waitress>=3.0.2",
     "zxcvbn>=4.5.0",
 ]
