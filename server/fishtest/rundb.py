@@ -92,7 +92,7 @@ class RunDb:
         self.ltc_lower_bound = 40  # Beware: this is used as a filter in an index!
         self.pt_info = {
             "pt_version": "SF_18",
-            "pt_branch": "cb3d4ee9b47d0c5aae855b12379378ea1439675c",
+            "pt_branch": "43a2be018606176d91f612e48a753bd6c8ed6cf7",
             "pt_bench": 2050811,
         }
 
