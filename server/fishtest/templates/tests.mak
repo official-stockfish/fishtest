@@ -126,16 +126,18 @@
     min_height = str(37) + "px"
     max_height = str(34.7) + "vh"
   %>
-  <section id="machines"
-      class="overflow-auto ${'collapse show' if machines_shown else 'collapse'}">
-      <div class="ssc-card ssc-wrapper">
-        <div class="ssc-head-line"></div>
-        <div
-          class="ssc-square"
-          style="height: clamp(${min_height}, ${height}, ${max_height});">
-          </div>
-      </div>
-  </div>
+  <section
+    id="machines"
+    class="overflow-auto ${'collapse show' if machines_shown else 'collapse'}"
+  >
+    <div class="ssc-card ssc-wrapper">
+      <div class="ssc-head-line"></div>
+      <div
+        class="ssc-square"
+        style="height: clamp(${min_height}, ${height}, ${max_height});"
+      ></div>
+    </div>
+  </section>
 % endif
 
 <%include file="run_tables.mak"/>
