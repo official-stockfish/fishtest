@@ -130,7 +130,7 @@
     % else:
       % for w in blocked_workers:
         <tr>
-          <td><a href="/workers/${w['worker_name']}">${w["worker_name"]}</td>
+          <td><a href="/workers/${w['worker_name']}">${w["worker_name"]}</a></td>
           <td>${format_time_ago(w["last_updated"]) if w["last_updated"] is not None else "Never"}</td>
           <td>
             <a
@@ -142,6 +142,7 @@
               <a
                 href="mailto:${w['owner_email']}?subject=${quote(w['subject'])}&body=${quote(w['body'].replace('\n','\r\n'))}" target="_blank" rel="noopener noreferrer">${w['owner_email']}
               </a>
+            </td>
           % endif
         </tr>
       % endfor
