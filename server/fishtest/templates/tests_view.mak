@@ -77,6 +77,16 @@
     <%include file="elo_results.mak" args="run=run" />
   </div>
 
+  <div id="statistics-charts">
+    <a
+      href="https://stockfish.dev/chart/tracker.php?test_id=${str(run['_id'])}"
+      class="btn btn-sm btn-light border mb-2"
+      target="_blank" rel="noopener"
+     >
+     Statistic charts
+    </a>
+  </div>
+
   <div class="row">
     <div class="col-12 col-lg-9">
       <div id="diff-section">
