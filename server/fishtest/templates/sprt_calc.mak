@@ -85,11 +85,11 @@
       more than 95%.
     </li>
     <li>
-      If the Elo model is <b>Logistic</b> then the pass/fail probabilities are
-      independent of the auxiliary data <em>Draw ratio</em> and
-      <em>RMS bias</em>. On the other hand if the Elo model is
-      <b>Normalized</b> then it is the expected duration of the test that is
-      independent of the auxiliary data.
+      If the Elo model is <b>Logistic</b>, both the pass/fail probabilities
+      and the expected test duration are dependent on the auxiliary data
+      (<i>Draw ratio</i> and <i>RMS bias</i>). On the other hand, the
+      <b>Normalized</b> Elo model is designed so that the expected duration
+      of the test is largely independent of this auxiliary data.
     </li>
     <li>
       The <b>Draw ratio</b> is mainly a function of the opening book and the
