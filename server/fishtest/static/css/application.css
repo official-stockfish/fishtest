@@ -278,7 +278,7 @@ legend {
 .mainnavbar a::before,
 #diff-num-comments + a::before,
 #copy-diff::before,
-#statistics-charts a::before {
+#statistical-charts a::before {
   display: inline-block;
   font-style: normal;
   font-variant: normal;
@@ -454,7 +454,7 @@ legend {
   content: "\f328";
 }
 
-#statistics-charts a::before {
+#statistical-charts a::before {
   content: "\f1fe";
 }
 

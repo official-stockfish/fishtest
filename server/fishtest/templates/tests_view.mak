@@ -78,13 +78,13 @@
   </div>
 
   % if 'spsa' not in run['args']:
-    <div id="statistics-charts">
+    <div id="statistical-charts">
       <a
         href="https://stockfish.dev/chart/tracker.php?test_id=${str(run['_id'])}"
         class="btn btn-sm btn-light border mb-2"
         target="_blank" rel="noopener"
       >
-      Statistic charts
+      Statistical charts
       </a>
     </div>
   % endif
