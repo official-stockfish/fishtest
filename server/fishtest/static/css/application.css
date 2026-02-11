@@ -277,7 +277,8 @@ legend {
 /* Icons */
 .mainnavbar a::before,
 #diff-num-comments + a::before,
-#copy-diff::before {
+#copy-diff::before,
+#statistical-charts a::before {
   display: inline-block;
   font-style: normal;
   font-variant: normal;
@@ -451,6 +452,10 @@ legend {
 
 #copy-diff::before {
   content: "\f328";
+}
+
+#statistical-charts a::before {
+  content: "\f1fe";
 }
 
 #div_spsa_preload {
