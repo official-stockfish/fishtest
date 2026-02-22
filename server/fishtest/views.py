@@ -382,9 +382,10 @@ def login(request):
             next_page = request.params.get("next") or came_from
             return RedirectResponse(url=next_page, status_code=302)
         message = token["error"]
-        if "Account pending for user:" in message:
+        # `error_code` is a stable contract from `UserDb.authenticate()`.
+        if token.get("error_code") == "pending":
             message += (
-                " . If you recently registered to fishtest, "
+                " If you recently registered to fishtest, "
                 "a person will now manually approve your new account, to avoid spam. "
                 "This is usually quick, but sometimes takes a few hours. "
                 "Thank you!"

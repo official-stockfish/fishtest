@@ -40,16 +40,39 @@ class UserDb:
         return self.users.find_one({"email": email})
 
     def authenticate(self, username, password):
+        def fail(*, user_message: str, code: str, log_message: str | None = None):
+            print(log_message or user_message, flush=True)
+            return {"error": user_message, "error_code": code}
+
         user = self.get_user(username)
-        if not user or user["password"] != password:
-            print(f"Invalid login: '{username}' '{password}'", flush=True)
-            return {"error": f"Invalid password for user: {username}"}
-        if "blocked" in user and user["blocked"]:
-            print(f"Blocked account: '{username}' '{password}'", flush=True)
-            return {"error": f"Account blocked for user: {username}"}
-        if "pending" in user and user["pending"]:
-            print(f"Pending account: '{username}' '{password}'", flush=True)
-            return {"error": f"Account pending for user: {username}"}
+        if user is None:
+            # Avoid username enumeration: user-facing message is identical to wrong-password.
+            return fail(
+                user_message="Invalid username or password.",
+                code="invalid_credentials",
+                log_message=f"Login failed (unknown user): '{username}'",
+            )
+
+        if user.get("password") != password:
+            return fail(
+                user_message="Invalid username or password.",
+                code="invalid_credentials",
+                log_message=f"Login failed (wrong password): '{username}'",
+            )
+
+        if user.get("blocked"):
+            return fail(
+                user_message="Your account is blocked.",
+                code="blocked",
+                log_message=f"Login rejected (account blocked): '{username}'",
+            )
+
+        if user.get("pending"):
+            return fail(
+                user_message="Your account is pending approval.",
+                code="pending",
+                log_message=f"Login rejected (pending approval): '{username}'",
+            )
 
         return {"username": username, "authenticated": True}
 
