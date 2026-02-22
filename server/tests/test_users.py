@@ -5,13 +5,10 @@ from datetime import UTC, datetime
 from unittest.mock import patch
 
 import test_support
-from pyramid import testing
 from vtjson import ValidationError
 
-from fishtest.api import WorkerApi
 from fishtest.run_cache import Prio
 from fishtest.util import PASSWORD_MAX_LENGTH
-from fishtest.views import user
 
 
 class TestHttpUsers(unittest.TestCase):
@@ -322,86 +319,108 @@ class TestHttpUsers(unittest.TestCase):
 
 
 class ApiKeyResetTest(unittest.TestCase):
-    def setUp(self):
-        self.rundb = test_support.get_rundb()
-        self.username = "ApiKeyUser"
-        self.password = "secret"
-        self.rundb.userdb.create_user(
-            self.username,
-            self.password,
+    @classmethod
+    def setUpClass(cls):
+        cls.rundb = test_support.get_rundb()
+        cls.username = "ApiKeyUser"
+        cls.password = "secret"
+        cls.rundb.userdb.create_user(
+            cls.username,
+            cls.password,
             "apikey@user.net",
             "https://github.com/official-stockfish/Stockfish",
         )
-        user_data = self.rundb.userdb.get_user(self.username)
+        user_data = cls.rundb.userdb.get_user(cls.username)
         user_data["pending"] = False
-        self.rundb.userdb.save_user(user_data)
-        self.config = testing.setUp()
-        self.config.add_route("login", "/login")
-        self.config.add_route("user", "/user")
-        self.config.add_route("profile", "/user")
-        self.config.testing_securitypolicy(userid=self.username)
+        cls.rundb.userdb.save_user(user_data)
 
-    def tearDown(self):
-        self.rundb.userdb.users.delete_many({"username": self.username})
-        self.rundb.userdb.user_cache.delete_many({"username": self.username})
-        testing.tearDown()
+    def setUp(self):
+        # New client per test to avoid cookie/session leakage between tests.
+        self.client = test_support.make_test_client(
+            rundb=self.rundb,
+            include_api=True,
+            include_views=True,
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        test_support.cleanup_test_rundb(
+            cls.rundb,
+            clear_usernames=[cls.username],
+            clear_runs=False,
+            drop_runs=False,
+        )
+
+    def _login(self):
+        """Helper to log in the test user and return CSRF token."""
+        response = self.client.get("/login")
+        self.assertEqual(response.status_code, 200)
+        csrf = test_support.extract_csrf_token(response.text)
+
+        response = self.client.post(
+            "/login",
+            data={
+                "username": self.username,
+                "password": self.password,
+                "csrf_token": csrf,
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 302)
+        return csrf
 
     def test_api_key_reset_flow(self):
+        # Get old API key
         old_api_key = self.rundb.userdb.get_user(self.username)["api_key"]
-        session = testing.DummySession()
-        params = {
-            "user": self.username,
-            "action": "api_key_reset",
-            "old_password": self.password,
-        }
-        request = testing.DummyRequest(
-            userdb=self.rundb.userdb,
-            method="POST",
-            params=params,
-            session=session,
-            url="http://example.com/user",
-            matchdict={},
-        )
-        response = user(request)
-        self.assertEqual(response.code, 302)
 
+        # Log in first
+        csrf = self._login()
+
+        # Reset API key via profile page
+        response = self.client.post(
+            "/user",
+            data={
+                "user": self.username,
+                "action": "api_key_reset",
+                "old_password": self.password,
+                "csrf_token": csrf,
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.headers.get("location", "").endswith("/user"))
+
+        # Verify API key was changed in database
         updated_user = self.rundb.userdb.get_user(self.username)
         new_api_key = updated_user["api_key"]
         self.assertNotEqual(old_api_key, new_api_key)
         self.assertTrue(new_api_key.startswith("ft_"))
-        self.assertEqual(session.get("new_api_key"), new_api_key)
 
-        request = testing.DummyRequest(
-            userdb=self.rundb.userdb,
-            method="GET",
-            session=session,
-            url="http://example.com/user",
-            matchdict={},
-        )
-        response = user(request)
-        self.assertEqual(response["new_api_key"], new_api_key)
-        self.assertNotIn("new_api_key", session)
+        # Get the profile page to see the new API key displayed
+        response = self.client.get("/user")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(new_api_key, response.text)
+        self.assertIn("Success! API key reset", response.text)
 
-        request = testing.DummyRequest(
-            userdb=self.rundb.userdb,
-            method="GET",
-            session=session,
-            url="http://example.com/user",
-            matchdict={},
-        )
-        response = user(request)
-        self.assertIsNone(response["new_api_key"])
-
-        api_request = testing.DummyRequest(
-            userdb=self.rundb.userdb,
-            json_body={
+        # Verify the new API key works for API authentication
+        api_response = self.client.post(
+            "/api/request_version",
+            json={
                 "api_key": new_api_key,
                 "worker_info": {"username": self.username},
             },
         )
-        api = WorkerApi(api_request)
-        api.validate_auth()
-        self.assertEqual(api._auth_method, "api_key")
+        self.assertEqual(api_response.status_code, 200)
+
+        # Verify old API key no longer works
+        api_response = self.client.post(
+            "/api/request_version",
+            json={
+                "api_key": old_api_key,
+                "worker_info": {"username": self.username},
+            },
+        )
+        self.assertEqual(api_response.status_code, 401)
 
 
 if __name__ == "__main__":
