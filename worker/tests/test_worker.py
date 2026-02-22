@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from configparser import ConfigParser
 from pathlib import Path
+from unittest import mock
 
 import games
 import updater
@@ -50,6 +51,7 @@ class WorkerTest(unittest.TestCase):
         self.assertTrue(config.has_section("parameters"))
         self.assertTrue(config.has_option("login", "username"))
         self.assertTrue(config.has_option("login", "password"))
+        self.assertTrue(config.has_option("login", "api_key"))
         self.assertTrue(config.has_option("parameters", "host"))
         self.assertTrue(config.has_option("parameters", "port"))
         self.assertTrue(config.has_option("parameters", "concurrency"))
@@ -106,6 +108,36 @@ class WorkerTest(unittest.TestCase):
         # Invalid: over MAX without explicit MAX variable in expression
         with self.assertRaises(ValueError):
             conc("999")
+
+    def test_verify_worker_version_fallback_from_api_key(self):
+        auth = {"api_key": "bad_key", "password": "secret"}
+        username = "worker_user"
+        remote = "http://example.com"
+        worker_lock = mock.Mock()
+        responses = iter(
+            [
+                {"error": "Invalid API key"},
+                {"version": worker.WORKER_VERSION, "api_key": "new_key"},
+            ]
+        )
+        payloads = []
+
+        def fake_send(api_url, payload):
+            payloads.append(payload.copy())
+            return next(responses)
+
+        with mock.patch("worker.send_api_post_request", side_effect=fake_send):
+            result = worker.verify_worker_version(remote, username, auth, worker_lock)
+
+        self.assertTrue(result)
+        self.assertEqual(auth["api_key"], "new_key")
+        self.assertEqual(len(payloads), 2)
+        first_payload = payloads[0]
+        second_payload = payloads[1]
+        self.assertEqual(first_payload["api_key"], "bad_key")
+        self.assertNotIn("password", first_payload)
+        self.assertEqual(second_payload["password"], "secret")
+        self.assertNotIn("api_key", second_payload)
 
 
 if __name__ == "__main__":

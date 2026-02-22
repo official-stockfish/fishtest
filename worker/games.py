@@ -320,12 +320,20 @@ def send_api_post_request(api_url, payload, quiet=False):
     return response
 
 
-def post_to_worker_log(worker_info, password, remote, message):
-    payload = {
-        "password": password,
-        "worker_info": worker_info,
-        "message": message,
-    }
+def add_auth(payload, auth):
+    """Add auth credentials to payload, preferring API key over password.
+
+    Mutates the payload dict in place.
+    """
+    if auth.get("api_key"):
+        payload["api_key"] = auth["api_key"]
+    else:
+        payload["password"] = auth.get("password", "")
+
+
+def post_to_worker_log(worker_info, auth, remote, message):
+    payload = {"worker_info": worker_info, "message": message}
+    add_auth(payload, auth)
     try:
         send_api_post_request(remote + "/api/worker_log", payload)
     except Exception as e:
@@ -1364,7 +1372,7 @@ def run_games(
     worker_dir,
     worker_info,
     current_state,
-    password,
+    auth,
     remote,
     run,
     task_id,
@@ -1411,12 +1419,12 @@ def run_games(
     input_stats["time_losses"] = input_stats.get("time_losses", 0)
 
     result = {
-        "password": password,
         "run_id": str(run["_id"]),
         "task_id": task_id,
         "stats": input_stats,
         "worker_info": worker_info,
     }
+    add_auth(result, auth)
 
     games_remaining = task["num_games"] - input_total_games
 
@@ -1518,7 +1526,7 @@ def run_games(
             print(f"Failed to match sri for book {book}. Ignoring!", file=sys.stderr)
             post_to_worker_log(
                 worker_info,
-                password,
+                auth,
                 remote,
                 f"Downloaded book {book} has sri {sri} whereas "
                 f"the server says it should be {book_sri}.",

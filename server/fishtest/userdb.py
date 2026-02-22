@@ -1,3 +1,4 @@
+import secrets
 from datetime import UTC, datetime
 
 from pymongo import ASCENDING
@@ -76,6 +77,13 @@ class UserDb:
 
         return {"username": username, "authenticated": True}
 
+    def is_account_restricted(self, user):
+        if "blocked" in user and user["blocked"]:
+            return "blocked"
+        if "pending" in user and user["pending"]:
+            return "pending"
+        return None
+
     def get_users(self):
         return self.users.find(sort=[("_id", ASCENDING)])
 
@@ -111,6 +119,7 @@ class UserDb:
             user = {
                 "username": username,
                 "password": password,
+                "api_key": self._generate_api_key(),
                 "registration_time": datetime.now(UTC),
                 "pending": True,
                 "blocked": False,
@@ -131,6 +140,12 @@ class UserDb:
         validate_user(user)
         self.users.replace_one({"_id": user["_id"]}, user)
         self.clear_cache()
+
+    def generate_api_key(self):
+        return self._generate_api_key()
+
+    def _generate_api_key(self):
+        return f"ft_{secrets.token_urlsafe(32)}"
 
     def remove_user(self, user, rejector):
         result = self.users.delete_one({"_id": user["_id"]})
