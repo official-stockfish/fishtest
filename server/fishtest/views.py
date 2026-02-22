@@ -284,23 +284,6 @@ def pagination(page_idx, num, page_size, query_params):
     return pages
 
 
-def parse_page_idx(page_param: str) -> int:
-    return max(0, int(page_param) - 1) if page_param.isdigit() else 0
-
-
-def parse_show_task(show_task_param, num_tasks: int) -> int:
-    try:
-        show_task = int(show_task_param)
-    except TypeError, ValueError:
-        return -1
-    return show_task if -1 <= show_task < num_tasks else -1
-
-
-def should_include_unfinished_runs(page_param: str) -> bool:
-    # Legacy behavior: page 2+ shows only finished runs.
-    return not page_param.isdigit() or int(page_param) <= 1
-
-
 def _host_url(request) -> str:
     host_url = getattr(request, "host_url", None)
     if host_url:

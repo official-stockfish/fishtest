@@ -16,7 +16,7 @@
 | `FISHTEST_PORT` | Yes | `-1` | Port for this instance |
 | `FISHTEST_PRIMARY_PORT` | Yes | `-1` | Fixed primary port (typically 8000) |
 | `FISHTEST_URL` | Dev: No; Prod: Yes | -- | Public URL (e.g., `https://tests.stockfishchess.org`); may be empty in development for dynamic host/IP |
-| `FISHTEST_NN_URL` | Dev: No; Prod: Yes | -- | Base URL workers use to download neural networks (see below) |
+| `FISHTEST_NN_URL` | No | (unset => request host; empty => same-host) | Base URL workers use to download neural networks (see below) |
 | `FISHTEST_AUTHENTICATION_SECRET` | Yes | -- | Cookie signing secret (itsdangerous) |
 | `FISHTEST_CAPTCHA_SECRET` | No | -- | reCAPTCHA secret key for signup |
 | `FISHTEST_CAPTCHA_SITE_KEY` | No | built-in | reCAPTCHA site key for signup |
@@ -77,10 +77,14 @@ secret and the reCAPTCHA secret.
 
 | Value | Meaning |
 |-------|---------|
-| (empty) | Workers fetch nets from this server via `/nn/` redirects |
+| (unset) | Server falls back to the request origin (`{scheme}://{host}`) for redirects |
+| (empty) | Server uses same-host relative redirects (`/nn/<id>`) |
 | `https://SERVER_NAME` | Workers download directly from this origin |
 | `https://CDN_HOSTNAME` | Workers download via a CDN in front of this origin |
 | `https://data.stockfishchess.org` | Workers download via the official fishtest CDN |
+
+Note: `systemd` `Environment="FISHTEST_NN_URL=..."` always sets the variable.
+If you want the (unset) behavior, omit that `Environment=` line.
 
 When a `CDN_HOSTNAME` is used, it must also appear in the nginx
 `server_name` directive (see site configuration below). `CDN_HOSTNAME`

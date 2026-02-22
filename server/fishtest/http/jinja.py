@@ -137,13 +137,6 @@ def default_templates() -> Jinja2Templates:
 
 
 @dataclass(frozen=True)
-class RenderedTemplate:
-    """Represents a rendered HTML payload."""
-
-    html: str
-
-
-@dataclass(frozen=True)
 class TemplateResponseOptions:
     """Options for building a Jinja2 template response."""
 
@@ -151,18 +144,6 @@ class TemplateResponseOptions:
     headers: Mapping[str, str] | None = None
     media_type: str | None = None
     background: BackgroundTask | None = None
-
-
-def render_template(
-    *,
-    templates: Jinja2Templates,
-    template_name: str,
-    context: Mapping[str, object],
-) -> RenderedTemplate:
-    """Render a Jinja2 template to HTML."""
-    template = templates.get_template(template_name)
-    html = template.render(**dict(context))
-    return RenderedTemplate(html=html)
 
 
 def render_template_response(

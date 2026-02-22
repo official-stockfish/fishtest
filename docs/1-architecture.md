@@ -58,7 +58,6 @@ http/
 |-- settings.py              -- AppSettings (environment variable parsing)
 |-- template_helpers.py      -- Jinja2 filters and global functions
 |-- template_renderer.py     -- Template rendering helper (render_template_to_response)
-|-- ui_context.py            -- UIRequestContext class and builder (build_ui_context)
 |-- ui_errors.py             -- HTML error page rendering (404, 403)
 `-- ui_pipeline.py           -- HTTP cache header application
 ```

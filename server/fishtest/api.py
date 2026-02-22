@@ -643,10 +643,6 @@ class UserApi(GenericApi):
         return RedirectResponse(f"{nn_base_url}/nn/{nn_id}", status_code=302)
 
 
-class InternalApi(GenericApi):
-    pass
-
-
 @router.post("/api/request_task")
 async def api_request_task(request: Request):
     api = WorkerApi(await get_request_shim(request))

@@ -17,7 +17,6 @@ from fishtest.http.cookie_session import (
     CookieSession,
     authenticated_user,
     is_https,
-    load_session,
     mark_session_force_clear,
     mark_session_max_age,
 )
@@ -29,7 +28,6 @@ from fishtest.http.dependencies import (
     get_userdb,
 )
 from fishtest.http.jinja import static_url
-from fishtest.http.ui_context import UIRequestContext, build_ui_context
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -308,12 +306,6 @@ def build_template_context(
     return context
 
 
-def get_ui_context(request: Request) -> UIRequestContext:
-    """Build the UI request context from the current request."""
-    session = load_session(request)
-    return build_ui_context(request, session)
-
-
 __all__ = [
     "ApiRequestShim",
     "JsonBodyResult",
@@ -325,6 +317,5 @@ __all__ = [
     "forget",
     "get_json_body",
     "get_request_shim",
-    "get_ui_context",
     "remember",
 ]
