@@ -1444,6 +1444,37 @@ def run_games(
     start_game_index = opening_offset + input_total_games
     run_seed = int(hashlib.sha1(run["_id"].encode("utf-8")).hexdigest(), 16) % (2**64)
 
+    testing_dir = worker_dir / "testing"
+    os.chdir(testing_dir)
+
+    def book_is_healthy(book, book_sri):
+        if book.exists():
+            try:
+                sri = text_hash(book)
+                if sri != book_sri:
+                    print(
+                        f"Book {book} has sri {sri} whereas "
+                        f"the server says it should be {book_sri}.",
+                        file=sys.stderr,
+                    )
+                    return False
+                return True
+            except Exception as e:
+                print(f"Exception computing sri of {book}:\n{e}", file=sys.stderr)
+                return False
+        print(f"Book {book} does not exist...")
+        return False
+
+    if not book_is_healthy(testing_dir / book, book_sri):
+        zipball = book + ".zip"
+        blob = download_from_github(zipball)
+        unzip(blob, testing_dir)
+        if not book_is_healthy(testing_dir / book, book_sri):
+            raise WorkerException(f"Failed to match sri for book {book}.")
+
+    print(f"Using book {testing_dir / book}...")
+    update_atime(testing_dir / book)
+
     def format_fastchess_options(options):
         return [
             f"option.{key}={value}"
@@ -1455,7 +1486,6 @@ def run_games(
     base_options = format_fastchess_options(base_options)
 
     # Build new and base engines from sources as needed.
-    testing_dir = worker_dir / "testing"
     concurrency = worker_info["concurrency"]
     compiler = worker_info["compiler"]
     version = worker_info["gcc_version"]
@@ -1481,57 +1511,8 @@ def run_games(
         global_cache,
     )
 
+    # Ensure we are back in the testing directory
     os.chdir(testing_dir)
-
-    downloaded_book = False
-    while not downloaded_book:
-        # Download the opening book if missing in the directory.
-        if (
-            not (testing_dir / book).exists()
-            or (testing_dir / book).stat().st_size == 0
-        ):
-            zipball = book + ".zip"
-            blob = download_from_github(zipball)
-            unzip(blob, testing_dir)
-            downloaded_book = True
-        else:
-            update_atime(testing_dir / book)
-            print(f"Re-using local book {testing_dir / book}.")
-
-        # very old tests (stopped/restarted) may lack the book_sri key
-        if book_sri is None:
-            print("Failed to obtain book_sri from server.", file=sys.stderr)
-            break
-
-        try:
-            sri = text_hash(testing_dir / book)
-        except Exception as e:
-            print(f"Exception computing book's sri:\n{e}", file=sys.stderr)
-            sri = None
-
-        if sri is not None and book_sri == sri:
-            print(f"Book sri for {book} matches.")
-            break
-
-        print(f"Book sri mismatch: {book_sri} != {sri}.", file=sys.stderr)
-        if downloaded_book:
-            print(f"Failed to match sri for book {book}. Ignoring!", file=sys.stderr)
-            post_to_worker_log(
-                worker_info,
-                password,
-                remote,
-                f"Downloaded book {book} has sri {sri} whereas "
-                f"the server says it should be {book_sri}.",
-            )
-            break
-
-        try:
-            (testing_dir / book).unlink()
-            print(f"Deleted local book {testing_dir / book}.")
-        except Exception as e:
-            raise WorkerException(
-                f"Failed to remove local book {testing_dir / book}.", e=e
-            )
 
     # Add EvalFile* with full path to fastchess options, and download the networks if missing.
     for option, net in required_nets(base_engine).items():
