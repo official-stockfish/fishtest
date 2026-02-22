@@ -94,7 +94,6 @@ class HeadMethodMiddleware:
     automatically (starlette/routing.py line ~241).
 
     Upstream tracking: https://github.com/fastapi/fastapi/discussions/5765
-    Local analysis: WIP/docs/200-ISSUE-HEAD.md
 
     Remove this middleware only after FastAPI fixes the gap upstream.
     """
