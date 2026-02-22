@@ -229,7 +229,10 @@ absorbs thundering-herd reconnection bursts from large worker fleets.
 File: `/etc/nginx/sites-available/fishtest.conf`
 
 Copy the following file as-is. Replace every occurrence of `SERVER_NAME` with
-the actual domain name. Adjust Let's Encrypt certificate paths if needed.
+the actual domain name (e.g. `tests.stockfishchess.org`) and `CDN_HOSTNAME`
+with the Cloudflare-proxied CDN hostname (e.g. `data.stockfishchess.org`).
+Omit `CDN_HOSTNAME` from the `server_name` directive if no CDN is used.
+Adjust Let's Encrypt certificate paths if needed.
 
 ```nginx
 upstream backend_8000 {
@@ -277,7 +280,7 @@ server {
     http2          on;
     server_tokens  off;
 
-    server_name SERVER_NAME;
+    server_name SERVER_NAME CDN_HOSTNAME;
 
     # TLS certificates (Let's Encrypt)
     ssl_certificate      /etc/letsencrypt/live/SERVER_NAME/fullchain.pem;
@@ -368,6 +371,26 @@ The named vhost does **not** use `default_server` -- that designation belongs
 exclusively to the catch-all in `default.conf`. This separation ensures
 correct SNI-based certificate selection when multiple vhosts share one IP
 on both IPv4 and IPv6.
+
+### Neural network CDN (`CDN_HOSTNAME`)
+
+In production `CDN_HOSTNAME` is `data.stockfishchess.org`, a
+Cloudflare-proxied alias that points back to this origin server.
+Cloudflare caches the immutable net files at the edge, reducing
+origin bandwidth.
+
+`CDN_HOSTNAME` must appear in the `server_name` directive so that
+nginx accepts the TLS handshake when Cloudflare connects to the
+origin. Without it, the catch-all in `default.conf` rejects the
+unknown SNI and Cloudflare returns error 525 to workers.
+
+The Let's Encrypt certificate covers only `SERVER_NAME`, not
+`CDN_HOSTNAME`. This works because Cloudflare SSL mode "Full"
+(not strict) validates the TLS connection without checking the
+certificate hostname. If the Cloudflare zone is later switched to
+"Full (Strict)", the certificate must be expanded to include both
+hostnames (requires Cloudflare dashboard access for DNS-01
+validation or an Origin CA certificate).
 
 ### Maintenance mode configuration
 
