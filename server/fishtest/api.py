@@ -128,9 +128,7 @@ class WorkerApi(GenericApi):
         user = self.request.userdb.get_user(username)
 
         if user is None:
-            self.handle_error(
-                "Unknown user: {}".format(username), status_code=401
-            )
+            self.handle_error("Unknown user: {}".format(username), status_code=401)
 
         stored_api_key = user.get("api_key")
 

@@ -5,14 +5,13 @@ from datetime import UTC, datetime
 from unittest.mock import patch
 
 import test_support
+from pyramid import testing
 from vtjson import ValidationError
 
+from fishtest.api import WorkerApi
 from fishtest.run_cache import Prio
 from fishtest.util import PASSWORD_MAX_LENGTH
-import util
-from fishtest.api import WorkerApi
-from fishtest.views import  user
-from pyramid import testing
+from fishtest.views import user
 
 
 class TestHttpUsers(unittest.TestCase):
@@ -324,7 +323,7 @@ class TestHttpUsers(unittest.TestCase):
 
 class ApiKeyResetTest(unittest.TestCase):
     def setUp(self):
-        self.rundb = util.get_rundb()
+        self.rundb = test_support.get_rundb()
         self.username = "ApiKeyUser"
         self.password = "secret"
         self.rundb.userdb.create_user(

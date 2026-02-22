@@ -1,14 +1,12 @@
+import secrets
+from datetime import UTC, datetime
+
 from pymongo import ASCENDING
 from vtjson import ValidationError, validate
 
 from fishtest.lru_cache import lru_cache
-import secrets
-from fishtest.schemas import user_schema
-from fishtest.lru_cache import lru_cache
-import secrets
-from datetime import UTC, datetime
 
-from fishtest.lru_cache import lru_cache
+from fishtest.schemas import user_schema
 
 DEFAULT_MACHINE_LIMIT = 16
 
