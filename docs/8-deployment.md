@@ -16,7 +16,7 @@
 | `FISHTEST_PORT` | Yes | `-1` | Port for this instance |
 | `FISHTEST_PRIMARY_PORT` | Yes | `-1` | Fixed primary port (typically 8000) |
 | `FISHTEST_URL` | Dev: No; Prod: Yes | -- | Public URL (e.g., `https://tests.stockfishchess.org`); may be empty in development for dynamic host/IP |
-| `FISHTEST_NN_URL` | Dev: No; Prod: Yes | -- | Neural network download base URL; may be empty in development to use same-host `/nn/` redirects |
+| `FISHTEST_NN_URL` | Dev: No; Prod: Yes | -- | Base URL workers use to download neural networks (see below) |
 | `FISHTEST_AUTHENTICATION_SECRET` | Yes | -- | Cookie signing secret (itsdangerous) |
 | `FISHTEST_CAPTCHA_SECRET` | No | -- | reCAPTCHA secret key for signup |
 | `FISHTEST_CAPTCHA_SITE_KEY` | No | built-in | reCAPTCHA site key for signup |
@@ -69,16 +69,24 @@ sudo journalctl -u fishtest@8000 # useful flags: -f, --since, --until, --no-page
 File: `/etc/systemd/system/fishtest@.service`
 
 Copy the following file as-is. Replace `USER_NAME` with the actual user,
-`SERVER_NAME` with the actual domain and `CHANGE_ME` with the
-production cookie signing secret and the reCAPTCHA secret.
+`SERVER_NAME` with the actual domain, `OPTIONAL_NN_URL` with one of
+the values below, and `CHANGE_ME` with the production cookie signing
+secret and the reCAPTCHA secret.
 
-URL variables:
+`OPTIONAL_NN_URL` -- base URL workers use to download neural networks:
 
-- **Development**: leave `FISHTEST_URL` and `FISHTEST_NN_URL` empty to allow
-    dynamic host/IP usage behind nginx (useful for VM setups where the IP
-    changes between boots).
-- **Production**: set both to canonical HTTPS URLs so generated links and
-    redirects are stable and externally correct.
+| Value | Meaning |
+|-------|---------|
+| (empty) | Workers fetch nets from this server via `/nn/` redirects |
+| `https://SERVER_NAME` | Workers download directly from this origin |
+| `https://CDN_HOSTNAME` | Workers download via a CDN in front of this origin |
+| `https://data.stockfishchess.org` | Workers download via the official fishtest CDN |
+
+When a `CDN_HOSTNAME` is used, it must also appear in the nginx
+`server_name` directive (see site configuration below). `CDN_HOSTNAME`
+resolves to Cloudflare edge servers, not to the origin; Cloudflare
+proxies requests back to `SERVER_NAME` and caches the immutable net
+files at the edge.
 
 ```ini
 [Unit]
@@ -90,7 +98,7 @@ Type=simple
 
 Environment="UVICORN_WORKERS=1"
 Environment="FISHTEST_URL=https://SERVER_NAME"
-Environment="FISHTEST_NN_URL=https://data.stockfishchess.org"
+Environment="FISHTEST_NN_URL=OPTIONAL_NN_URL"
 # Cookie-session signing secret (required in production).
 # Development-only insecure fallback requires explicit opt-in: Environment="FISHTEST_INSECURE_DEV=1"
 Environment="FISHTEST_AUTHENTICATION_SECRET=CHANGE_ME"
@@ -374,23 +382,19 @@ on both IPv4 and IPv6.
 
 ### Neural network CDN (`CDN_HOSTNAME`)
 
-In production `CDN_HOSTNAME` is `data.stockfishchess.org`, a
-Cloudflare-proxied alias that points back to this origin server.
-Cloudflare caches the immutable net files at the edge, reducing
-origin bandwidth.
+`CDN_HOSTNAME` appears in the `server_name` directive so that nginx
+routes CDN traffic to this vhost instead of rejecting it via the
+`ssl_reject_handshake` catch-all. The `location /nn/` block already
+serves the net files -- no additional location is needed.
 
-`CDN_HOSTNAME` must appear in the `server_name` directive so that
-nginx accepts the TLS handshake when Cloudflare connects to the
-origin. Without it, the catch-all in `default.conf` rejects the
-unknown SNI and Cloudflare returns error 525 to workers.
-
-The Let's Encrypt certificate covers only `SERVER_NAME`, not
-`CDN_HOSTNAME`. This works because Cloudflare SSL mode "Full"
-(not strict) validates the TLS connection without checking the
-certificate hostname. If the Cloudflare zone is later switched to
-"Full (Strict)", the certificate must be expanded to include both
-hostnames (requires Cloudflare dashboard access for DNS-01
-validation or an Origin CA certificate).
+**Certificate mismatch (known trade-off).** The Let's Encrypt
+certificate covers `SERVER_NAME` only. Cloudflare receives a cert
+whose hostname does not match `CDN_HOSTNAME`. This is accepted
+under Cloudflare SSL mode "Full", which verifies only that a valid
+TLS connection is established. Mode "Full (Strict)" checks the
+hostname and would reject it. Expanding the certificate to cover
+both hostnames requires Cloudflare dashboard access (DNS-01 or
+Origin CA), which is outside the scope of this server configuration.
 
 ### Maintenance mode configuration
 
