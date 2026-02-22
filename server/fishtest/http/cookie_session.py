@@ -114,6 +114,22 @@ class CookieSession:
             self.data.pop("flashes", None)
         return [str(x) for x in bucket]
 
+    def pop(self, key: str, default: Any = None) -> Any:
+        """Remove and return the value for the given key, or default if not present."""
+        return self.data.pop(key, default)
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        """Set a session value."""
+        self.data[key] = value
+
+    def __getitem__(self, key: str) -> Any:
+        """Get a session value."""
+        return self.data[key]
+
+    def __contains__(self, key: str) -> bool:
+        """Check if a key exists in the session."""
+        return key in self.data
+
     def invalidate(self) -> None:
         """Clear all session data."""
         self.data.clear()

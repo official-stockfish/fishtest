@@ -1099,7 +1099,6 @@ def user(request):
             new_password = request.POST.get("password", "").strip()
             new_password_verify = request.POST.get("password2", "").strip()
             new_email = request.POST.get("email", "").strip()
-            
             action = request.POST.get("action", "profile_update")
 
             # Temporary comparison until passwords are hashed.
@@ -1113,6 +1112,7 @@ def user(request):
                 request.userdb.save_user(user_data)
                 request.session.flash("Success! API key reset")
                 request.session["new_api_key"] = new_api_key
+                return RedirectResponse(url=request.url, status_code=302)
             else:
                 new_password = request.POST.get("password", "").strip()
                 new_password_verify = request.POST.get("password2", "").strip()
