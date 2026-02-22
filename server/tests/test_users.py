@@ -104,7 +104,7 @@ class TestHttpUsers(unittest.TestCase):
             follow_redirects=False,
         )
         self.assertEqual(response.status_code, 200)
-        self.assertIn("Invalid password for user", response.text)
+        self.assertIn("Invalid username or password.", response.text)
 
     def test_login_pending_then_success_redirects(self):
         # Pending is the default for new users; ensure it is set for this test.
@@ -125,7 +125,8 @@ class TestHttpUsers(unittest.TestCase):
             follow_redirects=False,
         )
         self.assertEqual(response.status_code, 200)
-        self.assertIn("Account pending for user:", response.text)
+        self.assertIn("pending approval", response.text)
+        self.assertIn("manually approve your new account", response.text)
 
         # Unblock, then user can log in successfully.
         user = self.rundb.userdb.get_user(self.username)
@@ -287,6 +288,34 @@ class TestHttpUsers(unittest.TestCase):
             self.rundb.userdb.users.delete_one({"username": username})
             self.rundb.userdb.user_cache.delete_one({"username": username})
             self.rundb.userdb.clear_cache()
+
+    def _check_auth_with_flag(self, field, expected_error, expected_code):
+        """Set a user flag, verify authenticate() returns the expected error, restore."""
+        user = self.rundb.userdb.get_user(self.username)
+        original = user.get(field)
+        user[field] = True
+        self.rundb.userdb.save_user(user)
+        try:
+            token = self.rundb.userdb.authenticate(self.username, self.password)
+            self.assertEqual(token["error"], expected_error)
+            self.assertEqual(token["error_code"], expected_code)
+        finally:
+            user = self.rundb.userdb.get_user(self.username)
+            user[field] = original
+            self.rundb.userdb.save_user(user)
+
+    def test_authenticate_unknown_user(self):
+        token = self.rundb.userdb.authenticate("NoSuchUser", "x")
+        self.assertEqual(token["error"], "Invalid username or password.")
+        self.assertEqual(token["error_code"], "invalid_credentials")
+
+    def test_authenticate_blocked_user(self):
+        self._check_auth_with_flag("blocked", "Your account is blocked.", "blocked")
+
+    def test_authenticate_pending_user(self):
+        self._check_auth_with_flag(
+            "pending", "Your account is pending approval.", "pending"
+        )
 
 
 if __name__ == "__main__":
