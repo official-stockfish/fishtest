@@ -100,13 +100,6 @@ def build_contributors_rows(
     return rows
 
 
-def clip_long(text: str, max_length: int = 20) -> str:
-    """Clip long strings and add an ellipsis."""
-    if len(text) > max_length:
-        return text[:max_length] + "..."
-    return text
-
-
 def pdf_to_string(
     pdf: list[tuple[float, float]],
     decimals: tuple[int, int] = (2, 5),
@@ -1247,7 +1240,6 @@ __all__ = [
     "build_run_table_rows",
     "build_tasks_rows",
     "build_tests_stats_context",
-    "clip_long",
     "diff_url",
     "diff_url_for_run",
     "display_residual",

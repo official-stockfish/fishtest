@@ -4,7 +4,6 @@ import math
 import os
 import random
 import re
-import sys
 import textwrap
 import threading
 import time
@@ -797,27 +796,6 @@ class RunDb:
         self.kvstore["books"] = self.books
         self.kvstore["worker_runs"] = self.worker_runs
         gh.save()
-
-    # handle termination
-    def exit_run(self, signum, frame):
-        if os.isatty(sys.stdout.fileno()):
-            print("\n", flush=True, end="")
-        print("Stop handling requests... ", flush=True)
-        self._shutdown = True
-        # Small delay to finish pending requests
-        time.sleep(0.5)
-        if self.scheduler is not None:
-            print("Stopping scheduler... ", flush=True)
-            self.scheduler.stop()
-        if self.is_primary_instance():
-            print("Flushing run cache... ", flush=True)
-            self.run_cache.flush_all()
-            print("Saving persistent data...", flush=True)
-            self.save_persistent_data()
-        if self.port >= 0:
-            self.actiondb.system_event(message=f"stop fishtest@{self.port}")
-        print("Quitting...", flush=True)
-        sys.exit(0)
 
     def scavenge_dead_tasks(self):
         with self.unfinished_runs_lock:

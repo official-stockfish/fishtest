@@ -34,7 +34,6 @@ and `http/jinja.py`.
 | `format_results(...)` | `util.py` | Game results formatter |
 | `format_time_ago(dt)` | `util.py` | Relative time formatter |
 | `display_residual(r)` | `util.py` | Chi-squared residual display |
-| `get_cookie(request, name)` | `util.py` | Cookie value accessor |
 | `is_active_sprt_ltc(run)` | `util.py` | Checks if run is active SPRT LTC |
 | `is_elo_pentanomial_run(run)` | `template_helpers.py` | Checks pentanomial display |
 | `nelo_pentanomial_summary(...)` | `template_helpers.py` | Pentanomial ELO summary |

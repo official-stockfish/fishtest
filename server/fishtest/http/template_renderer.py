@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from functools import cache
 from typing import TYPE_CHECKING, Protocol, cast
 
@@ -24,31 +23,6 @@ def _jinja_templates() -> Jinja2Templates:
 class _TemplateDebugResponse(Protocol):
     template_name: str
     context_data: dict[str, object]
-
-
-@dataclass(frozen=True)
-class RenderedTemplate:
-    """Represents a rendered HTML payload."""
-
-    html: str
-
-
-def render_template(
-    *,
-    template_name: str,
-    context: Mapping[str, object],
-) -> RenderedTemplate:
-    """Render a template using the Jinja2 renderer.
-
-    Note: the live UI pipeline uses `render_template_to_response()` instead.
-    This helper is intended for tests or tools that only need HTML output.
-    """
-    rendered = jinja_renderer.render_template(
-        templates=_jinja_templates(),
-        template_name=template_name,
-        context=context,
-    )
-    return RenderedTemplate(html=rendered.html)
 
 
 def render_template_to_response(

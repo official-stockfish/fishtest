@@ -128,7 +128,10 @@ class FishtestSessionMiddleware:
 
     def _get_signer(self) -> itsdangerous.TimestampSigner:
         if self._signer is None:
-            key = self._secret_key() if callable(self._secret_key) else self._secret_key
+            if isinstance(self._secret_key, str):
+                key = self._secret_key
+            else:
+                key = self._secret_key()
             self._signer = itsdangerous.TimestampSigner(str(key))
         return self._signer
 
