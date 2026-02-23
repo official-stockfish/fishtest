@@ -3,7 +3,10 @@
 {% block title %}{{ page_title }} | Stockfish Testing{% endblock %}
 
 {% block body %}
-{% set run_id = run["_id"] %}
+{% set run_id = run["_id"] | string %}
+<script>
+  const runId = {{ run_id | tojson }};
+</script>
 <script
   src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/8.0.2/diff.min.js"
   integrity="sha512-8pp155siHVmN5FYcqWNSFYn8Efr61/7mfg/F15auw8MCL3kvINbNT7gT8LldYPq3i/GkSADZd4IcUXPBoPP8gA=="
@@ -28,15 +31,15 @@
   <script>
     (async () => {
       await DOMContentLoaded();
-      await followRun("{{ run_id }}");
-      setNotificationStatus("{{ run_id }}");
+      await followRun(runId);
+      setNotificationStatus(runId);
     })();
   </script>
 {% else %}
   <script>
     (async () => {
       await DOMContentLoaded();
-      setNotificationStatus_("{{ run_id }}");
+      setNotificationStatus_(runId);
     })();
   </script>
 {% endif %}
@@ -58,10 +61,10 @@
   </script>
 {% endif %}
 
-<div id="enclosure"{{ " style=\"visibility:hidden;\"" if show_task >= 0 else "" | safe }}>
+<div id="enclosure"{% if show_task >= 0 %} style="visibility:hidden;"{% endif %}>
   <h2>
     <span>{{ page_title }}</span>
-    <a href="{{ diff_url(run, master_check=allow_github_api_calls) }}" target="_blank" rel="noopener">diff</a>
+    <a href="{{ diff_url(run, master_check=allow_github_api_calls) }}" target="_blank" rel="noopener noreferrer">diff</a>
   </h2>
 
   <div class="elo-results-top">
@@ -78,7 +81,7 @@
           <a
             href="{{ diff_url(run, master_check=allow_github_api_calls) }}"
             class="btn btn-primary bg-light-primary border-0 mb-2"
-            target="_blank" rel="noopener"
+            target="_blank" rel="noopener noreferrer"
           >
             View on GitHub
           </a>
@@ -158,8 +161,8 @@
                     {% elif arg[0] == "itp" %}
                       <td>{{ "{0:.2f}".format(arg[1] | float) }}</td>
                     {% else %}
-                      <td {{ "class=\"run-info\"" if arg[0] == "info" else "" | safe }}>
-                        {{ arg[1].replace("\n", "<br>") | safe }}
+                      <td{% if arg[0] == "info" %} class="run-info"{% endif %}>
+                        {{ arg[1] | e | replace("\n", "<br>") | safe }}
                       </td>
                     {% endif %}
                   </tr>
@@ -167,8 +170,8 @@
                   <tr>
                     <td>{{ arg[0] }}</td>
                     <td>
-                      <a href="{{ arg[2] }}" target="_blank" rel="noopener">
-                        {{ arg[1] | safe }}
+                      <a href="{{ arg[2] }}" target="_blank" rel="noopener noreferrer">
+                        {{ arg[1] }}
                       </a>
                     </td>
                   </tr>
@@ -214,7 +217,7 @@
               <form
                 action="/tests/stop"
                 method="POST"
-                onsubmit="handleStopDeleteButton('{{ run_id }}'); return true;"
+                data-stop-delete-run-id="{{ run_id }}"
               >
                 <input type="hidden" name="run-id" value="{{ run_id }}">
                 <button type="submit" class="btn btn-danger w-100">
@@ -257,7 +260,7 @@
       {% if warnings != [] %}
         <div class="alert alert-danger">
           {% for warning in warnings %}
-            Warning: {{ warning | safe }}
+            Warning: {{ warning }}
             {% if not loop.last %}
               <hr style="margin: 0.4em auto;">
             {% endif %}
@@ -268,7 +271,7 @@
       {% if notes != [] %}
         <div class="alert alert-info">
           {% for note in notes %}
-            Note: {{ note | safe }}
+            Note: {{ note }}
             {% if not loop.last %}
               <hr style="margin: 0.4em auto;">
             {% endif %}
@@ -379,7 +382,6 @@
         <button
           id="follow_button_{{ run_id }}"
           class="btn btn-primary col-12 col-md-auto"
-          onclick="handleFollowButton(this)"
           style="display:none; margin-top:0.2em;"></button>
         <hr style="visibility:hidden;">
       {% endif %}
@@ -539,7 +541,7 @@
     const button = e.currentTarget;
     button.textContent = "Downloading...";
     try {
-      const response = await fetch(`/api/run_pgns/{{ run_id }}.pgn.gz`);
+      const response = await fetch(`/api/run_pgns/${runId}.pgn.gz`);
       if (!response.ok) {
         if (response.status === 404) {
           alertError("No games found for this run");
@@ -580,7 +582,7 @@
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `{{ run_id }}.pgn.gz`;
+      a.download = `${runId}.pgn.gz`;
       document.body.append(a);
       a.click();
       document.body.removeChild(a);
@@ -606,13 +608,20 @@
        await renderTasks();
   }
 
+  const followButton = document.getElementById("follow_button_" + runId);
+  followButton?.addEventListener("click", (e) => {
+    handleFollowButton(e.currentTarget);
+  });
+
   async function renderTasks() {
     await DOMContentLoaded();
     if (fetchedTasksBefore)
       return Promise.resolve();
     const tasksBody = document.getElementById("tasks-body");
     try {
-      const html = await fetchText(`/tests/tasks/{{ run_id }}?show_task={{ show_task }}`);
+      const showTask = {{ show_task | tojson }};
+      const tasksUrl = `/tests/tasks/${encodeURIComponent(runId)}?show_task=${encodeURIComponent(showTask)}`;
+      const html = await fetchText(tasksUrl);
       tasksBody.innerHTML = html;
       fetchedTasksBefore = true;
     } catch (error) {
@@ -810,7 +819,7 @@
       copyDiffBtn = null;
     }
 
-    const diffApiUrl = "{{ diff_url(run, master_check=allow_github_api_calls) }}".replace(
+    const diffApiUrl = {{ diff_url(run, master_check=allow_github_api_calls) | tojson }}.replace(
       "//github.com/",
       "//api.github.com/repos/"
     );
@@ -824,7 +833,7 @@
       }
     } : {};
 
-    const testRepo = "{{ tests_repo(run) }}";
+    const testRepo = {{ tests_repo(run) | tojson }};
     const apiUrlNew = testRepo.replace(
       "//github.com/",
       "//api.github.com/repos/"
@@ -847,17 +856,19 @@
     let localStorageDiffs = JSON.parse(localStorage.getItem("localStorageDiffs")) || [];
     localStorageDiffs = localStorageDiffs.filter(diff => diff?.timeStamp >= oneDayAgo);
 
-    let run = localStorageDiffs.find(diff => diff["id"] === "{{ run_id }}" && !diff["masterVsBase"]);
-    let text = run?.text;
-    let count = run?.lines || 0;
+    const cachedRun = localStorageDiffs.find(diff => diff["id"] === runId && !diff["masterVsBase"]);
+    let text = cachedRun?.text;
+    let count = cachedRun?.lines || 0;
 
     try {
       loadingButton();
       if (!text) {
-        if (dots === 2)
+        let diffs;
+        if (dots === 2) {
           diffs = await fetchDiffTwoDots(apiUrlNew, apiUrlBase, diffNew, diffBase, options);
-        else if (dots === 3)
+        } else if (dots === 3) {
           diffs = await fetchDiffThreeDots(diffApiUrl);
+        }
 
         text = diffs.text || "No diff available";
         count = diffs.count || 0;
@@ -865,7 +876,7 @@
         // Try to save the diff in localStorage
         // It can throw an exception if there is not enough space
         try {
-          localStorageDiffs.push({id:"{{ run_id }}", text: text, lines: count, masterVsBase: false, timeStamp: currentTime});
+          localStorageDiffs.push({id: runId, text: text, lines: count, masterVsBase: false, timeStamp: currentTime});
           localStorage.setItem("localStorageDiffs", JSON.stringify(localStorageDiffs));
         } catch (e) {
           console.warn("Could not save diff in localStorage");
@@ -890,11 +901,11 @@
           text += `<br>Note: Apparently you are not allowed to use the GitHub API.
                   This may be caused by an expired, revoked or otherwise invalid
                   <a href='https://github.com/settings/personal-access-tokens'
-                  target='_blank'>GitHub personal access token</a> in your <a href='/user'>profile</a>.`
+                  target='_blank' rel='noopener noreferrer'>GitHub personal access token</a> in your <a href='/user'>profile</a>.`
         } else if(remainingApiCalls(response) === 0) {
           text += `<br>Note: Apparently the <a href='/rate_limits'>GitHub API rate limit</a> was exceeded.
                   Try to add a <a href='https://github.com/settings/personal-access-tokens'
-                  target='_blank'>GitHub personal access token</a> to your <a href='/user'>profile</a>
+                  target='_blank' rel='noopener noreferrer'>GitHub personal access token</a> to your <a href='/user'>profile</a>
                   or else use 'View on GitHub'.`
         }
       }

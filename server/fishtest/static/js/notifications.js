@@ -436,25 +436,74 @@ async function toggleNotifactionStatus(runId) {
   setNotificationStatus(runId);
 }
 
-// old style callback on main page: onclick="handleNotification(this)"
+// Template binding helpers.
+// These functions are intentionally global because they are called from:
+// - Delegated listeners below (replacing removed inline event handlers)
+// - Some templates' inline <script> blocks
 async function handleNotification(notification) {
-  const runId = notification.id.split("_")[1];
+  const id = notification?.id;
+  if (!id) {
+    return;
+  }
+  // Expected: notification_<runId>
+  const parts = id.split("_");
+  const runId = parts[parts.length - 1];
+  if (!runId) {
+    return;
+  }
   await toggleNotifactionStatus(runId);
 }
 
-// old style callback on tests_view page
 async function handleFollowButton(button) {
-  const runId = button.id.split("_")[2];
+  const id = button?.id;
+  if (!id) {
+    return;
+  }
+  // Expected: follow_button_<runId>
+  const parts = id.split("_");
+  const runId = parts[parts.length - 1];
+  if (!runId) {
+    return;
+  }
   await toggleNotifactionStatus(runId);
 }
 
-// old style callback
 async function handleStopDeleteButton(runId) {
+  if (!runId) {
+    return;
+  }
   await unfollowRun(runId);
   disableNotification(runId);
 }
 
-// new style callback
+function handleLegacyTemplateBindings() {
+  // Delegate notification click handling.
+  document.addEventListener("click", (e) => {
+    if (!(e.target instanceof Element)) {
+      return;
+    }
+    const notification = e.target.closest(".notifications");
+    if (!notification) {
+      return;
+    }
+    // Fire-and-forget toggle when clicking on a notification.
+    void handleNotification(notification);
+  });
+
+  // Fire-and-forget unfollow/disable when deleting a run.
+  document.addEventListener("submit", (e) => {
+    const form = e.target;
+    if (!(form instanceof HTMLFormElement)) {
+      return;
+    }
+    const runId = form.dataset.stopDeleteRunId;
+    if (!runId) {
+      return;
+    }
+    void handleStopDeleteButton(runId);
+  });
+}
+
 function dismissNotification(elId) {
   broadcast("dismissNotification_", elId);
 }
@@ -488,6 +537,8 @@ broadcastDispatch["notifyFishtest_"] = notifyFishtest_;
 broadcastDispatch["setNotificationStatus_"] = setNotificationStatus_;
 broadcastDispatch["disableNotification_"] = disableNotification_;
 broadcastDispatch["dismissNotification_"] = dismissNotification_;
+
+handleLegacyTemplateBindings();
 
 function cleanup_() {
   // Remove stale local storage items.

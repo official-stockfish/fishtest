@@ -40,6 +40,11 @@ google.charts.setOnLoadCallback(function () {
   mouseScreen.addEventListener("mouseleave", handleTooltips, true);
   setFields();
   drawCharts(false);
+
+  document
+    .getElementById("sprt-calc-calculate")
+    ?.addEventListener("click", () => drawCharts(false));
+
   window.onresize = function () {
     clearTimeout(resizeTimeout);
     resizeTimeout = setTimeout(() => drawCharts(true), 100);

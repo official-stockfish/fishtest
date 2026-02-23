@@ -16,14 +16,14 @@
     <div style="margin-left:90px;">
   {% endif %}
 {% endif %}
-<pre {{ results_pre_attrs(results_info, run) | safe }}>
+<pre {{ results_pre_attrs(results_info, run) }}>
   {% for value in info %}
     {{ value.replace("ELO", "Elo") if elo_ptnml_run and loop.index0 == 0 else value }}
     {% if not loop.last %} <br> {% endif %}
   {% endfor %}
   {% if nelo_summary %}
     <br>
-    {{ nelo_summary | safe }}
+    {{ nelo_summary }}
   {% endif %}
 </pre>
 {% if show_gauge %}

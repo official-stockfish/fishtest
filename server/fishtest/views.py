@@ -1,7 +1,6 @@
 import copy
 import gzip
 import hashlib
-import html
 import os
 import re
 from datetime import UTC, datetime
@@ -12,6 +11,7 @@ import bson
 import regex
 import requests
 from fastapi import APIRouter
+from markupsafe import Markup
 from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.requests import Request
@@ -2255,7 +2255,7 @@ def tests_view(request):
         if name == "spsa":
             run_args.append(("spsa", value, ""))
         else:
-            run_args.append((name, html.escape(str(value)), url))
+            run_args.append((name, str(value), url))
 
     active = 0
     cores = 0
@@ -2349,7 +2349,12 @@ def tests_view(request):
         user2=user,
         branch2=run["args"]["resolved_base"],
     )
-    anchor = f'<a class="alert-link" href="{anchor_url}" target="_blank" rel="noopener">base diff</a>'
+    # This link is inserted into a warning string and rendered under Jinja
+    # autoescape. Build it as Markup so the anchor tag is not escaped.
+    # Markup.format will HTML-escape attribute values (defense in depth).
+    anchor = Markup(
+        '<a class="alert-link" href="{}" target="_blank" rel="noopener noreferrer">base diff</a>'
+    ).format(anchor_url)
     use_3dot_diff = False
     if "spsa" not in run["args"] and allow_github_api_calls():
         irl = bool(request.authenticated_userid)
@@ -2362,7 +2367,9 @@ def tests_view(request):
                     run["args"]["resolved_base"],
                     ignore_rate_limit=irl,
                 ):
-                    warnings.append(f"base is not an ancestor of master: {anchor}")
+                    warnings.append(
+                        Markup("base is not an ancestor of master: {}").format(anchor)
+                    )
                 elif not gh.is_ancestor(
                     user1=user,
                     sha1=run["args"]["resolved_base"],

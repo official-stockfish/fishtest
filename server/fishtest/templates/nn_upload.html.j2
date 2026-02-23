@@ -63,7 +63,6 @@
         type="checkbox"
         class="form-check-input"
         id="terms-checkbox"
-        onclick="doLicense()"
       >
     </div>
 
@@ -79,12 +78,24 @@
 </div>
 
 <script>
-  function doLicense() {
-    if (document.getElementById("terms-checkbox").checked) {
-      document.getElementById("upload-button").removeAttribute("disabled");
+  function updateLicenseState() {
+    const checkbox = document.getElementById("terms-checkbox");
+    const uploadButton = document.getElementById("upload-button");
+    if (!checkbox || !uploadButton) {
+      return;
+    }
+    if (checkbox.checked) {
+      uploadButton.removeAttribute("disabled");
     } else {
-      document.getElementById("upload-button").setAttribute("disabled", "");
+      uploadButton.setAttribute("disabled", "");
     }
   }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    document
+      .getElementById("terms-checkbox")
+      ?.addEventListener("change", updateLicenseState);
+    updateLicenseState();
+  });
 </script>
 {% endblock %}

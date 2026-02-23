@@ -9,6 +9,20 @@
   --scroll-bar-width: 16px;
 }
 
+button.notifications {
+  color: inherit;
+  font: inherit;
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+button.notifications:focus-visible {
+  outline: 2px solid var(--bs-link-focus-color);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 @media (max-width: 575.98px) {
   body {
     font-size: 14px;
