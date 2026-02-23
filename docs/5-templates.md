@@ -36,8 +36,8 @@ and `http/jinja.py`.
 | `display_residual(r)` | `util.py` | Chi-squared residual display |
 | `is_active_sprt_ltc(run)` | `util.py` | Checks if run is active SPRT LTC |
 | `is_elo_pentanomial_run(run)` | `template_helpers.py` | Checks pentanomial display |
-| `nelo_pentanomial_summary(...)` | `template_helpers.py` | Pentanomial ELO summary |
-| `results_pre_attrs(...)` | `template_helpers.py` | HTML attributes for results display |
+| `nelo_pentanomial_summary(...)` | `template_helpers.py` | Pentanomial ELO summary (returns `Markup`) |
+| `results_pre_attrs(...)` | `template_helpers.py` | HTML attributes for results display (returns `Markup`) |
 | `run_tables_prefix(username)` | `template_helpers.py` | Toggle prefix for run tables |
 | `tests_run_setup(...)` | `template_helpers.py` | Test form default values |
 | `tests_repo(run)` | `util.py` | Extract tests repo URL from run |
@@ -437,6 +437,23 @@ Each blocked worker row: `worker_name`, `last_updated_label`, `actions_url`,
 
 6. **Request object**: not used directly in templates except via `url_for`
    and `static_url` helpers.
+
+7. **Escaping boundary**: view handlers pass raw strings. Jinja2 autoescape
+   handles HTML-escaping at render time. Do not pre-escape values into plain
+   strings with `html.escape()` in Python — that causes double-escaping.
+   Escaping in Python is appropriate when constructing a `Markup` value
+   (escape untrusted input first, then wrap).
+
+8. **`|safe` filter**: use only on values already typed as `Markup`, or
+   after an explicit `|e` escape followed by controlled transformations
+   (e.g., `{{ value | e | replace("\n", "<br>") | safe }}`).
+
+9. **External links**: every `target="_blank"` anchor must include
+   `rel="noopener noreferrer"` to prevent reverse-tabnabbing.
+
+10. **No inline event handlers**: use unobtrusive JavaScript (`addEventListener`
+    or delegated listeners) instead of `onclick`, `onsubmit`, or similar HTML
+    attributes.
 
 ## Adding a new template
 

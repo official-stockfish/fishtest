@@ -50,6 +50,9 @@ function protectForms() {
   ];
 
   document.querySelectorAll("form[method='POST']")?.forEach((form) => {
+    if (form.querySelector("input[name='csrf_token']")) {
+      return;
+    }
     const input = document.createElement("input");
     input["type"] = "hidden";
     input["name"] = "csrf_token";

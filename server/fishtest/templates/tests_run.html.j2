@@ -498,10 +498,11 @@
                         <a
                           href="https://github.com/vdbergh/spsa_simul/blob/master/doc/theoretical_basis.pdf"
                           target="_blank"
+                          rel="noopener noreferrer"
                         >
                           https://github.com/vdbergh/spsa_simul/blob/master/doc/theoretical_basis.pdf</a
                         >. The formulas can be checked by simulation which is done here:
-                        <a href="https://github.com/vdbergh/spsa_simul" target="_blank">
+                        <a href="https://github.com/vdbergh/spsa_simul" target="_blank" rel="noopener noreferrer">
                           https://github.com/vdbergh/spsa_simul</a
                         >. Currently this option should be used with the book
                         'UHO_4060_v4.epd' and in addition the option should not be used with
@@ -880,7 +881,14 @@
 
         if (name === "PT" || name === "PT SMP") {
           let info = (name === "PT SMP") ? "SMP " : "";
-          info += 'Progression test of "{{ master_info["message"] | safe }}" of {{ master_info["date"] | safe }} vs {{ pt_version | safe }}.';
+          info +=
+            "Progression test of \"" +
+            {{ master_info["message"] | tojson }} +
+            "\" of " +
+            {{ master_info["date"] | tojson }} +
+            " vs " +
+            {{ pt_version | tojson }} +
+            ".";
           document.getElementById("run-info").value = info;
         }
 

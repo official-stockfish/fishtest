@@ -5,9 +5,12 @@ from __future__ import annotations
 import binascii
 import datetime
 import html
+import re
 import urllib.parse
 from dataclasses import dataclass
 from urllib.parse import quote_plus
+
+from markupsafe import Markup
 
 from fishtest.stats import LLRcalc, stat_util
 from fishtest.stats import sprt as sprt_module
@@ -139,6 +142,9 @@ def is_elo_pentanomial_run(run: dict) -> bool:
     return "sprt" not in args and "spsa" not in args and "pentanomial" in results
 
 
+_CSS_COLOR_RE = re.compile(r"^(#[0-9a-fA-F]{6}|[a-zA-Z]+)$")
+
+
 def _nelo_pentanomial_details(results5: list[int]) -> dict:
     nelo_coeff = LLRcalc.nelo_divided_by_nt / (2**0.5)
     z975 = stat_util.Phi_inv(0.975)
@@ -161,7 +167,7 @@ def _nelo_pentanomial_details(results5: list[int]) -> dict:
     }
 
 
-def nelo_pentanomial_summary(run: dict) -> str | None:
+def nelo_pentanomial_summary(run: dict) -> Markup | None:
     """Build a summary line for Elo pentanomial results."""
     if not is_elo_pentanomial_run(run):
         return None
@@ -178,9 +184,10 @@ def nelo_pentanomial_summary(run: dict) -> str | None:
     else:
         pairs_ratio = float("nan")
 
-    return (
+    # The output intentionally contains the HTML entity &plusmn;.
+    return Markup(  # noqa: S704
         f"nElo: {nelo5:.2f} &plusmn; {nelo5_delta:.1f} (95%) "
-        f"PairsRatio: {pairs_ratio:.2f}"
+        f"PairsRatio: {pairs_ratio:.2f}",
     )
 
 
@@ -984,10 +991,14 @@ def build_tests_stats_context(run: dict) -> dict:
     }
 
 
-def results_pre_attrs(results_info: dict, run: dict) -> str:
+def results_pre_attrs(results_info: dict, run: dict) -> Markup:
     """Build pre tag attributes for results styling."""
     ret = ""
     style = results_info.get("style", "")
+    if style and not _CSS_COLOR_RE.match(style):
+        # Defense-in-depth: ignore unexpected styles rather than emitting
+        # uncontrolled CSS into an attribute string.
+        style = ""
     if style:
         ret = f'style="background-color: {style};"'
 
@@ -998,7 +1009,8 @@ def results_pre_attrs(results_info: dict, run: dict) -> str:
         classes += " time-odds"
     ret += f' class="{classes}"'
 
-    return ret
+    # Used as raw HTML attributes in templates.
+    return Markup(ret)  # noqa: S704
 
 
 def diff_url_for_run(run: dict, allow_github_api_calls: bool) -> str:  # noqa: FBT001
@@ -1208,7 +1220,11 @@ def build_run_table_rows(
         if not is_finished:
             cores_label = f"cores: {cores} ({workers})"
         info = args.get("info", "")
-        info_html = html.escape(info).replace("\n", "<br>") if info else ""
+        info_html = (
+            Markup(html.escape(info).replace("\n", "<br>"))  # noqa: S704
+            if info
+            else Markup("")
+        )
 
         rows.append(
             {

@@ -17,6 +17,11 @@
       document.cookie =
         "{{ cookie_name }}" + "=" + button.textContent.trim() + "; max-age={{ 60 * 60 * 24 * 365 * 10 }}; SameSite=Lax";
     }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const button = document.getElementById("{{ toggle }}-button");
+      button?.addEventListener("click", () => toggle{{ toggle | capitalize }}());
+    });
   </script>
 {% endif %}
 
@@ -24,7 +29,7 @@
 {% if toggle %}
   <a id="{{ toggle }}-button" class="btn btn-sm btn-light border"
      data-bs-toggle="collapse" href="#{{ toggle }}" role="button" aria-expanded="false"
-      aria-controls="{{ toggle }}" onclick="toggle{{ toggle | capitalize }}()">
+      aria-controls="{{ toggle }}">
   {{ 'Hide' if toggle_state == 'Hide' else 'Show' }}
   </a>
 {% endif %}
@@ -65,7 +70,7 @@
                       action="/tests/delete"
                       method="POST"
                       style="display: inline;"
-                      onsubmit="handleStopDeleteButton({{ row.run_id | tojson }}); return true;"
+                      data-stop-delete-run-id="{{ row.run_id }}"
                     >
                       <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                       <input type="hidden" name="run-id" value="{{ row.run_id }}">
@@ -88,8 +93,13 @@
             </td>
             {% if not row.is_finished %}
               <td class="run-notification" style="width:3em;text-align:center;">
-                <div id=notification_{{ row.run_id }} class='notifications' onclick='handleNotification(this)' style='display:inline-block;cursor:pointer;'>
-                </div>
+                <button
+                  id="notification_{{ row.run_id }}"
+                  class="notifications"
+                  type="button"
+                  aria-label="Toggle notifications"
+                  style="display:inline-block;cursor:pointer;"
+                ></button>
                 <script>
                   setNotificationStatus_({{ row.run_id | tojson }});   // no broadcast since this is at initialization
                 </script>
@@ -100,7 +110,7 @@
             </td>
 
             <td style="width: 2%;" class="run-diff">
-              <a href="{{ row.diff_url }}" target="_blank" rel="noopener">diff</a>
+              <a href="{{ row.diff_url }}" target="_blank" rel="noopener noreferrer">diff</a>
             </td>
 
             <td style="width: 1%;" class="run-elo">
@@ -112,7 +122,7 @@
             <td style="width: 13%;" class="run-live">
               <span class="{{ 'rounded ltc-highlight me-1' if is_active_sprt_ltc(row.run) else 'me-1' }}">
               {% if row.live_url %}
-                <a href="{{ row.live_url }}" target="_blank">{{ row.live_label }}</a>
+                <a href="{{ row.live_url }}" target="_blank" rel="noopener noreferrer">{{ row.live_label }}</a>
               {% else %}
                 {{ row.live_label }}
               {% endif %}
@@ -126,7 +136,7 @@
             </td>
 
             <td class="run-info">
-              {{ row.info_html | safe }}
+              {{ row.info_html }}
             </td>
           </tr>
         {% endfor %}
