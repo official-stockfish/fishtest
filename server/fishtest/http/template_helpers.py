@@ -585,45 +585,51 @@ def _build_sprt_context(ctx: _SprtInputs) -> dict:
     sprt_args = ctx.args["sprt"]
     params = _build_sprt_model_params(sprt_args, ctx)
 
-    sprt = {
-        "elo_model": params["elo_model"],
-        "alpha": params["alpha"],
-        "beta": params["beta"],
-        "elo0": params["elo0"],
-        "elo1": params["elo1"],
-        "batch_size_games": params["batch_size_games"],
-        "lelo0": params["lelo0"],
-        "lelo1": params["lelo1"],
-        "nelo0": params["nelo0"],
-        "nelo1": params["nelo1"],
-        "belo0": params["belo0"],
-        "belo1": params["belo1"],
-        "score0": params["score0"],
-        "score1": params["score1"],
-    }
-    sprt.update(
-        _build_sprt_trinomial(
-            params,
-            results3_=ctx.results3_,
-            pdf3=ctx.pdf3,
-            n3=ctx.n3,
-        ),
-    )
-
-    if (
-        ctx.has_pentanomial
-        and ctx.results5_ is not None
-        and ctx.pdf5 is not None
-        and ctx.n5 is not None
-    ):
+    try:
+        sprt = {
+            "elo_model": params["elo_model"],
+            "alpha": params["alpha"],
+            "beta": params["beta"],
+            "elo0": params["elo0"],
+            "elo1": params["elo1"],
+            "batch_size_games": params["batch_size_games"],
+            "lelo0": params["lelo0"],
+            "lelo1": params["lelo1"],
+            "nelo0": params["nelo0"],
+            "nelo1": params["nelo1"],
+            "belo0": params["belo0"],
+            "belo1": params["belo1"],
+            "score0": params["score0"],
+            "score1": params["score1"],
+        }
         sprt.update(
-            _build_sprt_pentanomial(
+            _build_sprt_trinomial(
                 params,
-                results5_=ctx.results5_,
-                pdf5=ctx.pdf5,
-                n5=ctx.n5,
+                results3_=ctx.results3_,
+                pdf3=ctx.pdf3,
+                n3=ctx.n3,
             ),
         )
+
+        if (
+            ctx.has_pentanomial
+            and ctx.results5_ is not None
+            and ctx.pdf5 is not None
+            and ctx.n5 is not None
+        ):
+            sprt.update(
+                _build_sprt_pentanomial(
+                    params,
+                    results5_=ctx.results5_,
+                    pdf5=ctx.pdf5,
+                    n5=ctx.n5,
+                ),
+            )
+    except (ArithmeticError, AssertionError, TypeError, ValueError) as e:
+        print(  # noqa: T201
+            f"Failed to build SPRT context; rendering without SPRT: {e!s}",
+        )
+        return {}
 
     return sprt
 
@@ -884,6 +890,7 @@ def build_tests_stats_context(run: dict) -> dict:
         n5=pent.get("n5"),
     )
     sprt = _build_sprt_context(sprt_inputs)
+    has_sprt = has_sprt and bool(sprt)
 
     if not has_sprt:
         elo3, elo95_3, los3 = stat_util.get_elo(tri["results3_"])
@@ -1021,7 +1028,7 @@ def diff_url_for_run(run: dict, allow_github_api_calls: bool) -> str:  # noqa: F
 def tests_run_setup(
     args: dict,
     master_info: dict | None,
-    pt_info: dict,
+    pt_info: dict | None,
     test_book: str,
 ) -> dict:
     """Assemble template-ready test setup values."""
@@ -1029,9 +1036,10 @@ def tests_run_setup(
     master_bench = master_info.get("bench") if isinstance(master_info, dict) else None
     latest_bench = args.get("base_signature", master_bench)
 
-    pt_version = pt_info["pt_version"]
-    pt_branch = pt_info["pt_branch"]
-    pt_signature = pt_info["pt_bench"]
+    pt_data = pt_info if isinstance(pt_info, dict) else {}
+    pt_version = pt_data.get("pt_version", "")
+    pt_branch = pt_data.get("pt_branch", "")
+    pt_signature = pt_data.get("pt_bench", "")
 
     tc = args.get("tc", "10+0.1")
     new_tc = args.get("new_tc", tc)

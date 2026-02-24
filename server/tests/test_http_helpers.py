@@ -191,6 +191,18 @@ class TestsRunSetupRobustnessTests(unittest.TestCase):
         self.assertEqual(setup["base_branch"], "master")
         self.assertIsNone(setup["latest_bench"])
 
+    def test_does_not_crash_when_pt_info_missing(self):
+        setup = tests_run_setup(
+            args={"base_signature": "789012"},
+            master_info={"bench": "123456"},
+            pt_info=None,
+            test_book="b.epd",
+        )
+        self.assertEqual(setup["pt_version"], "")
+        self.assertEqual(setup["pt_branch"], "")
+        self.assertEqual(setup["pt_signature"], "")
+        self.assertEqual(setup["latest_bench"], "789012")
+
 
 class RuntimeInvariantTests(unittest.TestCase):
     def test_primary_requires_single_worker_uvicorn(self):
