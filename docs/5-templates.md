@@ -440,7 +440,7 @@ Each blocked worker row: `worker_name`, `last_updated_label`, `actions_url`,
 
 7. **Escaping boundary**: view handlers pass raw strings. Jinja2 autoescape
    handles HTML-escaping at render time. Do not pre-escape values into plain
-   strings with `html.escape()` in Python — that causes double-escaping.
+   strings with `html.escape()` in Python -- that causes double-escaping.
    Escaping in Python is appropriate when constructing a `Markup` value
    (escape untrusted input first, then wrap).
 

@@ -44,7 +44,11 @@ from fishtest.http.middleware import (
     ShutdownGuardMiddleware,
 )
 from fishtest.http.session_middleware import FishtestSessionMiddleware
-from fishtest.http.settings import AppSettings, default_static_dir
+from fishtest.http.settings import (
+    THREADPOOL_TOKENS,
+    AppSettings,
+    default_static_dir,
+)
 from fishtest.rundb import RunDb
 from fishtest.views import router as views_router
 
@@ -55,7 +59,6 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
-THREADPOOL_TOKENS = 200
 
 
 class MiddlewareFactory(Protocol):

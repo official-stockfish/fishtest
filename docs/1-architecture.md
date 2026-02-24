@@ -101,8 +101,11 @@ calls) is offloaded to the threadpool. The event loop stays free to accept
 new connections and dispatch lightweight work (session cookie signing, JSON
 parsing, CSRF checks).
 
-Application-level throttling (`task_semaphore(5)` + `request_task_lock` in
-`rundb.py`) governs the scheduling critical path. Do **not** use Uvicorn's
+Application-level throttling (`task_semaphore(TASK_SEMAPHORE_SIZE)` +
+`request_task_lock` in `rundb.py`) governs the scheduling critical path.
+Both `THREADPOOL_TOKENS` and `TASK_SEMAPHORE_SIZE` are defined in
+`http/settings.py`; see [2-threading-model.md](2-threading-model.md) for
+the full analysis. Do **not** use Uvicorn's
 `--limit-concurrency` flag -- it rejects excess connections with HTTP 503
 instead of queuing them, which triggers exponential backoff in workers
 (see [8-deployment.md](8-deployment.md) for details).

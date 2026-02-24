@@ -10,15 +10,17 @@ only a fraction simultaneously occupy threadpool slots for blocking
 MongoDB/lock work. Connection acceptance is decoupled from handler
 execution -- Uvicorn can accept 10,000+ worker connections natively.
 
-The threadpool size is configured by `THREADPOOL_TOKENS` in `app.py`
-(currently 200). This is set during lifespan startup via
+The threadpool size is configured by `THREADPOOL_TOKENS` in
+`http/settings.py` (currently 200). This is set during lifespan startup via
 `current_default_thread_limiter().total_tokens`. The value must be large
 enough to avoid queuing under sustained load (9,400+ concurrent workers
 proven in production), but not so large that it overwhelms MongoDB or
 CPU resources.
 
-Application-level throttling (`task_semaphore(5)` + `request_task_lock` in
-`rundb.py`) governs the scheduling critical path, not the HTTP layer.
+Application-level throttling (`task_semaphore(TASK_SEMAPHORE_SIZE)` +
+`request_task_lock` in `rundb.py`) governs the scheduling critical path,
+not the HTTP layer. Both `THREADPOOL_TOKENS` and `TASK_SEMAPHORE_SIZE`
+are defined in `http/settings.py`.
 
 Do **not** use Uvicorn's `--limit-concurrency` flag. It rejects excess
 connections with HTTP 503 instead of queuing them. See
@@ -144,3 +146,104 @@ in the threadpool. They are acceptable because they process small payloads:
 
 5. **Streaming responses**: use `iterate_in_threadpool()` to wrap synchronous
    iterators for `StreamingResponse`.
+
+## Task scheduling throttle
+
+`/api/request_task` is the highest-contention endpoint. It is serialised
+internally by `request_task_lock` (a mutex), so only **1 thread** does
+useful scheduling work at any time. Every thread that enters `request_task()`
+holds one AnyIO threadpool token for its full duration -- **including**
+while blocked on the mutex.
+
+### Call chain (per request)
+
+```
+event loop  ->  run_in_threadpool(api.request_task)   [1 AnyIO token]
+  threadpool  ->  task_semaphore.acquire(False)       [non-blocking gate]
+    threadpool  ->  request_task_lock                 [blocking mutex]
+      sync_request_task(...)                          [MongoDB + iteration]
+```
+
+### The problem: burst-driven token starvation
+
+At steady state (~200 workers) `request_task` traffic is negligible.
+But worker reconnection bursts change the picture dramatically.
+
+Observed burst in tests:
+
+| Time  | Workers | Delta workers | Delta time |
+|-------|--------:|----------:|--------|
+| 14:47 |     205 |      --   |     -- |
+| 15:05 |   4,608 |  +4,403   | 18 min |
+| 15:20 |   9,116 |  +4,508   | 15 min |
+| 15:23 |   9,418 |    +302   |  3 min |
+
+During these bursts hundreds of workers call `/api/request_task`
+simultaneously. Without a cap **all 200 tokens** could fill with
+mutex-waiters doing zero useful work -- and **starve** the endpoints
+that *must* proceed promptly:
+
+| Endpoint | Rate at 10k workers | Starvation impact |
+|----------|--------------------:|-------------------|
+| `/api/beat`        | ~83 req/s (10k x 1/120 s) | Missed beats -> server reclaims active tasks |
+| `/api/update_task` | ~7.4 req/s (observed)     | Lost game results -> spurious dead-task scavenges |
+
+The `task_semaphore` gates entry so that at most `TASK_SEMAPHORE_SIZE`
+threads can hold tokens for `request_task` at any time. The next caller
+gets an immediate "server busy" response (zero token impact) and retries
+after a short backoff -- harmless because `task_duration` is 30 minutes.
+
+### Why `TASK_SEMAPHORE_SIZE = 5` when `THREADPOOL_TOKENS = 200`
+
+The value is grounded in production measurements from the 9,423-worker
+run.
+
+**Measured endpoint latencies**:
+
+| Endpoint | Observed p50 | Tokens held (Little's Law: L = lambda * W) |
+|----------|-------------:|----------------------------------------|
+| `/api/beat`            | 6 ms  | 83 req/s * 0.006 s = **0.5** |
+| `/api/update_task`     | 7 ms  | 7.4 req/s * 0.007 s = **0.05** |
+| `/api/request_version` | 4 ms  | 18.1 req/s * 0.004 s = **0.07** |
+| `/api/request_task`    | 15 ms | serialised -> **<= 1 active** |
+
+Under steady state all endpoints together occupy < 1 token.
+The risk is entirely in **bursts**.
+
+**Token budget during a reconnection burst (worst case):**
+
+```
+  THREADPOOL_TOKENS                          200
+- TASK_SEMAPHORE_SIZE (request_task cap)       5  (2.5 %)
+-----------------------------------------------
+Tokens available for everything else         195  (97.5 %)
+```
+
+Of those 5 tokens:
+- **1** is inside the lock doing actual work (~15 ms per call).
+- **4** are a standing queue absorbing arrival jitter.
+
+**Why not fewer (e.g. 2)?**
+During the observed Phase 3 burst, `request_task` arrival rate spiked to
+~20 req/s. With a lock hold time of 15 ms, the probability of > 1
+arrival during a single lock hold is ~26%. A queue depth of 4 absorbs
+this jitter without rejecting the majority of callers.
+
+**Why not more (e.g. 10)?**
+The lock is the throughput bottleneck -- only 1 thread executes regardless
+of queue depth. 10 slots would pin 10 tokens (5 %) on mutex-waiters
+for zero throughput gain, and double the worst-case starvation exposure
+for beat/update_task.
+
+**Production validation** (9,423 workers, 63+ min stable):
+- "Too busy" rejections:    **3** total (was 729 before THREADPOOL_TOKENS=200)
+- HTTP 503s from Uvicorn:   **0**
+- Process crashes:          **0**
+- Dead tasks (server-side): **0**
+
+### Where the constants live
+
+Both `THREADPOOL_TOKENS` and `TASK_SEMAPHORE_SIZE` are defined in
+`fishtest/http/settings.py` -- a dependency-free module that neither
+`app.py` nor `rundb.py` imports from each other, avoiding circular
+imports.
