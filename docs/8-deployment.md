@@ -165,9 +165,11 @@ Workers receiving this non-JSON response trigger a `JSONDecodeError` and
 enter exponential backoff (15 s -> 900 s), effectively removing themselves
 from the active pool. Under Uvicorn's ASGI async model, connection
 acceptance is handled by the event loop and costs negligible resources per
-idle connection. Application-level throttling (`task_semaphore(5)` +
-`request_task_lock` in `rundb.py`) governs the critical scheduling path.
-There is no need for an HTTP-layer concurrency cap.
+idle connection. Application-level throttling
+(`task_semaphore(TASK_SEMAPHORE_SIZE)` + `request_task_lock` in `rundb.py`)
+governs the critical scheduling path. Both constants live in
+`http/settings.py`; see [2-threading-model.md](2-threading-model.md)
+for the full analysis. There is no need for an HTTP-layer concurrency cap.
 
 **OpenAPI docs** (`/docs`, `/redoc`, `/openapi.json`) are disabled in
 production (`openapi_url` defaults to `None`). Set `OPENAPI_URL=/openapi.json`

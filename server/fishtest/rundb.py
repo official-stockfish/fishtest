@@ -20,6 +20,7 @@ import fishtest.run_cache
 import fishtest.spsa_handler
 import fishtest.stats.stat_util
 from fishtest.actiondb import ActionDb
+from fishtest.http.settings import TASK_SEMAPHORE_SIZE
 from fishtest.kvstore import KeyValueStore
 from fishtest.lru_cache import lru_cache
 from fishtest.run_cache import Prio
@@ -980,11 +981,12 @@ class RunDb:
 
         run["args"]["itp"] = itp
 
-    # Limit concurrent request_task
-    # It is very important that the following semaphore is initialized
-    # with a value strictly less than the number of Waitress threads.
-
-    task_semaphore = threading.Semaphore(5)
+    # Caps concurrent /api/request_task threadpool usage to
+    # TASK_SEMAPHORE_SIZE (5) out of THREADPOOL_TOKENS (200).
+    # Only 1 thread is active inside request_task_lock; the other 4
+    # absorb arrival jitter.  195 tokens stay free for beat/update_task.
+    # Derivation: docs/2-threading-model.md "Task scheduling throttle".
+    task_semaphore = threading.Semaphore(TASK_SEMAPHORE_SIZE)
 
     def worker_cap(self, run, worker_info):
         # Estimate how many games a worker will be able to run
