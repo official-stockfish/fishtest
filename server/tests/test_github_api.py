@@ -2,6 +2,7 @@ import json
 import os
 import re
 import unittest
+from unittest import mock
 
 import requests
 import test_support
@@ -139,6 +140,104 @@ class CreateGitHubApiTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.rundb.db.kvstore.drop()
+
+
+class MasterInfoRobustnessTests(unittest.TestCase):
+    def test_get_master_info_returns_stable_shape_on_exception(self):
+        with mock.patch(
+            "fishtest.views.gh.get_commits",
+            side_effect=requests.exceptions.ConnectionError("boom"),
+        ):
+            info = get_master_info(ignore_rate_limit=True)
+        self.assertIsInstance(info, dict)
+        self.assertIn("bench", info)
+        self.assertIn("message", info)
+        self.assertIn("date", info)
+        self.assertIsNone(info["bench"])
+
+    def test_get_master_info_handles_unexpected_payload_shapes(self):
+        for payload in ({"message": "API rate limit exceeded"}, [], None):
+            with mock.patch("fishtest.views.gh.get_commits", return_value=payload):
+                info = get_master_info(ignore_rate_limit=True)
+            self.assertIsInstance(info, dict)
+            self.assertIn("bench", info)
+            self.assertIn("message", info)
+            self.assertIn("date", info)
+
+    def test_get_master_info_ignores_malformed_entries_in_commit_list(self):
+        payload = [
+            {
+                "commit": {
+                    "message": "Title without bench",
+                    "committer": {"date": "2026-02-24T12:00:00Z"},
+                }
+            },
+            {},  # malformed entry should be ignored
+            {
+                "commit": {
+                    "message": "Some text\nBench 1234567",
+                    "committer": {"date": "2026-02-24T12:05:00Z"},
+                }
+            },
+        ]
+        with mock.patch("fishtest.views.gh.get_commits", return_value=payload):
+            info = get_master_info(ignore_rate_limit=True)
+
+        self.assertEqual(info["bench"], "1234567")
+
+
+class GitHubApiRetryTests(unittest.TestCase):
+    def _run_call_with_side_effect(self, side_effect):
+        old_initialized = gh._api_initialized
+        try:
+            gh._api_initialized = True
+            with (
+                mock.patch(
+                    "fishtest.github_api.requests.request",
+                    side_effect=side_effect,
+                ) as req,
+                mock.patch("fishtest.github_api.time.sleep") as _sleep,
+            ):
+                r = gh.call("https://api.github.com/rate_limit", timeout=0.01)
+            return r, req.call_count
+        finally:
+            gh._api_initialized = old_initialized
+
+    def test_call_retries_once_on_connection_error_for_get(self):
+        ok_response = requests.Response()
+        ok_response.status_code = 200
+        ok_response._content = b"ok"
+        ok_response.headers = {
+            # Avoid mutating module-level rate-limit globals in this test.
+            "X-RateLimit-Resource": "test",
+        }
+
+        r, call_count = self._run_call_with_side_effect(
+            [requests.exceptions.ConnectionError("drop"), ok_response]
+        )
+
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(call_count, 2)
+
+    def test_call_retries_once_on_transient_5xx_for_get(self):
+        bad_response = requests.Response()
+        bad_response.status_code = 502
+        bad_response._content = b"bad gateway"
+        bad_response.headers = {
+            "X-RateLimit-Resource": "test",
+        }
+
+        ok_response = requests.Response()
+        ok_response.status_code = 200
+        ok_response._content = b"ok"
+        ok_response.headers = {
+            "X-RateLimit-Resource": "test",
+        }
+
+        r, call_count = self._run_call_with_side_effect([bad_response, ok_response])
+
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(call_count, 2)
 
 
 if __name__ == "__main__":

@@ -1020,13 +1020,14 @@ def diff_url_for_run(run: dict, allow_github_api_calls: bool) -> str:  # noqa: F
 
 def tests_run_setup(
     args: dict,
-    master_info: dict,
+    master_info: dict | None,
     pt_info: dict,
     test_book: str,
 ) -> dict:
     """Assemble template-ready test setup values."""
     base_branch = args.get("base_tag", "master")
-    latest_bench = args.get("base_signature", master_info["bench"])
+    master_bench = master_info.get("bench") if isinstance(master_info, dict) else None
+    latest_bench = args.get("base_signature", master_bench)
 
     pt_version = pt_info["pt_version"]
     pt_branch = pt_info["pt_branch"]

@@ -13,6 +13,7 @@ from fishtest.http import cookie_session, jinja
 from fishtest.http.errors import _WORKER_API_PATHS
 from fishtest.http.middleware import _get_blocked_cached
 from fishtest.http.settings import AppSettings
+from fishtest.http.template_helpers import tests_run_setup
 from fishtest.http.ui_pipeline import apply_http_cache
 
 
@@ -168,6 +169,27 @@ class SettingsTests(unittest.TestCase):
         ):
             settings = AppSettings.from_env()
         self.assertFalse(settings.is_primary_instance)
+
+
+class TestsRunSetupRobustnessTests(unittest.TestCase):
+    def test_does_not_crash_when_master_info_missing(self):
+        pt_info = {"pt_version": "PT", "pt_branch": "master", "pt_bench": "123456"}
+        setup = tests_run_setup(
+            args={}, master_info=None, pt_info=pt_info, test_book="b.epd"
+        )
+        self.assertEqual(setup["base_branch"], "master")
+        self.assertIsNone(setup["latest_bench"])
+
+    def test_does_not_crash_when_master_info_bench_none(self):
+        pt_info = {"pt_version": "PT", "pt_branch": "master", "pt_bench": "123456"}
+        setup = tests_run_setup(
+            args={},
+            master_info={"bench": None},
+            pt_info=pt_info,
+            test_book="b.epd",
+        )
+        self.assertEqual(setup["base_branch"], "master")
+        self.assertIsNone(setup["latest_bench"])
 
 
 class RuntimeInvariantTests(unittest.TestCase):
