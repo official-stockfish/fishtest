@@ -2258,8 +2258,17 @@ def tests_view(request):
             params = value["params"]
             value = [summary]
             for p in params:
-                c_iter = p["c"] / (iter_local**gamma)
-                r_iter = p["a"] / (A + iter_local) ** alpha / c_iter**2
+                try:
+                    c_iter = p["c"] / (iter_local**gamma)
+                    r_iter = p["a"] / (A + iter_local) ** alpha / c_iter**2
+                except (ArithmeticError, TypeError, ValueError) as e:
+                    print(
+                        "Invalid SPSA param state while rendering "
+                        f"run {run['_id']} (iter={iter_local}, "
+                        f"param={p.get('name', '<unknown>')}): {str(e)}"
+                    )
+                    c_iter = float("nan")
+                    r_iter = float("nan")
                 value.append(
                     [
                         p["name"],

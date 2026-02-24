@@ -30,7 +30,8 @@ def secular(pdf):
     values = [ai for ai, pi in pdf]
     v = min(values)
     w = max(values)
-    assert v * w < 0
+    if v * w >= 0:
+        raise ValueError("secular equation requires support straddling zero")
     lower_bound = -1 / w
     upper_bound = -1 / v
 
@@ -40,7 +41,8 @@ def secular(pdf):
     x, res = scipy.optimize.brentq(
         f, lower_bound + epsilon, upper_bound - epsilon, full_output=True, disp=False
     )
-    assert res.converged
+    if not res.converged:
+        raise ValueError("secular root finding did not converge")
     return x
 
 

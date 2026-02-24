@@ -365,7 +365,17 @@ def estimate_game_duration(tc):
 def get_tc_ratio(tc, threads=1, base="10+0.1"):
     """Get TC ratio relative to the `base`, which defaults to standard STC.
     Example: standard LTC is 6x, SMP-STC is 4x."""
-    return threads * estimate_game_duration(tc) / estimate_game_duration(base)
+    try:
+        threads_value = float(threads)
+    except TypeError, ValueError:
+        print(f"Invalid threads value in get_tc_ratio: {threads!r}; defaulting to 1.0")
+        threads_value = 1.0
+
+    if not math.isfinite(threads_value) or threads_value <= 0.0:
+        print(f"Invalid threads value in get_tc_ratio: {threads!r}; defaulting to 1.0")
+        threads_value = 1.0
+
+    return threads_value * estimate_game_duration(tc) / estimate_game_duration(base)
 
 
 def is_sprt_ltc_data(args):
@@ -617,7 +627,14 @@ def reasonable_run_hashes(run):
     # if this func returns false, then emit warning to user to verify hashes
     base_hash = get_hash(run["args"]["base_options"])
     new_hash = get_hash(run["args"]["new_options"])
-    tc_ratio = get_tc_ratio(run["args"]["tc"], run["args"]["threads"])
+    try:
+        tc_ratio = get_tc_ratio(run["args"]["tc"], run["args"]["threads"])
+    except (TypeError, ValueError, ZeroDivisionError) as e:
+        print(
+            "Unable to compute tc ratio for run "
+            f"{run.get('_id', '<unknown>')}: {str(e)}"
+        )
+        return False
     return ok_hash(tc_ratio, base_hash) and ok_hash(tc_ratio, new_hash)
 
 
