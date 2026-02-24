@@ -1632,7 +1632,7 @@ def validate_form(request):
             batch_size=sprt_batch_size_games // 2,
         )  # game pairs
         # Limit on number of games played.
-        data["num_games"] = 800000
+        data["num_games"] = 1600000
     elif stop_rule == "spsa":
         data["num_games"] = int(request.POST["num-games"])
         if data["num_games"] <= 0:
