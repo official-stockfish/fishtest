@@ -9,46 +9,16 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-# ---------------------------------------------------------------------------
-# Threadpool and scheduling-throttle constants
-# ---------------------------------------------------------------------------
+# Threadpool and scheduling-throttle constants.
 #
-# THREADPOOL_TOKENS controls the AnyIO threadpool that runs ALL blocking
-# work (MongoDB, file I/O, templates). Every in-flight request holds one
-# token for its full duration.
-#
-# TASK_SEMAPHORE_SIZE caps how many of those tokens /api/request_task may
-# occupy simultaneously.  request_task is serialised internally by a
-# mutex (request_task_lock), so only 1 thread does useful work -- the
-# rest block on the mutex, pinning tokens for zero throughput.
-#
-# Without the cap, a reconnection burst (eg 208 -> 9,423 workers in 20 min)
-# would fill all 200 tokens with mutex-waiters, starving /api/beat
-# (~83 req/s at 10k workers) and /api/update_task until the burst drains.
-#
-# See docs/2-threading-model.md "Task scheduling throttle" for the full
-# derivation with Little's Law token-occupancy math and validation
-# against production data with ~10k workers.
-# ---------------------------------------------------------------------------
+# THREADPOOL_TOKENS: AnyIO threadpool size (tokens) for all blocking work.
+# TASK_SEMAPHORE_SIZE: Max concurrent /api/request_task calls admitted.
+# Invariant: TASK_SEMAPHORE_SIZE << THREADPOOL_TOKENS to avoid starving
+# /api/beat and /api/update_task during reconnection bursts.
+# Details: docs/2-threading-model.md (section: "Task scheduling throttle").
 
 THREADPOOL_TOKENS: int = 200
-"""AnyIO threadpool size set at lifespan startup.
-
-Proven sufficient for 9,400+ workers on a single Uvicorn process.
-Increasing beyond 200 risks overwhelming MongoDB with concurrent queries.
-"""
-
 TASK_SEMAPHORE_SIZE: int = 5
-"""Max concurrent /api/request_task calls in the threadpool.
-
-Derived from production data (128k reqs / 57 min at 9,423 workers):
-- 1 slot active (inside request_task_lock), ~15 ms per call.
-- 4 slots queue (absorb arrival jitter during reconnection bursts).
-- 195 tokens (97.5%) remain for beat, update_task, UI, uploads.
-
-A higher value pins more tokens on the mutex for zero throughput gain.
-A lower value rejects too aggressively during bursty reconnections.
-"""
 
 
 def env_int(name: str, *, default: int) -> int:
