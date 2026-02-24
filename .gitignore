@@ -2,6 +2,10 @@
 *.egg-info
 *.pyc
 __pycache__
+build/
+dist/
+*.whl
+.local/
 .python-version
 .mypy_cache/
 .ruff_cache/
