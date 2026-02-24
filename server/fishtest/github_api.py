@@ -81,7 +81,42 @@ def call(url, *args, _method="GET", _ignore_rate_limit=False, **kwargs):
     if "GH_TOKEN" in os.environ:
         headers["Authorization"] = "Bearer " + os.environ["GH_TOKEN"]
 
-    r = requests.request(_method, url, *args, headers=headers, **kwargs)
+    # GitHub occasionally drops connections (RemoteDisconnected), times out, or
+    # returns transient server errors (502/503/504). A single bounded retry for
+    # idempotent methods improves robustness without amplifying load or hiding
+    # persistent failures.
+    method = str(_method).upper()
+    max_attempts = 2 if method in {"GET", "HEAD"} else 1
+    retry_sleep_seconds = 0.1
+
+    retryable_statuses = {502, 503, 504}
+    retryable_errors = (
+        requests.exceptions.ConnectionError,
+        requests.exceptions.Timeout,
+    )
+
+    for attempt in range(max_attempts):
+        is_last = attempt == max_attempts - 1
+        try:
+            r = requests.request(method, url, *args, headers=headers, **kwargs)
+        except retryable_errors:
+            if is_last:
+                raise
+            time.sleep(retry_sleep_seconds)
+            continue
+
+        if r.status_code in retryable_statuses and not is_last:
+            try:
+                r.close()
+            except Exception:
+                # Best effort for synthetic/mocked responses.
+                pass
+            time.sleep(retry_sleep_seconds)
+            continue
+
+        break
+    else:  # pragma: no cover
+        raise RuntimeError("GitHub request retry loop exited unexpectedly")
     resource = r.headers.get("X-RateLimit-Resource", "")
     if resource == "core":
         _github_rate_limit["remaining"] = int(

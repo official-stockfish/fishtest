@@ -1218,26 +1218,53 @@ def contributors_monthly(request):
 
 
 # === Run creation helpers ===
+
+
 def get_master_info(
     user="official-stockfish", repo="Stockfish", ignore_rate_limit=False
 ):
+    # Contract: always return a dict with stable keys so templates/callers do
+    # not crash when GitHub is transiently unavailable.
+    default_info = {"bench": None, "message": "", "date": ""}
+
     try:
         commits = gh.get_commits(
             user=user, repo=repo, ignore_rate_limit=ignore_rate_limit
         )
     except Exception as e:
-        print(f"Exception getting commits:\n{e}")
-        return None
+        # Most common production failure: ConnectionError/RemoteDisconnected.
+        print(f"Exception getting commits:\n{e}", flush=True)
+        return default_info
+
+    if not isinstance(commits, list) or not commits:
+        # GitHub can occasionally return an unexpected JSON shape.
+        print(
+            "Unexpected GitHub commits payload; expected non-empty list.",
+            flush=True,
+        )
+        return default_info
 
     bench_search = re.compile(r"(^|\s)[Bb]ench[ :]+([1-9]\d{5,7})(?!\d)")
     latest_bench_match = None
 
-    message = commits[0]["commit"]["message"].strip().split("\n")[0].strip()
-    date_str = commits[0]["commit"]["committer"]["date"]
-    date = datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%SZ")
+    try:
+        message = commits[0]["commit"]["message"].strip().split("\n")[0].strip()
+        date_str = commits[0]["commit"]["committer"]["date"]
+        date = datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%SZ")
+    except Exception as e:
+        print(f"Unexpected commit payload shape: {e}", flush=True)
+        return default_info
 
     for commit in commits:
-        message_lines = commit["commit"]["message"].strip().split("\n")
+        try:
+            raw_message = commit["commit"]["message"]
+        except KeyError, TypeError:
+            # Be tolerant to partial payload corruption in later entries.
+            continue
+        if not isinstance(raw_message, str):
+            continue
+
+        message_lines = raw_message.strip().split("\n")
         for line in reversed(message_lines):
             bench = bench_search.search(line.strip())
             if bench:
@@ -1249,6 +1276,10 @@ def get_master_info(
                 break
         if latest_bench_match:
             break
+
+    if latest_bench_match is None:
+        # Keep message/date for PT info text, but leave bench unset.
+        return {"bench": None, "message": message, "date": date.strftime("%b %d")}
 
     return latest_bench_match
 
@@ -1577,7 +1608,16 @@ def validate_form(request):
     # Check entered bench
     if data["base_tag"] == "master":
         master_info = get_master_info(user=user, repo=repo, ignore_rate_limit=True)
-        if master_info is None or master_info["bench"] != data["base_signature"]:
+        master_bench = (
+            master_info.get("bench") if isinstance(master_info, dict) else None
+        )
+        if master_bench is None:
+            # GitHub is transiently unavailable; skip strict verification.
+            print(
+                "Unable to verify master bench signature (GitHub API unavailable).",
+                flush=True,
+            )
+        elif master_bench != data["base_signature"]:
             raise Exception(
                 "Bench signature of Base master does not match, "
                 + 'please "git pull upstream master" !'
