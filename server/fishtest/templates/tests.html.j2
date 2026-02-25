@@ -54,7 +54,7 @@
         await DOMContentLoaded();
         machinesBody = document.getElementById("machines");
         if (!machinesSkeleton) {
-          machinesSkeleton = document.querySelector("#machines .ssc-wrapper").cloneNode(true);
+          machinesSkeleton = document.querySelector("#machines .skeleton-wrap").cloneNode(true);
         }
         const machinesButton = document.getElementById("machines-button");
         machinesButton?.addEventListener("click", async () => {
@@ -127,10 +127,10 @@
   {% set max_height = "34.7vh" %}
   <section id="machines"
       class="overflow-auto {{ 'collapse show' if machines_shown else 'collapse' }}">
-      <div class="ssc-card ssc-wrapper">
-        <div class="ssc-head-line"></div>
+      <div class="skeleton-wrap">
+        <div class="skeleton-line"></div>
         <div
-          class="ssc-square"
+          class="skeleton-block"
           style="height: clamp({{ min_height }}, {{ height }}, {{ max_height }});">
           </div>
       </div>
