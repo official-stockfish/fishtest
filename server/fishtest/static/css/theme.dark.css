@@ -17,6 +17,8 @@
   --bs-body-bg-rgb: 177, 173, 167;
 
   --bs-link-color-rgb: 117, 187, 118;
+
+  --skeleton-bg: rgba(255, 255, 255, 0.1);
 }
 
 ::-webkit-scrollbar-thumb {
