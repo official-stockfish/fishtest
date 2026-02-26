@@ -10,39 +10,12 @@
 
 {% if page_idx == 0 %}
   <div class="mw-xxl">
-    <div class="row g-3 mb-3">
-      <div class="col-6 col-sm">
-        <div class="card card-lg-sm text-center">
-          <div class="card-header text-nowrap" title="Cores">Cores</div>
-          <div class="card-body">
-            <h4 class="card-title mb-0 monospace">{{ cores }}</h4>
-          </div>
-        </div>
-      </div>
-      <div class="col-6 col-sm">
-        <div class="card card-lg-sm text-center">
-          <div class="card-header text-nowrap" title="Nodes per second">Nodes / sec</div>
-          <div class="card-body">
-            <h4 class="card-title mb-0 monospace">{{ nps_m }}</h4>
-          </div>
-        </div>
-      </div>
-      <div class="col-6 col-sm">
-        <div class="card card-lg-sm text-center">
-          <div class="card-header text-nowrap" title="Games per minute">Games / min</div>
-          <div class="card-body">
-            <h4 class="card-title mb-0 monospace">{{ games_per_minute }}</h4>
-          </div>
-        </div>
-      </div>
-      <div class="col-6 col-sm">
-        <div class="card card-lg-sm text-center">
-          <div class="card-header text-nowrap" title="Time remaining">Time remaining</div>
-          <div class="card-body">
-            <h4 class="card-title mb-0 monospace">{{ pending_hours }}h</h4>
-          </div>
-        </div>
-      </div>
+    <div id="homepage-stats">
+      {% include "homepage_stats_fragment.html.j2" %}
+    </div>
+    <div hx-get="/tests/stats_summary"
+         hx-trigger="every {{ poll.stats_homepage }}s"
+         hx-swap="none">
     </div>
   </div>
 

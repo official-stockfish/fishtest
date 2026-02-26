@@ -114,9 +114,23 @@
             </td>
 
             <td style="width: 1%;" class="run-elo">
-              {% with run=row.run, show_gauge=show_gauge %}
-                {% include "elo_results.html.j2" %}
-              {% endwith %}
+              <div id="elo-{{ row.run_id }}">
+                {% with run=row.run, show_gauge=show_gauge %}
+                  {% include "elo_results.html.j2" %}
+                {% endwith %}
+              </div>
+              {% if not row.is_finished %}
+              <div hx-get="/tests/elo/{{ row.run_id }}"
+                   hx-trigger="every {{ poll.elo_homepage }}s"
+                   hx-swap="none">
+              </div>
+              {% if run_status is defined %}
+              <div hx-get="/tests/elo/{{ row.run_id }}?expected={{ run_status }}"
+                   hx-trigger="every {{ poll.status_homepage }}s"
+                   hx-swap="none">
+              </div>
+              {% endif %}
+              {% endif %}
             </td>
 
             <td style="width: 13%;" class="run-live">

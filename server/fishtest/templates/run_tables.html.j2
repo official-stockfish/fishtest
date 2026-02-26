@@ -16,7 +16,8 @@
     cookie_name=pending_toggle ~ '_state',
     toggle_state=toggle_states.get(pending_toggle, 'Show'),
     alt='No tests pending approval',
-    show_gauge=show_gauge
+    show_gauge=show_gauge,
+    run_status='pending'
   %}
     {% include "run_table.html.j2" %}
   {% endwith %}
@@ -30,7 +31,8 @@
     cookie_name=paused_toggle ~ '_state',
     toggle_state=toggle_states.get(paused_toggle, 'Show'),
     alt='No paused tests',
-    show_gauge=show_gauge
+    show_gauge=show_gauge,
+    run_status='paused'
   %}
     {% include "run_table.html.j2" %}
   {% endwith %}
@@ -57,7 +59,8 @@
     toggle_state=toggle_states.get(active_toggle, 'Show'),
     count=active_runs | length,
     alt='No active tests',
-    show_gauge=show_gauge
+    show_gauge=show_gauge,
+    run_status='active'
   %}
     {% include "run_table.html.j2" %}
   {% endwith %}

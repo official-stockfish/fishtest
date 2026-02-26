@@ -2085,6 +2085,32 @@ def get_page_title(run):
     return page_title
 
 
+def tests_elo(request):
+    run = request.rundb.get_run(request.matchdict["id"])
+    if run is None:
+        raise StarletteHTTPException(status_code=404)
+
+    is_finished = run.get("finished", False)
+    is_active = run.get("workers", 0) > 0
+    expected = request.params.get("expected")
+
+    if expected:
+        actual = "finished" if is_finished else ("active" if is_active else "paused")
+        if expected != actual:
+            request.response_headers["HX-Refresh"] = "true"
+        if is_finished:
+            request.response_status = 286
+        else:
+            request.response_status = 204
+    else:
+        if is_finished:
+            request.response_status = 286
+        elif not is_active:
+            request.response_status = 204
+
+    return {"run": run}
+
+
 def tests_live_elo(request):
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None or "sprt" not in run["args"]:
@@ -2681,6 +2707,23 @@ def tests_user(request):
     return response
 
 
+def homepage_stats(request):
+    (
+        _runs,
+        pending_hours,
+        cores,
+        nps,
+        games_per_minute,
+        _machines_count,
+    ) = request.rundb.aggregate_unfinished_runs()
+    return {
+        "pending_hours": "{:.1f}".format(pending_hours),
+        "cores": cores,
+        "nps_m": f"{nps / 1000000:.0f}M",
+        "games_per_minute": int(games_per_minute),
+    }
+
+
 def homepage_results(request):
     # Get updated results for unfinished runs + finished runs
 
@@ -2830,6 +2873,12 @@ _VIEW_ROUTES = [
         {"require_csrf": True, "request_method": "POST", "require_primary": True},
     ),
     (tests_live_elo, "/tests/live_elo/{id}", {"renderer": "tests_live_elo.html.j2"}),
+    (tests_elo, "/tests/elo/{id}", {"renderer": "elo_results_fragment.html.j2"}),
+    (
+        homepage_stats,
+        "/tests/stats_summary",
+        {"renderer": "homepage_stats_fragment.html.j2"},
+    ),
     (tests_stats, "/tests/stats/{id}", {"renderer": "tests_stats.html.j2"}),
     (
         tests_tasks,
