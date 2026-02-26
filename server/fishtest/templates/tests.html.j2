@@ -47,69 +47,57 @@
   </div>
 
   <script>
-    let fetchedMachinesBefore = false;
-    let machinesSkeleton = null;
-    let machinesBody = null;
-    async function handleRenderMachines(){
-        await DOMContentLoaded();
-        machinesBody = document.getElementById("machines");
-        if (!machinesSkeleton) {
-          machinesSkeleton = document.querySelector("#machines .skeleton-wrap").cloneNode(true);
-        }
-        const machinesButton = document.getElementById("machines-button");
-        machinesButton?.addEventListener("click", async () => {
-          await toggleMachines();
-        })
-        if ({{ 'true' if machines_shown else 'false' }})
-          await renderMachines();
-      }
+  (async () => {
+    await DOMContentLoaded();
+    const btn = document.getElementById("machines-button");
+    const target = document.getElementById("machines");
 
-    async function renderMachines() {
-      await DOMContentLoaded();
-      if (fetchedMachinesBefore) {
-        return Promise.resolve();
-      }
-      try {
-        if (document.querySelector("#machines .retry")) {
-          machinesBody.replaceChildren(machinesSkeleton);
-        }
-        const html = await fetchText("/tests/machines");
-        machinesBody.replaceChildren();
-        machinesBody.insertAdjacentHTML("beforeend", html);
-        const machinesTbody = document.querySelector("#machines tbody");
-        let newMachinesCount = machinesTbody?.childElementCount;
-
-        if (newMachinesCount === 1) {
-          const noMachines = document.getElementById("no-machines");
-          if (noMachines) newMachinesCount = 0;
-        }
-
-        const countSpan = document.getElementById("workers-count");
-        countSpan.textContent = `Workers - ${newMachinesCount} machines`;
-        fetchedMachinesBefore = true;
-      } catch (error) {
-        console.log("Request failed: " + error);
-        machinesBody.replaceChildren();
-        createRetryMessage(machinesBody, renderMachines);
-      }
-    }
-
-    async function toggleMachines() {
-      const button = document.getElementById("machines-button");
-      const active = button.textContent.trim() === "Hide";
-      if (active) {
-        button.textContent = "Show";
-      }
-      else {
-        button.textContent = "Hide";
-        await renderMachines();
-      }
-
+    btn?.addEventListener("click", () => {
+      const active = btn.textContent.trim() === "Hide";
+      btn.textContent = active ? "Show" : "Hide";
       document.cookie =
-        "machines_state" + "=" + button.textContent.trim() + "; max-age={{ 60 * 60 }}; SameSite=Lax";
-    }
+        "machines_state=" + btn.textContent.trim() +
+        "; max-age={{ 60 * 60 }}; SameSite=Lax";
 
-    handleRenderMachines();
+      if (!active && target && target.dataset.machinesLoaded !== "1") {
+        target.dataset.machinesLoaded = "loading";
+        htmx.trigger(target, "machines:load");
+      }
+    });
+
+    target?.addEventListener("htmx:beforeRequest", () => {
+      if (target.dataset.machinesLoaded !== "1") {
+        target.dataset.machinesLoaded = "loading";
+      }
+    });
+
+    target?.addEventListener("htmx:afterSwap", (e) => {
+      target.dataset.machinesLoaded = "1";
+      const tbody = e.target.querySelector("tbody");
+      let count = tbody?.childElementCount ?? 0;
+      if (count === 1 && e.target.querySelector("#no-machines")) count = 0;
+      document.getElementById("workers-count").textContent =
+        "Workers - " + count + " machines";
+    });
+
+    const showMachinesError = (e) => {
+      target.dataset.machinesLoaded = "0";
+      e.target.innerHTML =
+        '<div class="alert alert-danger d-flex justify-content-between align-items-center">' +
+        '<span>Something went wrong. Please try again.</span>' +
+        '<button class="btn btn-primary" hx-get="/tests/machines"' +
+        ' hx-target="#machines" hx-swap="innerHTML" hx-disabled-elt="this">' +
+        'Retry</button></div>';
+      htmx.process(e.target);
+    };
+
+    target?.addEventListener("htmx:responseError", (e) => {
+      showMachinesError(e);
+    });
+    target?.addEventListener("htmx:sendError", (e) => {
+      showMachinesError(e);
+    });
+  })();
   </script>
 
   <h4>
@@ -126,8 +114,13 @@
   {% set min_height = "37px" %}
   {% set max_height = "34.7vh" %}
   <section id="machines"
-      class="overflow-auto {{ 'collapse show' if machines_shown else 'collapse' }}">
-      <div class="skeleton-wrap">
+      data-machines-loaded="0"
+      class="overflow-auto {{ 'collapse show' if machines_shown else 'collapse' }}"
+      hx-get="/tests/machines"
+      hx-trigger="{% if machines_shown %}load, machines:load{% else %}machines:load{% endif %}"
+      hx-swap="innerHTML"
+      >
+      <div id="machines-loading" class="skeleton-wrap">
         <div class="skeleton-line"></div>
         <div
           class="skeleton-block"

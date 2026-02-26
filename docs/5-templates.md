@@ -114,7 +114,7 @@ Every template receives these keys from `build_template_context()`:
 | `contributors.html.j2` | Contributor leaderboard (all-time and monthly) |
 | `elo_results.html.j2` | ELO result display (included as partial) |
 | `login.html.j2` | Login form |
-| `machines.html.j2` | Connected worker machines table |
+| `machines_fragment.html.j2` | Connected worker machines table fragment |
 | `nn_upload.html.j2` | Neural network upload form |
 | `nns.html.j2` | Neural network listing with pagination |
 | `notfound.html.j2` | 404 error page |
@@ -124,7 +124,7 @@ Every template receives these keys from `build_template_context()`:
 | `run_tables.html.j2` | Run listing container (pending/active/finished) |
 | `signup.html.j2` | User registration form |
 | `sprt_calc.html.j2` | SPRT calculator page |
-| `tasks.html.j2` | Task table partial for a run |
+| `tasks_fragment.html.j2` | Task table fragment for a run |
 | `tests.html.j2` | Main tests dashboard |
 | `tests_finished.html.j2` | Finished tests listing with filters |
 | `tests_live_elo.html.j2` | Live ELO chart page |
@@ -195,7 +195,7 @@ The `elo` dict contains: `info_lines`, `pre_attrs`, `show_gauge`, `chart_div_id`
 
 Shared base context only.
 
-### `machines.html.j2`
+### `machines_fragment.html.j2`
 
 | Key | Type | Description |
 |-----|------|-------------|
@@ -280,7 +280,7 @@ Shared base context only.
 
 Shared base context only.
 
-### `tasks.html.j2`
+### `tasks_fragment.html.j2`
 
 | Key | Type |
 |-----|------|
