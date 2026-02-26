@@ -142,6 +142,86 @@ class TestHttpBoundary(unittest.TestCase):
         self.assertEqual(response.status_code, 204)
         self.assertEqual(response.content, b"")
 
+    def test_dispatch_view_get_sets_vary_hx_request(self):
+        from fishtest.views import _dispatch_view
+
+        app = self._build_app()
+
+        def _returns_context(_shim):
+            return {"title": "probe"}
+
+        @app.get("/dispatch-vary")
+        async def _dispatch_vary_probe(request: Request):
+            return await _dispatch_view(
+                _returns_context,
+                {"renderer": "login.html.j2"},
+                request,
+                {},
+            )
+
+        client = self.TestClient(app)
+        response = client.get("/dispatch-vary")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("HX-Request", response.headers.get("vary", ""))
+
+    def test_dispatch_view_direct_response_sets_vary_hx_request(self):
+        from fishtest.views import _dispatch_view
+
+        app = self._build_app()
+
+        def _returns_response(_shim):
+            return Response("ok", media_type="text/plain")
+
+        @app.get("/dispatch-direct-vary")
+        async def _dispatch_direct_vary_probe(request: Request):
+            return await _dispatch_view(
+                _returns_response,
+                {"renderer": "login.html.j2"},
+                request,
+                {},
+            )
+
+        client = self.TestClient(app)
+        response = client.get("/dispatch-direct-vary")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.text, "ok")
+        self.assertIn("HX-Request", response.headers.get("vary", ""))
+
+    def test_is_hx_request_ignores_navigate_mode(self):
+        from fishtest.views import _is_hx_request
+
+        req_htmx = SimpleNamespace(headers={"HX-Request": "true"})
+        req_navigate = SimpleNamespace(
+            headers={"HX-Request": "true", "Sec-Fetch-Mode": "navigate"}
+        )
+
+        self.assertTrue(_is_hx_request(req_htmx))
+        self.assertFalse(_is_hx_request(req_navigate))
+
+    def test_tests_finished_full_page_vs_fragment(self):
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        full_response = client.get("/tests/finished?page=4&success_only=1")
+        self.assertEqual(full_response.status_code, 200)
+        self.assertIn("<!doctype html>", full_response.text.lower())
+        self.assertIn('id="tests-finished-content"', full_response.text)
+
+        fragment_response = client.get(
+            "/tests/finished?page=4&success_only=1",
+            headers={"HX-Request": "true", "Sec-Fetch-Mode": "cors"},
+        )
+        self.assertEqual(fragment_response.status_code, 200)
+        self.assertNotIn("<!doctype html>", fragment_response.text.lower())
+        self.assertIn('id="tests-finished-filters"', fragment_response.text)
+
+        navigate_response = client.get(
+            "/tests/finished?page=4&success_only=1",
+            headers={"HX-Request": "true", "Sec-Fetch-Mode": "navigate"},
+        )
+        self.assertEqual(navigate_response.status_code, 200)
+        self.assertIn("<!doctype html>", navigate_response.text.lower())
+
     def test_template_context_includes_helpers(self):
         from fishtest.http import jinja
         from fishtest.http.boundary import build_template_context

@@ -1,4 +1,6 @@
 {% if pages and pages|length > 3 %}
+  {% set pagination_hx_target = pagination_hx_target if pagination_hx_target is defined else '' %}
+  {% set pagination_hx_push_url = pagination_hx_push_url if pagination_hx_push_url is defined else false %}
   <nav>
   <ul class="pagination pagination-sm">
   {% for page in pages %}
@@ -7,7 +9,11 @@
     {% set page_idx = page['idx'] %}
     <li class="page-item {{ page_state }}">
       {% if page_state not in ['disabled', 'active'] %}
-        <a class="page-link" href="{{ page_url }}">{{ page_idx }}</a>
+        {% if pagination_hx_target %}
+          <a class="page-link" href="{{ page_url }}" hx-get="{{ page_url }}" hx-target="#{{ pagination_hx_target }}" hx-push-url="{{ 'true' if pagination_hx_push_url else 'false' }}" hx-swap="innerHTML">{{ page_idx }}</a>
+        {% else %}
+          <a class="page-link" href="{{ page_url }}">{{ page_idx }}</a>
+        {% endif %}
       {% else %}
         <a class="page-link">{{ page_idx }}</a>
       {% endif %}

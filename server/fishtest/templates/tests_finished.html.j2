@@ -2,29 +2,7 @@
 
 {% block title %}Finished Tests{{ title }} | Stockfish Testing{% endblock %}
 {% block body %}
-<h2>
-  Finished Tests
-  {% if "success_only" in query_params %}
-    - Greens
-  {% elif "yellow_only" in query_params %}
-    - Yellows
-  {% elif "ltc_only" in query_params %}
-    - LTC
-  {% endif %}
-</h2>
-
-{% with
-  runs=finished_runs,
-  header='Finished',
-  count=num_finished_runs,
-  pages=finished_runs_pages,
-  title_text=title_text,
-  toggle=None,
-  toggle_state='Show',
-  page_idx=0,
-  username="",
-  show_gauge=show_gauge
-%}
-  {% include "run_table.html.j2" %}
-{% endwith %}
+<div id="tests-finished-content">
+  {% include "tests_finished_content_fragment.html.j2" %}
+</div>
 {% endblock %}
