@@ -1,0 +1,4 @@
+{% set run_id = run["_id"] | string %}
+<div id="elo-{{ run_id }}" hx-swap-oob="innerHTML">
+  {% include "elo_results.html.j2" %}
+</div>
