@@ -67,9 +67,20 @@
     <a href="{{ diff_url(run, master_check=allow_github_api_calls) }}" target="_blank" rel="noopener noreferrer">diff</a>
   </h2>
 
-  <div class="elo-results-top">
+    <div id="elo-{{ run_id }}" class="elo-results-top">
     {% include "elo_results.html.j2" %}
   </div>
+
+    {% if not run["finished"] %}
+    <div hx-get="/tests/elo/{{ run_id }}"
+      hx-trigger="every {{ poll.elo_detail }}s"
+      hx-swap="none">
+    </div>
+    <div hx-get="/tests/elo/{{ run_id }}?expected={{ 'active' if run.get('workers', 0) > 0 else 'paused' }}"
+      hx-trigger="every {{ poll.status_detail }}s"
+      hx-swap="none">
+    </div>
+    {% endif %}
 
   <div class="row">
     <div class="col-12 col-lg-9">
