@@ -3,15 +3,10 @@
 {% block title %}Live Elo - {{ page_title }} | Stockfish Testing{% endblock %}
 
 {% block body %}
-{% set run_id = run._id %}
+{% set run_id = run["_id"] | string %}
 <script src="https://www.gstatic.com/charts/loader.js"></script>
 
 <script src="{{ static_url('fishtest:static/js/live_elo.js') }}"></script>
-
-<script>
-  const testId = "{{ run_id }}";
-  followLive(testId);
-</script>
 
 <h2>Live Elo for SPRT test <a href="/tests/view/{{ run_id }}">{{ run_id }}</a></h2>
 
@@ -25,58 +20,88 @@
   </div>
   <h4>Details</h4>
   <div class="col-12 table-responsive-lg">
-    <table
-      id="data"
-      class="details-table table table-striped table-sm"
-      style="visibility: hidden">
-      <thead></thead>
-      <tbody>
-        <tr>
-          <td>Commit</td>
-          <td>
-            <a href="#" id="commit" target="_blank" rel="noopener noreferrer"></a>
-          </td>
-        </tr>
-        <tr>
-          <td>Info</td>
-          <td id="info"></td>
-        </tr>
-        <tr>
-          <td>Submitter</td>
-          <td>
-            <a href="#" id="username"></a>
-          </td>
-        </tr>
-        <tr>
-          <td>TC</td>
-          <td id="tc"></td>
-        </tr>
-        <tr>
-          <td>SPRT</td>
-          <td id="sprt"></td>
-        </tr>
-        <tr>
-          <td>LLR</td>
-          <td id="LLR"></td>
-        </tr>
-        <tr>
-          <td>Elo</td>
-          <td id="elo"></td>
-        </tr>
-        <tr>
-          <td>LOS</td>
-          <td id="LOS"></td>
-        </tr>
-        <tr>
-          <td>Games</td>
-          <td id="games"></td>
-        </tr>
-        <tr>
-          <td>Pentanomial</td>
-          <td id="pentanomial"></td>
-        </tr>
-      </tbody>
-    </table>
+    <div id="live-elo-data">
+      <span id="gauge-data"
+        data-llr="{{ LLR_raw }}"
+        data-a="{{ a_raw }}"
+        data-b="{{ b_raw }}"
+        data-los="{{ LOS_raw }}"
+        data-elo="{{ elo_raw }}"
+        data-ci-lower="{{ ci_lower_raw }}"
+        data-ci-upper="{{ ci_upper_raw }}"
+        hidden></span>
+      <table
+        id="data"
+        class="details-table table table-striped table-sm">
+        <thead></thead>
+        <tbody>
+          <tr>
+            <td>Commit</td>
+            <td>
+              <a href="{{ run['args']['tests_repo'] }}/compare/{{ run['args']['resolved_base'] }}...{{ run['args']['resolved_new'] }}"
+                 target="_blank" rel="noopener noreferrer">
+                {{ run["args"]["new_tag"] }} ({{ run["args"]["msg_new"] }})
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td>Info</td>
+            <td>{{ run["args"]["info"] }}</td>
+          </tr>
+          <tr>
+            <td>Submitter</td>
+            <td>
+              <a href="/tests/user/{{ run['args']['username'] }}">{{ run["args"]["username"] }}</a>
+            </td>
+          </tr>
+          <tr>
+            <td>TC</td>
+            <td>{{ run["args"]["tc"] }}</td>
+          </tr>
+          <tr>
+            <td>SPRT</td>
+            <td>
+              elo0:&nbsp;{{ "%.2f" | format(elo0) }}&nbsp;
+              alpha:&nbsp;{{ "%.2f" | format(alpha) }}&nbsp;
+              elo1:&nbsp;{{ "%.2f" | format(elo1) }}&nbsp;
+              beta:&nbsp;{{ "%.2f" | format(beta) }}
+              ({{ elo_model }})
+            </td>
+          </tr>
+          <tr>
+            <td>LLR</td>
+            <td>
+              {{ LLR }}
+              [{{ a }},{{ b }}]
+              {% if sprt_state %}({{ sprt_state }}){% endif %}
+            </td>
+          </tr>
+          <tr>
+            <td>Elo</td>
+            <td>{{ elo_value }} [{{ ci_lower }},{{ ci_upper }}] (95%)</td>
+          </tr>
+          <tr>
+            <td>LOS</td>
+            <td>{{ LOS }}%</td>
+          </tr>
+          <tr>
+            <td>Games</td>
+            <td>{{ games }} [w:{{ w_pct }}%, l:{{ l_pct }}%, d:{{ d_pct }}%]</td>
+          </tr>
+          <tr>
+            <td>Pentanomial</td>
+            <td>[{{ pentanomial | join(", ") }}]</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
+
+{% if not sprt_state %}
+<div hx-get="/tests/live_elo_update/{{ run_id }}"
+     hx-trigger="every {{ poll.live_elo }}s [document.visibilityState === 'visible']"
+     hx-swap="none">
+</div>
+{% endif %}
 {% endblock %}
