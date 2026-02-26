@@ -119,6 +119,29 @@ class TestHttpBoundary(unittest.TestCase):
         self.assertTrue(body["error"])
         self.assertIsNone(body["body"])
 
+    def test_dispatch_view_204_has_no_body(self):
+        from fishtest.views import _dispatch_view
+
+        app = self._build_app()
+
+        def _returns_204(shim):
+            shim.response_status = 204
+            return {"unused": True}
+
+        @app.get("/dispatch-204")
+        async def _dispatch_204_probe(request: Request):
+            return await _dispatch_view(
+                _returns_204,
+                {"renderer": "login.html.j2"},
+                request,
+                {},
+            )
+
+        client = self.TestClient(app)
+        response = client.get("/dispatch-204")
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.content, b"")
+
     def test_template_context_includes_helpers(self):
         from fishtest.http import jinja
         from fishtest.http.boundary import build_template_context

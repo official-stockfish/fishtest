@@ -538,37 +538,6 @@ function filterTable(inputValue, tableId, originalRows, predicate) {
   */
 }
 
-function createRetryMessage(parentElement, callback) {
-  const mainDiv = document.createElement("div");
-  mainDiv.className = "retry";
-
-  const innerDiv = document.createElement("div");
-  innerDiv.className = "col-12 col-md-8 col-lg-3";
-
-  const alertDiv = document.createElement("div");
-  alertDiv.className =
-    "alert alert-danger d-flex justify-content-between align-items-center";
-  alertDiv.id = "error-message";
-
-  const span = document.createElement("span");
-  span.textContent = "Something went wrong. Please try again.";
-
-  const button = document.createElement("button");
-  button.className = "btn btn-primary";
-  button.textContent = "Retry";
-
-  alertDiv.appendChild(span);
-  alertDiv.appendChild(button);
-
-  innerDiv.appendChild(alertDiv);
-  mainDiv.appendChild(innerDiv);
-
-  parentElement.appendChild(mainDiv);
-
-  // Add event listener after appending
-  button.addEventListener("click", callback);
-}
-
 // A helper for conveniently adding a timeout
 // to a fetch call
 const abortTimeout = (timeout) => {

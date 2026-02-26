@@ -464,7 +464,12 @@
           {% endif %}
         </tr>
       </thead>
-      <tbody id="tasks-body"></tbody>
+      <tbody id="tasks-body"
+        data-tasks-loaded="0"
+        hx-get="/tests/tasks/{{ run_id }}?show_task={{ show_task }}"
+        hx-trigger="{% if tasks_shown %}load, tasks:load{% else %}tasks:load{% endif %}"
+        hx-swap="innerHTML"
+      ></tbody>
     </table>
   </section>
 {# End of enclosing div to be able to make things invisible. #}
@@ -597,52 +602,54 @@
   const downloadPGNsButton = document.getElementById("download_games");
   downloadPGNsButton?.addEventListener("click", downloadPGNs);
 
-  let fetchedTasksBefore = false;
-  async function handleRenderTasks(){
+  let resolveTasksLoaded = null;
+  {% if show_task >= 0 %}
+  const tasksPromise = new Promise(resolve => { resolveTasksLoaded = resolve; });
+  {% else %}
+  const tasksPromise = Promise.resolve();
+  {% endif %}
+
+  (async () => {
     await DOMContentLoaded();
-    const tasksButton = document.getElementById("tasks-button");
-    tasksButton?.addEventListener("click", async () => {
-      await toggleTasks();
-    })
-     if ({{ 'true' if tasks_shown else 'false' }})
-       await renderTasks();
-  }
+    const btn = document.getElementById("tasks-button");
+    btn?.addEventListener("click", () => {
+      const active = btn.textContent.trim() === "Hide";
+      btn.textContent = active ? "Show" : "Hide";
+      document.cookie =
+        "tasks_state=" + btn.textContent.trim() +
+        "; max-age={{ 60 * 60 }}; SameSite=Lax";
+      const tbody = document.getElementById("tasks-body");
+      if (!active && tbody && tbody.dataset.tasksLoaded !== "1") {
+        tbody.dataset.tasksLoaded = "loading";
+        htmx.trigger(tbody, "tasks:load");
+      }
+    });
+    const tbody = document.getElementById("tasks-body");
+    tbody?.addEventListener("htmx:afterSwap", () => {
+      tbody.dataset.tasksLoaded = "1";
+      resolveTasksLoaded?.();
+    });
+
+    const showTasksError = (e) => {
+      tbody.dataset.tasksLoaded = "0";
+      e.target.innerHTML =
+        '<tr><td colspan="20">' +
+        '<div class="alert alert-danger d-flex justify-content-between align-items-center">' +
+        '<span>Something went wrong. Please try again.</span>' +
+        '<button class="btn btn-primary" hx-get="/tests/tasks/{{ run_id }}?show_task={{ show_task }}"' +
+        ' hx-target="#tasks-body" hx-swap="innerHTML" hx-disabled-elt="this">' +
+        'Retry</button></div></td></tr>';
+      htmx.process(e.target);
+      resolveTasksLoaded?.();
+    };
+    tbody?.addEventListener("htmx:responseError", showTasksError);
+    tbody?.addEventListener("htmx:sendError", showTasksError);
+  })();
 
   const followButton = document.getElementById("follow_button_" + runId);
   followButton?.addEventListener("click", (e) => {
     handleFollowButton(e.currentTarget);
   });
-
-  async function renderTasks() {
-    await DOMContentLoaded();
-    if (fetchedTasksBefore)
-      return Promise.resolve();
-    const tasksBody = document.getElementById("tasks-body");
-    try {
-      const showTask = {{ show_task | tojson }};
-      const tasksUrl = `/tests/tasks/${encodeURIComponent(runId)}?show_task=${encodeURIComponent(showTask)}`;
-      const html = await fetchText(tasksUrl);
-      tasksBody.innerHTML = html;
-      fetchedTasksBefore = true;
-    } catch (error) {
-      console.log("Request failed: " + error);
-    }
-  }
-
-  async function toggleTasks() {
-    const button = document.getElementById("tasks-button");
-    const active = button.textContent.trim() === "Hide";
-    if (active){
-      button.textContent = "Show";
-    }
-    else {
-      await renderTasks();
-      button.textContent = "Hide";
-    }
-
-    document.cookie =
-      "tasks_state" + "=" + button.textContent.trim() + "; max-age={{ 60 * 60 }}; SameSite=Lax";
-  }
 
   function addDiff (diffText, text) {
     diffText.textContent = text;
@@ -989,7 +996,6 @@
   }
 
   const diffPromise = handleDiff();
-  const tasksPromise = handleRenderTasks();
 
   Promise.all([spsaPromise, diffPromise, tasksPromise])
     .then(() => {
