@@ -15,7 +15,7 @@ from markupsafe import Markup
 from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, RedirectResponse
+from starlette.responses import HTMLResponse, RedirectResponse, Response
 from vtjson import ValidationError, union, validate
 
 import fishtest.github_api as gh
@@ -154,6 +154,15 @@ def _apply_response_headers(shim, response):
     return response
 
 
+def _append_vary_header(response, token: str) -> None:
+    existing = response.headers.get("Vary", "")
+    parts = [p.strip() for p in existing.split(",") if p.strip()]
+    lowered = {p.lower() for p in parts}
+    if token.lower() not in lowered:
+        parts.append(token)
+        response.headers["Vary"] = ", ".join(parts)
+
+
 async def _dispatch_view(fn, cfg, request, path_params):
     context = get_request_context(request)
     session = context["session"]
@@ -188,8 +197,12 @@ async def _dispatch_view(fn, cfg, request, path_params):
 
     result = await run_in_threadpool(fn, shim)
 
-    if isinstance(result, RedirectResponse):
+    if isinstance(result, Response):
         commit_session_response(request, session, shim, result)
+        apply_http_cache(result, cfg)
+        if request.method == "GET":
+            # Same URL can serve full page or HTMX fragment depending on headers.
+            _append_vary_header(result, "HX-Request")
         return _apply_response_headers(shim, result)
 
     status_code = getattr(shim, "response_status", 200) or 200
@@ -212,6 +225,10 @@ async def _dispatch_view(fn, cfg, request, path_params):
 
     commit_session_response(request, session, shim, response)
     apply_http_cache(response, cfg)
+    if request.method == "GET":
+        # Several UI endpoints return either full-page HTML or fragment HTML
+        # for the same URL based on the HX-Request header.
+        _append_vary_header(response, "HX-Request")
     return _apply_response_headers(shim, response)
 
 
@@ -794,7 +811,7 @@ def nns(request):
 
     pages = pagination(page_idx, num_nns, page_size, query_params)
 
-    return {
+    context = {
         "nns": formatted_nns,
         "pages": pages,
         "master_only": request.cookies.get("master_only") == "true",
@@ -806,6 +823,17 @@ def nns(request):
         "network_name_filter": network_name,
         "user_filter": user,
     }
+
+    if _is_hx_request(request):
+        return render_template_to_response(
+            request=request.raw_request,
+            template_name="nns_content_fragment.html.j2",
+            context=build_template_context(
+                request.raw_request, request.session, context
+            ),
+        )
+
+    return context
 
 
 def sprt_calc(request):
@@ -842,6 +870,30 @@ quotation_marks_translation = str.maketrans(quotation_marks, len(quotation_marks
 
 def sanitize_quotation_marks(text):
     return text.translate(quotation_marks_translation)
+
+
+def _is_hx_request(request) -> bool:
+    headers = getattr(request, "headers", None)
+    if headers is None:
+        return False
+
+    def _header(name: str) -> str:
+        value = headers.get(name)
+        if value is not None:
+            return str(value)
+        lower_name = name.lower()
+        for key, val in getattr(headers, "items", lambda: [])():
+            if str(key).lower() == lower_name:
+                return str(val)
+        return ""
+
+    if _header("HX-Request").lower() != "true":
+        return False
+    # Never treat top-level document navigations as fragment requests,
+    # even if HX-Request appears in transit.
+    if _header("Sec-Fetch-Mode").lower() == "navigate":
+        return False
+    return True
 
 
 # === Actions log ===
@@ -993,7 +1045,7 @@ def actions(request):
 
     pages = pagination(page_idx, num_actions, page_size, query_params)
 
-    return {
+    context = {
         "actions": actions,
         "pages": pages,
         "filters": {
@@ -1004,6 +1056,17 @@ def actions(request):
         },
         "usernames": [user["username"] for user in request.userdb.get_users()],
     }
+
+    if _is_hx_request(request):
+        return render_template_to_response(
+            request=request.raw_request,
+            template_name="actions_content_fragment.html.j2",
+            context=build_template_context(
+                request.raw_request, request.session, context
+            ),
+        )
+
+    return context
 
 
 # === User management + profiles ===
@@ -2706,7 +2769,7 @@ def tests_finished(request):
     title_text = (
         f"Finished Tests{title_suffix} - page {page_idx + 1} | Stockfish Testing"
     )
-    return {
+    context_out = {
         **context,
         "query_params": request.query_params,
         "finished_runs": build_run_table_rows(
@@ -2721,6 +2784,19 @@ def tests_finished(request):
         "title_text": title_text,
         "show_gauge": False,
     }
+
+    if _is_hx_request(request):
+        return render_template_to_response(
+            request=request.raw_request,
+            template_name="tests_finished_content_fragment.html.j2",
+            context=build_template_context(
+                request.raw_request,
+                request.session,
+                context_out,
+            ),
+        )
+
+    return context_out
 
 
 def tests_user(request):
@@ -2765,6 +2841,15 @@ def tests_user(request):
             page_idx=finished_context.get("page_idx", 0),
             username=username,
         )
+    if _is_hx_request(request):
+        return render_template_to_response(
+            request=request.raw_request,
+            template_name="tests_user_content_fragment.html.j2",
+            context=build_template_context(
+                request.raw_request, request.session, response
+            ),
+        )
+
     # page 2 and beyond only show finished test results
     return response
 

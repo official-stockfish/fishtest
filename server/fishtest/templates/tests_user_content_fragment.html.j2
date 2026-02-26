@@ -1,0 +1,38 @@
+<h2>
+{% if is_approver %}
+  <a href="/user/{{ username }}">{{ username }}</a> - Tests
+{% else %}
+  {{ username }} - Tests
+{% endif %}
+</h2>
+
+<div id="tests-user-filters" class="mb-2 filter-tabs">
+  <a class="btn btn-sm btn-light border tests-filter-tab {{ 'active' if not filters.success_only and not filters.yellow_only and not filters.ltc_only else '' }}" href="/tests/user/{{ username }}" hx-get="/tests/user/{{ username }}" hx-target="#tests-user-content" hx-push-url="true" hx-swap="innerHTML">All</a>
+  <a class="btn btn-sm btn-light border tests-filter-tab {{ 'active' if filters.success_only else '' }}" href="/tests/user/{{ username }}?success_only=1" hx-get="/tests/user/{{ username }}?success_only=1" hx-target="#tests-user-content" hx-push-url="true" hx-swap="innerHTML">Greens</a>
+  <a class="btn btn-sm btn-light border tests-filter-tab {{ 'active' if filters.yellow_only else '' }}" href="/tests/user/{{ username }}?yellow_only=1" hx-get="/tests/user/{{ username }}?yellow_only=1" hx-target="#tests-user-content" hx-push-url="true" hx-swap="innerHTML">Yellows</a>
+  <a class="btn btn-sm btn-light border tests-filter-tab {{ 'active' if filters.ltc_only else '' }}" href="/tests/user/{{ username }}?ltc_only=1" hx-get="/tests/user/{{ username }}?ltc_only=1" hx-target="#tests-user-content" hx-push-url="true" hx-swap="innerHTML">LTC</a>
+</div>
+
+{% set pagination_hx_target = "tests-user-content" %}
+{% set pagination_hx_push_url = true %}
+
+{% if run_tables_ctx is defined %}
+  {% with
+    pending_approval_runs=run_tables_ctx.pending_approval_runs,
+    paused_runs=run_tables_ctx.paused_runs,
+    active_runs=run_tables_ctx.active_runs,
+    failed_runs=run_tables_ctx.failed_runs,
+    finished_runs=run_tables_ctx.finished_runs,
+    num_finished_runs=run_tables_ctx.num_finished_runs,
+    finished_runs_pages=run_tables_ctx.finished_runs_pages,
+    page_idx=run_tables_ctx.page_idx,
+    prefix=run_tables_ctx.prefix,
+    toggle_states=run_tables_ctx.toggle_states,
+    finished_title_text=run_tables_ctx.finished_title_text,
+    show_gauge=run_tables_ctx.show_gauge
+  %}
+    {% include "run_tables.html.j2" %}
+  {% endwith %}
+{% else %}
+  {% include "run_tables.html.j2" %}
+{% endif %}
