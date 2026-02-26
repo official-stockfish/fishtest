@@ -48,8 +48,8 @@ registers it on the FastAPI router.
 | `/tests/view/{id}` | GET, POST | `tests_view` | `tests_view.html.j2` | |
 | `/tests/live_elo/{id}` | GET, POST | `tests_live_elo` | `tests_live_elo.html.j2` | |
 | `/tests/stats/{id}` | GET, POST | `tests_stats` | `tests_stats.html.j2` | |
-| `/tests/tasks/{id}` | GET, POST | `tests_tasks` | `tasks.html.j2` | |
-| `/tests/machines` | GET, POST | `tests_machines` | `machines.html.j2` | 10s cache |
+| `/tests/tasks/{id}` | GET, POST | `tests_tasks` | `tasks_fragment.html.j2` | |
+| `/tests/machines` | GET, POST | `tests_machines` | `machines_fragment.html.j2` | 10s cache |
 | `/tests/finished` | GET, POST | `tests_finished` | `tests_finished.html.j2` | |
 | `/tests/user/{username}` | GET, POST | `tests_user` | `tests_user.html.j2` | |
 | `/actions` | GET, POST | `actions` | `actions.html.j2` | |
