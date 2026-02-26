@@ -192,10 +192,13 @@ async def _dispatch_view(fn, cfg, request, path_params):
         commit_session_response(request, session, shim, result)
         return _apply_response_headers(shim, result)
 
+    status_code = getattr(shim, "response_status", 200) or 200
+
     renderer = cfg.get("renderer")
-    if isinstance(renderer, str):
+    if int(status_code) == 204:
+        response = HTMLResponse("", status_code=204)
+    elif isinstance(renderer, str):
         context = result if isinstance(result, dict) else {}
-        status_code = getattr(shim, "response_status", 200) or 200
         response = await run_in_threadpool(
             render_template_to_response,
             request=request,
@@ -2828,11 +2831,15 @@ _VIEW_ROUTES = [
     ),
     (tests_live_elo, "/tests/live_elo/{id}", {"renderer": "tests_live_elo.html.j2"}),
     (tests_stats, "/tests/stats/{id}", {"renderer": "tests_stats.html.j2"}),
-    (tests_tasks, "/tests/tasks/{id}", {"renderer": "tasks.html.j2"}),
+    (
+        tests_tasks,
+        "/tests/tasks/{id}",
+        {"renderer": "tasks_fragment.html.j2"},
+    ),
     (
         tests_machines,
         "/tests/machines",
-        {"renderer": "machines.html.j2", "http_cache": 10},
+        {"renderer": "machines_fragment.html.j2", "http_cache": 10},
     ),
     (tests_view, "/tests/view/{id}", {"renderer": "tests_view.html.j2"}),
     (tests_finished, "/tests/finished", {"renderer": "tests_finished.html.j2"}),
