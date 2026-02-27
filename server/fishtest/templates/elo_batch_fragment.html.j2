@@ -1,0 +1,19 @@
+{% for panel in panels %}
+  <template>
+    <tbody id="{{ panel.tbody_id }}" hx-swap-oob="innerHTML">
+      {% for row in panel.rows %}
+        {% with show_delete=panel.show_delete, show_gauge=False %}
+          {% include "run_table_row_fragment.html.j2" %}
+        {% endwith %}
+      {% endfor %}
+    </tbody>
+  </template>
+{% endfor %}
+
+{% for update in count_updates %}
+  <span id="{{ update.id }}" hx-swap-oob="innerHTML">{{ update.text }}</span>
+{% endfor %}
+
+<span id="workers-count" hx-swap-oob="innerHTML">
+  Workers - {{ machines_count }} machines
+</span>

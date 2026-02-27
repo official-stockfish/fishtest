@@ -2197,6 +2197,108 @@ def _build_live_elo_context(run):
     }
 
 
+def _classify_run_status(run):
+    if run.get("finished", False):
+        return "failed" if run.get("failed") else "finished"
+    if run.get("workers", 0) > 0:
+        return "active"
+    return "paused" if run.get("approved") else "pending"
+
+
+def tests_elo_batch(request):
+    username = request.params.get("username", "") or ""
+
+    (
+        runs,
+        _pending_hours,
+        _cores,
+        _nps,
+        _games_per_minute,
+        machines_count,
+    ) = request.rundb.aggregate_unfinished_runs(username=username or None)
+
+    pending_all = list(runs.get("pending", []))
+    active_runs = list(runs.get("active", []))
+    pending_runs = [r for r in pending_all if not r.get("approved")]
+    paused_runs = [r for r in pending_all if r.get("approved")]
+
+    allow_github_api_calls = request.has_permission("approve_run")
+
+    finished_context = get_paginated_finished_runs(request, username=username)
+    failed_runs = finished_context.get("failed_runs", [])
+    finished_runs = finished_context.get("finished_runs", [])
+
+    panels = [
+        {
+            "tbody_id": "pending-tbody",
+            "rows": build_run_table_rows(
+                pending_runs, allow_github_api_calls=allow_github_api_calls
+            ),
+            "show_delete": True,
+        },
+        {
+            "tbody_id": "paused-tbody",
+            "rows": build_run_table_rows(
+                paused_runs, allow_github_api_calls=allow_github_api_calls
+            ),
+            "show_delete": True,
+        },
+        {
+            "tbody_id": "failed-tbody",
+            "rows": build_run_table_rows(
+                failed_runs, allow_github_api_calls=allow_github_api_calls
+            ),
+            "show_delete": True,
+        },
+        {
+            "tbody_id": "active-tbody",
+            "rows": build_run_table_rows(
+                active_runs, allow_github_api_calls=allow_github_api_calls
+            ),
+            "show_delete": False,
+        },
+        {
+            "tbody_id": "finished-tbody",
+            "rows": build_run_table_rows(
+                finished_runs, allow_github_api_calls=allow_github_api_calls
+            ),
+            "show_delete": False,
+        },
+    ]
+
+    count_updates = [
+        {
+            "id": "pending-count",
+            "text": f"Pending approval - {len(pending_runs)} tests",
+        },
+        {
+            "id": "paused-count",
+            "text": f"Paused - {len(paused_runs)} tests",
+        },
+        {
+            "id": "active-count",
+            "text": f"Active - {len(active_runs)} tests",
+        },
+        {
+            "id": "failed-count",
+            "text": f"Failed - {len(failed_runs)} tests",
+        },
+        {
+            "id": "finished-count",
+            "text": f"Finished - {finished_context.get('num_finished_runs', 0)} tests",
+        },
+    ]
+
+    if not (pending_runs or paused_runs or active_runs):
+        request.response_status = 286
+
+    return {
+        "panels": panels,
+        "count_updates": count_updates,
+        "machines_count": machines_count,
+    }
+
+
 def tests_elo(request):
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None:
@@ -2205,22 +2307,32 @@ def tests_elo(request):
     is_finished = run.get("finished", False)
     is_active = run.get("workers", 0) > 0
     expected = request.params.get("expected")
+    actual = _classify_run_status(run)
 
     if expected:
-        actual = "finished" if is_finished else ("active" if is_active else "paused")
-        if expected != actual:
-            request.response_headers["HX-Refresh"] = "true"
         if is_finished:
             request.response_status = 286
-        else:
-            request.response_status = 204
     else:
         if is_finished:
             request.response_status = 286
         elif not is_active:
             request.response_status = 204
 
-    return {"run": run}
+    active = 0
+    cores = 0
+    for task in run["tasks"]:
+        if task["active"]:
+            active += 1
+            cores += task["worker_info"]["concurrency"]
+    totals = "({} active worker{} with {} core{})".format(
+        active, ("s" if active != 1 else ""), cores, ("s" if cores != 1 else "")
+    )
+
+    return {
+        "run": run,
+        "run_status_label": actual,
+        "tasks_totals": totals,
+    }
 
 
 def tests_live_elo(request):
@@ -2328,7 +2440,11 @@ def tests_machines(request):
             }
         )
 
-    return {"machines_list": machines_list, "machines": machines}
+    return {
+        "machines_list": machines_list,
+        "machines": machines,
+        "machines_count": len(machines),
+    }
 
 
 def tests_view(request):
@@ -2636,8 +2752,9 @@ def tests_view(request):
     }
 
 
-def get_paginated_finished_runs(request):
-    username = request.matchdict.get("username", "")
+def get_paginated_finished_runs(request, *, username=None):
+    if username is None:
+        username = request.matchdict.get("username", "")
     success_only = request.params.get("success_only", False)
     yellow_only = request.params.get("yellow_only", False)
     ltc_only = request.params.get("ltc_only", False)
@@ -3026,6 +3143,11 @@ _VIEW_ROUTES = [
         {"renderer": "live_elo_fragment.html.j2"},
     ),
     (tests_elo, "/tests/elo/{id}", {"renderer": "elo_results_fragment.html.j2"}),
+    (
+        tests_elo_batch,
+        "/tests/elo_batch",
+        {"renderer": "elo_batch_fragment.html.j2"},
+    ),
     (
         homepage_stats,
         "/tests/stats_summary",
