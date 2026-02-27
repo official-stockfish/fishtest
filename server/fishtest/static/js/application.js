@@ -149,10 +149,10 @@ function notify(title, body, link, fallback) {
     const notification = new Notification(title, {
       body: body,
       requireInteraction: true,
-      icon: "/img/stockfish.webp",
+      icon: "/static/img/stockfish.webp",
     });
     notification.onclick = () => {
-      window.open(link, "_blank");
+      window.open(link, "_blank", "noopener,noreferrer");
     };
   } else if (fallback) {
     fallback(title, body, link);
