@@ -222,6 +222,15 @@ class TestHttpBoundary(unittest.TestCase):
         self.assertEqual(navigate_response.status_code, 200)
         self.assertIn("<!doctype html>", navigate_response.text.lower())
 
+    def test_tests_elo_batch_lookback_query_does_not_require_runs(self):
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get("/tests/elo_batch?lookback_s=120")
+
+        self.assertNotEqual(response.status_code, 400)
+        self.assertIn(response.status_code, {200, 286})
+
     def test_template_context_includes_helpers(self):
         from fishtest.http import jinja
         from fishtest.http.boundary import build_template_context

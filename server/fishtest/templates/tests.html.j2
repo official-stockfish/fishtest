@@ -46,11 +46,6 @@
 
     target?.addEventListener("htmx:afterSwap", (e) => {
       target.dataset.machinesLoaded = "1";
-      const tbody = e.target.querySelector("tbody");
-      let count = tbody?.childElementCount ?? 0;
-      if (count === 1 && e.target.querySelector("#no-machines")) count = 0;
-      document.getElementById("workers-count").textContent =
-        "Workers - " + count + " machines";
     });
 
     const showMachinesError = (e) => {
@@ -90,7 +85,7 @@
       data-machines-loaded="0"
       class="overflow-auto {{ 'collapse show' if machines_shown else 'collapse' }}"
       hx-get="/tests/machines"
-      hx-trigger="{% if machines_shown %}load, machines:load{% else %}machines:load{% endif %}"
+      hx-trigger="{% if machines_shown %}load, {% endif %}machines:load, every {{ poll.machines_homepage }}s [document.getElementById('machines').classList.contains('show')]"
       hx-swap="innerHTML"
       >
       <div id="machines-loading" class="skeleton-wrap">

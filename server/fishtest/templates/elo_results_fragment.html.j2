@@ -2,3 +2,10 @@
 <div id="elo-{{ run_id }}" hx-swap-oob="innerHTML">
   {% include "elo_results.html.j2" %}
 </div>
+
+{% set _status = run_status_label if run_status_label is defined else (('failed' if run.get('failed') else 'finished') if run.get('finished') else ('active' if run.get('workers', 0) > 0 else ('paused' if run.get('approved') else 'pending'))) %}
+<span id="run-status-{{ run_id }}" hx-swap-oob="innerHTML">{{ _status }}</span>
+
+{% if tasks_totals is defined %}
+<span id="tasks-totals" hx-swap-oob="innerHTML">{{ tasks_totals }}</span>
+{% endif %}
