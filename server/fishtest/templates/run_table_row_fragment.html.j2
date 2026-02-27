@@ -1,0 +1,82 @@
+<tr id="run-{{ row.run_id }}">
+  {% if show_delete %}
+    <td style="width: 1%;" class="run-button run-deny">
+      <div class="dropdown">
+        <button type="submit" class="btn btn-danger btn-sm" data-bs-toggle="dropdown">
+          <i class="fas fa-trash-alt"></i>
+        </button>
+        <div class="dropdown-menu" role="menu">
+          <form
+            action="/tests/delete"
+            method="POST"
+            style="display: inline;"
+            data-stop-delete-run-id="{{ row.run_id }}"
+          >
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="run-id" value="{{ row.run_id }}">
+            <button type="submit" class="btn btn-danger btn-mini">Confirm</button>
+          </form>
+        </div>
+      </div>
+    </td>
+  {% endif %}
+
+  <td style="width: 6%;" class="run-date">
+    {{ row.start_date_label }}
+  </td>
+
+  <td style="width: 2%;" class="run-user">
+    <a href="{{ row.user_url }}" title="{{ row.user_name }}">
+      {{ row.user_short }}
+    </a>
+  </td>
+  {% if not row.is_finished %}
+    <td class="run-notification" style="width:3em;text-align:center;">
+      <button
+        id="notification_{{ row.run_id }}"
+        class="notifications"
+        type="button"
+        aria-label="Toggle notifications"
+        style="display:inline-block;cursor:pointer;"
+      ></button>
+      <script>
+        setNotificationStatus_({{ row.run_id | tojson }});   // no broadcast since this is at initialization
+      </script>
+    </td>
+  {% endif %}
+  <td style="width: 16%;" class="run-view">
+    <a href="{{ row.run_url }}">{{ row.new_tag_short }}</a>
+  </td>
+
+  <td style="width: 2%;" class="run-diff">
+    <a href="{{ row.diff_url }}" target="_blank" rel="noopener noreferrer">diff</a>
+  </td>
+
+  <td style="width: 1%;" class="run-elo">
+    <div id="elo-{{ row.run_id }}">
+      {% with run=row.run, show_gauge=show_gauge %}
+        {% include "elo_results.html.j2" %}
+      {% endwith %}
+    </div>
+  </td>
+
+  <td style="width: 13%;" class="run-live">
+    <span class="{{ 'rounded ltc-highlight me-1' if is_active_sprt_ltc(row.run) else 'me-1' }}">
+    {% if row.live_url %}
+      <a href="{{ row.live_url }}" target="_blank" rel="noopener noreferrer">{{ row.live_label }}</a>
+    {% else %}
+      {{ row.live_label }}
+    {% endif %}
+    @ {{ row.tc_label }} th {{ row.threads }}
+    </span>
+    {% if not row.is_finished %}
+      <div>
+        {{ row.cores_label }}
+      </div>
+    {% endif %}
+  </td>
+
+  <td class="run-info">
+    {{ row.info_html }}
+  </td>
+</tr>
