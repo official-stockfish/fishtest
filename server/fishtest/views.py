@@ -1291,10 +1291,22 @@ def get_sha(branch, repo_url):
         commit = gh.get_commit(user=user, repo=repo, branch=branch)
     except Exception as e:
         raise Exception(f"Unable to access developer repository {repo_url}: {str(e)}")
-    if "sha" in commit:
-        return commit["sha"], commit["commit"]["message"].split("\n")[0]
-    else:
+
+    if not isinstance(commit, dict):
         return "", ""
+
+    sha = commit.get("sha")
+    if not isinstance(sha, str) or sha == "":
+        return "", ""
+
+    message = ""
+    commit_data = commit.get("commit")
+    if isinstance(commit_data, dict):
+        raw_message = commit_data.get("message", "")
+        if isinstance(raw_message, str):
+            message = raw_message.split("\n", 1)[0]
+
+    return sha, message
 
 
 def get_nets(commit_sha, repo_url):

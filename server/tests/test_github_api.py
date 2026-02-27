@@ -10,7 +10,7 @@ from vtjson import validate
 
 import fishtest.github_api as gh
 from fishtest.schemas import books_schema
-from fishtest.views import get_master_info
+from fishtest.views import get_master_info, get_sha
 
 
 class CreateGitHubApiTest(unittest.TestCase):
@@ -184,6 +184,48 @@ class MasterInfoRobustnessTests(unittest.TestCase):
             info = get_master_info(ignore_rate_limit=True)
 
         self.assertEqual(info["bench"], "1234567")
+
+
+class GetShaRobustnessTests(unittest.TestCase):
+    def test_get_sha_handles_non_dict_payload(self):
+        with mock.patch(
+            "fishtest.views.gh.get_commit",
+            return_value=None,
+        ):
+            sha, message = get_sha("master", "https://github.com/user/Stockfish")
+
+        self.assertEqual(sha, "")
+        self.assertEqual(message, "")
+
+    def test_get_sha_handles_missing_or_invalid_sha(self):
+        with mock.patch(
+            "fishtest.views.gh.get_commit",
+            return_value={"commit": {"message": "hello"}},
+        ):
+            sha, message = get_sha("master", "https://github.com/user/Stockfish")
+
+        self.assertEqual(sha, "")
+        self.assertEqual(message, "")
+
+    def test_get_sha_handles_missing_commit_message(self):
+        with mock.patch(
+            "fishtest.views.gh.get_commit",
+            return_value={"sha": "a" * 40, "commit": {}},
+        ):
+            sha, message = get_sha("master", "https://github.com/user/Stockfish")
+
+        self.assertEqual(sha, "a" * 40)
+        self.assertEqual(message, "")
+
+    def test_get_sha_handles_non_string_message(self):
+        with mock.patch(
+            "fishtest.views.gh.get_commit",
+            return_value={"sha": "b" * 40, "commit": {"message": None}},
+        ):
+            sha, message = get_sha("master", "https://github.com/user/Stockfish")
+
+        self.assertEqual(sha, "b" * 40)
+        self.assertEqual(message, "")
 
 
 class GitHubApiRetryTests(unittest.TestCase):
