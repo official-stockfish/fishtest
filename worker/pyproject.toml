@@ -24,7 +24,7 @@ Repository = "https://github.com/official-stockfish/fishtest"
 Issues = "https://github.com/official-stockfish/fishtest"
 
 [build-system]
-requires = ["hatchling>=1.27.00"]
+requires = ["hatchling>=1.27.0"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
