@@ -65,6 +65,8 @@
   <h2>
     <span>{{ page_title }}</span>
     <a href="{{ diff_url(run, master_check=allow_github_api_calls) }}" target="_blank" rel="noopener noreferrer">diff</a>
+    {% set _status = ('failed' if run.get('failed') else 'finished') if run.get('finished') else ('active' if run.get('workers', 0) > 0 else ('paused' if run.get('approved') else 'pending')) %}
+    <span id="run-status-{{ run_id }}">{{ _status }}</span>
   </h2>
 
     <div id="elo-{{ run_id }}" class="elo-results-top">
@@ -72,12 +74,8 @@
   </div>
 
     {% if not run["finished"] %}
-    <div hx-get="/tests/elo/{{ run_id }}"
-      hx-trigger="every {{ poll.elo_detail }}s"
-      hx-swap="none">
-    </div>
     <div hx-get="/tests/elo/{{ run_id }}?expected={{ 'active' if run.get('workers', 0) > 0 else 'paused' }}"
-      hx-trigger="every {{ poll.status_detail }}s"
+      hx-trigger="every {{ poll.elo_detail }}s [document.visibilityState === 'visible']"
       hx-swap="none">
     </div>
     {% endif %}
@@ -448,7 +446,7 @@
       >
         {{ "Hide" if tasks_shown else "Show" }}
       </a>
-    Tasks {{ totals }}
+    Tasks <span id="tasks-totals">{{ totals }}</span>
   </h4>
   <section id="tasks"
        class="overflow-auto {{ "collapse show" if tasks_shown else "collapse" }}">
@@ -478,7 +476,7 @@
       <tbody id="tasks-body"
         data-tasks-loaded="0"
         hx-get="/tests/tasks/{{ run_id }}?show_task={{ show_task }}"
-        hx-trigger="{% if tasks_shown %}load, tasks:load{% else %}tasks:load{% endif %}"
+        hx-trigger="{% if tasks_shown %}load, tasks:load{% else %}tasks:load{% endif %}{% if not run['finished'] %}, every {{ poll.tasks_detail }}s [document.getElementById('tasks').classList.contains('show')]{% endif %}"
         hx-swap="innerHTML"
       ></tbody>
     </table>

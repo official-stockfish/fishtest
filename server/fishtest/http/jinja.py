@@ -21,12 +21,12 @@ import fishtest
 import fishtest.github_api as gh
 from fishtest.http import template_helpers as helpers
 from fishtest.http.settings import (
+    POLL_BATCH_HOMEPAGE_S,
     POLL_ELO_DETAIL_S,
-    POLL_ELO_HOMEPAGE_S,
     POLL_LIVE_ELO_S,
+    POLL_MACHINES_HOMEPAGE_S,
     POLL_STATS_HOMEPAGE_S,
-    POLL_STATUS_DETAIL_S,
-    POLL_STATUS_HOMEPAGE_S,
+    POLL_TASKS_DETAIL_S,
 )
 
 if TYPE_CHECKING:
@@ -134,10 +134,10 @@ def default_environment() -> Environment:
             "worker_name": helpers.worker_name,
             "static_url": static_url,
             "poll": {
+                "batch_homepage": POLL_BATCH_HOMEPAGE_S,
                 "elo_detail": POLL_ELO_DETAIL_S,
-                "status_detail": POLL_STATUS_DETAIL_S,
-                "elo_homepage": POLL_ELO_HOMEPAGE_S,
-                "status_homepage": POLL_STATUS_HOMEPAGE_S,
+                "tasks_detail": POLL_TASKS_DETAIL_S,
+                "machines_homepage": POLL_MACHINES_HOMEPAGE_S,
                 "stats_homepage": POLL_STATS_HOMEPAGE_S,
                 "live_elo": POLL_LIVE_ELO_S,
             },

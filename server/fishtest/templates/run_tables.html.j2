@@ -6,6 +6,21 @@
 {% set active_toggle = prefix ~ 'active' %}
 
 {% if page_idx == 0 %}
+  {% set batch_username = username if username is defined and username else '' %}
+  {% set batch_filters = filters if filters is defined else {} %}
+  {% set batch_qs = '' %}
+  {% if batch_username %}{% set batch_qs = batch_qs ~ '&username=' ~ batch_username %}{% endif %}
+  {% if batch_filters.get('success_only') %}{% set batch_qs = batch_qs ~ '&success_only=1' %}{% endif %}
+  {% if batch_filters.get('yellow_only') %}{% set batch_qs = batch_qs ~ '&yellow_only=1' %}{% endif %}
+  {% if batch_filters.get('ltc_only') %}{% set batch_qs = batch_qs ~ '&ltc_only=1' %}{% endif %}
+  {% set batch_url = '/tests/elo_batch' ~ ('?' ~ batch_qs[1:] if batch_qs else '') %}
+  <div hx-get="{{ batch_url }}"
+       hx-trigger="every {{ poll.batch_homepage }}s [document.visibilityState === 'visible']"
+       hx-swap="none">
+  </div>
+{% endif %}
+
+{% if page_idx == 0 %}
 
   {% with
     runs=pending_approval_runs,
@@ -17,7 +32,7 @@
     toggle_state=toggle_states.get(pending_toggle, 'Show'),
     alt='No tests pending approval',
     show_gauge=show_gauge,
-    run_status='pending'
+    panel_id='pending'
   %}
     {% include "run_table.html.j2" %}
   {% endwith %}
@@ -32,7 +47,7 @@
     toggle_state=toggle_states.get(paused_toggle, 'Show'),
     alt='No paused tests',
     show_gauge=show_gauge,
-    run_status='paused'
+    panel_id='paused'
   %}
     {% include "run_table.html.j2" %}
   {% endwith %}
@@ -46,7 +61,8 @@
     count=failed_runs | length,
     header='Failed',
     alt='No failed tests on this page',
-    show_gauge=show_gauge
+    show_gauge=show_gauge,
+    panel_id='failed'
   %}
     {% include "run_table.html.j2" %}
   {% endwith %}
@@ -60,7 +76,7 @@
     count=active_runs | length,
     alt='No active tests',
     show_gauge=show_gauge,
-    run_status='active'
+    panel_id='active'
   %}
     {% include "run_table.html.j2" %}
   {% endwith %}
@@ -75,7 +91,8 @@
   toggle_state=toggle_states.get(prefix ~ 'finished', 'Show') if page_idx == 0 else 'Show',
   pages=finished_runs_pages,
   title_text=finished_title_text,
-  show_gauge=show_gauge
+  show_gauge=show_gauge,
+  panel_id='finished'
 %}
   {% include "run_table.html.j2" %}
 {% endwith %}
