@@ -223,35 +223,47 @@
         {% if can_modify_run %}
           {% if not run["finished"] %}
             <div class="col-12 col-sm">
-              <form
-                action="/tests/stop"
-                method="POST"
-                data-stop-delete-run-id="{{ run_id }}"
+              <button
+                type="button"
+                class="btn btn-danger w-100"
+                hx-post="/tests/stop"
+                hx-vals='{"run-id": "{{ run_id }}", "csrf_token": "{{ csrf_token }}"}'
+                hx-confirm="Stop this run?"
+                hx-swap="none"
+                hx-on::after-request="if(event.detail.successful) location.reload()"
               >
-                <input type="hidden" name="run-id" value="{{ run_id }}">
-                <button type="submit" class="btn btn-danger w-100">
-                  Stop
-                </button>
-              </form>
+                Stop
+              </button>
             </div>
 
             {% if not run.get("approved", False) and not same_user %}
               <div class="col-12 col-sm">
-                <form action="/tests/approve" method="POST">
-                  <input type="hidden" name="run-id" value="{{ run_id }}">
-                  <button type="submit" id="approve-btn"
-                          class="btn {{ "btn-success" if warnings == [] else "btn-warning" }} w-100">
-                    Approve
-                  </button>
-                </form>
+                <button
+                  type="button"
+                  id="approve-btn"
+                  class="btn {{ "btn-success" if warnings == [] else "btn-warning" }} w-100"
+                  hx-post="/tests/approve"
+                  hx-vals='{"run-id": "{{ run_id }}", "csrf_token": "{{ csrf_token }}"}'
+                  hx-swap="none"
+                  hx-on::after-request="if(event.detail.successful) location.reload()"
+                >
+                  Approve
+                </button>
               </div>
             {% endif %}
           {% else %}
             <div class="col-12 col-sm">
-              <form action="/tests/purge" method="POST">
-                <input type="hidden" name="run-id" value="{{ run_id }}">
-                <button type="submit" class="btn btn-danger w-100">Purge</button>
-              </form>
+              <button
+                type="button"
+                class="btn btn-danger w-100"
+                hx-post="/tests/purge"
+                hx-vals='{"run-id": "{{ run_id }}", "csrf_token": "{{ csrf_token }}"}'
+                hx-confirm="Purge this run?"
+                hx-swap="none"
+                hx-on::after-request="if(event.detail.successful) location.reload()"
+              >
+                Purge
+              </button>
             </div>
           {% endif %}
         {% endif %}

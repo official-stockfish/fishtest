@@ -2208,6 +2208,8 @@ def tests_stop(request):
             run=run,
             message="User stop",
         )
+        if _is_hx_request(request):
+            return Response(status_code=204)
         request.session.flash("Stopped run")
     return home(request)
 
@@ -2229,6 +2231,8 @@ def tests_approve(request):
         except Exception as e:
             request.session.flash(str(e), "error")
         request.actiondb.approve_run(username=username, run=run, message="approved")
+        if _is_hx_request(request):
+            return Response(status_code=204)
         request.session.flash(message)
     return home(request)
 
@@ -2256,6 +2260,8 @@ def tests_purge(request):
         request.session.flash(message)
         return home(request)
 
+    if _is_hx_request(request):
+        return Response(status_code=204)
     request.session.flash("Purged run")
     return home(request)
 
@@ -2290,6 +2296,9 @@ def tests_delete(request):
             username=request.authenticated_userid,
             run=run,
         )
+        if _is_hx_request(request):
+            # Return empty body to remove the row from the table.
+            return HTMLResponse(content="", status_code=200)
         request.session.flash("Deleted run")
     return home(request)
 

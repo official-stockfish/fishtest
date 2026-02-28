@@ -1,25 +1,20 @@
 <tr id="run-{{ row.run_id }}">
   {% if show_delete %}
     <td style="width: 1%;" class="run-button run-deny">
-      <div class="dropdown">
-        <button type="submit" class="btn btn-danger btn-sm" data-bs-toggle="dropdown">
-          <i class="fas fa-trash-alt"></i>
-        </button>
-        <div class="dropdown-menu" role="menu">
-          <form
-            action="/tests/delete"
-            method="POST"
-            style="display: inline;"
-            data-stop-delete-run-id="{{ row.run_id }}"
-          >
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <input type="hidden" name="run-id" value="{{ row.run_id }}">
-            <button type="submit" class="btn btn-danger btn-mini">Confirm</button>
-          </form>
-        </div>
-      </div>
+      <button
+        type="button"
+        class="btn btn-danger btn-sm"
+        hx-post="/tests/delete"
+        hx-vals='{"run-id": "{{ row.run_id }}", "csrf_token": "{{ csrf_token }}"}'
+        hx-confirm="Are you sure you want to delete this run?"
+        hx-target="closest tr"
+        hx-swap="outerHTML"
+      >
+        <i class="fas fa-trash-alt"></i>
+      </button>
     </td>
   {% endif %}
+
 
   <td style="width: 6%;" class="run-date">
     {{ row.start_date_label }}
