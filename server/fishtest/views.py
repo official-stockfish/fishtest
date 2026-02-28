@@ -3,7 +3,7 @@ import gzip
 import hashlib
 import os
 import re
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.parse import quote, urlencode
 
@@ -15,7 +15,7 @@ from markupsafe import Markup
 from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, RedirectResponse
+from starlette.responses import HTMLResponse, RedirectResponse, Response
 from vtjson import ValidationError, union, validate
 
 import fishtest.github_api as gh
@@ -154,6 +154,15 @@ def _apply_response_headers(shim, response):
     return response
 
 
+def _append_vary_header(response, token: str) -> None:
+    existing = response.headers.get("Vary", "")
+    parts = [p.strip() for p in existing.split(",") if p.strip()]
+    lowered = {p.lower() for p in parts}
+    if token.lower() not in lowered:
+        parts.append(token)
+        response.headers["Vary"] = ", ".join(parts)
+
+
 async def _dispatch_view(fn, cfg, request, path_params):
     context = get_request_context(request)
     session = context["session"]
@@ -188,14 +197,21 @@ async def _dispatch_view(fn, cfg, request, path_params):
 
     result = await run_in_threadpool(fn, shim)
 
-    if isinstance(result, RedirectResponse):
+    if isinstance(result, Response):
         commit_session_response(request, session, shim, result)
+        apply_http_cache(result, cfg)
+        if request.method == "GET":
+            # Same URL can serve full page or HTMX fragment depending on headers.
+            _append_vary_header(result, "HX-Request")
         return _apply_response_headers(shim, result)
 
+    status_code = getattr(shim, "response_status", 200) or 200
+
     renderer = cfg.get("renderer")
-    if isinstance(renderer, str):
+    if int(status_code) == 204:
+        response = HTMLResponse("", status_code=204)
+    elif isinstance(renderer, str):
         context = result if isinstance(result, dict) else {}
-        status_code = getattr(shim, "response_status", 200) or 200
         response = await run_in_threadpool(
             render_template_to_response,
             request=request,
@@ -209,6 +225,10 @@ async def _dispatch_view(fn, cfg, request, path_params):
 
     commit_session_response(request, session, shim, response)
     apply_http_cache(response, cfg)
+    if request.method == "GET":
+        # Several UI endpoints return either full-page HTML or fragment HTML
+        # for the same URL based on the HX-Request header.
+        _append_vary_header(response, "HX-Request")
     return _apply_response_headers(shim, response)
 
 
@@ -436,8 +456,31 @@ def _blocked_worker_rows(blocked_workers, *, show_email):
     return rows
 
 
+def _filter_blocked_workers(blocked_workers, filter_value):
+    if filter_value == "all-workers":
+        return blocked_workers
+
+    threshold_5d = datetime.now(UTC) - timedelta(days=5)
+    if filter_value == "gt-5days":
+        return [
+            worker
+            for worker in blocked_workers
+            if worker.get("last_updated") and worker["last_updated"] < threshold_5d
+        ]
+
+    # Default to recent workers when an unknown filter is provided.
+    return [
+        worker
+        for worker in blocked_workers
+        if not worker.get("last_updated") or worker["last_updated"] >= threshold_5d
+    ]
+
+
 def workers(request):
     is_approver = request.has_permission("approve_run")
+    filter_value = request.params.get("filter", "le-5days")
+    if filter_value not in {"all-workers", "le-5days", "gt-5days"}:
+        filter_value = "le-5days"
 
     blocked_workers = request.rundb.workerdb.get_blocked_workers()
     blocker_name = request.authenticated_userid
@@ -462,22 +505,52 @@ def workers(request):
         validate(union(short_worker_name, "show"), worker_name, name="worker_name")
     except ValidationError as e:
         request.session.flash(str(e), "error")
+        filtered_rows = _blocked_worker_rows(
+            _filter_blocked_workers(blocked_workers, filter_value),
+            show_email=is_approver,
+        )
+        if _is_hx_request(request):
+            return render_template_to_response(
+                request=request.raw_request,
+                template_name="workers_rows_fragment.html.j2",
+                context=build_template_context(
+                    request.raw_request,
+                    request.session,
+                    {
+                        "blocked_workers": filtered_rows,
+                        "show_email": is_approver,
+                    },
+                ),
+            )
         return {
             "show_admin": False,
             "show_email": is_approver,
-            "blocked_workers": _blocked_worker_rows(
-                blocked_workers,
-                show_email=is_approver,
-            ),
+            "blocked_workers": filtered_rows,
+            "filter_value": filter_value,
         }
     if len(worker_name.split("-")) != 3:
+        filtered_rows = _blocked_worker_rows(
+            _filter_blocked_workers(blocked_workers, filter_value),
+            show_email=is_approver,
+        )
+        if _is_hx_request(request):
+            return render_template_to_response(
+                request=request.raw_request,
+                template_name="workers_rows_fragment.html.j2",
+                context=build_template_context(
+                    request.raw_request,
+                    request.session,
+                    {
+                        "blocked_workers": filtered_rows,
+                        "show_email": is_approver,
+                    },
+                ),
+            )
         return {
             "show_admin": False,
             "show_email": is_approver,
-            "blocked_workers": _blocked_worker_rows(
-                blocked_workers,
-                show_email=is_approver,
-            ),
+            "blocked_workers": filtered_rows,
+            "filter_value": filter_value,
         }
     result = ensure_logged_in(request)
     if isinstance(result, RedirectResponse):
@@ -485,13 +558,28 @@ def workers(request):
     owner_name = worker_name.split("-")[0]
     if not is_approver and blocker_name != owner_name:
         request.session.flash("Only owners and approvers can block/unblock", "error")
+        filtered_rows = _blocked_worker_rows(
+            _filter_blocked_workers(blocked_workers, filter_value),
+            show_email=is_approver,
+        )
+        if _is_hx_request(request):
+            return render_template_to_response(
+                request=request.raw_request,
+                template_name="workers_rows_fragment.html.j2",
+                context=build_template_context(
+                    request.raw_request,
+                    request.session,
+                    {
+                        "blocked_workers": filtered_rows,
+                        "show_email": is_approver,
+                    },
+                ),
+            )
         return {
             "show_admin": False,
             "show_email": is_approver,
-            "blocked_workers": _blocked_worker_rows(
-                blocked_workers,
-                show_email=is_approver,
-            ),
+            "blocked_workers": filtered_rows,
+            "filter_value": filter_value,
         }
 
     if request.method == "POST":
@@ -523,6 +611,24 @@ def workers(request):
         return RedirectResponse(url="/workers/show", status_code=302)
 
     w = request.rundb.workerdb.get_worker(worker_name)
+    filtered_rows = _blocked_worker_rows(
+        _filter_blocked_workers(blocked_workers, filter_value),
+        show_email=is_approver,
+    )
+    if _is_hx_request(request):
+        return render_template_to_response(
+            request=request.raw_request,
+            template_name="workers_rows_fragment.html.j2",
+            context=build_template_context(
+                request.raw_request,
+                request.session,
+                {
+                    "blocked_workers": filtered_rows,
+                    "show_email": is_approver,
+                },
+            ),
+        )
+
     return {
         "show_admin": True,
         "worker_name": worker_name,
@@ -532,10 +638,8 @@ def workers(request):
         "last_updated_label": (
             format_time_ago(w["last_updated"]) if w["last_updated"] else "Never"
         ),
-        "blocked_workers": _blocked_worker_rows(
-            blocked_workers,
-            show_email=is_approver,
-        ),
+        "blocked_workers": filtered_rows,
+        "filter_value": filter_value,
     }
 
 
@@ -791,7 +895,7 @@ def nns(request):
 
     pages = pagination(page_idx, num_nns, page_size, query_params)
 
-    return {
+    context = {
         "nns": formatted_nns,
         "pages": pages,
         "master_only": request.cookies.get("master_only") == "true",
@@ -803,6 +907,17 @@ def nns(request):
         "network_name_filter": network_name,
         "user_filter": user,
     }
+
+    if _is_hx_request(request):
+        return render_template_to_response(
+            request=request.raw_request,
+            template_name="nns_content_fragment.html.j2",
+            context=build_template_context(
+                request.raw_request, request.session, context
+            ),
+        )
+
+    return context
 
 
 def sprt_calc(request):
@@ -839,6 +954,30 @@ quotation_marks_translation = str.maketrans(quotation_marks, len(quotation_marks
 
 def sanitize_quotation_marks(text):
     return text.translate(quotation_marks_translation)
+
+
+def _is_hx_request(request) -> bool:
+    headers = getattr(request, "headers", None)
+    if headers is None:
+        return False
+
+    def _header(name: str) -> str:
+        value = headers.get(name)
+        if value is not None:
+            return str(value)
+        lower_name = name.lower()
+        for key, val in getattr(headers, "items", lambda: [])():
+            if str(key).lower() == lower_name:
+                return str(val)
+        return ""
+
+    if _header("HX-Request").lower() != "true":
+        return False
+    # Never treat top-level document navigations as fragment requests,
+    # even if HX-Request appears in transit.
+    if _header("Sec-Fetch-Mode").lower() == "navigate":
+        return False
+    return True
 
 
 # === Actions log ===
@@ -990,7 +1129,7 @@ def actions(request):
 
     pages = pagination(page_idx, num_actions, page_size, query_params)
 
-    return {
+    context = {
         "actions": actions,
         "pages": pages,
         "filters": {
@@ -1001,6 +1140,17 @@ def actions(request):
         },
         "usernames": [user["username"] for user in request.userdb.get_users()],
     }
+
+    if _is_hx_request(request):
+        return render_template_to_response(
+            request=request.raw_request,
+            template_name="actions_content_fragment.html.j2",
+            context=build_template_context(
+                request.raw_request, request.session, context
+            ),
+        )
+
+    return context
 
 
 # === User management + profiles ===
@@ -1043,21 +1193,58 @@ def user_management(request):
         request.session.flash("You cannot view user management", "error")
         return home(request)
 
+    group = request.params.get("group", "pending")
+    if group not in {"all", "pending", "blocked", "idle", "approvers"}:
+        group = "pending"
+
     users = list(request.userdb.get_users())
     pending_users = request.userdb.get_pending()
     blocked_users = request.userdb.get_blocked()
     idle_users = get_idle_users(users, request)
 
-    return {
-        "all_users": _user_management_rows(users),
-        "pending_users": _user_management_rows(pending_users),
-        "blocked_users": _user_management_rows(blocked_users),
-        "approvers_users": [
+    all_count = len(users)
+    pending_count = len(pending_users)
+    blocked_count = len(blocked_users)
+    idle_count = len(idle_users)
+
+    if group == "all":
+        selected_rows = _user_management_rows(users)
+    elif group == "pending":
+        selected_rows = _user_management_rows(pending_users)
+    elif group == "blocked":
+        selected_rows = _user_management_rows(blocked_users)
+    elif group == "idle":
+        selected_rows = _user_management_rows(idle_users)
+    else:
+        selected_rows = [
             user
             for user in _user_management_rows(users)
             if "group:approvers" in user.get("groups", [])
-        ],
-        "idle_users": _user_management_rows(idle_users),  # depends on cache too
+        ]
+
+    approvers_count = len(
+        [user for user in users if "group:approvers" in user.get("groups", [])]
+    )
+
+    if _is_hx_request(request):
+        return render_template_to_response(
+            request=request.raw_request,
+            template_name="user_management_rows_fragment.html.j2",
+            context=build_template_context(
+                request.raw_request,
+                request.session,
+                {"group": group, "selected_users": selected_rows},
+            ),
+        )
+
+    return {
+        "all_count": all_count,
+        "pending_count": pending_count,
+        "blocked_count": blocked_count,
+        "idle_count": idle_count,
+        "approvers_count": approvers_count,
+        "group": group,
+        "selected_users": selected_rows,
     }
 
 
@@ -1192,29 +1379,69 @@ def user(request):
 
 # === Contributors views ===
 def contributors(request):
+    search = request.params.get("search", "").strip()
     users_list = list(request.userdb.user_cache.find())
     users_list.sort(key=lambda k: k["cpu_hours"], reverse=True)
+    if search:
+        search_lower = search.lower()
+        users_list = [
+            user
+            for user in users_list
+            if search_lower in str(user.get("username", "")).lower()
+        ]
     is_approver = request.has_permission("approve_run")
-    return {
+    context = {
         "is_monthly": False,
         "monthly_suffix": "",
         "summary": build_contributors_summary(users_list),
         "users": build_contributors_rows(users_list, is_approver=is_approver),
         "is_approver": is_approver,
+        "search": search,
     }
+
+    if _is_hx_request(request):
+        return render_template_to_response(
+            request=request.raw_request,
+            template_name="contributors_rows_fragment.html.j2",
+            context=build_template_context(
+                request.raw_request, request.session, context
+            ),
+        )
+
+    return context
 
 
 def contributors_monthly(request):
+    search = request.params.get("search", "").strip()
     users_list = list(request.userdb.top_month.find())
     users_list.sort(key=lambda k: k["cpu_hours"], reverse=True)
+    if search:
+        search_lower = search.lower()
+        users_list = [
+            user
+            for user in users_list
+            if search_lower in str(user.get("username", "")).lower()
+        ]
     is_approver = request.has_permission("approve_run")
-    return {
+    context = {
         "is_monthly": True,
         "monthly_suffix": " - Top Month",
         "summary": build_contributors_summary(users_list),
         "users": build_contributors_rows(users_list, is_approver=is_approver),
         "is_approver": is_approver,
+        "search": search,
     }
+
+    if _is_hx_request(request):
+        return render_template_to_response(
+            request=request.raw_request,
+            template_name="contributors_rows_fragment.html.j2",
+            context=build_template_context(
+                request.raw_request, request.session, context
+            ),
+        )
+
+    return context
 
 
 # === Run creation helpers ===
@@ -2082,11 +2309,211 @@ def get_page_title(run):
     return page_title
 
 
+def _build_live_elo_context(run):
+    """Compute SPRT analytics and return template context for gauges + details."""
+    results = run["results"]
+    sprt = run["args"]["sprt"]
+    elo_model = sprt.get("elo_model", "BayesElo")
+    a = fishtest.stats.stat_util.SPRT_elo(
+        results,
+        alpha=sprt["alpha"],
+        beta=sprt["beta"],
+        elo0=sprt["elo0"],
+        elo1=sprt["elo1"],
+        elo_model=elo_model,
+    )
+    WLD = [results["wins"], results["losses"], results["draws"]]
+    games = sum(WLD)
+    pentanomial = results.get("pentanomial", [])
+    return {
+        "run": run,
+        "elo_raw": a["elo"],
+        "ci_lower_raw": a["ci"][0],
+        "ci_upper_raw": a["ci"][1],
+        "LLR_raw": a["LLR"],
+        "LOS_raw": 100 * a["LOS"],
+        "a_raw": a["a"],
+        "b_raw": a["b"],
+        "elo_value": round(a["elo"], 2),
+        "ci_lower": round(a["ci"][0], 2),
+        "ci_upper": round(a["ci"][1], 2),
+        "LLR": round(a["LLR"], 2),
+        "LOS": round(100 * a["LOS"], 1),
+        "a": round(a["a"], 2),
+        "b": round(a["b"], 2),
+        "W": WLD[0],
+        "L": WLD[1],
+        "D": WLD[2],
+        "games": games,
+        "w_pct": round((100 * WLD[0]) / (games + 0.001), 1),
+        "l_pct": round((100 * WLD[1]) / (games + 0.001), 1),
+        "d_pct": round((100 * WLD[2]) / (games + 0.001), 1),
+        "pentanomial": pentanomial[:5],
+        "sprt_state": sprt.get("state", ""),
+        "elo_model": elo_model,
+        "elo0": sprt["elo0"],
+        "elo1": sprt["elo1"],
+        "alpha": sprt["alpha"],
+        "beta": sprt["beta"],
+    }
+
+
+def _classify_run_status(run):
+    if run.get("finished", False):
+        return "failed" if run.get("failed") else "finished"
+    if run.get("workers", 0) > 0:
+        return "active"
+    return "paused" if run.get("approved") else "pending"
+
+
+def tests_elo_batch(request):
+    username = request.params.get("username", "") or ""
+
+    (
+        runs,
+        _pending_hours,
+        _cores,
+        _nps,
+        _games_per_minute,
+        machines_count,
+    ) = request.rundb.aggregate_unfinished_runs(username=username or None)
+
+    pending_all = list(runs.get("pending", []))
+    active_runs = list(runs.get("active", []))
+    pending_runs = [r for r in pending_all if not r.get("approved")]
+    paused_runs = [r for r in pending_all if r.get("approved")]
+
+    allow_github_api_calls = request.has_permission("approve_run")
+
+    finished_context = get_paginated_finished_runs(request, username=username)
+    failed_runs = finished_context.get("failed_runs", [])
+    finished_runs = finished_context.get("finished_runs", [])
+
+    panels = [
+        {
+            "tbody_id": "pending-tbody",
+            "rows": build_run_table_rows(
+                pending_runs, allow_github_api_calls=allow_github_api_calls
+            ),
+            "show_delete": True,
+        },
+        {
+            "tbody_id": "paused-tbody",
+            "rows": build_run_table_rows(
+                paused_runs, allow_github_api_calls=allow_github_api_calls
+            ),
+            "show_delete": True,
+        },
+        {
+            "tbody_id": "failed-tbody",
+            "rows": build_run_table_rows(
+                failed_runs, allow_github_api_calls=allow_github_api_calls
+            ),
+            "show_delete": True,
+        },
+        {
+            "tbody_id": "active-tbody",
+            "rows": build_run_table_rows(
+                active_runs, allow_github_api_calls=allow_github_api_calls
+            ),
+            "show_delete": False,
+        },
+        {
+            "tbody_id": "finished-tbody",
+            "rows": build_run_table_rows(
+                finished_runs, allow_github_api_calls=allow_github_api_calls
+            ),
+            "show_delete": False,
+        },
+    ]
+
+    count_updates = [
+        {
+            "id": "pending-count",
+            "text": f"Pending approval - {len(pending_runs)} tests",
+        },
+        {
+            "id": "paused-count",
+            "text": f"Paused - {len(paused_runs)} tests",
+        },
+        {
+            "id": "active-count",
+            "text": f"Active - {len(active_runs)} tests",
+        },
+        {
+            "id": "failed-count",
+            "text": f"Failed - {len(failed_runs)} tests",
+        },
+        {
+            "id": "finished-count",
+            "text": f"Finished - {finished_context.get('num_finished_runs', 0)} tests",
+        },
+    ]
+
+    if not (pending_runs or paused_runs or active_runs):
+        request.response_status = 286
+
+    return {
+        "panels": panels,
+        "count_updates": count_updates,
+        "machines_count": machines_count,
+    }
+
+
+def tests_elo(request):
+    run = request.rundb.get_run(request.matchdict["id"])
+    if run is None:
+        raise StarletteHTTPException(status_code=404)
+
+    is_finished = run.get("finished", False)
+    is_active = run.get("workers", 0) > 0
+    expected = request.params.get("expected")
+    actual = _classify_run_status(run)
+
+    if expected:
+        if is_finished:
+            request.response_status = 286
+    else:
+        if is_finished:
+            request.response_status = 286
+        elif not is_active:
+            request.response_status = 204
+
+    active = 0
+    cores = 0
+    for task in run["tasks"]:
+        if task["active"]:
+            active += 1
+            cores += task["worker_info"]["concurrency"]
+    totals = "({} active worker{} with {} core{})".format(
+        active, ("s" if active != 1 else ""), cores, ("s" if cores != 1 else "")
+    )
+
+    return {
+        "run": run,
+        "run_status_label": actual,
+        "tasks_totals": totals,
+    }
+
+
 def tests_live_elo(request):
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None or "sprt" not in run["args"]:
         raise StarletteHTTPException(status_code=404)
-    return {"run": run, "page_title": get_page_title(run)}
+    context = _build_live_elo_context(run)
+    context["page_title"] = get_page_title(run)
+    return context
+
+
+def live_elo_update(request):
+    run = request.rundb.get_run(request.matchdict["id"])
+    if run is None or "sprt" not in run["args"]:
+        raise StarletteHTTPException(status_code=404)
+
+    context = _build_live_elo_context(run)
+    if context["sprt_state"]:
+        request.response_status = 286
+    return context
 
 
 def tests_stats(request):
@@ -2174,7 +2601,11 @@ def tests_machines(request):
             }
         )
 
-    return {"machines_list": machines_list, "machines": machines}
+    return {
+        "machines_list": machines_list,
+        "machines": machines,
+        "machines_count": len(machines),
+    }
 
 
 def tests_view(request):
@@ -2482,8 +2913,9 @@ def tests_view(request):
     }
 
 
-def get_paginated_finished_runs(request):
-    username = request.matchdict.get("username", "")
+def get_paginated_finished_runs(request, *, username=None):
+    if username is None:
+        username = request.matchdict.get("username", "")
     success_only = request.params.get("success_only", False)
     yellow_only = request.params.get("yellow_only", False)
     ltc_only = request.params.get("ltc_only", False)
@@ -2615,7 +3047,7 @@ def tests_finished(request):
     title_text = (
         f"Finished Tests{title_suffix} - page {page_idx + 1} | Stockfish Testing"
     )
-    return {
+    context_out = {
         **context,
         "query_params": request.query_params,
         "finished_runs": build_run_table_rows(
@@ -2630,6 +3062,19 @@ def tests_finished(request):
         "title_text": title_text,
         "show_gauge": False,
     }
+
+    if _is_hx_request(request):
+        return render_template_to_response(
+            request=request.raw_request,
+            template_name="tests_finished_content_fragment.html.j2",
+            context=build_template_context(
+                request.raw_request,
+                request.session,
+                context_out,
+            ),
+        )
+
+    return context_out
 
 
 def tests_user(request):
@@ -2674,8 +3119,34 @@ def tests_user(request):
             page_idx=finished_context.get("page_idx", 0),
             username=username,
         )
+    if _is_hx_request(request):
+        return render_template_to_response(
+            request=request.raw_request,
+            template_name="tests_user_content_fragment.html.j2",
+            context=build_template_context(
+                request.raw_request, request.session, response
+            ),
+        )
+
     # page 2 and beyond only show finished test results
     return response
+
+
+def homepage_stats(request):
+    (
+        _runs,
+        pending_hours,
+        cores,
+        nps,
+        games_per_minute,
+        _machines_count,
+    ) = request.rundb.aggregate_unfinished_runs()
+    return {
+        "pending_hours": "{:.1f}".format(pending_hours),
+        "cores": cores,
+        "nps_m": f"{nps / 1000000:.0f}M",
+        "games_per_minute": int(games_per_minute),
+    }
 
 
 def homepage_results(request):
@@ -2827,12 +3298,32 @@ _VIEW_ROUTES = [
         {"require_csrf": True, "request_method": "POST", "require_primary": True},
     ),
     (tests_live_elo, "/tests/live_elo/{id}", {"renderer": "tests_live_elo.html.j2"}),
+    (
+        live_elo_update,
+        "/tests/live_elo_update/{id}",
+        {"renderer": "live_elo_fragment.html.j2"},
+    ),
+    (tests_elo, "/tests/elo/{id}", {"renderer": "elo_results_fragment.html.j2"}),
+    (
+        tests_elo_batch,
+        "/tests/elo_batch",
+        {"renderer": "elo_batch_fragment.html.j2"},
+    ),
+    (
+        homepage_stats,
+        "/tests/stats_summary",
+        {"renderer": "homepage_stats_fragment.html.j2"},
+    ),
     (tests_stats, "/tests/stats/{id}", {"renderer": "tests_stats.html.j2"}),
-    (tests_tasks, "/tests/tasks/{id}", {"renderer": "tasks.html.j2"}),
+    (
+        tests_tasks,
+        "/tests/tasks/{id}",
+        {"renderer": "tasks_fragment.html.j2"},
+    ),
     (
         tests_machines,
         "/tests/machines",
-        {"renderer": "machines.html.j2", "http_cache": 10},
+        {"renderer": "machines_fragment.html.j2", "http_cache": 10},
     ),
     (tests_view, "/tests/view/{id}", {"renderer": "tests_view.html.j2"}),
     (tests_finished, "/tests/finished", {"renderer": "tests_finished.html.j2"}),

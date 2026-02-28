@@ -6,30 +6,6 @@
 {% block title %}Contributors{{ monthly_suffix }} | Stockfish Testing{% endblock %}
 
 {% block body %}
-<script>
-  (async () => {
-    await DOMContentLoaded();
-    const originalTable = document
-      .getElementById("contributors_table")
-      .cloneNode(true);
-
-    const originalRows = Array.from(originalTable.querySelectorAll("tbody tr"));
-
-    const includes = (row, inputValue) => {
-      const cells = Array.from(row.querySelectorAll("td"));
-      return cells.some((cell) => {
-        const cellText = cell.textContent || cell.innerText;
-        return cellText.toLowerCase().indexOf(inputValue) > -1;
-      });
-    };
-
-    const searchInput = document.getElementById("search_contributors");
-    searchInput.addEventListener("input", (e) => {
-      filterTable(e.target.value, "contributors_table", originalRows, includes);
-    });
-  })();
-</script>
-
 <h2> Contributors{{ monthly_suffix }} </h2>
 
 <div class="row g-3 mb-3">
@@ -100,15 +76,29 @@
   </div>
 </div>
 
-<div class="row g-3 mb-1">
+<div class="row g-3 mb-1 align-items-end">
   <div class="col-12 col-md-auto">
-    <label class="form-label">Search</label>
-    <input
-      id="search_contributors"
-      class="form-control"
-      placeholder="Search some text"
-      type="text"
-    >
+    <form method="GET" action="{{ request.url.path }}">
+      <label for="search_contributors" class="form-label">Search</label>
+      <div class="d-flex align-items-center gap-2">
+        <input
+          id="search_contributors"
+          class="form-control"
+          placeholder="Search username"
+          type="search"
+          name="search"
+          value="{{ search }}"
+          hx-get="{{ request.url.path }}"
+          hx-trigger="input changed delay:300ms"
+          hx-target="#contributors_table tbody"
+          hx-swap="innerHTML"
+          hx-include="this"
+          hx-indicator="#contributors-search-indicator"
+        >
+        <button type="submit" class="btn btn-secondary">Search</button>
+        <span id="contributors-search-indicator" class="htmx-indicator small text-muted">Searching...</span>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -127,32 +117,7 @@
       </tr>
     </thead>
     <tbody>
-      {% for user in users %}
-        <tr>
-          <td class="rank">{{ loop.index }}</td>
-          <td>
-          {% if user.user_url %}
-            <a href="{{ user.user_url }}"> {{ user.username }} </a>
-          {% else %}
-            {{ " " ~ user.username ~ " " }}
-          {% endif %}
-          </td>
-          <td data-sort-value="{{ user.last_updated_sort }}" class="text-end">{{ user.last_updated_label }}</td>
-          <td class="text-end">{{ user.games_per_hour }}</td>
-          <td class="text-end">{{ user.cpu_hours }}</td>
-          <td class="text-end">{{ user.games }}</td>
-          <td class="text-end">
-            <a href="{{ user.tests_user_url }}">{{ user.tests }} </a>
-          </td>
-          <td class="user-repo">
-            <a href="{{ user.tests_repo_url }}" target="_blank" rel="noopener noreferrer">{{ user.tests_repo_url }}</a>
-          </td>
-        </tr>
-      {% else %}
-        <tr>
-          <td colspan=20>No users exist</td>
-        </tr>
-      {% endfor %}
+      {% include "contributors_rows_fragment.html.j2" %}
     </tbody>
   </table>
 </div>

@@ -20,6 +20,14 @@ from pathlib import Path
 THREADPOOL_TOKENS: int = 200
 TASK_SEMAPHORE_SIZE: int = 5
 
+# htmx polling intervals (seconds), used via Jinja2 global `poll`.
+POLL_STATS_HOMEPAGE_S: int = 120
+POLL_MACHINES_HOMEPAGE_S: int = 120
+POLL_BATCH_HOMEPAGE_S: int = 120
+POLL_ELO_DETAIL_S: int = 60
+POLL_TASKS_DETAIL_S: int = 300
+POLL_LIVE_ELO_S: int = 20
+
 
 def env_int(name: str, *, default: int) -> int:
     """Parse an environment variable as an integer, with a fallback default."""

@@ -14,6 +14,39 @@ let broadcastDispatch = {
   handleSortingTables();
 })();
 
+// Unified htmx error recovery (RFC #2484, Feature 3.8).
+// Replaces per-feature retry logic with a single declarative handler
+// that reuses the existing error_div infrastructure in base.html.j2.
+
+document.addEventListener("htmx:responseError", (event) => {
+  const xhr = event.detail.xhr;
+  const status = xhr ? xhr.status : 0;
+  const statusText = status ? getStatusText(status) : "Unknown error";
+  const url = event.detail.pathInfo?.requestPath || "";
+  const message = `Update failed: ${status} ${statusText}`;
+  log(`htmx:responseError ${url} — ${status} ${statusText}`);
+  showHtmxError(message);
+});
+
+document.addEventListener("htmx:sendError", (event) => {
+  const url = event.detail.pathInfo?.requestPath || "";
+  log(`htmx:sendError ${url} — network unreachable`);
+  showHtmxError("Network error: please check your connection.");
+});
+
+function showHtmxError(message) {
+  const errorDiv = document.getElementById("error_div");
+  const errorSpan = document.getElementById("error");
+  if (!errorDiv || !errorSpan) return;
+  errorSpan.textContent = message;
+  errorDiv.style.display = "";
+  // Auto-dismiss after 8 seconds so polling panels recover silently.
+  clearTimeout(showHtmxError._timer);
+  showHtmxError._timer = setTimeout(() => {
+    errorDiv.style.display = "none";
+  }, 8000);
+}
+
 // Awaits the page content to load
 function DOMContentLoaded() {
   // Use as
@@ -123,9 +156,8 @@ function setTheme(theme) {
     document.querySelector('head link[href*="/css/theme.dark.css"]')?.remove();
   }
   // Remember the theme for 30 days
-  document.cookie = `theme=${theme}; path=/; max-age=${
-    30 * 24 * 60 * 60
-  }; SameSite=Lax`;
+  document.cookie = `theme=${theme}; path=/; max-age=${30 * 24 * 60 * 60
+    }; SameSite=Lax`;
 }
 
 function supportsNotifications() {
@@ -420,25 +452,25 @@ function comparer(idx, asc) {
         : v1 !== "" && v2 !== "" && !isNaN("0x" + v1) && !isNaN("0x" + v2)
           ? parseInt(v1, 16) - parseInt(v2, 16)
           : v1 !== "" &&
-              v2 !== "" &&
-              !isNaN((p1 = padDotVersion(v1))) &&
-              !isNaN((p2 = padDotVersion(v2)))
+            v2 !== "" &&
+            !isNaN((p1 = padDotVersion(v1))) &&
+            !isNaN((p2 = padDotVersion(v2)))
             ? p1 - p2
             : v1 !== "" &&
-                v2 !== "" &&
-                !isNaN(
-                  padDotVersion(v1.replace("clang++ ", "").replace("g++ ", "")),
-                ) &&
-                !isNaN(
-                  padDotVersion(v2.replace("clang++ ", "").replace("g++ ", "")),
-                )
+              v2 !== "" &&
+              !isNaN(
+                padDotVersion(v1.replace("clang++ ", "").replace("g++ ", "")),
+              ) &&
+              !isNaN(
+                padDotVersion(v2.replace("clang++ ", "").replace("g++ ", "")),
+              )
               ? padDotVersionStr(v1)
-                  .toString()
-                  .localeCompare(padDotVersionStr(v2))
+                .toString()
+                .localeCompare(padDotVersionStr(v2))
               : v1.toString().localeCompare(v2))(
-      getCellValue(asc ? a : b, idx),
-      getCellValue(asc ? b : a, idx),
-    );
+                getCellValue(asc ? a : b, idx),
+                getCellValue(asc ? b : a, idx),
+              );
 }
 function getCellValue(tr, idx) {
   return (
@@ -455,118 +487,6 @@ function padDotVersion(dn) {
 }
 function padDotVersionStr(dn) {
   return dn.replace(/\d+/g, (n) => +n + 1000);
-}
-
-// Filters tables client-side
-function filterTable(inputValue, tableId, originalRows, predicate) {
-  const table = document.getElementById(tableId);
-  const tbody = table.querySelector("tbody");
-  let noDataRow = table.querySelector(".no-data");
-  inputValue = inputValue.toLowerCase();
-
-  // Clear the table before filtering
-  while (tbody.firstChild) {
-    tbody.removeChild(tbody.firstChild);
-  }
-
-  let filteredRows = 0;
-
-  originalRows.forEach((row) => {
-    if (predicate(row, inputValue)) {
-      tbody.append(row.cloneNode(true));
-      filteredRows++;
-    }
-  });
-
-  if (filteredRows === 0 && inputValue !== "") {
-    // Create the no-data row dynamically if it doesn't exist
-    if (!noDataRow) {
-      noDataRow = document.createElement("tr");
-      noDataRow.classList.add("no-data");
-      const cell = document.createElement("td");
-      cell.setAttribute("colspan", "20");
-      cell.textContent = "No matching data found";
-      noDataRow.append(cell);
-    }
-    tbody.append(noDataRow);
-  }
-
-  // Usage Example:
-  // See also contributors.html.j2.
-
-  // Assuming you have an HTML structure similar to this:
-  /* HTML Structure:
-  <label class="form-label">Search</label>
-  <input id="my_input" class="form-control" type="text" placeholder="Search some text">
-  <table id="my_table">
-    <tbody>
-      <!-- Rows of data -->
-    </tbody>
-  </table>
-  */
-
-  // Since we get the table data rendered already as HTML rows from the server,
-  // we don't have the table data as JSON initially,
-  // so for client filtering we need to clone the initial table rows once,
-  // not to lose them while filtering.
-  // P.S. hiding/showing rows instead of creating and removing rows,
-  // will mess up the CSS Zebra striping.
-
-  /* JavaScript Code:
-  (async () => {
-    await DOMContentLoaded();
-
-    // Define your predicate function
-    const myPredicate = (row, inputValue) => {
-      const cells = Array.from(row.querySelectorAll("td"));
-      return cells.some((cell) => {
-        const cellText = cell.textContent || cell.innerText;
-        return cellText.toLowerCase().indexOf(inputValue) > -1;
-      });
-    };
-
-    const originalTable = document
-      .getElementById("my_table")
-      .cloneNode(true);
-    const originalRows = Array.from(originalTable.querySelectorAll("tbody tr"));
-
-    const searchInput = document.getElementById("my_input");
-    searchInput.addEventListener("input", (e) => {
-      filterTable(e.target.value, "my_table", originalRows, myPredicate);
-    });
-  })();
-  */
-}
-
-function createRetryMessage(parentElement, callback) {
-  const mainDiv = document.createElement("div");
-  mainDiv.className = "retry";
-
-  const innerDiv = document.createElement("div");
-  innerDiv.className = "col-12 col-md-8 col-lg-3";
-
-  const alertDiv = document.createElement("div");
-  alertDiv.className =
-    "alert alert-danger d-flex justify-content-between align-items-center";
-  alertDiv.id = "error-message";
-
-  const span = document.createElement("span");
-  span.textContent = "Something went wrong. Please try again.";
-
-  const button = document.createElement("button");
-  button.className = "btn btn-primary";
-  button.textContent = "Retry";
-
-  alertDiv.appendChild(span);
-  alertDiv.appendChild(button);
-
-  innerDiv.appendChild(alertDiv);
-  mainDiv.appendChild(innerDiv);
-
-  parentElement.appendChild(mainDiv);
-
-  // Add event listener after appending
-  button.addEventListener("click", callback);
 }
 
 // A helper for conveniently adding a timeout
@@ -588,10 +508,10 @@ async function rateLimit() {
   const token = localStorage.getItem("github_token");
   const options = token
     ? {
-        headers: {
-          Authorization: "Bearer " + token,
-        },
-      }
+      headers: {
+        Authorization: "Bearer " + token,
+      },
+    }
     : {};
   options.signal = abortTimeout(3000);
   const rateLimit_ = await fetchJson(url, options);

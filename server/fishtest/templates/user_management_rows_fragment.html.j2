@@ -1,0 +1,24 @@
+{% if selected_users | length == 0 %}
+  {% set empty_label = "users" %}
+  {% if group == "pending" %}
+    {% set empty_label = "pending users" %}
+  {% elif group == "blocked" %}
+    {% set empty_label = "blocked users" %}
+  {% elif group == "idle" %}
+    {% set empty_label = "idle users" %}
+  {% elif group == "approvers" %}
+    {% set empty_label = "approver users" %}
+  {% endif %}
+  <tr>
+    <td colspan="20">No {{ empty_label }}</td>
+  </tr>
+{% else %}
+  {% for user in selected_users %}
+    <tr>
+      <td style="width:20%"><a href="{{ user.user_url }}">{{ user.username }}</a></td>
+      <td style="width:20%">{{ user.registration_label }}</td>
+      <td style="width:20%">{{ user.groups_label }}</td>
+      <td style="width:40%">{{ user.email }}</td>
+    </tr>
+  {% endfor %}
+{% endif %}

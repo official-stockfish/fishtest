@@ -1,0 +1,35 @@
+<h2>
+  Finished Tests
+  {% if filters.success_only %}
+    - Greens
+  {% elif filters.yellow_only %}
+    - Yellows
+  {% elif filters.ltc_only %}
+    - LTC
+  {% endif %}
+</h2>
+
+<div id="tests-finished-filters" class="mb-2 filter-tabs">
+  <a class="btn btn-sm btn-light border tests-filter-tab {{ 'active' if not filters.success_only and not filters.yellow_only and not filters.ltc_only else '' }}" href="/tests/finished" hx-get="/tests/finished" hx-target="#tests-finished-content" hx-push-url="true" hx-swap="innerHTML">All</a>
+  <a class="btn btn-sm btn-light border tests-filter-tab {{ 'active' if filters.success_only else '' }}" href="/tests/finished?success_only=1" hx-get="/tests/finished?success_only=1" hx-target="#tests-finished-content" hx-push-url="true" hx-swap="innerHTML">Greens</a>
+  <a class="btn btn-sm btn-light border tests-filter-tab {{ 'active' if filters.yellow_only else '' }}" href="/tests/finished?yellow_only=1" hx-get="/tests/finished?yellow_only=1" hx-target="#tests-finished-content" hx-push-url="true" hx-swap="innerHTML">Yellows</a>
+  <a class="btn btn-sm btn-light border tests-filter-tab {{ 'active' if filters.ltc_only else '' }}" href="/tests/finished?ltc_only=1" hx-get="/tests/finished?ltc_only=1" hx-target="#tests-finished-content" hx-push-url="true" hx-swap="innerHTML">LTC</a>
+</div>
+
+{% set pagination_hx_target = "tests-finished-content" %}
+{% set pagination_hx_push_url = true %}
+
+{% with
+  runs=finished_runs,
+  header='Finished',
+  count=num_finished_runs,
+  pages=finished_runs_pages,
+  title_text=title_text,
+  toggle=None,
+  toggle_state='Show',
+  page_idx=0,
+  username="",
+  show_gauge=show_gauge
+%}
+  {% include "run_table.html.j2" %}
+{% endwith %}
