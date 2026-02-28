@@ -74,6 +74,26 @@ class TestHttpUsers(unittest.TestCase):
         self.rundb.buffer(run, priority=Prio.SAVE_NOW)
         return str(run_id)
 
+    def _login_user(self):
+        user = self.rundb.userdb.get_user(self.username)
+        user["pending"] = False
+        self.rundb.userdb.save_user(user)
+
+        response = self.client.get("/login")
+        self.assertEqual(response.status_code, 200)
+        csrf = test_support.extract_csrf_token(response.text)
+
+        response = self.client.post(
+            "/login",
+            data={
+                "username": self.username,
+                "password": self.password,
+                "csrf_token": csrf,
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 302)
+
     @classmethod
     def tearDownClass(cls):
         test_support.cleanup_test_rundb(
@@ -418,6 +438,164 @@ class TestHttpUsers(unittest.TestCase):
             self.rundb.workerdb.workers.delete_many(
                 {"worker_name": {"$in": [recent_worker, old_worker]}}
             )
+
+    def test_tests_stop_hx_detail_redirects_home(self):
+        self._login_user()
+        run_id = self._create_run()
+
+        response = self.client.get(f"/tests/view/{run_id}")
+        self.assertEqual(response.status_code, 200)
+        csrf = test_support.extract_csrf_token(response.text)
+
+        response = self.client.post(
+            "/tests/stop",
+            data={
+                "run-id": run_id,
+                "csrf_token": csrf,
+            },
+            headers={"HX-Request": "true"},
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers.get("location"), "/tests")
+
+    def test_tests_delete_hx_redirects_home(self):
+        self._login_user()
+        run_id = self._create_run()
+
+        response = self.client.get(f"/tests/view/{run_id}")
+        self.assertEqual(response.status_code, 200)
+        csrf = test_support.extract_csrf_token(response.text)
+
+        response = self.client.post(
+            "/tests/delete",
+            data={
+                "run-id": run_id,
+                "csrf_token": csrf,
+            },
+            headers={"HX-Request": "true"},
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers.get("location"), "/tests")
+
+    def test_tests_purge_hx_detail_redirects_home(self):
+        self._login_user()
+        run_id = self._create_run()
+        run = self.rundb.get_run(run_id)
+        self.rundb.set_inactive_run(run)
+
+        response = self.client.get(f"/tests/view/{run_id}")
+        self.assertEqual(response.status_code, 200)
+        csrf = test_support.extract_csrf_token(response.text)
+
+        response = self.client.post(
+            "/tests/purge",
+            data={
+                "run-id": run_id,
+                "csrf_token": csrf,
+            },
+            headers={"HX-Request": "true"},
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers.get("location"), "/tests")
+
+    def test_tests_stop_hx_detail_error_redirects_home(self):
+        """HX request hitting can_modify_run failure follows regular redirect flow."""
+        # Create a run owned by a different user, then try to stop it.
+        self._login_user()
+        run_id = self._create_run()
+        # Change run ownership so can_modify_run fails.
+        run = self.rundb.get_run(run_id)
+        run["args"]["username"] = "some_other_user"
+        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+
+        response = self.client.get(f"/tests/view/{run_id}")
+        self.assertEqual(response.status_code, 200)
+        csrf = test_support.extract_csrf_token(response.text)
+
+        response = self.client.post(
+            "/tests/stop",
+            data={
+                "run-id": run_id,
+                "csrf_token": csrf,
+            },
+            headers={"HX-Request": "true"},
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers.get("location"), "/tests")
+
+    def test_tests_delete_hx_error_redirects_home(self):
+        """HX request hitting can_modify_run failure on delete follows redirect flow."""
+        self._login_user()
+        run_id = self._create_run()
+        run = self.rundb.get_run(run_id)
+        run["args"]["username"] = "some_other_user"
+        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+
+        response = self.client.get(f"/tests/view/{run_id}")
+        self.assertEqual(response.status_code, 200)
+        csrf = test_support.extract_csrf_token(response.text)
+
+        response = self.client.post(
+            "/tests/delete",
+            data={
+                "run-id": run_id,
+                "csrf_token": csrf,
+            },
+            headers={"HX-Request": "true"},
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers.get("location"), "/tests")
+
+    def test_tests_modify_sends_csrf_token(self):
+        """Modify form includes CSRF token and submission succeeds."""
+        self._login_user()
+        run_id = self._create_run()
+
+        response = self.client.get(f"/tests/view/{run_id}")
+        self.assertEqual(response.status_code, 200)
+        csrf = test_support.extract_csrf_token(response.text)
+
+        run = self.rundb.get_run(run_id)
+        response = self.client.post(
+            "/tests/modify",
+            data={
+                "run": run_id,
+                "num-games": str(run["args"]["num_games"]),
+                "priority": str(run["args"]["priority"]),
+                "throughput": str(run["args"].get("throughput", 1000)),
+                "csrf_token": csrf,
+            },
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers.get("location"), "/tests")
+
+    def test_tests_modify_without_csrf_returns_403(self):
+        """Modify form without CSRF token is rejected with 403."""
+        self._login_user()
+        run_id = self._create_run()
+
+        response = self.client.post(
+            "/tests/modify",
+            data={
+                "run": run_id,
+                "num-games": "20000",
+                "priority": "0",
+                "throughput": "1000",
+            },
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 403)
 
     def test_user_management_lazy_group_hx_fragment(self):
         pending_user = "HxPendingGroupUser"

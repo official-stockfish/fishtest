@@ -2259,7 +2259,8 @@ def tests_approve(request):
         except Exception as e:
             request.session.flash(str(e), "error")
         request.actiondb.approve_run(username=username, run=run, message="approved")
-        request.session.flash(message)
+        if message:
+            request.session.flash(message)
     return home(request)
 
 
@@ -2282,6 +2283,7 @@ def tests_purge(request):
             f"Manual purge (not performed): {message}" if message else "Manual purge"
         ),
     )
+
     if message != "":
         request.session.flash(message)
         return home(request)

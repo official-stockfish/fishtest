@@ -223,21 +223,17 @@
         {% if can_modify_run %}
           {% if not run["finished"] %}
             <div class="col-12 col-sm">
-              <form
-                action="/tests/stop"
-                method="POST"
-                data-stop-delete-run-id="{{ run_id }}"
-              >
+              <form action="/tests/stop" method="POST" data-stop-delete-run-id="{{ run_id }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <input type="hidden" name="run-id" value="{{ run_id }}">
-                <button type="submit" class="btn btn-danger w-100">
-                  Stop
-                </button>
+                <button type="submit" class="btn btn-danger w-100">Stop</button>
               </form>
             </div>
 
             {% if not run.get("approved", False) and not same_user %}
               <div class="col-12 col-sm">
                 <form action="/tests/approve" method="POST">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                   <input type="hidden" name="run-id" value="{{ run_id }}">
                   <button type="submit" id="approve-btn"
                           class="btn {{ "btn-success" if warnings == [] else "btn-warning" }} w-100">
@@ -246,9 +242,11 @@
                 </form>
               </div>
             {% endif %}
+
           {% else %}
             <div class="col-12 col-sm">
               <form action="/tests/purge" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <input type="hidden" name="run-id" value="{{ run_id }}">
                 <button type="submit" class="btn btn-danger w-100">Purge</button>
               </form>
@@ -355,6 +353,7 @@
             <label class="form-check-label" for="auto-purge">Auto-purge</label>
           </div>
 
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <input type="hidden" name="run" value="{{ run_id }}">
           <button type="submit" class="btn btn-primary col-12 col-md-auto">Modify</button>
         </form>
