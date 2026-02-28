@@ -1,7 +1,7 @@
 # ruff: noqa: ANN201, ANN206, B025, B904, D100, D101, D102, E501, EM102, INP001, PLC0415, PT009, S105, TRY003
 
 import unittest
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 import test_support
@@ -272,6 +272,138 @@ class TestHttpUsers(unittest.TestCase):
         response = self.client.get(f"/tests/view/{run_id}")
         self.assertEqual(response.status_code, 200)
         self.assertIn(str(run_id), response.text)
+
+    def test_contributors_server_side_search_hx_fragment(self):
+        hit_name = "HxSearchMatchUser"
+        miss_name = "HxSearchMissUser"
+        docs = [
+            {
+                "username": hit_name,
+                "cpu_hours": 10,
+                "games": 50,
+                "tests": 2,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            },
+            {
+                "username": miss_name,
+                "cpu_hours": 5,
+                "games": 20,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            },
+        ]
+        self.rundb.userdb.user_cache.insert_many(docs)
+        try:
+            response = self.client.get(
+                "/contributors?search=matchuser",
+                headers={"HX-Request": "true"},
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(hit_name, response.text)
+            self.assertNotIn(miss_name, response.text)
+            self.assertNotIn("<table", response.text)
+        finally:
+            self.rundb.userdb.user_cache.delete_many(
+                {"username": {"$in": [hit_name, miss_name]}}
+            )
+
+    def test_workers_server_side_filter_hx_fragment(self):
+        recent_worker = "hxrecent-1cores-abcd"
+        old_worker = "hxold-1cores-abcd"
+
+        self.rundb.workerdb.update_worker(recent_worker, blocked=True, message="recent")
+        self.rundb.workerdb.update_worker(old_worker, blocked=True, message="old")
+        self.rundb.workerdb.workers.update_one(
+            {"worker_name": old_worker},
+            {"$set": {"last_updated": datetime.now(UTC) - timedelta(days=10)}},
+        )
+        self.rundb.workerdb.workers.update_one(
+            {"worker_name": recent_worker},
+            {"$set": {"last_updated": datetime.now(UTC) - timedelta(days=1)}},
+        )
+
+        try:
+            response = self.client.get(
+                "/workers/show?filter=gt-5days",
+                headers={"HX-Request": "true"},
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(old_worker, response.text)
+            self.assertNotIn(recent_worker, response.text)
+            self.assertNotIn("<table", response.text)
+        finally:
+            self.rundb.workerdb.workers.delete_many(
+                {"worker_name": {"$in": [recent_worker, old_worker]}}
+            )
+
+    def test_user_management_lazy_group_hx_fragment(self):
+        pending_user = "HxPendingGroupUser"
+        blocked_user = "HxBlockedGroupUser"
+
+        self.rundb.userdb.create_user(
+            pending_user,
+            "secret",
+            "pending-group@example.com",
+            "https://github.com/official-stockfish/Stockfish",
+        )
+        self.rundb.userdb.create_user(
+            blocked_user,
+            "secret",
+            "blocked-group@example.com",
+            "https://github.com/official-stockfish/Stockfish",
+        )
+
+        blocked_doc = self.rundb.userdb.get_user(blocked_user)
+        blocked_doc["pending"] = False
+        blocked_doc["blocked"] = True
+        self.rundb.userdb.save_user(blocked_doc)
+
+        approver = self.rundb.userdb.get_user(self.username)
+        original_pending = approver.get("pending", False)
+        original_groups = list(approver.get("groups", []))
+        approver["pending"] = False
+        if "group:approvers" not in approver["groups"]:
+            approver["groups"].append("group:approvers")
+        self.rundb.userdb.save_user(approver)
+
+        try:
+            response = self.client.get("/login")
+            csrf = test_support.extract_csrf_token(response.text)
+            login = self.client.post(
+                "/login",
+                data={
+                    "username": self.username,
+                    "password": self.password,
+                    "csrf_token": csrf,
+                },
+                follow_redirects=False,
+            )
+            self.assertEqual(login.status_code, 302)
+
+            response = self.client.get(
+                "/user_management?group=blocked",
+                headers={"HX-Request": "true"},
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(blocked_user, response.text)
+            self.assertNotIn(pending_user, response.text)
+            self.assertNotIn("<table", response.text)
+        finally:
+            cleanup_approver = self.rundb.userdb.get_user(self.username)
+            cleanup_approver["pending"] = original_pending
+            cleanup_approver["groups"] = original_groups
+            self.rundb.userdb.save_user(cleanup_approver)
+
+            pending_doc = self.rundb.userdb.get_user(pending_user)
+            if pending_doc is not None:
+                self.rundb.userdb.remove_user(pending_doc, self.username)
+            blocked_doc = self.rundb.userdb.get_user(blocked_user)
+            if blocked_doc is not None:
+                self.rundb.userdb.remove_user(blocked_doc, self.username)
 
     def test_add_user_group_raises_on_duplicate(self):
         """Ensure adding a duplicate group raises ValidationError from userdb."""
