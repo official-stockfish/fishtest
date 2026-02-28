@@ -231,6 +231,7 @@
                 hx-confirm="Stop this run?"
                 hx-swap="none"
                 hx-on::after-request="if(event.detail.successful) location.reload()"
+                hx-disabled-elt="this"
               >
                 Stop
               </button>
@@ -246,6 +247,7 @@
                   hx-vals='{"run-id": "{{ run_id }}", "csrf_token": "{{ csrf_token }}"}'
                   hx-swap="none"
                   hx-on::after-request="if(event.detail.successful) location.reload()"
+                hx-disabled-elt="this"
                 >
                   Approve
                 </button>
@@ -261,6 +263,7 @@
                 hx-confirm="Purge this run?"
                 hx-swap="none"
                 hx-on::after-request="if(event.detail.successful) location.reload()"
+                hx-disabled-elt="this"
               >
                 Purge
               </button>

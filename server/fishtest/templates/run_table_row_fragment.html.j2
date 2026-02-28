@@ -9,12 +9,12 @@
         hx-confirm="Are you sure you want to delete this run?"
         hx-target="closest tr"
         hx-swap="outerHTML"
+        hx-disabled-elt="this"
       >
         <i class="fas fa-trash-alt"></i>
       </button>
     </td>
   {% endif %}
-
 
   <td style="width: 6%;" class="run-date">
     {{ row.start_date_label }}
