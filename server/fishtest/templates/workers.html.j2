@@ -40,11 +40,11 @@
 <h3>Blocked workers</h3>
 
 <div id="workers-table-handler" class="dropdown">
-  {% set workers_filter_label = "Modified &#8804; 5 days ago" %}
+  {% set workers_filter_label = "Modified ≤ 5 days ago" %}
   {% if filter_value == "all-workers" %}
     {% set workers_filter_label = "All" %}
   {% elif filter_value == "gt-5days" %}
-    {% set workers_filter_label = "Modified &gt; 5 days ago" %}
+    {% set workers_filter_label = "Modified > 5 days ago" %}
   {% endif %}
   <button
     id="workers-table-toggle"
@@ -52,7 +52,7 @@
     type="button"
     data-bs-toggle="dropdown"
     aria-expanded="false"
-  >{{ workers_filter_label | safe }}</button>
+  >{{ workers_filter_label }}</button>
 
   <span id="workers-filter-indicator" class="htmx-indicator small text-muted ms-2">Filtering...</span>
 
@@ -75,7 +75,7 @@
         hx-target="#workers-table tbody"
         hx-swap="innerHTML"
         hx-indicator="#workers-filter-indicator"
-      >Modified &#8804; 5 days ago</a>
+      >Modified ≤ 5 days ago</a>
     </li>
     <li>
       <a
@@ -85,7 +85,7 @@
         hx-target="#workers-table tbody"
         hx-swap="innerHTML"
         hx-indicator="#workers-filter-indicator"
-      >Modified &gt; 5 days ago</a>
+      >Modified > 5 days ago</a>
     </li>
   </ul>
 </div>

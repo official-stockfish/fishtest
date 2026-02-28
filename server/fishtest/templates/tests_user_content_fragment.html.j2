@@ -29,7 +29,9 @@
     prefix=run_tables_ctx.prefix,
     toggle_states=run_tables_ctx.toggle_states,
     finished_title_text=run_tables_ctx.finished_title_text,
-    show_gauge=run_tables_ctx.show_gauge
+    show_gauge=run_tables_ctx.show_gauge,
+    username=username,
+    filters=filters
   %}
     {% include "run_tables.html.j2" %}
   {% endwith %}

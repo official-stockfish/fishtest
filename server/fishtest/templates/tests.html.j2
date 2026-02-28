@@ -13,10 +13,6 @@
     <div id="homepage-stats">
       {% include "homepage_stats_fragment.html.j2" %}
     </div>
-    <div hx-get="/tests/stats_summary"
-         hx-trigger="every {{ poll.stats_homepage }}s"
-         hx-swap="none">
-    </div>
   </div>
 
   <script>
@@ -50,13 +46,22 @@
 
     const showMachinesError = (e) => {
       target.dataset.machinesLoaded = "0";
-      e.target.innerHTML =
-        '<div class="alert alert-danger d-flex justify-content-between align-items-center">' +
-        '<span>Something went wrong. Please try again.</span>' +
-        '<button class="btn btn-primary" hx-get="/tests/machines"' +
-        ' hx-target="#machines" hx-swap="innerHTML" hx-disabled-elt="this">' +
-        'Retry</button></div>';
-      htmx.process(e.target);
+      const container = e.target;
+      container.replaceChildren();
+      const wrapper = document.createElement("div");
+      wrapper.className = "alert alert-danger d-flex justify-content-between align-items-center";
+      const msg = document.createElement("span");
+      msg.textContent = "Something went wrong. Please try again.";
+      const btn = document.createElement("button");
+      btn.className = "btn btn-primary";
+      btn.textContent = "Retry";
+      btn.setAttribute("hx-get", "/tests/machines");
+      btn.setAttribute("hx-target", "#machines");
+      btn.setAttribute("hx-swap", "innerHTML");
+      btn.setAttribute("hx-disabled-elt", "this");
+      wrapper.append(msg, btn);
+      container.append(wrapper);
+      htmx.process(container);
     };
 
     target?.addEventListener("htmx:responseError", (e) => {
