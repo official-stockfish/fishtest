@@ -721,6 +721,16 @@ input[type="checkbox"],
   opacity: 0.65;
 }
 
+/* htmx request indicator -- hidden by default, shown during requests */
+.htmx-indicator {
+  display: none;
+}
+
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator {
+  display: inline-block;
+}
+
 .dropdown-item {
   cursor: pointer;
 }

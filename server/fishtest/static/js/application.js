@@ -14,6 +14,39 @@ let broadcastDispatch = {
   handleSortingTables();
 })();
 
+// Unified htmx error recovery (RFC #2484, Feature 3.8).
+// Replaces per-feature retry logic with a single declarative handler
+// that reuses the existing error_div infrastructure in base.html.j2.
+
+document.addEventListener("htmx:responseError", (event) => {
+  const xhr = event.detail.xhr;
+  const status = xhr ? xhr.status : 0;
+  const statusText = status ? getStatusText(status) : "Unknown error";
+  const url = event.detail.pathInfo?.requestPath || "";
+  const message = `Update failed: ${status} ${statusText}`;
+  log(`htmx:responseError ${url} — ${status} ${statusText}`);
+  showHtmxError(message);
+});
+
+document.addEventListener("htmx:sendError", (event) => {
+  const url = event.detail.pathInfo?.requestPath || "";
+  log(`htmx:sendError ${url} — network unreachable`);
+  showHtmxError("Network error: please check your connection.");
+});
+
+function showHtmxError(message) {
+  const errorDiv = document.getElementById("error_div");
+  const errorSpan = document.getElementById("error");
+  if (!errorDiv || !errorSpan) return;
+  errorSpan.textContent = message;
+  errorDiv.style.display = "";
+  // Auto-dismiss after 8 seconds so polling panels recover silently.
+  clearTimeout(showHtmxError._timer);
+  showHtmxError._timer = setTimeout(() => {
+    errorDiv.style.display = "none";
+  }, 8000);
+}
+
 // Awaits the page content to load
 function DOMContentLoaded() {
   // Use as
@@ -123,9 +156,8 @@ function setTheme(theme) {
     document.querySelector('head link[href*="/css/theme.dark.css"]')?.remove();
   }
   // Remember the theme for 30 days
-  document.cookie = `theme=${theme}; path=/; max-age=${
-    30 * 24 * 60 * 60
-  }; SameSite=Lax`;
+  document.cookie = `theme=${theme}; path=/; max-age=${30 * 24 * 60 * 60
+    }; SameSite=Lax`;
 }
 
 function supportsNotifications() {
@@ -420,25 +452,25 @@ function comparer(idx, asc) {
         : v1 !== "" && v2 !== "" && !isNaN("0x" + v1) && !isNaN("0x" + v2)
           ? parseInt(v1, 16) - parseInt(v2, 16)
           : v1 !== "" &&
-              v2 !== "" &&
-              !isNaN((p1 = padDotVersion(v1))) &&
-              !isNaN((p2 = padDotVersion(v2)))
+            v2 !== "" &&
+            !isNaN((p1 = padDotVersion(v1))) &&
+            !isNaN((p2 = padDotVersion(v2)))
             ? p1 - p2
             : v1 !== "" &&
-                v2 !== "" &&
-                !isNaN(
-                  padDotVersion(v1.replace("clang++ ", "").replace("g++ ", "")),
-                ) &&
-                !isNaN(
-                  padDotVersion(v2.replace("clang++ ", "").replace("g++ ", "")),
-                )
+              v2 !== "" &&
+              !isNaN(
+                padDotVersion(v1.replace("clang++ ", "").replace("g++ ", "")),
+              ) &&
+              !isNaN(
+                padDotVersion(v2.replace("clang++ ", "").replace("g++ ", "")),
+              )
               ? padDotVersionStr(v1)
-                  .toString()
-                  .localeCompare(padDotVersionStr(v2))
+                .toString()
+                .localeCompare(padDotVersionStr(v2))
               : v1.toString().localeCompare(v2))(
-      getCellValue(asc ? a : b, idx),
-      getCellValue(asc ? b : a, idx),
-    );
+                getCellValue(asc ? a : b, idx),
+                getCellValue(asc ? b : a, idx),
+              );
 }
 function getCellValue(tr, idx) {
   return (
@@ -476,10 +508,10 @@ async function rateLimit() {
   const token = localStorage.getItem("github_token");
   const options = token
     ? {
-        headers: {
-          Authorization: "Bearer " + token,
-        },
-      }
+      headers: {
+        Authorization: "Bearer " + token,
+      },
+    }
     : {};
   options.signal = abortTimeout(3000);
   const rateLimit_ = await fetchJson(url, options);
