@@ -1,0 +1,26 @@
+{% for user in users %}
+  <tr>
+    <td class="rank">{{ loop.index }}</td>
+    <td>
+    {% if user.user_url %}
+      <a href="{{ user.user_url }}"> {{ user.username }} </a>
+    {% else %}
+      {{ " " ~ user.username ~ " " }}
+    {% endif %}
+    </td>
+    <td data-sort-value="{{ user.last_updated_sort }}" class="text-end">{{ user.last_updated_label }}</td>
+    <td class="text-end">{{ user.games_per_hour }}</td>
+    <td class="text-end">{{ user.cpu_hours }}</td>
+    <td class="text-end">{{ user.games }}</td>
+    <td class="text-end">
+      <a href="{{ user.tests_user_url }}">{{ user.tests }} </a>
+    </td>
+    <td class="user-repo">
+      <a href="{{ user.tests_repo_url }}" target="_blank" rel="noopener noreferrer">{{ user.tests_repo_url }}</a>
+    </td>
+  </tr>
+{% else %}
+  <tr>
+    <td colspan="20">No users exist</td>
+  </tr>
+{% endfor %}

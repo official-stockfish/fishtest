@@ -3,7 +3,7 @@ import gzip
 import hashlib
 import os
 import re
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.parse import quote, urlencode
 
@@ -456,8 +456,31 @@ def _blocked_worker_rows(blocked_workers, *, show_email):
     return rows
 
 
+def _filter_blocked_workers(blocked_workers, filter_value):
+    if filter_value == "all-workers":
+        return blocked_workers
+
+    threshold_5d = datetime.now(UTC) - timedelta(days=5)
+    if filter_value == "gt-5days":
+        return [
+            worker
+            for worker in blocked_workers
+            if worker.get("last_updated") and worker["last_updated"] < threshold_5d
+        ]
+
+    # Default to recent workers when an unknown filter is provided.
+    return [
+        worker
+        for worker in blocked_workers
+        if not worker.get("last_updated") or worker["last_updated"] >= threshold_5d
+    ]
+
+
 def workers(request):
     is_approver = request.has_permission("approve_run")
+    filter_value = request.params.get("filter", "le-5days")
+    if filter_value not in {"all-workers", "le-5days", "gt-5days"}:
+        filter_value = "le-5days"
 
     blocked_workers = request.rundb.workerdb.get_blocked_workers()
     blocker_name = request.authenticated_userid
@@ -482,22 +505,52 @@ def workers(request):
         validate(union(short_worker_name, "show"), worker_name, name="worker_name")
     except ValidationError as e:
         request.session.flash(str(e), "error")
+        filtered_rows = _blocked_worker_rows(
+            _filter_blocked_workers(blocked_workers, filter_value),
+            show_email=is_approver,
+        )
+        if _is_hx_request(request):
+            return render_template_to_response(
+                request=request.raw_request,
+                template_name="workers_rows_fragment.html.j2",
+                context=build_template_context(
+                    request.raw_request,
+                    request.session,
+                    {
+                        "blocked_workers": filtered_rows,
+                        "show_email": is_approver,
+                    },
+                ),
+            )
         return {
             "show_admin": False,
             "show_email": is_approver,
-            "blocked_workers": _blocked_worker_rows(
-                blocked_workers,
-                show_email=is_approver,
-            ),
+            "blocked_workers": filtered_rows,
+            "filter_value": filter_value,
         }
     if len(worker_name.split("-")) != 3:
+        filtered_rows = _blocked_worker_rows(
+            _filter_blocked_workers(blocked_workers, filter_value),
+            show_email=is_approver,
+        )
+        if _is_hx_request(request):
+            return render_template_to_response(
+                request=request.raw_request,
+                template_name="workers_rows_fragment.html.j2",
+                context=build_template_context(
+                    request.raw_request,
+                    request.session,
+                    {
+                        "blocked_workers": filtered_rows,
+                        "show_email": is_approver,
+                    },
+                ),
+            )
         return {
             "show_admin": False,
             "show_email": is_approver,
-            "blocked_workers": _blocked_worker_rows(
-                blocked_workers,
-                show_email=is_approver,
-            ),
+            "blocked_workers": filtered_rows,
+            "filter_value": filter_value,
         }
     result = ensure_logged_in(request)
     if isinstance(result, RedirectResponse):
@@ -505,13 +558,28 @@ def workers(request):
     owner_name = worker_name.split("-")[0]
     if not is_approver and blocker_name != owner_name:
         request.session.flash("Only owners and approvers can block/unblock", "error")
+        filtered_rows = _blocked_worker_rows(
+            _filter_blocked_workers(blocked_workers, filter_value),
+            show_email=is_approver,
+        )
+        if _is_hx_request(request):
+            return render_template_to_response(
+                request=request.raw_request,
+                template_name="workers_rows_fragment.html.j2",
+                context=build_template_context(
+                    request.raw_request,
+                    request.session,
+                    {
+                        "blocked_workers": filtered_rows,
+                        "show_email": is_approver,
+                    },
+                ),
+            )
         return {
             "show_admin": False,
             "show_email": is_approver,
-            "blocked_workers": _blocked_worker_rows(
-                blocked_workers,
-                show_email=is_approver,
-            ),
+            "blocked_workers": filtered_rows,
+            "filter_value": filter_value,
         }
 
     if request.method == "POST":
@@ -543,6 +611,24 @@ def workers(request):
         return RedirectResponse(url="/workers/show", status_code=302)
 
     w = request.rundb.workerdb.get_worker(worker_name)
+    filtered_rows = _blocked_worker_rows(
+        _filter_blocked_workers(blocked_workers, filter_value),
+        show_email=is_approver,
+    )
+    if _is_hx_request(request):
+        return render_template_to_response(
+            request=request.raw_request,
+            template_name="workers_rows_fragment.html.j2",
+            context=build_template_context(
+                request.raw_request,
+                request.session,
+                {
+                    "blocked_workers": filtered_rows,
+                    "show_email": is_approver,
+                },
+            ),
+        )
+
     return {
         "show_admin": True,
         "worker_name": worker_name,
@@ -552,10 +638,8 @@ def workers(request):
         "last_updated_label": (
             format_time_ago(w["last_updated"]) if w["last_updated"] else "Never"
         ),
-        "blocked_workers": _blocked_worker_rows(
-            blocked_workers,
-            show_email=is_approver,
-        ),
+        "blocked_workers": filtered_rows,
+        "filter_value": filter_value,
     }
 
 
@@ -1109,21 +1193,58 @@ def user_management(request):
         request.session.flash("You cannot view user management", "error")
         return home(request)
 
+    group = request.params.get("group", "pending")
+    if group not in {"all", "pending", "blocked", "idle", "approvers"}:
+        group = "pending"
+
     users = list(request.userdb.get_users())
     pending_users = request.userdb.get_pending()
     blocked_users = request.userdb.get_blocked()
     idle_users = get_idle_users(users, request)
 
-    return {
-        "all_users": _user_management_rows(users),
-        "pending_users": _user_management_rows(pending_users),
-        "blocked_users": _user_management_rows(blocked_users),
-        "approvers_users": [
+    all_count = len(users)
+    pending_count = len(pending_users)
+    blocked_count = len(blocked_users)
+    idle_count = len(idle_users)
+
+    if group == "all":
+        selected_rows = _user_management_rows(users)
+    elif group == "pending":
+        selected_rows = _user_management_rows(pending_users)
+    elif group == "blocked":
+        selected_rows = _user_management_rows(blocked_users)
+    elif group == "idle":
+        selected_rows = _user_management_rows(idle_users)
+    else:
+        selected_rows = [
             user
             for user in _user_management_rows(users)
             if "group:approvers" in user.get("groups", [])
-        ],
-        "idle_users": _user_management_rows(idle_users),  # depends on cache too
+        ]
+
+    approvers_count = len(
+        [user for user in users if "group:approvers" in user.get("groups", [])]
+    )
+
+    if _is_hx_request(request):
+        return render_template_to_response(
+            request=request.raw_request,
+            template_name="user_management_rows_fragment.html.j2",
+            context=build_template_context(
+                request.raw_request,
+                request.session,
+                {"group": group, "selected_users": selected_rows},
+            ),
+        )
+
+    return {
+        "all_count": all_count,
+        "pending_count": pending_count,
+        "blocked_count": blocked_count,
+        "idle_count": idle_count,
+        "approvers_count": approvers_count,
+        "group": group,
+        "selected_users": selected_rows,
     }
 
 
@@ -1258,29 +1379,69 @@ def user(request):
 
 # === Contributors views ===
 def contributors(request):
+    search = request.params.get("search", "").strip()
     users_list = list(request.userdb.user_cache.find())
     users_list.sort(key=lambda k: k["cpu_hours"], reverse=True)
+    if search:
+        search_lower = search.lower()
+        users_list = [
+            user
+            for user in users_list
+            if search_lower in str(user.get("username", "")).lower()
+        ]
     is_approver = request.has_permission("approve_run")
-    return {
+    context = {
         "is_monthly": False,
         "monthly_suffix": "",
         "summary": build_contributors_summary(users_list),
         "users": build_contributors_rows(users_list, is_approver=is_approver),
         "is_approver": is_approver,
+        "search": search,
     }
+
+    if _is_hx_request(request):
+        return render_template_to_response(
+            request=request.raw_request,
+            template_name="contributors_rows_fragment.html.j2",
+            context=build_template_context(
+                request.raw_request, request.session, context
+            ),
+        )
+
+    return context
 
 
 def contributors_monthly(request):
+    search = request.params.get("search", "").strip()
     users_list = list(request.userdb.top_month.find())
     users_list.sort(key=lambda k: k["cpu_hours"], reverse=True)
+    if search:
+        search_lower = search.lower()
+        users_list = [
+            user
+            for user in users_list
+            if search_lower in str(user.get("username", "")).lower()
+        ]
     is_approver = request.has_permission("approve_run")
-    return {
+    context = {
         "is_monthly": True,
         "monthly_suffix": " - Top Month",
         "summary": build_contributors_summary(users_list),
         "users": build_contributors_rows(users_list, is_approver=is_approver),
         "is_approver": is_approver,
+        "search": search,
     }
+
+    if _is_hx_request(request):
+        return render_template_to_response(
+            request=request.raw_request,
+            template_name="contributors_rows_fragment.html.j2",
+            context=build_template_context(
+                request.raw_request, request.session, context
+            ),
+        )
+
+    return context
 
 
 # === Run creation helpers ===
