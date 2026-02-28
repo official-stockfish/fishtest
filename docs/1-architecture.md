@@ -166,6 +166,12 @@ Client -> nginx -> Uvicorn -> ASGI middleware stack -> FastAPI router
   registered from the `_VIEW_ROUTES` table via `_register_view_routes()`.
 - **Static assets**: `StaticFiles` mount serves `/static/*`.
 
+### Client-side dependency note
+
+UI templates load `htmx` 2.0.8 from CDN in `base.html.j2`. The server remains
+fully server-rendered (Jinja2 + HTML responses), while htmx is used for
+fragment polling/swaps and in-place form actions on selected routes.
+
 ## Primary instance model
 
 Multiple Uvicorn instances run behind nginx (ports 8000-8003). Exactly one is

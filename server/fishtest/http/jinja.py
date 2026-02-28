@@ -25,6 +25,7 @@ from fishtest.http.settings import (
     POLL_ELO_DETAIL_S,
     POLL_LIVE_ELO_S,
     POLL_MACHINES_HOMEPAGE_S,
+    POLL_RATE_LIMITS_SERVER_S,
     POLL_STATS_HOMEPAGE_S,
     POLL_TASKS_DETAIL_S,
 )
@@ -140,6 +141,7 @@ def default_environment() -> Environment:
                 "machines_homepage": POLL_MACHINES_HOMEPAGE_S,
                 "stats_homepage": POLL_STATS_HOMEPAGE_S,
                 "live_elo": POLL_LIVE_ELO_S,
+                "rate_limits_server": POLL_RATE_LIMITS_SERVER_S,
             },
         },
     )

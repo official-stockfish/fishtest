@@ -27,6 +27,7 @@ POLL_BATCH_HOMEPAGE_S: int = 120
 POLL_ELO_DETAIL_S: int = 60
 POLL_TASKS_DETAIL_S: int = 300
 POLL_LIVE_ELO_S: int = 20
+POLL_RATE_LIMITS_SERVER_S: int = 60
 
 
 def env_int(name: str, *, default: int) -> int:
