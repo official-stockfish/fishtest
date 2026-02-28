@@ -14,6 +14,19 @@
   <span id="{{ update.id }}" hx-swap-oob="innerHTML">{{ update.text }}</span>
 {% endfor %}
 
-<span id="workers-count" hx-swap-oob="innerHTML">
-  Workers - {{ machines_count }} machines
-</span>
+{% if machines_count is defined %}
+  <span id="workers-count" hx-swap-oob="innerHTML">
+    Workers - {{ machines_count }} machines
+  </span>
+{% endif %}
+
+{% if stats is defined %}
+  {% with
+    pending_hours=stats.pending_hours,
+    cores=stats.cores,
+    nps_m=stats.nps_m,
+    games_per_minute=stats.games_per_minute
+  %}
+    {% include "homepage_stats_fragment.html.j2" %}
+  {% endwith %}
+{% endif %}

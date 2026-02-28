@@ -519,154 +519,89 @@ def workers(request):
             w["subject"] = f"Issue(s) with worker {w['worker_name']}"
 
     worker_name = request.matchdict.get("worker_name")
+    show_admin = False
+    admin_context = {}
+
     try:
         validate(union(short_worker_name, "show"), worker_name, name="worker_name")
     except ValidationError as e:
         request.session.flash(str(e), "error")
-        filtered_rows = _blocked_worker_rows(
-            _filter_blocked_workers(blocked_workers, filter_value),
-            show_email=is_approver,
-        )
-        if _is_hx_request(request):
-            return render_template_to_response(
-                request=request.raw_request,
-                template_name="workers_rows_fragment.html.j2",
-                context=build_template_context(
-                    request.raw_request,
-                    request.session,
-                    {
-                        "blocked_workers": filtered_rows,
-                        "show_email": is_approver,
-                        "filter_value": filter_value,
-                        "is_hx": True,
-                    },
-                ),
-            )
-        return {
-            "show_admin": False,
-            "show_email": is_approver,
-            "blocked_workers": filtered_rows,
-            "filter_value": filter_value,
-        }
-    if len(worker_name.split("-")) != 3:
-        filtered_rows = _blocked_worker_rows(
-            _filter_blocked_workers(blocked_workers, filter_value),
-            show_email=is_approver,
-        )
-        if _is_hx_request(request):
-            return render_template_to_response(
-                request=request.raw_request,
-                template_name="workers_rows_fragment.html.j2",
-                context=build_template_context(
-                    request.raw_request,
-                    request.session,
-                    {
-                        "blocked_workers": filtered_rows,
-                        "show_email": is_approver,
-                        "filter_value": filter_value,
-                        "is_hx": True,
-                    },
-                ),
-            )
-        return {
-            "show_admin": False,
-            "show_email": is_approver,
-            "blocked_workers": filtered_rows,
-            "filter_value": filter_value,
-        }
-    result = ensure_logged_in(request)
-    if isinstance(result, RedirectResponse):
-        return result
-    owner_name = worker_name.split("-")[0]
-    if not is_approver and blocker_name != owner_name:
-        request.session.flash("Only owners and approvers can block/unblock", "error")
-        filtered_rows = _blocked_worker_rows(
-            _filter_blocked_workers(blocked_workers, filter_value),
-            show_email=is_approver,
-        )
-        if _is_hx_request(request):
-            return render_template_to_response(
-                request=request.raw_request,
-                template_name="workers_rows_fragment.html.j2",
-                context=build_template_context(
-                    request.raw_request,
-                    request.session,
-                    {
-                        "blocked_workers": filtered_rows,
-                        "show_email": is_approver,
-                        "filter_value": filter_value,
-                        "is_hx": True,
-                    },
-                ),
-            )
-        return {
-            "show_admin": False,
-            "show_email": is_approver,
-            "blocked_workers": filtered_rows,
-            "filter_value": filter_value,
-        }
-
-    if request.method == "POST":
-        button = request.POST.get("submit")
-        if button == "Submit":
-            blocked = request.POST.get("blocked") is not None
-            message = request.POST.get("message")
-            max_chars = 500
-            if len(message) > max_chars:
+    else:
+        if len(worker_name.split("-")) != 3:
+            pass  # fall through to shared rendering
+        else:
+            result = ensure_logged_in(request)
+            if isinstance(result, RedirectResponse):
+                return result
+            owner_name = worker_name.split("-")[0]
+            if not is_approver and blocker_name != owner_name:
                 request.session.flash(
-                    f"Warning: your description of the issue has been truncated to {max_chars} characters",
-                    "error",
+                    "Only owners and approvers can block/unblock", "error"
                 )
-                message = message[:max_chars]
-            message = normalize_lf(message)
-            was_blocked = request.workerdb.get_worker(worker_name)["blocked"]
-            request.rundb.workerdb.update_worker(
-                worker_name, blocked=blocked, message=message
-            )
-            if blocked != was_blocked:
-                request.session.flash(
-                    f"Worker {worker_name} {'blocked' if blocked else 'unblocked'}!",
-                )
-                request.actiondb.block_worker(
-                    username=blocker_name,
-                    worker=worker_name,
-                    message="blocked" if blocked else "unblocked",
-                )
-        return RedirectResponse(url="/workers/show", status_code=302)
+            elif request.method == "POST":
+                button = request.POST.get("submit")
+                if button == "Submit":
+                    blocked = request.POST.get("blocked") is not None
+                    message = request.POST.get("message")
+                    max_chars = 500
+                    if len(message) > max_chars:
+                        request.session.flash(
+                            f"Warning: your description of the issue has been truncated to {max_chars} characters",
+                            "error",
+                        )
+                        message = message[:max_chars]
+                    message = normalize_lf(message)
+                    was_blocked = request.workerdb.get_worker(worker_name)["blocked"]
+                    request.rundb.workerdb.update_worker(
+                        worker_name, blocked=blocked, message=message
+                    )
+                    if blocked != was_blocked:
+                        request.session.flash(
+                            f"Worker {worker_name} {'blocked' if blocked else 'unblocked'}!",
+                        )
+                        request.actiondb.block_worker(
+                            username=blocker_name,
+                            worker=worker_name,
+                            message="blocked" if blocked else "unblocked",
+                        )
+                return RedirectResponse(url="/workers/show", status_code=302)
+            else:
+                w = request.rundb.workerdb.get_worker(worker_name)
+                show_admin = True
+                admin_context = {
+                    "worker_name": worker_name,
+                    "blocked": w["blocked"],
+                    "message": w["message"],
+                    "last_updated_label": (
+                        format_time_ago(w["last_updated"])
+                        if w["last_updated"]
+                        else "Never"
+                    ),
+                }
 
-    w = request.rundb.workerdb.get_worker(worker_name)
+    # --- shared rendering for all non-redirect branches ---
     filtered_rows = _blocked_worker_rows(
         _filter_blocked_workers(blocked_workers, filter_value),
         show_email=is_approver,
     )
-    if _is_hx_request(request):
-        return render_template_to_response(
-            request=request.raw_request,
-            template_name="workers_rows_fragment.html.j2",
-            context=build_template_context(
-                request.raw_request,
-                request.session,
-                {
-                    "blocked_workers": filtered_rows,
-                    "show_email": is_approver,
-                    "filter_value": filter_value,
-                    "is_hx": True,
-                },
-            ),
-        )
 
-    return {
-        "show_admin": True,
-        "worker_name": worker_name,
-        "blocked": w["blocked"],
-        "message": w["message"],
+    context = {
+        "show_admin": show_admin,
         "show_email": is_approver,
-        "last_updated_label": (
-            format_time_ago(w["last_updated"]) if w["last_updated"] else "Never"
-        ),
         "blocked_workers": filtered_rows,
         "filter_value": filter_value,
+        **admin_context,
     }
+
+    hx = _render_hx_fragment(
+        request,
+        "workers_rows_fragment.html.j2",
+        {**context, "is_hx": True},
+    )
+    if hx:
+        return hx
+
+    return context
 
 
 # === Neural network uploads + tools ===
@@ -934,16 +869,9 @@ def nns(request):
         "user_filter": user,
     }
 
-    if _is_hx_request(request):
-        return render_template_to_response(
-            request=request.raw_request,
-            template_name="nns_content_fragment.html.j2",
-            context=build_template_context(
-                request.raw_request, request.session, context
-            ),
-        )
-
-    return context
+    return (
+        _render_hx_fragment(request, "nns_content_fragment.html.j2", context) or context
+    )
 
 
 def sprt_calc(request):
@@ -971,16 +899,10 @@ def rate_limits(request):
         "server_reset": server_reset,
     }
 
-    if _is_hx_request(request):
-        return render_template_to_response(
-            request=request.raw_request,
-            template_name="rate_limits_server_fragment.html.j2",
-            context=build_template_context(
-                request.raw_request, request.session, context
-            ),
-        )
-
-    return context
+    return (
+        _render_hx_fragment(request, "rate_limits_server_fragment.html.j2", context)
+        or context
+    )
 
 
 # Different LOCALES may have different quotation marks.
@@ -1015,24 +937,23 @@ def _is_hx_request(request) -> bool:
     headers = getattr(request, "headers", None)
     if headers is None:
         return False
-
-    def _header(name: str) -> str:
-        value = headers.get(name)
-        if value is not None:
-            return str(value)
-        lower_name = name.lower()
-        for key, val in getattr(headers, "items", lambda: [])():
-            if str(key).lower() == lower_name:
-                return str(val)
-        return ""
-
-    if _header("HX-Request").lower() != "true":
+    if (headers.get("HX-Request") or "").lower() != "true":
         return False
     # Never treat top-level document navigations as fragment requests,
     # even if HX-Request appears in transit.
-    if _header("Sec-Fetch-Mode").lower() == "navigate":
+    if (headers.get("Sec-Fetch-Mode") or "").lower() == "navigate":
         return False
     return True
+
+
+def _render_hx_fragment(request, template_name, context):
+    if not _is_hx_request(request):
+        return None
+    return render_template_to_response(
+        request=request.raw_request,
+        template_name=template_name,
+        context=build_template_context(request.raw_request, request.session, context),
+    )
 
 
 # === Actions log ===
@@ -1196,16 +1117,10 @@ def actions(request):
         "usernames": [user["username"] for user in request.userdb.get_users()],
     }
 
-    if _is_hx_request(request):
-        return render_template_to_response(
-            request=request.raw_request,
-            template_name="actions_content_fragment.html.j2",
-            context=build_template_context(
-                request.raw_request, request.session, context
-            ),
-        )
-
-    return context
+    return (
+        _render_hx_fragment(request, "actions_content_fragment.html.j2", context)
+        or context
+    )
 
 
 # === User management + profiles ===
@@ -1281,20 +1196,17 @@ def user_management(request):
         [user for user in users if "group:approvers" in user.get("groups", [])]
     )
 
-    if _is_hx_request(request):
-        return render_template_to_response(
-            request=request.raw_request,
-            template_name="user_management_rows_fragment.html.j2",
-            context=build_template_context(
-                request.raw_request,
-                request.session,
-                {
-                    "group": group,
-                    "selected_users": selected_rows,
-                    "is_hx": True,
-                },
-            ),
-        )
+    hx = _render_hx_fragment(
+        request,
+        "user_management_rows_fragment.html.j2",
+        {
+            "group": group,
+            "selected_users": selected_rows,
+            "is_hx": True,
+        },
+    )
+    if hx:
+        return hx
 
     return {
         "all_count": all_count,
@@ -1458,16 +1370,10 @@ def contributors(request):
         "search": search,
     }
 
-    if _is_hx_request(request):
-        return render_template_to_response(
-            request=request.raw_request,
-            template_name="contributors_rows_fragment.html.j2",
-            context=build_template_context(
-                request.raw_request, request.session, context
-            ),
-        )
-
-    return context
+    return (
+        _render_hx_fragment(request, "contributors_rows_fragment.html.j2", context)
+        or context
+    )
 
 
 def contributors_monthly(request):
@@ -1491,16 +1397,10 @@ def contributors_monthly(request):
         "search": search,
     }
 
-    if _is_hx_request(request):
-        return render_template_to_response(
-            request=request.raw_request,
-            template_name="contributors_rows_fragment.html.j2",
-            context=build_template_context(
-                request.raw_request, request.session, context
-            ),
-        )
-
-    return context
+    return (
+        _render_hx_fragment(request, "contributors_rows_fragment.html.j2", context)
+        or context
+    )
 
 
 # === Run creation helpers ===
@@ -2432,10 +2332,10 @@ def tests_elo_batch(request):
 
     (
         runs,
-        _pending_hours,
-        _cores,
-        _nps,
-        _games_per_minute,
+        pending_hours,
+        cores,
+        nps,
+        games_per_minute,
         machines_count,
     ) = request.rundb.aggregate_unfinished_runs(username=username or None)
 
@@ -2514,11 +2414,25 @@ def tests_elo_batch(request):
     if not (pending_runs or paused_runs or active_runs):
         request.response_status = 286
 
-    return {
+    result = {
         "panels": panels,
         "count_updates": count_updates,
-        "machines_count": machines_count,
     }
+
+    # workers-count target exists on homepage only.
+    if not username:
+        result["machines_count"] = machines_count
+
+    # Include stats OOB updates for the homepage (no username filter).
+    if not username:
+        result["stats"] = {
+            "pending_hours": "{:.1f}".format(pending_hours),
+            "cores": cores,
+            "nps_m": f"{nps / 1000000:.0f}M",
+            "games_per_minute": int(games_per_minute),
+        }
+
+    return result
 
 
 def tests_elo(request):
@@ -3124,18 +3038,12 @@ def tests_finished(request):
         "show_gauge": False,
     }
 
-    if _is_hx_request(request):
-        return render_template_to_response(
-            request=request.raw_request,
-            template_name="tests_finished_content_fragment.html.j2",
-            context=build_template_context(
-                request.raw_request,
-                request.session,
-                context_out,
-            ),
+    return (
+        _render_hx_fragment(
+            request, "tests_finished_content_fragment.html.j2", context_out
         )
-
-    return context_out
+        or context_out
+    )
 
 
 def tests_user(request):
@@ -3180,34 +3088,11 @@ def tests_user(request):
             page_idx=finished_context.get("page_idx", 0),
             username=username,
         )
-    if _is_hx_request(request):
-        return render_template_to_response(
-            request=request.raw_request,
-            template_name="tests_user_content_fragment.html.j2",
-            context=build_template_context(
-                request.raw_request, request.session, response
-            ),
-        )
-
     # page 2 and beyond only show finished test results
-    return response
-
-
-def homepage_stats(request):
-    (
-        _runs,
-        pending_hours,
-        cores,
-        nps,
-        games_per_minute,
-        _machines_count,
-    ) = request.rundb.aggregate_unfinished_runs()
-    return {
-        "pending_hours": "{:.1f}".format(pending_hours),
-        "cores": cores,
-        "nps_m": f"{nps / 1000000:.0f}M",
-        "games_per_minute": int(games_per_minute),
-    }
+    return (
+        _render_hx_fragment(request, "tests_user_content_fragment.html.j2", response)
+        or response
+    )
 
 
 def homepage_results(request):
@@ -3369,11 +3254,6 @@ _VIEW_ROUTES = [
         tests_elo_batch,
         "/tests/elo_batch",
         {"renderer": "elo_batch_fragment.html.j2"},
-    ),
-    (
-        homepage_stats,
-        "/tests/stats_summary",
-        {"renderer": "homepage_stats_fragment.html.j2"},
     ),
     (tests_stats, "/tests/stats/{id}", {"renderer": "tests_stats.html.j2"}),
     (
