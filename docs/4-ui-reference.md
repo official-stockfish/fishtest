@@ -62,7 +62,7 @@ registers it on the FastAPI router.
 | `/upload` | GET, POST | `upload` | `nn_upload.html.j2` | CSRF |
 | `/nns` | GET, POST | `nns` | `nns.html.j2` | |
 | `/sprt_calc` | GET, POST | `sprt_calc` | `sprt_calc.html.j2` | |
-| `/rate_limits` | GET, POST | `rate_limits` | `rate_limits.html.j2` | |
+| `/rate_limits` | GET, POST | `rate_limits` | `rate_limits.html.j2` | `HX-Request` returns `rate_limits_server_fragment.html.j2` |
 
 ## `_dispatch_view()` pipeline
 

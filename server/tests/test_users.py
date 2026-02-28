@@ -666,6 +666,46 @@ class TestHttpUsers(unittest.TestCase):
             if blocked_doc is not None:
                 self.rundb.userdb.remove_user(blocked_doc, self.username)
 
+    @patch("fishtest.views.gh.rate_limit")
+    def test_rate_limits_full_page_and_hx_fragment(self, mock_rate_limit):
+        mock_rate_limit.return_value = {
+            "remaining": 4321,
+            "reset": 1700000000,
+        }
+
+        full_response = self.client.get("/rate_limits")
+        self.assertEqual(full_response.status_code, 200)
+        self.assertIn("<!doctype html>", full_response.text.lower())
+        self.assertIn("<th>Server</th>", full_response.text)
+        self.assertIn("<th>Client</th>", full_response.text)
+        self.assertIn('id="server_rate_limit"', full_response.text)
+        self.assertIn('id="client_rate_limit"', full_response.text)
+        self.assertIn('hx-trigger="load, every ', full_response.text)
+
+        fragment_response = self.client.get(
+            "/rate_limits",
+            headers={"HX-Request": "true", "Sec-Fetch-Mode": "cors"},
+        )
+        self.assertEqual(fragment_response.status_code, 200)
+        self.assertNotIn("<!doctype html>", fragment_response.text.lower())
+        self.assertIn("4321", fragment_response.text)
+        self.assertIn(
+            'id="server_reset" hx-swap-oob="innerHTML"', fragment_response.text
+        )
+
+    @patch("fishtest.views.gh.rate_limit")
+    def test_rate_limits_hx_navigate_mode_returns_full_page(self, mock_rate_limit):
+        mock_rate_limit.return_value = {
+            "remaining": 123,
+            "reset": 1700000000,
+        }
+        response = self.client.get(
+            "/rate_limits",
+            headers={"HX-Request": "true", "Sec-Fetch-Mode": "navigate"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("<!doctype html>", response.text.lower())
+
     def test_add_user_group_raises_on_duplicate(self):
         """Ensure adding a duplicate group raises ValidationError from userdb."""
         username = "GroupTestUser"

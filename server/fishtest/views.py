@@ -951,7 +951,36 @@ def sprt_calc(request):
 
 
 def rate_limits(request):
-    return {}
+    server_rate_limit = -1
+    server_reset = "00:00:00"
+
+    try:
+        rate_limit = gh.rate_limit()
+        server_rate_limit = int(rate_limit.get("remaining", -1))
+        reset_timestamp = float(rate_limit.get("reset", 0))
+        if reset_timestamp > 0:
+            server_reset = datetime.fromtimestamp(reset_timestamp, UTC).strftime(
+                "%H:%M:%S"
+            )
+    except Exception:
+        # Keep default placeholder values when GitHub is unavailable.
+        pass
+
+    context = {
+        "server_rate_limit": server_rate_limit,
+        "server_reset": server_reset,
+    }
+
+    if _is_hx_request(request):
+        return render_template_to_response(
+            request=request.raw_request,
+            template_name="rate_limits_server_fragment.html.j2",
+            context=build_template_context(
+                request.raw_request, request.session, context
+            ),
+        )
+
+    return context
 
 
 # Different LOCALES may have different quotation marks.
