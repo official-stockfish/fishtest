@@ -222,14 +222,24 @@ class TestHttpBoundary(unittest.TestCase):
         self.assertEqual(navigate_response.status_code, 200)
         self.assertIn("<!doctype html>", navigate_response.text.lower())
 
-    def test_tests_elo_batch_lookback_query_does_not_require_runs(self):
+    def test_tests_elo_batch_returns_valid_response(self):
         app = self._build_app(include_views=True)
         client = self.TestClient(app)
 
-        response = client.get("/tests/elo_batch?lookback_s=120")
+        response = client.get("/tests/elo_batch")
 
         self.assertNotEqual(response.status_code, 400)
         self.assertIn(response.status_code, {200, 286})
+
+    def test_tests_elo_batch_user_filter_omits_homepage_only_oob(self):
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get("/tests/elo_batch?username=user01")
+
+        self.assertIn(response.status_code, {200, 286})
+        self.assertNotIn('id="workers-count"', response.text)
+        self.assertNotIn('id="homepage-stats"', response.text)
 
     def test_template_context_includes_helpers(self):
         from fishtest.http import jinja

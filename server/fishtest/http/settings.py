@@ -21,7 +21,6 @@ THREADPOOL_TOKENS: int = 200
 TASK_SEMAPHORE_SIZE: int = 5
 
 # htmx polling intervals (seconds), used via Jinja2 global `poll`.
-POLL_STATS_HOMEPAGE_S: int = 120
 POLL_MACHINES_HOMEPAGE_S: int = 120
 POLL_BATCH_HOMEPAGE_S: int = 120
 POLL_ELO_DETAIL_S: int = 60

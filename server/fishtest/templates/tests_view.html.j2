@@ -640,14 +640,27 @@
 
     const showTasksError = (e) => {
       tbody.dataset.tasksLoaded = "0";
-      e.target.innerHTML =
-        '<tr><td colspan="20">' +
-        '<div class="alert alert-danger d-flex justify-content-between align-items-center">' +
-        '<span>Something went wrong. Please try again.</span>' +
-        '<button class="btn btn-primary" hx-get="/tests/tasks/{{ run_id }}?show_task={{ show_task }}"' +
-        ' hx-target="#tasks-body" hx-swap="innerHTML" hx-disabled-elt="this">' +
-        'Retry</button></div></td></tr>';
-      htmx.process(e.target);
+      const container = e.target;
+      container.replaceChildren();
+      const tr = document.createElement("tr");
+      const td = document.createElement("td");
+      td.setAttribute("colspan", "20");
+      const wrapper = document.createElement("div");
+      wrapper.className = "alert alert-danger d-flex justify-content-between align-items-center";
+      const msg = document.createElement("span");
+      msg.textContent = "Something went wrong. Please try again.";
+      const btn = document.createElement("button");
+      btn.className = "btn btn-primary";
+      btn.textContent = "Retry";
+      btn.setAttribute("hx-get", "/tests/tasks/{{ run_id }}?show_task={{ show_task }}");
+      btn.setAttribute("hx-target", "#tasks-body");
+      btn.setAttribute("hx-swap", "innerHTML");
+      btn.setAttribute("hx-disabled-elt", "this");
+      wrapper.append(msg, btn);
+      td.append(wrapper);
+      tr.append(td);
+      container.append(tr);
+      htmx.process(container);
       resolveTasksLoaded?.();
     };
     tbody?.addEventListener("htmx:responseError", showTasksError);
