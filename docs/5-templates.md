@@ -107,14 +107,15 @@ Every template receives these keys from `build_template_context()`:
 
 ## Template catalog
 
+### Page templates (extend `base.html.j2`)
+
 | Template | Purpose |
 |----------|---------|
-| `base.html.j2` | Base layout (navbar, footer, asset loading) |
+| `base.html.j2` | Base layout (navbar, footer, asset loading, htmx CDN) |
 | `actions.html.j2` | Paginated action log |
 | `contributors.html.j2` | Contributor leaderboard (all-time and monthly) |
 | `elo_results.html.j2` | ELO result display (included as partial) |
 | `login.html.j2` | Login form |
-| `machines_fragment.html.j2` | Connected worker machines table fragment |
 | `nn_upload.html.j2` | Neural network upload form |
 | `nns.html.j2` | Neural network listing with pagination |
 | `notfound.html.j2` | 404 error page |
@@ -124,7 +125,6 @@ Every template receives these keys from `build_template_context()`:
 | `run_tables.html.j2` | Run listing container (pending/active/finished) |
 | `signup.html.j2` | User registration form |
 | `sprt_calc.html.j2` | SPRT calculator page |
-| `tasks_fragment.html.j2` | Task table fragment for a run |
 | `tests.html.j2` | Main tests dashboard |
 | `tests_finished.html.j2` | Finished tests listing with filters |
 | `tests_live_elo.html.j2` | Live ELO chart page |
@@ -135,6 +135,34 @@ Every template receives these keys from `build_template_context()`:
 | `user.html.j2` | User profile page |
 | `user_management.html.j2` | User administration page |
 | `workers.html.j2` | Worker blocking administration page |
+
+### Fragment templates (standalone, no `base.html.j2`)
+
+Fragment templates serve htmx partial responses. They do not extend the
+base layout and contain only the HTML subset needed for the swap target.
+
+| Template | Swap target | OOB | Polled |
+|----------|------------|-----|--------|
+| `actions_content_fragment.html.j2` | `#actions-content` | -- | -- |
+| `contributors_rows_fragment.html.j2` | `#contributors tbody` | -- | -- |
+| `elo_batch_fragment.html.j2` | none (OOB only) | Yes | Yes |
+| `elo_results_fragment.html.j2` | none (OOB only) | Yes | Yes |
+| `homepage_stats_fragment.html.j2` | none (OOB only) | Yes | -- |
+| `live_elo_fragment.html.j2` | none (OOB only) | Yes | Yes |
+| `machines_fragment.html.j2` | `#machines` | Yes (`#workers-count`) | Yes |
+| `nns_content_fragment.html.j2` | `#nns-content` | -- | -- |
+| `rate_limits_server_fragment.html.j2` | server rate limit cell | Yes (`#server_reset`) | Yes |
+| `run_table_row_fragment.html.j2` | `#run-{id}` (row swap) | -- | -- |
+| `tasks_fragment.html.j2` | `#tasks-body` | -- | Yes |
+| `tests_finished_content_fragment.html.j2` | `#tests-finished-content` | -- | -- |
+| `tests_user_content_fragment.html.j2` | `#tests-user-content` | -- | -- |
+| `user_management_rows_fragment.html.j2` | `#users-table tbody` | Yes | -- |
+| `workers_rows_fragment.html.j2` | `#workers-table tbody` | Yes | -- |
+
+Column notes:
+- **OOB**: template contains `hx-swap-oob` attributes that update additional
+  DOM elements beyond the primary swap target.
+- **Polled**: template is fetched on a timer via `hx-trigger="every Ns"`.
 
 ## Context contracts
 
@@ -418,6 +446,125 @@ Each user row: `username`, `user_url`, `registration_label`, `groups`,
 Each blocked worker row: `worker_name`, `last_updated_label`, `actions_url`,
 `owner_email`, `mailto_url`.
 
+## Fragment context contracts
+
+Fragment templates receive the shared base context (via
+`build_template_context()`) plus handler-specific keys.
+
+### `actions_content_fragment.html.j2`
+
+Same context as `actions.html.j2` (`actions`, `filters`, `usernames`, `pages`).
+
+### `contributors_rows_fragment.html.j2`
+
+| Key | Type |
+|-----|------|
+| `users` | list of contributor row dicts |
+
+### `elo_batch_fragment.html.j2`
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `panels` | list of dicts | Each: `tbody_id`, `rows`, `show_delete` |
+| `count_updates` | list of dicts | Each: `id`, `text` (OOB count spans) |
+| `machines` | list of dicts | Machine rows (OOB `#workers-count`) |
+| `stats` | dict or absent | Homepage stats (OOB, omitted when filtered by user) |
+
+### `elo_results_fragment.html.j2`
+
+| Key | Type |
+|-----|------|
+| `run` | dict |
+| `elo` | dict (same as `elo_results.html.j2`) |
+| `_status` | string (OOB `#run-status-{id}`) |
+| `tasks_totals` | string (OOB `#tasks-totals`) |
+
+### `homepage_stats_fragment.html.j2`
+
+| Key | Type |
+|-----|------|
+| `cores` | int |
+| `nps_m` | string |
+| `games_per_minute` | string |
+| `pending_hours` | string |
+
+### `live_elo_fragment.html.j2`
+
+| Key | Type |
+|-----|------|
+| `run` | dict |
+| `LLR_raw` | float |
+| `a_raw`, `b_raw` | float |
+| `elo_raw`, `pm_raw` | float |
+| `chart_data` | list |
+
+### `machines_fragment.html.j2`
+
+| Key | Type |
+|-----|------|
+| `machines` | list of machine row dicts |
+| `workers_count` | int (OOB `#workers-count`) |
+
+### `nns_content_fragment.html.j2`
+
+Same context as `nns.html.j2` (`filters`, `pages`, `nns`).
+
+### `rate_limits_server_fragment.html.j2`
+
+| Key | Type |
+|-----|------|
+| `server_rate_limit` | string |
+| `server_reset` | string (OOB `#server_reset`) |
+
+### `run_table_row_fragment.html.j2`
+
+| Key | Type |
+|-----|------|
+| `row` | run row dict |
+| `show_delete` | bool |
+| `show_gauge` | bool |
+
+### `tasks_fragment.html.j2`
+
+Same context as the `tasks_fragment` section of `tests_view.html.j2`:
+`tasks`, `show_pentanomial`, `show_residual`.
+
+### `tests_finished_content_fragment.html.j2`
+
+| Key | Type |
+|-----|------|
+| `filters` | dict (`ltc_only`, `success_only`, `yellow_only`) |
+| `finished_runs` | list of run rows |
+| `num_finished_runs` | int |
+| `finished_runs_pages` | list |
+
+### `tests_user_content_fragment.html.j2`
+
+| Key | Type |
+|-----|------|
+| `username` | string |
+| `is_approver` | bool |
+| `filters` | dict |
+| `run_tables_ctx` | dict |
+
+### `user_management_rows_fragment.html.j2`
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `is_hx` | bool | Set to `True` for htmx requests |
+| `group` | string | Active filter group |
+| `users` | list of user row dicts | Filtered user rows |
+| `pending_count` | int | OOB badge count |
+
+### `workers_rows_fragment.html.j2`
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `is_hx` | bool | Set to `True` for htmx requests |
+| `filter_value` | string | Active filter value |
+| `blocked_workers` | list of dicts | Filtered worker rows |
+| `show_email` | bool | Show owner email column |
+
 ## Authoring rules
 
 1. **Templates are declarative**: all data shaping stays in view handlers.
@@ -455,7 +602,40 @@ Each blocked worker row: `worker_name`, `last_updated_label`, `actions_url`,
     or delegated listeners) instead of `onclick`, `onsubmit`, or similar HTML
     attributes.
 
+11. **Fragment templates do not extend `base.html.j2`**: htmx fragment
+    templates are standalone files. They receive the shared base context
+    via `build_template_context()` but must not use `{% extends %}` or
+    `{% block %}` directives.
+
+12. **OOB swap elements carry their own `hx-swap-oob` attribute**: the
+    view handler does not need to set response headers for OOB updates.
+    Each OOB element in the fragment template declares its own ID and swap
+    strategy (e.g., `<span id="count" hx-swap-oob="innerHTML">`).
+
+13. **Table OOB requires `<template>` wrappers**: the HTML parser rejects
+    `<tbody>` inside `<div>`. Wrap table OOB elements in `<template>` tags:
+    ```jinja
+    <template>
+      <tbody id="my-table" hx-swap-oob="innerHTML">
+        {% for row in rows %}...{% endfor %}
+      </tbody>
+    </template>
+    ```
+    htmx processes the `<template>` content and discards the wrapper.
+
+14. **DOM API over `innerHTML` in error handlers**: JavaScript retry-button
+    construction must use `createElement` / `textContent` / `setAttribute`
+    instead of string concatenation with `innerHTML`. This prevents XSS
+    from error messages and avoids escaping issues.
+
+15. **Unicode over HTML entities**: use literal Unicode characters (e.g.,
+    `<=` or the actual symbol) instead of HTML entities (`&#8804;`,
+    `&gt;`) in templates. This eliminates the need for `|safe` on values
+    that contain the entity.
+
 ## Adding a new template
+
+### Page template
 
 1. Create `templates/mypage.html.j2` extending `base.html.j2`:
    ```jinja
@@ -474,3 +654,24 @@ Each blocked worker row: `worker_name`, `last_updated_label`, `actions_url`,
    template specified in the route config's `renderer` key.
 
 5. Add a test that verifies the template renders without errors.
+
+### Fragment template
+
+1. Create `templates/mypage_fragment.html.j2` as a standalone file (no
+   `{% extends %}`).
+
+2. Define the context contract in this document.
+
+3. In the view handler, use `_render_hx_fragment()` to return the fragment
+   when `HX-Request` is present:
+   ```python
+   return (
+       _render_hx_fragment(request, "mypage_fragment.html.j2", context)
+       or context
+   )
+   ```
+
+4. For OOB elements, add `hx-swap-oob` attributes directly on elements
+   inside the fragment template. For table bodies, wrap in `<template>` tags.
+
+5. Add a test that verifies both the full-page and fragment responses.

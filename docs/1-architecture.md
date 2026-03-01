@@ -166,11 +166,40 @@ Client -> nginx -> Uvicorn -> ASGI middleware stack -> FastAPI router
   registered from the `_VIEW_ROUTES` table via `_register_view_routes()`.
 - **Static assets**: `StaticFiles` mount serves `/static/*`.
 
-### Client-side dependency note
+### htmx integration
 
-UI templates load `htmx` 2.0.8 from CDN in `base.html.j2`. The server remains
-fully server-rendered (Jinja2 + HTML responses), while htmx is used for
-fragment polling/swaps and in-place form actions on selected routes.
+UI templates load htmx 2.0.8 from CDN in `base.html.j2`. The server remains
+fully server-rendered (Jinja2 + HTML responses). htmx adds three capabilities
+without client-side rendering or a JavaScript build step:
+
+| Capability | Mechanism |
+|------------|-----------|
+| Fragment polling | `hx-get` + `hx-trigger="every Ns"` fetches a fragment endpoint; server returns partial HTML |
+| In-place content swap | `hx-get` + `hx-target` + `hx-swap="innerHTML"` replaces a page section (filters, pagination) |
+| Out-of-band updates | `hx-swap-oob="innerHTML"` attributes in the response update multiple DOM elements in one response |
+
+**Dual-mode endpoints.** Several UI routes serve either a full page or an HTML
+fragment from the same URL. The view handler calls `_is_hx_request(request)` to
+detect the `HX-Request: true` header (with a `Sec-Fetch-Mode` guard against
+full-page navigations), then returns the appropriate template via the
+`_render_hx_fragment()` helper. `_dispatch_view()` appends `Vary: HX-Request`
+to every GET response so that HTTP caches distinguish the two representations.
+
+**Fragment templates.** Fragment responses use standalone `.html.j2` files
+(named `*_fragment.html.j2`) that do not extend `base.html.j2`. This avoids
+the need for block-level partial rendering and keeps fragments self-contained.
+See [5-templates.md](5-templates.md) for the full catalog.
+
+**OOB table rows.** HTML spec restrictions prevent `<tbody>` elements from
+appearing inside `<div>`. Fragment templates that update table bodies wrap
+`<tbody>` elements in `<template>` tags with `hx-swap-oob` attributes.
+htmx processes the `<template>` content and discards the wrapper.
+
+**Polling lifecycle.** Polled endpoints use HTTP status codes to control
+the polling lifecycle:
+- **200** -- swap the response content.
+- **204** -- no content; htmx skips the swap but continues polling.
+- **286** -- swap the response and stop polling (terminal state).
 
 ## Primary instance model
 
