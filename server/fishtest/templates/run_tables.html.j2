@@ -16,10 +16,8 @@
   {% set batch_url = '/tests/elo_batch' ~ ('?' ~ batch_qs[1:] if batch_qs else '') %}
   <div hx-get="{{ batch_url }}"
        hx-trigger="every {{ poll.batch_homepage }}s [document.visibilityState === 'visible']"
-      hx-indicator="#batch-poll-indicator"
        hx-swap="none">
   </div>
-    <span id="batch-poll-indicator" class="htmx-indicator small text-muted">Updating...</span>
 {% endif %}
 
 {% if page_idx == 0 %}

@@ -55,8 +55,6 @@
     aria-expanded="false"
   >{{ workers_filter_label }}</button>
 
-  <span id="workers-filter-indicator" class="htmx-indicator small text-muted ms-2">Filtering...</span>
-
   <ul class="dropdown-menu">
     <li>
       <a
@@ -65,7 +63,6 @@
         hx-get="{{ request.url.path }}?filter=all-workers"
         hx-target="#workers-table tbody"
         hx-swap="innerHTML"
-        hx-indicator="#workers-filter-indicator"
       >All</a>
     </li>
     <li>
@@ -75,7 +72,6 @@
         hx-get="{{ request.url.path }}?filter=le-5days"
         hx-target="#workers-table tbody"
         hx-swap="innerHTML"
-        hx-indicator="#workers-filter-indicator"
       >Modified ≤ 5 days ago</a>
     </li>
     <li>
@@ -85,7 +81,6 @@
         hx-get="{{ request.url.path }}?filter=gt-5days"
         hx-target="#workers-table tbody"
         hx-swap="innerHTML"
-        hx-indicator="#workers-filter-indicator"
       >Modified > 5 days ago</a>
     </li>
   </ul>
