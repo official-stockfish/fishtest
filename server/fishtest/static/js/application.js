@@ -390,14 +390,37 @@ function handleSortingTables() {
     if (target.matches("th")) {
       const th = target;
       const table = th.closest("table");
-      const body = table.querySelector("tbody");
-      Array.from(body.querySelectorAll("tr"))
-        .sort(
-          comparer(
-            Array.from(th.parentNode.children).indexOf(th),
-            (this.asc = !this.asc),
-          ),
-        )
+      const body = table?.querySelector("tbody");
+      if (!body) {
+        return;
+      }
+
+      const columnIndex = Array.from(th.parentNode.children).indexOf(th);
+      if (columnIndex < 0) {
+        return;
+      }
+
+      const ascending = th.dataset.sortDir !== "asc";
+      th.dataset.sortDir = ascending ? "asc" : "desc";
+
+      const rows = Array.from(body.querySelectorAll("tr"));
+      const sortableRows = [];
+      const staticRows = [];
+
+      for (const row of rows) {
+        if (
+          row.dataset.noSort === "true" ||
+          !row.children ||
+          columnIndex >= row.children.length
+        ) {
+          staticRows.push(row);
+        } else {
+          sortableRows.push(row);
+        }
+      }
+
+      sortableRows
+        .sort(comparer(columnIndex, ascending))
         .forEach((tr, index) => {
           const rankData = tr.querySelector("td.rank");
           if (rankData) {
@@ -405,6 +428,10 @@ function handleSortingTables() {
           }
           body.append(tr);
         });
+
+      staticRows.forEach((tr) => {
+        body.append(tr);
+      });
     }
   });
 }
@@ -441,10 +468,15 @@ function comparer(idx, asc) {
     );
 }
 function getCellValue(tr, idx) {
+  const cell = tr?.children?.[idx];
+  if (!cell) {
+    return "";
+  }
   return (
-    tr.children[idx].dataset.sortValue ||
-    tr.children[idx].innerText ||
-    tr.children[idx].textContent
+    cell.dataset.sortValue ||
+    cell.innerText ||
+    cell.textContent ||
+    ""
   );
 }
 function padDotVersion(dn) {

@@ -88,17 +88,15 @@
           type="search"
           name="search"
           value="{{ search }}"
-          hx-get="{{ request.url.path }}"
-          hx-trigger="input changed delay:300ms"
-          hx-target="#contributors_table tbody"
-          hx-swap="innerHTML"
-          hx-include="this"
         >
         <button type="submit" class="btn btn-secondary">Search</button>
       </div>
+      <div class="form-text">Typing filters current page instantly. Use Search for full contributors DB query.</div>
     </form>
   </div>
 </div>
+
+{% include "pagination.html.j2" %}
 
 <div class="table-responsive-lg">
   <table id="contributors_table" class="table table-striped table-sm">
@@ -119,5 +117,53 @@
     </tbody>
   </table>
 </div>
+
+{% include "pagination.html.j2" %}
+
+<script>
+  (() => {
+    const searchInput = document.getElementById("search_contributors");
+    const tableBody = document.querySelector("#contributors_table tbody");
+    if (!searchInput || !tableBody) {
+      return;
+    }
+
+    const rows = Array.from(
+      tableBody.querySelectorAll('tr[data-contributor-row="true"]'),
+    );
+    const emptyRows = Array.from(tableBody.querySelectorAll('tr[data-empty-row="true"]'));
+
+    // Keep static no-data rows hidden while local filtering is active.
+    emptyRows.forEach((row) => row.classList.add("d-none"));
+
+    const noMatchRow = document.createElement("tr");
+    noMatchRow.classList.add("d-none");
+    noMatchRow.setAttribute("data-no-match-row", "true");
+    const noMatchCell = document.createElement("td");
+    noMatchCell.colSpan = 20;
+    noMatchCell.textContent = "No matching users";
+    noMatchRow.append(noMatchCell);
+    tableBody.append(noMatchRow);
+
+    const applyFilter = () => {
+      const query = searchInput.value.trim().toLowerCase();
+      let visibleCount = 0;
+
+      for (const row of rows) {
+        const username = row.dataset.username || "";
+        const isVisible = query === "" || username.includes(query);
+        row.classList.toggle("d-none", !isVisible);
+        if (isVisible) {
+          visibleCount += 1;
+        }
+      }
+
+      noMatchRow.classList.toggle("d-none", visibleCount > 0);
+    };
+
+    searchInput.addEventListener("input", applyFilter);
+    applyFilter();
+  })();
+</script>
 
 {% endblock %}

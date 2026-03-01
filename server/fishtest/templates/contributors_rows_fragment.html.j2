@@ -1,5 +1,5 @@
 {% for user in users %}
-  <tr>
+  <tr data-contributor-row="true" data-username="{{ user.username | lower }}">
     <td class="rank">{{ loop.index }}</td>
     <td>
     {% if user.user_url %}
@@ -20,7 +20,7 @@
     </td>
   </tr>
 {% else %}
-  <tr>
+  <tr data-empty-row="true">
     <td colspan="20">No users exist</td>
   </tr>
 {% endfor %}

@@ -2,6 +2,7 @@
 
 import unittest
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import urlencode
 
@@ -406,6 +407,38 @@ class TestHttpUsers(unittest.TestCase):
                 {"username": {"$in": [hit_name, miss_name]}}
             )
 
+    def test_contributors_pagination_with_search(self):
+        docs = []
+        for idx in range(120):
+            docs.append(
+                {
+                    "username": f"H13PageUser{idx:03d}",
+                    "cpu_hours": 1000 - idx,
+                    "games": 100 + idx,
+                    "tests": 1,
+                    "games_per_hour": 1,
+                    "last_updated": datetime.now(UTC),
+                    "tests_repo": "https://github.com/official-stockfish/Stockfish",
+                }
+            )
+
+        self.rundb.userdb.user_cache.insert_many(docs)
+        try:
+            response_page_1 = self.client.get("/contributors?search=H13PageUser")
+            self.assertEqual(response_page_1.status_code, 200)
+            self.assertIn("?page=2&amp;search=H13PageUser", response_page_1.text)
+            self.assertIn("H13PageUser000", response_page_1.text)
+            self.assertNotIn("H13PageUser119", response_page_1.text)
+
+            response_page_2 = self.client.get("/contributors?search=H13PageUser&page=2")
+            self.assertEqual(response_page_2.status_code, 200)
+            self.assertIn("H13PageUser119", response_page_2.text)
+            self.assertNotIn("H13PageUser000", response_page_2.text)
+        finally:
+            self.rundb.userdb.user_cache.delete_many(
+                {"username": {"$regex": "^H13PageUser"}}
+            )
+
     def test_workers_server_side_filter_hx_fragment(self):
         recent_worker = "hxrecent-1cores-abcd"
         old_worker = "hxold-1cores-abcd"
@@ -438,6 +471,62 @@ class TestHttpUsers(unittest.TestCase):
             self.rundb.workerdb.workers.delete_many(
                 {"worker_name": {"$in": [recent_worker, old_worker]}}
             )
+
+    def test_workers_hx_empty_state_fragment_renders_placeholder_row(self):
+        with patch.object(self.rundb.workerdb, "get_blocked_workers", return_value=[]):
+            response = self.client.get(
+                "/workers/show?filter=all-workers",
+                headers={"HX-Request": "true"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("No blocked workers", response.text)
+        self.assertIn('colspan="3"', response.text)
+        self.assertNotIn("<table", response.text)
+
+    def test_user_management_hx_empty_state_fragment_renders_placeholder_row(self):
+        user = self.rundb.userdb.get_user(self.username)
+        original_pending = user.get("pending", False)
+        original_groups = list(user.get("groups", []))
+        user["pending"] = False
+        if "group:approvers" not in user["groups"]:
+            user["groups"].append("group:approvers")
+        self.rundb.userdb.save_user(user)
+
+        try:
+            self._login_user()
+
+            with patch.object(self.rundb.userdb, "get_users", return_value=[]):
+                response = self.client.get(
+                    "/user_management?group=blocked",
+                    headers={"HX-Request": "true"},
+                )
+
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("No blocked users", response.text)
+            self.assertIn('colspan="20"', response.text)
+            self.assertNotIn("<table", response.text)
+        finally:
+            cleanup_user = self.rundb.userdb.get_user(self.username)
+            cleanup_user["pending"] = original_pending
+            cleanup_user["groups"] = original_groups
+            self.rundb.userdb.save_user(cleanup_user)
+
+    def test_sorting_js_guards_irregular_rows(self):
+        js_path = (
+            Path(__file__).resolve().parents[1]
+            / "fishtest"
+            / "static"
+            / "js"
+            / "application.js"
+        )
+        js_source = js_path.read_text(encoding="utf-8")
+
+        # Guardrail assertions for E2 sorter hardening.
+        self.assertIn('row.dataset.noSort === "true"', js_source)
+        self.assertIn("columnIndex >= row.children.length", js_source)
+        self.assertIn("const cell = tr?.children?.[idx];", js_source)
+        self.assertIn("if (!cell)", js_source)
 
     def test_tests_stop_hx_detail_redirects_home(self):
         self._login_user()
