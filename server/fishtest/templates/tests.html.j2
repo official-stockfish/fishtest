@@ -82,7 +82,6 @@
     <span id="workers-count">
       Workers - {{ machines_count }} machines
     </span>
-    <span id="machines-poll-indicator" class="htmx-indicator small text-muted ms-2">Updating...</span>
   </h4>
   {% set height = (machines_count * 37) | string ~ "px" %}
   {% set min_height = "37px" %}
@@ -92,7 +91,6 @@
       class="overflow-auto {{ 'collapse show' if machines_shown else 'collapse' }}"
       hx-get="/tests/machines"
       hx-trigger="{% if machines_shown %}load, {% endif %}machines:load, every {{ poll.machines_homepage }}s [document.getElementById('machines').classList.contains('show')]"
-      hx-indicator="#machines-poll-indicator"
       hx-swap="innerHTML"
       >
       <div id="machines-loading" class="skeleton-wrap">

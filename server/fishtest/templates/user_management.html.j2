@@ -69,8 +69,6 @@
     aria-expanded="false"
   >{{ users_group_label }}</button>
 
-  <span id="users-filter-indicator" class="htmx-indicator small text-muted ms-2">Loading...</span>
-
   <ul class="dropdown-menu">
     <li>
       <a
@@ -79,7 +77,6 @@
         hx-get="/user_management?group=all"
         hx-target="#users-table tbody"
         hx-swap="innerHTML"
-        hx-indicator="#users-filter-indicator"
       >All</a>
     </li>
     <li>
@@ -89,7 +86,6 @@
         hx-get="/user_management?group=pending"
         hx-target="#users-table tbody"
         hx-swap="innerHTML"
-        hx-indicator="#users-filter-indicator"
       >Pending</a>
     </li>
     <li>
@@ -99,7 +95,6 @@
         hx-get="/user_management?group=blocked"
         hx-target="#users-table tbody"
         hx-swap="innerHTML"
-        hx-indicator="#users-filter-indicator"
       >Blocked</a>
     </li>
     <li>
@@ -109,7 +104,6 @@
         hx-get="/user_management?group=idle"
         hx-target="#users-table tbody"
         hx-swap="innerHTML"
-        hx-indicator="#users-filter-indicator"
       >Idle</a>
     </li>
     <li>
@@ -119,7 +113,6 @@
         hx-get="/user_management?group=approvers"
         hx-target="#users-table tbody"
         hx-swap="innerHTML"
-        hx-indicator="#users-filter-indicator"
       >Approvers</a>
     </li>
   </ul>
