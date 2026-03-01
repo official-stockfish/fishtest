@@ -1065,19 +1065,37 @@ def parse_fastchess_output(
         # Warning; New-SHA doesn't have option ThreatBySafePawn
         re.compile(r"Warning;.*doesn't have option"),
         # Warning; Invalid value for option P: -354
-        re.compile(r"Warning;.*Invalid value"),
+        re.compile(r"Warning; Invalid value for option"),
+        # Warning; No info line available to extract score from engine ...
+        re.compile(r"No info line available to extract score from engine"),
         # Warning; Illegal move e2e4 played by ...
-        re.compile(r"Warning;.*Illegal move"),
+        re.compile(r"Warning; Illegal move"),
+        # Warning; Could not extract score from engine ...
+        re.compile(r"Warning; Could not extract score from engine"),
         # Warning; Illegal PV move e2e4 pv; ...
-        re.compile(r"Warning;.*Illegal PV move"),
+        re.compile(r"Warning; Illegal PV move"),
         # Warning; Move does not match uci move format
-        re.compile(r"Warning;.*Move does not match uci move format"),
+        re.compile(r"Warning; Move does not match uci move format"),
         # Warning; PV continues after checkmate
-        re.compile(r"Warning;.*PV continues after checkmate"),
+        re.compile(r"Warning; PV continues after checkmate"),
         # Warning; PV continues after stalemate
-        re.compile(r"Warning;.*PV continues after stalemate"),
+        re.compile(r"Warning; PV continues after stalemate"),
         # Warning; PV continues after threefold repetition - move ...
-        # -> ignore for now, no error, but see https://github.com/official-stockfish/Stockfish/issues/6138
+        re.compile(r"Warning; PV continues after threefold"),
+        # Warning; Incomplete mating PV
+        re.compile(r"Warning; Incomplete mating PV"),
+        # Warning; Too long mating PV
+        re.compile(r"Warning; Too long mating PV"),
+        # Warning; Mating PV does not end with checkmate
+        re.compile(r"Warning; Mating PV does not end with checkmate"),
+        #
+        # TODO: The following warnings should ideally just be flagged for
+        # now, but not lead to a RunException:
+        #
+        # Warning; PV continues after fifty-move rule - move ...
+        # re.compile(r"Warning; PV continues after fifty-move"),
+        # Warning; Bestmove does not match beginning of last PV - move ...
+        # re.compile(r"Warning; Bestmove does not match beginning of last PV"),
     )
 
     q = Queue()
@@ -1696,6 +1714,7 @@ def run_games(
                 str(int(games_concurrency)),
             ]
             + pgn_cmd
+            + ["-check-mate-pvs"]
             + [
                 "-engine",
                 "name=New-" + run["args"]["resolved_new"],
