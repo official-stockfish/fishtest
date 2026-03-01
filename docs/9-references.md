@@ -323,6 +323,31 @@ to avoid unnecessary server load:
 </div>
 ```
 
+**Focus-return immediate refresh**: every visibility-gated poller also
+triggers on `visibilitychange` so that returning to the tab produces an
+immediate update instead of waiting for the next poll cycle:
+
+```html
+<div hx-get="/endpoint"
+     hx-trigger="every 30s [document.visibilityState === 'visible'],
+                 visibilitychange[document.visibilityState === 'visible'] from:document"
+     hx-swap="none">
+</div>
+```
+
+Section-scoped pollers (machines, tasks) combine both the tab visibility and
+section expanded state in a single filter expression:
+
+```html
+<div hx-get="/endpoint"
+     hx-trigger="every 120s [document.visibilityState === 'visible'
+                 && document.getElementById('section').classList.contains('show')],
+                 visibilitychange[document.visibilityState === 'visible'
+                 && document.getElementById('section').classList.contains('show')] from:document"
+     hx-swap="innerHTML">
+</div>
+```
+
 **Error recovery in JavaScript**: retry buttons in htmx error handlers
 must be constructed with DOM API (`createElement`, `textContent`,
 `setAttribute`) rather than string concatenation with `innerHTML`, to
