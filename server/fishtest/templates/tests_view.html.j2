@@ -75,7 +75,7 @@
 
     {% if not run["finished"] %}
     <div hx-get="/tests/elo/{{ run_id }}?expected={{ 'active' if run.get('workers', 0) > 0 else 'paused' }}"
-      hx-trigger="every {{ poll.elo_detail }}s [document.visibilityState === 'visible']"
+      hx-trigger="every {{ poll.elo_detail }}s [document.visibilityState === 'visible'], visibilitychange[document.visibilityState === 'visible'] from:document"
       hx-swap="none">
     </div>
     {% endif %}
@@ -475,7 +475,7 @@
       <tbody id="tasks-body"
         data-tasks-loaded="0"
         hx-get="/tests/tasks/{{ run_id }}?show_task={{ show_task }}"
-        hx-trigger="{% if tasks_shown %}load, tasks:load{% else %}tasks:load{% endif %}{% if not run['finished'] %}, every {{ poll.tasks_detail }}s [document.getElementById('tasks').classList.contains('show')]{% endif %}"
+        hx-trigger="{% if tasks_shown %}load, tasks:load{% else %}tasks:load{% endif %}{% if not run['finished'] %}, every {{ poll.tasks_detail }}s [document.visibilityState === 'visible' && document.getElementById('tasks').classList.contains('show')], visibilitychange[document.visibilityState === 'visible' && document.getElementById('tasks').classList.contains('show')] from:document{% endif %}"
         hx-swap="innerHTML"
       ></tbody>
     </table>

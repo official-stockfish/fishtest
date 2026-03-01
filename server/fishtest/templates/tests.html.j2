@@ -48,20 +48,18 @@
       target.dataset.machinesLoaded = "0";
       const container = e.target;
       container.replaceChildren();
-      const wrapper = document.createElement("div");
-      wrapper.className = "alert alert-danger d-flex justify-content-between align-items-center";
-      const msg = document.createElement("span");
-      msg.textContent = "Something went wrong. Please try again.";
-      const btn = document.createElement("button");
-      btn.className = "btn btn-primary";
-      btn.textContent = "Retry";
-      btn.setAttribute("hx-get", "/tests/machines");
-      btn.setAttribute("hx-target", "#machines");
-      btn.setAttribute("hx-swap", "innerHTML");
-      btn.setAttribute("hx-disabled-elt", "this");
-      wrapper.append(msg, btn);
-      container.append(wrapper);
-      htmx.process(container);
+      const table = document.createElement("table");
+      table.className = "table table-striped table-sm";
+      const tbody = document.createElement("tbody");
+      const tr = document.createElement("tr");
+      tr.id = "no-machines";
+      const td = document.createElement("td");
+      td.colSpan = 20;
+      td.textContent = "Workers unavailable: network connection to the server was interrupted.";
+      tr.append(td);
+      tbody.append(tr);
+      table.append(tbody);
+      container.append(table);
     };
 
     target?.addEventListener("htmx:responseError", (e) => {
@@ -90,7 +88,7 @@
       data-machines-loaded="0"
       class="overflow-auto {{ 'collapse show' if machines_shown else 'collapse' }}"
       hx-get="/tests/machines"
-      hx-trigger="{% if machines_shown %}load, {% endif %}machines:load, every {{ poll.machines_homepage }}s [document.getElementById('machines').classList.contains('show')]"
+      hx-trigger="{% if machines_shown %}load, {% endif %}machines:load, every {{ poll.machines_homepage }}s [document.visibilityState === 'visible' && document.getElementById('machines').classList.contains('show')], visibilitychange[document.visibilityState === 'visible' && document.getElementById('machines').classList.contains('show')] from:document"
       hx-swap="innerHTML"
       >
       <div id="machines-loading" class="skeleton-wrap">

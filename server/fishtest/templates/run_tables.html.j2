@@ -15,7 +15,7 @@
   {% if batch_filters.get('ltc_only') %}{% set batch_qs = batch_qs ~ '&ltc_only=1' %}{% endif %}
   {% set batch_url = '/tests/elo_batch' ~ ('?' ~ batch_qs[1:] if batch_qs else '') %}
   <div hx-get="{{ batch_url }}"
-       hx-trigger="every {{ poll.batch_homepage }}s [document.visibilityState === 'visible']"
+      hx-trigger="every {{ poll.batch_homepage }}s [document.visibilityState === 'visible'], visibilitychange[document.visibilityState === 'visible'] from:document"
        hx-swap="none">
   </div>
 {% endif %}
