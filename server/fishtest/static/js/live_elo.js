@@ -25,12 +25,99 @@
   let lastLOS = 50;
   let lastLLR = 0;
   let lastElo = 0;
+  let hasDrawnOnce = false;
+  let animationToken = 0;
+  let animationTimers = [];
+
+  const ANIMATION_START_DELAY_MS = 110;
+  const ANIMATION_DURATION_FIRST_MS = 950;
+  const ANIMATION_DURATION_NEXT_MS = 700;
+
+  const LLR_FALLBACK_A = -2.94;
+  const LLR_FALLBACK_B = 2.94;
+  const ELO_MIN = -4;
+  const ELO_MAX = 4;
+
+  function finiteOr(value, fallback) {
+    return Number.isFinite(value) ? value : fallback;
+  }
+
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function normalizeGauges(sample) {
+    let a = finiteOr(sample.a, LLR_FALLBACK_A);
+    let b = finiteOr(sample.b, LLR_FALLBACK_B);
+    if (a >= b) {
+      a = LLR_FALLBACK_A;
+      b = LLR_FALLBACK_B;
+    }
+
+    const llr = clamp(finiteOr(sample.llr, lastLLR), a, b);
+    const los = clamp(finiteOr(sample.los, lastLOS), 0, 100);
+    const elo = clamp(finiteOr(sample.elo, lastElo), ELO_MIN, ELO_MAX);
+
+    let ciLower = finiteOr(sample.ciLower, 0);
+    let ciUpper = finiteOr(sample.ciUpper, 0);
+    if (ciLower > ciUpper) {
+      [ciLower, ciUpper] = [ciUpper, ciLower];
+    }
+    ciLower = clamp(ciLower, ELO_MIN, ELO_MAX);
+    ciUpper = clamp(ciUpper, ELO_MIN, ELO_MAX);
+
+    return {
+      llr,
+      a,
+      b,
+      los,
+      elo,
+      ciLower,
+      ciUpper,
+    };
+  }
+
+  function clearAnimationTimers() {
+    for (const timer of animationTimers) {
+      clearTimeout(timer);
+    }
+    animationTimers = [];
+  }
+
+  function animateGaugeTo(chart, data, opts, targetValue, token, isFirstDraw) {
+    const duration = isFirstDraw
+      ? ANIMATION_DURATION_FIRST_MS
+      : ANIMATION_DURATION_NEXT_MS;
+    const animOpts = {
+      ...opts,
+      animation: {
+        duration,
+        easing: "out",
+      },
+    };
+
+    chart.draw(data, animOpts);
+
+    const timer = setTimeout(() => {
+      if (token !== animationToken) {
+        return;
+      }
+      data.setValue(0, 1, targetValue);
+      chart.draw(data, animOpts);
+    }, ANIMATION_START_DELAY_MS);
+    animationTimers.push(timer);
+  }
 
   function drawGauges(LLR, a, b, LOS, elo, ci_lower, ci_upper) {
+    animationToken += 1;
+    const token = animationToken;
+    clearAnimationTimers();
+
     // LOS gauge
+    const losStart = hasDrawnOnce ? lastLOS : 50;
     const LOS_data = google.visualization.arrayToDataTable([
       ["Label", "Value"],
-      ["LOS", lastLOS],
+      ["LOS", losStart],
     ]);
     const losValue = Math.round(10 * LOS) / 10;
     const losOpts = {
@@ -44,19 +131,25 @@
       redTo: 5,
       minorTicks: 5,
     };
-    LOS_chart.draw(LOS_data, losOpts);
-    LOS_data.setValue(0, 1, losValue);
-    LOS_chart.draw(LOS_data, losOpts);
+    animateGaugeTo(
+      LOS_chart,
+      LOS_data,
+      losOpts,
+      losValue,
+      token,
+      !hasDrawnOnce,
+    );
     lastLOS = losValue;
 
     // LLR gauge
-    const LLR_data = google.visualization.arrayToDataTable([
-      ["Label", "Value"],
-      ["LLR", lastLLR],
-    ]);
     const llrValue = Math.round(100 * LLR) / 100;
     a = Math.round(100 * a) / 100;
     b = Math.round(100 * b) / 100;
+    const llrStart = hasDrawnOnce ? clamp(lastLLR, a, b) : (a + b) / 2;
+    const LLR_data = google.visualization.arrayToDataTable([
+      ["Label", "Value"],
+      ["LLR", llrStart],
+    ]);
     const llrOpts = {
       width: 500,
       height: 150,
@@ -70,15 +163,21 @@
       min: a,
       minorTicks: 3,
     };
-    LLR_chart.draw(LLR_data, llrOpts);
-    LLR_data.setValue(0, 1, llrValue);
-    LLR_chart.draw(LLR_data, llrOpts);
+    animateGaugeTo(
+      LLR_chart,
+      LLR_data,
+      llrOpts,
+      llrValue,
+      token,
+      !hasDrawnOnce,
+    );
     lastLLR = llrValue;
 
     // ELO gauge (two draws for animation)
+    const eloStart = hasDrawnOnce ? clamp(lastElo, ELO_MIN, ELO_MAX) : 0;
     const ELO_data = google.visualization.arrayToDataTable([
       ["Label", "Value"],
-      ["Elo", lastElo],
+      ["Elo", eloStart],
     ]);
     const eloOpts = {
       width: 500,
@@ -109,34 +208,58 @@
       eloOpts.greenFrom = ci_upper;
       eloOpts.greenTo = ci_upper;
     }
-    ELO_chart.draw(ELO_data, eloOpts);
     elo = Math.round(100 * elo) / 100;
-    ELO_data.setValue(0, 1, elo);
-    ELO_chart.draw(ELO_data, eloOpts);
+    animateGaugeTo(ELO_chart, ELO_data, eloOpts, elo, token, !hasDrawnOnce);
     lastElo = elo;
+    hasDrawnOnce = true;
   }
 
   function updateFromDataAttrs(el) {
     if (!el) return;
     const d = el.dataset;
+    const normalized = normalizeGauges({
+      llr: parseFloat(d.llr),
+      a: parseFloat(d.a),
+      b: parseFloat(d.b),
+      los: parseFloat(d.los),
+      elo: parseFloat(d.elo),
+      ciLower: parseFloat(d.ciLower),
+      ciUpper: parseFloat(d.ciUpper),
+    });
     drawGauges(
-      parseFloat(d.llr),
-      parseFloat(d.a),
-      parseFloat(d.b),
-      parseFloat(d.los),
-      parseFloat(d.elo),
-      parseFloat(d.ciLower),
-      parseFloat(d.ciUpper),
+      normalized.llr,
+      normalized.a,
+      normalized.b,
+      normalized.los,
+      normalized.elo,
+      normalized.ciLower,
+      normalized.ciUpper,
     );
   }
 
+  // Coalesce fast consecutive swaps into one draw cycle.
+  let pendingSwap = false;
+  let latestGaugeData = null;
+
+  function scheduleGaugeUpdate(el) {
+    latestGaugeData = el;
+    if (pendingSwap) {
+      return;
+    }
+    pendingSwap = true;
+    requestAnimationFrame(() => {
+      pendingSwap = false;
+      updateFromDataAttrs(latestGaugeData);
+    });
+  }
+
   // Initial draw from server-rendered data attributes.
-  updateFromDataAttrs(document.getElementById("gauge-data"));
+  scheduleGaugeUpdate(document.getElementById("gauge-data"));
 
   // Update on each htmx OOB swap (innerHTML of #live-elo-data).
   document.body.addEventListener("htmx:oobAfterSwap", (e) => {
-    if (e.detail.target.id === "live-elo-data") {
-      updateFromDataAttrs(document.getElementById("gauge-data"));
+    if (e?.detail?.target?.id === "live-elo-data") {
+      scheduleGaugeUpdate(document.getElementById("gauge-data"));
     }
   });
 })();

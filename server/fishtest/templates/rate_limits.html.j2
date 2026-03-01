@@ -21,7 +21,7 @@
           <span
             id="server_rate_limit"
             hx-get="/rate_limits/server"
-            hx-trigger="load, every {{ poll.rate_limits_server }}s"
+            hx-trigger="load, every {{ poll.rate_limits_server }}s [document.visibilityState === 'visible'], visibilitychange[document.visibilityState === 'visible'] from:document"
             hx-swap="innerHTML"
           >{{ server_rate_limit }}</span>
         </td>

@@ -472,12 +472,7 @@ function getCellValue(tr, idx) {
   if (!cell) {
     return "";
   }
-  return (
-    cell.dataset.sortValue ||
-    cell.innerText ||
-    cell.textContent ||
-    ""
-  );
+  return cell.dataset.sortValue || cell.innerText || cell.textContent || "";
 }
 function padDotVersion(dn) {
   return dn
