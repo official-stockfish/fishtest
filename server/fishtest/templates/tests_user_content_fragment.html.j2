@@ -7,10 +7,9 @@
 </h2>
 
 <div id="tests-user-filters" class="mb-2 filter-tabs">
-  <a class="btn btn-sm btn-light border tests-filter-tab {{ 'active' if not filters.success_only and not filters.yellow_only and not filters.ltc_only else '' }}" href="/tests/user/{{ username }}" hx-get="/tests/user/{{ username }}" hx-target="#tests-user-content" hx-push-url="true" hx-swap="innerHTML">All</a>
-  <a class="btn btn-sm btn-light border tests-filter-tab {{ 'active' if filters.success_only else '' }}" href="/tests/user/{{ username }}?success_only=1" hx-get="/tests/user/{{ username }}?success_only=1" hx-target="#tests-user-content" hx-push-url="true" hx-swap="innerHTML">Greens</a>
-  <a class="btn btn-sm btn-light border tests-filter-tab {{ 'active' if filters.yellow_only else '' }}" href="/tests/user/{{ username }}?yellow_only=1" hx-get="/tests/user/{{ username }}?yellow_only=1" hx-target="#tests-user-content" hx-push-url="true" hx-swap="innerHTML">Yellows</a>
-  <a class="btn btn-sm btn-light border tests-filter-tab {{ 'active' if filters.ltc_only else '' }}" href="/tests/user/{{ username }}?ltc_only=1" hx-get="/tests/user/{{ username }}?ltc_only=1" hx-target="#tests-user-content" hx-push-url="true" hx-swap="innerHTML">LTC</a>
+  {% with base_url='/tests/user/' ~ username, hx_target='tests-user-content', filters=filters %}
+    {% include "tests_filter_tabs_fragment.html.j2" %}
+  {% endwith %}
 </div>
 
 {% set pagination_hx_target = "tests-user-content" %}
