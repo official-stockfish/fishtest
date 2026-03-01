@@ -20,10 +20,12 @@
         <td>
           <span
             id="server_rate_limit"
-            hx-get="/rate_limits"
+            hx-get="/rate_limits/server"
             hx-trigger="load, every {{ poll.rate_limits_server }}s"
+            hx-indicator="#rate-limits-server-indicator"
             hx-swap="innerHTML"
           >{{ server_rate_limit }}</span>
+          <span id="rate-limits-server-indicator" class="htmx-indicator small text-muted ms-2">Refreshing...</span>
         </td>
         <td><span id="server_reset">{{ server_reset }}</span></td>
         <td id="client_rate_limit">-1</td>

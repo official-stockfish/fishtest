@@ -101,7 +101,9 @@
 {% if not sprt_state %}
 <div hx-get="/tests/live_elo_update/{{ run_id }}"
      hx-trigger="every {{ poll.live_elo }}s [document.visibilityState === 'visible']"
+  hx-indicator="#live-elo-poll-indicator"
      hx-swap="none">
 </div>
+<span id="live-elo-poll-indicator" class="htmx-indicator small text-muted">Updating...</span>
 {% endif %}
 {% endblock %}

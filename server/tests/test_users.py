@@ -682,10 +682,7 @@ class TestHttpUsers(unittest.TestCase):
         self.assertIn('id="client_rate_limit"', full_response.text)
         self.assertIn('hx-trigger="load, every ', full_response.text)
 
-        fragment_response = self.client.get(
-            "/rate_limits",
-            headers={"HX-Request": "true", "Sec-Fetch-Mode": "cors"},
-        )
+        fragment_response = self.client.get("/rate_limits/server")
         self.assertEqual(fragment_response.status_code, 200)
         self.assertNotIn("<!doctype html>", fragment_response.text.lower())
         self.assertIn("4321", fragment_response.text)
@@ -694,7 +691,7 @@ class TestHttpUsers(unittest.TestCase):
         )
 
     @patch("fishtest.views.gh.rate_limit")
-    def test_rate_limits_hx_navigate_mode_returns_full_page(self, mock_rate_limit):
+    def test_rate_limits_hx_header_still_returns_full_page(self, mock_rate_limit):
         mock_rate_limit.return_value = {
             "remaining": 123,
             "reset": 1700000000,
