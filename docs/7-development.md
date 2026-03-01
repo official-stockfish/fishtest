@@ -82,7 +82,10 @@ development.
 ## Running tests
 
 ```bash
-cd server && uv run python -m unittest discover -s tests -q
+mkdir -p .local/mongo-data
+mongod --dbpath .local/mongo-data --fork --logpath .local/mongod.log
+pushd server && uv run python3 -m unittest discover -s tests -v
+popd && mongod --shutdown --dbpath .local/mongo-data
 ```
 
 See [0-README.md](0-README.md) for pre-commit hooks and CI workflows.
