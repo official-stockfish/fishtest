@@ -878,7 +878,7 @@ def sprt_calc(request):
     return {}
 
 
-def rate_limits(request):
+def _build_rate_limits_context():
     server_rate_limit = -1
     server_reset = "00:00:00"
 
@@ -894,15 +894,18 @@ def rate_limits(request):
         # Keep default placeholder values when GitHub is unavailable.
         pass
 
-    context = {
+    return {
         "server_rate_limit": server_rate_limit,
         "server_reset": server_reset,
     }
 
-    return (
-        _render_hx_fragment(request, "rate_limits_server_fragment.html.j2", context)
-        or context
-    )
+
+def rate_limits(request):
+    return _build_rate_limits_context()
+
+
+def rate_limits_server(request):
+    return _build_rate_limits_context()
 
 
 # Different LOCALES may have different quotation marks.
@@ -3199,6 +3202,11 @@ _VIEW_ROUTES = [
     (nns, "/nns", {"renderer": "nns.html.j2"}),
     (sprt_calc, "/sprt_calc", {"renderer": "sprt_calc.html.j2"}),
     (rate_limits, "/rate_limits", {"renderer": "rate_limits.html.j2"}),
+    (
+        rate_limits_server,
+        "/rate_limits/server",
+        {"renderer": "rate_limits_server_fragment.html.j2"},
+    ),
     (actions, "/actions", {"renderer": "actions.html.j2"}),
     (user_management, "/user_management", {"renderer": "user_management.html.j2"}),
     (user, "/user/{username}", {"renderer": "user.html.j2"}),
