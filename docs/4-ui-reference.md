@@ -235,3 +235,49 @@ data lives in `request.scope["session"]` as a plain dict, wrapped by
 3. Create the Jinja2 template in `templates/`.
 
 4. Add a contract test in `tests/test_actions_view.py` or a new test file.
+
+## Contributors query parameters
+
+The contributors pages (`/contributors` and `/contributors/monthly`) support
+URL-driven state for server sorting, search, paging, full view, and rank jump.
+
+| Parameter | Values | Default |
+|-----|-----|-----|
+| `search` | one-shot go-to query (exact username first, then first substring match) | empty |
+| `sort` | `cpu_hours`, `username`, `last_updated`, `games_per_hour`, `games`, `tests` | `cpu_hours` |
+| `order` | `asc`, `desc` | column default |
+| `page` | integer `>= 1` | `1` |
+| `view` | `paged`, `all` | `paged` |
+| `findme` | any truthy value | absent |
+| `highlight` | username | empty |
+
+Behavior notes:
+
+- Sorting is server-authoritative and stable with username asc tie-breaks.
+- Rank is global for the filtered+sorted dataset (not page-local loop index).
+- `findme=1` redirects authenticated users to the page containing their row and
+   sets `highlight=<username>#me`.
+- `view=all` returns all rows up to a hard cap (`5000`) and hides pagination.
+- `search` is consumed as one-shot navigation intent and is not preserved in
+   pagination/sort/view links, preventing repeated jumps during later browsing.
+
+## Neural networks (`/nns`) query parameters
+
+The neural network repository page (`/nns`) supports URL-driven state for
+search and paging.
+
+| Parameter | Values | Default |
+|-----|-----|-----|
+| `network_name` | network name substring (case-insensitive) | empty |
+| `user` | uploader username substring (case-insensitive) | empty |
+| `master_only` | `1`, `true`, `on`, `yes` | absent/false |
+| `page` | integer `>= 1` | `1` |
+
+Behavior notes:
+
+- Search inputs are HTMX-triggered (`input changed delay`) and also support
+   explicit submit for keyboard and non-JS flows.
+- HTMX updates target `#nns-content` and push updated query URLs for
+   back/forward and shareable links.
+- `master_only` checkbox preference is persisted in a cookie and reused when
+   the query parameter is not present.

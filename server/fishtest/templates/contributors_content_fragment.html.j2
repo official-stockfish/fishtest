@@ -1,0 +1,76 @@
+{% set pagination_hx_target = "contributors-content" %}
+{% set pagination_hx_push_url = true %}
+{% set view = view if view is defined else "paged" %}
+{% set sort = sort if sort is defined else "cpu_hours" %}
+{% set order = order if order is defined else "desc" %}
+{% set search = search if search is defined else "" %}
+{% set num_users = num_users if num_users is defined else 0 %}
+{% set max_all = max_all if max_all is defined else 5000 %}
+{% set is_truncated = is_truncated if is_truncated is defined else false %}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+  <div>
+    {% if view == "paged" %}
+      <a href="{{ request.url.path }}?view=all&sort={{ sort }}&order={{ order }}"
+         class="btn btn-outline-secondary btn-sm">
+        <i class="fa-solid fa-list" aria-hidden="true"></i>
+        Show all ({{ num_users }} users)
+      </a>
+    {% else %}
+      <a href="{{ request.url.path }}?view=paged&sort={{ sort }}&order={{ order }}"
+         class="btn btn-outline-secondary btn-sm">
+        <i class="fa-solid fa-table-columns" aria-hidden="true"></i>
+        Show paginated
+      </a>
+    {% endif %}
+  </div>
+  {% if is_truncated %}
+    <div class="alert alert-warning py-1 px-2 mb-0 small">
+      Showing first {{ max_all }} of {{ num_users }} contributors.
+    </div>
+  {% endif %}
+</div>
+
+{% macro sort_header(field, label, align="") -%}
+  {% set is_active = (sort == field) %}
+  {% set next_order = "desc" if (is_active and order == "asc") else "asc" %}
+  <th{% if is_active %} aria-sort="{{ 'ascending' if order == 'asc' else 'descending' }}"{% endif %} class="{{ align }}">
+    <a class="sort-header text-decoration-none text-reset d-inline-flex align-items-center gap-1"
+      href="{{ request.url.path }}?sort={{ field }}&order={{ next_order }}&view={{ view }}">
+      <span>{{ label }}</span>
+      <span class="sort-indicator" aria-hidden="true">{% if is_active and order == "asc" %}▲{% elif is_active and order == "desc" %}▼{% else %}↕{% endif %}</span>
+    </a>
+  </th>
+{%- endmacro %}
+
+{% if view == "paged" %}
+  {% with pages=pages %}
+    {% include "pagination.html.j2" %}
+  {% endwith %}
+{% endif %}
+
+<div class="table-responsive-lg">
+  <table id="contributors_table" class="table table-striped table-sm" data-server-sort="true">
+    <thead class="sticky-top">
+      <tr>
+        <th class="text-end">#</th>
+        {{ sort_header("username", "Username") }}
+        {{ sort_header("last_updated", "Last active", "text-end") }}
+        {{ sort_header("games_per_hour", "Games/Hour", "text-end") }}
+        {{ sort_header("cpu_hours", "CPU Hours", "text-end") }}
+        {{ sort_header("games", "Games played", "text-end") }}
+        {{ sort_header("tests", "Tests submitted", "text-end") }}
+        {{ sort_header("tests_repo", "Tests repository") }}
+      </tr>
+    </thead>
+    <tbody>
+      {% include "contributors_rows_fragment.html.j2" %}
+    </tbody>
+  </table>
+</div>
+
+{% if view == "paged" %}
+  {% with pages=pages %}
+    {% include "pagination.html.j2" %}
+  {% endwith %}
+{% endif %}

@@ -14,6 +14,7 @@
 {% set nn_upload_url = urls.nn_upload %}
 <html lang="en">
   <head>
+    <meta name="color-scheme" content="{{ 'dark light' if theme == 'dark' else 'light dark' }}">
     <title>{% block title %}Stockfish Testing Framework{% endblock %}</title>
     <meta name="csrf-token" content="{{ csrf_token }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
