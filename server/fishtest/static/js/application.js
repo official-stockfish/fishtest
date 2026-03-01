@@ -113,6 +113,7 @@ function setTheme(theme) {
   if (theme === "dark") {
     document.getElementById("sun").style.display = "";
     document.getElementById("moon").style.display = "none";
+    document.documentElement.style.colorScheme = "dark";
     const link = document.createElement("link");
     link["rel"] = "stylesheet";
     link["href"] = darkThemeHash;
@@ -120,6 +121,7 @@ function setTheme(theme) {
   } else {
     document.getElementById("sun").style.display = "none";
     document.getElementById("moon").style.display = "";
+    document.documentElement.style.colorScheme = "";
     document.querySelector('head link[href*="/css/theme.dark.css"]')?.remove();
   }
   // Remember the theme for 30 days
@@ -387,9 +389,12 @@ function escapeHtml(unsafe) {
 function handleSortingTables() {
   document.addEventListener("click", function (e) {
     const { target } = e;
-    if (target.matches("th")) {
-      const th = target;
+    const th = target.closest("th");
+    if (th) {
       const table = th.closest("table");
+      if (table?.dataset.serverSort === "true") {
+        return;
+      }
       const body = table?.querySelector("tbody");
       if (!body) {
         return;

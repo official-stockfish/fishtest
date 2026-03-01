@@ -421,6 +421,26 @@ function setNotificationStatus(runId) {
   broadcast("setNotificationStatus_", runId);
 }
 
+function initializeNotificationButtons(root = document) {
+  if (!(root instanceof Document || root instanceof Element)) {
+    return;
+  }
+
+  const notificationButtons = root.querySelectorAll(
+    'button.notifications[id^="notification_"]',
+  );
+
+  for (const button of notificationButtons) {
+    const id = button.id || "";
+    const runId = id.replace("notification_", "");
+    if (!runId) {
+      continue;
+    }
+    // Initialize icon state from the persisted follow list.
+    setNotificationStatus_(runId);
+  }
+}
+
 async function toggleNotifactionStatus(runId) {
   if (!followingRun(runId)) {
     if (supportsNotifications() && Notification.permission === "default") {
@@ -551,6 +571,23 @@ function cleanup_() {
   localStorage.removeItem("__fishtest__latest_fetch_time_sig");
   localStorage.removeItem("__fishtest__latest_fetch_time");
 }
+
+document.addEventListener("htmx:oobAfterSwap", (e) => {
+  const target = e?.detail?.target;
+  if (!(target instanceof Element)) {
+    return;
+  }
+
+  // Batch poll replaces whole run-table tbodies via OOB. Reinitialize
+  // notification bells after each tbody swap to keep icons visible in Firefox.
+  if (target.matches('tbody[id$="-tbody"]')) {
+    initializeNotificationButtons(target);
+  }
+});
+
+void DOMContentLoaded().then(() => {
+  initializeNotificationButtons(document);
+});
 
 cleanup_();
 mainFollowLoop();

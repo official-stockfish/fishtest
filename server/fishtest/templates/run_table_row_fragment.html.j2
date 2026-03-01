@@ -39,9 +39,6 @@
         aria-label="Toggle notifications"
         style="display:inline-block;cursor:pointer;"
       ></button>
-      <script>
-        setNotificationStatus_({{ row.run_id | tojson }});   // no broadcast since this is at initialization
-      </script>
     </td>
   {% endif %}
   <td style="width: 16%;" class="run-view">

@@ -1,6 +1,8 @@
 {% for user in users %}
-  <tr data-contributor-row="true" data-username="{{ user.username | lower }}">
-    <td class="rank">{{ loop.index }}</td>
+  <tr data-contributor-row="true" data-username="{{ user.username | lower }}"{% if highlight and user.username == highlight %} id="me" class="table-active highlight-row"{% endif %}>
+    <td class="rank text-end" data-sort-value="{{ user.rank }}">
+      {{ user.rank }}
+    </td>
     <td>
     {% if user.user_url %}
       <a href="{{ user.user_url }}"> {{ user.username }} </a>
@@ -9,13 +11,13 @@
     {% endif %}
     </td>
     <td data-sort-value="{{ user.last_updated_sort }}" class="text-end">{{ user.last_updated_label }}</td>
-    <td class="text-end">{{ user.games_per_hour }}</td>
-    <td class="text-end">{{ user.cpu_hours }}</td>
-    <td class="text-end">{{ user.games }}</td>
-    <td class="text-end">
+    <td class="text-end" data-sort-value="{{ user.games_per_hour }}">{{ user.games_per_hour }}</td>
+    <td class="text-end" data-sort-value="{{ user.cpu_hours }}">{{ user.cpu_hours }}</td>
+    <td class="text-end" data-sort-value="{{ user.games }}">{{ user.games }}</td>
+    <td class="text-end" data-sort-value="{{ user.tests }}">
       <a href="{{ user.tests_user_url }}">{{ user.tests }} </a>
     </td>
-    <td class="user-repo">
+    <td class="user-repo" data-sort-value="{{ user.tests_repo_url | lower }}">
       <a href="{{ user.tests_repo_url }}" target="_blank" rel="noopener noreferrer">{{ user.tests_repo_url }}</a>
     </td>
   </tr>

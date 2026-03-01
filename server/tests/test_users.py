@@ -10,6 +10,7 @@ import test_support
 from vtjson import ValidationError
 
 from fishtest.http.cookie_session import REMEMBER_MAX_AGE_SECONDS
+from fishtest.http.settings import HTMX_INPUT_CHANGED_DELAY_MS
 from fishtest.run_cache import Prio
 from fishtest.util import PASSWORD_MAX_LENGTH
 
@@ -369,7 +370,7 @@ class TestHttpUsers(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(str(run_id), response.text)
 
-    def test_contributors_server_side_search_hx_fragment(self):
+    def test_contributors_search_goto_redirects_to_best_match(self):
         hit_name = "HxSearchMatchUser"
         miss_name = "HxSearchMissUser"
         docs = [
@@ -396,18 +397,19 @@ class TestHttpUsers(unittest.TestCase):
         try:
             response = self.client.get(
                 "/contributors?search=matchuser",
-                headers={"HX-Request": "true"},
+                follow_redirects=False,
             )
-            self.assertEqual(response.status_code, 200)
-            self.assertIn(hit_name, response.text)
-            self.assertNotIn(miss_name, response.text)
-            self.assertNotIn("<table", response.text)
+            self.assertEqual(response.status_code, 302)
+            location = response.headers.get("location", "")
+            self.assertIn("highlight=HxSearchMatchUser", location)
+            self.assertIn("#me", location)
+            self.assertNotIn("search=", location)
         finally:
             self.rundb.userdb.user_cache.delete_many(
                 {"username": {"$in": [hit_name, miss_name]}}
             )
 
-    def test_contributors_pagination_with_search(self):
+    def test_contributors_pagination_drops_search_param(self):
         docs = []
         for idx in range(120):
             docs.append(
@@ -424,19 +426,377 @@ class TestHttpUsers(unittest.TestCase):
 
         self.rundb.userdb.user_cache.insert_many(docs)
         try:
-            response_page_1 = self.client.get("/contributors?search=H13PageUser")
+            response_page_1 = self.client.get("/contributors?search=NoSuchUser")
             self.assertEqual(response_page_1.status_code, 200)
-            self.assertIn("?page=2&amp;search=H13PageUser", response_page_1.text)
+            self.assertIn("?page=2", response_page_1.text)
+            self.assertNotIn("search=NoSuchUser", response_page_1.text)
             self.assertIn("H13PageUser000", response_page_1.text)
             self.assertNotIn("H13PageUser119", response_page_1.text)
 
-            response_page_2 = self.client.get("/contributors?search=H13PageUser&page=2")
+            response_page_2 = self.client.get("/contributors?page=2")
             self.assertEqual(response_page_2.status_code, 200)
             self.assertIn("H13PageUser119", response_page_2.text)
             self.assertNotIn("H13PageUser000", response_page_2.text)
         finally:
             self.rundb.userdb.user_cache.delete_many(
                 {"username": {"$regex": "^H13PageUser"}}
+            )
+
+    def test_contributors_sort_by_username_asc(self):
+        docs = [
+            {
+                "username": "SortZZZUser",
+                "cpu_hours": 10,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            },
+            {
+                "username": "SortAAAUser",
+                "cpu_hours": 20,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            },
+        ]
+        self.rundb.userdb.user_cache.insert_many(docs)
+        try:
+            response = self.client.get("/contributors?sort=username&order=asc")
+            self.assertEqual(response.status_code, 200)
+            self.assertLess(
+                response.text.index("SortAAAUser"),
+                response.text.index("SortZZZUser"),
+            )
+        finally:
+            self.rundb.userdb.user_cache.delete_many(
+                {"username": {"$in": ["SortZZZUser", "SortAAAUser"]}}
+            )
+
+    def test_contributors_sort_by_tests_repo_asc(self):
+        docs = [
+            {
+                "username": "SortRepoAAUser",
+                "cpu_hours": 10,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/zeta-org/repo",
+            },
+            {
+                "username": "SortRepoZZUser",
+                "cpu_hours": 20,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/alpha-org/repo",
+            },
+        ]
+        self.rundb.userdb.user_cache.insert_many(docs)
+        try:
+            response = self.client.get("/contributors?sort=tests_repo&order=asc")
+            self.assertEqual(response.status_code, 200)
+            self.assertLess(
+                response.text.index("SortRepoZZUser"),
+                response.text.index("SortRepoAAUser"),
+            )
+        finally:
+            self.rundb.userdb.user_cache.delete_many(
+                {"username": {"$in": ["SortRepoAAUser", "SortRepoZZUser"]}}
+            )
+
+    def test_contributors_invalid_sort_falls_back(self):
+        response = self.client.get("/contributors?sort=__proto__")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Contributors", response.text)
+
+    def test_contributors_rank_is_global_on_page_two(self):
+        docs = [
+            {
+                "username": f"RankUser{idx:04d}",
+                "cpu_hours": 5000 - idx,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            }
+            for idx in range(110)
+        ]
+        self.rundb.userdb.user_cache.insert_many(docs)
+        try:
+            response = self.client.get("/contributors?page=2")
+            self.assertEqual(response.status_code, 200)
+            self.assertIn('data-sort-value="101"', response.text)
+        finally:
+            self.rundb.userdb.user_cache.delete_many(
+                {"username": {"$regex": "^RankUser"}}
+            )
+
+    def test_contributors_findme_redirects_to_page(self):
+        docs = [
+            {
+                "username": f"FindMeFiller{idx:04d}",
+                "cpu_hours": 5000 - idx,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            }
+            for idx in range(105)
+        ]
+        docs.append(
+            {
+                "username": self.username,
+                "cpu_hours": 1,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            }
+        )
+        self.rundb.userdb.user_cache.insert_many(docs)
+        try:
+            self._login_user()
+            response = self.client.get("/contributors?findme=1", follow_redirects=False)
+            self.assertEqual(response.status_code, 302)
+            location = response.headers.get("location", "")
+            self.assertIn("highlight=JoeUser", location)
+            self.assertIn("#me", location)
+            self.assertIn("page=2", location)
+        finally:
+            self.rundb.userdb.user_cache.delete_many(
+                {"username": {"$regex": "^FindMeFiller"}}
+            )
+            self.rundb.userdb.user_cache.delete_one({"username": self.username})
+
+    def test_contributors_findme_overrides_search_goto(self):
+        docs = [
+            {
+                "username": f"FindMeSearchFiller{idx:04d}",
+                "cpu_hours": 5000 - idx,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            }
+            for idx in range(105)
+        ]
+        docs.append(
+            {
+                "username": self.username,
+                "cpu_hours": 1,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            }
+        )
+        docs.append(
+            {
+                "username": "DissMatchUser",
+                "cpu_hours": 3000,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            }
+        )
+        self.rundb.userdb.user_cache.insert_many(docs)
+        try:
+            self._login_user()
+            response = self.client.get(
+                "/contributors?findme=1&search=diss",
+                follow_redirects=False,
+            )
+            self.assertEqual(response.status_code, 302)
+            location = response.headers.get("location", "")
+            self.assertIn("highlight=JoeUser", location)
+            self.assertIn("findme=1", location)
+            self.assertNotIn("highlight=DissMatchUser", location)
+            self.assertNotIn("search=", location)
+        finally:
+            self.rundb.userdb.user_cache.delete_many(
+                {"username": {"$regex": "^(FindMeSearchFiller|DissMatchUser)"}}
+            )
+            self.rundb.userdb.user_cache.delete_one({"username": self.username})
+
+    def test_contributors_findme_unauthenticated_no_redirect(self):
+        response = self.client.get("/contributors?findme=1")
+        self.assertEqual(response.status_code, 200)
+
+    def test_contributors_search_goto_redirects_in_view_all(self):
+        hit_name = "ViewAllSearchTarget"
+        docs = [
+            {
+                "username": f"ViewAllSearchFiller{idx:04d}",
+                "cpu_hours": 5000 - idx,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            }
+            for idx in range(105)
+        ]
+        docs.append(
+            {
+                "username": hit_name,
+                "cpu_hours": 1,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            }
+        )
+        self.rundb.userdb.user_cache.insert_many(docs)
+        try:
+            response = self.client.get(
+                "/contributors?view=all&search=target",
+                follow_redirects=False,
+            )
+            self.assertEqual(response.status_code, 302)
+            location = response.headers.get("location", "")
+            self.assertIn("view=all", location)
+            self.assertIn(f"highlight={hit_name}", location)
+            self.assertIn("#me", location)
+            self.assertNotIn("search=", location)
+        finally:
+            self.rundb.userdb.user_cache.delete_many(
+                {"username": {"$regex": "^(ViewAllSearchFiller|ViewAllSearchTarget)"}}
+            )
+
+    def test_contributors_findme_redirects_in_view_all(self):
+        docs = [
+            {
+                "username": f"ViewAllFindMeFiller{idx:04d}",
+                "cpu_hours": 5000 - idx,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            }
+            for idx in range(105)
+        ]
+        docs.append(
+            {
+                "username": self.username,
+                "cpu_hours": 1,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            }
+        )
+        self.rundb.userdb.user_cache.insert_many(docs)
+        try:
+            self._login_user()
+            response = self.client.get(
+                "/contributors?view=all&findme=1",
+                follow_redirects=False,
+            )
+            self.assertEqual(response.status_code, 302)
+            location = response.headers.get("location", "")
+            self.assertIn("view=all", location)
+            self.assertIn("highlight=JoeUser", location)
+            self.assertIn("findme=1", location)
+            self.assertIn("#me", location)
+        finally:
+            self.rundb.userdb.user_cache.delete_many(
+                {"username": {"$regex": "^ViewAllFindMeFiller"}}
+            )
+            self.rundb.userdb.user_cache.delete_one({"username": self.username})
+
+    def test_contributors_search_form_uses_htmx_keystroke_goto(self):
+        response = self.client.get("/contributors")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="search_contributors_form"', response.text)
+        expected_trigger = (
+            'hx-trigger="submit, input changed delay:'
+            f"{HTMX_INPUT_CHANGED_DELAY_MS}ms from:#search_contributors"
+        )
+        self.assertIn(expected_trigger, response.text)
+        self.assertNotIn("Typing filters current page instantly", response.text)
+        self.assertNotIn("Jump to my rank</a>", response.text)
+        self.assertIn('type="search"', response.text)
+        self.assertIn('const FINDME_COOKIE = "contributors_findme"', response.text)
+        self.assertIn("if (findme.checked) {", response.text)
+        self.assertIn('search.value = "";', response.text)
+        self.assertIn(
+            'search.addEventListener("input", clearFindmeOnSearchInput);', response.text
+        )
+        self.assertIn(
+            'const findmeFromUrl = params.get("findme") === "1";', response.text
+        )
+        self.assertIn('if (remembered === "false") {', response.text)
+        self.assertIn('setCookie(FINDME_COOKIE, "true");', response.text)
+        self.assertIn(
+            'const highlightedRow = document.getElementById("me");', response.text
+        )
+        self.assertIn("const hasRenderedHighlight =", response.text)
+        self.assertIn('form && typeof form.requestSubmit === "function"', response.text)
+        self.assertIn(
+            "requestAnimationFrame(() => form.requestSubmit());", response.text
+        )
+
+    def test_contributors_view_all_hides_pagination(self):
+        docs = [
+            {
+                "username": f"ViewAllUser{idx:04d}",
+                "cpu_hours": 5000 - idx,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            }
+            for idx in range(150)
+        ]
+        self.rundb.userdb.user_cache.insert_many(docs)
+        try:
+            response = self.client.get("/contributors?view=all")
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("ViewAllUser0120", response.text)
+            self.assertNotIn("?page=2", response.text)
+        finally:
+            self.rundb.userdb.user_cache.delete_many(
+                {"username": {"$regex": "^ViewAllUser"}}
+            )
+
+    def test_contributors_cpu_bar_removed(self):
+        docs = [
+            {
+                "username": f"CueUser{idx:04d}",
+                "cpu_hours": 3000 - idx,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            }
+            for idx in range(120)
+        ]
+        self.rundb.userdb.user_cache.insert_many(docs)
+        try:
+            response = self.client.get("/contributors?view=all")
+            self.assertEqual(response.status_code, 200)
+            self.assertNotIn('class="cpu-bar"', response.text)
+        finally:
+            self.rundb.userdb.user_cache.delete_many(
+                {"username": {"$regex": "^CueUser"}}
             )
 
     def test_workers_server_side_filter_hx_fragment(self):
