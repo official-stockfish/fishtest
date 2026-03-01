@@ -56,8 +56,8 @@ registers it on the FastAPI router.
 | `/tests/finished` | GET, POST | `tests_finished` | `tests_finished.html.j2` | HX: `tests_finished_content_fragment` |
 | `/tests/user/{username}` | GET, POST | `tests_user` | `tests_user.html.j2` | HX: `tests_user_content_fragment` |
 | `/actions` | GET, POST | `actions` | `actions.html.j2` | HX: `actions_content_fragment` |
-| `/contributors` | GET, POST | `contributors` | `contributors.html.j2` | HX: `contributors_rows_fragment` |
-| `/contributors/monthly` | GET, POST | `contributors_monthly` | `contributors.html.j2` | HX: `contributors_rows_fragment` |
+| `/contributors` | GET, POST | `contributors` | `contributors.html.j2` | HX: `contributors_rows_fragment`; paginated (100/page) |
+| `/contributors/monthly` | GET, POST | `contributors_monthly` | `contributors.html.j2` | HX: `contributors_rows_fragment`; paginated (100/page) |
 | `/user/{username}` | GET, POST | `user` | `user.html.j2` | |
 | `/user` | GET, POST | `user` | `user.html.j2` | |
 | `/user_management` | GET, POST | `user_management` | `user_management.html.j2` | HX: `user_management_rows_fragment` |
@@ -65,7 +65,8 @@ registers it on the FastAPI router.
 | `/upload` | GET, POST | `upload` | `nn_upload.html.j2` | CSRF |
 | `/nns` | GET, POST | `nns` | `nns.html.j2` | HX: `nns_content_fragment` |
 | `/sprt_calc` | GET, POST | `sprt_calc` | `sprt_calc.html.j2` | |
-| `/rate_limits` | GET, POST | `rate_limits` | `rate_limits.html.j2` | HX: `rate_limits_server_fragment` |
+| `/rate_limits` | GET, POST | `rate_limits` | `rate_limits.html.j2` | |
+| `/rate_limits/server` | GET, POST | `rate_limits_server` | `rate_limits_server_fragment.html.j2` | Fragment-only |
 
 Route notes:
 - **Fragment-only**: endpoint always returns a fragment template (no full page).

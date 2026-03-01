@@ -63,9 +63,12 @@ fishtest/
 |-- uv.lock                    -- Locked dependency set for the root project
 |-- .pre-commit-config.yaml    -- Pre-commit hooks (ruff, format, uv-lock)
 |-- .github/workflows/         -- CI: lint, server tests, worker tests (POSIX + MSYS2)
+|-- docs/                      -- Architecture and reference documentation
 |-- server/
 |   |-- pyproject.toml         -- Server package: runtime + test dependencies
-|   `-- fishtest/              -- FastAPI application (Python >= 3.14)
+|   |-- fishtest/              -- FastAPI application (Python >= 3.14)
+|   |-- tests/                 -- Server test suite (15 test modules)
+|   `-- utils/                 -- Operational utilities (backup, migration, analysis)
 `-- worker/
     |-- pyproject.toml         -- Worker package: runtime dependencies (Python >= 3.8)
     |-- worker.py              -- Main worker script

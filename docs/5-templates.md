@@ -154,6 +154,7 @@ base layout and contain only the HTML subset needed for the swap target.
 | `rate_limits_server_fragment.html.j2` | server rate limit cell | Yes (`#server_reset`) | Yes |
 | `run_table_row_fragment.html.j2` | `#run-{id}` (row swap) | -- | -- |
 | `tasks_fragment.html.j2` | `#tasks-body` | -- | Yes |
+| `tests_filter_tabs_fragment.html.j2` | caller-defined `hx-target` | -- | -- |
 | `tests_finished_content_fragment.html.j2` | `#tests-finished-content` | -- | -- |
 | `tests_user_content_fragment.html.j2` | `#tests-user-content` | -- | -- |
 | `user_management_rows_fragment.html.j2` | `#users-table tbody` | Yes | -- |
@@ -202,7 +203,9 @@ Each action row:
 | `is_monthly` | bool | Monthly vs all-time view |
 | `is_approver` | bool | Current user is approver |
 | `summary` | dict | `{testers, developers, active_testers, cpu_years, games, tests}` |
-| `users` | list of dicts | Contributor rows |
+| `users` | list of dicts | Contributor rows (current page) |
+| `pages` | list | Pagination items |
+| `search` | string | Active search query |
 
 Each contributor row: `username`, `last_updated_label`, `last_updated_sort`,
 `games_per_hour`, `cpu_hours`, `games`, `tests`, `tests_repo`, `tests_repo_url`,
@@ -529,6 +532,17 @@ Same context as `nns.html.j2` (`filters`, `pages`, `nns`).
 Same context as the `tasks_fragment` section of `tests_view.html.j2`:
 `tasks`, `show_pentanomial`, `show_residual`.
 
+### `tests_filter_tabs_fragment.html.j2`
+
+Reusable partial included by `tests_finished.html.j2` and
+`tests_user.html.j2` for filter tab buttons (All / Greens / Yellows / LTC).
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `filters` | dict | `{success_only, yellow_only, ltc_only}` |
+| `hx_target` | string | Target element ID for `hx-target` |
+| `base_url` | string | Base URL for filter links (default `/tests/finished`) |
+
 ### `tests_finished_content_fragment.html.j2`
 
 | Key | Type |
@@ -632,6 +646,21 @@ Same context as the `tasks_fragment` section of `tests_view.html.j2`:
     `<=` or the actual symbol) instead of HTML entities (`&#8804;`,
     `&gt;`) in templates. This eliminates the need for `|safe` on values
     that contain the entity.
+
+16. **Explicit CSRF hidden fields**: every server-rendered `<form>` that
+    posts to a `require_csrf` route must include an explicit hidden input:
+    ```jinja
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    ```
+    The meta-tag CSRF token is a fallback for htmx headers; forms must not
+    rely on it as the sole CSRF transport.
+
+17. **Polling trigger policy**: every periodic htmx poller must include
+    three trigger components: (a) a periodic trigger gated on
+    `document.visibilityState === 'visible'`, (b) an immediate
+    `visibilitychange[...] from:document` refresh, and (c) for
+    section-scoped pollers, a gate on the section's expanded state.
+    See [1-architecture.md](1-architecture.md) for the full policy.
 
 ## Adding a new template
 

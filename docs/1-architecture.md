@@ -20,7 +20,7 @@ server/
 |-- fishtest/
 |   |-- app.py               -- ASGI application factory, lifespan, middleware, routers
 |   |-- api.py               -- Worker API router (20 endpoints)
-|   |-- views.py             -- UI router (29 endpoints, data-driven dispatch)
+|   |-- views.py             -- UI router (30 endpoints, data-driven dispatch)
 |   |-- rundb.py             -- RunDb: run lifecycle, task distribution, caching
 |   |-- userdb.py            -- UserDb: authentication, groups, registration
 |   |-- actiondb.py          -- ActionDb: audit log
@@ -35,10 +35,10 @@ server/
 |   |-- util.py              -- Shared utilities (formatting, validation helpers)
 |   |-- __init__.py          -- Minimal package init
 |   |-- http/                -- HTTP support modules
-|   |-- templates/           -- Jinja2 templates (26 files, .html.j2)
+|   |-- templates/           -- Jinja2 templates (40 files, .html.j2)
 |   |-- static/              -- Static assets (JS, CSS, images)
 |   `-- stats/               -- Statistical computation modules
-`-- tests/                   -- Test suite
+`-- tests/                   -- Test suite (15 test modules)
 ```
 
 ### HTTP support modules (`server/fishtest/http/`)
@@ -200,6 +200,18 @@ the polling lifecycle:
 - **200** -- swap the response content.
 - **204** -- no content; htmx skips the swap but continues polling.
 - **286** -- swap the response and stop polling (terminal state).
+
+**Visibility-aware polling policy.** Every periodic HTMX poller follows a
+three-part trigger policy:
+
+1. A periodic trigger gated on `document.visibilityState === 'visible'`.
+2. An immediate focus-return trigger using
+   `visibilitychange[document.visibilityState === 'visible'] from:document`.
+3. Section-scoped pollers (machines, tasks) additionally gate on the
+   section's expanded state (`classList.contains('show')`).
+
+This ensures background tabs do not generate server load and that
+returning to the tab produces an immediate refresh.
 
 ## Primary instance model
 
