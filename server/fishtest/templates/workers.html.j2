@@ -8,6 +8,7 @@
 {% if show_admin %}
   <h3>{{ worker_name }}</h3>
   <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <div class="mb-3">Last changed: {{ last_updated_label }}</div>
     <div class="mb-3">
       <label for="messageInput" class="form-label">Issue</label>

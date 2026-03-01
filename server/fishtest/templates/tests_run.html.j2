@@ -32,6 +32,7 @@
 </header>
 
 <form id="create-new-test" action="{{ request.url }}" method="POST">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <div class="container mt-4 mb-2">
     <div class="row">
       <div class="mb-2 container d-flex justify-content-center">

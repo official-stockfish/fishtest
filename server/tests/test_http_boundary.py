@@ -1,5 +1,6 @@
 # ruff: noqa: ANN201, ANN206, D100, D101, D102, E501, INP001, PLC0415, PT009
 
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -197,6 +198,27 @@ class TestHttpBoundary(unittest.TestCase):
 
         self.assertTrue(_is_hx_request(req_htmx))
         self.assertFalse(_is_hx_request(req_navigate))
+
+    def test_template_post_forms_include_explicit_csrf_token(self):
+        templates_dir = Path(__file__).resolve().parents[1] / "fishtest" / "templates"
+        form_re = re.compile(
+            r"<form[^>]*method\s*=\s*['\"]?post['\"]?[^>]*>(.*?)</form>",
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+
+        violations = []
+        for template_file in templates_dir.rglob("*.j2"):
+            text = template_file.read_text(encoding="utf-8")
+            for match in form_re.finditer(text):
+                body = match.group(1)
+                if 'name="csrf_token"' not in body and "name='csrf_token'" not in body:
+                    violations.append(str(template_file.relative_to(templates_dir)))
+
+        self.assertEqual(
+            violations,
+            [],
+            f"POST forms missing explicit csrf_token hidden input: {sorted(set(violations))}",
+        )
 
     def test_tests_finished_full_page_vs_fragment(self):
         app = self._build_app(include_views=True)
