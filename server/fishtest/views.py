@@ -1353,9 +1353,15 @@ def user(request):
 
 # === Contributors views ===
 def contributors(request):
+    page_param = request.params.get("page", "")
+    page_idx = max(0, int(page_param) - 1) if page_param.isdigit() else 0
+    page_size = 100
+
     search = request.params.get("search", "").strip()
-    users_list = list(request.userdb.user_cache.find())
-    users_list.sort(key=lambda k: k["cpu_hours"], reverse=True)
+    all_users = list(request.userdb.user_cache.find())
+    all_users.sort(key=lambda k: k["cpu_hours"], reverse=True)
+
+    users_list = all_users
     if search:
         search_lower = search.lower()
         users_list = [
@@ -1363,26 +1369,50 @@ def contributors(request):
             for user in users_list
             if search_lower in str(user.get("username", "")).lower()
         ]
+
+    num_users = len(users_list)
+    users_page = users_list[page_idx * page_size : (page_idx + 1) * page_size]
+
     is_approver = request.has_permission("approve_run")
+    rows = build_contributors_rows(users_page, is_approver=is_approver)
+    hx_context = {
+        "users": rows,
+    }
+    hx_response = _render_hx_fragment(
+        request,
+        "contributors_rows_fragment.html.j2",
+        hx_context,
+    )
+    if hx_response:
+        return hx_response
+
+    query_params = ""
+    if search:
+        query_params += "&search={}".format(quote(search))
+    pages = pagination(page_idx, num_users, page_size, query_params)
+
     context = {
         "is_monthly": False,
         "monthly_suffix": "",
-        "summary": build_contributors_summary(users_list),
-        "users": build_contributors_rows(users_list, is_approver=is_approver),
+        "summary": build_contributors_summary(all_users),
+        "users": rows,
+        "pages": pages,
         "is_approver": is_approver,
         "search": search,
     }
-
-    return (
-        _render_hx_fragment(request, "contributors_rows_fragment.html.j2", context)
-        or context
-    )
+    return context
 
 
 def contributors_monthly(request):
+    page_param = request.params.get("page", "")
+    page_idx = max(0, int(page_param) - 1) if page_param.isdigit() else 0
+    page_size = 100
+
     search = request.params.get("search", "").strip()
-    users_list = list(request.userdb.top_month.find())
-    users_list.sort(key=lambda k: k["cpu_hours"], reverse=True)
+    all_users = list(request.userdb.top_month.find())
+    all_users.sort(key=lambda k: k["cpu_hours"], reverse=True)
+
+    users_list = all_users
     if search:
         search_lower = search.lower()
         users_list = [
@@ -1390,20 +1420,38 @@ def contributors_monthly(request):
             for user in users_list
             if search_lower in str(user.get("username", "")).lower()
         ]
+
+    num_users = len(users_list)
+    users_page = users_list[page_idx * page_size : (page_idx + 1) * page_size]
+
     is_approver = request.has_permission("approve_run")
+    rows = build_contributors_rows(users_page, is_approver=is_approver)
+    hx_context = {
+        "users": rows,
+    }
+    hx_response = _render_hx_fragment(
+        request,
+        "contributors_rows_fragment.html.j2",
+        hx_context,
+    )
+    if hx_response:
+        return hx_response
+
+    query_params = ""
+    if search:
+        query_params += "&search={}".format(quote(search))
+    pages = pagination(page_idx, num_users, page_size, query_params)
+
     context = {
         "is_monthly": True,
         "monthly_suffix": " - Top Month",
-        "summary": build_contributors_summary(users_list),
-        "users": build_contributors_rows(users_list, is_approver=is_approver),
+        "summary": build_contributors_summary(all_users),
+        "users": rows,
+        "pages": pages,
         "is_approver": is_approver,
         "search": search,
     }
-
-    return (
-        _render_hx_fragment(request, "contributors_rows_fragment.html.j2", context)
-        or context
-    )
+    return context
 
 
 # === Run creation helpers ===
