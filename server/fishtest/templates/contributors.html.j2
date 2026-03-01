@@ -2,6 +2,14 @@
 
 {% set is_monthly = is_monthly if is_monthly is defined else false %}
 {% set monthly_suffix = monthly_suffix if monthly_suffix is defined else "" %}
+{% set search = search if search is defined else "" %}
+{% set sort = sort if sort is defined else "cpu_hours" %}
+{% set order = order if order is defined else "desc" %}
+{% set view = view if view is defined else "paged" %}
+{% set highlight = highlight if highlight is defined else "" %}
+{% set is_truncated = is_truncated if is_truncated is defined else false %}
+{% set num_users = num_users if num_users is defined else 0 %}
+{% set max_all = max_all if max_all is defined else 5000 %}
 
 {% block title %}Contributors{{ monthly_suffix }} | Stockfish Testing{% endblock %}
 
@@ -76,93 +84,151 @@
   </div>
 </div>
 
-<div class="row g-3 mb-1 align-items-end">
-  <div class="col-12 col-md-auto">
-    <form method="GET" action="{{ request.url.path }}">
-      <label for="search_contributors" class="form-label">Search</label>
-      <div class="d-flex align-items-center gap-2">
-        <input
-          id="search_contributors"
-          class="form-control"
-          placeholder="Search username"
-          type="search"
-          name="search"
-          value="{{ search }}"
-        >
-        <button type="submit" class="btn btn-secondary">Search</button>
-      </div>
-      <div class="form-text">Typing filters current page instantly. Use Search for full contributors DB query.</div>
-    </form>
+<form
+  class="row g-3 mb-3"
+  id="search_contributors_form"
+  action="{{ request.url.path }}"
+  hx-get="{{ request.url.path }}"
+  hx-target="#contributors-content"
+  hx-push-url="true"
+  hx-swap="innerHTML"
+  hx-trigger="submit, input changed delay:{{ htmx.input_changed_delay_ms }}ms from:#search_contributors, search from:#search_contributors{% if current_user and current_user.username %}, change from:#findme_contributors{% endif %}"
+>
+  <input type="hidden" name="view" value="{{ view }}">
+  <input type="hidden" name="sort" value="{{ sort }}">
+  <input type="hidden" name="order" value="{{ order }}">
+
+  <div class="col-12 col-md-auto mb-3">
+    <label for="search_contributors" class="form-label">Go to username</label>
+    <input
+      id="search_contributors"
+      class="form-control"
+      placeholder="Type username"
+      type="search"
+      name="search"
+      value="{{ search }}"
+      autocomplete="off"
+    >
+    <div class="form-text">Typing jumps to the best username match.</div>
   </div>
+
+  {% if current_user and current_user.username %}
+    <div class="col-12 col-md-auto mb-3 d-flex align-items-end justify-content-center">
+      <div class="form-check form-check-inline">
+        <label class="form-check-label" for="findme_contributors">
+          Jump to my rank
+        </label>
+        <input
+          type="checkbox"
+          class="form-check-input"
+          id="findme_contributors"
+          name="findme"
+          value="1"
+        >
+      </div>
+    </div>
+  {% endif %}
+</form>
+
+<div id="contributors-content">
+  {% include "contributors_content_fragment.html.j2" %}
 </div>
-
-{% include "pagination.html.j2" %}
-
-<div class="table-responsive-lg">
-  <table id="contributors_table" class="table table-striped table-sm">
-    <thead class="sticky-top">
-      <tr>
-        <th></th>
-        <th>Username</th>
-        <th class="text-end">Last active</th>
-        <th class="text-end">Games/Hour</th>
-        <th class="text-end">CPU Hours</th>
-        <th class="text-end">Games played</th>
-        <th class="text-end">Tests submitted</th>
-        <th>Tests repository</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% include "contributors_rows_fragment.html.j2" %}
-    </tbody>
-  </table>
-</div>
-
-{% include "pagination.html.j2" %}
 
 <script>
   (() => {
-    const searchInput = document.getElementById("search_contributors");
-    const tableBody = document.querySelector("#contributors_table tbody");
-    if (!searchInput || !tableBody) {
-      return;
-    }
+    const FINDME_COOKIE = "contributors_findme";
+    const form = document.getElementById("search_contributors_form");
+    const findme = document.getElementById("findme_contributors");
+    const search = document.getElementById("search_contributors");
 
-    const rows = Array.from(
-      tableBody.querySelectorAll('tr[data-contributor-row="true"]'),
-    );
-    const emptyRows = Array.from(tableBody.querySelectorAll('tr[data-empty-row="true"]'));
-
-    // Keep static no-data rows hidden while local filtering is active.
-    emptyRows.forEach((row) => row.classList.add("d-none"));
-
-    const noMatchRow = document.createElement("tr");
-    noMatchRow.classList.add("d-none");
-    noMatchRow.setAttribute("data-no-match-row", "true");
-    const noMatchCell = document.createElement("td");
-    noMatchCell.colSpan = 20;
-    noMatchCell.textContent = "No matching users";
-    noMatchRow.append(noMatchCell);
-    tableBody.append(noMatchRow);
-
-    const applyFilter = () => {
-      const query = searchInput.value.trim().toLowerCase();
-      let visibleCount = 0;
-
-      for (const row of rows) {
-        const username = row.dataset.username || "";
-        const isVisible = query === "" || username.includes(query);
-        row.classList.toggle("d-none", !isVisible);
-        if (isVisible) {
-          visibleCount += 1;
-        }
-      }
-
-      noMatchRow.classList.toggle("d-none", visibleCount > 0);
+    const setCookie = (name, value) => {
+      const maxAge = 60 * 60 * 24 * 365 * 10;
+      // Keep values consistent across contributors routes.
+      document.cookie = `${name}=${value}; path=/; max-age=${maxAge}; SameSite=Lax`;
+      document.cookie = `${name}=${value}; path=/contributors; max-age=${maxAge}; SameSite=Lax`;
     };
 
-    searchInput.addEventListener("input", applyFilter);
-    applyFilter();
+    const getCookie = (name) => {
+      const key = `${name}=`;
+      const matches = document.cookie
+        .split(";")
+        .map((part) => part.trim())
+        .filter((part) => part.startsWith(key));
+      // If legacy duplicates exist, prefer the last cookie value.
+      const match = matches.length ? matches[matches.length - 1] : "";
+      return match ? match.slice(key.length) : "";
+    };
+
+    if (findme && search) {
+      const params = new URLSearchParams(window.location.search);
+      const findmeFromUrl = params.get("findme") === "1";
+      const remembered = getCookie(FINDME_COOKIE);
+      if (remembered === "false") {
+        // Explicit user opt-out must win over stale URL params.
+        findme.checked = false;
+      } else if (findmeFromUrl) {
+        findme.checked = true;
+        setCookie(FINDME_COOKIE, "true");
+        search.value = "";
+      } else if (remembered === "true") {
+        findme.checked = true;
+        // Jump mode and search mode are mutually exclusive.
+        search.value = "";
+      }
+
+      findme.addEventListener("change", () => {
+        if (findme.checked) {
+          search.value = "";
+        }
+        setCookie(FINDME_COOKIE, findme.checked ? "true" : "false");
+      });
+
+      const clearFindmeOnSearchInput = () => {
+        if (!search.value.trim()) {
+          return;
+        }
+        if (findme.checked) {
+          findme.checked = false;
+        }
+        setCookie(FINDME_COOKIE, "false");
+      };
+
+      search.addEventListener("input", clearFindmeOnSearchInput);
+      search.addEventListener("search", clearFindmeOnSearchInput);
+
+      const highlightedRow = document.getElementById("me");
+      const hasRenderedHighlight =
+        highlightedRow && !highlightedRow.classList.contains("d-none");
+      if (findme.checked && !hasRenderedHighlight) {
+        // Submit through the form to guarantee jump on plain reloads.
+        if (form && typeof form.requestSubmit === "function") {
+          requestAnimationFrame(() => form.requestSubmit());
+        } else if (window.htmx) {
+          htmx.trigger(findme, "change");
+        }
+      }
+    }
+
+    const center = () => {
+      const target = document.getElementById("me");
+      if (target && !target.classList.contains("d-none")) {
+        target.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+      }
+    };
+
+    requestAnimationFrame(center);
+    window.addEventListener("load", center, { once: true });
+    window.addEventListener("hashchange", center);
+    window.addEventListener("pageshow", (event) => {
+      if (event.persisted) {
+        center();
+      }
+    });
+    document.body.addEventListener("htmx:afterSwap", (event) => {
+      if (event.target && event.target.id === "contributors-content") {
+        requestAnimationFrame(center);
+      }
+    });
   })();
 </script>
 

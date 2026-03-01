@@ -98,6 +98,7 @@ def build_contributors_rows(
                 "tests_user_url": f"/tests/user/{urllib.parse.quote(username)}"
                 if username
                 else "",
+                "rank": int(user.get("_rank", 0)),
             },
         )
     return rows

@@ -1,6 +1,7 @@
 import copy
 import gzip
 import hashlib
+import logging
 import os
 import re
 from datetime import UTC, datetime, timedelta
@@ -86,6 +87,7 @@ FORM_MAX_PART_SIZE = 200 * 1024 * 1024
 DEFAULT_RECAPTCHA_SITE_KEY = "6LePs8YUAAAAABMmqHZVyVjxat95Z1c_uHrkugZM"
 
 router = APIRouter(tags=["ui"])
+logger = logging.getLogger(__name__)
 
 
 class _ViewContext:
@@ -1352,106 +1354,215 @@ def user(request):
 
 
 # === Contributors views ===
-def contributors(request):
+_CONTRIBUTORS_SORT_MAP = {
+    "cpu_hours": ("cpu_hours", True),
+    "username": ("username", False),
+    "last_updated": ("last_updated", True),
+    "games_per_hour": ("games_per_hour", True),
+    "games": ("games", True),
+    "tests": ("tests", True),
+    "tests_repo": ("tests_repo", False),
+}
+_CONTRIBUTORS_DEFAULT_SORT = "cpu_hours"
+_CONTRIBUTORS_PAGE_SIZE = 100
+_CONTRIBUTORS_MAX_ALL = 5000
+
+
+def _contributors_sort_value(user, sort_key):
+    if sort_key == "username":
+        return str(user.get("username", "")).lower()
+    if sort_key == "tests_repo":
+        return str(user.get("tests_repo", "")).lower()
+    if sort_key == "last_updated":
+        value = user.get("last_updated")
+        if isinstance(value, datetime):
+            return value.timestamp()
+        return 0
+    try:
+        return int(user.get(sort_key, 0))
+    except TypeError, ValueError:
+        return 0
+
+
+def _contributors_common(request, *, collection, is_monthly):
     page_param = request.params.get("page", "")
     page_idx = max(0, int(page_param) - 1) if page_param.isdigit() else 0
-    page_size = 100
 
     search = request.params.get("search", "").strip()
-    all_users = list(request.userdb.user_cache.find())
-    all_users.sort(key=lambda k: k["cpu_hours"], reverse=True)
+    sort_param = request.params.get("sort", "").strip().lower()
+    order_param = request.params.get("order", "").strip().lower()
+    view_param = request.params.get("view", "").strip().lower()
+    highlight = request.params.get("highlight", "").strip()
 
-    users_list = all_users
-    if search:
-        search_lower = search.lower()
-        users_list = [
-            user
-            for user in users_list
-            if search_lower in str(user.get("username", "")).lower()
-        ]
+    if sort_param not in _CONTRIBUTORS_SORT_MAP:
+        sort_param = _CONTRIBUTORS_DEFAULT_SORT
+    sort_key, default_reverse = _CONTRIBUTORS_SORT_MAP[sort_param]
+
+    if order_param == "asc":
+        reverse = False
+    elif order_param == "desc":
+        reverse = True
+    else:
+        reverse = default_reverse
+        order_param = "desc" if reverse else "asc"
+
+    if view_param != "all":
+        view_param = "paged"
+
+    all_users_unfiltered = list(collection.find())
+    users_list = list(all_users_unfiltered)
+
+    # Stable two-pass sort: enforce username asc tie-breaker, then primary key.
+    users_list.sort(key=lambda u: str(u.get("username", "")).lower())
+    users_list.sort(
+        key=lambda u: _contributors_sort_value(u, sort_key),
+        reverse=reverse,
+    )
 
     num_users = len(users_list)
-    users_page = users_list[page_idx * page_size : (page_idx + 1) * page_size]
+
+    findme = request.params.get("findme", "").strip()
+    username = request.authenticated_userid
+    target_username = ""
+    if findme and username:
+        target_username = username
+    elif search:
+        search_lower = search.lower()
+        exact_match = next(
+            (
+                user.get("username", "")
+                for user in users_list
+                if str(user.get("username", "")).lower() == search_lower
+            ),
+            "",
+        )
+        if exact_match:
+            target_username = exact_match
+        else:
+            target_username = next(
+                (
+                    user.get("username", "")
+                    for user in users_list
+                    if search_lower in str(user.get("username", "")).lower()
+                ),
+                "",
+            )
+
+    if target_username:
+        user_rank = next(
+            (
+                idx
+                for idx, user in enumerate(users_list, start=1)
+                if user.get("username") == target_username
+            ),
+            None,
+        )
+        if user_rank is not None:
+            target_page = str((user_rank - 1) // _CONTRIBUTORS_PAGE_SIZE + 1)
+            current_page = str(page_idx + 1)
+            highlight_matches = highlight.lower() == target_username.lower()
+            if view_param == "all":
+                # In full view there is no page navigation, so a matching highlight
+                # is the only signal that the jump/go-to has already been applied.
+                already_on_target = highlight_matches
+            else:
+                already_on_target = current_page == target_page and highlight_matches
+            if not already_on_target:
+                params = {
+                    "sort": sort_param,
+                    "order": order_param,
+                    "highlight": target_username,
+                    "view": view_param,
+                }
+                # Keep findme sticky across redirect hops so a non-empty search
+                # query cannot override jump-to-my-rank on the follow-up request.
+                if findme:
+                    params["findme"] = "1"
+                if view_param == "paged":
+                    params["page"] = target_page
+                return RedirectResponse(
+                    url=f"{request.path}?{urlencode(params)}#me",
+                    status_code=302,
+                )
+
+    for idx, user in enumerate(users_list, start=1):
+        user["_rank"] = idx
+
+    if highlight and not any(
+        str(user.get("username", "")).lower() == highlight.lower()
+        for user in users_list
+    ):
+        highlight = ""
+
+    if view_param == "all":
+        users_page = users_list[:_CONTRIBUTORS_MAX_ALL]
+        is_truncated = num_users > _CONTRIBUTORS_MAX_ALL
+        if is_truncated:
+            logger.info(
+                "contributors view=all truncated at %d rows (total=%d, monthly=%s)",
+                _CONTRIBUTORS_MAX_ALL,
+                num_users,
+                is_monthly,
+            )
+    else:
+        start = page_idx * _CONTRIBUTORS_PAGE_SIZE
+        end = (page_idx + 1) * _CONTRIBUTORS_PAGE_SIZE
+        users_page = users_list[start:end]
+        is_truncated = False
 
     is_approver = request.has_permission("approve_run")
     rows = build_contributors_rows(users_page, is_approver=is_approver)
-    hx_context = {
-        "users": rows,
-    }
-    hx_response = _render_hx_fragment(
-        request,
-        "contributors_rows_fragment.html.j2",
-        hx_context,
-    )
-    if hx_response:
-        return hx_response
 
-    query_params = ""
-    if search:
-        query_params += "&search={}".format(quote(search))
-    pages = pagination(page_idx, num_users, page_size, query_params)
+    pages = []
+    if view_param == "paged":
+        query_params = ""
+        if sort_param != _CONTRIBUTORS_DEFAULT_SORT:
+            query_params += "&sort={}".format(sort_param)
+        default_order = "desc" if default_reverse else "asc"
+        if order_param != default_order:
+            query_params += "&order={}".format(order_param)
+        pages = pagination(page_idx, num_users, _CONTRIBUTORS_PAGE_SIZE, query_params)
 
     context = {
-        "is_monthly": False,
-        "monthly_suffix": "",
-        "summary": build_contributors_summary(all_users),
+        "is_monthly": is_monthly,
+        "monthly_suffix": " - Top Month" if is_monthly else "",
+        "summary": build_contributors_summary(all_users_unfiltered),
         "users": rows,
         "pages": pages,
         "is_approver": is_approver,
         "search": search,
+        "sort": sort_param,
+        "order": order_param,
+        "view": view_param,
+        "highlight": highlight,
+        "is_truncated": is_truncated,
+        "num_users": num_users,
+        "max_all": _CONTRIBUTORS_MAX_ALL,
     }
+    hx_response = _render_hx_fragment(
+        request,
+        "contributors_content_fragment.html.j2",
+        context,
+    )
+    if hx_response:
+        return hx_response
     return context
+
+
+def contributors(request):
+    return _contributors_common(
+        request,
+        collection=request.userdb.user_cache,
+        is_monthly=False,
+    )
 
 
 def contributors_monthly(request):
-    page_param = request.params.get("page", "")
-    page_idx = max(0, int(page_param) - 1) if page_param.isdigit() else 0
-    page_size = 100
-
-    search = request.params.get("search", "").strip()
-    all_users = list(request.userdb.top_month.find())
-    all_users.sort(key=lambda k: k["cpu_hours"], reverse=True)
-
-    users_list = all_users
-    if search:
-        search_lower = search.lower()
-        users_list = [
-            user
-            for user in users_list
-            if search_lower in str(user.get("username", "")).lower()
-        ]
-
-    num_users = len(users_list)
-    users_page = users_list[page_idx * page_size : (page_idx + 1) * page_size]
-
-    is_approver = request.has_permission("approve_run")
-    rows = build_contributors_rows(users_page, is_approver=is_approver)
-    hx_context = {
-        "users": rows,
-    }
-    hx_response = _render_hx_fragment(
+    return _contributors_common(
         request,
-        "contributors_rows_fragment.html.j2",
-        hx_context,
+        collection=request.userdb.top_month,
+        is_monthly=True,
     )
-    if hx_response:
-        return hx_response
-
-    query_params = ""
-    if search:
-        query_params += "&search={}".format(quote(search))
-    pages = pagination(page_idx, num_users, page_size, query_params)
-
-    context = {
-        "is_monthly": True,
-        "monthly_suffix": " - Top Month",
-        "summary": build_contributors_summary(all_users),
-        "users": rows,
-        "pages": pages,
-        "is_approver": is_approver,
-        "search": search,
-    }
-    return context
 
 
 # === Run creation helpers ===
