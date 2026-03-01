@@ -48,21 +48,73 @@ registers it on the FastAPI router.
 | `/tests/view/{id}` | GET, POST | `tests_view` | `tests_view.html.j2` | |
 | `/tests/live_elo/{id}` | GET, POST | `tests_live_elo` | `tests_live_elo.html.j2` | |
 | `/tests/stats/{id}` | GET, POST | `tests_stats` | `tests_stats.html.j2` | |
-| `/tests/tasks/{id}` | GET, POST | `tests_tasks` | `tasks_fragment.html.j2` | |
-| `/tests/machines` | GET, POST | `tests_machines` | `machines_fragment.html.j2` | 10s cache |
-| `/tests/finished` | GET, POST | `tests_finished` | `tests_finished.html.j2` | |
-| `/tests/user/{username}` | GET, POST | `tests_user` | `tests_user.html.j2` | |
-| `/actions` | GET, POST | `actions` | `actions.html.j2` | |
-| `/contributors` | GET, POST | `contributors` | `contributors.html.j2` | |
-| `/contributors/monthly` | GET, POST | `contributors_monthly` | `contributors.html.j2` | |
+| `/tests/tasks/{id}` | GET, POST | `tests_tasks` | `tasks_fragment.html.j2` | Fragment-only |
+| `/tests/machines` | GET, POST | `tests_machines` | `machines_fragment.html.j2` | Fragment-only, 10s cache |
+| `/tests/elo/{id}` | GET, POST | `tests_elo` | `elo_results_fragment.html.j2` | Fragment-only (OOB) |
+| `/tests/elo_batch` | GET, POST | `tests_elo_batch` | `elo_batch_fragment.html.j2` | Fragment-only (OOB batch) |
+| `/tests/live_elo_update/{id}` | GET, POST | `live_elo_update` | `live_elo_fragment.html.j2` | Fragment-only (OOB) |
+| `/tests/finished` | GET, POST | `tests_finished` | `tests_finished.html.j2` | HX: `tests_finished_content_fragment` |
+| `/tests/user/{username}` | GET, POST | `tests_user` | `tests_user.html.j2` | HX: `tests_user_content_fragment` |
+| `/actions` | GET, POST | `actions` | `actions.html.j2` | HX: `actions_content_fragment` |
+| `/contributors` | GET, POST | `contributors` | `contributors.html.j2` | HX: `contributors_rows_fragment` |
+| `/contributors/monthly` | GET, POST | `contributors_monthly` | `contributors.html.j2` | HX: `contributors_rows_fragment` |
 | `/user/{username}` | GET, POST | `user` | `user.html.j2` | |
 | `/user` | GET, POST | `user` | `user.html.j2` | |
-| `/user_management` | GET, POST | `user_management` | `user_management.html.j2` | |
-| `/workers/{worker_name}` | GET, POST | `workers` | `workers.html.j2` | CSRF |
+| `/user_management` | GET, POST | `user_management` | `user_management.html.j2` | HX: `user_management_rows_fragment` |
+| `/workers/{worker_name}` | GET, POST | `workers` | `workers.html.j2` | CSRF; HX: `workers_rows_fragment` |
 | `/upload` | GET, POST | `upload` | `nn_upload.html.j2` | CSRF |
-| `/nns` | GET, POST | `nns` | `nns.html.j2` | |
+| `/nns` | GET, POST | `nns` | `nns.html.j2` | HX: `nns_content_fragment` |
 | `/sprt_calc` | GET, POST | `sprt_calc` | `sprt_calc.html.j2` | |
-| `/rate_limits` | GET, POST | `rate_limits` | `rate_limits.html.j2` | `HX-Request` returns `rate_limits_server_fragment.html.j2` |
+| `/rate_limits` | GET, POST | `rate_limits` | `rate_limits.html.j2` | HX: `rate_limits_server_fragment` |
+
+Route notes:
+- **Fragment-only**: endpoint always returns a fragment template (no full page).
+- **HX**: dual-mode endpoint; returns the named fragment when `HX-Request: true`
+  is present, otherwise renders the full-page template.
+- **OOB**: fragment contains `hx-swap-oob` attributes for multi-element updates.
+
+## htmx fragment dispatch
+
+Dual-mode endpoints (marked **HX** in the route table) serve either a full
+HTML page or a fragment, from the same URL, based on request headers.
+
+### Detection: `_is_hx_request(request)`
+
+Returns `True` when all of the following hold:
+
+1. The request carries `HX-Request: true` (case-insensitive).
+2. `Sec-Fetch-Mode` is not `navigate` (blocks full-page navigations that
+   carry `HX-Request` due to htmx-boosted links or browser prefetch).
+
+### Rendering: `_render_hx_fragment(request, template_name, context)`
+
+Convenience wrapper that checks `_is_hx_request()` and, when true, renders
+the fragment template via `render_template_to_response()`. Returns `None`
+for non-htmx requests, allowing the caller to fall through to full-page
+rendering. Typical usage:
+
+```python
+return (
+    _render_hx_fragment(request, "my_fragment.html.j2", context)
+    or context
+)
+```
+
+Or, when the htmx context differs from the full-page context:
+
+```python
+hx = _render_hx_fragment(request, "my_fragment.html.j2", hx_context)
+if hx:
+    return hx
+return full_page_context
+```
+
+### `Vary: HX-Request` header
+
+`_dispatch_view()` appends `Vary: HX-Request` to every GET response
+(both fragment and full-page). This tells HTTP caches (nginx, CDNs,
+browsers) that the response body depends on the `HX-Request` header,
+preventing a cached fragment from being served as a full page or vice versa.
 
 ## `_dispatch_view()` pipeline
 
@@ -89,7 +141,9 @@ following steps in order:
    flags to the cookie.
 10. **HTTP cache headers** -- `apply_http_cache()` sets `Cache-Control` if
     configured.
-11. **Response headers** -- custom headers from the handler are propagated.
+11. **Vary header** -- `Vary: HX-Request` is appended to every GET response
+    (see htmx fragment dispatch above).
+12. **Response headers** -- custom headers from the handler are propagated.
 
 ## Session handling
 

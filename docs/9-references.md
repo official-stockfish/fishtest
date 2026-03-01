@@ -1,6 +1,6 @@
 # Developer references
 
-Curated web references and project-specific patterns for the three frameworks
+Curated web references and project-specific patterns for the four libraries
 that form the fishtest server stack.
 
 ## FastAPI
@@ -211,6 +211,123 @@ async def page(request: Request):
 
 **Autoescaping**: Enabled for `.html`, `.xml`, `.j2` extensions. Raw HTML
 must use `{{ value|safe }}` or `{% autoescape false %}`.
+
+## htmx
+
+### Canonical references
+
+| Topic | URL |
+|-------|-----|
+| Documentation | https://htmx.org/docs/ |
+| Attributes reference | https://htmx.org/reference/ |
+| Events reference | https://htmx.org/events/ |
+| Request/response headers | https://htmx.org/reference/#headers |
+| Configuration | https://htmx.org/docs/#config |
+| Polling | https://htmx.org/docs/#polling |
+| OOB swaps | https://htmx.org/docs/#oob_swaps |
+| OOB troublesome tables | https://htmx.org/attributes/hx-swap-oob/#troublesome-tables-and-lists |
+| Push URL | https://htmx.org/attributes/hx-push-url/ |
+| Indicator | https://htmx.org/attributes/hx-indicator/ |
+| Multiple triggers | https://htmx.org/attributes/hx-trigger/ |
+| Template fragments essay | https://htmx.org/essays/template-fragments/ |
+| Web security with htmx | https://htmx.org/essays/web-security-basics-with-htmx/ |
+
+### Project patterns
+
+**CDN loading**: htmx 2.0.8 is loaded from `cdn.jsdelivr.net` in
+`base.html.j2` with an SRI integrity hash. No npm build step.
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"
+        integrity="sha384-..." crossorigin="anonymous"></script>
+```
+
+**Fragment detection in Starlette/FastAPI**: htmx sends `HX-Request: true`
+on every AJAX request. The server detects this header to decide between
+full-page and fragment rendering. A `Sec-Fetch-Mode` guard prevents
+htmx-boosted full-page navigations from being treated as fragment requests:
+
+```python
+def _is_hx_request(request) -> bool:
+    headers = getattr(request, "headers", None)
+    if headers is None:
+        return False
+    if (headers.get("HX-Request") or "").lower() != "true":
+        return False
+    if (headers.get("Sec-Fetch-Mode") or "").lower() == "navigate":
+        return False
+    return True
+```
+
+**Dual-mode rendering with Jinja2**: the view handler renders either a
+fragment template or the full-page template from the same URL. The
+`_render_hx_fragment()` helper encapsulates the check-and-render pattern:
+
+```python
+def _render_hx_fragment(request, template_name, context):
+    if not _is_hx_request(request):
+        return None
+    return render_template_to_response(
+        request=request.raw_request,
+        template_name=template_name,
+        context=build_template_context(
+            request.raw_request, request.session, context
+        ),
+    )
+```
+
+Fragment templates are standalone `.html.j2` files that do not extend
+`base.html.j2`. This avoids partial-block rendering complexity and keeps
+fragments self-contained.
+
+**Vary header for HTTP caching**: when the same URL can return either a
+full page or a fragment, `Vary: HX-Request` must be set on the response so
+that HTTP caches (nginx, CDNs) store separate representations:
+
+```python
+_append_vary_header(response, "HX-Request")
+```
+
+**OOB swaps with Jinja2**: out-of-band elements carry `hx-swap-oob`
+attributes directly in the template markup. Multiple elements can be updated
+in a single response. For table rows, `<template>` wrappers are required
+because the HTML parser rejects `<tbody>` inside `<div>`:
+
+```jinja
+{# OOB span -- works directly #}
+<span id="count" hx-swap-oob="innerHTML">{{ count }}</span>
+
+{# OOB table body -- requires template wrapper #}
+<template>
+  <tbody id="my-table" hx-swap-oob="innerHTML">
+    {% for row in rows %}
+      <tr>...</tr>
+    {% endfor %}
+  </tbody>
+</template>
+```
+
+**Polling lifecycle codes**: polled endpoints use HTTP status codes to
+control client behavior:
+- **200** -- swap the response content, continue polling.
+- **204** -- no content change; htmx skips the swap, continues polling.
+- **286** -- swap the response and stop polling (terminal state).
+
+**Conditional polling with visibility**: polls are gated on tab visibility
+to avoid unnecessary server load:
+
+```html
+<div hx-get="/endpoint"
+     hx-trigger="every 30s [document.visibilityState === 'visible']"
+     hx-swap="none">
+</div>
+```
+
+**Error recovery in JavaScript**: retry buttons in htmx error handlers
+must be constructed with DOM API (`createElement`, `textContent`,
+`setAttribute`) rather than string concatenation with `innerHTML`, to
+prevent XSS from error messages and to keep htmx attributes functional
+(via `htmx.process()`).
 
 ## Tooling references
 
