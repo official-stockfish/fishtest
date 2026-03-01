@@ -41,6 +41,7 @@
     method="POST"
     enctype="multipart/form-data"
   >
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <div class="mb-3">
       <label for="network" class="form-label">
         Select your Network file (nn-[SHA256 first 12 digits].nnue)
