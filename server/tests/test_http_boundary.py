@@ -3,6 +3,7 @@
 import re
 import tempfile
 import unittest
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Callable, cast
@@ -10,6 +11,8 @@ from typing import Callable, cast
 import test_support
 from fastapi import Depends, Request
 from starlette.responses import Response
+
+from fishtest.run_cache import Prio
 
 
 class TestHttpBoundary(unittest.TestCase):
@@ -36,6 +39,60 @@ class TestHttpBoundary(unittest.TestCase):
             include_api=False,
             include_views=include_views,
         )
+
+    def _create_live_elo_run(self, *, sprt_state: str = "") -> str:
+        run_id = self.rundb.new_run(
+            "master",
+            "new-branch",
+            800,
+            "10+0.1",
+            "10+0.1",
+            "book.pgn",
+            "10",
+            1,
+            "",
+            "",
+            info="live elo test",
+            resolved_base="347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+            resolved_new="347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+            msg_base="base",
+            msg_new="new",
+            base_signature="123456",
+            new_signature="654321",
+            base_nets=["nn-0000000000a0.nnue"],
+            new_nets=["nn-0000000000a1.nnue"],
+            tests_repo="https://github.com/official-stockfish/Stockfish",
+            auto_purge=False,
+            username="travis",
+            start_time=datetime.now(UTC),
+            sprt={
+                "alpha": 0.05,
+                "beta": 0.05,
+                "elo0": -2.0,
+                "elo1": 2.0,
+                "elo_model": "normalized",
+                "state": "",
+                "llr": 0.0,
+                "batch_size": 1,
+                "lower_bound": -2.9444389791664403,
+                "upper_bound": 2.9444389791664403,
+                "lost_samples": 0,
+            },
+        )
+        run = self.rundb.get_run(run_id)
+        run["approved"] = True
+        run["args"]["sprt"]["state"] = sprt_state
+        run["results"] = {
+            "wins": 12,
+            "losses": 10,
+            "draws": 18,
+            "crashes": 0,
+            "time_losses": 0,
+            "pentanomial": [2, 3, 5, 4, 1],
+        }
+        run["finished"] = True
+        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+        return str(run_id)
 
     def test_request_shim_parity(self):
         from fishtest.http.boundary import ApiRequestShim
@@ -262,6 +319,31 @@ class TestHttpBoundary(unittest.TestCase):
         self.assertIn(response.status_code, {200, 286})
         self.assertNotIn('id="workers-count"', response.text)
         self.assertNotIn('id="homepage-stats"', response.text)
+
+    def test_live_elo_page_finished_sprt_has_data_and_no_poller(self):
+        run_id = self._create_live_elo_run(sprt_state="accepted")
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get(f"/tests/live_elo/{run_id}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="gauge-data"', response.text)
+        self.assertIn('data-sprt-state="accepted"', response.text)
+        self.assertIn("live_elo.js", response.text)
+        # Terminal SPRT runs must stop polling.
+        self.assertNotIn("/tests/live_elo_update/", response.text)
+
+    def test_live_elo_update_terminal_sprt_sets_status_286(self):
+        run_id = self._create_live_elo_run(sprt_state="rejected")
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get(f"/tests/live_elo_update/{run_id}")
+
+        self.assertEqual(response.status_code, 286)
+        self.assertIn('id="live-elo-data"', response.text)
+        self.assertIn('hx-swap-oob="innerHTML"', response.text)
 
     def test_template_context_includes_helpers(self):
         from fishtest.http import jinja
