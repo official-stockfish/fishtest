@@ -76,11 +76,11 @@ class TestHttpBoundary(unittest.TestCase):
             }
 
         client = self.TestClient(app)
+        client.cookies.set("demo", "cookie")
         response = client.get(
             "/shim",
             params={"a": "1", "b": "2"},
             headers={"x-test-header": "hello"},
-            cookies={"demo": "cookie"},
         )
         self.assertEqual(response.status_code, 200)
         data = response.json()
@@ -111,7 +111,7 @@ class TestHttpBoundary(unittest.TestCase):
 
         response = client.post(
             "/json",
-            data=b"{",
+            content=b"{",
             headers={"content-type": "application/json"},
         )
         self.assertEqual(response.status_code, 200)
@@ -223,6 +223,222 @@ class TestHttpBoundary(unittest.TestCase):
         cookie_lower = cookie.lower()
         self.assertIn("max-age=0", cookie_lower)
         self.assertIn("expires=", cookie_lower)
+
+    def test_session_remember_max_age_persists_across_requests(self):
+        from fishtest.http.boundary import commit_session_response, remember
+        from fishtest.http.cookie_session import load_session
+
+        app = self._build_app()
+
+        @app.get("/remember-persist")
+        async def _remember_persist_probe(request: Request):
+            session = load_session(request)
+            shim = SimpleNamespace(session=session, _remember=False, _forget=False)
+            remember(shim, "Tester", max_age=60)
+            response = Response("ok")
+            commit_session_response(request, session, shim, response)
+            return response
+
+        @app.get("/touch")
+        async def _touch_probe(request: Request):
+            _ = load_session(request)
+            return Response("ok")
+
+        client = self.TestClient(app)
+        remember_response = client.get("/remember-persist")
+        self.assertEqual(remember_response.status_code, 200)
+        remember_cookie = remember_response.headers.get("set-cookie", "")
+        self.assertIn("fishtest_session=", remember_cookie)
+        self.assertIn("Max-Age=60", remember_cookie)
+
+        touch_response = client.get("/touch")
+        self.assertEqual(touch_response.status_code, 200)
+        touch_cookie = touch_response.headers.get("set-cookie", "")
+        self.assertIn("fishtest_session=", touch_cookie)
+        self.assertIn("Max-Age=60", touch_cookie)
+
+    def test_session_non_remember_cookie_stays_session_scoped(self):
+        from fishtest.http.boundary import commit_session_response, remember
+        from fishtest.http.cookie_session import load_session
+
+        app = self._build_app()
+
+        @app.get("/remember-session")
+        async def _remember_session_probe(request: Request):
+            session = load_session(request)
+            shim = SimpleNamespace(session=session, _remember=False, _forget=False)
+            remember(shim, "Tester")
+            response = Response("ok")
+            commit_session_response(request, session, shim, response)
+            return response
+
+        @app.get("/touch")
+        async def _touch_probe(request: Request):
+            _ = load_session(request)
+            return Response("ok")
+
+        client = self.TestClient(app)
+        remember_response = client.get("/remember-session")
+        self.assertEqual(remember_response.status_code, 200)
+        remember_cookie = remember_response.headers.get("set-cookie", "")
+        self.assertIn("fishtest_session=", remember_cookie)
+        self.assertNotIn("Max-Age=", remember_cookie)
+
+        touch_response = client.get("/touch")
+        self.assertEqual(touch_response.status_code, 200)
+        touch_cookie = touch_response.headers.get("set-cookie", "")
+        self.assertIn("fishtest_session=", touch_cookie)
+        self.assertNotIn("Max-Age=", touch_cookie)
+
+    def test_session_cookie_not_set_when_session_untouched(self):
+        app = self._build_app()
+
+        @app.get("/noop")
+        async def _noop_probe():
+            return Response("ok")
+
+        client = self.TestClient(app)
+        response = client.get("/noop")
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.headers.get("set-cookie"))
+
+    def test_session_remember_then_non_remember_drops_max_age(self):
+        from fishtest.http.boundary import commit_session_response, remember
+        from fishtest.http.cookie_session import load_session
+
+        app = self._build_app()
+
+        @app.get("/login-remember")
+        async def _login_remember_probe(request: Request):
+            session = load_session(request)
+            shim = SimpleNamespace(session=session, _remember=False, _forget=False)
+            remember(shim, "Tester", max_age=60)
+            response = Response("ok")
+            commit_session_response(request, session, shim, response)
+            return response
+
+        @app.get("/login-session")
+        async def _login_session_probe(request: Request):
+            session = load_session(request)
+            shim = SimpleNamespace(session=session, _remember=False, _forget=False)
+            remember(shim, "Tester")
+            response = Response("ok")
+            commit_session_response(request, session, shim, response)
+            return response
+
+        client = self.TestClient(app)
+        remember_response = client.get("/login-remember")
+        self.assertEqual(remember_response.status_code, 200)
+        remember_cookie = remember_response.headers.get("set-cookie", "")
+        self.assertIn("Max-Age=60", remember_cookie)
+
+        session_response = client.get("/login-session")
+        self.assertEqual(session_response.status_code, 200)
+        session_cookie = session_response.headers.get("set-cookie", "")
+        self.assertIn("fishtest_session=", session_cookie)
+        self.assertNotIn("Max-Age=", session_cookie)
+
+    def test_session_remember_marks_secure_for_https(self):
+        from fishtest.http.boundary import commit_session_response, remember
+        from fishtest.http.cookie_session import load_session
+
+        app = self._build_app()
+
+        @app.get("/remember-https")
+        async def _remember_https_probe(request: Request):
+            session = load_session(request)
+            shim = SimpleNamespace(session=session, _remember=False, _forget=False)
+            remember(shim, "Tester", max_age=60)
+            response = Response("ok")
+            commit_session_response(request, session, shim, response)
+            return response
+
+        client = self.TestClient(app)
+        response = client.get("/remember-https", headers={"x-forwarded-proto": "https"})
+        self.assertEqual(response.status_code, 200)
+        cookie = response.headers.get("set-cookie", "").lower()
+        attrs = [part.strip() for part in cookie.split(";")[1:]]
+        self.assertIn("secure", attrs)
+
+    def test_session_remember_max_age_survives_size_limit_shrink(self):
+        from fishtest.http.boundary import commit_session_response, remember
+        from fishtest.http.cookie_session import load_session
+
+        app = self._build_app()
+
+        @app.get("/remember-large")
+        async def _remember_large_probe(request: Request):
+            session = load_session(request)
+            shim = SimpleNamespace(session=session, _remember=False, _forget=False)
+            remember(shim, "Tester", max_age=60)
+            session.data["blob"] = "x" * 20000
+            response = Response("ok")
+            commit_session_response(request, session, shim, response)
+            return response
+
+        @app.get("/inspect")
+        async def _inspect_probe(request: Request):
+            session = load_session(request)
+            data = session.data
+            return {
+                "has_blob": "blob" in data,
+                "remember_max_age": data.get("remember_max_age"),
+            }
+
+        client = self.TestClient(app)
+        remember_response = client.get("/remember-large")
+        self.assertEqual(remember_response.status_code, 200)
+        remember_cookie = remember_response.headers.get("set-cookie", "")
+        self.assertIn("Max-Age=60", remember_cookie)
+
+        inspect_response = client.get("/inspect")
+        self.assertEqual(inspect_response.status_code, 200)
+        inspect_cookie = inspect_response.headers.get("set-cookie", "")
+        self.assertIn("Max-Age=60", inspect_cookie)
+        inspect_body = inspect_response.json()
+        self.assertFalse(inspect_body["has_blob"])
+        self.assertEqual(inspect_body["remember_max_age"], 60)
+
+    def test_session_invalid_remember_marker_is_ignored(self):
+        from fishtest.http.cookie_session import load_session
+
+        app = self._build_app()
+
+        @app.get("/invalid-marker")
+        async def _invalid_marker_probe(request: Request):
+            session = load_session(request)
+            session.data["user"] = "Tester"
+            session.data["remember_max_age"] = "invalid"
+            return Response("ok")
+
+        client = self.TestClient(app)
+        response = client.get("/invalid-marker")
+        self.assertEqual(response.status_code, 200)
+        cookie = response.headers.get("set-cookie", "")
+        self.assertIn("fishtest_session=", cookie)
+        self.assertNotIn("Max-Age=", cookie)
+
+    def test_session_remember_zero_max_age_is_emitted(self):
+        from fishtest.http.boundary import commit_session_response, remember
+        from fishtest.http.cookie_session import load_session
+
+        app = self._build_app()
+
+        @app.get("/remember-zero")
+        async def _remember_zero_probe(request: Request):
+            session = load_session(request)
+            shim = SimpleNamespace(session=session, _remember=False, _forget=False)
+            remember(shim, "Tester", max_age=0)
+            response = Response("ok")
+            commit_session_response(request, session, shim, response)
+            return response
+
+        client = self.TestClient(app)
+        response = client.get("/remember-zero")
+        self.assertEqual(response.status_code, 200)
+        cookie = response.headers.get("set-cookie", "")
+        self.assertIn("Max-Age=0", cookie)
+        self.assertIn("Expires=", cookie)
 
     def test_session_forget_flags_force_cookie_clear(self):
         from fishtest.http.boundary import SessionCommitFlags, commit_session_flags

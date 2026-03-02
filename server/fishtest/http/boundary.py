@@ -225,6 +225,10 @@ def remember(
     session_data = _resolve_session_data(request.session)
     if session_data is not None:
         session_data["user"] = username
+        if max_age is None:
+            session_data.pop("remember_max_age", None)
+        else:
+            session_data["remember_max_age"] = max_age
     request.remember = max_age is not None
     request.remember_max_age = max_age
     raw_request = _resolve_raw_request(request)

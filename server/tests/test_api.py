@@ -252,7 +252,7 @@ class TestHttpApi(unittest.TestCase):
     def test_request_version_invalid_json_body(self):
         response = self.client.post(
             "/api/request_version",
-            data=b"{",
+            content=b"{",
             headers={"content-type": "application/json"},
         )
         self.assertEqual(response.status_code, 400)
@@ -346,7 +346,7 @@ class TestHttpApi(unittest.TestCase):
         for path in endpoints:
             response = self.client.post(
                 path,
-                data=b"{",
+                content=b"{",
                 headers={"content-type": "application/json"},
             )
             self.assertEqual(response.status_code, 400)

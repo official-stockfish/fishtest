@@ -229,7 +229,26 @@ class ErrorHandlerWorkerPathsTests(unittest.TestCase):
 
 
 class BlockedUserCacheTests(unittest.TestCase):
+    @staticmethod
+    def _restore_blocked_cache(cache_obj, timestamp, value):
+        cache_obj.timestamp = timestamp
+        cache_obj.value = value
+
     def test_blocked_cache_uses_ttl(self):
+        from fishtest.http.middleware import _blocked_cache
+
+        original_timestamp = _blocked_cache.timestamp
+        original_value = _blocked_cache.value
+        self.addCleanup(
+            self._restore_blocked_cache,
+            _blocked_cache,
+            original_timestamp,
+            original_value,
+        )
+
+        _blocked_cache.timestamp = None
+        _blocked_cache.value = None
+
         class FakeUserDb:
             def __init__(self):
                 self.calls = 0

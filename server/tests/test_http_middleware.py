@@ -42,6 +42,21 @@ class TestHttpMiddleware(unittest.TestCase):
     def setUpClass(cls):
         cls.FastAPI, cls.TestClient = test_support.require_fastapi()
 
+    def setUp(self):
+        from fishtest.http.middleware import _blocked_cache
+
+        original_timestamp = _blocked_cache.timestamp
+        original_value = _blocked_cache.value
+
+        def _restore_cache_state():
+            _blocked_cache.timestamp = original_timestamp
+            _blocked_cache.value = original_value
+
+        self.addCleanup(_restore_cache_state)
+
+        _blocked_cache.timestamp = None
+        _blocked_cache.value = None
+
     def test_shutdown_guard_returns_503(self):
         rundb = _RunDbStub(shutdown=True)
         app = test_support.build_test_app(

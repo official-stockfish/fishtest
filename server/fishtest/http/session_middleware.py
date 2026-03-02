@@ -89,13 +89,13 @@ class FishtestSessionMiddleware:
             if message.get("type") == "http.response.start":
                 session_data = scope.get("session") or {}
                 headers = MutableHeaders(scope=message)
-                max_age = _max_age_from_scope(scope, self.max_age)
                 secure = _secure_from_scope(scope, https_only=self.https_only)
                 force_clear = bool(scope.get("session_force_clear", False))
 
                 if session_data:
                     session_data = _enforce_size_limit(session_data, signer)
                     scope["session"] = session_data
+                    max_age = _max_age_from_scope(scope, self.max_age, session_data)
                     data = b64encode(json.dumps(session_data).encode("utf-8"))
                     signed = signer.sign(data)
                     headers.append(
@@ -136,7 +136,13 @@ class FishtestSessionMiddleware:
         return self._signer
 
 
-def _max_age_from_scope(scope: Scope, fallback: int | None) -> int | None:
+def _max_age_from_scope(
+    scope: Scope,
+    fallback: int | None,
+    session_data: object,
+) -> int | None:
+    if "session_max_age" not in scope:
+        return _max_age_from_session_data(session_data, fallback)
     value = scope.get("session_max_age", fallback)
     if value is None:
         return None
@@ -150,6 +156,19 @@ def _secure_from_scope(scope: Scope, *, https_only: bool) -> bool:
     if isinstance(override, bool):
         return override
     return https_only or _is_https_scope(scope)
+
+
+def _max_age_from_session_data(
+    session_data: object,
+    fallback: int | None,
+) -> int | None:
+    if not isinstance(session_data, dict):
+        return fallback
+    typed_session_data = cast("dict[str, object]", session_data)
+    value = typed_session_data.get("remember_max_age")
+    if isinstance(value, int) and value >= 0:
+        return value
+    return fallback
 
 
 def _is_https_scope(scope: Scope) -> bool:
@@ -265,7 +284,7 @@ def _enforce_size_limit(
         return candidate
 
     minimal: dict[str, object] = {}
-    for key in ("user", "csrf_token", "created_at", "updated_at"):
+    for key in ("user", "csrf_token", "created_at", "updated_at", "remember_max_age"):
         if key in candidate:
             minimal[key] = candidate[key]
     return minimal
