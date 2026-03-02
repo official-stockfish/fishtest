@@ -2434,6 +2434,10 @@ def get_page_title(run):
 
 def _build_live_elo_context(run):
     """Compute SPRT analytics and return template context for gauges + details."""
+    run_status_label = _classify_run_status(run)
+    if run_status_label == "failed":
+        run_status_label = "finished"
+
     results = run["results"]
     sprt = run["args"]["sprt"]
     elo_model = sprt.get("elo_model", "BayesElo")
@@ -2450,6 +2454,7 @@ def _build_live_elo_context(run):
     pentanomial = results.get("pentanomial", [])
     return {
         "run": run,
+        "run_status_label": run_status_label,
         "elo_raw": a["elo"],
         "ci_lower_raw": a["ci"][0],
         "ci_upper_raw": a["ci"][1],
