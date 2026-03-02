@@ -13,6 +13,12 @@
   {% set user_filter = filter_source.user %}
   {% set master_only = filter_source.master_only %}
 {% endif %}
+{% set view = view if view is defined else 'paged' %}
+{% set sort = sort if sort is defined else 'time' %}
+{% set order = order if order is defined else 'desc' %}
+{% set num_nns = num_nns if num_nns is defined else 0 %}
+{% set max_all = max_all if max_all is defined else 5000 %}
+{% set is_truncated = is_truncated if is_truncated is defined else false %}
 <h2>Neural Network Repository</h2>
 
 <p>
@@ -23,12 +29,26 @@
   The recommended net for a given Stockfish executable can be found as the default value of the EvalFile UCI option.
 </p>
 
-<form class="row mb-3" id="search_nn" action="/nns" hx-get="/nns" hx-target="#nns-content" hx-push-url="true" hx-swap="innerHTML">
+<form
+  class="row mb-3"
+  id="search_nn"
+  action="/nns"
+  hx-get="/nns"
+  hx-target="#nns-content"
+  hx-push-url="true"
+  hx-swap="innerHTML"
+  hx-trigger="submit, input changed delay:{{ htmx.input_changed_delay_ms }}ms from:#network_name, input changed delay:{{ htmx.input_changed_delay_ms }}ms from:#user, search from:#network_name, search from:#user, change from:#master_only"
+  hx-on::before-request="document.cookie = 'master_only=' + (document.getElementById('master_only').checked ? 'true' : 'false') + '; max-age={{ 60 * 60 * 24 * 365 * 10 }}; SameSite=Lax'"
+>
+  <input type="hidden" name="view" value="{{ view }}">
+  <input type="hidden" name="sort" value="{{ sort }}">
+  <input type="hidden" name="order" value="{{ order }}">
+
   <div class="col-12 col-md-auto mb-3">
     <label for="network_name" class="form-label">Network</label>
     <input
       id="network_name"
-      type="text"
+      type="search"
       name="network_name"
       class="form-control"
       placeholder="Network name"
@@ -40,7 +60,7 @@
     <label for="user" class="form-label">Uploaded by</label>
   <input
     id="user"
-    type="text"
+    type="search"
     name="user"
     class="form-control"
     placeholder="Username"
@@ -60,22 +80,9 @@
     </div>
   </div>
 
-  <div class="col-12 col-md-auto mb-3 d-flex align-items-end">
-    <button type="submit" class="btn btn-success w-100">Search</button>
-  </div>
 </form>
 
 <div id="nns-content">
   {% include "nns_content_fragment.html.j2" %}
 </div>
-
-<script>
-  document
-    .getElementById("search_nn")
-    .addEventListener("submit", () => {
-      const masterOnly = document.getElementById("master_only");
-      document.cookie =
-        "master_only" + "=" + masterOnly.checked + "; max-age={{ 60 * 60 * 24 * 365 * 10 }}; SameSite=Lax";
-    });
-</script>
     {% endblock %}

@@ -28,6 +28,10 @@ POLL_TASKS_DETAIL_S: int = 300
 POLL_LIVE_ELO_S: int = 20
 POLL_RATE_LIMITS_SERVER_S: int = 60
 
+# HTMX UI timing defaults.
+# Keep this generic so multiple pages can share one debounce baseline.
+HTMX_INPUT_CHANGED_DELAY_MS: int = 350
+
 
 def env_int(name: str, *, default: int) -> int:
     """Parse an environment variable as an integer, with a fallback default."""
