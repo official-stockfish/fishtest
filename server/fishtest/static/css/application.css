@@ -603,7 +603,17 @@ td {
   font-weight: 600;
 }
 
+#nns_table .sort-header .sort-indicator {
+  color: rgba(var(--bs-link-color-rgb), 0.75) !important;
+  font-weight: 600;
+}
+
 #contributors_table th[aria-sort] .sort-header .sort-indicator {
+  color: var(--bs-link-color) !important;
+  font-weight: 700;
+}
+
+#nns_table th[aria-sort] .sort-header .sort-indicator {
   color: var(--bs-link-color) !important;
   font-weight: 700;
 }

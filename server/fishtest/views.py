@@ -800,19 +800,83 @@ def signup(request):
 def nns(request):
     user = request.params.get("user", "")
     network_name = request.params.get("network_name", "")
-    master_only = request.params.get("master_only", False)
+    sort_param = request.params.get("sort", "time")
+    if sort_param not in {
+        "time",
+        "name",
+        "user",
+        "first_test",
+        "last_test",
+        "downloads",
+    }:
+        sort_param = "time"
+    order_param = request.params.get("order", "desc")
+    if order_param not in {"asc", "desc"}:
+        order_param = "desc"
+    view_param = request.params.get("view", "paged")
+    if view_param not in {"paged", "all"}:
+        view_param = "paged"
 
-    page_param = request.params.get("page", "")
-    page_idx = max(0, int(page_param) - 1) if page_param.isdigit() else 0
     page_size = 25
+    max_all = 5000
+
+    def _truthy(value):
+        if isinstance(value, bool):
+            return value
+        return str(value).strip().lower() in {"1", "true", "on", "yes"}
+
+    master_only_param = request.params.get("master_only")
+    if master_only_param is None:
+        master_only = _truthy(request.cookies.get("master_only", "false"))
+    else:
+        master_only = _truthy(master_only_param)
+
+    page_idx = 0
+    page_param = request.params.get("page", "")
+    if view_param == "paged":
+        page_idx = max(0, int(page_param) - 1) if page_param.isdigit() else 0
 
     nns, num_nns = request.rundb.get_nns(
         user=user,
         network_name=network_name,
         master_only=master_only,
-        limit=page_size,
-        skip=page_idx * page_size,
+        limit=0,
+        skip=0,
     )
+    nns = list(nns)
+
+    def _first_test_date(nn):
+        return (nn.get("first_test") or {}).get("date") or datetime.min.replace(
+            tzinfo=UTC
+        )
+
+    def _last_test_date(nn):
+        return (nn.get("last_test") or {}).get("date") or datetime.min.replace(
+            tzinfo=UTC
+        )
+
+    def _sort_key(nn):
+        key_map = {
+            "time": nn.get("time") or datetime.min.replace(tzinfo=UTC),
+            "name": nn.get("name", "").lower(),
+            "user": nn.get("user", "").lower(),
+            "first_test": _first_test_date(nn),
+            "last_test": _last_test_date(nn),
+            "downloads": int(nn.get("downloads", 0)),
+        }
+        # Deterministic tie-break to avoid row jitter between requests.
+        return (key_map[sort_param], nn.get("name", "").lower())
+
+    nns.sort(key=_sort_key, reverse=(order_param == "desc"))
+
+    if view_param == "paged":
+        start = page_idx * page_size
+        nns = nns[start : start + page_size]
+
+    is_truncated = False
+    if view_param == "all" and len(nns) > max_all:
+        nns = nns[:max_all]
+        is_truncated = True
 
     formatted_nns = []
     for nn in nns:
@@ -848,20 +912,34 @@ def nns(request):
             }
         )
 
-    query_params = ""
+    query_dict = {
+        "view": view_param,
+        "sort": sort_param,
+        "order": order_param,
+    }
     if user:
-        query_params += "&user={}".format(user)
+        query_dict["user"] = user
     if network_name:
-        query_params += "&network_name={}".format(network_name)
+        query_dict["network_name"] = network_name
     if master_only:
-        query_params += "&master_only={}".format(master_only)
+        query_dict["master_only"] = "1"
 
-    pages = pagination(page_idx, num_nns, page_size, query_params)
+    query_params = "&" + urlencode(query_dict)
+
+    pages = []
+    if view_param == "paged":
+        pages = pagination(page_idx, num_nns, page_size, query_params)
 
     context = {
         "nns": formatted_nns,
         "pages": pages,
-        "master_only": request.cookies.get("master_only") == "true",
+        "master_only": master_only,
+        "view": view_param,
+        "sort": sort_param,
+        "order": order_param,
+        "num_nns": num_nns,
+        "max_all": max_all,
+        "is_truncated": is_truncated,
         "filters": {
             "network_name": network_name,
             "user": user,
