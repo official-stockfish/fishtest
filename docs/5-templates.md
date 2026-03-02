@@ -257,6 +257,13 @@ Each machine row: `username`, `country_code`, `concurrency`, `worker_url`,
 Each nn row: `time_label`, `name`, `name_url`, `user`, `first_test_label`,
 `first_test_url`, `last_test_label`, `last_test_url`, `downloads`, `is_master`.
 
+Behavior notes:
+
+- Search is URL-driven and rendered by the same `/nns` endpoint.
+- HTMX search updates only `#nns-content`; full-page rendering still works.
+- Typing in `network_name` / `user` and toggling `master_only` triggers
+   HTMX requests, while submit remains available as a non-JS fallback.
+
 ### `notfound.html.j2`
 
 Shared base context only.

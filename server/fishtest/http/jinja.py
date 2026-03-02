@@ -21,6 +21,7 @@ import fishtest
 import fishtest.github_api as gh
 from fishtest.http import template_helpers as helpers
 from fishtest.http.settings import (
+    HTMX_INPUT_CHANGED_DELAY_MS,
     POLL_BATCH_HOMEPAGE_S,
     POLL_ELO_DETAIL_S,
     POLL_LIVE_ELO_S,
@@ -140,6 +141,9 @@ def default_environment() -> Environment:
                 "machines_homepage": POLL_MACHINES_HOMEPAGE_S,
                 "live_elo": POLL_LIVE_ELO_S,
                 "rate_limits_server": POLL_RATE_LIMITS_SERVER_S,
+            },
+            "htmx": {
+                "input_changed_delay_ms": HTMX_INPUT_CHANGED_DELAY_MS,
             },
         },
     )
