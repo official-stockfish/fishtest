@@ -38,7 +38,7 @@
   hx-push-url="true"
   hx-swap="innerHTML"
   hx-trigger="submit, input changed delay:{{ htmx.input_changed_delay_ms }}ms from:#network_name, input changed delay:{{ htmx.input_changed_delay_ms }}ms from:#user, search from:#network_name, search from:#user, change from:#master_only"
-  hx-on::before-request="document.cookie = 'master_only=' + (document.getElementById('master_only').checked ? 'true' : 'false') + '; max-age={{ 60 * 60 * 24 * 365 * 10 }}; SameSite=Lax'"
+  hx-on::before-request="document.cookie = 'master_only=' + (document.getElementById('master_only').checked ? 'true' : 'false') + '; path=/; max-age={{ 60 * 60 * 24 * 365 * 10 }}; SameSite=Lax'"
 >
   <input type="hidden" name="view" value="{{ view }}">
   <input type="hidden" name="sort" value="{{ sort }}">

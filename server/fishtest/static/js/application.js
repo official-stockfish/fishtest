@@ -9,6 +9,7 @@ let broadcastDispatch = {
   await DOMContentLoaded();
   handleTabsBroadcasting();
   protectForms();
+  handlePanelToggleCookies();
   handleApplicationLogout();
   handleApplicationThemes();
   handleSortingTables();
@@ -67,6 +68,38 @@ function getCookie(cookieName) {
     .split(";")
     .map((cookie) => cookie.trim().split("="))
     .find(([name]) => name === cookieName)?.[1];
+}
+
+function setStateCookie(name, value, maxAgeSeconds) {
+  if (!name) {
+    return;
+  }
+  const maxAge = Number(maxAgeSeconds);
+  if (!Number.isFinite(maxAge) || maxAge <= 0) {
+    return;
+  }
+  // Keep UI state cookies available across all pages that reuse the same panels.
+  document.cookie = `${name}=${value}; path=/; max-age=${maxAge}; SameSite=Lax`;
+}
+
+function handlePanelToggleCookies() {
+  document.addEventListener("click", (e) => {
+    if (!(e.target instanceof Element)) {
+      return;
+    }
+    const button = e.target.closest("[data-toggle-cookie-name]");
+    if (!(button instanceof HTMLElement)) {
+      return;
+    }
+
+    const cookieName = button.dataset.toggleCookieName;
+    const maxAge = button.dataset.toggleCookieMaxAge;
+    const active = button.textContent.trim() === "Hide";
+    const nextState = active ? "Show" : "Hide";
+
+    button.textContent = nextState;
+    setStateCookie(cookieName, nextState, maxAge);
+  });
 }
 
 function formatBytes(bytes) {
