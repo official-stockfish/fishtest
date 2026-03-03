@@ -106,6 +106,7 @@ class TestNNHttp(unittest.TestCase):
         self.assertNotIn(">Search</button>", response.text)
         self.assertIn('type="search"', response.text)
         self.assertIn("hx-on::before-request", response.text)
+        self.assertIn("path=/;", response.text)
         self.assertNotIn('getElementById("search_nn").addEventListener', response.text)
 
     def test_nns_server_side_search_hx_fragment(self):

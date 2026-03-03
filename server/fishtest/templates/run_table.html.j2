@@ -9,28 +9,14 @@
 {% set toggle_state = toggle_state if toggle_state is defined else "Show" %}
 {% set pages = pages if pages is defined else [] %}
 {% set panel_id = panel_id if panel_id is defined else (toggle if toggle else 'finished') %}
-{% if toggle %}
-  <script>
-    function toggle{{ toggle | capitalize }}() {
-      const button = document.getElementById("{{ toggle }}-button");
-      const active = button.textContent.trim() === "Hide";
-      button.textContent = active ? "Show" : "Hide";
-      document.cookie =
-        "{{ cookie_name }}" + "=" + button.textContent.trim() + "; max-age={{ 60 * 60 * 24 * 365 * 10 }}; SameSite=Lax";
-    }
-
-    document.addEventListener("DOMContentLoaded", () => {
-      const button = document.getElementById("{{ toggle }}-button");
-      button?.addEventListener("click", () => toggle{{ toggle | capitalize }}());
-    });
-  </script>
-{% endif %}
 
 <h4>
 {% if toggle %}
   <a id="{{ toggle }}-button" class="btn btn-sm btn-light border"
      data-bs-toggle="collapse" href="#{{ toggle }}" role="button" aria-expanded="false"
-      aria-controls="{{ toggle }}">
+      aria-controls="{{ toggle }}"
+      data-toggle-cookie-name="{{ cookie_name }}"
+      data-toggle-cookie-max-age="{{ 60 * 60 * 24 * 365 * 10 }}">
   {{ 'Hide' if toggle_state == 'Hide' else 'Show' }}
   </a>
 {% endif %}
