@@ -625,7 +625,7 @@
       btn.textContent = active ? "Show" : "Hide";
       document.cookie =
         "tasks_state=" + btn.textContent.trim() +
-        "; max-age={{ 60 * 60 }}; SameSite=Lax";
+        "; path=/; max-age={{ 60 * 60 }}; SameSite=Lax";
       const tbody = document.getElementById("tasks-body");
       if (!active && tbody && tbody.dataset.tasksLoaded !== "1") {
         tbody.dataset.tasksLoaded = "loading";

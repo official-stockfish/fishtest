@@ -1046,6 +1046,34 @@ class TestHttpUsers(unittest.TestCase):
 
         self.assertEqual(response.status_code, 403)
 
+    def test_tests_user_hx_filter_fragment_keeps_notification_and_toggle_hooks(self):
+        self._create_run()
+
+        response = self.client.get(
+            f"/tests/user/{self.username}?success_only=1",
+            headers={"HX-Request": "true"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="tests-user-filters"', response.text)
+        self.assertIn('id="notification_', response.text)
+        self.assertIn('data-toggle-cookie-name="', response.text)
+        self.assertIn('data-toggle-cookie-max-age="', response.text)
+
+    def test_notifications_js_reinitializes_after_htmx_swaps(self):
+        js_path = (
+            Path(__file__).resolve().parents[1]
+            / "fishtest"
+            / "static"
+            / "js"
+            / "notifications.js"
+        )
+        js_source = js_path.read_text(encoding="utf-8")
+
+        self.assertIn('document.addEventListener("htmx:afterSwap"', js_source)
+        self.assertIn('document.addEventListener("htmx:load"', js_source)
+        self.assertIn("initializeNotificationButtons(target)", js_source)
+
     def test_user_management_lazy_group_hx_fragment(self):
         pending_user = "HxPendingGroupUser"
         blocked_user = "HxBlockedGroupUser"

@@ -585,6 +585,22 @@ document.addEventListener("htmx:oobAfterSwap", (e) => {
   }
 });
 
+document.addEventListener("htmx:afterSwap", (e) => {
+  const target = e?.detail?.target;
+  if (!(target instanceof Element)) {
+    return;
+  }
+  initializeNotificationButtons(target);
+});
+
+document.addEventListener("htmx:load", (e) => {
+  const loaded = e?.detail?.elt;
+  if (!(loaded instanceof Element)) {
+    return;
+  }
+  initializeNotificationButtons(loaded);
+});
+
 void DOMContentLoaded().then(() => {
   initializeNotificationButtons(document);
 });

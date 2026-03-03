@@ -26,7 +26,7 @@
       btn.textContent = active ? "Show" : "Hide";
       document.cookie =
         "machines_state=" + btn.textContent.trim() +
-        "; max-age={{ 60 * 60 }}; SameSite=Lax";
+        "; path=/; max-age={{ 60 * 60 }}; SameSite=Lax";
 
       if (!active && target && target.dataset.machinesLoaded !== "1") {
         target.dataset.machinesLoaded = "loading";
