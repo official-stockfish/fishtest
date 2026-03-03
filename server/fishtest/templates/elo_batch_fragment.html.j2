@@ -6,6 +6,11 @@
           {% include "run_table_row_fragment.html.j2" %}
         {% endwith %}
       {% endfor %}
+      {% if panel.empty_text and panel.rows | length == 0 %}
+        <tr>
+          <td colspan=20>{{ panel.empty_text }}</td>
+        </tr>
+      {% endif %}
     </tbody>
   </template>
 {% endfor %}

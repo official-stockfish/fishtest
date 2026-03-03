@@ -320,6 +320,19 @@ class TestHttpBoundary(unittest.TestCase):
         self.assertNotIn('id="workers-count"', response.text)
         self.assertNotIn('id="homepage-stats"', response.text)
 
+    def test_tests_elo_batch_preserves_empty_panel_text(self):
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get("/tests/elo_batch?username=__no_such_user__")
+
+        self.assertIn(response.status_code, {200, 286})
+        self.assertIn("No tests pending approval", response.text)
+        self.assertIn("No paused tests", response.text)
+        self.assertIn("No failed tests on this page", response.text)
+        self.assertIn("No active tests", response.text)
+        self.assertIn("colspan=20>No tests pending approval</td>", response.text)
+
     def test_live_elo_page_finished_sprt_has_data_and_no_poller(self):
         run_id = self._create_live_elo_run(sprt_state="accepted")
         app = self._build_app(include_views=True)
