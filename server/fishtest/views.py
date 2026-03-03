@@ -2524,6 +2524,7 @@ def tests_elo_batch(request):
                 pending_runs, allow_github_api_calls=allow_github_api_calls
             ),
             "show_delete": True,
+            "empty_text": "No tests pending approval",
         },
         {
             "tbody_id": "paused-tbody",
@@ -2531,6 +2532,7 @@ def tests_elo_batch(request):
                 paused_runs, allow_github_api_calls=allow_github_api_calls
             ),
             "show_delete": True,
+            "empty_text": "No paused tests",
         },
         {
             "tbody_id": "failed-tbody",
@@ -2538,6 +2540,7 @@ def tests_elo_batch(request):
                 failed_runs, allow_github_api_calls=allow_github_api_calls
             ),
             "show_delete": True,
+            "empty_text": "No failed tests on this page",
         },
         {
             "tbody_id": "active-tbody",
@@ -2545,6 +2548,7 @@ def tests_elo_batch(request):
                 active_runs, allow_github_api_calls=allow_github_api_calls
             ),
             "show_delete": False,
+            "empty_text": "No active tests",
         },
         {
             "tbody_id": "finished-tbody",
@@ -2552,6 +2556,7 @@ def tests_elo_batch(request):
                 finished_runs, allow_github_api_calls=allow_github_api_calls
             ),
             "show_delete": False,
+            "empty_text": "",
         },
     ]
 
