@@ -45,21 +45,11 @@
     });
 
     const showMachinesError = (e) => {
-      target.dataset.machinesLoaded = "0";
-      const container = e.target;
-      container.replaceChildren();
-      const table = document.createElement("table");
-      table.className = "table table-striped table-sm";
-      const tbody = document.createElement("tbody");
-      const tr = document.createElement("tr");
-      tr.id = "no-machines";
-      const td = document.createElement("td");
-      td.colSpan = 20;
-      td.textContent = "Workers unavailable: network connection to the server was interrupted.";
-      tr.append(td);
-      tbody.append(tr);
-      table.append(tbody);
-      container.append(table);
+      // Keep the last successful table visible when polling fails.
+      // If no successful load has happened yet, allow a future retry.
+      if (target.dataset.machinesLoaded !== "1") {
+        target.dataset.machinesLoaded = "0";
+      }
     };
 
     target?.addEventListener("htmx:responseError", (e) => {
