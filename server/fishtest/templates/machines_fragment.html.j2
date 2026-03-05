@@ -1,18 +1,58 @@
-<table class="table table-striped table-sm">
+{% set pagination_hx_target = "machines" %}
+{% set pagination_hx_push_url = false %}
+{% set pagination_hx_sync = "#machines-filters:abort" %}
+{% set pagination_hx_disinherit = "hx-include" %}
+{% set pagination_hx_params = "none" %}
+{% set sort = sort if sort is defined else "last_active" %}
+{% set order = order if order is defined else "desc" %}
+{% set q = q if q is defined else "" %}
+{% set current_page = current_page if current_page is defined else 1 %}
+{% set my_workers = my_workers if my_workers is defined else false %}
+{% set pages = pages if pages is defined else [] %}
+
+{% macro sort_header(field, label) -%}
+  {% set is_active = (sort == field) %}
+  {% set next_order = "desc" if (is_active and order == "asc") else "asc" %}
+  <th{% if is_active %} aria-sort="{{ 'ascending' if order == 'asc' else 'descending' }}"{% endif %}>
+    <a
+      class="sort-header text-decoration-none text-reset d-inline-flex align-items-center gap-1"
+      href="/tests/machines?sort={{ field }}&order={{ next_order }}{% if q %}&q={{ q | urlencode }}{% endif %}{% if my_workers %}&my_workers=1{% endif %}"
+      hx-get="/tests/machines?sort={{ field }}&order={{ next_order }}{% if q %}&q={{ q | urlencode }}{% endif %}{% if my_workers %}&my_workers=1{% endif %}"
+      hx-target="#machines"
+      hx-swap="innerHTML"
+      hx-sync="#machines-filters:abort"
+      hx-disinherit="hx-include"
+      hx-params="none"
+    >
+      <span>{{ label }}</span>
+      <span class="sort-indicator" aria-hidden="true">{% if is_active and order == "asc" %}▲{% elif is_active and order == "desc" %}▼{% else %}↕{% endif %}</span>
+    </a>
+  </th>
+{%- endmacro %}
+
+<template>
+  <div id="machines-pagination" class="d-flex align-items-end" hx-swap-oob="innerHTML">
+    {% with pages=pages %}
+      {% include "pagination.html.j2" %}
+    {% endwith %}
+  </div>
+</template>
+
+<table id="machines_table" class="table table-striped table-sm" data-server-sort="true">
   <thead class="sticky-top">
     <tr>
-      <th>Machine</th>
-      <th>Cores</th>
-      <th>UUID</th>
-      <th>MNps</th>
-      <th>RAM</th>
-      <th>System</th>
-      <th>Arch</th>
-      <th>Compiler</th>
-      <th>Python</th>
-      <th>Worker</th>
-      <th>Running on</th>
-      <th>Last active</th>
+      {{ sort_header("machine", "Machine") }}
+      {{ sort_header("cores", "Cores") }}
+      {{ sort_header("uuid", "UUID") }}
+      {{ sort_header("mnps", "MNps") }}
+      {{ sort_header("ram", "RAM") }}
+      {{ sort_header("system", "System") }}
+      {{ sort_header("arch", "Arch") }}
+      {{ sort_header("compiler", "Compiler") }}
+      {{ sort_header("python", "Python") }}
+      {{ sort_header("worker", "Worker") }}
+      {{ sort_header("running_on", "Running on") }}
+      {{ sort_header("last_active", "Last active") }}
     </tr>
   </thead>
   <tbody>
@@ -51,6 +91,10 @@
   </tbody>
 </table>
 
+<input type="hidden" id="machines_sort" name="sort" value="{{ sort }}" hx-swap-oob="true">
+<input type="hidden" id="machines_order" name="order" value="{{ order }}" hx-swap-oob="true">
+<input type="hidden" id="machines_page" name="page" value="{{ current_page }}" hx-swap-oob="true">
+
 <span id="workers-count" hx-swap-oob="innerHTML">
-  Workers - {{ machines_count }} machines
+  {{ workers_count_text if workers_count_text is defined else ("Workers - " ~ machines_count ~ " machines") }}
 </span>

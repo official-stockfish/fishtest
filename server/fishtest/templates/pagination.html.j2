@@ -1,6 +1,10 @@
 {% if pages and pages|length > 3 %}
   {% set pagination_hx_target = pagination_hx_target if pagination_hx_target is defined else '' %}
   {% set pagination_hx_push_url = pagination_hx_push_url if pagination_hx_push_url is defined else false %}
+  {% set pagination_hx_include = pagination_hx_include if pagination_hx_include is defined else '' %}
+  {% set pagination_hx_sync = pagination_hx_sync if pagination_hx_sync is defined else '' %}
+  {% set pagination_hx_disinherit = pagination_hx_disinherit if pagination_hx_disinherit is defined else '' %}
+  {% set pagination_hx_params = pagination_hx_params if pagination_hx_params is defined else '' %}
   <nav>
   <ul class="pagination pagination-sm">
   {% for page in pages %}
@@ -10,7 +14,7 @@
     <li class="page-item {{ page_state }}">
       {% if page_state not in ['disabled', 'active'] %}
         {% if pagination_hx_target %}
-          <a class="page-link" href="{{ page_url }}" hx-get="{{ page_url }}" hx-target="#{{ pagination_hx_target }}" hx-push-url="{{ 'true' if pagination_hx_push_url else 'false' }}" hx-swap="innerHTML">{{ page_idx }}</a>
+          <a class="page-link" href="{{ page_url }}" hx-get="{{ page_url }}" hx-target="#{{ pagination_hx_target }}" hx-push-url="{{ 'true' if pagination_hx_push_url else 'false' }}" hx-swap="innerHTML"{% if pagination_hx_include %} hx-include="{{ pagination_hx_include }}"{% endif %}{% if pagination_hx_sync %} hx-sync="{{ pagination_hx_sync }}"{% endif %}{% if pagination_hx_disinherit %} hx-disinherit="{{ pagination_hx_disinherit }}"{% endif %}{% if pagination_hx_params %} hx-params="{{ pagination_hx_params }}"{% endif %}>{{ page_idx }}</a>
         {% else %}
           <a class="page-link" href="{{ page_url }}">{{ page_idx }}</a>
         {% endif %}

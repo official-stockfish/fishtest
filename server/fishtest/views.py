@@ -6,7 +6,7 @@ import os
 import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from urllib.parse import quote, urlencode
+from urllib.parse import quote, unquote, urlencode
 
 import bson
 import regex
@@ -153,7 +153,10 @@ def _apply_response_headers(shim, response):
     for key, value in getattr(shim, "response_headers", {}).items():
         response.headers[key] = value
     for key, value in getattr(shim, "response_headerlist", []):
-        response.headers[key] = value
+        if key.lower() == "set-cookie":
+            response.headers.append(key, value)
+        else:
+            response.headers[key] = value
     return response
 
 
@@ -1445,6 +1448,187 @@ _CONTRIBUTORS_DEFAULT_SORT = "cpu_hours"
 _CONTRIBUTORS_PAGE_SIZE = 100
 _CONTRIBUTORS_MAX_ALL = 5000
 
+_MACHINES_SORT_MAP = {
+    "last_active": ("last_updated", True),
+    "machine": ("username", False),
+    "cores": ("concurrency", True),
+    "uuid": ("unique_key", False),
+    "mnps": ("nps", True),
+    "ram": ("max_memory", True),
+    "system": ("uname", False),
+    "arch": ("worker_arch", False),
+    "compiler": ("compiler", False),
+    "python": ("python", False),
+    "worker": ("version", True),
+    "running_on": ("run_label", False),
+}
+_MACHINES_DEFAULT_SORT = "last_active"
+_MACHINES_PAGE_SIZE = 500
+_MACHINES_FILTER_FIELDS = (
+    "username",
+    "concurrency",
+    "unique_key",
+    "nps_m",
+    "max_memory",
+    "system",
+    "worker_arch",
+    "compiler_label",
+    "python_label",
+    "version_label",
+    "run_label",
+    "last_active_label",
+)
+
+_MACHINES_CASEFOLD_SORT_KEYS = {
+    "username",
+    "uname",
+    "worker_arch",
+    "run_label",
+}
+
+
+def _clip_long(text, max_length=20):
+    return text if len(text) <= max_length else text[:max_length] + "..."
+
+
+def _machines_version_parts(values):
+    parts = []
+    for value in values or []:
+        try:
+            parts.append(int(value))
+        except TypeError, ValueError:
+            break
+    return tuple(parts)
+
+
+def _normalize_machine_row(machine):
+    gcc_values = machine.get("gcc_version", [])
+    python_values = machine.get("python_version", [])
+    compiler = machine.get("compiler", "g++")
+    unique_key = machine.get("unique_key", "")
+
+    gcc_version = ".".join(str(value) for value in gcc_values)
+    python_version = ".".join(str(value) for value in python_values)
+
+    worker_short = unique_key.split("-")[0]
+    run_data = machine["run"]
+    task_id = str(machine["task_id"])
+    run_id = str(run_data["_id"])
+    branch = run_data["args"]["new_tag"]
+    last_updated = machine["last_updated"]
+
+    return {
+        "username": machine["username"],
+        "country_code": machine.get("country_code", "").lower(),
+        "concurrency": machine["concurrency"],
+        "unique_key": unique_key,
+        "worker_url": f"/workers/{worker_name(machine, short=True)}",
+        "worker_short": worker_short,
+        "nps": machine.get("nps", 0),
+        "nps_m": f"{machine.get('nps', 0) / 1000000:.2f}",
+        "max_memory": machine["max_memory"],
+        "system": machine["uname"],
+        "uname": machine["uname"],
+        "worker_arch": machine["worker_arch"],
+        "compiler": compiler,
+        "compiler_version": _machines_version_parts(gcc_values),
+        "compiler_label": f"{compiler} {gcc_version}",
+        "python": python_version,
+        "python_version": _machines_version_parts(python_values),
+        "python_label": python_version,
+        "version": machine.get("version", 0),
+        "version_label": str(machine.get("version", ""))
+        + "*" * machine.get("modified", False),
+        "run_url": f"/tests/view/{run_id}?show_task={task_id}",
+        "run_label": f"{_clip_long(branch)}/{task_id}",
+        "last_active_label": format_time_ago(last_updated),
+        "last_active_sort": -last_updated.timestamp(),
+        "last_updated": last_updated,
+    }
+
+
+def _machines_sort_value(machine_row, sort_key):
+    if sort_key == "compiler":
+        return (
+            str(machine_row.get("compiler", "")).lower(),
+            machine_row.get("compiler_version", ()),
+        )
+    if sort_key == "python":
+        return machine_row.get("python_version", ())
+    if sort_key == "unique_key":
+        return str(machine_row.get("worker_short", "")).lower()
+    if sort_key in _MACHINES_CASEFOLD_SORT_KEYS:
+        return str(machine_row.get(sort_key, "")).lower()
+    if sort_key == "last_updated":
+        value = machine_row.get("last_updated")
+        return value.timestamp() if isinstance(value, datetime) else 0
+    try:
+        return int(machine_row.get(sort_key, 0))
+    except TypeError, ValueError:
+        return 0
+
+
+def _build_machines_query_params(
+    sort_param, order_param, default_reverse, query_filter, my_workers
+):
+    query_params = ""
+    if sort_param != _MACHINES_DEFAULT_SORT:
+        query_params += f"&sort={sort_param}"
+    default_order = "desc" if default_reverse else "asc"
+    if order_param != default_order:
+        query_params += f"&order={order_param}"
+    if query_filter:
+        query_params += f"&q={quote(query_filter)}"
+    if my_workers:
+        query_params += "&my_workers=1"
+    return query_params
+
+
+def _set_machine_cookie(request, name, value, max_age_seconds):
+    encoded = quote(str(value), safe="")
+    request.response_headerlist.append(
+        (
+            "Set-Cookie",
+            f"{name}={encoded}; path=/; max-age={max_age_seconds}; SameSite=Lax",
+        )
+    )
+
+
+def _set_machine_cookies(
+    request,
+    *,
+    sort_param,
+    order_param,
+    page,
+    query_filter,
+    my_workers,
+    filtered_count,
+):
+    cookie_max_age = 60 * 60 * 24 * 30
+    _set_machine_cookie(request, "machines_sort", sort_param, cookie_max_age)
+    _set_machine_cookie(request, "machines_order", order_param, cookie_max_age)
+    _set_machine_cookie(request, "machines_page", str(page), cookie_max_age)
+    _set_machine_cookie(request, "machines_q", query_filter, cookie_max_age)
+    _set_machine_cookie(
+        request,
+        "machines_filtered_count",
+        str(filtered_count),
+        cookie_max_age,
+    )
+    _set_machine_cookie(
+        request,
+        "machines_my_workers",
+        "1" if my_workers else "0",
+        cookie_max_age,
+    )
+
+
+def _workers_count_text(total_count, *, filters_active=False, filtered_count=None):
+    if not filters_active:
+        return f"Workers - {total_count} machines"
+    shown_count = filtered_count if filtered_count is not None else total_count
+    return f"Workers - {total_count} ({shown_count}) machines"
+
 
 def _contributors_sort_value(user, sort_key):
     if sort_key == "username":
@@ -2664,6 +2848,21 @@ def tests_elo_batch(request):
     if not (pending_runs or paused_runs or active_runs):
         request.response_status = 286
 
+    machines_q = unquote(request.cookies.get("machines_q", "")).strip()
+    machines_my_workers = request.cookies.get(
+        "machines_my_workers", ""
+    ).strip().lower() in {"1", "true", "on", "yes"}
+    if not request.authenticated_userid:
+        machines_my_workers = False
+    filters_active = bool(machines_q) or machines_my_workers
+
+    filtered_count_cookie = request.cookies.get("machines_filtered_count", "").strip()
+    filtered_count = (
+        int(filtered_count_cookie)
+        if filtered_count_cookie.isdigit()
+        else machines_count
+    )
+
     result = {
         "panels": panels,
         "count_updates": count_updates,
@@ -2672,6 +2871,11 @@ def tests_elo_batch(request):
     # workers-count target exists on homepage only.
     if not username:
         result["machines_count"] = machines_count
+        result["workers_count_text"] = _workers_count_text(
+            machines_count,
+            filters_active=filters_active,
+            filtered_count=filtered_count,
+        )
 
     # Include stats OOB updates for the homepage (no username filter).
     if not username:
@@ -2785,51 +2989,113 @@ def tests_tasks(request):
 
 
 def tests_machines(request):
-    def _clip_long(text: str, max_length: int = 20) -> str:
-        if len(text) > max_length:
-            return text[:max_length] + "..."
-        return text
+    normalized_rows = [
+        _normalize_machine_row(machine) for machine in request.rundb.get_machines()
+    ]
+    total_machines = len(normalized_rows)
 
-    machines_list = request.rundb.get_machines()
-    machines = []
-    for machine in machines_list:
-        gcc_version = ".".join(str(m) for m in machine.get("gcc_version", []))
-        compiler = machine.get("compiler", "g++")
-        python_version = ".".join(str(m) for m in machine.get("python_version", []))
-        version = str(machine.get("version", "")) + "*" * machine.get("modified", False)
-        worker_short = machine.get("unique_key", "").split("-")[0]
-        worker_url = f"/workers/{worker_name(machine, short=True)}"
-        formatted_time_ago = format_time_ago(machine["last_updated"])
-        sort_value_time_ago = -machine["last_updated"].timestamp()
-        branch = machine["run"]["args"]["new_tag"]
-        task_id = str(machine["task_id"])
-        run_id = str(machine["run"]["_id"])
+    sort_param = request.params.get("sort", "").strip().lower()
+    if sort_param not in _MACHINES_SORT_MAP:
+        sort_param = _MACHINES_DEFAULT_SORT
+    sort_key, default_reverse = _MACHINES_SORT_MAP[sort_param]
 
-        machines.append(
-            {
-                "username": machine["username"],
-                "country_code": machine.get("country_code", "").lower(),
-                "concurrency": machine["concurrency"],
-                "worker_url": worker_url,
-                "worker_short": worker_short,
-                "nps_m": f"{machine['nps'] / 1000000:.2f}",
-                "max_memory": machine["max_memory"],
-                "system": machine["uname"],
-                "worker_arch": machine["worker_arch"],
-                "compiler_label": f"{compiler} {gcc_version}",
-                "python_label": python_version,
-                "version_label": version,
-                "run_url": f"/tests/view/{run_id}?show_task={task_id}",
-                "run_label": f"{_clip_long(branch)}/{task_id}",
-                "last_active_label": formatted_time_ago,
-                "last_active_sort": sort_value_time_ago,
-            }
-        )
+    order_param = request.params.get("order", "").strip().lower()
+    if order_param == "asc":
+        reverse = False
+    elif order_param == "desc":
+        reverse = True
+    else:
+        reverse = default_reverse
+        order_param = "desc" if reverse else "asc"
+
+    query_filter = request.params.get("q", "").strip()
+
+    my_workers_param = request.params.get("my_workers", "").strip().lower()
+    my_workers = my_workers_param in {"1", "true", "on", "yes"}
+    username = request.authenticated_userid
+    if not username:
+        my_workers = False
+
+    filtered_rows = list(normalized_rows)
+    if my_workers and username:
+        filtered_rows = [m for m in filtered_rows if m.get("username") == username]
+    if query_filter:
+        query_filter_lower = query_filter.lower()
+        filtered_rows = [
+            m
+            for m in filtered_rows
+            if any(
+                query_filter_lower in str(m.get(field, "")).lower()
+                for field in _MACHINES_FILTER_FIELDS
+            )
+        ]
+
+    filtered_rows.sort(key=lambda m: str(m.get("username", "")).lower())
+    filtered_rows.sort(
+        key=lambda m: _machines_sort_value(m, sort_key),
+        reverse=reverse,
+    )
+
+    page_param = request.params.get("page", "")
+    page_idx = max(0, int(page_param) - 1) if page_param.isdigit() else 0
+    num_machines = len(filtered_rows)
+    if num_machines > 0:
+        last_idx = (num_machines - 1) // _MACHINES_PAGE_SIZE
+        page_idx = min(page_idx, last_idx)
+    else:
+        page_idx = 0
+
+    start = page_idx * _MACHINES_PAGE_SIZE
+    end = (page_idx + 1) * _MACHINES_PAGE_SIZE
+    machines = filtered_rows[start:end]
+
+    query_params = _build_machines_query_params(
+        sort_param,
+        order_param,
+        default_reverse,
+        query_filter,
+        my_workers,
+    )
+
+    pages = pagination(page_idx, num_machines, _MACHINES_PAGE_SIZE, query_params)
+    for page in pages:
+        page_url = page.get("url", "")
+        if page_url.startswith("?"):
+            page["url"] = f"/tests/machines{page_url}"
+
+    _set_machine_cookies(
+        request,
+        sort_param=sort_param,
+        order_param=order_param,
+        page=page_idx + 1,
+        query_filter=query_filter,
+        my_workers=my_workers,
+        filtered_count=num_machines,
+    )
+
+    filters_active = bool(query_filter) or my_workers
+    workers_count_text = _workers_count_text(
+        total_machines,
+        filters_active=filters_active,
+        filtered_count=num_machines,
+    )
 
     return {
-        "machines_list": machines_list,
+        "machines_list": filtered_rows,
         "machines": machines,
-        "machines_count": len(machines),
+        "machines_count": num_machines,
+        "machines_total_count": total_machines,
+        "machines_filtered_count": num_machines,
+        "machines_filters_active": filters_active,
+        "workers_count_text": workers_count_text,
+        "machines_page_size": _MACHINES_PAGE_SIZE,
+        "pages": pages,
+        "sort": sort_param,
+        "order": order_param,
+        "q": query_filter,
+        "current_page": page_idx + 1,
+        "my_workers": my_workers,
+        "has_authenticated_user": bool(username),
     }
 
 
@@ -3408,9 +3674,54 @@ def tests(request):
 
     last_tests = homepage_results(request)
 
+    authenticated_user = request.authenticated_userid
+
+    machines_sort = request.cookies.get("machines_sort", "").strip().lower()
+    if machines_sort not in _MACHINES_SORT_MAP:
+        machines_sort = _MACHINES_DEFAULT_SORT
+
+    _, machines_default_reverse = _MACHINES_SORT_MAP[machines_sort]
+    machines_order = request.cookies.get("machines_order", "").strip().lower()
+    if machines_order not in {"asc", "desc"}:
+        machines_order = "desc" if machines_default_reverse else "asc"
+
+    machines_q = unquote(request.cookies.get("machines_q", ""))
+
+    machines_page_raw = request.cookies.get("machines_page", "")
+    if machines_page_raw.isdigit() and int(machines_page_raw) >= 1:
+        machines_page = int(machines_page_raw)
+    else:
+        machines_page = 1
+
+    machines_my_workers = request.cookies.get(
+        "machines_my_workers", ""
+    ).strip().lower() in {"1", "true", "on", "yes"}
+    if not authenticated_user:
+        machines_my_workers = False
+
+    machines_filters_active = bool(machines_q) or machines_my_workers
+    machines_filtered_count_raw = request.cookies.get("machines_filtered_count", "")
+    machines_filtered_count = (
+        int(machines_filtered_count_raw)
+        if machines_filtered_count_raw.isdigit()
+        else last_tests["machines_count"]
+    )
+    workers_count_text = _workers_count_text(
+        last_tests["machines_count"],
+        filters_active=machines_filters_active,
+        filtered_count=machines_filtered_count,
+    )
+
     return {
         **last_tests,
         "machines_shown": request.cookies.get("machines_state") == "Hide",
+        "workers_count_text": workers_count_text,
+        "machines_sort": machines_sort,
+        "machines_order": machines_order,
+        "machines_q": machines_q,
+        "machines_page": machines_page,
+        "machines_my_workers": machines_my_workers,
+        "has_authenticated_user": bool(authenticated_user),
     }
 
 
