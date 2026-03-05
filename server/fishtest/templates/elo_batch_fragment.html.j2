@@ -21,7 +21,7 @@
 
 {% if machines_count is defined %}
   <span id="workers-count" hx-swap-oob="innerHTML">
-    Workers - {{ machines_count }} machines
+    {{ workers_count_text if workers_count_text is defined else ("Workers - " ~ machines_count ~ " machines") }}
   </span>
 {% endif %}
 

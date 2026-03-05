@@ -236,6 +236,44 @@ data lives in `request.scope["session"]` as a plain dict, wrapped by
 
 4. Add a contract test in `tests/test_actions_view.py` or a new test file.
 
+## Homepage workers (`/tests/machines`) query parameters
+
+The homepage workers fragment (`/tests/machines`) supports URL-driven state for
+server sorting, paging, and lightweight filtering.
+
+| Parameter | Values | Default |
+|-----|-----|-----|
+| `sort` | `last_active`, `machine`, `cores`, `uuid`, `mnps`, `ram`, `system`, `arch`, `compiler`, `python`, `worker`, `running_on` | `last_active` |
+| `order` | `asc`, `desc` | column default |
+| `page` | integer `>= 1` | `1` |
+| `q` | free-text filter matched against any displayed machine column | empty |
+| `my_workers` | `1`, `true`, `on`, `yes` | absent/false |
+
+Behavior notes:
+
+- Sorting is server-authoritative and stable with username asc tie-breaks.
+- Pagination is enabled with page size `500`; links are omitted for one-page
+   result sets.
+- `my_workers` only applies for authenticated users; anonymous requests ignore
+   this filter.
+- `q` performs case-insensitive substring matching across all displayed table
+   columns (machine, cores, UUID, MNps, RAM, system, arch, compiler, python,
+   worker, running-on, and last-active text).
+- Polling includes the current homepage filter-form state (`hx-include`), so
+   sort/filter/page settings persist across periodic refreshes.
+- Filter controls (`q`, `my_workers`) are rendered on `/tests` outside the
+   swapped machines fragment to avoid input focus/caret glitches during table
+   refresh swaps.
+- `/tests/machines` responses persist the effective `sort`, `order`, `page`,
+   `q`, and `my_workers` values in cookies, so returning to `/tests` restores
+   the last machines filter state.
+- Workers counter semantics are stable across both `/tests/machines` and
+   `/tests/elo_batch` OOB updates:
+  - no active filters: `Workers - <total> machines`
+  - active `q` and/or `my_workers`: `Workers - <total> (<filtered>) machines`
+- Machines table markup sets `data-server-sort="true"` so the legacy global
+   client-side sorter does not override server-authoritative column sort state.
+
 ## Contributors query parameters
 
 The contributors pages (`/contributors` and `/contributors/monthly`) support
