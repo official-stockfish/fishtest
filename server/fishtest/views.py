@@ -28,6 +28,7 @@ from fishtest.http.boundary import (
     remember,
 )
 from fishtest.http.cookie_session import (
+    REMEMBER_MAX_AGE_SECONDS,
     authenticated_user,
 )
 from fishtest.http.csrf import csrf_token_from_form
@@ -352,13 +353,30 @@ def login(request):
     came_from = request.params.get("came_from", referrer)
 
     if request.method == "POST":
+        stay_logged_in_values: list[str] = []
+        getlist = getattr(request.POST, "getlist", None)
+        if callable(getlist):
+            stay_logged_in_values = [
+                str(v).strip().lower() for v in getlist("stay_logged_in")
+            ]
+        else:
+            raw_stay_logged_in = request.POST.get("stay_logged_in")
+            if raw_stay_logged_in is not None:
+                stay_logged_in_values = [str(raw_stay_logged_in).strip().lower()]
+
+        # Default to persistent login when the field is absent, and allow
+        # explicit opt-out via stay_logged_in=0.
+        stay_logged_in = not stay_logged_in_values or any(
+            value in {"1", "true", "on", "yes"} for value in stay_logged_in_values
+        )
+
         username = request.POST.get("username")
         password = request.POST.get("password")
         token = request.userdb.authenticate(username, password)
         if "error" not in token:
-            if request.POST.get("stay_logged_in"):
+            if stay_logged_in:
                 # Session persists for a year after login
-                remember(request, username, max_age=60 * 60 * 24 * 365)
+                remember(request, username, max_age=REMEMBER_MAX_AGE_SECONDS)
             else:
                 # Session ends when the browser is closed
                 remember(request, username)
