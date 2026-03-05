@@ -3,10 +3,12 @@
 import unittest
 from datetime import UTC, datetime
 from unittest.mock import patch
+from urllib.parse import urlencode
 
 import test_support
 from vtjson import ValidationError
 
+from fishtest.http.cookie_session import REMEMBER_MAX_AGE_SECONDS
 from fishtest.run_cache import Prio
 from fishtest.util import PASSWORD_MAX_LENGTH
 
@@ -36,6 +38,8 @@ class TestHttpUsers(unittest.TestCase):
             include_api=False,
             include_views=True,
         )
+        # Keep login tests order-independent when other tests toggle flags.
+        self._ensure_user_can_login()
 
     def _create_run(self) -> str:
         run_id = self.rundb.new_run(
@@ -214,6 +218,77 @@ class TestHttpUsers(unittest.TestCase):
         csrf = test_support.extract_csrf_token(response.text)
         self.assertTrue(csrf)
 
+    def test_login_page_defaults_remember_me_checked(self):
+        response = self.client.get("/login")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('name="stay_logged_in" value="0"', response.text)
+        self.assertIn('name="stay_logged_in"', response.text)
+        self.assertIn('id="staylogged"', response.text)
+        self.assertIn("checked", response.text)
+
+    def test_login_default_sets_persistent_cookie(self):
+        response = self.client.get("/login")
+        self.assertEqual(response.status_code, 200)
+        csrf = test_support.extract_csrf_token(response.text)
+
+        response = self.client.post(
+            "/login",
+            data={
+                "username": self.username,
+                "password": self.password,
+                "csrf_token": csrf,
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 302)
+        cookie = response.headers.get("set-cookie", "")
+        self.assertIn("fishtest_session=", cookie)
+        self.assertIn(f"Max-Age={REMEMBER_MAX_AGE_SECONDS}", cookie)
+
+    def test_login_duplicate_remember_fields_keep_persistent_cookie(self):
+        response = self.client.get("/login")
+        self.assertEqual(response.status_code, 200)
+        csrf = test_support.extract_csrf_token(response.text)
+
+        response = self.client.post(
+            "/login",
+            content=urlencode(
+                [
+                    ("username", self.username),
+                    ("password", self.password),
+                    ("stay_logged_in", "0"),
+                    ("stay_logged_in", "1"),
+                    ("csrf_token", csrf),
+                ]
+            ),
+            headers={"content-type": "application/x-www-form-urlencoded"},
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 302)
+        cookie = response.headers.get("set-cookie", "")
+        self.assertIn("fishtest_session=", cookie)
+        self.assertIn(f"Max-Age={REMEMBER_MAX_AGE_SECONDS}", cookie)
+
+    def test_login_explicit_non_remember_sets_session_cookie(self):
+        response = self.client.get("/login")
+        self.assertEqual(response.status_code, 200)
+        csrf = test_support.extract_csrf_token(response.text)
+
+        response = self.client.post(
+            "/login",
+            data={
+                "username": self.username,
+                "password": self.password,
+                "stay_logged_in": "0",
+                "csrf_token": csrf,
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 302)
+        cookie = response.headers.get("set-cookie", "")
+        self.assertIn("fishtest_session=", cookie)
+        self.assertNotIn("Max-Age=", cookie)
+
     def test_signup_page_has_csrf_meta(self):
         response = self.client.get("/signup")
         self.assertEqual(response.status_code, 200)
@@ -303,6 +378,12 @@ class TestHttpUsers(unittest.TestCase):
             user = self.rundb.userdb.get_user(self.username)
             user[field] = original
             self.rundb.userdb.save_user(user)
+
+    def _ensure_user_can_login(self):
+        user = self.rundb.userdb.get_user(self.username)
+        user["pending"] = False
+        user["blocked"] = False
+        self.rundb.userdb.save_user(user)
 
     def test_authenticate_unknown_user(self):
         token = self.rundb.userdb.authenticate("NoSuchUser", "x")
