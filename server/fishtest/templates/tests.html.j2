@@ -9,6 +9,13 @@
 <h2>Stockfish Testing Queue</h2>
 
 {% if page_idx == 0 %}
+  {% set machines_sort = machines_sort if machines_sort is defined else "last_active" %}
+  {% set machines_order = machines_order if machines_order is defined else "desc" %}
+  {% set machines_q = machines_q if machines_q is defined else "" %}
+  {% set machines_page = machines_page if machines_page is defined else 1 %}
+  {% set machines_my_workers = machines_my_workers if machines_my_workers is defined else false %}
+  {% set has_authenticated_user = has_authenticated_user if has_authenticated_user is defined else false %}
+
   <div class="mw-xxl">
     <div id="homepage-stats">
       {% include "homepage_stats_fragment.html.j2" %}
@@ -20,6 +27,26 @@
     await DOMContentLoaded();
     const btn = document.getElementById("machines-button");
     const target = document.getElementById("machines");
+    const filtersForm = document.getElementById("machines-filters");
+
+    const resetMachinesPage = () => {
+      const pageInput = document.getElementById("machines_page");
+      if (pageInput) {
+        pageInput.value = "1";
+      }
+    };
+
+    filtersForm?.addEventListener("input", (e) => {
+      if (e.target?.id === "machines_q") {
+        resetMachinesPage();
+      }
+    });
+
+    filtersForm?.addEventListener("change", (e) => {
+      if (e.target?.id === "machines_my_workers") {
+        resetMachinesPage();
+      }
+    });
 
     btn?.addEventListener("click", () => {
       const active = btn.textContent.trim() === "Hide";
@@ -63,22 +90,71 @@
 
   <h4>
     <a id="machines-button" class="btn btn-sm btn-light border"
-      data-bs-toggle="collapse" href="#machines" role="button" aria-expanded="false"
-      aria-controls="machines">
+      data-bs-toggle="collapse" href="#machines-panel" role="button" aria-expanded="{{ 'true' if machines_shown else 'false' }}"
+      aria-controls="machines-panel">
       {{ 'Hide' if machines_shown else 'Show' }}
     </a>
     <span id="workers-count">
-      Workers - {{ machines_count }} machines
+      {{ workers_count_text if workers_count_text is defined else ("Workers - " ~ machines_count ~ " machines") }}
     </span>
   </h4>
+
+  <section id="machines-panel" class="collapse {{ 'show' if machines_shown else '' }}">
+    <form
+      class="row g-2 align-items-end mb-2"
+      id="machines-filters"
+      action="/tests/machines"
+      hx-get="/tests/machines"
+      hx-target="#machines"
+      hx-swap="innerHTML"
+      hx-trigger="submit, input changed delay:{{ htmx.input_changed_delay_ms }}ms from:#machines_q{% if has_authenticated_user %}, change from:#machines_my_workers{% endif %}"
+    >
+      <input type="hidden" id="machines_sort" name="sort" value="{{ machines_sort }}">
+      <input type="hidden" id="machines_order" name="order" value="{{ machines_order }}">
+      <input type="hidden" id="machines_page" name="page" value="{{ machines_page }}">
+
+      <div class="col-auto">
+        <input
+          class="form-control form-control-sm"
+          type="search"
+          id="machines_q"
+          name="q"
+          value="{{ machines_q }}"
+          placeholder="Filter any column"
+          aria-label="Filter any column"
+          autocomplete="off"
+        >
+      </div>
+
+      {% if has_authenticated_user %}
+        <div class="col-auto">
+          <div class="form-check mb-1">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              value="1"
+              id="machines_my_workers"
+              name="my_workers"
+              {{ 'checked' if machines_my_workers else '' }}
+            >
+            <label class="form-check-label" for="machines_my_workers">My workers</label>
+          </div>
+        </div>
+      {% endif %}
+
+      <div class="col-auto" id="machines-pagination" aria-live="polite"></div>
+    </form>
   {% set height = (machines_count * 37) | string ~ "px" %}
   {% set min_height = "37px" %}
   {% set max_height = "34.7vh" %}
-  <section id="machines"
+    <section id="machines"
       data-machines-loaded="0"
-      class="overflow-auto {{ 'collapse show' if machines_shown else 'collapse' }}"
+      class="overflow-auto"
+      style="max-height: 41vh;"
       hx-get="/tests/machines"
-      hx-trigger="{% if machines_shown %}load, {% endif %}machines:load, every {{ poll.machines_homepage }}s [document.visibilityState === 'visible' && document.getElementById('machines').classList.contains('show')], visibilitychange[document.visibilityState === 'visible' && document.getElementById('machines').classList.contains('show')] from:document"
+      hx-include="#machines-filters"
+      hx-sync="#machines-filters:abort"
+      hx-trigger="{% if machines_shown %}load, {% endif %}machines:load, every {{ poll.machines_homepage }}s [document.visibilityState === 'visible' && document.getElementById('machines-panel').classList.contains('show') && document.activeElement?.id !== 'machines_q'], visibilitychange[document.visibilityState === 'visible' && document.getElementById('machines-panel').classList.contains('show') && document.activeElement?.id !== 'machines_q'] from:document"
       hx-swap="innerHTML"
       >
       <div id="machines-loading" class="skeleton-wrap">
@@ -88,6 +164,7 @@
           style="height: clamp({{ min_height }}, {{ height }}, {{ max_height }});">
           </div>
       </div>
+    </section>
   </section>
 {% endif %}
 
