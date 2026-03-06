@@ -1,26 +1,3 @@
-{% if is_hx | default(false) %}
-  {% set users_group_label = "Pending" %}
-  {% if group == "all" %}
-    {% set users_group_label = "All" %}
-  {% elif group == "blocked" %}
-    {% set users_group_label = "Blocked" %}
-  {% elif group == "idle" %}
-    {% set users_group_label = "Idle" %}
-  {% elif group == "approvers" %}
-    {% set users_group_label = "Approvers" %}
-  {% endif %}
-  <template>
-    <button
-      id="users-table-toggle"
-      class="btn btn-secondary dropdown-toggle"
-      type="button"
-      data-bs-toggle="dropdown"
-      aria-expanded="false"
-      hx-swap-oob="true"
-    >{{ users_group_label }}</button>
-  </template>
-{% endif %}
-
 {% if selected_users | length == 0 %}
   {% set empty_label = "users" %}
   {% if group == "pending" %}
@@ -33,7 +10,7 @@
     {% set empty_label = "approver users" %}
   {% endif %}
   <tr>
-    <td colspan="20">No {{ empty_label }}</td>
+    <td colspan="4">No {{ empty_label }}</td>
   </tr>
 {% else %}
   {% for user in selected_users %}

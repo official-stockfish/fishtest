@@ -470,6 +470,8 @@ def _blocked_worker_rows(blocked_workers, *, show_email):
         rows.append(
             {
                 "worker_name": worker_name_value,
+                "worker_name_key": worker_name_value.lower(),
+                "last_updated": last_updated,
                 "last_updated_label": last_updated_label,
                 "actions_url": actions_url,
                 "owner_email": owner_email,
@@ -499,11 +501,118 @@ def _filter_blocked_workers(blocked_workers, filter_value):
     ]
 
 
+_WORKERS_FILTER_DEFAULT = "le-5days"
+_WORKERS_FILTER_VALUES = {"all-workers", "le-5days", "gt-5days"}
+_WORKERS_SORT_MAP = {
+    "worker": ("worker_name", False),
+    "last_changed": ("last_updated", True),
+    "events": ("actions_url", False),
+    "email": ("owner_email", False),
+}
+_WORKERS_DEFAULT_SORT = "last_changed"
+_WORKERS_PAGE_SIZE = 25
+_WORKERS_MAX_ALL = 5000
+_WORKERS_FILTER_FIELD = "worker_name"
+
+_USER_MANAGEMENT_GROUP_DEFAULT = "pending"
+_USER_MANAGEMENT_GROUP_VALUES = {"all", "pending", "blocked", "idle", "approvers"}
+_USER_MANAGEMENT_SORT_MAP = {
+    "username": ("username", False),
+    "registration": ("registration_time", True),
+    "groups": ("groups_label", False),
+    "email": ("email", False),
+}
+_USER_MANAGEMENT_DEFAULT_SORT = "registration"
+_USER_MANAGEMENT_PAGE_SIZE = 25
+_USER_MANAGEMENT_MAX_ALL = 5000
+_USER_MANAGEMENT_FILTER_FIELD = "username"
+
+
+def _workers_query_string(*, filter_value, sort_param, order_param, query_filter, view):
+    _, default_reverse = _WORKERS_SORT_MAP[_WORKERS_DEFAULT_SORT]
+    default_order = "desc" if default_reverse else "asc"
+
+    params = {}
+    if filter_value != _WORKERS_FILTER_DEFAULT:
+        params["filter"] = filter_value
+    if sort_param != _WORKERS_DEFAULT_SORT:
+        params["sort"] = sort_param
+    if order_param != default_order:
+        params["order"] = order_param
+    if query_filter:
+        params["q"] = query_filter
+    if view == "all":
+        params["view"] = "all"
+    if not params:
+        return ""
+    return "&" + urlencode(params)
+
+
+def _user_management_query_string(
+    *, group, sort_param, order_param, query_filter, view
+):
+    _, default_reverse = _USER_MANAGEMENT_SORT_MAP[_USER_MANAGEMENT_DEFAULT_SORT]
+    default_order = "desc" if default_reverse else "asc"
+
+    params = {}
+    if group != _USER_MANAGEMENT_GROUP_DEFAULT:
+        params["group"] = group
+    if sort_param != _USER_MANAGEMENT_DEFAULT_SORT:
+        params["sort"] = sort_param
+    if order_param != default_order:
+        params["order"] = order_param
+    if query_filter:
+        params["q"] = query_filter
+    if view == "all":
+        params["view"] = "all"
+    if not params:
+        return ""
+    return "&" + urlencode(params)
+
+
+def _workers_sort_value(row, sort_key):
+    if sort_key == "last_updated":
+        value = row.get("last_updated")
+        if isinstance(value, datetime):
+            return value.timestamp()
+        return 0
+    return str(row.get(sort_key, "")).lower()
+
+
+def _user_management_sort_value(row, sort_key):
+    if sort_key == "registration_time":
+        value = row.get("registration_time")
+        if isinstance(value, datetime):
+            return value.timestamp()
+        return 0
+    return str(row.get(sort_key, "")).lower()
+
+
 def workers(request):
     is_approver = request.has_permission("approve_run")
-    filter_value = request.params.get("filter", "le-5days")
-    if filter_value not in {"all-workers", "le-5days", "gt-5days"}:
-        filter_value = "le-5days"
+    filter_value = request.params.get("filter", _WORKERS_FILTER_DEFAULT)
+    if filter_value not in _WORKERS_FILTER_VALUES:
+        filter_value = _WORKERS_FILTER_DEFAULT
+
+    sort_param = request.params.get("sort", _WORKERS_DEFAULT_SORT)
+    if sort_param not in _WORKERS_SORT_MAP:
+        sort_param = _WORKERS_DEFAULT_SORT
+    if not is_approver and sort_param == "email":
+        sort_param = _WORKERS_DEFAULT_SORT
+
+    sort_key, default_reverse = _WORKERS_SORT_MAP[sort_param]
+    default_order = "desc" if default_reverse else "asc"
+    order_param = request.params.get("order", default_order)
+    if order_param not in {"asc", "desc"}:
+        order_param = default_order
+
+    view_param = request.params.get("view", "paged")
+    if view_param not in {"paged", "all"}:
+        view_param = "paged"
+
+    query_filter = request.params.get("q", "").strip()
+    page_param = request.params.get("page", "")
+    page_idx = max(0, int(page_param) - 1) if page_param.isdigit() else 0
 
     blocked_workers = request.rundb.workerdb.get_blocked_workers()
     blocker_name = request.authenticated_userid
@@ -590,17 +699,64 @@ def workers(request):
         show_email=is_approver,
     )
 
+    if query_filter:
+        query_folded = query_filter.casefold()
+        filtered_rows = [
+            row
+            for row in filtered_rows
+            if query_folded in str(row.get(_WORKERS_FILTER_FIELD, "")).casefold()
+        ]
+
+    filtered_rows.sort(
+        key=lambda row: (
+            _workers_sort_value(row, sort_key),
+            row.get("worker_name_key", ""),
+        ),
+        reverse=(order_param == "desc"),
+    )
+
+    num_workers = len(filtered_rows)
+    is_truncated = False
+    if view_param == "all":
+        if len(filtered_rows) > _WORKERS_MAX_ALL:
+            filtered_rows = filtered_rows[:_WORKERS_MAX_ALL]
+            is_truncated = True
+    else:
+        start = page_idx * _WORKERS_PAGE_SIZE
+        filtered_rows = filtered_rows[start : start + _WORKERS_PAGE_SIZE]
+
+    query_params = _workers_query_string(
+        filter_value=filter_value,
+        sort_param=sort_param,
+        order_param=order_param,
+        query_filter=query_filter,
+        view=view_param,
+    )
+    pages = (
+        pagination(page_idx, num_workers, _WORKERS_PAGE_SIZE, query_params)
+        if view_param == "paged"
+        else []
+    )
+
     context = {
         "show_admin": show_admin,
         "show_email": is_approver,
         "blocked_workers": filtered_rows,
         "filter_value": filter_value,
+        "sort": sort_param,
+        "order": order_param,
+        "q": query_filter,
+        "view": view_param,
+        "pages": pages,
+        "num_workers": num_workers,
+        "max_all": _WORKERS_MAX_ALL,
+        "is_truncated": is_truncated,
         **admin_context,
     }
 
     hx = _render_hx_fragment(
         request,
-        "workers_rows_fragment.html.j2",
+        "workers_content_fragment.html.j2",
         {**context, "is_hx": True},
     )
     if hx:
@@ -1235,6 +1391,8 @@ def _user_management_rows(users):
             {
                 "username": username,
                 "user_url": f"/user/{username}" if username else "",
+                "username_key": username.lower(),
+                "registration_time": registration_time,
                 "registration_label": registration_label,
                 "groups": groups,
                 "groups_label": format_group(groups),
@@ -1249,9 +1407,27 @@ def user_management(request):
         request.session.flash("You cannot view user management", "error")
         return home(request)
 
-    group = request.params.get("group", "pending")
-    if group not in {"all", "pending", "blocked", "idle", "approvers"}:
-        group = "pending"
+    group = request.params.get("group", _USER_MANAGEMENT_GROUP_DEFAULT)
+    if group not in _USER_MANAGEMENT_GROUP_VALUES:
+        group = _USER_MANAGEMENT_GROUP_DEFAULT
+
+    sort_param = request.params.get("sort", _USER_MANAGEMENT_DEFAULT_SORT)
+    if sort_param not in _USER_MANAGEMENT_SORT_MAP:
+        sort_param = _USER_MANAGEMENT_DEFAULT_SORT
+
+    sort_key, default_reverse = _USER_MANAGEMENT_SORT_MAP[sort_param]
+    default_order = "desc" if default_reverse else "asc"
+    order_param = request.params.get("order", default_order)
+    if order_param not in {"asc", "desc"}:
+        order_param = default_order
+
+    view_param = request.params.get("view", "paged")
+    if view_param not in {"paged", "all"}:
+        view_param = "paged"
+
+    query_filter = request.params.get("q", "").strip()
+    page_param = request.params.get("page", "")
+    page_idx = max(0, int(page_param) - 1) if page_param.isdigit() else 0
 
     users = list(request.userdb.get_users())
     pending_users = request.userdb.get_pending()
@@ -1278,16 +1454,64 @@ def user_management(request):
             if "group:approvers" in user.get("groups", [])
         ]
 
+    if query_filter:
+        query_folded = query_filter.casefold()
+        selected_rows = [
+            row
+            for row in selected_rows
+            if query_folded
+            in str(row.get(_USER_MANAGEMENT_FILTER_FIELD, "")).casefold()
+        ]
+
+    selected_rows.sort(
+        key=lambda row: (
+            _user_management_sort_value(row, sort_key),
+            row.get("username_key", ""),
+        ),
+        reverse=(order_param == "desc"),
+    )
+
+    num_selected = len(selected_rows)
+    is_truncated = False
+    if view_param == "all":
+        if len(selected_rows) > _USER_MANAGEMENT_MAX_ALL:
+            selected_rows = selected_rows[:_USER_MANAGEMENT_MAX_ALL]
+            is_truncated = True
+    else:
+        start = page_idx * _USER_MANAGEMENT_PAGE_SIZE
+        selected_rows = selected_rows[start : start + _USER_MANAGEMENT_PAGE_SIZE]
+
+    query_params = _user_management_query_string(
+        group=group,
+        sort_param=sort_param,
+        order_param=order_param,
+        query_filter=query_filter,
+        view=view_param,
+    )
+    pages = (
+        pagination(page_idx, num_selected, _USER_MANAGEMENT_PAGE_SIZE, query_params)
+        if view_param == "paged"
+        else []
+    )
+
     approvers_count = len(
         [user for user in users if "group:approvers" in user.get("groups", [])]
     )
 
     hx = _render_hx_fragment(
         request,
-        "user_management_rows_fragment.html.j2",
+        "user_management_content_fragment.html.j2",
         {
             "group": group,
             "selected_users": selected_rows,
+            "sort": sort_param,
+            "order": order_param,
+            "q": query_filter,
+            "view": view_param,
+            "pages": pages,
+            "num_selected_users": num_selected,
+            "max_all": _USER_MANAGEMENT_MAX_ALL,
+            "is_truncated": is_truncated,
             "is_hx": True,
         },
     )
@@ -1302,6 +1526,14 @@ def user_management(request):
         "approvers_count": approvers_count,
         "group": group,
         "selected_users": selected_rows,
+        "sort": sort_param,
+        "order": order_param,
+        "q": query_filter,
+        "view": view_param,
+        "pages": pages,
+        "num_selected_users": num_selected,
+        "max_all": _USER_MANAGEMENT_MAX_ALL,
+        "is_truncated": is_truncated,
     }
 
 

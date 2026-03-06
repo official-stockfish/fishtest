@@ -1,22 +1,3 @@
-{% if is_hx | default(false) %}
-  {% set workers_filter_label = "Modified <= 5 days ago" %}
-  {% if filter_value == "all-workers" %}
-    {% set workers_filter_label = "All" %}
-  {% elif filter_value == "gt-5days" %}
-    {% set workers_filter_label = "Modified > 5 days ago" %}
-  {% endif %}
-  <template>
-    <button
-      id="workers-table-toggle"
-      class="btn btn-secondary dropdown-toggle"
-      type="button"
-      data-bs-toggle="dropdown"
-      aria-expanded="false"
-      hx-swap-oob="true"
-    >{{ workers_filter_label }}</button>
-  </template>
-{% endif %}
-
 {% if blocked_workers | length == 0 %}
   <tr>
     <td colspan="{{ 4 if show_email else 3 }}">No blocked workers</td>
