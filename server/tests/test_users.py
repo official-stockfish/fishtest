@@ -550,7 +550,6 @@ class TestHttpUsers(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn('id="machines_table"', response.text)
-        self.assertIn('data-server-sort="true"', response.text)
         self.assertIn('hx-disinherit="hx-include"', response.text)
         self.assertIn('hx-params="none"', response.text)
         self.assertIn(f"PageUser{_MACHINES_PAGE_SIZE + 4:03d}", response.text)
@@ -1108,7 +1107,6 @@ class TestHttpUsers(unittest.TestCase):
             self.assertIn(old_worker, response.text)
             self.assertNotIn(recent_worker, response.text)
             self.assertIn('id="workers_table"', response.text)
-            self.assertIn('data-server-sort="true"', response.text)
             self.assertIn("filter=gt-5days", response.text)
         finally:
             self.rundb.workerdb.workers.delete_many(
@@ -1127,7 +1125,6 @@ class TestHttpUsers(unittest.TestCase):
             )
             self.assertEqual(response.status_code, 200)
             self.assertIn('id="workers_table"', response.text)
-            self.assertIn('data-server-sort="true"', response.text)
             self.assertIn('aria-sort="ascending"', response.text)
             self.assertIn(worker_names[25], response.text)
             self.assertNotIn(worker_names[0], response.text)
@@ -1189,7 +1186,7 @@ class TestHttpUsers(unittest.TestCase):
             cleanup_user["groups"] = original_groups
             self.rundb.userdb.save_user(cleanup_user)
 
-    def test_sorting_js_guards_irregular_rows(self):
+    def test_server_authoritative_tables_retire_legacy_sorting_js(self):
         js_path = (
             Path(__file__).resolve().parents[1]
             / "fishtest"
@@ -1199,11 +1196,21 @@ class TestHttpUsers(unittest.TestCase):
         )
         js_source = js_path.read_text(encoding="utf-8")
 
-        # Guardrail assertions for E2 sorter hardening.
-        self.assertIn('row.dataset.noSort === "true"', js_source)
-        self.assertIn("columnIndex >= row.children.length", js_source)
-        self.assertIn("const cell = tr?.children?.[idx];", js_source)
-        self.assertIn("if (!cell)", js_source)
+        self.assertNotIn("handleSortingTables", js_source)
+        self.assertNotIn('row.dataset.noSort === "true"', js_source)
+
+        templates_root = Path(__file__).resolve().parents[1] / "fishtest" / "templates"
+        for template_name in (
+            "contributors_content_fragment.html.j2",
+            "machines_fragment.html.j2",
+            "nns_content_fragment.html.j2",
+            "user_management_content_fragment.html.j2",
+            "workers_content_fragment.html.j2",
+        ):
+            template_source = (templates_root / template_name).read_text(
+                encoding="utf-8"
+            )
+            self.assertNotIn('data-server-sort="true"', template_source)
 
     def test_tests_stop_hx_detail_redirects_home(self):
         self._login_user()
@@ -1443,7 +1450,6 @@ class TestHttpUsers(unittest.TestCase):
             self.assertIn(blocked_user, response.text)
             self.assertNotIn(pending_user, response.text)
             self.assertIn('id="user_management_table"', response.text)
-            self.assertIn('data-server-sort="true"', response.text)
         finally:
             cleanup_approver = self.rundb.userdb.get_user(self.username)
             cleanup_approver["pending"] = original_pending
@@ -1484,7 +1490,6 @@ class TestHttpUsers(unittest.TestCase):
             )
             self.assertEqual(response.status_code, 200)
             self.assertIn('id="user_management_table"', response.text)
-            self.assertIn('data-server-sort="true"', response.text)
             self.assertIn('aria-sort="ascending"', response.text)
             self.assertIn(created_users[25], response.text)
             self.assertNotIn(created_users[0], response.text)

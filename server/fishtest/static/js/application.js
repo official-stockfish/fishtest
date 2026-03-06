@@ -12,7 +12,6 @@ let broadcastDispatch = {
   handlePanelToggleCookies();
   handleApplicationLogout();
   handleApplicationThemes();
-  handleSortingTables();
 })();
 
 // Awaits the page content to load
@@ -417,109 +416,6 @@ function escapeHtml(unsafe) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;")
     .replace(/\n/g, "<br>");
-}
-
-function handleSortingTables() {
-  document.addEventListener("click", function (e) {
-    const { target } = e;
-    const th = target.closest("th");
-    if (th) {
-      const table = th.closest("table");
-      if (table?.dataset.serverSort === "true") {
-        return;
-      }
-      const body = table?.querySelector("tbody");
-      if (!body) {
-        return;
-      }
-
-      const columnIndex = Array.from(th.parentNode.children).indexOf(th);
-      if (columnIndex < 0) {
-        return;
-      }
-
-      const ascending = th.dataset.sortDir !== "asc";
-      th.dataset.sortDir = ascending ? "asc" : "desc";
-
-      const rows = Array.from(body.querySelectorAll("tr"));
-      const sortableRows = [];
-      const staticRows = [];
-
-      for (const row of rows) {
-        if (
-          row.dataset.noSort === "true" ||
-          !row.children ||
-          columnIndex >= row.children.length
-        ) {
-          staticRows.push(row);
-        } else {
-          sortableRows.push(row);
-        }
-      }
-
-      sortableRows
-        .sort(comparer(columnIndex, ascending))
-        .forEach((tr, index) => {
-          const rankData = tr.querySelector("td.rank");
-          if (rankData) {
-            rankData.textContent = index + 1;
-          }
-          body.append(tr);
-        });
-
-      staticRows.forEach((tr) => {
-        body.append(tr);
-      });
-    }
-  });
-}
-// https://stackoverflow.com/questions/14267781/sorting-html-table-with-javascript
-// https://stackoverflow.com/questions/40201533/sort-version-dotted-number-strings-in-javascript
-function comparer(idx, asc) {
-  let p1, p2;
-
-  return (a, b) =>
-    ((v1, v2) =>
-      v1 !== "" && v2 !== "" && !isNaN(v1) && !isNaN(v2)
-        ? v1 - v2
-        : v1 !== "" && v2 !== "" && !isNaN("0x" + v1) && !isNaN("0x" + v2)
-          ? parseInt(v1, 16) - parseInt(v2, 16)
-          : v1 !== "" &&
-              v2 !== "" &&
-              !isNaN((p1 = padDotVersion(v1))) &&
-              !isNaN((p2 = padDotVersion(v2)))
-            ? p1 - p2
-            : v1 !== "" &&
-                v2 !== "" &&
-                !isNaN(
-                  padDotVersion(v1.replace("clang++ ", "").replace("g++ ", "")),
-                ) &&
-                !isNaN(
-                  padDotVersion(v2.replace("clang++ ", "").replace("g++ ", "")),
-                )
-              ? padDotVersionStr(v1)
-                  .toString()
-                  .localeCompare(padDotVersionStr(v2))
-              : v1.toString().localeCompare(v2))(
-      getCellValue(asc ? a : b, idx),
-      getCellValue(asc ? b : a, idx),
-    );
-}
-function getCellValue(tr, idx) {
-  const cell = tr?.children?.[idx];
-  if (!cell) {
-    return "";
-  }
-  return cell.dataset.sortValue || cell.innerText || cell.textContent || "";
-}
-function padDotVersion(dn) {
-  return dn
-    .split(".")
-    .map((n) => +n + 1000)
-    .join("");
-}
-function padDotVersionStr(dn) {
-  return dn.replace(/\d+/g, (n) => +n + 1000);
 }
 
 // A helper for conveniently adding a timeout
