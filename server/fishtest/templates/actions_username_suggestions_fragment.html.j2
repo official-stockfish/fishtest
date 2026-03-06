@@ -1,0 +1,25 @@
+{% if username_suggestions %}
+  {% set visible_rows = 5 if username_suggestions|length > 5 else username_suggestions|length %}
+  {% set single_suggestion = username_suggestions|length == 1 %}
+  <select
+    id="actions-user-suggestions-list"
+    class="form-select actions-user-suggestions-list shadow-sm"
+    name="user"
+    size="{{ 2 if single_suggestion else visible_rows }}"
+    tabindex="-1"
+    aria-label="Matching usernames"
+    hx-get="/actions"
+    hx-target="#actions-page"
+    hx-push-url="true"
+    hx-swap="innerHTML"
+    hx-include="#actions_action, #actions_text, #actions-filters input[type='hidden']"
+    hx-trigger="click, keyup[key=='Enter']"
+  >
+    {% if single_suggestion %}
+      <option value="" disabled hidden selected></option>
+    {% endif %}
+    {% for suggestion in username_suggestions %}
+      <option value="{{ suggestion.username }}">{{ suggestion.username }}</option>
+    {% endfor %}
+  </select>
+{% endif %}

@@ -46,7 +46,7 @@ for cookie signing. This must **never** be used in production.
 ```bash
 mkdir -p .local/mongo-data
 mongod --dbpath .local/mongo-data --fork --logpath .local/mongod.log
-pushd server && uv run python3 -m unittest discover -s tests -v
+pushd server && uv run python -m unittest discover -s tests -v
 popd && mongod --shutdown --dbpath .local/mongo-data
 ```
 
