@@ -6,6 +6,7 @@ import os
 import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import TypedDict
 from urllib.parse import quote, unquote, urlencode
 
 import bson
@@ -89,8 +90,54 @@ DEFAULT_RECAPTCHA_SITE_KEY = "6LePs8YUAAAAABMmqHZVyVjxat95Z1c_uHrkugZM"
 router = APIRouter(tags=["ui"])
 logger = logging.getLogger(__name__)
 
+_TRUTHY_PARAM_VALUES = frozenset({"1", "true", "on", "yes"})
+_SORT_ORDER_VALUES = frozenset({"asc", "desc"})
+_PAGED_VIEW_VALUES = frozenset({"paged", "all"})
+
+type _RunTableRow = dict[str, str | list[dict[object, object]] | bool]
+type _RunTableRows = list[_RunTableRow]
+type _SpsaTableRow = list[str]
+type _RunArgValue = str | list[str | _SpsaTableRow]
+type _RunArg = tuple[str, _RunArgValue, str]
+
+
+class _BatchPanel(TypedDict):
+    tbody_id: str
+    rows: _RunTableRows
+    show_delete: bool
+    empty_text: str
+
+
+class _CountUpdate(TypedDict):
+    id: str
+    text: str
+
+
+class _BatchStats(TypedDict):
+    pending_hours: str
+    cores: int
+    nps_m: str
+    games_per_minute: int
+
+
+class _TestsEloBatchContext(TypedDict, total=False):
+    panels: list[_BatchPanel]
+    count_updates: list[_CountUpdate]
+    machines_count: int
+    workers_count_text: str
+    stats: _BatchStats
+
 
 class _ViewContext:
+    """Compatibility shim for the legacy sync view functions.
+
+    The UI layer still uses Pyramid-style handlers that expect a rich request
+    object with DB handles, session helpers, and a mutable response header bag.
+    FastAPI/Starlette requests are adapted once in `_dispatch_view()` so the
+    individual handlers can stay synchronous and focused on shaping template
+    context.
+    """
+
     def __init__(self, request, session, post, matchdict, context=None):
         self._request = request
         self.raw_request = request
@@ -167,6 +214,47 @@ def _append_vary_header(response, token: str) -> None:
     if token.lower() not in lowered:
         parts.append(token)
         response.headers["Vary"] = ", ".join(parts)
+
+
+def _append_no_store_headers(request) -> None:
+    request.response_headerlist.extend(
+        (
+            ("Cache-Control", "no-store"),
+            ("Expires", "0"),
+        )
+    )
+
+
+def _is_truthy_param(value) -> bool:
+    return str(value).strip().lower() in _TRUTHY_PARAM_VALUES
+
+
+def _page_index_from_params(params, *, key="page") -> int:
+    page_value = str(params.get(key, "")).strip()
+    return max(0, int(page_value) - 1) if page_value.isdigit() else 0
+
+
+def _normalize_sort_order(raw_value, *, default_reverse):
+    order_param = str(raw_value).strip().lower()
+    if order_param in _SORT_ORDER_VALUES:
+        return order_param, order_param == "desc"
+    return ("desc", True) if default_reverse else ("asc", False)
+
+
+def _normalize_view_mode(raw_value) -> str:
+    view_param = str(raw_value).strip().lower()
+    return view_param if view_param in _PAGED_VIEW_VALUES else "paged"
+
+
+def _clamp_page_index(page_idx, *, total_count, page_size):
+    if total_count <= 0:
+        return 0
+    return min(page_idx, (total_count - 1) // page_size)
+
+
+def _query_suffix(pairs) -> str:
+    filtered_pairs = [(key, str(value)) for key, value in pairs if value is not None]
+    return f"&{urlencode(filtered_pairs)}" if filtered_pairs else ""
 
 
 async def _dispatch_view(fn, cfg, request, path_params):
@@ -344,6 +432,14 @@ def _path_url(request) -> str:
     return str(url).split("?", 1)[0]
 
 
+def _render_hx_or_context(request, template_name, context, *, extra_context=None):
+    hx_context = context if extra_context is None else {**context, **extra_context}
+    return _render_hx_fragment(request, template_name, hx_context) or context
+
+
+# === Domain: auth ===
+
+
 # === Home redirect ===
 def home(request=None):
     """Redirect / to /tests. Registered directly on the router (no _dispatch_view)."""
@@ -418,6 +514,117 @@ def login(request):
             )
         request.session.flash(message, "error")
     return {}
+
+
+def logout(request):
+    session = request.session
+    forget(request)
+    session.invalidate()
+    return RedirectResponse(url="/tests", status_code=302)
+
+
+def signup(request):
+    recaptcha_site_key = os.environ.get(
+        "FISHTEST_CAPTCHA_SITE_KEY",
+        DEFAULT_RECAPTCHA_SITE_KEY,
+    ).strip()
+    signup_context = {
+        "recaptcha_site_key": recaptcha_site_key,
+        "VALID_USERNAME_PATTERN": VALID_USERNAME_PATTERN,
+    }
+
+    if request.authenticated_userid:
+        return home(request)
+    if request.method != "POST":
+        return signup_context
+    errors = []
+
+    signup_username = request.POST.get("username", "").strip()
+    signup_password = request.POST.get("password", "").strip()
+    signup_password_verify = request.POST.get("password2", "").strip()
+    signup_email = request.POST.get("email", "").strip()
+    tests_repo = request.POST.get("tests_repo", "").strip()
+
+    strong_password, password_err = password_strength(
+        signup_password, signup_username, signup_email
+    )
+    if not strong_password:
+        errors.append(password_err)
+    if signup_password != signup_password_verify:
+        errors.append("Error! Matching verify password required")
+    email_is_valid, validated_email = email_valid(signup_email)
+    if not email_is_valid:
+        errors.append("Error! Invalid email: " + validated_email)
+    if len(signup_username) == 0:
+        errors.append("Error! Username required")
+    if not signup_username.isalnum():
+        errors.append("Error! Alphanumeric username required")
+
+    try:
+        validate(union(github_repo, ""), tests_repo, "tests_repo")
+    except ValidationError as e:
+        errors.append(f"Error! Invalid tests repo {tests_repo}: {str(e)}")
+
+    if errors:
+        for error in errors:
+            request.session.flash(error, "error")
+        return signup_context
+
+    secret = os.environ.get("FISHTEST_CAPTCHA_SECRET", "").strip()
+    captcha_response = request.POST.get("g-recaptcha-response", "").strip()
+
+    if not secret:
+        request.session.flash("Captcha configuration is missing", "error")
+        return signup_context
+
+    if not captcha_response:
+        request.session.flash("Captcha required", "error")
+        return signup_context
+
+    payload = {
+        "secret": secret,
+        "response": captcha_response,
+        "remoteip": request.remote_addr,
+    }
+    try:
+        response = requests.post(
+            "https://www.google.com/recaptcha/api/siteverify",
+            data=payload,
+            timeout=HTTP_TIMEOUT,
+        ).json()
+    except requests.RequestException, ValueError:
+        request.session.flash("Captcha verification failed", "error")
+        return signup_context
+
+    if "success" not in response or not response["success"]:
+        if "error-codes" in response:
+            print(response["error-codes"])
+        request.session.flash("Captcha failed", "error")
+        return signup_context
+
+    result = request.userdb.create_user(
+        username=signup_username,
+        password=signup_password,
+        email=validated_email,
+        tests_repo=tests_repo,
+    )
+
+    if result is None:
+        request.session.flash("Error! Invalid username or password", "error")
+    elif not result:
+        request.session.flash("Username or email is already registered", "error")
+    else:
+        request.session.flash(
+            "Account created! "
+            "To avoid spam, a person will now manually approve your new account. "
+            "This is usually quick but sometimes takes a few hours. "
+            "Thank you for contributing!"
+        )
+        return RedirectResponse(url="/login", status_code=302)
+    return signup_context
+
+
+# === Domain: lists ===
 
 
 # === Worker administration ===
@@ -532,20 +739,18 @@ def _workers_query_string(*, filter_value, sort_param, order_param, query_filter
     _, default_reverse = _WORKERS_SORT_MAP[_WORKERS_DEFAULT_SORT]
     default_order = "desc" if default_reverse else "asc"
 
-    params = {}
+    params = []
     if filter_value != _WORKERS_FILTER_DEFAULT:
-        params["filter"] = filter_value
+        params.append(("filter", filter_value))
     if sort_param != _WORKERS_DEFAULT_SORT:
-        params["sort"] = sort_param
+        params.append(("sort", sort_param))
     if order_param != default_order:
-        params["order"] = order_param
+        params.append(("order", order_param))
     if query_filter:
-        params["q"] = query_filter
+        params.append(("q", query_filter))
     if view == "all":
-        params["view"] = "all"
-    if not params:
-        return ""
-    return "&" + urlencode(params)
+        params.append(("view", "all"))
+    return _query_suffix(params)
 
 
 def _user_management_query_string(
@@ -554,20 +759,18 @@ def _user_management_query_string(
     _, default_reverse = _USER_MANAGEMENT_SORT_MAP[_USER_MANAGEMENT_DEFAULT_SORT]
     default_order = "desc" if default_reverse else "asc"
 
-    params = {}
+    params = []
     if group != _USER_MANAGEMENT_GROUP_DEFAULT:
-        params["group"] = group
+        params.append(("group", group))
     if sort_param != _USER_MANAGEMENT_DEFAULT_SORT:
-        params["sort"] = sort_param
+        params.append(("sort", sort_param))
     if order_param != default_order:
-        params["order"] = order_param
+        params.append(("order", order_param))
     if query_filter:
-        params["q"] = query_filter
+        params.append(("q", query_filter))
     if view == "all":
-        params["view"] = "all"
-    if not params:
-        return ""
-    return "&" + urlencode(params)
+        params.append(("view", "all"))
+    return _query_suffix(params)
 
 
 def _workers_sort_value(row, sort_key):
@@ -603,16 +806,13 @@ def workers(request):
     sort_key, default_reverse = _WORKERS_SORT_MAP[sort_param]
     default_order = "desc" if default_reverse else "asc"
     order_param = request.params.get("order", default_order)
-    if order_param not in {"asc", "desc"}:
+    if order_param not in _SORT_ORDER_VALUES:
         order_param = default_order
 
-    view_param = request.params.get("view", "paged")
-    if view_param not in {"paged", "all"}:
-        view_param = "paged"
+    view_param = _normalize_view_mode(request.params.get("view", "paged"))
 
     query_filter = request.params.get("q", "").strip()
-    page_param = request.params.get("page", "")
-    page_idx = max(0, int(page_param) - 1) if page_param.isdigit() else 0
+    page_idx = _page_index_from_params(request.params)
 
     blocked_workers = request.rundb.workerdb.get_blocked_workers()
     blocker_name = request.authenticated_userid
@@ -754,15 +954,12 @@ def workers(request):
         **admin_context,
     }
 
-    hx = _render_hx_fragment(
+    return _render_hx_or_context(
         request,
         "workers_content_fragment.html.j2",
-        {**context, "is_hx": True},
+        context,
+        extra_context={"is_hx": True},
     )
-    if hx:
-        return hx
-
-    return context
 
 
 # === Neural network uploads + tools ===
@@ -846,114 +1043,6 @@ def upload(request):
     )
 
     return RedirectResponse(url="/nns", status_code=302)
-
-
-def logout(request):
-    session = request.session
-    forget(request)
-    session.invalidate()
-    return RedirectResponse(url="/tests", status_code=302)
-
-
-def signup(request):
-    recaptcha_site_key = os.environ.get(
-        "FISHTEST_CAPTCHA_SITE_KEY",
-        DEFAULT_RECAPTCHA_SITE_KEY,
-    ).strip()
-    signup_context = {
-        "recaptcha_site_key": recaptcha_site_key,
-        "VALID_USERNAME_PATTERN": VALID_USERNAME_PATTERN,
-    }
-
-    if request.authenticated_userid:
-        return home(request)
-    if request.method != "POST":
-        return signup_context
-    errors = []
-
-    signup_username = request.POST.get("username", "").strip()
-    signup_password = request.POST.get("password", "").strip()
-    signup_password_verify = request.POST.get("password2", "").strip()
-    signup_email = request.POST.get("email", "").strip()
-    tests_repo = request.POST.get("tests_repo", "").strip()
-
-    strong_password, password_err = password_strength(
-        signup_password, signup_username, signup_email
-    )
-    if not strong_password:
-        errors.append(password_err)
-    if signup_password != signup_password_verify:
-        errors.append("Error! Matching verify password required")
-    email_is_valid, validated_email = email_valid(signup_email)
-    if not email_is_valid:
-        errors.append("Error! Invalid email: " + validated_email)
-    if len(signup_username) == 0:
-        errors.append("Error! Username required")
-    if not signup_username.isalnum():
-        errors.append("Error! Alphanumeric username required")
-
-    try:
-        validate(union(github_repo, ""), tests_repo, "tests_repo")
-    except ValidationError as e:
-        errors.append(f"Error! Invalid tests repo {tests_repo}: {str(e)}")
-
-    if errors:
-        for error in errors:
-            request.session.flash(error, "error")
-        return signup_context
-
-    secret = os.environ.get("FISHTEST_CAPTCHA_SECRET", "").strip()
-    captcha_response = request.POST.get("g-recaptcha-response", "").strip()
-
-    if not secret:
-        request.session.flash("Captcha configuration is missing", "error")
-        return signup_context
-
-    if not captcha_response:
-        request.session.flash("Captcha required", "error")
-        return signup_context
-
-    payload = {
-        "secret": secret,
-        "response": captcha_response,
-        "remoteip": request.remote_addr,
-    }
-    try:
-        response = requests.post(
-            "https://www.google.com/recaptcha/api/siteverify",
-            data=payload,
-            timeout=HTTP_TIMEOUT,
-        ).json()
-    except requests.RequestException, ValueError:
-        request.session.flash("Captcha verification failed", "error")
-        return signup_context
-
-    if "success" not in response or not response["success"]:
-        if "error-codes" in response:
-            print(response["error-codes"])
-        request.session.flash("Captcha failed", "error")
-        return signup_context
-
-    result = request.userdb.create_user(
-        username=signup_username,
-        password=signup_password,
-        email=validated_email,
-        tests_repo=tests_repo,
-    )
-
-    if result is None:
-        request.session.flash("Error! Invalid username or password", "error")
-    elif not result:
-        request.session.flash("Username or email is already registered", "error")
-    else:
-        request.session.flash(
-            "Account created! "
-            "To avoid spam, a person will now manually approve your new account. "
-            "This is usually quick but sometimes takes a few hours. "
-            "Thank you for contributing!"
-        )
-        return RedirectResponse(url="/login", status_code=302)
-    return signup_context
 
 
 def nns(request):
@@ -1231,7 +1320,7 @@ def actions(request):
         max_actions = DEFAULT_MAX_ACTIONS_AUTH
 
     page_param = request.params.get("page", "")
-    page_idx = max(0, int(page_param) - 1) if page_param.isdigit() else 0
+    page_idx = _page_index_from_params(request.params)
     page_size = 25
 
     actions, num_actions = request.actiondb.get_actions(
@@ -1331,19 +1420,16 @@ def actions(request):
                 status_code=302,
             )
 
-    query_params = ""
-    if username:
-        query_params += "&user={}".format(username)
-    if search_action:
-        query_params += "&action={}".format(search_action)
-    if text:
-        query_params += "&text={}".format(text)
-    if max_actions:
-        query_params += "&max_actions={}".format(max_actions)
-    if before:
-        query_params += "&before={}".format(before)
-    if run_id:
-        query_params += "&run_id={}".format(run_id)
+    query_params = _query_suffix(
+        [
+            ("user", username or None),
+            ("action", search_action or None),
+            ("text", text or None),
+            ("max_actions", max_actions if max_actions is not None else None),
+            ("before", before if before is not None else None),
+            ("run_id", run_id or None),
+        ]
+    )
 
     pages = pagination(page_idx, num_actions, page_size, query_params)
 
@@ -1359,10 +1445,7 @@ def actions(request):
         "usernames": [user["username"] for user in request.userdb.get_users()],
     }
 
-    return (
-        _render_hx_fragment(request, "actions_content_fragment.html.j2", context)
-        or context
-    )
+    return _render_hx_or_context(request, "actions_content_fragment.html.j2", context)
 
 
 # === User management + profiles ===
@@ -1416,18 +1499,15 @@ def user_management(request):
         sort_param = _USER_MANAGEMENT_DEFAULT_SORT
 
     sort_key, default_reverse = _USER_MANAGEMENT_SORT_MAP[sort_param]
-    default_order = "desc" if default_reverse else "asc"
-    order_param = request.params.get("order", default_order)
-    if order_param not in {"asc", "desc"}:
-        order_param = default_order
+    order_param, _ = _normalize_sort_order(
+        request.params.get("order", ""),
+        default_reverse=default_reverse,
+    )
 
-    view_param = request.params.get("view", "paged")
-    if view_param not in {"paged", "all"}:
-        view_param = "paged"
+    view_param = _normalize_view_mode(request.params.get("view", "paged"))
 
     query_filter = request.params.get("q", "").strip()
-    page_param = request.params.get("page", "")
-    page_idx = max(0, int(page_param) - 1) if page_param.isdigit() else 0
+    page_idx = _page_index_from_params(request.params)
 
     users = list(request.userdb.get_users())
     pending_users = request.userdb.get_pending()
@@ -1498,27 +1578,7 @@ def user_management(request):
         [user for user in users if "group:approvers" in user.get("groups", [])]
     )
 
-    hx = _render_hx_fragment(
-        request,
-        "user_management_content_fragment.html.j2",
-        {
-            "group": group,
-            "selected_users": selected_rows,
-            "sort": sort_param,
-            "order": order_param,
-            "q": query_filter,
-            "view": view_param,
-            "pages": pages,
-            "num_selected_users": num_selected,
-            "max_all": _USER_MANAGEMENT_MAX_ALL,
-            "is_truncated": is_truncated,
-            "is_hx": True,
-        },
-    )
-    if hx:
-        return hx
-
-    return {
+    context = {
         "all_count": all_count,
         "pending_count": pending_count,
         "blocked_count": blocked_count,
@@ -1535,6 +1595,13 @@ def user_management(request):
         "max_all": _USER_MANAGEMENT_MAX_ALL,
         "is_truncated": is_truncated,
     }
+
+    return _render_hx_or_context(
+        request,
+        "user_management_content_fragment.html.j2",
+        context,
+        extra_context={"is_hx": True},
+    )
 
 
 def user(request):
@@ -1803,17 +1870,15 @@ def _machines_sort_value(machine_row, sort_key):
 def _build_machines_query_params(
     sort_param, order_param, default_reverse, query_filter, my_workers
 ):
-    query_params = ""
-    if sort_param != _MACHINES_DEFAULT_SORT:
-        query_params += f"&sort={sort_param}"
     default_order = "desc" if default_reverse else "asc"
-    if order_param != default_order:
-        query_params += f"&order={order_param}"
-    if query_filter:
-        query_params += f"&q={quote(query_filter)}"
-    if my_workers:
-        query_params += "&my_workers=1"
-    return query_params
+    return _query_suffix(
+        [
+            ("sort", sort_param if sort_param != _MACHINES_DEFAULT_SORT else None),
+            ("order", order_param if order_param != default_order else None),
+            ("q", query_filter or None),
+            ("my_workers", "1" if my_workers else None),
+        ]
+    )
 
 
 def _set_machine_cookie(request, name, value, max_age_seconds):
@@ -1879,8 +1944,7 @@ def _contributors_sort_value(user, sort_key):
 
 
 def _contributors_common(request, *, collection, is_monthly):
-    page_param = request.params.get("page", "")
-    page_idx = max(0, int(page_param) - 1) if page_param.isdigit() else 0
+    page_idx = _page_index_from_params(request.params)
 
     search = request.params.get("search", "").strip()
     sort_param = request.params.get("sort", "").strip().lower()
@@ -1892,16 +1956,12 @@ def _contributors_common(request, *, collection, is_monthly):
         sort_param = _CONTRIBUTORS_DEFAULT_SORT
     sort_key, default_reverse = _CONTRIBUTORS_SORT_MAP[sort_param]
 
-    if order_param == "asc":
-        reverse = False
-    elif order_param == "desc":
-        reverse = True
-    else:
-        reverse = default_reverse
-        order_param = "desc" if reverse else "asc"
+    order_param, reverse = _normalize_sort_order(
+        order_param,
+        default_reverse=default_reverse,
+    )
 
-    if view_param != "all":
-        view_param = "paged"
+    view_param = _normalize_view_mode(view_param)
 
     all_users_unfiltered = list(collection.find())
     users_list = list(all_users_unfiltered)
@@ -2009,12 +2069,16 @@ def _contributors_common(request, *, collection, is_monthly):
 
     pages = []
     if view_param == "paged":
-        query_params = ""
-        if sort_param != _CONTRIBUTORS_DEFAULT_SORT:
-            query_params += "&sort={}".format(sort_param)
         default_order = "desc" if default_reverse else "asc"
-        if order_param != default_order:
-            query_params += "&order={}".format(order_param)
+        query_params = _query_suffix(
+            [
+                (
+                    "sort",
+                    sort_param if sort_param != _CONTRIBUTORS_DEFAULT_SORT else None,
+                ),
+                ("order", order_param if order_param != default_order else None),
+            ]
+        )
         pages = pagination(page_idx, num_users, _CONTRIBUTORS_PAGE_SIZE, query_params)
 
     context = {
@@ -2033,14 +2097,11 @@ def _contributors_common(request, *, collection, is_monthly):
         "num_users": num_users,
         "max_all": _CONTRIBUTORS_MAX_ALL,
     }
-    hx_response = _render_hx_fragment(
+    return _render_hx_or_context(
         request,
         "contributors_content_fragment.html.j2",
         context,
     )
-    if hx_response:
-        return hx_response
-    return context
 
 
 def contributors(request):
@@ -2058,6 +2119,427 @@ def contributors_monthly(request):
         is_monthly=True,
     )
 
+
+# === Run list fragments + homepage ===
+def tests_machines(request):
+    # This endpoint is polled and linked directly, so the complete table state
+    # lives in the URL and mirrored cookies.
+    normalized_rows = [
+        _normalize_machine_row(machine) for machine in request.rundb.get_machines()
+    ]
+    total_machines = len(normalized_rows)
+
+    sort_param = request.params.get("sort", "").strip().lower()
+    if sort_param not in _MACHINES_SORT_MAP:
+        sort_param = _MACHINES_DEFAULT_SORT
+    sort_key, default_reverse = _MACHINES_SORT_MAP[sort_param]
+
+    order_param, reverse = _normalize_sort_order(
+        request.params.get("order", ""),
+        default_reverse=default_reverse,
+    )
+
+    query_filter = request.params.get("q", "").strip()
+
+    my_workers = _is_truthy_param(request.params.get("my_workers", ""))
+    username = request.authenticated_userid
+    if not username:
+        my_workers = False
+
+    filtered_rows = list(normalized_rows)
+    if my_workers and username:
+        filtered_rows = [m for m in filtered_rows if m.get("username") == username]
+    if query_filter:
+        query_filter_lower = query_filter.lower()
+        filtered_rows = [
+            m
+            for m in filtered_rows
+            if any(
+                query_filter_lower in str(m.get(field, "")).lower()
+                for field in _MACHINES_FILTER_FIELDS
+            )
+        ]
+
+    filtered_rows.sort(key=lambda m: str(m.get("username", "")).lower())
+    filtered_rows.sort(
+        key=lambda m: _machines_sort_value(m, sort_key),
+        reverse=reverse,
+    )
+
+    page_idx = _page_index_from_params(request.params)
+    num_machines = len(filtered_rows)
+    page_idx = _clamp_page_index(
+        page_idx,
+        total_count=num_machines,
+        page_size=_MACHINES_PAGE_SIZE,
+    )
+
+    start = page_idx * _MACHINES_PAGE_SIZE
+    end = (page_idx + 1) * _MACHINES_PAGE_SIZE
+    machines = filtered_rows[start:end]
+
+    query_params = _build_machines_query_params(
+        sort_param,
+        order_param,
+        default_reverse,
+        query_filter,
+        my_workers,
+    )
+
+    pages = pagination(page_idx, num_machines, _MACHINES_PAGE_SIZE, query_params)
+    for page in pages:
+        page_url = page.get("url", "")
+        if page_url.startswith("?"):
+            page["url"] = f"/tests/machines{page_url}"
+
+    _set_machine_cookies(
+        request,
+        sort_param=sort_param,
+        order_param=order_param,
+        page=page_idx + 1,
+        query_filter=query_filter,
+        my_workers=my_workers,
+        filtered_count=num_machines,
+    )
+
+    filters_active = bool(query_filter) or my_workers
+    workers_count_text = _workers_count_text(
+        total_machines,
+        filters_active=filters_active,
+        filtered_count=num_machines,
+    )
+
+    return {
+        "machines_list": filtered_rows,
+        "machines": machines,
+        "machines_count": num_machines,
+        "machines_total_count": total_machines,
+        "machines_filtered_count": num_machines,
+        "machines_filters_active": filters_active,
+        "workers_count_text": workers_count_text,
+        "machines_page_size": _MACHINES_PAGE_SIZE,
+        "pages": pages,
+        "sort": sort_param,
+        "order": order_param,
+        "q": query_filter,
+        "current_page": page_idx + 1,
+        "my_workers": my_workers,
+        "has_authenticated_user": bool(username),
+    }
+
+
+def get_paginated_finished_runs(request, *, username=None):
+    if username is None:
+        username = request.matchdict.get("username", "")
+    success_only = request.params.get("success_only", False)
+    yellow_only = request.params.get("yellow_only", False)
+    ltc_only = request.params.get("ltc_only", False)
+
+    page_idx = _page_index_from_params(request.params)
+    page_size = 25
+
+    finished_runs, num_finished_runs = request.rundb.get_finished_runs(
+        username=username,
+        success_only=success_only,
+        yellow_only=yellow_only,
+        ltc_only=ltc_only,
+        skip=page_idx * page_size,
+        limit=page_size,
+    )
+
+    query_params = _query_suffix(
+        [
+            ("success_only", "1" if success_only else None),
+            ("yellow_only", "1" if yellow_only else None),
+            ("ltc_only", "1" if ltc_only else None),
+        ]
+    )
+    pages = pagination(page_idx, num_finished_runs, page_size, query_params)
+
+    failed_runs = []
+    if page_idx == 0:
+        for run in finished_runs:
+            # Look for failed runs
+            if "failed" in run and run["failed"]:
+                failed_runs.append(run)
+
+    filters = {
+        "success_only": bool(success_only),
+        "yellow_only": bool(yellow_only),
+        "ltc_only": bool(ltc_only),
+    }
+    title_suffix = ""
+    if filters["success_only"]:
+        title_suffix = " - Greens"
+    elif filters["yellow_only"]:
+        title_suffix = " - Yellows"
+    elif filters["ltc_only"]:
+        title_suffix = " - LTC"
+
+    return {
+        "finished_runs": finished_runs,
+        "finished_runs_pages": pages,
+        "num_finished_runs": num_finished_runs,
+        "failed_runs": failed_runs,
+        "page_idx": page_idx,
+        "filters": filters,
+        "title_suffix": title_suffix,
+    }
+
+
+def _build_toggle_states(request, toggle_names):
+    return {name: request.cookies.get(f"{name}_state", "Show") for name in toggle_names}
+
+
+def _build_run_tables_context(
+    request,
+    *,
+    runs,
+    failed_runs,
+    finished_runs,
+    num_finished_runs,
+    finished_runs_pages,
+    page_idx,
+    username="",
+):
+    runs = runs or {"pending": [], "active": []}
+    pending_runs = [r for r in runs.get("pending", []) if not r.get("approved")]
+    paused_runs = [r for r in runs.get("pending", []) if r.get("approved")]
+    active_runs = list(runs.get("active", []))
+    prefix = run_tables_prefix(username)
+    toggle_names = [prefix + "finished"]
+    if page_idx == 0:
+        toggle_names = [
+            prefix + "pending",
+            prefix + "paused",
+            prefix + "failed",
+            prefix + "active",
+            prefix + "finished",
+        ]
+    toggle_states = _build_toggle_states(request, toggle_names)
+    finished_title_text = (
+        f"{username + ' - ' if username else ''}Finished Tests"
+        f" - page {page_idx + 1} | Stockfish Testing"
+    )
+
+    return {
+        "pending_approval_runs": build_run_table_rows(
+            pending_runs,
+            allow_github_api_calls=False,
+        ),
+        "paused_runs": build_run_table_rows(
+            paused_runs,
+            allow_github_api_calls=False,
+        ),
+        "failed_runs": build_run_table_rows(
+            failed_runs,
+            allow_github_api_calls=False,
+        ),
+        "active_runs": build_run_table_rows(
+            active_runs,
+            allow_github_api_calls=False,
+        ),
+        "finished_runs": build_run_table_rows(
+            finished_runs,
+            allow_github_api_calls=False,
+        ),
+        "num_finished_runs": num_finished_runs,
+        "finished_runs_pages": finished_runs_pages,
+        "page_idx": page_idx,
+        "prefix": prefix,
+        "toggle_states": toggle_states,
+        "finished_title_text": finished_title_text,
+        "show_gauge": False,
+    }
+
+
+def tests_finished(request):
+    context = get_paginated_finished_runs(request)
+    page_idx = context.get("page_idx", 0)
+    title_suffix = context.get("title_suffix", "")
+    title_text = (
+        f"Finished Tests{title_suffix} - page {page_idx + 1} | Stockfish Testing"
+    )
+    context_out = {
+        **context,
+        "query_params": request.query_params,
+        "finished_runs": build_run_table_rows(
+            context.get("finished_runs", []),
+            allow_github_api_calls=False,
+        ),
+        "failed_runs": build_run_table_rows(
+            context.get("failed_runs", []),
+            allow_github_api_calls=False,
+        ),
+        "title": title_suffix,
+        "title_text": title_text,
+        "show_gauge": False,
+    }
+
+    return _render_hx_or_context(
+        request,
+        "tests_finished_content_fragment.html.j2",
+        context_out,
+    )
+
+
+def tests_user(request):
+    _append_no_store_headers(request)
+    username = request.matchdict.get("username", "")
+    user_data = request.userdb.get_user(username)
+    if user_data is None:
+        raise StarletteHTTPException(status_code=404)
+    is_approver = request.has_permission("approve_run")
+    finished_context = get_paginated_finished_runs(request)
+    response = {
+        **finished_context,
+        "username": username,
+        "is_approver": is_approver,
+    }
+    page_param = request.params.get("page", "")
+    if not page_param.isdigit() or int(page_param) <= 1:
+        runs = request.rundb.aggregate_unfinished_runs(username=username)[0]
+        response["run_tables_ctx"] = _build_run_tables_context(
+            request,
+            runs=runs,
+            failed_runs=finished_context.get("failed_runs", []),
+            finished_runs=finished_context.get("finished_runs", []),
+            num_finished_runs=finished_context.get("num_finished_runs", 0),
+            finished_runs_pages=finished_context.get("finished_runs_pages", []),
+            page_idx=finished_context.get("page_idx", 0),
+            username=username,
+        )
+    else:
+        response["run_tables_ctx"] = _build_run_tables_context(
+            request,
+            runs=None,
+            failed_runs=finished_context.get("failed_runs", []),
+            finished_runs=finished_context.get("finished_runs", []),
+            num_finished_runs=finished_context.get("num_finished_runs", 0),
+            finished_runs_pages=finished_context.get("finished_runs_pages", []),
+            page_idx=finished_context.get("page_idx", 0),
+            username=username,
+        )
+    # page 2 and beyond only show finished test results
+    return _render_hx_or_context(
+        request,
+        "tests_user_content_fragment.html.j2",
+        response,
+    )
+
+
+def homepage_results(request):
+    # Get updated results for unfinished runs + finished runs
+
+    (
+        runs,
+        pending_hours,
+        cores,
+        nps,
+        games_per_minute,
+        machines_count,
+    ) = request.rundb.aggregate_unfinished_runs()
+    finished_context = get_paginated_finished_runs(request)
+    run_tables_ctx = _build_run_tables_context(
+        request,
+        runs=runs,
+        failed_runs=finished_context.get("failed_runs", []),
+        finished_runs=finished_context.get("finished_runs", []),
+        num_finished_runs=finished_context.get("num_finished_runs", 0),
+        finished_runs_pages=finished_context.get("finished_runs_pages", []),
+        page_idx=finished_context.get("page_idx", 0),
+    )
+    return {
+        **finished_context,
+        "runs": runs,
+        "run_tables_ctx": run_tables_ctx,
+        "machines_count": machines_count,
+        "pending_hours": "{:.1f}".format(pending_hours),
+        "cores": cores,
+        "nps": nps,
+        "nps_m": f"{nps / 1000000:.0f}M",
+        "games_per_minute": int(games_per_minute),
+        "height": f"{machines_count * 37}px",
+        "min_height": "37px",
+        "max_height": "34.7vh",
+    }
+
+
+def tests(request):
+    # The homepage mixes user-specific state with frequently refreshed content,
+    # so intermediary caches must not store it.
+    _append_no_store_headers(request)
+    page_param = request.params.get("page", "")
+    if page_param.isdigit() and int(page_param) > 1:
+        # page 2 and beyond only show finished test results
+        finished_context = get_paginated_finished_runs(request)
+        return {
+            **finished_context,
+            "run_tables_ctx": _build_run_tables_context(
+                request,
+                runs=None,
+                failed_runs=finished_context.get("failed_runs", []),
+                finished_runs=finished_context.get("finished_runs", []),
+                num_finished_runs=finished_context.get("num_finished_runs", 0),
+                finished_runs_pages=finished_context.get("finished_runs_pages", []),
+                page_idx=finished_context.get("page_idx", 0),
+            ),
+        }
+
+    last_tests = homepage_results(request)
+
+    authenticated_user = request.authenticated_userid
+
+    machines_sort = request.cookies.get("machines_sort", "").strip().lower()
+    if machines_sort not in _MACHINES_SORT_MAP:
+        machines_sort = _MACHINES_DEFAULT_SORT
+
+    _, machines_default_reverse = _MACHINES_SORT_MAP[machines_sort]
+    machines_order = request.cookies.get("machines_order", "").strip().lower()
+    if machines_order not in {"asc", "desc"}:
+        machines_order = "desc" if machines_default_reverse else "asc"
+
+    machines_q = unquote(request.cookies.get("machines_q", ""))
+
+    machines_page_raw = request.cookies.get("machines_page", "")
+    if machines_page_raw.isdigit() and int(machines_page_raw) >= 1:
+        machines_page = int(machines_page_raw)
+    else:
+        machines_page = 1
+
+    machines_my_workers = _is_truthy_param(
+        request.cookies.get("machines_my_workers", "")
+    )
+    if not authenticated_user:
+        machines_my_workers = False
+
+    machines_filters_active = bool(machines_q) or machines_my_workers
+    machines_filtered_count_raw = request.cookies.get("machines_filtered_count", "")
+    machines_filtered_count = (
+        int(machines_filtered_count_raw)
+        if machines_filtered_count_raw.isdigit()
+        else last_tests["machines_count"]
+    )
+    workers_count_text = _workers_count_text(
+        last_tests["machines_count"],
+        filters_active=machines_filters_active,
+        filtered_count=machines_filtered_count,
+    )
+
+    return {
+        **last_tests,
+        "machines_shown": request.cookies.get("machines_state") == "Hide",
+        "workers_count_text": workers_count_text,
+        "machines_sort": machines_sort,
+        "machines_order": machines_order,
+        "machines_q": machines_q,
+        "machines_page": machines_page,
+        "machines_my_workers": machines_my_workers,
+        "has_authenticated_user": bool(authenticated_user),
+    }
+
+
+# === Domain: run mutation ===
 
 # === Run creation helpers ===
 
@@ -2911,6 +3393,9 @@ def tests_delete(request):
     return home(request)
 
 
+# === Domain: run detail ===
+
+
 # === Run detail views ===
 def get_page_title(run):
     if run["args"].get("sprt"):
@@ -3011,7 +3496,7 @@ def tests_elo_batch(request):
     failed_runs = finished_context.get("failed_runs", [])
     finished_runs = finished_context.get("finished_runs", [])
 
-    panels = [
+    panels: list[_BatchPanel] = [
         {
             "tbody_id": "pending-tbody",
             "rows": build_run_table_rows(
@@ -3054,7 +3539,7 @@ def tests_elo_batch(request):
         },
     ]
 
-    count_updates = [
+    count_updates: list[_CountUpdate] = [
         {
             "id": "pending-count",
             "text": f"Pending approval - {len(pending_runs)} tests",
@@ -3095,7 +3580,7 @@ def tests_elo_batch(request):
         else machines_count
     )
 
-    result = {
+    result: _TestsEloBatchContext = {
         "panels": panels,
         "count_updates": count_updates,
     }
@@ -3220,126 +3705,15 @@ def tests_tasks(request):
     }
 
 
-def tests_machines(request):
-    normalized_rows = [
-        _normalize_machine_row(machine) for machine in request.rundb.get_machines()
-    ]
-    total_machines = len(normalized_rows)
-
-    sort_param = request.params.get("sort", "").strip().lower()
-    if sort_param not in _MACHINES_SORT_MAP:
-        sort_param = _MACHINES_DEFAULT_SORT
-    sort_key, default_reverse = _MACHINES_SORT_MAP[sort_param]
-
-    order_param = request.params.get("order", "").strip().lower()
-    if order_param == "asc":
-        reverse = False
-    elif order_param == "desc":
-        reverse = True
-    else:
-        reverse = default_reverse
-        order_param = "desc" if reverse else "asc"
-
-    query_filter = request.params.get("q", "").strip()
-
-    my_workers_param = request.params.get("my_workers", "").strip().lower()
-    my_workers = my_workers_param in {"1", "true", "on", "yes"}
-    username = request.authenticated_userid
-    if not username:
-        my_workers = False
-
-    filtered_rows = list(normalized_rows)
-    if my_workers and username:
-        filtered_rows = [m for m in filtered_rows if m.get("username") == username]
-    if query_filter:
-        query_filter_lower = query_filter.lower()
-        filtered_rows = [
-            m
-            for m in filtered_rows
-            if any(
-                query_filter_lower in str(m.get(field, "")).lower()
-                for field in _MACHINES_FILTER_FIELDS
-            )
-        ]
-
-    filtered_rows.sort(key=lambda m: str(m.get("username", "")).lower())
-    filtered_rows.sort(
-        key=lambda m: _machines_sort_value(m, sort_key),
-        reverse=reverse,
-    )
-
-    page_param = request.params.get("page", "")
-    page_idx = max(0, int(page_param) - 1) if page_param.isdigit() else 0
-    num_machines = len(filtered_rows)
-    if num_machines > 0:
-        last_idx = (num_machines - 1) // _MACHINES_PAGE_SIZE
-        page_idx = min(page_idx, last_idx)
-    else:
-        page_idx = 0
-
-    start = page_idx * _MACHINES_PAGE_SIZE
-    end = (page_idx + 1) * _MACHINES_PAGE_SIZE
-    machines = filtered_rows[start:end]
-
-    query_params = _build_machines_query_params(
-        sort_param,
-        order_param,
-        default_reverse,
-        query_filter,
-        my_workers,
-    )
-
-    pages = pagination(page_idx, num_machines, _MACHINES_PAGE_SIZE, query_params)
-    for page in pages:
-        page_url = page.get("url", "")
-        if page_url.startswith("?"):
-            page["url"] = f"/tests/machines{page_url}"
-
-    _set_machine_cookies(
-        request,
-        sort_param=sort_param,
-        order_param=order_param,
-        page=page_idx + 1,
-        query_filter=query_filter,
-        my_workers=my_workers,
-        filtered_count=num_machines,
-    )
-
-    filters_active = bool(query_filter) or my_workers
-    workers_count_text = _workers_count_text(
-        total_machines,
-        filters_active=filters_active,
-        filtered_count=num_machines,
-    )
-
-    return {
-        "machines_list": filtered_rows,
-        "machines": machines,
-        "machines_count": num_machines,
-        "machines_total_count": total_machines,
-        "machines_filtered_count": num_machines,
-        "machines_filters_active": filters_active,
-        "workers_count_text": workers_count_text,
-        "machines_page_size": _MACHINES_PAGE_SIZE,
-        "pages": pages,
-        "sort": sort_param,
-        "order": order_param,
-        "q": query_filter,
-        "current_page": page_idx + 1,
-        "my_workers": my_workers,
-        "has_authenticated_user": bool(username),
-    }
-
-
 def tests_view(request):
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None:
         raise StarletteHTTPException(status_code=404)
     run_id = str(run["_id"])
     follow = 1 if "follow" in request.params else 0
-    run_args = [("id", str(run["_id"]), "")]
+    run_args: list[_RunArg] = [("id", str(run["_id"]), "")]
     if run.get("rescheduled_from"):
-        run_args.append(("rescheduled_from", run["rescheduled_from"], ""))
+        run_args.append(("rescheduled_from", str(run["rescheduled_from"]), ""))
 
     for name in (
         "new_tag",
@@ -3439,9 +3813,9 @@ def tests_view(request):
                     [
                         p["name"],
                         "{:.2f}".format(p["theta"]),
-                        int(p["start"]),
-                        int(p["min"]),
-                        int(p["max"]),
+                        str(int(p["start"])),
+                        str(int(p["min"])),
+                        str(int(p["max"])),
                         "{:.3f}".format(c_iter),
                         "{:.3f}".format(p["c_end"]),
                         "{:.2e}".format(r_iter),
@@ -3453,10 +3827,10 @@ def tests_view(request):
         user, repo = gh.parse_repo(tests_repo_)
         if name == "tests_repo":
             value = tests_repo_
-            url = value
+            url = tests_repo_
 
         if name == "master_repo":
-            url = value
+            url = str(value)
 
         if name == "new_tag":
             url = gh.commit_url(
@@ -3633,327 +4007,6 @@ def tests_view(request):
         "warnings": warnings,
         "use_3dot_diff": use_3dot_diff,
         "allow_github_api_calls": allow_github_api_calls(),
-    }
-
-
-def get_paginated_finished_runs(request, *, username=None):
-    if username is None:
-        username = request.matchdict.get("username", "")
-    success_only = request.params.get("success_only", False)
-    yellow_only = request.params.get("yellow_only", False)
-    ltc_only = request.params.get("ltc_only", False)
-
-    page_param = request.params.get("page", "")
-    page_idx = max(0, int(page_param) - 1) if page_param.isdigit() else 0
-    page_size = 25
-
-    finished_runs, num_finished_runs = request.rundb.get_finished_runs(
-        username=username,
-        success_only=success_only,
-        yellow_only=yellow_only,
-        ltc_only=ltc_only,
-        skip=page_idx * page_size,
-        limit=page_size,
-    )
-
-    query_params = ""
-    if success_only:
-        query_params += "&success_only=1"
-    if yellow_only:
-        query_params += "&yellow_only=1"
-    if ltc_only:
-        query_params += "&ltc_only=1"
-    pages = pagination(page_idx, num_finished_runs, page_size, query_params)
-
-    failed_runs = []
-    if page_idx == 0:
-        for run in finished_runs:
-            # Look for failed runs
-            if "failed" in run and run["failed"]:
-                failed_runs.append(run)
-
-    filters = {
-        "success_only": bool(success_only),
-        "yellow_only": bool(yellow_only),
-        "ltc_only": bool(ltc_only),
-    }
-    title_suffix = ""
-    if filters["success_only"]:
-        title_suffix = " - Greens"
-    elif filters["yellow_only"]:
-        title_suffix = " - Yellows"
-    elif filters["ltc_only"]:
-        title_suffix = " - LTC"
-
-    return {
-        "finished_runs": finished_runs,
-        "finished_runs_pages": pages,
-        "num_finished_runs": num_finished_runs,
-        "failed_runs": failed_runs,
-        "page_idx": page_idx,
-        "filters": filters,
-        "title_suffix": title_suffix,
-    }
-
-
-def _build_toggle_states(request, toggle_names):
-    return {name: request.cookies.get(f"{name}_state", "Show") for name in toggle_names}
-
-
-def _build_run_tables_context(
-    request,
-    *,
-    runs,
-    failed_runs,
-    finished_runs,
-    num_finished_runs,
-    finished_runs_pages,
-    page_idx,
-    username="",
-):
-    runs = runs or {"pending": [], "active": []}
-    pending_runs = [r for r in runs.get("pending", []) if not r.get("approved")]
-    paused_runs = [r for r in runs.get("pending", []) if r.get("approved")]
-    active_runs = list(runs.get("active", []))
-    prefix = run_tables_prefix(username)
-    toggle_names = [prefix + "finished"]
-    if page_idx == 0:
-        toggle_names = [
-            prefix + "pending",
-            prefix + "paused",
-            prefix + "failed",
-            prefix + "active",
-            prefix + "finished",
-        ]
-    toggle_states = _build_toggle_states(request, toggle_names)
-    finished_title_text = (
-        f"{username + ' - ' if username else ''}Finished Tests"
-        f" - page {page_idx + 1} | Stockfish Testing"
-    )
-
-    return {
-        "pending_approval_runs": build_run_table_rows(
-            pending_runs,
-            allow_github_api_calls=False,
-        ),
-        "paused_runs": build_run_table_rows(
-            paused_runs,
-            allow_github_api_calls=False,
-        ),
-        "failed_runs": build_run_table_rows(
-            failed_runs,
-            allow_github_api_calls=False,
-        ),
-        "active_runs": build_run_table_rows(
-            active_runs,
-            allow_github_api_calls=False,
-        ),
-        "finished_runs": build_run_table_rows(
-            finished_runs,
-            allow_github_api_calls=False,
-        ),
-        "num_finished_runs": num_finished_runs,
-        "finished_runs_pages": finished_runs_pages,
-        "page_idx": page_idx,
-        "prefix": prefix,
-        "toggle_states": toggle_states,
-        "finished_title_text": finished_title_text,
-        "show_gauge": False,
-    }
-
-
-# === Run lists + homepage ===
-def tests_finished(request):
-    context = get_paginated_finished_runs(request)
-    page_idx = context.get("page_idx", 0)
-    title_suffix = context.get("title_suffix", "")
-    title_text = (
-        f"Finished Tests{title_suffix} - page {page_idx + 1} | Stockfish Testing"
-    )
-    context_out = {
-        **context,
-        "query_params": request.query_params,
-        "finished_runs": build_run_table_rows(
-            context.get("finished_runs", []),
-            allow_github_api_calls=False,
-        ),
-        "failed_runs": build_run_table_rows(
-            context.get("failed_runs", []),
-            allow_github_api_calls=False,
-        ),
-        "title": title_suffix,
-        "title_text": title_text,
-        "show_gauge": False,
-    }
-
-    return (
-        _render_hx_fragment(
-            request, "tests_finished_content_fragment.html.j2", context_out
-        )
-        or context_out
-    )
-
-
-def tests_user(request):
-    request.response_headerlist.extend(
-        (
-            ("Cache-Control", "no-store"),
-            ("Expires", "0"),
-        )
-    )
-    username = request.matchdict.get("username", "")
-    user_data = request.userdb.get_user(username)
-    if user_data is None:
-        raise StarletteHTTPException(status_code=404)
-    is_approver = request.has_permission("approve_run")
-    finished_context = get_paginated_finished_runs(request)
-    response = {
-        **finished_context,
-        "username": username,
-        "is_approver": is_approver,
-    }
-    page_param = request.params.get("page", "")
-    if not page_param.isdigit() or int(page_param) <= 1:
-        runs = request.rundb.aggregate_unfinished_runs(username=username)[0]
-        response["run_tables_ctx"] = _build_run_tables_context(
-            request,
-            runs=runs,
-            failed_runs=finished_context.get("failed_runs", []),
-            finished_runs=finished_context.get("finished_runs", []),
-            num_finished_runs=finished_context.get("num_finished_runs", 0),
-            finished_runs_pages=finished_context.get("finished_runs_pages", []),
-            page_idx=finished_context.get("page_idx", 0),
-            username=username,
-        )
-    else:
-        response["run_tables_ctx"] = _build_run_tables_context(
-            request,
-            runs=None,
-            failed_runs=finished_context.get("failed_runs", []),
-            finished_runs=finished_context.get("finished_runs", []),
-            num_finished_runs=finished_context.get("num_finished_runs", 0),
-            finished_runs_pages=finished_context.get("finished_runs_pages", []),
-            page_idx=finished_context.get("page_idx", 0),
-            username=username,
-        )
-    # page 2 and beyond only show finished test results
-    return (
-        _render_hx_fragment(request, "tests_user_content_fragment.html.j2", response)
-        or response
-    )
-
-
-def homepage_results(request):
-    # Get updated results for unfinished runs + finished runs
-
-    (
-        runs,
-        pending_hours,
-        cores,
-        nps,
-        games_per_minute,
-        machines_count,
-    ) = request.rundb.aggregate_unfinished_runs()
-    finished_context = get_paginated_finished_runs(request)
-    run_tables_ctx = _build_run_tables_context(
-        request,
-        runs=runs,
-        failed_runs=finished_context.get("failed_runs", []),
-        finished_runs=finished_context.get("finished_runs", []),
-        num_finished_runs=finished_context.get("num_finished_runs", 0),
-        finished_runs_pages=finished_context.get("finished_runs_pages", []),
-        page_idx=finished_context.get("page_idx", 0),
-    )
-    return {
-        **finished_context,
-        "runs": runs,
-        "run_tables_ctx": run_tables_ctx,
-        "machines_count": machines_count,
-        "pending_hours": "{:.1f}".format(pending_hours),
-        "cores": cores,
-        "nps": nps,
-        "nps_m": f"{nps / 1000000:.0f}M",
-        "games_per_minute": int(games_per_minute),
-        "height": f"{machines_count * 37}px",
-        "min_height": "37px",
-        "max_height": "34.7vh",
-    }
-
-
-def tests(request):
-    request.response_headerlist.extend(
-        (
-            ("Cache-Control", "no-store"),
-            ("Expires", "0"),
-        )
-    )
-    page_param = request.params.get("page", "")
-    if page_param.isdigit() and int(page_param) > 1:
-        # page 2 and beyond only show finished test results
-        finished_context = get_paginated_finished_runs(request)
-        return {
-            **finished_context,
-            "run_tables_ctx": _build_run_tables_context(
-                request,
-                runs=None,
-                failed_runs=finished_context.get("failed_runs", []),
-                finished_runs=finished_context.get("finished_runs", []),
-                num_finished_runs=finished_context.get("num_finished_runs", 0),
-                finished_runs_pages=finished_context.get("finished_runs_pages", []),
-                page_idx=finished_context.get("page_idx", 0),
-            ),
-        }
-
-    last_tests = homepage_results(request)
-
-    authenticated_user = request.authenticated_userid
-
-    machines_sort = request.cookies.get("machines_sort", "").strip().lower()
-    if machines_sort not in _MACHINES_SORT_MAP:
-        machines_sort = _MACHINES_DEFAULT_SORT
-
-    _, machines_default_reverse = _MACHINES_SORT_MAP[machines_sort]
-    machines_order = request.cookies.get("machines_order", "").strip().lower()
-    if machines_order not in {"asc", "desc"}:
-        machines_order = "desc" if machines_default_reverse else "asc"
-
-    machines_q = unquote(request.cookies.get("machines_q", ""))
-
-    machines_page_raw = request.cookies.get("machines_page", "")
-    if machines_page_raw.isdigit() and int(machines_page_raw) >= 1:
-        machines_page = int(machines_page_raw)
-    else:
-        machines_page = 1
-
-    machines_my_workers = request.cookies.get(
-        "machines_my_workers", ""
-    ).strip().lower() in {"1", "true", "on", "yes"}
-    if not authenticated_user:
-        machines_my_workers = False
-
-    machines_filters_active = bool(machines_q) or machines_my_workers
-    machines_filtered_count_raw = request.cookies.get("machines_filtered_count", "")
-    machines_filtered_count = (
-        int(machines_filtered_count_raw)
-        if machines_filtered_count_raw.isdigit()
-        else last_tests["machines_count"]
-    )
-    workers_count_text = _workers_count_text(
-        last_tests["machines_count"],
-        filters_active=machines_filters_active,
-        filtered_count=machines_filtered_count,
-    )
-
-    return {
-        **last_tests,
-        "machines_shown": request.cookies.get("machines_state") == "Hide",
-        "workers_count_text": workers_count_text,
-        "machines_sort": machines_sort,
-        "machines_order": machines_order,
-        "machines_q": machines_q,
-        "machines_page": machines_page,
-        "machines_my_workers": machines_my_workers,
-        "has_authenticated_user": bool(authenticated_user),
     }
 
 
