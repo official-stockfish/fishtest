@@ -108,8 +108,9 @@ class CookieSessionTests(unittest.TestCase):
             _FastAPI, TestClient = test_support.require_fastapi()
             app = _FastAPI()
 
-            from fishtest.http.cookie_session import MAX_COOKIE_BYTES, load_session
+            from fishtest.http.cookie_session import load_session
             from fishtest.http.session_middleware import FishtestSessionMiddleware
+            from fishtest.http.settings import SESSION_MAX_COOKIE_BYTES
 
             app.add_middleware(
                 FishtestSessionMiddleware,
@@ -138,7 +139,10 @@ class CookieSessionTests(unittest.TestCase):
                 ";",
                 1,
             )[0]
-            self.assertLessEqual(len(cookie_value.encode("utf-8")), MAX_COOKIE_BYTES)
+            self.assertLessEqual(
+                len(cookie_value.encode("utf-8")),
+                SESSION_MAX_COOKIE_BYTES,
+            )
 
 
 class SettingsTests(unittest.TestCase):

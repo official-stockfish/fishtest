@@ -45,6 +45,9 @@ and `http/jinja.py`.
 | `list_to_string(values, decimals)` | `template_helpers.py` | Formats a list of floats as a string |
 | `pdf_to_string(...)` | `template_helpers.py` | Formats a probability density function |
 | `t_conf(...)` | `template_helpers.py` | Confidence interval formatting |
+| `poll` | `http/jinja.py` | Shared HTMX polling intervals exposed to templates |
+| `htmx` | `http/jinja.py` | Shared HTMX timing defaults exposed to templates |
+| `cookies` | `http/jinja.py` | Shared cookie max-age values for page scripts/templates |
 | `fishtest` | `fishtest` package | Package module (version, metadata) |
 | `gh` | `github_api.py` | GitHub API module (commit_url, etc.) |
 | `math`, `datetime`, `copy`, `urllib`, `float` | Python stdlib | Standard library access |
@@ -104,6 +107,21 @@ Every template receives these keys from `build_template_context()`:
     "api_rate_limit": "/api/rate_limit",
 }
 ```
+
+## Client-side behavior pattern
+
+Behavior-heavy page scripts should prefer static assets plus `data-*`
+configuration over large inline `<script>` blocks.
+
+Current examples:
+
+- `contributors.html.j2` -> `static/js/contributors.js`
+- `tests.html.j2` -> `static/js/tests_homepage.js`
+- `user.html.j2` (profile mode) -> `static/js/user_profile.js`
+
+This keeps templates focused on structure and server-provided state, aligns with
+MDN separation-of-concerns guidance, and makes the JS contract testable without
+embedding implementation details in the template body.
 
 ## Template catalog
 

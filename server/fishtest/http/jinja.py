@@ -22,12 +22,16 @@ import fishtest.github_api as gh
 from fishtest.http import template_helpers as helpers
 from fishtest.http.settings import (
     HTMX_INPUT_CHANGED_DELAY_MS,
+    LONG_LIVED_UI_COOKIE_MAX_AGE_SECONDS,
+    PANEL_TOGGLE_COOKIE_MAX_AGE_SECONDS,
+    PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS,
     POLL_BATCH_HOMEPAGE_S,
     POLL_ELO_DETAIL_S,
     POLL_LIVE_ELO_S,
     POLL_MACHINES_HOMEPAGE_S,
     POLL_RATE_LIMITS_SERVER_S,
     POLL_TASKS_DETAIL_S,
+    THEME_COOKIE_MAX_AGE_SECONDS,
 )
 
 if TYPE_CHECKING:
@@ -143,6 +147,12 @@ def default_environment() -> Environment:
         },
         "htmx": {
             "input_changed_delay_ms": HTMX_INPUT_CHANGED_DELAY_MS,
+        },
+        "cookies": {
+            "contributors_findme_max_age": LONG_LIVED_UI_COOKIE_MAX_AGE_SECONDS,
+            "panel_toggle_max_age": PANEL_TOGGLE_COOKIE_MAX_AGE_SECONDS,
+            "persistent_ui_max_age": PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS,
+            "theme_max_age": THEME_COOKIE_MAX_AGE_SECONDS,
         },
     }
     env.globals.update(globals_map)

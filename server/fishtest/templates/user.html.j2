@@ -8,21 +8,6 @@
 {% set email = user["email"] %}
 {% set registration_time = format_date(user["registration_time"]) if user.get("registration_time") else "Unknown" %}
 {% set user_groups = user["groups"] %}
-{% if profile %}
-  <script>
-    async function handleGitHubToken() {
-      await DOMContentLoaded();
-      document.getElementById("github_token").value = localStorage.getItem("github_token") || "";
-      document.getElementById("profile_form").addEventListener("submit", (e) => {
-          e.preventDefault();
-          const githubToken = document.getElementById("github_token").value;
-          localStorage.setItem("github_token", githubToken);
-          e.target.submit();
-      });
-    }
-    handleGitHubToken();
-  </script>
-{% endif %}
 
 <div class="col-limited-size">
   <header class="text-md-center py-2">
@@ -60,7 +45,7 @@
     </div>
   </header>
 
-  <form id="profile_form" action="{{ request.url }}" method="POST">
+  <form id="profile_form" action="{{ request.url }}" method="POST" data-profile-mode="{{ '1' if profile else '0' }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input
       type="hidden"
@@ -273,4 +258,7 @@
 </div>
 
 <script src="{{ static_url('fishtest:static/js/toggle_password.js') }}"></script>
+{% if profile %}
+  <script src="{{ static_url('fishtest:static/js/user_profile.js') }}"></script>
+{% endif %}
 {% endblock %}

@@ -163,6 +163,14 @@ data lives in `request.scope["session"]` as a plain dict, wrapped by
   exceeded).
 - SameSite: `lax`.
 
+Cookie ownership is split intentionally:
+
+- `http/settings.py` owns cookie policy values such as size limits and
+   persistence windows.
+- `http/cookie_session.py` owns the session cookie transport contract such as
+   the cookie name, SameSite default, secret resolution, and request-scope
+   override helpers.
+
 ### Session keys
 
 | Key | Type | Description |
@@ -179,6 +187,50 @@ data lives in `request.scope["session"]` as a plain dict, wrapped by
 - `scope["session_secure"]` -- overrides the `Secure` flag.
 - `scope["session_force_clear"]` -- forces an expired cookie on the response
   (used by logout).
+
+## Cookie workflow
+
+The UI uses two cookie families with different ownership and lifecycles:
+
+- **Session/auth cookie** -- `fishtest_session`, emitted by
+   `FishtestSessionMiddleware`.
+- **UI state cookies** -- lightweight browser-side preferences such as `theme`,
+   `contributors_findme`, `machines_state`, and the homepage workers filters.
+
+### Session cookie lifecycle
+
+1. `FishtestSessionMiddleware` reads `fishtest_session` at request start and
+    decodes the signed JSON payload into `scope["session"]`.
+2. `load_session()` wraps that dict in `CookieSession`, which lazily creates
+    `created_at` and the CSRF token on first access.
+3. Rendering most full-page templates touches `session.get_csrf_token()`, so a
+    previously empty session becomes dirty during the response.
+4. On login, `remember()` writes `session["user"]` and optionally stores a
+    persistent max-age marker for "remember me" behavior.
+5. On logout, `forget()` clears the session and marks the response to emit an
+    expired cookie.
+6. `commit_session_response()` translates those flags into request-scope
+    overrides, and `FishtestSessionMiddleware` finally appends the `Set-Cookie`
+    header on the outbound response.
+
+### UI state cookie lifecycle
+
+UI state cookies are intentionally separate from the signed session payload.
+They are written by page-specific JS or server helpers because they do not
+carry authentication state:
+
+- `theme` is written by `static/js/application.js` and controls light/dark
+   presentation.
+- `contributors_findme` is written by `static/js/contributors.js` and preserves
+   rank-jump mode across contributors pages.
+- `machines_state` is written by `static/js/tests_homepage.js` and preserves
+   whether the homepage workers panel is expanded.
+- `machines_sort`, `machines_order`, `machines_page`, `machines_q`,
+   `machines_my_workers`, and `machines_filtered_count` are written server-side
+   by `views.py` when `/tests/machines` normalizes the current filter state.
+
+This split keeps auth/session semantics on the server-controlled signed cookie
+while letting low-risk UI preferences remain simple, readable browser state.
 
 ## CSRF protection
 

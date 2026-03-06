@@ -32,6 +32,32 @@ POLL_RATE_LIMITS_SERVER_S: int = 60
 # Keep this generic so multiple pages can share one debounce baseline.
 HTMX_INPUT_CHANGED_DELAY_MS: int = 350
 
+# Shared cookie and session policy for the UI and HTTP boundary.
+SESSION_MAX_COOKIE_BYTES: int = 3800
+PANEL_TOGGLE_COOKIE_MAX_AGE_SECONDS: int = 60 * 60
+THEME_COOKIE_MAX_AGE_SECONDS: int = 60 * 60 * 24 * 30
+PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS: int = 60 * 60 * 24 * 30
+SESSION_REMEMBER_MAX_AGE_SECONDS: int = 60 * 60 * 24 * 365
+LONG_LIVED_UI_COOKIE_MAX_AGE_SECONDS: int = 60 * 60 * 24 * 365 * 10
+
+# Template and UI view defaults.
+WORKERS_PAGE_SIZE: int = 25
+WORKERS_MAX_ALL: int = 5000
+USER_MANAGEMENT_PAGE_SIZE: int = 25
+USER_MANAGEMENT_MAX_ALL: int = 5000
+NNS_PAGE_SIZE: int = 25
+NNS_MAX_ALL: int = 5000
+ACTIONS_PAGE_SIZE: int = 25
+CONTRIBUTORS_PAGE_SIZE: int = 100
+CONTRIBUTORS_MAX_ALL: int = 5000
+MACHINES_PAGE_SIZE: int = 500
+
+# Request/form limits for legacy sync UI handlers.
+UI_HTTP_TIMEOUT_SECONDS: float = 15.0
+UI_FORM_MAX_FILES: int = 2
+UI_FORM_MAX_FIELDS: int = 200
+UI_FORM_MAX_PART_SIZE_BYTES: int = 200 * 1024 * 1024
+
 
 def env_int(name: str, *, default: int) -> int:
     """Parse an environment variable as an integer, with a fallback default."""
