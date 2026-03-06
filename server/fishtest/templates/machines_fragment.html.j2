@@ -66,7 +66,7 @@
         <td>{{ machine.username }}</td>
         <td>
           {% if country_code %}
-            <div class="flag flag-{{ country_code | lower }}" style="display: inline-block"></div>
+            <div class="flag flag-{{ country_code | lower }}"></div>
           {% endif %}
           {{ machine.concurrency }}
         </td>

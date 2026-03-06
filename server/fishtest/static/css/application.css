@@ -7,6 +7,12 @@
   --bs-secondary-color: #6c757d;
   --sidebar-width: 180px;
   --scroll-bar-width: 16px;
+  --icon-fixed-inline-size: 30px;
+  --sort-indicator-color: rgba(var(--bs-link-color-rgb), 0.75);
+  --sort-indicator-hover-color: var(--bs-link-hover-color);
+  --sort-indicator-active-color: var(--bs-link-color);
+  --sort-indicator-font-weight: 600;
+  --sort-indicator-active-font-weight: 700;
 }
 
 button.notifications {
@@ -264,7 +270,6 @@ legend {
   background: #f5f5f5;
   font-size: 12px;
   margin: 2px;
-  padding: 1px;
   line-height: 13px;
   padding: 3px;
 }
@@ -605,74 +610,43 @@ td {
   text-decoration: underline !important;
 }
 
-#contributors_table .sort-header .sort-indicator {
-  color: rgba(var(--bs-link-color-rgb), 0.75) !important;
-  font-weight: 600;
+:is(
+    #contributors_table,
+    #nns_table,
+    #machines_table,
+    #workers_table,
+    #user_management_table
+  )
+  .sort-header
+  .sort-indicator {
+  color: var(--sort-indicator-color);
+  font-weight: var(--sort-indicator-font-weight);
 }
 
-#nns_table .sort-header .sort-indicator {
-  color: rgba(var(--bs-link-color-rgb), 0.75) !important;
-  font-weight: 600;
+:is(
+    #contributors_table,
+    #nns_table,
+    #machines_table,
+    #workers_table,
+    #user_management_table
+  )
+  th[aria-sort]
+  .sort-header
+  .sort-indicator {
+  color: var(--sort-indicator-active-color);
+  font-weight: var(--sort-indicator-active-font-weight);
 }
 
-#machines_table .sort-header .sort-indicator {
-  color: rgba(var(--bs-link-color-rgb), 0.75) !important;
-  font-weight: 600;
-}
-
-#workers_table .sort-header .sort-indicator {
-  color: rgba(var(--bs-link-color-rgb), 0.75) !important;
-  font-weight: 600;
-}
-
-#user_management_table .sort-header .sort-indicator {
-  color: rgba(var(--bs-link-color-rgb), 0.75) !important;
-  font-weight: 600;
-}
-
-#contributors_table th[aria-sort] .sort-header .sort-indicator {
-  color: var(--bs-link-color) !important;
-  font-weight: 700;
-}
-
-#nns_table th[aria-sort] .sort-header .sort-indicator {
-  color: var(--bs-link-color) !important;
-  font-weight: 700;
-}
-
-#machines_table th[aria-sort] .sort-header .sort-indicator {
-  color: var(--bs-link-color) !important;
-  font-weight: 700;
-}
-
-#workers_table th[aria-sort] .sort-header .sort-indicator {
-  color: var(--bs-link-color) !important;
-  font-weight: 700;
-}
-
-#user_management_table th[aria-sort] .sort-header .sort-indicator {
-  color: var(--bs-link-color) !important;
-  font-weight: 700;
-}
-
-#contributors_table .sort-header:hover .sort-indicator {
-  color: var(--bs-link-hover-color) !important;
-}
-
-#nns_table .sort-header:hover .sort-indicator {
-  color: var(--bs-link-hover-color) !important;
-}
-
-#machines_table .sort-header:hover .sort-indicator {
-  color: var(--bs-link-hover-color) !important;
-}
-
-#workers_table .sort-header:hover .sort-indicator {
-  color: var(--bs-link-hover-color) !important;
-}
-
-#user_management_table .sort-header:hover .sort-indicator {
-  color: var(--bs-link-hover-color) !important;
+:is(
+    #contributors_table,
+    #nns_table,
+    #machines_table,
+    #workers_table,
+    #user_management_table
+  )
+  .sort-header:hover
+  .sort-indicator {
+  color: var(--sort-indicator-hover-color);
 }
 
 @keyframes contributor-highlight-fade {
@@ -715,6 +689,16 @@ option.grayedoutoption {
   margin: 0 auto 30px auto;
 }
 
+.icon-fixed-width {
+  display: inline-block;
+  inline-size: var(--icon-fixed-inline-size);
+  text-align: center;
+}
+
+.approval-action-button {
+  width: 48%;
+}
+
 .monospace {
   font-family: var(--bs-font-monospace);
 }
@@ -737,6 +721,7 @@ input[type="checkbox"],
 }
 
 .no-arrows {
+  appearance: textfield;
   -moz-appearance: textfield;
 }
 
