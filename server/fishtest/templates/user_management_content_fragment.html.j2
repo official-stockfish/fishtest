@@ -1,0 +1,70 @@
+{% set pagination_hx_target = "user-management-content" %}
+{% set pagination_hx_push_url = true %}
+{% set group = group if group is defined else "pending" %}
+{% set sort = sort if sort is defined else "registration" %}
+{% set order = order if order is defined else "desc" %}
+{% set q = q if q is defined else "" %}
+{% set view = view if view is defined else "paged" %}
+{% set num_selected_users = num_selected_users if num_selected_users is defined else 0 %}
+{% set max_all = max_all if max_all is defined else 5000 %}
+{% set is_truncated = is_truncated if is_truncated is defined else false %}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+  <div>
+    {% if view == "paged" %}
+      <a href="{{ request.url.path }}?view=all&group={{ group }}&sort={{ sort }}&order={{ order }}{% if q %}&q={{ q | urlencode }}{% endif %}" class="btn btn-outline-secondary btn-sm">
+        <i class="fa-solid fa-list" aria-hidden="true"></i>
+        Show all ({{ num_selected_users }} users)
+      </a>
+    {% else %}
+      <a href="{{ request.url.path }}?view=paged&group={{ group }}&sort={{ sort }}&order={{ order }}{% if q %}&q={{ q | urlencode }}{% endif %}" class="btn btn-outline-secondary btn-sm">
+        <i class="fa-solid fa-table-columns" aria-hidden="true"></i>
+        Show paginated
+      </a>
+    {% endif %}
+  </div>
+  {% if is_truncated %}
+    <div class="alert alert-warning py-1 px-2 mb-0 small">
+      Showing first {{ max_all }} of {{ num_selected_users }} users.
+    </div>
+  {% endif %}
+</div>
+
+{% macro sort_header(field, label, width="") -%}
+  {% set is_active = (sort == field) %}
+  {% set next_order = "desc" if (is_active and order == "asc") else "asc" %}
+  <th{% if is_active %} aria-sort="{{ 'ascending' if order == 'asc' else 'descending' }}"{% endif %}{% if width %} style="width:{{ width }}"{% endif %}>
+    <a class="sort-header text-decoration-none text-reset d-inline-flex align-items-center gap-1" href="{{ request.url.path }}?group={{ group }}&sort={{ field }}&order={{ next_order }}&view={{ view }}{% if q %}&q={{ q | urlencode }}{% endif %}">
+      <span>{{ label }}</span>
+      <span class="sort-indicator" aria-hidden="true">{% if is_active and order == "asc" %}▲{% elif is_active and order == "desc" %}▼{% else %}↕{% endif %}</span>
+    </a>
+  </th>
+{%- endmacro %}
+
+{% if view == "paged" %}
+  {% with pages=pages %}
+    {% include "pagination.html.j2" %}
+  {% endwith %}
+{% endif %}
+
+<div class="table-responsive-lg">
+  <table id="user_management_table" class="table table-striped table-sm" data-server-sort="true">
+    <thead>
+      <tr>
+        {{ sort_header("username", "Username", "20%") }}
+        {{ sort_header("registration", "Registration Time", "20%") }}
+        {{ sort_header("groups", "Groups", "20%") }}
+        {{ sort_header("email", "Email", "40%") }}
+      </tr>
+    </thead>
+    <tbody>
+      {% include "user_management_rows_fragment.html.j2" %}
+    </tbody>
+  </table>
+</div>
+
+{% if view == "paged" %}
+  {% with pages=pages %}
+    {% include "pagination.html.j2" %}
+  {% endwith %}
+{% endif %}

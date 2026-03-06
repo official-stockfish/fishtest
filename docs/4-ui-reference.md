@@ -56,12 +56,12 @@ registers it on the FastAPI router.
 | `/tests/finished` | GET, POST | `tests_finished` | `tests_finished.html.j2` | HX: `tests_finished_content_fragment` |
 | `/tests/user/{username}` | GET, POST | `tests_user` | `tests_user.html.j2` | HX: `tests_user_content_fragment` |
 | `/actions` | GET, POST | `actions` | `actions.html.j2` | HX: `actions_content_fragment` |
-| `/contributors` | GET, POST | `contributors` | `contributors.html.j2` | HX: `contributors_rows_fragment`; paginated (100/page) |
-| `/contributors/monthly` | GET, POST | `contributors_monthly` | `contributors.html.j2` | HX: `contributors_rows_fragment`; paginated (100/page) |
+| `/contributors` | GET, POST | `contributors` | `contributors.html.j2` | HX: `contributors_content_fragment`; paginated (100/page) |
+| `/contributors/monthly` | GET, POST | `contributors_monthly` | `contributors.html.j2` | HX: `contributors_content_fragment`; paginated (100/page) |
 | `/user/{username}` | GET, POST | `user` | `user.html.j2` | |
 | `/user` | GET, POST | `user` | `user.html.j2` | |
-| `/user_management` | GET, POST | `user_management` | `user_management.html.j2` | HX: `user_management_rows_fragment` |
-| `/workers/{worker_name}` | GET, POST | `workers` | `workers.html.j2` | CSRF; HX: `workers_rows_fragment` |
+| `/user_management` | GET, POST | `user_management` | `user_management.html.j2` | HX: `user_management_content_fragment` |
+| `/workers/{worker_name}` | GET, POST | `workers` | `workers.html.j2` | CSRF; HX: `workers_content_fragment` |
 | `/upload` | GET, POST | `upload` | `nn_upload.html.j2` | CSRF |
 | `/nns` | GET, POST | `nns` | `nns.html.j2` | HX: `nns_content_fragment` |
 | `/sprt_calc` | GET, POST | `sprt_calc` | `sprt_calc.html.j2` | |
@@ -273,6 +273,59 @@ Behavior notes:
   - active `q` and/or `my_workers`: `Workers - <total> (<filtered>) machines`
 - Machines table markup sets `data-server-sort="true"` so the legacy global
    client-side sorter does not override server-authoritative column sort state.
+
+## User management (`/user_management`) query parameters
+
+The user-management page supports URL-driven server-authoritative table state.
+
+| Parameter | Values | Default |
+|-----|-----|-----|
+| `group` | `all`, `pending`, `blocked`, `idle`, `approvers` | `pending` |
+| `sort` | `username`, `registration`, `groups`, `email` | `registration` |
+| `order` | `asc`, `desc` | column default |
+| `page` | integer `>= 1` | `1` |
+| `q` | free-text filter matched against username column | empty |
+| `view` | `paged`, `all` | `paged` |
+
+Behavior notes:
+
+- Sorting is server-authoritative and stable with username tie-breaks.
+- Pagination uses page size `25` in paged view.
+- `view=all` returns all matching rows up to a hard cap (`5000`) and hides
+   pagination controls.
+- `q` performs case-insensitive substring matching on username only.
+- HTMX requests target `#user-management-content` and keep URL state via
+   `hx-push-url="true"`.
+- Table markup sets `data-server-sort="true"` to avoid legacy client-side sort
+   interference.
+
+## Workers management (`/workers/show`) query parameters
+
+The blocked-workers table supports URL-driven server-authoritative state.
+
+| Parameter | Values | Default |
+|-----|-----|-----|
+| `filter` | `all-workers`, `le-5days`, `gt-5days` | `le-5days` |
+| `sort` | `worker`, `last_changed`, `events`, `email` | `last_changed` |
+| `order` | `asc`, `desc` | column default |
+| `page` | integer `>= 1` | `1` |
+| `q` | free-text filter matched against worker column | empty |
+| `view` | `paged`, `all` | `paged` |
+
+Behavior notes:
+
+- `filter` keeps the server-side time-window behavior from H6.
+- Sorting is server-authoritative and stable with worker-name tie-breaks.
+- Pagination uses page size `25` in paged view.
+- `view=all` returns all matching rows up to a hard cap (`5000`) and hides
+   pagination controls.
+- `q` performs case-insensitive substring matching on worker name only.
+- Non-approver users cannot sort by `email`; unsupported values fall back to
+   default server sort.
+- HTMX requests target `#workers-content` and keep URL state via
+   `hx-push-url="true"`.
+- Table markup sets `data-server-sort="true"` to avoid legacy client-side sort
+   interference.
 
 ## Contributors query parameters
 
