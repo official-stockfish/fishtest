@@ -87,6 +87,8 @@
 <form
   class="row g-3 mb-3"
   id="search_contributors_form"
+  data-findme-cookie-name="contributors_findme"
+  data-findme-cookie-max-age="{{ cookies.contributors_findme_max_age }}"
   action="{{ request.url.path }}"
   hx-get="{{ request.url.path }}"
   hx-target="#contributors-content"
@@ -134,102 +136,6 @@
   {% include "contributors_content_fragment.html.j2" %}
 </div>
 
-<script>
-  (() => {
-    const FINDME_COOKIE = "contributors_findme";
-    const form = document.getElementById("search_contributors_form");
-    const findme = document.getElementById("findme_contributors");
-    const search = document.getElementById("search_contributors");
-
-    const setCookie = (name, value) => {
-      const maxAge = 60 * 60 * 24 * 365 * 10;
-      // Keep values consistent across contributors routes.
-      document.cookie = `${name}=${value}; path=/; max-age=${maxAge}; SameSite=Lax`;
-      document.cookie = `${name}=${value}; path=/contributors; max-age=${maxAge}; SameSite=Lax`;
-    };
-
-    const getCookie = (name) => {
-      const key = `${name}=`;
-      const matches = document.cookie
-        .split(";")
-        .map((part) => part.trim())
-        .filter((part) => part.startsWith(key));
-      // If legacy duplicates exist, prefer the last cookie value.
-      const match = matches.length ? matches[matches.length - 1] : "";
-      return match ? match.slice(key.length) : "";
-    };
-
-    if (findme && search) {
-      const params = new URLSearchParams(window.location.search);
-      const findmeFromUrl = params.get("findme") === "1";
-      const remembered = getCookie(FINDME_COOKIE);
-      if (remembered === "false") {
-        // Explicit user opt-out must win over stale URL params.
-        findme.checked = false;
-      } else if (findmeFromUrl) {
-        findme.checked = true;
-        setCookie(FINDME_COOKIE, "true");
-        search.value = "";
-      } else if (remembered === "true") {
-        findme.checked = true;
-        // Jump mode and search mode are mutually exclusive.
-        search.value = "";
-      }
-
-      findme.addEventListener("change", () => {
-        if (findme.checked) {
-          search.value = "";
-        }
-        setCookie(FINDME_COOKIE, findme.checked ? "true" : "false");
-      });
-
-      const clearFindmeOnSearchInput = () => {
-        if (!search.value.trim()) {
-          return;
-        }
-        if (findme.checked) {
-          findme.checked = false;
-        }
-        setCookie(FINDME_COOKIE, "false");
-      };
-
-      search.addEventListener("input", clearFindmeOnSearchInput);
-      search.addEventListener("search", clearFindmeOnSearchInput);
-
-      const highlightedRow = document.getElementById("me");
-      const hasRenderedHighlight =
-        highlightedRow && !highlightedRow.classList.contains("d-none");
-      if (findme.checked && !hasRenderedHighlight) {
-        // Submit through the form to guarantee jump on plain reloads.
-        if (form && typeof form.requestSubmit === "function") {
-          requestAnimationFrame(() => form.requestSubmit());
-        } else if (window.htmx) {
-          htmx.trigger(findme, "change");
-        }
-      }
-    }
-
-    const center = () => {
-      const target = document.getElementById("me");
-      if (target && !target.classList.contains("d-none")) {
-        target.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
-      }
-    };
-
-    requestAnimationFrame(center);
-    window.addEventListener("load", center, { once: true });
-    window.addEventListener("hashchange", center);
-    window.addEventListener("pageshow", (event) => {
-      if (event.persisted) {
-        center();
-      }
-    });
-    document.body.addEventListener("htmx:afterSwap", (event) => {
-      if (event.target && event.target.id === "contributors-content") {
-        requestAnimationFrame(center);
-      }
-    });
-  })();
-</script>
+<script src="{{ static_url('fishtest:static/js/contributors.js') }}"></script>
 
 {% endblock %}

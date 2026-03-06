@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING, Protocol, cast
 from starlette.requests import Request
 
 from fishtest.http.cookie_session import (
-    REMEMBER_MAX_AGE_SECONDS,
     CookieSession,
     authenticated_user,
     is_https,
@@ -28,6 +27,7 @@ from fishtest.http.dependencies import (
     get_userdb,
 )
 from fishtest.http.jinja import static_url
+from fishtest.http.settings import SESSION_REMEMBER_MAX_AGE_SECONDS
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -151,7 +151,7 @@ def commit_session_flags(
         max_age = (
             flags.remember_max_age
             if flags.remember_max_age is not None
-            else REMEMBER_MAX_AGE_SECONDS
+            else SESSION_REMEMBER_MAX_AGE_SECONDS
         )
         mark_session_max_age(request, max_age)
         request.scope["session_secure"] = is_https(request)

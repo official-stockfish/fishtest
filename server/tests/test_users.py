@@ -9,8 +9,10 @@ from urllib.parse import urlencode
 import test_support
 from vtjson import ValidationError
 
-from fishtest.http.cookie_session import REMEMBER_MAX_AGE_SECONDS
-from fishtest.http.settings import HTMX_INPUT_CHANGED_DELAY_MS
+from fishtest.http.settings import (
+    HTMX_INPUT_CHANGED_DELAY_MS,
+    SESSION_REMEMBER_MAX_AGE_SECONDS,
+)
 from fishtest.run_cache import Prio
 from fishtest.util import PASSWORD_MAX_LENGTH
 from fishtest.views import _MACHINES_PAGE_SIZE
@@ -266,7 +268,7 @@ class TestHttpUsers(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         cookie = response.headers.get("set-cookie", "")
         self.assertIn("fishtest_session=", cookie)
-        self.assertIn(f"Max-Age={REMEMBER_MAX_AGE_SECONDS}", cookie)
+        self.assertIn(f"Max-Age={SESSION_REMEMBER_MAX_AGE_SECONDS}", cookie)
 
     def test_login_duplicate_remember_fields_keep_persistent_cookie(self):
         response = self.client.get("/login")
@@ -290,7 +292,7 @@ class TestHttpUsers(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         cookie = response.headers.get("set-cookie", "")
         self.assertIn("fishtest_session=", cookie)
-        self.assertIn(f"Max-Age={REMEMBER_MAX_AGE_SECONDS}", cookie)
+        self.assertIn(f"Max-Age={SESSION_REMEMBER_MAX_AGE_SECONDS}", cookie)
 
     def test_login_explicit_non_remember_sets_session_cookie(self):
         response = self.client.get("/login")
@@ -810,6 +812,8 @@ class TestHttpUsers(unittest.TestCase):
         self.assertIn('id="machines_page" name="page" value="1"', homepage.text)
         self.assertIn('id="machines_my_workers"', homepage.text)
         self.assertIn("checked", homepage.text)
+        self.assertIn('data-toggle-cookie-max-age="', homepage.text)
+        self.assertIn("static/js/tests_homepage.js", homepage.text)
 
     def test_contributors_rank_is_global_on_page_two(self):
         docs = [
@@ -1028,25 +1032,10 @@ class TestHttpUsers(unittest.TestCase):
         self.assertNotIn("Typing filters current page instantly", response.text)
         self.assertNotIn("Jump to my rank</a>", response.text)
         self.assertIn('type="search"', response.text)
-        self.assertIn('const FINDME_COOKIE = "contributors_findme"', response.text)
-        self.assertIn("if (findme.checked) {", response.text)
-        self.assertIn('search.value = "";', response.text)
-        self.assertIn(
-            'search.addEventListener("input", clearFindmeOnSearchInput);', response.text
-        )
-        self.assertIn(
-            'const findmeFromUrl = params.get("findme") === "1";', response.text
-        )
-        self.assertIn('if (remembered === "false") {', response.text)
-        self.assertIn('setCookie(FINDME_COOKIE, "true");', response.text)
-        self.assertIn(
-            'const highlightedRow = document.getElementById("me");', response.text
-        )
-        self.assertIn("const hasRenderedHighlight =", response.text)
-        self.assertIn('form && typeof form.requestSubmit === "function"', response.text)
-        self.assertIn(
-            "requestAnimationFrame(() => form.requestSubmit());", response.text
-        )
+        self.assertIn('data-findme-cookie-name="contributors_findme"', response.text)
+        self.assertIn('data-findme-cookie-max-age="', response.text)
+        self.assertIn("static/js/contributors.js", response.text)
+        self.assertNotIn('const FINDME_COOKIE = "contributors_findme"', response.text)
 
     def test_contributors_view_all_hides_pagination(self):
         docs = [

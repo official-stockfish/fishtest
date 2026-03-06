@@ -21,9 +21,9 @@ from starlette.requests import HTTPConnection
 
 from fishtest.http.cookie_session import (
     DEFAULT_SAMESITE,
-    MAX_COOKIE_BYTES,
     SESSION_COOKIE_NAME,
 )
+from fishtest.http.settings import SESSION_MAX_COOKIE_BYTES
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -228,7 +228,7 @@ def _delete_cookie_header(
 
 
 def _cookie_size_ok(value: str) -> bool:
-    return len(value.encode("utf-8")) <= MAX_COOKIE_BYTES
+    return len(value.encode("utf-8")) <= SESSION_MAX_COOKIE_BYTES
 
 
 def _encode_cookie_value(

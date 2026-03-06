@@ -22,74 +22,9 @@
     </div>
   </div>
 
-  <script>
-  (async () => {
-    await DOMContentLoaded();
-    const btn = document.getElementById("machines-button");
-    const target = document.getElementById("machines");
-    const filtersForm = document.getElementById("machines-filters");
-
-    const resetMachinesPage = () => {
-      const pageInput = document.getElementById("machines_page");
-      if (pageInput) {
-        pageInput.value = "1";
-      }
-    };
-
-    filtersForm?.addEventListener("input", (e) => {
-      if (e.target?.id === "machines_q") {
-        resetMachinesPage();
-      }
-    });
-
-    filtersForm?.addEventListener("change", (e) => {
-      if (e.target?.id === "machines_my_workers") {
-        resetMachinesPage();
-      }
-    });
-
-    btn?.addEventListener("click", () => {
-      const active = btn.textContent.trim() === "Hide";
-      btn.textContent = active ? "Show" : "Hide";
-      document.cookie =
-        "machines_state=" + btn.textContent.trim() +
-        "; path=/; max-age={{ 60 * 60 }}; SameSite=Lax";
-
-      if (!active && target && target.dataset.machinesLoaded !== "1") {
-        target.dataset.machinesLoaded = "loading";
-        htmx.trigger(target, "machines:load");
-      }
-    });
-
-    target?.addEventListener("htmx:beforeRequest", () => {
-      if (target.dataset.machinesLoaded !== "1") {
-        target.dataset.machinesLoaded = "loading";
-      }
-    });
-
-    target?.addEventListener("htmx:afterSwap", (e) => {
-      target.dataset.machinesLoaded = "1";
-    });
-
-    const showMachinesError = (e) => {
-      // Keep the last successful table visible when polling fails.
-      // If no successful load has happened yet, allow a future retry.
-      if (target.dataset.machinesLoaded !== "1") {
-        target.dataset.machinesLoaded = "0";
-      }
-    };
-
-    target?.addEventListener("htmx:responseError", (e) => {
-      showMachinesError(e);
-    });
-    target?.addEventListener("htmx:sendError", (e) => {
-      showMachinesError(e);
-    });
-  })();
-  </script>
-
   <h4>
     <a id="machines-button" class="btn btn-sm btn-light border"
+      data-toggle-cookie-max-age="{{ cookies.panel_toggle_max_age }}"
       data-bs-toggle="collapse" href="#machines-panel" role="button" aria-expanded="{{ 'true' if machines_shown else 'false' }}"
       aria-controls="machines-panel">
       {{ 'Hide' if machines_shown else 'Show' }}
@@ -145,12 +80,9 @@
       <div class="col-auto" id="machines-pagination" aria-live="polite"></div>
     </form>
   {% set height = (machines_count * 37) | string ~ "px" %}
-  {% set min_height = "37px" %}
-  {% set max_height = "34.7vh" %}
     <section id="machines"
       data-machines-loaded="0"
-      class="overflow-auto"
-      style="max-height: 41vh;"
+      class="overflow-auto machines-panel-scroll"
       hx-get="/tests/machines"
       hx-include="#machines-filters"
       hx-sync="#machines-filters:abort"
@@ -160,12 +92,13 @@
       <div id="machines-loading" class="skeleton-wrap">
         <div class="skeleton-line"></div>
         <div
-          class="skeleton-block"
-          style="height: clamp({{ min_height }}, {{ height }}, {{ max_height }});">
+          class="skeleton-block machines-skeleton-block"
+          style="--machines-skeleton-height: {{ height }};">
           </div>
       </div>
     </section>
   </section>
+  <script src="{{ static_url('fishtest:static/js/tests_homepage.js') }}"></script>
 {% endif %}
 
 {% if run_tables_ctx is defined %}
