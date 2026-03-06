@@ -94,7 +94,7 @@
           <label for="password" class="d-flex align-items-end">Password</label>
         </div>
         <span class="input-group-text toggle-password-visibility" role="button">
-          <i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i>
+          <i class="fa-solid fa-lg fa-eye pe-none icon-fixed-width"></i>
         </span>
       </div>
 
@@ -112,7 +112,7 @@
           <label for="password" class="d-flex align-items-end">New Password</label>
         </div>
         <span class="input-group-text toggle-password-visibility" role="button">
-          <i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i>
+          <i class="fa-solid fa-lg fa-eye pe-none icon-fixed-width"></i>
         </span>
       </div>
 
@@ -128,7 +128,7 @@
           <label for="password2" class="d-flex align-items-end">Repeat Password</label>
         </div>
         <span class="input-group-text toggle-password-visibility" role="button">
-          <i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i>
+          <i class="fa-solid fa-lg fa-eye pe-none icon-fixed-width"></i>
         </span>
       </div>
 
@@ -144,7 +144,7 @@
           <label for="tests_repo" class="d-flex align-items-end">Tests Repository</label>
         </div>
         <span class="input-group-text" role="button" data-bs-toggle="modal" data-bs-target="#tests_repo_info_modal">
-          <i class="fas fa-question-circle fa-lg pe-none" style="width: 30px"></i>
+          <i class="fas fa-question-circle fa-lg pe-none icon-fixed-width"></i>
         </span>
       </div>
 
@@ -171,7 +171,7 @@
         <label for="github_token" class="d-flex align-items-end">GitHub personal access token</label>
         </div>
         <span class="input-group-text" role="button" data-bs-toggle="modal" data-bs-target="#github_token_info_modal">
-          <i class="fas fa-question-circle fa-lg pe-none" style="width: 30px"></i>
+          <i class="fas fa-question-circle fa-lg pe-none icon-fixed-width"></i>
         </span>
       </div>
 
@@ -221,9 +221,8 @@
           <button
             id="reject_user"
             type="button"
-            class="btn btn-danger"
+            class="btn btn-danger approval-action-button"
             data-bs-toggle="modal" data-bs-target="#reject_modal"
-            style="width: 48%;"
           >Reject</button>
 
           <button
@@ -231,8 +230,7 @@
             name="pending"
             value="0"
             type="submit"
-            class="btn btn-success"
-            style="width: 48%;"
+            class="btn btn-success approval-action-button"
           >Accept</button>
 
           <div id="reject_modal" class="modal fade" tabindex="-1" aria-labelledby="reject_modal" aria-hidden="true">

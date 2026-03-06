@@ -1,4 +1,5 @@
 .flag {
+  display: inline-block;
   width: 16px;
   height: 11px;
   background: url(../img/flags.webp) no-repeat;
