@@ -1,0 +1,154 @@
+{% set action_filter = action_param if action_param is defined else (filters.action if filters is defined and filters.action is defined else "") %}
+{% set username_filter = username_query if username_query is defined else (filters.username if filters is defined and filters.username is defined else "") %}
+{% set text_filter = text_param if text_param is defined else (filters.text if filters is defined and filters.text is defined else "") %}
+{% set run_id_filter = run_id_filter if run_id_filter is defined else (filters.run_id if filters is defined and filters.run_id is defined else "") %}
+{% set max_actions = max_actions if max_actions is defined else none %}
+{% set sort = sort if sort is defined else "time" %}
+{% set order = order if order is defined else "desc" %}
+<div id="actions-page">
+  <h2>Events Log</h2>
+
+  <form
+    id="actions-filters"
+    class="row g-3 mb-3 align-items-end"
+    method="get"
+    action="/actions"
+    role="search"
+    hx-get="/actions"
+    hx-target="#actions-content"
+    hx-push-url="true"
+    hx-swap="innerHTML"
+    hx-trigger="submit, input changed delay:{{ htmx.input_changed_delay_ms }}ms from:#actions_user, search from:#actions_user, input changed delay:{{ htmx.input_changed_delay_ms }}ms from:#actions_text, search from:#actions_text, change from:#actions_action"
+  >
+    {% if run_id_filter %}
+      <input type="hidden" name="run_id" value="{{ run_id_filter }}">
+    {% endif %}
+    {% if max_actions is not none %}
+      <input type="hidden" name="max_actions" value="{{ max_actions }}">
+    {% endif %}
+    <input type="hidden" name="sort" value="{{ sort }}">
+    <input type="hidden" name="order" value="{{ order }}">
+
+    <div class="col-12 col-md-auto">
+      <label for="actions_action" class="form-label">Show only</label>
+      <select id="actions_action" class="form-select" name="action">
+        <option value="" {{ 'selected' if action_filter == '' else '' }}>All</option>
+        <option value="new_run" {{ 'selected' if action_filter == 'new_run' else '' }}>New Run</option>
+        <option value="approve_run" {{ 'selected' if action_filter == 'approve_run' else '' }}>Approve Run</option>
+        <option value="modify_run" {{ 'selected' if action_filter == 'modify_run' else '' }}>Modify Run</option>
+        <option value="stop_run" {{ 'selected' if action_filter == 'stop_run' else '' }}>Stop Run</option>
+        <option value="delete_run" {{ 'selected' if action_filter == 'delete_run' else '' }}>Delete Run</option>
+        <option value="purge_run" {{ 'selected' if action_filter == 'purge_run' else '' }}>Purge Run</option>
+        <option value="finished_run" {{ 'selected' if action_filter == 'finished_run' else '' }}>Finished Runs</option>
+        <option value="block_user" {{ 'selected' if action_filter == 'block_user' else '' }}>Block/Unblock User</option>
+        <option value="block_worker" {{ 'selected' if action_filter == 'block_worker' else '' }}>Block/Unblock Worker</option>
+        <option value="accept_user" {{ 'selected' if action_filter == 'accept_user' else '' }}>Accept User</option>
+        <option value="upload_nn" {{ 'selected' if action_filter == 'upload_nn' else '' }}>Upload NN file</option>
+        <option value="failed_task" {{ 'selected' if action_filter == 'failed_task' else '' }}>Failed Tasks</option>
+        <option value="crash_or_time" {{ 'selected' if action_filter == 'crash_or_time' else '' }}>Crashes or Time losses</option>
+        <option value="log_message" {{ 'selected' if action_filter == 'log_message' else '' }}>Log Messages</option>
+        <option value="dead_task" class="grayedoutoption" {{ 'selected' if action_filter == 'dead_task' else '' }}>Dead Tasks</option>
+        <option value="system_event" class="grayedoutoption" {{ 'selected' if action_filter == 'system_event' else '' }}>System Events</option>
+      </select>
+    </div>
+
+    <div class="col-12 col-md-auto actions-user-filter">
+      <label for="actions_user" class="form-label">From user</label>
+      <div
+        class="position-relative"
+        hx-on:focusout="if (!this.contains(event.relatedTarget)) { this.querySelector('#actions-user-suggestions').innerHTML = ''; this.querySelector('#actions_user').setAttribute('aria-expanded', 'false'); }"
+      >
+        <input
+          id="actions_user"
+          class="form-control"
+          autocomplete="off"
+          autocapitalize="off"
+          autocorrect="off"
+          placeholder="Search by username"
+          spellcheck="false"
+          type="search"
+          name="user"
+          value="{{ username_filter }}"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-controls="actions-user-suggestions"
+          aria-expanded="{{ 'true' if username_suggestions else 'false' }}"
+          hx-get="/actions/usernames"
+          hx-target="#actions-user-suggestions"
+          hx-swap="innerHTML"
+          hx-include="#actions_action, #actions_text, #actions-filters input[type='hidden']"
+          hx-trigger="focus, input changed delay:{{ htmx.input_changed_delay_ms }}ms, search"
+          hx-on:focus="this.setAttribute('aria-expanded', 'true')"
+          hx-on:keydown="if (event.key === 'ArrowDown') { const list = this.parentElement.querySelector('.actions-user-suggestions-list'); if (list) { const firstIndex = list.options.length > 0 && list.options[0].disabled ? 1 : 0; if (list.options.length > firstIndex) { event.preventDefault(); list.selectedIndex = firstIndex; list.focus(); } } }"
+        >
+        <div
+          id="actions-user-suggestions"
+          class="actions-user-suggestions"
+          aria-live="polite"
+        >
+          {% include "actions_username_suggestions_fragment.html.j2" %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-md-auto">
+      <label for="actions_text" class="form-label">Free text search</label>
+      <i
+        class="fa-solid fa-circle-info"
+        role="button"
+        data-bs-toggle="modal"
+        data-bs-target="#autoselect-modal"
+      ></i>
+      <div
+        class="modal fade"
+        id="autoselect-modal"
+        tabindex="-1"
+        aria-hidden="true"
+      >
+        <div class="modal-dialog modal-dialog-scrollable">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">Free text search information</h5>
+              <button
+                type="button"
+                class="btn-close"
+                data-bs-dismiss="modal"
+                aria-label="Close"
+              ></button>
+            </div>
+            <div class="modal-body text-break">
+              This will perform a case insensitive text search on the fields event
+              name, user name, worker name, target user, network name, branch name
+              and comment. One can only search for a list of full words, i.e.
+              strings bounded by delimiters. For example the worker name
+              <i>fishtestfan-128cores-abcdefgh-uvwx</i> matches <i>abcdefgh</i> but
+              not <i>abcde</i>. To force a word or a combination of words to be
+              included in the result, use quotes like in <i>&quot;dog cat&quot;</i>.
+              To exclude a word, precede it with a minus sign like in
+              <i>dog &minus;cat</i>. For more information see
+              <a
+                href="https://www.mongodb.com/docs/manual/reference/operator/query/text/#mongodb-query-op.-text"
+              >
+                https://www.mongodb.com/docs/manual/reference/operator/query/text/#mongodb-query-op.-text
+              </a>.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <input
+        id="actions_text"
+        class="form-control"
+        placeholder="Enter some text"
+        type="search"
+        name="text"
+        value="{{ text_filter }}"
+      >
+    </div>
+
+  </form>
+
+  <div id="actions-content">
+    {% include "actions_content_fragment.html.j2" %}
+  </div>
+</div>

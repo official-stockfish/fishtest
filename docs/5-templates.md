@@ -162,6 +162,8 @@ base layout and contain only the HTML subset needed for the swap target.
 | Template | Swap target | OOB | Polled |
 |----------|------------|-----|--------|
 | `actions_content_fragment.html.j2` | `#actions-content` | -- | -- |
+| `actions_page_fragment.html.j2` | `#actions-page` | -- | -- |
+| `actions_username_suggestions_fragment.html.j2` | `#actions-user-suggestions` | -- | -- |
 | `contributors_content_fragment.html.j2` | `#contributors-content` | -- | -- |
 | `contributors_rows_fragment.html.j2` | included by `contributors_content_fragment.html.j2` | -- | -- |
 | `elo_batch_fragment.html.j2` | none (OOB only) | Yes | Yes |
@@ -200,8 +202,17 @@ Uses shared base context only. All other templates extend this.
 | Key | Type | Description |
 |-----|------|-------------|
 | `actions` | list of dicts | Action rows (see below) |
+| `num_actions` | int | Total matching action count |
+| `page_size` | int | Page size used for the current result set |
+| `current_page` | int | 1-based page index rendered in the summary |
+| `run_id_filter` | string | Active run filter, if the page is scoped to one run |
+| `max_actions` | int or None | Effective server-side action cap carried through GET forms |
+| `sort` | string | Active sort field (`time`, `event`, `source`, `target`, `comment`) |
+| `order` | string | Active sort direction (`asc` or `desc`) |
+| `sort_summary` | string | Optional summary line describing capped full-result sorting scope |
 | `filters` | dict | `{action, username, text, run_id}` |
-| `usernames` | list of strings | For the search datalist |
+| `username_query` | string | Current username text shown in the search field |
+| `username_suggestions` | list of dicts | Current server-rendered username suggestions for the HTMX popup; blank-query focus may populate the full user list |
 | `pages` | list | Pagination items |
 
 Each action row:
@@ -503,7 +514,34 @@ Fragment templates receive the shared base context (via
 
 ### `actions_content_fragment.html.j2`
 
-Same context as `actions.html.j2` (`actions`, `filters`, `usernames`, `pages`).
+Same context as `actions.html.j2` (`actions`, `num_actions`, `page_size`,
+`current_page`, `run_id_filter`, `max_actions`, `sort`, `order`,
+`sort_summary`, `filters`, `pages`).
+
+### `actions_page_fragment.html.j2`
+
+Same context as `actions.html.j2`. This fragment owns the filter form,
+the `#actions-content` include, and the `#actions-user-suggestions`
+container used when a username suggestion selection re-renders `#actions-page`.
+
+### `actions_username_suggestions_fragment.html.j2`
+
+| Key | Type |
+|-----|------|
+| `username_query` | string |
+| `username_suggestions` | list of dicts with `username` |
+
+This fragment is for HTMX swaps only. Non-HTMX requests to
+`/actions/usernames` redirect to the canonical `/actions` page.
+It renders a native `select.form-select` listbox with up to 5 visible rows.
+The listbox is removed from the normal Tab order, accepts focus from the owning
+username input on `ArrowDown`, closes when focus leaves the search widget, and
+issues `GET /actions` only when the user clicks a suggestion or presses
+`Enter` on the highlighted row. This keeps selection server-side while the
+highlight/scrollbar behavior stays aligned with the repository's other select
+controls. The owning username `<input type="search">` sets
+`spellcheck="false"`, `autocorrect="off"`, and `autocapitalize="off"`
+because it accepts usernames rather than prose.
 
 ### `contributors_content_fragment.html.j2`
 

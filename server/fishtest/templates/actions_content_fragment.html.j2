@@ -1,19 +1,59 @@
 {% set pagination_hx_target = "actions-content" %}
 {% set pagination_hx_push_url = true %}
+{% set sort = sort if sort is defined else "time" %}
+{% set order = order if order is defined else "desc" %}
+{% set sort_summary = sort_summary if sort_summary is defined else "" %}
+
+{% macro sort_header(field, label) -%}
+  {% set is_active = (sort == field) %}
+  {% set next_order = "desc" if (is_active and order == "asc") else "asc" %}
+  {% set sort_url -%}
+    {{ request.url.path }}?sort={{ field }}&order={{ next_order }}{% if filters.action %}&action={{ filters.action | urlencode }}{% endif %}{% if filters.username %}&user={{ filters.username | urlencode }}{% endif %}{% if filters.text %}&text={{ filters.text | urlencode }}{% endif %}{% if run_id_filter %}&run_id={{ run_id_filter | urlencode }}{% endif %}{% if max_actions is not none %}&max_actions={{ max_actions }}{% endif %}
+  {%- endset %}
+  <th scope="col"{% if is_active %} aria-sort="{{ 'ascending' if order == 'asc' else 'descending' }}"{% endif %}>
+    <a
+      class="sort-header text-decoration-none text-reset d-inline-flex align-items-center gap-1"
+      href="{{ sort_url | trim }}"
+      hx-get="{{ sort_url | trim }}"
+      hx-target="#actions-content"
+      hx-push-url="true"
+      hx-swap="innerHTML"
+    >
+      <span>{{ label }}</span>
+      <span class="sort-indicator" aria-hidden="true">{% if is_active and order == "asc" %}▲{% elif is_active and order == "desc" %}▼{% else %}↕{% endif %}</span>
+    </a>
+  </th>
+{%- endmacro %}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+  <p class="mb-0 small text-muted">
+    Showing page {{ current_page }} of {{ ((num_actions - 1) // page_size + 1) if num_actions else 1 }}.
+    {{ num_actions }} matching action{{ '' if num_actions == 1 else 's' }}.
+    {% if run_id_filter %}
+      Run filter: <a href="/tests/view/{{ run_id_filter }}">{{ run_id_filter }}</a>.
+    {% endif %}
+    {% if sort_summary %}
+      {{ sort_summary }}
+    {% endif %}
+  </p>
+</div>
 
 {% with pages=pages %}
   {% include "pagination.html.j2" %}
 {% endwith %}
 
 <div class="table-responsive-lg">
-  <table class="table table-striped table-sm">
+  <table id="actions_table" class="table table-striped table-sm">
+    <caption class="visually-hidden">
+      Events log results{% if run_id_filter %} for run {{ run_id_filter }}{% endif %}
+    </caption>
     <thead class="sticky-top">
       <tr>
-        <th>Time</th>
-        <th>Event</th>
-        <th>Source</th>
-        <th>Target</th>
-        <th>Comment</th>
+        {{ sort_header("time", "Time") }}
+        {{ sort_header("event", "Event") }}
+        {{ sort_header("source", "Source") }}
+        {{ sort_header("target", "Target") }}
+        {{ sort_header("comment", "Comment") }}
       </tr>
     </thead>
     <tbody>
@@ -45,7 +85,7 @@
         </tr>
       {% else %}
         <tr>
-          <td colspan=20>No actions available</td>
+          <td colspan="5">No actions available</td>
         </tr>
       {% endfor %}
     </tbody>

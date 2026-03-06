@@ -1276,9 +1276,228 @@ quotation_marks = (
 quotation_marks = "".join(chr(c) for c in quotation_marks)
 quotation_marks_translation = str.maketrans(quotation_marks, len(quotation_marks) * '"')
 
+_ACTIONS_DEFAULT_MAX_ACTIONS_AUTH = 50000
+_ACTIONS_HARD_MAX_ACTIONS_ANON = 5000
+_ACTIONS_SORT_DEFAULT = "time"
+_ACTIONS_SORT_ORDER_DEFAULT = "desc"
+_ACTIONS_SORT_SCOPE_MAX_AUTH = _ACTIONS_DEFAULT_MAX_ACTIONS_AUTH
+_ACTIONS_SORT_SCOPE_MAX_ANON = _ACTIONS_HARD_MAX_ACTIONS_ANON
+_ACTIONS_SORT_LABELS = {
+    "time": "Time",
+    "event": "Event",
+    "source": "Source",
+    "target": "Target",
+    "comment": "Comment",
+}
+
 
 def sanitize_quotation_marks(text):
     return text.translate(quotation_marks_translation)
+
+
+def _positive_int_param(raw_value):
+    if raw_value in (None, ""):
+        return None
+    try:
+        value = int(raw_value)
+    except TypeError, ValueError:
+        return None
+    return value if value > 0 else None
+
+
+def _float_param(raw_value):
+    if raw_value in (None, ""):
+        return None
+    try:
+        return float(raw_value)
+    except TypeError, ValueError:
+        return None
+
+
+def _effective_actions_max_actions(
+    *,
+    is_authenticated,
+    requested_max_actions,
+    has_explicit_filters,
+):
+    if not is_authenticated:
+        if requested_max_actions is None:
+            return _ACTIONS_HARD_MAX_ACTIONS_ANON
+        return min(requested_max_actions, _ACTIONS_HARD_MAX_ACTIONS_ANON)
+
+    if requested_max_actions is not None:
+        return requested_max_actions
+    if not has_explicit_filters:
+        return _ACTIONS_DEFAULT_MAX_ACTIONS_AUTH
+    return None
+
+
+def _effective_actions_sort_state(params):
+    sort_param = (params.get("sort") or _ACTIONS_SORT_DEFAULT).strip().lower()
+    if sort_param not in _ACTIONS_SORT_LABELS:
+        sort_param = _ACTIONS_SORT_DEFAULT
+
+    order_param = (params.get("order") or "").strip().lower()
+    if order_param not in {"asc", "desc"}:
+        order_param = (
+            _ACTIONS_SORT_ORDER_DEFAULT
+            if sort_param == _ACTIONS_SORT_DEFAULT
+            else "asc"
+        )
+
+    return sort_param, order_param
+
+
+def _actions_sort_scope_max_actions(*, is_authenticated, max_actions):
+    scope_cap = (
+        _ACTIONS_SORT_SCOPE_MAX_AUTH
+        if is_authenticated
+        else _ACTIONS_SORT_SCOPE_MAX_ANON
+    )
+    if max_actions is None:
+        return scope_cap
+    return min(max_actions, scope_cap)
+
+
+def _build_actions_time_url(
+    *, search_action, username, text, before, run_id, sort_param, order_param
+):
+    time_query = {
+        "max_actions": "1",
+        "action": search_action,
+        "user": username,
+        "text": text,
+        "before": before or "",
+        "run_id": run_id,
+        "sort": sort_param,
+        "order": order_param,
+    }
+    return "/actions?" + urlencode(time_query)
+
+
+def _build_action_row(
+    action,
+    request,
+    *,
+    search_action,
+    username,
+    text,
+    run_id,
+    sort_param,
+    order_param,
+):
+    action = dict(action)
+    action.setdefault("action", "")
+    action.setdefault("username", "")
+
+    time_value = action.get("time")
+    if time_value is None:
+        time_label = ""
+    else:
+        time_label = datetime.fromtimestamp(float(time_value), UTC).strftime(
+            "%y-%m-%d %H:%M:%S"
+        )
+        time_label = time_label.replace("-", "\u2011", 2)
+
+    agent_name = ""
+    agent_url = ""
+    if "worker" in action and action.get("action") != "block_worker":
+        agent_name = action.get("worker", "")
+        agent_short = "-".join(agent_name.split("-")[0:3]) if agent_name else ""
+        agent_url = f"/workers/{agent_short}" if agent_short else ""
+    else:
+        agent_name = action.get("username", "")
+        agent_url = f"/user/{agent_name}" if agent_name else ""
+
+    if action.get("action") in ("system_event", "log_message"):
+        agent_url = ""
+        if "worker" in action:
+            agent_name = action.get("worker", agent_name)
+
+    target_name = ""
+    target_url = ""
+    if "nn" in action:
+        raw_name = action.get("nn", "")
+        target_name = raw_name.replace("-", "\u2011") if raw_name else ""
+        target_url = f"/api/nn/{raw_name}" if raw_name else ""
+    elif "run" in action and "run_id" in action:
+        target_name = action.get("run", "")
+        task_id = action.get("task_id")
+        task_suffix = f"/{task_id}" if task_id is not None else ""
+        target_name = f"{target_name}{task_suffix}" if target_name else ""
+        task_query = f"?show_task={task_id}" if task_id is not None else ""
+        target_url = f"/tests/view/{action.get('run_id')}{task_query}"
+    elif request.has_permission("approve_run") and "user" in action:
+        target_name = action.get("user", "")
+        target_url = f"/user/{target_name}" if target_name else ""
+    elif action.get("action") == "block_worker" and "worker" in action:
+        target_name = action.get("worker", "")
+        target_url = f"/workers/{target_name}" if target_name else ""
+    else:
+        target_name = action.get("user", "")
+
+    action.update(
+        {
+            "time_label": time_label,
+            "time_url": _build_actions_time_url(
+                search_action=search_action,
+                username=username,
+                text=text,
+                before=time_value,
+                run_id=run_id,
+                sort_param=sort_param,
+                order_param=order_param,
+            ),
+            "event": action.get("action", ""),
+            "agent_name": agent_name,
+            "agent_url": agent_url or None,
+            "target_name": target_name,
+            "target_url": target_url or None,
+            "message": action.get("message", ""),
+        }
+    )
+    return action
+
+
+def _action_row_sort_value(action_row, sort_param):
+    if sort_param == "time":
+        return float(action_row.get("time") or 0)
+    if sort_param == "event":
+        return str(action_row.get("event") or "").lower()
+    if sort_param == "source":
+        return str(action_row.get("agent_name") or "").lower()
+    if sort_param == "target":
+        return str(action_row.get("target_name") or "").lower()
+    if sort_param == "comment":
+        return str(action_row.get("message") or "").lower()
+    return float(action_row.get("time") or 0)
+
+
+def _sort_action_rows(action_rows, *, sort_param, order_param):
+    # Keep a deterministic recent-first tie-break so equal values do not jump
+    # between requests.
+    action_rows.sort(
+        key=lambda row: (float(row.get("time") or 0), str(row.get("_id") or "")),
+        reverse=True,
+    )
+    action_rows.sort(
+        key=lambda row: _action_row_sort_value(row, sort_param),
+        reverse=(order_param == "desc"),
+    )
+
+
+def _actions_sort_summary(*, sort_param, order_param, sorted_count, scope_cap):
+    if (
+        sort_param == _ACTIONS_SORT_DEFAULT
+        and order_param == _ACTIONS_SORT_ORDER_DEFAULT
+    ):
+        return ""
+
+    direction = "ascending" if order_param == "asc" else "descending"
+    label = _ACTIONS_SORT_LABELS[sort_param]
+    if sorted_count >= scope_cap:
+        return f"Sorted by {label} {direction} across the first {scope_cap} matching actions."
+    return f"Sorted by {label} {direction} across {sorted_count} matching actions."
 
 
 def _is_hx_request(request) -> bool:
@@ -1304,125 +1523,207 @@ def _render_hx_fragment(request, template_name, context):
     )
 
 
-# === Actions log ===
-def actions(request):
-    DEFAULT_MAX_ACTIONS_AUTH = 50000
-    HARD_MAX_ACTIONS_ANON = 5000
+def _hx_target_id(request) -> str:
+    headers = getattr(request, "headers", None)
+    if headers is None:
+        return ""
+    return headers.get("HX-Target", "")
 
+
+# === Actions log ===
+
+
+def _actions_query_suffix(
+    *,
+    username="",
+    search_action="",
+    text="",
+    sort_param=_ACTIONS_SORT_DEFAULT,
+    order_param=_ACTIONS_SORT_ORDER_DEFAULT,
+    max_actions=None,
+    before=None,
+    run_id="",
+    page=None,
+):
+    return _query_suffix(
+        [
+            ("user", username or None),
+            ("action", search_action or None),
+            ("text", text or None),
+            ("sort", sort_param if sort_param != _ACTIONS_SORT_DEFAULT else None),
+            (
+                "order",
+                order_param
+                if sort_param != _ACTIONS_SORT_DEFAULT
+                or order_param != _ACTIONS_SORT_ORDER_DEFAULT
+                else None,
+            ),
+            ("max_actions", max_actions if max_actions is not None else None),
+            ("before", before if before is not None else None),
+            ("run_id", run_id or None),
+            ("page", page if page not in (None, "", 1) else None),
+        ]
+    )
+
+
+def _matching_action_usernames(usernames, query):
+    normalized_query = query.strip().lower()
+    if not normalized_query:
+        return sorted(usernames, key=str.lower)
+
+    exact = []
+    prefix = []
+    contains = []
+    for username in usernames:
+        normalized_username = username.lower()
+        if normalized_username == normalized_query:
+            exact.append(username)
+        elif normalized_username.startswith(normalized_query):
+            prefix.append(username)
+        elif normalized_query in normalized_username:
+            contains.append(username)
+
+    return (
+        sorted(exact, key=str.lower)
+        + sorted(prefix, key=str.lower)
+        + sorted(contains, key=str.lower)
+    )
+
+
+def actions_usernames(request):
+    username_query = request.params.get("user", "").strip()
+    search_action = request.params.get("action", "")
+    text = sanitize_quotation_marks(request.params.get("text", ""))
+    run_id = request.params.get("run_id", "")
+    requested_max_actions = _positive_int_param(request.params.get("max_actions", None))
+    sort_param, order_param = _effective_actions_sort_state(request.params)
+
+    if not _is_hx_request(request):
+        redirect_query = []
+        if username_query:
+            redirect_query.append(("user", username_query))
+        if search_action:
+            redirect_query.append(("action", search_action))
+        if text:
+            redirect_query.append(("text", text))
+        if requested_max_actions is not None:
+            redirect_query.append(("max_actions", str(requested_max_actions)))
+        if sort_param != _ACTIONS_SORT_DEFAULT:
+            redirect_query.append(("sort", sort_param))
+        if (
+            sort_param != _ACTIONS_SORT_DEFAULT
+            or order_param != _ACTIONS_SORT_ORDER_DEFAULT
+        ):
+            redirect_query.append(("order", order_param))
+        if run_id:
+            redirect_query.append(("run_id", run_id))
+
+        url = "/actions"
+        if redirect_query:
+            url += f"?{urlencode(redirect_query)}"
+        return RedirectResponse(url=url, status_code=302)
+
+    matches = _matching_action_usernames(
+        [user["username"] for user in request.userdb.get_users()],
+        username_query,
+    )
+
+    suggestions = []
+    for username in matches:
+        suggestions.append(
+            {
+                "username": username,
+            }
+        )
+
+    return {
+        "username_query": username_query,
+        "username_suggestions": suggestions,
+    }
+
+
+def actions(request):
     is_authenticated = request.authenticated_userid is not None
 
     search_action = request.params.get("action", "")
     username = request.params.get("user", "")
     text = sanitize_quotation_marks(request.params.get("text", ""))
-    before = request.params.get("before", None)
-    max_actions_param = request.params.get("max_actions", None)
-    max_actions = None
+    before = _float_param(request.params.get("before", None))
+    requested_max_actions = _positive_int_param(request.params.get("max_actions", None))
     run_id = request.params.get("run_id", "")
+    sort_param, order_param = _effective_actions_sort_state(request.params)
 
-    if before:
-        before = float(before)
-    if max_actions_param:
-        try:
-            max_actions = int(max_actions_param)
-        except ValueError:
-            max_actions = None
-        if max_actions is not None and max_actions <= 0:
-            max_actions = None
-
-    if not is_authenticated:
-        max_actions = HARD_MAX_ACTIONS_ANON if max_actions is None else max_actions
-        max_actions = min(max_actions, HARD_MAX_ACTIONS_ANON)
-    elif max_actions is None and not (username or search_action or text or run_id):
-        # Default cap for unfiltered /actions.
-        max_actions = DEFAULT_MAX_ACTIONS_AUTH
+    max_actions = _effective_actions_max_actions(
+        is_authenticated=is_authenticated,
+        requested_max_actions=requested_max_actions,
+        has_explicit_filters=bool(username or search_action or text or run_id),
+    )
 
     page_param = request.params.get("page", "")
     page_idx = _page_index_from_params(request.params)
     page_size = ACTIONS_PAGE_SIZE
 
-    actions, num_actions = request.actiondb.get_actions(
-        username=username,
-        action=search_action,
-        text=text,
-        skip=page_idx * page_size,
-        limit=page_size,
-        utc_before=before,
-        max_actions=max_actions,
-        run_id=run_id,
+    use_capped_sort_scope = not (
+        sort_param == _ACTIONS_SORT_DEFAULT
+        and order_param == _ACTIONS_SORT_ORDER_DEFAULT
     )
-    actions = list(actions)
+    sort_scope_max_actions = _actions_sort_scope_max_actions(
+        is_authenticated=is_authenticated,
+        max_actions=max_actions,
+    )
 
-    for action in actions:
-        action.setdefault("action", "")
-        action.setdefault("username", "")
-        time_value = action.get("time")
-        if time_value is None:
-            time_label = ""
-        else:
-            time_label = datetime.fromtimestamp(float(time_value), UTC).strftime(
-                "%y-%m-%d %H:%M:%S"
-            )
-            time_label = time_label.replace("-", "\u2011", 2)
-
-        time_query = {
-            "max_actions": "1",
-            "action": search_action,
-            "user": username,
-            "text": text,
-            "before": time_value or "",
-            "run_id": run_id,
-        }
-        time_url = "/actions?" + urlencode(time_query)
-
-        agent_name = ""
-        agent_url = ""
-        if "worker" in action and action.get("action") != "block_worker":
-            agent_name = action.get("worker", "")
-            agent_short = "-".join(agent_name.split("-")[0:3]) if agent_name else ""
-            agent_url = f"/workers/{agent_short}" if agent_short else ""
-        else:
-            agent_name = action.get("username", "")
-            agent_url = f"/user/{agent_name}" if agent_name else ""
-
-        if action.get("action") in ("system_event", "log_message"):
-            agent_url = ""
-            if "worker" in action:
-                agent_name = action.get("worker", agent_name)
-
-        target_name = ""
-        target_url = ""
-        if "nn" in action:
-            raw_name = action.get("nn", "")
-            target_name = raw_name.replace("-", "\u2011") if raw_name else ""
-            target_url = f"/api/nn/{raw_name}" if raw_name else ""
-        elif "run" in action and "run_id" in action:
-            target_name = action.get("run", "")
-            task_id = action.get("task_id")
-            task_suffix = f"/{task_id}" if task_id is not None else ""
-            target_name = f"{target_name}{task_suffix}" if target_name else ""
-            task_query = f"?show_task={task_id}" if task_id is not None else ""
-            target_url = f"/tests/view/{action.get('run_id')}{task_query}"
-        elif request.has_permission("approve_run") and "user" in action:
-            target_name = action.get("user", "")
-            target_url = f"/user/{target_name}" if target_name else ""
-        elif action.get("action") == "block_worker" and "worker" in action:
-            target_name = action.get("worker", "")
-            target_url = f"/workers/{target_name}" if target_name else ""
-        else:
-            target_name = action.get("user", "")
-
-        action.update(
-            {
-                "time_label": time_label,
-                "time_url": time_url,
-                "event": action.get("action", ""),
-                "agent_name": agent_name,
-                "agent_url": agent_url or None,
-                "target_name": target_name,
-                "target_url": target_url or None,
-                "message": action.get("message", ""),
-            }
+    if use_capped_sort_scope:
+        raw_actions, num_actions = request.actiondb.get_actions(
+            username=username,
+            action=search_action,
+            text=text,
+            skip=0,
+            limit=sort_scope_max_actions,
+            utc_before=before,
+            max_actions=sort_scope_max_actions,
+            run_id=run_id,
         )
+        actions = [
+            _build_action_row(
+                action,
+                request,
+                search_action=search_action,
+                username=username,
+                text=text,
+                run_id=run_id,
+                sort_param=sort_param,
+                order_param=order_param,
+            )
+            for action in raw_actions
+        ]
+        _sort_action_rows(actions, sort_param=sort_param, order_param=order_param)
+        num_actions = len(actions)
+        start = page_idx * page_size
+        actions = actions[start : start + page_size]
+    else:
+        raw_actions, num_actions = request.actiondb.get_actions(
+            username=username,
+            action=search_action,
+            text=text,
+            skip=page_idx * page_size,
+            limit=page_size,
+            utc_before=before,
+            max_actions=max_actions,
+            run_id=run_id,
+        )
+        actions = [
+            _build_action_row(
+                action,
+                request,
+                search_action=search_action,
+                username=username,
+                text=text,
+                run_id=run_id,
+                sort_param=sort_param,
+                order_param=order_param,
+            )
+            for action in raw_actions
+        ]
 
     # If the requested page is out of range, redirect to the last page.
     if num_actions > 0:
@@ -1437,32 +1738,63 @@ def actions(request):
                 status_code=302,
             )
 
-    query_params = _query_suffix(
-        [
-            ("user", username or None),
-            ("action", search_action or None),
-            ("text", text or None),
-            ("max_actions", max_actions if max_actions is not None else None),
-            ("before", before if before is not None else None),
-            ("run_id", run_id or None),
-        ]
+    query_params = _actions_query_suffix(
+        username=username,
+        search_action=search_action,
+        text=text,
+        sort_param=sort_param,
+        order_param=order_param,
+        max_actions=max_actions,
+        before=before,
+        run_id=run_id,
     )
 
     pages = pagination(page_idx, num_actions, page_size, query_params)
 
-    context = {
+    content_context = {
         "actions": actions,
         "pages": pages,
+        "num_actions": num_actions,
+        "page_size": page_size,
+        "current_page": page_idx + 1,
+        "run_id_filter": run_id,
+        "max_actions": max_actions,
+        "sort": sort_param,
+        "order": order_param,
+        "sort_summary": _actions_sort_summary(
+            sort_param=sort_param,
+            order_param=order_param,
+            sorted_count=num_actions,
+            scope_cap=sort_scope_max_actions,
+        ),
         "filters": {
             "action": search_action,
             "username": username,
             "text": text,
             "run_id": run_id,
         },
-        "usernames": [user["username"] for user in request.userdb.get_users()],
+    }
+    page_context = {
+        **content_context,
+        "username_query": username,
+        "username_suggestions": [],
     }
 
-    return _render_hx_or_context(request, "actions_content_fragment.html.j2", context)
+    if _hx_target_id(request) == "actions-page":
+        page_response = _render_hx_fragment(
+            request,
+            "actions_page_fragment.html.j2",
+            page_context,
+        )
+        if page_response is not None:
+            return page_response
+
+    return (
+        _render_hx_fragment(
+            request, "actions_content_fragment.html.j2", content_context
+        )
+        or page_context
+    )
 
 
 # === User management + profiles ===
@@ -4066,6 +4398,11 @@ _VIEW_ROUTES = [
         rate_limits_server,
         "/rate_limits/server",
         {"renderer": "rate_limits_server_fragment.html.j2"},
+    ),
+    (
+        actions_usernames,
+        "/actions/usernames",
+        {"renderer": "actions_username_suggestions_fragment.html.j2"},
     ),
     (actions, "/actions", {"renderer": "actions.html.j2"}),
     (user_management, "/user_management", {"renderer": "user_management.html.j2"}),

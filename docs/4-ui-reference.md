@@ -55,7 +55,8 @@ registers it on the FastAPI router.
 | `/tests/live_elo_update/{id}` | GET, POST | `live_elo_update` | `live_elo_fragment.html.j2` | Fragment-only (OOB) |
 | `/tests/finished` | GET, POST | `tests_finished` | `tests_finished.html.j2` | HX: `tests_finished_content_fragment` |
 | `/tests/user/{username}` | GET, POST | `tests_user` | `tests_user.html.j2` | HX: `tests_user_content_fragment` |
-| `/actions` | GET, POST | `actions` | `actions.html.j2` | HX: `actions_content_fragment` |
+| `/actions/usernames` | GET, POST | `actions_usernames` | `actions_username_suggestions_fragment.html.j2` | HTMX suggestions; direct navigation redirects to `/actions` |
+| `/actions` | GET, POST | `actions` | `actions.html.j2` | HX: `actions_content_fragment`; `#actions-page` on username selection |
 | `/contributors` | GET, POST | `contributors` | `contributors.html.j2` | HX: `contributors_content_fragment`; paginated (100/page) |
 | `/contributors/monthly` | GET, POST | `contributors_monthly` | `contributors.html.j2` | HX: `contributors_content_fragment`; paginated (100/page) |
 | `/user/{username}` | GET, POST | `user` | `user.html.j2` | |
@@ -323,8 +324,8 @@ Behavior notes:
    `/tests/elo_batch` OOB updates:
   - no active filters: `Workers - <total> machines`
   - active `q` and/or `my_workers`: `Workers - <total> (<filtered>) machines`
-- Machines table markup sets `data-server-sort="true"` so the legacy global
-   client-side sorter does not override server-authoritative column sort state.
+- Machines sorting is fully server-authoritative; the old generic client-side
+   header sorter has been retired.
 
 ## User management (`/user_management`) query parameters
 
@@ -348,8 +349,8 @@ Behavior notes:
 - `q` performs case-insensitive substring matching on username only.
 - HTMX requests target `#user-management-content` and keep URL state via
    `hx-push-url="true"`.
-- Table markup sets `data-server-sort="true"` to avoid legacy client-side sort
-   interference.
+- Table sorting is fully server-authoritative; the old generic client-side
+   header sorter has been retired.
 
 ## Workers management (`/workers/show`) query parameters
 
@@ -376,8 +377,8 @@ Behavior notes:
    default server sort.
 - HTMX requests target `#workers-content` and keep URL state via
    `hx-push-url="true"`.
-- Table markup sets `data-server-sort="true"` to avoid legacy client-side sort
-   interference.
+- Table sorting is fully server-authoritative; the old generic client-side
+   header sorter has been retired.
 
 ## Contributors query parameters
 
@@ -424,3 +425,60 @@ Behavior notes:
    back/forward and shareable links.
 - `master_only` checkbox preference is persisted in a cookie and reused when
    the query parameter is not present.
+- Table sorting is fully server-authoritative; the old generic client-side
+   header sorter has been retired.
+
+## Actions (`/actions`) query parameters
+
+The actions log supports URL-driven server-authoritative filtering, paging,
+and sort state on the canonical `/actions` route.
+
+| Parameter | Values | Default |
+|-----|-----|-----|
+| `action` | action name filter | empty |
+| `user` | username substring | empty |
+| `text` | Mongo text-search query | empty |
+| `run_id` | run id | empty |
+| `page` | integer `>= 1` | `1` |
+| `max_actions` | positive integer, capped by auth state | route policy |
+| `sort` | `time`, `event`, `source`, `target`, `comment` | `time` |
+| `order` | `asc`, `desc` | `desc` for `time`, otherwise column default |
+| `before` | action timestamp cursor for time-link deep links | absent |
+
+Behavior notes:
+
+- Sorting is server-authoritative. The default `time desc` path stays on the
+   indexed fast query; explicit alternate sorts materialize and sort the
+   capped working set server-side.
+- Anonymous requests are capped at `5000` actions. Unfiltered authenticated
+   requests default to `50000`; explicit `max_actions` values are preserved in
+   the URL and hidden form state.
+- HTMX requests target `#actions-content` and keep URL state via
+   `hx-push-url="true"`.
+- The visible filters auto-submit on select change and search/input events.
+- The username field uses server-rendered suggestions from `/actions/usernames`.
+   HTMX swaps those suggestions into a native `select.form-select` listbox so
+   the visible rows, highlight, and scrollbar behavior follow the same
+   browser-managed select path as `Show only`, workers `Last changed`, and
+   user-management `Group`.
+- Focusing the username field loads the full username set into a scrollable
+   native listbox. Typing narrows that same server-rendered list without any
+   custom JavaScript filtering.
+- The suggestions list shows up to 5 visible rows. Pressing `ArrowDown` in the
+   username input moves focus into the listbox, while normal `Tab` navigation
+   skips the listbox and continues through the form.
+- Choosing a username suggestion triggers an HTMX `GET /actions` from the
+   listbox itself only when the user clicks a suggestion or presses `Enter` on
+   the highlighted row. Arrow-key navigation moves the highlight without
+   applying the filter. The response re-renders `#actions-page` and keeps the
+   input value, results, and pushed URL synchronized without custom
+   JavaScript.
+- The username input sets `spellcheck="false"`, `autocorrect="off"`, and
+   `autocapitalize="off"` because usernames are identifiers, not prose, and
+   browser text assistance interferes with this field.
+- The suggestions list closes as soon as focus leaves the username search
+   widget.
+- Direct browser navigation to `/actions/usernames?...` redirects to the
+   canonical `/actions?...` page instead of returning raw fragment HTML.
+- The time link remains a normal anchor because it is a shareable deep link
+   into the log timeline, not just a local fragment action.

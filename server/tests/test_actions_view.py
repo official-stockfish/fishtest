@@ -1,7 +1,9 @@
 import unittest
 
+import test_support
 from fastapi.responses import RedirectResponse
 
+from fishtest.http.settings import HTMX_INPUT_CHANGED_DELAY_MS
 from fishtest.views import actions as actions_view
 
 
@@ -164,6 +166,246 @@ class ActionsViewMaxActionsHttpTest(unittest.TestCase):
         actions_view(request)
         last_kwargs = self._last_kwargs(request)
         self.assertIsNone(last_kwargs["max_actions"])
+
+
+class TestActionsHttp(unittest.TestCase):
+    def setUp(self):
+        self.rundb = test_support.get_rundb()
+        self.client = test_support.make_test_client(
+            rundb=self.rundb,
+            include_api=False,
+            include_views=True,
+        )
+        self.run_id = "64e74776a170cb1f26fa3930"
+
+    def tearDown(self):
+        self.rundb.actiondb.actions.delete_many(
+            {
+                "$or": [
+                    {
+                        "username": {
+                            "$in": [
+                                "H23ActionsUser",
+                                "H23OtherUser",
+                                "H23SortUser",
+                            ]
+                        }
+                    },
+                    {"run_id": self.run_id},
+                ]
+            }
+        )
+
+    def test_actions_form_uses_htmx_triggered_search_and_preserves_url_state(self):
+        response = self.client.get(
+            f"/actions?run_id={self.run_id}&sort=event&order=asc"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="actions-filters"', response.text)
+        self.assertIn('id="actions-page"', response.text)
+        expected_trigger = (
+            'hx-trigger="submit, input changed delay:'
+            f"{HTMX_INPUT_CHANGED_DELAY_MS}ms from:#actions_user"
+        )
+        self.assertIn(expected_trigger, response.text)
+        self.assertIn('type="search"', response.text)
+        self.assertIn('hx-get="/actions/usernames"', response.text)
+        self.assertIn('spellcheck="false"', response.text)
+        self.assertIn('autocorrect="off"', response.text)
+        self.assertIn('autocapitalize="off"', response.text)
+        self.assertIn(
+            "hx-on:focus=\"this.setAttribute('aria-expanded', 'true')\"", response.text
+        )
+        self.assertIn(
+            "hx-on:keydown=\"if (event.key === 'ArrowDown') { const list = this.parentElement.querySelector('.actions-user-suggestions-list'); if (list) { const firstIndex = list.options.length > 0 && list.options[0].disabled ? 1 : 0; if (list.options.length > firstIndex) { event.preventDefault(); list.selectedIndex = firstIndex; list.focus(); } } }\"",
+            response.text,
+        )
+        self.assertIn(
+            "hx-on:focusout=\"if (!this.contains(event.relatedTarget)) { this.querySelector('#actions-user-suggestions').innerHTML = ''; this.querySelector('#actions_user').setAttribute('aria-expanded', 'false'); }\"",
+            response.text,
+        )
+        self.assertNotIn("<datalist", response.text)
+        self.assertIn(
+            f'<input type="hidden" name="run_id" value="{self.run_id}">',
+            response.text,
+        )
+        self.assertIn('name="max_actions" value="5000"', response.text)
+        self.assertIn('name="sort" value="event"', response.text)
+        self.assertIn('name="order" value="asc"', response.text)
+
+    def test_actions_username_suggestions_are_server_rendered(self):
+        created_users = ["H23SuggestAlpha", "H23SuggestBeta", "OtherUser"]
+        for idx, username in enumerate(created_users):
+            self.rundb.userdb.create_user(
+                username,
+                "secret",
+                f"h23-suggest-{idx}@example.com",
+                "https://github.com/official-stockfish/Stockfish",
+            )
+
+        try:
+            response = self.client.get(
+                "/actions/usernames?user=H23Sug&action=upload_nn&text=nnue&run_id=64e74776a170cb1f26fa3930",
+                headers={"HX-Request": "true"},
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(
+                'class="form-select actions-user-suggestions-list', response.text
+            )
+            self.assertIn('hx-get="/actions"', response.text)
+            self.assertIn("hx-trigger=\"click, keyup[key=='Enter']\"", response.text)
+            self.assertIn('size="2"', response.text)
+            self.assertIn('tabindex="-1"', response.text)
+            self.assertIn("H23SuggestAlpha", response.text)
+            self.assertIn("H23SuggestBeta", response.text)
+            self.assertNotIn("OtherUser", response.text)
+            self.assertIn('hx-target="#actions-page"', response.text)
+            self.assertNotIn("/actions/usernames?", response.text)
+            self.assertNotIn("dropdown-item", response.text)
+        finally:
+            self.rundb.userdb.users.delete_many({"username": {"$in": created_users}})
+
+    def test_actions_username_suggestions_show_full_user_list_on_focus(self):
+        created_users = [
+            "H23ScrollAlpha",
+            "H23ScrollBeta",
+            "H23ScrollGamma",
+            "H23ScrollDelta",
+            "H23ScrollEpsilon",
+            "H23ScrollZeta",
+            "H23ScrollEta",
+            "H23ScrollTheta",
+            "H23ScrollIota",
+        ]
+        for idx, username in enumerate(created_users):
+            self.rundb.userdb.create_user(
+                username,
+                "secret",
+                f"h23-scroll-{idx}@example.com",
+                "https://github.com/official-stockfish/Stockfish",
+            )
+
+        try:
+            response = self.client.get(
+                "/actions/usernames",
+                headers={"HX-Request": "true"},
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertIn('size="5"', response.text)
+            self.assertIn(
+                'class="form-select actions-user-suggestions-list', response.text
+            )
+            self.assertIn("H23ScrollAlpha", response.text)
+            self.assertIn("H23ScrollBeta", response.text)
+            self.assertIn("H23ScrollGamma", response.text)
+            self.assertIn("H23ScrollIota", response.text)
+            self.assertNotIn("No matching usernames.", response.text)
+        finally:
+            self.rundb.userdb.users.delete_many({"username": {"$in": created_users}})
+
+    def test_actions_username_single_suggestion_stays_selectable(self):
+        created_users = ["H23SingleSelectable", "OtherUser"]
+        for idx, username in enumerate(created_users):
+            self.rundb.userdb.create_user(
+                username,
+                "secret",
+                f"h23-single-{idx}@example.com",
+                "https://github.com/official-stockfish/Stockfish",
+            )
+
+        try:
+            response = self.client.get(
+                "/actions/usernames?user=H23SingleSelect",
+                headers={"HX-Request": "true"},
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertIn('size="2"', response.text)
+            self.assertIn(
+                '<option value="" disabled hidden selected></option>', response.text
+            )
+            self.assertIn('value="H23SingleSelectable"', response.text)
+            self.assertNotIn("OtherUser", response.text)
+        finally:
+            self.rundb.userdb.users.delete_many({"username": {"$in": created_users}})
+
+    def test_actions_usernames_direct_navigation_redirects_to_actions(self):
+        response = self.client.get(
+            "/actions/usernames?user=d&max_actions=50000&sort=time&order=desc&action=&text=",
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            response.headers["location"],
+            "/actions?user=d&max_actions=50000",
+        )
+
+    def test_actions_page_does_not_render_username_empty_state_after_selection(self):
+        response = self.client.get("/actions?user=JoeUser")
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("No matching usernames.", response.text)
+
+    def test_actions_hx_fragment_renders_summary_and_accessible_table(self):
+        self.rundb.actiondb.insert_action(
+            action="new_run",
+            username="H23ActionsUser",
+            run_id=self.run_id,
+            run="h23-actions-run-abcdef0",
+            message="H23 route contract hit",
+        )
+        self.rundb.actiondb.insert_action(
+            action="upload_nn",
+            username="H23OtherUser",
+            nn="nn-123456789abc.nnue",
+        )
+
+        response = self.client.get(
+            f"/actions?user=H23ActionsUser&run_id={self.run_id}",
+            headers={"HX-Request": "true"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("<!doctype html>", response.text.lower())
+        self.assertIn('id="actions_table"', response.text)
+        self.assertIn('<caption class="visually-hidden">', response.text)
+        self.assertIn('class="sort-indicator"', response.text)
+        self.assertIn("Showing page 1 of 1.", response.text)
+        self.assertIn("1 matching action.", response.text)
+        self.assertIn(f"/tests/view/{self.run_id}", response.text)
+        self.assertIn("H23 route contract hit", response.text)
+        self.assertNotIn("nn-123456789abc.nnue", response.text)
+
+    def test_actions_event_sort_applies_to_the_full_capped_result_set(self):
+        actions = []
+        for index in range(26):
+            action_name = "new_run" if index == 25 else "upload_nn"
+            actions.append(
+                {
+                    "action": action_name,
+                    "username": "H23SortUser",
+                    "time": float(2000 - index),
+                    "message": f"message-{index:02d}",
+                }
+            )
+
+        self.rundb.actiondb.actions.insert_many(actions)
+
+        response = self.client.get(
+            "/actions?user=H23SortUser&sort=event&order=asc",
+            headers={"HX-Request": "true"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Sorted by Event ascending", response.text)
+        self.assertIn("new_run", response.text)
+        self.assertLess(
+            response.text.index("new_run"),
+            response.text.index("upload_nn"),
+        )
+
+    def test_actions_empty_state_uses_real_column_span(self):
+        response = self.client.get(
+            "/actions?user=NoSuchActionsUser", headers={"HX-Request": "true"}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('colspan="5">No actions available</td>', response.text)
 
 
 if __name__ == "__main__":

@@ -96,7 +96,7 @@ class ActionDb:
         if hint:
             find_kwargs["hint"] = hint
         try:
-            actions_list = self.actions.find(q, **find_kwargs)
+            actions_list = list(self.actions.find(q, **find_kwargs))
         except OperationFailure as e:
             # Be resilient if indexes haven't been created yet (bad hint).
             print(
@@ -110,7 +110,7 @@ class ActionDb:
                 ],
             )
             find_kwargs.pop("hint", None)
-            actions_list = self.actions.find(q, **find_kwargs)
+            actions_list = list(self.actions.find(q, **find_kwargs))
 
         return actions_list, count
 
