@@ -185,6 +185,19 @@ full-page navigations), then returns the appropriate template via the
 `_render_hx_fragment()` helper. `_dispatch_view()` appends `Vary: HX-Request`
 to every GET response so that HTTP caches distinguish the two representations.
 
+**Server-authoritative table state.** Newer HTMX list pages (`/nns`,
+`/contributors`, `/user_management`, `/workers/show`, `/tests/machines`) keep
+sort, search, page, and view state in the URL and render the active control
+state server-side on every response. Where the HTMX target contains stateful
+controls, the swapped boundary is the full content fragment, not just table
+rows. The shared active-search debounce is projected into templates as
+`htmx.input_changed_delay_ms` (currently `350ms`).
+
+**Request coordination.** Poll-driven fragments that live inside a larger filter
+form may use `hx-sync`, `hx-disinherit`, and `hx-params` to keep inherited form
+state from corrupting sort/pagination links and to ensure explicit user actions
+win over timer-driven refreshes.
+
 **Fragment templates.** Fragment responses use standalone `.html.j2` files
 (named `*_fragment.html.j2`) that do not extend `base.html.j2`. This avoids
 the need for block-level partial rendering and keeps fragments self-contained.

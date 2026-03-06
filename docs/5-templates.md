@@ -144,7 +144,8 @@ base layout and contain only the HTML subset needed for the swap target.
 | Template | Swap target | OOB | Polled |
 |----------|------------|-----|--------|
 | `actions_content_fragment.html.j2` | `#actions-content` | -- | -- |
-| `contributors_rows_fragment.html.j2` | `#contributors tbody` | -- | -- |
+| `contributors_content_fragment.html.j2` | `#contributors-content` | -- | -- |
+| `contributors_rows_fragment.html.j2` | included by `contributors_content_fragment.html.j2` | -- | -- |
 | `elo_batch_fragment.html.j2` | none (OOB only) | Yes | Yes |
 | `elo_results_fragment.html.j2` | none (OOB only) | Yes | Yes |
 | `homepage_stats_fragment.html.j2` | none (OOB only) | Yes | -- |
@@ -157,8 +158,10 @@ base layout and contain only the HTML subset needed for the swap target.
 | `tests_filter_tabs_fragment.html.j2` | caller-defined `hx-target` | -- | -- |
 | `tests_finished_content_fragment.html.j2` | `#tests-finished-content` | -- | -- |
 | `tests_user_content_fragment.html.j2` | `#tests-user-content` | -- | -- |
-| `user_management_rows_fragment.html.j2` | `#users-table tbody` | Yes | -- |
-| `workers_rows_fragment.html.j2` | `#workers-table tbody` | Yes | -- |
+| `user_management_content_fragment.html.j2` | `#user-management-content` | -- | -- |
+| `user_management_rows_fragment.html.j2` | included by `user_management_content_fragment.html.j2` | -- | -- |
+| `workers_content_fragment.html.j2` | `#workers-content` | -- | -- |
+| `workers_rows_fragment.html.j2` | included by `workers_content_fragment.html.j2` | -- | -- |
 
 Column notes:
 - **OOB**: template contains `hx-swap-oob` attributes that update additional
@@ -432,11 +435,21 @@ Each task row: `task_id`, `row_class`, `worker_label`, `worker_url`,
 
 | Key | Type |
 |-----|------|
-| `all_users` | list of user row dicts |
-| `pending_users` | list |
-| `blocked_users` | list |
-| `idle_users` | list |
-| `approvers_users` | list |
+| `all_count` | int |
+| `pending_count` | int |
+| `blocked_count` | int |
+| `idle_count` | int |
+| `approvers_count` | int |
+| `group` | string |
+| `sort` | string |
+| `order` | string |
+| `q` | string |
+| `view` | string |
+| `pages` | list |
+| `users` | list of user row dicts |
+| `num_selected_users` | int |
+| `max_all` | int |
+| `is_truncated` | bool |
 
 Each user row: `username`, `user_url`, `registration_label`, `groups`,
 `groups_label`, `email`.
@@ -451,7 +464,16 @@ Each user row: `username`, `user_url`, `registration_label`, `groups`,
 | `message` | string |
 | `blocked` | bool |
 | `show_email` | bool |
+| `filter_value` | string |
+| `sort` | string |
+| `order` | string |
+| `q` | string |
+| `view` | string |
+| `pages` | list |
 | `blocked_workers` | list of dicts |
+| `num_workers` | int |
+| `max_all` | int |
+| `is_truncated` | bool |
 
 Each blocked worker row: `worker_name`, `last_updated_label`, `actions_url`,
 `owner_email`, `mailto_url`.
@@ -464,6 +486,11 @@ Fragment templates receive the shared base context (via
 ### `actions_content_fragment.html.j2`
 
 Same context as `actions.html.j2` (`actions`, `filters`, `usernames`, `pages`).
+
+### `contributors_content_fragment.html.j2`
+
+Same context as the content area of `contributors.html.j2`: `users`, `pages`,
+`sort`, `order`, `view`, `num_users`, `max_all`, `is_truncated`.
 
 ### `contributors_rows_fragment.html.j2`
 
@@ -513,11 +540,19 @@ Same context as `actions.html.j2` (`actions`, `filters`, `usernames`, `pages`).
 | Key | Type |
 |-----|------|
 | `machines` | list of machine row dicts |
-| `workers_count` | int (OOB `#workers-count`) |
+| `sort` | string |
+| `order` | string |
+| `q` | string |
+| `current_page` | int |
+| `my_workers` | bool |
+| `pages` | list |
+| `machines_count` | int |
+| `workers_count_text` | string (OOB `#workers-count`) |
 
 ### `nns_content_fragment.html.j2`
 
-Same context as `nns.html.j2` (`filters`, `pages`, `nns`).
+Same context as `nns.html.j2` (`filters`, `pages`, `nns`, `sort`, `order`,
+`view`, `num_nns`, `max_all`, `is_truncated`).
 
 ### `rate_limits_server_fragment.html.j2`
 
@@ -568,21 +603,28 @@ Reusable partial included by `tests_finished.html.j2` and
 | `filters` | dict |
 | `run_tables_ctx` | dict |
 
+### `user_management_content_fragment.html.j2`
+
+Same context as the content area of `user_management.html.j2`: `group`,
+`sort`, `order`, `q`, `view`, `pages`, `selected_users`,
+`num_selected_users`, `max_all`, `is_truncated`.
+
 ### `user_management_rows_fragment.html.j2`
 
 | Key | Type | Description |
 |-----|------|-------------|
-| `is_hx` | bool | Set to `True` for htmx requests |
-| `group` | string | Active filter group |
-| `users` | list of user row dicts | Filtered user rows |
-| `pending_count` | int | OOB badge count |
+| `selected_users` | list of user row dicts | Filtered user rows |
+
+### `workers_content_fragment.html.j2`
+
+Same context as the content area of `workers.html.j2`: `filter_value`,
+`sort`, `order`, `q`, `view`, `pages`, `blocked_workers`, `show_email`,
+`num_workers`, `max_all`, `is_truncated`.
 
 ### `workers_rows_fragment.html.j2`
 
 | Key | Type | Description |
 |-----|------|-------------|
-| `is_hx` | bool | Set to `True` for htmx requests |
-| `filter_value` | string | Active filter value |
 | `blocked_workers` | list of dicts | Filtered worker rows |
 | `show_email` | bool | Show owner email column |
 
