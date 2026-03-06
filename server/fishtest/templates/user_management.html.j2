@@ -50,85 +50,47 @@
   </div>
 </div>
 
-<div id="users-table-handler" class="dropdown">
-  {% set users_group_label = "Pending" %}
-  {% if group == "pending" %}
-    {% set users_group_label = "Pending" %}
-  {% elif group == "blocked" %}
-    {% set users_group_label = "Blocked" %}
-  {% elif group == "idle" %}
-    {% set users_group_label = "Idle" %}
-  {% elif group == "approvers" %}
-    {% set users_group_label = "Approvers" %}
-  {% endif %}
-  <button
-    id="users-table-toggle"
-    class="btn btn-secondary dropdown-toggle"
-    type="button"
-    data-bs-toggle="dropdown"
-    aria-expanded="false"
-  >{{ users_group_label }}</button>
+<form
+  id="user-management-filters"
+  class="row g-3 mb-3 align-items-end"
+  method="get"
+  action="/user_management"
+  hx-get="/user_management"
+  hx-target="#user-management-content"
+  hx-push-url="true"
+  hx-swap="innerHTML"
+  hx-trigger="submit, input changed delay:{{ htmx.input_changed_delay_ms }}ms from:#user_management_q, search from:#user_management_q, change from:#user_management_group"
+>
+  <input type="hidden" name="sort" value="{{ sort }}">
+  <input type="hidden" name="order" value="{{ order }}">
+  <input type="hidden" name="view" value="{{ view }}">
 
-  <ul class="dropdown-menu">
-    <li>
-      <a
-        class="dropdown-item"
-        href="/user_management?group=all"
-        hx-get="/user_management?group=all"
-        hx-target="#users-table tbody"
-        hx-swap="innerHTML"
-      >All</a>
-    </li>
-    <li>
-      <a
-        class="dropdown-item"
-        href="/user_management?group=pending"
-        hx-get="/user_management?group=pending"
-        hx-target="#users-table tbody"
-        hx-swap="innerHTML"
-      >Pending</a>
-    </li>
-    <li>
-      <a
-        class="dropdown-item"
-        href="/user_management?group=blocked"
-        hx-get="/user_management?group=blocked"
-        hx-target="#users-table tbody"
-        hx-swap="innerHTML"
-      >Blocked</a>
-    </li>
-    <li>
-      <a
-        class="dropdown-item"
-        href="/user_management?group=idle"
-        hx-get="/user_management?group=idle"
-        hx-target="#users-table tbody"
-        hx-swap="innerHTML"
-      >Idle</a>
-    </li>
-    <li>
-      <a
-        class="dropdown-item"
-        href="/user_management?group=approvers"
-        hx-get="/user_management?group=approvers"
-        hx-target="#users-table tbody"
-        hx-swap="innerHTML"
-      >Approvers</a>
-    </li>
-  </ul>
+  <div class="col-12 col-md-auto">
+    <label for="user_management_group" class="form-label">Group</label>
+    <select id="user_management_group" class="form-select" name="group">
+      <option value="all" {{ 'selected' if group == 'all' else '' }}>All</option>
+      <option value="pending" {{ 'selected' if group == 'pending' else '' }}>Pending</option>
+      <option value="blocked" {{ 'selected' if group == 'blocked' else '' }}>Blocked</option>
+      <option value="idle" {{ 'selected' if group == 'idle' else '' }}>Idle</option>
+      <option value="approvers" {{ 'selected' if group == 'approvers' else '' }}>Approvers</option>
+    </select>
+  </div>
+
+  <div class="col-12 col-md-auto">
+    <label for="user_management_q" class="form-label">Filter username</label>
+    <input
+      id="user_management_q"
+      type="search"
+      name="q"
+      class="form-control"
+      value="{{ q }}"
+      placeholder="Filter username"
+      autocomplete="off"
+    >
+  </div>
+</form>
+
+<div id="user-management-content">
+  {% include "user_management_content_fragment.html.j2" %}
 </div>
-
-<table id="users-table" class="table table-striped table-sm">
-  <thead>
-    <tr>
-      <th style="width:20%">Username</th>
-      <th style="width:20%">Registration Time</th>
-      <th style="width:20%">Groups</th>
-      <th style="width:40%">Email</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% include "user_management_rows_fragment.html.j2" %}
-  </tbody>
-</table>
 {% endblock %}

@@ -40,65 +40,45 @@
 
 <h3>Blocked workers</h3>
 
-<div id="workers-table-handler" class="dropdown">
-  {% set workers_filter_label = "Modified ≤ 5 days ago" %}
-  {% if filter_value == "all-workers" %}
-    {% set workers_filter_label = "All" %}
-  {% elif filter_value == "gt-5days" %}
-    {% set workers_filter_label = "Modified > 5 days ago" %}
-  {% endif %}
-  <button
-    id="workers-table-toggle"
-    class="btn btn-secondary dropdown-toggle"
-    type="button"
-    data-bs-toggle="dropdown"
-    aria-expanded="false"
-  >{{ workers_filter_label }}</button>
+<form
+  id="workers-filters"
+  class="row g-3 mb-3 align-items-end"
+  method="get"
+  action="{{ request.url.path }}"
+  hx-get="{{ request.url.path }}"
+  hx-target="#workers-content"
+  hx-push-url="true"
+  hx-swap="innerHTML"
+  hx-trigger="submit, input changed delay:{{ htmx.input_changed_delay_ms }}ms from:#workers_q, search from:#workers_q, change from:#workers_filter"
+>
+  <input type="hidden" name="sort" value="{{ sort }}">
+  <input type="hidden" name="order" value="{{ order }}">
+  <input type="hidden" name="view" value="{{ view }}">
 
-  <ul class="dropdown-menu">
-    <li>
-      <a
-        class="dropdown-item"
-        href="{{ request.url.path }}?filter=all-workers"
-        hx-get="{{ request.url.path }}?filter=all-workers"
-        hx-target="#workers-table tbody"
-        hx-swap="innerHTML"
-      >All</a>
-    </li>
-    <li>
-      <a
-        class="dropdown-item"
-        href="{{ request.url.path }}?filter=le-5days"
-        hx-get="{{ request.url.path }}?filter=le-5days"
-        hx-target="#workers-table tbody"
-        hx-swap="innerHTML"
-      >Modified ≤ 5 days ago</a>
-    </li>
-    <li>
-      <a
-        class="dropdown-item"
-        href="{{ request.url.path }}?filter=gt-5days"
-        hx-get="{{ request.url.path }}?filter=gt-5days"
-        hx-target="#workers-table tbody"
-        hx-swap="innerHTML"
-      >Modified > 5 days ago</a>
-    </li>
-  </ul>
+  <div class="col-12 col-md-auto">
+    <label for="workers_filter" class="form-label">Last changed</label>
+    <select id="workers_filter" class="form-select" name="filter">
+      <option value="all-workers" {{ 'selected' if filter_value == 'all-workers' else '' }}>All</option>
+      <option value="le-5days" {{ 'selected' if filter_value == 'le-5days' else '' }}>Modified ≤ 5 days ago</option>
+      <option value="gt-5days" {{ 'selected' if filter_value == 'gt-5days' else '' }}>Modified &gt; 5 days ago</option>
+    </select>
+  </div>
+
+  <div class="col-12 col-md-auto">
+    <label for="workers_q" class="form-label">Filter worker</label>
+    <input
+      id="workers_q"
+      type="search"
+      name="q"
+      class="form-control"
+      value="{{ q }}"
+      placeholder="Filter worker"
+      autocomplete="off"
+    >
+  </div>
+</form>
+
+<div id="workers-content">
+  {% include "workers_content_fragment.html.j2" %}
 </div>
-
-<table id="workers-table" class="table table-striped table-sm">
-  <thead>
-    <tr>
-      <th>Worker</th>
-      <th>Last changed</th>
-      <th>Events</th>
-      {% if show_email %}
-        <th>Email</th>
-      {% endif %}
-    </tr>
-  </thead>
-  <tbody>
-    {% include "workers_rows_fragment.html.j2" %}
-  </tbody>
-</table>
 {% endblock %}

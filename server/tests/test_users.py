@@ -1118,14 +1118,46 @@ class TestHttpUsers(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertIn(old_worker, response.text)
             self.assertNotIn(recent_worker, response.text)
-            self.assertIn("<template>", response.text)
-            self.assertIn('id="workers-table-toggle"', response.text)
-            self.assertIn('hx-swap-oob="true"', response.text)
-            self.assertIn("Modified &gt; 5 days ago", response.text)
-            self.assertNotIn("<table", response.text)
+            self.assertIn('id="workers_table"', response.text)
+            self.assertIn('data-server-sort="true"', response.text)
+            self.assertIn("filter=gt-5days", response.text)
         finally:
             self.rundb.workerdb.workers.delete_many(
                 {"worker_name": {"$in": [recent_worker, old_worker]}}
+            )
+
+    def test_workers_table_hx_sort_search_and_pagination_contract(self):
+        worker_names = [f"H19Worker{idx:02d}-1cores-abcd" for idx in range(30)]
+        for name in worker_names:
+            self.rundb.workerdb.update_worker(name, blocked=True, message="h19")
+
+        try:
+            response = self.client.get(
+                "/workers/show?filter=all-workers&sort=worker&order=asc&page=2&q=H19Worker&view=paged",
+                headers={"HX-Request": "true"},
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertIn('id="workers_table"', response.text)
+            self.assertIn('data-server-sort="true"', response.text)
+            self.assertIn('aria-sort="ascending"', response.text)
+            self.assertIn(worker_names[25], response.text)
+            self.assertNotIn(worker_names[0], response.text)
+            self.assertIn(
+                "filter=all-workers&amp;sort=worker&amp;order=asc&amp;q=H19Worker",
+                response.text,
+            )
+            self.assertIn("view=all", response.text)
+
+            # Workers search filters by worker column only.
+            non_worker_match = self.client.get(
+                "/workers/show?filter=all-workers&sort=worker&order=asc&q=actions?text&view=paged",
+                headers={"HX-Request": "true"},
+            )
+            self.assertEqual(non_worker_match.status_code, 200)
+            self.assertNotIn(worker_names[0], non_worker_match.text)
+        finally:
+            self.rundb.workerdb.workers.delete_many(
+                {"worker_name": {"$regex": "^H19Worker"}}
             )
 
     def test_workers_hx_empty_state_fragment_renders_placeholder_row(self):
@@ -1138,7 +1170,7 @@ class TestHttpUsers(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("No blocked workers", response.text)
         self.assertIn('colspan="3"', response.text)
-        self.assertNotIn("<table", response.text)
+        self.assertIn('id="workers_table"', response.text)
 
     def test_user_management_hx_empty_state_fragment_renders_placeholder_row(self):
         user = self.rundb.userdb.get_user(self.username)
@@ -1160,8 +1192,8 @@ class TestHttpUsers(unittest.TestCase):
 
             self.assertEqual(response.status_code, 200)
             self.assertIn("No blocked users", response.text)
-            self.assertIn('colspan="20"', response.text)
-            self.assertNotIn("<table", response.text)
+            self.assertIn('colspan="4"', response.text)
+            self.assertIn('id="user_management_table"', response.text)
         finally:
             cleanup_user = self.rundb.userdb.get_user(self.username)
             cleanup_user["pending"] = original_pending
@@ -1421,11 +1453,8 @@ class TestHttpUsers(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertIn(blocked_user, response.text)
             self.assertNotIn(pending_user, response.text)
-            self.assertIn("<template>", response.text)
-            self.assertIn('id="users-table-toggle"', response.text)
-            self.assertIn('hx-swap-oob="true"', response.text)
-            self.assertIn(">Blocked</button>", response.text)
-            self.assertNotIn("<table", response.text)
+            self.assertIn('id="user_management_table"', response.text)
+            self.assertIn('data-server-sort="true"', response.text)
         finally:
             cleanup_approver = self.rundb.userdb.get_user(self.username)
             cleanup_approver["pending"] = original_pending
@@ -1438,6 +1467,61 @@ class TestHttpUsers(unittest.TestCase):
             blocked_doc = self.rundb.userdb.get_user(blocked_user)
             if blocked_doc is not None:
                 self.rundb.userdb.remove_user(blocked_doc, self.username)
+
+    def test_user_management_table_hx_sort_search_and_pagination_contract(self):
+        created_users = [f"H19UmUser{idx:02d}" for idx in range(30)]
+        approver = self.rundb.userdb.get_user(self.username)
+        original_pending = approver.get("pending", False)
+        original_groups = list(approver.get("groups", []))
+
+        for idx, username in enumerate(created_users):
+            self.rundb.userdb.create_user(
+                username,
+                "secret",
+                f"h19-{idx}@example.com",
+                "https://github.com/official-stockfish/Stockfish",
+            )
+
+        approver["pending"] = False
+        if "group:approvers" not in approver["groups"]:
+            approver["groups"].append("group:approvers")
+        self.rundb.userdb.save_user(approver)
+
+        try:
+            self._login_user()
+            response = self.client.get(
+                "/user_management?group=pending&sort=username&order=asc&page=2&q=H19UmUser&view=paged",
+                headers={"HX-Request": "true"},
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertIn('id="user_management_table"', response.text)
+            self.assertIn('data-server-sort="true"', response.text)
+            self.assertIn('aria-sort="ascending"', response.text)
+            self.assertIn(created_users[25], response.text)
+            self.assertNotIn(created_users[0], response.text)
+            self.assertIn(
+                "sort=username&amp;order=asc&amp;q=H19UmUser",
+                response.text,
+            )
+            self.assertIn("view=all", response.text)
+
+            # User-management search filters by username column only.
+            non_username_match = self.client.get(
+                "/user_management?group=pending&sort=username&order=asc&q=%40example.com&view=paged",
+                headers={"HX-Request": "true"},
+            )
+            self.assertEqual(non_username_match.status_code, 200)
+            self.assertNotIn(created_users[0], non_username_match.text)
+        finally:
+            cleanup_approver = self.rundb.userdb.get_user(self.username)
+            cleanup_approver["pending"] = original_pending
+            cleanup_approver["groups"] = original_groups
+            self.rundb.userdb.save_user(cleanup_approver)
+
+            for username in created_users:
+                doc = self.rundb.userdb.get_user(username)
+                if doc is not None:
+                    self.rundb.userdb.remove_user(doc, self.username)
 
     @patch("fishtest.views.gh.rate_limit")
     def test_rate_limits_full_page_and_hx_fragment(self, mock_rate_limit):

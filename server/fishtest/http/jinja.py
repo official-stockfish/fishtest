@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from os import environ
 from pathlib import Path
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Any, Final
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 from starlette.templating import Jinja2Templates
@@ -106,47 +106,46 @@ def default_environment() -> Environment:
         maxsplit,
     )
     env.filters["string"] = str
-    env.globals.update(
-        {
-            "copy": copy,
-            "datetime": datetime,
-            "diff_url": helpers.diff_url,
-            "display_residual": helpers.display_residual,
-            "fishtest": fishtest,
-            "float": float,
-            "format_bounds": helpers.format_bounds,
-            "format_date": helpers.format_date,
-            "format_group": helpers.format_group,
-            "format_results": helpers.format_results,
-            "format_time_ago": helpers.format_time_ago,
-            "gh": gh,
-            "is_active_sprt_ltc": helpers.is_active_sprt_ltc,
-            "is_elo_pentanomial_run": helpers.is_elo_pentanomial_run,
-            "list_to_string": helpers.list_to_string,
-            "math": math,
-            "pdf_to_string": helpers.pdf_to_string,
-            "results_pre_attrs": helpers.results_pre_attrs,
-            "nelo_pentanomial_summary": helpers.nelo_pentanomial_summary,
-            "run_tables_prefix": helpers.run_tables_prefix,
-            "t_conf": helpers.t_conf,
-            "tests_run_setup": helpers.tests_run_setup,
-            "tests_repo": helpers.tests_repo,
-            "urllib": urllib.parse,
-            "worker_name": helpers.worker_name,
-            "static_url": static_url,
-            "poll": {
-                "batch_homepage": POLL_BATCH_HOMEPAGE_S,
-                "elo_detail": POLL_ELO_DETAIL_S,
-                "tasks_detail": POLL_TASKS_DETAIL_S,
-                "machines_homepage": POLL_MACHINES_HOMEPAGE_S,
-                "live_elo": POLL_LIVE_ELO_S,
-                "rate_limits_server": POLL_RATE_LIMITS_SERVER_S,
-            },
-            "htmx": {
-                "input_changed_delay_ms": HTMX_INPUT_CHANGED_DELAY_MS,
-            },
+    globals_map: dict[str, Any] = {
+        "copy": copy,
+        "datetime": datetime,
+        "diff_url": helpers.diff_url,
+        "display_residual": helpers.display_residual,
+        "fishtest": fishtest,
+        "float": float,
+        "format_bounds": helpers.format_bounds,
+        "format_date": helpers.format_date,
+        "format_group": helpers.format_group,
+        "format_results": helpers.format_results,
+        "format_time_ago": helpers.format_time_ago,
+        "gh": gh,
+        "is_active_sprt_ltc": helpers.is_active_sprt_ltc,
+        "is_elo_pentanomial_run": helpers.is_elo_pentanomial_run,
+        "list_to_string": helpers.list_to_string,
+        "math": math,
+        "pdf_to_string": helpers.pdf_to_string,
+        "results_pre_attrs": helpers.results_pre_attrs,
+        "nelo_pentanomial_summary": helpers.nelo_pentanomial_summary,
+        "run_tables_prefix": helpers.run_tables_prefix,
+        "t_conf": helpers.t_conf,
+        "tests_run_setup": helpers.tests_run_setup,
+        "tests_repo": helpers.tests_repo,
+        "urllib": urllib.parse,
+        "worker_name": helpers.worker_name,
+        "static_url": static_url,
+        "poll": {
+            "batch_homepage": POLL_BATCH_HOMEPAGE_S,
+            "elo_detail": POLL_ELO_DETAIL_S,
+            "tasks_detail": POLL_TASKS_DETAIL_S,
+            "machines_homepage": POLL_MACHINES_HOMEPAGE_S,
+            "live_elo": POLL_LIVE_ELO_S,
+            "rate_limits_server": POLL_RATE_LIMITS_SERVER_S,
         },
-    )
+        "htmx": {
+            "input_changed_delay_ms": HTMX_INPUT_CHANGED_DELAY_MS,
+        },
+    }
+    env.globals.update(globals_map)
     return env
 
 
