@@ -193,21 +193,24 @@ async def page(request: Request):
 ```
 
 **Key rules**:
-- `request` must always be in the template context (required by `url_for`).
+- `Jinja2Templates.TemplateResponse()` injects `request` into the context if it
+    is missing, but repository code still passes it explicitly and relies on it
+    being present for `url_for` and shared context builders.
 - `Jinja2Templates` accepts `directory=` or `env=`, not both.
 - `TemplateResponse` exposes `.template` and `.context` for test assertions.
 - Context processors must be sync functions.
 - JS data is passed via `{{ value|tojson }}`.
 
-**Registered globals** (available in all templates):
+**Registered globals** (repository-specific):
 
 | Global | Source |
 |--------|--------|
 | `url_for` | Injected by Starlette |
-| `active_runs` | View builder |
-| `request` | Starlette context injection |
-| `flash_messages` | Session middleware |
-| Custom helpers | Registered in `app.py` at startup |
+| `static_url` | `server/fishtest/http/jinja.py` |
+| `poll` | `server/fishtest/http/jinja.py` |
+| `htmx.input_changed_delay_ms` | `server/fishtest/http/jinja.py` |
+| Formatting helpers | `server/fishtest/http/template_helpers.py` |
+| `gh`, `fishtest` | registered in `server/fishtest/http/jinja.py` |
 
 **Autoescaping**: Enabled for `.html`, `.xml`, `.j2` extensions. Raw HTML
 must use `{{ value|safe }}` or `{% autoescape false %}`.
@@ -228,9 +231,15 @@ must use `{{ value|safe }}` or `{% autoescape false %}`.
 | OOB troublesome tables | https://htmx.org/attributes/hx-swap-oob/#troublesome-tables-and-lists |
 | Push URL | https://htmx.org/attributes/hx-push-url/ |
 | Indicator | https://htmx.org/attributes/hx-indicator/ |
+| Sync / request coordination | https://htmx.org/attributes/hx-sync/ |
+| Inheritance control | https://htmx.org/attributes/hx-disinherit/ |
+| Parameter filtering | https://htmx.org/attributes/hx-params/ |
 | Multiple triggers | https://htmx.org/attributes/hx-trigger/ |
 | Template fragments essay | https://htmx.org/essays/template-fragments/ |
 | Web security with htmx | https://htmx.org/essays/web-security-basics-with-htmx/ |
+| Search inputs (MDN) | https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/search |
+| `aria-sort` (MDN) | https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-sort |
+| `visibilitychange` (MDN) | https://developer.mozilla.org/en-US/docs/Web/API/Document/visibilitychange_event |
 
 ### Project patterns
 
@@ -239,7 +248,9 @@ must use `{{ value|safe }}` or `{% autoescape false %}`.
 
 ```html
 <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"
-        integrity="sha384-..." crossorigin="anonymous"></script>
+    integrity="sha256-Iig+9oy3VFkU8KiKG97cclanA9HVgMHSVSF9ClDTExM="
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"></script>
 ```
 
 **Fragment detection in Starlette/FastAPI**: htmx sends `HX-Request: true`
@@ -280,6 +291,12 @@ Fragment templates are standalone `.html.j2` files that do not extend
 `base.html.j2`. This avoids partial-block rendering complexity and keeps
 fragments self-contained.
 
+**Content fragments for stateful tables**: newer list pages do not return only
+row fragments. They return content fragments (`contributors_content_fragment`,
+`user_management_content_fragment`, `workers_content_fragment`) so that view
+toggles, truncation banners, pagination, and sort state remain synchronized
+with the table body.
+
 **Vary header for HTTP caching**: when the same URL can return either a
 full page or a fragment, `Vary: HX-Request` must be set on the response so
 that HTTP caches (nginx, CDNs) store separate representations:
@@ -312,6 +329,15 @@ control client behavior:
 - **200** -- swap the response content, continue polling.
 - **204** -- no content change; htmx skips the swap, continues polling.
 - **286** -- swap the response and stop polling (terminal state).
+
+**Request coordination**: `hx-sync` is used where user actions and polling can
+target the same fragment. The main repo pattern is `hx-sync="#machines-filters:abort"`
+so user-initiated sort/page changes beat the background poll.
+
+**Inherited attribute control**: inside filter forms that use inherited
+`hx-include`, sort and pagination links may opt out with
+`hx-disinherit="hx-include"` and `hx-params="none"` so only the explicit URL
+state is sent.
 
 **Conditional polling with visibility**: polls are gated on tab visibility
 to avoid unnecessary server load:
