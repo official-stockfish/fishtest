@@ -30,7 +30,6 @@ from fishtest.http.boundary import (
     remember,
 )
 from fishtest.http.cookie_session import (
-    REMEMBER_MAX_AGE_SECONDS,
     authenticated_user,
 )
 from fishtest.http.csrf import csrf_token_from_form
@@ -40,6 +39,24 @@ from fishtest.http.dependencies import (
     get_rundb,
     get_userdb,
     get_workerdb,
+)
+from fishtest.http.settings import (
+    ACTIONS_PAGE_SIZE,
+    CONTRIBUTORS_MAX_ALL,
+    CONTRIBUTORS_PAGE_SIZE,
+    MACHINES_PAGE_SIZE,
+    NNS_MAX_ALL,
+    NNS_PAGE_SIZE,
+    PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS,
+    SESSION_REMEMBER_MAX_AGE_SECONDS,
+    UI_FORM_MAX_FIELDS,
+    UI_FORM_MAX_FILES,
+    UI_FORM_MAX_PART_SIZE_BYTES,
+    UI_HTTP_TIMEOUT_SECONDS,
+    USER_MANAGEMENT_MAX_ALL,
+    USER_MANAGEMENT_PAGE_SIZE,
+    WORKERS_MAX_ALL,
+    WORKERS_PAGE_SIZE,
 )
 from fishtest.http.template_helpers import (
     build_contributors_rows,
@@ -81,10 +98,10 @@ from fishtest.util import (
     worker_name,
 )
 
-HTTP_TIMEOUT = 15.0
-FORM_MAX_FILES = 2
-FORM_MAX_FIELDS = 200
-FORM_MAX_PART_SIZE = 200 * 1024 * 1024
+HTTP_TIMEOUT = UI_HTTP_TIMEOUT_SECONDS
+FORM_MAX_FILES = UI_FORM_MAX_FILES
+FORM_MAX_FIELDS = UI_FORM_MAX_FIELDS
+FORM_MAX_PART_SIZE = UI_FORM_MAX_PART_SIZE_BYTES
 DEFAULT_RECAPTCHA_SITE_KEY = "6LePs8YUAAAAABMmqHZVyVjxat95Z1c_uHrkugZM"
 
 router = APIRouter(tags=["ui"])
@@ -497,7 +514,7 @@ def login(request):
         if "error" not in token:
             if stay_logged_in:
                 # Session persists for a year after login
-                remember(request, username, max_age=REMEMBER_MAX_AGE_SECONDS)
+                remember(request, username, max_age=SESSION_REMEMBER_MAX_AGE_SECONDS)
             else:
                 # Session ends when the browser is closed
                 remember(request, username)
@@ -717,8 +734,8 @@ _WORKERS_SORT_MAP = {
     "email": ("owner_email", False),
 }
 _WORKERS_DEFAULT_SORT = "last_changed"
-_WORKERS_PAGE_SIZE = 25
-_WORKERS_MAX_ALL = 5000
+_WORKERS_PAGE_SIZE = WORKERS_PAGE_SIZE
+_WORKERS_MAX_ALL = WORKERS_MAX_ALL
 _WORKERS_FILTER_FIELD = "worker_name"
 
 _USER_MANAGEMENT_GROUP_DEFAULT = "pending"
@@ -730,8 +747,8 @@ _USER_MANAGEMENT_SORT_MAP = {
     "email": ("email", False),
 }
 _USER_MANAGEMENT_DEFAULT_SORT = "registration"
-_USER_MANAGEMENT_PAGE_SIZE = 25
-_USER_MANAGEMENT_MAX_ALL = 5000
+_USER_MANAGEMENT_PAGE_SIZE = USER_MANAGEMENT_PAGE_SIZE
+_USER_MANAGEMENT_MAX_ALL = USER_MANAGEMENT_MAX_ALL
 _USER_MANAGEMENT_FILTER_FIELD = "username"
 
 
@@ -1065,8 +1082,8 @@ def nns(request):
     if view_param not in {"paged", "all"}:
         view_param = "paged"
 
-    page_size = 25
-    max_all = 5000
+    page_size = NNS_PAGE_SIZE
+    max_all = NNS_MAX_ALL
 
     def _truthy(value):
         if isinstance(value, bool):
@@ -1321,7 +1338,7 @@ def actions(request):
 
     page_param = request.params.get("page", "")
     page_idx = _page_index_from_params(request.params)
-    page_size = 25
+    page_size = ACTIONS_PAGE_SIZE
 
     actions, num_actions = request.actiondb.get_actions(
         username=username,
@@ -1744,8 +1761,8 @@ _CONTRIBUTORS_SORT_MAP = {
     "tests_repo": ("tests_repo", False),
 }
 _CONTRIBUTORS_DEFAULT_SORT = "cpu_hours"
-_CONTRIBUTORS_PAGE_SIZE = 100
-_CONTRIBUTORS_MAX_ALL = 5000
+_CONTRIBUTORS_PAGE_SIZE = CONTRIBUTORS_PAGE_SIZE
+_CONTRIBUTORS_MAX_ALL = CONTRIBUTORS_MAX_ALL
 
 _MACHINES_SORT_MAP = {
     "last_active": ("last_updated", True),
@@ -1762,7 +1779,7 @@ _MACHINES_SORT_MAP = {
     "running_on": ("run_label", False),
 }
 _MACHINES_DEFAULT_SORT = "last_active"
-_MACHINES_PAGE_SIZE = 500
+_MACHINES_PAGE_SIZE = MACHINES_PAGE_SIZE
 _MACHINES_FILTER_FIELDS = (
     "username",
     "concurrency",
@@ -1901,7 +1918,7 @@ def _set_machine_cookies(
     my_workers,
     filtered_count,
 ):
-    cookie_max_age = 60 * 60 * 24 * 30
+    cookie_max_age = PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS
     _set_machine_cookie(request, "machines_sort", sort_param, cookie_max_age)
     _set_machine_cookie(request, "machines_order", order_param, cookie_max_age)
     _set_machine_cookie(request, "machines_page", str(page), cookie_max_age)
@@ -2236,7 +2253,7 @@ def get_paginated_finished_runs(request, *, username=None):
     ltc_only = request.params.get("ltc_only", False)
 
     page_idx = _page_index_from_params(request.params)
-    page_size = 25
+    page_size = ACTIONS_PAGE_SIZE
 
     finished_runs, num_finished_runs = request.rundb.get_finished_runs(
         username=username,
