@@ -32,23 +32,57 @@
     <div class="col-12 col-md-auto">
       <label for="actions_action" class="form-label">Show only</label>
       <select id="actions_action" class="form-select" name="action">
-        <option value="" {{ 'selected' if action_filter == '' else '' }}>All</option>
-        <option value="new_run" {{ 'selected' if action_filter == 'new_run' else '' }}>New Run</option>
-        <option value="approve_run" {{ 'selected' if action_filter == 'approve_run' else '' }}>Approve Run</option>
-        <option value="modify_run" {{ 'selected' if action_filter == 'modify_run' else '' }}>Modify Run</option>
-        <option value="stop_run" {{ 'selected' if action_filter == 'stop_run' else '' }}>Stop Run</option>
-        <option value="delete_run" {{ 'selected' if action_filter == 'delete_run' else '' }}>Delete Run</option>
-        <option value="purge_run" {{ 'selected' if action_filter == 'purge_run' else '' }}>Purge Run</option>
-        <option value="finished_run" {{ 'selected' if action_filter == 'finished_run' else '' }}>Finished Runs</option>
-        <option value="block_user" {{ 'selected' if action_filter == 'block_user' else '' }}>Block/Unblock User</option>
-        <option value="block_worker" {{ 'selected' if action_filter == 'block_worker' else '' }}>Block/Unblock Worker</option>
-        <option value="accept_user" {{ 'selected' if action_filter == 'accept_user' else '' }}>Accept User</option>
-        <option value="upload_nn" {{ 'selected' if action_filter == 'upload_nn' else '' }}>Upload NN file</option>
-        <option value="failed_task" {{ 'selected' if action_filter == 'failed_task' else '' }}>Failed Tasks</option>
-        <option value="crash_or_time" {{ 'selected' if action_filter == 'crash_or_time' else '' }}>Crashes or Time losses</option>
-        <option value="log_message" {{ 'selected' if action_filter == 'log_message' else '' }}>Log Messages</option>
-        <option value="dead_task" class="grayedoutoption" {{ 'selected' if action_filter == 'dead_task' else '' }}>Dead Tasks</option>
-        <option value="system_event" class="grayedoutoption" {{ 'selected' if action_filter == 'system_event' else '' }}>System Events</option>
+        <option value="" {{ 'selected' if action_filter == '' else '' }}>
+          All
+        </option>
+        <option value="new_run" {{ 'selected' if action_filter == 'new_run' else '' }}>
+          New Run
+        </option>
+        <option value="approve_run" {{ 'selected' if action_filter == 'approve_run' else '' }}>
+          Approve Run
+        </option>
+        <option value="modify_run" {{ 'selected' if action_filter == 'modify_run' else '' }}>
+          Modify Run
+        </option>
+        <option value="stop_run" {{ 'selected' if action_filter == 'stop_run' else '' }}>
+          Stop Run
+        </option>
+        <option value="delete_run" {{ 'selected' if action_filter == 'delete_run' else '' }}>
+          Delete Run
+        </option>
+        <option value="purge_run" {{ 'selected' if action_filter == 'purge_run' else '' }}>
+          Purge Run
+        </option>
+        <option value="finished_run" {{ 'selected' if action_filter == 'finished_run' else '' }}>
+          Finished Runs
+        </option>
+        <option value="block_user" {{ 'selected' if action_filter == 'block_user' else '' }}>
+          Block/Unblock User
+        </option>
+        <option value="block_worker" {{ 'selected' if action_filter == 'block_worker' else '' }}>
+          Block/Unblock Worker
+        </option>
+        <option value="accept_user" {{ 'selected' if action_filter == 'accept_user' else '' }}>
+          Accept User
+        </option>
+        <option value="upload_nn" {{ 'selected' if action_filter == 'upload_nn' else '' }}>
+          Upload NN file
+        </option>
+        <option value="failed_task" {{ 'selected' if action_filter == 'failed_task' else '' }}>
+          Failed Tasks
+        </option>
+        <option value="crash_or_time" {{ 'selected' if action_filter == 'crash_or_time' else '' }}>
+          Crashes or Time losses
+        </option>
+        <option value="log_message" {{ 'selected' if action_filter == 'log_message' else '' }}>
+          Log Messages
+        </option>
+        <option value="dead_task" class="grayedoutoption" {{ 'selected' if action_filter == 'dead_task' else '' }}>
+          Dead Tasks
+        </option>
+        <option value="system_event" class="grayedoutoption" {{ 'selected' if action_filter == 'system_event' else '' }}>
+          System Events
+        </option>
       </select>
     </div>
 

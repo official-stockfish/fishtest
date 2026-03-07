@@ -1,5 +1,4 @@
 {% extends "base.html.j2" %}
-
 {% block body %}
 <link
   rel="stylesheet"
@@ -23,9 +22,14 @@
   </div>
 
   <h4>
-    <a id="machines-button" class="btn btn-sm btn-light border"
+    <a
+      id="machines-button"
+      class="btn btn-sm btn-light border"
       data-toggle-cookie-max-age="{{ cookies.panel_toggle_max_age }}"
-      data-bs-toggle="collapse" href="#machines-panel" role="button" aria-expanded="{{ 'true' if machines_shown else 'false' }}"
+      data-bs-toggle="collapse"
+      href="#machines-panel"
+      role="button"
+      aria-expanded="{{ 'true' if machines_shown else 'false' }}"
       aria-controls="machines-panel">
       {{ 'Hide' if machines_shown else 'Show' }}
     </a>
@@ -79,8 +83,9 @@
 
       <div class="col-auto" id="machines-pagination" aria-live="polite"></div>
     </form>
-  {% set height = (machines_count * 37) | string ~ "px" %}
-    <section id="machines"
+    {% set height = (machines_count * 37) | string ~ "px" %}
+    <section
+      id="machines"
       data-machines-loaded="0"
       class="overflow-auto machines-panel-scroll"
       hx-get="/tests/machines"
@@ -88,13 +93,13 @@
       hx-sync="#machines-filters:abort"
       hx-trigger="{% if machines_shown %}load, {% endif %}machines:load, every {{ poll.machines_homepage }}s [document.visibilityState === 'visible' && document.getElementById('machines-panel').classList.contains('show') && document.activeElement?.id !== 'machines_q'], visibilitychange[document.visibilityState === 'visible' && document.getElementById('machines-panel').classList.contains('show') && document.activeElement?.id !== 'machines_q'] from:document"
       hx-swap="innerHTML"
-      >
+    >
       <div id="machines-loading" class="skeleton-wrap">
         <div class="skeleton-line"></div>
         <div
           class="skeleton-block machines-skeleton-block"
-          style="--machines-skeleton-height: {{ height }};">
-          </div>
+          style="--machines-skeleton-height: {{ height }};"
+        ></div>
       </div>
     </section>
   </section>
