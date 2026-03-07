@@ -33,8 +33,18 @@
 {% macro sort_header(field, label, width="") -%}
   {% set is_active = (sort == field) %}
   {% set next_order = "desc" if (is_active and order == "asc") else "asc" %}
+  {% set sort_url -%}
+    {{ request.url.path }}?group={{ group }}&sort={{ field }}&order={{ next_order }}&view={{ view }}{% if q %}&q={{ q | urlencode }}{% endif %}
+  {%- endset %}
   <th{% if is_active %} aria-sort="{{ 'ascending' if order == 'asc' else 'descending' }}"{% endif %}{% if width %} style="width:{{ width }}"{% endif %}>
-    <a class="sort-header text-decoration-none text-reset d-inline-flex align-items-center gap-1" href="{{ request.url.path }}?group={{ group }}&sort={{ field }}&order={{ next_order }}&view={{ view }}{% if q %}&q={{ q | urlencode }}{% endif %}">
+    <a
+      class="sort-header text-decoration-none text-reset d-inline-flex align-items-center gap-1"
+      href="{{ sort_url | trim }}"
+      hx-get="{{ sort_url | trim }}"
+      hx-target="#user-management-content"
+      hx-push-url="true"
+      hx-swap="innerHTML"
+    >
       <span>{{ label }}</span>
       <span class="sort-indicator" aria-hidden="true">{% if is_active and order == "asc" %}▲{% elif is_active and order == "desc" %}▼{% else %}↕{% endif %}</span>
     </a>

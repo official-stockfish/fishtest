@@ -36,9 +36,16 @@
 {% macro sort_header(field, label, align="") -%}
   {% set is_active = (sort == field) %}
   {% set next_order = "desc" if (is_active and order == "asc") else "asc" %}
+  {% set sort_url -%}
+    {{ request.url.path }}?sort={{ field }}&order={{ next_order }}&view={{ view }}{% if network_name_filter %}&network_name={{ network_name_filter | urlencode }}{% endif %}{% if user_filter %}&user={{ user_filter | urlencode }}{% endif %}{% if master_only %}&master_only=1{% endif %}
+  {%- endset %}
   <th{% if is_active %} aria-sort="{{ 'ascending' if order == 'asc' else 'descending' }}"{% endif %} class="{{ align }}">
     <a class="sort-header text-decoration-none text-reset d-inline-flex align-items-center gap-1"
-      href="{{ request.url.path }}?sort={{ field }}&order={{ next_order }}&view={{ view }}{% if network_name_filter %}&network_name={{ network_name_filter | urlencode }}{% endif %}{% if user_filter %}&user={{ user_filter | urlencode }}{% endif %}{% if master_only %}&master_only=1{% endif %}">
+      href="{{ sort_url | trim }}"
+      hx-get="{{ sort_url | trim }}"
+      hx-target="#nns-content"
+      hx-push-url="true"
+      hx-swap="innerHTML">
       <span>{{ label }}</span>
       <span class="sort-indicator" aria-hidden="true">{% if is_active and order == "asc" %}▲{% elif is_active and order == "desc" %}▼{% else %}↕{% endif %}</span>
     </a>

@@ -555,6 +555,9 @@ is keyboard-focusable and announced as a button.
 Same context as the content area of `contributors.html.j2`: `users`, `pages`,
 `sort`, `order`, `view`, `num_users`, `max_all`, `is_truncated`.
 
+Sortable headers are dual-mode links (`href` + `hx-get`) targeting
+`#contributors-content` with `hx-push-url="true"`.
+
 ### `contributors_rows_fragment.html.j2`
 
 | Key | Type |
@@ -625,6 +628,9 @@ This fragment is returned by `/tests/live_elo_update/{id}` and swaps
 Same context as `nns.html.j2` (`filters`, `pages`, `nns`, `sort`, `order`,
 `view`, `num_nns`, `max_all`, `is_truncated`).
 
+Sortable headers are dual-mode links (`href` + `hx-get`) targeting
+`#nns-content` with `hx-push-url="true"`.
+
 ### `rate_limits_server_fragment.html.j2`
 
 | Key | Type |
@@ -691,6 +697,9 @@ Same context as the content area of `user_management.html.j2`: `group`,
 Same context as the content area of `workers.html.j2`: `filter_value`,
 `sort`, `order`, `q`, `view`, `pages`, `blocked_workers`, `show_email`,
 `num_workers`, `max_all`, `is_truncated`.
+
+Sortable headers are dual-mode links (`href` + `hx-get`) targeting
+`#workers-content` with `hx-push-url="true"`.
 
 ### `workers_rows_fragment.html.j2`
 
