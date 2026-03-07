@@ -16,9 +16,7 @@
   {% set has_authenticated_user = has_authenticated_user if has_authenticated_user is defined else false %}
 
   <div class="mw-xxl">
-    <div id="homepage-stats">
-      {% include "homepage_stats_fragment.html.j2" %}
-    </div>
+    {% include "homepage_stats_fragment.html.j2" %}
   </div>
 
   <h4>
@@ -81,7 +79,7 @@
         </div>
       {% endif %}
 
-      <div class="col-auto" id="machines-pagination" aria-live="polite"></div>
+      <div class="col-auto d-flex align-items-end" id="machines-pagination" aria-live="polite"></div>
     </form>
     {% set height = (machines_count * 37) | string ~ "px" %}
     <section

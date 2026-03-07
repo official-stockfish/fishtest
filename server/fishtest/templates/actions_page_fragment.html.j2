@@ -100,12 +100,15 @@
 
     <div class="col-12 col-md-auto">
       <label for="actions_text" class="form-label">Free text search</label>
-      <i
-        class="fa-solid fa-circle-info"
-        role="button"
+      <button
+        type="button"
+        class="btn btn-link btn-sm p-0 align-baseline"
+        aria-label="Show free text search help"
         data-bs-toggle="modal"
         data-bs-target="#autoselect-modal"
-      ></i>
+      >
+        <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+      </button>
       <div
         class="modal fade"
         id="autoselect-modal"

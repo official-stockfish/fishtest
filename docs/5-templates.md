@@ -532,7 +532,9 @@ Same context as `actions.html.j2`. This fragment owns the filter form,
 the `#actions-content` include, and the search-first `/actions` form that owns
 the debounced username and free-text filters. The username filter is
 substring-based; the view resolves matching usernames before running the exact
-action query so the debounced form stays fast on large logs.
+action query so the debounced form stays fast on large logs. The free-text help
+control is a labeled button that opens the Bootstrap modal, so the icon trigger
+is keyboard-focusable and announced as a button.
 
 ### `contributors_content_fragment.html.j2`
 

@@ -94,6 +94,47 @@ class TestHttpBoundary(unittest.TestCase):
         self.rundb.buffer(run, priority=Prio.SAVE_NOW)
         return str(run_id)
 
+    def _create_tests_elo_run(
+        self,
+        *,
+        approved: bool = False,
+        workers: int = 0,
+        finished: bool = False,
+        failed: bool = False,
+    ) -> str:
+        run_id = self.rundb.new_run(
+            "master",
+            "new-branch",
+            400,
+            "10+0.01",
+            "10+0.01",
+            "book.pgn",
+            "10",
+            1,
+            "",
+            "",
+            info="tests elo boundary test",
+            resolved_base="347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+            resolved_new="347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+            msg_base="base",
+            msg_new="new",
+            base_signature="123456",
+            new_signature="654321",
+            base_nets=["nn-0000000000a0.nnue"],
+            new_nets=["nn-0000000000a1.nnue"],
+            tests_repo="https://github.com/official-stockfish/Stockfish",
+            auto_purge=False,
+            username="travis",
+            start_time=datetime.now(UTC),
+        )
+        run = self.rundb.get_run(run_id)
+        run["approved"] = approved
+        run["workers"] = workers
+        run["finished"] = finished
+        run["failed"] = failed
+        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+        return str(run_id)
+
     def test_request_shim_parity(self):
         from fishtest.http.boundary import ApiRequestShim
         from fishtest.http.cookie_session import CookieSession
@@ -332,6 +373,36 @@ class TestHttpBoundary(unittest.TestCase):
         self.assertIn("No failed tests on this page", response.text)
         self.assertIn("No active tests", response.text)
         self.assertIn("colspan=20>No tests pending approval</td>", response.text)
+
+    def test_tests_elo_expected_state_returns_204_when_unchanged(self):
+        run_id = self._create_tests_elo_run(approved=True)
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get(f"/tests/elo/{run_id}?expected=paused")
+
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.content, b"")
+
+    def test_tests_elo_expected_state_returns_200_on_transition(self):
+        run_id = self._create_tests_elo_run(approved=False)
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get(f"/tests/elo/{run_id}?expected=paused")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("pending", response.text)
+
+    def test_tests_elo_expected_state_returns_286_on_terminal_transition(self):
+        run_id = self._create_tests_elo_run(approved=True, finished=True)
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get(f"/tests/elo/{run_id}?expected=active")
+
+        self.assertEqual(response.status_code, 286)
+        self.assertIn("finished", response.text)
 
     def test_live_elo_page_finished_sprt_has_data_and_no_poller(self):
         run_id = self._create_live_elo_run(sprt_state="accepted")

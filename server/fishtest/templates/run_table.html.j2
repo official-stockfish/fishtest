@@ -13,7 +13,8 @@
 <h4>
 {% if toggle %}
   <a id="{{ toggle }}-button" class="btn btn-sm btn-light border"
-     data-bs-toggle="collapse" href="#{{ toggle }}" role="button" aria-expanded="false"
+  data-bs-toggle="collapse" href="#{{ toggle }}" role="button"
+  aria-expanded="{{ 'true' if toggle_state == 'Hide' else 'false' }}"
       aria-controls="{{ toggle }}"
       data-toggle-cookie-name="{{ cookie_name }}"
       data-toggle-cookie-max-age="{{ 60 * 60 * 24 * 365 * 10 }}">

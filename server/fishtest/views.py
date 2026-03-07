@@ -3895,18 +3895,18 @@ def tests_elo(request):
     if run is None:
         raise StarletteHTTPException(status_code=404)
 
-    is_finished = run.get("finished", False)
-    is_active = run.get("workers", 0) > 0
-    expected = request.params.get("expected")
+    expected = (request.params.get("expected") or "").strip().lower()
     actual = _classify_run_status(run)
 
     if expected:
-        if is_finished:
+        if actual in {"finished", "failed"}:
             request.response_status = 286
+        elif actual == expected:
+            request.response_status = 204
     else:
-        if is_finished:
+        if actual in {"finished", "failed"}:
             request.response_status = 286
-        elif not is_active:
+        elif actual != "active":
             request.response_status = 204
 
     active = 0
