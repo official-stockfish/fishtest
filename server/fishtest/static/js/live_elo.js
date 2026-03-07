@@ -10,10 +10,18 @@
 // - otherwise: animate from previous value to new value.
 
 (async () => {
-  await Promise.all([
-    DOMContentLoaded(),
-    google.charts.load("current", { packages: ["gauge"] }),
-  ]);
+  function waitForGaugePackage() {
+    const loadResult = google.charts.load("current", { packages: ["gauge"] });
+    if (loadResult && typeof loadResult.then === "function") {
+      return loadResult;
+    }
+
+    return new Promise((resolve) => {
+      google.charts.setOnLoadCallback(resolve);
+    });
+  }
+
+  await Promise.all([DOMContentLoaded(), waitForGaugePackage()]);
 
   const losChart = new google.visualization.Gauge(
     document.getElementById("LOS_chart_div"),
@@ -28,15 +36,26 @@
   const LLR_FALLBACK_A = -2.94;
   const LLR_FALLBACK_B = 2.94;
   const LLR_MIDDLE_TRIGGER_DELTA = 0.05;
+  const ELO_MODE_COOKIE_NAME = "live_elo_mode";
+  const ELO_MODE_FIXED = "fixed";
+  const ELO_MODE_DYNAMIC = "dynamic";
+  const ELO_FIXED_MIN = -4;
+  const ELO_FIXED_MAX = 4;
   const ELO_INITIAL_BOUND = 1;
   const ELO_MIN_BOUND = 0.25;
   const ELO_MINOR_TICKS = 4;
   const ELO_MAJOR_TICK_COUNT = 5;
   const ANIMATION_START_DELAY_MS = 110;
   const ANIMATION_DURATION_MS = 950;
+  const eloGauge = document.getElementById("ELO_chart_div");
+  const eloModeCookieMaxAge = Number.parseInt(
+    eloGauge?.dataset.eloModeCookieMaxAge || "",
+    10,
+  );
 
   let animationToken = 0;
   let animationTimers = [];
+  let eloDisplayMode = initialEloMode(eloGauge);
 
   let hasDrawnOnce = false;
   let lastSample = {
@@ -65,6 +84,35 @@
 
   function parseSprtState(raw) {
     return (raw || "").trim().toLowerCase();
+  }
+
+  function normalizeEloMode(raw) {
+    return raw === ELO_MODE_DYNAMIC ? ELO_MODE_DYNAMIC : ELO_MODE_FIXED;
+  }
+
+  function getCookie(name) {
+    return document.cookie
+      .split(";")
+      .map((cookie) => cookie.trim().split("="))
+      .find(([cookieName]) => cookieName === name)?.[1];
+  }
+
+  function initialEloMode(gauge) {
+    const persistedMode = getCookie(ELO_MODE_COOKIE_NAME);
+    if (
+      persistedMode === ELO_MODE_FIXED ||
+      persistedMode === ELO_MODE_DYNAMIC
+    ) {
+      return persistedMode;
+    }
+    return normalizeEloMode(gauge?.dataset.eloModeDefault);
+  }
+
+  function persistEloMode(mode) {
+    if (!Number.isFinite(eloModeCookieMaxAge) || eloModeCookieMaxAge <= 0) {
+      return;
+    }
+    document.cookie = `${ELO_MODE_COOKIE_NAME}=${mode}; path=/; max-age=${eloModeCookieMaxAge}; SameSite=Lax`;
   }
 
   function isTerminalSprtState(state) {
@@ -105,6 +153,36 @@
     };
   }
 
+  function currentEloMode() {
+    return normalizeEloMode(eloDisplayMode);
+  }
+
+  function toggleEloMode() {
+    eloDisplayMode =
+      currentEloMode() === ELO_MODE_FIXED ? ELO_MODE_DYNAMIC : ELO_MODE_FIXED;
+    persistEloMode(eloDisplayMode);
+    syncEloModeUi();
+    if (hasDrawnOnce) {
+      drawGauges({
+        ...lastSample,
+        forceMiddleAnimation: true,
+      });
+    }
+  }
+
+  function syncEloModeUi() {
+    const isFixed = currentEloMode() === ELO_MODE_FIXED;
+    const gauge = document.getElementById("ELO_chart_div");
+    if (gauge) {
+      gauge.dataset.eloMode = currentEloMode();
+      gauge.style.cursor = "pointer";
+      gauge.title = isFixed
+        ? "Click to switch Elo gauge to dynamic auto range"
+        : "Click to switch Elo gauge to fixed [-4, +4] range";
+      gauge.setAttribute("aria-label", gauge.title);
+    }
+  }
+
   function selectPowerOfTwoBound(requiredAbs, minBound) {
     const clampedRequired = Math.max(requiredAbs, minBound);
     const exponent = Math.ceil(Math.log2(clampedRequired));
@@ -112,6 +190,15 @@
   }
 
   function buildEloScale(sample, isInitialDraw) {
+    if (currentEloMode() === ELO_MODE_FIXED) {
+      return {
+        min: ELO_FIXED_MIN,
+        max: ELO_FIXED_MAX,
+        center: 0,
+        minorTicks: ELO_MINOR_TICKS,
+      };
+    }
+
     // Keep the gauge symmetric around zero and pick the smallest
     // power-of-two bound that contains CI endpoints and the arrow value.
     const requiredAbs = Math.max(
@@ -231,7 +318,8 @@
     animateGaugeTo(llrChart, llrData, llrOpts, sample.llr, token);
 
     const eloScale = buildEloScale(sample, isFirstDraw);
-    const eloStart = fromMiddle ? eloScale.center : lastSample.elo;
+    const eloStartRaw = fromMiddle ? eloScale.center : lastSample.elo;
+    const eloStart = clamp(eloStartRaw, eloScale.min, eloScale.max);
     const eloOpts = {
       width: 500,
       height: 150,
@@ -242,28 +330,34 @@
     };
     // Keep upstream/master color semantics with dynamic scale.
     if (sample.ciLower < 0 && sample.ciUpper > 0) {
-      eloOpts.redFrom = sample.ciLower;
+      eloOpts.redFrom = clamp(sample.ciLower, eloScale.min, eloScale.max);
       eloOpts.redTo = 0;
       eloOpts.yellowFrom = 0;
       eloOpts.yellowTo = 0;
       eloOpts.greenFrom = 0;
-      eloOpts.greenTo = sample.ciUpper;
+      eloOpts.greenTo = clamp(sample.ciUpper, eloScale.min, eloScale.max);
     } else if (sample.ciLower >= 0) {
-      eloOpts.redFrom = sample.ciLower;
-      eloOpts.redTo = sample.ciLower;
-      eloOpts.yellowFrom = sample.ciLower;
-      eloOpts.yellowTo = sample.ciLower;
-      eloOpts.greenFrom = sample.ciLower;
-      eloOpts.greenTo = sample.ciUpper;
+      const lower = clamp(sample.ciLower, eloScale.min, eloScale.max);
+      const upper = clamp(sample.ciUpper, eloScale.min, eloScale.max);
+      eloOpts.redFrom = lower;
+      eloOpts.redTo = lower;
+      eloOpts.yellowFrom = lower;
+      eloOpts.yellowTo = lower;
+      eloOpts.greenFrom = lower;
+      eloOpts.greenTo = upper;
     } else if (sample.ciUpper <= 0) {
-      eloOpts.redFrom = sample.ciLower;
-      eloOpts.redTo = sample.ciUpper;
-      eloOpts.yellowFrom = sample.ciUpper;
-      eloOpts.yellowTo = sample.ciUpper;
-      eloOpts.greenFrom = sample.ciUpper;
-      eloOpts.greenTo = sample.ciUpper;
+      const lower = clamp(sample.ciLower, eloScale.min, eloScale.max);
+      const upper = clamp(sample.ciUpper, eloScale.min, eloScale.max);
+      eloOpts.redFrom = lower;
+      eloOpts.redTo = upper;
+      eloOpts.yellowFrom = upper;
+      eloOpts.yellowTo = upper;
+      eloOpts.greenFrom = upper;
+      eloOpts.greenTo = upper;
     }
     const eloData = gaugeData("Elo", eloStart);
+    // Keep the gauge numeric readout at the uncapped server Elo value while
+    // the chart itself limits the needle to the selected visual range.
     animateGaugeTo(eloChart, eloData, eloOpts, sample.elo, token);
 
     hasDrawnOnce = true;
@@ -292,6 +386,18 @@
 
   // Initial draw from server-rendered data attributes.
   scheduleGaugeUpdate(document.getElementById("gauge-data"));
+
+  syncEloModeUi();
+
+  if (eloGauge) {
+    eloGauge.addEventListener("click", toggleEloMode);
+    eloGauge.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        toggleEloMode();
+      }
+    });
+  }
 
   function replayCurrentSampleFromMiddle() {
     if (!hasDrawnOnce || document.visibilityState !== "visible") {

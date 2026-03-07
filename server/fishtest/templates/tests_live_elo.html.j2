@@ -18,7 +18,14 @@
     <div style="width: 1em"></div>
     <div id="LOS_chart_div"></div>
     <div style="width: 1em"></div>
-    <div id="ELO_chart_div"></div>
+    <div
+      id="ELO_chart_div"
+      role="button"
+      tabindex="0"
+      title="Click to switch Elo gauge scale mode"
+      aria-label="Switch Elo gauge scale mode"
+      data-elo-mode-default="fixed"
+      data-elo-mode-cookie-max-age="{{ cookies.persistent_ui_max_age }}"></div>
   </div>
   <h4>Details</h4>
   <div class="col-12 table-responsive-lg">
