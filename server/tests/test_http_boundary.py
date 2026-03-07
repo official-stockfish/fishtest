@@ -415,6 +415,11 @@ class TestHttpBoundary(unittest.TestCase):
         self.assertIn('id="gauge-data"', response.text)
         self.assertIn('data-sprt-state="accepted"', response.text)
         self.assertIn("live_elo.js", response.text)
+        self.assertIn('id="ELO_chart_div"', response.text)
+        self.assertIn('role="button"', response.text)
+        self.assertIn('tabindex="0"', response.text)
+        self.assertIn('data-elo-mode-default="fixed"', response.text)
+        self.assertIn('data-elo-mode-cookie-max-age="', response.text)
         # Terminal SPRT runs must stop polling.
         self.assertNotIn("/tests/live_elo_update/", response.text)
 
