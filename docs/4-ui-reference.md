@@ -46,7 +46,7 @@ registers it on the FastAPI router.
 | `/tests/purge` | POST | `tests_purge` | -- | CSRF, primary |
 | `/tests/delete` | POST | `tests_delete` | -- | CSRF, primary |
 | `/tests/view/{id}` | GET, POST | `tests_view` | `tests_view.html.j2` | |
-| `/tests/live_elo/{id}` | GET, POST | `tests_live_elo` | `tests_live_elo.html.j2` | |
+| `/tests/live_elo/{id}` | GET, POST | `tests_live_elo` | `tests_live_elo.html.j2` | Live Elo page + dual-scale gauge |
 | `/tests/stats/{id}` | GET, POST | `tests_stats` | `tests_stats.html.j2` | |
 | `/tests/tasks/{id}` | GET, POST | `tests_tasks` | `tasks_fragment.html.j2` | Fragment-only |
 | `/tests/machines` | GET, POST | `tests_machines` | `machines_fragment.html.j2` | Fragment-only, 10s cache |
@@ -89,6 +89,27 @@ Without `expected`, the handler follows the older fragment-only contract:
 - `200` for active runs.
 - `204` for non-active non-terminal runs.
 - `286` for terminal runs.
+
+## `/tests/live_elo/{id}` gauge scale contract
+
+The Live Elo page renders three Google gauges (LOS, LLR, Elo) and keeps the
+details table in sync through `/tests/live_elo_update/{id}` OOB swaps.
+
+The Elo gauge supports two display modes:
+
+- Fixed mode (default): fixed gauge range `[-4, +4]` for visual consistency.
+- Dynamic mode: auto range chosen from the smallest symmetric power-of-two
+   interval that covers the current Elo value and confidence interval.
+
+Switching modes:
+
+- Clicking the Elo gauge toggles between fixed and dynamic mode.
+- Keyboard activation on the Elo gauge (`Enter` or `Space`) also toggles modes.
+
+Value display rule:
+
+- The gauge reports the real uncapped Elo value from the server.
+- In fixed mode, the gauge needle is visually limited by the selected range.
 
 ## htmx fragment dispatch
 

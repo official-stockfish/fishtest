@@ -399,6 +399,20 @@ Each task row: `task_id`, `row_class`, `worker_label`, `worker_url`,
 |-----|------|
 | `run` | dict |
 | `page_title` | string |
+| `run_status_label` | string |
+| `sprt_state` | string |
+| `elo_raw`, `ci_lower_raw`, `ci_upper_raw` | float |
+| `LLR_raw`, `LOS_raw`, `a_raw`, `b_raw` | float |
+| `elo_value`, `ci_lower`, `ci_upper`, `LLR`, `LOS` | number |
+| `W`, `L`, `D`, `games` | int |
+| `w_pct`, `l_pct`, `d_pct` | float |
+| `pentanomial` | list |
+| `elo_model`, `elo0`, `elo1`, `alpha`, `beta` | mixed |
+
+The page script renders LOS, LLR, and Elo gauges from `gauge-data` attributes.
+The Elo gauge supports a fixed default range (`[-4, +4]`) and a dynamic range.
+The gauge reports the uncapped server Elo value while the needle remains
+visually bounded by the active range.
 
 ### `tests_run.html.j2`
 
@@ -579,10 +593,18 @@ Same context as the content area of `contributors.html.j2`: `users`, `pages`,
 | Key | Type |
 |-----|------|
 | `run` | dict |
-| `LLR_raw` | float |
-| `a_raw`, `b_raw` | float |
-| `elo_raw`, `pm_raw` | float |
-| `chart_data` | list |
+| `run_status_label` | string |
+| `sprt_state` | string |
+| `elo_raw`, `ci_lower_raw`, `ci_upper_raw` | float |
+| `LLR_raw`, `LOS_raw`, `a_raw`, `b_raw` | float |
+| `elo_value`, `ci_lower`, `ci_upper`, `LLR`, `LOS` | number |
+| `W`, `L`, `D`, `games` | int |
+| `w_pct`, `l_pct`, `d_pct` | float |
+| `pentanomial` | list |
+| `elo_model`, `elo0`, `elo1`, `alpha`, `beta` | mixed |
+
+This fragment is returned by `/tests/live_elo_update/{id}` and swaps
+`#live-elo-data` out-of-band while preserving the current client-side gauge mode.
 
 ### `machines_fragment.html.j2`
 
