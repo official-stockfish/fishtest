@@ -88,41 +88,14 @@
 
     <div class="col-12 col-md-auto actions-user-filter">
       <label for="actions_user" class="form-label">From user</label>
-      <div
-        class="position-relative"
-        hx-on:focusout="if (!this.contains(event.relatedTarget)) { this.querySelector('#actions-user-suggestions').innerHTML = ''; this.querySelector('#actions_user').setAttribute('aria-expanded', 'false'); }"
+      <input
+        id="actions_user"
+        class="form-control"
+        placeholder="Search by username"
+        type="search"
+        name="user"
+        value="{{ username_filter }}"
       >
-        <input
-          id="actions_user"
-          class="form-control"
-          autocomplete="off"
-          autocapitalize="off"
-          autocorrect="off"
-          placeholder="Search by username"
-          spellcheck="false"
-          type="search"
-          name="user"
-          value="{{ username_filter }}"
-          role="combobox"
-          aria-autocomplete="list"
-          aria-controls="actions-user-suggestions"
-          aria-expanded="{{ 'true' if username_suggestions else 'false' }}"
-          hx-get="/actions/usernames"
-          hx-target="#actions-user-suggestions"
-          hx-swap="innerHTML"
-          hx-include="#actions_action, #actions_text, #actions-filters input[type='hidden']"
-          hx-trigger="focus, input changed delay:{{ htmx.input_changed_delay_ms }}ms, search"
-          hx-on:focus="this.setAttribute('aria-expanded', 'true')"
-          hx-on:keydown="if (event.key === 'ArrowDown') { const list = this.parentElement.querySelector('.actions-user-suggestions-list'); if (list) { const firstIndex = list.options.length > 0 && list.options[0].disabled ? 1 : 0; if (list.options.length > firstIndex) { event.preventDefault(); list.selectedIndex = firstIndex; list.focus(); } } }"
-        >
-        <div
-          id="actions-user-suggestions"
-          class="actions-user-suggestions"
-          aria-live="polite"
-        >
-          {% include "actions_username_suggestions_fragment.html.j2" %}
-        </div>
-      </div>
     </div>
 
     <div class="col-12 col-md-auto">

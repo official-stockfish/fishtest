@@ -167,8 +167,6 @@ base layout and contain only the HTML subset needed for the swap target.
 | Template | Swap target | OOB | Polled |
 |----------|------------|-----|--------|
 | `actions_content_fragment.html.j2` | `#actions-content` | -- | -- |
-| `actions_page_fragment.html.j2` | `#actions-page` | -- | -- |
-| `actions_username_suggestions_fragment.html.j2` | `#actions-user-suggestions` | -- | -- |
 | `contributors_content_fragment.html.j2` | `#contributors-content` | -- | -- |
 | `contributors_rows_fragment.html.j2` | included by `contributors_content_fragment.html.j2` | -- | -- |
 | `elo_batch_fragment.html.j2` | none (OOB only) | Yes | Yes |
@@ -216,8 +214,6 @@ Uses shared base context only. All other templates extend this.
 | `order` | string | Active sort direction (`asc` or `desc`) |
 | `sort_summary` | string | Optional summary line describing capped full-result sorting scope |
 | `filters` | dict | `{action, username, text, run_id}` |
-| `username_query` | string | Current username text shown in the search field |
-| `username_suggestions` | list of dicts | Current server-rendered username suggestions for the HTMX popup; blank-query focus may populate the full user list |
 | `pages` | list | Pagination items |
 
 Each action row:
@@ -243,10 +239,17 @@ Each action row:
 | `users` | list of dicts | Contributor rows (current page) |
 | `pages` | list | Pagination items |
 | `search` | string | Active search query |
+| `sort` | string | Active server sort field |
+| `order` | string | Active sort direction |
+| `view` | string | `paged` or `all` |
+| `highlight` | string | Highlighted username, usually set by `findme` redirects |
+| `is_truncated` | bool | Whether `view=all` was capped |
+| `num_users` | int | Total filtered row count before paging/cap |
+| `max_all` | int | Hard cap used for `view=all` |
 
-Each contributor row: `username`, `last_updated_label`, `last_updated_sort`,
-`games_per_hour`, `cpu_hours`, `games`, `tests`, `tests_repo`, `tests_repo_url`,
-`tests_user_url`.
+Each contributor row: `username`, `user_url`, `rank`, `percentile`, `cpu_pct`,
+`last_updated_label`, `last_updated_sort`, `games_per_hour`, `cpu_hours`,
+`games`, `tests`, `tests_repo_url`, `tests_user_url`.
 
 ### `elo_results.html.j2`
 
@@ -526,28 +529,10 @@ Same context as `actions.html.j2` (`actions`, `num_actions`, `page_size`,
 ### `actions_page_fragment.html.j2`
 
 Same context as `actions.html.j2`. This fragment owns the filter form,
-the `#actions-content` include, and the `#actions-user-suggestions`
-container used when a username suggestion selection re-renders `#actions-page`.
-
-### `actions_username_suggestions_fragment.html.j2`
-
-| Key | Type |
-|-----|------|
-| `username_query` | string |
-| `username_suggestions` | list of dicts with `username` |
-
-This fragment is for HTMX swaps only. Non-HTMX requests to
-`/actions/usernames` redirect to the canonical `/actions` page.
-It renders a native `select.form-select` listbox with up to 5 visible rows.
-The listbox is removed from the normal Tab order, accepts focus from the owning
-username input on `ArrowDown`, closes when focus leaves the search widget, and
-issues `GET /actions` only when the user clicks a suggestion or presses
-`Enter` on the highlighted row. This keeps selection server-side while the
-highlight/scrollbar behavior stays aligned with the repository's other select
-controls. The owning username `<input type="search">` remains a plain search
-input. The input itself sets
-`spellcheck="false"`, `autocorrect="off"`, and `autocapitalize="off"`
-because it accepts usernames rather than prose.
+the `#actions-content` include, and the search-first `/actions` form that owns
+the debounced username and free-text filters. The username filter is
+substring-based; the view resolves matching usernames before running the exact
+action query so the debounced form stays fast on large logs.
 
 ### `contributors_content_fragment.html.j2`
 

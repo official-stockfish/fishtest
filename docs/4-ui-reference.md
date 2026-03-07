@@ -55,8 +55,7 @@ registers it on the FastAPI router.
 | `/tests/live_elo_update/{id}` | GET, POST | `live_elo_update` | `live_elo_fragment.html.j2` | Fragment-only (OOB) |
 | `/tests/finished` | GET, POST | `tests_finished` | `tests_finished.html.j2` | HX: `tests_finished_content_fragment` |
 | `/tests/user/{username}` | GET, POST | `tests_user` | `tests_user.html.j2` | HX: `tests_user_content_fragment` |
-| `/actions/usernames` | GET, POST | `actions_usernames` | `actions_username_suggestions_fragment.html.j2` | HTMX suggestions; direct navigation redirects to `/actions` |
-| `/actions` | GET, POST | `actions` | `actions.html.j2` | HX: `actions_content_fragment`; `#actions-page` on username selection |
+| `/actions` | GET, POST | `actions` | `actions.html.j2` | HX: `actions_content_fragment` |
 | `/contributors` | GET, POST | `contributors` | `contributors.html.j2` | HX: `contributors_content_fragment`; paginated (100/page) |
 | `/contributors/monthly` | GET, POST | `contributors_monthly` | `contributors.html.j2` | HX: `contributors_content_fragment`; paginated (100/page) |
 | `/user/{username}` | GET, POST | `user` | `user.html.j2` | |
@@ -347,6 +346,9 @@ Behavior notes:
 - `view=all` returns all matching rows up to a hard cap (`5000`) and hides
    pagination controls.
 - `q` performs case-insensitive substring matching on username only.
+- User-management filtering stays on the userdb path: the base list comes from
+   `request.userdb.get_users()`, while pending/blocked subsets come from the
+   cached `get_pending()` / `get_blocked()` helpers.
 - HTMX requests target `#user-management-content` and keep URL state via
    `hx-push-url="true"`.
 - Table sorting is fully server-authoritative; the old generic client-side
@@ -404,6 +406,10 @@ Behavior notes:
 - `view=all` returns all rows up to a hard cap (`5000`) and hides pagination.
 - `search` is consumed as one-shot navigation intent and is not preserved in
    pagination/sort/view links, preventing repeated jumps during later browsing.
+- `/contributors` and `/contributors/monthly` stay on the userdb fast path:
+   the all-time page reads from `userdb.user_cache`, and the monthly page reads
+   from `userdb.top_month`, so search and rank-jump never need an actions-log
+   scan.
 
 ## Neural networks (`/nns`) query parameters
 
@@ -456,29 +462,18 @@ Behavior notes:
 - HTMX requests target `#actions-content` and keep URL state via
    `hx-push-url="true"`.
 - The visible filters auto-submit on select change and search/input events.
-- The username field uses server-rendered suggestions from `/actions/usernames`.
-   HTMX swaps those suggestions into a native `select.form-select` listbox so
-   the visible rows, highlight, and scrollbar behavior follow the same
-   browser-managed select path as `Show only`, workers `Last changed`, and
-   user-management `Group`.
-- Focusing the username field loads the full username set into a scrollable
-   native listbox. Typing narrows that same server-rendered list without any
-   custom JavaScript filtering.
-- The suggestions list shows up to 5 visible rows. Pressing `ArrowDown` in the
-   username input moves focus into the listbox, while normal `Tab` navigation
-   skips the listbox and continues through the form.
-- Choosing a username suggestion triggers an HTMX `GET /actions` from the
-   listbox itself only when the user clicks a suggestion or presses `Enter` on
-   the highlighted row. Arrow-key navigation moves the highlight without
-   applying the filter. The response re-renders `#actions-page` and keeps the
-   input value, results, and pushed URL synchronized without custom
-   JavaScript.
-- The username input sets `spellcheck="false"`, `autocorrect="off"`, and
-   `autocapitalize="off"` because usernames are identifiers, not prose, and
-   browser text assistance interferes with this field.
-- The suggestions list closes as soon as focus leaves the username search
-   widget.
-- Direct browser navigation to `/actions/usernames?...` redirects to the
-   canonical `/actions?...` page instead of returning raw fragment HTML.
+- The username field follows the same pattern as the other username filters in
+   the UI: it is a plain `<input type="search">` in the main `/actions` GET
+   form.
+- `user` matches case-insensitive username substrings, not only exact names.
+- Typing pauses trigger the existing debounced HTMX form request, so results
+   refresh from `GET /actions?...` without a separate suggestions endpoint,
+   popup, or second swap target.
+- To keep that debounced path fast on large historical logs, `/actions` first
+   resolves substring matches from a short-lived cached distinct username list
+   built from the actions collection, refreshes that list once on a no-match
+   lookup, then fetches the matching rows by exact username query. This differs
+   from `/contributors` and `/user_management`, which can stay on userdb-backed
+   sources because they only need current user records.
 - The time link remains a normal anchor because it is a shareable deep link
    into the log timeline, not just a local fragment action.
