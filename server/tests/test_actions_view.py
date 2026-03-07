@@ -17,6 +17,27 @@ class _ActionDbStub:
         return [], self.return_count
 
 
+class _CachedActionUsernamesStub:
+    def __init__(self, usernames_versions):
+        self._usernames_versions = [list(usernames) for usernames in usernames_versions]
+        self._version_idx = 0
+        self.cache_clear_calls = 0
+
+    def __call__(self):
+        return list(self._usernames_versions[self._version_idx])
+
+    def cache_clear(self):
+        self.cache_clear_calls += 1
+        if self._version_idx < len(self._usernames_versions) - 1:
+            self._version_idx += 1
+
+
+class _RefreshingActionDbStub(_ActionDbStub):
+    def __init__(self, *, usernames_versions, return_count=0):
+        super().__init__(return_count=return_count)
+        self.get_action_usernames = _CachedActionUsernamesStub(usernames_versions)
+
+
 class _FakeStarletteRequest:
     def __init__(self, query_params):
         self.query_params = query_params
@@ -167,6 +188,23 @@ class ActionsViewMaxActionsHttpTest(unittest.TestCase):
         last_kwargs = self._last_kwargs(request)
         self.assertIsNone(last_kwargs["max_actions"])
 
+    def test_actions_username_filter_refreshes_cached_usernames_on_miss(self):
+        request = _GlueRequestStub(
+            params={"user": "FreshUser"},
+            authenticated_userid="JoeUser",
+            return_count=1,
+        )
+        request.actiondb = _RefreshingActionDbStub(
+            usernames_versions=[["OlderUser"], ["FreshUser"]],
+            return_count=1,
+        )
+
+        actions_view(request)
+
+        last_kwargs = self._last_kwargs(request)
+        self.assertEqual(last_kwargs["usernames"], ["FreshUser"])
+        self.assertEqual(request.actiondb.get_action_usernames.cache_clear_calls, 1)
+
 
 class TestActionsHttp(unittest.TestCase):
     def setUp(self):
@@ -209,22 +247,9 @@ class TestActionsHttp(unittest.TestCase):
         )
         self.assertIn(expected_trigger, response.text)
         self.assertIn('type="search"', response.text)
-        self.assertIn('hx-get="/actions/usernames"', response.text)
-        self.assertIn('spellcheck="false"', response.text)
-        self.assertIn('autocorrect="off"', response.text)
-        self.assertIn('autocapitalize="off"', response.text)
-        self.assertIn(
-            "hx-on:focus=\"this.setAttribute('aria-expanded', 'true')\"", response.text
-        )
-        self.assertIn(
-            "hx-on:keydown=\"if (event.key === 'ArrowDown') { const list = this.parentElement.querySelector('.actions-user-suggestions-list'); if (list) { const firstIndex = list.options.length > 0 && list.options[0].disabled ? 1 : 0; if (list.options.length > firstIndex) { event.preventDefault(); list.selectedIndex = firstIndex; list.focus(); } } }\"",
-            response.text,
-        )
-        self.assertIn(
-            "hx-on:focusout=\"if (!this.contains(event.relatedTarget)) { this.querySelector('#actions-user-suggestions').innerHTML = ''; this.querySelector('#actions_user').setAttribute('aria-expanded', 'false'); }\"",
-            response.text,
-        )
         self.assertNotIn("<datalist", response.text)
+        self.assertNotIn('role="combobox"', response.text)
+        self.assertNotIn("actions-user-suggestions", response.text)
         self.assertIn(
             f'<input type="hidden" name="run_id" value="{self.run_id}">',
             response.text,
@@ -232,117 +257,6 @@ class TestActionsHttp(unittest.TestCase):
         self.assertIn('name="max_actions" value="5000"', response.text)
         self.assertIn('name="sort" value="event"', response.text)
         self.assertIn('name="order" value="asc"', response.text)
-
-    def test_actions_username_suggestions_are_server_rendered(self):
-        created_users = ["H23SuggestAlpha", "H23SuggestBeta", "OtherUser"]
-        for idx, username in enumerate(created_users):
-            self.rundb.userdb.create_user(
-                username,
-                "secret",
-                f"h23-suggest-{idx}@example.com",
-                "https://github.com/official-stockfish/Stockfish",
-            )
-
-        try:
-            response = self.client.get(
-                "/actions/usernames?user=H23Sug&action=upload_nn&text=nnue&run_id=64e74776a170cb1f26fa3930",
-                headers={"HX-Request": "true"},
-            )
-            self.assertEqual(response.status_code, 200)
-            self.assertIn(
-                'class="form-select actions-user-suggestions-list', response.text
-            )
-            self.assertIn('hx-get="/actions"', response.text)
-            self.assertIn("hx-trigger=\"click, keyup[key=='Enter']\"", response.text)
-            self.assertIn('size="2"', response.text)
-            self.assertIn('tabindex="-1"', response.text)
-            self.assertIn("H23SuggestAlpha", response.text)
-            self.assertIn("H23SuggestBeta", response.text)
-            self.assertNotIn("OtherUser", response.text)
-            self.assertIn('hx-target="#actions-page"', response.text)
-            self.assertNotIn("/actions/usernames?", response.text)
-            self.assertNotIn("dropdown-item", response.text)
-        finally:
-            self.rundb.userdb.users.delete_many({"username": {"$in": created_users}})
-
-    def test_actions_username_suggestions_show_full_user_list_on_focus(self):
-        created_users = [
-            "H23ScrollAlpha",
-            "H23ScrollBeta",
-            "H23ScrollGamma",
-            "H23ScrollDelta",
-            "H23ScrollEpsilon",
-            "H23ScrollZeta",
-            "H23ScrollEta",
-            "H23ScrollTheta",
-            "H23ScrollIota",
-        ]
-        for idx, username in enumerate(created_users):
-            self.rundb.userdb.create_user(
-                username,
-                "secret",
-                f"h23-scroll-{idx}@example.com",
-                "https://github.com/official-stockfish/Stockfish",
-            )
-
-        try:
-            response = self.client.get(
-                "/actions/usernames",
-                headers={"HX-Request": "true"},
-            )
-            self.assertEqual(response.status_code, 200)
-            self.assertIn('size="5"', response.text)
-            self.assertIn(
-                'class="form-select actions-user-suggestions-list', response.text
-            )
-            self.assertIn("H23ScrollAlpha", response.text)
-            self.assertIn("H23ScrollBeta", response.text)
-            self.assertIn("H23ScrollGamma", response.text)
-            self.assertIn("H23ScrollIota", response.text)
-            self.assertNotIn("No matching usernames.", response.text)
-        finally:
-            self.rundb.userdb.users.delete_many({"username": {"$in": created_users}})
-
-    def test_actions_username_single_suggestion_stays_selectable(self):
-        created_users = ["H23SingleSelectable", "OtherUser"]
-        for idx, username in enumerate(created_users):
-            self.rundb.userdb.create_user(
-                username,
-                "secret",
-                f"h23-single-{idx}@example.com",
-                "https://github.com/official-stockfish/Stockfish",
-            )
-
-        try:
-            response = self.client.get(
-                "/actions/usernames?user=H23SingleSelect",
-                headers={"HX-Request": "true"},
-            )
-            self.assertEqual(response.status_code, 200)
-            self.assertIn('size="2"', response.text)
-            self.assertIn(
-                '<option value="" disabled hidden selected></option>', response.text
-            )
-            self.assertIn('value="H23SingleSelectable"', response.text)
-            self.assertNotIn("OtherUser", response.text)
-        finally:
-            self.rundb.userdb.users.delete_many({"username": {"$in": created_users}})
-
-    def test_actions_usernames_direct_navigation_redirects_to_actions(self):
-        response = self.client.get(
-            "/actions/usernames?user=d&max_actions=50000&sort=time&order=desc&action=&text=",
-            follow_redirects=False,
-        )
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(
-            response.headers["location"],
-            "/actions?user=d&max_actions=50000",
-        )
-
-    def test_actions_page_does_not_render_username_empty_state_after_selection(self):
-        response = self.client.get("/actions?user=JoeUser")
-        self.assertEqual(response.status_code, 200)
-        self.assertNotIn("No matching usernames.", response.text)
 
     def test_actions_hx_fragment_renders_summary_and_accessible_table(self):
         self.rundb.actiondb.insert_action(
@@ -371,6 +285,28 @@ class TestActionsHttp(unittest.TestCase):
         self.assertIn("1 matching action.", response.text)
         self.assertIn(f"/tests/view/{self.run_id}", response.text)
         self.assertIn("H23 route contract hit", response.text)
+        self.assertNotIn("nn-123456789abc.nnue", response.text)
+
+    def test_actions_username_filter_matches_partial_substrings(self):
+        self.rundb.actiondb.insert_action(
+            action="new_run",
+            username="H23ActionsUser",
+            run_id=self.run_id,
+            run="h23-actions-run-abcdef0",
+            message="Partial username hit",
+        )
+        self.rundb.actiondb.insert_action(
+            action="upload_nn",
+            username="H23OtherUser",
+            nn="nn-123456789abc.nnue",
+        )
+
+        response = self.client.get(
+            "/actions?user=ctionsUs",
+            headers={"HX-Request": "true"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Partial username hit", response.text)
         self.assertNotIn("nn-123456789abc.nnue", response.text)
 
     def test_actions_event_sort_applies_to_the_full_capped_result_set(self):

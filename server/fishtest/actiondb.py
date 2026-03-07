@@ -5,6 +5,7 @@ from pymongo import DESCENDING
 from pymongo.errors import OperationFailure
 from vtjson import ValidationError, validate
 
+from fishtest.lru_cache import lru_cache
 from fishtest.schemas import ACTION_MESSAGE_SIZE, action_schema
 from fishtest.util import hex_print, worker_name
 
@@ -20,9 +21,14 @@ class ActionDb:
         self.db = db
         self.actions = self.db["actions"]
 
+    @lru_cache(maxsize=1, expiration=30, refresh=False)
+    def get_action_usernames(self):
+        return sorted(self.actions.distinct("username"), key=str.lower)
+
     def get_actions(
         self,
         username=None,
+        usernames=None,
         action=None,
         text=None,
         limit=0,
@@ -40,7 +46,9 @@ class ActionDb:
                 q["action"] = action
         else:
             q["action"] = {"$nin": ["system_event", "update_stats", "dead_task"]}
-        if username:
+        if usernames:
+            q["username"] = {"$in": usernames}
+        elif username:
             q["username"] = username
         if text:
             q["$text"] = {"$search": text}
@@ -52,7 +60,7 @@ class ActionDb:
         # Prefer time-based pagination indexes for the common $nin case.
         hint = None
         if "$text" not in q:
-            if username:
+            if usernames or username:
                 hint = "actions_user_time_id"
             elif run_id:
                 hint = "actions_run_time_id"
@@ -294,3 +302,4 @@ class ActionDb:
             )
             return
         self.actions.insert_one(action)
+        self.get_action_usernames.cache_clear()

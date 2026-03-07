@@ -1523,13 +1523,6 @@ def _render_hx_fragment(request, template_name, context):
     )
 
 
-def _hx_target_id(request) -> str:
-    headers = getattr(request, "headers", None)
-    if headers is None:
-        return ""
-    return headers.get("HX-Target", "")
-
-
 # === Actions log ===
 
 
@@ -1566,80 +1559,32 @@ def _actions_query_suffix(
     )
 
 
-def _matching_action_usernames(usernames, query):
+def _matching_action_usernames(actiondb, query):
     normalized_query = query.strip().lower()
     if not normalized_query:
-        return sorted(usernames, key=str.lower)
+        return []
 
-    exact = []
-    prefix = []
-    contains = []
-    for username in usernames:
-        normalized_username = username.lower()
-        if normalized_username == normalized_query:
-            exact.append(username)
-        elif normalized_username.startswith(normalized_query):
-            prefix.append(username)
-        elif normalized_query in normalized_username:
-            contains.append(username)
+    get_action_usernames = getattr(actiondb, "get_action_usernames", None)
+    if not callable(get_action_usernames):
+        return [query.strip()]
 
-    return (
-        sorted(exact, key=str.lower)
-        + sorted(prefix, key=str.lower)
-        + sorted(contains, key=str.lower)
-    )
+    def _matches_from_cached_usernames():
+        matches = []
+        for username in get_action_usernames():
+            if normalized_query in username.lower():
+                matches.append(username)
+        return matches
 
+    matches = _matches_from_cached_usernames()
+    if matches:
+        return matches
 
-def actions_usernames(request):
-    username_query = request.params.get("user", "").strip()
-    search_action = request.params.get("action", "")
-    text = sanitize_quotation_marks(request.params.get("text", ""))
-    run_id = request.params.get("run_id", "")
-    requested_max_actions = _positive_int_param(request.params.get("max_actions", None))
-    sort_param, order_param = _effective_actions_sort_state(request.params)
+    cache_clear = getattr(get_action_usernames, "cache_clear", None)
+    if callable(cache_clear):
+        cache_clear()
+        matches = _matches_from_cached_usernames()
 
-    if not _is_hx_request(request):
-        redirect_query = []
-        if username_query:
-            redirect_query.append(("user", username_query))
-        if search_action:
-            redirect_query.append(("action", search_action))
-        if text:
-            redirect_query.append(("text", text))
-        if requested_max_actions is not None:
-            redirect_query.append(("max_actions", str(requested_max_actions)))
-        if sort_param != _ACTIONS_SORT_DEFAULT:
-            redirect_query.append(("sort", sort_param))
-        if (
-            sort_param != _ACTIONS_SORT_DEFAULT
-            or order_param != _ACTIONS_SORT_ORDER_DEFAULT
-        ):
-            redirect_query.append(("order", order_param))
-        if run_id:
-            redirect_query.append(("run_id", run_id))
-
-        url = "/actions"
-        if redirect_query:
-            url += f"?{urlencode(redirect_query)}"
-        return RedirectResponse(url=url, status_code=302)
-
-    matches = _matching_action_usernames(
-        [user["username"] for user in request.userdb.get_users()],
-        username_query,
-    )
-
-    suggestions = []
-    for username in matches:
-        suggestions.append(
-            {
-                "username": username,
-            }
-        )
-
-    return {
-        "username_query": username_query,
-        "username_suggestions": suggestions,
-    }
+    return matches
 
 
 def actions(request):
@@ -1671,10 +1616,15 @@ def actions(request):
         is_authenticated=is_authenticated,
         max_actions=max_actions,
     )
+    matched_usernames = _matching_action_usernames(request.actiondb, username)
 
-    if use_capped_sort_scope:
+    if username and not matched_usernames:
+        raw_actions = []
+        num_actions = 0
+        actions = []
+    elif use_capped_sort_scope:
         raw_actions, num_actions = request.actiondb.get_actions(
-            username=username,
+            usernames=matched_usernames if username else None,
             action=search_action,
             text=text,
             skip=0,
@@ -1702,7 +1652,7 @@ def actions(request):
         actions = actions[start : start + page_size]
     else:
         raw_actions, num_actions = request.actiondb.get_actions(
-            username=username,
+            usernames=matched_usernames if username else None,
             action=search_action,
             text=text,
             skip=page_idx * page_size,
@@ -1774,26 +1724,11 @@ def actions(request):
             "run_id": run_id,
         },
     }
-    page_context = {
-        **content_context,
-        "username_query": username,
-        "username_suggestions": [],
-    }
-
-    if _hx_target_id(request) == "actions-page":
-        page_response = _render_hx_fragment(
-            request,
-            "actions_page_fragment.html.j2",
-            page_context,
-        )
-        if page_response is not None:
-            return page_response
-
     return (
         _render_hx_fragment(
             request, "actions_content_fragment.html.j2", content_context
         )
-        or page_context
+        or content_context
     )
 
 
@@ -4398,11 +4333,6 @@ _VIEW_ROUTES = [
         rate_limits_server,
         "/rate_limits/server",
         {"renderer": "rate_limits_server_fragment.html.j2"},
-    ),
-    (
-        actions_usernames,
-        "/actions/usernames",
-        {"renderer": "actions_username_suggestions_fragment.html.j2"},
     ),
     (actions, "/actions", {"renderer": "actions.html.j2"}),
     (user_management, "/user_management", {"renderer": "user_management.html.j2"}),
