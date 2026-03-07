@@ -416,6 +416,9 @@ Behavior notes:
    default server sort.
 - HTMX requests target `#workers-content` and keep URL state via
    `hx-push-url="true"`.
+- Sort-header links are dual-mode (`href` + `hx-get`): workers sorting swaps
+   `#workers-content` with `hx-push-url="true"` when htmx is active, and still
+   degrades to full-page navigation.
 - Table sorting is fully server-authoritative; the old generic client-side
    header sorter has been retired.
 
@@ -447,6 +450,9 @@ Behavior notes:
    the all-time page reads from `userdb.user_cache`, and the monthly page reads
    from `userdb.top_month`, so search and rank-jump never need an actions-log
    scan.
+- Sort-header links are dual-mode (`href` + `hx-get`): contributors sorting
+   swaps `#contributors-content` with `hx-push-url="true"` when htmx is active,
+   and still works as normal navigation when JavaScript is unavailable.
 
 ## Neural networks (`/nns`) query parameters
 
@@ -458,6 +464,14 @@ search and paging.
 | `network_name` | network name substring (case-insensitive) | empty |
 | `user` | uploader username substring (case-insensitive) | empty |
 | `master_only` | `1`, `true`, `on`, `yes` | absent/false |
+
+Behavior notes:
+
+- Sorting is server-authoritative and deterministic.
+- Sort-header links are dual-mode (`href` + `hx-get`): sorting swaps
+   `#nns-content` with `hx-push-url="true"` when htmx is active, with plain-link
+   fallback preserved.
+- Pagination links follow the same dual-mode contract.
 | `page` | integer `>= 1` | `1` |
 
 Behavior notes:
