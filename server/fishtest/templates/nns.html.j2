@@ -23,10 +23,13 @@
 
 <p>
   These networks are freely available for download and sharing under a
-  <a href="https://creativecommons.org/share-your-work/public-domain/cc0/">CC0</a> license.<br><br>
-  Nets colored <span class="default-net">green</span> in the table have passed fishtest testing
-  and achieved the status of <i>default net</i> during the development of Stockfish.<br><br>
-  The recommended net for a given Stockfish executable can be found as the default value of the EvalFile UCI option.
+  <a href="https://creativecommons.org/share-your-work/public-domain/cc0/">CC0</a>
+  license.<br><br>
+  Nets colored <span class="default-net">green</span> in the table have passed
+  fishtest testing and achieved the status of <i>default net</i> during the
+  development of Stockfish.<br><br>
+  The recommended net for a given Stockfish executable can be found as the
+  default value of the EvalFile UCI option.
 </p>
 
 <form
@@ -58,14 +61,14 @@
 
   <div class="col-12 col-md-auto mb-3">
     <label for="user" class="form-label">Uploaded by</label>
-  <input
-    id="user"
-    type="search"
-    name="user"
-    class="form-control"
-    placeholder="Username"
-    value="{{ user_filter }}"
-  >
+    <input
+      id="user"
+      type="search"
+      name="user"
+      class="form-control"
+      placeholder="Username"
+      value="{{ user_filter }}"
+    >
   </div>
 
   <div class="col-12 mb-3 d-flex align-items-end">
@@ -75,14 +78,14 @@
         type="checkbox"
         class="form-check-input"
         id="master_only"
-        name="master_only" {{ 'checked' if master_only else '' }}
+        name="master_only"
+        {{ 'checked' if master_only else '' }}
       >
     </div>
   </div>
-
 </form>
 
 <div id="nns-content">
   {% include "nns_content_fragment.html.j2" %}
 </div>
-    {% endblock %}
+{% endblock %}

@@ -1,5 +1,4 @@
 {% extends "base.html.j2" %}
-
 {% block title %}User Management | Stockfish Testing{% endblock %}
 
 {% block body %}
@@ -69,10 +68,16 @@
     <label for="user_management_group" class="form-label">Group</label>
     <select id="user_management_group" class="form-select" name="group">
       <option value="all" {{ 'selected' if group == 'all' else '' }}>All</option>
-      <option value="pending" {{ 'selected' if group == 'pending' else '' }}>Pending</option>
-      <option value="blocked" {{ 'selected' if group == 'blocked' else '' }}>Blocked</option>
+      <option value="pending" {{ 'selected' if group == 'pending' else '' }}>
+        Pending
+      </option>
+      <option value="blocked" {{ 'selected' if group == 'blocked' else '' }}>
+        Blocked
+      </option>
       <option value="idle" {{ 'selected' if group == 'idle' else '' }}>Idle</option>
-      <option value="approvers" {{ 'selected' if group == 'approvers' else '' }}>Approvers</option>
+      <option value="approvers" {{ 'selected' if group == 'approvers' else '' }}>
+        Approvers
+      </option>
     </select>
   </div>
 

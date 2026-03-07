@@ -237,7 +237,9 @@ must use `{{ value|safe }}` or `{% autoescape false %}`.
 | Multiple triggers | https://htmx.org/attributes/hx-trigger/ |
 | Template fragments essay | https://htmx.org/essays/template-fragments/ |
 | Web security with htmx | https://htmx.org/essays/web-security-basics-with-htmx/ |
-| Search inputs (MDN) | https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/search |
+| Search inputs (MDN) | https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/input/search |
+| Search clear pseudo-element (MDN) | https://developer.mozilla.org/en-US/docs/Web/CSS/::-webkit-search-cancel-button |
+| Search event (MDN) | https://developer.mozilla.org/en-US/docs/Web/API/HTMLInputElement/search_event |
 | `aria-sort` (MDN) | https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-sort |
 | `visibilitychange` (MDN) | https://developer.mozilla.org/en-US/docs/Web/API/Document/visibilitychange_event |
 
