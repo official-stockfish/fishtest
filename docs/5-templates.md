@@ -119,6 +119,11 @@ Current examples:
 - `tests.html.j2` -> `static/js/tests_homepage.js`
 - `user.html.j2` (profile mode) -> `static/js/user_profile.js`
 
+Shared behavior that spans multiple pages belongs in shared assets instead of
+page-local inline scripts. Search/filter inputs remain plain
+`<input type="search">` controls, and any shared behavior or styling should
+live in shared assets instead of page-local inline scripts.
+
 This keeps templates focused on structure and server-provided state, aligns with
 MDN separation-of-concerns guidance, and makes the JS contract testable without
 embedding implementation details in the template body.
@@ -539,7 +544,8 @@ username input on `ArrowDown`, closes when focus leaves the search widget, and
 issues `GET /actions` only when the user clicks a suggestion or presses
 `Enter` on the highlighted row. This keeps selection server-side while the
 highlight/scrollbar behavior stays aligned with the repository's other select
-controls. The owning username `<input type="search">` sets
+controls. The owning username `<input type="search">` remains a plain search
+input. The input itself sets
 `spellcheck="false"`, `autocorrect="off"`, and `autocapitalize="off"`
 because it accepts usernames rather than prose.
 

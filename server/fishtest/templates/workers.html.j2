@@ -1,5 +1,4 @@
 {% extends "base.html.j2" %}
-
 {% block title %}Workers Management | Stockfish Testing{% endblock %}
 
 {% block body %}
@@ -14,8 +13,10 @@
       <label for="messageInput" class="form-label">Issue</label>
       <textarea
         id="messageInput"
-        rows="4" class="form-control"
-        placeholder="Describe the issue here" name="message"
+        rows="4"
+        class="form-control"
+        placeholder="Describe the issue here"
+        name="message"
       >{{ message }}</textarea>
     </div>
     <div class="mb-3 form-check">
@@ -24,7 +25,8 @@
         type="checkbox"
         class="form-check-input"
         id="blockWorker"
-        name="blocked" {{ "checked" if blocked else "" }}
+        name="blocked"
+        {{ "checked" if blocked else "" }}
       >
     </div>
     <button
@@ -33,7 +35,9 @@
       value="Submit"
       class="btn btn-primary"
     >Submit</button>
-    <button type="submit" name="submit" class="btn btn-secondary">Cancel</button>
+    <button type="submit" name="submit" class="btn btn-secondary">
+      Cancel
+    </button>
   </form>
   <hr>
 {% endif %}
