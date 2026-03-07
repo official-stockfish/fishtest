@@ -22,7 +22,6 @@ import fishtest.github_api as gh
 from fishtest.http import template_helpers as helpers
 from fishtest.http.settings import (
     HTMX_INPUT_CHANGED_DELAY_MS,
-    LONG_LIVED_UI_COOKIE_MAX_AGE_SECONDS,
     PANEL_TOGGLE_COOKIE_MAX_AGE_SECONDS,
     PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS,
     POLL_BATCH_HOMEPAGE_S,
@@ -149,7 +148,7 @@ def default_environment() -> Environment:
             "input_changed_delay_ms": HTMX_INPUT_CHANGED_DELAY_MS,
         },
         "cookies": {
-            "contributors_findme_max_age": LONG_LIVED_UI_COOKIE_MAX_AGE_SECONDS,
+            "contributors_findme_max_age": PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS,
             "panel_toggle_max_age": PANEL_TOGGLE_COOKIE_MAX_AGE_SECONDS,
             "persistent_ui_max_age": PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS,
             "theme_max_age": THEME_COOKIE_MAX_AGE_SECONDS,

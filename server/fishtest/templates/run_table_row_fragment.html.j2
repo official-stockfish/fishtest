@@ -2,8 +2,13 @@
   {% if show_delete %}
     <td style="width: 1%;" class="run-button run-deny">
       <div class="dropdown">
-        <button type="submit" class="btn btn-danger btn-sm" data-bs-toggle="dropdown">
-          <i class="fas fa-trash-alt"></i>
+        <button
+          type="button"
+          class="btn btn-danger btn-sm"
+          data-bs-toggle="dropdown"
+          aria-label="Open delete menu"
+        >
+          <i class="fas fa-trash-alt" aria-hidden="true"></i>
         </button>
         <div class="dropdown-menu" role="menu">
           <form
