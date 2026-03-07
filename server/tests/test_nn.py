@@ -159,6 +159,9 @@ class TestNNHttp(unittest.TestCase):
         self.assertIn('aria-sort="descending"', response.text)
         self.assertIn('class="sort-indicator"', response.text)
         self.assertIn("?sort=name&order=asc", response.text)
+        self.assertIn('hx-get="/nns?sort=name&order=asc', response.text)
+        self.assertIn('hx-target="#nns-content"', response.text)
+        self.assertIn('hx-push-url="true"', response.text)
 
     def test_nns_sort_by_downloads_asc(self):
         docs = [

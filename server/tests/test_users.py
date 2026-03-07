@@ -1036,6 +1036,18 @@ class TestHttpUsers(unittest.TestCase):
         self.assertIn("static/js/contributors.js", response.text)
         self.assertNotIn('const FINDME_COOKIE = "contributors_findme"', response.text)
 
+    def test_contributors_sort_headers_use_hx_get_with_push_url(self):
+        response = self.client.get("/contributors?sort=username&order=asc")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="contributors_table"', response.text)
+        self.assertIn('aria-sort="ascending"', response.text)
+        self.assertIn(
+            'hx-get="/contributors?sort=cpu_hours&order=asc&view=paged"',
+            response.text,
+        )
+        self.assertIn('hx-target="#contributors-content"', response.text)
+        self.assertIn('hx-push-url="true"', response.text)
+
     def test_contributors_view_all_hides_pagination(self):
         docs = [
             {
@@ -1132,6 +1144,12 @@ class TestHttpUsers(unittest.TestCase):
                 "filter=all-workers&amp;sort=worker&amp;order=asc&amp;q=H19Worker",
                 response.text,
             )
+            self.assertIn(
+                'hx-get="/workers/show?filter=all-workers&sort=last_changed',
+                response.text,
+            )
+            self.assertIn('hx-target="#workers-content"', response.text)
+            self.assertIn('hx-push-url="true"', response.text)
             self.assertIn("view=all", response.text)
 
             # Workers search filters by worker column only.
