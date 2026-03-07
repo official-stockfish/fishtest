@@ -74,6 +74,22 @@ Route notes:
   is present, otherwise renders the full-page template.
 - **OOB**: fragment contains `hx-swap-oob` attributes for multi-element updates.
 
+## `/tests/elo/{id}` expected-state contract
+
+The detail-page ELO poller sends an optional `expected` query parameter that
+captures the state the page already shows (`active` or `paused`). The handler
+compares that value to the current run state before responding:
+
+- `204` when the current state still matches `expected`.
+- `200` when the state changed and the page needs fresh OOB content.
+- `286` when the run is terminal (`finished` or `failed`).
+
+Without `expected`, the handler follows the older fragment-only contract:
+
+- `200` for active runs.
+- `204` for non-active non-terminal runs.
+- `286` for terminal runs.
+
 ## htmx fragment dispatch
 
 Dual-mode endpoints (marked **HX** in the route table) serve either a full

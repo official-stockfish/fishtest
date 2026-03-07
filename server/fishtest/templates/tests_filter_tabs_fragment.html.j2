@@ -1,13 +1,16 @@
 {% set filters = filters if filters is defined else {} %}
 {% set hx_target = hx_target if hx_target is defined else '' %}
 {% set base_url = base_url if base_url is defined else '/tests/finished' %}
+{% set success_only = filters.success_only | default(false) %}
+{% set yellow_only = filters.yellow_only | default(false) %}
+{% set ltc_only = filters.ltc_only | default(false) %}
 
 {% set all_url = base_url %}
 {% set greens_url = base_url ~ '?success_only=1' %}
 {% set yellows_url = base_url ~ '?yellow_only=1' %}
 {% set ltc_url = base_url ~ '?ltc_only=1' %}
 
-<a class="btn btn-sm btn-light border tests-filter-tab {{ 'active' if not filters.success_only and not filters.yellow_only and not filters.ltc_only else '' }}" href="{{ all_url }}" hx-get="{{ all_url }}" hx-target="#{{ hx_target }}" hx-push-url="true" hx-swap="innerHTML">All</a>
-<a class="btn btn-sm btn-light border tests-filter-tab {{ 'active' if filters.success_only else '' }}" href="{{ greens_url }}" hx-get="{{ greens_url }}" hx-target="#{{ hx_target }}" hx-push-url="true" hx-swap="innerHTML">Greens</a>
-<a class="btn btn-sm btn-light border tests-filter-tab {{ 'active' if filters.yellow_only else '' }}" href="{{ yellows_url }}" hx-get="{{ yellows_url }}" hx-target="#{{ hx_target }}" hx-push-url="true" hx-swap="innerHTML">Yellows</a>
-<a class="btn btn-sm btn-light border tests-filter-tab {{ 'active' if filters.ltc_only else '' }}" href="{{ ltc_url }}" hx-get="{{ ltc_url }}" hx-target="#{{ hx_target }}" hx-push-url="true" hx-swap="innerHTML">LTC</a>
+<a class="btn btn-sm btn-light border tests-filter-tab {{ 'active' if not success_only and not yellow_only and not ltc_only else '' }}" href="{{ all_url }}" hx-get="{{ all_url }}" hx-target="#{{ hx_target }}" hx-push-url="true" hx-swap="innerHTML">All</a>
+<a class="btn btn-sm btn-light border tests-filter-tab {{ 'active' if success_only else '' }}" href="{{ greens_url }}" hx-get="{{ greens_url }}" hx-target="#{{ hx_target }}" hx-push-url="true" hx-swap="innerHTML">Greens</a>
+<a class="btn btn-sm btn-light border tests-filter-tab {{ 'active' if yellow_only else '' }}" href="{{ yellows_url }}" hx-get="{{ yellows_url }}" hx-target="#{{ hx_target }}" hx-push-url="true" hx-swap="innerHTML">Yellows</a>
+<a class="btn btn-sm btn-light border tests-filter-tab {{ 'active' if ltc_only else '' }}" href="{{ ltc_url }}" hx-get="{{ ltc_url }}" hx-target="#{{ hx_target }}" hx-push-url="true" hx-swap="innerHTML">LTC</a>

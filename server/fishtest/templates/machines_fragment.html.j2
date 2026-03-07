@@ -31,7 +31,7 @@
 {%- endmacro %}
 
 <template>
-  <div id="machines-pagination" class="d-flex align-items-end" hx-swap-oob="innerHTML">
+  <div id="machines-pagination" hx-swap-oob="innerHTML">
     {% with pages=pages %}
       {% include "pagination.html.j2" %}
     {% endwith %}

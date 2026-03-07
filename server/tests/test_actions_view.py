@@ -247,6 +247,8 @@ class TestActionsHttp(unittest.TestCase):
         )
         self.assertIn(expected_trigger, response.text)
         self.assertIn('type="search"', response.text)
+        self.assertIn('aria-label="Show free text search help"', response.text)
+        self.assertIn('data-bs-target="#autoselect-modal"', response.text)
         self.assertNotIn("<datalist", response.text)
         self.assertNotIn('role="combobox"', response.text)
         self.assertNotIn("actions-user-suggestions", response.text)
