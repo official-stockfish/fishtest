@@ -181,6 +181,10 @@ button.notifications:focus-visible {
   min-width: min(20rem, 100%);
 }
 
+.tests-finished-text-filter {
+  min-width: min(22rem, 100%);
+}
+
 .bg-light-primary {
   background-color: rgba(var(--bs-primary-rgb), 0.15);
   color: var(--bs-primary);
@@ -199,6 +203,7 @@ code {
 #search_nn input[type="search"]::-webkit-search-cancel-button,
 #search_contributors_form input[type="search"]::-webkit-search-cancel-button,
 #actions-filters input[type="search"]::-webkit-search-cancel-button,
+#tests-search-form input[type="search"]::-webkit-search-cancel-button,
 #machines-filters input[type="search"]::-webkit-search-cancel-button,
 #workers-filters input[type="search"]::-webkit-search-cancel-button,
 #user-management-filters input[type="search"]::-webkit-search-cancel-button {
@@ -223,6 +228,7 @@ code {
 #search_contributors_form
   input[type="search"]::-webkit-search-cancel-button:hover,
 #actions-filters input[type="search"]::-webkit-search-cancel-button:hover,
+#tests-search-form input[type="search"]::-webkit-search-cancel-button:hover,
 #machines-filters input[type="search"]::-webkit-search-cancel-button:hover,
 #workers-filters input[type="search"]::-webkit-search-cancel-button:hover,
 #user-management-filters
@@ -398,16 +404,12 @@ legend {
   content: "\f00b";
 }
 
-.mainnavbar [href="/tests/finished?success_only=1"]::before {
-  content: "\f14a";
+.mainnavbar [href="/tests/finished"]::before {
+  content: "\f11e";
 }
 
-.mainnavbar [href="/tests/finished?yellow_only=1"]::before {
-  content: "\f3fd";
-}
-
-.mainnavbar [href="/tests/finished?ltc_only=1"]::before {
-  content: "\f017";
+.mainnavbar [href="/tests/finished?mode=search"]::before {
+  content: "\f002";
 }
 
 .mainnavbar [href^="/tests/user/"]::before {

@@ -245,7 +245,7 @@ def compare_sha(
     # Note that although it happens very rarely, this function may give a github
     # error and then succeed on the next try.
     # See e.g.
-    # https://tests.stockfishchess.org/actions?max_actions=1&before=1767274733.476365
+    # https://tests.stockfishchess.org/actions?max_count=1&before=1767274733.476365
     # This sadly prevents us from using negative caching.
 
     # Non sha arguments cannot be safely cached

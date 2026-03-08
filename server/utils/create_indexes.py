@@ -77,6 +77,12 @@ def create_runs_indexes():
         name="finished_user_runs",
         partialFilterExpression={"finished": True},
     )
+    db["runs"].create_index(
+        [("args.info", "text")],
+        name="finished_runs_text",
+        default_language="none",
+        partialFilterExpression={"finished": True},
+    )
 
 
 def create_pgns_indexes():

@@ -497,7 +497,7 @@ and sort state on the canonical `/actions` route.
 | `text` | Mongo text-search query | empty |
 | `run_id` | run id | empty |
 | `page` | integer `>= 1` | `1` |
-| `max_actions` | positive integer, capped by auth state | route policy |
+| `max_count` | positive integer, capped by auth state | route policy |
 | `sort` | `time`, `event`, `source`, `target`, `comment` | `time` |
 | `order` | `asc`, `desc` | `desc` for `time`, otherwise column default |
 | `before` | action timestamp cursor for time-link deep links | absent |
@@ -508,7 +508,7 @@ Behavior notes:
    indexed fast query; explicit alternate sorts materialize and sort the
    capped working set server-side.
 - Anonymous requests are capped at `5000` actions. Unfiltered authenticated
-   requests default to `50000`; explicit `max_actions` values are preserved in
+   requests default to `50000`; explicit `max_count` values are preserved in
    the URL and hidden form state.
 - HTMX requests target `#actions-content` and keep URL state via
    `hx-push-url="true"`.
@@ -517,6 +517,8 @@ Behavior notes:
    the UI: it is a plain `<input type="search">` in the main `/actions` GET
    form.
 - `user` matches case-insensitive username substrings, not only exact names.
+- When multiple usernames match a fragment, prefix matches are ranked before
+   inner-substring matches, and ties stay recent-first within each username.
 - Typing pauses trigger the existing debounced HTMX form request, so results
    refresh from `GET /actions?...` without a separate suggestions endpoint,
    popup, or second swap target.
@@ -526,5 +528,55 @@ Behavior notes:
    lookup, then fetches the matching rows by exact username query. This differs
    from `/contributors` and `/user_management`, which can stay on userdb-backed
    sources because they only need current user records.
+- The summary line reports both the visible row count on the current page and
+   the total matching row count, so pagination does not imply every match is
+   currently rendered.
 - The time link remains a normal anchor because it is a shareable deep link
    into the log timeline, not just a local fragment action.
+
+## Finished Tests (`/tests/finished`) query parameters
+
+The finished tests page supports URL-driven server-authoritative filtering,
+pagination, and HTMX fragment refresh on the canonical `/tests/finished` route.
+
+| Parameter | Values | Default |
+|-----|-----|-----|
+| `success_only` | `1` to show green results only | absent |
+| `yellow_only` | `1` to show yellow results only | absent |
+| `ltc_only` | `1` to show LTC results only | absent |
+| `sort` | `time` | `time` |
+| `order` | `desc` | `desc` |
+| `user` | case-insensitive username substring | empty |
+| `text` | MongoDB text-search query for run info | empty |
+| `max_count` | positive integer, capped by auth state | route policy |
+| `page` | integer `>= 1` | `1` |
+
+Behavior notes:
+
+- HTMX requests target `#tests-finished-content` and keep URL state via
+   `hx-push-url="true"`.
+- Finished tests currently use a fixed recent-first order, but still carry the
+   explicit `sort=time` and `order=desc` query parameters so the URL contract
+   stays aligned with the actions page.
+- The username input auto-submits on debounced input and native search clear
+   events.
+- The run-info text-search input auto-submits on debounced input and native
+   search clear events.
+- `user` resolves case-insensitive username substrings from a short-lived
+   cached username list on the users collection, then queries the matching
+   usernames through the exact-username finished-run path.
+- When multiple usernames match a fragment, prefix matches are ranked before
+   inner-substring matches, and ties stay recent-first within each username.
+- `text` performs a case-insensitive MongoDB `$text` query against the last-column
+   run info text on finished runs only.
+- `/actions`, `/tests/finished`, and `/tests/user/{username}` now use the
+   same `max_count` query parameter for result caps.
+- Anonymous search requests are capped at `1000` matching finished runs.
+   Authenticated search requests default to `10000`; explicit `max_count`
+   values are preserved in the URL and hidden form state.
+- Navigation mode (no filters active) is uncapped — `max_count` is not used.
+- Stale `max_count` values in navigation-mode URLs are stripped via redirect.
+- The summary line reports both the visible row count on the current page and
+   the total matching finished-run count.
+- Oversized `max_count` values are clamped to MongoDB's signed 64-bit integer
+   range before they reach PyMongo.

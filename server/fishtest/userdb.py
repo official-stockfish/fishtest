@@ -29,6 +29,7 @@ class UserDb:
         self.get_pending.cache_clear()
         self.get_blocked.cache_clear()
         self.find_by_username.cache_clear()
+        self.get_usernames.cache_clear()
 
     @lru_cache(
         expiration=120, refresh=False, filter=lambda f, args, kw, val: val is not None
@@ -78,6 +79,18 @@ class UserDb:
 
     def get_users(self):
         return self.users.find(sort=[("_id", ASCENDING)])
+
+    @lru_cache(maxsize=1, expiration=30, refresh=False)
+    def get_usernames(self):
+        usernames = self.users.distinct("username")
+        return sorted(
+            [
+                username
+                for username in usernames
+                if isinstance(username, str) and username
+            ],
+            key=str.lower,
+        )
 
     @lru_cache(expiration=1, refresh=False)
     def get_pending(self):

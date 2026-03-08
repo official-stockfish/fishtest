@@ -1,0 +1,27 @@
+{% set search_mode = search_mode if search_mode is defined else false %}
+{% set pagination_hx_target = "tests-finished-content" %}
+{% set pagination_hx_push_url = true %}
+{% if search_mode %}
+  {% set pagination_hx_sync = "#tests-search-form:abort" %}
+{% endif %}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+  <p class="mb-0 small text-muted">
+    Showing {{ visible_finished_runs }} of {{ num_finished_runs }} matching finished test{{ '' if num_finished_runs == 1 else 's' }} on page {{ page_idx + 1 }} of {{ ((num_finished_runs - 1) // finished_page_size + 1) if num_finished_runs else 1 }}.
+  </p>
+</div>
+
+{% with
+  runs=finished_runs,
+  header='Finished',
+  count=num_finished_runs,
+  pages=finished_runs_pages,
+  title_text=title_text,
+  toggle=None,
+  toggle_state='Show',
+  page_idx=page_idx,
+  username="",
+  show_gauge=show_gauge
+%}
+  {% include "run_table.html.j2" %}
+{% endwith %}

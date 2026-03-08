@@ -2,7 +2,7 @@
 {% set username_filter = username_query if username_query is defined else (filters.username if filters is defined and filters.username is defined else "") %}
 {% set text_filter = text_param if text_param is defined else (filters.text if filters is defined and filters.text is defined else "") %}
 {% set run_id_filter = run_id_filter if run_id_filter is defined else (filters.run_id if filters is defined and filters.run_id is defined else "") %}
-{% set max_actions = max_actions if max_actions is defined else none %}
+{% set max_count = max_count if max_count is defined else none %}
 {% set sort = sort if sort is defined else "time" %}
 {% set order = order if order is defined else "desc" %}
 <div id="actions-page">
@@ -23,8 +23,8 @@
     {% if run_id_filter %}
       <input type="hidden" name="run_id" value="{{ run_id_filter }}">
     {% endif %}
-    {% if max_actions is not none %}
-      <input type="hidden" name="max_actions" value="{{ max_actions }}">
+    {% if max_count is not none %}
+      <input type="hidden" name="max_count" value="{{ max_count }}">
     {% endif %}
     <input type="hidden" name="sort" value="{{ sort }}">
     <input type="hidden" name="order" value="{{ order }}">
@@ -127,20 +127,19 @@
               ></button>
             </div>
             <div class="modal-body text-break">
-              This will perform a case insensitive text search on the fields event
-              name, user name, worker name, target user, network name, branch name
-              and comment. One can only search for a list of full words, i.e.
-              strings bounded by delimiters. For example the worker name
-              <i>fishtestfan-128cores-abcdefgh-uvwx</i> matches <i>abcdefgh</i> but
-              not <i>abcde</i>. To force a word or a combination of words to be
-              included in the result, use quotes like in <i>&quot;dog cat&quot;</i>.
-              To exclude a word, precede it with a minus sign like in
-              <i>dog &minus;cat</i>. For more information see
+              This performs a case-insensitive
               <a
                 href="https://www.mongodb.com/docs/manual/reference/operator/query/text/#mongodb-query-op.-text"
-              >
-                https://www.mongodb.com/docs/manual/reference/operator/query/text/#mongodb-query-op.-text
-              </a>.
+                target="_blank" rel="noopener noreferrer"
+              >MongoDB <i>$text</i> search</a>
+              on event name, user name, worker name, target user, network name,
+              branch name and comment.
+              <ul class="mt-2 mb-2">
+                <li>Type space-separated words to match any of them.</li>
+                <li>Wrap words in straight double quotes to match an exact phrase: <i>&quot;dog cat&quot;</i>.</li>
+                <li>Precede a word with a minus sign to exclude it: <i>dog &minus;cat</i>.</li>
+                <li>Only full words match. For example, worker name <i>fishtestfan-128cores-abcdefgh-uvwx</i> matches <i>abcdefgh</i> but not <i>abcde</i>.</li>
+              </ul>
             </div>
           </div>
         </div>

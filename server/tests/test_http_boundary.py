@@ -40,6 +40,20 @@ class TestHttpBoundary(unittest.TestCase):
             include_views=include_views,
         )
 
+    def _set_authenticated_session_cookie(self, client, *, username: str) -> None:
+        from itsdangerous import TimestampSigner
+
+        from fishtest.http.cookie_session import (
+            SESSION_COOKIE_NAME,
+            session_secret_key,
+        )
+        from fishtest.http.session_middleware import _encode_cookie_value
+
+        payload: dict[str, object] = {"user": username}
+        signer = TimestampSigner(session_secret_key())
+        cookie_value = _encode_cookie_value(payload, signer)
+        client.cookies.set(SESSION_COOKIE_NAME, cookie_value)
+
     def _create_live_elo_run(self, *, sprt_state: str = "") -> str:
         run_id = self.rundb.new_run(
             "master",
@@ -101,6 +115,8 @@ class TestHttpBoundary(unittest.TestCase):
         workers: int = 0,
         finished: bool = False,
         failed: bool = False,
+        username: str = "travis",
+        info: str = "tests elo boundary test",
     ) -> str:
         run_id = self.rundb.new_run(
             "master",
@@ -113,7 +129,7 @@ class TestHttpBoundary(unittest.TestCase):
             1,
             "",
             "",
-            info="tests elo boundary test",
+            info=info,
             resolved_base="347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
             resolved_new="347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
             msg_base="base",
@@ -124,7 +140,7 @@ class TestHttpBoundary(unittest.TestCase):
             new_nets=["nn-0000000000a1.nnue"],
             tests_repo="https://github.com/official-stockfish/Stockfish",
             auto_purge=False,
-            username="travis",
+            username=username,
             start_time=datetime.now(UTC),
         )
         run = self.rundb.get_run(run_id)
@@ -333,7 +349,8 @@ class TestHttpBoundary(unittest.TestCase):
         )
         self.assertEqual(fragment_response.status_code, 200)
         self.assertNotIn("<!doctype html>", fragment_response.text.lower())
-        self.assertIn('id="tests-finished-filters"', fragment_response.text)
+        self.assertNotIn('id="tests-finished-filters"', fragment_response.text)
+        self.assertIn("Showing", fragment_response.text)
 
         navigate_response = client.get(
             "/tests/finished?page=4&success_only=1",
@@ -341,6 +358,227 @@ class TestHttpBoundary(unittest.TestCase):
         )
         self.assertEqual(navigate_response.status_code, 200)
         self.assertIn("<!doctype html>", navigate_response.text.lower())
+
+    def test_tests_finished_search_mode_full_page_vs_fragment(self):
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        full_response = client.get(
+            "/tests/finished?mode=search&user=Fin&text=branch&max_count=1000"
+        )
+        self.assertEqual(full_response.status_code, 200)
+        self.assertIn("<!doctype html>", full_response.text.lower())
+        self.assertIn('id="tests-finished-content"', full_response.text)
+
+        fragment_response = client.get(
+            "/tests/finished?mode=search&user=Fin&text=branch&max_count=1000",
+            headers={"HX-Request": "true", "Sec-Fetch-Mode": "cors"},
+        )
+        self.assertEqual(fragment_response.status_code, 200)
+        self.assertNotIn("<!doctype html>", fragment_response.text.lower())
+        self.assertNotIn('id="tests-finished-filters"', fragment_response.text)
+        self.assertIn("Showing", fragment_response.text)
+
+    def test_tests_finished_search_mode_uses_stable_results_target(self):
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get(
+            "/tests/finished?mode=search&user=Fin&text=branch&max_count=1000"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="tests-search-form"', response.text)
+        self.assertIn('hx-target="#tests-finished-content"', response.text)
+        self.assertIn('id="tests-finished-content"', response.text)
+        self.assertNotIn('hx-include="#tests-search-form"', response.text)
+
+    def test_tests_finished_search_mode_uses_htmx_search_without_status_tabs(self):
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get(
+            "/tests/finished?mode=search&user=Fin&text=branch&max_count=1000"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="tests-search-form"', response.text)
+        self.assertIn('role="search"', response.text)
+        self.assertIn('name="mode" value="search"', response.text)
+        self.assertRegex(response.text, 'name="user"[^>]*value="Fin"')
+        self.assertRegex(response.text, r'name="text"[^>]*value="branch"')
+        self.assertIn('name="max_count" value="1000"', response.text)
+        self.assertIn('name="sort" value="time"', response.text)
+        self.assertIn('name="order" value="desc"', response.text)
+        self.assertIn(
+            'hx-trigger="submit, input changed delay:350ms from:#tests_search_user, '
+            "search from:#tests_search_user, input changed delay:350ms "
+            'from:#tests_search_text, search from:#tests_search_text"',
+            response.text,
+        )
+        self.assertIn("Free text search information", response.text)
+        self.assertIn("MongoDB <i>$text</i> search", response.text)
+        self.assertIn('target="_blank"', response.text)
+        self.assertIn('rel="noopener noreferrer"', response.text)
+        self.assertIn(
+            "Anonymous requests are capped at 1000 finished rows.",
+            response.text,
+        )
+        self.assertNotIn(">Green<", response.text)
+        self.assertNotIn(">Yellow<", response.text)
+        self.assertNotIn(">LTC<", response.text)
+
+    def test_tests_finished_search_mode_username_and_text_filters(self):
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        usernames = [
+            "FinishedFilterAlpha",
+            "FinishedFilterBeta",
+            "DifferentFinisher",
+        ]
+        self.rundb.userdb.users.delete_many({"username": {"$in": usernames}})
+        self.rundb.userdb.clear_cache()
+        for username in usernames:
+            self.rundb.userdb.create_user(
+                username,
+                "pwd",
+                f"{username}@example.com",
+                "",
+            )
+        self.rundb.runs.create_index(
+            [("args.info", "text")],
+            name="finished_runs_text",
+            default_language="none",
+            partialFilterExpression={"finished": True},
+        )
+
+        try:
+            alpha_run_id = self._create_tests_elo_run(
+                approved=True,
+                finished=True,
+                username="FinishedFilterAlpha",
+                info="finished filter alpha hit",
+            )
+            beta_run_id = self._create_tests_elo_run(
+                approved=True,
+                finished=True,
+                username="FinishedFilterBeta",
+                info="finished filter beta hit",
+            )
+            self._create_tests_elo_run(
+                approved=True,
+                finished=True,
+                username="DifferentFinisher",
+                info="finished filter other row",
+            )
+
+            substring_response = client.get(
+                "/tests/finished?mode=search&user=FilterAl",
+                headers={"HX-Request": "true"},
+            )
+            self.assertEqual(substring_response.status_code, 200)
+            self.assertIn(alpha_run_id, substring_response.text)
+            self.assertNotIn(beta_run_id, substring_response.text)
+            self.assertIn("finished filter alpha hit", substring_response.text)
+            self.assertNotIn("finished filter other row", substring_response.text)
+            self.assertIn(
+                "Showing 1 of 1 matching finished test on page 1 of 1.",
+                substring_response.text,
+            )
+
+            text_response = client.get(
+                "/tests/finished?mode=search&text=%22beta+hit%22",
+                headers={"HX-Request": "true"},
+            )
+            self.assertEqual(text_response.status_code, 200)
+            self.assertIn(beta_run_id, text_response.text)
+            self.assertNotIn(alpha_run_id, text_response.text)
+            self.assertIn("finished filter beta hit", text_response.text)
+            self.assertNotIn("finished filter other row", text_response.text)
+        finally:
+            self.rundb.userdb.users.delete_many({"username": {"$in": usernames}})
+            self.rundb.userdb.clear_cache()
+
+    def test_tests_finished_search_mode_anonymous_request_uses_default_cap_on_entry(
+        self,
+    ):
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get("/tests/finished?mode=search")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('name="max_count" value="1000"', response.text)
+
+    def test_tests_finished_navigation_mode_drops_stale_max_count_from_url(self):
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get(
+            "/tests/finished?success_only=1&max_count=1000",
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            response.headers.get("location"),
+            "http://testserver/tests/finished?sort=time&order=desc&success_only=1",
+        )
+
+    def test_tests_finished_redirects_old_filter_urls_to_search_mode(self):
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get(
+            "/tests/finished?success_only=1&user=filter&text=branch",
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            response.headers.get("location"),
+            "http://testserver/tests/finished?mode=search&sort=time&order=desc&user=filter&text=branch",
+        )
+
+    def test_tests_finished_search_mode_filtered_authenticated_request_uses_default_cap(
+        self,
+    ):
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+        self._set_authenticated_session_cookie(client, username="filtercapuser")
+
+        response = client.get("/tests/finished?mode=search&user=filter")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('name="max_count" value="10000"', response.text)
+
+    def test_tests_finished_unfiltered_authenticated_request_uses_default_cap(self):
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+        self._set_authenticated_session_cookie(client, username="nocapuser")
+
+        response = client.get("/tests/finished")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn('name="max_count"', response.text)
+
+    def test_tests_finished_search_mode_strips_status_tabs_from_url(
+        self,
+    ):
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get(
+            "/tests/finished?mode=search&yellow_only=1&user=filter",
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            response.headers.get("location"),
+            "http://testserver/tests/finished?mode=search&sort=time&order=desc&user=filter",
+        )
 
     def test_tests_elo_batch_returns_valid_response(self):
         app = self._build_app(include_views=True)
