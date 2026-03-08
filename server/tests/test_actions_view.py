@@ -1,4 +1,5 @@
 import unittest
+from datetime import UTC, datetime
 
 import test_support
 from fastapi.responses import RedirectResponse
@@ -36,6 +37,39 @@ class _RefreshingActionDbStub(_ActionDbStub):
     def __init__(self, *, usernames_versions, return_count=0):
         super().__init__(return_count=return_count)
         self.get_action_usernames = _CachedActionUsernamesStub(usernames_versions)
+
+
+class _PriorityActionDbStub:
+    def __init__(self, *, usernames, actions_by_username):
+        self.get_action_usernames = _CachedActionUsernamesStub([usernames])
+        self._actions_by_username = actions_by_username
+
+    def get_actions(self, *args, **kwargs):
+        username = kwargs.get("username")
+        usernames = kwargs.get("usernames")
+        limit = kwargs.get("limit", 0)
+        skip = kwargs.get("skip", 0)
+
+        if username is not None:
+            rows = list(self._actions_by_username.get(username, []))
+            total = len(rows)
+            return rows[skip : skip + limit], total
+
+        if usernames is not None:
+            rows = []
+            for matched_username in usernames:
+                rows.extend(self._actions_by_username.get(matched_username, []))
+            rows.sort(
+                key=lambda row: (
+                    float(row.get("time") or 0),
+                    str(row.get("_id") or ""),
+                ),
+                reverse=True,
+            )
+            total = len(rows)
+            return rows[skip : skip + limit], total
+
+        return [], 0
 
 
 class _FakeStarletteRequest:
@@ -84,15 +118,15 @@ class _FakeUserDb:
         return list(self._users)
 
 
-class ActionsViewMaxActionsHttpTest(unittest.TestCase):
+class ActionsViewMaxCountHttpTest(unittest.TestCase):
     def _last_kwargs(self, request):
         self.assertIsNotNone(request.actiondb.last_kwargs)
         assert request.actiondb.last_kwargs is not None
         return request.actiondb.last_kwargs
 
-    def test_prev_link_preserves_max_actions_authenticated(self):
+    def test_prev_link_preserves_max_count_authenticated(self):
         request = _GlueRequestStub(
-            params={"page": "20000", "max_actions": "500000"},
+            params={"page": "20000", "max_count": "500000"},
             authenticated_userid="JoeUser",
             return_count=500000,
         )
@@ -100,11 +134,11 @@ class ActionsViewMaxActionsHttpTest(unittest.TestCase):
         prev = result["pages"][0]
         self.assertEqual(prev["idx"], "Prev")
         self.assertIn("page=19999", prev["url"])
-        self.assertIn("max_actions=500000", prev["url"])
+        self.assertIn("max_count=500000", prev["url"])
 
-    def test_prev_link_preserves_max_actions_anonymous_clamped(self):
+    def test_prev_link_preserves_max_count_anonymous_clamped(self):
         request = _GlueRequestStub(
-            params={"page": "2", "max_actions": "999999"},
+            params={"page": "2", "max_count": "999999"},
             authenticated_userid=None,
             return_count=5000,
         )
@@ -112,11 +146,11 @@ class ActionsViewMaxActionsHttpTest(unittest.TestCase):
         prev = result["pages"][0]
         self.assertEqual(prev["idx"], "Prev")
         self.assertIn("page=1", prev["url"])
-        self.assertIn("max_actions=5000", prev["url"])
+        self.assertIn("max_count=5000", prev["url"])
 
     def test_pagination_includes_last_page_link(self):
         request = _GlueRequestStub(
-            params={"page": "2", "max_actions": "500000"},
+            params={"page": "2", "max_count": "500000"},
             authenticated_userid="JoeUser",
             return_count=500000,
         )
@@ -138,11 +172,11 @@ class ActionsViewMaxActionsHttpTest(unittest.TestCase):
         self.assertIsInstance(response, RedirectResponse)
         location = response.headers.get("location", "")
         self.assertIn("page=2000", location)
-        self.assertIn("max_actions=50000", location)
+        self.assertIn("max_count=50000", location)
 
     def test_out_of_range_page_redirects_to_last_page_anonymous_clamped(self):
         request = _GlueRequestStub(
-            params={"page": "999999", "max_actions": "999999"},
+            params={"page": "999999", "max_count": "999999"},
             authenticated_userid=None,
             return_count=5000,
         )
@@ -150,43 +184,54 @@ class ActionsViewMaxActionsHttpTest(unittest.TestCase):
         self.assertIsInstance(response, RedirectResponse)
         location = response.headers.get("location", "")
         self.assertIn("page=200", location)
-        self.assertIn("max_actions=5000", location)
+        self.assertIn("max_count=5000", location)
 
     def test_anon_default_hard_cap(self):
         request = _GlueRequestStub(params={})
         actions_view(request)
         last_kwargs = self._last_kwargs(request)
-        self.assertEqual(last_kwargs["max_actions"], 5000)
+        self.assertEqual(last_kwargs["max_count"], 5000)
 
-    def test_anon_clamps_user_max_actions(self):
-        request = _GlueRequestStub(params={"max_actions": "999999"})
+    def test_anon_clamps_user_max_count(self):
+        request = _GlueRequestStub(params={"max_count": "999999"})
         actions_view(request)
         last_kwargs = self._last_kwargs(request)
-        self.assertEqual(last_kwargs["max_actions"], 5000)
+        self.assertEqual(last_kwargs["max_count"], 5000)
 
     def test_authenticated_default_soft_cap_unfiltered(self):
         request = _GlueRequestStub(params={}, authenticated_userid="JoeUser")
         actions_view(request)
         last_kwargs = self._last_kwargs(request)
-        self.assertEqual(last_kwargs["max_actions"], 50000)
+        self.assertEqual(last_kwargs["max_count"], 50000)
 
     def test_authenticated_allows_override_upward(self):
         request = _GlueRequestStub(
-            params={"max_actions": "200000"},
+            params={"max_count": "200000"},
             authenticated_userid="JoeUser",
         )
         actions_view(request)
         last_kwargs = self._last_kwargs(request)
-        self.assertEqual(last_kwargs["max_actions"], 200000)
+        self.assertEqual(last_kwargs["max_count"], 200000)
 
-    def test_authenticated_filtered_no_default_cap(self):
+    def test_authenticated_filtered_defaults_to_soft_cap(self):
         request = _GlueRequestStub(
             params={"user": "someone"},
             authenticated_userid="JoeUser",
         )
         actions_view(request)
         last_kwargs = self._last_kwargs(request)
-        self.assertIsNone(last_kwargs["max_actions"])
+        self.assertEqual(last_kwargs["max_count"], 50000)
+
+    def test_authenticated_huge_max_count_is_clamped_to_mongo_int64(self):
+        request = _GlueRequestStub(
+            params={"max_count": "500000000000000000000000"},
+            authenticated_userid="JoeUser",
+        )
+
+        actions_view(request)
+
+        last_kwargs = self._last_kwargs(request)
+        self.assertEqual(last_kwargs["max_count"], 2**63 - 1)
 
     def test_actions_username_filter_refreshes_cached_usernames_on_miss(self):
         request = _GlueRequestStub(
@@ -249,6 +294,9 @@ class TestActionsHttp(unittest.TestCase):
         self.assertIn('type="search"', response.text)
         self.assertIn('aria-label="Show free text search help"', response.text)
         self.assertIn('data-bs-target="#autoselect-modal"', response.text)
+        self.assertIn("MongoDB <i>$text</i> search", response.text)
+        self.assertIn('target="_blank"', response.text)
+        self.assertIn('rel="noopener noreferrer"', response.text)
         self.assertNotIn("<datalist", response.text)
         self.assertNotIn('role="combobox"', response.text)
         self.assertNotIn("actions-user-suggestions", response.text)
@@ -256,7 +304,7 @@ class TestActionsHttp(unittest.TestCase):
             f'<input type="hidden" name="run_id" value="{self.run_id}">',
             response.text,
         )
-        self.assertIn('name="max_actions" value="5000"', response.text)
+        self.assertIn('name="max_count" value="5000"', response.text)
         self.assertIn('name="sort" value="event"', response.text)
         self.assertIn('name="order" value="asc"', response.text)
 
@@ -283,8 +331,10 @@ class TestActionsHttp(unittest.TestCase):
         self.assertIn('id="actions_table"', response.text)
         self.assertIn('<caption class="visually-hidden">', response.text)
         self.assertIn('class="sort-indicator"', response.text)
-        self.assertIn("Showing page 1 of 1.", response.text)
-        self.assertIn("1 matching action.", response.text)
+        self.assertIn(
+            "Showing 1 of 1 matching action on page 1 of 1.",
+            response.text,
+        )
         self.assertIn(f"/tests/view/{self.run_id}", response.text)
         self.assertIn("H23 route contract hit", response.text)
         self.assertNotIn("nn-123456789abc.nnue", response.text)
@@ -310,6 +360,48 @@ class TestActionsHttp(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("Partial username hit", response.text)
         self.assertNotIn("nn-123456789abc.nnue", response.text)
+
+    def test_actions_username_filter_ranks_prefix_matches_before_inner_substrings(self):
+        now = datetime.now(UTC).timestamp()
+        request = _GlueRequestStub(
+            params={"user": "vin"},
+            authenticated_userid="JoeUser",
+        )
+        request.actiondb = _PriorityActionDbStub(
+            usernames=["Disservin", "vincenegri"],
+            actions_by_username={
+                "Disservin": [
+                    {
+                        "_id": "disservin-1",
+                        "action": "upload_nn",
+                        "username": "Disservin",
+                        "nn": "nn-disservin.nnue",
+                        "message": "inner substring match",
+                        "time": now,
+                    }
+                ],
+                "vincenegri": [
+                    {
+                        "_id": "vincenegri-1",
+                        "action": "new_run",
+                        "username": "vincenegri",
+                        "run_id": "64e74776a170cb1f26fa3930",
+                        "run": "ranked-prefix-run",
+                        "message": "prefix match",
+                        "time": now - 60,
+                    }
+                ],
+            },
+        )
+
+        result = actions_view(request)
+
+        self.assertEqual(
+            [row["agent_name"] for row in result["actions"]],
+            ["vincenegri", "Disservin"],
+        )
+        self.assertEqual(result["visible_actions"], 2)
+        self.assertEqual(result["num_actions"], 2)
 
     def test_actions_event_sort_applies_to_the_full_capped_result_set(self):
         actions = []

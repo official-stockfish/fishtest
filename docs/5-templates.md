@@ -89,9 +89,7 @@ Every template receives these keys from `build_template_context()`:
     "signup": "/signup",
     "user_profile": "/user",
     "tests": "/tests",
-    "tests_finished_ltc": "/tests/finished?ltc_only=1",
-    "tests_finished_success": "/tests/finished?success_only=1",
-    "tests_finished_yellow": "/tests/finished?yellow_only=1",
+   "tests_finished": "/tests/finished",
     "tests_run": "/tests/run",
     "tests_user_prefix": "/tests/user/",
     "tests_machines": "/tests/machines",
@@ -205,11 +203,12 @@ Uses shared base context only. All other templates extend this.
 | Key | Type | Description |
 |-----|------|-------------|
 | `actions` | list of dicts | Action rows (see below) |
+| `visible_actions` | int | Action rows rendered on the current page |
 | `num_actions` | int | Total matching action count |
 | `page_size` | int | Page size used for the current result set |
 | `current_page` | int | 1-based page index rendered in the summary |
 | `run_id_filter` | string | Active run filter, if the page is scoped to one run |
-| `max_actions` | int or None | Effective server-side action cap carried through GET forms |
+| `max_count` | int or None | Effective server-side action cap carried through GET forms |
 | `sort` | string | Active sort field (`time`, `event`, `source`, `target`, `comment`) |
 | `order` | string | Active sort direction (`asc` or `desc`) |
 | `sort_summary` | string | Optional summary line describing capped full-result sorting scope |
@@ -390,6 +389,7 @@ Each task row: `task_id`, `row_class`, `worker_label`, `worker_url`,
 | `filters` | dict (`ltc_only`, `success_only`, `yellow_only`) |
 | `title_suffix` | string |
 | `finished_runs` | list of run rows |
+| `visible_finished_runs` | int |
 | `num_finished_runs` | int |
 | `finished_runs_pages` | list |
 
@@ -536,8 +536,8 @@ Fragment templates receive the shared base context (via
 
 ### `actions_content_fragment.html.j2`
 
-Same context as `actions.html.j2` (`actions`, `num_actions`, `page_size`,
-`current_page`, `run_id_filter`, `max_actions`, `sort`, `order`,
+Same context as `actions.html.j2` (`actions`, `visible_actions`, `num_actions`, `page_size`,
+`current_page`, `run_id_filter`, `max_count`, `sort`, `order`,
 `sort_summary`, `filters`, `pages`).
 
 ### `actions_page_fragment.html.j2`
@@ -654,7 +654,7 @@ Same context as the `tasks_fragment` section of `tests_view.html.j2`:
 ### `tests_filter_tabs_fragment.html.j2`
 
 Reusable partial included by `tests_finished.html.j2` and
-`tests_user.html.j2` for filter tab buttons (All / Greens / Yellows / LTC).
+`tests_user.html.j2` for filter tab buttons (All / Green / Yellow / LTC).
 
 | Key | Type | Description |
 |-----|------|-------------|
@@ -662,14 +662,29 @@ Reusable partial included by `tests_finished.html.j2` and
 | `hx_target` | string | Target element ID for `hx-target` |
 | `base_url` | string | Base URL for filter links (default `/tests/finished`) |
 
+When present, `filters.all_query_string` and `filters.filtered_query_suffix`
+preserve additional GET state such as username search fields while the user
+switches between the tab filters.
+
 ### `tests_finished_content_fragment.html.j2`
 
 | Key | Type |
 |-----|------|
-| `filters` | dict (`ltc_only`, `success_only`, `yellow_only`) |
+| `filters` | dict (`ltc_only`, `success_only`, `yellow_only`, `username_query`, `text`, `max_count`) |
 | `finished_runs` | list of run rows |
 | `num_finished_runs` | int |
+| `finished_page_size` | int |
 | `finished_runs_pages` | list |
+
+This fragment owns the tab strip and the search-first `/tests/finished` GET
+form. Username substring uses a cached finished-run username list and the
+exact-username finished-run path, while the `text` field performs a
+case-insensitive MongoDB text search against the last-column run info text on
+finished rows only. The fragment also renders the same page/count summary shape
+used by `/actions`, and both the summary count and the visible rows exclude
+deleted finished runs. The form preserves the effective `max_count` cap so tab
+switches and pagination stay on the same server-authoritative finished-tests
+query contract.
 
 ### `tests_user_content_fragment.html.j2`
 

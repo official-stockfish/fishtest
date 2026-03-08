@@ -1,34 +1,116 @@
+{% set search_mode = search_mode if search_mode is defined else false %}
+
 <h2>
-  Finished Tests
-  {% if filters.success_only %}
-    - Greens
-  {% elif filters.yellow_only %}
-    - Yellows
-  {% elif filters.ltc_only %}
-    - LTC
+  {% if search_mode %}
+    Search Finished Tests
+  {% else %}
+    Finished Tests
+    {% if filters.success_only %}
+      - Green
+    {% elif filters.yellow_only %}
+      - Yellow
+    {% elif filters.ltc_only %}
+      - LTC
+    {% endif %}
   {% endif %}
 </h2>
 
-<div id="tests-finished-filters" class="mb-2 filter-tabs">
-  {% with base_url='/tests/finished', hx_target='tests-finished-content', filters=filters %}
-    {% include "tests_filter_tabs_fragment.html.j2" %}
-  {% endwith %}
+<div id="tests-finished-filters" class="mb-3">
+  {% if search_mode %}
+    <form
+      id="tests-search-form"
+      class="row g-3 align-items-end"
+      method="get"
+      action="/tests/finished"
+      role="search"
+      hx-get="/tests/finished"
+      hx-target="#tests-finished-content"
+      hx-push-url="true"
+      hx-swap="innerHTML"
+      hx-trigger="submit, input changed delay:{{ htmx.input_changed_delay_ms }}ms from:#tests_search_user, search from:#tests_search_user, input changed delay:{{ htmx.input_changed_delay_ms }}ms from:#tests_search_text, search from:#tests_search_text"
+    >
+      <input type="hidden" name="mode" value="search">
+      {% if filters.max_count is not none %}
+        <input type="hidden" name="max_count" value="{{ filters.max_count }}">
+      {% endif %}
+      <input type="hidden" name="sort" value="time">
+      <input type="hidden" name="order" value="desc">
+
+      <div class="col-12 col-md-auto actions-user-filter">
+        <label for="tests_search_user" class="form-label">Username</label>
+        <input
+          id="tests_search_user"
+          class="form-control"
+          type="search"
+          name="user"
+          value="{{ filters.username_query }}"
+          placeholder="Search by username"
+        >
+      </div>
+
+      <div class="col-12 col-md-auto tests-finished-text-filter">
+        <label for="tests_search_text" class="form-label">Free text search</label>
+        <button
+          type="button"
+          class="btn btn-link btn-sm p-0 align-baseline"
+          aria-label="Show free text search help"
+          data-bs-toggle="modal"
+          data-bs-target="#tests-search-text-modal"
+        >
+          <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+        </button>
+        <div
+          class="modal fade"
+          id="tests-search-text-modal"
+          tabindex="-1"
+          aria-hidden="true"
+        >
+          <div class="modal-dialog modal-dialog-scrollable">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">Free text search information</h5>
+                <button
+                  type="button"
+                  class="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"
+                ></button>
+              </div>
+              <div class="modal-body text-break">
+                This page filters finished tests by username and by the run info
+                text in the last table column using case-insensitive
+                <a href="https://www.mongodb.com/docs/manual/reference/operator/query/text/#mongodb-query-op.-text" target="_blank" rel="noopener noreferrer">MongoDB <i>$text</i> search</a>.
+                <ul class="mt-2 mb-2">
+                  <li>Type space-separated words to match any of them.</li>
+                  <li>Wrap words in straight double quotes to match an exact phrase: <i>&quot;dog cat&quot;</i>.</li>
+                  <li>Precede a word with a minus sign to exclude it: <i>dog &minus;cat</i>.</li>
+                  <li>Only full words match.</li>
+                </ul>
+                Anonymous requests are capped at 1000 finished rows. Authenticated requests default to 10000 and may override <i>max_count</i> explicitly in the URL.
+              </div>
+            </div>
+          </div>
+        </div>
+        <input
+          id="tests_search_text"
+          class="form-control"
+          type="search"
+          name="text"
+          value="{{ filters.text }}"
+          placeholder="Enter some text"
+        >
+      </div>
+    </form>
+
+  {% else %}
+    <div class="filter-tabs mb-2">
+      {% with base_url='/tests/finished', hx_target='tests-finished-content', filters=filters %}
+        {% include "tests_filter_tabs_fragment.html.j2" %}
+      {% endwith %}
+    </div>
+  {% endif %}
 </div>
 
-{% set pagination_hx_target = "tests-finished-content" %}
-{% set pagination_hx_push_url = true %}
-
-{% with
-  runs=finished_runs,
-  header='Finished',
-  count=num_finished_runs,
-  pages=finished_runs_pages,
-  title_text=title_text,
-  toggle=None,
-  toggle_state='Show',
-  page_idx=0,
-  username="",
-  show_gauge=show_gauge
-%}
-  {% include "run_table.html.j2" %}
-{% endwith %}
+<div id="tests-finished-content">
+  {% include "tests_finished_results_fragment.html.j2" %}
+</div>

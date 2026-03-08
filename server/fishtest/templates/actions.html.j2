@@ -7,7 +7,7 @@
 {% set username_filter = username_param if username_param is defined else (filters.username if filters is defined and filters.username is defined else "") %}
 {% set text_filter = text_param if text_param is defined else (filters.text if filters is defined and filters.text is defined else "") %}
 {% set run_id_filter = run_id_filter if run_id_filter is defined else (filters.run_id if filters is defined and filters.run_id is defined else "") %}
-{% set max_actions = max_actions if max_actions is defined else none %}
+{% set max_count = max_count if max_count is defined else none %}
 {% set sort = sort if sort is defined else "time" %}
 {% set order = order if order is defined else "desc" %}
 {% include "actions_page_fragment.html.j2" %}

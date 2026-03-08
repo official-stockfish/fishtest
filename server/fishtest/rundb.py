@@ -1,4 +1,5 @@
 import copy
+import heapq
 import json
 import math
 import os
@@ -13,6 +14,7 @@ import regex
 from bson.codec_options import CodecOptions
 from bson.objectid import ObjectId
 from pymongo import DESCENDING, MongoClient
+from pymongo.errors import OperationFailure
 from vtjson import ValidationError, validate
 
 import fishtest.github_api as gh
@@ -117,6 +119,10 @@ class RunDb:
         self._shutdown = False
 
         self.spsa_handler = fishtest.spsa_handler.SPSAHandler(self)
+
+    @lru_cache(maxsize=1, expiration=30, refresh=False)
+    def get_runs_index_names(self):
+        return set(self.runs.index_information())
 
     @lru_cache(maxsize=1000)
     def compile_regex(self, pattern):
@@ -916,15 +922,143 @@ class RunDb:
         skip=0,
         limit=0,
         username="",
+        usernames=None,
+        text="",
+        success_only=False,
+        yellow_only=False,
+        ltc_only=False,
+        last_updated=None,
+        max_count=None,
+    ):
+        projection = {"tasks": 0, "bad_tasks": 0, "args.spsa.param_history": 0}
+
+        if usernames is not None and len(usernames) > 1 and not text:
+            merge_window = max(skip + limit, 1)
+            fanout_budget = len(usernames) * merge_window
+            if fanout_budget <= 600:
+                return self._get_finished_runs_multi_username_hot_path(
+                    usernames=usernames,
+                    skip=skip,
+                    limit=limit,
+                    projection=projection,
+                    success_only=success_only,
+                    yellow_only=yellow_only,
+                    ltc_only=ltc_only,
+                    last_updated=last_updated,
+                    max_count=max_count,
+                )
+
+        q = self._build_finished_runs_query(
+            username=username,
+            usernames=usernames,
+            text=text,
+            success_only=success_only,
+            yellow_only=yellow_only,
+            ltc_only=ltc_only,
+            last_updated=last_updated,
+        )
+        hint = self._finished_runs_hint_name(
+            username=username,
+            usernames=usernames,
+            text=text,
+            success_only=success_only,
+            yellow_only=yellow_only,
+            ltc_only=ltc_only,
+        )
+
+        # Optimization: when a username filter is present, replace $text
+        # with $regex on args.info so MongoDB can use the sorted compound
+        # "finished_user_runs" index for both count and find.  This avoids
+        # the expensive in-memory sort that $text requires.
+        #
+        # For text-only queries (no username) this optimisation is NOT
+        # applied: the "finished_runs" index ({finished, last_updated})
+        # does not cover args.info, so $regex would force a full
+        # collection scan.  The $text inverted index is far faster in
+        # that case because it accesses only matching documents.
+        has_username_filter = bool(username) or (
+            usernames is not None and len(usernames) > 0
+        )
+        if text and has_username_filter:
+            info_regex = self._text_search_to_info_regex(text)
+            if info_regex is not None:
+                q = self._build_finished_runs_query(
+                    username=username,
+                    usernames=usernames,
+                    text="",
+                    success_only=success_only,
+                    yellow_only=yellow_only,
+                    ltc_only=ltc_only,
+                    last_updated=last_updated,
+                )
+                q["args.info"] = {"$regex": info_regex, "$options": "i"}
+                hint = self._finished_runs_hint_name(
+                    username=username,
+                    usernames=usernames,
+                    text="",
+                    success_only=success_only,
+                    yellow_only=yellow_only,
+                    ltc_only=ltc_only,
+                )
+
+        return self._find_finished_runs_with_query(
+            q,
+            skip=skip,
+            limit=limit,
+            projection=projection,
+            hint=hint,
+            max_count=max_count,
+        )
+
+    @staticmethod
+    def _text_search_to_info_regex(text):
+        """Convert a $text search string to a $regex pattern for args.info.
+
+        Returns a regex pattern string suitable for MongoDB's $regex
+        operator, or None if the text contains negation which cannot be
+        efficiently expressed as a single regex.
+        """
+        if not text or not text.strip():
+            return None
+
+        tokens = []
+        for match in re.finditer(r'-?"[^"]*"|-?\S+', text.strip()):
+            raw = match.group()
+            if raw.startswith("-"):
+                return None
+            if raw.startswith('"') and raw.endswith('"') and len(raw) > 1:
+                phrase = raw[1:-1].strip()
+                if phrase:
+                    tokens.append(re.escape(phrase))
+            else:
+                tokens.append(r"\b" + re.escape(raw) + r"\b")
+
+        if not tokens:
+            return None
+
+        return "|".join(tokens)
+
+    def _build_finished_runs_query(
+        self,
+        *,
+        username="",
+        usernames=None,
+        text="",
         success_only=False,
         yellow_only=False,
         ltc_only=False,
         last_updated=None,
     ):
-        q = {"finished": True}
-        projection = {"tasks": 0, "bad_tasks": 0, "args.spsa.param_history": 0}
-        if username:
+        q: dict[str, object] = {"finished": True}
+        if usernames is not None:
+            if len(usernames) == 1:
+                q["args.username"] = usernames[0]
+            else:
+                q["args.username"] = {"$in": usernames}
+        elif username:
             q["args.username"] = username
+        if text:
+            q["$text"] = {"$search": text}
         if ltc_only:
             q["tc_base"] = {"$gte": self.ltc_lower_bound}
         if success_only:
@@ -933,20 +1067,186 @@ class RunDb:
             q["is_yellow"] = True
         if last_updated is not None:
             q["last_updated"] = {"$gte": last_updated}
+        return q
 
-        c = self.runs.find(
+    def _finished_runs_hint_name(
+        self,
+        *,
+        username="",
+        usernames=None,
+        text="",
+        success_only=False,
+        yellow_only=False,
+        ltc_only=False,
+    ):
+        if text:
+            return None
+        if usernames is not None or username:
+            return "finished_user_runs"
+        elif success_only:
+            return "finished_green_runs"
+        elif yellow_only:
+            return "finished_yellow_runs"
+        elif ltc_only:
+            return "finished_ltc_runs"
+        return "finished_runs"
+
+    def _find_finished_runs_rows(self, q, *, skip, limit, projection, hint):
+        if hint not in self.get_runs_index_names():
+            hint = None
+
+        find_kwargs = {
+            "skip": skip,
+            "limit": limit,
+            "sort": [("last_updated", DESCENDING)],
+            "projection": projection,
+        }
+        if hint:
+            find_kwargs["hint"] = hint
+
+        try:
+            c = self.runs.find(q, **find_kwargs)
+        except OperationFailure as e:
+            print(
+                f"RunDb.get_finished_runs: hint={hint!r} failed ({e}); retrying without hint",
+                flush=True,
+            )
+            find_kwargs.pop("hint", None)
+            c = self.runs.find(q, **find_kwargs)
+
+        return list(c)
+
+    def _find_finished_runs_with_query(
+        self,
+        q,
+        *,
+        skip,
+        limit,
+        projection,
+        hint,
+        max_count=None,
+    ):
+        count_hint = hint if hint in self.get_runs_index_names() else None
+        count_kwargs = {}
+        if count_hint:
+            count_kwargs["hint"] = count_hint
+        if max_count is not None:
+            count_kwargs["limit"] = max_count
+
+        try:
+            count = self.runs.count_documents(q, **count_kwargs)
+        except OperationFailure as e:
+            print(
+                f"RunDb.get_finished_runs: hint={hint!r} failed ({e}); retrying without hint",
+                flush=True,
+            )
+            count_kwargs.pop("hint", None)
+            count = self.runs.count_documents(q, **count_kwargs)
+
+        if max_count is not None and skip >= max_count:
+            return [[], count]
+
+        effective_limit = limit
+        if max_count is not None:
+            remaining = max(max_count - skip, 0)
+            effective_limit = remaining if limit == 0 else min(limit, remaining)
+
+        # Match the actions path: never hand Mongo a zero limit for capped paging,
+        # because limit=0 means "no limit" and defeats the cap.
+        if effective_limit <= 0:
+            return [[], count]
+
+        rows = self._find_finished_runs_rows(
             q,
             skip=skip,
-            limit=limit,
-            sort=[("last_updated", DESCENDING)],
+            limit=effective_limit,
             projection=projection,
+            hint=hint,
         )
+        # Keep Mongo filtering aligned with upstream/master: deleted finished
+        # runs are removed after the query instead of in the Mongo predicate.
+        rows = [run for run in rows if not run.get("deleted")]
+        return [rows, count]
 
-        count = self.runs.count_documents(q)
+    def _get_finished_runs_multi_username_hot_path(
+        self,
+        *,
+        usernames,
+        skip,
+        limit,
+        projection,
+        success_only,
+        yellow_only,
+        ltc_only,
+        last_updated,
+        max_count,
+    ):
+        merge_window = max(skip + limit, 1)
+        total_count = 0
+        heap = []
+        per_user_rows = []
 
-        # Don't show runs that were deleted
-        runs_list = [run for run in c if not run.get("deleted")]
-        return [runs_list, count]
+        for username in usernames:
+            q = self._build_finished_runs_query(
+                username=username,
+                success_only=success_only,
+                yellow_only=yellow_only,
+                ltc_only=ltc_only,
+                last_updated=last_updated,
+            )
+            remaining_cap = None
+            if max_count is not None:
+                remaining_cap = max(max_count - total_count, 0)
+                if remaining_cap == 0:
+                    break
+            rows, count = self._find_finished_runs_with_query(
+                q,
+                skip=0,
+                limit=merge_window,
+                projection=projection,
+                hint="finished_user_runs",
+                max_count=remaining_cap,
+            )
+            total_count += count
+            if max_count is not None:
+                total_count = min(total_count, max_count)
+            if rows:
+                per_user_rows.append(rows)
+                row = rows[0]
+                heapq.heappush(
+                    heap,
+                    (
+                        -row.get(
+                            "last_updated", datetime.min.replace(tzinfo=UTC)
+                        ).timestamp(),
+                        str(row.get("_id", "")),
+                        len(per_user_rows) - 1,
+                        0,
+                    ),
+                )
+
+        merged_rows = []
+        needed = skip + limit
+        while heap and len(merged_rows) < needed:
+            _, _, list_idx, row_idx = heapq.heappop(heap)
+            row = per_user_rows[list_idx][row_idx]
+            merged_rows.append(row)
+            next_idx = row_idx + 1
+            if next_idx < len(per_user_rows[list_idx]):
+                next_row = per_user_rows[list_idx][next_idx]
+                heapq.heappush(
+                    heap,
+                    (
+                        -next_row.get(
+                            "last_updated", datetime.min.replace(tzinfo=UTC)
+                        ).timestamp(),
+                        str(next_row.get("_id", "")),
+                        list_idx,
+                        next_idx,
+                    ),
+                )
+
+        return [merged_rows[skip : skip + limit], total_count]
 
     def calc_itp(self, run, count):
         # Tests default to 100% base throughput, but we have several adjustments behind the scenes to get internal throughput.

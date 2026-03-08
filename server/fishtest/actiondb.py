@@ -35,7 +35,7 @@ class ActionDb:
         skip=0,
         utc_before=None,
         run_id=None,
-        max_actions=None,
+        max_count=None,
     ):
         q = {}
         if action:
@@ -69,8 +69,8 @@ class ActionDb:
             else:
                 hint = "actions_time_id"
 
-        if max_actions:
-            count_kwargs = {"limit": max_actions}
+        if max_count:
+            count_kwargs = {"limit": max_count}
             if hint:
                 count_kwargs["hint"] = hint
             try:
@@ -87,11 +87,11 @@ class ActionDb:
                         :ACTION_MESSAGE_SIZE
                     ],
                 )
-                count = self.actions.count_documents(q, limit=max_actions)
-            limit = max(0, min(limit, max_actions - skip))
+                count = self.actions.count_documents(q, limit=max_count)
+            limit = max(0, min(limit, max_count - skip))
 
             # Avoid find(limit=0): Mongo treats that as "no limit".
-            if skip >= max_actions or limit <= 0:
+            if skip >= max_count or limit <= 0:
                 return [], count
         else:
             count = self.actions.count_documents(q)
