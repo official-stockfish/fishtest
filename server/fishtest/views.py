@@ -1,6 +1,7 @@
 import copy
 import gzip
 import hashlib
+import heapq
 import logging
 import os
 import re
@@ -269,9 +270,9 @@ def _clamp_page_index(page_idx, *, total_count, page_size):
     return min(page_idx, (total_count - 1) // page_size)
 
 
-def _query_suffix(pairs) -> str:
+def _build_query_string(pairs, *, leading="&") -> str:
     filtered_pairs = [(key, str(value)) for key, value in pairs if value is not None]
-    return f"&{urlencode(filtered_pairs)}" if filtered_pairs else ""
+    return f"{leading}{urlencode(filtered_pairs)}" if filtered_pairs else ""
 
 
 async def _dispatch_view(fn, cfg, request, path_params):
@@ -767,7 +768,7 @@ def _workers_query_string(*, filter_value, sort_param, order_param, query_filter
         params.append(("q", query_filter))
     if view == "all":
         params.append(("view", "all"))
-    return _query_suffix(params)
+    return _build_query_string(params)
 
 
 def _user_management_query_string(
@@ -787,7 +788,7 @@ def _user_management_query_string(
         params.append(("q", query_filter))
     if view == "all":
         params.append(("view", "all"))
-    return _query_suffix(params)
+    return _build_query_string(params)
 
 
 def _workers_sort_value(row, sort_key):
@@ -1276,12 +1277,17 @@ quotation_marks = (
 quotation_marks = "".join(chr(c) for c in quotation_marks)
 quotation_marks_translation = str.maketrans(quotation_marks, len(quotation_marks) * '"')
 
-_ACTIONS_DEFAULT_MAX_ACTIONS_AUTH = 50000
-_ACTIONS_HARD_MAX_ACTIONS_ANON = 5000
-_ACTIONS_SORT_DEFAULT = "time"
-_ACTIONS_SORT_ORDER_DEFAULT = "desc"
-_ACTIONS_SORT_SCOPE_MAX_AUTH = _ACTIONS_DEFAULT_MAX_ACTIONS_AUTH
-_ACTIONS_SORT_SCOPE_MAX_ANON = _ACTIONS_HARD_MAX_ACTIONS_ANON
+_ACTIONS_DEFAULT_MAX_COUNT_AUTH = 50000
+_ANONYMOUS_RESULT_LIMIT_HARD = 5000
+_FINISHED_FILTER_MAX_COUNT_AUTH = 10000
+_FINISHED_FILTER_MAX_COUNT_ANON = 1000
+_MONGO_INT64_MAX = 2**63 - 1
+_DEFAULT_TIME_SORT_FIELD = "time"
+_DEFAULT_SORT_ORDER = "desc"
+_FINISHED_MAX_COUNT_QUERY_PARAM = "max_count"
+_FINISHED_SEARCH_MODE = "search"
+_ACTIONS_SORT_SCOPE_MAX_AUTH = _ACTIONS_DEFAULT_MAX_COUNT_AUTH
+_ACTIONS_SORT_SCOPE_MAX_ANON = _ANONYMOUS_RESULT_LIMIT_HARD
 _ACTIONS_SORT_LABELS = {
     "time": "Time",
     "event": "Event",
@@ -1295,14 +1301,18 @@ def sanitize_quotation_marks(text):
     return text.translate(quotation_marks_translation)
 
 
-def _positive_int_param(raw_value):
+def _positive_int_param(raw_value, *, max_value=None):
     if raw_value in (None, ""):
         return None
     try:
         value = int(raw_value)
     except TypeError, ValueError:
         return None
-    return value if value > 0 else None
+    if value <= 0:
+        return None
+    if max_value is not None:
+        return min(value, max_value)
+    return value
 
 
 def _float_param(raw_value):
@@ -1314,56 +1324,66 @@ def _float_param(raw_value):
         return None
 
 
-def _effective_actions_max_actions(
+def _effective_result_limit(
     *,
     is_authenticated,
-    requested_max_actions,
-    has_explicit_filters,
+    requested_limit,
+    anonymous_hard_limit,
+    authenticated_default_limit=None,
 ):
     if not is_authenticated:
-        if requested_max_actions is None:
-            return _ACTIONS_HARD_MAX_ACTIONS_ANON
-        return min(requested_max_actions, _ACTIONS_HARD_MAX_ACTIONS_ANON)
+        if requested_limit is None:
+            return anonymous_hard_limit
+        return min(requested_limit, anonymous_hard_limit)
 
-    if requested_max_actions is not None:
-        return requested_max_actions
-    if not has_explicit_filters:
-        return _ACTIONS_DEFAULT_MAX_ACTIONS_AUTH
-    return None
+    if requested_limit is not None:
+        return requested_limit
+    return authenticated_default_limit
+
+
+def _effective_actions_max_count(
+    *,
+    is_authenticated,
+    requested_max_count,
+):
+    return _effective_result_limit(
+        is_authenticated=is_authenticated,
+        requested_limit=requested_max_count,
+        anonymous_hard_limit=_ANONYMOUS_RESULT_LIMIT_HARD,
+        authenticated_default_limit=_ACTIONS_DEFAULT_MAX_COUNT_AUTH,
+    )
 
 
 def _effective_actions_sort_state(params):
-    sort_param = (params.get("sort") or _ACTIONS_SORT_DEFAULT).strip().lower()
+    sort_param = (params.get("sort") or _DEFAULT_TIME_SORT_FIELD).strip().lower()
     if sort_param not in _ACTIONS_SORT_LABELS:
-        sort_param = _ACTIONS_SORT_DEFAULT
+        sort_param = _DEFAULT_TIME_SORT_FIELD
 
     order_param = (params.get("order") or "").strip().lower()
     if order_param not in {"asc", "desc"}:
         order_param = (
-            _ACTIONS_SORT_ORDER_DEFAULT
-            if sort_param == _ACTIONS_SORT_DEFAULT
-            else "asc"
+            _DEFAULT_SORT_ORDER if sort_param == _DEFAULT_TIME_SORT_FIELD else "asc"
         )
 
     return sort_param, order_param
 
 
-def _actions_sort_scope_max_actions(*, is_authenticated, max_actions):
+def _actions_sort_scope_max_count(*, is_authenticated, max_count):
     scope_cap = (
         _ACTIONS_SORT_SCOPE_MAX_AUTH
         if is_authenticated
         else _ACTIONS_SORT_SCOPE_MAX_ANON
     )
-    if max_actions is None:
+    if max_count is None:
         return scope_cap
-    return min(max_actions, scope_cap)
+    return min(max_count, scope_cap)
 
 
 def _build_actions_time_url(
     *, search_action, username, text, before, run_id, sort_param, order_param
 ):
     time_query = {
-        "max_actions": "1",
+        "max_count": "1",
         "action": search_action,
         "user": username,
         "text": text,
@@ -1473,7 +1493,7 @@ def _action_row_sort_value(action_row, sort_param):
     return float(action_row.get("time") or 0)
 
 
-def _sort_action_rows(action_rows, *, sort_param, order_param):
+def _sort_action_rows(action_rows, *, sort_param, order_param, username_priority=None):
     # Keep a deterministic recent-first tie-break so equal values do not jump
     # between requests.
     action_rows.sort(
@@ -1484,13 +1504,17 @@ def _sort_action_rows(action_rows, *, sort_param, order_param):
         key=lambda row: _action_row_sort_value(row, sort_param),
         reverse=(order_param == "desc"),
     )
+    if username_priority:
+        action_rows.sort(
+            key=lambda row: (
+                username_priority.get(row.get("username", ""), len(username_priority)),
+                str(row.get("username", "")).lower(),
+            )
+        )
 
 
 def _actions_sort_summary(*, sort_param, order_param, sorted_count, scope_cap):
-    if (
-        sort_param == _ACTIONS_SORT_DEFAULT
-        and order_param == _ACTIONS_SORT_ORDER_DEFAULT
-    ):
+    if sort_param == _DEFAULT_TIME_SORT_FIELD and order_param == _DEFAULT_SORT_ORDER:
         return ""
 
     direction = "ascending" if order_param == "asc" else "descending"
@@ -1531,32 +1555,50 @@ def _actions_query_suffix(
     username="",
     search_action="",
     text="",
-    sort_param=_ACTIONS_SORT_DEFAULT,
-    order_param=_ACTIONS_SORT_ORDER_DEFAULT,
-    max_actions=None,
+    sort_param=_DEFAULT_TIME_SORT_FIELD,
+    order_param=_DEFAULT_SORT_ORDER,
+    max_count=None,
     before=None,
     run_id="",
     page=None,
 ):
-    return _query_suffix(
+    return _build_query_string(
         [
             ("user", username or None),
             ("action", search_action or None),
             ("text", text or None),
-            ("sort", sort_param if sort_param != _ACTIONS_SORT_DEFAULT else None),
+            ("sort", sort_param if sort_param != _DEFAULT_TIME_SORT_FIELD else None),
             (
                 "order",
                 order_param
-                if sort_param != _ACTIONS_SORT_DEFAULT
-                or order_param != _ACTIONS_SORT_ORDER_DEFAULT
+                if sort_param != _DEFAULT_TIME_SORT_FIELD
+                or order_param != _DEFAULT_SORT_ORDER
                 else None,
             ),
-            ("max_actions", max_actions if max_actions is not None else None),
+            ("max_count", max_count if max_count is not None else None),
             ("before", before if before is not None else None),
             ("run_id", run_id or None),
             ("page", page if page not in (None, "", 1) else None),
         ]
     )
+
+
+def _username_match_sort_key(query, candidate):
+    normalized_query = query.strip().lower()
+    normalized_candidate = str(candidate).lower()
+    match_idx = normalized_candidate.find(normalized_query)
+    starts_with = 0 if match_idx == 0 else 1
+    return (starts_with, match_idx, normalized_candidate)
+
+
+def _sort_matched_usernames(usernames, query):
+    return sorted(
+        usernames, key=lambda username: _username_match_sort_key(query, username)
+    )
+
+
+def _username_priority_map(usernames):
+    return {username: idx for idx, username in enumerate(usernames)}
 
 
 def _matching_action_usernames(actiondb, query):
@@ -1573,7 +1615,7 @@ def _matching_action_usernames(actiondb, query):
         for username in get_action_usernames():
             if normalized_query in username.lower():
                 matches.append(username)
-        return matches
+        return _sort_matched_usernames(matches, query)
 
     matches = _matches_from_cached_usernames()
     if matches:
@@ -1587,6 +1629,329 @@ def _matching_action_usernames(actiondb, query):
     return matches
 
 
+def _matching_finished_usernames(userdb, username_query):
+    normalized_query = username_query.strip().lower()
+    if not normalized_query:
+        return None
+
+    get_usernames = getattr(userdb, "get_usernames", None)
+    if not callable(get_usernames):
+        return [username_query.strip()]
+
+    def _matches_from_cached_usernames():
+        matches = []
+        for candidate in get_usernames():
+            if normalized_query in candidate.lower():
+                matches.append(candidate)
+        return _sort_matched_usernames(matches, username_query)
+
+    matches = _matches_from_cached_usernames()
+    if matches:
+        return matches
+
+    cache_clear = getattr(get_usernames, "cache_clear", None)
+    if callable(cache_clear):
+        cache_clear()
+        matches = _matches_from_cached_usernames()
+
+    return matches
+
+
+def _finished_filters_active(*, username_query, text):
+    return bool(username_query or text)
+
+
+def _effective_finished_max_count(
+    *,
+    is_authenticated,
+    requested_max_count,
+    filters_active,
+):
+    if not filters_active:
+        return requested_max_count
+    return _effective_result_limit(
+        is_authenticated=is_authenticated,
+        requested_limit=requested_max_count,
+        anonymous_hard_limit=_FINISHED_FILTER_MAX_COUNT_ANON,
+        authenticated_default_limit=_FINISHED_FILTER_MAX_COUNT_AUTH,
+    )
+
+
+def _finished_search_mode_enabled(params):
+    return str(params.get("mode", "")).strip().lower() == _FINISHED_SEARCH_MODE
+
+
+def _finished_route_url(request):
+    return f"{_host_url(request)}/tests/finished"
+
+
+def _nested_row_value(row, field_name, default=None):
+    value = row
+    for part in str(field_name).split("."):
+        if not isinstance(value, dict):
+            return default
+        value = value.get(part)
+        if value is None:
+            return default
+    return value
+
+
+def _merge_rows_by_username_priority(
+    grouped_rows,
+    *,
+    username_priority,
+    username_field,
+    time_field,
+    id_field,
+    skip,
+    limit,
+):
+    heap = []
+    merged_rows = []
+    needed = skip + limit
+
+    for list_idx, rows in enumerate(grouped_rows):
+        if not rows:
+            continue
+        row = rows[0]
+        priority = username_priority.get(
+            _nested_row_value(row, username_field, ""),
+            len(username_priority),
+        )
+        time_value = row.get(time_field)
+        if isinstance(time_value, datetime):
+            timestamp = time_value.timestamp()
+        else:
+            timestamp = float(time_value or 0)
+        heapq.heappush(
+            heap,
+            (
+                priority,
+                -timestamp,
+                str(row.get(id_field, "")),
+                list_idx,
+                0,
+            ),
+        )
+
+    while heap and len(merged_rows) < needed:
+        _, _, _, list_idx, row_idx = heapq.heappop(heap)
+        row = grouped_rows[list_idx][row_idx]
+        merged_rows.append(row)
+
+        next_idx = row_idx + 1
+        if next_idx < len(grouped_rows[list_idx]):
+            next_row = grouped_rows[list_idx][next_idx]
+            priority = username_priority.get(
+                _nested_row_value(next_row, username_field, ""),
+                len(username_priority),
+            )
+            time_value = next_row.get(time_field)
+            if isinstance(time_value, datetime):
+                timestamp = time_value.timestamp()
+            else:
+                timestamp = float(time_value or 0)
+            heapq.heappush(
+                heap,
+                (
+                    priority,
+                    -timestamp,
+                    str(next_row.get(id_field, "")),
+                    list_idx,
+                    next_idx,
+                ),
+            )
+
+    return merged_rows[skip : skip + limit]
+
+
+def _ranked_multi_username_merge(
+    *,
+    usernames,
+    fetch_fn,
+    username_field,
+    time_field,
+    skip,
+    limit,
+    max_count,
+):
+    merge_window = max(skip + limit, 1)
+    if len(usernames) * merge_window > 600:
+        return None
+
+    total_count = 0
+    grouped_rows = []
+    username_priority = _username_priority_map(usernames)
+
+    for matched_username in usernames:
+        remaining_cap = None
+        if max_count is not None:
+            remaining_cap = max(max_count - total_count, 0)
+            if remaining_cap == 0:
+                break
+
+        rows, count = fetch_fn(matched_username, merge_window, remaining_cap)
+        total_count += count
+        if max_count is not None:
+            total_count = min(total_count, max_count)
+        if rows:
+            grouped_rows.append(rows)
+
+    return (
+        _merge_rows_by_username_priority(
+            grouped_rows,
+            username_priority=username_priority,
+            username_field=username_field,
+            time_field=time_field,
+            id_field="_id",
+            skip=skip,
+            limit=limit,
+        ),
+        total_count,
+    )
+
+
+def _requested_finished_max_count(params):
+    return _positive_int_param(
+        params.get(_FINISHED_MAX_COUNT_QUERY_PARAM, None),
+        max_value=_MONGO_INT64_MAX,
+    )
+
+
+def _finished_canonical_query_string(
+    params,
+    *,
+    max_count=None,
+    search_mode=False,
+    username_query=None,
+    text=None,
+    page=None,
+):
+    if search_mode:
+        success_only = False
+        yellow_only = False
+        ltc_only = False
+    else:
+        success_only = bool(params.get("success_only", False))
+        yellow_only = bool(params.get("yellow_only", False))
+        ltc_only = bool(params.get("ltc_only", False))
+    if username_query is None:
+        username_query = str(params.get("user", "")).strip()
+    if text is None:
+        text = sanitize_quotation_marks(
+            str(
+                params.get(
+                    "text",
+                    params.get("info_regex", ""),
+                )
+            )
+        ).strip()
+    if page is None:
+        page_param = str(params.get("page", "")).strip()
+        page = int(page_param) if page_param.isdigit() else None
+
+    return _build_query_string(
+        _finished_query_pairs(
+            success_only=success_only,
+            yellow_only=yellow_only,
+            ltc_only=ltc_only,
+            search_mode=search_mode,
+            username_query=username_query,
+            text=text,
+            max_count=max_count,
+            sort_field=_DEFAULT_TIME_SORT_FIELD,
+            sort_order=_DEFAULT_SORT_ORDER,
+            page=page,
+        ),
+        leading="?",
+    )
+
+
+def _finished_query_pairs(
+    *,
+    success_only=False,
+    yellow_only=False,
+    ltc_only=False,
+    search_mode=False,
+    username_query="",
+    text="",
+    max_count=None,
+    sort_field=_DEFAULT_TIME_SORT_FIELD,
+    sort_order=_DEFAULT_SORT_ORDER,
+    page=None,
+):
+    return [
+        ("mode", _FINISHED_SEARCH_MODE if search_mode else None),
+        (
+            _FINISHED_MAX_COUNT_QUERY_PARAM,
+            max_count if max_count is not None else None,
+        ),
+        ("sort", sort_field),
+        ("order", sort_order),
+        ("success_only", "1" if success_only else None),
+        ("yellow_only", "1" if yellow_only else None),
+        ("ltc_only", "1" if ltc_only else None),
+        ("user", username_query or None),
+        ("text", text or None),
+        ("page", page if page not in (None, "", 1) else None),
+    ]
+
+
+def _finished_query_suffix(
+    *,
+    success_only=False,
+    yellow_only=False,
+    ltc_only=False,
+    search_mode=False,
+    username_query="",
+    text="",
+    max_count=None,
+    sort_field=_DEFAULT_TIME_SORT_FIELD,
+    sort_order=_DEFAULT_SORT_ORDER,
+    page=None,
+):
+    return _build_query_string(
+        _finished_query_pairs(
+            success_only=success_only,
+            yellow_only=yellow_only,
+            ltc_only=ltc_only,
+            search_mode=search_mode,
+            username_query=username_query,
+            text=text,
+            max_count=max_count,
+            sort_field=sort_field,
+            sort_order=sort_order,
+            page=page,
+        )
+    )
+
+
+def _finished_tab_query_string(
+    *,
+    tab=None,
+    search_mode=False,
+    username_query="",
+    text="",
+    max_count=None,
+    sort_field=_DEFAULT_TIME_SORT_FIELD,
+    sort_order=_DEFAULT_SORT_ORDER,
+):
+    return _build_query_string(
+        _finished_query_pairs(
+            success_only=tab == "success_only",
+            yellow_only=tab == "yellow_only",
+            ltc_only=tab == "ltc_only",
+            search_mode=search_mode,
+            username_query=username_query,
+            text=text,
+            max_count=max_count,
+            sort_field=sort_field,
+            sort_order=sort_order,
+        ),
+        leading="?",
+    )
+
+
 def actions(request):
     is_authenticated = request.authenticated_userid is not None
 
@@ -1594,14 +1959,16 @@ def actions(request):
     username = request.params.get("user", "")
     text = sanitize_quotation_marks(request.params.get("text", ""))
     before = _float_param(request.params.get("before", None))
-    requested_max_actions = _positive_int_param(request.params.get("max_actions", None))
+    requested_max_count = _positive_int_param(
+        request.params.get("max_count", None),
+        max_value=_MONGO_INT64_MAX,
+    )
     run_id = request.params.get("run_id", "")
     sort_param, order_param = _effective_actions_sort_state(request.params)
 
-    max_actions = _effective_actions_max_actions(
+    max_count = _effective_actions_max_count(
         is_authenticated=is_authenticated,
-        requested_max_actions=requested_max_actions,
-        has_explicit_filters=bool(username or search_action or text or run_id),
+        requested_max_count=requested_max_count,
     )
 
     page_param = request.params.get("page", "")
@@ -1609,28 +1976,102 @@ def actions(request):
     page_size = ACTIONS_PAGE_SIZE
 
     use_capped_sort_scope = not (
-        sort_param == _ACTIONS_SORT_DEFAULT
-        and order_param == _ACTIONS_SORT_ORDER_DEFAULT
+        sort_param == _DEFAULT_TIME_SORT_FIELD and order_param == _DEFAULT_SORT_ORDER
     )
-    sort_scope_max_actions = _actions_sort_scope_max_actions(
+    sort_scope_max_count = _actions_sort_scope_max_count(
         is_authenticated=is_authenticated,
-        max_actions=max_actions,
+        max_count=max_count,
     )
     matched_usernames = _matching_action_usernames(request.actiondb, username)
+    username_priority = (
+        _username_priority_map(matched_usernames)
+        if username and len(matched_usernames) > 1
+        else None
+    )
 
     if username and not matched_usernames:
         raw_actions = []
         num_actions = 0
         actions = []
+    elif (
+        username_priority
+        and sort_param == _DEFAULT_TIME_SORT_FIELD
+        and order_param == _DEFAULT_SORT_ORDER
+    ):
+        ranked_actions = _ranked_multi_username_merge(
+            usernames=matched_usernames,
+            fetch_fn=lambda u, window, cap: request.actiondb.get_actions(
+                username=u,
+                text=text,
+                skip=0,
+                limit=window,
+                utc_before=before,
+                run_id=run_id,
+                max_count=cap,
+            ),
+            username_field="username",
+            time_field="time",
+            skip=page_idx * page_size,
+            limit=page_size,
+            max_count=max_count,
+        )
+        if ranked_actions is None:
+            raw_actions, num_actions = request.actiondb.get_actions(
+                usernames=matched_usernames,
+                action=search_action,
+                text=text,
+                skip=0,
+                limit=sort_scope_max_count,
+                utc_before=before,
+                max_count=sort_scope_max_count,
+                run_id=run_id,
+            )
+            actions = [
+                _build_action_row(
+                    action,
+                    request,
+                    search_action=search_action,
+                    username=username,
+                    text=text,
+                    run_id=run_id,
+                    sort_param=sort_param,
+                    order_param=order_param,
+                )
+                for action in raw_actions
+            ]
+            num_actions = len(actions)
+            _sort_action_rows(
+                actions,
+                sort_param=sort_param,
+                order_param=order_param,
+                username_priority=username_priority,
+            )
+            start = page_idx * page_size
+            actions = actions[start : start + page_size]
+        else:
+            raw_actions, num_actions = ranked_actions
+            actions = [
+                _build_action_row(
+                    action,
+                    request,
+                    search_action=search_action,
+                    username=username,
+                    text=text,
+                    run_id=run_id,
+                    sort_param=sort_param,
+                    order_param=order_param,
+                )
+                for action in raw_actions
+            ]
     elif use_capped_sort_scope:
         raw_actions, num_actions = request.actiondb.get_actions(
             usernames=matched_usernames if username else None,
             action=search_action,
             text=text,
             skip=0,
-            limit=sort_scope_max_actions,
+            limit=sort_scope_max_count,
             utc_before=before,
-            max_actions=sort_scope_max_actions,
+            max_count=sort_scope_max_count,
             run_id=run_id,
         )
         actions = [
@@ -1646,7 +2087,12 @@ def actions(request):
             )
             for action in raw_actions
         ]
-        _sort_action_rows(actions, sort_param=sort_param, order_param=order_param)
+        _sort_action_rows(
+            actions,
+            sort_param=sort_param,
+            order_param=order_param,
+            username_priority=username_priority,
+        )
         num_actions = len(actions)
         start = page_idx * page_size
         actions = actions[start : start + page_size]
@@ -1658,7 +2104,7 @@ def actions(request):
             skip=page_idx * page_size,
             limit=page_size,
             utc_before=before,
-            max_actions=max_actions,
+            max_count=max_count,
             run_id=run_id,
         )
         actions = [
@@ -1681,8 +2127,10 @@ def actions(request):
         if page_param.isdigit() and int(page_param) > last_page:
             redirect_query = dict(request.params)
             redirect_query["page"] = str(last_page)
-            if max_actions is not None:
-                redirect_query["max_actions"] = str(max_actions)
+            if max_count is not None:
+                redirect_query["max_count"] = str(max_count)
+            redirect_query["sort"] = sort_param
+            redirect_query["order"] = order_param
             return RedirectResponse(
                 url=_path_url(request) + "?" + urlencode(redirect_query),
                 status_code=302,
@@ -1694,7 +2142,7 @@ def actions(request):
         text=text,
         sort_param=sort_param,
         order_param=order_param,
-        max_actions=max_actions,
+        max_count=max_count,
         before=before,
         run_id=run_id,
     )
@@ -1703,19 +2151,20 @@ def actions(request):
 
     content_context = {
         "actions": actions,
+        "visible_actions": len(actions),
         "pages": pages,
         "num_actions": num_actions,
         "page_size": page_size,
         "current_page": page_idx + 1,
         "run_id_filter": run_id,
-        "max_actions": max_actions,
+        "max_count": max_count,
         "sort": sort_param,
         "order": order_param,
         "sort_summary": _actions_sort_summary(
             sort_param=sort_param,
             order_param=order_param,
             sorted_count=num_actions,
-            scope_cap=sort_scope_max_actions,
+            scope_cap=sort_scope_max_count,
         ),
         "filters": {
             "action": search_action,
@@ -2155,7 +2604,7 @@ def _build_machines_query_params(
     sort_param, order_param, default_reverse, query_filter, my_workers
 ):
     default_order = "desc" if default_reverse else "asc"
-    return _query_suffix(
+    return _build_query_string(
         [
             ("sort", sort_param if sort_param != _MACHINES_DEFAULT_SORT else None),
             ("order", order_param if order_param != default_order else None),
@@ -2354,7 +2803,7 @@ def _contributors_common(request, *, collection, is_monthly):
     pages = []
     if view_param == "paged":
         default_order = "desc" if default_reverse else "asc"
-        query_params = _query_suffix(
+        query_params = _build_query_string(
             [
                 (
                     "sort",
@@ -2512,33 +2961,180 @@ def tests_machines(request):
     }
 
 
-def get_paginated_finished_runs(request, *, username=None):
+def get_paginated_finished_runs(request, *, username=None, search_mode=False):
     if username is None:
         username = request.matchdict.get("username", "")
-    success_only = request.params.get("success_only", False)
-    yellow_only = request.params.get("yellow_only", False)
-    ltc_only = request.params.get("ltc_only", False)
+    if not username:
+        search_mode = search_mode or _finished_search_mode_enabled(request.params)
+    is_authenticated = request.authenticated_userid is not None
+    success_only = False if search_mode else request.params.get("success_only", False)
+    yellow_only = False if search_mode else request.params.get("yellow_only", False)
+    ltc_only = False if search_mode else request.params.get("ltc_only", False)
+    username_query = "" if username else str(request.params.get("user", "")).strip()
+    text = (
+        ""
+        if username
+        else sanitize_quotation_marks(
+            str(
+                request.params.get(
+                    "text",
+                    request.params.get("info_regex", ""),
+                )
+            )
+        ).strip()
+    )
+    requested_max_count = _requested_finished_max_count(request.params)
 
+    page_param = request.params.get("page", "")
     page_idx = _page_index_from_params(request.params)
     page_size = ACTIONS_PAGE_SIZE
+    sort_field = _DEFAULT_TIME_SORT_FIELD
+    sort_order = _DEFAULT_SORT_ORDER
 
-    finished_runs, num_finished_runs = request.rundb.get_finished_runs(
-        username=username,
+    if not username and not search_mode and (username_query or text):
+        return RedirectResponse(
+            url=_finished_route_url(request)
+            + _finished_canonical_query_string(
+                request.params,
+                search_mode=True,
+                username_query=username_query,
+                text=text,
+            ),
+            status_code=302,
+        )
+
+    if search_mode and any(
+        request.params.get(flag, False)
+        for flag in ("success_only", "yellow_only", "ltc_only")
+    ):
+        return RedirectResponse(
+            url=_finished_route_url(request)
+            + _finished_canonical_query_string(
+                request.params,
+                search_mode=True,
+                username_query=username_query,
+                text=text,
+            ),
+            status_code=302,
+        )
+
+    matched_usernames = _matching_finished_usernames(request.userdb, username_query)
+    filters_active = search_mode or _finished_filters_active(
+        username_query=username_query,
+        text=text,
+    )
+
+    if (
+        not search_mode
+        and not filters_active
+        and _FINISHED_MAX_COUNT_QUERY_PARAM in request.params
+    ):
+        return RedirectResponse(
+            url=_path_url(request)
+            + _finished_canonical_query_string(
+                request.params, max_count=None, search_mode=False
+            ),
+            status_code=302,
+        )
+
+    max_count = _effective_finished_max_count(
+        is_authenticated=is_authenticated,
+        requested_max_count=requested_max_count,
+        filters_active=filters_active,
+    )
+    exposed_max_count = max_count if search_mode else None
+
+    if username_query and not matched_usernames:
+        finished_runs = []
+        num_finished_runs = 0
+    elif username_query and matched_usernames and len(matched_usernames) > 1:
+        ranked_finished_runs = _ranked_multi_username_merge(
+            usernames=matched_usernames,
+            fetch_fn=lambda u, window, cap: request.rundb.get_finished_runs(
+                username=u,
+                text=text,
+                success_only=success_only,
+                yellow_only=yellow_only,
+                ltc_only=ltc_only,
+                skip=0,
+                limit=window,
+                max_count=cap,
+            ),
+            username_field="args.username",
+            time_field="last_updated",
+            skip=page_idx * page_size,
+            limit=page_size,
+            max_count=max_count,
+        )
+        if ranked_finished_runs is None:
+            finished_runs, _ = request.rundb.get_finished_runs(
+                username=username,
+                usernames=matched_usernames,
+                text=text,
+                success_only=success_only,
+                yellow_only=yellow_only,
+                ltc_only=ltc_only,
+                skip=0,
+                limit=max_count,
+                max_count=max_count,
+            )
+            username_priority = _username_priority_map(matched_usernames)
+            finished_runs.sort(
+                key=lambda run: (
+                    username_priority.get(
+                        run.get("args", {}).get("username", ""),
+                        len(username_priority),
+                    ),
+                    -(
+                        run.get("last_updated") or datetime.min.replace(tzinfo=UTC)
+                    ).timestamp(),
+                    str(run.get("_id", "")),
+                )
+            )
+            num_finished_runs = len(finished_runs)
+            start = page_idx * page_size
+            finished_runs = finished_runs[start : start + page_size]
+        else:
+            finished_runs, num_finished_runs = ranked_finished_runs
+    else:
+        finished_runs, num_finished_runs = request.rundb.get_finished_runs(
+            username=username,
+            usernames=matched_usernames,
+            text=text,
+            success_only=success_only,
+            yellow_only=yellow_only,
+            ltc_only=ltc_only,
+            skip=page_idx * page_size,
+            limit=page_size,
+            max_count=max_count,
+        )
+
+    query_params = _finished_query_suffix(
+        search_mode=search_mode,
         success_only=success_only,
         yellow_only=yellow_only,
         ltc_only=ltc_only,
-        skip=page_idx * page_size,
-        limit=page_size,
-    )
-
-    query_params = _query_suffix(
-        [
-            ("success_only", "1" if success_only else None),
-            ("yellow_only", "1" if yellow_only else None),
-            ("ltc_only", "1" if ltc_only else None),
-        ]
+        username_query=username_query,
+        text=text,
+        max_count=exposed_max_count,
+        sort_field=sort_field,
+        sort_order=sort_order,
     )
     pages = pagination(page_idx, num_finished_runs, page_size, query_params)
+
+    if num_finished_runs > 0:
+        last_page = (num_finished_runs - 1) // page_size + 1
+        if page_param.isdigit() and int(page_param) > last_page:
+            redirect_query = dict(request.params)
+            redirect_query["page"] = str(last_page)
+            if exposed_max_count is not None:
+                redirect_query[_FINISHED_MAX_COUNT_QUERY_PARAM] = str(max_count)
+            else:
+                redirect_query.pop(_FINISHED_MAX_COUNT_QUERY_PARAM, None)
+            return RedirectResponse(
+                url=_finished_route_url(request) + "?" + urlencode(redirect_query),
+                status_code=302,
+            )
 
     failed_runs = []
     if page_idx == 0:
@@ -2551,23 +3147,73 @@ def get_paginated_finished_runs(request, *, username=None):
         "success_only": bool(success_only),
         "yellow_only": bool(yellow_only),
         "ltc_only": bool(ltc_only),
+        "username_query": username_query,
+        "text": text,
+        "max_count": exposed_max_count,
+        "mode": "search" if search_mode else "navigation",
+        "all_query_string": _finished_tab_query_string(
+            search_mode=search_mode,
+            username_query=username_query,
+            text=text,
+            max_count=exposed_max_count,
+            sort_field=sort_field,
+            sort_order=sort_order,
+        ),
+        "green_query_string": _finished_tab_query_string(
+            tab="success_only",
+            search_mode=search_mode,
+            username_query=username_query,
+            text=text,
+            max_count=exposed_max_count,
+            sort_field=sort_field,
+            sort_order=sort_order,
+        ),
+        "yellow_query_string": _finished_tab_query_string(
+            tab="yellow_only",
+            search_mode=search_mode,
+            username_query=username_query,
+            text=text,
+            max_count=exposed_max_count,
+            sort_field=sort_field,
+            sort_order=sort_order,
+        ),
+        "ltc_query_string": _finished_tab_query_string(
+            tab="ltc_only",
+            search_mode=search_mode,
+            username_query=username_query,
+            text=text,
+            max_count=exposed_max_count,
+            sort_field=sort_field,
+            sort_order=sort_order,
+        ),
+        "filtered_query_suffix": _finished_query_suffix(
+            search_mode=search_mode,
+            username_query=username_query,
+            text=text,
+            max_count=exposed_max_count,
+            sort_field=sort_field,
+            sort_order=sort_order,
+        ),
     }
     title_suffix = ""
-    if filters["success_only"]:
+    if not search_mode and filters["success_only"]:
         title_suffix = " - Greens"
-    elif filters["yellow_only"]:
+    elif not search_mode and filters["yellow_only"]:
         title_suffix = " - Yellows"
-    elif filters["ltc_only"]:
+    elif not search_mode and filters["ltc_only"]:
         title_suffix = " - LTC"
 
     return {
         "finished_runs": finished_runs,
         "finished_runs_pages": pages,
         "num_finished_runs": num_finished_runs,
+        "visible_finished_runs": len(finished_runs),
+        "finished_page_size": page_size,
         "failed_runs": failed_runs,
         "page_idx": page_idx,
         "filters": filters,
         "title_suffix": title_suffix,
+        "search_mode": search_mode,
     }
 
 
@@ -2639,11 +3285,17 @@ def _build_run_tables_context(
 
 def tests_finished(request):
     context = get_paginated_finished_runs(request)
+    if isinstance(context, RedirectResponse):
+        return context
     page_idx = context.get("page_idx", 0)
     title_suffix = context.get("title_suffix", "")
-    title_text = (
-        f"Finished Tests{title_suffix} - page {page_idx + 1} | Stockfish Testing"
-    )
+    search_mode = bool(context.get("search_mode", False))
+    if search_mode:
+        title_text = f"Search Finished Tests - page {page_idx + 1} | Stockfish Testing"
+    else:
+        title_text = (
+            f"Finished Tests{title_suffix} - page {page_idx + 1} | Stockfish Testing"
+        )
     context_out = {
         **context,
         "query_params": request.query_params,
@@ -2662,7 +3314,7 @@ def tests_finished(request):
 
     return _render_hx_or_context(
         request,
-        "tests_finished_content_fragment.html.j2",
+        "tests_finished_results_fragment.html.j2",
         context_out,
     )
 
@@ -2675,6 +3327,8 @@ def tests_user(request):
         raise StarletteHTTPException(status_code=404)
     is_approver = request.has_permission("approve_run")
     finished_context = get_paginated_finished_runs(request)
+    if isinstance(finished_context, RedirectResponse):
+        return finished_context
     response = {
         **finished_context,
         "username": username,
@@ -2724,6 +3378,8 @@ def homepage_results(request):
         machines_count,
     ) = request.rundb.aggregate_unfinished_runs()
     finished_context = get_paginated_finished_runs(request)
+    if isinstance(finished_context, RedirectResponse):
+        return finished_context
     run_tables_ctx = _build_run_tables_context(
         request,
         runs=runs,
@@ -2757,6 +3413,8 @@ def tests(request):
     if page_param.isdigit() and int(page_param) > 1:
         # page 2 and beyond only show finished test results
         finished_context = get_paginated_finished_runs(request)
+        if isinstance(finished_context, RedirectResponse):
+            return finished_context
         return {
             **finished_context,
             "run_tables_ctx": _build_run_tables_context(
@@ -3777,6 +4435,8 @@ def tests_elo_batch(request):
     allow_github_api_calls = request.has_permission("approve_run")
 
     finished_context = get_paginated_finished_runs(request, username=username)
+    if isinstance(finished_context, RedirectResponse):
+        return finished_context
     failed_runs = finished_context.get("failed_runs", [])
     finished_runs = finished_context.get("finished_runs", [])
 

@@ -8,7 +8,7 @@
   {% set is_active = (sort == field) %}
   {% set next_order = "desc" if (is_active and order == "asc") else "asc" %}
   {% set sort_url -%}
-    {{ request.url.path }}?sort={{ field }}&order={{ next_order }}{% if filters.action %}&action={{ filters.action | urlencode }}{% endif %}{% if filters.username %}&user={{ filters.username | urlencode }}{% endif %}{% if filters.text %}&text={{ filters.text | urlencode }}{% endif %}{% if run_id_filter %}&run_id={{ run_id_filter | urlencode }}{% endif %}{% if max_actions is not none %}&max_actions={{ max_actions }}{% endif %}
+    {{ request.url.path }}?sort={{ field }}&order={{ next_order }}{% if filters.action %}&action={{ filters.action | urlencode }}{% endif %}{% if filters.username %}&user={{ filters.username | urlencode }}{% endif %}{% if filters.text %}&text={{ filters.text | urlencode }}{% endif %}{% if run_id_filter %}&run_id={{ run_id_filter | urlencode }}{% endif %}{% if max_count is not none %}&max_count={{ max_count }}{% endif %}
   {%- endset %}
   <th scope="col"{% if is_active %} aria-sort="{{ 'ascending' if order == 'asc' else 'descending' }}"{% endif %}>
     <a
@@ -27,8 +27,7 @@
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
   <p class="mb-0 small text-muted">
-    Showing page {{ current_page }} of {{ ((num_actions - 1) // page_size + 1) if num_actions else 1 }}.
-    {{ num_actions }} matching action{{ '' if num_actions == 1 else 's' }}.
+    Showing {{ visible_actions }} of {{ num_actions }} matching action{{ '' if num_actions == 1 else 's' }} on page {{ current_page }} of {{ ((num_actions - 1) // page_size + 1) if num_actions else 1 }}.
     {% if run_id_filter %}
       Run filter: <a href="/tests/view/{{ run_id_filter }}">{{ run_id_filter }}</a>.
     {% endif %}

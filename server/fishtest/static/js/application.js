@@ -8,6 +8,7 @@ let broadcastDispatch = {
 (async () => {
   await DOMContentLoaded();
   handleTabsBroadcasting();
+  handleModalFocusManagement();
   protectForms();
   handlePanelToggleCookies();
   handleApplicationLogout();
@@ -39,6 +40,20 @@ function handleTabsBroadcasting() {
         if (cmd["arg"]) cmdFunction(cmd["arg"]);
         else cmdFunction();
       }
+    }
+  });
+}
+
+function handleModalFocusManagement() {
+  document.addEventListener("hide.bs.modal", (event) => {
+    const modal = event.target;
+    if (!(modal instanceof HTMLElement)) {
+      return;
+    }
+
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLElement && modal.contains(activeElement)) {
+      activeElement.blur();
     }
   });
 }
