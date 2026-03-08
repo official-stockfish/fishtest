@@ -1025,7 +1025,11 @@ def enqueue_output(stream, queue):
 
 def parse_fastchess_output(
     p,
+    new_name,
+    base_name,
     current_state,
+    worker_info,
+    password,
     remote,
     result,
     spsa_tuning,
@@ -1066,36 +1070,27 @@ def parse_fastchess_output(
         re.compile(r"Warning;.*doesn't have option"),
         # Warning; Invalid value for option P: -354
         re.compile(r"Warning; Invalid value for option"),
-        # Warning; No info line available to extract score from engine ...
-        re.compile(r"No info line available to extract score from engine"),
+        re.compile(r"Warning; No info line available to extract score from engine"),
         # Warning; Illegal move e2e4 played by ...
         re.compile(r"Warning; Illegal move"),
-        # Warning; Could not extract score from engine ...
         re.compile(r"Warning; Could not extract score from engine"),
         # Warning; Illegal PV move e2e4 pv; ...
         re.compile(r"Warning; Illegal PV move"),
-        # Warning; Move does not match uci move format
         re.compile(r"Warning; Move does not match uci move format"),
-        # Warning; PV continues after checkmate
         re.compile(r"Warning; PV continues after checkmate"),
-        # Warning; PV continues after stalemate
         re.compile(r"Warning; PV continues after stalemate"),
         # Warning; PV continues after threefold repetition - move ...
         re.compile(r"Warning; PV continues after threefold"),
-        # Warning; Incomplete mating PV
-        re.compile(r"Warning; Incomplete mating PV"),
-        # Warning; Too long mating PV
-        re.compile(r"Warning; Too long mating PV"),
-        # Warning; Mating PV does not end with checkmate
-        re.compile(r"Warning; Mating PV does not end with checkmate"),
-        #
-        # TODO: The following warnings should ideally just be flagged for
-        # now, but not lead to a RunException:
-        #
         # Warning; PV continues after fifty-move rule - move ...
-        # re.compile(r"Warning; PV continues after fifty-move"),
+        re.compile(r"Warning; PV continues after fifty-move rule"),
+        re.compile(r"Warning; Incomplete mating PV"),
+        re.compile(r"Warning; Too long mating PV"),
+        re.compile(r"Warning; Mating PV does not end with checkmate"),
+    )
+    patterns_fastchess_warning = (
+        # SF18 may trigger this warning, so only move up once SF19 is released
         # Warning; Bestmove does not match beginning of last PV - move ...
-        # re.compile(r"Warning; Bestmove does not match beginning of last PV"),
+        re.compile(r"Warning; Bestmove does not match beginning of last PV"),
     )
 
     q = Queue()
@@ -1108,6 +1103,7 @@ def parse_fastchess_output(
     print(f"TC limit {tc_limit} End time: {end_time}")
 
     num_games_updated = 0
+    posted_fastchess_warnings = set()
     while datetime.now(timezone.utc) < end_time:
         if current_state["task_id"] is None:
             # This task is no longer necessary.
@@ -1147,6 +1143,20 @@ def parse_fastchess_output(
         if any(pattern.search(line) for pattern in patterns_fastchess_error):
             message = f"fastchess says: '{line}'"
             raise RunException(message)
+
+        # Check line for fastchess warnings.
+        # Post each warning at most once per engine to the event log.
+        for idx, pattern in enumerate(patterns_fastchess_warning):
+            if not pattern.search(line):
+                continue
+            engine_name = "None"
+            for name in (new_name, base_name):
+                if name in line:
+                    engine_name = name
+            if (idx, engine_name) not in posted_fastchess_warnings:
+                posted_fastchess_warnings.add((idx, engine_name))
+                message = f"fastchess says: '{line}'"
+                post_to_worker_log(worker_info, password, remote, message)
 
         # Parse line like this:
         # Finished game 1 (stockfish vs base): 0-1 {White disconnects}
@@ -1265,7 +1275,11 @@ def parse_fastchess_output(
 
 def launch_fastchess(
     cmd,
+    new_name,
+    base_name,
     current_state,
+    worker_info,
+    password,
     remote,
     result,
     spsa_tuning,
@@ -1347,7 +1361,11 @@ def launch_fastchess(
             try:
                 task_alive = parse_fastchess_output(
                     p,
+                    new_name,
+                    base_name,
                     current_state,
+                    worker_info,
+                    password,
                     remote,
                     result,
                     spsa_tuning,
@@ -1660,6 +1678,9 @@ def run_games(
         if any(substring in book.upper() for substring in ["FRC", "960"]):
             variant = "fischerandom"
 
+        new_name = "New-" + run["args"]["resolved_new"]
+        base_name = "Base-" + run["args"]["resolved_base"]
+
         # Run fastchess binary.
         fastchess_path = (testing_dir / "fastchess").with_suffix(EXE_SUFFIX)
         cmd = (
@@ -1717,7 +1738,7 @@ def run_games(
             + ["-check-mate-pvs"]
             + [
                 "-engine",
-                "name=New-" + run["args"]["resolved_new"],
+                "name=" + new_name,
                 f"tc={scaled_new_tc}",
                 f"cmd={new_engine}",
                 "dir=.",
@@ -1726,7 +1747,7 @@ def run_games(
             + ["_spsa_"]
             + [
                 "-engine",
-                "name=Base-" + run["args"]["resolved_base"],
+                "name=" + base_name,
                 f"tc={scaled_tc}",
                 f"cmd={base_engine}",
                 "dir=.",
@@ -1740,7 +1761,11 @@ def run_games(
 
         task_alive = launch_fastchess(
             cmd,
+            new_name,
+            base_name,
             current_state,
+            worker_info,
+            password,
             remote,
             result,
             spsa_tuning,
