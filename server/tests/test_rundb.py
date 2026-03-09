@@ -28,13 +28,14 @@ class CreateRunDBTest(unittest.TestCase):
             partialFilterExpression={
                 "finished": True,
                 "tc_base": {"$gte": self.rundb.ltc_lower_bound},
+                "deleted": False,
             },
         )
         self.rundb.runs.create_index(
             [("args.info", "text")],
             name="finished_runs_text",
             default_language="none",
-            partialFilterExpression={"finished": True},
+            partialFilterExpression={"finished": True, "deleted": False},
         )
         self.chunk_size = 200
         self.worker_info = {
@@ -248,6 +249,7 @@ class CreateRunDBTest(unittest.TestCase):
                 {
                     "_id": ObjectId(),
                     "finished": True,
+                    "deleted": False,
                     "args": {
                         "username": "travis",
                         "info": f"recent scope row {index}",
@@ -260,6 +262,7 @@ class CreateRunDBTest(unittest.TestCase):
             {
                 "_id": ObjectId(),
                 "finished": True,
+                "deleted": False,
                 "args": {
                     "username": "travis",
                     "info": "needle outside cap",
@@ -293,6 +296,7 @@ class CreateRunDBTest(unittest.TestCase):
                 {
                     "_id": ObjectId(),
                     "finished": True,
+                    "deleted": False,
                     "args": {
                         "username": "travis",
                         "info": f"explicit cap row {index}",
@@ -305,6 +309,7 @@ class CreateRunDBTest(unittest.TestCase):
             {
                 "_id": ObjectId(),
                 "finished": True,
+                "deleted": False,
                 "args": {
                     "username": "travis",
                     "info": "explicit needle outside cap",
@@ -366,6 +371,7 @@ class CreateRunDBTest(unittest.TestCase):
             {
                 "_id": ObjectId(),
                 "finished": True,
+                "deleted": False,
                 "args": {
                     "username": "travis",
                     "info": "regex path test needle here",
@@ -376,6 +382,7 @@ class CreateRunDBTest(unittest.TestCase):
             {
                 "_id": ObjectId(),
                 "finished": True,
+                "deleted": False,
                 "args": {
                     "username": "travis",
                     "info": "regex path test other row",
@@ -404,6 +411,7 @@ class CreateRunDBTest(unittest.TestCase):
             {
                 "_id": ObjectId(),
                 "finished": True,
+                "deleted": False,
                 "args": {
                     "username": "searchuser50",
                     "info": "user text combo needle",
@@ -414,6 +422,7 @@ class CreateRunDBTest(unittest.TestCase):
             {
                 "_id": ObjectId(),
                 "finished": True,
+                "deleted": False,
                 "args": {
                     "username": "otheruser50",
                     "info": "user text combo needle",
@@ -470,7 +479,7 @@ class CreateRunDBTest(unittest.TestCase):
                 username="deleted-filter-user",
                 max_count=1000,
             )
-            self.assertEqual(count, 2)
+            self.assertEqual(count, 1)
             self.assertEqual(len(finished_runs), 1)
             self.assertEqual(finished_runs[0]["args"]["info"], "visible finished row")
         finally:

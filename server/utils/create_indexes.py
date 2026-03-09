@@ -31,7 +31,7 @@ def create_runs_indexes():
     db["runs"].create_index(
         [("finished", ASCENDING), ("last_updated", DESCENDING)],
         name="finished_runs",
-        partialFilterExpression={"finished": True},
+        partialFilterExpression={"finished": True, "deleted": False},
     )
     db["runs"].create_index(
         [
@@ -40,7 +40,7 @@ def create_runs_indexes():
             ("last_updated", DESCENDING),
         ],
         name="finished_green_runs",
-        partialFilterExpression={"finished": True, "is_green": True},
+        partialFilterExpression={"finished": True, "is_green": True, "deleted": False},
     )
     db["runs"].create_index(
         [
@@ -49,7 +49,7 @@ def create_runs_indexes():
             ("last_updated", DESCENDING),
         ],
         name="finished_yellow_runs",
-        partialFilterExpression={"finished": True, "is_yellow": True},
+        partialFilterExpression={"finished": True, "is_yellow": True, "deleted": False},
     )
     db["runs"].create_index(
         [
@@ -61,6 +61,7 @@ def create_runs_indexes():
         partialFilterExpression={
             "finished": True,
             "tc_base": {"$gte": rundb.ltc_lower_bound},
+            "deleted": False,
         },
     )
     db["runs"].create_index(
@@ -75,13 +76,13 @@ def create_runs_indexes():
             ("last_updated", DESCENDING),
         ],
         name="finished_user_runs",
-        partialFilterExpression={"finished": True},
+        partialFilterExpression={"finished": True, "deleted": False},
     )
     db["runs"].create_index(
         [("args.info", "text")],
         name="finished_runs_text",
         default_language="none",
-        partialFilterExpression={"finished": True},
+        partialFilterExpression={"finished": True, "deleted": False},
     )
 
 
