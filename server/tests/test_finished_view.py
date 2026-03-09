@@ -35,6 +35,11 @@ class _PriorityFinishedRunsDbStub(_FinishedRunsDbStub):
         super().__init__()
         self._runs_by_username = runs_by_username
 
+    @staticmethod
+    def _sort_timestamp(run):
+        last_updated = run.get("last_updated")
+        return 0.0 if last_updated is None else last_updated.timestamp()
+
     def get_finished_runs(self, **kwargs):
         self.last_kwargs = kwargs
         username = kwargs.get("username")
@@ -48,9 +53,7 @@ class _PriorityFinishedRunsDbStub(_FinishedRunsDbStub):
                 rows.extend(self._runs_by_username.get(matched_username, []))
             rows.sort(
                 key=lambda run: (
-                    (
-                        run.get("last_updated") or datetime.min.replace(tzinfo=UTC)
-                    ).timestamp(),
+                    self._sort_timestamp(run),
                     str(run.get("_id") or ""),
                 ),
                 reverse=True,

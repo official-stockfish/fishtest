@@ -577,6 +577,7 @@ Behavior notes:
 - Navigation mode (no filters active) is uncapped — `max_count` is not used.
 - Stale `max_count` values in navigation-mode URLs are stripped via redirect.
 - The summary line reports both the visible row count on the current page and
-   the total matching finished-run count.
+   the total matching finished-run count.  Deleted runs are excluded from both
+   the displayed rows and the total count.
 - Oversized `max_count` values are clamped to MongoDB's signed 64-bit integer
    range before they reach PyMongo.
