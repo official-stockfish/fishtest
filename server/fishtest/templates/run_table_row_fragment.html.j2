@@ -1,4 +1,17 @@
+{% if panel_id is defined and panel_id == 'active' %}
+  {%- set _args = row.run.get('args', {}) -%}
+  {%- set _is_spsa = 'spsa' in _args -%}
+  {%- set _is_sprt = row.is_sprt and not _is_spsa -%}
+  {%- set _is_numgames = not _is_sprt and not _is_spsa -%}
+  {%- set _is_ltc = get_tc_ratio(_args.get('tc', '10+0.1'), _args.get('threads', 1)) > 4 -%}
+  {%- set _is_smp = row.threads | int > 1 -%}
+  {%- set _test_type = 'spsa' if _is_spsa else ('sprt' if _is_sprt else 'numgames') -%}
+  {%- set _tc = 'ltc' if _is_ltc else 'stc' -%}
+  {%- set _threads = 'smp' if _is_smp else 'st' -%}
+<tr id="run-{{ row.run_id }}" data-test-type="{{ _test_type }}" data-time-control="{{ _tc }}" data-threads="{{ _threads }}">
+{% else %}
 <tr id="run-{{ row.run_id }}">
+{% endif %}
   {% if show_delete %}
     <td style="width: 1%;" class="run-button run-deny">
       <div class="dropdown">

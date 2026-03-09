@@ -76,7 +76,8 @@
     count=active_runs | length,
     alt='No active tests',
     show_gauge=show_gauge,
-    panel_id='active'
+    panel_id='active',
+    filters_template=('active_run_filters_fragment.html.j2' if (username is not defined or not username) else none)
   %}
     {% include "run_table.html.j2" %}
   {% endwith %}

@@ -32,6 +32,7 @@ from fishtest.http.settings import (
     POLL_TASKS_DETAIL_S,
     THEME_COOKIE_MAX_AGE_SECONDS,
 )
+from fishtest.util import get_tc_ratio as _get_tc_ratio
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -121,6 +122,7 @@ def default_environment() -> Environment:
         "format_group": helpers.format_group,
         "format_results": helpers.format_results,
         "format_time_ago": helpers.format_time_ago,
+        "get_tc_ratio": _get_tc_ratio,
         "gh": gh,
         "is_active_sprt_ltc": helpers.is_active_sprt_ltc,
         "is_elo_pentanomial_run": helpers.is_elo_pentanomial_run,
