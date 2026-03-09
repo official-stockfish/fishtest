@@ -1,0 +1,84 @@
+{% if active_runs is defined and active_runs | length > 0 %}
+<div id="active-run-filters"
+     class="mb-2"
+     data-filter-cookie-max-age="{{ cookies.persistent_ui_max_age }}">
+  <button type="button"
+          id="active-filter-toggle"
+          class="active-filter-toggle"
+          aria-expanded="true"
+          aria-controls="active-filter-panel"
+          aria-label="Toggle active run filters"
+          title="Toggle active run filters">
+    <i class="fa-solid fa-ellipsis" aria-hidden="true"></i>
+  </button>
+  <div id="active-filter-panel" class="active-filter-panel">
+    <div class="active-filter-row active-filter-row-all">
+      <span class="active-filter-label-spacer" aria-hidden="true"></span>
+      <div class="form-check form-check-inline mb-0 active-filter-all-check">
+        <input class="form-check-input" type="checkbox"
+               id="active-filter-all" checked>
+        <label class="form-check-label fw-semibold"
+               for="active-filter-all">All</label>
+      </div>
+    </div>
+    <div class="active-filter-row">
+      <small class="text-body-secondary">Type</small>
+      <div class="form-check form-check-inline mb-0">
+        <input class="form-check-input" type="checkbox"
+               id="active-filter-sprt" value="sprt"
+               data-dimension="test-type" checked>
+        <label class="form-check-label"
+               for="active-filter-sprt">SPRT</label>
+      </div>
+      <div class="form-check form-check-inline mb-0">
+        <input class="form-check-input" type="checkbox"
+               id="active-filter-spsa" value="spsa"
+               data-dimension="test-type" checked>
+        <label class="form-check-label"
+               for="active-filter-spsa">SPSA</label>
+      </div>
+      <div class="form-check form-check-inline mb-0">
+        <input class="form-check-input" type="checkbox"
+               id="active-filter-numgames" value="numgames"
+               data-dimension="test-type" checked>
+        <label class="form-check-label"
+               for="active-filter-numgames">NumGames</label>
+      </div>
+    </div>
+    <div class="active-filter-row">
+      <small class="text-body-secondary">TC</small>
+      <div class="form-check form-check-inline mb-0">
+        <input class="form-check-input" type="checkbox"
+               id="active-filter-stc" value="stc"
+               data-dimension="time-control" checked>
+        <label class="form-check-label"
+               for="active-filter-stc">STC</label>
+      </div>
+      <div class="form-check form-check-inline mb-0">
+        <input class="form-check-input" type="checkbox"
+               id="active-filter-ltc" value="ltc"
+               data-dimension="time-control" checked>
+        <label class="form-check-label"
+               for="active-filter-ltc">LTC</label>
+      </div>
+    </div>
+    <div class="active-filter-row">
+      <small class="text-body-secondary">Threads</small>
+      <div class="form-check form-check-inline mb-0">
+        <input class="form-check-input" type="checkbox"
+               id="active-filter-st" value="st"
+               data-dimension="threads" checked>
+        <label class="form-check-label"
+               for="active-filter-st">ST</label>
+      </div>
+      <div class="form-check form-check-inline mb-0">
+        <input class="form-check-input" type="checkbox"
+               id="active-filter-smp" value="smp"
+               data-dimension="threads" checked>
+        <label class="form-check-label"
+               for="active-filter-smp">SMP</label>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}

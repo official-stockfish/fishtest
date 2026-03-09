@@ -886,3 +886,126 @@ input[type="checkbox"],
 .dropdown-item {
   cursor: pointer;
 }
+
+/* Active run filters.
+   Mobile uses an explicit per-row grid so the ellipsis, All, labels,
+   and checkbox columns align consistently without relying on display:contents. */
+#active-run-filters {
+  --active-filter-label-width: 3.35rem;
+  --active-filter-col-1-width: 3.5rem;
+  --active-filter-col-2-width: 3.75rem;
+  --active-filter-col-3-width: 6.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
+.active-filter-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.active-filter-row,
+.active-filter-row-all {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.active-filter-toggle {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  line-height: 1;
+  min-height: calc(1rem * 1.5);
+  align-self: center;
+}
+
+.active-filter-toggle:hover,
+.active-filter-toggle:focus-visible {
+  color: var(--bs-secondary-color);
+}
+
+.active-filter-panel[hidden] {
+  display: none;
+}
+
+@media (max-width: 575.98px) {
+  #active-run-filters {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 1rem;
+    align-items: start;
+  }
+
+  .active-filter-toggle {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: start;
+    justify-self: start;
+  }
+
+  .active-filter-panel {
+    display: grid;
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
+    justify-self: start;
+    min-width: 0;
+    row-gap: 0.5rem;
+  }
+
+  .active-filter-row,
+  .active-filter-row-all {
+    display: grid;
+    grid-template-columns:
+      var(--active-filter-label-width)
+      var(--active-filter-col-1-width)
+      var(--active-filter-col-2-width)
+      minmax(0, var(--active-filter-col-3-width));
+    column-gap: 0.5rem;
+    row-gap: 0.25rem;
+    align-items: center;
+  }
+
+  .active-filter-label-spacer,
+  .active-filter-row > small {
+    grid-column: 1;
+    margin: 0;
+  }
+
+  .active-filter-row-all > .active-filter-all-check,
+  .active-filter-row > .form-check:nth-of-type(1) {
+    grid-column: 2;
+    min-width: var(--active-filter-col-1-width);
+  }
+
+  .active-filter-row > .form-check:nth-of-type(2) {
+    grid-column: 3;
+    min-width: var(--active-filter-col-2-width);
+  }
+
+  .active-filter-row > .form-check:nth-of-type(3) {
+    grid-column: 4;
+    min-width: 0;
+  }
+
+  .active-filter-row > .form-check,
+  .active-filter-row-all > .active-filter-all-check {
+    margin-right: 0;
+    width: 100%;
+  }
+
+  .active-filter-row > .form-check .form-check-label,
+  .active-filter-row-all > .active-filter-all-check .form-check-label {
+    white-space: nowrap;
+  }
+}

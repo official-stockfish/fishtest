@@ -9,6 +9,7 @@
 {% set toggle_state = toggle_state if toggle_state is defined else "Show" %}
 {% set pages = pages if pages is defined else [] %}
 {% set panel_id = panel_id if panel_id is defined else (toggle if toggle else 'finished') %}
+{% set filters_template = filters_template if filters_template is defined else none %}
 
 <h4>
 {% if toggle %}
@@ -36,6 +37,10 @@
   class="{{ 'collapse show' if toggle_state == 'Hide' else 'collapse' }}"
 {% endif %}
 >
+
+  {% if filters_template %}
+    {% include filters_template %}
+  {% endif %}
 
   {% with pages=pages %}
     {% include "pagination.html.j2" %}

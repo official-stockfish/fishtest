@@ -85,7 +85,7 @@
 </div>
 
 <form
-  class="row g-3 mb-3"
+  class="row mb-3"
   id="search_contributors_form"
   data-findme-cookie-name="contributors_findme"
   data-findme-cookie-max-age="{{ cookies.contributors_findme_max_age }}"
@@ -111,11 +111,10 @@
       value="{{ search }}"
       autocomplete="off"
     >
-    <div class="form-text">Typing jumps to the best username match.</div>
   </div>
 
   {% if current_user and current_user.username %}
-    <div class="col-12 col-md-auto mb-3 d-flex align-items-end justify-content-center">
+    <div class="col-12 mb-3 d-flex align-items-end">
       <div class="form-check form-check-inline">
         <label class="form-check-label" for="findme_contributors">
           Jump to my rank

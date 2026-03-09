@@ -265,6 +265,11 @@ carry authentication state:
 - `machines_sort`, `machines_order`, `machines_page`, `machines_q`,
    `machines_my_workers`, and `machines_filtered_count` are written server-side
    by `views.py` when `/tests/machines` normalizes the current filter state.
+- `active_run_filters` is written by `static/js/active_run_filters.js` and
+   preserves the Active runs filter selection across the three dimensions
+   (test type, time control, and threads).
+- `active_run_filters_panel` is written by `static/js/active_run_filters.js`
+   and preserves whether the expandable Active runs filter controls are shown.
 
 This split keeps auth/session semantics on the server-controlled signed cookie
 while letting low-risk UI preferences remain simple, readable browser state.
@@ -362,6 +367,50 @@ Behavior notes:
   - active `q` and/or `my_workers`: `Workers - <total> (<filtered>) machines`
 - Machines sorting is fully server-authoritative; the old generic client-side
    header sorter has been retired.
+
+## Active runs type filter
+
+The Active runs panel on `/tests` provides client-side checkboxes for
+filtering visible runs.  The controls use a
+compact ellipsis toggle plus three independent dimensions matching the
+new-test submission page:
+
+| Dimension | Checkboxes | Classification |
+|-----------|------------|---------------|
+| Test type | SPRT, SPSA, NumGames | `spsa` if SPSA params present; `sprt` if SPRT bounds present; `numgames` otherwise |
+| Time control | STC, LTC | `get_tc_ratio(tc, threads) > 4` → LTC; else STC |
+| Threads | ST, SMP | `threads > 1` → SMP; else ST |
+
+An "All" master checkbox checks or unchecks all dimension checkboxes.
+
+Filtering uses AND between dimensions and OR within each dimension:
+a row is visible when it matches at least one checked value in **every**
+dimension.
+
+Behavior notes:
+
+- Filtering is purely client-side.  Each table row carries three `data-*`
+  attributes (`data-test-type`, `data-time-control`, `data-threads`) with
+  a single value per dimension, computed by the server template.
+- The filter controls sit inside the Active panel's collapse section
+  (matching the workers table filter placement).
+- The ellipsis toggle shows or hides the filter controls without leaving
+   the Active panel.
+- Checkboxes are grouped by dimension with small text labels (Type, TC,
+   Threads).  On desktop the controls stay on one inline row.  On mobile
+   the ellipsis stays pinned at the left while the filter grid opens beside
+   it, with the All checkbox on the first row and aligned checkbox columns.
+- The "All" checkbox uses the indeterminate state when some (but not all)
+  checkboxes are checked.
+- The panel header count updates to show both total and filtered counts
+  when a filter is active: "Active - N (M) tests".
+- Filter state is persisted in the `active_run_filters` cookie (30-day,
+  `path=/`, `SameSite=Lax`).  When all checkboxes are checked the cookie
+  is cleared.
+- The filter panel open/closed state is persisted in the
+   `active_run_filters_panel` cookie.
+- Filters are re-applied after htmx OOB swap updates to the active runs
+  tbody, so periodic poll refreshes respect the current filter state.
 
 ## User management (`/user_management`) query parameters
 
