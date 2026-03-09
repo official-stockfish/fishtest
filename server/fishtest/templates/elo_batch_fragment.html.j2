@@ -1,8 +1,9 @@
 {% for panel in panels %}
   <template>
     <tbody id="{{ panel.tbody_id }}" hx-swap-oob="innerHTML">
+      {% set _batch_panel_id = panel.tbody_id.replace('-tbody', '') %}
       {% for row in panel.rows %}
-        {% with show_delete=panel.show_delete, show_gauge=False %}
+        {% with show_delete=panel.show_delete, show_gauge=False, panel_id=_batch_panel_id %}
           {% include "run_table_row_fragment.html.j2" %}
         {% endwith %}
       {% endfor %}
