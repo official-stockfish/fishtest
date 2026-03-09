@@ -1049,7 +1049,7 @@ class RunDb:
         ltc_only=False,
         last_updated=None,
     ):
-        q: dict[str, object] = {"finished": True}
+        q: dict[str, object] = {"finished": True, "deleted": False}
         if usernames is not None:
             if len(usernames) == 1:
                 q["args.username"] = usernames[0]
@@ -1163,9 +1163,6 @@ class RunDb:
             projection=projection,
             hint=hint,
         )
-        # Keep Mongo filtering aligned with upstream/master: deleted finished
-        # runs are removed after the query instead of in the Mongo predicate.
-        rows = [run for run in rows if not run.get("deleted")]
         return [rows, count]
 
     def _get_finished_runs_multi_username_hot_path(
