@@ -8,8 +8,8 @@
   const runId = {{ run_id | tojson }};
 </script>
 <script
-  src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/8.0.2/diff.min.js"
-  integrity="sha512-8pp155siHVmN5FYcqWNSFYn8Efr61/7mfg/F15auw8MCL3kvINbNT7gT8LldYPq3i/GkSADZd4IcUXPBoPP8gA=="
+  src="https://cdn.jsdelivr.net/npm/diff@8.0.3/dist/diff.min.js"
+  integrity="sha256-g/bQGN3C0H+2VSdJbQs3iUM/y+M5E+qqBok29ZjwTWQ="
   crossorigin="anonymous"
   referrerpolicy="no-referrer"
 ></script>
@@ -484,8 +484,8 @@
 </div>
 
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"
-        integrity="sha512-EBLzUL8XLl+va/zAsmXwS7Z2B1F9HUHkZwyS/VKwh3S7T/U0nF4BaU29EP/ZSf6zgiIxYAnKLu6bJ8dqpmX5uw=="
+<script src="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.11.1/highlight.min.js"
+        integrity="sha256-xKOZ3W9Ii8l6NUbjR2dHs+cUyZxXuUcxVMb7jSWbk4E="
         crossorigin="anonymous"
         referrerpolicy="no-referrer"
 ></script>
@@ -505,9 +505,9 @@
       link["crossOrigin"] = "anonymous";
       link["referrerPolicy"] = "no-referrer";
       link["href"] =
-        "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github-dark.min.css";
+        "https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.11.1/styles/github-dark.min.css";
       link["integrity"] =
-        "sha512-rO+olRTkcf304DQBxSWxln8JXCzTHlKnIdnMUwYvQa9/Jd4cQaNkItIUj6Z4nvW1dqK0SKXLbn9h4KwZTNtAyw==";
+        "sha256-nyCNAiECsdDHrr/s2OQsp5l9XeY2ZJ0rMepjCT2AkBk=";
     } else {
       document.head
         .querySelector('link[href*="styles/github-dark.min.css"]')
@@ -516,9 +516,9 @@
       link["crossOrigin"] = "anonymous";
       link["referrerPolicy"] = "no-referrer";
       link["href"] =
-        "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/styles/github.min.css";
+        "https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.11.1/styles/github.min.css";
       link["integrity"] =
-        "sha512-0aPQyyeZrWj9sCA46UlmWgKOP0mUipLQ6OZXu8l4IcAmD2u31EPEy9VcIMvl7SoAaKe8bLXZhYoMaE/in+gcgA==";
+        "sha256-Oppd74ucMR5a5Dq96FxjEzGF7tTw2fZ/6ksAqDCM8GY=";
     }
     document.head.append(link);
   };
