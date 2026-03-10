@@ -1470,6 +1470,22 @@ class TestHttpUsers(unittest.TestCase):
         self.assertIn('document.addEventListener("htmx:load"', js_source)
         self.assertIn("initializeNotificationButtons(target)", js_source)
 
+    def test_contributors_js_uses_single_root_path_cookie(self):
+        js_path = (
+            Path(__file__).resolve().parents[1]
+            / "fishtest"
+            / "static"
+            / "js"
+            / "contributors.js"
+        )
+        js_source = js_path.read_text(encoding="utf-8")
+
+        self.assertIn("path=/; max-age=${cookieMaxAge}; SameSite=Lax", js_source)
+        self.assertNotIn(
+            "path=/contributors; max-age=${cookieMaxAge}; SameSite=Lax", js_source
+        )
+        self.assertNotIn("getLatestCookie", js_source)
+
     def test_user_management_lazy_group_hx_fragment(self):
         pending_user = "HxPendingGroupUser"
         blocked_user = "HxBlockedGroupUser"

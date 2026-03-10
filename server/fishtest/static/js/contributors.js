@@ -16,16 +16,14 @@
       return;
     }
     document.cookie = `${cookieName}=${value}; path=/; max-age=${cookieMaxAge}; SameSite=Lax`;
-    document.cookie = `${cookieName}=${value}; path=/contributors; max-age=${cookieMaxAge}; SameSite=Lax`;
   };
 
-  const getLatestCookie = (name) => {
+  const getCookie = (name) => {
     const key = `${name}=`;
-    const matches = document.cookie
+    const match = document.cookie
       .split(";")
       .map((part) => part.trim())
-      .filter((part) => part.startsWith(key));
-    const match = matches.length ? matches[matches.length - 1] : "";
+      .find((part) => part.startsWith(key));
     return match ? match.slice(key.length) : "";
   };
 
@@ -46,7 +44,7 @@
   ) {
     const params = new URLSearchParams(window.location.search);
     const findmeFromUrl = params.get("findme") === "1";
-    const remembered = getLatestCookie(cookieName);
+    const remembered = getCookie(cookieName);
 
     if (remembered === "false") {
       findme.checked = false;
