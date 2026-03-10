@@ -1,7 +1,9 @@
 # Developer references
 
 Curated web references and project-specific patterns for the four libraries
-that form the fishtest server stack.
+that form the fishtest server stack. For server architecture and request
+flow, see [1-architecture.md](1-architecture.md). For the threading model
+and async/sync boundaries, see [2-threading-model.md](2-threading-model.md).
 
 ## FastAPI
 
@@ -389,3 +391,52 @@ prevent XSS from error messages and to keep htmx attributes functional
 | Lint script | `cd server && uv run ruff check .` | Ruff linting with `target-version = \"py314\"` |
 | Type check | `cd server && uv run ty check fishtest/app.py fishtest/http/` | Type checking for ASGI entrypoint and HTTP modules |
 | Local test runner | `cd server && uv run python -m unittest discover -s tests -q` | Run the full test suite |
+
+## Testing patterns
+
+### Test structure
+
+Server tests live in `server/tests/`. All tests use `unittest.TestCase`.
+MongoDB is required for most tests (the CI workflow starts `mongod` before
+running the suite).
+
+### Running tests
+
+From the repo root:
+
+```bash
+# Full pipeline (start mongod, run tests, stop mongod)
+bash scripts/dev/mongo_test_ctl.sh --test
+
+# Or manually
+mongod --dbpath /tmp/fishtest-test-db --port 27017 &
+cd server && uv run python -m unittest discover -s tests -q
+```
+
+### Fixtures
+
+Most test files import `test_support`, which provides:
+
+- `get_rundb()`: returns a `RunDb` connected to the test MongoDB instance.
+- `build_test_app(...)`: constructs a FastAPI `TestApplication` with selectable
+  API and views routers.
+- `make_test_client(...)`: wraps `build_test_app` in a Starlette `TestClient`.
+- `cleanup_test_rundb(...)`: drops test collections after a test class runs.
+- `find_run(...)`: retrieves a run from the database by field match.
+- `extract_csrf_token(html)`: parses a CSRF token from rendered HTML.
+
+Worker-related fixtures must match the `short_worker_name` pattern
+(`.*-[\d]+cores-[a-zA-Z0-9]{2,8}`) or `WorkerDb.update_worker()` schema
+validation fails.
+
+### Key test modules
+
+| Module | Coverage |
+|--------|----------|
+| `test_app.py` | Application startup, middleware, lifespan |
+| `test_api.py` | Worker API protocol (request_task, update_task, beat) |
+| `test_users.py` | Login, CSRF, permissions, UI form submission |
+| `test_actions_view.py` | Actions search, pagination, sorting |
+| `test_finished_view.py` | Finished tests search, pagination |
+| `test_http_boundary.py` | HTTP layer invariants (CSRF fields, headers) |
+| `test_nn.py` | Neural network upload and listing |

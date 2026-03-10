@@ -25,16 +25,16 @@ viewing results, and administering users and workers.
 ## Quick start
 
 ```bash
-# Clone and install
-cd server && uv sync
+# Install server dependencies (from repo root)
+cd server && uv sync && uv sync --group test
 
-# Run tests
+# Run tests (from server/)
 uv run python -m unittest discover -s tests -q
 
-# Start the development server
+# Start the development server (from server/)
 FISHTEST_INSECURE_DEV=1 uv run uvicorn fishtest.app:app --reload --port 8000
 
-# Start with OpenAPI docs enabled (/docs, /redoc)
+# Start with OpenAPI docs enabled (from server/)
 OPENAPI_URL=/openapi.json FISHTEST_INSECURE_DEV=1 uv run uvicorn fishtest.app:app --reload --port 8000
 
 # Entrypoint
