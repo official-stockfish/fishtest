@@ -485,6 +485,94 @@ class CreateRunDBTest(unittest.TestCase):
         finally:
             self.rundb.runs.delete_many({"args.username": "deleted-filter-user"})
 
+    def test_52_finished_runs_default_limit_returns_all_matches(self):
+        now = datetime.now(UTC)
+        docs = [
+            {
+                "_id": ObjectId(),
+                "finished": True,
+                "deleted": False,
+                "args": {
+                    "username": "limit-zero-user",
+                    "info": "limit zero visible row 1",
+                },
+                "last_updated": now,
+                "tc_base": self.rundb.ltc_lower_bound,
+            },
+            {
+                "_id": ObjectId(),
+                "finished": True,
+                "deleted": False,
+                "args": {
+                    "username": "limit-zero-user",
+                    "info": "limit zero visible row 2",
+                },
+                "last_updated": now - timedelta(minutes=1),
+                "tc_base": self.rundb.ltc_lower_bound,
+            },
+        ]
+        self.rundb.runs.insert_many(docs)
+        try:
+            finished_runs, count = self.rundb.get_finished_runs(
+                username="limit-zero-user",
+            )
+            self.assertEqual(count, 2)
+            self.assertEqual(len(finished_runs), 2)
+            self.assertEqual(
+                [run["args"]["info"] for run in finished_runs],
+                ["limit zero visible row 1", "limit zero visible row 2"],
+            )
+        finally:
+            self.rundb.runs.delete_many({"args.username": "limit-zero-user"})
+
+    def test_53_finished_runs_limit_zero_is_rejected(self):
+        with self.assertRaisesRegex(
+            ValueError, "limit must be None or a positive integer"
+        ):
+            self.rundb.get_finished_runs(limit=0)
+
+    def test_54_finished_runs_multi_username_default_limit_returns_all(self):
+        now = datetime.now(UTC)
+        docs = [
+            {
+                "_id": ObjectId(),
+                "finished": True,
+                "deleted": False,
+                "args": {
+                    "username": "limit-zero-user-a",
+                    "info": "multi limit zero row a",
+                },
+                "last_updated": now,
+                "tc_base": self.rundb.ltc_lower_bound,
+            },
+            {
+                "_id": ObjectId(),
+                "finished": True,
+                "deleted": False,
+                "args": {
+                    "username": "limit-zero-user-b",
+                    "info": "multi limit zero row b",
+                },
+                "last_updated": now - timedelta(minutes=1),
+                "tc_base": self.rundb.ltc_lower_bound,
+            },
+        ]
+        self.rundb.runs.insert_many(docs)
+        try:
+            finished_runs, count = self.rundb.get_finished_runs(
+                usernames=["limit-zero-user-a", "limit-zero-user-b"],
+            )
+            self.assertEqual(count, 2)
+            self.assertEqual(len(finished_runs), 2)
+            self.assertEqual(
+                [run["args"]["username"] for run in finished_runs],
+                ["limit-zero-user-a", "limit-zero-user-b"],
+            )
+        finally:
+            self.rundb.runs.delete_many(
+                {"args.username": {"$in": ["limit-zero-user-a", "limit-zero-user-b"]}}
+            )
+
     def test_90_delete_runs(self):
         for run in self.rundb.runs.find():
             if run["args"]["username"] == "travis" and "deleted" not in run:
