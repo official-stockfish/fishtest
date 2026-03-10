@@ -920,7 +920,7 @@ class RunDb:
     def get_finished_runs(
         self,
         skip=0,
-        limit=0,
+        limit=None,
         username="",
         usernames=None,
         text="",
@@ -930,9 +930,17 @@ class RunDb:
         last_updated=None,
         max_count=None,
     ):
+        if limit is not None and limit <= 0:
+            raise ValueError("limit must be None or a positive integer")
+
         projection = {"tasks": 0, "bad_tasks": 0, "args.spsa.param_history": 0}
 
-        if usernames is not None and len(usernames) > 1 and not text:
+        if (
+            usernames is not None
+            and len(usernames) > 1
+            and not text
+            and limit is not None
+        ):
             merge_window = max(skip + limit, 1)
             fanout_budget = len(usernames) * merge_window
             if fanout_budget <= 600:
@@ -1097,10 +1105,11 @@ class RunDb:
 
         find_kwargs = {
             "skip": skip,
-            "limit": limit,
             "sort": [("last_updated", DESCENDING)],
             "projection": projection,
         }
+        if limit is not None:
+            find_kwargs["limit"] = limit
         if hint:
             find_kwargs["hint"] = hint
 
@@ -1149,11 +1158,10 @@ class RunDb:
         effective_limit = limit
         if max_count is not None:
             remaining = max(max_count - skip, 0)
-            effective_limit = remaining if limit == 0 else min(limit, remaining)
+            effective_limit = remaining if limit is None else min(limit, remaining)
 
-        # Match the actions path: never hand Mongo a zero limit for capped paging,
-        # because limit=0 means "no limit" and defeats the cap.
-        if effective_limit <= 0:
+        # Never hand Mongo a zero limit for capped paging.
+        if max_count is not None and effective_limit <= 0:
             return [[], count]
 
         rows = self._find_finished_runs_rows(
