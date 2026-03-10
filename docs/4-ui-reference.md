@@ -47,7 +47,7 @@ registers it on the FastAPI router.
 | `/tests/delete` | POST | `tests_delete` | -- | CSRF, primary |
 | `/tests/view/{id}` | GET, POST | `tests_view` | `tests_view.html.j2` | |
 | `/tests/live_elo/{id}` | GET, POST | `tests_live_elo` | `tests_live_elo.html.j2` | Live Elo page + dual-scale gauge |
-| `/tests/stats/{id}` | GET, POST | `tests_stats` | `tests_stats.html.j2` | |
+| `/tests/stats/{id}` | GET, POST | `tests_stats` | `tests_stats.html.j2` | HX: `tests_stats_content_fragment.html.j2`; active runs poll every 15s with visibility-aware refresh |
 | `/tests/tasks/{id}` | GET, POST | `tests_tasks` | `tasks_fragment.html.j2` | Fragment-only |
 | `/tests/machines` | GET, POST | `tests_machines` | `machines_fragment.html.j2` | Fragment-only, 10s cache |
 | `/tests/elo/{id}` | GET, POST | `tests_elo` | `elo_results_fragment.html.j2` | Fragment-only (OOB) |
@@ -110,6 +110,32 @@ Value display rule:
 
 - The gauge reports the real uncapped Elo value from the server.
 - In fixed mode, the gauge needle is visually limited by the selected range.
+
+## `/tests/stats/{id}` raw statistics contract
+
+The raw statistics page is dual-mode:
+
+- Full-page navigation renders `tests_stats.html.j2`.
+- `HX-Request: true` renders `tests_stats_content_fragment.html.j2`.
+
+The page shell keeps a visibility-aware poller for unfinished non-SPSA runs:
+
+- `every 15s [document.visibilityState === 'visible']`
+- `visibilitychange[document.visibilityState === 'visible'] from:document`
+
+Server behavior for htmx polling:
+
+- `200` when the run is active, returning the refreshed stats fragment.
+- `204` when the run is not active but not terminal, keeping the current DOM.
+- `286` when the run is terminal (`finished` or `failed`), returning the final
+   fragment and stopping the poller.
+
+Layout contract:
+
+- the shared fragment preserves the original heading-and-table statistics
+   presentation from the page shell;
+- genuinely tabular data, such as SPRT bounds, remains a table;
+- SPSA runs render an informational message instead of raw statistics.
 
 ## htmx fragment dispatch
 

@@ -4610,11 +4610,36 @@ def tests_stats(request):
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None:
         raise StarletteHTTPException(status_code=404)
-    return {
+
+    context = {
         "run": run,
         "page_title": get_page_title(run),
         "stats": build_tests_stats_context(run),
     }
+
+    if _is_hx_request(request):
+        actual = _classify_run_status(run)
+        if actual in {"finished", "failed"}:
+            response = _render_hx_fragment(
+                request,
+                "tests_stats_content_fragment.html.j2",
+                context,
+            )
+            if response is not None:
+                response.status_code = 286
+                return response
+        elif actual != "active":
+            request.response_status = 204
+            return context
+
+        response = _render_hx_fragment(
+            request,
+            "tests_stats_content_fragment.html.j2",
+            context,
+        )
+        return response or context
+
+    return context
 
 
 def tests_tasks(request):
