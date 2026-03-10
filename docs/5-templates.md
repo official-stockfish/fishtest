@@ -150,7 +150,7 @@ embedding implementation details in the template body.
 | `tests_finished.html.j2` | Finished tests listing with filters |
 | `tests_live_elo.html.j2` | Live ELO chart page |
 | `tests_run.html.j2` | New test / rerun submission form |
-| `tests_stats.html.j2` | Statistical analysis page |
+| `tests_stats.html.j2` | Raw statistics page shell with visibility-aware poller |
 | `tests_user.html.j2` | Per-user test listing |
 | `tests_view.html.j2` | Single test detail page |
 | `user.html.j2` | User profile page |
@@ -178,6 +178,7 @@ base layout and contain only the HTML subset needed for the swap target.
 | `tasks_fragment.html.j2` | `#tasks-body` | -- | Yes |
 | `tests_filter_tabs_fragment.html.j2` | caller-defined `hx-target` | -- | -- |
 | `tests_finished_content_fragment.html.j2` | `#tests-finished-content` | -- | -- |
+| `tests_stats_content_fragment.html.j2` | `#tests-stats-content` | -- | Yes |
 | `tests_user_content_fragment.html.j2` | `#tests-user-content` | -- | -- |
 | `user_management_content_fragment.html.j2` | `#user-management-content` | -- | -- |
 | `user_management_rows_fragment.html.j2` | included by `user_management_content_fragment.html.j2` | -- | -- |
@@ -432,11 +433,33 @@ visually bounded by the active range.
 
 ### `tests_stats.html.j2`
 
+Page shell for `/tests/stats/{id}`. Includes the shared stats content fragment and,
+for unfinished non-SPSA runs, a visibility-aware htmx poller targeting
+`#tests-stats-content`.
+
 | Key | Type |
 |-----|------|
 | `run` | dict |
 | `page_title` | string |
 | `stats` | dict |
+
+### `tests_stats_content_fragment.html.j2`
+
+Shared stats-body fragment used by both the full-page shell and `HX-Request`
+responses for `/tests/stats/{id}`.
+
+| Key | Type |
+|-----|------|
+| `run` | dict |
+| `page_title` | string |
+| `stats` | dict |
+
+Rendered structure:
+
+- `#tests-stats-content` root element
+- original heading-and-table statistics layout shared by full-page and HTMX renders
+- SPRT bounds rendered as a table
+- SPSA message rendered in place of the statistics tables when applicable
 
 ### `tests_user.html.j2`
 
