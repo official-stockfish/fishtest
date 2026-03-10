@@ -9,6 +9,11 @@
   --scroll-bar-width: 16px;
   --icon-fixed-inline-size: 30px;
   --sort-indicator-color: rgba(var(--bs-link-color-rgb), 0.75);
+  --sort-indicator-outline-color: rgba(var(--bs-link-color-rgb), 0.62);
+  --sort-indicator-outline-hover-color: rgba(
+    var(--bs-link-hover-color-rgb),
+    0.92
+  );
   --sort-indicator-hover-color: var(--bs-link-hover-color);
   --sort-indicator-active-color: var(--bs-link-color);
   --sort-indicator-font-weight: 600;
@@ -650,6 +655,21 @@ td {
   text-decoration: underline !important;
 }
 
+.test-type-toggle {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+}
+
+.test-type-toggle:hover,
+.test-type-toggle:focus-visible {
+  color: var(--bs-secondary-color);
+}
+
 :is(
     #contributors_table,
     #nns_table,
@@ -661,7 +681,28 @@ td {
   .sort-header
   .sort-indicator {
   color: var(--sort-indicator-color);
+  display: inline-flex;
   font-weight: var(--sort-indicator-font-weight);
+  line-height: 1;
+  transition:
+    color 120ms ease,
+    opacity 120ms ease;
+}
+
+:is(
+    #contributors_table,
+    #nns_table,
+    #actions_table,
+    #machines_table,
+    #workers_table,
+    #user_management_table
+  )
+  .sort-header
+  .sort-indicator
+  .sort-indicator-neutral {
+  color: transparent;
+  -webkit-text-stroke: 1.2px var(--sort-indicator-outline-color);
+  opacity: 0.88;
 }
 
 :is(
@@ -690,6 +731,22 @@ td {
   .sort-header:hover
   .sort-indicator {
   color: var(--sort-indicator-hover-color);
+}
+
+:is(
+    #contributors_table,
+    #nns_table,
+    #actions_table,
+    #machines_table,
+    #workers_table,
+    #user_management_table
+  )
+  .sort-header:hover
+  .sort-indicator
+  .sort-indicator-neutral {
+  color: transparent;
+  -webkit-text-stroke: 1.2px var(--sort-indicator-outline-hover-color);
+  opacity: 1;
 }
 
 @keyframes contributor-highlight-fade {
@@ -920,6 +977,7 @@ input[type="checkbox"],
   background: transparent;
   color: inherit;
   padding: 0;
+  margin-left: 0.25rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -942,7 +1000,7 @@ input[type="checkbox"],
   #active-run-filters {
     display: grid;
     grid-template-columns: auto 1fr;
-    column-gap: 1rem;
+    column-gap: 0.4rem;
     align-items: start;
   }
 

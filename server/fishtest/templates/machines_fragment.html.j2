@@ -25,7 +25,9 @@
       hx-params="none"
     >
       <span>{{ label }}</span>
-      <span class="sort-indicator" aria-hidden="true">{% if is_active and order == "asc" %}▲{% elif is_active and order == "desc" %}▼{% else %}↕{% endif %}</span>
+      <span class="sort-indicator" aria-hidden="true">
+        <i class="fa-solid fa-fw {% if is_active and order == 'asc' %}fa-sort-up{% elif is_active and order == 'desc' %}fa-sort-down{% else %}fa-sort sort-indicator-neutral{% endif %}"></i>
+      </span>
     </a>
   </th>
 {%- endmacro %}
