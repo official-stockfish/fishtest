@@ -1,4 +1,11 @@
 {% extends "base.html.j2" %}
+{% block head %}
+  {% if run_tables_ctx is defined and run_tables_ctx.active_run_filters is defined and run_tables_ctx.active_run_filters and run_tables_ctx.active_run_filters.hidden_selectors %}
+    <style id="active-run-filter-style">
+      {{ run_tables_ctx.active_run_filters.hidden_selectors | join(',\n') }} { display: none !important; }
+    </style>
+  {% endif %}
+{% endblock %}
 {% block body %}
 <link
   rel="stylesheet"
@@ -110,6 +117,8 @@
     pending_approval_runs=run_tables_ctx.pending_approval_runs,
     paused_runs=run_tables_ctx.paused_runs,
     active_runs=run_tables_ctx.active_runs,
+    active_count_text=run_tables_ctx.active_count_text,
+    active_run_filters=run_tables_ctx.active_run_filters,
     failed_runs=run_tables_ctx.failed_runs,
     finished_runs=run_tables_ctx.finished_runs,
     num_finished_runs=run_tables_ctx.num_finished_runs,

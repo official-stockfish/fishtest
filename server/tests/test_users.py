@@ -870,6 +870,169 @@ class TestHttpUsers(unittest.TestCase):
         self.assertIn('data-toggle-cookie-max-age="', homepage.text)
         self.assertIn("static/js/tests_homepage.js", homepage.text)
 
+    def test_tests_homepage_active_filters_render_persisted_first_paint_state(self):
+        now = datetime.now(UTC)
+        runs = {
+            "pending": [],
+            "active": [
+                {
+                    "_id": "run-sprt-stc-st",
+                    "args": {
+                        "username": self.username,
+                        "base_tag": "master",
+                        "new_tag": "sprt-stc-st",
+                        "resolved_base": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "resolved_new": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "tc": "10+0.1",
+                        "threads": 1,
+                        "sprt": {
+                            "llr": 0.0,
+                            "lower_bound": -2.94,
+                            "upper_bound": 2.94,
+                            "elo0": 0.0,
+                            "elo1": 2.0,
+                            "state": "",
+                        },
+                        "info": "sprt run",
+                        "tests_repo": "https://github.com/official-stockfish/Stockfish",
+                    },
+                    "start_time": now,
+                    "finished": False,
+                    "cores": 2,
+                    "workers": 1,
+                    "results": {"wins": 0, "losses": 0, "draws": 0},
+                },
+                {
+                    "_id": "run-spsa-ltc-smp",
+                    "args": {
+                        "username": self.username,
+                        "base_tag": "master",
+                        "new_tag": "spsa-ltc-smp",
+                        "resolved_base": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "resolved_new": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "tc": "60+0.6",
+                        "threads": 4,
+                        "spsa": {"iter": 1, "num_iter": 10},
+                        "num_games": 1000,
+                        "info": "spsa run",
+                        "tests_repo": "https://github.com/official-stockfish/Stockfish",
+                    },
+                    "start_time": now,
+                    "finished": False,
+                    "cores": 16,
+                    "workers": 4,
+                    "results": {"wins": 0, "losses": 0, "draws": 0},
+                },
+            ],
+        }
+        aggregate_result = (runs, 0.0, 0, 0, 0, 0)
+
+        self.client.cookies.set("active_run_filters", "sprt,stc,st")
+
+        with patch.object(
+            self.rundb,
+            "aggregate_unfinished_runs",
+            return_value=aggregate_result,
+        ):
+            homepage = self.client.get("/tests")
+
+        self.assertEqual(homepage.status_code, 200)
+        self.assertIn("Active - 2 (1) tests", homepage.text)
+        self.assertIn('id="active-run-filter-style"', homepage.text)
+        self.assertIn("display: none !important;", homepage.text)
+        self.assertLess(
+            homepage.text.index('id="active-run-filter-style"'),
+            homepage.text.index(
+                'src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"'
+            ),
+        )
+        self.assertIn(
+            'id="active-filter-sprt" value="sprt"\n               data-dimension="test-type" checked',
+            homepage.text,
+        )
+        self.assertIn(
+            'id="active-filter-spsa" value="spsa"\n               data-dimension="test-type" >',
+            homepage.text,
+        )
+
+    def test_tests_homepage_active_filters_persist_none_selection(self):
+        now = datetime.now(UTC)
+        runs = {
+            "pending": [],
+            "active": [
+                {
+                    "_id": "run-sprt-stc-st",
+                    "args": {
+                        "username": self.username,
+                        "base_tag": "master",
+                        "new_tag": "sprt-stc-st",
+                        "resolved_base": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "resolved_new": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "tc": "10+0.1",
+                        "threads": 1,
+                        "sprt": {
+                            "llr": 0.0,
+                            "lower_bound": -2.94,
+                            "upper_bound": 2.94,
+                            "elo0": 0.0,
+                            "elo1": 2.0,
+                            "state": "",
+                        },
+                        "tests_repo": "https://github.com/official-stockfish/Stockfish",
+                    },
+                    "start_time": now,
+                    "finished": False,
+                    "cores": 2,
+                    "workers": 1,
+                    "results": {"wins": 0, "losses": 0, "draws": 0},
+                },
+                {
+                    "_id": "run-numgames-ltc-smp",
+                    "args": {
+                        "username": self.username,
+                        "base_tag": "master",
+                        "new_tag": "numgames-ltc-smp",
+                        "resolved_base": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "resolved_new": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "tc": "60+0.6",
+                        "threads": 2,
+                        "num_games": 1000,
+                        "tests_repo": "https://github.com/official-stockfish/Stockfish",
+                    },
+                    "start_time": now,
+                    "finished": False,
+                    "cores": 8,
+                    "workers": 2,
+                    "results": {"wins": 0, "losses": 0, "draws": 0},
+                },
+            ],
+        }
+        aggregate_result = (runs, 0.0, 0, 0, 0, 0)
+
+        self.client.cookies.set("active_run_filters", "none")
+
+        with patch.object(
+            self.rundb,
+            "aggregate_unfinished_runs",
+            return_value=aggregate_result,
+        ):
+            homepage = self.client.get("/tests")
+
+        self.assertEqual(homepage.status_code, 200)
+        self.assertIn("Active - 2 (0) tests", homepage.text)
+        self.assertIn('id="active-run-filter-style"', homepage.text)
+        self.assertIn("display: none !important;", homepage.text)
+        self.assertLess(
+            homepage.text.index('id="active-run-filter-style"'),
+            homepage.text.index(
+                'src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"'
+            ),
+        )
+        self.assertIn(
+            'id="active-filter-sprt" value="sprt"\n               data-dimension="test-type" >',
+            homepage.text,
+        )
+
     def test_contributors_rank_is_global_on_page_two(self):
         docs = [
             {
@@ -1503,6 +1666,7 @@ class TestHttpUsers(unittest.TestCase):
         self.assertIn('document.addEventListener("htmx:afterSwap"', js_source)
         self.assertIn('document.addEventListener("htmx:load"', js_source)
         self.assertIn("initializeNotificationButtons(target)", js_source)
+        self.assertIn('notification.dataset.notificationReady = "1"', js_source)
 
     def test_contributors_js_uses_single_root_path_cookie(self):
         js_path = (

@@ -10,6 +10,8 @@
 {% set pages = pages if pages is defined else [] %}
 {% set panel_id = panel_id if panel_id is defined else (toggle if toggle else 'finished') %}
 {% set filters_template = filters_template if filters_template is defined else none %}
+{% set count_text = count_text if count_text is defined else none %}
+{% set active_run_filters = active_run_filters if active_run_filters is defined else none %}
 
 <h4>
 {% if toggle %}
@@ -23,7 +25,7 @@
   </a>
 {% endif %}
 {% if header is not none and count is not none %}
-  <span id="{{ panel_id }}-count">{{ header }} - {{ count }} tests</span>
+  <span id="{{ panel_id }}-count">{{ count_text if count_text else (header ~ ' - ' ~ count ~ ' tests') }}</span>
 {% elif header is not none %}
   {{ header }}
 {% elif count is not none %}

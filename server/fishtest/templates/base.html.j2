@@ -51,6 +51,8 @@
     >
     {% endif %}
 
+    {% block head %}{% endblock %}
+
     <script
       src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
       integrity="sha256-5P1JGBOIxI7FBAvT/mb1fCnI5n/NhQKzNUuW7Hq0fMc="
@@ -68,8 +70,6 @@
     <script src="{{ static_url('fishtest:static/js/application.js') }}"></script>
 
     <script src="{{ static_url('fishtest:static/js/notifications.js') }}"></script>
-
-    {% block head %}{% endblock %}
   </head>
 
   <body>

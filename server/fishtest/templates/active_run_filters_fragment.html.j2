@@ -1,4 +1,6 @@
 {% if active_runs is defined and active_runs | length > 0 %}
+{% set active_run_filters = active_run_filters if active_run_filters is defined and active_run_filters else none %}
+{% set enabled = active_run_filters.enabled_by_dim if active_run_filters else {} %}
 <div id="active-run-filters"
      class="mb-2"
      data-filter-cookie-max-age="{{ cookies.persistent_ui_max_age }}">
@@ -16,7 +18,7 @@
       <span class="active-filter-label-spacer" aria-hidden="true"></span>
       <div class="form-check form-check-inline mb-0 active-filter-all-check">
         <input class="form-check-input" type="checkbox"
-               id="active-filter-all" checked>
+               id="active-filter-all" {{ 'checked' if not active_run_filters or active_run_filters.all_enabled else '' }}>
         <label class="form-check-label fw-semibold"
                for="active-filter-all">All</label>
       </div>
@@ -26,21 +28,21 @@
       <div class="form-check form-check-inline mb-0">
         <input class="form-check-input" type="checkbox"
                id="active-filter-sprt" value="sprt"
-               data-dimension="test-type" checked>
+               data-dimension="test-type" {{ 'checked' if not active_run_filters or 'sprt' in enabled['test-type'] else '' }}>
         <label class="form-check-label"
                for="active-filter-sprt">SPRT</label>
       </div>
       <div class="form-check form-check-inline mb-0">
         <input class="form-check-input" type="checkbox"
                id="active-filter-spsa" value="spsa"
-               data-dimension="test-type" checked>
+               data-dimension="test-type" {{ 'checked' if not active_run_filters or 'spsa' in enabled['test-type'] else '' }}>
         <label class="form-check-label"
                for="active-filter-spsa">SPSA</label>
       </div>
       <div class="form-check form-check-inline mb-0">
         <input class="form-check-input" type="checkbox"
                id="active-filter-numgames" value="numgames"
-               data-dimension="test-type" checked>
+               data-dimension="test-type" {{ 'checked' if not active_run_filters or 'numgames' in enabled['test-type'] else '' }}>
         <label class="form-check-label"
                for="active-filter-numgames">NumGames</label>
       </div>
@@ -50,14 +52,14 @@
       <div class="form-check form-check-inline mb-0">
         <input class="form-check-input" type="checkbox"
                id="active-filter-stc" value="stc"
-               data-dimension="time-control" checked>
+               data-dimension="time-control" {{ 'checked' if not active_run_filters or 'stc' in enabled['time-control'] else '' }}>
         <label class="form-check-label"
                for="active-filter-stc">STC</label>
       </div>
       <div class="form-check form-check-inline mb-0">
         <input class="form-check-input" type="checkbox"
                id="active-filter-ltc" value="ltc"
-               data-dimension="time-control" checked>
+               data-dimension="time-control" {{ 'checked' if not active_run_filters or 'ltc' in enabled['time-control'] else '' }}>
         <label class="form-check-label"
                for="active-filter-ltc">LTC</label>
       </div>
@@ -67,14 +69,14 @@
       <div class="form-check form-check-inline mb-0">
         <input class="form-check-input" type="checkbox"
                id="active-filter-st" value="st"
-               data-dimension="threads" checked>
+               data-dimension="threads" {{ 'checked' if not active_run_filters or 'st' in enabled['threads'] else '' }}>
         <label class="form-check-label"
                for="active-filter-st">ST</label>
       </div>
       <div class="form-check form-check-inline mb-0">
         <input class="form-check-input" type="checkbox"
                id="active-filter-smp" value="smp"
-               data-dimension="threads" checked>
+               data-dimension="threads" {{ 'checked' if not active_run_filters or 'smp' in enabled['threads'] else '' }}>
         <label class="form-check-label"
                for="active-filter-smp">SMP</label>
       </div>
