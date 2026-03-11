@@ -45,6 +45,8 @@ from fishtest.http.settings import (
     ACTIONS_PAGE_SIZE,
     CONTRIBUTORS_MAX_ALL,
     CONTRIBUTORS_PAGE_SIZE,
+    FINISHED_FILTER_MAX_COUNT_ANON,
+    FINISHED_FILTER_MAX_COUNT_AUTH,
     MACHINES_PAGE_SIZE,
     NNS_MAX_ALL,
     NNS_PAGE_SIZE,
@@ -1279,8 +1281,6 @@ quotation_marks_translation = str.maketrans(quotation_marks, len(quotation_marks
 
 _ACTIONS_DEFAULT_MAX_COUNT_AUTH = 50000
 _ANONYMOUS_RESULT_LIMIT_HARD = 5000
-_FINISHED_FILTER_MAX_COUNT_AUTH = 10000
-_FINISHED_FILTER_MAX_COUNT_ANON = 1000
 _MONGO_INT64_MAX = 2**63 - 1
 _DEFAULT_TIME_SORT_FIELD = "time"
 _DEFAULT_SORT_ORDER = "desc"
@@ -1672,8 +1672,8 @@ def _effective_finished_max_count(
     return _effective_result_limit(
         is_authenticated=is_authenticated,
         requested_limit=requested_max_count,
-        anonymous_hard_limit=_FINISHED_FILTER_MAX_COUNT_ANON,
-        authenticated_default_limit=_FINISHED_FILTER_MAX_COUNT_AUTH,
+        anonymous_hard_limit=FINISHED_FILTER_MAX_COUNT_ANON,
+        authenticated_default_limit=FINISHED_FILTER_MAX_COUNT_AUTH,
     )
 
 

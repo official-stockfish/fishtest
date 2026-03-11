@@ -86,7 +86,7 @@
                   <li>Precede a word with a minus sign to exclude it: <i>dog &minus;cat</i>.</li>
                   <li>Only full words match.</li>
                 </ul>
-                Anonymous requests are capped at 1000 finished rows. Authenticated requests default to 10000 and may override <i>max_count</i> explicitly in the URL.
+                Anonymous requests are capped at {{ finished.filter_max_count_anon }} finished rows. Authenticated requests default to {{ finished.filter_max_count_auth }} and may override <i>max_count</i> explicitly in the URL.
               </div>
             </div>
           </div>

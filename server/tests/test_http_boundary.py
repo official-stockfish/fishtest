@@ -12,6 +12,11 @@ import test_support
 from fastapi import Depends, Request
 from starlette.responses import Response
 
+from fishtest.http.settings import (
+    FINISHED_FILTER_MAX_COUNT_ANON,
+    FINISHED_FILTER_MAX_COUNT_AUTH,
+    HTMX_INPUT_CHANGED_DELAY_MS,
+)
 from fishtest.run_cache import Prio
 
 
@@ -410,12 +415,15 @@ class TestHttpBoundary(unittest.TestCase):
         self.assertIn('name="mode" value="search"', response.text)
         self.assertRegex(response.text, 'name="user"[^>]*value="Fin"')
         self.assertRegex(response.text, r'name="text"[^>]*value="branch"')
-        self.assertIn('name="max_count" value="1000"', response.text)
+        self.assertIn(
+            f'name="max_count" value="{FINISHED_FILTER_MAX_COUNT_ANON}"',
+            response.text,
+        )
         self.assertIn('name="sort" value="time"', response.text)
         self.assertIn('name="order" value="desc"', response.text)
         self.assertIn(
-            'hx-trigger="submit, input changed delay:350ms from:#tests_search_user, '
-            "search from:#tests_search_user, input changed delay:350ms "
+            f'hx-trigger="submit, input changed delay:{HTMX_INPUT_CHANGED_DELAY_MS}ms from:#tests_search_user, '
+            f"search from:#tests_search_user, input changed delay:{HTMX_INPUT_CHANGED_DELAY_MS}ms "
             'from:#tests_search_text, search from:#tests_search_text"',
             response.text,
         )
@@ -424,7 +432,7 @@ class TestHttpBoundary(unittest.TestCase):
         self.assertIn('target="_blank"', response.text)
         self.assertIn('rel="noopener noreferrer"', response.text)
         self.assertIn(
-            "Anonymous requests are capped at 1000 finished rows.",
+            f"Anonymous requests are capped at {FINISHED_FILTER_MAX_COUNT_ANON} finished rows.",
             response.text,
         )
         self.assertNotIn(">Green<", response.text)
@@ -512,7 +520,10 @@ class TestHttpBoundary(unittest.TestCase):
         response = client.get("/tests/finished?mode=search")
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn('name="max_count" value="1000"', response.text)
+        self.assertIn(
+            f'name="max_count" value="{FINISHED_FILTER_MAX_COUNT_ANON}"',
+            response.text,
+        )
 
     def test_tests_finished_navigation_mode_drops_stale_max_count_from_url(self):
         app = self._build_app(include_views=True)
@@ -554,7 +565,10 @@ class TestHttpBoundary(unittest.TestCase):
         response = client.get("/tests/finished?mode=search&user=filter")
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn('name="max_count" value="10000"', response.text)
+        self.assertIn(
+            f'name="max_count" value="{FINISHED_FILTER_MAX_COUNT_AUTH}"',
+            response.text,
+        )
 
     def test_tests_finished_unfiltered_authenticated_request_uses_default_cap(self):
         app = self._build_app(include_views=True)
