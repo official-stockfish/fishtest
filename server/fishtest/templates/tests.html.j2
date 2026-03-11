@@ -1,8 +1,8 @@
 {% extends "base.html.j2" %}
 {% block head %}
-  {% if run_tables_ctx is defined and run_tables_ctx.active_run_filters is defined and run_tables_ctx.active_run_filters and run_tables_ctx.active_run_filters.hidden_selectors %}
+  {% if run_tables_ctx is defined and run_tables_ctx.active_run_filters is defined and run_tables_ctx.active_run_filters and run_tables_ctx.active_run_filters.style_text %}
     <style id="active-run-filter-style">
-      {{ run_tables_ctx.active_run_filters.hidden_selectors | join(',\n') }} { display: none !important; }
+      {{ run_tables_ctx.active_run_filters.style_text }}
     </style>
   {% endif %}
 {% endblock %}
