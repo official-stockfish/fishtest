@@ -570,6 +570,10 @@ search and paging.
 
 Behavior notes:
 
+- The page renders four summary cards above the table for the current filtered
+   result set: Nets, Master nets, Contributors, and Downloads.
+- The explanatory CC0 and default-net copy is rendered under the summary cards
+   and above the paged or all view controls.
 - Sorting is server-authoritative and deterministic.
 - Sort-header links are dual-mode (`href` + `hx-get`): sorting swaps
    `#nns-content` with `hx-push-url="true"` when htmx is active, with plain-link
@@ -579,9 +583,10 @@ Behavior notes:
    explicit submit for keyboard and non-JS flows.
 - HTMX updates target `#nns-content` and push updated query URLs for
    back/forward and shareable links.
-- The outer GET form keeps `view`, `sort`, and `order` in hidden inputs.
-  HTMX fragment responses refresh those hidden inputs out of band so a later
-  form-triggered request preserves the current server table state.
+- The filter form is rendered inside `#nns-content`, under the explanatory
+  copy and above the paged or all switch, so HTMX responses keep the full page
+  order aligned with the other card pages: cards, text, filters, view switch,
+  pagination, table, pagination.
 - `master_only` checkbox preference is persisted in a cookie and reused when
    the query parameter is not present.
 - Table sorting is fully server-authoritative; the old generic client-side

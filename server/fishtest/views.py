@@ -1248,6 +1248,12 @@ def nns(request):
         skip=0,
     )
     nns = list(nns)
+    nns_summary = {
+        "nets": num_nns,
+        "master_nets": sum(1 for nn in nns if nn.get("is_master")),
+        "contributors": len({nn.get("user") for nn in nns if nn.get("user")}),
+        "downloads": sum(int(nn.get("downloads", 0)) for nn in nns),
+    }
 
     def _first_test_date(nn):
         return (nn.get("first_test") or {}).get("date") or datetime.min.replace(
@@ -1336,6 +1342,7 @@ def nns(request):
 
     context = {
         "nns": formatted_nns,
+        "nns_summary": nns_summary,
         "pages": pages,
         "master_only": master_only,
         "view": view_param,
