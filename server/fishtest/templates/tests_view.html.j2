@@ -74,7 +74,7 @@
   </div>
 
     {% if not run["finished"] %}
-    <div hx-get="/tests/elo/{{ run_id }}?expected={{ 'active' if run.get('workers', 0) > 0 else 'paused' }}"
+    <div hx-get="/tests/elo/{{ run_id }}?expected={{ _status }}"
       hx-trigger="every {{ poll.elo_detail }}s [document.visibilityState === 'visible'], visibilitychange[document.visibilityState === 'visible'] from:document"
       hx-swap="none">
     </div>

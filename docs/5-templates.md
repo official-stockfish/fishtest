@@ -492,6 +492,15 @@ Rendered structure:
 | `use_3dot_diff` | bool |
 | `allow_github_api_calls` | bool |
 
+Detail-page ELO polling contract:
+
+- Unfinished runs render a visibility-aware HTMX poller targeting
+   `/tests/elo/{id}?expected=<status>`.
+- The `expected` query param must match the page's current run status label:
+   `active`, `paused`, or `pending`.
+- The page-level `_status` Jinja expression is the canonical source for both
+   the visible status label and the poller's expected state.
+
 ### `user.html.j2`
 
 | Key | Type |

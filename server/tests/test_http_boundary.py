@@ -622,6 +622,16 @@ class TestHttpBoundary(unittest.TestCase):
         self.assertEqual(response.status_code, 204)
         self.assertEqual(response.content, b"")
 
+    def test_tests_elo_expected_pending_returns_204_when_unchanged(self):
+        run_id = self._create_tests_elo_run(approved=False)
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get(f"/tests/elo/{run_id}?expected=pending")
+
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.content, b"")
+
     def test_tests_elo_expected_state_returns_200_on_transition(self):
         run_id = self._create_tests_elo_run(approved=False)
         app = self._build_app(include_views=True)
