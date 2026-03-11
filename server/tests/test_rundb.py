@@ -11,13 +11,27 @@ from fishtest.api import WORKER_VERSION
 from fishtest.run_cache import Prio
 from fishtest.spsa_handler import _pack_flips, _unpack_flips
 
-run_id = None
-
 
 class CreateRunDBTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.rundb = test_support.get_rundb()
+        test_support.cleanup_test_rundb(
+            cls.rundb,
+            clear_pgndb=True,
+            clear_runs=True,
+            drop_runs=True,
+            close_conn=False,
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        test_support.cleanup_test_rundb(
+            cls.rundb,
+            clear_pgndb=True,
+            clear_runs=True,
+            drop_runs=True,
+        )
 
     def setUp(self):
         random.seed()
@@ -67,58 +81,16 @@ class CreateRunDBTest(unittest.TestCase):
     def tearDown(self):
         self.rundb.runs.delete_many({"args.username": "travis"})
 
-    def test_10_create_run(self):
-        global run_id
-        # STC
+    def _create_test_run(self, *, tc: str = "10+0.01", finished: bool = False) -> str:
         num_tasks = 4
         num_games = num_tasks * self.chunk_size
 
-        run_id_stc = self.rundb.new_run(
-            "master",
-            "master",
-            num_games,
-            "10+0.01",
-            "10+0.01",
-            "book.pgn",
-            "10",
-            1,
-            "",
-            "",
-            info="The ultimate patch",
-            resolved_base="347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
-            resolved_new="347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
-            msg_base="Bad stuff",
-            msg_new="Super stuff",
-            base_signature="123456",
-            new_signature="654321",
-            base_nets=["nn-0000000000a0.nnue"],
-            new_nets=["nn-0000000000a0.nnue", "nn-0000000000a1.nnue"],
-            rescheduled_from="653db116cc309ae839563103",
-            tests_repo="https://github.com/15408be06cfa0ff6/Stockfish",
-            auto_purge=False,
-            username="travis",
-            start_time=datetime.now(UTC),
-        )
-
-        run = self.rundb.get_run(run_id_stc)
-        run["finished"] = True
-        task = {
-            "num_games": self.chunk_size,
-            "stats": {"wins": 0, "draws": 0, "losses": 0, "crashes": 0},
-            "pending": True,
-            "active": True,
-        }
-        run["tasks"].append(task)
-
-        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
-
-        # LTC
         run_id = self.rundb.new_run(
             "master",
             "master",
             num_games,
-            "10+0.01",
-            "10+0.01",
+            tc,
+            tc,
             "book.pgn",
             "10",
             1,
@@ -139,7 +111,9 @@ class CreateRunDBTest(unittest.TestCase):
             username="travis",
             start_time=datetime.now(UTC),
         )
+
         run = self.rundb.get_run(run_id)
+        run["finished"] = finished
         task = {
             "num_games": self.chunk_size,
             "stats": {"wins": 0, "draws": 0, "losses": 0, "crashes": 0},
@@ -147,18 +121,28 @@ class CreateRunDBTest(unittest.TestCase):
             "active": True,
         }
         run["tasks"].append(task)
+        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+        return run_id
 
+    def test_10_create_run(self):
+        run_id_stc = self._create_test_run(finished=True)
+        run_id_ltc = self._create_test_run()
+        run = self.rundb.get_run(run_id_ltc)
         print(run["tasks"][0])
         self.assertTrue(run["tasks"][0]["active"])
         run["tasks"][0]["active"] = True
         run["tasks"][0]["worker_info"] = self.worker_info
         run["workers"] = run["cores"] = 1
+        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+
+        self.assertTrue(self.rundb.get_run(run_id_stc)["finished"])
 
         for run in self.rundb.get_unfinished_runs():
             if run["args"]["username"] == "travis":
                 print(run["args"])
 
     def test_20_update_task(self):
+        run_id = self._create_test_run()
         run = self.rundb.get_run(run_id)
         run["tasks"][0]["active"] = True
         run["tasks"][0]["worker_info"] = self.worker_info
@@ -231,15 +215,21 @@ class CreateRunDBTest(unittest.TestCase):
         self.assertEqual(run, {"task_alive": False})
 
     def test_30_finish(self):
+        run_id = self._create_test_run()
         print("run_id: {}".format(run_id))
         run = self.rundb.get_run(run_id)
         run["finished"] = True
         self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+        self.assertTrue(self.rundb.get_run(run_id)["finished"])
 
     def test_40_list_LTC(self):
+        self._create_test_run(finished=True)
+        self._create_test_run(tc="40+0.4", finished=True)
         finished_runs = self.rundb.get_finished_runs(limit=3, ltc_only=True)[0]
+        self.assertTrue(finished_runs)
         for run in finished_runs:
             print(run["args"]["tc"])
+            self.assertGreaterEqual(run["tc_base"], self.rundb.ltc_lower_bound)
 
     def test_41_finished_text_search_finds_matches_beyond_max_count_window(self):
         now = datetime.now(UTC)
