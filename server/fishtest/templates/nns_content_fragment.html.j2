@@ -1,14 +1,135 @@
+{% set filter_source = filters if filters is defined else {} %}
+{% if filter_source is mapping %}
+  {% set network_name_filter = filter_source.get('network_name', network_name_filter if network_name_filter is defined else '') %}
+  {% set user_filter = filter_source.get('user', user_filter if user_filter is defined else '') %}
+  {% set master_only = filter_source.get('master_only', master_only if master_only is defined else false) %}
+{% else %}
+  {% set network_name_filter = filter_source.network_name if filter_source.network_name is defined else (network_name_filter if network_name_filter is defined else '') %}
+  {% set user_filter = filter_source.user if filter_source.user is defined else (user_filter if user_filter is defined else '') %}
+  {% set master_only = filter_source.master_only if filter_source.master_only is defined else (master_only if master_only is defined else false) %}
+{% endif %}
 {% set pagination_hx_target = "nns-content" %}
 {% set pagination_hx_push_url = true %}
 {% set view = view if view is defined else "paged" %}
 {% set sort = sort if sort is defined else "time" %}
 {% set order = order if order is defined else "desc" %}
-{% set network_name_filter = network_name_filter if network_name_filter is defined else "" %}
-{% set user_filter = user_filter if user_filter is defined else "" %}
-{% set master_only = master_only if master_only is defined else false %}
 {% set num_nns = num_nns if num_nns is defined else 0 %}
 {% set max_all = max_all if max_all is defined else 5000 %}
 {% set is_truncated = is_truncated if is_truncated is defined else false %}
+{% set nns_summary = nns_summary if nns_summary is defined else {
+  "nets": 0,
+  "master_nets": 0,
+  "contributors": 0,
+  "downloads": 0,
+} %}
+
+<div class="row g-3 mb-3">
+  <div class="col-6 col-sm">
+    <div class="card card-lg-sm text-center">
+      <div class="card-header text-nowrap" title="Total nets">Nets</div>
+      <div class="card-body">
+        <h4 class="card-title mb-0 monospace">{{ nns_summary.nets }}</h4>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-sm">
+    <div class="card card-lg-sm text-center">
+      <div class="card-header text-nowrap" title="Total master nets">Master nets</div>
+      <div class="card-body">
+        <h4 class="card-title mb-0 monospace">{{ nns_summary.master_nets }}</h4>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-sm">
+    <div class="card card-lg-sm text-center">
+      <div class="card-header text-nowrap" title="Total contributors">Contributors</div>
+      <div class="card-body">
+        <h4 class="card-title mb-0 monospace">{{ nns_summary.contributors }}</h4>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-sm">
+    <div class="card card-lg-sm text-center">
+      <div class="card-header text-nowrap" title="Total downloads">Downloads</div>
+      <div class="card-body">
+        <h4 class="card-title mb-0 monospace">{{ nns_summary.downloads }}</h4>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mb-3">
+  <p class="mb-2">
+    These networks are freely available for download and sharing under a
+    <a href="https://creativecommons.org/share-your-work/public-domain/cc0/" target="_blank" rel="noopener noreferrer">CC0</a>
+    license.
+  </p>
+  <p class="mb-2">
+    Nets colored <span class="default-net">green</span> in the table have
+    passed fishtest testing and achieved the status of <i>default net</i>
+    during the development of Stockfish.
+  </p>
+  <p class="mb-0">
+    The recommended net for a given Stockfish executable can be found as the
+    default value of the EvalFile UCI option.
+  </p>
+</div>
+
+<form
+  class="row mb-3"
+  id="search_nn"
+  action="/nns"
+  hx-get="/nns"
+  hx-target="#nns-content"
+  hx-push-url="true"
+  hx-swap="innerHTML"
+  hx-trigger="submit, input changed delay:{{ htmx.input_changed_delay_ms }}ms from:#network_name, input changed delay:{{ htmx.input_changed_delay_ms }}ms from:#user, search from:#network_name, search from:#user, change from:#master_only"
+  hx-on::before-request="document.cookie = 'master_only=' + (document.getElementById('master_only').checked ? 'true' : 'false') + '; path=/; max-age={{ 60 * 60 * 24 * 365 * 10 }}; SameSite=Lax'"
+>
+  <input type="hidden" id="nns_view" name="view" value="{{ view }}">
+  <input type="hidden" id="nns_sort" name="sort" value="{{ sort }}">
+  <input type="hidden" id="nns_order" name="order" value="{{ order }}">
+
+  <div class="col-12 col-md-auto mb-3">
+    <label for="network_name" class="form-label">Network</label>
+    <input
+      id="network_name"
+      type="search"
+      name="network_name"
+      class="form-control"
+      placeholder="Network name"
+      value="{{ network_name_filter }}"
+    >
+  </div>
+
+  <div class="col-12 col-md-auto mb-3">
+    <label for="user" class="form-label">Uploaded by</label>
+    <input
+      id="user"
+      type="search"
+      name="user"
+      class="form-control"
+      placeholder="Username"
+      value="{{ user_filter }}"
+    >
+  </div>
+
+  <div class="col-12 mb-3 d-flex align-items-end">
+    <div class="form-check form-check-inline">
+      <label class="form-check-label" for="master_only">Only master</label>
+      <input
+        type="checkbox"
+        class="form-check-input"
+        id="master_only"
+        name="master_only"
+        {{ 'checked' if master_only else '' }}
+      >
+    </div>
+  </div>
+</form>
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
   <div>
@@ -59,10 +180,6 @@
     {% include "pagination.html.j2" %}
   {% endwith %}
 {% endif %}
-
-<input type="hidden" id="nns_view" name="view" value="{{ view }}" hx-swap-oob="true">
-<input type="hidden" id="nns_sort" name="sort" value="{{ sort }}" hx-swap-oob="true">
-<input type="hidden" id="nns_order" name="order" value="{{ order }}" hx-swap-oob="true">
 
 <div class="table-responsive-lg">
   <table id="nns_table" class="table table-striped table-sm">
