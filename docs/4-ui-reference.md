@@ -77,7 +77,7 @@ Route notes:
 ## `/tests/elo/{id}` expected-state contract
 
 The detail-page ELO poller sends an optional `expected` query parameter that
-captures the state the page already shows (`active` or `paused`). The handler
+captures the state the page already shows (`active`, `paused`, or `pending`). The handler
 compares that value to the current run state before responding:
 
 - `204` when the current state still matches `expected`.
@@ -87,7 +87,7 @@ compares that value to the current run state before responding:
 Without `expected`, the handler follows the older fragment-only contract:
 
 - `200` for active runs.
-- `204` for non-active non-terminal runs.
+- `204` for paused or pending non-terminal runs.
 - `286` for terminal runs.
 
 ## `/tests/live_elo/{id}` gauge scale contract
