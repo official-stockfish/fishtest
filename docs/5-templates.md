@@ -172,7 +172,7 @@ base layout and contain only the HTML subset needed for the swap target.
 | `homepage_stats_fragment.html.j2` | none (OOB only) | Yes | -- |
 | `live_elo_fragment.html.j2` | none (OOB only) | Yes | Yes |
 | `machines_fragment.html.j2` | `#machines` | Yes (`#workers-count`) | Yes |
-| `nns_content_fragment.html.j2` | `#nns-content` | Yes (hidden input sync) | -- |
+| `nns_content_fragment.html.j2` | `#nns-content` | -- | -- |
 | `rate_limits_server_fragment.html.j2` | server rate limit cell | Yes (`#server_reset`) | Yes |
 | `run_table_row_fragment.html.j2` | `#run-{id}` (row swap) | -- | -- |
 | `tasks_fragment.html.j2` | `#tasks-body` | -- | Yes |
@@ -312,6 +312,9 @@ Behavior notes:
 - HTMX search updates only `#nns-content`; full-page rendering still works.
 - Typing in `network_name` / `user` and toggling `master_only` triggers
    HTMX requests, while submit remains available as a non-JS fallback.
+- The page shell owns the heading and filter form; the summary cards,
+  explanatory copy, view toggle, pagination, and table live in the content
+  fragment.
 
 ### `notfound.html.j2`
 
@@ -709,14 +712,19 @@ sync without replacing the filter controls themselves.
 ### `nns_content_fragment.html.j2`
 
 Same context as `nns.html.j2` (`filters`, `pages`, `nns`, `sort`, `order`,
-`view`, `num_nns`, `max_all`, `is_truncated`).
+`view`, `num_nns`, `max_all`, `is_truncated`) plus `nns_summary` with
+`nets`, `master_nets`, `contributors`, and `downloads`.
+
+The fragment owns the NNS summary cards and the explanatory copy as well as the
+filter form, view toggle, pagination, and table so filtered HTMX responses
+keep the full vertical page order synchronized with the current server state.
 
 Sortable headers are dual-mode links (`href` + `hx-get`) targeting
 `#nns-content` with `hx-push-url="true"`.
 
-The outer GET form keeps `view`, `sort`, and `order` in hidden inputs. HTMX
-fragment responses refresh those inputs out of band so later form-triggered
-requests preserve the current table state.
+The fragment-owned GET form keeps `view`, `sort`, and `order` in hidden inputs.
+Because the full filter form is inside the swapped fragment, HTMX responses do
+not need out-of-band hidden-input refresh for this page.
 
 ### `rate_limits_server_fragment.html.j2`
 

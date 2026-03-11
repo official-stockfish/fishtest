@@ -134,7 +134,71 @@ class TestNNHttp(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(hit_name, response.text)
         self.assertNotIn(miss_name, response.text)
+        self.assertRegex(
+            response.text,
+            r'title="Total nets">Nets</div>\s*<div class="card-body">\s*<h4 class="card-title mb-0 monospace">1</h4>',
+        )
+        self.assertRegex(
+            response.text,
+            r'title="Total downloads">Downloads</div>\s*<div class="card-body">\s*<h4 class="card-title mb-0 monospace">8</h4>',
+        )
         self.assertNotIn("<!doctype html>", response.text.lower())
+
+    def test_nns_summary_cards_render_full_filtered_totals(self):
+        docs = [
+            {
+                "name": "nn-h16-summary-a.nnue",
+                "user": "AlphaUser",
+                "downloads": 10,
+                "is_master": True,
+            },
+            {
+                "name": "nn-h16-summary-b.nnue",
+                "user": "BetaUser",
+                "downloads": 5,
+                "is_master": False,
+            },
+            {
+                "name": "nn-h16-summary-c.nnue",
+                "user": "AlphaUser",
+                "downloads": 3,
+                "is_master": True,
+            },
+        ]
+        self.rundb.nndb.insert_many(docs)
+
+        response = self.client.get("/nns?view=all")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            'title="Total master nets">Master nets</div>',
+            response.text,
+        )
+        self.assertIn(
+            'title="Total contributors">Contributors</div>',
+            response.text,
+        )
+        self.assertRegex(
+            response.text,
+            r'title="Total nets">Nets</div>\s*<div class="card-body">\s*<h4 class="card-title mb-0 monospace">3</h4>',
+        )
+        self.assertRegex(
+            response.text,
+            r'title="Total master nets">Master nets</div>\s*<div class="card-body">\s*<h4 class="card-title mb-0 monospace">2</h4>',
+        )
+        self.assertRegex(
+            response.text,
+            r'title="Total contributors">Contributors</div>\s*<div class="card-body">\s*<h4 class="card-title mb-0 monospace">2</h4>',
+        )
+        self.assertRegex(
+            response.text,
+            r'title="Total downloads">Downloads</div>\s*<div class="card-body">\s*<h4 class="card-title mb-0 monospace">18</h4>',
+        )
+        self.assertIn("These networks are freely available for download", response.text)
+        self.assertIn(
+            'href="https://creativecommons.org/share-your-work/public-domain/cc0/" target="_blank" rel="noopener noreferrer"',
+            response.text,
+        )
 
     def test_nns_view_all_hides_pagination_and_shows_switch_back(self):
         docs = [
@@ -201,17 +265,18 @@ class TestNNHttp(unittest.TestCase):
 
         paged_fragment = self.client.get("/nns", headers={"HX-Request": "true"})
         self.assertEqual(paged_fragment.status_code, 200)
+        self.assertIn('id="search_nn"', paged_fragment.text)
         self.assertIn("Show all", paged_fragment.text)
         self.assertIn(
-            'id="nns_view" name="view" value="paged" hx-swap-oob="true"',
+            'id="nns_view" name="view" value="paged"',
             paged_fragment.text,
         )
         self.assertIn(
-            'id="nns_sort" name="sort" value="time" hx-swap-oob="true"',
+            'id="nns_sort" name="sort" value="time"',
             paged_fragment.text,
         )
         self.assertIn(
-            'id="nns_order" name="order" value="desc" hx-swap-oob="true"',
+            'id="nns_order" name="order" value="desc"',
             paged_fragment.text,
         )
 
@@ -220,9 +285,10 @@ class TestNNHttp(unittest.TestCase):
             headers={"HX-Request": "true"},
         )
         self.assertEqual(all_fragment.status_code, 200)
+        self.assertIn('id="search_nn"', all_fragment.text)
         self.assertIn("Show paginated", all_fragment.text)
         self.assertIn(
-            'id="nns_view" name="view" value="all" hx-swap-oob="true"',
+            'id="nns_view" name="view" value="all"',
             all_fragment.text,
         )
 
