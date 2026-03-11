@@ -273,6 +273,14 @@ Shared base context only.
 |-----|------|-------------|
 | `machines` | list of dicts | Machine rows |
 
+Behavior notes:
+
+- The fragment refreshes the `#workers-count` label out of band with the same
+   short format used by the homepage shell: `Workers - <total>` or
+   `Workers - <total> (<filtered>)`.
+- Homepage polling keeps including the current filter form state, so fragment
+   refreshes continue while the `q` search filter is active.
+
 Each machine row: `username`, `country_code`, `concurrency`, `worker_url`,
 `worker_short`, `nps_m` (preformatted string), `max_memory`, `system`,
 `worker_arch`, `compiler_label`, `python_label`, `version_label`, `run_url`,
@@ -693,6 +701,10 @@ This fragment is returned by `/tests/live_elo_update/{id}` and swaps
 | `pages` | list |
 | `machines_count` | int |
 | `workers_count_text` | string (OOB `#workers-count`) |
+
+This fragment also refreshes the hidden sort/page inputs and the `#workers-count`
+label out of band so homepage polling, sorting, paging, and filters stay in
+sync without replacing the filter controls themselves.
 
 ### `nns_content_fragment.html.j2`
 
