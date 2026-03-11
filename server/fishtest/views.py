@@ -2791,9 +2791,9 @@ def _set_machine_cookies(
 
 def _workers_count_text(total_count, *, filters_active=False, filtered_count=None):
     if not filters_active:
-        return f"Workers - {total_count} machines"
+        return f"Workers - {total_count}"
     shown_count = filtered_count if filtered_count is not None else total_count
-    return f"Workers - {total_count} ({shown_count}) machines"
+    return f"Workers - {total_count} ({shown_count})"
 
 
 def _contributors_sort_value(user, sort_key):
