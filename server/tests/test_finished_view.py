@@ -3,6 +3,10 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi.responses import RedirectResponse
 
+from fishtest.http.settings import (
+    FINISHED_FILTER_MAX_COUNT_ANON,
+    FINISHED_FILTER_MAX_COUNT_AUTH,
+)
 from fishtest.views import get_paginated_finished_runs
 
 
@@ -210,7 +214,7 @@ class TestFinishedView(unittest.TestCase):
 
         get_paginated_finished_runs(request, search_mode=True)
 
-        self.assertEqual(rundb.last_kwargs["max_count"], 1000)
+        self.assertEqual(rundb.last_kwargs["max_count"], FINISHED_FILTER_MAX_COUNT_ANON)
 
     def test_finished_search_authenticated_uses_default_cap_on_entry(self):
         rundb = _FinishedRunsDbStub()
@@ -223,7 +227,7 @@ class TestFinishedView(unittest.TestCase):
 
         get_paginated_finished_runs(request, search_mode=True)
 
-        self.assertEqual(rundb.last_kwargs["max_count"], 10000)
+        self.assertEqual(rundb.last_kwargs["max_count"], FINISHED_FILTER_MAX_COUNT_AUTH)
 
     def test_finished_search_text_only_uses_default_cap(self):
         rundb = _FinishedRunsDbStub()
@@ -237,7 +241,7 @@ class TestFinishedView(unittest.TestCase):
         get_paginated_finished_runs(request, search_mode=True)
 
         self.assertEqual(rundb.last_kwargs["text"], "ltc")
-        self.assertEqual(rundb.last_kwargs["max_count"], 10000)
+        self.assertEqual(rundb.last_kwargs["max_count"], FINISHED_FILTER_MAX_COUNT_AUTH)
 
     def test_finished_search_authenticated_allows_override_upward(self):
         rundb = _FinishedRunsDbStub()
