@@ -70,6 +70,7 @@
   {% with
     runs=active_runs,
     header='Active',
+    count_text=active_count_text if active_count_text is defined else none,
     toggle=active_toggle,
     cookie_name=active_toggle ~ '_state',
     toggle_state=toggle_states.get(active_toggle, 'Show'),
@@ -77,6 +78,7 @@
     alt='No active tests',
     show_gauge=show_gauge,
     panel_id='active',
+    active_run_filters=active_run_filters if active_run_filters is defined else none,
     filters_template=('active_run_filters_fragment.html.j2' if (username is not defined or not username) else none)
   %}
     {% include "run_table.html.j2" %}
