@@ -60,6 +60,31 @@
   // Cached filter state used by refreshCount().
   let currentEnabledByDim = {};
   let allFiltersEnabled = true;
+  let canonicalRows = [];
+  let isApplyingFilters = false;
+
+  const buildFilterStyleText = (disabledSelectors) => {
+    if (disabledSelectors.length === 0) {
+      return "";
+    }
+
+    const hiddenRows = disabledSelectors.map(
+      (selector) => `#active-tbody tr${selector}`,
+    );
+    return `${hiddenRows.join(",\n")} { display: none !important; }`;
+  };
+
+  const rowSortIndex = (row, fallbackIndex) => {
+    const rawIndex = row.dataset.activeFilterIndex;
+    const parsedIndex = Number(rawIndex);
+    return Number.isFinite(parsedIndex) ? parsedIndex : fallbackIndex;
+  };
+
+  const syncCanonicalRows = () => {
+    canonicalRows = [...tbody.querySelectorAll("tr[data-test-type]")].sort(
+      (left, right) => rowSortIndex(left, 0) - rowSortIndex(right, 0),
+    );
+  };
 
   const restoreState = () => {
     const raw = getCookie(cookieName);
@@ -129,24 +154,58 @@
       }
     }
 
-    // Build CSS rules that hide rows whose data-* attribute matches an
-    // unchecked value.  This is AND-of-ORs: a row failing ANY dimension
-    // is hidden.
+    const disabledSelectors = [];
     if (allFiltersEnabled) {
       filterStyleEl.textContent = "";
     } else {
-      const hide = [];
       for (const dim of dimensions) {
         for (const cb of dimensionCheckboxes[dim]) {
           if (!currentEnabledByDim[dim].has(cb.value)) {
-            hide.push(`#active-tbody tr[data-${dim}="${cb.value}"]`);
+            disabledSelectors.push(`[data-${dim}="${cb.value}"]`);
           }
         }
       }
-      filterStyleEl.textContent =
-        hide.length > 0
-          ? hide.join(",\n") + " { display: none !important; }"
-          : "";
+      filterStyleEl.textContent = buildFilterStyleText(disabledSelectors);
+    }
+
+    if (canonicalRows.length === 0) {
+      syncCanonicalRows();
+    }
+
+    const visibleRows = [];
+    const hiddenRows = [];
+
+    for (const row of canonicalRows) {
+      let match = true;
+      for (const dim of dimensions) {
+        if (!currentEnabledByDim[dim].has(row.getAttribute(`data-${dim}`))) {
+          match = false;
+          break;
+        }
+      }
+
+      row.hidden = !match;
+      if (match) {
+        visibleRows.push(row);
+      } else {
+        hiddenRows.push(row);
+      }
+    }
+
+    const desiredRows = [...visibleRows, ...hiddenRows];
+    const currentRows = [...tbody.querySelectorAll("tr[data-test-type]")];
+    const orderChanged =
+      desiredRows.length !== currentRows.length ||
+      desiredRows.some((row, index) => row !== currentRows[index]);
+
+    if (orderChanged) {
+      const fragment = document.createDocumentFragment();
+      for (const row of desiredRows) {
+        fragment.appendChild(row);
+      }
+      isApplyingFilters = true;
+      tbody.appendChild(fragment);
+      isApplyingFilters = false;
     }
 
     refreshCount();
@@ -201,12 +260,15 @@
     });
   }
 
-  // After an OOB innerHTML swap the CSS rules still hide the right rows
-  // (they target data-* attributes, immune to htmx settle).  We only need
-  // to recompute the count text, because the server's count_updates OOB
-  // overwrites our filtered count with the unfiltered total.
+  // After an OOB innerHTML swap we need to rebuild the canonical server order
+  // for the new rows and then reapply the current filter state so the visible
+  // rows remain contiguous and keep normal table-striped behavior.
   new MutationObserver(() => {
-    refreshCount();
+    if (isApplyingFilters) {
+      return;
+    }
+    syncCanonicalRows();
+    applyFilters();
   }).observe(tbody, { childList: true });
 
   // 3-dot toggle: show/hide the filter panel.  Cookie persists state.
@@ -232,5 +294,6 @@
   });
 
   restoreState();
+  syncCanonicalRows();
   applyFilters();
 })();

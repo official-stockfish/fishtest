@@ -439,6 +439,11 @@ Behavior notes:
    HTML response, including the checkbox state, filtered count text, and initial
    row-hide CSS. Hidden categories therefore do not flash briefly before the
    browser restores the filter logic.
+- Active-row zebra striping follows the same visible-row pattern as the other
+   filtered tables. The Active filter logic keeps the visible rows contiguous in
+   tbody order, so the normal alternating darker or lighter `table-striped`
+   pattern stays correct after checkbox changes and after homepage polling
+   replaces the Active tbody.
 - Clearing every checkbox persists as an explicit empty selection, so reloads
    keep the Active panel empty until categories are enabled again.
 - The filter panel open/closed state is persisted in the

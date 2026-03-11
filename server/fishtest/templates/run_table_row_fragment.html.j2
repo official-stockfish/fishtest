@@ -8,7 +8,7 @@
   {%- set _test_type = 'spsa' if _is_spsa else ('sprt' if _is_sprt else 'numgames') -%}
   {%- set _tc = 'ltc' if _is_ltc else 'stc' -%}
   {%- set _threads = 'smp' if _is_smp else 'st' -%}
-<tr id="run-{{ row.run_id }}" data-test-type="{{ _test_type }}" data-time-control="{{ _tc }}" data-threads="{{ _threads }}">
+<tr id="run-{{ row.run_id }}" data-test-type="{{ _test_type }}" data-time-control="{{ _tc }}" data-threads="{{ _threads }}"{% if row.active_filter_index is not none %} data-active-filter-index="{{ row.active_filter_index }}"{% endif %}>
 {% else %}
 <tr id="run-{{ row.run_id }}">
 {% endif %}

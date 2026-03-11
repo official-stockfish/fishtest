@@ -199,6 +199,35 @@ def _parse_active_run_filter_cookie(raw: str) -> dict[str, set[str]]:
     return parsed if saw_valid_value else _default_active_run_filter_state()
 
 
+def _active_run_matches_enabled_filters(
+    run: dict,
+    enabled_by_dim: dict[str, set[str]],
+) -> bool:
+    classifications = _classify_active_run_filters(run)
+    return all(
+        classifications[dimension] in enabled_by_dim[dimension]
+        for dimension in _ACTIVE_RUN_FILTER_VALUES
+    )
+
+
+def _order_active_runs_for_filters(
+    active_runs: list[dict],
+    enabled_by_dim: dict[str, set[str]],
+) -> tuple[list[dict], int]:
+    visible_runs: list[dict] = []
+    hidden_runs: list[dict] = []
+
+    for index, run in enumerate(active_runs):
+        run_copy = dict(run)
+        run_copy["_active_filter_index"] = index
+        if _active_run_matches_enabled_filters(run_copy, enabled_by_dim):
+            visible_runs.append(run_copy)
+        else:
+            hidden_runs.append(run_copy)
+
+    return visible_runs + hidden_runs, len(visible_runs)
+
+
 def _build_active_run_filter_context(
     request, active_runs: list[dict]
 ) -> dict[str, object]:
@@ -206,15 +235,11 @@ def _build_active_run_filter_context(
         request.cookies.get("active_run_filters", "")
     )
     hidden_selectors: list[str] = []
-    visible_count = 0
-
-    for run in active_runs:
-        classifications = _classify_active_run_filters(run)
-        if all(
-            classifications[dimension] in enabled_by_dim[dimension]
-            for dimension in _ACTIVE_RUN_FILTER_VALUES
-        ):
-            visible_count += 1
+    style_text = ""
+    ordered_runs, visible_count = _order_active_runs_for_filters(
+        active_runs,
+        enabled_by_dim,
+    )
 
     all_enabled = True
     for dimension, values in _ACTIVE_RUN_FILTER_VALUES.items():
@@ -224,6 +249,10 @@ def _build_active_run_filter_context(
         for value in values:
             if value not in enabled_values:
                 hidden_selectors.append(f'#active-tbody tr[data-{dimension}="{value}"]')
+
+    if hidden_selectors:
+        hidden_rows = ",\n".join(hidden_selectors)
+        style_text = f"{hidden_rows} {{ display: none !important; }}"
 
     total_count = len(active_runs)
     count_text = (
@@ -242,6 +271,8 @@ def _build_active_run_filter_context(
             for dimension, values in _ACTIVE_RUN_FILTER_VALUES.items()
         },
         "hidden_selectors": hidden_selectors,
+        "style_text": style_text,
+        "ordered_runs": ordered_runs,
     }
 
 
@@ -3346,6 +3377,11 @@ def _build_run_tables_context(
         if page_idx == 0 and not username
         else None
     )
+    active_runs_for_display = (
+        active_run_filters["ordered_runs"]
+        if active_run_filters is not None
+        else active_runs
+    )
     prefix = run_tables_prefix(username)
     toggle_names = [prefix + "finished"]
     if page_idx == 0:
@@ -3376,7 +3412,7 @@ def _build_run_tables_context(
             allow_github_api_calls=False,
         ),
         "active_runs": build_run_table_rows(
-            active_runs,
+            active_runs_for_display,
             allow_github_api_calls=False,
         ),
         "active_count_text": (
@@ -4548,6 +4584,14 @@ def tests_elo_batch(request):
     active_runs = list(runs.get("active", []))
     pending_runs = [r for r in pending_all if not r.get("approved")]
     paused_runs = [r for r in pending_all if r.get("approved")]
+    active_run_filters = (
+        _build_active_run_filter_context(request, active_runs) if not username else None
+    )
+    active_runs_for_display = (
+        active_run_filters["ordered_runs"]
+        if active_run_filters is not None
+        else active_runs
+    )
 
     allow_github_api_calls = request.has_permission("approve_run")
 
@@ -4585,7 +4629,7 @@ def tests_elo_batch(request):
         {
             "tbody_id": "active-tbody",
             "rows": build_run_table_rows(
-                active_runs, allow_github_api_calls=allow_github_api_calls
+                active_runs_for_display, allow_github_api_calls=allow_github_api_calls
             ),
             "show_delete": False,
             "empty_text": "No active tests",
@@ -4611,7 +4655,11 @@ def tests_elo_batch(request):
         },
         {
             "id": "active-count",
-            "text": f"Active - {len(active_runs)} tests",
+            "text": (
+                active_run_filters["count_text"]
+                if active_run_filters is not None
+                else f"Active - {len(active_runs)} tests"
+            ),
         },
         {
             "id": "failed-count",

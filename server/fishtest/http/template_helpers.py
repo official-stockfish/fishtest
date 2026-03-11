@@ -1240,6 +1240,7 @@ def build_run_table_rows(
             {
                 "run": run,
                 "run_id": run_id,
+                "active_filter_index": run.get("_active_filter_index"),
                 "start_date_label": start_date_label,
                 "user_short": user_short,
                 "user_name": username,

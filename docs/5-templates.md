@@ -514,6 +514,27 @@ Detail-page ELO polling contract:
 - The page-level `_status` Jinja expression is the canonical source for both
    the visible status label and the poller's expected state.
 
+Detail-page tasks loader contract:
+
+- When `tasks_shown` is true, `#tasks-body` starts an HTMX load request from
+   `tests_view.html.j2`.
+- The template attaches the `htmx:afterSwap` and error listeners for
+   `#tasks-body` before `await DOMContentLoaded()` so the initial `load` request
+   cannot outrun the promise-resolution path.
+- The same script also resolves immediately if `#tasks-body` is already marked
+   loaded or already contains rows.
+
+Run-table row contract:
+
+- Run tables use the normal `.table-striped` contract.
+- Active-run filtering emits a first-paint style block that hides excluded
+   rows, and the Active filter script keeps the visible rows contiguous in tbody
+   order so the normal `.table-striped` pattern stays correct while filters are
+   active.
+- The Active row markup carries filter dimensions plus a source-order index for
+   restoring the current server order after checkbox changes and OOB swaps; it
+   does not use a row-parity contract.
+
 ### `user.html.j2`
 
 | Key | Type |
