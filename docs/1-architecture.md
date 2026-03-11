@@ -191,7 +191,7 @@ sort, search, page, and view state in the URL and render the active control
 state server-side on every response. Where the HTMX target contains stateful
 controls, the swapped boundary is the full content fragment, not just table
 rows. The shared active-search debounce is projected into templates as
-`htmx.input_changed_delay_ms` (currently `350ms`).
+`htmx.input_changed_delay_ms`.
 
 **Request coordination.** Poll-driven fragments that live inside a larger filter
 form may use `hx-sync`, `hx-disinherit`, and `hx-params` to keep inherited form
