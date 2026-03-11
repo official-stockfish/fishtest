@@ -59,6 +59,10 @@
   {% endwith %}
 {% endif %}
 
+<input type="hidden" id="workers_sort" name="sort" value="{{ sort }}" hx-swap-oob="true">
+<input type="hidden" id="workers_order" name="order" value="{{ order }}" hx-swap-oob="true">
+<input type="hidden" id="workers_view" name="view" value="{{ view }}" hx-swap-oob="true">
+
 <div class="table-responsive-lg">
   <table id="workers_table" class="table table-striped table-sm">
     <thead>

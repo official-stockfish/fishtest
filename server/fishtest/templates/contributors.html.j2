@@ -96,9 +96,9 @@
   hx-swap="innerHTML"
   hx-trigger="submit, input changed delay:{{ htmx.input_changed_delay_ms }}ms from:#search_contributors, search from:#search_contributors{% if current_user and current_user.username %}, change from:#findme_contributors{% endif %}"
 >
-  <input type="hidden" name="view" value="{{ view }}">
-  <input type="hidden" name="sort" value="{{ sort }}">
-  <input type="hidden" name="order" value="{{ order }}">
+  <input type="hidden" id="contributors_view" name="view" value="{{ view }}">
+  <input type="hidden" id="contributors_sort" name="sort" value="{{ sort }}">
+  <input type="hidden" id="contributors_order" name="order" value="{{ order }}">
 
   <div class="col-12 col-md-auto mb-3">
     <label for="search_contributors" class="form-label">Go to username</label>

@@ -463,6 +463,9 @@ Behavior notes:
    cached `get_pending()` / `get_blocked()` helpers.
 - HTMX requests target `#user-management-content` and keep URL state via
    `hx-push-url="true"`.
+- The outer GET form keeps `sort`, `order`, and `view` in hidden inputs.
+  HTMX fragment responses refresh those hidden inputs out of band so later
+  group or filter changes preserve the current table state.
 - Table sorting is fully server-authoritative; the old generic client-side
    header sorter has been retired.
 
@@ -494,6 +497,9 @@ Behavior notes:
 - Sort-header links are dual-mode (`href` + `hx-get`): workers sorting swaps
    `#workers-content` with `hx-push-url="true"` when htmx is active, and still
    degrades to full-page navigation.
+- The outer GET form keeps `sort`, `order`, and `view` in hidden inputs.
+  HTMX fragment responses refresh those hidden inputs out of band so later
+  filter changes preserve the current table state.
 - Table sorting is fully server-authoritative; the old generic client-side
    header sorter has been retired.
 
@@ -528,6 +534,9 @@ Behavior notes:
 - Sort-header links are dual-mode (`href` + `hx-get`): contributors sorting
    swaps `#contributors-content` with `hx-push-url="true"` when htmx is active,
    and still works as normal navigation when JavaScript is unavailable.
+- The outer search form keeps `sort`, `order`, and `view` as hidden inputs.
+   HTMX fragment responses refresh those inputs out of band so later search or
+   rank-jump requests do not replay stale table state.
 
 ## Neural networks (`/nns`) query parameters
 
@@ -539,6 +548,7 @@ search and paging.
 | `network_name` | network name substring (case-insensitive) | empty |
 | `user` | uploader username substring (case-insensitive) | empty |
 | `master_only` | `1`, `true`, `on`, `yes` | absent/false |
+| `page` | integer `>= 1` | `1` |
 
 Behavior notes:
 
@@ -547,14 +557,13 @@ Behavior notes:
    `#nns-content` with `hx-push-url="true"` when htmx is active, with plain-link
    fallback preserved.
 - Pagination links follow the same dual-mode contract.
-| `page` | integer `>= 1` | `1` |
-
-Behavior notes:
-
 - Search inputs are HTMX-triggered (`input changed delay`) and also support
    explicit submit for keyboard and non-JS flows.
 - HTMX updates target `#nns-content` and push updated query URLs for
    back/forward and shareable links.
+- The outer GET form keeps `view`, `sort`, and `order` in hidden inputs.
+  HTMX fragment responses refresh those hidden inputs out of band so a later
+  form-triggered request preserves the current server table state.
 - `master_only` checkbox preference is persisted in a cookie and reused when
    the query parameter is not present.
 - Table sorting is fully server-authoritative; the old generic client-side
@@ -633,6 +642,8 @@ Behavior notes:
 - Finished tests currently use a fixed recent-first order, but still carry the
    explicit `sort=time` and `order=desc` query parameters so the URL contract
    stays aligned with the actions page.
+- HTMX tab clicks refresh the results target directly and refresh the tab strip
+  out of band so the active-tab styling stays aligned with the pushed URL.
 - The username input auto-submits on debounced input and native search clear
    events.
 - The run-info text-search input auto-submits on debounced input and native
