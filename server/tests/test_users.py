@@ -940,6 +940,11 @@ class TestHttpUsers(unittest.TestCase):
         self.assertIn("Active - 2 (1) tests", homepage.text)
         self.assertIn('id="active-run-filter-style"', homepage.text)
         self.assertIn("display: none !important;", homepage.text)
+        self.assertIn("[data-test-type=&#34;spsa&#34;]", homepage.text)
+        self.assertIn("[data-time-control=&#34;ltc&#34;]", homepage.text)
+        self.assertIn('data-active-filter-index="0"', homepage.text)
+        self.assertIn('data-active-filter-index="1"', homepage.text)
+        self.assertNotIn("data-row-parity", homepage.text)
         self.assertLess(
             homepage.text.index('id="active-run-filter-style"'),
             homepage.text.index(
@@ -1022,6 +1027,11 @@ class TestHttpUsers(unittest.TestCase):
         self.assertIn("Active - 2 (0) tests", homepage.text)
         self.assertIn('id="active-run-filter-style"', homepage.text)
         self.assertIn("display: none !important;", homepage.text)
+        self.assertIn("[data-test-type=&#34;sprt&#34;]", homepage.text)
+        self.assertIn("[data-test-type=&#34;numgames&#34;]", homepage.text)
+        self.assertIn('data-active-filter-index="0"', homepage.text)
+        self.assertIn('data-active-filter-index="1"', homepage.text)
+        self.assertNotIn("data-row-parity", homepage.text)
         self.assertLess(
             homepage.text.index('id="active-run-filter-style"'),
             homepage.text.index(
