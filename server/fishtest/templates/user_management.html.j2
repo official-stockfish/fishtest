@@ -60,9 +60,9 @@
   hx-swap="innerHTML"
   hx-trigger="submit, input changed delay:{{ htmx.input_changed_delay_ms }}ms from:#user_management_q, search from:#user_management_q, change from:#user_management_group"
 >
-  <input type="hidden" name="sort" value="{{ sort }}">
-  <input type="hidden" name="order" value="{{ order }}">
-  <input type="hidden" name="view" value="{{ view }}">
+  <input type="hidden" id="user_management_sort" name="sort" value="{{ sort }}">
+  <input type="hidden" id="user_management_order" name="order" value="{{ order }}">
+  <input type="hidden" id="user_management_view" name="view" value="{{ view }}">
 
   <div class="col-12 col-md-auto">
     <label for="user_management_group" class="form-label">Group</label>

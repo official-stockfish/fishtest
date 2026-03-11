@@ -165,24 +165,25 @@ base layout and contain only the HTML subset needed for the swap target.
 | Template | Swap target | OOB | Polled |
 |----------|------------|-----|--------|
 | `actions_content_fragment.html.j2` | `#actions-content` | -- | -- |
-| `contributors_content_fragment.html.j2` | `#contributors-content` | -- | -- |
+| `contributors_content_fragment.html.j2` | `#contributors-content` | Yes (hidden input sync) | -- |
 | `contributors_rows_fragment.html.j2` | included by `contributors_content_fragment.html.j2` | -- | -- |
 | `elo_batch_fragment.html.j2` | none (OOB only) | Yes | Yes |
 | `elo_results_fragment.html.j2` | none (OOB only) | Yes | Yes |
 | `homepage_stats_fragment.html.j2` | none (OOB only) | Yes | -- |
 | `live_elo_fragment.html.j2` | none (OOB only) | Yes | Yes |
 | `machines_fragment.html.j2` | `#machines` | Yes (`#workers-count`) | Yes |
-| `nns_content_fragment.html.j2` | `#nns-content` | -- | -- |
+| `nns_content_fragment.html.j2` | `#nns-content` | Yes (hidden input sync) | -- |
 | `rate_limits_server_fragment.html.j2` | server rate limit cell | Yes (`#server_reset`) | Yes |
 | `run_table_row_fragment.html.j2` | `#run-{id}` (row swap) | -- | -- |
 | `tasks_fragment.html.j2` | `#tasks-body` | -- | Yes |
 | `tests_filter_tabs_fragment.html.j2` | caller-defined `hx-target` | -- | -- |
-| `tests_finished_content_fragment.html.j2` | `#tests-finished-content` | -- | -- |
+| `tests_finished_content_fragment.html.j2` | full-page shell include | -- | -- |
+| `tests_finished_results_fragment.html.j2` | `#tests-finished-content` | Yes (tab wrapper in navigation mode) | -- |
 | `tests_stats_content_fragment.html.j2` | `#tests-stats-content` | -- | Yes |
 | `tests_user_content_fragment.html.j2` | `#tests-user-content` | -- | -- |
-| `user_management_content_fragment.html.j2` | `#user-management-content` | -- | -- |
+| `user_management_content_fragment.html.j2` | `#user-management-content` | Yes (hidden input sync) | -- |
 | `user_management_rows_fragment.html.j2` | included by `user_management_content_fragment.html.j2` | -- | -- |
-| `workers_content_fragment.html.j2` | `#workers-content` | -- | -- |
+| `workers_content_fragment.html.j2` | `#workers-content` | Yes (hidden input sync) | -- |
 | `workers_rows_fragment.html.j2` | included by `workers_content_fragment.html.j2` | -- | -- |
 
 Column notes:
@@ -590,6 +591,10 @@ Same context as the content area of `contributors.html.j2`: `users`, `pages`,
 Sortable headers are dual-mode links (`href` + `hx-get`) targeting
 `#contributors-content` with `hx-push-url="true"`.
 
+The outer contributors search form keeps `view`, `sort`, and `order` in hidden
+inputs. HTMX fragment responses refresh those inputs out of band so later form
+submissions preserve the live table state.
+
 ### `contributors_rows_fragment.html.j2`
 
 | Key | Type |
@@ -663,6 +668,10 @@ Same context as `nns.html.j2` (`filters`, `pages`, `nns`, `sort`, `order`,
 Sortable headers are dual-mode links (`href` + `hx-get`) targeting
 `#nns-content` with `hx-push-url="true"`.
 
+The outer GET form keeps `view`, `sort`, and `order` in hidden inputs. HTMX
+fragment responses refresh those inputs out of band so later form-triggered
+requests preserve the current table state.
+
 ### `rate_limits_server_fragment.html.j2`
 
 | Key | Type |
@@ -708,15 +717,32 @@ switches between the tab filters.
 | `finished_page_size` | int |
 | `finished_runs_pages` | list |
 
-This fragment owns the tab strip and the search-first `/tests/finished` GET
-form. Username substring uses a cached finished-run username list and the
-exact-username finished-run path, while the `text` field performs a
-case-insensitive MongoDB text search against the last-column run info text on
-finished rows only. The fragment also renders the same page/count summary shape
-used by `/actions`, and both the summary count and the visible rows exclude
-deleted finished runs. The form preserves the effective `max_count` cap so tab
-switches and pagination stay on the same server-authoritative finished-tests
-query contract.
+This full-page include owns the tab strip and the search-first
+`/tests/finished` GET form. Username substring uses a cached finished-run
+username list and the exact-username finished-run path, while the `text` field
+performs a case-insensitive MongoDB text search against the last-column run
+info text on finished rows only. The form preserves the effective `max_count`
+cap so tab switches and pagination stay on the same server-authoritative
+finished-tests query contract.
+
+### `tests_finished_results_fragment.html.j2`
+
+| Key | Type |
+|-----|------|
+| `filters` | dict |
+| `finished_runs` | list of run rows |
+| `num_finished_runs` | int |
+| `visible_finished_runs` | int |
+| `finished_page_size` | int |
+| `finished_runs_pages` | list |
+| `page_idx` | int |
+| `search_mode` | bool |
+| `is_hx` | bool |
+
+This is the HTMX fragment returned by `/tests/finished` for fragment requests.
+It updates `#tests-finished-content` and, in navigation mode, piggy-backs an
+out-of-band replacement of the tab wrapper so the active tab stays aligned with
+the pushed URL after HTMX tab clicks.
 
 ### `tests_user_content_fragment.html.j2`
 
@@ -733,6 +759,10 @@ Same context as the content area of `user_management.html.j2`: `group`,
 `sort`, `order`, `q`, `view`, `pages`, `selected_users`,
 `num_selected_users`, `max_all`, `is_truncated`.
 
+The outer GET form keeps `sort`, `order`, and `view` in hidden inputs. HTMX
+fragment responses refresh those inputs out of band so later form-triggered
+requests preserve the current table state.
+
 ### `user_management_rows_fragment.html.j2`
 
 | Key | Type | Description |
@@ -747,6 +777,22 @@ Same context as the content area of `workers.html.j2`: `filter_value`,
 
 Sortable headers are dual-mode links (`href` + `hx-get`) targeting
 `#workers-content` with `hx-push-url="true"`.
+
+The outer GET form keeps `sort`, `order`, and `view` in hidden inputs. HTMX
+fragment responses refresh those inputs out of band so later form-triggered
+requests preserve the current table state.
+
+## HTMX shell-state rule
+
+When a GET form stays outside the swapped fragment but the fragment owns
+sort/view/pagination links, the fragment must refresh any stateful hidden form
+inputs out of band. This repo uses the same pattern as `/tests/machines`:
+
+- keep stable ids on the outer hidden inputs;
+- return matching hidden inputs from the fragment with `hx-swap-oob="true"`.
+
+That keeps later form submissions aligned with the current server-authoritative
+table state without introducing page-specific synchronization JavaScript.
 
 ### `workers_rows_fragment.html.j2`
 

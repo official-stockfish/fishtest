@@ -5,6 +5,14 @@
   {% set pagination_hx_sync = "#tests-search-form:abort" %}
 {% endif %}
 
+{% if is_hx | default(false) and not search_mode %}
+  <div id="tests-finished-filter-tabs" class="filter-tabs mb-2" hx-swap-oob="outerHTML">
+    {% with base_url='/tests/finished', hx_target='tests-finished-content', filters=filters %}
+      {% include "tests_filter_tabs_fragment.html.j2" %}
+    {% endwith %}
+  </div>
+{% endif %}
+
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
   <p class="mb-0 small text-muted">
     Showing {{ visible_finished_runs }} of {{ num_finished_runs }} matching finished test{{ '' if num_finished_runs == 1 else 's' }} on page {{ page_idx + 1 }} of {{ ((num_finished_runs - 1) // finished_page_size + 1) if num_finished_runs else 1 }}.

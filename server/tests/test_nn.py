@@ -202,6 +202,18 @@ class TestNNHttp(unittest.TestCase):
         paged_fragment = self.client.get("/nns", headers={"HX-Request": "true"})
         self.assertEqual(paged_fragment.status_code, 200)
         self.assertIn("Show all", paged_fragment.text)
+        self.assertIn(
+            'id="nns_view" name="view" value="paged" hx-swap-oob="true"',
+            paged_fragment.text,
+        )
+        self.assertIn(
+            'id="nns_sort" name="sort" value="time" hx-swap-oob="true"',
+            paged_fragment.text,
+        )
+        self.assertIn(
+            'id="nns_order" name="order" value="desc" hx-swap-oob="true"',
+            paged_fragment.text,
+        )
 
         all_fragment = self.client.get(
             "/nns?view=all",
@@ -209,6 +221,10 @@ class TestNNHttp(unittest.TestCase):
         )
         self.assertEqual(all_fragment.status_code, 200)
         self.assertIn("Show paginated", all_fragment.text)
+        self.assertIn(
+            'id="nns_view" name="view" value="all" hx-swap-oob="true"',
+            all_fragment.text,
+        )
 
     def test_nns_links_preserve_encoded_filters(self):
         response = self.client.get(
