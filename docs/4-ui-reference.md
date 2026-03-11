@@ -443,7 +443,8 @@ Behavior notes:
    filtered tables. The Active filter logic keeps the visible rows contiguous in
    tbody order, so the normal alternating darker or lighter `table-striped`
    pattern stays correct after checkbox changes and after homepage polling
-   replaces the Active tbody.
+   replaces the Active tbody. The striping contract does not depend on hidden
+   categories retaining their original sibling positions.
 - Clearing every checkbox persists as an explicit empty selection, so reloads
    keep the Active panel empty until categories are enabled again.
 - The filter panel open/closed state is persisted in the
