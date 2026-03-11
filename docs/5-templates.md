@@ -530,7 +530,8 @@ Run-table row contract:
 - Active-run filtering emits a first-paint style block that hides excluded
    rows, and the Active filter script keeps the visible rows contiguous in tbody
    order so the normal `.table-striped` pattern stays correct while filters are
-   active.
+   active. The first-paint style block is hide-only and does not encode row
+   parity.
 - The Active row markup carries filter dimensions plus a source-order index for
    restoring the current server order after checkbox changes and OOB swaps; it
    does not use a row-parity contract.

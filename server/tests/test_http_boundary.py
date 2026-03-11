@@ -461,7 +461,7 @@ class TestHttpBoundary(unittest.TestCase):
             [("args.info", "text")],
             name="finished_runs_text",
             default_language="none",
-            partialFilterExpression={"finished": True},
+            partialFilterExpression={"finished": True, "deleted": False},
         )
 
         try:
