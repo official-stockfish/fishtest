@@ -329,11 +329,13 @@ Shared base context only.
 |-----|------|
 | `header` | string or None |
 | `count` | int or None |
+| `count_text` | string or None |
 | `runs` | list of run row dicts |
 | `pages` | list of pagination items |
 | `toggle` | string or None |
 | `toggle_state` | `"Hide"` or `"Show"` |
 | `show_delete` | bool |
+| `active_run_filters` | dict or None |
 
 ### `run_tables.html.j2`
 
@@ -345,6 +347,8 @@ Shared base context only.
 | `paused_runs` | list of run rows |
 | `failed_runs` | list of run rows |
 | `active_runs` | list of run rows |
+| `active_count_text` | string |
+| `active_run_filters` | dict or None |
 | `finished_runs` | list of run rows |
 | `num_finished_runs` | int |
 | `finished_runs_pages` | list |
@@ -383,6 +387,14 @@ Each task row: `task_id`, `row_class`, `worker_label`, `worker_url`,
 | `machines_shown` | bool |
 | `machines_count` | int |
 | `run_tables_ctx` | dict (for `run_tables.html.j2`) |
+
+Behavior notes:
+
+- `tests.html.j2` forwards the homepage Active-panel first-paint filter state
+   through `run_tables_ctx`, including restored checkbox selections, filtered
+   count text, and initial hide selectors.
+- Notification button state is not part of `run_tables_ctx` because it is
+   derived from browser-local follow state at page load time.
 
 ### `tests_finished.html.j2`
 

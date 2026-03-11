@@ -29,6 +29,11 @@ button.notifications {
   background: transparent;
   border: 0;
   padding: 0;
+  min-width: 38px;
+}
+
+button.notifications[data-notification-ready="0"] {
+  visibility: hidden;
 }
 
 button.notifications:focus-visible {

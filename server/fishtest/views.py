@@ -113,6 +113,16 @@ logger = logging.getLogger(__name__)
 _TRUTHY_PARAM_VALUES = frozenset({"1", "true", "on", "yes"})
 _SORT_ORDER_VALUES = frozenset({"asc", "desc"})
 _PAGED_VIEW_VALUES = frozenset({"paged", "all"})
+_ACTIVE_RUN_FILTER_VALUES = {
+    "test-type": ("sprt", "spsa", "numgames"),
+    "time-control": ("stc", "ltc"),
+    "threads": ("st", "smp"),
+}
+_ACTIVE_RUN_FILTER_DIMENSION_BY_VALUE = {
+    value: dimension
+    for dimension, values in _ACTIVE_RUN_FILTER_VALUES.items()
+    for value in values
+}
 
 type _RunTableRow = dict[str, str | list[dict[object, object]] | bool]
 type _RunTableRows = list[_RunTableRow]
@@ -138,6 +148,101 @@ class _BatchStats(TypedDict):
     cores: int
     nps_m: str
     games_per_minute: int
+
+
+def _classify_active_run_filters(run: dict) -> dict[str, str]:
+    args = run.get("args", {})
+    is_spsa = "spsa" in args
+    is_sprt = "sprt" in args and not is_spsa
+    test_type = "spsa" if is_spsa else ("sprt" if is_sprt else "numgames")
+    time_control = (
+        "ltc"
+        if get_tc_ratio(args.get("tc", "10+0.1"), args.get("threads", 1)) > 4
+        else "stc"
+    )
+    try:
+        threads = int(args.get("threads", 1))
+    except TypeError, ValueError:
+        threads = 1
+    thread_group = "smp" if threads > 1 else "st"
+    return {
+        "test-type": test_type,
+        "time-control": time_control,
+        "threads": thread_group,
+    }
+
+
+def _default_active_run_filter_state() -> dict[str, set[str]]:
+    return {
+        dimension: set(values)
+        for dimension, values in _ACTIVE_RUN_FILTER_VALUES.items()
+    }
+
+
+def _parse_active_run_filter_cookie(raw: str) -> dict[str, set[str]]:
+    raw = raw.strip()
+    if not raw:
+        return _default_active_run_filter_state()
+    if raw == "none":
+        return {dimension: set() for dimension in _ACTIVE_RUN_FILTER_VALUES}
+
+    parsed = {dimension: set() for dimension in _ACTIVE_RUN_FILTER_VALUES}
+    saw_valid_value = False
+    for token in raw.split(","):
+        value = token.strip()
+        dimension = _ACTIVE_RUN_FILTER_DIMENSION_BY_VALUE.get(value)
+        if dimension is None:
+            continue
+        parsed[dimension].add(value)
+        saw_valid_value = True
+
+    return parsed if saw_valid_value else _default_active_run_filter_state()
+
+
+def _build_active_run_filter_context(
+    request, active_runs: list[dict]
+) -> dict[str, object]:
+    enabled_by_dim = _parse_active_run_filter_cookie(
+        request.cookies.get("active_run_filters", "")
+    )
+    hidden_selectors: list[str] = []
+    visible_count = 0
+
+    for run in active_runs:
+        classifications = _classify_active_run_filters(run)
+        if all(
+            classifications[dimension] in enabled_by_dim[dimension]
+            for dimension in _ACTIVE_RUN_FILTER_VALUES
+        ):
+            visible_count += 1
+
+    all_enabled = True
+    for dimension, values in _ACTIVE_RUN_FILTER_VALUES.items():
+        enabled_values = enabled_by_dim[dimension]
+        if len(enabled_values) < len(values):
+            all_enabled = False
+        for value in values:
+            if value not in enabled_values:
+                hidden_selectors.append(f'#active-tbody tr[data-{dimension}="{value}"]')
+
+    total_count = len(active_runs)
+    count_text = (
+        f"Active - {total_count} tests"
+        if all_enabled or visible_count == total_count
+        else f"Active - {total_count} ({visible_count}) tests"
+    )
+
+    return {
+        "all_enabled": all_enabled,
+        "count_text": count_text,
+        "enabled_by_dim": {
+            dimension: tuple(
+                value for value in values if value in enabled_by_dim[dimension]
+            )
+            for dimension, values in _ACTIVE_RUN_FILTER_VALUES.items()
+        },
+        "hidden_selectors": hidden_selectors,
+    }
 
 
 class _TestsEloBatchContext(TypedDict, total=False):
@@ -3236,6 +3341,11 @@ def _build_run_tables_context(
     pending_runs = [r for r in runs.get("pending", []) if not r.get("approved")]
     paused_runs = [r for r in runs.get("pending", []) if r.get("approved")]
     active_runs = list(runs.get("active", []))
+    active_run_filters = (
+        _build_active_run_filter_context(request, active_runs)
+        if page_idx == 0 and not username
+        else None
+    )
     prefix = run_tables_prefix(username)
     toggle_names = [prefix + "finished"]
     if page_idx == 0:
@@ -3269,6 +3379,12 @@ def _build_run_tables_context(
             active_runs,
             allow_github_api_calls=False,
         ),
+        "active_count_text": (
+            active_run_filters["count_text"]
+            if active_run_filters is not None
+            else f"Active - {len(active_runs)} tests"
+        ),
+        "active_run_filters": active_run_filters,
         "finished_runs": build_run_table_rows(
             finished_runs,
             allow_github_api_calls=False,

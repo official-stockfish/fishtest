@@ -415,9 +415,11 @@ dimension.
 
 Behavior notes:
 
-- Filtering is purely client-side.  Each table row carries three `data-*`
-  attributes (`data-test-type`, `data-time-control`, `data-threads`) with
-  a single value per dimension, computed by the server template.
+- Each table row carries three `data-*` attributes (`data-test-type`,
+   `data-time-control`, `data-threads`) with a single value per dimension,
+   computed by the server template.
+- After the page is loaded, filtering remains client-side and uses those
+   server-rendered attributes.
 - The filter controls sit inside the Active panel's collapse section
   (matching the workers table filter placement).
 - The ellipsis toggle shows or hides the filter controls without leaving
@@ -433,10 +435,19 @@ Behavior notes:
 - Filter state is persisted in the `active_run_filters` cookie (30-day,
   `path=/`, `SameSite=Lax`).  When all checkboxes are checked the cookie
   is cleared.
+- On page reload, `/tests` restores the cookie-backed filter state in the first
+   HTML response, including the checkbox state, filtered count text, and initial
+   row-hide CSS. Hidden categories therefore do not flash briefly before the
+   browser restores the filter logic.
+- Clearing every checkbox persists as an explicit empty selection, so reloads
+   keep the Active panel empty until categories are enabled again.
 - The filter panel open/closed state is persisted in the
    `active_run_filters_panel` cookie.
 - Filters are re-applied after htmx OOB swap updates to the active runs
   tbody, so periodic poll refreshes respect the current filter state.
+- Notification bell buttons initialize from browser-local follow state after
+   page load and stay hidden until that state is known, which avoids transient
+   wrong bell icons during reload.
 
 ## User management (`/user_management`) query parameters
 

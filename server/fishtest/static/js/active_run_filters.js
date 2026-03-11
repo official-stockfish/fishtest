@@ -46,9 +46,16 @@
   // CSS attribute selectors survive htmx's 20 ms attribute-settle phase
   // (which would strip a class like d-none added by JS between the swap
   // and the settle timeout).
-  const filterStyleEl = document.createElement("style");
-  filterStyleEl.id = "active-run-filter-style";
-  document.head.appendChild(filterStyleEl);
+  const filterStyleEl = (() => {
+    const existing = document.getElementById("active-run-filter-style");
+    if (existing instanceof HTMLStyleElement) {
+      return existing;
+    }
+    const styleEl = document.createElement("style");
+    styleEl.id = "active-run-filter-style";
+    document.head.appendChild(styleEl);
+    return styleEl;
+  })();
 
   // Cached filter state used by refreshCount().
   let currentEnabledByDim = {};
@@ -57,6 +64,13 @@
   const restoreState = () => {
     const raw = getCookie(cookieName);
     if (!raw) {
+      return;
+    }
+    if (raw === "none") {
+      for (const cb of allTypeCheckboxes) {
+        cb.checked = false;
+      }
+      syncAllCheckbox();
       return;
     }
     const enabled = new Set(raw.split(","));
@@ -74,7 +88,7 @@
       const enabled = allTypeCheckboxes
         .filter((cb) => cb.checked)
         .map((cb) => cb.value);
-      setFilterCookie(enabled.join(","));
+      setFilterCookie(enabled.length > 0 ? enabled.join(",") : "none");
     }
   };
 

@@ -414,6 +414,7 @@ function setNotificationStatus_(runId) {
       notification.replaceChildren();
       notification.append(notificationBody);
     }
+    notification.dataset.notificationReady = "1";
   }
 }
 
