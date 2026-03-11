@@ -801,10 +801,10 @@ class TestHttpUsers(unittest.TestCase):
             response_filtered = self.client.get("/tests/machines?q=windows")
 
         self.assertEqual(response_unfiltered.status_code, 200)
-        self.assertIn("Workers - 2 machines", response_unfiltered.text)
+        self.assertIn("Workers - 2", response_unfiltered.text)
 
         self.assertEqual(response_filtered.status_code, 200)
-        self.assertIn("Workers - 2 (1) machines", response_filtered.text)
+        self.assertIn("Workers - 2 (1)", response_filtered.text)
 
     def test_tests_elo_batch_preserves_filtered_workers_count_label(self):
         runs = {"pending": [], "active": []}
@@ -821,7 +821,7 @@ class TestHttpUsers(unittest.TestCase):
             response = self.client.get("/tests/elo_batch")
 
         self.assertEqual(response.status_code, 286)
-        self.assertIn("Workers - 243 (51) machines", response.text)
+        self.assertIn("Workers - 243 (51)", response.text)
 
     def test_tests_homepage_machines_filters_render_and_persist(self):
         now = datetime.now(UTC)
@@ -869,6 +869,11 @@ class TestHttpUsers(unittest.TestCase):
         self.assertIn("checked", homepage.text)
         self.assertIn('data-toggle-cookie-max-age="', homepage.text)
         self.assertIn("static/js/tests_homepage.js", homepage.text)
+        self.assertNotIn("document.activeElement?.id !== 'machines_q'", homepage.text)
+        self.assertIn(
+            "visibilitychange[document.visibilityState === 'visible' && document.getElementById('machines-panel').classList.contains('show')] from:document",
+            homepage.text,
+        )
 
     def test_tests_homepage_active_filters_render_persisted_first_paint_state(self):
         now = datetime.now(UTC)

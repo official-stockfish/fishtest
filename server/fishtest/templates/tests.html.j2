@@ -39,7 +39,7 @@
       {{ 'Hide' if machines_shown else 'Show' }}
     </a>
     <span id="workers-count">
-      {{ workers_count_text if workers_count_text is defined else ("Workers - " ~ machines_count ~ " machines") }}
+      {{ workers_count_text if workers_count_text is defined else ("Workers - " ~ machines_count) }}
     </span>
   </h4>
 
@@ -96,7 +96,7 @@
       hx-get="/tests/machines"
       hx-include="#machines-filters"
       hx-sync="#machines-filters:abort"
-      hx-trigger="{% if machines_shown %}load, {% endif %}machines:load, every {{ poll.machines_homepage }}s [document.visibilityState === 'visible' && document.getElementById('machines-panel').classList.contains('show') && document.activeElement?.id !== 'machines_q'], visibilitychange[document.visibilityState === 'visible' && document.getElementById('machines-panel').classList.contains('show') && document.activeElement?.id !== 'machines_q'] from:document"
+      hx-trigger="{% if machines_shown %}load, {% endif %}machines:load, every {{ poll.machines_homepage }}s [document.visibilityState === 'visible' && document.getElementById('machines-panel').classList.contains('show')], visibilitychange[document.visibilityState === 'visible' && document.getElementById('machines-panel').classList.contains('show')] from:document"
       hx-swap="innerHTML"
     >
       <div id="machines-loading" class="skeleton-wrap">

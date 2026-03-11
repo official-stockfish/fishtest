@@ -98,5 +98,5 @@
 <input type="hidden" id="machines_page" name="page" value="{{ current_page }}" hx-swap-oob="true">
 
 <span id="workers-count" hx-swap-oob="innerHTML">
-  {{ workers_count_text if workers_count_text is defined else ("Workers - " ~ machines_count ~ " machines") }}
+  {{ workers_count_text if workers_count_text is defined else ("Workers - " ~ machines_count) }}
 </span>

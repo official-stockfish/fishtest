@@ -380,7 +380,8 @@ Behavior notes:
    columns (machine, cores, UUID, MNps, RAM, system, arch, compiler, python,
    worker, running-on, and last-active text).
 - Polling includes the current homepage filter-form state (`hx-include`), so
-   sort/filter/page settings persist across periodic refreshes.
+   sort/filter/page settings persist across periodic refreshes, including while
+   the `q` search filter remains active.
 - Filter controls (`q`, `my_workers`) are rendered on `/tests` outside the
    swapped machines fragment to avoid input focus/caret glitches during table
    refresh swaps.
@@ -389,8 +390,8 @@ Behavior notes:
    the last machines filter state.
 - Workers counter semantics are stable across both `/tests/machines` and
    `/tests/elo_batch` OOB updates:
-  - no active filters: `Workers - <total> machines`
-  - active `q` and/or `my_workers`: `Workers - <total> (<filtered>) machines`
+  - no active filters: `Workers - <total>`
+  - active `q` and/or `my_workers`: `Workers - <total> (<filtered>)`
 - Machines sorting is fully server-authoritative; the old generic client-side
    header sorter has been retired.
 
