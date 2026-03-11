@@ -103,7 +103,7 @@
     </form>
 
   {% else %}
-    <div class="filter-tabs mb-2">
+    <div id="tests-finished-filter-tabs" class="filter-tabs mb-2">
       {% with base_url='/tests/finished', hx_target='tests-finished-content', filters=filters %}
         {% include "tests_filter_tabs_fragment.html.j2" %}
       {% endwith %}

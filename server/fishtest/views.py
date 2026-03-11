@@ -3316,6 +3316,7 @@ def tests_finished(request):
         request,
         "tests_finished_results_fragment.html.j2",
         context_out,
+        extra_context={"is_hx": True},
     )
 
 

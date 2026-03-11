@@ -350,6 +350,8 @@ class TestHttpBoundary(unittest.TestCase):
         self.assertEqual(fragment_response.status_code, 200)
         self.assertNotIn("<!doctype html>", fragment_response.text.lower())
         self.assertNotIn('id="tests-finished-filters"', fragment_response.text)
+        self.assertIn('id="tests-finished-filter-tabs"', fragment_response.text)
+        self.assertIn('hx-swap-oob="outerHTML"', fragment_response.text)
         self.assertIn("Showing", fragment_response.text)
 
         navigate_response = client.get(
@@ -377,6 +379,7 @@ class TestHttpBoundary(unittest.TestCase):
         self.assertEqual(fragment_response.status_code, 200)
         self.assertNotIn("<!doctype html>", fragment_response.text.lower())
         self.assertNotIn('id="tests-finished-filters"', fragment_response.text)
+        self.assertNotIn('id="tests-finished-filter-tabs"', fragment_response.text)
         self.assertIn("Showing", fragment_response.text)
 
     def test_tests_finished_search_mode_uses_stable_results_target(self):

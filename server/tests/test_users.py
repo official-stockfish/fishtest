@@ -1102,6 +1102,26 @@ class TestHttpUsers(unittest.TestCase):
         self.assertIn('hx-target="#contributors-content"', response.text)
         self.assertIn('hx-push-url="true"', response.text)
 
+    def test_contributors_hx_fragment_syncs_outer_hidden_sort_state(self):
+        response = self.client.get(
+            "/contributors?sort=username&order=asc&view=all",
+            headers={"HX-Request": "true"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            'id="contributors_sort" name="sort" value="username" hx-swap-oob="true"',
+            response.text,
+        )
+        self.assertIn(
+            'id="contributors_order" name="order" value="asc" hx-swap-oob="true"',
+            response.text,
+        )
+        self.assertIn(
+            'id="contributors_view" name="view" value="all" hx-swap-oob="true"',
+            response.text,
+        )
+
     def test_contributors_view_all_hides_pagination(self):
         docs = [
             {
@@ -1205,6 +1225,18 @@ class TestHttpUsers(unittest.TestCase):
             self.assertIn('hx-target="#workers-content"', response.text)
             self.assertIn('hx-push-url="true"', response.text)
             self.assertIn("view=all", response.text)
+            self.assertIn(
+                'id="workers_sort" name="sort" value="worker" hx-swap-oob="true"',
+                response.text,
+            )
+            self.assertIn(
+                'id="workers_order" name="order" value="asc" hx-swap-oob="true"',
+                response.text,
+            )
+            self.assertIn(
+                'id="workers_view" name="view" value="paged" hx-swap-oob="true"',
+                response.text,
+            )
 
             # Workers search filters by worker column only.
             non_worker_match = self.client.get(
@@ -1586,6 +1618,18 @@ class TestHttpUsers(unittest.TestCase):
                 response.text,
             )
             self.assertIn("view=all", response.text)
+            self.assertIn(
+                'id="user_management_sort" name="sort" value="username" hx-swap-oob="true"',
+                response.text,
+            )
+            self.assertIn(
+                'id="user_management_order" name="order" value="asc" hx-swap-oob="true"',
+                response.text,
+            )
+            self.assertIn(
+                'id="user_management_view" name="view" value="paged" hx-swap-oob="true"',
+                response.text,
+            )
 
             # User-management search filters by username column only.
             non_username_match = self.client.get(
