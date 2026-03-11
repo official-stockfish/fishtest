@@ -1668,6 +1668,32 @@ class TestHttpUsers(unittest.TestCase):
         self.assertIn("initializeNotificationButtons(target)", js_source)
         self.assertIn('notification.dataset.notificationReady = "1"', js_source)
 
+    def test_tests_view_tasks_loader_attaches_before_domcontentloaded(self):
+        template_path = (
+            Path(__file__).resolve().parents[1]
+            / "fishtest"
+            / "templates"
+            / "tests_view.html.j2"
+        )
+        template_source = template_path.read_text(encoding="utf-8")
+
+        self.assertIn(
+            'tasksTbody?.addEventListener("htmx:afterSwap", resolveTasksLoadedOnce);',
+            template_source,
+        )
+        self.assertIn(
+            'if (tasksTbody && (tasksTbody.dataset.tasksLoaded === "1" || tasksTbody.children.length > 0)) {',
+            template_source,
+        )
+        tasks_region_start = template_source.index("let resolveTasksLoaded = null;")
+        tasks_region = template_source[tasks_region_start:]
+        self.assertLess(
+            tasks_region.index(
+                'tasksTbody?.addEventListener("htmx:afterSwap", resolveTasksLoadedOnce);'
+            ),
+            tasks_region.index("await DOMContentLoaded();"),
+        )
+
     def test_contributors_js_uses_single_root_path_cookie(self):
         js_path = (
             Path(__file__).resolve().parents[1]
