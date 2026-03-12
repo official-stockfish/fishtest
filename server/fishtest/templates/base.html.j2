@@ -21,6 +21,14 @@
 
     <script>
       const darkThemeHash = {{ static_url('fishtest:static/css/theme.dark.css') | tojson }};
+      try {
+        document.documentElement.dataset.githubRateLimitLow =
+          localStorage.getItem("fishtest_github_rate_limit_low") === "1"
+            ? "1"
+            : "0";
+      } catch (_error) {
+        document.documentElement.dataset.githubRateLimitLow = "0";
+      }
     </script>
 
     <link
@@ -296,17 +304,14 @@
                       <a href="{{ urls.actions }}" class="links-link rounded">Events</a>
                     </li>
                     <li>
-                    {% if pending_users_count > 0 %}
-                      <a
-                        href="{{ urls.user_management }}"
-                        class="links-link rounded text-danger"
-                        >Users ({{ pending_users_count }})</a
+                      <span
+                        id="pending-users-nav"
+                        hx-get="/user_management/pending_count"
+                        hx-trigger="load, every {{ poll.pending_users_nav }}s [document.visibilityState === 'visible'], visibilitychange[document.visibilityState === 'visible'] from:document"
+                        hx-swap="innerHTML"
                       >
-                    {% else %}
-                      <a href="{{ urls.user_management }}" class="links-link rounded"
-                        >Users</a
-                      >
-                    {% endif %}
+                        {% include "pending_users_nav_fragment.html.j2" %}
+                      </span>
                     </li>
                     <li>
                       <a href="{{ urls.workers_blocked }}" class="links-link rounded"
@@ -414,9 +419,11 @@
                       <a href="{{ urls.sprt_calc }}" class="links-link rounded"
                         >SPRT Calc</a
                       >
-                      <a href="{{ urls.rate_limits }}" class="links-link rounded ratelimit"
-                        >GitHub Rate Limits</a
-                      >
+                    </li>
+                    <li>
+                      <span id="rate-limits-nav">
+                        {% include "rate_limits_nav_fragment.html.j2" %}
+                      </span>
                     </li>
                   </ul>
                 </li>

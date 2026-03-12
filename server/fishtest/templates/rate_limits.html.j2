@@ -26,7 +26,7 @@
           >{{ server_rate_limit }}</span>
         </td>
         <td><span id="server_reset">{{ server_reset }}</span></td>
-        <td id="client_rate_limit">-1</td>
+        <td id="client_rate_limit" data-poll-seconds="{{ poll.rate_limits_github }}">-1</td>
         <td id="client_reset">00:00:00</td>
       </tr>
     </tbody>
@@ -41,31 +41,4 @@
     <a href="/user">profile</a>.
   </p>
 </div>
-<script>
-  (async () => {
-    const errorCSS = "color: red;";
-    const refreshTimeMs = 60000;
-
-    await DOMContentLoaded();
-    const clientRateLimitDom = document.getElementById("client_rate_limit");
-    const clientResetDom = document.getElementById("client_reset");
-
-    const refreshClientRateLimit = async () => {
-      try {
-        const clientRateLimit = await rateLimit();
-        clientRateLimitDom.textContent = clientRateLimit.remaining;
-        clientResetDom.textContent = (new Date(1000 * clientRateLimit.reset)).toLocaleTimeString();
-        clientRateLimitDom.style.cssText = "";
-        clientResetDom.style.cssText = "";
-      } catch(e) {
-        clientRateLimitDom.style.cssText = errorCSS;
-        clientResetDom.style.cssText = errorCSS;
-        log(e);
-      }
-    };
-
-    await refreshClientRateLimit();
-    setInterval(refreshClientRateLimit, refreshTimeMs);
-  })();
-</script>
 {% endblock %}
