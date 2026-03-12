@@ -68,6 +68,19 @@ registers it on the FastAPI router.
 | `/rate_limits` | GET, POST | `rate_limits` | `rate_limits.html.j2` | |
 | `/rate_limits/server` | GET, POST | `rate_limits_server` | `rate_limits_server_fragment.html.j2` | Fragment-only |
 
+## Sidebar status links
+
+The sidebar contains two visibility-aware status links:
+
+- `Users` is server-owned state and refreshes through the dedicated
+   `/user_management/pending_count` HTMX fragment endpoint inside the stable
+   `#pending-users-nav` wrapper.
+- `GitHub Rate Limits` uses separate cadences: `POLL_RATE_LIMITS_GITHUB_S` for
+   the browser-side client-token polling that updates both the sidebar link and
+   the `/rate_limits` client row, and `POLL_RATE_LIMITS_SERVER_S` for the
+   `/rate_limits/server` HTMX row. The sidebar mount point is the stable
+   `#rate-limits-nav` wrapper in `base.html.j2`.
+
 Route notes:
 - **Fragment-only**: endpoint always returns a fragment template (no full page).
 - **HX**: dual-mode endpoint; returns the named fragment when `HX-Request: true`
@@ -341,6 +354,25 @@ while letting low-risk UI preferences remain simple, readable browser state.
 - `static_url(path)` maps to `/static/{path}` with a cache-busting query
   parameter (SHA-384 hash of file content).
 - Navigation URLs are provided as a `urls` dict in the base template context.
+
+## Navigation behavior
+
+- The sidebar `Users` link shows `Users (N)` when `N` users are pending
+   approval.
+- With JavaScript enabled, that link refreshes its pending-user count
+   periodically while the tab is visible and refreshes again when the tab
+   becomes visible via `visibilitychange`.
+- The sidebar `GitHub Rate Limits` link keeps its text fixed and reflects the
+   browser-side GitHub client budget used by pages that read the token from
+   local storage.
+- When the client budget falls below the current warning threshold, the link
+   switches to the same red status styling used by the pending-users sidebar
+   item.
+- The sidebar reuses the last known client warning state from local storage on
+   first paint, so page navigation does not flash the link back to its normal
+   color before the client poll completes.
+- When JavaScript is unavailable, the same link still works as normal
+   navigation and the count refreshes on the next full-page render.
 
 ## Adding a new UI route
 

@@ -13,6 +13,7 @@ let broadcastDispatch = {
   handlePanelToggleCookies();
   handleApplicationLogout();
   handleApplicationThemes();
+  handleClientRateLimitPolling();
 })();
 
 // Awaits the page content to load
@@ -460,6 +461,129 @@ async function rateLimit() {
   options.signal = abortTimeout(3000);
   const rateLimit_ = await fetchJson(url, options);
   return rateLimit_["resources"]["core"];
+}
+
+function setGitHubRateLimitLowState(isLow) {
+  const value = isLow ? "1" : "0";
+  document.documentElement.dataset.githubRateLimitLow = value;
+  try {
+    localStorage.setItem("fishtest_github_rate_limit_low", value);
+  } catch (_error) {
+    // localStorage may be unavailable; keep the in-memory DOM state only.
+  }
+}
+
+function isClientRateLimitLow(rateLimit_) {
+  const remaining = Number(rateLimit_?.remaining);
+  const used = Number(rateLimit_?.used);
+  const reset = Number(rateLimit_?.reset);
+
+  return (
+    Number.isFinite(remaining) &&
+    Number.isFinite(used) &&
+    Number.isFinite(reset) &&
+    Date.now() / 1000 <= reset &&
+    remaining < used
+  );
+}
+
+function applyRateLimitDangerState(element, isLow) {
+  if (!(element instanceof HTMLElement)) {
+    return;
+  }
+
+  element.classList.toggle("text-danger", isLow);
+}
+
+function updateRateLimitsNavLink(navLink, isLow) {
+  if (!(navLink instanceof HTMLAnchorElement)) {
+    return;
+  }
+
+  setGitHubRateLimitLowState(isLow);
+  navLink.textContent = "GitHub Rate Limits";
+  applyRateLimitDangerState(navLink, isLow);
+}
+
+function updateClientRateLimitCells(
+  clientRateLimitDom,
+  clientResetDom,
+  rateLimit_,
+) {
+  if (!(clientRateLimitDom instanceof HTMLElement)) {
+    return;
+  }
+
+  const remaining = Number(rateLimit_?.remaining);
+  const reset = Number(rateLimit_?.reset);
+  const isLow = isClientRateLimitLow(rateLimit_);
+
+  clientRateLimitDom.textContent = Number.isFinite(remaining)
+    ? String(remaining)
+    : "-1";
+  applyRateLimitDangerState(clientRateLimitDom, isLow);
+
+  if (clientResetDom instanceof HTMLElement) {
+    clientResetDom.textContent = Number.isFinite(reset)
+      ? new Date(1000 * reset).toLocaleTimeString()
+      : "00:00:00";
+    applyRateLimitDangerState(clientResetDom, isLow);
+  }
+}
+
+function handleClientRateLimitPolling() {
+  const navLink = document.getElementById("rate-limits-nav-link");
+  const clientRateLimitDom = document.getElementById("client_rate_limit");
+  const clientResetDom = document.getElementById("client_reset");
+
+  if (
+    !(navLink instanceof HTMLAnchorElement) &&
+    !(clientRateLimitDom instanceof HTMLElement)
+  ) {
+    return;
+  }
+
+  const pollSecondsRaw =
+    navLink instanceof HTMLAnchorElement
+      ? navLink.dataset.pollSeconds
+      : clientRateLimitDom.dataset.pollSeconds;
+  const pollSeconds = Number.parseInt(pollSecondsRaw || "10", 10);
+  const pollIntervalMs =
+    Math.max(Number.isFinite(pollSeconds) ? pollSeconds : 10, 1) * 1000;
+
+  const refreshClientRateLimit = async () => {
+    try {
+      const clientRateLimit = await rateLimit();
+      const isLow = isClientRateLimitLow(clientRateLimit);
+
+      updateRateLimitsNavLink(navLink, isLow);
+      updateClientRateLimitCells(
+        clientRateLimitDom,
+        clientResetDom,
+        clientRateLimit,
+      );
+    } catch (error) {
+      if (clientRateLimitDom instanceof HTMLElement) {
+        clientRateLimitDom.classList.add("text-danger");
+      }
+      if (clientResetDom instanceof HTMLElement) {
+        clientResetDom.classList.add("text-danger");
+      }
+      log(error);
+    }
+  };
+
+  void refreshClientRateLimit();
+  window.setInterval(() => {
+    if (document.visibilityState === "visible") {
+      void refreshClientRateLimit();
+    }
+  }, pollIntervalMs);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      void refreshClientRateLimit();
+    }
+  });
 }
 
 // Parse headers of a response object.

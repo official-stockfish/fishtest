@@ -606,6 +606,12 @@ header.navbar {
   border-radius: 0.25rem;
 }
 
+html[data-github-rate-limit-low="1"]
+  .links-group
+  .links-link#rate-limits-nav-link {
+  color: var(--bs-danger) !important;
+}
+
 .links-group .links-link:hover {
   background: var(--bs-light);
   color: var(--bs-body-color);

@@ -74,7 +74,7 @@ Every template receives these keys from `build_template_context()`:
 | `csrf_token` | string | CSRF token for forms and meta tags |
 | `current_user` | `{"username": str}` or `None` | Authenticated user |
 | `theme` | string | `"dark"`, `"light"`, or empty (from cookie) |
-| `pending_users_count` | int | Badge count for user management |
+| `pending_users_count` | int | Pending-user count used by the sidebar `Users` link |
 | `static_url` | callable | `static_url(path)` function |
 | `flash` | dict | `{"error": [...], "warning": [...], "info": [...]}` |
 | `urls` | dict | Navigation URLs (see below) |
@@ -106,6 +106,19 @@ Every template receives these keys from `build_template_context()`:
 }
 ```
 
+### Shared sidebar status links
+
+- `base.html.j2` includes `pending_users_nav_fragment.html.j2` inside a stable
+   HTMX poll wrapper. The wrapper owns the `load` and `every` triggers, while
+   the fragment owns only the rendered anchor HTML.
+- `base.html.j2` also includes `rate_limits_nav_fragment.html.j2`. That link is
+   updated by `static/js/application.js`, not by a server fragment endpoint,
+   because the browser-side GitHub token lives in local storage and is not part
+   of server session state.
+- `rate_limits.html.j2` exposes the same browser-side client poll cadence via
+   `data-poll-seconds` on `#client_rate_limit`, so the page row and the sidebar
+   link read the same client limit state.
+
 ## Client-side behavior pattern
 
 Behavior-heavy page scripts should prefer static assets plus `data-*`
@@ -132,7 +145,7 @@ embedding implementation details in the template body.
 
 | Template | Purpose |
 |----------|---------|
-| `base.html.j2` | Base layout (navbar, footer, asset loading, htmx CDN) |
+| `base.html.j2` | Base layout (navbar, footer, asset loading, htmx CDN, pending-user nav poll target) |
 | `actions.html.j2` | Paginated action log |
 | `contributors.html.j2` | Contributor leaderboard (all-time and monthly) |
 | `elo_results.html.j2` | ELO result display (included as partial) |
@@ -173,6 +186,7 @@ base layout and contain only the HTML subset needed for the swap target.
 | `live_elo_fragment.html.j2` | none (OOB only) | Yes | Yes |
 | `machines_fragment.html.j2` | `#machines` | Yes (`#workers-count`) | Yes |
 | `nns_content_fragment.html.j2` | `#nns-content` | -- | -- |
+| `pending_users_nav_fragment.html.j2` | `#pending-users-nav` | -- | Yes |
 | `rate_limits_server_fragment.html.j2` | server rate limit cell | Yes (`#server_reset`) | Yes |
 | `run_table_row_fragment.html.j2` | `#run-{id}` (row swap) | -- | -- |
 | `tasks_fragment.html.j2` | `#tasks-body` | -- | Yes |
@@ -732,6 +746,29 @@ not need out-of-band hidden-input refresh for this page.
 |-----|------|
 | `server_rate_limit` | string |
 | `server_reset` | string (OOB `#server_reset`) |
+
+The `/rate_limits` page client row and the sidebar `GitHub Rate Limits` link
+both project their cadence from `poll.rate_limits_github`.
+
+The `/rate_limits` server row projects its separate cadence from
+`poll.rate_limits_server`.
+
+The sidebar link keeps a fixed label and uses the same red status styling as
+the pending-users sidebar item whenever the client GitHub budget is below the
+threshold.
+
+The shared sidebar shell is mounted inside the stable `#rate-limits-nav`
+wrapper in `base.html.j2`, mirroring the stable wrapper pattern already used by
+`#pending-users-nav`.
+
+The pending-users sidebar wrapper, the `/rate_limits/server` poller, and the
+client-side GitHub rate-limit refresh all use `visibilitychange` activation, so
+an active page refreshes after a hidden tab becomes visible again without
+issuing duplicate calls on first page load.
+
+The GitHub sidebar link also restores the last known client warning state from
+local storage before first paint so page navigation does not briefly flash the
+link back to its normal color.
 
 ### `run_table_row_fragment.html.j2`
 
