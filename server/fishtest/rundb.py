@@ -1173,6 +1173,15 @@ class RunDb:
         )
         return [rows, count]
 
+    @staticmethod
+    def _finished_run_last_updated_sort_value(run):
+        last_updated = run.get("last_updated")
+        if isinstance(last_updated, datetime):
+            return last_updated.timestamp()
+        if isinstance(last_updated, int | float):
+            return float(last_updated)
+        return 0.0
+
     def _get_finished_runs_multi_username_hot_path(
         self,
         *,
@@ -1221,9 +1230,7 @@ class RunDb:
                 heapq.heappush(
                     heap,
                     (
-                        -row.get(
-                            "last_updated", datetime.min.replace(tzinfo=UTC)
-                        ).timestamp(),
+                        -self._finished_run_last_updated_sort_value(row),
                         str(row.get("_id", "")),
                         len(per_user_rows) - 1,
                         0,
@@ -1242,9 +1249,7 @@ class RunDb:
                 heapq.heappush(
                     heap,
                     (
-                        -next_row.get(
-                            "last_updated", datetime.min.replace(tzinfo=UTC)
-                        ).timestamp(),
+                        -self._finished_run_last_updated_sort_value(next_row),
                         str(next_row.get("_id", "")),
                         list_idx,
                         next_idx,
