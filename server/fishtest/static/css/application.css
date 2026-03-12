@@ -29,7 +29,11 @@ button.notifications {
   background: transparent;
   border: 0;
   padding: 0;
-  min-width: 38px;
+  min-width: 2.5em;
+  height: 24px;
+  line-height: 24px;
+  vertical-align: middle;
+  align-items: center;
 }
 
 button.notifications[data-notification-ready="0"] {

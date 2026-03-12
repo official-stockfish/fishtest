@@ -383,11 +383,10 @@ function setNotificationStatus_(runId) {
       notification.title = "Click to unfollow: no notification";
 
       const italic1 = document.createElement("i");
-      italic1.className = "fa-regular fa-bell";
-      italic1.style.width = "20px";
+      italic1.className = "fa-regular fa-bell fa-fw";
 
       const italic2 = document.createElement("i");
-      italic2.className = "fa-solid fa-toggle-on";
+      italic2.className = "fa-solid fa-toggle-on fa-fw";
 
       const notificationBody = document.createElement("div");
       notificationBody.style.whiteSpace = "nowrap";
@@ -400,11 +399,10 @@ function setNotificationStatus_(runId) {
       notification.title = "Click to follow: get notification";
 
       const italic1 = document.createElement("i");
-      italic1.className = "fa-regular fa-bell-slash";
-      italic1.style.width = "20px";
+      italic1.className = "fa-regular fa-bell-slash fa-fw";
 
       const italic2 = document.createElement("i");
-      italic2.className = "fa-solid fa-toggle-off";
+      italic2.className = "fa-solid fa-toggle-off fa-fw";
 
       const notificationBody = document.createElement("div");
       notificationBody.style.whiteSpace = "nowrap";
