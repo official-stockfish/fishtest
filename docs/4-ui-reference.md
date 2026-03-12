@@ -676,6 +676,9 @@ Behavior notes:
    usernames through the exact-username finished-run path.
 - When multiple usernames match a fragment, prefix matches are ranked before
    inner-substring matches, and ties stay recent-first within each username.
+- Finished rows without a usable `last_updated` value sort after timestamped
+  rows in the merged recent-first result, and equal fallback rows stay stable
+  by run id.
 - `text` performs a case-insensitive MongoDB `$text` query against the last-column
    run info text on finished runs only.
 - `/actions`, `/tests/finished`, and `/tests/user/{username}` now use the

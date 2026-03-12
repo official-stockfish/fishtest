@@ -563,6 +563,71 @@ class CreateRunDBTest(unittest.TestCase):
                 {"args.username": {"$in": ["limit-zero-user-a", "limit-zero-user-b"]}}
             )
 
+    def test_55_finished_runs_multi_username_missing_last_updated_is_safe(self):
+        now = datetime.now(UTC)
+        docs = [
+            {
+                "_id": "z-has-last-updated",
+                "finished": True,
+                "deleted": False,
+                "args": {
+                    "username": "heap-safe-user-a",
+                    "info": "timestamped row",
+                },
+                "last_updated": now,
+            },
+            {
+                "_id": "a-missing-last-updated",
+                "finished": True,
+                "deleted": False,
+                "args": {
+                    "username": "heap-safe-user-b",
+                    "info": "missing timestamp row",
+                },
+            },
+            {
+                "_id": "b-none-last-updated",
+                "finished": True,
+                "deleted": False,
+                "args": {
+                    "username": "heap-safe-user-c",
+                    "info": "none timestamp row",
+                },
+                "last_updated": None,
+            },
+        ]
+        self.rundb.runs.insert_many(docs)
+        try:
+            finished_runs, count = self.rundb.get_finished_runs(
+                usernames=[
+                    "heap-safe-user-a",
+                    "heap-safe-user-b",
+                    "heap-safe-user-c",
+                ],
+                limit=3,
+            )
+            self.assertEqual(count, 3)
+            self.assertEqual(
+                [run["args"]["username"] for run in finished_runs],
+                [
+                    "heap-safe-user-a",
+                    "heap-safe-user-b",
+                    "heap-safe-user-c",
+                ],
+            )
+        finally:
+            self.rundb.runs.delete_many(
+                {
+                    "args.username": {
+                        "$in": [
+                            "heap-safe-user-a",
+                            "heap-safe-user-b",
+                            "heap-safe-user-c",
+                        ]
+                    }
+                }
+            )
+
     def test_90_delete_runs(self):
         for run in self.rundb.runs.find():
             if run["args"]["username"] == "travis" and "deleted" not in run:
