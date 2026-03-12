@@ -12,6 +12,9 @@ from vtjson import ValidationError
 from fishtest.http.settings import (
     HTMX_INPUT_CHANGED_DELAY_MS,
     POLL_ELO_DETAIL_S,
+    POLL_PENDING_USERS_NAV_S,
+    POLL_RATE_LIMITS_GITHUB_S,
+    POLL_RATE_LIMITS_SERVER_S,
     SESSION_REMEMBER_MAX_AGE_SECONDS,
 )
 from fishtest.run_cache import Prio
@@ -1860,7 +1863,8 @@ class TestHttpUsers(unittest.TestCase):
     def test_rate_limits_full_page_and_hx_fragment(self, mock_rate_limit):
         mock_rate_limit.return_value = {
             "remaining": 4321,
-            "reset": 1700000000,
+            "used": 5000,
+            "reset": 4102444800,
         }
 
         full_response = self.client.get("/rate_limits")
@@ -1870,7 +1874,14 @@ class TestHttpUsers(unittest.TestCase):
         self.assertIn("<th>Client</th>", full_response.text)
         self.assertIn('id="server_rate_limit"', full_response.text)
         self.assertIn('id="client_rate_limit"', full_response.text)
-        self.assertIn('hx-trigger="load, every ', full_response.text)
+        self.assertIn(
+            f'hx-trigger="load, every {POLL_RATE_LIMITS_SERVER_S}s ',
+            full_response.text,
+        )
+        self.assertIn(
+            "visibilitychange[document.visibilityState === 'visible'] from:document",
+            full_response.text,
+        )
 
         fragment_response = self.client.get("/rate_limits/server")
         self.assertEqual(fragment_response.status_code, 200)
@@ -1892,6 +1903,92 @@ class TestHttpUsers(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertIn("<!doctype html>", response.text.lower())
+
+    def test_rate_limits_sidebar_link_and_client_poll_contract(self):
+        response = self.client.get("/rate_limits")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="rate-limits-nav"', response.text)
+        self.assertIn('id="rate-limits-nav-link"', response.text)
+        self.assertIn(
+            f'data-poll-seconds="{POLL_RATE_LIMITS_GITHUB_S}"',
+            response.text,
+        )
+        self.assertIn("dataset.githubRateLimitLow", response.text)
+        self.assertIn(
+            f'id="client_rate_limit" data-poll-seconds="{POLL_RATE_LIMITS_GITHUB_S}"',
+            response.text,
+        )
+
+    def test_pending_users_nav_full_page_and_fragment_polling(self):
+        pending_username = "HxPendingNavUser"
+
+        self.rundb.userdb.create_user(
+            pending_username,
+            "secret",
+            "pending-nav@example.com",
+            "https://github.com/official-stockfish/Stockfish",
+        )
+
+        try:
+            expected_count = len(self.rundb.userdb.get_pending())
+
+            full_response = self.client.get("/rate_limits")
+            self.assertEqual(full_response.status_code, 200)
+            self.assertIn('id="pending-users-nav"', full_response.text)
+            self.assertIn(
+                'hx-get="/user_management/pending_count"',
+                full_response.text,
+            )
+            self.assertIn(
+                f'hx-trigger="load, every {POLL_PENDING_USERS_NAV_S}s '
+                "[document.visibilityState === 'visible'], "
+                "visibilitychange[document.visibilityState === 'visible'] "
+                'from:document"',
+                full_response.text,
+            )
+            self.assertIn(f"Users ({expected_count})", full_response.text)
+
+            fragment_response = self.client.get("/user_management/pending_count")
+            self.assertEqual(fragment_response.status_code, 200)
+            self.assertNotIn("<!doctype html>", fragment_response.text.lower())
+            self.assertIn('href="/user_management"', fragment_response.text)
+            self.assertIn(
+                'class="links-link rounded text-danger"',
+                fragment_response.text,
+            )
+            self.assertIn(f"Users ({expected_count})", fragment_response.text)
+        finally:
+            pending_doc = self.rundb.userdb.get_user(pending_username)
+            if pending_doc is not None:
+                self.rundb.userdb.remove_user(pending_doc, self.username)
+
+    def test_github_rate_limits_polling_uses_visibility_activation_and_client_threshold(
+        self,
+    ):
+        js_path = (
+            Path(__file__).resolve().parents[1]
+            / "fishtest"
+            / "static"
+            / "js"
+            / "application.js"
+        )
+        js_source = js_path.read_text(encoding="utf-8")
+
+        self.assertIn(
+            'document.addEventListener("visibilitychange", () => {',
+            js_source,
+        )
+        self.assertIn("function isClientRateLimitLow(rateLimit_) {", js_source)
+        self.assertNotIn("function serverRateLimit()", js_source)
+        self.assertIn("function setGitHubRateLimitLowState(isLow) {", js_source)
+        self.assertIn(
+            'localStorage.setItem("fishtest_github_rate_limit_low", value);',
+            js_source,
+        )
+        self.assertIn(
+            'classList.toggle("text-danger", isLow)',
+            js_source,
+        )
 
     def test_add_user_group_raises_on_duplicate(self):
         """Ensure adding a duplicate group raises ValidationError from userdb."""

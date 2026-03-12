@@ -30,6 +30,8 @@ from fishtest.http.settings import (
     POLL_ELO_DETAIL_S,
     POLL_LIVE_ELO_S,
     POLL_MACHINES_HOMEPAGE_S,
+    POLL_PENDING_USERS_NAV_S,
+    POLL_RATE_LIMITS_GITHUB_S,
     POLL_RATE_LIMITS_SERVER_S,
     POLL_TASKS_DETAIL_S,
     THEME_COOKIE_MAX_AGE_SECONDS,
@@ -146,6 +148,8 @@ def default_environment() -> Environment:
             "tasks_detail": POLL_TASKS_DETAIL_S,
             "machines_homepage": POLL_MACHINES_HOMEPAGE_S,
             "live_elo": POLL_LIVE_ELO_S,
+            "pending_users_nav": POLL_PENDING_USERS_NAV_S,
+            "rate_limits_github": POLL_RATE_LIMITS_GITHUB_S,
             "rate_limits_server": POLL_RATE_LIMITS_SERVER_S,
         },
         "htmx": {

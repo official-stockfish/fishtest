@@ -1399,6 +1399,10 @@ def rate_limits_server(request):
     return _build_rate_limits_context()
 
 
+def user_management_pending_count(request):
+    return {}
+
+
 # Different LOCALES may have different quotation marks.
 # See https://op.europa.eu/en/web/eu-vocabularies/formex/physical-specifications/character-encoding/quotation-marks
 
@@ -5190,6 +5194,11 @@ _VIEW_ROUTES = [
         rate_limits_server,
         "/rate_limits/server",
         {"renderer": "rate_limits_server_fragment.html.j2"},
+    ),
+    (
+        user_management_pending_count,
+        "/user_management/pending_count",
+        {"renderer": "pending_users_nav_fragment.html.j2"},
     ),
     (actions, "/actions", {"renderer": "actions.html.j2"}),
     (user_management, "/user_management", {"renderer": "user_management.html.j2"}),
