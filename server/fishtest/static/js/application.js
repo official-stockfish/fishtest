@@ -158,21 +158,27 @@ function mediaTheme() {
 
 // Click the sun/moon icons to change the color theme of the site
 function setTheme(theme) {
+  const darkLink = document.querySelector(
+    'head link[href*="/css/theme.dark.css"]',
+  );
   if (theme === "dark") {
     document.getElementById("sun").style.display = "";
     document.getElementById("moon").style.display = "none";
     document.documentElement.style.colorScheme = "dark";
-    const link = document.createElement("link");
-    link["rel"] = "stylesheet";
-    link["href"] = darkThemeHash;
-    document.querySelector("head").append(link);
+    if (darkLink) {
+      darkLink.removeAttribute("media");
+    } else {
+      const link = document.createElement("link");
+      link["rel"] = "stylesheet";
+      link["href"] = darkThemeHash;
+      document.querySelector("head").append(link);
+    }
   } else {
     document.getElementById("sun").style.display = "none";
     document.getElementById("moon").style.display = "";
     document.documentElement.style.colorScheme = "";
-    document.querySelector('head link[href*="/css/theme.dark.css"]')?.remove();
+    darkLink?.remove();
   }
-  // Remember the theme for 30 days
   document.cookie = `theme=${theme}; path=/; max-age=${
     30 * 24 * 60 * 60
   }; SameSite=Lax`;

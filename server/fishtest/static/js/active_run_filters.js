@@ -62,6 +62,7 @@
   let allFiltersEnabled = true;
   let canonicalRows = [];
   let isApplyingFilters = false;
+  let initialApplyPending = true;
 
   const buildFilterStyleText = (disabledSelectors) => {
     if (disabledSelectors.length === 0) {
@@ -199,14 +200,22 @@
       desiredRows.some((row, index) => row !== currentRows[index]);
 
     if (orderChanged) {
-      const fragment = document.createDocumentFragment();
-      for (const row of desiredRows) {
-        fragment.appendChild(row);
+      const reorder = () => {
+        const fragment = document.createDocumentFragment();
+        for (const row of desiredRows) {
+          fragment.appendChild(row);
+        }
+        isApplyingFilters = true;
+        tbody.appendChild(fragment);
+        isApplyingFilters = false;
+      };
+      if (initialApplyPending) {
+        requestAnimationFrame(reorder);
+      } else {
+        reorder();
       }
-      isApplyingFilters = true;
-      tbody.appendChild(fragment);
-      isApplyingFilters = false;
     }
+    initialApplyPending = false;
 
     refreshCount();
   };

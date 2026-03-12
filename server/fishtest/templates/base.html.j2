@@ -31,6 +31,8 @@
       }
     </script>
 
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.2.0/css/all.min.css"
@@ -56,6 +58,12 @@
     <link
       rel="stylesheet"
       href="{{ static_url('fishtest:static/css/theme.dark.css') }}"
+    >
+    {% elif not theme %}
+    <link
+      rel="stylesheet"
+      href="{{ static_url('fishtest:static/css/theme.dark.css') }}"
+      media="(prefers-color-scheme: dark)"
     >
     {% endif %}
 
