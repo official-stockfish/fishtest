@@ -451,7 +451,7 @@ async def _dispatch_view(fn, cfg, request, path_params):
         commit_session_response(request, session, shim, result)
         apply_http_cache(result, cfg)
         if request.method == "GET":
-            # Same URL can serve full page or HTMX fragment depending on headers.
+            # Same URL can serve full page or htmx fragment depending on headers.
             _append_vary_header(result, "HX-Request")
         return _apply_response_headers(shim, result)
 
