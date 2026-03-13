@@ -73,12 +73,12 @@ registers it on the FastAPI router.
 The sidebar contains two visibility-aware status links:
 
 - `Users` is server-owned state and refreshes through the dedicated
-   `/user_management/pending_count` HTMX fragment endpoint inside the stable
+   `/user_management/pending_count` htmx fragment endpoint inside the stable
    `#pending-users-nav` wrapper.
 - `GitHub Rate Limits` uses separate cadences: `POLL_RATE_LIMITS_GITHUB_S` for
    the browser-side client-token polling that updates both the sidebar link and
    the `/rate_limits` client row, and `POLL_RATE_LIMITS_SERVER_S` for the
-   `/rate_limits/server` HTMX row. The sidebar mount point is the stable
+   `/rate_limits/server` htmx row. The sidebar mount point is the stable
    `#rate-limits-nav` wrapper in `base.html.j2`.
 
 Route notes:
@@ -511,10 +511,10 @@ Behavior notes:
 - User-management filtering stays on the userdb path: the base list comes from
    `request.userdb.get_users()`, while pending/blocked subsets come from the
    cached `get_pending()` / `get_blocked()` helpers.
-- HTMX requests target `#user-management-content` and keep URL state via
+- htmx requests target `#user-management-content` and keep URL state via
    `hx-push-url="true"`.
 - The outer GET form keeps `sort`, `order`, and `view` in hidden inputs.
-  HTMX fragment responses refresh those hidden inputs out of band so later
+  htmx fragment responses refresh those hidden inputs out of band so later
   group or filter changes preserve the current table state.
 - Table sorting is fully server-authoritative; the old generic client-side
    header sorter has been retired.
@@ -542,13 +542,13 @@ Behavior notes:
 - `q` performs case-insensitive substring matching on worker name only.
 - Non-approver users cannot sort by `email`; unsupported values fall back to
    default server sort.
-- HTMX requests target `#workers-content` and keep URL state via
+- htmx requests target `#workers-content` and keep URL state via
    `hx-push-url="true"`.
 - Sort-header links are dual-mode (`href` + `hx-get`): workers sorting swaps
    `#workers-content` with `hx-push-url="true"` when htmx is active, and still
    degrades to full-page navigation.
 - The outer GET form keeps `sort`, `order`, and `view` in hidden inputs.
-  HTMX fragment responses refresh those hidden inputs out of band so later
+  htmx fragment responses refresh those hidden inputs out of band so later
   filter changes preserve the current table state.
 - Table sorting is fully server-authoritative; the old generic client-side
    header sorter has been retired.
@@ -585,7 +585,7 @@ Behavior notes:
    swaps `#contributors-content` with `hx-push-url="true"` when htmx is active,
    and still works as normal navigation when JavaScript is unavailable.
 - The outer search form keeps `sort`, `order`, and `view` as hidden inputs.
-   HTMX fragment responses refresh those inputs out of band so later search or
+   htmx fragment responses refresh those inputs out of band so later search or
    rank-jump requests do not replay stale table state.
 
 ## Neural networks (`/nns`) query parameters
@@ -611,12 +611,12 @@ Behavior notes:
    `#nns-content` with `hx-push-url="true"` when htmx is active, with plain-link
    fallback preserved.
 - Pagination links follow the same dual-mode contract.
-- Search inputs are HTMX-triggered (`input changed delay`) and also support
+- Search inputs are htmx-triggered (`input changed delay`) and also support
    explicit submit for keyboard and non-JS flows.
-- HTMX updates target `#nns-content` and push updated query URLs for
+- htmx updates target `#nns-content` and push updated query URLs for
    back/forward and shareable links.
 - The filter form is rendered inside `#nns-content`, under the explanatory
-  copy and above the paged or all switch, so HTMX responses keep the full page
+  copy and above the paged or all switch, so htmx responses keep the full page
   order aligned with the other card pages: cards, text, filters, view switch,
   pagination, table, pagination.
 - `master_only` checkbox preference is persisted in a cookie and reused when
@@ -649,7 +649,7 @@ Behavior notes:
 - Anonymous requests are capped at `5000` actions. Unfiltered authenticated
    requests default to `50000`; explicit `max_count` values are preserved in
    the URL and hidden form state.
-- HTMX requests target `#actions-content` and keep URL state via
+- htmx requests target `#actions-content` and keep URL state via
    `hx-push-url="true"`.
 - The visible filters auto-submit on select change and search/input events.
 - The username field follows the same pattern as the other username filters in
@@ -658,7 +658,7 @@ Behavior notes:
 - `user` matches case-insensitive username substrings, not only exact names.
 - When multiple usernames match a fragment, prefix matches are ranked before
    inner-substring matches, and ties stay recent-first within each username.
-- Typing pauses trigger the existing debounced HTMX form request, so results
+- Typing pauses trigger the existing debounced htmx form request, so results
    refresh from `GET /actions?...` without a separate suggestions endpoint,
    popup, or second swap target.
 - To keep that debounced path fast on large historical logs, `/actions` first
@@ -676,7 +676,7 @@ Behavior notes:
 ## Finished Tests (`/tests/finished`) query parameters
 
 The finished tests page supports URL-driven server-authoritative filtering,
-pagination, and HTMX fragment refresh on the canonical `/tests/finished` route.
+pagination, and htmx fragment refresh on the canonical `/tests/finished` route.
 
 | Parameter | Values | Default |
 |-----|-----|-----|
@@ -692,12 +692,12 @@ pagination, and HTMX fragment refresh on the canonical `/tests/finished` route.
 
 Behavior notes:
 
-- HTMX requests target `#tests-finished-content` and keep URL state via
+- htmx requests target `#tests-finished-content` and keep URL state via
    `hx-push-url="true"`.
 - Finished tests currently use a fixed recent-first order, but still carry the
    explicit `sort=time` and `order=desc` query parameters so the URL contract
    stays aligned with the actions page.
-- HTMX tab clicks refresh the results target directly and refresh the tab strip
+- htmx tab clicks refresh the results target directly and refresh the tab strip
   out of band so the active-tab styling stays aligned with the pushed URL.
 - The username input auto-submits on debounced input and native search clear
    events.
@@ -724,4 +724,4 @@ Behavior notes:
    the total matching finished-run count.  Deleted runs are excluded from both
    the displayed rows and the total count.
 - Oversized `max_count` values are clamped to MongoDB's signed 64-bit integer
-   range before they reach PyMongo.
+   range before they reach pymongo.
