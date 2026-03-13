@@ -19,15 +19,15 @@ server/
 |-- pyproject.toml           -- Package metadata, dependencies
 |-- fishtest/
 |   |-- app.py               -- ASGI application factory, lifespan, middleware, routers
-|   |-- api.py               -- Worker API router (20 endpoints)
-|   |-- views.py             -- UI router (30 endpoints, data-driven dispatch)
+|   |-- api.py               -- Worker API router (22 endpoints)
+|   |-- views.py             -- UI router (34 endpoints, data-driven dispatch)
 |   |-- rundb.py             -- RunDb: run lifecycle, task distribution, caching
 |   |-- userdb.py            -- UserDb: authentication, groups, registration
 |   |-- actiondb.py          -- ActionDb: audit log
 |   |-- workerdb.py          -- WorkerDb: worker blocking
 |   |-- kvstore.py           -- KVStore: key-value metadata (legacy usernames, flags)
 |   |-- scheduler.py         -- Periodic task scheduler (primary instance only)
-|   |-- schemas.py           -- vtjson validation schemas (19 schemas)
+|   |-- schemas.py           -- vtjson validation schemas (18 schemas)
 |   |-- run_cache.py         -- In-memory run cache with dirty-page flush
 |   |-- lru_cache.py         -- Generic LRU cache
 |   |-- spsa_handler.py      -- SPSA tuning parameter handler
@@ -35,10 +35,10 @@ server/
 |   |-- util.py              -- Shared utilities (formatting, validation helpers)
 |   |-- __init__.py          -- Minimal package init
 |   |-- http/                -- HTTP support modules
-|   |-- templates/           -- Jinja2 templates (40 files, .html.j2)
+|   |-- templates/           -- Jinja2 templates (49 files, .html.j2)
 |   |-- static/              -- Static assets (JS, CSS, images)
 |   `-- stats/               -- Statistical computation modules
-`-- tests/                   -- Test suite (15 test modules)
+`-- tests/                   -- Test suite (16 test modules)
 ```
 
 ### HTTP support modules (`server/fishtest/http/`)
@@ -185,10 +185,10 @@ full-page navigations), then returns the appropriate template via the
 `_render_hx_fragment()` helper. `_dispatch_view()` appends `Vary: HX-Request`
 to every GET response so that HTTP caches distinguish the two representations.
 
-**Server-authoritative table state.** Newer HTMX list pages (`/nns`,
+**Server-authoritative table state.** Newer htmx list pages (`/nns`,
 `/contributors`, `/user_management`, `/workers/show`, `/tests/machines`) keep
 sort, search, page, and view state in the URL and render the active control
-state server-side on every response. Where the HTMX target contains stateful
+state server-side on every response. Where the htmx target contains stateful
 controls, the swapped boundary is the full content fragment, not just table
 rows. The shared active-search debounce is projected into templates as
 `htmx.input_changed_delay_ms`.
@@ -214,7 +214,7 @@ the polling lifecycle:
 - **204** -- no content; htmx skips the swap but continues polling.
 - **286** -- swap the response and stop polling (terminal state).
 
-**Visibility-aware polling policy.** Every periodic HTMX poller follows a
+**Visibility-aware polling policy.** Every periodic htmx poller follows a
 three-part trigger policy:
 
 1. A periodic trigger gated on `document.visibilityState === 'visible'`.

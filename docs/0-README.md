@@ -51,7 +51,7 @@ OPENAPI_URL=/openapi.json FISHTEST_INSECURE_DEV=1 uv run uvicorn fishtest.app:ap
 | Client interactivity | htmx 2.0.8 (CDN, fragment polling/swaps, OOB updates) |
 | Session management | itsdangerous `TimestampSigner` cookie sessions |
 | Database | MongoDB (pymongo) |
-| Validation | vtjson (19 schemas; no Pydantic) |
+| Validation | vtjson (18 schemas; no Pydantic) |
 | Statistics | scipy, numpy (SPRT, ELO calculations) |
 | Python (server) | >= 3.14 |
 | Python (worker) | >= 3.8 |
@@ -67,7 +67,7 @@ fishtest/
 |-- server/
 |   |-- pyproject.toml         -- Server package: runtime + test dependencies
 |   |-- fishtest/              -- FastAPI application (Python >= 3.14)
-|   |-- tests/                 -- Server test suite (15 test modules)
+|   |-- tests/                 -- Server test suite (16 test modules)
 |   `-- utils/                 -- Operational utilities (backup, migration, analysis)
 `-- worker/
     |-- pyproject.toml         -- Worker package: runtime dependencies (Python >= 3.8)

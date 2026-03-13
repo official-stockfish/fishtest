@@ -45,8 +45,8 @@ and `http/jinja.py`.
 | `list_to_string(values, decimals)` | `template_helpers.py` | Formats a list of floats as a string |
 | `pdf_to_string(...)` | `template_helpers.py` | Formats a probability density function |
 | `t_conf(...)` | `template_helpers.py` | Confidence interval formatting |
-| `poll` | `http/jinja.py` | Shared HTMX polling intervals exposed to templates |
-| `htmx` | `http/jinja.py` | Shared HTMX timing defaults exposed to templates |
+| `poll` | `http/jinja.py` | Shared htmx polling intervals exposed to templates |
+| `htmx` | `http/jinja.py` | Shared htmx timing defaults exposed to templates |
 | `cookies` | `http/jinja.py` | Shared cookie max-age values for page scripts/templates |
 | `fishtest` | `fishtest` package | Package module (version, metadata) |
 | `gh` | `github_api.py` | GitHub API module (commit_url, etc.) |
@@ -109,7 +109,7 @@ Every template receives these keys from `build_template_context()`:
 ### Shared sidebar status links
 
 - `base.html.j2` includes `pending_users_nav_fragment.html.j2` inside a stable
-   HTMX poll wrapper. The wrapper owns the `load` and `every` triggers, while
+   htmx poll wrapper. The wrapper owns the `load` and `every` triggers, while
    the fragment owns only the rendered anchor HTML.
 - `base.html.j2` also includes `rate_limits_nav_fragment.html.j2`. That link is
    updated by `static/js/application.js`, not by a server fragment endpoint,
@@ -178,6 +178,8 @@ base layout and contain only the HTML subset needed for the swap target.
 | Template | Swap target | OOB | Polled |
 |----------|------------|-----|--------|
 | `actions_content_fragment.html.j2` | `#actions-content` | -- | -- |
+| `actions_page_fragment.html.j2` | `#actions-page` | -- | -- |
+| `active_run_filters_fragment.html.j2` | `#active-run-filters` | -- | -- |
 | `contributors_content_fragment.html.j2` | `#contributors-content` | Yes (hidden input sync) | -- |
 | `contributors_rows_fragment.html.j2` | included by `contributors_content_fragment.html.j2` | -- | -- |
 | `elo_batch_fragment.html.j2` | none (OOB only) | Yes | Yes |
@@ -187,6 +189,7 @@ base layout and contain only the HTML subset needed for the swap target.
 | `machines_fragment.html.j2` | `#machines` | Yes (`#workers-count`) | Yes |
 | `nns_content_fragment.html.j2` | `#nns-content` | -- | -- |
 | `pending_users_nav_fragment.html.j2` | `#pending-users-nav` | -- | Yes |
+| `rate_limits_nav_fragment.html.j2` | `#rate-limits-nav` | -- | -- |
 | `rate_limits_server_fragment.html.j2` | server rate limit cell | Yes (`#server_reset`) | Yes |
 | `run_table_row_fragment.html.j2` | `#run-{id}` (row swap) | -- | -- |
 | `tasks_fragment.html.j2` | `#tasks-body` | -- | Yes |
@@ -323,9 +326,9 @@ Each nn row: `time_label`, `name`, `name_url`, `user`, `first_test_label`,
 Behavior notes:
 
 - Search is URL-driven and rendered by the same `/nns` endpoint.
-- HTMX search updates only `#nns-content`; full-page rendering still works.
+- htmx search updates only `#nns-content`; full-page rendering still works.
 - Typing in `network_name` / `user` and toggling `master_only` triggers
-   HTMX requests, while submit remains available as a non-JS fallback.
+   htmx requests, while submit remains available as a non-JS fallback.
 - The page shell owns the heading and filter form; the summary cards,
   explanatory copy, view toggle, pagination, and table live in the content
   fragment.
@@ -495,7 +498,7 @@ responses for `/tests/stats/{id}`.
 Rendered structure:
 
 - `#tests-stats-content` root element
-- original heading-and-table statistics layout shared by full-page and HTMX renders
+- original heading-and-table statistics layout shared by full-page and htmx renders
 - SPRT bounds rendered as a table
 - SPSA message rendered in place of the statistics tables when applicable
 
@@ -532,7 +535,7 @@ Rendered structure:
 
 Detail-page ELO polling contract:
 
-- Unfinished runs render a visibility-aware HTMX poller targeting
+- Unfinished runs render a visibility-aware htmx poller targeting
    `/tests/elo/{id}?expected=<status>`.
 - The `expected` query param must match the page's current run status label:
    `active`, `paused`, or `pending`.
@@ -541,7 +544,7 @@ Detail-page ELO polling contract:
 
 Detail-page tasks loader contract:
 
-- When `tasks_shown` is true, `#tasks-body` starts an HTMX load request from
+- When `tasks_shown` is true, `#tasks-body` starts an htmx load request from
    `tests_view.html.j2`.
 - The template attaches the `htmx:afterSwap` and error listeners for
    `#tasks-body` before `await DOMContentLoaded()` so the initial `load` request
@@ -642,6 +645,20 @@ action query so the debounced form stays fast on large logs. The free-text help
 control is a labeled button that opens the Bootstrap modal, so the icon trigger
 is keyboard-focusable and announced as a button.
 
+### `active_run_filters_fragment.html.j2`
+
+| Key | Type |
+|-----|------|
+| `active_runs` | list (run dicts for the Active panel) |
+| `active_run_filters` | dict or `None` (parsed cookie state) |
+| `cookies.persistent_ui_max_age` | int (cookie max-age seconds) |
+
+Renders the faceted filter panel (SPRT/SPSA/NumGames, STC/LTC, ST/SMP)
+above the Active runs table. Server-side rendering of initial checkbox
+state eliminates the flash where all rows are briefly visible before JS
+reapplies the persisted filter. The template only renders when
+`active_runs` is non-empty.
+
 ### `contributors_content_fragment.html.j2`
 
 Same context as the content area of `contributors.html.j2`: `users`, `pages`,
@@ -651,7 +668,7 @@ Sortable headers are dual-mode links (`href` + `hx-get`) targeting
 `#contributors-content` with `hx-push-url="true"`.
 
 The outer contributors search form keeps `view`, `sort`, and `order` in hidden
-inputs. HTMX fragment responses refresh those inputs out of band so later form
+inputs. htmx fragment responses refresh those inputs out of band so later form
 submissions preserve the live table state.
 
 ### `contributors_rows_fragment.html.j2`
@@ -730,15 +747,27 @@ Same context as `nns.html.j2` (`filters`, `pages`, `nns`, `sort`, `order`,
 `nets`, `master_nets`, `contributors`, and `downloads`.
 
 The fragment owns the NNS summary cards and the explanatory copy as well as the
-filter form, view toggle, pagination, and table so filtered HTMX responses
+filter form, view toggle, pagination, and table so filtered htmx responses
 keep the full vertical page order synchronized with the current server state.
 
 Sortable headers are dual-mode links (`href` + `hx-get`) targeting
 `#nns-content` with `hx-push-url="true"`.
 
 The fragment-owned GET form keeps `view`, `sort`, and `order` in hidden inputs.
-Because the full filter form is inside the swapped fragment, HTMX responses do
+Because the full filter form is inside the swapped fragment, htmx responses do
 not need out-of-band hidden-input refresh for this page.
+
+### `rate_limits_nav_fragment.html.j2`
+
+| Key | Type |
+|-----|------|
+| `urls.rate_limits` | string (href for the rate-limits page) |
+| `poll.rate_limits_github` | int (poll interval seconds, exposed as `data-poll-seconds`) |
+
+Renders the sidebar "GitHub Rate Limits" navigation link inside the
+stable `#rate-limits-nav` wrapper. The link carries a
+`data-poll-seconds` attribute that `application.js` reads to schedule
+client-side GitHub rate-limit budget checks.
 
 ### `rate_limits_server_fragment.html.j2`
 
@@ -830,10 +859,10 @@ finished-tests query contract.
 | `search_mode` | bool |
 | `is_hx` | bool |
 
-This is the HTMX fragment returned by `/tests/finished` for fragment requests.
+This is the htmx fragment returned by `/tests/finished` for fragment requests.
 It updates `#tests-finished-content` and, in navigation mode, piggy-backs an
 out-of-band replacement of the tab wrapper so the active tab stays aligned with
-the pushed URL after HTMX tab clicks.
+the pushed URL after htmx tab clicks.
 
 ### `tests_user_content_fragment.html.j2`
 
@@ -850,7 +879,7 @@ Same context as the content area of `user_management.html.j2`: `group`,
 `sort`, `order`, `q`, `view`, `pages`, `selected_users`,
 `num_selected_users`, `max_all`, `is_truncated`.
 
-The outer GET form keeps `sort`, `order`, and `view` in hidden inputs. HTMX
+The outer GET form keeps `sort`, `order`, and `view` in hidden inputs. htmx
 fragment responses refresh those inputs out of band so later form-triggered
 requests preserve the current table state.
 
@@ -869,11 +898,11 @@ Same context as the content area of `workers.html.j2`: `filter_value`,
 Sortable headers are dual-mode links (`href` + `hx-get`) targeting
 `#workers-content` with `hx-push-url="true"`.
 
-The outer GET form keeps `sort`, `order`, and `view` in hidden inputs. HTMX
+The outer GET form keeps `sort`, `order`, and `view` in hidden inputs. htmx
 fragment responses refresh those inputs out of band so later form-triggered
 requests preserve the current table state.
 
-## HTMX shell-state rule
+## htmx shell-state rule
 
 When a GET form stays outside the swapped fragment but the fragment owns
 sort/view/pagination links, the fragment must refresh any stateful hidden form
