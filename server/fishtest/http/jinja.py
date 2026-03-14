@@ -33,6 +33,7 @@ from fishtest.http.settings import (
     POLL_PENDING_USERS_NAV_S,
     POLL_RATE_LIMITS_GITHUB_S,
     POLL_RATE_LIMITS_SERVER_S,
+    POLL_STATS_DETAIL_S,
     POLL_TASKS_DETAIL_S,
     THEME_COOKIE_MAX_AGE_SECONDS,
 )
@@ -145,6 +146,7 @@ def default_environment() -> Environment:
         "poll": {
             "batch_homepage": POLL_BATCH_HOMEPAGE_S,
             "elo_detail": POLL_ELO_DETAIL_S,
+            "stats_detail": POLL_STATS_DETAIL_S,
             "tasks_detail": POLL_TASKS_DETAIL_S,
             "machines_homepage": POLL_MACHINES_HOMEPAGE_S,
             "live_elo": POLL_LIVE_ELO_S,

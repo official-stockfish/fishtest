@@ -47,7 +47,7 @@ registers it on the FastAPI router.
 | `/tests/delete` | POST | `tests_delete` | -- | CSRF, primary |
 | `/tests/view/{id}` | GET, POST | `tests_view` | `tests_view.html.j2` | |
 | `/tests/live_elo/{id}` | GET, POST | `tests_live_elo` | `tests_live_elo.html.j2` | Live Elo page + dual-scale gauge |
-| `/tests/stats/{id}` | GET, POST | `tests_stats` | `tests_stats.html.j2` | HX: `tests_stats_content_fragment.html.j2`; active runs poll with the shared detail-page interval and visibility-aware refresh |
+| `/tests/stats/{id}` | GET, POST | `tests_stats` | `tests_stats.html.j2` | HX: `tests_stats_content_fragment.html.j2`; active runs poll with the dedicated stats-page interval and visibility-aware refresh |
 | `/tests/tasks/{id}` | GET, POST | `tests_tasks` | `tasks_fragment.html.j2` | Fragment-only |
 | `/tests/machines` | GET, POST | `tests_machines` | `machines_fragment.html.j2` | Fragment-only, 10s cache |
 | `/tests/elo/{id}` | GET, POST | `tests_elo` | `elo_results_fragment.html.j2` | Fragment-only (OOB) |
@@ -133,7 +133,7 @@ The raw statistics page is dual-mode:
 
 The page shell keeps a visibility-aware poller for unfinished non-SPSA runs:
 
-- `every {{ poll.elo_detail }}s [document.visibilityState === 'visible']`
+- `every {{ poll.stats_detail }}s [document.visibilityState === 'visible']`
 - `visibilitychange[document.visibilityState === 'visible'] from:document`
 
 Server behavior for htmx polling:
