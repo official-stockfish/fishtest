@@ -1142,6 +1142,155 @@ class TestHttpUsers(unittest.TestCase):
             homepage.text,
         )
 
+    def test_tests_homepage_active_filters_keep_parentheses_when_count_matches_total(
+        self,
+    ):
+        now = datetime.now(UTC)
+        runs = {
+            "pending": [],
+            "active": [
+                {
+                    "_id": "run-sprt-stc-st-1",
+                    "args": {
+                        "username": self.username,
+                        "base_tag": "master",
+                        "new_tag": "sprt-stc-st-1",
+                        "resolved_base": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "resolved_new": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "tc": "10+0.1",
+                        "threads": 1,
+                        "sprt": {
+                            "llr": 0.0,
+                            "lower_bound": -2.94,
+                            "upper_bound": 2.94,
+                            "elo0": 0.0,
+                            "elo1": 2.0,
+                            "state": "",
+                        },
+                        "tests_repo": "https://github.com/official-stockfish/Stockfish",
+                    },
+                    "start_time": now,
+                    "finished": False,
+                    "cores": 2,
+                    "workers": 1,
+                    "results": {"wins": 0, "losses": 0, "draws": 0},
+                },
+                {
+                    "_id": "run-sprt-stc-st-2",
+                    "args": {
+                        "username": self.username,
+                        "base_tag": "master",
+                        "new_tag": "sprt-stc-st-2",
+                        "resolved_base": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "resolved_new": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "tc": "10+0.1",
+                        "threads": 1,
+                        "sprt": {
+                            "llr": 0.0,
+                            "lower_bound": -2.94,
+                            "upper_bound": 2.94,
+                            "elo0": 0.0,
+                            "elo1": 2.0,
+                            "state": "",
+                        },
+                        "tests_repo": "https://github.com/official-stockfish/Stockfish",
+                    },
+                    "start_time": now,
+                    "finished": False,
+                    "cores": 2,
+                    "workers": 1,
+                    "results": {"wins": 0, "losses": 0, "draws": 0},
+                },
+            ],
+        }
+        aggregate_result = (runs, 0.0, 0, 0, 0, 0)
+
+        self.client.cookies.set("active_run_filters", "sprt,stc,st")
+
+        with patch.object(
+            self.rundb,
+            "aggregate_unfinished_runs",
+            return_value=aggregate_result,
+        ):
+            homepage = self.client.get("/tests")
+
+        self.assertEqual(homepage.status_code, 200)
+        self.assertIn("Active - 2 (2) tests", homepage.text)
+
+    def test_tests_elo_batch_keeps_active_parentheses_when_count_matches_total(self):
+        now = datetime.now(UTC)
+        runs = {
+            "pending": [],
+            "active": [
+                {
+                    "_id": "run-sprt-stc-st-1",
+                    "args": {
+                        "username": self.username,
+                        "base_tag": "master",
+                        "new_tag": "sprt-stc-st-1",
+                        "resolved_base": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "resolved_new": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "tc": "10+0.1",
+                        "threads": 1,
+                        "sprt": {
+                            "llr": 0.0,
+                            "lower_bound": -2.94,
+                            "upper_bound": 2.94,
+                            "elo0": 0.0,
+                            "elo1": 2.0,
+                            "state": "",
+                        },
+                        "tests_repo": "https://github.com/official-stockfish/Stockfish",
+                    },
+                    "start_time": now,
+                    "finished": False,
+                    "cores": 2,
+                    "workers": 1,
+                    "results": {"wins": 0, "losses": 0, "draws": 0},
+                },
+                {
+                    "_id": "run-sprt-stc-st-2",
+                    "args": {
+                        "username": self.username,
+                        "base_tag": "master",
+                        "new_tag": "sprt-stc-st-2",
+                        "resolved_base": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "resolved_new": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "tc": "10+0.1",
+                        "threads": 1,
+                        "sprt": {
+                            "llr": 0.0,
+                            "lower_bound": -2.94,
+                            "upper_bound": 2.94,
+                            "elo0": 0.0,
+                            "elo1": 2.0,
+                            "state": "",
+                        },
+                        "tests_repo": "https://github.com/official-stockfish/Stockfish",
+                    },
+                    "start_time": now,
+                    "finished": False,
+                    "cores": 2,
+                    "workers": 1,
+                    "results": {"wins": 0, "losses": 0, "draws": 0},
+                },
+            ],
+        }
+        aggregate_result = (runs, 0.0, 0, 0, 0, 0)
+
+        self.client.cookies.set("active_run_filters", "sprt,stc,st")
+        self.client.cookies.set("active_state", "Show")
+
+        with patch.object(
+            self.rundb,
+            "aggregate_unfinished_runs",
+            return_value=aggregate_result,
+        ):
+            response = self.client.get("/tests/elo_batch")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Active - 2 (2) tests", response.text)
+
     def test_tests_homepage_active_filters_persist_none_selection(self):
         now = datetime.now(UTC)
         runs = {

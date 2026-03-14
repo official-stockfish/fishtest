@@ -468,6 +468,9 @@ Behavior notes:
    it, with the All checkbox on the first row and aligned checkbox columns.
 - The "All" checkbox uses the indeterminate state when some (but not all)
   checkboxes are checked.
+- The Active header keeps parentheses whenever a non-`All` filter state is
+   active, even when the filtered count equals the total. Parentheses disappear
+   only when the effective filter state is truly `All`.
 - The panel header count updates to show both total and filtered counts
   when a filter is active: "Active - N (M) tests".
 - Filter state is persisted in the `active_run_filters` cookie (30-day,

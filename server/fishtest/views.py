@@ -280,7 +280,7 @@ def _build_active_run_filter_context(
     total_count = len(active_runs)
     count_text = (
         f"Active - {total_count} tests"
-        if all_enabled or visible_count == total_count
+        if all_enabled
         else f"Active - {total_count} ({visible_count}) tests"
     )
 
