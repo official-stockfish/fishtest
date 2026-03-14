@@ -129,6 +129,16 @@ type _RunTableRows = list[_RunTableRow]
 type _SpsaTableRow = list[str]
 type _RunArgValue = str | list[str | _SpsaTableRow]
 type _RunArg = tuple[str, _RunArgValue, str]
+type _PaginationEntry = dict[str, object]
+
+
+class _ActiveRunFilterContext(TypedDict):
+    all_enabled: bool
+    count_text: str
+    enabled_by_dim: dict[str, tuple[str, ...]]
+    hidden_selectors: list[str]
+    style_text: str
+    ordered_runs: list[dict]
 
 
 class _BatchPanel(TypedDict):
@@ -148,6 +158,19 @@ class _BatchStats(TypedDict):
     cores: int
     nps_m: str
     games_per_minute: int
+
+
+class _FinishedRunsContext(TypedDict):
+    finished_runs: list[dict]
+    finished_runs_pages: list[_PaginationEntry]
+    num_finished_runs: int
+    visible_finished_runs: int
+    finished_page_size: int
+    failed_runs: list[dict]
+    page_idx: int
+    filters: dict[str, object]
+    title_suffix: str
+    search_mode: bool
 
 
 def _classify_active_run_filters(run: dict) -> dict[str, str]:
@@ -230,7 +253,7 @@ def _order_active_runs_for_filters(
 
 def _build_active_run_filter_context(
     request, active_runs: list[dict]
-) -> dict[str, object]:
+) -> _ActiveRunFilterContext:
     enabled_by_dim = _parse_active_run_filter_cookie(
         request.cookies.get("active_run_filters", "")
     )
@@ -3108,7 +3131,9 @@ def tests_machines(request):
     }
 
 
-def get_paginated_finished_runs(request, *, username=None, search_mode=False):
+def get_paginated_finished_runs(
+    request, *, username=None, search_mode=False
+) -> RedirectResponse | _FinishedRunsContext:
     if username is None:
         username = request.matchdict.get("username", "")
     if not username:
@@ -3450,9 +3475,9 @@ def tests_finished(request):
     context = get_paginated_finished_runs(request)
     if isinstance(context, RedirectResponse):
         return context
-    page_idx = context.get("page_idx", 0)
-    title_suffix = context.get("title_suffix", "")
-    search_mode = bool(context.get("search_mode", False))
+    page_idx = context["page_idx"]
+    title_suffix = context["title_suffix"]
+    search_mode = context["search_mode"]
     if search_mode:
         title_text = f"Search Finished Tests - page {page_idx + 1} | Stockfish Testing"
     else:
@@ -3463,11 +3488,11 @@ def tests_finished(request):
         **context,
         "query_params": request.query_params,
         "finished_runs": build_run_table_rows(
-            context.get("finished_runs", []),
+            context["finished_runs"],
             allow_github_api_calls=False,
         ),
         "failed_runs": build_run_table_rows(
-            context.get("failed_runs", []),
+            context["failed_runs"],
             allow_github_api_calls=False,
         ),
         "title": title_suffix,
@@ -3504,22 +3529,22 @@ def tests_user(request):
         response["run_tables_ctx"] = _build_run_tables_context(
             request,
             runs=runs,
-            failed_runs=finished_context.get("failed_runs", []),
-            finished_runs=finished_context.get("finished_runs", []),
-            num_finished_runs=finished_context.get("num_finished_runs", 0),
-            finished_runs_pages=finished_context.get("finished_runs_pages", []),
-            page_idx=finished_context.get("page_idx", 0),
+            failed_runs=finished_context["failed_runs"],
+            finished_runs=finished_context["finished_runs"],
+            num_finished_runs=finished_context["num_finished_runs"],
+            finished_runs_pages=finished_context["finished_runs_pages"],
+            page_idx=finished_context["page_idx"],
             username=username,
         )
     else:
         response["run_tables_ctx"] = _build_run_tables_context(
             request,
             runs=None,
-            failed_runs=finished_context.get("failed_runs", []),
-            finished_runs=finished_context.get("finished_runs", []),
-            num_finished_runs=finished_context.get("num_finished_runs", 0),
-            finished_runs_pages=finished_context.get("finished_runs_pages", []),
-            page_idx=finished_context.get("page_idx", 0),
+            failed_runs=finished_context["failed_runs"],
+            finished_runs=finished_context["finished_runs"],
+            num_finished_runs=finished_context["num_finished_runs"],
+            finished_runs_pages=finished_context["finished_runs_pages"],
+            page_idx=finished_context["page_idx"],
             username=username,
         )
     # page 2 and beyond only show finished test results
@@ -3547,11 +3572,11 @@ def homepage_results(request):
     run_tables_ctx = _build_run_tables_context(
         request,
         runs=runs,
-        failed_runs=finished_context.get("failed_runs", []),
-        finished_runs=finished_context.get("finished_runs", []),
-        num_finished_runs=finished_context.get("num_finished_runs", 0),
-        finished_runs_pages=finished_context.get("finished_runs_pages", []),
-        page_idx=finished_context.get("page_idx", 0),
+        failed_runs=finished_context["failed_runs"],
+        finished_runs=finished_context["finished_runs"],
+        num_finished_runs=finished_context["num_finished_runs"],
+        finished_runs_pages=finished_context["finished_runs_pages"],
+        page_idx=finished_context["page_idx"],
     )
     return {
         **finished_context,
@@ -3584,11 +3609,11 @@ def tests(request):
             "run_tables_ctx": _build_run_tables_context(
                 request,
                 runs=None,
-                failed_runs=finished_context.get("failed_runs", []),
-                finished_runs=finished_context.get("finished_runs", []),
-                num_finished_runs=finished_context.get("num_finished_runs", 0),
-                finished_runs_pages=finished_context.get("finished_runs_pages", []),
-                page_idx=finished_context.get("page_idx", 0),
+                failed_runs=finished_context["failed_runs"],
+                finished_runs=finished_context["finished_runs"],
+                num_finished_runs=finished_context["num_finished_runs"],
+                finished_runs_pages=finished_context["finished_runs_pages"],
+                page_idx=finished_context["page_idx"],
             ),
         }
 
@@ -4609,8 +4634,8 @@ def tests_elo_batch(request):
     finished_context = get_paginated_finished_runs(request, username=username)
     if isinstance(finished_context, RedirectResponse):
         return finished_context
-    failed_runs = finished_context.get("failed_runs", [])
-    finished_runs = finished_context.get("finished_runs", [])
+    failed_runs = finished_context["failed_runs"]
+    finished_runs = finished_context["finished_runs"]
 
     panels: list[_BatchPanel] = [
         {
@@ -4678,7 +4703,7 @@ def tests_elo_batch(request):
         },
         {
             "id": "finished-count",
-            "text": f"Finished - {finished_context.get('num_finished_runs', 0)} tests",
+            "text": f"Finished - {finished_context['num_finished_runs']} tests",
         },
     ]
 
