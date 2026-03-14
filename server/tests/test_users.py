@@ -1217,6 +1217,25 @@ class TestHttpUsers(unittest.TestCase):
         self.assertEqual(homepage.status_code, 200)
         self.assertIn("Active - 2 (2) tests", homepage.text)
 
+    def test_tests_homepage_active_filter_bar_visible_without_active_runs(self):
+        aggregate_result = ({"pending": [], "active": []}, 0.0, 0, 0, 0, 0)
+
+        self.client.cookies.set("active_run_filters", "sprt,stc,st")
+
+        with patch.object(
+            self.rundb,
+            "aggregate_unfinished_runs",
+            return_value=aggregate_result,
+        ):
+            homepage = self.client.get("/tests")
+
+        self.assertEqual(homepage.status_code, 200)
+        self.assertIn('id="active-run-filters"', homepage.text)
+        self.assertIn('id="active-filter-toggle"', homepage.text)
+        self.assertIn('id="active-filter-all"', homepage.text)
+        self.assertIn('id="active-filter-sprt"', homepage.text)
+        self.assertIn("No active tests", homepage.text)
+
     def test_tests_elo_batch_keeps_active_parentheses_when_count_matches_total(self):
         now = datetime.now(UTC)
         runs = {

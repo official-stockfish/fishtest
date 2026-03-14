@@ -1,4 +1,3 @@
-{% if active_runs is defined and active_runs | length > 0 %}
 {% set active_run_filters = active_run_filters if active_run_filters is defined and active_run_filters else none %}
 {% set enabled = active_run_filters.enabled_by_dim if active_run_filters else {} %}
 <div id="active-run-filters"
@@ -83,4 +82,3 @@
     </div>
   </div>
 </div>
-{% endif %}

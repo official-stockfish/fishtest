@@ -460,6 +460,8 @@ Behavior notes:
    server-rendered attributes.
 - The filter controls sit inside the Active panel's collapse section
   (matching the workers table filter placement).
+- The Active filter bar remains visible even when there are zero active runs,
+   so users can inspect or change persisted filter state before new runs appear.
 - The ellipsis toggle shows or hides the filter controls without leaving
    the Active panel.
 - Checkboxes are grouped by dimension with small text labels (Type, TC,
