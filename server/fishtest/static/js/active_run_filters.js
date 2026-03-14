@@ -247,9 +247,7 @@
     }
 
     countSpan.textContent =
-      visibleCount === totalRows
-        ? `Active - ${totalRows} tests`
-        : `Active - ${totalRows} (${visibleCount}) tests`;
+      `Active - ${totalRows} (${visibleCount}) tests`;
   };
 
   allCheckbox.addEventListener("change", () => {
