@@ -300,7 +300,9 @@ carry authentication state:
 - `contributors_findme` is written by `static/js/contributors.js` and preserves
    rank-jump mode across contributors pages.
 - `machines_state` is written by `static/js/tests_homepage.js` and preserves
-   whether the homepage workers panel is expanded.
+   whether the homepage workers panel is expanded. Opening the panel also
+   triggers an immediate `/tests/machines` refresh instead of waiting for the
+   next periodic poll.
 - `machines_sort`, `machines_order`, `machines_page`, `machines_q`,
    `machines_my_workers`, and `machines_filtered_count` are written server-side
    by `views.py` when `/tests/machines` normalizes the current filter state.
@@ -420,10 +422,13 @@ Behavior notes:
 - `/tests/machines` responses persist the effective `sort`, `order`, `page`,
    `q`, and `my_workers` values in cookies, so returning to `/tests` restores
    the last machines filter state.
-- Workers counter semantics are stable across both `/tests/machines` and
+- Workers counter semantics are stable across `/tests`, `/tests/machines`, and
    `/tests/elo_batch` OOB updates:
   - no active filters: `Workers - <total>`
   - active `q` and/or `my_workers`: `Workers - <total> (<filtered>)`
+- When workers filters are active and the Workers panel is collapsed, `/tests`
+   and `/tests/elo_batch` recompute the filtered value from the current machine
+   snapshot instead of reusing the last cookie-backed filtered count.
 - Machines sorting is fully server-authoritative; the old generic client-side
    header sorter has been retired.
 

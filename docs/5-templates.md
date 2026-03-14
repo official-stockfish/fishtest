@@ -130,6 +130,10 @@ Current examples:
 - `tests.html.j2` -> `static/js/tests_homepage.js`
 - `user.html.j2` (profile mode) -> `static/js/user_profile.js`
 
+`tests_homepage.js` owns the homepage Workers panel cookie state and triggers
+an immediate `machines:load` refresh whenever Bootstrap reports that the panel
+has been opened.
+
 Shared behavior that spans multiple pages belongs in shared assets instead of
 page-local inline scripts. Search/filter inputs remain plain
 `<input type="search">` controls, and any shared behavior or styling should
@@ -297,6 +301,9 @@ Behavior notes:
    `Workers - <total> (<filtered>)`.
 - Homepage polling keeps including the current filter form state, so fragment
    refreshes continue while the `q` search filter is active.
+- The hidden homepage Workers header is refreshed from the current machine
+  snapshot during `/tests` and `/tests/elo_batch` rendering, so a collapsed
+  panel still shows a live filtered count.
 
 Each machine row: `username`, `country_code`, `concurrency`, `worker_url`,
 `worker_short`, `nps_m` (preformatted string), `max_memory`, `system`,
@@ -687,6 +694,14 @@ submissions preserve the live table state.
 | `machines` | list of dicts | Machine rows (OOB `#workers-count`) |
 | `stats` | dict or absent | Homepage stats (OOB, omitted when filtered by user) |
 
+Behavior notes:
+
+- When homepage workers filters are active, the fragment recomputes the
+   `#workers-count` filtered value from the current machine snapshot instead of
+   trusting the last cookie-backed filtered count.
+- `workers_count_text` remains the single shared workers-counter string used by
+   the homepage shell and OOB fragment updates.
+
 ### `elo_results_fragment.html.j2`
 
 | Key | Type |
@@ -740,6 +755,10 @@ This fragment is returned by `/tests/live_elo_update/{id}` and swaps
 This fragment also refreshes the hidden sort/page inputs and the `#workers-count`
 label out of band so homepage polling, sorting, paging, and filters stay in
 sync without replacing the filter controls themselves.
+
+The machine rows come from the current server machine snapshot. The same
+snapshot is reused by `/tests` and `/tests/elo_batch` when they need to render a
+live filtered workers count while the table itself is collapsed.
 
 ### `nns_content_fragment.html.j2`
 

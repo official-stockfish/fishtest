@@ -851,22 +851,49 @@ class RunDb:
             )
         return unfinished_runs
 
+    @lru_cache(maxsize=1, expiration=5, refresh=False)
+    def _get_machine_runs_from_db(self):
+        return list(self.runs.find({"finished": False}, {"tasks": 1, "args": 1}))
+
     def get_machines(self):
-        active_runs = self.runs.find({"finished": False}, {"tasks": 1, "args": 1})
-        machines = (
-            task["worker_info"]
-            | {
-                "last_updated": (
-                    task["last_updated"] if task.get("last_updated") else None
-                ),
-                "run": run,
-                "task_id": task_id,
-            }
-            for run in active_runs
-            if any(task["active"] for task in reversed(run["tasks"]))
-            for task_id, task in enumerate(run["tasks"])
-            if task["active"]
-        )
+        if self.__is_primary_instance:
+            with self.unfinished_runs_lock:
+                run_ids = list(self.unfinished_runs)
+
+            active_runs = []
+            for run_id in run_ids:
+                run = self.get_run(run_id)
+                if run is None:
+                    continue
+                with self.active_run_lock(run_id):
+                    active_runs.append(
+                        {
+                            "_id": run["_id"],
+                            "args": copy.copy(run["args"]),
+                            "tasks": copy.copy(run["tasks"]),
+                        }
+                    )
+        else:
+            active_runs = self._get_machine_runs_from_db()
+
+        machines = []
+        for run in active_runs:
+            if not any(task["active"] for task in reversed(run["tasks"])):
+                continue
+            for task_id, task in enumerate(run["tasks"]):
+                if task["active"]:
+                    machines.append(
+                        task["worker_info"]
+                        | {
+                            "last_updated": (
+                                task["last_updated"]
+                                if task.get("last_updated")
+                                else None
+                            ),
+                            "run": run,
+                            "task_id": task_id,
+                        }
+                    )
         return machines
 
     def aggregate_unfinished_runs(self, username=None):
