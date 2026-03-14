@@ -45,6 +45,9 @@ and `http/jinja.py`.
 | `list_to_string(values, decimals)` | `template_helpers.py` | Formats a list of floats as a string |
 | `pdf_to_string(...)` | `template_helpers.py` | Formats a probability density function |
 | `t_conf(...)` | `template_helpers.py` | Confidence interval formatting |
+| `poll` | `http/jinja.py` | Shared htmx polling intervals exposed to templates |
+| `htmx` | `http/jinja.py` | Shared htmx timing defaults exposed to templates |
+| `cookies` | `http/jinja.py` | Shared cookie max-age values for page scripts/templates |
 | `fishtest` | `fishtest` package | Package module (version, metadata) |
 | `gh` | `github_api.py` | GitHub API module (commit_url, etc.) |
 | `math`, `datetime`, `copy`, `urllib`, `float` | Python stdlib | Standard library access |
@@ -71,7 +74,7 @@ Every template receives these keys from `build_template_context()`:
 | `csrf_token` | string | CSRF token for forms and meta tags |
 | `current_user` | `{"username": str}` or `None` | Authenticated user |
 | `theme` | string | `"dark"`, `"light"`, or empty (from cookie) |
-| `pending_users_count` | int | Badge count for user management |
+| `pending_users_count` | int | Pending-user count used by the sidebar `Users` link |
 | `static_url` | callable | `static_url(path)` function |
 | `flash` | dict | `{"error": [...], "warning": [...], "info": [...]}` |
 | `urls` | dict | Navigation URLs (see below) |
@@ -86,9 +89,7 @@ Every template receives these keys from `build_template_context()`:
     "signup": "/signup",
     "user_profile": "/user",
     "tests": "/tests",
-    "tests_finished_ltc": "/tests/finished?ltc_only=1",
-    "tests_finished_success": "/tests/finished?success_only=1",
-    "tests_finished_yellow": "/tests/finished?yellow_only=1",
+   "tests_finished": "/tests/finished",
     "tests_run": "/tests/run",
     "tests_user_prefix": "/tests/user/",
     "tests_machines": "/tests/machines",
@@ -105,16 +106,54 @@ Every template receives these keys from `build_template_context()`:
 }
 ```
 
+### Shared sidebar status links
+
+- `base.html.j2` includes `pending_users_nav_fragment.html.j2` inside a stable
+   htmx poll wrapper. The wrapper owns the `load` and `every` triggers, while
+   the fragment owns only the rendered anchor HTML.
+- `base.html.j2` also includes `rate_limits_nav_fragment.html.j2`. That link is
+   updated by `static/js/application.js`, not by a server fragment endpoint,
+   because the browser-side GitHub token lives in local storage and is not part
+   of server session state.
+- `rate_limits.html.j2` exposes the same browser-side client poll cadence via
+   `data-poll-seconds` on `#client_rate_limit`, so the page row and the sidebar
+   link read the same client limit state.
+
+## Client-side behavior pattern
+
+Behavior-heavy page scripts should prefer static assets plus `data-*`
+configuration over large inline `<script>` blocks.
+
+Current examples:
+
+- `contributors.html.j2` -> `static/js/contributors.js`
+- `tests.html.j2` -> `static/js/tests_homepage.js`
+- `user.html.j2` (profile mode) -> `static/js/user_profile.js`
+
+`tests_homepage.js` owns the homepage Workers panel cookie state and triggers
+an immediate `machines:load` refresh whenever Bootstrap reports that the panel
+has been opened.
+
+Shared behavior that spans multiple pages belongs in shared assets instead of
+page-local inline scripts. Search/filter inputs remain plain
+`<input type="search">` controls, and any shared behavior or styling should
+live in shared assets instead of page-local inline scripts.
+
+This keeps templates focused on structure and server-provided state, aligns with
+MDN separation-of-concerns guidance, and makes the JS contract testable without
+embedding implementation details in the template body.
+
 ## Template catalog
+
+### Page templates (extend `base.html.j2`)
 
 | Template | Purpose |
 |----------|---------|
-| `base.html.j2` | Base layout (navbar, footer, asset loading) |
+| `base.html.j2` | Base layout (navbar, footer, asset loading, htmx CDN, pending-user nav poll target) |
 | `actions.html.j2` | Paginated action log |
 | `contributors.html.j2` | Contributor leaderboard (all-time and monthly) |
 | `elo_results.html.j2` | ELO result display (included as partial) |
 | `login.html.j2` | Login form |
-| `machines.html.j2` | Connected worker machines table |
 | `nn_upload.html.j2` | Neural network upload form |
 | `nns.html.j2` | Neural network listing with pagination |
 | `notfound.html.j2` | 404 error page |
@@ -124,17 +163,54 @@ Every template receives these keys from `build_template_context()`:
 | `run_tables.html.j2` | Run listing container (pending/active/finished) |
 | `signup.html.j2` | User registration form |
 | `sprt_calc.html.j2` | SPRT calculator page |
-| `tasks.html.j2` | Task table partial for a run |
 | `tests.html.j2` | Main tests dashboard |
 | `tests_finished.html.j2` | Finished tests listing with filters |
 | `tests_live_elo.html.j2` | Live ELO chart page |
 | `tests_run.html.j2` | New test / rerun submission form |
-| `tests_stats.html.j2` | Statistical analysis page |
+| `tests_stats.html.j2` | Raw statistics page shell with visibility-aware poller |
 | `tests_user.html.j2` | Per-user test listing |
 | `tests_view.html.j2` | Single test detail page |
 | `user.html.j2` | User profile page |
 | `user_management.html.j2` | User administration page |
 | `workers.html.j2` | Worker blocking administration page |
+
+### Fragment templates (standalone, no `base.html.j2`)
+
+Fragment templates serve htmx partial responses. They do not extend the
+base layout and contain only the HTML subset needed for the swap target.
+
+| Template | Swap target | OOB | Polled |
+|----------|------------|-----|--------|
+| `actions_content_fragment.html.j2` | `#actions-content` | -- | -- |
+| `actions_page_fragment.html.j2` | `#actions-page` | -- | -- |
+| `active_run_filters_fragment.html.j2` | `#active-run-filters` | -- | -- |
+| `contributors_content_fragment.html.j2` | `#contributors-content` | Yes (hidden input sync) | -- |
+| `contributors_rows_fragment.html.j2` | included by `contributors_content_fragment.html.j2` | -- | -- |
+| `elo_batch_fragment.html.j2` | none (OOB only) | Yes | Yes |
+| `elo_results_fragment.html.j2` | none (OOB only) | Yes | Yes |
+| `homepage_stats_fragment.html.j2` | none (OOB only) | Yes | -- |
+| `live_elo_fragment.html.j2` | none (OOB only) | Yes | Yes |
+| `machines_fragment.html.j2` | `#machines` | Yes (`#workers-count`) | Yes |
+| `nns_content_fragment.html.j2` | `#nns-content` | -- | -- |
+| `pending_users_nav_fragment.html.j2` | `#pending-users-nav` | -- | Yes |
+| `rate_limits_nav_fragment.html.j2` | `#rate-limits-nav` | -- | -- |
+| `rate_limits_server_fragment.html.j2` | server rate limit cell | Yes (`#server_reset`) | Yes |
+| `run_table_row_fragment.html.j2` | `#run-{id}` (row swap) | -- | -- |
+| `tasks_fragment.html.j2` | `#tasks-body` | -- | Yes |
+| `tests_filter_tabs_fragment.html.j2` | caller-defined `hx-target` | -- | -- |
+| `tests_finished_content_fragment.html.j2` | full-page shell include | -- | -- |
+| `tests_finished_results_fragment.html.j2` | `#tests-finished-content` | Yes (tab wrapper in navigation mode) | -- |
+| `tests_stats_content_fragment.html.j2` | `#tests-stats-content` | -- | Yes |
+| `tests_user_content_fragment.html.j2` | `#tests-user-content` | -- | -- |
+| `user_management_content_fragment.html.j2` | `#user-management-content` | Yes (hidden input sync) | -- |
+| `user_management_rows_fragment.html.j2` | included by `user_management_content_fragment.html.j2` | -- | -- |
+| `workers_content_fragment.html.j2` | `#workers-content` | Yes (hidden input sync) | -- |
+| `workers_rows_fragment.html.j2` | included by `workers_content_fragment.html.j2` | -- | -- |
+
+Column notes:
+- **OOB**: template contains `hx-swap-oob` attributes that update additional
+  DOM elements beyond the primary swap target.
+- **Polled**: template is fetched on a timer via `hx-trigger="every Ns"`.
 
 ## Context contracts
 
@@ -150,8 +226,16 @@ Uses shared base context only. All other templates extend this.
 | Key | Type | Description |
 |-----|------|-------------|
 | `actions` | list of dicts | Action rows (see below) |
+| `visible_actions` | int | Action rows rendered on the current page |
+| `num_actions` | int | Total matching action count |
+| `page_size` | int | Page size used for the current result set |
+| `current_page` | int | 1-based page index rendered in the summary |
+| `run_id_filter` | string | Active run filter, if the page is scoped to one run |
+| `max_count` | int or None | Effective server-side action cap carried through GET forms |
+| `sort` | string | Active sort field (`time`, `event`, `source`, `target`, `comment`) |
+| `order` | string | Active sort direction (`asc` or `desc`) |
+| `sort_summary` | string | Optional summary line describing capped full-result sorting scope |
 | `filters` | dict | `{action, username, text, run_id}` |
-| `usernames` | list of strings | For the search datalist |
 | `pages` | list | Pagination items |
 
 Each action row:
@@ -174,11 +258,20 @@ Each action row:
 | `is_monthly` | bool | Monthly vs all-time view |
 | `is_approver` | bool | Current user is approver |
 | `summary` | dict | `{testers, developers, active_testers, cpu_years, games, tests}` |
-| `users` | list of dicts | Contributor rows |
+| `users` | list of dicts | Contributor rows (current page) |
+| `pages` | list | Pagination items |
+| `search` | string | Active search query |
+| `sort` | string | Active server sort field |
+| `order` | string | Active sort direction |
+| `view` | string | `paged` or `all` |
+| `highlight` | string | Highlighted username, usually set by `findme` redirects |
+| `is_truncated` | bool | Whether `view=all` was capped |
+| `num_users` | int | Total filtered row count before paging/cap |
+| `max_all` | int | Hard cap used for `view=all` |
 
-Each contributor row: `username`, `last_updated_label`, `last_updated_sort`,
-`games_per_hour`, `cpu_hours`, `games`, `tests`, `tests_repo`, `tests_repo_url`,
-`tests_user_url`.
+Each contributor row: `username`, `user_url`, `rank`, `percentile`, `cpu_pct`,
+`last_updated_label`, `last_updated_sort`, `games_per_hour`, `cpu_hours`,
+`games`, `tests`, `tests_repo_url`, `tests_user_url`.
 
 ### `elo_results.html.j2`
 
@@ -195,11 +288,22 @@ The `elo` dict contains: `info_lines`, `pre_attrs`, `show_gauge`, `chart_div_id`
 
 Shared base context only.
 
-### `machines.html.j2`
+### `machines_fragment.html.j2`
 
 | Key | Type | Description |
 |-----|------|-------------|
 | `machines` | list of dicts | Machine rows |
+
+Behavior notes:
+
+- The fragment refreshes the `#workers-count` label out of band with the same
+   short format used by the homepage shell: `Workers - <total>` or
+   `Workers - <total> (<filtered>)`.
+- Homepage polling keeps including the current filter form state, so fragment
+   refreshes continue while the `q` search filter is active.
+- The hidden homepage Workers header is refreshed from the current machine
+  snapshot during `/tests` and `/tests/elo_batch` rendering, so a collapsed
+  panel still shows a live filtered count.
 
 Each machine row: `username`, `country_code`, `concurrency`, `worker_url`,
 `worker_short`, `nps_m` (preformatted string), `max_memory`, `system`,
@@ -226,6 +330,16 @@ Each machine row: `username`, `country_code`, `concurrency`, `worker_url`,
 Each nn row: `time_label`, `name`, `name_url`, `user`, `first_test_label`,
 `first_test_url`, `last_test_label`, `last_test_url`, `downloads`, `is_master`.
 
+Behavior notes:
+
+- Search is URL-driven and rendered by the same `/nns` endpoint.
+- htmx search updates only `#nns-content`; full-page rendering still works.
+- Typing in `network_name` / `user` and toggling `master_only` triggers
+   htmx requests, while submit remains available as a non-JS fallback.
+- The page shell owns the heading and filter form; the summary cards,
+  explanatory copy, view toggle, pagination, and table live in the content
+  fragment.
+
 ### `notfound.html.j2`
 
 Shared base context only.
@@ -250,11 +364,13 @@ Shared base context only.
 |-----|------|
 | `header` | string or None |
 | `count` | int or None |
+| `count_text` | string or None |
 | `runs` | list of run row dicts |
 | `pages` | list of pagination items |
 | `toggle` | string or None |
 | `toggle_state` | `"Hide"` or `"Show"` |
 | `show_delete` | bool |
+| `active_run_filters` | dict or None |
 
 ### `run_tables.html.j2`
 
@@ -266,6 +382,8 @@ Shared base context only.
 | `paused_runs` | list of run rows |
 | `failed_runs` | list of run rows |
 | `active_runs` | list of run rows |
+| `active_count_text` | string |
+| `active_run_filters` | dict or None |
 | `finished_runs` | list of run rows |
 | `num_finished_runs` | int |
 | `finished_runs_pages` | list |
@@ -280,7 +398,7 @@ Shared base context only.
 
 Shared base context only.
 
-### `tasks.html.j2`
+### `tasks_fragment.html.j2`
 
 | Key | Type |
 |-----|------|
@@ -305,6 +423,14 @@ Each task row: `task_id`, `row_class`, `worker_label`, `worker_url`,
 | `machines_count` | int |
 | `run_tables_ctx` | dict (for `run_tables.html.j2`) |
 
+Behavior notes:
+
+- `tests.html.j2` forwards the homepage Active-panel first-paint filter state
+   through `run_tables_ctx`, including restored checkbox selections, filtered
+   count text, and initial hide selectors.
+- Notification button state is not part of `run_tables_ctx` because it is
+   derived from browser-local follow state at page load time.
+
 ### `tests_finished.html.j2`
 
 | Key | Type |
@@ -312,6 +438,7 @@ Each task row: `task_id`, `row_class`, `worker_label`, `worker_url`,
 | `filters` | dict (`ltc_only`, `success_only`, `yellow_only`) |
 | `title_suffix` | string |
 | `finished_runs` | list of run rows |
+| `visible_finished_runs` | int |
 | `num_finished_runs` | int |
 | `finished_runs_pages` | list |
 
@@ -321,6 +448,20 @@ Each task row: `task_id`, `row_class`, `worker_label`, `worker_url`,
 |-----|------|
 | `run` | dict |
 | `page_title` | string |
+| `run_status_label` | string |
+| `sprt_state` | string |
+| `elo_raw`, `ci_lower_raw`, `ci_upper_raw` | float |
+| `LLR_raw`, `LOS_raw`, `a_raw`, `b_raw` | float |
+| `elo_value`, `ci_lower`, `ci_upper`, `LLR`, `LOS` | number |
+| `W`, `L`, `D`, `games` | int |
+| `w_pct`, `l_pct`, `d_pct` | float |
+| `pentanomial` | list |
+| `elo_model`, `elo0`, `elo1`, `alpha`, `beta` | mixed |
+
+The page script renders LOS, LLR, and Elo gauges from `gauge-data` attributes.
+The Elo gauge supports a fixed default range (`[-4, +4]`) and a dynamic range.
+The gauge reports the uncapped server Elo value while the needle remains
+visually bounded by the active range.
 
 ### `tests_run.html.j2`
 
@@ -340,11 +481,34 @@ Each task row: `task_id`, `row_class`, `worker_label`, `worker_url`,
 
 ### `tests_stats.html.j2`
 
+Page shell for `/tests/stats/{id}`. Includes the shared stats content fragment and,
+for unfinished non-SPSA runs, a visibility-aware htmx poller targeting
+`#tests-stats-content` using the dedicated raw-statistics poll cadence
+`poll.stats_detail`.
+
 | Key | Type |
 |-----|------|
 | `run` | dict |
 | `page_title` | string |
 | `stats` | dict |
+
+### `tests_stats_content_fragment.html.j2`
+
+Shared stats-body fragment used by both the full-page shell and `HX-Request`
+responses for `/tests/stats/{id}`.
+
+| Key | Type |
+|-----|------|
+| `run` | dict |
+| `page_title` | string |
+| `stats` | dict |
+
+Rendered structure:
+
+- `#tests-stats-content` root element
+- original heading-and-table statistics layout shared by full-page and htmx renders
+- SPRT bounds rendered as a table
+- SPSA message rendered in place of the statistics tables when applicable
 
 ### `tests_user.html.j2`
 
@@ -377,6 +541,37 @@ Each task row: `task_id`, `row_class`, `worker_label`, `worker_url`,
 | `use_3dot_diff` | bool |
 | `allow_github_api_calls` | bool |
 
+Detail-page ELO polling contract:
+
+- Unfinished runs render a visibility-aware htmx poller targeting
+   `/tests/elo/{id}?expected=<status>`.
+- The `expected` query param must match the page's current run status label:
+   `active`, `paused`, or `pending`.
+- The page-level `_status` Jinja expression is the canonical source for both
+   the visible status label and the poller's expected state.
+
+Detail-page tasks loader contract:
+
+- When `tasks_shown` is true, `#tasks-body` starts an htmx load request from
+   `tests_view.html.j2`.
+- The template attaches the `htmx:afterSwap` and error listeners for
+   `#tasks-body` before `await DOMContentLoaded()` so the initial `load` request
+   cannot outrun the promise-resolution path.
+- The same script also resolves immediately if `#tasks-body` is already marked
+   loaded or already contains rows.
+
+Run-table row contract:
+
+- Run tables use the normal `.table-striped` contract.
+- Active-run filtering emits a first-paint style block that hides excluded
+   rows, and the Active filter script keeps the visible rows contiguous in tbody
+   order so the normal `.table-striped` pattern stays correct while filters are
+   active. The first-paint style block is hide-only and does not encode row
+   parity.
+- The Active row markup carries filter dimensions plus a source-order index for
+   restoring the current server order after checkbox changes and OOB swaps; it
+   does not use a row-parity contract.
+
 ### `user.html.j2`
 
 | Key | Type |
@@ -394,11 +589,21 @@ Each task row: `task_id`, `row_class`, `worker_label`, `worker_url`,
 
 | Key | Type |
 |-----|------|
-| `all_users` | list of user row dicts |
-| `pending_users` | list |
-| `blocked_users` | list |
-| `idle_users` | list |
-| `approvers_users` | list |
+| `all_count` | int |
+| `pending_count` | int |
+| `blocked_count` | int |
+| `idle_count` | int |
+| `approvers_count` | int |
+| `group` | string |
+| `sort` | string |
+| `order` | string |
+| `q` | string |
+| `view` | string |
+| `pages` | list |
+| `users` | list of user row dicts |
+| `num_selected_users` | int |
+| `max_all` | int |
+| `is_truncated` | bool |
 
 Each user row: `username`, `user_url`, `registration_label`, `groups`,
 `groups_label`, `email`.
@@ -413,10 +618,328 @@ Each user row: `username`, `user_url`, `registration_label`, `groups`,
 | `message` | string |
 | `blocked` | bool |
 | `show_email` | bool |
+| `filter_value` | string |
+| `sort` | string |
+| `order` | string |
+| `q` | string |
+| `view` | string |
+| `pages` | list |
 | `blocked_workers` | list of dicts |
+| `num_workers` | int |
+| `max_all` | int |
+| `is_truncated` | bool |
 
 Each blocked worker row: `worker_name`, `last_updated_label`, `actions_url`,
 `owner_email`, `mailto_url`.
+
+## Fragment context contracts
+
+Fragment templates receive the shared base context (via
+`build_template_context()`) plus handler-specific keys.
+
+### `actions_content_fragment.html.j2`
+
+Same context as `actions.html.j2` (`actions`, `visible_actions`, `num_actions`, `page_size`,
+`current_page`, `run_id_filter`, `max_count`, `sort`, `order`,
+`sort_summary`, `filters`, `pages`).
+
+### `actions_page_fragment.html.j2`
+
+Same context as `actions.html.j2`. This fragment owns the filter form,
+the `#actions-content` include, and the search-first `/actions` form that owns
+the debounced username and free-text filters. The username filter is
+substring-based; the view resolves matching usernames before running the exact
+action query so the debounced form stays fast on large logs. The free-text help
+control is a labeled button that opens the Bootstrap modal, so the icon trigger
+is keyboard-focusable and announced as a button.
+
+### `active_run_filters_fragment.html.j2`
+
+| Key | Type |
+|-----|------|
+| `active_runs` | list (run dicts for the Active panel) |
+| `active_run_filters` | dict or `None` (parsed cookie state) |
+| `cookies.persistent_ui_max_age` | int (cookie max-age seconds) |
+
+Renders the faceted filter panel (SPRT/SPSA/NumGames, STC/LTC, ST/SMP)
+above the Active runs table. Server-side rendering of initial checkbox
+state eliminates the flash where all rows are briefly visible before JS
+reapplies the persisted filter. The template only renders when
+`active_runs` is non-empty.
+
+### `contributors_content_fragment.html.j2`
+
+Same context as the content area of `contributors.html.j2`: `users`, `pages`,
+`sort`, `order`, `view`, `num_users`, `max_all`, `is_truncated`.
+
+Sortable headers are dual-mode links (`href` + `hx-get`) targeting
+`#contributors-content` with `hx-push-url="true"`.
+
+The outer contributors search form keeps `view`, `sort`, and `order` in hidden
+inputs. htmx fragment responses refresh those inputs out of band so later form
+submissions preserve the live table state.
+
+### `contributors_rows_fragment.html.j2`
+
+| Key | Type |
+|-----|------|
+| `users` | list of contributor row dicts |
+
+### `elo_batch_fragment.html.j2`
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `panels` | list of dicts | Each: `tbody_id`, `rows`, `show_delete` |
+| `count_updates` | list of dicts | Each: `id`, `text` (OOB count spans) |
+| `machines` | list of dicts | Machine rows (OOB `#workers-count`) |
+| `stats` | dict or absent | Homepage stats (OOB, omitted when filtered by user) |
+
+Behavior notes:
+
+- When homepage workers filters are active, the fragment recomputes the
+   `#workers-count` filtered value from the current machine snapshot instead of
+   trusting the last cookie-backed filtered count.
+- `workers_count_text` remains the single shared workers-counter string used by
+   the homepage shell and OOB fragment updates.
+
+### `elo_results_fragment.html.j2`
+
+| Key | Type |
+|-----|------|
+| `run` | dict |
+| `elo` | dict (same as `elo_results.html.j2`) |
+| `_status` | string (OOB `#run-status-{id}`) |
+| `tasks_totals` | string (OOB `#tasks-totals`) |
+
+### `homepage_stats_fragment.html.j2`
+
+| Key | Type |
+|-----|------|
+| `cores` | int |
+| `nps_m` | string |
+| `games_per_minute` | string |
+| `pending_hours` | string |
+
+### `live_elo_fragment.html.j2`
+
+| Key | Type |
+|-----|------|
+| `run` | dict |
+| `run_status_label` | string |
+| `sprt_state` | string |
+| `elo_raw`, `ci_lower_raw`, `ci_upper_raw` | float |
+| `LLR_raw`, `LOS_raw`, `a_raw`, `b_raw` | float |
+| `elo_value`, `ci_lower`, `ci_upper`, `LLR`, `LOS` | number |
+| `W`, `L`, `D`, `games` | int |
+| `w_pct`, `l_pct`, `d_pct` | float |
+| `pentanomial` | list |
+| `elo_model`, `elo0`, `elo1`, `alpha`, `beta` | mixed |
+
+This fragment is returned by `/tests/live_elo_update/{id}` and swaps
+`#live-elo-data` out-of-band while preserving the current client-side gauge mode.
+
+### `machines_fragment.html.j2`
+
+| Key | Type |
+|-----|------|
+| `machines` | list of machine row dicts |
+| `sort` | string |
+| `order` | string |
+| `q` | string |
+| `current_page` | int |
+| `my_workers` | bool |
+| `pages` | list |
+| `machines_count` | int |
+| `workers_count_text` | string (OOB `#workers-count`) |
+
+This fragment also refreshes the hidden sort/page inputs and the `#workers-count`
+label out of band so homepage polling, sorting, paging, and filters stay in
+sync without replacing the filter controls themselves.
+
+The machine rows come from the current server machine snapshot. The same
+snapshot is reused by `/tests` and `/tests/elo_batch` when they need to render a
+live filtered workers count while the table itself is collapsed.
+
+### `nns_content_fragment.html.j2`
+
+Same context as `nns.html.j2` (`filters`, `pages`, `nns`, `sort`, `order`,
+`view`, `num_nns`, `max_all`, `is_truncated`) plus `nns_summary` with
+`nets`, `master_nets`, `contributors`, and `downloads`.
+
+The fragment owns the NNS summary cards and the explanatory copy as well as the
+filter form, view toggle, pagination, and table so filtered htmx responses
+keep the full vertical page order synchronized with the current server state.
+
+Sortable headers are dual-mode links (`href` + `hx-get`) targeting
+`#nns-content` with `hx-push-url="true"`.
+
+The fragment-owned GET form keeps `view`, `sort`, and `order` in hidden inputs.
+Because the full filter form is inside the swapped fragment, htmx responses do
+not need out-of-band hidden-input refresh for this page.
+
+### `rate_limits_nav_fragment.html.j2`
+
+| Key | Type |
+|-----|------|
+| `urls.rate_limits` | string (href for the rate-limits page) |
+| `poll.rate_limits_github` | int (poll interval seconds, exposed as `data-poll-seconds`) |
+
+Renders the sidebar "GitHub Rate Limits" navigation link inside the
+stable `#rate-limits-nav` wrapper. The link carries a
+`data-poll-seconds` attribute that `application.js` reads to schedule
+client-side GitHub rate-limit budget checks.
+
+### `rate_limits_server_fragment.html.j2`
+
+| Key | Type |
+|-----|------|
+| `server_rate_limit` | string |
+| `server_reset` | string (OOB `#server_reset`) |
+
+The `/rate_limits` page client row and the sidebar `GitHub Rate Limits` link
+both project their cadence from `poll.rate_limits_github`.
+
+The `/rate_limits` server row projects its separate cadence from
+`poll.rate_limits_server`.
+
+The sidebar link keeps a fixed label and uses the same red status styling as
+the pending-users sidebar item whenever the client GitHub budget is below the
+threshold.
+
+The shared sidebar shell is mounted inside the stable `#rate-limits-nav`
+wrapper in `base.html.j2`, mirroring the stable wrapper pattern already used by
+`#pending-users-nav`.
+
+The pending-users sidebar wrapper, the `/rate_limits/server` poller, and the
+client-side GitHub rate-limit refresh all use `visibilitychange` activation, so
+an active page refreshes after a hidden tab becomes visible again without
+issuing duplicate calls on first page load.
+
+The GitHub sidebar link also restores the last known client warning state from
+local storage before first paint so page navigation does not briefly flash the
+link back to its normal color.
+
+### `run_table_row_fragment.html.j2`
+
+| Key | Type |
+|-----|------|
+| `row` | run row dict |
+| `show_delete` | bool |
+| `show_gauge` | bool |
+
+### `tasks_fragment.html.j2`
+
+Same context as the `tasks_fragment` section of `tests_view.html.j2`:
+`tasks`, `show_pentanomial`, `show_residual`.
+
+### `tests_filter_tabs_fragment.html.j2`
+
+Reusable partial included by `tests_finished.html.j2` and
+`tests_user.html.j2` for filter tab buttons (All / Green / Yellow / LTC).
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `filters` | dict | `{success_only, yellow_only, ltc_only}` |
+| `hx_target` | string | Target element ID for `hx-target` |
+| `base_url` | string | Base URL for filter links (default `/tests/finished`) |
+
+When present, `filters.all_query_string` and `filters.filtered_query_suffix`
+preserve additional GET state such as username search fields while the user
+switches between the tab filters.
+
+### `tests_finished_content_fragment.html.j2`
+
+| Key | Type |
+|-----|------|
+| `filters` | dict (`ltc_only`, `success_only`, `yellow_only`, `username_query`, `text`, `max_count`) |
+| `finished_runs` | list of run rows |
+| `num_finished_runs` | int |
+| `finished_page_size` | int |
+| `finished_runs_pages` | list |
+
+This full-page include owns the tab strip and the search-first
+`/tests/finished` GET form. Username substring uses a cached finished-run
+username list and the exact-username finished-run path, while the `text` field
+performs a case-insensitive MongoDB text search against the last-column run
+info text on finished rows only. The form preserves the effective `max_count`
+cap so tab switches and pagination stay on the same server-authoritative
+finished-tests query contract.
+
+### `tests_finished_results_fragment.html.j2`
+
+| Key | Type |
+|-----|------|
+| `filters` | dict |
+| `finished_runs` | list of run rows |
+| `num_finished_runs` | int |
+| `visible_finished_runs` | int |
+| `finished_page_size` | int |
+| `finished_runs_pages` | list |
+| `page_idx` | int |
+| `search_mode` | bool |
+| `is_hx` | bool |
+
+This is the htmx fragment returned by `/tests/finished` for fragment requests.
+It updates `#tests-finished-content` and, in navigation mode, piggy-backs an
+out-of-band replacement of the tab wrapper so the active tab stays aligned with
+the pushed URL after htmx tab clicks.
+
+### `tests_user_content_fragment.html.j2`
+
+| Key | Type |
+|-----|------|
+| `username` | string |
+| `is_approver` | bool |
+| `filters` | dict |
+| `run_tables_ctx` | dict |
+
+### `user_management_content_fragment.html.j2`
+
+Same context as the content area of `user_management.html.j2`: `group`,
+`sort`, `order`, `q`, `view`, `pages`, `selected_users`,
+`num_selected_users`, `max_all`, `is_truncated`.
+
+The outer GET form keeps `sort`, `order`, and `view` in hidden inputs. htmx
+fragment responses refresh those inputs out of band so later form-triggered
+requests preserve the current table state.
+
+### `user_management_rows_fragment.html.j2`
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `selected_users` | list of user row dicts | Filtered user rows |
+
+### `workers_content_fragment.html.j2`
+
+Same context as the content area of `workers.html.j2`: `filter_value`,
+`sort`, `order`, `q`, `view`, `pages`, `blocked_workers`, `show_email`,
+`num_workers`, `max_all`, `is_truncated`.
+
+Sortable headers are dual-mode links (`href` + `hx-get`) targeting
+`#workers-content` with `hx-push-url="true"`.
+
+The outer GET form keeps `sort`, `order`, and `view` in hidden inputs. htmx
+fragment responses refresh those inputs out of band so later form-triggered
+requests preserve the current table state.
+
+## htmx shell-state rule
+
+When a GET form stays outside the swapped fragment but the fragment owns
+sort/view/pagination links, the fragment must refresh any stateful hidden form
+inputs out of band. This repo uses the same pattern as `/tests/machines`:
+
+- keep stable ids on the outer hidden inputs;
+- return matching hidden inputs from the fragment with `hx-swap-oob="true"`.
+
+That keeps later form submissions aligned with the current server-authoritative
+table state without introducing page-specific synchronization JavaScript.
+
+### `workers_rows_fragment.html.j2`
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `blocked_workers` | list of dicts | Filtered worker rows |
+| `show_email` | bool | Show owner email column |
 
 ## Authoring rules
 
@@ -455,7 +978,55 @@ Each blocked worker row: `worker_name`, `last_updated_label`, `actions_url`,
     or delegated listeners) instead of `onclick`, `onsubmit`, or similar HTML
     attributes.
 
+11. **Fragment templates do not extend `base.html.j2`**: htmx fragment
+    templates are standalone files. They receive the shared base context
+    via `build_template_context()` but must not use `{% extends %}` or
+    `{% block %}` directives.
+
+12. **OOB swap elements carry their own `hx-swap-oob` attribute**: the
+    view handler does not need to set response headers for OOB updates.
+    Each OOB element in the fragment template declares its own ID and swap
+    strategy (e.g., `<span id="count" hx-swap-oob="innerHTML">`).
+
+13. **Table OOB requires `<template>` wrappers**: the HTML parser rejects
+    `<tbody>` inside `<div>`. Wrap table OOB elements in `<template>` tags:
+    ```jinja
+    <template>
+      <tbody id="my-table" hx-swap-oob="innerHTML">
+        {% for row in rows %}...{% endfor %}
+      </tbody>
+    </template>
+    ```
+    htmx processes the `<template>` content and discards the wrapper.
+
+14. **DOM API over `innerHTML` in error handlers**: JavaScript retry-button
+    construction must use `createElement` / `textContent` / `setAttribute`
+    instead of string concatenation with `innerHTML`. This prevents XSS
+    from error messages and avoids escaping issues.
+
+15. **Unicode over HTML entities**: use literal Unicode characters (e.g.,
+    `<=` or the actual symbol) instead of HTML entities (`&#8804;`,
+    `&gt;`) in templates. This eliminates the need for `|safe` on values
+    that contain the entity.
+
+16. **Explicit CSRF hidden fields**: every server-rendered `<form>` that
+    posts to a `require_csrf` route must include an explicit hidden input:
+    ```jinja
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    ```
+    The meta-tag CSRF token is a fallback for htmx headers; forms must not
+    rely on it as the sole CSRF transport.
+
+17. **Polling trigger policy**: every periodic htmx poller must include
+    three trigger components: (a) a periodic trigger gated on
+    `document.visibilityState === 'visible'`, (b) an immediate
+    `visibilitychange[...] from:document` refresh, and (c) for
+    section-scoped pollers, a gate on the section's expanded state.
+    See [1-architecture.md](1-architecture.md) for the full policy.
+
 ## Adding a new template
+
+### Page template
 
 1. Create `templates/mypage.html.j2` extending `base.html.j2`:
    ```jinja
@@ -474,3 +1045,24 @@ Each blocked worker row: `worker_name`, `last_updated_label`, `actions_url`,
    template specified in the route config's `renderer` key.
 
 5. Add a test that verifies the template renders without errors.
+
+### Fragment template
+
+1. Create `templates/mypage_fragment.html.j2` as a standalone file (no
+   `{% extends %}`).
+
+2. Define the context contract in this document.
+
+3. In the view handler, use `_render_hx_fragment()` to return the fragment
+   when `HX-Request` is present:
+   ```python
+   return (
+       _render_hx_fragment(request, "mypage_fragment.html.j2", context)
+       or context
+   )
+   ```
+
+4. For OOB elements, add `hx-swap-oob` attributes directly on elements
+   inside the fragment template. For table bodies, wrap in `<template>` tags.
+
+5. Add a test that verifies both the full-page and fragment responses.

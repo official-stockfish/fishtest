@@ -14,26 +14,37 @@
 {% set nn_upload_url = urls.nn_upload %}
 <html lang="en">
   <head>
+    <meta name="color-scheme" content="{{ 'dark light' if theme == 'dark' else 'light dark' }}">
     <title>{% block title %}Stockfish Testing Framework{% endblock %}</title>
     <meta name="csrf-token" content="{{ csrf_token }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <script>
       const darkThemeHash = {{ static_url('fishtest:static/css/theme.dark.css') | tojson }};
+      try {
+        document.documentElement.dataset.githubRateLimitLow =
+          localStorage.getItem("fishtest_github_rate_limit_low") === "1"
+            ? "1"
+            : "0";
+      } catch (_error) {
+        document.documentElement.dataset.githubRateLimitLow = "0";
+      }
     </script>
+
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
     <link
       rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css"
-      integrity="sha512-2SwdPD6INVrV/lHTZbO2nodKhrnDdJK9/kg2XD1r9uGqPo1cUbujc+IYdlYdEErWNu69gVcYgdxlmVmzTWnetw=="
+      href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.2.0/css/all.min.css"
+      integrity="sha256-MVopmdyC2tYTiJ8wlktf0uh0v4NgT+vNdyVFepi7Q0c="
       crossorigin="anonymous"
       referrerpolicy="no-referrer"
     >
 
     <link
       rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/css/bootstrap.min.css"
-      integrity="sha512-2bBQCjcnw658Lho4nlXJcc6WkV/UxpE/sAokbXPxQNGqmNdQrWqtw26Ns9kFF/yG792pKR1Sx8/Y1Lf1XN4GKA=="
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+      integrity="sha256-2FMn2Zx6PuH5tdBQDRNwrOo60ts5wWPC9R8jK67b3t4="
       crossorigin="anonymous"
       referrerpolicy="no-referrer"
     >
@@ -48,11 +59,26 @@
       rel="stylesheet"
       href="{{ static_url('fishtest:static/css/theme.dark.css') }}"
     >
+    {% elif not theme %}
+    <link
+      rel="stylesheet"
+      href="{{ static_url('fishtest:static/css/theme.dark.css') }}"
+      media="(prefers-color-scheme: dark)"
+    >
     {% endif %}
 
+    {% block head %}{% endblock %}
+
     <script
-      src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/js/bootstrap.bundle.min.js"
-      integrity="sha512-HvOjJrdwNpDbkGJIG2ZNqDlVqMo77qbs4Me4cah0HoDrfhrbA+8SBlZn1KrvAQw7cILLPFJvdwIgphzQmMm+Pw=="
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
+      integrity="sha256-5P1JGBOIxI7FBAvT/mb1fCnI5n/NhQKzNUuW7Hq0fMc="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+
+    <script
+      src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"
+      integrity="sha256-Iig+9oy3VFkU8KiKG97cclanA9HVgMHSVSF9ClDTExM="
       crossorigin="anonymous"
       referrerpolicy="no-referrer"
     ></script>
@@ -60,8 +86,6 @@
     <script src="{{ static_url('fishtest:static/js/application.js') }}"></script>
 
     <script src="{{ static_url('fishtest:static/js/notifications.js') }}"></script>
-
-    {% block head %}{% endblock %}
   </head>
 
   <body>
@@ -79,7 +103,7 @@
           aria-expanded="false"
           aria-label="Toggle left sidebar navigation"
         >
-          <i class="fa-solid fa-bars"></i>
+          <i class="fa-solid fa-bars" aria-hidden="true"></i>
         </button>
 
         <a
@@ -100,7 +124,7 @@
           aria-expanded="false"
           aria-label="Toggle user navigation"
         >
-          <i class="fa-solid fa-ellipsis"></i>
+          <i class="fa-solid fa-bars" aria-hidden="true"></i>
         </button>
 
         <div
@@ -258,13 +282,10 @@
                       <a href="{{ urls.tests }}" class="links-link rounded">Overview</a>
                     </li>
                     <li>
-                      <a href="{{ urls.tests_finished_ltc }}" class="links-link rounded">LTC</a>
+                      <a href="{{ urls.tests_finished }}" class="links-link rounded">Finished</a>
                     </li>
                     <li>
-                      <a href="{{ urls.tests_finished_success }}" class="links-link rounded">Greens</a>
-                    </li>
-                    <li>
-                      <a href="{{ urls.tests_finished_yellow }}" class="links-link rounded">Yellows</a>
+                      <a href="{{ urls.tests_finished }}?mode=search" class="links-link rounded">Search</a>
                     </li>
                   </ul>
                 </li>
@@ -291,17 +312,14 @@
                       <a href="{{ urls.actions }}" class="links-link rounded">Events</a>
                     </li>
                     <li>
-                    {% if pending_users_count > 0 %}
-                      <a
-                        href="{{ urls.user_management }}"
-                        class="links-link rounded text-danger"
-                        >Users ({{ pending_users_count }})</a
+                      <span
+                        id="pending-users-nav"
+                        hx-get="/user_management/pending_count"
+                        hx-trigger="load, every {{ poll.pending_users_nav }}s [document.visibilityState === 'visible'], visibilitychange[document.visibilityState === 'visible'] from:document"
+                        hx-swap="innerHTML"
                       >
-                    {% else %}
-                      <a href="{{ urls.user_management }}" class="links-link rounded"
-                        >Users</a
-                      >
-                    {% endif %}
+                        {% include "pending_users_nav_fragment.html.j2" %}
+                      </span>
                     </li>
                     <li>
                       <a href="{{ urls.workers_blocked }}" class="links-link rounded"
@@ -409,9 +427,11 @@
                       <a href="{{ urls.sprt_calc }}" class="links-link rounded"
                         >SPRT Calc</a
                       >
-                      <a href="{{ urls.rate_limits }}" class="links-link rounded ratelimit"
-                        >GitHub Rate Limits</a
-                      >
+                    </li>
+                    <li>
+                      <span id="rate-limits-nav">
+                        {% include "rate_limits_nav_fragment.html.j2" %}
+                      </span>
                     </li>
                   </ul>
                 </li>

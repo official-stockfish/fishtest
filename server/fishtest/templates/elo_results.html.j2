@@ -6,14 +6,14 @@
 {% set nelo_summary = nelo_pentanomial_summary(run) if elo_ptnml_run else none %}
 
 {% if "sprt" in run["args"] and "Pending" not in results_info["info"][0] %}
-  <a href="/tests/live_elo/{{ run_id }}" style="color: inherit;">
+  <a href="/tests/live_elo/{{ run_id }}" class="elo-results-link">
 {% endif %}
 {% if show_gauge %}
-  <div id="chart_div_{{ run_id }}" style="width:90px;float:left;"></div>
+  <div id="chart_div_{{ run_id }}" class="elo-results-gauge"></div>
   {% if "sprt" in run["args"] and "Pending" not in results_info["info"][0] %}
-    <div style="margin-left:90px;padding: 30px 0;">
+    <div class="elo-results-body elo-results-body-padded">
   {% else %}
-    <div style="margin-left:90px;">
+    <div class="elo-results-body">
   {% endif %}
 {% endif %}
 <pre {{ results_pre_attrs(results_info, run) }}>

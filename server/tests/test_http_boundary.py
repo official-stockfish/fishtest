@@ -1,7 +1,9 @@
 # ruff: noqa: ANN201, ANN206, D100, D101, D102, E501, INP001, PLC0415, PT009
 
+import re
 import tempfile
 import unittest
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Callable, cast
@@ -9,6 +11,13 @@ from typing import Callable, cast
 import test_support
 from fastapi import Depends, Request
 from starlette.responses import Response
+
+from fishtest.http.settings import (
+    FINISHED_FILTER_MAX_COUNT_ANON,
+    FINISHED_FILTER_MAX_COUNT_AUTH,
+    HTMX_INPUT_CHANGED_DELAY_MS,
+)
+from fishtest.run_cache import Prio
 
 
 class TestHttpBoundary(unittest.TestCase):
@@ -35,6 +44,117 @@ class TestHttpBoundary(unittest.TestCase):
             include_api=False,
             include_views=include_views,
         )
+
+    def _set_authenticated_session_cookie(self, client, *, username: str) -> None:
+        from itsdangerous import TimestampSigner
+
+        from fishtest.http.cookie_session import (
+            SESSION_COOKIE_NAME,
+            session_secret_key,
+        )
+        from fishtest.http.session_middleware import _encode_cookie_value
+
+        payload: dict[str, object] = {"user": username}
+        signer = TimestampSigner(session_secret_key())
+        cookie_value = _encode_cookie_value(payload, signer)
+        client.cookies.set(SESSION_COOKIE_NAME, cookie_value)
+
+    def _create_live_elo_run(self, *, sprt_state: str = "") -> str:
+        run_id = self.rundb.new_run(
+            "master",
+            "new-branch",
+            800,
+            "10+0.1",
+            "10+0.1",
+            "book.pgn",
+            "10",
+            1,
+            "",
+            "",
+            info="live elo test",
+            resolved_base="347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+            resolved_new="347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+            msg_base="base",
+            msg_new="new",
+            base_signature="123456",
+            new_signature="654321",
+            base_nets=["nn-0000000000a0.nnue"],
+            new_nets=["nn-0000000000a1.nnue"],
+            tests_repo="https://github.com/official-stockfish/Stockfish",
+            auto_purge=False,
+            username="travis",
+            start_time=datetime.now(UTC),
+            sprt={
+                "alpha": 0.05,
+                "beta": 0.05,
+                "elo0": -2.0,
+                "elo1": 2.0,
+                "elo_model": "normalized",
+                "state": "",
+                "llr": 0.0,
+                "batch_size": 1,
+                "lower_bound": -2.9444389791664403,
+                "upper_bound": 2.9444389791664403,
+                "lost_samples": 0,
+            },
+        )
+        run = self.rundb.get_run(run_id)
+        run["approved"] = True
+        run["args"]["sprt"]["state"] = sprt_state
+        run["results"] = {
+            "wins": 12,
+            "losses": 10,
+            "draws": 18,
+            "crashes": 0,
+            "time_losses": 0,
+            "pentanomial": [2, 3, 5, 4, 1],
+        }
+        run["finished"] = True
+        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+        return str(run_id)
+
+    def _create_tests_elo_run(
+        self,
+        *,
+        approved: bool = False,
+        workers: int = 0,
+        finished: bool = False,
+        failed: bool = False,
+        username: str = "travis",
+        info: str = "tests elo boundary test",
+    ) -> str:
+        run_id = self.rundb.new_run(
+            "master",
+            "new-branch",
+            400,
+            "10+0.01",
+            "10+0.01",
+            "book.pgn",
+            "10",
+            1,
+            "",
+            "",
+            info=info,
+            resolved_base="347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+            resolved_new="347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+            msg_base="base",
+            msg_new="new",
+            base_signature="123456",
+            new_signature="654321",
+            base_nets=["nn-0000000000a0.nnue"],
+            new_nets=["nn-0000000000a1.nnue"],
+            tests_repo="https://github.com/official-stockfish/Stockfish",
+            auto_purge=False,
+            username=username,
+            start_time=datetime.now(UTC),
+        )
+        run = self.rundb.get_run(run_id)
+        run["approved"] = approved
+        run["workers"] = workers
+        run["finished"] = finished
+        run["failed"] = failed
+        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+        return str(run_id)
 
     def test_request_shim_parity(self):
         from fishtest.http.boundary import ApiRequestShim
@@ -118,6 +238,466 @@ class TestHttpBoundary(unittest.TestCase):
         body = response.json()
         self.assertTrue(body["error"])
         self.assertIsNone(body["body"])
+
+    def test_dispatch_view_204_has_no_body(self):
+        from fishtest.views import _dispatch_view
+
+        app = self._build_app()
+
+        def _returns_204(shim):
+            shim.response_status = 204
+            return {"unused": True}
+
+        @app.get("/dispatch-204")
+        async def _dispatch_204_probe(request: Request):
+            return await _dispatch_view(
+                _returns_204,
+                {"renderer": "login.html.j2"},
+                request,
+                {},
+            )
+
+        client = self.TestClient(app)
+        response = client.get("/dispatch-204")
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.content, b"")
+
+    def test_dispatch_view_get_sets_vary_hx_request(self):
+        from fishtest.views import _dispatch_view
+
+        app = self._build_app()
+
+        def _returns_context(_shim):
+            return {"title": "probe"}
+
+        @app.get("/dispatch-vary")
+        async def _dispatch_vary_probe(request: Request):
+            return await _dispatch_view(
+                _returns_context,
+                {"renderer": "login.html.j2"},
+                request,
+                {},
+            )
+
+        client = self.TestClient(app)
+        response = client.get("/dispatch-vary")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("HX-Request", response.headers.get("vary", ""))
+
+    def test_dispatch_view_direct_response_sets_vary_hx_request(self):
+        from fishtest.views import _dispatch_view
+
+        app = self._build_app()
+
+        def _returns_response(_shim):
+            return Response("ok", media_type="text/plain")
+
+        @app.get("/dispatch-direct-vary")
+        async def _dispatch_direct_vary_probe(request: Request):
+            return await _dispatch_view(
+                _returns_response,
+                {"renderer": "login.html.j2"},
+                request,
+                {},
+            )
+
+        client = self.TestClient(app)
+        response = client.get("/dispatch-direct-vary")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.text, "ok")
+        self.assertIn("HX-Request", response.headers.get("vary", ""))
+
+    def test_is_hx_request_ignores_navigate_mode(self):
+        from fishtest.views import _is_hx_request
+
+        req_htmx = SimpleNamespace(headers={"HX-Request": "true"})
+        req_navigate = SimpleNamespace(
+            headers={"HX-Request": "true", "Sec-Fetch-Mode": "navigate"}
+        )
+
+        self.assertTrue(_is_hx_request(req_htmx))
+        self.assertFalse(_is_hx_request(req_navigate))
+
+    def test_template_post_forms_include_explicit_csrf_token(self):
+        templates_dir = Path(__file__).resolve().parents[1] / "fishtest" / "templates"
+        form_re = re.compile(
+            r"<form[^>]*method\s*=\s*['\"]?post['\"]?[^>]*>(.*?)</form>",
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+
+        violations = []
+        for template_file in templates_dir.rglob("*.j2"):
+            text = template_file.read_text(encoding="utf-8")
+            for match in form_re.finditer(text):
+                body = match.group(1)
+                if 'name="csrf_token"' not in body and "name='csrf_token'" not in body:
+                    violations.append(str(template_file.relative_to(templates_dir)))
+
+        self.assertEqual(
+            violations,
+            [],
+            f"POST forms missing explicit csrf_token hidden input: {sorted(set(violations))}",
+        )
+
+    def test_tests_finished_full_page_vs_fragment(self):
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        full_response = client.get("/tests/finished?page=4&success_only=1")
+        self.assertEqual(full_response.status_code, 200)
+        self.assertIn("<!doctype html>", full_response.text.lower())
+        self.assertIn('id="tests-finished-content"', full_response.text)
+
+        fragment_response = client.get(
+            "/tests/finished?page=4&success_only=1",
+            headers={"HX-Request": "true", "Sec-Fetch-Mode": "cors"},
+        )
+        self.assertEqual(fragment_response.status_code, 200)
+        self.assertNotIn("<!doctype html>", fragment_response.text.lower())
+        self.assertNotIn('id="tests-finished-filters"', fragment_response.text)
+        self.assertIn('id="tests-finished-filter-tabs"', fragment_response.text)
+        self.assertIn('hx-swap-oob="outerHTML"', fragment_response.text)
+        self.assertIn("Showing", fragment_response.text)
+
+        navigate_response = client.get(
+            "/tests/finished?page=4&success_only=1",
+            headers={"HX-Request": "true", "Sec-Fetch-Mode": "navigate"},
+        )
+        self.assertEqual(navigate_response.status_code, 200)
+        self.assertIn("<!doctype html>", navigate_response.text.lower())
+
+    def test_tests_finished_search_mode_full_page_vs_fragment(self):
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        full_response = client.get(
+            "/tests/finished?mode=search&user=Fin&text=branch&max_count=1000"
+        )
+        self.assertEqual(full_response.status_code, 200)
+        self.assertIn("<!doctype html>", full_response.text.lower())
+        self.assertIn('id="tests-finished-content"', full_response.text)
+
+        fragment_response = client.get(
+            "/tests/finished?mode=search&user=Fin&text=branch&max_count=1000",
+            headers={"HX-Request": "true", "Sec-Fetch-Mode": "cors"},
+        )
+        self.assertEqual(fragment_response.status_code, 200)
+        self.assertNotIn("<!doctype html>", fragment_response.text.lower())
+        self.assertNotIn('id="tests-finished-filters"', fragment_response.text)
+        self.assertNotIn('id="tests-finished-filter-tabs"', fragment_response.text)
+        self.assertIn("Showing", fragment_response.text)
+
+    def test_tests_finished_search_mode_uses_stable_results_target(self):
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get(
+            "/tests/finished?mode=search&user=Fin&text=branch&max_count=1000"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="tests-search-form"', response.text)
+        self.assertIn('hx-target="#tests-finished-content"', response.text)
+        self.assertIn('id="tests-finished-content"', response.text)
+        self.assertNotIn('hx-include="#tests-search-form"', response.text)
+
+    def test_tests_finished_search_mode_uses_htmx_search_without_status_tabs(self):
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get(
+            "/tests/finished?mode=search&user=Fin&text=branch&max_count=1000"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="tests-search-form"', response.text)
+        self.assertIn('role="search"', response.text)
+        self.assertIn('name="mode" value="search"', response.text)
+        self.assertRegex(response.text, 'name="user"[^>]*value="Fin"')
+        self.assertRegex(response.text, r'name="text"[^>]*value="branch"')
+        self.assertIn(
+            f'name="max_count" value="{FINISHED_FILTER_MAX_COUNT_ANON}"',
+            response.text,
+        )
+        self.assertIn('name="sort" value="time"', response.text)
+        self.assertIn('name="order" value="desc"', response.text)
+        self.assertIn(
+            f'hx-trigger="submit, input changed delay:{HTMX_INPUT_CHANGED_DELAY_MS}ms from:#tests_search_user, '
+            f"search from:#tests_search_user, input changed delay:{HTMX_INPUT_CHANGED_DELAY_MS}ms "
+            'from:#tests_search_text, search from:#tests_search_text"',
+            response.text,
+        )
+        self.assertIn("Free text search information", response.text)
+        self.assertIn("MongoDB <i>$text</i> search", response.text)
+        self.assertIn('target="_blank"', response.text)
+        self.assertIn('rel="noopener noreferrer"', response.text)
+        self.assertIn(
+            f"Anonymous requests are capped at {FINISHED_FILTER_MAX_COUNT_ANON} finished rows.",
+            response.text,
+        )
+        self.assertNotIn(">Green<", response.text)
+        self.assertNotIn(">Yellow<", response.text)
+        self.assertNotIn(">LTC<", response.text)
+
+    def test_tests_finished_search_mode_username_and_text_filters(self):
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        usernames = [
+            "FinishedFilterAlpha",
+            "FinishedFilterBeta",
+            "DifferentFinisher",
+        ]
+        self.rundb.userdb.users.delete_many({"username": {"$in": usernames}})
+        self.rundb.userdb.clear_cache()
+        for username in usernames:
+            self.rundb.userdb.create_user(
+                username,
+                "pwd",
+                f"{username}@example.com",
+                "",
+            )
+        self.rundb.runs.create_index(
+            [("args.info", "text")],
+            name="finished_runs_text",
+            default_language="none",
+            partialFilterExpression={"finished": True, "deleted": False},
+        )
+
+        try:
+            alpha_run_id = self._create_tests_elo_run(
+                approved=True,
+                finished=True,
+                username="FinishedFilterAlpha",
+                info="finished filter alpha hit",
+            )
+            beta_run_id = self._create_tests_elo_run(
+                approved=True,
+                finished=True,
+                username="FinishedFilterBeta",
+                info="finished filter beta hit",
+            )
+            self._create_tests_elo_run(
+                approved=True,
+                finished=True,
+                username="DifferentFinisher",
+                info="finished filter other row",
+            )
+
+            substring_response = client.get(
+                "/tests/finished?mode=search&user=FilterAl",
+                headers={"HX-Request": "true"},
+            )
+            self.assertEqual(substring_response.status_code, 200)
+            self.assertIn(alpha_run_id, substring_response.text)
+            self.assertNotIn(beta_run_id, substring_response.text)
+            self.assertIn("finished filter alpha hit", substring_response.text)
+            self.assertNotIn("finished filter other row", substring_response.text)
+            self.assertIn(
+                "Showing 1 of 1 matching finished test on page 1 of 1.",
+                substring_response.text,
+            )
+
+            text_response = client.get(
+                "/tests/finished?mode=search&text=%22beta+hit%22",
+                headers={"HX-Request": "true"},
+            )
+            self.assertEqual(text_response.status_code, 200)
+            self.assertIn(beta_run_id, text_response.text)
+            self.assertNotIn(alpha_run_id, text_response.text)
+            self.assertIn("finished filter beta hit", text_response.text)
+            self.assertNotIn("finished filter other row", text_response.text)
+        finally:
+            self.rundb.userdb.users.delete_many({"username": {"$in": usernames}})
+            self.rundb.userdb.clear_cache()
+
+    def test_tests_finished_search_mode_anonymous_request_uses_default_cap_on_entry(
+        self,
+    ):
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get("/tests/finished?mode=search")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            f'name="max_count" value="{FINISHED_FILTER_MAX_COUNT_ANON}"',
+            response.text,
+        )
+
+    def test_tests_finished_navigation_mode_drops_stale_max_count_from_url(self):
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get(
+            "/tests/finished?success_only=1&max_count=1000",
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            response.headers.get("location"),
+            "http://testserver/tests/finished?sort=time&order=desc&success_only=1",
+        )
+
+    def test_tests_finished_redirects_old_filter_urls_to_search_mode(self):
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get(
+            "/tests/finished?success_only=1&user=filter&text=branch",
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            response.headers.get("location"),
+            "http://testserver/tests/finished?mode=search&sort=time&order=desc&user=filter&text=branch",
+        )
+
+    def test_tests_finished_search_mode_filtered_authenticated_request_uses_default_cap(
+        self,
+    ):
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+        self._set_authenticated_session_cookie(client, username="filtercapuser")
+
+        response = client.get("/tests/finished?mode=search&user=filter")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            f'name="max_count" value="{FINISHED_FILTER_MAX_COUNT_AUTH}"',
+            response.text,
+        )
+
+    def test_tests_finished_unfiltered_authenticated_request_uses_default_cap(self):
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+        self._set_authenticated_session_cookie(client, username="nocapuser")
+
+        response = client.get("/tests/finished")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn('name="max_count"', response.text)
+
+    def test_tests_finished_search_mode_strips_status_tabs_from_url(
+        self,
+    ):
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get(
+            "/tests/finished?mode=search&yellow_only=1&user=filter",
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            response.headers.get("location"),
+            "http://testserver/tests/finished?mode=search&sort=time&order=desc&user=filter",
+        )
+
+    def test_tests_elo_batch_returns_valid_response(self):
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get("/tests/elo_batch")
+
+        self.assertNotEqual(response.status_code, 400)
+        self.assertIn(response.status_code, {200, 286})
+
+    def test_tests_elo_batch_user_filter_omits_homepage_only_oob(self):
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get("/tests/elo_batch?username=user01")
+
+        self.assertIn(response.status_code, {200, 286})
+        self.assertNotIn('id="workers-count"', response.text)
+        self.assertNotIn('id="homepage-stats"', response.text)
+
+    def test_tests_elo_batch_preserves_empty_panel_text(self):
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get("/tests/elo_batch?username=__no_such_user__")
+
+        self.assertIn(response.status_code, {200, 286})
+        self.assertIn("No tests pending approval", response.text)
+        self.assertIn("No paused tests", response.text)
+        self.assertIn("No failed tests on this page", response.text)
+        self.assertIn("No active tests", response.text)
+        self.assertIn("colspan=20>No tests pending approval</td>", response.text)
+
+    def test_tests_elo_expected_state_returns_204_when_unchanged(self):
+        run_id = self._create_tests_elo_run(approved=True)
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get(f"/tests/elo/{run_id}?expected=paused")
+
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.content, b"")
+
+    def test_tests_elo_expected_pending_returns_204_when_unchanged(self):
+        run_id = self._create_tests_elo_run(approved=False)
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get(f"/tests/elo/{run_id}?expected=pending")
+
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.content, b"")
+
+    def test_tests_elo_expected_state_returns_200_on_transition(self):
+        run_id = self._create_tests_elo_run(approved=False)
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get(f"/tests/elo/{run_id}?expected=paused")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("pending", response.text)
+
+    def test_tests_elo_expected_state_returns_286_on_terminal_transition(self):
+        run_id = self._create_tests_elo_run(approved=True, finished=True)
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get(f"/tests/elo/{run_id}?expected=active")
+
+        self.assertEqual(response.status_code, 286)
+        self.assertIn("finished", response.text)
+
+    def test_live_elo_page_finished_sprt_has_data_and_no_poller(self):
+        run_id = self._create_live_elo_run(sprt_state="accepted")
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get(f"/tests/live_elo/{run_id}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="gauge-data"', response.text)
+        self.assertIn('data-sprt-state="accepted"', response.text)
+        self.assertIn("live_elo.js", response.text)
+        self.assertIn('id="ELO_chart_div"', response.text)
+        self.assertIn('role="button"', response.text)
+        self.assertIn('tabindex="0"', response.text)
+        self.assertIn('data-elo-mode-default="fixed"', response.text)
+        self.assertIn('data-elo-mode-cookie-max-age="', response.text)
+        # Terminal SPRT runs must stop polling.
+        self.assertNotIn("/tests/live_elo_update/", response.text)
+
+    def test_live_elo_update_terminal_sprt_sets_status_286(self):
+        run_id = self._create_live_elo_run(sprt_state="rejected")
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get(f"/tests/live_elo_update/{run_id}")
+
+        self.assertEqual(response.status_code, 286)
+        self.assertIn('id="live-elo-data"', response.text)
+        self.assertIn('hx-swap-oob="innerHTML"', response.text)
 
     def test_template_context_includes_helpers(self):
         from fishtest.http import jinja

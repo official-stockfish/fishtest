@@ -1,11 +1,14 @@
 import copy
 import gzip
 import hashlib
+import heapq
+import logging
 import os
 import re
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from urllib.parse import quote, urlencode
+from typing import TypedDict
+from urllib.parse import quote, unquote, urlencode
 
 import bson
 import regex
@@ -15,7 +18,7 @@ from markupsafe import Markup
 from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.requests import Request
-from starlette.responses import HTMLResponse, RedirectResponse
+from starlette.responses import HTMLResponse, RedirectResponse, Response
 from vtjson import ValidationError, union, validate
 
 import fishtest.github_api as gh
@@ -28,7 +31,6 @@ from fishtest.http.boundary import (
     remember,
 )
 from fishtest.http.cookie_session import (
-    REMEMBER_MAX_AGE_SECONDS,
     authenticated_user,
 )
 from fishtest.http.csrf import csrf_token_from_form
@@ -38,6 +40,26 @@ from fishtest.http.dependencies import (
     get_rundb,
     get_userdb,
     get_workerdb,
+)
+from fishtest.http.settings import (
+    ACTIONS_PAGE_SIZE,
+    CONTRIBUTORS_MAX_ALL,
+    CONTRIBUTORS_PAGE_SIZE,
+    FINISHED_FILTER_MAX_COUNT_ANON,
+    FINISHED_FILTER_MAX_COUNT_AUTH,
+    MACHINES_PAGE_SIZE,
+    NNS_MAX_ALL,
+    NNS_PAGE_SIZE,
+    PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS,
+    SESSION_REMEMBER_MAX_AGE_SECONDS,
+    UI_FORM_MAX_FIELDS,
+    UI_FORM_MAX_FILES,
+    UI_FORM_MAX_PART_SIZE_BYTES,
+    UI_HTTP_TIMEOUT_SECONDS,
+    USER_MANAGEMENT_MAX_ALL,
+    USER_MANAGEMENT_PAGE_SIZE,
+    WORKERS_MAX_ALL,
+    WORKERS_PAGE_SIZE,
 )
 from fishtest.http.template_helpers import (
     build_contributors_rows,
@@ -79,16 +101,222 @@ from fishtest.util import (
     worker_name,
 )
 
-HTTP_TIMEOUT = 15.0
-FORM_MAX_FILES = 2
-FORM_MAX_FIELDS = 200
-FORM_MAX_PART_SIZE = 200 * 1024 * 1024
+HTTP_TIMEOUT = UI_HTTP_TIMEOUT_SECONDS
+FORM_MAX_FILES = UI_FORM_MAX_FILES
+FORM_MAX_FIELDS = UI_FORM_MAX_FIELDS
+FORM_MAX_PART_SIZE = UI_FORM_MAX_PART_SIZE_BYTES
 DEFAULT_RECAPTCHA_SITE_KEY = "6LePs8YUAAAAABMmqHZVyVjxat95Z1c_uHrkugZM"
 
 router = APIRouter(tags=["ui"])
+logger = logging.getLogger(__name__)
+
+_TRUTHY_PARAM_VALUES = frozenset({"1", "true", "on", "yes"})
+_SORT_ORDER_VALUES = frozenset({"asc", "desc"})
+_PAGED_VIEW_VALUES = frozenset({"paged", "all"})
+_ACTIVE_RUN_FILTER_VALUES = {
+    "test-type": ("sprt", "spsa", "numgames"),
+    "time-control": ("stc", "ltc"),
+    "threads": ("st", "smp"),
+}
+_ACTIVE_RUN_FILTER_DIMENSION_BY_VALUE = {
+    value: dimension
+    for dimension, values in _ACTIVE_RUN_FILTER_VALUES.items()
+    for value in values
+}
+
+type _RunTableRow = dict[str, str | list[dict[object, object]] | bool]
+type _RunTableRows = list[_RunTableRow]
+type _SpsaTableRow = list[str]
+type _RunArgValue = str | list[str | _SpsaTableRow]
+type _RunArg = tuple[str, _RunArgValue, str]
+type _PaginationEntry = dict[str, object]
+
+
+class _ActiveRunFilterContext(TypedDict):
+    all_enabled: bool
+    count_text: str
+    enabled_by_dim: dict[str, tuple[str, ...]]
+    hidden_selectors: list[str]
+    style_text: str
+    ordered_runs: list[dict]
+
+
+class _BatchPanel(TypedDict):
+    tbody_id: str
+    rows: _RunTableRows
+    show_delete: bool
+    empty_text: str
+
+
+class _CountUpdate(TypedDict):
+    id: str
+    text: str
+
+
+class _BatchStats(TypedDict):
+    pending_hours: str
+    cores: int
+    nps_m: str
+    games_per_minute: int
+
+
+class _FinishedRunsContext(TypedDict):
+    finished_runs: list[dict]
+    finished_runs_pages: list[_PaginationEntry]
+    num_finished_runs: int
+    visible_finished_runs: int
+    finished_page_size: int
+    failed_runs: list[dict]
+    page_idx: int
+    filters: dict[str, object]
+    title_suffix: str
+    search_mode: bool
+
+
+def _classify_active_run_filters(run: dict) -> dict[str, str]:
+    args = run.get("args", {})
+    is_spsa = "spsa" in args
+    is_sprt = "sprt" in args and not is_spsa
+    test_type = "spsa" if is_spsa else ("sprt" if is_sprt else "numgames")
+    time_control = (
+        "ltc"
+        if get_tc_ratio(args.get("tc", "10+0.1"), args.get("threads", 1)) > 4
+        else "stc"
+    )
+    try:
+        threads = int(args.get("threads", 1))
+    except TypeError, ValueError:
+        threads = 1
+    thread_group = "smp" if threads > 1 else "st"
+    return {
+        "test-type": test_type,
+        "time-control": time_control,
+        "threads": thread_group,
+    }
+
+
+def _default_active_run_filter_state() -> dict[str, set[str]]:
+    return {
+        dimension: set(values)
+        for dimension, values in _ACTIVE_RUN_FILTER_VALUES.items()
+    }
+
+
+def _parse_active_run_filter_cookie(raw: str) -> dict[str, set[str]]:
+    raw = raw.strip()
+    if not raw:
+        return _default_active_run_filter_state()
+    if raw == "none":
+        return {dimension: set() for dimension in _ACTIVE_RUN_FILTER_VALUES}
+
+    parsed = {dimension: set() for dimension in _ACTIVE_RUN_FILTER_VALUES}
+    saw_valid_value = False
+    for token in raw.split(","):
+        value = token.strip()
+        dimension = _ACTIVE_RUN_FILTER_DIMENSION_BY_VALUE.get(value)
+        if dimension is None:
+            continue
+        parsed[dimension].add(value)
+        saw_valid_value = True
+
+    return parsed if saw_valid_value else _default_active_run_filter_state()
+
+
+def _active_run_matches_enabled_filters(
+    run: dict,
+    enabled_by_dim: dict[str, set[str]],
+) -> bool:
+    classifications = _classify_active_run_filters(run)
+    return all(
+        classifications[dimension] in enabled_by_dim[dimension]
+        for dimension in _ACTIVE_RUN_FILTER_VALUES
+    )
+
+
+def _order_active_runs_for_filters(
+    active_runs: list[dict],
+    enabled_by_dim: dict[str, set[str]],
+) -> tuple[list[dict], int]:
+    visible_runs: list[dict] = []
+    hidden_runs: list[dict] = []
+
+    for index, run in enumerate(active_runs):
+        run_copy = dict(run)
+        run_copy["_active_filter_index"] = index
+        if _active_run_matches_enabled_filters(run_copy, enabled_by_dim):
+            visible_runs.append(run_copy)
+        else:
+            hidden_runs.append(run_copy)
+
+    return visible_runs + hidden_runs, len(visible_runs)
+
+
+def _build_active_run_filter_context(
+    request, active_runs: list[dict]
+) -> _ActiveRunFilterContext:
+    enabled_by_dim = _parse_active_run_filter_cookie(
+        request.cookies.get("active_run_filters", "")
+    )
+    hidden_selectors: list[str] = []
+    style_text = ""
+    ordered_runs, visible_count = _order_active_runs_for_filters(
+        active_runs,
+        enabled_by_dim,
+    )
+
+    all_enabled = True
+    for dimension, values in _ACTIVE_RUN_FILTER_VALUES.items():
+        enabled_values = enabled_by_dim[dimension]
+        if len(enabled_values) < len(values):
+            all_enabled = False
+        for value in values:
+            if value not in enabled_values:
+                hidden_selectors.append(f'#active-tbody tr[data-{dimension}="{value}"]')
+
+    if hidden_selectors:
+        hidden_rows = ",\n".join(hidden_selectors)
+        style_text = f"{hidden_rows} {{ display: none !important; }}"
+
+    total_count = len(active_runs)
+    count_text = (
+        f"Active - {total_count} tests"
+        if all_enabled or visible_count == total_count
+        else f"Active - {total_count} ({visible_count}) tests"
+    )
+
+    return {
+        "all_enabled": all_enabled,
+        "count_text": count_text,
+        "enabled_by_dim": {
+            dimension: tuple(
+                value for value in values if value in enabled_by_dim[dimension]
+            )
+            for dimension, values in _ACTIVE_RUN_FILTER_VALUES.items()
+        },
+        "hidden_selectors": hidden_selectors,
+        "style_text": style_text,
+        "ordered_runs": ordered_runs,
+    }
+
+
+class _TestsEloBatchContext(TypedDict, total=False):
+    panels: list[_BatchPanel]
+    count_updates: list[_CountUpdate]
+    machines_count: int
+    workers_count_text: str
+    stats: _BatchStats
 
 
 class _ViewContext:
+    """Compatibility shim for the legacy sync view functions.
+
+    The UI layer still uses Pyramid-style handlers that expect a rich request
+    object with DB handles, session helpers, and a mutable response header bag.
+    FastAPI/Starlette requests are adapted once in `_dispatch_view()` so the
+    individual handlers can stay synchronous and focused on shaping template
+    context.
+    """
+
     def __init__(self, request, session, post, matchdict, context=None):
         self._request = request
         self.raw_request = request
@@ -151,8 +379,61 @@ def _apply_response_headers(shim, response):
     for key, value in getattr(shim, "response_headers", {}).items():
         response.headers[key] = value
     for key, value in getattr(shim, "response_headerlist", []):
-        response.headers[key] = value
+        if key.lower() == "set-cookie":
+            response.headers.append(key, value)
+        else:
+            response.headers[key] = value
     return response
+
+
+def _append_vary_header(response, token: str) -> None:
+    existing = response.headers.get("Vary", "")
+    parts = [p.strip() for p in existing.split(",") if p.strip()]
+    lowered = {p.lower() for p in parts}
+    if token.lower() not in lowered:
+        parts.append(token)
+        response.headers["Vary"] = ", ".join(parts)
+
+
+def _append_no_store_headers(request) -> None:
+    request.response_headerlist.extend(
+        (
+            ("Cache-Control", "no-store"),
+            ("Expires", "0"),
+        )
+    )
+
+
+def _is_truthy_param(value) -> bool:
+    return str(value).strip().lower() in _TRUTHY_PARAM_VALUES
+
+
+def _page_index_from_params(params, *, key="page") -> int:
+    page_value = str(params.get(key, "")).strip()
+    return max(0, int(page_value) - 1) if page_value.isdigit() else 0
+
+
+def _normalize_sort_order(raw_value, *, default_reverse):
+    order_param = str(raw_value).strip().lower()
+    if order_param in _SORT_ORDER_VALUES:
+        return order_param, order_param == "desc"
+    return ("desc", True) if default_reverse else ("asc", False)
+
+
+def _normalize_view_mode(raw_value) -> str:
+    view_param = str(raw_value).strip().lower()
+    return view_param if view_param in _PAGED_VIEW_VALUES else "paged"
+
+
+def _clamp_page_index(page_idx, *, total_count, page_size):
+    if total_count <= 0:
+        return 0
+    return min(page_idx, (total_count - 1) // page_size)
+
+
+def _build_query_string(pairs, *, leading="&") -> str:
+    filtered_pairs = [(key, str(value)) for key, value in pairs if value is not None]
+    return f"{leading}{urlencode(filtered_pairs)}" if filtered_pairs else ""
 
 
 async def _dispatch_view(fn, cfg, request, path_params):
@@ -189,14 +470,21 @@ async def _dispatch_view(fn, cfg, request, path_params):
 
     result = await run_in_threadpool(fn, shim)
 
-    if isinstance(result, RedirectResponse):
+    if isinstance(result, Response):
         commit_session_response(request, session, shim, result)
+        apply_http_cache(result, cfg)
+        if request.method == "GET":
+            # Same URL can serve full page or htmx fragment depending on headers.
+            _append_vary_header(result, "HX-Request")
         return _apply_response_headers(shim, result)
 
+    status_code = getattr(shim, "response_status", 200) or 200
+
     renderer = cfg.get("renderer")
-    if isinstance(renderer, str):
+    if int(status_code) == 204:
+        response = HTMLResponse("", status_code=204)
+    elif isinstance(renderer, str):
         context = result if isinstance(result, dict) else {}
-        status_code = getattr(shim, "response_status", 200) or 200
         response = await run_in_threadpool(
             render_template_to_response,
             request=request,
@@ -210,6 +498,10 @@ async def _dispatch_view(fn, cfg, request, path_params):
 
     commit_session_response(request, session, shim, response)
     apply_http_cache(response, cfg)
+    if request.method == "GET":
+        # Several UI endpoints return either full-page HTML or fragment HTML
+        # for the same URL based on the HX-Request header.
+        _append_vary_header(response, "HX-Request")
     return _apply_response_headers(shim, response)
 
 
@@ -319,6 +611,14 @@ def _path_url(request) -> str:
     return str(url).split("?", 1)[0]
 
 
+def _render_hx_or_context(request, template_name, context, *, extra_context=None):
+    hx_context = context if extra_context is None else {**context, **extra_context}
+    return _render_hx_fragment(request, template_name, hx_context) or context
+
+
+# === Domain: auth ===
+
+
 # === Home redirect ===
 def home(request=None):
     """Redirect / to /tests. Registered directly on the router (no _dispatch_view)."""
@@ -376,7 +676,7 @@ def login(request):
         if "error" not in token:
             if stay_logged_in:
                 # Session persists for a year after login
-                remember(request, username, max_age=REMEMBER_MAX_AGE_SECONDS)
+                remember(request, username, max_age=SESSION_REMEMBER_MAX_AGE_SECONDS)
             else:
                 # Session ends when the browser is closed
                 remember(request, username)
@@ -393,251 +693,6 @@ def login(request):
             )
         request.session.flash(message, "error")
     return {}
-
-
-# === Worker administration ===
-# Note that the allowed length of mailto URLs on Chrome/Windows is severely
-# limited.
-def worker_email(worker_name, blocker_name, message, host_url, blocked):
-    owner_name = worker_name.split("-")[0]
-    body = f"""\
-Dear {owner_name},
-
-Thank you for contributing to the development of Stockfish. Unfortunately, it seems your Fishtest worker {worker_name} has some issue(s). More specifically the following has been reported:
-
-{message}
-
-You may possibly find more information about this in our event log at {host_url}/actions
-
-Feel free to reply to this email if you require any help, or else contact the #fishtest-dev channel on the Stockfish Discord server: https://discord.com/invite/awnh2qZfTT
-
-Enjoy your day,
-
-{blocker_name} (Fishtest approver)
-
-"""
-    return body
-
-
-def normalize_lf(m):
-    m = m.replace("\r\n", "\n").replace("\r", "\n")
-    return m.rstrip()
-
-
-def _blocked_worker_rows(blocked_workers, *, show_email):
-    rows = []
-    for worker in blocked_workers:
-        worker_name_value = worker.get("worker_name", "")
-        last_updated = worker.get("last_updated")
-        last_updated_label = (
-            format_time_ago(last_updated) if last_updated is not None else "Never"
-        )
-        actions_url = f"/actions?text={quote(f'"{worker_name_value}"')}"
-        owner_email = worker.get("owner_email", "")
-        subject = worker.get("subject", "")
-        body = worker.get("body", "")
-        mailto_url = ""
-        if show_email and owner_email:
-            body_encoded = quote(body.replace("\n", "\r\n"))
-            mailto_url = (
-                f"mailto:{owner_email}?subject={quote(subject)}&body={body_encoded}"
-            )
-        rows.append(
-            {
-                "worker_name": worker_name_value,
-                "last_updated_label": last_updated_label,
-                "actions_url": actions_url,
-                "owner_email": owner_email,
-                "mailto_url": mailto_url,
-            }
-        )
-    return rows
-
-
-def workers(request):
-    is_approver = request.has_permission("approve_run")
-
-    blocked_workers = request.rundb.workerdb.get_blocked_workers()
-    blocker_name = request.authenticated_userid
-
-    # If we are approver then we are logged in, so blocker_name is not None
-    if is_approver:
-        for w in blocked_workers:
-            owner_name = w["worker_name"].split("-")[0]
-            owner = request.userdb.get_user(owner_name)
-            w["owner_email"] = owner["email"] if owner is not None else ""
-            w["body"] = worker_email(
-                w["worker_name"],
-                blocker_name,
-                w["message"],
-                _host_url(request),
-                w["blocked"],
-            )
-            w["subject"] = f"Issue(s) with worker {w['worker_name']}"
-
-    worker_name = request.matchdict.get("worker_name")
-    try:
-        validate(union(short_worker_name, "show"), worker_name, name="worker_name")
-    except ValidationError as e:
-        request.session.flash(str(e), "error")
-        return {
-            "show_admin": False,
-            "show_email": is_approver,
-            "blocked_workers": _blocked_worker_rows(
-                blocked_workers,
-                show_email=is_approver,
-            ),
-        }
-    if len(worker_name.split("-")) != 3:
-        return {
-            "show_admin": False,
-            "show_email": is_approver,
-            "blocked_workers": _blocked_worker_rows(
-                blocked_workers,
-                show_email=is_approver,
-            ),
-        }
-    result = ensure_logged_in(request)
-    if isinstance(result, RedirectResponse):
-        return result
-    owner_name = worker_name.split("-")[0]
-    if not is_approver and blocker_name != owner_name:
-        request.session.flash("Only owners and approvers can block/unblock", "error")
-        return {
-            "show_admin": False,
-            "show_email": is_approver,
-            "blocked_workers": _blocked_worker_rows(
-                blocked_workers,
-                show_email=is_approver,
-            ),
-        }
-
-    if request.method == "POST":
-        button = request.POST.get("submit")
-        if button == "Submit":
-            blocked = request.POST.get("blocked") is not None
-            message = request.POST.get("message")
-            max_chars = 500
-            if len(message) > max_chars:
-                request.session.flash(
-                    f"Warning: your description of the issue has been truncated to {max_chars} characters",
-                    "error",
-                )
-                message = message[:max_chars]
-            message = normalize_lf(message)
-            was_blocked = request.workerdb.get_worker(worker_name)["blocked"]
-            request.rundb.workerdb.update_worker(
-                worker_name, blocked=blocked, message=message
-            )
-            if blocked != was_blocked:
-                request.session.flash(
-                    f"Worker {worker_name} {'blocked' if blocked else 'unblocked'}!",
-                )
-                request.actiondb.block_worker(
-                    username=blocker_name,
-                    worker=worker_name,
-                    message="blocked" if blocked else "unblocked",
-                )
-        return RedirectResponse(url="/workers/show", status_code=302)
-
-    w = request.rundb.workerdb.get_worker(worker_name)
-    return {
-        "show_admin": True,
-        "worker_name": worker_name,
-        "blocked": w["blocked"],
-        "message": w["message"],
-        "show_email": is_approver,
-        "last_updated_label": (
-            format_time_ago(w["last_updated"]) if w["last_updated"] else "Never"
-        ),
-        "blocked_workers": _blocked_worker_rows(
-            blocked_workers,
-            show_email=is_approver,
-        ),
-    }
-
-
-# === Neural network uploads + tools ===
-def upload(request):
-    result = ensure_logged_in(request)
-    if isinstance(result, RedirectResponse):
-        return result
-    base_context = {
-        "upload_url": str(request.url),
-        "testing_guidelines_url": "https://github.com/official-stockfish/fishtest/wiki/Creating-my-first-test",
-        "cc0_url": "https://creativecommons.org/share-your-work/public-domain/cc0/",
-        "nn_stats_url": "/nns",
-    }
-
-    if request.method != "POST":
-        return base_context
-    try:
-        filename = request.POST["network"].filename
-        input_file = request.POST["network"].file
-        network = input_file.read()
-    except AttributeError:
-        request.session.flash(
-            "Specify a network file with the 'Choose File' button", "error"
-        )
-        return base_context
-    except Exception as e:
-        print("Error reading the network file:", e)
-        request.session.flash("Error reading the network file", "error")
-        return base_context
-    if request.rundb.get_nn(filename):
-        request.session.flash(f"Network {filename} already exists", "error")
-        return base_context
-    errors = []
-    if len(network) >= 200000000:
-        errors.append("Network must be < 200MB")
-    if not re.match(r"^nn-[0-9a-f]{12}\.nnue$", filename):
-        errors.append('Name must match "nn-[SHA256 first 12 digits].nnue"')
-    hash = hashlib.sha256(network).hexdigest()
-    if hash[:12] != filename[3:15]:
-        errors.append(f"Wrong SHA256 hash: {hash[:12]} Filename: {filename[3:15]}")
-    if errors:
-        for error in errors:
-            request.session.flash(error, "error")
-        return base_context
-    net_file_gz = Path("/var/www/fishtest/nn") / f"{filename}.gz"
-    try:
-        with gzip.open(net_file_gz, "xb") as f:
-            f.write(network)
-    except FileExistsError as e:
-        print(f"Network {filename} already uploaded:", e)
-        request.session.flash(f"Network {filename} already uploaded", "error")
-        return base_context
-    except Exception as e:
-        net_file_gz.unlink(missing_ok=True)
-        print(f"Failed to write network {filename}:", e)
-        request.session.flash(f"Failed to write network {filename}", "error")
-        return base_context
-    try:
-        net_data = gzip.decompress(net_file_gz.read_bytes())
-    except Exception as e:
-        net_file_gz.unlink()
-        print(f"Failed to read uploaded network {filename}:", e)
-        request.session.flash(f"Failed to read uploaded network {filename}", "error")
-        return base_context
-
-    hash = hashlib.sha256(net_data).hexdigest()
-    if hash[:12] != filename[3:15]:
-        net_file_gz.unlink()
-        request.session.flash(f"Invalid hash for uploaded network {filename}", "error")
-        return base_context
-
-    if request.rundb.get_nn(filename):
-        request.session.flash(f"Network {filename} already exists", "error")
-        return base_context
-
-    request.rundb.upload_nn(request.authenticated_userid, filename)
-
-    request.actiondb.upload_nn(
-        username=request.authenticated_userid,
-        nn=filename,
-    )
-
-    return RedirectResponse(url="/nns", status_code=302)
 
 
 def logout(request):
@@ -748,22 +803,513 @@ def signup(request):
     return signup_context
 
 
+# === Domain: lists ===
+
+
+# === Worker administration ===
+# Note that the allowed length of mailto URLs on Chrome/Windows is severely
+# limited.
+def worker_email(worker_name, blocker_name, message, host_url, blocked):
+    owner_name = worker_name.split("-")[0]
+    body = f"""\
+Dear {owner_name},
+
+Thank you for contributing to the development of Stockfish. Unfortunately, it seems your Fishtest worker {worker_name} has some issue(s). More specifically the following has been reported:
+
+{message}
+
+You may possibly find more information about this in our event log at {host_url}/actions
+
+Feel free to reply to this email if you require any help, or else contact the #fishtest-dev channel on the Stockfish Discord server: https://discord.com/invite/awnh2qZfTT
+
+Enjoy your day,
+
+{blocker_name} (Fishtest approver)
+
+"""
+    return body
+
+
+def normalize_lf(m):
+    m = m.replace("\r\n", "\n").replace("\r", "\n")
+    return m.rstrip()
+
+
+def _blocked_worker_rows(blocked_workers, *, show_email):
+    rows = []
+    for worker in blocked_workers:
+        worker_name_value = worker.get("worker_name", "")
+        last_updated = worker.get("last_updated")
+        last_updated_label = (
+            format_time_ago(last_updated) if last_updated is not None else "Never"
+        )
+        actions_url = f"/actions?text={quote(f'"{worker_name_value}"')}"
+        owner_email = worker.get("owner_email", "")
+        subject = worker.get("subject", "")
+        body = worker.get("body", "")
+        mailto_url = ""
+        if show_email and owner_email:
+            body_encoded = quote(body.replace("\n", "\r\n"))
+            mailto_url = (
+                f"mailto:{owner_email}?subject={quote(subject)}&body={body_encoded}"
+            )
+        rows.append(
+            {
+                "worker_name": worker_name_value,
+                "worker_name_key": worker_name_value.lower(),
+                "last_updated": last_updated,
+                "last_updated_label": last_updated_label,
+                "actions_url": actions_url,
+                "owner_email": owner_email,
+                "mailto_url": mailto_url,
+            }
+        )
+    return rows
+
+
+def _filter_blocked_workers(blocked_workers, filter_value):
+    if filter_value == "all-workers":
+        return blocked_workers
+
+    threshold_5d = datetime.now(UTC) - timedelta(days=5)
+    if filter_value == "gt-5days":
+        return [
+            worker
+            for worker in blocked_workers
+            if worker.get("last_updated") and worker["last_updated"] < threshold_5d
+        ]
+
+    # Default to recent workers when an unknown filter is provided.
+    return [
+        worker
+        for worker in blocked_workers
+        if not worker.get("last_updated") or worker["last_updated"] >= threshold_5d
+    ]
+
+
+_WORKERS_FILTER_DEFAULT = "le-5days"
+_WORKERS_FILTER_VALUES = {"all-workers", "le-5days", "gt-5days"}
+_WORKERS_SORT_MAP = {
+    "worker": ("worker_name", False),
+    "last_changed": ("last_updated", True),
+    "events": ("actions_url", False),
+    "email": ("owner_email", False),
+}
+_WORKERS_DEFAULT_SORT = "last_changed"
+_WORKERS_PAGE_SIZE = WORKERS_PAGE_SIZE
+_WORKERS_MAX_ALL = WORKERS_MAX_ALL
+_WORKERS_FILTER_FIELD = "worker_name"
+
+_USER_MANAGEMENT_GROUP_DEFAULT = "pending"
+_USER_MANAGEMENT_GROUP_VALUES = {"all", "pending", "blocked", "idle", "approvers"}
+_USER_MANAGEMENT_SORT_MAP = {
+    "username": ("username", False),
+    "registration": ("registration_time", True),
+    "groups": ("groups_label", False),
+    "email": ("email", False),
+}
+_USER_MANAGEMENT_DEFAULT_SORT = "registration"
+_USER_MANAGEMENT_PAGE_SIZE = USER_MANAGEMENT_PAGE_SIZE
+_USER_MANAGEMENT_MAX_ALL = USER_MANAGEMENT_MAX_ALL
+_USER_MANAGEMENT_FILTER_FIELD = "username"
+
+
+def _workers_query_string(*, filter_value, sort_param, order_param, query_filter, view):
+    _, default_reverse = _WORKERS_SORT_MAP[_WORKERS_DEFAULT_SORT]
+    default_order = "desc" if default_reverse else "asc"
+
+    params = []
+    if filter_value != _WORKERS_FILTER_DEFAULT:
+        params.append(("filter", filter_value))
+    if sort_param != _WORKERS_DEFAULT_SORT:
+        params.append(("sort", sort_param))
+    if order_param != default_order:
+        params.append(("order", order_param))
+    if query_filter:
+        params.append(("q", query_filter))
+    if view == "all":
+        params.append(("view", "all"))
+    return _build_query_string(params)
+
+
+def _user_management_query_string(
+    *, group, sort_param, order_param, query_filter, view
+):
+    _, default_reverse = _USER_MANAGEMENT_SORT_MAP[_USER_MANAGEMENT_DEFAULT_SORT]
+    default_order = "desc" if default_reverse else "asc"
+
+    params = []
+    if group != _USER_MANAGEMENT_GROUP_DEFAULT:
+        params.append(("group", group))
+    if sort_param != _USER_MANAGEMENT_DEFAULT_SORT:
+        params.append(("sort", sort_param))
+    if order_param != default_order:
+        params.append(("order", order_param))
+    if query_filter:
+        params.append(("q", query_filter))
+    if view == "all":
+        params.append(("view", "all"))
+    return _build_query_string(params)
+
+
+def _workers_sort_value(row, sort_key):
+    if sort_key == "last_updated":
+        value = row.get("last_updated")
+        if isinstance(value, datetime):
+            return value.timestamp()
+        return 0
+    return str(row.get(sort_key, "")).lower()
+
+
+def _user_management_sort_value(row, sort_key):
+    if sort_key == "registration_time":
+        value = row.get("registration_time")
+        if isinstance(value, datetime):
+            return value.timestamp()
+        return 0
+    return str(row.get(sort_key, "")).lower()
+
+
+def workers(request):
+    is_approver = request.has_permission("approve_run")
+    filter_value = request.params.get("filter", _WORKERS_FILTER_DEFAULT)
+    if filter_value not in _WORKERS_FILTER_VALUES:
+        filter_value = _WORKERS_FILTER_DEFAULT
+
+    sort_param = request.params.get("sort", _WORKERS_DEFAULT_SORT)
+    if sort_param not in _WORKERS_SORT_MAP:
+        sort_param = _WORKERS_DEFAULT_SORT
+    if not is_approver and sort_param == "email":
+        sort_param = _WORKERS_DEFAULT_SORT
+
+    sort_key, default_reverse = _WORKERS_SORT_MAP[sort_param]
+    default_order = "desc" if default_reverse else "asc"
+    order_param = request.params.get("order", default_order)
+    if order_param not in _SORT_ORDER_VALUES:
+        order_param = default_order
+
+    view_param = _normalize_view_mode(request.params.get("view", "paged"))
+
+    query_filter = request.params.get("q", "").strip()
+    page_idx = _page_index_from_params(request.params)
+
+    blocked_workers = request.rundb.workerdb.get_blocked_workers()
+    blocker_name = request.authenticated_userid
+
+    # If we are approver then we are logged in, so blocker_name is not None
+    if is_approver:
+        for w in blocked_workers:
+            owner_name = w["worker_name"].split("-")[0]
+            owner = request.userdb.get_user(owner_name)
+            w["owner_email"] = owner["email"] if owner is not None else ""
+            w["body"] = worker_email(
+                w["worker_name"],
+                blocker_name,
+                w["message"],
+                _host_url(request),
+                w["blocked"],
+            )
+            w["subject"] = f"Issue(s) with worker {w['worker_name']}"
+
+    worker_name = request.matchdict.get("worker_name")
+    show_admin = False
+    admin_context = {}
+
+    try:
+        validate(union(short_worker_name, "show"), worker_name, name="worker_name")
+    except ValidationError as e:
+        request.session.flash(str(e), "error")
+    else:
+        if len(worker_name.split("-")) != 3:
+            pass  # fall through to shared rendering
+        else:
+            result = ensure_logged_in(request)
+            if isinstance(result, RedirectResponse):
+                return result
+            owner_name = worker_name.split("-")[0]
+            if not is_approver and blocker_name != owner_name:
+                request.session.flash(
+                    "Only owners and approvers can block/unblock", "error"
+                )
+            elif request.method == "POST":
+                button = request.POST.get("submit")
+                if button == "Submit":
+                    blocked = request.POST.get("blocked") is not None
+                    message = request.POST.get("message")
+                    max_chars = 500
+                    if len(message) > max_chars:
+                        request.session.flash(
+                            f"Warning: your description of the issue has been truncated to {max_chars} characters",
+                            "error",
+                        )
+                        message = message[:max_chars]
+                    message = normalize_lf(message)
+                    was_blocked = request.workerdb.get_worker(worker_name)["blocked"]
+                    request.rundb.workerdb.update_worker(
+                        worker_name, blocked=blocked, message=message
+                    )
+                    if blocked != was_blocked:
+                        request.session.flash(
+                            f"Worker {worker_name} {'blocked' if blocked else 'unblocked'}!",
+                        )
+                        request.actiondb.block_worker(
+                            username=blocker_name,
+                            worker=worker_name,
+                            message="blocked" if blocked else "unblocked",
+                        )
+                return RedirectResponse(url="/workers/show", status_code=302)
+            else:
+                w = request.rundb.workerdb.get_worker(worker_name)
+                show_admin = True
+                admin_context = {
+                    "worker_name": worker_name,
+                    "blocked": w["blocked"],
+                    "message": w["message"],
+                    "last_updated_label": (
+                        format_time_ago(w["last_updated"])
+                        if w["last_updated"]
+                        else "Never"
+                    ),
+                }
+
+    # --- shared rendering for all non-redirect branches ---
+    filtered_rows = _blocked_worker_rows(
+        _filter_blocked_workers(blocked_workers, filter_value),
+        show_email=is_approver,
+    )
+
+    if query_filter:
+        query_folded = query_filter.casefold()
+        filtered_rows = [
+            row
+            for row in filtered_rows
+            if query_folded in str(row.get(_WORKERS_FILTER_FIELD, "")).casefold()
+        ]
+
+    filtered_rows.sort(
+        key=lambda row: (
+            _workers_sort_value(row, sort_key),
+            row.get("worker_name_key", ""),
+        ),
+        reverse=(order_param == "desc"),
+    )
+
+    num_workers = len(filtered_rows)
+    is_truncated = False
+    if view_param == "all":
+        if len(filtered_rows) > _WORKERS_MAX_ALL:
+            filtered_rows = filtered_rows[:_WORKERS_MAX_ALL]
+            is_truncated = True
+    else:
+        start = page_idx * _WORKERS_PAGE_SIZE
+        filtered_rows = filtered_rows[start : start + _WORKERS_PAGE_SIZE]
+
+    query_params = _workers_query_string(
+        filter_value=filter_value,
+        sort_param=sort_param,
+        order_param=order_param,
+        query_filter=query_filter,
+        view=view_param,
+    )
+    pages = (
+        pagination(page_idx, num_workers, _WORKERS_PAGE_SIZE, query_params)
+        if view_param == "paged"
+        else []
+    )
+
+    context = {
+        "show_admin": show_admin,
+        "show_email": is_approver,
+        "blocked_workers": filtered_rows,
+        "filter_value": filter_value,
+        "sort": sort_param,
+        "order": order_param,
+        "q": query_filter,
+        "view": view_param,
+        "pages": pages,
+        "num_workers": num_workers,
+        "max_all": _WORKERS_MAX_ALL,
+        "is_truncated": is_truncated,
+        **admin_context,
+    }
+
+    return _render_hx_or_context(
+        request,
+        "workers_content_fragment.html.j2",
+        context,
+        extra_context={"is_hx": True},
+    )
+
+
+# === Neural network uploads + tools ===
+def upload(request):
+    result = ensure_logged_in(request)
+    if isinstance(result, RedirectResponse):
+        return result
+    base_context = {
+        "upload_url": str(request.url),
+        "testing_guidelines_url": "https://github.com/official-stockfish/fishtest/wiki/Creating-my-first-test",
+        "cc0_url": "https://creativecommons.org/share-your-work/public-domain/cc0/",
+        "nn_stats_url": "/nns",
+    }
+
+    if request.method != "POST":
+        return base_context
+    try:
+        filename = request.POST["network"].filename
+        input_file = request.POST["network"].file
+        network = input_file.read()
+    except AttributeError:
+        request.session.flash(
+            "Specify a network file with the 'Choose File' button", "error"
+        )
+        return base_context
+    except Exception as e:
+        print("Error reading the network file:", e)
+        request.session.flash("Error reading the network file", "error")
+        return base_context
+    if request.rundb.get_nn(filename):
+        request.session.flash(f"Network {filename} already exists", "error")
+        return base_context
+    errors = []
+    if len(network) >= 200000000:
+        errors.append("Network must be < 200MB")
+    if not re.match(r"^nn-[0-9a-f]{12}\.nnue$", filename):
+        errors.append('Name must match "nn-[SHA256 first 12 digits].nnue"')
+    hash = hashlib.sha256(network).hexdigest()
+    if hash[:12] != filename[3:15]:
+        errors.append(f"Wrong SHA256 hash: {hash[:12]} Filename: {filename[3:15]}")
+    if errors:
+        for error in errors:
+            request.session.flash(error, "error")
+        return base_context
+    net_file_gz = Path("/var/www/fishtest/nn") / f"{filename}.gz"
+    try:
+        with gzip.open(net_file_gz, "xb") as f:
+            f.write(network)
+    except FileExistsError as e:
+        print(f"Network {filename} already uploaded:", e)
+        request.session.flash(f"Network {filename} already uploaded", "error")
+        return base_context
+    except Exception as e:
+        net_file_gz.unlink(missing_ok=True)
+        print(f"Failed to write network {filename}:", e)
+        request.session.flash(f"Failed to write network {filename}", "error")
+        return base_context
+    try:
+        net_data = gzip.decompress(net_file_gz.read_bytes())
+    except Exception as e:
+        net_file_gz.unlink()
+        print(f"Failed to read uploaded network {filename}:", e)
+        request.session.flash(f"Failed to read uploaded network {filename}", "error")
+        return base_context
+
+    hash = hashlib.sha256(net_data).hexdigest()
+    if hash[:12] != filename[3:15]:
+        net_file_gz.unlink()
+        request.session.flash(f"Invalid hash for uploaded network {filename}", "error")
+        return base_context
+
+    if request.rundb.get_nn(filename):
+        request.session.flash(f"Network {filename} already exists", "error")
+        return base_context
+
+    request.rundb.upload_nn(request.authenticated_userid, filename)
+
+    request.actiondb.upload_nn(
+        username=request.authenticated_userid,
+        nn=filename,
+    )
+
+    return RedirectResponse(url="/nns", status_code=302)
+
+
 def nns(request):
     user = request.params.get("user", "")
     network_name = request.params.get("network_name", "")
-    master_only = request.params.get("master_only", False)
+    sort_param = request.params.get("sort", "time")
+    if sort_param not in {
+        "time",
+        "name",
+        "user",
+        "first_test",
+        "last_test",
+        "downloads",
+    }:
+        sort_param = "time"
+    order_param = request.params.get("order", "desc")
+    if order_param not in {"asc", "desc"}:
+        order_param = "desc"
+    view_param = request.params.get("view", "paged")
+    if view_param not in {"paged", "all"}:
+        view_param = "paged"
 
+    page_size = NNS_PAGE_SIZE
+    max_all = NNS_MAX_ALL
+
+    def _truthy(value):
+        if isinstance(value, bool):
+            return value
+        return str(value).strip().lower() in {"1", "true", "on", "yes"}
+
+    master_only_param = request.params.get("master_only")
+    if master_only_param is None:
+        master_only = _truthy(request.cookies.get("master_only", "false"))
+    else:
+        master_only = _truthy(master_only_param)
+
+    page_idx = 0
     page_param = request.params.get("page", "")
-    page_idx = max(0, int(page_param) - 1) if page_param.isdigit() else 0
-    page_size = 25
+    if view_param == "paged":
+        page_idx = max(0, int(page_param) - 1) if page_param.isdigit() else 0
 
     nns, num_nns = request.rundb.get_nns(
         user=user,
         network_name=network_name,
         master_only=master_only,
-        limit=page_size,
-        skip=page_idx * page_size,
+        limit=0,
+        skip=0,
     )
+    nns = list(nns)
+    nns_summary = {
+        "nets": num_nns,
+        "master_nets": sum(1 for nn in nns if nn.get("is_master")),
+        "contributors": len({nn.get("user") for nn in nns if nn.get("user")}),
+        "downloads": sum(int(nn.get("downloads", 0)) for nn in nns),
+    }
+
+    def _first_test_date(nn):
+        return (nn.get("first_test") or {}).get("date") or datetime.min.replace(
+            tzinfo=UTC
+        )
+
+    def _last_test_date(nn):
+        return (nn.get("last_test") or {}).get("date") or datetime.min.replace(
+            tzinfo=UTC
+        )
+
+    def _sort_key(nn):
+        key_map = {
+            "time": nn.get("time") or datetime.min.replace(tzinfo=UTC),
+            "name": nn.get("name", "").lower(),
+            "user": nn.get("user", "").lower(),
+            "first_test": _first_test_date(nn),
+            "last_test": _last_test_date(nn),
+            "downloads": int(nn.get("downloads", 0)),
+        }
+        # Deterministic tie-break to avoid row jitter between requests.
+        return (key_map[sort_param], nn.get("name", "").lower())
+
+    nns.sort(key=_sort_key, reverse=(order_param == "desc"))
+
+    if view_param == "paged":
+        start = page_idx * page_size
+        nns = nns[start : start + page_size]
+
+    is_truncated = False
+    if view_param == "all" and len(nns) > max_all:
+        nns = nns[:max_all]
+        is_truncated = True
 
     formatted_nns = []
     for nn in nns:
@@ -799,20 +1345,35 @@ def nns(request):
             }
         )
 
-    query_params = ""
+    query_dict = {
+        "view": view_param,
+        "sort": sort_param,
+        "order": order_param,
+    }
     if user:
-        query_params += "&user={}".format(user)
+        query_dict["user"] = user
     if network_name:
-        query_params += "&network_name={}".format(network_name)
+        query_dict["network_name"] = network_name
     if master_only:
-        query_params += "&master_only={}".format(master_only)
+        query_dict["master_only"] = "1"
 
-    pages = pagination(page_idx, num_nns, page_size, query_params)
+    query_params = "&" + urlencode(query_dict)
 
-    return {
+    pages = []
+    if view_param == "paged":
+        pages = pagination(page_idx, num_nns, page_size, query_params)
+
+    context = {
         "nns": formatted_nns,
+        "nns_summary": nns_summary,
         "pages": pages,
-        "master_only": request.cookies.get("master_only") == "true",
+        "master_only": master_only,
+        "view": view_param,
+        "sort": sort_param,
+        "order": order_param,
+        "num_nns": num_nns,
+        "max_all": max_all,
+        "is_truncated": is_truncated,
         "filters": {
             "network_name": network_name,
             "user": user,
@@ -822,12 +1383,46 @@ def nns(request):
         "user_filter": user,
     }
 
+    return (
+        _render_hx_fragment(request, "nns_content_fragment.html.j2", context) or context
+    )
+
 
 def sprt_calc(request):
     return {}
 
 
+def _build_rate_limits_context():
+    server_rate_limit = -1
+    server_reset = "00:00:00"
+
+    try:
+        rate_limit = gh.rate_limit()
+        server_rate_limit = int(rate_limit.get("remaining", -1))
+        reset_timestamp = float(rate_limit.get("reset", 0))
+        if reset_timestamp > 0:
+            server_reset = datetime.fromtimestamp(reset_timestamp, UTC).strftime(
+                "%H:%M:%S"
+            )
+    except Exception:
+        # Keep default placeholder values when GitHub is unavailable.
+        pass
+
+    return {
+        "server_rate_limit": server_rate_limit,
+        "server_reset": server_reset,
+    }
+
+
 def rate_limits(request):
+    return _build_rate_limits_context()
+
+
+def rate_limits_server(request):
+    return _build_rate_limits_context()
+
+
+def user_management_pending_count(request):
     return {}
 
 
@@ -854,130 +1449,847 @@ quotation_marks = (
 quotation_marks = "".join(chr(c) for c in quotation_marks)
 quotation_marks_translation = str.maketrans(quotation_marks, len(quotation_marks) * '"')
 
+_ACTIONS_DEFAULT_MAX_COUNT_AUTH = 50000
+_ANONYMOUS_RESULT_LIMIT_HARD = 5000
+_MONGO_INT64_MAX = 2**63 - 1
+_DEFAULT_TIME_SORT_FIELD = "time"
+_DEFAULT_SORT_ORDER = "desc"
+_FINISHED_MAX_COUNT_QUERY_PARAM = "max_count"
+_FINISHED_SEARCH_MODE = "search"
+_ACTIONS_SORT_SCOPE_MAX_AUTH = _ACTIONS_DEFAULT_MAX_COUNT_AUTH
+_ACTIONS_SORT_SCOPE_MAX_ANON = _ANONYMOUS_RESULT_LIMIT_HARD
+_ACTIONS_SORT_LABELS = {
+    "time": "Time",
+    "event": "Event",
+    "source": "Source",
+    "target": "Target",
+    "comment": "Comment",
+}
+
 
 def sanitize_quotation_marks(text):
     return text.translate(quotation_marks_translation)
 
 
-# === Actions log ===
-def actions(request):
-    DEFAULT_MAX_ACTIONS_AUTH = 50000
-    HARD_MAX_ACTIONS_ANON = 5000
+def _positive_int_param(raw_value, *, max_value=None):
+    if raw_value in (None, ""):
+        return None
+    try:
+        value = int(raw_value)
+    except TypeError, ValueError:
+        return None
+    if value <= 0:
+        return None
+    if max_value is not None:
+        return min(value, max_value)
+    return value
 
+
+def _float_param(raw_value):
+    if raw_value in (None, ""):
+        return None
+    try:
+        return float(raw_value)
+    except TypeError, ValueError:
+        return None
+
+
+def _effective_result_limit(
+    *,
+    is_authenticated,
+    requested_limit,
+    anonymous_hard_limit,
+    authenticated_default_limit=None,
+):
+    if not is_authenticated:
+        if requested_limit is None:
+            return anonymous_hard_limit
+        return min(requested_limit, anonymous_hard_limit)
+
+    if requested_limit is not None:
+        return requested_limit
+    return authenticated_default_limit
+
+
+def _effective_actions_max_count(
+    *,
+    is_authenticated,
+    requested_max_count,
+):
+    return _effective_result_limit(
+        is_authenticated=is_authenticated,
+        requested_limit=requested_max_count,
+        anonymous_hard_limit=_ANONYMOUS_RESULT_LIMIT_HARD,
+        authenticated_default_limit=_ACTIONS_DEFAULT_MAX_COUNT_AUTH,
+    )
+
+
+def _effective_actions_sort_state(params):
+    sort_param = (params.get("sort") or _DEFAULT_TIME_SORT_FIELD).strip().lower()
+    if sort_param not in _ACTIONS_SORT_LABELS:
+        sort_param = _DEFAULT_TIME_SORT_FIELD
+
+    order_param = (params.get("order") or "").strip().lower()
+    if order_param not in {"asc", "desc"}:
+        order_param = (
+            _DEFAULT_SORT_ORDER if sort_param == _DEFAULT_TIME_SORT_FIELD else "asc"
+        )
+
+    return sort_param, order_param
+
+
+def _actions_sort_scope_max_count(*, is_authenticated, max_count):
+    scope_cap = (
+        _ACTIONS_SORT_SCOPE_MAX_AUTH
+        if is_authenticated
+        else _ACTIONS_SORT_SCOPE_MAX_ANON
+    )
+    if max_count is None:
+        return scope_cap
+    return min(max_count, scope_cap)
+
+
+def _build_actions_time_url(
+    *, search_action, username, text, before, run_id, sort_param, order_param
+):
+    time_query = {
+        "max_count": "1",
+        "action": search_action,
+        "user": username,
+        "text": text,
+        "before": before or "",
+        "run_id": run_id,
+        "sort": sort_param,
+        "order": order_param,
+    }
+    return "/actions?" + urlencode(time_query)
+
+
+def _build_action_row(
+    action,
+    request,
+    *,
+    search_action,
+    username,
+    text,
+    run_id,
+    sort_param,
+    order_param,
+):
+    action = dict(action)
+    action.setdefault("action", "")
+    action.setdefault("username", "")
+
+    time_value = action.get("time")
+    if time_value is None:
+        time_label = ""
+    else:
+        time_label = datetime.fromtimestamp(float(time_value), UTC).strftime(
+            "%y-%m-%d %H:%M:%S"
+        )
+        time_label = time_label.replace("-", "\u2011", 2)
+
+    agent_name = ""
+    agent_url = ""
+    if "worker" in action and action.get("action") != "block_worker":
+        agent_name = action.get("worker", "")
+        agent_short = "-".join(agent_name.split("-")[0:3]) if agent_name else ""
+        agent_url = f"/workers/{agent_short}" if agent_short else ""
+    else:
+        agent_name = action.get("username", "")
+        agent_url = f"/user/{agent_name}" if agent_name else ""
+
+    if action.get("action") in ("system_event", "log_message"):
+        agent_url = ""
+        if "worker" in action:
+            agent_name = action.get("worker", agent_name)
+
+    target_name = ""
+    target_url = ""
+    if "nn" in action:
+        raw_name = action.get("nn", "")
+        target_name = raw_name.replace("-", "\u2011") if raw_name else ""
+        target_url = f"/api/nn/{raw_name}" if raw_name else ""
+    elif "run" in action and "run_id" in action:
+        target_name = action.get("run", "")
+        task_id = action.get("task_id")
+        task_suffix = f"/{task_id}" if task_id is not None else ""
+        target_name = f"{target_name}{task_suffix}" if target_name else ""
+        task_query = f"?show_task={task_id}" if task_id is not None else ""
+        target_url = f"/tests/view/{action.get('run_id')}{task_query}"
+    elif request.has_permission("approve_run") and "user" in action:
+        target_name = action.get("user", "")
+        target_url = f"/user/{target_name}" if target_name else ""
+    elif action.get("action") == "block_worker" and "worker" in action:
+        target_name = action.get("worker", "")
+        target_url = f"/workers/{target_name}" if target_name else ""
+    else:
+        target_name = action.get("user", "")
+
+    action.update(
+        {
+            "time_label": time_label,
+            "time_url": _build_actions_time_url(
+                search_action=search_action,
+                username=username,
+                text=text,
+                before=time_value,
+                run_id=run_id,
+                sort_param=sort_param,
+                order_param=order_param,
+            ),
+            "event": action.get("action", ""),
+            "agent_name": agent_name,
+            "agent_url": agent_url or None,
+            "target_name": target_name,
+            "target_url": target_url or None,
+            "message": action.get("message", ""),
+        }
+    )
+    return action
+
+
+def _action_row_sort_value(action_row, sort_param):
+    if sort_param == "time":
+        return float(action_row.get("time") or 0)
+    if sort_param == "event":
+        return str(action_row.get("event") or "").lower()
+    if sort_param == "source":
+        return str(action_row.get("agent_name") or "").lower()
+    if sort_param == "target":
+        return str(action_row.get("target_name") or "").lower()
+    if sort_param == "comment":
+        return str(action_row.get("message") or "").lower()
+    return float(action_row.get("time") or 0)
+
+
+def _sort_action_rows(action_rows, *, sort_param, order_param, username_priority=None):
+    # Keep a deterministic recent-first tie-break so equal values do not jump
+    # between requests.
+    action_rows.sort(
+        key=lambda row: (float(row.get("time") or 0), str(row.get("_id") or "")),
+        reverse=True,
+    )
+    action_rows.sort(
+        key=lambda row: _action_row_sort_value(row, sort_param),
+        reverse=(order_param == "desc"),
+    )
+    if username_priority:
+        action_rows.sort(
+            key=lambda row: (
+                username_priority.get(row.get("username", ""), len(username_priority)),
+                str(row.get("username", "")).lower(),
+            )
+        )
+
+
+def _actions_sort_summary(*, sort_param, order_param, sorted_count, scope_cap):
+    if sort_param == _DEFAULT_TIME_SORT_FIELD and order_param == _DEFAULT_SORT_ORDER:
+        return ""
+
+    direction = "ascending" if order_param == "asc" else "descending"
+    label = _ACTIONS_SORT_LABELS[sort_param]
+    if sorted_count >= scope_cap:
+        return f"Sorted by {label} {direction} across the first {scope_cap} matching actions."
+    return f"Sorted by {label} {direction} across {sorted_count} matching actions."
+
+
+def _is_hx_request(request) -> bool:
+    headers = getattr(request, "headers", None)
+    if headers is None:
+        return False
+    if (headers.get("HX-Request") or "").lower() != "true":
+        return False
+    # Never treat top-level document navigations as fragment requests,
+    # even if HX-Request appears in transit.
+    if (headers.get("Sec-Fetch-Mode") or "").lower() == "navigate":
+        return False
+    return True
+
+
+def _render_hx_fragment(request, template_name, context):
+    if not _is_hx_request(request):
+        return None
+    return render_template_to_response(
+        request=request.raw_request,
+        template_name=template_name,
+        context=build_template_context(request.raw_request, request.session, context),
+    )
+
+
+# === Actions log ===
+
+
+def _actions_query_suffix(
+    *,
+    username="",
+    search_action="",
+    text="",
+    sort_param=_DEFAULT_TIME_SORT_FIELD,
+    order_param=_DEFAULT_SORT_ORDER,
+    max_count=None,
+    before=None,
+    run_id="",
+    page=None,
+):
+    return _build_query_string(
+        [
+            ("user", username or None),
+            ("action", search_action or None),
+            ("text", text or None),
+            ("sort", sort_param if sort_param != _DEFAULT_TIME_SORT_FIELD else None),
+            (
+                "order",
+                order_param
+                if sort_param != _DEFAULT_TIME_SORT_FIELD
+                or order_param != _DEFAULT_SORT_ORDER
+                else None,
+            ),
+            ("max_count", max_count if max_count is not None else None),
+            ("before", before if before is not None else None),
+            ("run_id", run_id or None),
+            ("page", page if page not in (None, "", 1) else None),
+        ]
+    )
+
+
+def _username_match_sort_key(query, candidate):
+    normalized_query = query.strip().lower()
+    normalized_candidate = str(candidate).lower()
+    match_idx = normalized_candidate.find(normalized_query)
+    starts_with = 0 if match_idx == 0 else 1
+    return (starts_with, match_idx, normalized_candidate)
+
+
+def _sort_matched_usernames(usernames, query):
+    return sorted(
+        usernames, key=lambda username: _username_match_sort_key(query, username)
+    )
+
+
+def _username_priority_map(usernames):
+    return {username: idx for idx, username in enumerate(usernames)}
+
+
+def _matching_action_usernames(actiondb, query):
+    normalized_query = query.strip().lower()
+    if not normalized_query:
+        return []
+
+    get_action_usernames = getattr(actiondb, "get_action_usernames", None)
+    if not callable(get_action_usernames):
+        return [query.strip()]
+
+    def _matches_from_cached_usernames():
+        matches = []
+        for username in get_action_usernames():
+            if normalized_query in username.lower():
+                matches.append(username)
+        return _sort_matched_usernames(matches, query)
+
+    matches = _matches_from_cached_usernames()
+    if matches:
+        return matches
+
+    cache_clear = getattr(get_action_usernames, "cache_clear", None)
+    if callable(cache_clear):
+        cache_clear()
+        matches = _matches_from_cached_usernames()
+
+    return matches
+
+
+def _matching_finished_usernames(userdb, username_query):
+    normalized_query = username_query.strip().lower()
+    if not normalized_query:
+        return None
+
+    get_usernames = getattr(userdb, "get_usernames", None)
+    if not callable(get_usernames):
+        return [username_query.strip()]
+
+    def _matches_from_cached_usernames():
+        matches = []
+        for candidate in get_usernames():
+            if normalized_query in candidate.lower():
+                matches.append(candidate)
+        return _sort_matched_usernames(matches, username_query)
+
+    matches = _matches_from_cached_usernames()
+    if matches:
+        return matches
+
+    cache_clear = getattr(get_usernames, "cache_clear", None)
+    if callable(cache_clear):
+        cache_clear()
+        matches = _matches_from_cached_usernames()
+
+    return matches
+
+
+def _finished_filters_active(*, username_query, text):
+    return bool(username_query or text)
+
+
+def _effective_finished_max_count(
+    *,
+    is_authenticated,
+    requested_max_count,
+    filters_active,
+):
+    if not filters_active:
+        return requested_max_count
+    return _effective_result_limit(
+        is_authenticated=is_authenticated,
+        requested_limit=requested_max_count,
+        anonymous_hard_limit=FINISHED_FILTER_MAX_COUNT_ANON,
+        authenticated_default_limit=FINISHED_FILTER_MAX_COUNT_AUTH,
+    )
+
+
+def _finished_search_mode_enabled(params):
+    return str(params.get("mode", "")).strip().lower() == _FINISHED_SEARCH_MODE
+
+
+def _finished_route_url(request):
+    return f"{_host_url(request)}/tests/finished"
+
+
+def _nested_row_value(row, field_name, default=None):
+    value = row
+    for part in str(field_name).split("."):
+        if not isinstance(value, dict):
+            return default
+        value = value.get(part)
+        if value is None:
+            return default
+    return value
+
+
+def _merge_rows_by_username_priority(
+    grouped_rows,
+    *,
+    username_priority,
+    username_field,
+    time_field,
+    id_field,
+    skip,
+    limit,
+):
+    heap = []
+    merged_rows = []
+    needed = skip + limit
+
+    for list_idx, rows in enumerate(grouped_rows):
+        if not rows:
+            continue
+        row = rows[0]
+        priority = username_priority.get(
+            _nested_row_value(row, username_field, ""),
+            len(username_priority),
+        )
+        time_value = row.get(time_field)
+        if isinstance(time_value, datetime):
+            timestamp = time_value.timestamp()
+        else:
+            timestamp = float(time_value or 0)
+        heapq.heappush(
+            heap,
+            (
+                priority,
+                -timestamp,
+                str(row.get(id_field, "")),
+                list_idx,
+                0,
+            ),
+        )
+
+    while heap and len(merged_rows) < needed:
+        _, _, _, list_idx, row_idx = heapq.heappop(heap)
+        row = grouped_rows[list_idx][row_idx]
+        merged_rows.append(row)
+
+        next_idx = row_idx + 1
+        if next_idx < len(grouped_rows[list_idx]):
+            next_row = grouped_rows[list_idx][next_idx]
+            priority = username_priority.get(
+                _nested_row_value(next_row, username_field, ""),
+                len(username_priority),
+            )
+            time_value = next_row.get(time_field)
+            if isinstance(time_value, datetime):
+                timestamp = time_value.timestamp()
+            else:
+                timestamp = float(time_value or 0)
+            heapq.heappush(
+                heap,
+                (
+                    priority,
+                    -timestamp,
+                    str(next_row.get(id_field, "")),
+                    list_idx,
+                    next_idx,
+                ),
+            )
+
+    return merged_rows[skip : skip + limit]
+
+
+def _ranked_multi_username_merge(
+    *,
+    usernames,
+    fetch_fn,
+    username_field,
+    time_field,
+    skip,
+    limit,
+    max_count,
+):
+    merge_window = max(skip + limit, 1)
+    if len(usernames) * merge_window > 600:
+        return None
+
+    total_count = 0
+    grouped_rows = []
+    username_priority = _username_priority_map(usernames)
+
+    for matched_username in usernames:
+        remaining_cap = None
+        if max_count is not None:
+            remaining_cap = max(max_count - total_count, 0)
+            if remaining_cap == 0:
+                break
+
+        rows, count = fetch_fn(matched_username, merge_window, remaining_cap)
+        total_count += count
+        if max_count is not None:
+            total_count = min(total_count, max_count)
+        if rows:
+            grouped_rows.append(rows)
+
+    return (
+        _merge_rows_by_username_priority(
+            grouped_rows,
+            username_priority=username_priority,
+            username_field=username_field,
+            time_field=time_field,
+            id_field="_id",
+            skip=skip,
+            limit=limit,
+        ),
+        total_count,
+    )
+
+
+def _requested_finished_max_count(params):
+    return _positive_int_param(
+        params.get(_FINISHED_MAX_COUNT_QUERY_PARAM, None),
+        max_value=_MONGO_INT64_MAX,
+    )
+
+
+def _finished_canonical_query_string(
+    params,
+    *,
+    max_count=None,
+    search_mode=False,
+    username_query=None,
+    text=None,
+    page=None,
+):
+    if search_mode:
+        success_only = False
+        yellow_only = False
+        ltc_only = False
+    else:
+        success_only = bool(params.get("success_only", False))
+        yellow_only = bool(params.get("yellow_only", False))
+        ltc_only = bool(params.get("ltc_only", False))
+    if username_query is None:
+        username_query = str(params.get("user", "")).strip()
+    if text is None:
+        text = sanitize_quotation_marks(
+            str(
+                params.get(
+                    "text",
+                    params.get("info_regex", ""),
+                )
+            )
+        ).strip()
+    if page is None:
+        page_param = str(params.get("page", "")).strip()
+        page = int(page_param) if page_param.isdigit() else None
+
+    return _build_query_string(
+        _finished_query_pairs(
+            success_only=success_only,
+            yellow_only=yellow_only,
+            ltc_only=ltc_only,
+            search_mode=search_mode,
+            username_query=username_query,
+            text=text,
+            max_count=max_count,
+            sort_field=_DEFAULT_TIME_SORT_FIELD,
+            sort_order=_DEFAULT_SORT_ORDER,
+            page=page,
+        ),
+        leading="?",
+    )
+
+
+def _finished_query_pairs(
+    *,
+    success_only=False,
+    yellow_only=False,
+    ltc_only=False,
+    search_mode=False,
+    username_query="",
+    text="",
+    max_count=None,
+    sort_field=_DEFAULT_TIME_SORT_FIELD,
+    sort_order=_DEFAULT_SORT_ORDER,
+    page=None,
+):
+    return [
+        ("mode", _FINISHED_SEARCH_MODE if search_mode else None),
+        (
+            _FINISHED_MAX_COUNT_QUERY_PARAM,
+            max_count if max_count is not None else None,
+        ),
+        ("sort", sort_field),
+        ("order", sort_order),
+        ("success_only", "1" if success_only else None),
+        ("yellow_only", "1" if yellow_only else None),
+        ("ltc_only", "1" if ltc_only else None),
+        ("user", username_query or None),
+        ("text", text or None),
+        ("page", page if page not in (None, "", 1) else None),
+    ]
+
+
+def _finished_query_suffix(
+    *,
+    success_only=False,
+    yellow_only=False,
+    ltc_only=False,
+    search_mode=False,
+    username_query="",
+    text="",
+    max_count=None,
+    sort_field=_DEFAULT_TIME_SORT_FIELD,
+    sort_order=_DEFAULT_SORT_ORDER,
+    page=None,
+):
+    return _build_query_string(
+        _finished_query_pairs(
+            success_only=success_only,
+            yellow_only=yellow_only,
+            ltc_only=ltc_only,
+            search_mode=search_mode,
+            username_query=username_query,
+            text=text,
+            max_count=max_count,
+            sort_field=sort_field,
+            sort_order=sort_order,
+            page=page,
+        )
+    )
+
+
+def _finished_tab_query_string(
+    *,
+    tab=None,
+    search_mode=False,
+    username_query="",
+    text="",
+    max_count=None,
+    sort_field=_DEFAULT_TIME_SORT_FIELD,
+    sort_order=_DEFAULT_SORT_ORDER,
+):
+    return _build_query_string(
+        _finished_query_pairs(
+            success_only=tab == "success_only",
+            yellow_only=tab == "yellow_only",
+            ltc_only=tab == "ltc_only",
+            search_mode=search_mode,
+            username_query=username_query,
+            text=text,
+            max_count=max_count,
+            sort_field=sort_field,
+            sort_order=sort_order,
+        ),
+        leading="?",
+    )
+
+
+def actions(request):
     is_authenticated = request.authenticated_userid is not None
 
     search_action = request.params.get("action", "")
     username = request.params.get("user", "")
     text = sanitize_quotation_marks(request.params.get("text", ""))
-    before = request.params.get("before", None)
-    max_actions_param = request.params.get("max_actions", None)
-    max_actions = None
+    before = _float_param(request.params.get("before", None))
+    requested_max_count = _positive_int_param(
+        request.params.get("max_count", None),
+        max_value=_MONGO_INT64_MAX,
+    )
     run_id = request.params.get("run_id", "")
+    sort_param, order_param = _effective_actions_sort_state(request.params)
 
-    if before:
-        before = float(before)
-    if max_actions_param:
-        try:
-            max_actions = int(max_actions_param)
-        except ValueError:
-            max_actions = None
-        if max_actions is not None and max_actions <= 0:
-            max_actions = None
-
-    if not is_authenticated:
-        max_actions = HARD_MAX_ACTIONS_ANON if max_actions is None else max_actions
-        max_actions = min(max_actions, HARD_MAX_ACTIONS_ANON)
-    elif max_actions is None and not (username or search_action or text or run_id):
-        # Default cap for unfiltered /actions.
-        max_actions = DEFAULT_MAX_ACTIONS_AUTH
+    max_count = _effective_actions_max_count(
+        is_authenticated=is_authenticated,
+        requested_max_count=requested_max_count,
+    )
 
     page_param = request.params.get("page", "")
-    page_idx = max(0, int(page_param) - 1) if page_param.isdigit() else 0
-    page_size = 25
+    page_idx = _page_index_from_params(request.params)
+    page_size = ACTIONS_PAGE_SIZE
 
-    actions, num_actions = request.actiondb.get_actions(
-        username=username,
-        action=search_action,
-        text=text,
-        skip=page_idx * page_size,
-        limit=page_size,
-        utc_before=before,
-        max_actions=max_actions,
-        run_id=run_id,
+    use_capped_sort_scope = not (
+        sort_param == _DEFAULT_TIME_SORT_FIELD and order_param == _DEFAULT_SORT_ORDER
     )
-    actions = list(actions)
+    sort_scope_max_count = _actions_sort_scope_max_count(
+        is_authenticated=is_authenticated,
+        max_count=max_count,
+    )
+    matched_usernames = _matching_action_usernames(request.actiondb, username)
+    username_priority = (
+        _username_priority_map(matched_usernames)
+        if username and len(matched_usernames) > 1
+        else None
+    )
 
-    for action in actions:
-        action.setdefault("action", "")
-        action.setdefault("username", "")
-        time_value = action.get("time")
-        if time_value is None:
-            time_label = ""
-        else:
-            time_label = datetime.fromtimestamp(float(time_value), UTC).strftime(
-                "%y-%m-%d %H:%M:%S"
-            )
-            time_label = time_label.replace("-", "\u2011", 2)
-
-        time_query = {
-            "max_actions": "1",
-            "action": search_action,
-            "user": username,
-            "text": text,
-            "before": time_value or "",
-            "run_id": run_id,
-        }
-        time_url = "/actions?" + urlencode(time_query)
-
-        agent_name = ""
-        agent_url = ""
-        if "worker" in action and action.get("action") != "block_worker":
-            agent_name = action.get("worker", "")
-            agent_short = "-".join(agent_name.split("-")[0:3]) if agent_name else ""
-            agent_url = f"/workers/{agent_short}" if agent_short else ""
-        else:
-            agent_name = action.get("username", "")
-            agent_url = f"/user/{agent_name}" if agent_name else ""
-
-        if action.get("action") in ("system_event", "log_message"):
-            agent_url = ""
-            if "worker" in action:
-                agent_name = action.get("worker", agent_name)
-
-        target_name = ""
-        target_url = ""
-        if "nn" in action:
-            raw_name = action.get("nn", "")
-            target_name = raw_name.replace("-", "\u2011") if raw_name else ""
-            target_url = f"/api/nn/{raw_name}" if raw_name else ""
-        elif "run" in action and "run_id" in action:
-            target_name = action.get("run", "")
-            task_id = action.get("task_id")
-            task_suffix = f"/{task_id}" if task_id is not None else ""
-            target_name = f"{target_name}{task_suffix}" if target_name else ""
-            task_query = f"?show_task={task_id}" if task_id is not None else ""
-            target_url = f"/tests/view/{action.get('run_id')}{task_query}"
-        elif request.has_permission("approve_run") and "user" in action:
-            target_name = action.get("user", "")
-            target_url = f"/user/{target_name}" if target_name else ""
-        elif action.get("action") == "block_worker" and "worker" in action:
-            target_name = action.get("worker", "")
-            target_url = f"/workers/{target_name}" if target_name else ""
-        else:
-            target_name = action.get("user", "")
-
-        action.update(
-            {
-                "time_label": time_label,
-                "time_url": time_url,
-                "event": action.get("action", ""),
-                "agent_name": agent_name,
-                "agent_url": agent_url or None,
-                "target_name": target_name,
-                "target_url": target_url or None,
-                "message": action.get("message", ""),
-            }
+    if username and not matched_usernames:
+        raw_actions = []
+        num_actions = 0
+        actions = []
+    elif (
+        username_priority
+        and sort_param == _DEFAULT_TIME_SORT_FIELD
+        and order_param == _DEFAULT_SORT_ORDER
+    ):
+        ranked_actions = _ranked_multi_username_merge(
+            usernames=matched_usernames,
+            fetch_fn=lambda u, window, cap: request.actiondb.get_actions(
+                username=u,
+                text=text,
+                skip=0,
+                limit=window,
+                utc_before=before,
+                run_id=run_id,
+                max_count=cap,
+            ),
+            username_field="username",
+            time_field="time",
+            skip=page_idx * page_size,
+            limit=page_size,
+            max_count=max_count,
         )
+        if ranked_actions is None:
+            raw_actions, num_actions = request.actiondb.get_actions(
+                usernames=matched_usernames,
+                action=search_action,
+                text=text,
+                skip=0,
+                limit=sort_scope_max_count,
+                utc_before=before,
+                max_count=sort_scope_max_count,
+                run_id=run_id,
+            )
+            actions = [
+                _build_action_row(
+                    action,
+                    request,
+                    search_action=search_action,
+                    username=username,
+                    text=text,
+                    run_id=run_id,
+                    sort_param=sort_param,
+                    order_param=order_param,
+                )
+                for action in raw_actions
+            ]
+            num_actions = len(actions)
+            _sort_action_rows(
+                actions,
+                sort_param=sort_param,
+                order_param=order_param,
+                username_priority=username_priority,
+            )
+            start = page_idx * page_size
+            actions = actions[start : start + page_size]
+        else:
+            raw_actions, num_actions = ranked_actions
+            actions = [
+                _build_action_row(
+                    action,
+                    request,
+                    search_action=search_action,
+                    username=username,
+                    text=text,
+                    run_id=run_id,
+                    sort_param=sort_param,
+                    order_param=order_param,
+                )
+                for action in raw_actions
+            ]
+    elif use_capped_sort_scope:
+        raw_actions, num_actions = request.actiondb.get_actions(
+            usernames=matched_usernames if username else None,
+            action=search_action,
+            text=text,
+            skip=0,
+            limit=sort_scope_max_count,
+            utc_before=before,
+            max_count=sort_scope_max_count,
+            run_id=run_id,
+        )
+        actions = [
+            _build_action_row(
+                action,
+                request,
+                search_action=search_action,
+                username=username,
+                text=text,
+                run_id=run_id,
+                sort_param=sort_param,
+                order_param=order_param,
+            )
+            for action in raw_actions
+        ]
+        _sort_action_rows(
+            actions,
+            sort_param=sort_param,
+            order_param=order_param,
+            username_priority=username_priority,
+        )
+        num_actions = len(actions)
+        start = page_idx * page_size
+        actions = actions[start : start + page_size]
+    else:
+        raw_actions, num_actions = request.actiondb.get_actions(
+            usernames=matched_usernames if username else None,
+            action=search_action,
+            text=text,
+            skip=page_idx * page_size,
+            limit=page_size,
+            utc_before=before,
+            max_count=max_count,
+            run_id=run_id,
+        )
+        actions = [
+            _build_action_row(
+                action,
+                request,
+                search_action=search_action,
+                username=username,
+                text=text,
+                run_id=run_id,
+                sort_param=sort_param,
+                order_param=order_param,
+            )
+            for action in raw_actions
+        ]
 
     # If the requested page is out of range, redirect to the last page.
     if num_actions > 0:
@@ -985,40 +2297,58 @@ def actions(request):
         if page_param.isdigit() and int(page_param) > last_page:
             redirect_query = dict(request.params)
             redirect_query["page"] = str(last_page)
-            if max_actions is not None:
-                redirect_query["max_actions"] = str(max_actions)
+            if max_count is not None:
+                redirect_query["max_count"] = str(max_count)
+            redirect_query["sort"] = sort_param
+            redirect_query["order"] = order_param
             return RedirectResponse(
                 url=_path_url(request) + "?" + urlencode(redirect_query),
                 status_code=302,
             )
 
-    query_params = ""
-    if username:
-        query_params += "&user={}".format(username)
-    if search_action:
-        query_params += "&action={}".format(search_action)
-    if text:
-        query_params += "&text={}".format(text)
-    if max_actions:
-        query_params += "&max_actions={}".format(max_actions)
-    if before:
-        query_params += "&before={}".format(before)
-    if run_id:
-        query_params += "&run_id={}".format(run_id)
+    query_params = _actions_query_suffix(
+        username=username,
+        search_action=search_action,
+        text=text,
+        sort_param=sort_param,
+        order_param=order_param,
+        max_count=max_count,
+        before=before,
+        run_id=run_id,
+    )
 
     pages = pagination(page_idx, num_actions, page_size, query_params)
 
-    return {
+    content_context = {
         "actions": actions,
+        "visible_actions": len(actions),
         "pages": pages,
+        "num_actions": num_actions,
+        "page_size": page_size,
+        "current_page": page_idx + 1,
+        "run_id_filter": run_id,
+        "max_count": max_count,
+        "sort": sort_param,
+        "order": order_param,
+        "sort_summary": _actions_sort_summary(
+            sort_param=sort_param,
+            order_param=order_param,
+            sorted_count=num_actions,
+            scope_cap=sort_scope_max_count,
+        ),
         "filters": {
             "action": search_action,
             "username": username,
             "text": text,
             "run_id": run_id,
         },
-        "usernames": [user["username"] for user in request.userdb.get_users()],
     }
+    return (
+        _render_hx_fragment(
+            request, "actions_content_fragment.html.j2", content_context
+        )
+        or content_context
+    )
 
 
 # === User management + profiles ===
@@ -1047,6 +2377,8 @@ def _user_management_rows(users):
             {
                 "username": username,
                 "user_url": f"/user/{username}" if username else "",
+                "username_key": username.lower(),
+                "registration_time": registration_time,
                 "registration_label": registration_label,
                 "groups": groups,
                 "groups_label": format_group(groups),
@@ -1061,22 +2393,118 @@ def user_management(request):
         request.session.flash("You cannot view user management", "error")
         return home(request)
 
+    group = request.params.get("group", _USER_MANAGEMENT_GROUP_DEFAULT)
+    if group not in _USER_MANAGEMENT_GROUP_VALUES:
+        group = _USER_MANAGEMENT_GROUP_DEFAULT
+
+    sort_param = request.params.get("sort", _USER_MANAGEMENT_DEFAULT_SORT)
+    if sort_param not in _USER_MANAGEMENT_SORT_MAP:
+        sort_param = _USER_MANAGEMENT_DEFAULT_SORT
+
+    sort_key, default_reverse = _USER_MANAGEMENT_SORT_MAP[sort_param]
+    order_param, _ = _normalize_sort_order(
+        request.params.get("order", ""),
+        default_reverse=default_reverse,
+    )
+
+    view_param = _normalize_view_mode(request.params.get("view", "paged"))
+
+    query_filter = request.params.get("q", "").strip()
+    page_idx = _page_index_from_params(request.params)
+
     users = list(request.userdb.get_users())
     pending_users = request.userdb.get_pending()
     blocked_users = request.userdb.get_blocked()
     idle_users = get_idle_users(users, request)
 
-    return {
-        "all_users": _user_management_rows(users),
-        "pending_users": _user_management_rows(pending_users),
-        "blocked_users": _user_management_rows(blocked_users),
-        "approvers_users": [
+    all_count = len(users)
+    pending_count = len(pending_users)
+    blocked_count = len(blocked_users)
+    idle_count = len(idle_users)
+
+    if group == "all":
+        selected_rows = _user_management_rows(users)
+    elif group == "pending":
+        selected_rows = _user_management_rows(pending_users)
+    elif group == "blocked":
+        selected_rows = _user_management_rows(blocked_users)
+    elif group == "idle":
+        selected_rows = _user_management_rows(idle_users)
+    else:
+        selected_rows = [
             user
             for user in _user_management_rows(users)
             if "group:approvers" in user.get("groups", [])
-        ],
-        "idle_users": _user_management_rows(idle_users),  # depends on cache too
+        ]
+
+    if query_filter:
+        query_folded = query_filter.casefold()
+        selected_rows = [
+            row
+            for row in selected_rows
+            if query_folded
+            in str(row.get(_USER_MANAGEMENT_FILTER_FIELD, "")).casefold()
+        ]
+
+    selected_rows.sort(
+        key=lambda row: (
+            _user_management_sort_value(row, sort_key),
+            row.get("username_key", ""),
+        ),
+        reverse=(order_param == "desc"),
+    )
+
+    num_selected = len(selected_rows)
+    is_truncated = False
+    if view_param == "all":
+        if len(selected_rows) > _USER_MANAGEMENT_MAX_ALL:
+            selected_rows = selected_rows[:_USER_MANAGEMENT_MAX_ALL]
+            is_truncated = True
+    else:
+        start = page_idx * _USER_MANAGEMENT_PAGE_SIZE
+        selected_rows = selected_rows[start : start + _USER_MANAGEMENT_PAGE_SIZE]
+
+    query_params = _user_management_query_string(
+        group=group,
+        sort_param=sort_param,
+        order_param=order_param,
+        query_filter=query_filter,
+        view=view_param,
+    )
+    pages = (
+        pagination(page_idx, num_selected, _USER_MANAGEMENT_PAGE_SIZE, query_params)
+        if view_param == "paged"
+        else []
+    )
+
+    approvers_count = len(
+        [user for user in users if "group:approvers" in user.get("groups", [])]
+    )
+
+    context = {
+        "all_count": all_count,
+        "pending_count": pending_count,
+        "blocked_count": blocked_count,
+        "idle_count": idle_count,
+        "approvers_count": approvers_count,
+        "group": group,
+        "selected_users": selected_rows,
+        "sort": sort_param,
+        "order": order_param,
+        "q": query_filter,
+        "view": view_param,
+        "pages": pages,
+        "num_selected_users": num_selected,
+        "max_all": _USER_MANAGEMENT_MAX_ALL,
+        "is_truncated": is_truncated,
     }
+
+    return _render_hx_or_context(
+        request,
+        "user_management_content_fragment.html.j2",
+        context,
+        extra_context={"is_hx": True},
+    )
 
 
 def user(request):
@@ -1209,31 +2637,1120 @@ def user(request):
 
 
 # === Contributors views ===
-def contributors(request):
-    users_list = list(request.userdb.user_cache.find())
-    users_list.sort(key=lambda k: k["cpu_hours"], reverse=True)
-    is_approver = request.has_permission("approve_run")
+_CONTRIBUTORS_SORT_MAP = {
+    "cpu_hours": ("cpu_hours", True),
+    "username": ("username", False),
+    "last_updated": ("last_updated", True),
+    "games_per_hour": ("games_per_hour", True),
+    "games": ("games", True),
+    "tests": ("tests", True),
+    "tests_repo": ("tests_repo", False),
+}
+_CONTRIBUTORS_DEFAULT_SORT = "cpu_hours"
+_CONTRIBUTORS_PAGE_SIZE = CONTRIBUTORS_PAGE_SIZE
+_CONTRIBUTORS_MAX_ALL = CONTRIBUTORS_MAX_ALL
+
+_MACHINES_SORT_MAP = {
+    "last_active": ("last_updated", True),
+    "machine": ("username", False),
+    "cores": ("concurrency", True),
+    "uuid": ("unique_key", False),
+    "mnps": ("nps", True),
+    "ram": ("max_memory", True),
+    "system": ("uname", False),
+    "arch": ("worker_arch", False),
+    "compiler": ("compiler", False),
+    "python": ("python", False),
+    "worker": ("version", True),
+    "running_on": ("run_label", False),
+}
+_MACHINES_DEFAULT_SORT = "last_active"
+_MACHINES_PAGE_SIZE = MACHINES_PAGE_SIZE
+_MACHINES_FILTER_FIELDS = (
+    "username",
+    "concurrency",
+    "unique_key",
+    "nps_m",
+    "max_memory",
+    "system",
+    "worker_arch",
+    "compiler_label",
+    "python_label",
+    "version_label",
+    "run_label",
+    "last_active_label",
+)
+
+_MACHINES_CASEFOLD_SORT_KEYS = {
+    "username",
+    "uname",
+    "worker_arch",
+    "run_label",
+}
+
+
+def _clip_long(text, max_length=20):
+    return text if len(text) <= max_length else text[:max_length] + "..."
+
+
+def _machines_version_parts(values):
+    parts = []
+    for value in values or []:
+        try:
+            parts.append(int(value))
+        except TypeError, ValueError:
+            break
+    return tuple(parts)
+
+
+def _normalize_machine_row(machine):
+    gcc_values = machine.get("gcc_version", [])
+    python_values = machine.get("python_version", [])
+    compiler = machine.get("compiler", "g++")
+    unique_key = machine.get("unique_key", "")
+
+    gcc_version = ".".join(str(value) for value in gcc_values)
+    python_version = ".".join(str(value) for value in python_values)
+
+    worker_short = unique_key.split("-")[0]
+    run_data = machine["run"]
+    task_id = str(machine["task_id"])
+    run_id = str(run_data["_id"])
+    branch = run_data["args"]["new_tag"]
+    last_updated = machine["last_updated"]
+
     return {
-        "is_monthly": False,
-        "monthly_suffix": "",
-        "summary": build_contributors_summary(users_list),
-        "users": build_contributors_rows(users_list, is_approver=is_approver),
-        "is_approver": is_approver,
+        "username": machine["username"],
+        "country_code": machine.get("country_code", "").lower(),
+        "concurrency": machine["concurrency"],
+        "unique_key": unique_key,
+        "worker_url": f"/workers/{worker_name(machine, short=True)}",
+        "worker_short": worker_short,
+        "nps": machine.get("nps", 0),
+        "nps_m": f"{machine.get('nps', 0) / 1000000:.2f}",
+        "max_memory": machine["max_memory"],
+        "system": machine["uname"],
+        "uname": machine["uname"],
+        "worker_arch": machine["worker_arch"],
+        "compiler": compiler,
+        "compiler_version": _machines_version_parts(gcc_values),
+        "compiler_label": f"{compiler} {gcc_version}",
+        "python": python_version,
+        "python_version": _machines_version_parts(python_values),
+        "python_label": python_version,
+        "version": machine.get("version", 0),
+        "version_label": str(machine.get("version", ""))
+        + "*" * machine.get("modified", False),
+        "run_url": f"/tests/view/{run_id}?show_task={task_id}",
+        "run_label": f"{_clip_long(branch)}/{task_id}",
+        "last_active_label": format_time_ago(last_updated),
+        "last_active_sort": -last_updated.timestamp(),
+        "last_updated": last_updated,
     }
+
+
+def _machine_filter_state(
+    query_source,
+    *,
+    authenticated_username,
+    use_cookies=False,
+    query_key="q",
+    my_workers_key="my_workers",
+):
+    query_filter = query_source.get(query_key, "")
+    if use_cookies:
+        query_filter = unquote(str(query_filter))
+    query_filter = str(query_filter).strip()
+
+    my_workers = _is_truthy_param(query_source.get(my_workers_key, ""))
+    if not authenticated_username:
+        my_workers = False
+
+    return {
+        "query_filter": query_filter,
+        "my_workers": my_workers,
+        "filters_active": bool(query_filter) or my_workers,
+    }
+
+
+def _filter_machine_rows(
+    normalized_rows,
+    *,
+    query_filter,
+    my_workers,
+    authenticated_username,
+):
+    filtered_rows = list(normalized_rows)
+    if my_workers and authenticated_username:
+        filtered_rows = [
+            machine
+            for machine in filtered_rows
+            if machine.get("username") == authenticated_username
+        ]
+    if query_filter:
+        query_filter_lower = query_filter.lower()
+        filtered_rows = [
+            machine
+            for machine in filtered_rows
+            if any(
+                query_filter_lower in str(machine.get(field, "")).lower()
+                for field in _MACHINES_FILTER_FIELDS
+            )
+        ]
+    return filtered_rows
+
+
+def _normalized_machine_rows(request):
+    return [_normalize_machine_row(machine) for machine in request.rundb.get_machines()]
+
+
+def _filtered_machine_count(
+    request,
+    *,
+    query_filter,
+    my_workers,
+    authenticated_username,
+):
+    filtered_rows = _filter_machine_rows(
+        _normalized_machine_rows(request),
+        query_filter=query_filter,
+        my_workers=my_workers,
+        authenticated_username=authenticated_username,
+    )
+    return len(filtered_rows)
+
+
+def _machines_sort_value(machine_row, sort_key):
+    if sort_key == "compiler":
+        return (
+            str(machine_row.get("compiler", "")).lower(),
+            machine_row.get("compiler_version", ()),
+        )
+    if sort_key == "python":
+        return machine_row.get("python_version", ())
+    if sort_key == "unique_key":
+        return str(machine_row.get("worker_short", "")).lower()
+    if sort_key in _MACHINES_CASEFOLD_SORT_KEYS:
+        return str(machine_row.get(sort_key, "")).lower()
+    if sort_key == "last_updated":
+        value = machine_row.get("last_updated")
+        return value.timestamp() if isinstance(value, datetime) else 0
+    try:
+        return int(machine_row.get(sort_key, 0))
+    except TypeError, ValueError:
+        return 0
+
+
+def _build_machines_query_params(
+    sort_param, order_param, default_reverse, query_filter, my_workers
+):
+    default_order = "desc" if default_reverse else "asc"
+    return _build_query_string(
+        [
+            ("sort", sort_param if sort_param != _MACHINES_DEFAULT_SORT else None),
+            ("order", order_param if order_param != default_order else None),
+            ("q", query_filter or None),
+            ("my_workers", "1" if my_workers else None),
+        ]
+    )
+
+
+def _set_machine_cookie(request, name, value, max_age_seconds):
+    encoded = quote(str(value), safe="")
+    request.response_headerlist.append(
+        (
+            "Set-Cookie",
+            f"{name}={encoded}; path=/; max-age={max_age_seconds}; SameSite=Lax",
+        )
+    )
+
+
+def _set_machine_cookies(
+    request,
+    *,
+    sort_param,
+    order_param,
+    page,
+    query_filter,
+    my_workers,
+    filtered_count,
+):
+    cookie_max_age = PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS
+    _set_machine_cookie(request, "machines_sort", sort_param, cookie_max_age)
+    _set_machine_cookie(request, "machines_order", order_param, cookie_max_age)
+    _set_machine_cookie(request, "machines_page", str(page), cookie_max_age)
+    _set_machine_cookie(request, "machines_q", query_filter, cookie_max_age)
+    _set_machine_cookie(
+        request,
+        "machines_filtered_count",
+        str(filtered_count),
+        cookie_max_age,
+    )
+    _set_machine_cookie(
+        request,
+        "machines_my_workers",
+        "1" if my_workers else "0",
+        cookie_max_age,
+    )
+
+
+def _workers_count_label(
+    total_count,
+    *,
+    query_filter="",
+    my_workers=False,
+    filtered_count=None,
+) -> str:
+    shown_count = filtered_count if filtered_count is not None else total_count
+    if not (query_filter or my_workers):
+        return f"Workers - {total_count}"
+    return f"Workers - {total_count} ({shown_count})"
+
+
+def _contributors_sort_value(user, sort_key):
+    if sort_key == "username":
+        return str(user.get("username", "")).lower()
+    if sort_key == "tests_repo":
+        return str(user.get("tests_repo", "")).lower()
+    if sort_key == "last_updated":
+        value = user.get("last_updated")
+        if isinstance(value, datetime):
+            return value.timestamp()
+        return 0
+    try:
+        return int(user.get(sort_key, 0))
+    except TypeError, ValueError:
+        return 0
+
+
+def _contributors_common(request, *, collection, is_monthly):
+    page_idx = _page_index_from_params(request.params)
+
+    search = request.params.get("search", "").strip()
+    sort_param = request.params.get("sort", "").strip().lower()
+    order_param = request.params.get("order", "").strip().lower()
+    view_param = request.params.get("view", "").strip().lower()
+    highlight = request.params.get("highlight", "").strip()
+
+    if sort_param not in _CONTRIBUTORS_SORT_MAP:
+        sort_param = _CONTRIBUTORS_DEFAULT_SORT
+    sort_key, default_reverse = _CONTRIBUTORS_SORT_MAP[sort_param]
+
+    order_param, reverse = _normalize_sort_order(
+        order_param,
+        default_reverse=default_reverse,
+    )
+
+    view_param = _normalize_view_mode(view_param)
+
+    all_users_unfiltered = list(collection.find())
+    users_list = list(all_users_unfiltered)
+
+    # Stable two-pass sort: enforce username asc tie-breaker, then primary key.
+    users_list.sort(key=lambda u: str(u.get("username", "")).lower())
+    users_list.sort(
+        key=lambda u: _contributors_sort_value(u, sort_key),
+        reverse=reverse,
+    )
+
+    num_users = len(users_list)
+
+    findme = request.params.get("findme", "").strip()
+    username = request.authenticated_userid
+    target_username = ""
+    if findme and username:
+        target_username = username
+    elif search:
+        search_lower = search.lower()
+        exact_match = next(
+            (
+                user.get("username", "")
+                for user in users_list
+                if str(user.get("username", "")).lower() == search_lower
+            ),
+            "",
+        )
+        if exact_match:
+            target_username = exact_match
+        else:
+            target_username = next(
+                (
+                    user.get("username", "")
+                    for user in users_list
+                    if search_lower in str(user.get("username", "")).lower()
+                ),
+                "",
+            )
+
+    if target_username:
+        user_rank = next(
+            (
+                idx
+                for idx, user in enumerate(users_list, start=1)
+                if user.get("username") == target_username
+            ),
+            None,
+        )
+        if user_rank is not None:
+            target_page = str((user_rank - 1) // _CONTRIBUTORS_PAGE_SIZE + 1)
+            current_page = str(page_idx + 1)
+            highlight_matches = highlight.lower() == target_username.lower()
+            if view_param == "all":
+                # In full view there is no page navigation, so a matching highlight
+                # is the only signal that the jump/go-to has already been applied.
+                already_on_target = highlight_matches
+            else:
+                already_on_target = current_page == target_page and highlight_matches
+            if not already_on_target:
+                params = {
+                    "sort": sort_param,
+                    "order": order_param,
+                    "highlight": target_username,
+                    "view": view_param,
+                }
+                # Keep findme sticky across redirect hops so a non-empty search
+                # query cannot override jump-to-my-rank on the follow-up request.
+                if findme:
+                    params["findme"] = "1"
+                if view_param == "paged":
+                    params["page"] = target_page
+                return RedirectResponse(
+                    url=f"{request.path}?{urlencode(params)}#me",
+                    status_code=302,
+                )
+
+    for idx, user in enumerate(users_list, start=1):
+        user["_rank"] = idx
+
+    if highlight and not any(
+        str(user.get("username", "")).lower() == highlight.lower()
+        for user in users_list
+    ):
+        highlight = ""
+
+    if view_param == "all":
+        users_page = users_list[:_CONTRIBUTORS_MAX_ALL]
+        is_truncated = num_users > _CONTRIBUTORS_MAX_ALL
+        if is_truncated:
+            logger.info(
+                "contributors view=all truncated at %d rows (total=%d, monthly=%s)",
+                _CONTRIBUTORS_MAX_ALL,
+                num_users,
+                is_monthly,
+            )
+    else:
+        start = page_idx * _CONTRIBUTORS_PAGE_SIZE
+        end = (page_idx + 1) * _CONTRIBUTORS_PAGE_SIZE
+        users_page = users_list[start:end]
+        is_truncated = False
+
+    is_approver = request.has_permission("approve_run")
+    rows = build_contributors_rows(users_page, is_approver=is_approver)
+
+    pages = []
+    if view_param == "paged":
+        default_order = "desc" if default_reverse else "asc"
+        query_params = _build_query_string(
+            [
+                (
+                    "sort",
+                    sort_param if sort_param != _CONTRIBUTORS_DEFAULT_SORT else None,
+                ),
+                ("order", order_param if order_param != default_order else None),
+            ]
+        )
+        pages = pagination(page_idx, num_users, _CONTRIBUTORS_PAGE_SIZE, query_params)
+
+    context = {
+        "is_monthly": is_monthly,
+        "monthly_suffix": " - Top Month" if is_monthly else "",
+        "summary": build_contributors_summary(all_users_unfiltered),
+        "users": rows,
+        "pages": pages,
+        "is_approver": is_approver,
+        "search": search,
+        "sort": sort_param,
+        "order": order_param,
+        "view": view_param,
+        "highlight": highlight,
+        "is_truncated": is_truncated,
+        "num_users": num_users,
+        "max_all": _CONTRIBUTORS_MAX_ALL,
+    }
+    return _render_hx_or_context(
+        request,
+        "contributors_content_fragment.html.j2",
+        context,
+    )
+
+
+def contributors(request):
+    return _contributors_common(
+        request,
+        collection=request.userdb.user_cache,
+        is_monthly=False,
+    )
 
 
 def contributors_monthly(request):
-    users_list = list(request.userdb.top_month.find())
-    users_list.sort(key=lambda k: k["cpu_hours"], reverse=True)
-    is_approver = request.has_permission("approve_run")
+    return _contributors_common(
+        request,
+        collection=request.userdb.top_month,
+        is_monthly=True,
+    )
+
+
+# === Run list fragments + homepage ===
+def tests_machines(request):
+    # This endpoint is polled and linked directly, so the complete table state
+    # lives in the URL and mirrored cookies.
+    normalized_rows = _normalized_machine_rows(request)
+    total_machines = len(normalized_rows)
+
+    sort_param = request.params.get("sort", "").strip().lower()
+    if sort_param not in _MACHINES_SORT_MAP:
+        sort_param = _MACHINES_DEFAULT_SORT
+    sort_key, default_reverse = _MACHINES_SORT_MAP[sort_param]
+
+    order_param, reverse = _normalize_sort_order(
+        request.params.get("order", ""),
+        default_reverse=default_reverse,
+    )
+
+    username = request.authenticated_userid
+    machine_filters = _machine_filter_state(
+        request.params,
+        authenticated_username=username,
+    )
+    query_filter = machine_filters["query_filter"]
+    my_workers = machine_filters["my_workers"]
+
+    filtered_rows = _filter_machine_rows(
+        normalized_rows,
+        query_filter=query_filter,
+        my_workers=my_workers,
+        authenticated_username=username,
+    )
+
+    filtered_rows.sort(key=lambda m: str(m.get("username", "")).lower())
+    filtered_rows.sort(
+        key=lambda m: _machines_sort_value(m, sort_key),
+        reverse=reverse,
+    )
+
+    page_idx = _page_index_from_params(request.params)
+    num_machines = len(filtered_rows)
+    page_idx = _clamp_page_index(
+        page_idx,
+        total_count=num_machines,
+        page_size=_MACHINES_PAGE_SIZE,
+    )
+
+    start = page_idx * _MACHINES_PAGE_SIZE
+    end = (page_idx + 1) * _MACHINES_PAGE_SIZE
+    machines = filtered_rows[start:end]
+
+    query_params = _build_machines_query_params(
+        sort_param,
+        order_param,
+        default_reverse,
+        query_filter,
+        my_workers,
+    )
+
+    pages = pagination(page_idx, num_machines, _MACHINES_PAGE_SIZE, query_params)
+    for page in pages:
+        page_url = page.get("url", "")
+        if page_url.startswith("?"):
+            page["url"] = f"/tests/machines{page_url}"
+
+    _set_machine_cookies(
+        request,
+        sort_param=sort_param,
+        order_param=order_param,
+        page=page_idx + 1,
+        query_filter=query_filter,
+        my_workers=my_workers,
+        filtered_count=num_machines,
+    )
+
+    workers_count = _workers_count_label(
+        total_machines,
+        query_filter=query_filter,
+        my_workers=my_workers,
+        filtered_count=num_machines,
+    )
+
     return {
-        "is_monthly": True,
-        "monthly_suffix": " - Top Month",
-        "summary": build_contributors_summary(users_list),
-        "users": build_contributors_rows(users_list, is_approver=is_approver),
-        "is_approver": is_approver,
+        "machines_list": filtered_rows,
+        "machines": machines,
+        "machines_count": num_machines,
+        "machines_total_count": total_machines,
+        "machines_filtered_count": num_machines,
+        "machines_filters_active": machine_filters["filters_active"],
+        "workers_count_text": workers_count,
+        "machines_page_size": _MACHINES_PAGE_SIZE,
+        "pages": pages,
+        "sort": sort_param,
+        "order": order_param,
+        "q": query_filter,
+        "current_page": page_idx + 1,
+        "my_workers": my_workers,
+        "has_authenticated_user": bool(username),
     }
 
+
+def get_paginated_finished_runs(
+    request, *, username=None, search_mode=False
+) -> RedirectResponse | _FinishedRunsContext:
+    if username is None:
+        username = request.matchdict.get("username", "")
+    if not username:
+        search_mode = search_mode or _finished_search_mode_enabled(request.params)
+    is_authenticated = request.authenticated_userid is not None
+    success_only = False if search_mode else request.params.get("success_only", False)
+    yellow_only = False if search_mode else request.params.get("yellow_only", False)
+    ltc_only = False if search_mode else request.params.get("ltc_only", False)
+    username_query = "" if username else str(request.params.get("user", "")).strip()
+    text = (
+        ""
+        if username
+        else sanitize_quotation_marks(
+            str(
+                request.params.get(
+                    "text",
+                    request.params.get("info_regex", ""),
+                )
+            )
+        ).strip()
+    )
+    requested_max_count = _requested_finished_max_count(request.params)
+
+    page_param = request.params.get("page", "")
+    page_idx = _page_index_from_params(request.params)
+    page_size = ACTIONS_PAGE_SIZE
+    sort_field = _DEFAULT_TIME_SORT_FIELD
+    sort_order = _DEFAULT_SORT_ORDER
+
+    if not username and not search_mode and (username_query or text):
+        return RedirectResponse(
+            url=_finished_route_url(request)
+            + _finished_canonical_query_string(
+                request.params,
+                search_mode=True,
+                username_query=username_query,
+                text=text,
+            ),
+            status_code=302,
+        )
+
+    if search_mode and any(
+        request.params.get(flag, False)
+        for flag in ("success_only", "yellow_only", "ltc_only")
+    ):
+        return RedirectResponse(
+            url=_finished_route_url(request)
+            + _finished_canonical_query_string(
+                request.params,
+                search_mode=True,
+                username_query=username_query,
+                text=text,
+            ),
+            status_code=302,
+        )
+
+    matched_usernames = _matching_finished_usernames(request.userdb, username_query)
+    filters_active = search_mode or _finished_filters_active(
+        username_query=username_query,
+        text=text,
+    )
+
+    if (
+        not search_mode
+        and not filters_active
+        and _FINISHED_MAX_COUNT_QUERY_PARAM in request.params
+    ):
+        return RedirectResponse(
+            url=_path_url(request)
+            + _finished_canonical_query_string(
+                request.params, max_count=None, search_mode=False
+            ),
+            status_code=302,
+        )
+
+    max_count = _effective_finished_max_count(
+        is_authenticated=is_authenticated,
+        requested_max_count=requested_max_count,
+        filters_active=filters_active,
+    )
+    exposed_max_count = max_count if search_mode else None
+
+    if username_query and not matched_usernames:
+        finished_runs = []
+        num_finished_runs = 0
+    elif username_query and matched_usernames and len(matched_usernames) > 1:
+        ranked_finished_runs = _ranked_multi_username_merge(
+            usernames=matched_usernames,
+            fetch_fn=lambda u, window, cap: request.rundb.get_finished_runs(
+                username=u,
+                text=text,
+                success_only=success_only,
+                yellow_only=yellow_only,
+                ltc_only=ltc_only,
+                skip=0,
+                limit=window,
+                max_count=cap,
+            ),
+            username_field="args.username",
+            time_field="last_updated",
+            skip=page_idx * page_size,
+            limit=page_size,
+            max_count=max_count,
+        )
+        if ranked_finished_runs is None:
+            finished_runs, _ = request.rundb.get_finished_runs(
+                username=username,
+                usernames=matched_usernames,
+                text=text,
+                success_only=success_only,
+                yellow_only=yellow_only,
+                ltc_only=ltc_only,
+                skip=0,
+                limit=max_count,
+                max_count=max_count,
+            )
+            username_priority = _username_priority_map(matched_usernames)
+            finished_runs.sort(
+                key=lambda run: (
+                    username_priority.get(
+                        run.get("args", {}).get("username", ""),
+                        len(username_priority),
+                    ),
+                    -(
+                        run.get("last_updated") or datetime.min.replace(tzinfo=UTC)
+                    ).timestamp(),
+                    str(run.get("_id", "")),
+                )
+            )
+            num_finished_runs = len(finished_runs)
+            start = page_idx * page_size
+            finished_runs = finished_runs[start : start + page_size]
+        else:
+            finished_runs, num_finished_runs = ranked_finished_runs
+    else:
+        finished_runs, num_finished_runs = request.rundb.get_finished_runs(
+            username=username,
+            usernames=matched_usernames,
+            text=text,
+            success_only=success_only,
+            yellow_only=yellow_only,
+            ltc_only=ltc_only,
+            skip=page_idx * page_size,
+            limit=page_size,
+            max_count=max_count,
+        )
+
+    query_params = _finished_query_suffix(
+        search_mode=search_mode,
+        success_only=success_only,
+        yellow_only=yellow_only,
+        ltc_only=ltc_only,
+        username_query=username_query,
+        text=text,
+        max_count=exposed_max_count,
+        sort_field=sort_field,
+        sort_order=sort_order,
+    )
+    pages = pagination(page_idx, num_finished_runs, page_size, query_params)
+
+    if num_finished_runs > 0:
+        last_page = (num_finished_runs - 1) // page_size + 1
+        if page_param.isdigit() and int(page_param) > last_page:
+            redirect_query = dict(request.params)
+            redirect_query["page"] = str(last_page)
+            if exposed_max_count is not None:
+                redirect_query[_FINISHED_MAX_COUNT_QUERY_PARAM] = str(max_count)
+            else:
+                redirect_query.pop(_FINISHED_MAX_COUNT_QUERY_PARAM, None)
+            return RedirectResponse(
+                url=_finished_route_url(request) + "?" + urlencode(redirect_query),
+                status_code=302,
+            )
+
+    failed_runs = []
+    if page_idx == 0:
+        for run in finished_runs:
+            # Look for failed runs
+            if "failed" in run and run["failed"]:
+                failed_runs.append(run)
+
+    filters = {
+        "success_only": bool(success_only),
+        "yellow_only": bool(yellow_only),
+        "ltc_only": bool(ltc_only),
+        "username_query": username_query,
+        "text": text,
+        "max_count": exposed_max_count,
+        "mode": "search" if search_mode else "navigation",
+        "all_query_string": _finished_tab_query_string(
+            search_mode=search_mode,
+            username_query=username_query,
+            text=text,
+            max_count=exposed_max_count,
+            sort_field=sort_field,
+            sort_order=sort_order,
+        ),
+        "green_query_string": _finished_tab_query_string(
+            tab="success_only",
+            search_mode=search_mode,
+            username_query=username_query,
+            text=text,
+            max_count=exposed_max_count,
+            sort_field=sort_field,
+            sort_order=sort_order,
+        ),
+        "yellow_query_string": _finished_tab_query_string(
+            tab="yellow_only",
+            search_mode=search_mode,
+            username_query=username_query,
+            text=text,
+            max_count=exposed_max_count,
+            sort_field=sort_field,
+            sort_order=sort_order,
+        ),
+        "ltc_query_string": _finished_tab_query_string(
+            tab="ltc_only",
+            search_mode=search_mode,
+            username_query=username_query,
+            text=text,
+            max_count=exposed_max_count,
+            sort_field=sort_field,
+            sort_order=sort_order,
+        ),
+        "filtered_query_suffix": _finished_query_suffix(
+            search_mode=search_mode,
+            username_query=username_query,
+            text=text,
+            max_count=exposed_max_count,
+            sort_field=sort_field,
+            sort_order=sort_order,
+        ),
+    }
+    title_suffix = ""
+    if not search_mode and filters["success_only"]:
+        title_suffix = " - Greens"
+    elif not search_mode and filters["yellow_only"]:
+        title_suffix = " - Yellows"
+    elif not search_mode and filters["ltc_only"]:
+        title_suffix = " - LTC"
+
+    return {
+        "finished_runs": finished_runs,
+        "finished_runs_pages": pages,
+        "num_finished_runs": num_finished_runs,
+        "visible_finished_runs": len(finished_runs),
+        "finished_page_size": page_size,
+        "failed_runs": failed_runs,
+        "page_idx": page_idx,
+        "filters": filters,
+        "title_suffix": title_suffix,
+        "search_mode": search_mode,
+    }
+
+
+def _build_toggle_states(request, toggle_names):
+    return {name: request.cookies.get(f"{name}_state", "Show") for name in toggle_names}
+
+
+def _build_run_tables_context(
+    request,
+    *,
+    runs,
+    failed_runs,
+    finished_runs,
+    num_finished_runs,
+    finished_runs_pages,
+    page_idx,
+    username="",
+):
+    runs = runs or {"pending": [], "active": []}
+    pending_runs = [r for r in runs.get("pending", []) if not r.get("approved")]
+    paused_runs = [r for r in runs.get("pending", []) if r.get("approved")]
+    active_runs = list(runs.get("active", []))
+    active_run_filters = (
+        _build_active_run_filter_context(request, active_runs)
+        if page_idx == 0 and not username
+        else None
+    )
+    active_runs_for_display = (
+        active_run_filters["ordered_runs"]
+        if active_run_filters is not None
+        else active_runs
+    )
+    prefix = run_tables_prefix(username)
+    toggle_names = [prefix + "finished"]
+    if page_idx == 0:
+        toggle_names = [
+            prefix + "pending",
+            prefix + "paused",
+            prefix + "failed",
+            prefix + "active",
+            prefix + "finished",
+        ]
+    toggle_states = _build_toggle_states(request, toggle_names)
+    finished_title_text = (
+        f"{username + ' - ' if username else ''}Finished Tests"
+        f" - page {page_idx + 1} | Stockfish Testing"
+    )
+
+    return {
+        "pending_approval_runs": build_run_table_rows(
+            pending_runs,
+            allow_github_api_calls=False,
+        ),
+        "paused_runs": build_run_table_rows(
+            paused_runs,
+            allow_github_api_calls=False,
+        ),
+        "failed_runs": build_run_table_rows(
+            failed_runs,
+            allow_github_api_calls=False,
+        ),
+        "active_runs": build_run_table_rows(
+            active_runs_for_display,
+            allow_github_api_calls=False,
+        ),
+        "active_count_text": (
+            active_run_filters["count_text"]
+            if active_run_filters is not None
+            else f"Active - {len(active_runs)} tests"
+        ),
+        "active_run_filters": active_run_filters,
+        "finished_runs": build_run_table_rows(
+            finished_runs,
+            allow_github_api_calls=False,
+        ),
+        "num_finished_runs": num_finished_runs,
+        "finished_runs_pages": finished_runs_pages,
+        "page_idx": page_idx,
+        "prefix": prefix,
+        "toggle_states": toggle_states,
+        "finished_title_text": finished_title_text,
+        "show_gauge": False,
+    }
+
+
+def tests_finished(request):
+    context = get_paginated_finished_runs(request)
+    if isinstance(context, RedirectResponse):
+        return context
+    page_idx = context["page_idx"]
+    title_suffix = context["title_suffix"]
+    search_mode = context["search_mode"]
+    if search_mode:
+        title_text = f"Search Finished Tests - page {page_idx + 1} | Stockfish Testing"
+    else:
+        title_text = (
+            f"Finished Tests{title_suffix} - page {page_idx + 1} | Stockfish Testing"
+        )
+    context_out = {
+        **context,
+        "query_params": request.query_params,
+        "finished_runs": build_run_table_rows(
+            context["finished_runs"],
+            allow_github_api_calls=False,
+        ),
+        "failed_runs": build_run_table_rows(
+            context["failed_runs"],
+            allow_github_api_calls=False,
+        ),
+        "title": title_suffix,
+        "title_text": title_text,
+        "show_gauge": False,
+    }
+
+    return _render_hx_or_context(
+        request,
+        "tests_finished_results_fragment.html.j2",
+        context_out,
+        extra_context={"is_hx": True},
+    )
+
+
+def tests_user(request):
+    _append_no_store_headers(request)
+    username = request.matchdict.get("username", "")
+    user_data = request.userdb.get_user(username)
+    if user_data is None:
+        raise StarletteHTTPException(status_code=404)
+    is_approver = request.has_permission("approve_run")
+    finished_context = get_paginated_finished_runs(request)
+    if isinstance(finished_context, RedirectResponse):
+        return finished_context
+    response = {
+        **finished_context,
+        "username": username,
+        "is_approver": is_approver,
+    }
+    page_param = request.params.get("page", "")
+    if not page_param.isdigit() or int(page_param) <= 1:
+        runs = request.rundb.aggregate_unfinished_runs(username=username)[0]
+        response["run_tables_ctx"] = _build_run_tables_context(
+            request,
+            runs=runs,
+            failed_runs=finished_context["failed_runs"],
+            finished_runs=finished_context["finished_runs"],
+            num_finished_runs=finished_context["num_finished_runs"],
+            finished_runs_pages=finished_context["finished_runs_pages"],
+            page_idx=finished_context["page_idx"],
+            username=username,
+        )
+    else:
+        response["run_tables_ctx"] = _build_run_tables_context(
+            request,
+            runs=None,
+            failed_runs=finished_context["failed_runs"],
+            finished_runs=finished_context["finished_runs"],
+            num_finished_runs=finished_context["num_finished_runs"],
+            finished_runs_pages=finished_context["finished_runs_pages"],
+            page_idx=finished_context["page_idx"],
+            username=username,
+        )
+    # page 2 and beyond only show finished test results
+    return _render_hx_or_context(
+        request,
+        "tests_user_content_fragment.html.j2",
+        response,
+    )
+
+
+def homepage_results(request):
+    # Get updated results for unfinished runs + finished runs
+
+    (
+        runs,
+        pending_hours,
+        cores,
+        nps,
+        games_per_minute,
+        machines_count,
+    ) = request.rundb.aggregate_unfinished_runs()
+    finished_context = get_paginated_finished_runs(request)
+    if isinstance(finished_context, RedirectResponse):
+        return finished_context
+    run_tables_ctx = _build_run_tables_context(
+        request,
+        runs=runs,
+        failed_runs=finished_context["failed_runs"],
+        finished_runs=finished_context["finished_runs"],
+        num_finished_runs=finished_context["num_finished_runs"],
+        finished_runs_pages=finished_context["finished_runs_pages"],
+        page_idx=finished_context["page_idx"],
+    )
+    return {
+        **finished_context,
+        "runs": runs,
+        "run_tables_ctx": run_tables_ctx,
+        "machines_count": machines_count,
+        "pending_hours": "{:.1f}".format(pending_hours),
+        "cores": cores,
+        "nps": nps,
+        "nps_m": f"{nps / 1000000:.0f}M",
+        "games_per_minute": int(games_per_minute),
+        "height": f"{machines_count * 37}px",
+        "min_height": "37px",
+        "max_height": "34.7vh",
+    }
+
+
+def tests(request):
+    # The homepage mixes user-specific state with frequently refreshed content,
+    # so intermediary caches must not store it.
+    _append_no_store_headers(request)
+    page_param = request.params.get("page", "")
+    if page_param.isdigit() and int(page_param) > 1:
+        # page 2 and beyond only show finished test results
+        finished_context = get_paginated_finished_runs(request)
+        if isinstance(finished_context, RedirectResponse):
+            return finished_context
+        return {
+            **finished_context,
+            "run_tables_ctx": _build_run_tables_context(
+                request,
+                runs=None,
+                failed_runs=finished_context["failed_runs"],
+                finished_runs=finished_context["finished_runs"],
+                num_finished_runs=finished_context["num_finished_runs"],
+                finished_runs_pages=finished_context["finished_runs_pages"],
+                page_idx=finished_context["page_idx"],
+            ),
+        }
+
+    last_tests = homepage_results(request)
+
+    authenticated_user = request.authenticated_userid
+
+    machines_sort = request.cookies.get("machines_sort", "").strip().lower()
+    if machines_sort not in _MACHINES_SORT_MAP:
+        machines_sort = _MACHINES_DEFAULT_SORT
+
+    _, machines_default_reverse = _MACHINES_SORT_MAP[machines_sort]
+    machines_order = request.cookies.get("machines_order", "").strip().lower()
+    if machines_order not in {"asc", "desc"}:
+        machines_order = "desc" if machines_default_reverse else "asc"
+
+    machines_q = unquote(request.cookies.get("machines_q", ""))
+
+    machines_page_raw = request.cookies.get("machines_page", "")
+    if machines_page_raw.isdigit() and int(machines_page_raw) >= 1:
+        machines_page = int(machines_page_raw)
+    else:
+        machines_page = 1
+
+    machines_my_workers = _is_truthy_param(
+        request.cookies.get("machines_my_workers", "")
+    )
+    if not authenticated_user:
+        machines_my_workers = False
+
+    machine_filters = _machine_filter_state(
+        request.cookies,
+        authenticated_username=authenticated_user,
+        use_cookies=True,
+        query_key="machines_q",
+        my_workers_key="machines_my_workers",
+    )
+    machines_filters_active = machine_filters["filters_active"]
+    if machines_filters_active:
+        machines_filtered_count = _filtered_machine_count(
+            request,
+            query_filter=machine_filters["query_filter"],
+            my_workers=machine_filters["my_workers"],
+            authenticated_username=authenticated_user,
+        )
+    else:
+        machines_filtered_count = last_tests["machines_count"]
+    workers_count = _workers_count_label(
+        last_tests["machines_count"],
+        query_filter=machine_filters["query_filter"],
+        my_workers=machine_filters["my_workers"],
+        filtered_count=machines_filtered_count,
+    )
+
+    return {
+        **last_tests,
+        "machines_shown": request.cookies.get("machines_state") == "Hide",
+        "workers_count_text": workers_count,
+        "machines_sort": machines_sort,
+        "machines_order": machines_order,
+        "machines_q": machines_q,
+        "machines_page": machines_page,
+        "machines_my_workers": machines_my_workers,
+        "has_authenticated_user": bool(authenticated_user),
+    }
+
+
+# === Domain: run mutation ===
 
 # === Run creation helpers ===
 
@@ -2020,7 +4537,8 @@ def tests_approve(request):
         except Exception as e:
             request.session.flash(str(e), "error")
         request.actiondb.approve_run(username=username, run=run, message="approved")
-        request.session.flash(message)
+        if message:
+            request.session.flash(message)
     return home(request)
 
 
@@ -2043,6 +4561,7 @@ def tests_purge(request):
             f"Manual purge (not performed): {message}" if message else "Manual purge"
         ),
     )
+
     if message != "":
         request.session.flash(message)
         return home(request)
@@ -2085,6 +4604,9 @@ def tests_delete(request):
     return home(request)
 
 
+# === Domain: run detail ===
+
+
 # === Run detail views ===
 def get_page_title(run):
     if run["args"].get("sprt"):
@@ -2100,22 +4622,311 @@ def get_page_title(run):
     return page_title
 
 
+def _build_live_elo_context(run):
+    """Compute SPRT analytics and return template context for gauges + details."""
+    run_status_label = _classify_run_status(run)
+    if run_status_label == "failed":
+        run_status_label = "finished"
+
+    results = run["results"]
+    sprt = run["args"]["sprt"]
+    elo_model = sprt.get("elo_model", "BayesElo")
+    a = fishtest.stats.stat_util.SPRT_elo(
+        results,
+        alpha=sprt["alpha"],
+        beta=sprt["beta"],
+        elo0=sprt["elo0"],
+        elo1=sprt["elo1"],
+        elo_model=elo_model,
+    )
+    WLD = [results["wins"], results["losses"], results["draws"]]
+    games = sum(WLD)
+    pentanomial = results.get("pentanomial", [])
+    return {
+        "run": run,
+        "run_status_label": run_status_label,
+        "elo_raw": a["elo"],
+        "ci_lower_raw": a["ci"][0],
+        "ci_upper_raw": a["ci"][1],
+        "LLR_raw": a["LLR"],
+        "LOS_raw": 100 * a["LOS"],
+        "a_raw": a["a"],
+        "b_raw": a["b"],
+        "elo_value": round(a["elo"], 2),
+        "ci_lower": round(a["ci"][0], 2),
+        "ci_upper": round(a["ci"][1], 2),
+        "LLR": round(a["LLR"], 2),
+        "LOS": round(100 * a["LOS"], 1),
+        "a": round(a["a"], 2),
+        "b": round(a["b"], 2),
+        "W": WLD[0],
+        "L": WLD[1],
+        "D": WLD[2],
+        "games": games,
+        "w_pct": round((100 * WLD[0]) / (games + 0.001), 1),
+        "l_pct": round((100 * WLD[1]) / (games + 0.001), 1),
+        "d_pct": round((100 * WLD[2]) / (games + 0.001), 1),
+        "pentanomial": pentanomial[:5],
+        "sprt_state": sprt.get("state", ""),
+        "elo_model": elo_model,
+        "elo0": sprt["elo0"],
+        "elo1": sprt["elo1"],
+        "alpha": sprt["alpha"],
+        "beta": sprt["beta"],
+    }
+
+
+def _classify_run_status(run):
+    if run.get("finished", False):
+        return "failed" if run.get("failed") else "finished"
+    if run.get("workers", 0) > 0:
+        return "active"
+    return "paused" if run.get("approved") else "pending"
+
+
+def tests_elo_batch(request):
+    username = request.params.get("username", "") or ""
+
+    (
+        runs,
+        pending_hours,
+        cores,
+        nps,
+        games_per_minute,
+        machines_count,
+    ) = request.rundb.aggregate_unfinished_runs(username=username or None)
+
+    pending_all = list(runs.get("pending", []))
+    active_runs = list(runs.get("active", []))
+    pending_runs = [r for r in pending_all if not r.get("approved")]
+    paused_runs = [r for r in pending_all if r.get("approved")]
+    active_run_filters = (
+        _build_active_run_filter_context(request, active_runs) if not username else None
+    )
+    active_runs_for_display = (
+        active_run_filters["ordered_runs"]
+        if active_run_filters is not None
+        else active_runs
+    )
+
+    allow_github_api_calls = request.has_permission("approve_run")
+
+    finished_context = get_paginated_finished_runs(request, username=username)
+    if isinstance(finished_context, RedirectResponse):
+        return finished_context
+    failed_runs = finished_context["failed_runs"]
+    finished_runs = finished_context["finished_runs"]
+
+    panels: list[_BatchPanel] = [
+        {
+            "tbody_id": "pending-tbody",
+            "rows": build_run_table_rows(
+                pending_runs, allow_github_api_calls=allow_github_api_calls
+            ),
+            "show_delete": True,
+            "empty_text": "No tests pending approval",
+        },
+        {
+            "tbody_id": "paused-tbody",
+            "rows": build_run_table_rows(
+                paused_runs, allow_github_api_calls=allow_github_api_calls
+            ),
+            "show_delete": True,
+            "empty_text": "No paused tests",
+        },
+        {
+            "tbody_id": "failed-tbody",
+            "rows": build_run_table_rows(
+                failed_runs, allow_github_api_calls=allow_github_api_calls
+            ),
+            "show_delete": True,
+            "empty_text": "No failed tests on this page",
+        },
+        {
+            "tbody_id": "active-tbody",
+            "rows": build_run_table_rows(
+                active_runs_for_display, allow_github_api_calls=allow_github_api_calls
+            ),
+            "show_delete": False,
+            "empty_text": "No active tests",
+        },
+        {
+            "tbody_id": "finished-tbody",
+            "rows": build_run_table_rows(
+                finished_runs, allow_github_api_calls=allow_github_api_calls
+            ),
+            "show_delete": False,
+            "empty_text": "",
+        },
+    ]
+
+    count_updates: list[_CountUpdate] = [
+        {
+            "id": "pending-count",
+            "text": f"Pending approval - {len(pending_runs)} tests",
+        },
+        {
+            "id": "paused-count",
+            "text": f"Paused - {len(paused_runs)} tests",
+        },
+        {
+            "id": "active-count",
+            "text": (
+                active_run_filters["count_text"]
+                if active_run_filters is not None
+                else f"Active - {len(active_runs)} tests"
+            ),
+        },
+        {
+            "id": "failed-count",
+            "text": f"Failed - {len(failed_runs)} tests",
+        },
+        {
+            "id": "finished-count",
+            "text": f"Finished - {finished_context['num_finished_runs']} tests",
+        },
+    ]
+
+    if not (pending_runs or paused_runs or active_runs):
+        request.response_status = 286
+
+    machine_filters = _machine_filter_state(
+        request.cookies,
+        authenticated_username=request.authenticated_userid,
+        use_cookies=True,
+        query_key="machines_q",
+        my_workers_key="machines_my_workers",
+    )
+    filters_active = machine_filters["filters_active"]
+
+    result: _TestsEloBatchContext = {
+        "panels": panels,
+        "count_updates": count_updates,
+    }
+
+    # workers-count target exists on homepage only.
+    if not username:
+        filtered_count = (
+            _filtered_machine_count(
+                request,
+                query_filter=machine_filters["query_filter"],
+                my_workers=machine_filters["my_workers"],
+                authenticated_username=request.authenticated_userid,
+            )
+            if filters_active
+            else machines_count
+        )
+        result["machines_count"] = machines_count
+        workers_count = _workers_count_label(
+            machines_count,
+            query_filter=machine_filters["query_filter"],
+            my_workers=machine_filters["my_workers"],
+            filtered_count=filtered_count,
+        )
+        result["workers_count_text"] = workers_count
+
+    # Include stats OOB updates for the homepage (no username filter).
+    if not username:
+        result["stats"] = {
+            "pending_hours": "{:.1f}".format(pending_hours),
+            "cores": cores,
+            "nps_m": f"{nps / 1000000:.0f}M",
+            "games_per_minute": int(games_per_minute),
+        }
+
+    return result
+
+
+def tests_elo(request):
+    run = request.rundb.get_run(request.matchdict["id"])
+    if run is None:
+        raise StarletteHTTPException(status_code=404)
+
+    expected = (request.params.get("expected") or "").strip().lower()
+    actual = _classify_run_status(run)
+
+    if expected:
+        if actual in {"finished", "failed"}:
+            request.response_status = 286
+        elif actual == expected:
+            request.response_status = 204
+    else:
+        if actual in {"finished", "failed"}:
+            request.response_status = 286
+        elif actual != "active":
+            request.response_status = 204
+
+    active = 0
+    cores = 0
+    for task in run["tasks"]:
+        if task["active"]:
+            active += 1
+            cores += task["worker_info"]["concurrency"]
+    totals = "({} active worker{} with {} core{})".format(
+        active, ("s" if active != 1 else ""), cores, ("s" if cores != 1 else "")
+    )
+
+    return {
+        "run": run,
+        "run_status_label": actual,
+        "tasks_totals": totals,
+    }
+
+
 def tests_live_elo(request):
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None or "sprt" not in run["args"]:
         raise StarletteHTTPException(status_code=404)
-    return {"run": run, "page_title": get_page_title(run)}
+    context = _build_live_elo_context(run)
+    context["page_title"] = get_page_title(run)
+    return context
+
+
+def live_elo_update(request):
+    run = request.rundb.get_run(request.matchdict["id"])
+    if run is None or "sprt" not in run["args"]:
+        raise StarletteHTTPException(status_code=404)
+
+    context = _build_live_elo_context(run)
+    if context["sprt_state"]:
+        request.response_status = 286
+    return context
 
 
 def tests_stats(request):
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None:
         raise StarletteHTTPException(status_code=404)
-    return {
+
+    context = {
         "run": run,
         "page_title": get_page_title(run),
         "stats": build_tests_stats_context(run),
     }
+
+    if _is_hx_request(request):
+        actual = _classify_run_status(run)
+        if actual in {"finished", "failed"}:
+            response = _render_hx_fragment(
+                request,
+                "tests_stats_content_fragment.html.j2",
+                context,
+            )
+            if response is not None:
+                response.status_code = 286
+                return response
+        elif actual != "active":
+            request.response_status = 204
+            return context
+
+        response = _render_hx_fragment(
+            request,
+            "tests_stats_content_fragment.html.j2",
+            context,
+        )
+        return response or context
+
+    return context
 
 
 def tests_tasks(request):
@@ -2150,60 +4961,15 @@ def tests_tasks(request):
     }
 
 
-def tests_machines(request):
-    def _clip_long(text: str, max_length: int = 20) -> str:
-        if len(text) > max_length:
-            return text[:max_length] + "..."
-        return text
-
-    machines_list = request.rundb.get_machines()
-    machines = []
-    for machine in machines_list:
-        gcc_version = ".".join(str(m) for m in machine.get("gcc_version", []))
-        compiler = machine.get("compiler", "g++")
-        python_version = ".".join(str(m) for m in machine.get("python_version", []))
-        version = str(machine.get("version", "")) + "*" * machine.get("modified", False)
-        worker_short = machine.get("unique_key", "").split("-")[0]
-        worker_url = f"/workers/{worker_name(machine, short=True)}"
-        formatted_time_ago = format_time_ago(machine["last_updated"])
-        sort_value_time_ago = -machine["last_updated"].timestamp()
-        branch = machine["run"]["args"]["new_tag"]
-        task_id = str(machine["task_id"])
-        run_id = str(machine["run"]["_id"])
-
-        machines.append(
-            {
-                "username": machine["username"],
-                "country_code": machine.get("country_code", "").lower(),
-                "concurrency": machine["concurrency"],
-                "worker_url": worker_url,
-                "worker_short": worker_short,
-                "nps_m": f"{machine['nps'] / 1000000:.2f}",
-                "max_memory": machine["max_memory"],
-                "system": machine["uname"],
-                "worker_arch": machine["worker_arch"],
-                "compiler_label": f"{compiler} {gcc_version}",
-                "python_label": python_version,
-                "version_label": version,
-                "run_url": f"/tests/view/{run_id}?show_task={task_id}",
-                "run_label": f"{_clip_long(branch)}/{task_id}",
-                "last_active_label": formatted_time_ago,
-                "last_active_sort": sort_value_time_ago,
-            }
-        )
-
-    return {"machines_list": machines_list, "machines": machines}
-
-
 def tests_view(request):
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None:
         raise StarletteHTTPException(status_code=404)
     run_id = str(run["_id"])
     follow = 1 if "follow" in request.params else 0
-    run_args = [("id", str(run["_id"]), "")]
+    run_args: list[_RunArg] = [("id", str(run["_id"]), "")]
     if run.get("rescheduled_from"):
-        run_args.append(("rescheduled_from", run["rescheduled_from"], ""))
+        run_args.append(("rescheduled_from", str(run["rescheduled_from"]), ""))
 
     for name in (
         "new_tag",
@@ -2303,9 +5069,9 @@ def tests_view(request):
                     [
                         p["name"],
                         "{:.2f}".format(p["theta"]),
-                        int(p["start"]),
-                        int(p["min"]),
-                        int(p["max"]),
+                        str(int(p["start"])),
+                        str(int(p["min"])),
+                        str(int(p["max"])),
                         "{:.3f}".format(c_iter),
                         "{:.3f}".format(p["c_end"]),
                         "{:.2e}".format(r_iter),
@@ -2317,10 +5083,10 @@ def tests_view(request):
         user, repo = gh.parse_repo(tests_repo_)
         if name == "tests_repo":
             value = tests_repo_
-            url = value
+            url = tests_repo_
 
         if name == "master_repo":
-            url = value
+            url = str(value)
 
         if name == "new_tag":
             url = gh.commit_url(
@@ -2500,271 +5266,6 @@ def tests_view(request):
     }
 
 
-def get_paginated_finished_runs(request):
-    username = request.matchdict.get("username", "")
-    success_only = request.params.get("success_only", False)
-    yellow_only = request.params.get("yellow_only", False)
-    ltc_only = request.params.get("ltc_only", False)
-
-    page_param = request.params.get("page", "")
-    page_idx = max(0, int(page_param) - 1) if page_param.isdigit() else 0
-    page_size = 25
-
-    finished_runs, num_finished_runs = request.rundb.get_finished_runs(
-        username=username,
-        success_only=success_only,
-        yellow_only=yellow_only,
-        ltc_only=ltc_only,
-        skip=page_idx * page_size,
-        limit=page_size,
-    )
-
-    query_params = ""
-    if success_only:
-        query_params += "&success_only=1"
-    if yellow_only:
-        query_params += "&yellow_only=1"
-    if ltc_only:
-        query_params += "&ltc_only=1"
-    pages = pagination(page_idx, num_finished_runs, page_size, query_params)
-
-    failed_runs = []
-    if page_idx == 0:
-        for run in finished_runs:
-            # Look for failed runs
-            if "failed" in run and run["failed"]:
-                failed_runs.append(run)
-
-    filters = {
-        "success_only": bool(success_only),
-        "yellow_only": bool(yellow_only),
-        "ltc_only": bool(ltc_only),
-    }
-    title_suffix = ""
-    if filters["success_only"]:
-        title_suffix = " - Greens"
-    elif filters["yellow_only"]:
-        title_suffix = " - Yellows"
-    elif filters["ltc_only"]:
-        title_suffix = " - LTC"
-
-    return {
-        "finished_runs": finished_runs,
-        "finished_runs_pages": pages,
-        "num_finished_runs": num_finished_runs,
-        "failed_runs": failed_runs,
-        "page_idx": page_idx,
-        "filters": filters,
-        "title_suffix": title_suffix,
-    }
-
-
-def _build_toggle_states(request, toggle_names):
-    return {name: request.cookies.get(f"{name}_state", "Show") for name in toggle_names}
-
-
-def _build_run_tables_context(
-    request,
-    *,
-    runs,
-    failed_runs,
-    finished_runs,
-    num_finished_runs,
-    finished_runs_pages,
-    page_idx,
-    username="",
-):
-    runs = runs or {"pending": [], "active": []}
-    pending_runs = [r for r in runs.get("pending", []) if not r.get("approved")]
-    paused_runs = [r for r in runs.get("pending", []) if r.get("approved")]
-    active_runs = list(runs.get("active", []))
-    prefix = run_tables_prefix(username)
-    toggle_names = [prefix + "finished"]
-    if page_idx == 0:
-        toggle_names = [
-            prefix + "pending",
-            prefix + "paused",
-            prefix + "failed",
-            prefix + "active",
-            prefix + "finished",
-        ]
-    toggle_states = _build_toggle_states(request, toggle_names)
-    finished_title_text = (
-        f"{username + ' - ' if username else ''}Finished Tests"
-        f" - page {page_idx + 1} | Stockfish Testing"
-    )
-
-    return {
-        "pending_approval_runs": build_run_table_rows(
-            pending_runs,
-            allow_github_api_calls=False,
-        ),
-        "paused_runs": build_run_table_rows(
-            paused_runs,
-            allow_github_api_calls=False,
-        ),
-        "failed_runs": build_run_table_rows(
-            failed_runs,
-            allow_github_api_calls=False,
-        ),
-        "active_runs": build_run_table_rows(
-            active_runs,
-            allow_github_api_calls=False,
-        ),
-        "finished_runs": build_run_table_rows(
-            finished_runs,
-            allow_github_api_calls=False,
-        ),
-        "num_finished_runs": num_finished_runs,
-        "finished_runs_pages": finished_runs_pages,
-        "page_idx": page_idx,
-        "prefix": prefix,
-        "toggle_states": toggle_states,
-        "finished_title_text": finished_title_text,
-        "show_gauge": False,
-    }
-
-
-# === Run lists + homepage ===
-def tests_finished(request):
-    context = get_paginated_finished_runs(request)
-    page_idx = context.get("page_idx", 0)
-    title_suffix = context.get("title_suffix", "")
-    title_text = (
-        f"Finished Tests{title_suffix} - page {page_idx + 1} | Stockfish Testing"
-    )
-    return {
-        **context,
-        "query_params": request.query_params,
-        "finished_runs": build_run_table_rows(
-            context.get("finished_runs", []),
-            allow_github_api_calls=False,
-        ),
-        "failed_runs": build_run_table_rows(
-            context.get("failed_runs", []),
-            allow_github_api_calls=False,
-        ),
-        "title": title_suffix,
-        "title_text": title_text,
-        "show_gauge": False,
-    }
-
-
-def tests_user(request):
-    request.response_headerlist.extend(
-        (
-            ("Cache-Control", "no-store"),
-            ("Expires", "0"),
-        )
-    )
-    username = request.matchdict.get("username", "")
-    user_data = request.userdb.get_user(username)
-    if user_data is None:
-        raise StarletteHTTPException(status_code=404)
-    is_approver = request.has_permission("approve_run")
-    finished_context = get_paginated_finished_runs(request)
-    response = {
-        **finished_context,
-        "username": username,
-        "is_approver": is_approver,
-    }
-    page_param = request.params.get("page", "")
-    if not page_param.isdigit() or int(page_param) <= 1:
-        runs = request.rundb.aggregate_unfinished_runs(username=username)[0]
-        response["run_tables_ctx"] = _build_run_tables_context(
-            request,
-            runs=runs,
-            failed_runs=finished_context.get("failed_runs", []),
-            finished_runs=finished_context.get("finished_runs", []),
-            num_finished_runs=finished_context.get("num_finished_runs", 0),
-            finished_runs_pages=finished_context.get("finished_runs_pages", []),
-            page_idx=finished_context.get("page_idx", 0),
-            username=username,
-        )
-    else:
-        response["run_tables_ctx"] = _build_run_tables_context(
-            request,
-            runs=None,
-            failed_runs=finished_context.get("failed_runs", []),
-            finished_runs=finished_context.get("finished_runs", []),
-            num_finished_runs=finished_context.get("num_finished_runs", 0),
-            finished_runs_pages=finished_context.get("finished_runs_pages", []),
-            page_idx=finished_context.get("page_idx", 0),
-            username=username,
-        )
-    # page 2 and beyond only show finished test results
-    return response
-
-
-def homepage_results(request):
-    # Get updated results for unfinished runs + finished runs
-
-    (
-        runs,
-        pending_hours,
-        cores,
-        nps,
-        games_per_minute,
-        machines_count,
-    ) = request.rundb.aggregate_unfinished_runs()
-    finished_context = get_paginated_finished_runs(request)
-    run_tables_ctx = _build_run_tables_context(
-        request,
-        runs=runs,
-        failed_runs=finished_context.get("failed_runs", []),
-        finished_runs=finished_context.get("finished_runs", []),
-        num_finished_runs=finished_context.get("num_finished_runs", 0),
-        finished_runs_pages=finished_context.get("finished_runs_pages", []),
-        page_idx=finished_context.get("page_idx", 0),
-    )
-    return {
-        **finished_context,
-        "runs": runs,
-        "run_tables_ctx": run_tables_ctx,
-        "machines_count": machines_count,
-        "pending_hours": "{:.1f}".format(pending_hours),
-        "cores": cores,
-        "nps": nps,
-        "nps_m": f"{nps / 1000000:.0f}M",
-        "games_per_minute": int(games_per_minute),
-        "height": f"{machines_count * 37}px",
-        "min_height": "37px",
-        "max_height": "34.7vh",
-    }
-
-
-def tests(request):
-    request.response_headerlist.extend(
-        (
-            ("Cache-Control", "no-store"),
-            ("Expires", "0"),
-        )
-    )
-    page_param = request.params.get("page", "")
-    if page_param.isdigit() and int(page_param) > 1:
-        # page 2 and beyond only show finished test results
-        finished_context = get_paginated_finished_runs(request)
-        return {
-            **finished_context,
-            "run_tables_ctx": _build_run_tables_context(
-                request,
-                runs=None,
-                failed_runs=finished_context.get("failed_runs", []),
-                finished_runs=finished_context.get("finished_runs", []),
-                num_finished_runs=finished_context.get("num_finished_runs", 0),
-                finished_runs_pages=finished_context.get("finished_runs_pages", []),
-                page_idx=finished_context.get("page_idx", 0),
-            ),
-        }
-
-    last_tests = homepage_results(request)
-
-    return {
-        **last_tests,
-        "machines_shown": request.cookies.get("machines_state") == "Hide",
-    }
-
-
 # === Router registration ===
 
 # Each entry: (view_function, path, config_dict)
@@ -2800,6 +5301,16 @@ _VIEW_ROUTES = [
     (nns, "/nns", {"renderer": "nns.html.j2"}),
     (sprt_calc, "/sprt_calc", {"renderer": "sprt_calc.html.j2"}),
     (rate_limits, "/rate_limits", {"renderer": "rate_limits.html.j2"}),
+    (
+        rate_limits_server,
+        "/rate_limits/server",
+        {"renderer": "rate_limits_server_fragment.html.j2"},
+    ),
+    (
+        user_management_pending_count,
+        "/user_management/pending_count",
+        {"renderer": "pending_users_nav_fragment.html.j2"},
+    ),
     (actions, "/actions", {"renderer": "actions.html.j2"}),
     (user_management, "/user_management", {"renderer": "user_management.html.j2"}),
     (user, "/user/{username}", {"renderer": "user.html.j2"}),
@@ -2845,12 +5356,27 @@ _VIEW_ROUTES = [
         {"require_csrf": True, "request_method": "POST", "require_primary": True},
     ),
     (tests_live_elo, "/tests/live_elo/{id}", {"renderer": "tests_live_elo.html.j2"}),
+    (
+        live_elo_update,
+        "/tests/live_elo_update/{id}",
+        {"renderer": "live_elo_fragment.html.j2"},
+    ),
+    (tests_elo, "/tests/elo/{id}", {"renderer": "elo_results_fragment.html.j2"}),
+    (
+        tests_elo_batch,
+        "/tests/elo_batch",
+        {"renderer": "elo_batch_fragment.html.j2"},
+    ),
     (tests_stats, "/tests/stats/{id}", {"renderer": "tests_stats.html.j2"}),
-    (tests_tasks, "/tests/tasks/{id}", {"renderer": "tasks.html.j2"}),
+    (
+        tests_tasks,
+        "/tests/tasks/{id}",
+        {"renderer": "tasks_fragment.html.j2"},
+    ),
     (
         tests_machines,
         "/tests/machines",
-        {"renderer": "machines.html.j2", "http_cache": 10},
+        {"renderer": "machines_fragment.html.j2", "http_cache": 10},
     ),
     (tests_view, "/tests/view/{id}", {"renderer": "tests_view.html.j2"}),
     (tests_finished, "/tests/finished", {"renderer": "tests_finished.html.j2"}),

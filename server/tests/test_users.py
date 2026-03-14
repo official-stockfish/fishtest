@@ -1,16 +1,25 @@
 # ruff: noqa: ANN201, ANN206, B025, B904, D100, D101, D102, E501, EM102, INP001, PLC0415, PT009, S105, TRY003
 
 import unittest
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import urlencode
 
 import test_support
 from vtjson import ValidationError
 
-from fishtest.http.cookie_session import REMEMBER_MAX_AGE_SECONDS
+from fishtest.http.settings import (
+    HTMX_INPUT_CHANGED_DELAY_MS,
+    POLL_PENDING_USERS_NAV_S,
+    POLL_RATE_LIMITS_GITHUB_S,
+    POLL_RATE_LIMITS_SERVER_S,
+    POLL_STATS_DETAIL_S,
+    SESSION_REMEMBER_MAX_AGE_SECONDS,
+)
 from fishtest.run_cache import Prio
 from fishtest.util import PASSWORD_MAX_LENGTH
+from fishtest.views import _MACHINES_PAGE_SIZE
 
 
 class TestHttpUsers(unittest.TestCase):
@@ -73,6 +82,26 @@ class TestHttpUsers(unittest.TestCase):
         run["approved"] = True
         self.rundb.buffer(run, priority=Prio.SAVE_NOW)
         return str(run_id)
+
+    def _login_user(self):
+        user = self.rundb.userdb.get_user(self.username)
+        user["pending"] = False
+        self.rundb.userdb.save_user(user)
+
+        response = self.client.get("/login")
+        self.assertEqual(response.status_code, 200)
+        csrf = test_support.extract_csrf_token(response.text)
+
+        response = self.client.post(
+            "/login",
+            data={
+                "username": self.username,
+                "password": self.password,
+                "csrf_token": csrf,
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 302)
 
     @classmethod
     def tearDownClass(cls):
@@ -243,7 +272,7 @@ class TestHttpUsers(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         cookie = response.headers.get("set-cookie", "")
         self.assertIn("fishtest_session=", cookie)
-        self.assertIn(f"Max-Age={REMEMBER_MAX_AGE_SECONDS}", cookie)
+        self.assertIn(f"Max-Age={SESSION_REMEMBER_MAX_AGE_SECONDS}", cookie)
 
     def test_login_duplicate_remember_fields_keep_persistent_cookie(self):
         response = self.client.get("/login")
@@ -267,7 +296,7 @@ class TestHttpUsers(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         cookie = response.headers.get("set-cookie", "")
         self.assertIn("fishtest_session=", cookie)
-        self.assertIn(f"Max-Age={REMEMBER_MAX_AGE_SECONDS}", cookie)
+        self.assertIn(f"Max-Age={SESSION_REMEMBER_MAX_AGE_SECONDS}", cookie)
 
     def test_login_explicit_non_remember_sets_session_cookie(self):
         response = self.client.get("/login")
@@ -347,6 +376,1793 @@ class TestHttpUsers(unittest.TestCase):
         response = self.client.get(f"/tests/view/{run_id}")
         self.assertEqual(response.status_code, 200)
         self.assertIn(str(run_id), response.text)
+
+    def test_tests_stats_page_renders_shell_with_poller(self):
+        run_id = self._create_run()
+
+        response = self.client.get(f"/tests/stats/{run_id}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Raw Statistics for test", response.text)
+        self.assertIn(f'hx-get="/tests/stats/{run_id}"', response.text)
+        self.assertIn(
+            f"every {POLL_STATS_DETAIL_S}s [document.visibilityState === 'visible']",
+            response.text,
+        )
+        self.assertIn('id="tests-stats-content"', response.text)
+
+    def test_tests_stats_hx_paused_returns_204(self):
+        run_id = self._create_run()
+
+        response = self.client.get(
+            f"/tests/stats/{run_id}",
+            headers={"HX-Request": "true"},
+        )
+
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.text, "")
+
+    def test_tests_stats_hx_active_returns_fragment(self):
+        run_id = self._create_run()
+        run = self.rundb.get_run(run_id)
+        run["workers"] = 1
+        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+
+        response = self.client.get(
+            f"/tests/stats/{run_id}",
+            headers={"HX-Request": "true"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="tests-stats-content"', response.text)
+        self.assertIn("Draws", response.text)
+        self.assertNotIn("<title>", response.text)
+
+    def test_tests_stats_hx_terminal_returns_286(self):
+        run_id = self._create_run()
+        run = self.rundb.get_run(run_id)
+        run["finished"] = True
+        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+
+        response = self.client.get(
+            f"/tests/stats/{run_id}",
+            headers={"HX-Request": "true"},
+        )
+
+        self.assertEqual(response.status_code, 286)
+        self.assertIn('id="tests-stats-content"', response.text)
+
+    def test_contributors_search_goto_redirects_to_best_match(self):
+        hit_name = "HxSearchMatchUser"
+        miss_name = "HxSearchMissUser"
+        docs = [
+            {
+                "username": hit_name,
+                "cpu_hours": 10,
+                "games": 50,
+                "tests": 2,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            },
+            {
+                "username": miss_name,
+                "cpu_hours": 5,
+                "games": 20,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            },
+        ]
+        self.rundb.userdb.user_cache.insert_many(docs)
+        try:
+            response = self.client.get(
+                "/contributors?search=matchuser",
+                follow_redirects=False,
+            )
+            self.assertEqual(response.status_code, 302)
+            location = response.headers.get("location", "")
+            self.assertIn("highlight=HxSearchMatchUser", location)
+            self.assertIn("#me", location)
+            self.assertNotIn("search=", location)
+        finally:
+            self.rundb.userdb.user_cache.delete_many(
+                {"username": {"$in": [hit_name, miss_name]}}
+            )
+
+    def test_contributors_pagination_drops_search_param(self):
+        docs = []
+        for idx in range(120):
+            docs.append(
+                {
+                    "username": f"H13PageUser{idx:03d}",
+                    "cpu_hours": 1000 - idx,
+                    "games": 100 + idx,
+                    "tests": 1,
+                    "games_per_hour": 1,
+                    "last_updated": datetime.now(UTC),
+                    "tests_repo": "https://github.com/official-stockfish/Stockfish",
+                }
+            )
+
+        self.rundb.userdb.user_cache.insert_many(docs)
+        try:
+            response_page_1 = self.client.get("/contributors?search=NoSuchUser")
+            self.assertEqual(response_page_1.status_code, 200)
+            self.assertIn("?page=2", response_page_1.text)
+            self.assertNotIn("search=NoSuchUser", response_page_1.text)
+            self.assertIn("H13PageUser000", response_page_1.text)
+            self.assertNotIn("H13PageUser119", response_page_1.text)
+
+            response_page_2 = self.client.get("/contributors?page=2")
+            self.assertEqual(response_page_2.status_code, 200)
+            self.assertIn("H13PageUser119", response_page_2.text)
+            self.assertNotIn("H13PageUser000", response_page_2.text)
+        finally:
+            self.rundb.userdb.user_cache.delete_many(
+                {"username": {"$regex": "^H13PageUser"}}
+            )
+
+    def test_contributors_sort_by_username_asc(self):
+        docs = [
+            {
+                "username": "SortZZZUser",
+                "cpu_hours": 10,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            },
+            {
+                "username": "SortAAAUser",
+                "cpu_hours": 20,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            },
+        ]
+        self.rundb.userdb.user_cache.insert_many(docs)
+        try:
+            response = self.client.get("/contributors?sort=username&order=asc")
+            self.assertEqual(response.status_code, 200)
+            self.assertLess(
+                response.text.index("SortAAAUser"),
+                response.text.index("SortZZZUser"),
+            )
+        finally:
+            self.rundb.userdb.user_cache.delete_many(
+                {"username": {"$in": ["SortZZZUser", "SortAAAUser"]}}
+            )
+
+    def test_contributors_sort_by_tests_repo_asc(self):
+        docs = [
+            {
+                "username": "SortRepoAAUser",
+                "cpu_hours": 10,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/zeta-org/repo",
+            },
+            {
+                "username": "SortRepoZZUser",
+                "cpu_hours": 20,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/alpha-org/repo",
+            },
+        ]
+        self.rundb.userdb.user_cache.insert_many(docs)
+        try:
+            response = self.client.get("/contributors?sort=tests_repo&order=asc")
+            self.assertEqual(response.status_code, 200)
+            self.assertLess(
+                response.text.index("SortRepoZZUser"),
+                response.text.index("SortRepoAAUser"),
+            )
+        finally:
+            self.rundb.userdb.user_cache.delete_many(
+                {"username": {"$in": ["SortRepoAAUser", "SortRepoZZUser"]}}
+            )
+
+    def test_contributors_invalid_sort_falls_back(self):
+        response = self.client.get("/contributors?sort=__proto__")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Contributors", response.text)
+
+    def test_tests_machines_server_sort_and_pagination(self):
+        now = datetime.now(UTC)
+
+        def machine_doc(idx):
+            return {
+                "username": f"PageUser{idx:03d}",
+                "country_code": "us",
+                "concurrency": 1,
+                "unique_key": f"ukey-{idx:03d}-abcd",
+                "nps": 2_000_000 + idx,
+                "max_memory": 2048,
+                "uname": "Linux",
+                "worker_arch": "x86-64",
+                "gcc_version": [13, 2, 0],
+                "compiler": "g++",
+                "python_version": [3, 12, 0],
+                "version": 123,
+                "modified": False,
+                "task_id": idx,
+                "last_updated": now - timedelta(seconds=idx),
+                "run": {
+                    "_id": f"run-{idx:03d}",
+                    "args": {"new_tag": f"branch-{idx:03d}"},
+                },
+            }
+
+        docs = [machine_doc(idx) for idx in range(_MACHINES_PAGE_SIZE + 5)]
+        with patch.object(self.rundb, "get_machines", return_value=docs):
+            response = self.client.get("/tests/machines?sort=machine&page=2")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="machines_table"', response.text)
+        self.assertIn('hx-disinherit="hx-include"', response.text)
+        self.assertIn('hx-params="none"', response.text)
+        self.assertIn(f"PageUser{_MACHINES_PAGE_SIZE + 4:03d}", response.text)
+        self.assertNotIn("PageUser000", response.text)
+        self.assertIn("/tests/machines?page=1&amp;sort=machine", response.text)
+
+    def test_tests_machines_compiler_and_python_sort_are_version_aware(self):
+        now = datetime.now(UTC)
+
+        docs = [
+            {
+                "username": "CompPyUserA",
+                "country_code": "us",
+                "concurrency": 1,
+                "unique_key": "comp-a-0000",
+                "nps": 2_000_000,
+                "max_memory": 2048,
+                "uname": "Linux",
+                "worker_arch": "x86-64",
+                "gcc_version": [20, 1, 8],
+                "compiler": "clang++",
+                "python_version": [3, 11, 0],
+                "version": 300,
+                "modified": False,
+                "task_id": 1,
+                "last_updated": now,
+                "run": {"_id": "run-comp-a", "args": {"new_tag": "main"}},
+            },
+            {
+                "username": "CompPyUserB",
+                "country_code": "us",
+                "concurrency": 1,
+                "unique_key": "comp-b-0000",
+                "nps": 2_000_000,
+                "max_memory": 2048,
+                "uname": "Linux",
+                "worker_arch": "x86-64",
+                "gcc_version": [17, 0, 6],
+                "compiler": "clang++",
+                "python_version": [3, 8, 20],
+                "version": 300,
+                "modified": False,
+                "task_id": 2,
+                "last_updated": now,
+                "run": {"_id": "run-comp-b", "args": {"new_tag": "main"}},
+            },
+            {
+                "username": "CompPyUserC",
+                "country_code": "us",
+                "concurrency": 1,
+                "unique_key": "comp-c-0000",
+                "nps": 2_000_000,
+                "max_memory": 2048,
+                "uname": "Linux",
+                "worker_arch": "x86-64",
+                "gcc_version": [18, 1, 8],
+                "compiler": "clang++",
+                "python_version": [3, 12, 12],
+                "version": 300,
+                "modified": False,
+                "task_id": 3,
+                "last_updated": now,
+                "run": {"_id": "run-comp-c", "args": {"new_tag": "main"}},
+            },
+        ]
+
+        with patch.object(self.rundb, "get_machines", return_value=docs):
+            compiler_response = self.client.get(
+                "/tests/machines?sort=compiler&order=asc"
+            )
+            python_response = self.client.get("/tests/machines?sort=python&order=asc")
+
+        self.assertEqual(compiler_response.status_code, 200)
+        self.assertLess(
+            compiler_response.text.index("CompPyUserB"),
+            compiler_response.text.index("CompPyUserC"),
+        )
+        self.assertLess(
+            compiler_response.text.index("CompPyUserC"),
+            compiler_response.text.index("CompPyUserA"),
+        )
+
+        self.assertEqual(python_response.status_code, 200)
+        self.assertLess(
+            python_response.text.index("CompPyUserB"),
+            python_response.text.index("CompPyUserA"),
+        )
+        self.assertLess(
+            python_response.text.index("CompPyUserA"),
+            python_response.text.index("CompPyUserC"),
+        )
+
+    def test_tests_machines_my_workers_and_query_filter(self):
+        now = datetime.now(UTC)
+        docs = [
+            {
+                "username": self.username,
+                "country_code": "us",
+                "concurrency": 2,
+                "unique_key": "joekey-aaaa-bbbb",
+                "nps": 2_500_000,
+                "max_memory": 4096,
+                "uname": "Linux",
+                "worker_arch": "x86-64",
+                "gcc_version": [13, 2, 0],
+                "compiler": "g++",
+                "python_version": [3, 12, 0],
+                "version": 100,
+                "modified": False,
+                "task_id": 1,
+                "last_updated": now,
+                "run": {"_id": "run-joe", "args": {"new_tag": "main"}},
+            },
+            {
+                "username": "OtherUser",
+                "country_code": "it",
+                "concurrency": 4,
+                "unique_key": "otherkey-cccc-dddd",
+                "nps": 3_000_000,
+                "max_memory": 8192,
+                "uname": "Windows 11",
+                "worker_arch": "x86-64",
+                "gcc_version": [13, 2, 0],
+                "compiler": "clang",
+                "python_version": [3, 11, 0],
+                "version": 101,
+                "modified": False,
+                "task_id": 2,
+                "last_updated": now - timedelta(seconds=30),
+                "run": {"_id": "run-other", "args": {"new_tag": "dev"}},
+            },
+        ]
+
+        self._login_user()
+        with patch.object(self.rundb, "get_machines", return_value=docs):
+            response = self.client.get("/tests/machines?my_workers=1&q=linux")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(self.username, response.text)
+        self.assertNotIn("OtherUser", response.text)
+        self.assertIn("Workers - 2 (1)", response.text)
+        self.assertIn("my_workers=1", response.text)
+
+        with patch.object(self.rundb, "get_machines", return_value=docs):
+            compiler_filter_response = self.client.get("/tests/machines?q=clang")
+
+        self.assertEqual(compiler_filter_response.status_code, 200)
+        self.assertIn("OtherUser", compiler_filter_response.text)
+        self.assertNotIn(self.username, compiler_filter_response.text)
+
+    def test_tests_machines_workers_count_shows_total_and_filtered(self):
+        now = datetime.now(UTC)
+        docs = [
+            {
+                "username": self.username,
+                "country_code": "us",
+                "concurrency": 2,
+                "unique_key": "joekey-aaaa-bbbb",
+                "nps": 2_500_000,
+                "max_memory": 4096,
+                "uname": "Linux",
+                "worker_arch": "x86-64",
+                "gcc_version": [13, 2, 0],
+                "compiler": "g++",
+                "python_version": [3, 12, 0],
+                "version": 100,
+                "modified": False,
+                "task_id": 1,
+                "last_updated": now,
+                "run": {"_id": "run-joe", "args": {"new_tag": "main"}},
+            },
+            {
+                "username": "OtherUser",
+                "country_code": "it",
+                "concurrency": 4,
+                "unique_key": "otherkey-cccc-dddd",
+                "nps": 3_000_000,
+                "max_memory": 8192,
+                "uname": "Windows 11",
+                "worker_arch": "x86-64",
+                "gcc_version": [13, 2, 0],
+                "compiler": "clang",
+                "python_version": [3, 11, 0],
+                "version": 101,
+                "modified": False,
+                "task_id": 2,
+                "last_updated": now - timedelta(seconds=30),
+                "run": {"_id": "run-other", "args": {"new_tag": "dev"}},
+            },
+        ]
+
+        with patch.object(self.rundb, "get_machines", return_value=docs):
+            response_unfiltered = self.client.get("/tests/machines")
+            response_filtered = self.client.get("/tests/machines?q=windows")
+
+        self.assertEqual(response_unfiltered.status_code, 200)
+        self.assertIn("Workers - 2", response_unfiltered.text)
+
+        self.assertEqual(response_filtered.status_code, 200)
+        self.assertIn("Workers - 2 (1)", response_filtered.text)
+
+    def test_tests_homepage_hidden_workers_count_recomputes_filtered_value(self):
+        now = datetime.now(UTC)
+        docs = [
+            {
+                "username": self.username,
+                "country_code": "us",
+                "concurrency": 2,
+                "unique_key": "joekey-aaaa-bbbb",
+                "nps": 2_500_000,
+                "max_memory": 4096,
+                "uname": "Linux",
+                "worker_arch": "x86-64",
+                "gcc_version": [13, 2, 0],
+                "compiler": "g++",
+                "python_version": [3, 12, 0],
+                "version": 100,
+                "modified": False,
+                "task_id": 1,
+                "last_updated": now,
+                "run": {"_id": "run-joe", "args": {"new_tag": "main"}},
+            },
+            {
+                "username": "OtherUser",
+                "country_code": "it",
+                "concurrency": 4,
+                "unique_key": "otherkey-cccc-dddd",
+                "nps": 3_000_000,
+                "max_memory": 8192,
+                "uname": "Windows 11",
+                "worker_arch": "x86-64",
+                "gcc_version": [13, 2, 0],
+                "compiler": "clang",
+                "python_version": [3, 11, 0],
+                "version": 101,
+                "modified": False,
+                "task_id": 2,
+                "last_updated": now - timedelta(seconds=30),
+                "run": {"_id": "run-other", "args": {"new_tag": "dev"}},
+            },
+        ]
+        aggregate_result = ({"pending": [], "active": []}, 0.0, 0, 0, 0, 2)
+
+        self.client.cookies.set("machines_q", "windows")
+        self.client.cookies.set("machines_filtered_count", "99")
+        self.client.cookies.set("machines_state", "Show")
+
+        with (
+            patch.object(
+                self.rundb,
+                "aggregate_unfinished_runs",
+                return_value=aggregate_result,
+            ),
+            patch.object(self.rundb, "get_machines", return_value=docs),
+        ):
+            homepage = self.client.get("/tests")
+
+        self.assertEqual(homepage.status_code, 200)
+        self.assertIn("Workers - 2 (1)", homepage.text)
+
+    def test_tests_elo_batch_recomputes_filtered_workers_count_label(self):
+        now = datetime.now(UTC)
+        docs = [
+            {
+                "username": self.username,
+                "country_code": "us",
+                "concurrency": 2,
+                "unique_key": "joekey-aaaa-bbbb",
+                "nps": 2_500_000,
+                "max_memory": 4096,
+                "uname": "Linux",
+                "worker_arch": "x86-64",
+                "gcc_version": [13, 2, 0],
+                "compiler": "g++",
+                "python_version": [3, 12, 0],
+                "version": 100,
+                "modified": False,
+                "task_id": 1,
+                "last_updated": now,
+                "run": {"_id": "run-joe", "args": {"new_tag": "main"}},
+            },
+            {
+                "username": "OtherUser",
+                "country_code": "it",
+                "concurrency": 4,
+                "unique_key": "otherkey-cccc-dddd",
+                "nps": 3_000_000,
+                "max_memory": 8192,
+                "uname": "Windows 11",
+                "worker_arch": "x86-64",
+                "gcc_version": [13, 2, 0],
+                "compiler": "clang",
+                "python_version": [3, 11, 0],
+                "version": 101,
+                "modified": False,
+                "task_id": 2,
+                "last_updated": now - timedelta(seconds=30),
+                "run": {"_id": "run-other", "args": {"new_tag": "dev"}},
+            },
+        ]
+        runs = {"pending": [], "active": []}
+        aggregate_result = (runs, 0.0, 0, 0, 0, 2)
+
+        self.client.cookies.set("machines_q", "windows")
+        self.client.cookies.set("machines_filtered_count", "99")
+
+        with (
+            patch.object(
+                self.rundb,
+                "aggregate_unfinished_runs",
+                return_value=aggregate_result,
+            ),
+            patch.object(self.rundb, "get_machines", return_value=docs),
+        ):
+            response = self.client.get("/tests/elo_batch")
+
+        self.assertEqual(response.status_code, 286)
+        self.assertIn("Workers - 2 (1)", response.text)
+
+    def test_tests_elo_batch_keeps_hidden_active_filtered_count_current(self):
+        now = datetime.now(UTC)
+        runs = {
+            "pending": [],
+            "active": [
+                {
+                    "_id": "run-sprt-stc-st",
+                    "args": {
+                        "username": self.username,
+                        "base_tag": "master",
+                        "new_tag": "sprt-stc-st",
+                        "resolved_base": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "resolved_new": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "tc": "10+0.1",
+                        "threads": 1,
+                        "sprt": {
+                            "llr": 0.0,
+                            "lower_bound": -2.94,
+                            "upper_bound": 2.94,
+                            "elo0": 0.0,
+                            "elo1": 2.0,
+                            "state": "",
+                        },
+                        "tests_repo": "https://github.com/official-stockfish/Stockfish",
+                    },
+                    "start_time": now,
+                    "finished": False,
+                    "cores": 2,
+                    "workers": 1,
+                    "results": {"wins": 0, "losses": 0, "draws": 0},
+                },
+                {
+                    "_id": "run-spsa-ltc-smp",
+                    "args": {
+                        "username": self.username,
+                        "base_tag": "master",
+                        "new_tag": "spsa-ltc-smp",
+                        "resolved_base": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "resolved_new": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "tc": "60+0.6",
+                        "threads": 4,
+                        "spsa": {"iter": 1, "num_iter": 10},
+                        "num_games": 1000,
+                        "tests_repo": "https://github.com/official-stockfish/Stockfish",
+                    },
+                    "start_time": now,
+                    "finished": False,
+                    "cores": 16,
+                    "workers": 4,
+                    "results": {"wins": 0, "losses": 0, "draws": 0},
+                },
+            ],
+        }
+        aggregate_result = (runs, 0.0, 0, 0, 0, 0)
+
+        self.client.cookies.set("active_run_filters", "sprt,stc,st")
+        self.client.cookies.set("active_state", "Show")
+
+        with patch.object(
+            self.rundb,
+            "aggregate_unfinished_runs",
+            return_value=aggregate_result,
+        ):
+            response = self.client.get("/tests/elo_batch")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="active-count"', response.text)
+        self.assertIn('id="active-tbody"', response.text)
+        self.assertIn("sprt-stc-st", response.text)
+        self.assertIn("spsa-ltc-smp", response.text)
+        self.assertIn("Active - 2 (1) tests", response.text)
+
+    def test_tests_homepage_machines_filters_render_and_persist(self):
+        now = datetime.now(UTC)
+        docs = [
+            {
+                "username": self.username,
+                "country_code": "us",
+                "concurrency": 2,
+                "unique_key": "joekey-aaaa-bbbb",
+                "nps": 2_500_000,
+                "max_memory": 4096,
+                "uname": "Linux",
+                "worker_arch": "x86-64",
+                "gcc_version": [13, 2, 0],
+                "compiler": "g++",
+                "python_version": [3, 12, 0],
+                "version": 100,
+                "modified": False,
+                "task_id": 1,
+                "last_updated": now,
+                "run": {"_id": "run-joe", "args": {"new_tag": "main"}},
+            }
+        ]
+
+        self._login_user()
+        with patch.object(self.rundb, "get_machines", return_value=docs):
+            set_state_response = self.client.get(
+                "/tests/machines?sort=machine&order=asc&page=2&my_workers=1&q=linux"
+            )
+
+        self.assertEqual(set_state_response.status_code, 200)
+
+        homepage = self.client.get("/tests")
+        self.assertEqual(homepage.status_code, 200)
+        self.assertIn('id="machines-filters"', homepage.text)
+        self.assertIn('id="machines_q"', homepage.text)
+        self.assertIn('placeholder="Filter any column"', homepage.text)
+        self.assertIn('value="linux"', homepage.text)
+        self.assertIn('id="machines_my_workers"', homepage.text)
+        self.assertIn('id="machines_sort" name="sort" value="machine"', homepage.text)
+        self.assertIn('id="machines_order" name="order" value="asc"', homepage.text)
+        # Page is normalized to the last available page for the filtered result set.
+        self.assertIn('id="machines_page" name="page" value="1"', homepage.text)
+        self.assertIn('id="machines_my_workers"', homepage.text)
+        self.assertIn("checked", homepage.text)
+        self.assertIn('data-toggle-cookie-max-age="', homepage.text)
+        self.assertIn("static/js/tests_homepage.js", homepage.text)
+        self.assertNotIn("document.activeElement?.id !== 'machines_q'", homepage.text)
+        self.assertIn(
+            "visibilitychange[document.visibilityState === 'visible' && document.getElementById('machines-panel').classList.contains('show')] from:document",
+            homepage.text,
+        )
+
+    def test_tests_homepage_active_filters_render_persisted_first_paint_state(self):
+        now = datetime.now(UTC)
+        runs = {
+            "pending": [],
+            "active": [
+                {
+                    "_id": "run-sprt-stc-st",
+                    "args": {
+                        "username": self.username,
+                        "base_tag": "master",
+                        "new_tag": "sprt-stc-st",
+                        "resolved_base": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "resolved_new": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "tc": "10+0.1",
+                        "threads": 1,
+                        "sprt": {
+                            "llr": 0.0,
+                            "lower_bound": -2.94,
+                            "upper_bound": 2.94,
+                            "elo0": 0.0,
+                            "elo1": 2.0,
+                            "state": "",
+                        },
+                        "info": "sprt run",
+                        "tests_repo": "https://github.com/official-stockfish/Stockfish",
+                    },
+                    "start_time": now,
+                    "finished": False,
+                    "cores": 2,
+                    "workers": 1,
+                    "results": {"wins": 0, "losses": 0, "draws": 0},
+                },
+                {
+                    "_id": "run-spsa-ltc-smp",
+                    "args": {
+                        "username": self.username,
+                        "base_tag": "master",
+                        "new_tag": "spsa-ltc-smp",
+                        "resolved_base": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "resolved_new": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "tc": "60+0.6",
+                        "threads": 4,
+                        "spsa": {"iter": 1, "num_iter": 10},
+                        "num_games": 1000,
+                        "info": "spsa run",
+                        "tests_repo": "https://github.com/official-stockfish/Stockfish",
+                    },
+                    "start_time": now,
+                    "finished": False,
+                    "cores": 16,
+                    "workers": 4,
+                    "results": {"wins": 0, "losses": 0, "draws": 0},
+                },
+            ],
+        }
+        aggregate_result = (runs, 0.0, 0, 0, 0, 0)
+
+        self.client.cookies.set("active_run_filters", "sprt,stc,st")
+
+        with patch.object(
+            self.rundb,
+            "aggregate_unfinished_runs",
+            return_value=aggregate_result,
+        ):
+            homepage = self.client.get("/tests")
+
+        self.assertEqual(homepage.status_code, 200)
+        self.assertIn("Active - 2 (1) tests", homepage.text)
+        self.assertIn('id="active-run-filter-style"', homepage.text)
+        self.assertIn("display: none !important;", homepage.text)
+        self.assertIn("[data-test-type=&#34;spsa&#34;]", homepage.text)
+        self.assertIn("[data-time-control=&#34;ltc&#34;]", homepage.text)
+        self.assertIn('data-active-filter-index="0"', homepage.text)
+        self.assertIn('data-active-filter-index="1"', homepage.text)
+        self.assertNotIn("data-row-parity", homepage.text)
+        self.assertLess(
+            homepage.text.index('id="active-run-filter-style"'),
+            homepage.text.index(
+                'src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"'
+            ),
+        )
+        self.assertIn(
+            'id="active-filter-sprt" value="sprt"\n               data-dimension="test-type" checked',
+            homepage.text,
+        )
+        self.assertIn(
+            'id="active-filter-spsa" value="spsa"\n               data-dimension="test-type" >',
+            homepage.text,
+        )
+
+    def test_tests_homepage_active_filters_persist_none_selection(self):
+        now = datetime.now(UTC)
+        runs = {
+            "pending": [],
+            "active": [
+                {
+                    "_id": "run-sprt-stc-st",
+                    "args": {
+                        "username": self.username,
+                        "base_tag": "master",
+                        "new_tag": "sprt-stc-st",
+                        "resolved_base": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "resolved_new": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "tc": "10+0.1",
+                        "threads": 1,
+                        "sprt": {
+                            "llr": 0.0,
+                            "lower_bound": -2.94,
+                            "upper_bound": 2.94,
+                            "elo0": 0.0,
+                            "elo1": 2.0,
+                            "state": "",
+                        },
+                        "tests_repo": "https://github.com/official-stockfish/Stockfish",
+                    },
+                    "start_time": now,
+                    "finished": False,
+                    "cores": 2,
+                    "workers": 1,
+                    "results": {"wins": 0, "losses": 0, "draws": 0},
+                },
+                {
+                    "_id": "run-numgames-ltc-smp",
+                    "args": {
+                        "username": self.username,
+                        "base_tag": "master",
+                        "new_tag": "numgames-ltc-smp",
+                        "resolved_base": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "resolved_new": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "tc": "60+0.6",
+                        "threads": 2,
+                        "num_games": 1000,
+                        "tests_repo": "https://github.com/official-stockfish/Stockfish",
+                    },
+                    "start_time": now,
+                    "finished": False,
+                    "cores": 8,
+                    "workers": 2,
+                    "results": {"wins": 0, "losses": 0, "draws": 0},
+                },
+            ],
+        }
+        aggregate_result = (runs, 0.0, 0, 0, 0, 0)
+
+        self.client.cookies.set("active_run_filters", "none")
+
+        with patch.object(
+            self.rundb,
+            "aggregate_unfinished_runs",
+            return_value=aggregate_result,
+        ):
+            homepage = self.client.get("/tests")
+
+        self.assertEqual(homepage.status_code, 200)
+        self.assertIn("Active - 2 (0) tests", homepage.text)
+        self.assertIn('id="active-run-filter-style"', homepage.text)
+        self.assertIn("display: none !important;", homepage.text)
+        self.assertIn("[data-test-type=&#34;sprt&#34;]", homepage.text)
+        self.assertIn("[data-test-type=&#34;numgames&#34;]", homepage.text)
+        self.assertIn('data-active-filter-index="0"', homepage.text)
+        self.assertIn('data-active-filter-index="1"', homepage.text)
+        self.assertNotIn("data-row-parity", homepage.text)
+        self.assertLess(
+            homepage.text.index('id="active-run-filter-style"'),
+            homepage.text.index(
+                'src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"'
+            ),
+        )
+        self.assertIn(
+            'id="active-filter-sprt" value="sprt"\n               data-dimension="test-type" >',
+            homepage.text,
+        )
+
+    def test_contributors_rank_is_global_on_page_two(self):
+        docs = [
+            {
+                "username": f"RankUser{idx:04d}",
+                "cpu_hours": 5000 - idx,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            }
+            for idx in range(110)
+        ]
+        self.rundb.userdb.user_cache.insert_many(docs)
+        try:
+            response = self.client.get("/contributors?page=2")
+            self.assertEqual(response.status_code, 200)
+            self.assertIn('data-sort-value="101"', response.text)
+        finally:
+            self.rundb.userdb.user_cache.delete_many(
+                {"username": {"$regex": "^RankUser"}}
+            )
+
+    def test_contributors_findme_redirects_to_page(self):
+        docs = [
+            {
+                "username": f"FindMeFiller{idx:04d}",
+                "cpu_hours": 5000 - idx,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            }
+            for idx in range(105)
+        ]
+        docs.append(
+            {
+                "username": self.username,
+                "cpu_hours": 1,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            }
+        )
+        self.rundb.userdb.user_cache.insert_many(docs)
+        try:
+            self._login_user()
+            response = self.client.get("/contributors?findme=1", follow_redirects=False)
+            self.assertEqual(response.status_code, 302)
+            location = response.headers.get("location", "")
+            self.assertIn("highlight=JoeUser", location)
+            self.assertIn("#me", location)
+            self.assertIn("page=2", location)
+        finally:
+            self.rundb.userdb.user_cache.delete_many(
+                {"username": {"$regex": "^FindMeFiller"}}
+            )
+            self.rundb.userdb.user_cache.delete_one({"username": self.username})
+
+    def test_contributors_findme_overrides_search_goto(self):
+        docs = [
+            {
+                "username": f"FindMeSearchFiller{idx:04d}",
+                "cpu_hours": 5000 - idx,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            }
+            for idx in range(105)
+        ]
+        docs.append(
+            {
+                "username": self.username,
+                "cpu_hours": 1,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            }
+        )
+        docs.append(
+            {
+                "username": "DissMatchUser",
+                "cpu_hours": 3000,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            }
+        )
+        self.rundb.userdb.user_cache.insert_many(docs)
+        try:
+            self._login_user()
+            response = self.client.get(
+                "/contributors?findme=1&search=diss",
+                follow_redirects=False,
+            )
+            self.assertEqual(response.status_code, 302)
+            location = response.headers.get("location", "")
+            self.assertIn("highlight=JoeUser", location)
+            self.assertIn("findme=1", location)
+            self.assertNotIn("highlight=DissMatchUser", location)
+            self.assertNotIn("search=", location)
+        finally:
+            self.rundb.userdb.user_cache.delete_many(
+                {"username": {"$regex": "^(FindMeSearchFiller|DissMatchUser)"}}
+            )
+            self.rundb.userdb.user_cache.delete_one({"username": self.username})
+
+    def test_contributors_findme_unauthenticated_no_redirect(self):
+        response = self.client.get("/contributors?findme=1")
+        self.assertEqual(response.status_code, 200)
+
+    def test_contributors_search_goto_redirects_in_view_all(self):
+        hit_name = "ViewAllSearchTarget"
+        docs = [
+            {
+                "username": f"ViewAllSearchFiller{idx:04d}",
+                "cpu_hours": 5000 - idx,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            }
+            for idx in range(105)
+        ]
+        docs.append(
+            {
+                "username": hit_name,
+                "cpu_hours": 1,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            }
+        )
+        self.rundb.userdb.user_cache.insert_many(docs)
+        try:
+            response = self.client.get(
+                "/contributors?view=all&search=target",
+                follow_redirects=False,
+            )
+            self.assertEqual(response.status_code, 302)
+            location = response.headers.get("location", "")
+            self.assertIn("view=all", location)
+            self.assertIn(f"highlight={hit_name}", location)
+            self.assertIn("#me", location)
+            self.assertNotIn("search=", location)
+        finally:
+            self.rundb.userdb.user_cache.delete_many(
+                {"username": {"$regex": "^(ViewAllSearchFiller|ViewAllSearchTarget)"}}
+            )
+
+    def test_contributors_findme_redirects_in_view_all(self):
+        docs = [
+            {
+                "username": f"ViewAllFindMeFiller{idx:04d}",
+                "cpu_hours": 5000 - idx,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            }
+            for idx in range(105)
+        ]
+        docs.append(
+            {
+                "username": self.username,
+                "cpu_hours": 1,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            }
+        )
+        self.rundb.userdb.user_cache.insert_many(docs)
+        try:
+            self._login_user()
+            response = self.client.get(
+                "/contributors?view=all&findme=1",
+                follow_redirects=False,
+            )
+            self.assertEqual(response.status_code, 302)
+            location = response.headers.get("location", "")
+            self.assertIn("view=all", location)
+            self.assertIn("highlight=JoeUser", location)
+            self.assertIn("findme=1", location)
+            self.assertIn("#me", location)
+        finally:
+            self.rundb.userdb.user_cache.delete_many(
+                {"username": {"$regex": "^ViewAllFindMeFiller"}}
+            )
+            self.rundb.userdb.user_cache.delete_one({"username": self.username})
+
+    def test_contributors_search_form_uses_htmx_keystroke_goto(self):
+        response = self.client.get("/contributors")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="search_contributors_form"', response.text)
+        expected_trigger = (
+            'hx-trigger="submit, input changed delay:'
+            f"{HTMX_INPUT_CHANGED_DELAY_MS}ms from:#search_contributors"
+        )
+        self.assertIn(expected_trigger, response.text)
+        self.assertNotIn("Typing filters current page instantly", response.text)
+        self.assertNotIn("Jump to my rank</a>", response.text)
+        self.assertIn('type="search"', response.text)
+        self.assertIn('data-findme-cookie-name="contributors_findme"', response.text)
+        self.assertIn('data-findme-cookie-max-age="', response.text)
+        self.assertIn("static/js/contributors.js", response.text)
+        self.assertNotIn('const FINDME_COOKIE = "contributors_findme"', response.text)
+
+    def test_contributors_sort_headers_use_hx_get_with_push_url(self):
+        response = self.client.get("/contributors?sort=username&order=asc")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="contributors_table"', response.text)
+        self.assertIn('aria-sort="ascending"', response.text)
+        self.assertIn(
+            'hx-get="/contributors?sort=cpu_hours&order=asc&view=paged"',
+            response.text,
+        )
+        self.assertIn('hx-target="#contributors-content"', response.text)
+        self.assertIn('hx-push-url="true"', response.text)
+
+    def test_contributors_hx_fragment_syncs_outer_hidden_sort_state(self):
+        response = self.client.get(
+            "/contributors?sort=username&order=asc&view=all",
+            headers={"HX-Request": "true"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            'id="contributors_sort" name="sort" value="username" hx-swap-oob="true"',
+            response.text,
+        )
+        self.assertIn(
+            'id="contributors_order" name="order" value="asc" hx-swap-oob="true"',
+            response.text,
+        )
+        self.assertIn(
+            'id="contributors_view" name="view" value="all" hx-swap-oob="true"',
+            response.text,
+        )
+
+    def test_contributors_view_all_hides_pagination(self):
+        docs = [
+            {
+                "username": f"ViewAllUser{idx:04d}",
+                "cpu_hours": 5000 - idx,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            }
+            for idx in range(150)
+        ]
+        self.rundb.userdb.user_cache.insert_many(docs)
+        try:
+            response = self.client.get("/contributors?view=all")
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("ViewAllUser0120", response.text)
+            self.assertNotIn("?page=2", response.text)
+        finally:
+            self.rundb.userdb.user_cache.delete_many(
+                {"username": {"$regex": "^ViewAllUser"}}
+            )
+
+    def test_contributors_cpu_bar_removed(self):
+        docs = [
+            {
+                "username": f"CueUser{idx:04d}",
+                "cpu_hours": 3000 - idx,
+                "games": 10,
+                "tests": 1,
+                "games_per_hour": 1,
+                "last_updated": datetime.now(UTC),
+                "tests_repo": "https://github.com/official-stockfish/Stockfish",
+            }
+            for idx in range(120)
+        ]
+        self.rundb.userdb.user_cache.insert_many(docs)
+        try:
+            response = self.client.get("/contributors?view=all")
+            self.assertEqual(response.status_code, 200)
+            self.assertNotIn('class="cpu-bar"', response.text)
+        finally:
+            self.rundb.userdb.user_cache.delete_many(
+                {"username": {"$regex": "^CueUser"}}
+            )
+
+    def test_workers_server_side_filter_hx_fragment(self):
+        recent_worker = "hxrecent-1cores-abcd"
+        old_worker = "hxold-1cores-abcd"
+
+        self.rundb.workerdb.update_worker(recent_worker, blocked=True, message="recent")
+        self.rundb.workerdb.update_worker(old_worker, blocked=True, message="old")
+        self.rundb.workerdb.workers.update_one(
+            {"worker_name": old_worker},
+            {"$set": {"last_updated": datetime.now(UTC) - timedelta(days=10)}},
+        )
+        self.rundb.workerdb.workers.update_one(
+            {"worker_name": recent_worker},
+            {"$set": {"last_updated": datetime.now(UTC) - timedelta(days=1)}},
+        )
+
+        try:
+            response = self.client.get(
+                "/workers/show?filter=gt-5days",
+                headers={"HX-Request": "true"},
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(old_worker, response.text)
+            self.assertNotIn(recent_worker, response.text)
+            self.assertIn('id="workers_table"', response.text)
+            self.assertIn("filter=gt-5days", response.text)
+        finally:
+            self.rundb.workerdb.workers.delete_many(
+                {"worker_name": {"$in": [recent_worker, old_worker]}}
+            )
+
+    def test_workers_table_hx_sort_search_and_pagination_contract(self):
+        worker_names = [f"H19Worker{idx:02d}-1cores-abcd" for idx in range(30)]
+        for name in worker_names:
+            self.rundb.workerdb.update_worker(name, blocked=True, message="h19")
+
+        try:
+            response = self.client.get(
+                "/workers/show?filter=all-workers&sort=worker&order=asc&page=2&q=H19Worker&view=paged",
+                headers={"HX-Request": "true"},
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertIn('id="workers_table"', response.text)
+            self.assertIn('aria-sort="ascending"', response.text)
+            self.assertIn(worker_names[25], response.text)
+            self.assertNotIn(worker_names[0], response.text)
+            self.assertIn(
+                "filter=all-workers&amp;sort=worker&amp;order=asc&amp;q=H19Worker",
+                response.text,
+            )
+            self.assertIn(
+                'hx-get="/workers/show?filter=all-workers&sort=last_changed',
+                response.text,
+            )
+            self.assertIn('hx-target="#workers-content"', response.text)
+            self.assertIn('hx-push-url="true"', response.text)
+            self.assertIn("view=all", response.text)
+            self.assertIn(
+                'id="workers_sort" name="sort" value="worker" hx-swap-oob="true"',
+                response.text,
+            )
+            self.assertIn(
+                'id="workers_order" name="order" value="asc" hx-swap-oob="true"',
+                response.text,
+            )
+            self.assertIn(
+                'id="workers_view" name="view" value="paged" hx-swap-oob="true"',
+                response.text,
+            )
+
+            # Workers search filters by worker column only.
+            non_worker_match = self.client.get(
+                "/workers/show?filter=all-workers&sort=worker&order=asc&q=actions?text&view=paged",
+                headers={"HX-Request": "true"},
+            )
+            self.assertEqual(non_worker_match.status_code, 200)
+            self.assertNotIn(worker_names[0], non_worker_match.text)
+        finally:
+            self.rundb.workerdb.workers.delete_many(
+                {"worker_name": {"$regex": "^H19Worker"}}
+            )
+
+    def test_workers_hx_empty_state_fragment_renders_placeholder_row(self):
+        with patch.object(self.rundb.workerdb, "get_blocked_workers", return_value=[]):
+            response = self.client.get(
+                "/workers/show?filter=all-workers",
+                headers={"HX-Request": "true"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("No blocked workers", response.text)
+        self.assertIn('colspan="3"', response.text)
+        self.assertIn('id="workers_table"', response.text)
+
+    def test_user_management_hx_empty_state_fragment_renders_placeholder_row(self):
+        user = self.rundb.userdb.get_user(self.username)
+        original_pending = user.get("pending", False)
+        original_groups = list(user.get("groups", []))
+        user["pending"] = False
+        if "group:approvers" not in user["groups"]:
+            user["groups"].append("group:approvers")
+        self.rundb.userdb.save_user(user)
+
+        try:
+            self._login_user()
+
+            with patch.object(self.rundb.userdb, "get_users", return_value=[]):
+                response = self.client.get(
+                    "/user_management?group=blocked",
+                    headers={"HX-Request": "true"},
+                )
+
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("No blocked users", response.text)
+            self.assertIn('colspan="4"', response.text)
+            self.assertIn('id="user_management_table"', response.text)
+        finally:
+            cleanup_user = self.rundb.userdb.get_user(self.username)
+            cleanup_user["pending"] = original_pending
+            cleanup_user["groups"] = original_groups
+            self.rundb.userdb.save_user(cleanup_user)
+
+    def test_server_authoritative_tables_retire_legacy_sorting_js(self):
+        js_path = (
+            Path(__file__).resolve().parents[1]
+            / "fishtest"
+            / "static"
+            / "js"
+            / "application.js"
+        )
+        js_source = js_path.read_text(encoding="utf-8")
+
+        self.assertNotIn("handleSortingTables", js_source)
+        self.assertNotIn('row.dataset.noSort === "true"', js_source)
+
+        templates_root = Path(__file__).resolve().parents[1] / "fishtest" / "templates"
+        for template_name in (
+            "contributors_content_fragment.html.j2",
+            "machines_fragment.html.j2",
+            "nns_content_fragment.html.j2",
+            "user_management_content_fragment.html.j2",
+            "workers_content_fragment.html.j2",
+        ):
+            template_source = (templates_root / template_name).read_text(
+                encoding="utf-8"
+            )
+            self.assertNotIn('data-server-sort="true"', template_source)
+
+    def test_tests_stop_hx_detail_redirects_home(self):
+        self._login_user()
+        run_id = self._create_run()
+
+        response = self.client.get(f"/tests/view/{run_id}")
+        self.assertEqual(response.status_code, 200)
+        csrf = test_support.extract_csrf_token(response.text)
+
+        response = self.client.post(
+            "/tests/stop",
+            data={
+                "run-id": run_id,
+                "csrf_token": csrf,
+            },
+            headers={"HX-Request": "true"},
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers.get("location"), "/tests")
+
+    def test_tests_delete_hx_redirects_home(self):
+        self._login_user()
+        run_id = self._create_run()
+
+        response = self.client.get(f"/tests/view/{run_id}")
+        self.assertEqual(response.status_code, 200)
+        csrf = test_support.extract_csrf_token(response.text)
+
+        response = self.client.post(
+            "/tests/delete",
+            data={
+                "run-id": run_id,
+                "csrf_token": csrf,
+            },
+            headers={"HX-Request": "true"},
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers.get("location"), "/tests")
+
+    def test_tests_purge_hx_detail_redirects_home(self):
+        self._login_user()
+        run_id = self._create_run()
+        run = self.rundb.get_run(run_id)
+        self.rundb.set_inactive_run(run)
+
+        response = self.client.get(f"/tests/view/{run_id}")
+        self.assertEqual(response.status_code, 200)
+        csrf = test_support.extract_csrf_token(response.text)
+
+        response = self.client.post(
+            "/tests/purge",
+            data={
+                "run-id": run_id,
+                "csrf_token": csrf,
+            },
+            headers={"HX-Request": "true"},
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers.get("location"), "/tests")
+
+    def test_tests_stop_hx_detail_error_redirects_home(self):
+        """HX request hitting can_modify_run failure follows regular redirect flow."""
+        # Create a run owned by a different user, then try to stop it.
+        self._login_user()
+        run_id = self._create_run()
+        # Change run ownership so can_modify_run fails.
+        run = self.rundb.get_run(run_id)
+        run["args"]["username"] = "some_other_user"
+        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+
+        response = self.client.get(f"/tests/view/{run_id}")
+        self.assertEqual(response.status_code, 200)
+        csrf = test_support.extract_csrf_token(response.text)
+
+        response = self.client.post(
+            "/tests/stop",
+            data={
+                "run-id": run_id,
+                "csrf_token": csrf,
+            },
+            headers={"HX-Request": "true"},
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers.get("location"), "/tests")
+
+    def test_tests_delete_hx_error_redirects_home(self):
+        """HX request hitting can_modify_run failure on delete follows redirect flow."""
+        self._login_user()
+        run_id = self._create_run()
+        run = self.rundb.get_run(run_id)
+        run["args"]["username"] = "some_other_user"
+        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+
+        response = self.client.get(f"/tests/view/{run_id}")
+        self.assertEqual(response.status_code, 200)
+        csrf = test_support.extract_csrf_token(response.text)
+
+        response = self.client.post(
+            "/tests/delete",
+            data={
+                "run-id": run_id,
+                "csrf_token": csrf,
+            },
+            headers={"HX-Request": "true"},
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers.get("location"), "/tests")
+
+    def test_tests_modify_sends_csrf_token(self):
+        """Modify form includes CSRF token and submission succeeds."""
+        self._login_user()
+        run_id = self._create_run()
+
+        response = self.client.get(f"/tests/view/{run_id}")
+        self.assertEqual(response.status_code, 200)
+        csrf = test_support.extract_csrf_token(response.text)
+
+        run = self.rundb.get_run(run_id)
+        response = self.client.post(
+            "/tests/modify",
+            data={
+                "run": run_id,
+                "num-games": str(run["args"]["num_games"]),
+                "priority": str(run["args"]["priority"]),
+                "throughput": str(run["args"].get("throughput", 1000)),
+                "csrf_token": csrf,
+            },
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers.get("location"), "/tests")
+
+    def test_tests_modify_without_csrf_returns_403(self):
+        """Modify form without CSRF token is rejected with 403."""
+        self._login_user()
+        run_id = self._create_run()
+
+        response = self.client.post(
+            "/tests/modify",
+            data={
+                "run": run_id,
+                "num-games": "20000",
+                "priority": "0",
+                "throughput": "1000",
+            },
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_tests_user_hx_filter_fragment_keeps_notification_and_toggle_hooks(self):
+        self._create_run()
+
+        response = self.client.get(
+            f"/tests/user/{self.username}?success_only=1",
+            headers={"HX-Request": "true"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="tests-user-filters"', response.text)
+        self.assertIn('id="notification_', response.text)
+        self.assertIn('data-toggle-cookie-name="', response.text)
+        self.assertIn('data-toggle-cookie-max-age="', response.text)
+
+    def test_notifications_js_reinitializes_after_htmx_swaps(self):
+        js_path = (
+            Path(__file__).resolve().parents[1]
+            / "fishtest"
+            / "static"
+            / "js"
+            / "notifications.js"
+        )
+        js_source = js_path.read_text(encoding="utf-8")
+
+        self.assertIn('document.addEventListener("htmx:afterSwap"', js_source)
+        self.assertIn('document.addEventListener("htmx:load"', js_source)
+        self.assertIn("initializeNotificationButtons(target)", js_source)
+        self.assertIn('notification.dataset.notificationReady = "1"', js_source)
+
+    def test_tests_view_tasks_loader_attaches_before_domcontentloaded(self):
+        template_path = (
+            Path(__file__).resolve().parents[1]
+            / "fishtest"
+            / "templates"
+            / "tests_view.html.j2"
+        )
+        template_source = template_path.read_text(encoding="utf-8")
+
+        self.assertIn(
+            'tasksTbody?.addEventListener("htmx:afterSwap", resolveTasksLoadedOnce);',
+            template_source,
+        )
+        self.assertIn(
+            'if (tasksTbody && (tasksTbody.dataset.tasksLoaded === "1" || tasksTbody.children.length > 0)) {',
+            template_source,
+        )
+        tasks_region_start = template_source.index("let resolveTasksLoaded = null;")
+        tasks_region = template_source[tasks_region_start:]
+        self.assertLess(
+            tasks_region.index(
+                'tasksTbody?.addEventListener("htmx:afterSwap", resolveTasksLoadedOnce);'
+            ),
+            tasks_region.index("await DOMContentLoaded();"),
+        )
+
+    def test_contributors_js_uses_single_root_path_cookie(self):
+        js_path = (
+            Path(__file__).resolve().parents[1]
+            / "fishtest"
+            / "static"
+            / "js"
+            / "contributors.js"
+        )
+        js_source = js_path.read_text(encoding="utf-8")
+
+        self.assertIn("path=/; max-age=${cookieMaxAge}; SameSite=Lax", js_source)
+        self.assertNotIn(
+            "path=/contributors; max-age=${cookieMaxAge}; SameSite=Lax", js_source
+        )
+        self.assertNotIn("getLatestCookie", js_source)
+
+    def test_user_management_lazy_group_hx_fragment(self):
+        pending_user = "HxPendingGroupUser"
+        blocked_user = "HxBlockedGroupUser"
+
+        self.rundb.userdb.create_user(
+            pending_user,
+            "secret",
+            "pending-group@example.com",
+            "https://github.com/official-stockfish/Stockfish",
+        )
+        self.rundb.userdb.create_user(
+            blocked_user,
+            "secret",
+            "blocked-group@example.com",
+            "https://github.com/official-stockfish/Stockfish",
+        )
+
+        blocked_doc = self.rundb.userdb.get_user(blocked_user)
+        blocked_doc["pending"] = False
+        blocked_doc["blocked"] = True
+        self.rundb.userdb.save_user(blocked_doc)
+
+        approver = self.rundb.userdb.get_user(self.username)
+        original_pending = approver.get("pending", False)
+        original_groups = list(approver.get("groups", []))
+        approver["pending"] = False
+        if "group:approvers" not in approver["groups"]:
+            approver["groups"].append("group:approvers")
+        self.rundb.userdb.save_user(approver)
+
+        try:
+            response = self.client.get("/login")
+            csrf = test_support.extract_csrf_token(response.text)
+            login = self.client.post(
+                "/login",
+                data={
+                    "username": self.username,
+                    "password": self.password,
+                    "csrf_token": csrf,
+                },
+                follow_redirects=False,
+            )
+            self.assertEqual(login.status_code, 302)
+
+            response = self.client.get(
+                "/user_management?group=blocked",
+                headers={"HX-Request": "true"},
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(blocked_user, response.text)
+            self.assertNotIn(pending_user, response.text)
+            self.assertIn('id="user_management_table"', response.text)
+        finally:
+            cleanup_approver = self.rundb.userdb.get_user(self.username)
+            cleanup_approver["pending"] = original_pending
+            cleanup_approver["groups"] = original_groups
+            self.rundb.userdb.save_user(cleanup_approver)
+
+            pending_doc = self.rundb.userdb.get_user(pending_user)
+            if pending_doc is not None:
+                self.rundb.userdb.remove_user(pending_doc, self.username)
+            blocked_doc = self.rundb.userdb.get_user(blocked_user)
+            if blocked_doc is not None:
+                self.rundb.userdb.remove_user(blocked_doc, self.username)
+
+    def test_user_management_table_hx_sort_search_and_pagination_contract(self):
+        created_users = [f"H19UmUser{idx:02d}" for idx in range(30)]
+        approver = self.rundb.userdb.get_user(self.username)
+        original_pending = approver.get("pending", False)
+        original_groups = list(approver.get("groups", []))
+
+        for idx, username in enumerate(created_users):
+            self.rundb.userdb.create_user(
+                username,
+                "secret",
+                f"h19-{idx}@example.com",
+                "https://github.com/official-stockfish/Stockfish",
+            )
+
+        approver["pending"] = False
+        if "group:approvers" not in approver["groups"]:
+            approver["groups"].append("group:approvers")
+        self.rundb.userdb.save_user(approver)
+
+        try:
+            self._login_user()
+            response = self.client.get(
+                "/user_management?group=pending&sort=username&order=asc&page=2&q=H19UmUser&view=paged",
+                headers={"HX-Request": "true"},
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertIn('id="user_management_table"', response.text)
+            self.assertIn('aria-sort="ascending"', response.text)
+            self.assertIn(created_users[25], response.text)
+            self.assertNotIn(created_users[0], response.text)
+            self.assertIn(
+                "sort=username&amp;order=asc&amp;q=H19UmUser",
+                response.text,
+            )
+            self.assertIn("view=all", response.text)
+            self.assertIn(
+                'id="user_management_sort" name="sort" value="username" hx-swap-oob="true"',
+                response.text,
+            )
+            self.assertIn(
+                'id="user_management_order" name="order" value="asc" hx-swap-oob="true"',
+                response.text,
+            )
+            self.assertIn(
+                'id="user_management_view" name="view" value="paged" hx-swap-oob="true"',
+                response.text,
+            )
+
+            # User-management search filters by username column only.
+            non_username_match = self.client.get(
+                "/user_management?group=pending&sort=username&order=asc&q=%40example.com&view=paged",
+                headers={"HX-Request": "true"},
+            )
+            self.assertEqual(non_username_match.status_code, 200)
+            self.assertNotIn(created_users[0], non_username_match.text)
+        finally:
+            cleanup_approver = self.rundb.userdb.get_user(self.username)
+            cleanup_approver["pending"] = original_pending
+            cleanup_approver["groups"] = original_groups
+            self.rundb.userdb.save_user(cleanup_approver)
+
+            for username in created_users:
+                doc = self.rundb.userdb.get_user(username)
+                if doc is not None:
+                    self.rundb.userdb.remove_user(doc, self.username)
+
+    @patch("fishtest.views.gh.rate_limit")
+    def test_rate_limits_full_page_and_hx_fragment(self, mock_rate_limit):
+        mock_rate_limit.return_value = {
+            "remaining": 4321,
+            "used": 5000,
+            "reset": 4102444800,
+        }
+
+        full_response = self.client.get("/rate_limits")
+        self.assertEqual(full_response.status_code, 200)
+        self.assertIn("<!doctype html>", full_response.text.lower())
+        self.assertIn("<th>Server</th>", full_response.text)
+        self.assertIn("<th>Client</th>", full_response.text)
+        self.assertIn('id="server_rate_limit"', full_response.text)
+        self.assertIn('id="client_rate_limit"', full_response.text)
+        self.assertIn(
+            f'hx-trigger="load, every {POLL_RATE_LIMITS_SERVER_S}s ',
+            full_response.text,
+        )
+        self.assertIn(
+            "visibilitychange[document.visibilityState === 'visible'] from:document",
+            full_response.text,
+        )
+
+        fragment_response = self.client.get("/rate_limits/server")
+        self.assertEqual(fragment_response.status_code, 200)
+        self.assertNotIn("<!doctype html>", fragment_response.text.lower())
+        self.assertIn("4321", fragment_response.text)
+        self.assertIn(
+            'id="server_reset" hx-swap-oob="innerHTML"', fragment_response.text
+        )
+
+    @patch("fishtest.views.gh.rate_limit")
+    def test_rate_limits_hx_header_still_returns_full_page(self, mock_rate_limit):
+        mock_rate_limit.return_value = {
+            "remaining": 123,
+            "reset": 1700000000,
+        }
+        response = self.client.get(
+            "/rate_limits",
+            headers={"HX-Request": "true", "Sec-Fetch-Mode": "navigate"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("<!doctype html>", response.text.lower())
+
+    def test_rate_limits_sidebar_link_and_client_poll_contract(self):
+        response = self.client.get("/rate_limits")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="rate-limits-nav"', response.text)
+        self.assertIn('id="rate-limits-nav-link"', response.text)
+        self.assertIn(
+            f'data-poll-seconds="{POLL_RATE_LIMITS_GITHUB_S}"',
+            response.text,
+        )
+        self.assertIn("dataset.githubRateLimitLow", response.text)
+        self.assertIn(
+            f'id="client_rate_limit" data-poll-seconds="{POLL_RATE_LIMITS_GITHUB_S}"',
+            response.text,
+        )
+
+    def test_pending_users_nav_full_page_and_fragment_polling(self):
+        pending_username = "HxPendingNavUser"
+
+        self.rundb.userdb.create_user(
+            pending_username,
+            "secret",
+            "pending-nav@example.com",
+            "https://github.com/official-stockfish/Stockfish",
+        )
+
+        try:
+            expected_count = len(self.rundb.userdb.get_pending())
+
+            full_response = self.client.get("/rate_limits")
+            self.assertEqual(full_response.status_code, 200)
+            self.assertIn('id="pending-users-nav"', full_response.text)
+            self.assertIn(
+                'hx-get="/user_management/pending_count"',
+                full_response.text,
+            )
+            self.assertIn(
+                f'hx-trigger="load, every {POLL_PENDING_USERS_NAV_S}s '
+                "[document.visibilityState === 'visible'], "
+                "visibilitychange[document.visibilityState === 'visible'] "
+                'from:document"',
+                full_response.text,
+            )
+            self.assertIn(f"Users ({expected_count})", full_response.text)
+
+            fragment_response = self.client.get("/user_management/pending_count")
+            self.assertEqual(fragment_response.status_code, 200)
+            self.assertNotIn("<!doctype html>", fragment_response.text.lower())
+            self.assertIn('href="/user_management"', fragment_response.text)
+            self.assertIn(
+                'class="links-link rounded text-danger"',
+                fragment_response.text,
+            )
+            self.assertIn(f"Users ({expected_count})", fragment_response.text)
+        finally:
+            pending_doc = self.rundb.userdb.get_user(pending_username)
+            if pending_doc is not None:
+                self.rundb.userdb.remove_user(pending_doc, self.username)
+
+    def test_github_rate_limits_polling_uses_visibility_activation_and_client_threshold(
+        self,
+    ):
+        js_path = (
+            Path(__file__).resolve().parents[1]
+            / "fishtest"
+            / "static"
+            / "js"
+            / "application.js"
+        )
+        js_source = js_path.read_text(encoding="utf-8")
+
+        self.assertIn(
+            'document.addEventListener("visibilitychange", () => {',
+            js_source,
+        )
+        self.assertIn("function isClientRateLimitLow(rateLimit_) {", js_source)
+        self.assertNotIn("function serverRateLimit()", js_source)
+        self.assertIn("function setGitHubRateLimitLowState(isLow) {", js_source)
+        self.assertIn(
+            'localStorage.setItem("fishtest_github_rate_limit_low", value);',
+            js_source,
+        )
+        self.assertIn(
+            'classList.toggle("text-danger", isLow)',
+            js_source,
+        )
 
     def test_add_user_group_raises_on_duplicate(self):
         """Ensure adding a duplicate group raises ValidationError from userdb."""

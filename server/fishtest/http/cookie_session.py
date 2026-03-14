@@ -19,8 +19,6 @@ if TYPE_CHECKING:
 
 SESSION_COOKIE_NAME: Final[str] = "fishtest_session"
 DEFAULT_SAMESITE: Final[Literal["lax", "strict", "none"]] = "lax"
-REMEMBER_MAX_AGE_SECONDS: Final[int] = 60 * 60 * 24 * 365
-MAX_COOKIE_BYTES: Final[int] = 3800
 INSECURE_DEV_ENV: Final[str] = "FISHTEST_INSECURE_DEV"
 
 
@@ -165,8 +163,6 @@ def is_https(request: Request) -> bool:
 __all__ = [
     "DEFAULT_SAMESITE",
     "INSECURE_DEV_ENV",
-    "MAX_COOKIE_BYTES",
-    "REMEMBER_MAX_AGE_SECONDS",
     "SESSION_COOKIE_NAME",
     "CookieSession",
     "MissingAuthenticationSecretError",

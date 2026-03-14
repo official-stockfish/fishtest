@@ -8,21 +8,6 @@
 {% set email = user["email"] %}
 {% set registration_time = format_date(user["registration_time"]) if user.get("registration_time") else "Unknown" %}
 {% set user_groups = user["groups"] %}
-{% if profile %}
-  <script>
-    async function handleGitHubToken() {
-      await DOMContentLoaded();
-      document.getElementById("github_token").value = localStorage.getItem("github_token") || "";
-      document.getElementById("profile_form").addEventListener("submit", (e) => {
-          e.preventDefault();
-          const githubToken = document.getElementById("github_token").value;
-          localStorage.setItem("github_token", githubToken);
-          e.target.submit();
-      });
-    }
-    handleGitHubToken();
-  </script>
-{% endif %}
 
 <div class="col-limited-size">
   <header class="text-md-center py-2">
@@ -60,7 +45,8 @@
     </div>
   </header>
 
-  <form id="profile_form" action="{{ request.url }}" method="POST">
+  <form id="profile_form" action="{{ request.url }}" method="POST" data-profile-mode="{{ '1' if profile else '0' }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input
       type="hidden"
       name="user"
@@ -93,7 +79,7 @@
           <label for="password" class="d-flex align-items-end">Password</label>
         </div>
         <span class="input-group-text toggle-password-visibility" role="button">
-          <i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i>
+          <i class="fa-solid fa-lg fa-eye pe-none icon-fixed-width"></i>
         </span>
       </div>
 
@@ -111,7 +97,7 @@
           <label for="password" class="d-flex align-items-end">New Password</label>
         </div>
         <span class="input-group-text toggle-password-visibility" role="button">
-          <i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i>
+          <i class="fa-solid fa-lg fa-eye pe-none icon-fixed-width"></i>
         </span>
       </div>
 
@@ -127,7 +113,7 @@
           <label for="password2" class="d-flex align-items-end">Repeat Password</label>
         </div>
         <span class="input-group-text toggle-password-visibility" role="button">
-          <i class="fa-solid fa-lg fa-eye pe-none" style="width: 30px"></i>
+          <i class="fa-solid fa-lg fa-eye pe-none icon-fixed-width"></i>
         </span>
       </div>
 
@@ -143,7 +129,7 @@
           <label for="tests_repo" class="d-flex align-items-end">Tests Repository</label>
         </div>
         <span class="input-group-text" role="button" data-bs-toggle="modal" data-bs-target="#tests_repo_info_modal">
-          <i class="fas fa-question-circle fa-lg pe-none" style="width: 30px"></i>
+          <i class="fas fa-question-circle fa-lg pe-none icon-fixed-width"></i>
         </span>
       </div>
 
@@ -170,7 +156,7 @@
         <label for="github_token" class="d-flex align-items-end">GitHub personal access token</label>
         </div>
         <span class="input-group-text" role="button" data-bs-toggle="modal" data-bs-target="#github_token_info_modal">
-          <i class="fas fa-question-circle fa-lg pe-none" style="width: 30px"></i>
+          <i class="fas fa-question-circle fa-lg pe-none icon-fixed-width"></i>
         </span>
       </div>
 
@@ -220,9 +206,8 @@
           <button
             id="reject_user"
             type="button"
-            class="btn btn-danger"
+            class="btn btn-danger approval-action-button"
             data-bs-toggle="modal" data-bs-target="#reject_modal"
-            style="width: 48%;"
           >Reject</button>
 
           <button
@@ -230,8 +215,7 @@
             name="pending"
             value="0"
             type="submit"
-            class="btn btn-success"
-            style="width: 48%;"
+            class="btn btn-success approval-action-button"
           >Accept</button>
 
           <div id="reject_modal" class="modal fade" tabindex="-1" aria-labelledby="reject_modal" aria-hidden="true">
@@ -274,4 +258,7 @@
 </div>
 
 <script src="{{ static_url('fishtest:static/js/toggle_password.js') }}"></script>
+{% if profile %}
+  <script src="{{ static_url('fishtest:static/js/user_profile.js') }}"></script>
+{% endif %}
 {% endblock %}

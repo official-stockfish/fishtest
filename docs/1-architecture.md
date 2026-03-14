@@ -19,15 +19,15 @@ server/
 |-- pyproject.toml           -- Package metadata, dependencies
 |-- fishtest/
 |   |-- app.py               -- ASGI application factory, lifespan, middleware, routers
-|   |-- api.py               -- Worker API router (20 endpoints)
-|   |-- views.py             -- UI router (29 endpoints, data-driven dispatch)
+|   |-- api.py               -- Worker API router (22 endpoints)
+|   |-- views.py             -- UI router (34 endpoints, data-driven dispatch)
 |   |-- rundb.py             -- RunDb: run lifecycle, task distribution, caching
 |   |-- userdb.py            -- UserDb: authentication, groups, registration
 |   |-- actiondb.py          -- ActionDb: audit log
 |   |-- workerdb.py          -- WorkerDb: worker blocking
 |   |-- kvstore.py           -- KVStore: key-value metadata (legacy usernames, flags)
 |   |-- scheduler.py         -- Periodic task scheduler (primary instance only)
-|   |-- schemas.py           -- vtjson validation schemas (19 schemas)
+|   |-- schemas.py           -- vtjson validation schemas (18 schemas)
 |   |-- run_cache.py         -- In-memory run cache with dirty-page flush
 |   |-- lru_cache.py         -- Generic LRU cache
 |   |-- spsa_handler.py      -- SPSA tuning parameter handler
@@ -35,10 +35,10 @@ server/
 |   |-- util.py              -- Shared utilities (formatting, validation helpers)
 |   |-- __init__.py          -- Minimal package init
 |   |-- http/                -- HTTP support modules
-|   |-- templates/           -- Jinja2 templates (26 files, .html.j2)
+|   |-- templates/           -- Jinja2 templates (49 files, .html.j2)
 |   |-- static/              -- Static assets (JS, CSS, images)
 |   `-- stats/               -- Statistical computation modules
-`-- tests/                   -- Test suite
+`-- tests/                   -- Test suite (16 test modules)
 ```
 
 ### HTTP support modules (`server/fishtest/http/`)
@@ -165,6 +165,66 @@ Client -> nginx -> Uvicorn -> ASGI middleware stack -> FastAPI router
 - **UI**: `views_router` handles all HTML-rendering endpoints. Routes are
   registered from the `_VIEW_ROUTES` table via `_register_view_routes()`.
 - **Static assets**: `StaticFiles` mount serves `/static/*`.
+
+### htmx integration
+
+UI templates load htmx 2.0.8 from CDN in `base.html.j2`. The server remains
+fully server-rendered (Jinja2 + HTML responses). htmx adds three capabilities
+without client-side rendering or a JavaScript build step:
+
+| Capability | Mechanism |
+|------------|-----------|
+| Fragment polling | `hx-get` + `hx-trigger="every Ns"` fetches a fragment endpoint; server returns partial HTML |
+| In-place content swap | `hx-get` + `hx-target` + `hx-swap="innerHTML"` replaces a page section (filters, pagination) |
+| Out-of-band updates | `hx-swap-oob="innerHTML"` attributes in the response update multiple DOM elements in one response |
+
+**Dual-mode endpoints.** Several UI routes serve either a full page or an HTML
+fragment from the same URL. The view handler calls `_is_hx_request(request)` to
+detect the `HX-Request: true` header (with a `Sec-Fetch-Mode` guard against
+full-page navigations), then returns the appropriate template via the
+`_render_hx_fragment()` helper. `_dispatch_view()` appends `Vary: HX-Request`
+to every GET response so that HTTP caches distinguish the two representations.
+
+**Server-authoritative table state.** Newer htmx list pages (`/nns`,
+`/contributors`, `/user_management`, `/workers/show`, `/tests/machines`) keep
+sort, search, page, and view state in the URL and render the active control
+state server-side on every response. Where the htmx target contains stateful
+controls, the swapped boundary is the full content fragment, not just table
+rows. The shared active-search debounce is projected into templates as
+`htmx.input_changed_delay_ms`.
+
+**Request coordination.** Poll-driven fragments that live inside a larger filter
+form may use `hx-sync`, `hx-disinherit`, and `hx-params` to keep inherited form
+state from corrupting sort/pagination links and to ensure explicit user actions
+win over timer-driven refreshes.
+
+**Fragment templates.** Fragment responses use standalone `.html.j2` files
+(named `*_fragment.html.j2`) that do not extend `base.html.j2`. This avoids
+the need for block-level partial rendering and keeps fragments self-contained.
+See [5-templates.md](5-templates.md) for the full catalog.
+
+**OOB table rows.** HTML spec restrictions prevent `<tbody>` elements from
+appearing inside `<div>`. Fragment templates that update table bodies wrap
+`<tbody>` elements in `<template>` tags with `hx-swap-oob` attributes.
+htmx processes the `<template>` content and discards the wrapper.
+
+**Polling lifecycle.** Polled endpoints use HTTP status codes to control
+the polling lifecycle:
+- **200** -- swap the response content.
+- **204** -- no content; htmx skips the swap but continues polling.
+- **286** -- swap the response and stop polling (terminal state).
+
+**Visibility-aware polling policy.** Every periodic htmx poller follows a
+three-part trigger policy:
+
+1. A periodic trigger gated on `document.visibilityState === 'visible'`.
+2. An immediate focus-return trigger using
+   `visibilitychange[document.visibilityState === 'visible'] from:document`.
+3. Section-scoped pollers (machines, tasks) additionally gate on the
+   section's expanded state (`classList.contains('show')`).
+
+This ensures background tabs do not generate server load and that
+returning to the tab produces an immediate refresh.
 
 ## Primary instance model
 

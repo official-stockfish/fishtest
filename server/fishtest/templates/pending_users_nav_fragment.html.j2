@@ -1,0 +1,3 @@
+<a href="{{ urls.user_management }}" class="links-link rounded{% if pending_users_count > 0 %} text-danger{% endif %}">
+  Users{% if pending_users_count > 0 %} ({{ pending_users_count }}){% endif %}
+</a>

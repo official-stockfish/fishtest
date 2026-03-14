@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from functools import lru_cache
 from os import environ
 from pathlib import Path
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Any, Final
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 from starlette.templating import Jinja2Templates
@@ -20,6 +20,24 @@ from starlette.templating import Jinja2Templates
 import fishtest
 import fishtest.github_api as gh
 from fishtest.http import template_helpers as helpers
+from fishtest.http.settings import (
+    FINISHED_FILTER_MAX_COUNT_ANON,
+    FINISHED_FILTER_MAX_COUNT_AUTH,
+    HTMX_INPUT_CHANGED_DELAY_MS,
+    PANEL_TOGGLE_COOKIE_MAX_AGE_SECONDS,
+    PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS,
+    POLL_BATCH_HOMEPAGE_S,
+    POLL_ELO_DETAIL_S,
+    POLL_LIVE_ELO_S,
+    POLL_MACHINES_HOMEPAGE_S,
+    POLL_PENDING_USERS_NAV_S,
+    POLL_RATE_LIMITS_GITHUB_S,
+    POLL_RATE_LIMITS_SERVER_S,
+    POLL_STATS_DETAIL_S,
+    POLL_TASKS_DETAIL_S,
+    THEME_COOKIE_MAX_AGE_SECONDS,
+)
+from fishtest.util import get_tc_ratio as _get_tc_ratio
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -97,36 +115,60 @@ def default_environment() -> Environment:
         maxsplit,
     )
     env.filters["string"] = str
-    env.globals.update(
-        {
-            "copy": copy,
-            "datetime": datetime,
-            "diff_url": helpers.diff_url,
-            "display_residual": helpers.display_residual,
-            "fishtest": fishtest,
-            "float": float,
-            "format_bounds": helpers.format_bounds,
-            "format_date": helpers.format_date,
-            "format_group": helpers.format_group,
-            "format_results": helpers.format_results,
-            "format_time_ago": helpers.format_time_ago,
-            "gh": gh,
-            "is_active_sprt_ltc": helpers.is_active_sprt_ltc,
-            "is_elo_pentanomial_run": helpers.is_elo_pentanomial_run,
-            "list_to_string": helpers.list_to_string,
-            "math": math,
-            "pdf_to_string": helpers.pdf_to_string,
-            "results_pre_attrs": helpers.results_pre_attrs,
-            "nelo_pentanomial_summary": helpers.nelo_pentanomial_summary,
-            "run_tables_prefix": helpers.run_tables_prefix,
-            "t_conf": helpers.t_conf,
-            "tests_run_setup": helpers.tests_run_setup,
-            "tests_repo": helpers.tests_repo,
-            "urllib": urllib.parse,
-            "worker_name": helpers.worker_name,
-            "static_url": static_url,
+    globals_map: dict[str, Any] = {
+        "copy": copy,
+        "datetime": datetime,
+        "diff_url": helpers.diff_url,
+        "display_residual": helpers.display_residual,
+        "fishtest": fishtest,
+        "float": float,
+        "format_bounds": helpers.format_bounds,
+        "format_date": helpers.format_date,
+        "format_group": helpers.format_group,
+        "format_results": helpers.format_results,
+        "format_time_ago": helpers.format_time_ago,
+        "get_tc_ratio": _get_tc_ratio,
+        "gh": gh,
+        "is_active_sprt_ltc": helpers.is_active_sprt_ltc,
+        "is_elo_pentanomial_run": helpers.is_elo_pentanomial_run,
+        "list_to_string": helpers.list_to_string,
+        "math": math,
+        "pdf_to_string": helpers.pdf_to_string,
+        "results_pre_attrs": helpers.results_pre_attrs,
+        "nelo_pentanomial_summary": helpers.nelo_pentanomial_summary,
+        "run_tables_prefix": helpers.run_tables_prefix,
+        "t_conf": helpers.t_conf,
+        "tests_run_setup": helpers.tests_run_setup,
+        "tests_repo": helpers.tests_repo,
+        "urllib": urllib.parse,
+        "worker_name": helpers.worker_name,
+        "static_url": static_url,
+        "poll": {
+            "batch_homepage": POLL_BATCH_HOMEPAGE_S,
+            "elo_detail": POLL_ELO_DETAIL_S,
+            "stats_detail": POLL_STATS_DETAIL_S,
+            "tasks_detail": POLL_TASKS_DETAIL_S,
+            "machines_homepage": POLL_MACHINES_HOMEPAGE_S,
+            "live_elo": POLL_LIVE_ELO_S,
+            "pending_users_nav": POLL_PENDING_USERS_NAV_S,
+            "rate_limits_github": POLL_RATE_LIMITS_GITHUB_S,
+            "rate_limits_server": POLL_RATE_LIMITS_SERVER_S,
         },
-    )
+        "htmx": {
+            "input_changed_delay_ms": HTMX_INPUT_CHANGED_DELAY_MS,
+        },
+        "finished": {
+            "filter_max_count_anon": FINISHED_FILTER_MAX_COUNT_ANON,
+            "filter_max_count_auth": FINISHED_FILTER_MAX_COUNT_AUTH,
+        },
+        "cookies": {
+            "contributors_findme_max_age": PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS,
+            "panel_toggle_max_age": PANEL_TOGGLE_COOKIE_MAX_AGE_SECONDS,
+            "persistent_ui_max_age": PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS,
+            "theme_max_age": THEME_COOKIE_MAX_AGE_SECONDS,
+        },
+    }
+    env.globals.update(globals_map)
     return env
 
 

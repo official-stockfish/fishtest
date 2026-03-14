@@ -98,6 +98,7 @@ def build_contributors_rows(
                 "tests_user_url": f"/tests/user/{urllib.parse.quote(username)}"
                 if username
                 else "",
+                "rank": int(user.get("_rank", 0)),
             },
         )
     return rows
@@ -1239,6 +1240,7 @@ def build_run_table_rows(
             {
                 "run": run,
                 "run_id": run_id,
+                "active_filter_index": run.get("_active_filter_index"),
                 "start_date_label": start_date_label,
                 "user_short": user_short,
                 "user_name": username,

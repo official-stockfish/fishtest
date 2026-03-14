@@ -383,11 +383,10 @@ function setNotificationStatus_(runId) {
       notification.title = "Click to unfollow: no notification";
 
       const italic1 = document.createElement("i");
-      italic1.className = "fa-regular fa-bell";
-      italic1.style.width = "20px";
+      italic1.className = "fa-regular fa-bell fa-fw";
 
       const italic2 = document.createElement("i");
-      italic2.className = "fa-solid fa-toggle-on";
+      italic2.className = "fa-solid fa-toggle-on fa-fw";
 
       const notificationBody = document.createElement("div");
       notificationBody.style.whiteSpace = "nowrap";
@@ -400,11 +399,10 @@ function setNotificationStatus_(runId) {
       notification.title = "Click to follow: get notification";
 
       const italic1 = document.createElement("i");
-      italic1.className = "fa-regular fa-bell-slash";
-      italic1.style.width = "20px";
+      italic1.className = "fa-regular fa-bell-slash fa-fw";
 
       const italic2 = document.createElement("i");
-      italic2.className = "fa-solid fa-toggle-off";
+      italic2.className = "fa-solid fa-toggle-off fa-fw";
 
       const notificationBody = document.createElement("div");
       notificationBody.style.whiteSpace = "nowrap";
@@ -414,11 +412,32 @@ function setNotificationStatus_(runId) {
       notification.replaceChildren();
       notification.append(notificationBody);
     }
+    notification.dataset.notificationReady = "1";
   }
 }
 
 function setNotificationStatus(runId) {
   broadcast("setNotificationStatus_", runId);
+}
+
+function initializeNotificationButtons(root = document) {
+  if (!(root instanceof Document || root instanceof Element)) {
+    return;
+  }
+
+  const notificationButtons = root.querySelectorAll(
+    'button.notifications[id^="notification_"]',
+  );
+
+  for (const button of notificationButtons) {
+    const id = button.id || "";
+    const runId = id.replace("notification_", "");
+    if (!runId) {
+      continue;
+    }
+    // Initialize icon state from the persisted follow list.
+    setNotificationStatus_(runId);
+  }
 }
 
 async function toggleNotifactionStatus(runId) {
@@ -551,6 +570,39 @@ function cleanup_() {
   localStorage.removeItem("__fishtest__latest_fetch_time_sig");
   localStorage.removeItem("__fishtest__latest_fetch_time");
 }
+
+document.addEventListener("htmx:oobAfterSwap", (e) => {
+  const target = e?.detail?.target;
+  if (!(target instanceof Element)) {
+    return;
+  }
+
+  // Batch poll replaces whole run-table tbodies via OOB. Reinitialize
+  // notification bells after each tbody swap to keep icons visible in Firefox.
+  if (target.matches('tbody[id$="-tbody"]')) {
+    initializeNotificationButtons(target);
+  }
+});
+
+document.addEventListener("htmx:afterSwap", (e) => {
+  const target = e?.detail?.target;
+  if (!(target instanceof Element)) {
+    return;
+  }
+  initializeNotificationButtons(target);
+});
+
+document.addEventListener("htmx:load", (e) => {
+  const loaded = e?.detail?.elt;
+  if (!(loaded instanceof Element)) {
+    return;
+  }
+  initializeNotificationButtons(loaded);
+});
+
+void DOMContentLoaded().then(() => {
+  initializeNotificationButtons(document);
+});
 
 cleanup_();
 mainFollowLoop();

@@ -248,6 +248,21 @@ div#tasks thead {
   background-color: #800080;
 }
 
+/* Keep active contributor row slightly lighter in dark mode. */
+.table tbody tr.table-active.highlight-row > td {
+  background-color: #2a2f36;
+  animation: contributor-highlight-fade-dark 3s ease-out;
+}
+
+@keyframes contributor-highlight-fade-dark {
+  0% {
+    background-color: palegreen;
+  }
+  100% {
+    background-color: #2a2f36;
+  }
+}
+
 /* Override - test tasks table - purged tasks red background */
 td[style*="background-color:#ffebeb"] {
   background: #5f1c1c !important;

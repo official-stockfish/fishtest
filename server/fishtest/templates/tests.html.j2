@@ -1,5 +1,11 @@
 {% extends "base.html.j2" %}
-
+{% block head %}
+  {% if run_tables_ctx is defined and run_tables_ctx.active_run_filters is defined and run_tables_ctx.active_run_filters and run_tables_ctx.active_run_filters.style_text %}
+    <style id="active-run-filter-style">
+      {{ run_tables_ctx.active_run_filters.style_text }}
+    </style>
+  {% endif %}
+{% endblock %}
 {% block body %}
 <link
   rel="stylesheet"
@@ -9,132 +15,101 @@
 <h2>Stockfish Testing Queue</h2>
 
 {% if page_idx == 0 %}
+  {% set machines_sort = machines_sort if machines_sort is defined else "last_active" %}
+  {% set machines_order = machines_order if machines_order is defined else "desc" %}
+  {% set machines_q = machines_q if machines_q is defined else "" %}
+  {% set machines_page = machines_page if machines_page is defined else 1 %}
+  {% set machines_my_workers = machines_my_workers if machines_my_workers is defined else false %}
+  {% set has_authenticated_user = has_authenticated_user if has_authenticated_user is defined else false %}
+
   <div class="mw-xxl">
-    <div class="row g-3 mb-3">
-      <div class="col-6 col-sm">
-        <div class="card card-lg-sm text-center">
-          <div class="card-header text-nowrap" title="Cores">Cores</div>
-          <div class="card-body">
-            <h4 class="card-title mb-0 monospace">{{ cores }}</h4>
-          </div>
-        </div>
-      </div>
-      <div class="col-6 col-sm">
-        <div class="card card-lg-sm text-center">
-          <div class="card-header text-nowrap" title="Nodes per second">Nodes / sec</div>
-          <div class="card-body">
-            <h4 class="card-title mb-0 monospace">{{ nps_m }}</h4>
-          </div>
-        </div>
-      </div>
-      <div class="col-6 col-sm">
-        <div class="card card-lg-sm text-center">
-          <div class="card-header text-nowrap" title="Games per minute">Games / min</div>
-          <div class="card-body">
-            <h4 class="card-title mb-0 monospace">{{ games_per_minute }}</h4>
-          </div>
-        </div>
-      </div>
-      <div class="col-6 col-sm">
-        <div class="card card-lg-sm text-center">
-          <div class="card-header text-nowrap" title="Time remaining">Time remaining</div>
-          <div class="card-body">
-            <h4 class="card-title mb-0 monospace">{{ pending_hours }}h</h4>
-          </div>
-        </div>
-      </div>
-    </div>
+    {% include "homepage_stats_fragment.html.j2" %}
   </div>
 
-  <script>
-    let fetchedMachinesBefore = false;
-    let machinesSkeleton = null;
-    let machinesBody = null;
-    async function handleRenderMachines(){
-        await DOMContentLoaded();
-        machinesBody = document.getElementById("machines");
-        if (!machinesSkeleton) {
-          machinesSkeleton = document.querySelector("#machines .skeleton-wrap").cloneNode(true);
-        }
-        const machinesButton = document.getElementById("machines-button");
-        machinesButton?.addEventListener("click", async () => {
-          await toggleMachines();
-        })
-        if ({{ 'true' if machines_shown else 'false' }})
-          await renderMachines();
-      }
-
-    async function renderMachines() {
-      await DOMContentLoaded();
-      if (fetchedMachinesBefore) {
-        return Promise.resolve();
-      }
-      try {
-        if (document.querySelector("#machines .retry")) {
-          machinesBody.replaceChildren(machinesSkeleton);
-        }
-        const html = await fetchText("/tests/machines");
-        machinesBody.replaceChildren();
-        machinesBody.insertAdjacentHTML("beforeend", html);
-        const machinesTbody = document.querySelector("#machines tbody");
-        let newMachinesCount = machinesTbody?.childElementCount;
-
-        if (newMachinesCount === 1) {
-          const noMachines = document.getElementById("no-machines");
-          if (noMachines) newMachinesCount = 0;
-        }
-
-        const countSpan = document.getElementById("workers-count");
-        countSpan.textContent = `Workers - ${newMachinesCount} machines`;
-        fetchedMachinesBefore = true;
-      } catch (error) {
-        console.log("Request failed: " + error);
-        machinesBody.replaceChildren();
-        createRetryMessage(machinesBody, renderMachines);
-      }
-    }
-
-    async function toggleMachines() {
-      const button = document.getElementById("machines-button");
-      const active = button.textContent.trim() === "Hide";
-      if (active) {
-        button.textContent = "Show";
-      }
-      else {
-        button.textContent = "Hide";
-        await renderMachines();
-      }
-
-      document.cookie =
-        "machines_state" + "=" + button.textContent.trim() + "; max-age={{ 60 * 60 }}; SameSite=Lax";
-    }
-
-    handleRenderMachines();
-  </script>
-
   <h4>
-    <a id="machines-button" class="btn btn-sm btn-light border"
-      data-bs-toggle="collapse" href="#machines" role="button" aria-expanded="false"
-      aria-controls="machines">
+    <a
+      id="machines-button"
+      class="btn btn-sm btn-light border"
+      data-toggle-cookie-max-age="{{ cookies.panel_toggle_max_age }}"
+      data-bs-toggle="collapse"
+      href="#machines-panel"
+      role="button"
+      aria-expanded="{{ 'true' if machines_shown else 'false' }}"
+      aria-controls="machines-panel">
       {{ 'Hide' if machines_shown else 'Show' }}
     </a>
     <span id="workers-count">
-      Workers - {{ machines_count }} machines
+      {{ workers_count_text if workers_count_text is defined else ("Workers - " ~ machines_count) }}
     </span>
   </h4>
-  {% set height = (machines_count * 37) | string ~ "px" %}
-  {% set min_height = "37px" %}
-  {% set max_height = "34.7vh" %}
-  <section id="machines"
-      class="overflow-auto {{ 'collapse show' if machines_shown else 'collapse' }}">
-      <div class="skeleton-wrap">
+
+  <section id="machines-panel" class="collapse {{ 'show' if machines_shown else '' }}">
+    <form
+      class="row g-2 align-items-end mb-2"
+      id="machines-filters"
+      action="/tests/machines"
+      hx-get="/tests/machines"
+      hx-target="#machines"
+      hx-swap="innerHTML"
+      hx-trigger="submit, input changed delay:{{ htmx.input_changed_delay_ms }}ms from:#machines_q{% if has_authenticated_user %}, change from:#machines_my_workers{% endif %}"
+    >
+      <input type="hidden" id="machines_sort" name="sort" value="{{ machines_sort }}">
+      <input type="hidden" id="machines_order" name="order" value="{{ machines_order }}">
+      <input type="hidden" id="machines_page" name="page" value="{{ machines_page }}">
+
+      <div class="col-auto">
+        <input
+          class="form-control form-control-sm"
+          type="search"
+          id="machines_q"
+          name="q"
+          value="{{ machines_q }}"
+          placeholder="Filter any column"
+          aria-label="Filter any column"
+          autocomplete="off"
+        >
+      </div>
+
+      {% if has_authenticated_user %}
+        <div class="col-auto">
+          <div class="form-check mb-1">
+            <input
+              class="form-check-input"
+              type="checkbox"
+              value="1"
+              id="machines_my_workers"
+              name="my_workers"
+              {{ 'checked' if machines_my_workers else '' }}
+            >
+            <label class="form-check-label" for="machines_my_workers">My workers</label>
+          </div>
+        </div>
+      {% endif %}
+
+      <div class="col-auto d-flex align-items-end" id="machines-pagination" aria-live="polite"></div>
+    </form>
+    {% set height = (machines_count * 37) | string ~ "px" %}
+    <section
+      id="machines"
+      data-machines-loaded="0"
+      class="overflow-auto machines-panel-scroll"
+      hx-get="/tests/machines"
+      hx-include="#machines-filters"
+      hx-sync="#machines-filters:abort"
+      hx-trigger="{% if machines_shown %}load, {% endif %}machines:load, every {{ poll.machines_homepage }}s [document.visibilityState === 'visible' && document.getElementById('machines-panel').classList.contains('show')], visibilitychange[document.visibilityState === 'visible' && document.getElementById('machines-panel').classList.contains('show')] from:document"
+      hx-swap="innerHTML"
+    >
+      <div id="machines-loading" class="skeleton-wrap">
         <div class="skeleton-line"></div>
         <div
-          class="skeleton-block"
-          style="height: clamp({{ min_height }}, {{ height }}, {{ max_height }});">
-          </div>
+          class="skeleton-block machines-skeleton-block"
+          style="--machines-skeleton-height: {{ height }};"
+        ></div>
       </div>
+    </section>
   </section>
+  <script src="{{ static_url('fishtest:static/js/tests_homepage.js') }}"></script>
+  <script src="{{ static_url('fishtest:static/js/active_run_filters.js') }}"></script>
 {% endif %}
 
 {% if run_tables_ctx is defined %}
@@ -142,6 +117,8 @@
     pending_approval_runs=run_tables_ctx.pending_approval_runs,
     paused_runs=run_tables_ctx.paused_runs,
     active_runs=run_tables_ctx.active_runs,
+    active_count_text=run_tables_ctx.active_count_text,
+    active_run_filters=run_tables_ctx.active_run_filters,
     failed_runs=run_tables_ctx.failed_runs,
     finished_runs=run_tables_ctx.finished_runs,
     num_finished_runs=run_tables_ctx.num_finished_runs,

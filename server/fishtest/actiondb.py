@@ -5,6 +5,7 @@ from pymongo import DESCENDING
 from pymongo.errors import OperationFailure
 from vtjson import ValidationError, validate
 
+from fishtest.lru_cache import lru_cache
 from fishtest.schemas import ACTION_MESSAGE_SIZE, action_schema
 from fishtest.util import hex_print, worker_name
 
@@ -20,16 +21,21 @@ class ActionDb:
         self.db = db
         self.actions = self.db["actions"]
 
+    @lru_cache(maxsize=1, expiration=30, refresh=False)
+    def get_action_usernames(self):
+        return sorted(self.actions.distinct("username"), key=str.lower)
+
     def get_actions(
         self,
         username=None,
+        usernames=None,
         action=None,
         text=None,
         limit=0,
         skip=0,
         utc_before=None,
         run_id=None,
-        max_actions=None,
+        max_count=None,
     ):
         q = {}
         if action:
@@ -40,7 +46,9 @@ class ActionDb:
                 q["action"] = action
         else:
             q["action"] = {"$nin": ["system_event", "update_stats", "dead_task"]}
-        if username:
+        if usernames:
+            q["username"] = {"$in": usernames}
+        elif username:
             q["username"] = username
         if text:
             q["$text"] = {"$search": text}
@@ -52,7 +60,7 @@ class ActionDb:
         # Prefer time-based pagination indexes for the common $nin case.
         hint = None
         if "$text" not in q:
-            if username:
+            if usernames or username:
                 hint = "actions_user_time_id"
             elif run_id:
                 hint = "actions_run_time_id"
@@ -61,8 +69,8 @@ class ActionDb:
             else:
                 hint = "actions_time_id"
 
-        if max_actions:
-            count_kwargs = {"limit": max_actions}
+        if max_count:
+            count_kwargs = {"limit": max_count}
             if hint:
                 count_kwargs["hint"] = hint
             try:
@@ -79,11 +87,11 @@ class ActionDb:
                         :ACTION_MESSAGE_SIZE
                     ],
                 )
-                count = self.actions.count_documents(q, limit=max_actions)
-            limit = max(0, min(limit, max_actions - skip))
+                count = self.actions.count_documents(q, limit=max_count)
+            limit = max(0, min(limit, max_count - skip))
 
             # Avoid find(limit=0): Mongo treats that as "no limit".
-            if skip >= max_actions or limit <= 0:
+            if skip >= max_count or limit <= 0:
                 return [], count
         else:
             count = self.actions.count_documents(q)
@@ -96,7 +104,7 @@ class ActionDb:
         if hint:
             find_kwargs["hint"] = hint
         try:
-            actions_list = self.actions.find(q, **find_kwargs)
+            actions_list = list(self.actions.find(q, **find_kwargs))
         except OperationFailure as e:
             # Be resilient if indexes haven't been created yet (bad hint).
             print(
@@ -110,7 +118,7 @@ class ActionDb:
                 ],
             )
             find_kwargs.pop("hint", None)
-            actions_list = self.actions.find(q, **find_kwargs)
+            actions_list = list(self.actions.find(q, **find_kwargs))
 
         return actions_list, count
 
@@ -294,3 +302,4 @@ class ActionDb:
             )
             return
         self.actions.insert_one(action)
+        self.get_action_usernames.cache_clear()

@@ -8,10 +8,12 @@ let broadcastDispatch = {
 (async () => {
   await DOMContentLoaded();
   handleTabsBroadcasting();
+  handleModalFocusManagement();
   protectForms();
+  handlePanelToggleCookies();
   handleApplicationLogout();
   handleApplicationThemes();
-  handleSortingTables();
+  handleClientRateLimitPolling();
 })();
 
 // Awaits the page content to load
@@ -43,6 +45,20 @@ function handleTabsBroadcasting() {
   });
 }
 
+function handleModalFocusManagement() {
+  document.addEventListener("hide.bs.modal", (event) => {
+    const modal = event.target;
+    if (!(modal instanceof HTMLElement)) {
+      return;
+    }
+
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLElement && modal.contains(activeElement)) {
+      activeElement.blur();
+    }
+  });
+}
+
 // CSRF protection for links and forms
 function protectForms() {
   const csrfToken = document.querySelector("meta[name='csrf-token']")[
@@ -67,6 +83,38 @@ function getCookie(cookieName) {
     .split(";")
     .map((cookie) => cookie.trim().split("="))
     .find(([name]) => name === cookieName)?.[1];
+}
+
+function setStateCookie(name, value, maxAgeSeconds) {
+  if (!name) {
+    return;
+  }
+  const maxAge = Number(maxAgeSeconds);
+  if (!Number.isFinite(maxAge) || maxAge <= 0) {
+    return;
+  }
+  // Keep UI state cookies available across all pages that reuse the same panels.
+  document.cookie = `${name}=${value}; path=/; max-age=${maxAge}; SameSite=Lax`;
+}
+
+function handlePanelToggleCookies() {
+  document.addEventListener("click", (e) => {
+    if (!(e.target instanceof Element)) {
+      return;
+    }
+    const button = e.target.closest("[data-toggle-cookie-name]");
+    if (!(button instanceof HTMLElement)) {
+      return;
+    }
+
+    const cookieName = button.dataset.toggleCookieName;
+    const maxAge = button.dataset.toggleCookieMaxAge;
+    const active = button.textContent.trim() === "Hide";
+    const nextState = active ? "Show" : "Hide";
+
+    button.textContent = nextState;
+    setStateCookie(cookieName, nextState, maxAge);
+  });
 }
 
 function formatBytes(bytes) {
@@ -110,19 +158,27 @@ function mediaTheme() {
 
 // Click the sun/moon icons to change the color theme of the site
 function setTheme(theme) {
+  const darkLink = document.querySelector(
+    'head link[href*="/css/theme.dark.css"]',
+  );
   if (theme === "dark") {
     document.getElementById("sun").style.display = "";
     document.getElementById("moon").style.display = "none";
-    const link = document.createElement("link");
-    link["rel"] = "stylesheet";
-    link["href"] = darkThemeHash;
-    document.querySelector("head").append(link);
+    document.documentElement.style.colorScheme = "dark";
+    if (darkLink) {
+      darkLink.removeAttribute("media");
+    } else {
+      const link = document.createElement("link");
+      link["rel"] = "stylesheet";
+      link["href"] = darkThemeHash;
+      document.querySelector("head").append(link);
+    }
   } else {
     document.getElementById("sun").style.display = "none";
     document.getElementById("moon").style.display = "";
-    document.querySelector('head link[href*="/css/theme.dark.css"]')?.remove();
+    document.documentElement.style.colorScheme = "";
+    darkLink?.remove();
   }
-  // Remember the theme for 30 days
   document.cookie = `theme=${theme}; path=/; max-age=${
     30 * 24 * 60 * 60
   }; SameSite=Lax`;
@@ -384,191 +440,6 @@ function escapeHtml(unsafe) {
     .replace(/\n/g, "<br>");
 }
 
-function handleSortingTables() {
-  document.addEventListener("click", function (e) {
-    const { target } = e;
-    if (target.matches("th")) {
-      const th = target;
-      const table = th.closest("table");
-      const body = table.querySelector("tbody");
-      Array.from(body.querySelectorAll("tr"))
-        .sort(
-          comparer(
-            Array.from(th.parentNode.children).indexOf(th),
-            (this.asc = !this.asc),
-          ),
-        )
-        .forEach((tr, index) => {
-          const rankData = tr.querySelector("td.rank");
-          if (rankData) {
-            rankData.textContent = index + 1;
-          }
-          body.append(tr);
-        });
-    }
-  });
-}
-// https://stackoverflow.com/questions/14267781/sorting-html-table-with-javascript
-// https://stackoverflow.com/questions/40201533/sort-version-dotted-number-strings-in-javascript
-function comparer(idx, asc) {
-  let p1, p2;
-
-  return (a, b) =>
-    ((v1, v2) =>
-      v1 !== "" && v2 !== "" && !isNaN(v1) && !isNaN(v2)
-        ? v1 - v2
-        : v1 !== "" && v2 !== "" && !isNaN("0x" + v1) && !isNaN("0x" + v2)
-          ? parseInt(v1, 16) - parseInt(v2, 16)
-          : v1 !== "" &&
-              v2 !== "" &&
-              !isNaN((p1 = padDotVersion(v1))) &&
-              !isNaN((p2 = padDotVersion(v2)))
-            ? p1 - p2
-            : v1 !== "" &&
-                v2 !== "" &&
-                !isNaN(
-                  padDotVersion(v1.replace("clang++ ", "").replace("g++ ", "")),
-                ) &&
-                !isNaN(
-                  padDotVersion(v2.replace("clang++ ", "").replace("g++ ", "")),
-                )
-              ? padDotVersionStr(v1)
-                  .toString()
-                  .localeCompare(padDotVersionStr(v2))
-              : v1.toString().localeCompare(v2))(
-      getCellValue(asc ? a : b, idx),
-      getCellValue(asc ? b : a, idx),
-    );
-}
-function getCellValue(tr, idx) {
-  return (
-    tr.children[idx].dataset.sortValue ||
-    tr.children[idx].innerText ||
-    tr.children[idx].textContent
-  );
-}
-function padDotVersion(dn) {
-  return dn
-    .split(".")
-    .map((n) => +n + 1000)
-    .join("");
-}
-function padDotVersionStr(dn) {
-  return dn.replace(/\d+/g, (n) => +n + 1000);
-}
-
-// Filters tables client-side
-function filterTable(inputValue, tableId, originalRows, predicate) {
-  const table = document.getElementById(tableId);
-  const tbody = table.querySelector("tbody");
-  let noDataRow = table.querySelector(".no-data");
-  inputValue = inputValue.toLowerCase();
-
-  // Clear the table before filtering
-  while (tbody.firstChild) {
-    tbody.removeChild(tbody.firstChild);
-  }
-
-  let filteredRows = 0;
-
-  originalRows.forEach((row) => {
-    if (predicate(row, inputValue)) {
-      tbody.append(row.cloneNode(true));
-      filteredRows++;
-    }
-  });
-
-  if (filteredRows === 0 && inputValue !== "") {
-    // Create the no-data row dynamically if it doesn't exist
-    if (!noDataRow) {
-      noDataRow = document.createElement("tr");
-      noDataRow.classList.add("no-data");
-      const cell = document.createElement("td");
-      cell.setAttribute("colspan", "20");
-      cell.textContent = "No matching data found";
-      noDataRow.append(cell);
-    }
-    tbody.append(noDataRow);
-  }
-
-  // Usage Example:
-  // See also contributors.html.j2.
-
-  // Assuming you have an HTML structure similar to this:
-  /* HTML Structure:
-  <label class="form-label">Search</label>
-  <input id="my_input" class="form-control" type="text" placeholder="Search some text">
-  <table id="my_table">
-    <tbody>
-      <!-- Rows of data -->
-    </tbody>
-  </table>
-  */
-
-  // Since we get the table data rendered already as HTML rows from the server,
-  // we don't have the table data as JSON initially,
-  // so for client filtering we need to clone the initial table rows once,
-  // not to lose them while filtering.
-  // P.S. hiding/showing rows instead of creating and removing rows,
-  // will mess up the CSS Zebra striping.
-
-  /* JavaScript Code:
-  (async () => {
-    await DOMContentLoaded();
-
-    // Define your predicate function
-    const myPredicate = (row, inputValue) => {
-      const cells = Array.from(row.querySelectorAll("td"));
-      return cells.some((cell) => {
-        const cellText = cell.textContent || cell.innerText;
-        return cellText.toLowerCase().indexOf(inputValue) > -1;
-      });
-    };
-
-    const originalTable = document
-      .getElementById("my_table")
-      .cloneNode(true);
-    const originalRows = Array.from(originalTable.querySelectorAll("tbody tr"));
-
-    const searchInput = document.getElementById("my_input");
-    searchInput.addEventListener("input", (e) => {
-      filterTable(e.target.value, "my_table", originalRows, myPredicate);
-    });
-  })();
-  */
-}
-
-function createRetryMessage(parentElement, callback) {
-  const mainDiv = document.createElement("div");
-  mainDiv.className = "retry";
-
-  const innerDiv = document.createElement("div");
-  innerDiv.className = "col-12 col-md-8 col-lg-3";
-
-  const alertDiv = document.createElement("div");
-  alertDiv.className =
-    "alert alert-danger d-flex justify-content-between align-items-center";
-  alertDiv.id = "error-message";
-
-  const span = document.createElement("span");
-  span.textContent = "Something went wrong. Please try again.";
-
-  const button = document.createElement("button");
-  button.className = "btn btn-primary";
-  button.textContent = "Retry";
-
-  alertDiv.appendChild(span);
-  alertDiv.appendChild(button);
-
-  innerDiv.appendChild(alertDiv);
-  mainDiv.appendChild(innerDiv);
-
-  parentElement.appendChild(mainDiv);
-
-  // Add event listener after appending
-  button.addEventListener("click", callback);
-}
-
 // A helper for conveniently adding a timeout
 // to a fetch call
 const abortTimeout = (timeout) => {
@@ -596,6 +467,129 @@ async function rateLimit() {
   options.signal = abortTimeout(3000);
   const rateLimit_ = await fetchJson(url, options);
   return rateLimit_["resources"]["core"];
+}
+
+function setGitHubRateLimitLowState(isLow) {
+  const value = isLow ? "1" : "0";
+  document.documentElement.dataset.githubRateLimitLow = value;
+  try {
+    localStorage.setItem("fishtest_github_rate_limit_low", value);
+  } catch (_error) {
+    // localStorage may be unavailable; keep the in-memory DOM state only.
+  }
+}
+
+function isClientRateLimitLow(rateLimit_) {
+  const remaining = Number(rateLimit_?.remaining);
+  const used = Number(rateLimit_?.used);
+  const reset = Number(rateLimit_?.reset);
+
+  return (
+    Number.isFinite(remaining) &&
+    Number.isFinite(used) &&
+    Number.isFinite(reset) &&
+    Date.now() / 1000 <= reset &&
+    remaining < used
+  );
+}
+
+function applyRateLimitDangerState(element, isLow) {
+  if (!(element instanceof HTMLElement)) {
+    return;
+  }
+
+  element.classList.toggle("text-danger", isLow);
+}
+
+function updateRateLimitsNavLink(navLink, isLow) {
+  if (!(navLink instanceof HTMLAnchorElement)) {
+    return;
+  }
+
+  setGitHubRateLimitLowState(isLow);
+  navLink.textContent = "GitHub Rate Limits";
+  applyRateLimitDangerState(navLink, isLow);
+}
+
+function updateClientRateLimitCells(
+  clientRateLimitDom,
+  clientResetDom,
+  rateLimit_,
+) {
+  if (!(clientRateLimitDom instanceof HTMLElement)) {
+    return;
+  }
+
+  const remaining = Number(rateLimit_?.remaining);
+  const reset = Number(rateLimit_?.reset);
+  const isLow = isClientRateLimitLow(rateLimit_);
+
+  clientRateLimitDom.textContent = Number.isFinite(remaining)
+    ? String(remaining)
+    : "-1";
+  applyRateLimitDangerState(clientRateLimitDom, isLow);
+
+  if (clientResetDom instanceof HTMLElement) {
+    clientResetDom.textContent = Number.isFinite(reset)
+      ? new Date(1000 * reset).toLocaleTimeString()
+      : "00:00:00";
+    applyRateLimitDangerState(clientResetDom, isLow);
+  }
+}
+
+function handleClientRateLimitPolling() {
+  const navLink = document.getElementById("rate-limits-nav-link");
+  const clientRateLimitDom = document.getElementById("client_rate_limit");
+  const clientResetDom = document.getElementById("client_reset");
+
+  if (
+    !(navLink instanceof HTMLAnchorElement) &&
+    !(clientRateLimitDom instanceof HTMLElement)
+  ) {
+    return;
+  }
+
+  const pollSecondsRaw =
+    navLink instanceof HTMLAnchorElement
+      ? navLink.dataset.pollSeconds
+      : clientRateLimitDom.dataset.pollSeconds;
+  const pollSeconds = Number.parseInt(pollSecondsRaw || "10", 10);
+  const pollIntervalMs =
+    Math.max(Number.isFinite(pollSeconds) ? pollSeconds : 10, 1) * 1000;
+
+  const refreshClientRateLimit = async () => {
+    try {
+      const clientRateLimit = await rateLimit();
+      const isLow = isClientRateLimitLow(clientRateLimit);
+
+      updateRateLimitsNavLink(navLink, isLow);
+      updateClientRateLimitCells(
+        clientRateLimitDom,
+        clientResetDom,
+        clientRateLimit,
+      );
+    } catch (error) {
+      if (clientRateLimitDom instanceof HTMLElement) {
+        clientRateLimitDom.classList.add("text-danger");
+      }
+      if (clientResetDom instanceof HTMLElement) {
+        clientResetDom.classList.add("text-danger");
+      }
+      log(error);
+    }
+  };
+
+  void refreshClientRateLimit();
+  window.setInterval(() => {
+    if (document.visibilityState === "visible") {
+      void refreshClientRateLimit();
+    }
+  }, pollIntervalMs);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      void refreshClientRateLimit();
+    }
+  });
 }
 
 // Parse headers of a response object.

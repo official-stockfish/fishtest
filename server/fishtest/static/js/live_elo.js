@@ -1,54 +1,291 @@
 "use strict";
 
-async function followLive(testId) {
-  await Promise.all([
-    DOMContentLoaded(),
-    google.charts.load("current", { packages: ["gauge"] }),
-  ]);
+// Live Elo gauge rendering for htmx-updated data on /tests/live_elo/{id}.
+// Baseline dynamic follows upstream/master: every gauge uses two draws
+// (start value then target value). Additional behavior:
+// - open page: animate all gauges from middle,
+// - any tab/page activation: replay gauges from middle (all statuses),
+// - if |delta LLR| > 0.05: animate all gauges from middle,
+// - if SPRT state is accepted/rejected: animate all gauges from middle,
+// - otherwise: animate from previous value to new value.
 
-  let LOS_chart = null;
-  let LLR_chart = null;
-  let ELO_chart = null;
+(async () => {
+  function waitForGaugePackage() {
+    const loadResult = google.charts.load("current", { packages: ["gauge"] });
+    if (loadResult && typeof loadResult.then === "function") {
+      return loadResult;
+    }
 
-  LOS_chart = new google.visualization.Gauge(
-    document.getElementById("LOS_chart_div"),
-  );
-  LLR_chart = new google.visualization.Gauge(
-    document.getElementById("LLR_chart_div"),
-  );
-  ELO_chart = new google.visualization.Gauge(
-    document.getElementById("ELO_chart_div"),
-  );
-  clearGauges();
-
-  function collect(m) {
-    const sprt = m.args.sprt;
-    const results = m.results;
-    const ret = m.elo;
-    ret.alpha = sprt.alpha;
-    ret.beta = sprt.beta;
-    ret.elo_raw0 = sprt.elo0;
-    ret.elo_raw1 = sprt.elo1;
-    ret.elo_model = sprt.elo_model;
-    ret.W = results.wins;
-    ret.D = results.draws;
-    ret.L = results.losses;
-    ret.ci_lower = ret.ci[0];
-    ret.ci_upper = ret.ci[1];
-    ret.games = ret.W + ret.D + ret.L;
-    ret.p = 0.05;
-    return ret;
+    return new Promise((resolve) => {
+      google.charts.setOnLoadCallback(resolve);
+    });
   }
 
-  function setGauges(LLR, a, b, LOS, elo, ci_lower, ci_upper) {
-    if (!setGauges.lastElo) {
-      setGauges.lastElo = 0;
+  await Promise.all([DOMContentLoaded(), waitForGaugePackage()]);
+
+  const losChart = new google.visualization.Gauge(
+    document.getElementById("LOS_chart_div"),
+  );
+  const llrChart = new google.visualization.Gauge(
+    document.getElementById("LLR_chart_div"),
+  );
+  const eloChart = new google.visualization.Gauge(
+    document.getElementById("ELO_chart_div"),
+  );
+
+  const LLR_FALLBACK_A = -2.94;
+  const LLR_FALLBACK_B = 2.94;
+  const LLR_MIDDLE_TRIGGER_DELTA = 0.05;
+  const ELO_MODE_COOKIE_NAME = "live_elo_mode";
+  const ELO_MODE_FIXED = "fixed";
+  const ELO_MODE_DYNAMIC = "dynamic";
+  const ELO_FIXED_MIN = -4;
+  const ELO_FIXED_MAX = 4;
+  const ELO_INITIAL_BOUND = 1;
+  const ELO_MIN_BOUND = 0.25;
+  const ELO_MINOR_TICKS = 4;
+  const ELO_MAJOR_TICK_COUNT = 5;
+  const ANIMATION_START_DELAY_MS = 110;
+  const ANIMATION_DURATION_MS = 950;
+  const eloGauge = document.getElementById("ELO_chart_div");
+  const eloModeCookieMaxAge = Number.parseInt(
+    eloGauge?.dataset.eloModeCookieMaxAge || "",
+    10,
+  );
+
+  let animationToken = 0;
+  let animationTimers = [];
+  let eloDisplayMode = initialEloMode(eloGauge);
+
+  let hasDrawnOnce = false;
+  let lastSample = {
+    llr: 0,
+    a: LLR_FALLBACK_A,
+    b: LLR_FALLBACK_B,
+    los: 50,
+    elo: 0,
+    ciLower: 0,
+    ciUpper: 0,
+    sprtState: "",
+  };
+
+  function finiteOr(value, fallback) {
+    return Number.isFinite(value) ? value : fallback;
+  }
+
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function rounded(value, decimals) {
+    const factor = 10 ** decimals;
+    return Math.round(value * factor) / factor;
+  }
+
+  function parseSprtState(raw) {
+    return (raw || "").trim().toLowerCase();
+  }
+
+  function normalizeEloMode(raw) {
+    return raw === ELO_MODE_DYNAMIC ? ELO_MODE_DYNAMIC : ELO_MODE_FIXED;
+  }
+
+  function getCookie(name) {
+    return document.cookie
+      .split(";")
+      .map((cookie) => cookie.trim().split("="))
+      .find(([cookieName]) => cookieName === name)?.[1];
+  }
+
+  function initialEloMode(gauge) {
+    const persistedMode = getCookie(ELO_MODE_COOKIE_NAME);
+    if (
+      persistedMode === ELO_MODE_FIXED ||
+      persistedMode === ELO_MODE_DYNAMIC
+    ) {
+      return persistedMode;
     }
-    const LOS_chart_data = google.visualization.arrayToDataTable([
+    return normalizeEloMode(gauge?.dataset.eloModeDefault);
+  }
+
+  function persistEloMode(mode) {
+    if (!Number.isFinite(eloModeCookieMaxAge) || eloModeCookieMaxAge <= 0) {
+      return;
+    }
+    document.cookie = `${ELO_MODE_COOKIE_NAME}=${mode}; path=/; max-age=${eloModeCookieMaxAge}; SameSite=Lax`;
+  }
+
+  function isTerminalSprtState(state) {
+    return state === "accepted" || state === "rejected";
+  }
+
+  function parseGaugeData(el) {
+    if (!el) {
+      return null;
+    }
+
+    const d = el.dataset;
+    let a = finiteOr(parseFloat(d.a), LLR_FALLBACK_A);
+    let b = finiteOr(parseFloat(d.b), LLR_FALLBACK_B);
+    if (a >= b) {
+      a = LLR_FALLBACK_A;
+      b = LLR_FALLBACK_B;
+    }
+
+    let ciLower = finiteOr(parseFloat(d.ciLower), lastSample.ciLower);
+    let ciUpper = finiteOr(parseFloat(d.ciUpper), lastSample.ciUpper);
+    if (ciLower > ciUpper) {
+      [ciLower, ciUpper] = [ciUpper, ciLower];
+    }
+
+    return {
+      llr: rounded(finiteOr(parseFloat(d.llr), lastSample.llr), 2),
+      a: rounded(a, 2),
+      b: rounded(b, 2),
+      los: rounded(
+        clamp(finiteOr(parseFloat(d.los), lastSample.los), 0, 100),
+        1,
+      ),
+      elo: rounded(finiteOr(parseFloat(d.elo), lastSample.elo), 2),
+      ciLower: rounded(ciLower, 2),
+      ciUpper: rounded(ciUpper, 2),
+      sprtState: parseSprtState(d.sprtState),
+    };
+  }
+
+  function currentEloMode() {
+    return normalizeEloMode(eloDisplayMode);
+  }
+
+  function toggleEloMode() {
+    eloDisplayMode =
+      currentEloMode() === ELO_MODE_FIXED ? ELO_MODE_DYNAMIC : ELO_MODE_FIXED;
+    persistEloMode(eloDisplayMode);
+    syncEloModeUi();
+    if (hasDrawnOnce) {
+      drawGauges({
+        ...lastSample,
+        forceMiddleAnimation: true,
+      });
+    }
+  }
+
+  function syncEloModeUi() {
+    const isFixed = currentEloMode() === ELO_MODE_FIXED;
+    const gauge = document.getElementById("ELO_chart_div");
+    if (gauge) {
+      gauge.dataset.eloMode = currentEloMode();
+      gauge.style.cursor = "pointer";
+      gauge.title = isFixed
+        ? "Click to switch Elo gauge to dynamic auto range"
+        : "Click to switch Elo gauge to fixed [-4, +4] range";
+      gauge.setAttribute("aria-label", gauge.title);
+    }
+  }
+
+  function selectPowerOfTwoBound(requiredAbs, minBound) {
+    const clampedRequired = Math.max(requiredAbs, minBound);
+    const exponent = Math.ceil(Math.log2(clampedRequired));
+    return 2 ** exponent;
+  }
+
+  function buildEloScale(sample, isInitialDraw) {
+    if (currentEloMode() === ELO_MODE_FIXED) {
+      return {
+        min: ELO_FIXED_MIN,
+        max: ELO_FIXED_MAX,
+        center: 0,
+        minorTicks: ELO_MINOR_TICKS,
+      };
+    }
+
+    // Keep the gauge symmetric around zero and pick the smallest
+    // power-of-two bound that contains CI endpoints and the arrow value.
+    const requiredAbs = Math.max(
+      Math.abs(sample.elo),
+      Math.abs(sample.ciLower),
+      Math.abs(sample.ciUpper),
+    );
+    const minBound = isInitialDraw ? ELO_INITIAL_BOUND : ELO_MIN_BOUND;
+    const bound = selectPowerOfTwoBound(requiredAbs, minBound);
+    return {
+      min: -bound,
+      max: bound,
+      center: 0,
+      minorTicks: ELO_MINOR_TICKS,
+    };
+  }
+
+  function eloMajorTicks(scale) {
+    // Keep a stable major tick count; label only the two ends.
+    const ticks = new Array(ELO_MAJOR_TICK_COUNT).fill("");
+    ticks[0] = String(scale.min);
+    ticks[ELO_MAJOR_TICK_COUNT - 1] = String(scale.max);
+    return ticks;
+  }
+
+  function gaugeData(label, value) {
+    return google.visualization.arrayToDataTable([
       ["Label", "Value"],
-      ["LOS", Math.round(1000 * LOS) / 10],
+      [label, value],
     ]);
-    const LOS_chart_options = {
+  }
+
+  function animateGaugeTo(chart, data, options, targetValue, token) {
+    const duration = ANIMATION_DURATION_MS;
+    const animatedOptions = {
+      ...options,
+      animation: {
+        duration,
+        easing: "out",
+      },
+    };
+
+    chart.draw(data, animatedOptions);
+
+    const timer = setTimeout(() => {
+      if (token !== animationToken) {
+        return;
+      }
+      data.setValue(0, 1, targetValue);
+      chart.draw(data, animatedOptions);
+    }, ANIMATION_START_DELAY_MS);
+    animationTimers.push(timer);
+  }
+
+  function resetAnimationCycle() {
+    animationToken += 1;
+    for (const timer of animationTimers) {
+      clearTimeout(timer);
+    }
+    animationTimers = [];
+  }
+
+  function shouldAnimateFromMiddle(sample) {
+    if (sample.forceMiddleAnimation) {
+      return true;
+    }
+
+    if (!hasDrawnOnce) {
+      return true;
+    }
+
+    if (Math.abs(sample.llr - lastSample.llr) > LLR_MIDDLE_TRIGGER_DELTA) {
+      return true;
+    }
+
+    return isTerminalSprtState(sample.sprtState);
+  }
+
+  function drawGauges(sample) {
+    resetAnimationCycle();
+    const token = animationToken;
+
+    const fromMiddle = shouldAnimateFromMiddle(sample);
+    const isFirstDraw = !hasDrawnOnce;
+
+    const losStart = fromMiddle ? 50 : lastSample.los;
+    const losOpts = {
       width: 500,
       height: 150,
       greenFrom: 95,
@@ -59,163 +296,155 @@ async function followLive(testId) {
       redTo: 5,
       minorTicks: 5,
     };
-    LOS_chart.draw(LOS_chart_data, LOS_chart_options);
+    const losData = gaugeData("LOS", losStart);
+    animateGaugeTo(losChart, losData, losOpts, sample.los, token);
 
-    const LLR_chart_data = google.visualization.arrayToDataTable([
-      ["Label", "Value"],
-      ["LLR", Math.round(100 * LLR) / 100],
-    ]);
-    a = Math.round(100 * a) / 100;
-    b = Math.round(100 * b) / 100;
-    const LLR_chart_options = {
+    const llrMiddle = (sample.a + sample.b) / 2;
+    const llrStart = fromMiddle ? llrMiddle : lastSample.llr;
+    const llrOpts = {
       width: 500,
       height: 150,
-      greenFrom: b,
-      greenTo: b * 1.04,
-      redFrom: a * 1.04,
-      redTo: a,
-      yellowFrom: a,
-      yellowTo: b,
-      max: b,
-      min: a,
+      greenFrom: sample.b,
+      greenTo: sample.b * 1.04,
+      redFrom: sample.a * 1.04,
+      redTo: sample.a,
+      yellowFrom: sample.a,
+      yellowTo: sample.b,
+      max: sample.b,
+      min: sample.a,
       minorTicks: 3,
     };
-    LLR_chart.draw(LLR_chart_data, LLR_chart_options);
+    const llrData = gaugeData("LLR", llrStart);
+    animateGaugeTo(llrChart, llrData, llrOpts, sample.llr, token);
 
-    const ELO_chart_data = google.visualization.arrayToDataTable([
-      ["Label", "Value"],
-      ["Elo", setGauges.lastElo],
-    ]);
-    const ELO_chart_options = {
+    const eloScale = buildEloScale(sample, isFirstDraw);
+    const eloStartRaw = fromMiddle ? eloScale.center : lastSample.elo;
+    const eloStart = clamp(eloStartRaw, eloScale.min, eloScale.max);
+    const eloOpts = {
       width: 500,
       height: 150,
-      max: 4,
-      min: -4,
-      minorTicks: 4,
+      min: eloScale.min,
+      max: eloScale.max,
+      minorTicks: eloScale.minorTicks,
+      majorTicks: eloMajorTicks(eloScale),
     };
-    if (ci_lower < 0 && ci_upper > 0) {
-      ELO_chart_options.redFrom = ci_lower;
-      ELO_chart_options.redTo = 0;
-      ELO_chart_options.yellowFrom = 0;
-      ELO_chart_options.yellowTo = 0;
-      ELO_chart_options.greenFrom = 0;
-      ELO_chart_options.greenTo = ci_upper;
-    } else if (ci_lower >= 0) {
-      ELO_chart_options.redFrom = ci_lower;
-      ELO_chart_options.redTo = ci_lower;
-      ELO_chart_options.yellowFrom = ci_lower;
-      ELO_chart_options.yellowTo = ci_lower;
-      ELO_chart_options.greenFrom = ci_lower;
-      ELO_chart_options.greenTo = ci_upper;
-    } else if (ci_upper <= 0) {
-      ELO_chart_options.redFrom = ci_lower;
-      ELO_chart_options.redTo = ci_upper;
-      ELO_chart_options.yellowFrom = ci_upper;
-      ELO_chart_options.yellowTo = ci_upper;
-      ELO_chart_options.greenFrom = ci_upper;
-      ELO_chart_options.greenTo = ci_upper;
+    // Keep upstream/master color semantics with dynamic scale.
+    if (sample.ciLower < 0 && sample.ciUpper > 0) {
+      eloOpts.redFrom = clamp(sample.ciLower, eloScale.min, eloScale.max);
+      eloOpts.redTo = 0;
+      eloOpts.yellowFrom = 0;
+      eloOpts.yellowTo = 0;
+      eloOpts.greenFrom = 0;
+      eloOpts.greenTo = clamp(sample.ciUpper, eloScale.min, eloScale.max);
+    } else if (sample.ciLower >= 0) {
+      const lower = clamp(sample.ciLower, eloScale.min, eloScale.max);
+      const upper = clamp(sample.ciUpper, eloScale.min, eloScale.max);
+      eloOpts.redFrom = lower;
+      eloOpts.redTo = lower;
+      eloOpts.yellowFrom = lower;
+      eloOpts.yellowTo = lower;
+      eloOpts.greenFrom = lower;
+      eloOpts.greenTo = upper;
+    } else if (sample.ciUpper <= 0) {
+      const lower = clamp(sample.ciLower, eloScale.min, eloScale.max);
+      const upper = clamp(sample.ciUpper, eloScale.min, eloScale.max);
+      eloOpts.redFrom = lower;
+      eloOpts.redTo = upper;
+      eloOpts.yellowFrom = upper;
+      eloOpts.yellowTo = upper;
+      eloOpts.greenFrom = upper;
+      eloOpts.greenTo = upper;
     }
-    ELO_chart.draw(ELO_chart_data, ELO_chart_options);
-    elo = Math.round(100 * elo) / 100;
-    ELO_chart_data.setValue(0, 1, elo);
-    ELO_chart.draw(ELO_chart_data, ELO_chart_options); // 2nd draw to get animation
-    setGauges.lastElo = elo;
+    const eloData = gaugeData("Elo", eloStart);
+    // Keep the gauge numeric readout at the uncapped server Elo value while
+    // the chart itself limits the needle to the selected visual range.
+    animateGaugeTo(eloChart, eloData, eloOpts, sample.elo, token);
+
+    hasDrawnOnce = true;
+    lastSample = sample;
   }
 
-  function clearGauges() {
-    setGauges(0, -2.94, 2.94, 0.5, 0, 0, 0);
+  // Coalesce fast consecutive swaps into one draw cycle.
+  let pendingSwap = false;
+  let latestGaugeData = null;
+
+  function scheduleGaugeUpdate(el) {
+    latestGaugeData = el;
+    if (pendingSwap) {
+      return;
+    }
+    pendingSwap = true;
+    requestAnimationFrame(() => {
+      pendingSwap = false;
+      const sample = parseGaugeData(latestGaugeData);
+      if (sample) {
+        drawGauges(sample);
+        consumeActivationReplay();
+      }
+    });
   }
 
-  function displayData(items) {
-    const j = collect(items);
+  // Initial draw from server-rendered data attributes.
+  scheduleGaugeUpdate(document.getElementById("gauge-data"));
 
-    document.getElementById("data").style.visibility = "visible";
+  syncEloModeUi();
 
-    document.getElementById("commit").href =
-      `${items.args.tests_repo}/compare/${items.args.resolved_base}...${items.args.resolved_new}`;
-    document.getElementById("commit").textContent =
-      `${items.args.new_tag} (${items.args.msg_new})`;
-
-    document.getElementById("info").textContent = items.args.info;
-
-    document.getElementById("username").href =
-      `/tests/user/${items.args.username}`;
-    document.getElementById("username").textContent = items.args.username;
-
-    document.getElementById("tc").textContent = items.args.tc;
-
-    document.getElementById("sprt").textContent = `
-    elo0:\xA0${j.elo_raw0.toFixed(2)}\xA0
-    alpha:\xA0${j.alpha.toFixed(2)}\xA0
-    elo1:\xA0${j.elo_raw1.toFixed(2)}\xA0
-    beta:\xA0${j.beta.toFixed(2)}
-    (${j.elo_model})
-  `;
-
-    document.getElementById("LLR").textContent = `
-    ${j.LLR.toFixed(2)}
-    [${j.a.toFixed(2)},${j.b.toFixed(2)}]
-    ${items.args.sprt.state ? `(${items.args.sprt.state})` : ""}
-  `;
-
-    const pentanomial = items.results?.pentanomial || [];
-    const ptnml = `[${pentanomial.slice(0, 5).join(", ")}]`;
-    document.getElementById("pentanomial").textContent = ptnml;
-
-    document.getElementById("elo").textContent = `
-    ${j.elo.toFixed(2)}
-    [${j.ci_lower.toFixed(2)},${j.ci_upper.toFixed(2)}]
-    (${100 * (1 - j.p).toFixed(2)}%)
-  `;
-
-    document.getElementById("LOS").textContent = `${(100 * j.LOS).toFixed(1)}%`;
-
-    document.getElementById("games").textContent = `
-    ${j.games}
-    [w:${((100 * Math.round(j.W)) / (j.games + 0.001)).toFixed(1)}%,
-    l:${((100 * Math.round(j.L)) / (j.games + 0.001)).toFixed(1)}%,
-    d:${((100 * Math.round(j.D)) / (j.games + 0.001)).toFixed(1)}%]
-  `;
-
-    setGauges(j.LLR, j.a, j.b, j.LOS, j.elo, j.ci_lower, j.ci_upper);
+  if (eloGauge) {
+    eloGauge.addEventListener("click", toggleEloMode);
+    eloGauge.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        toggleEloMode();
+      }
+    });
   }
 
-  // Main worker
+  function replayCurrentSampleFromMiddle() {
+    if (!hasDrawnOnce || document.visibilityState !== "visible") {
+      return false;
+    }
+    drawGauges({
+      ...lastSample,
+      forceMiddleAnimation: true,
+    });
+    return true;
+  }
 
-  let isTabFocused = true;
-  let isVisibilityChange = true;
+  let replayOnNextActivation = document.visibilityState !== "visible";
 
-  document.addEventListener("visibilitychange", function () {
-    isTabFocused = document.visibilityState === "visible";
+  function consumeActivationReplay() {
+    if (!replayOnNextActivation || document.visibilityState !== "visible") {
+      return;
+    }
+    if (replayCurrentSampleFromMiddle()) {
+      replayOnNextActivation = false;
+    }
+  }
 
-    // If the tab just becomes visible, update immediately
-    if (isVisibilityChange && isTabFocused) {
-      isVisibilityChange = false;
-      update();
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      replayOnNextActivation = true;
+      return;
+    }
+
+    consumeActivationReplay();
+  });
+
+  window.addEventListener("focus", () => {
+    consumeActivationReplay();
+  });
+
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted) {
+      replayOnNextActivation = true;
+      consumeActivationReplay();
     }
   });
 
-  async function mainWorker() {
-    while (true) {
-      if (isTabFocused) {
-        update();
-      }
-      await asyncSleep(20000);
-      isVisibilityChange = true;
+  // Update on each htmx OOB swap (innerHTML of #live-elo-data).
+  document.body.addEventListener("htmx:oobAfterSwap", (e) => {
+    if (e?.detail?.target?.id === "live-elo-data") {
+      scheduleGaugeUpdate(document.getElementById("gauge-data"));
     }
-  }
-
-  async function update() {
-    const timestamp = new Date().getTime();
-    try {
-      const m = await fetchJson("/api/get_elo/" + testId + "?" + timestamp);
-      displayData(m);
-      if (m.args.sprt.state) return;
-    } catch (e) {
-      console.log("Network error: " + e);
-    }
-  }
-
-  // Start the worker
-  mainWorker();
-}
+  });
+})();

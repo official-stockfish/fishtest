@@ -1,7 +1,9 @@
 # Developer references
 
-Curated web references and project-specific patterns for the three frameworks
-that form the fishtest server stack.
+Curated web references and project-specific patterns for the four libraries
+that form the fishtest server stack. For server architecture and request
+flow, see [1-architecture.md](1-architecture.md). For the threading model
+and async/sync boundaries, see [2-threading-model.md](2-threading-model.md).
 
 ## FastAPI
 
@@ -193,24 +195,194 @@ async def page(request: Request):
 ```
 
 **Key rules**:
-- `request` must always be in the template context (required by `url_for`).
+- `Jinja2Templates.TemplateResponse()` injects `request` into the context if it
+    is missing, but repository code still passes it explicitly and relies on it
+    being present for `url_for` and shared context builders.
 - `Jinja2Templates` accepts `directory=` or `env=`, not both.
 - `TemplateResponse` exposes `.template` and `.context` for test assertions.
 - Context processors must be sync functions.
 - JS data is passed via `{{ value|tojson }}`.
 
-**Registered globals** (available in all templates):
+**Registered globals** (repository-specific):
 
 | Global | Source |
 |--------|--------|
 | `url_for` | Injected by Starlette |
-| `active_runs` | View builder |
-| `request` | Starlette context injection |
-| `flash_messages` | Session middleware |
-| Custom helpers | Registered in `app.py` at startup |
+| `static_url` | `server/fishtest/http/jinja.py` |
+| `poll` | `server/fishtest/http/jinja.py` |
+| `htmx.input_changed_delay_ms` | `server/fishtest/http/jinja.py` |
+| Formatting helpers | `server/fishtest/http/template_helpers.py` |
+| `gh`, `fishtest` | registered in `server/fishtest/http/jinja.py` |
 
 **Autoescaping**: Enabled for `.html`, `.xml`, `.j2` extensions. Raw HTML
 must use `{{ value|safe }}` or `{% autoescape false %}`.
+
+## htmx
+
+### Canonical references
+
+| Topic | URL |
+|-------|-----|
+| Documentation | https://htmx.org/docs/ |
+| Attributes reference | https://htmx.org/reference/ |
+| Events reference | https://htmx.org/events/ |
+| Request/response headers | https://htmx.org/reference/#headers |
+| Configuration | https://htmx.org/docs/#config |
+| Polling | https://htmx.org/docs/#polling |
+| OOB swaps | https://htmx.org/docs/#oob_swaps |
+| OOB troublesome tables | https://htmx.org/attributes/hx-swap-oob/#troublesome-tables-and-lists |
+| Push URL | https://htmx.org/attributes/hx-push-url/ |
+| Indicator | https://htmx.org/attributes/hx-indicator/ |
+| Sync / request coordination | https://htmx.org/attributes/hx-sync/ |
+| Inheritance control | https://htmx.org/attributes/hx-disinherit/ |
+| Parameter filtering | https://htmx.org/attributes/hx-params/ |
+| Multiple triggers | https://htmx.org/attributes/hx-trigger/ |
+| Template fragments essay | https://htmx.org/essays/template-fragments/ |
+| Web security with htmx | https://htmx.org/essays/web-security-basics-with-htmx/ |
+| Search inputs (MDN) | https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/input/search |
+| Search clear pseudo-element (MDN) | https://developer.mozilla.org/en-US/docs/Web/CSS/::-webkit-search-cancel-button |
+| Search event (MDN) | https://developer.mozilla.org/en-US/docs/Web/API/HTMLInputElement/search_event |
+| `aria-sort` (MDN) | https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Reference/Attributes/aria-sort |
+| `visibilitychange` (MDN) | https://developer.mozilla.org/en-US/docs/Web/API/Document/visibilitychange_event |
+
+### Project patterns
+
+**CDN loading**: htmx 2.0.8 is loaded from `cdn.jsdelivr.net` in
+`base.html.j2` with an SRI integrity hash. No npm build step.
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"
+    integrity="sha256-Iig+9oy3VFkU8KiKG97cclanA9HVgMHSVSF9ClDTExM="
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"></script>
+```
+
+**Fragment detection in Starlette/FastAPI**: htmx sends `HX-Request: true`
+on every AJAX request. The server detects this header to decide between
+full-page and fragment rendering. A `Sec-Fetch-Mode` guard prevents
+htmx-boosted full-page navigations from being treated as fragment requests:
+
+```python
+def _is_hx_request(request) -> bool:
+    headers = getattr(request, "headers", None)
+    if headers is None:
+        return False
+    if (headers.get("HX-Request") or "").lower() != "true":
+        return False
+    if (headers.get("Sec-Fetch-Mode") or "").lower() == "navigate":
+        return False
+    return True
+```
+
+**Dual-mode rendering with Jinja2**: the view handler renders either a
+fragment template or the full-page template from the same URL. The
+`_render_hx_fragment()` helper encapsulates the check-and-render pattern:
+
+```python
+def _render_hx_fragment(request, template_name, context):
+    if not _is_hx_request(request):
+        return None
+    return render_template_to_response(
+        request=request.raw_request,
+        template_name=template_name,
+        context=build_template_context(
+            request.raw_request, request.session, context
+        ),
+    )
+```
+
+Fragment templates are standalone `.html.j2` files that do not extend
+`base.html.j2`. This avoids partial-block rendering complexity and keeps
+fragments self-contained.
+
+**Content fragments for stateful tables**: newer list pages do not return only
+row fragments. They return content fragments (`contributors_content_fragment`,
+`user_management_content_fragment`, `workers_content_fragment`) so that view
+toggles, truncation banners, pagination, and sort state remain synchronized
+with the table body.
+
+**Vary header for HTTP caching**: when the same URL can return either a
+full page or a fragment, `Vary: HX-Request` must be set on the response so
+that HTTP caches (nginx, CDNs) store separate representations:
+
+```python
+_append_vary_header(response, "HX-Request")
+```
+
+**OOB swaps with Jinja2**: out-of-band elements carry `hx-swap-oob`
+attributes directly in the template markup. Multiple elements can be updated
+in a single response. For table rows, `<template>` wrappers are required
+because the HTML parser rejects `<tbody>` inside `<div>`:
+
+```jinja
+{# OOB span -- works directly #}
+<span id="count" hx-swap-oob="innerHTML">{{ count }}</span>
+
+{# OOB table body -- requires template wrapper #}
+<template>
+  <tbody id="my-table" hx-swap-oob="innerHTML">
+    {% for row in rows %}
+      <tr>...</tr>
+    {% endfor %}
+  </tbody>
+</template>
+```
+
+**Polling lifecycle codes**: polled endpoints use HTTP status codes to
+control client behavior:
+- **200** -- swap the response content, continue polling.
+- **204** -- no content change; htmx skips the swap, continues polling.
+- **286** -- swap the response and stop polling (terminal state).
+
+**Request coordination**: `hx-sync` is used where user actions and polling can
+target the same fragment. The main repo pattern is `hx-sync="#machines-filters:abort"`
+so user-initiated sort/page changes beat the background poll.
+
+**Inherited attribute control**: inside filter forms that use inherited
+`hx-include`, sort and pagination links may opt out with
+`hx-disinherit="hx-include"` and `hx-params="none"` so only the explicit URL
+state is sent.
+
+**Conditional polling with visibility**: polls are gated on tab visibility
+to avoid unnecessary server load:
+
+```html
+<div hx-get="/endpoint"
+     hx-trigger="every 30s [document.visibilityState === 'visible']"
+     hx-swap="none">
+</div>
+```
+
+**Focus-return immediate refresh**: every visibility-gated poller also
+triggers on `visibilitychange` so that returning to the tab produces an
+immediate update instead of waiting for the next poll cycle:
+
+```html
+<div hx-get="/endpoint"
+     hx-trigger="every 30s [document.visibilityState === 'visible'],
+                 visibilitychange[document.visibilityState === 'visible'] from:document"
+     hx-swap="none">
+</div>
+```
+
+Section-scoped pollers (machines, tasks) combine both the tab visibility and
+section expanded state in a single filter expression:
+
+```html
+<div hx-get="/endpoint"
+     hx-trigger="every 120s [document.visibilityState === 'visible'
+                 && document.getElementById('section').classList.contains('show')],
+                 visibilitychange[document.visibilityState === 'visible'
+                 && document.getElementById('section').classList.contains('show')] from:document"
+     hx-swap="innerHTML">
+</div>
+```
+
+**Error recovery in JavaScript**: retry buttons in htmx error handlers
+must be constructed with DOM API (`createElement`, `textContent`,
+`setAttribute`) rather than string concatenation with `innerHTML`, to
+prevent XSS from error messages and to keep htmx attributes functional
+(via `htmx.process()`).
 
 ## Tooling references
 
@@ -219,3 +391,52 @@ must use `{{ value|safe }}` or `{% autoescape false %}`.
 | Lint script | `cd server && uv run ruff check .` | Ruff linting with `target-version = \"py314\"` |
 | Type check | `cd server && uv run ty check fishtest/app.py fishtest/http/` | Type checking for ASGI entrypoint and HTTP modules |
 | Local test runner | `cd server && uv run python -m unittest discover -s tests -q` | Run the full test suite |
+
+## Testing patterns
+
+### Test structure
+
+Server tests live in `server/tests/`. All tests use `unittest.TestCase`.
+MongoDB is required for most tests (the CI workflow starts `mongod` before
+running the suite).
+
+### Running tests
+
+From the repo root:
+
+```bash
+# Full pipeline (start mongod, run tests, stop mongod)
+bash scripts/dev/mongo_test_ctl.sh --test
+
+# Or manually
+mongod --dbpath /tmp/fishtest-test-db --port 27017 &
+cd server && uv run python -m unittest discover -s tests -q
+```
+
+### Fixtures
+
+Most test files import `test_support`, which provides:
+
+- `get_rundb()`: returns a `RunDb` connected to the test MongoDB instance.
+- `build_test_app(...)`: constructs a FastAPI `TestApplication` with selectable
+  API and views routers.
+- `make_test_client(...)`: wraps `build_test_app` in a Starlette `TestClient`.
+- `cleanup_test_rundb(...)`: drops test collections after a test class runs.
+- `find_run(...)`: retrieves a run from the database by field match.
+- `extract_csrf_token(html)`: parses a CSRF token from rendered HTML.
+
+Worker-related fixtures must match the `short_worker_name` pattern
+(`.*-[\d]+cores-[a-zA-Z0-9]{2,8}`) or `WorkerDb.update_worker()` schema
+validation fails.
+
+### Key test modules
+
+| Module | Coverage |
+|--------|----------|
+| `test_app.py` | Application startup, middleware, lifespan |
+| `test_api.py` | Worker API protocol (request_task, update_task, beat) |
+| `test_users.py` | Login, CSRF, permissions, UI form submission |
+| `test_actions_view.py` | Actions search, pagination, sorting |
+| `test_finished_view.py` | Finished tests search, pagination |
+| `test_http_boundary.py` | HTTP layer invariants (CSRF fields, headers) |
+| `test_nn.py` | Neural network upload and listing |

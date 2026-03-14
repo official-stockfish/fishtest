@@ -15,26 +15,26 @@ viewing results, and administering users and workers.
 | 1 | [1-architecture.md](1-architecture.md) | All contributors | Server structure, module map, request flow, startup/shutdown |
 | 2 | [2-threading-model.md](2-threading-model.md) | Backend contributors | Async/sync boundaries, threadpool usage, rules for new code |
 | 3 | [3-api-reference.md](3-api-reference.md) | Worker and integration developers | Worker API endpoints, protocol invariants, error shapes |
-| 4 | [4-ui-reference.md](4-ui-reference.md) | UI contributors | UI routes, view dispatch pipeline, session/CSRF/auth |
-| 5 | [5-templates.md](5-templates.md) | UI contributors | Jinja2 environment, template catalog, context contracts |
+| 4 | [4-ui-reference.md](4-ui-reference.md) | UI contributors | UI routes, view dispatch pipeline, htmx fragment dispatch, session/CSRF/auth |
+| 5 | [5-templates.md](5-templates.md) | UI contributors | Jinja2 environment, template catalog (page + fragment), context contracts |
 | 6 | [6-worker.md](6-worker.md) | Worker contributors | Worker architecture, task lifecycle, API usage |
 | 7 | [7-development.md](7-development.md) | All developers | Dev setup, local server, testing, OpenAPI |
 | 8 | [8-deployment.md](8-deployment.md) | Operators | systemd, nginx, kernel tuning, capacity audit |
-| 9 | [9-references.md](9-references.md) | All developers | FastAPI, Starlette, Jinja2 curated references |
+| 9 | [9-references.md](9-references.md) | All developers | FastAPI, Starlette, Jinja2, htmx curated references |
 
 ## Quick start
 
 ```bash
-# Clone and install
-cd server && uv sync
+# Install server dependencies (from repo root)
+cd server && uv sync && uv sync --group test
 
-# Run tests
+# Run tests (from server/)
 uv run python -m unittest discover -s tests -q
 
-# Start the development server
+# Start the development server (from server/)
 FISHTEST_INSECURE_DEV=1 uv run uvicorn fishtest.app:app --reload --port 8000
 
-# Start with OpenAPI docs enabled (/docs, /redoc)
+# Start with OpenAPI docs enabled (from server/)
 OPENAPI_URL=/openapi.json FISHTEST_INSECURE_DEV=1 uv run uvicorn fishtest.app:app --reload --port 8000
 
 # Entrypoint
@@ -48,9 +48,10 @@ OPENAPI_URL=/openapi.json FISHTEST_INSECURE_DEV=1 uv run uvicorn fishtest.app:ap
 | Web framework | FastAPI + Starlette (ASGI) |
 | Application server | Uvicorn |
 | Templates | Jinja2 (`.html.j2`, `StrictUndefined`) |
+| Client interactivity | htmx 2.0.8 (CDN, fragment polling/swaps, OOB updates) |
 | Session management | itsdangerous `TimestampSigner` cookie sessions |
 | Database | MongoDB (pymongo) |
-| Validation | vtjson (19 schemas; no Pydantic) |
+| Validation | vtjson (18 schemas; no Pydantic) |
 | Statistics | scipy, numpy (SPRT, ELO calculations) |
 | Python (server) | >= 3.14 |
 | Python (worker) | >= 3.8 |
@@ -62,9 +63,12 @@ fishtest/
 |-- uv.lock                    -- Locked dependency set for the root project
 |-- .pre-commit-config.yaml    -- Pre-commit hooks (ruff, format, uv-lock)
 |-- .github/workflows/         -- CI: lint, server tests, worker tests (POSIX + MSYS2)
+|-- docs/                      -- Architecture and reference documentation
 |-- server/
 |   |-- pyproject.toml         -- Server package: runtime + test dependencies
-|   `-- fishtest/              -- FastAPI application (Python >= 3.14)
+|   |-- fishtest/              -- FastAPI application (Python >= 3.14)
+|   |-- tests/                 -- Server test suite (16 test modules)
+|   `-- utils/                 -- Operational utilities (backup, migration, analysis)
 `-- worker/
     |-- pyproject.toml         -- Worker package: runtime dependencies (Python >= 3.8)
     |-- worker.py              -- Main worker script

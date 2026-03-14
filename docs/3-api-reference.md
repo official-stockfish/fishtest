@@ -23,6 +23,33 @@ Workers authenticate via `username` and `password` fields in the
 - Invalid credentials -> HTTP 200 + `{"error": "Invalid password ..."}`.
 - Missing or malformed JSON -> HTTP 400 + `{"error": "..."}`.
 
+## Protocol lifecycle
+
+A worker's interaction with the server follows this sequence:
+
+1. **Version check** -- `POST /api/request_version`. If the server returns
+   a newer version, the worker self-updates and restarts.
+2. **Task request** -- `POST /api/request_task`. The server assigns a task
+   or returns `{"task_waiting": false}`. The worker retries after a delay.
+3. **Engine build** -- The worker compiles Stockfish from source (cached
+   by SHA + compiler + environment hash).
+4. **Game execution** -- The worker launches fastchess and streams results.
+   For SPSA runs, `POST /api/request_spsa` fetches tuning parameters
+   before each batch.
+5. **Progress reporting** -- `POST /api/update_task` sends partial results
+   after each batch. The server returns `task_alive: false` to signal early
+   stop.
+6. **Heartbeat** -- A daemon thread sends `POST /api/beat` every 120s.
+   The server uses missed heartbeats to detect dead workers and reassign
+   tasks.
+7. **Completion** -- Final `POST /api/update_task` reports the completed
+   task. `POST /api/upload_pgn` sends compressed game data. On failure,
+   `POST /api/failed_task` reports the error.
+8. **Loop** -- The worker returns to step 2.
+
+`POST /api/stop_run` and `POST /api/worker_log` are called on demand
+outside the main loop.
+
 ## Worker API paths
 
 The following 9 endpoints are considered **worker API paths**. On non-primary

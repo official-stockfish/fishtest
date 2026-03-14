@@ -1,0 +1,38 @@
+{% for panel in panels %}
+  <template>
+    <tbody id="{{ panel.tbody_id }}" hx-swap-oob="innerHTML">
+      {% set _batch_panel_id = panel.tbody_id.replace('-tbody', '') %}
+      {% for row in panel.rows %}
+        {% with show_delete=panel.show_delete, show_gauge=False, panel_id=_batch_panel_id %}
+          {% include "run_table_row_fragment.html.j2" %}
+        {% endwith %}
+      {% endfor %}
+      {% if panel.empty_text and panel.rows | length == 0 %}
+        <tr>
+          <td colspan=20>{{ panel.empty_text }}</td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </template>
+{% endfor %}
+
+{% for update in count_updates %}
+  <span id="{{ update.id }}" hx-swap-oob="innerHTML">{{ update.text }}</span>
+{% endfor %}
+
+{% if machines_count is defined %}
+  <span id="workers-count" hx-swap-oob="innerHTML">
+    {{ workers_count_text if workers_count_text is defined else ("Workers - " ~ machines_count) }}
+  </span>
+{% endif %}
+
+{% if stats is defined %}
+  {% with
+    pending_hours=stats.pending_hours,
+    cores=stats.cores,
+    nps_m=stats.nps_m,
+    games_per_minute=stats.games_per_minute
+  %}
+    {% include "homepage_stats_fragment.html.j2" %}
+  {% endwith %}
+{% endif %}
