@@ -476,7 +476,8 @@ visually bounded by the active range.
 
 Page shell for `/tests/stats/{id}`. Includes the shared stats content fragment and,
 for unfinished non-SPSA runs, a visibility-aware htmx poller targeting
-`#tests-stats-content`.
+`#tests-stats-content` using the dedicated raw-statistics poll cadence
+`poll.stats_detail`.
 
 | Key | Type |
 |-----|------|

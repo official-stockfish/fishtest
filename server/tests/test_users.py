@@ -11,10 +11,10 @@ from vtjson import ValidationError
 
 from fishtest.http.settings import (
     HTMX_INPUT_CHANGED_DELAY_MS,
-    POLL_ELO_DETAIL_S,
     POLL_PENDING_USERS_NAV_S,
     POLL_RATE_LIMITS_GITHUB_S,
     POLL_RATE_LIMITS_SERVER_S,
+    POLL_STATS_DETAIL_S,
     SESSION_REMEMBER_MAX_AGE_SECONDS,
 )
 from fishtest.run_cache import Prio
@@ -386,7 +386,7 @@ class TestHttpUsers(unittest.TestCase):
         self.assertIn("Raw Statistics for test", response.text)
         self.assertIn(f'hx-get="/tests/stats/{run_id}"', response.text)
         self.assertIn(
-            f"every {POLL_ELO_DETAIL_S}s [document.visibilityState === 'visible']",
+            f"every {POLL_STATS_DETAIL_S}s [document.visibilityState === 'visible']",
             response.text,
         )
         self.assertIn('id="tests-stats-content"', response.text)
