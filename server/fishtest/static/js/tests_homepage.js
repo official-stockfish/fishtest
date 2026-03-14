@@ -2,14 +2,28 @@
   await DOMContentLoaded();
 
   const button = document.getElementById("machines-button");
+  const panel = document.getElementById("machines-panel");
   const target = document.getElementById("machines");
   const filtersForm = document.getElementById("machines-filters");
 
-  if (!(button instanceof HTMLElement) || !(target instanceof HTMLElement)) {
+  if (
+    !(button instanceof HTMLElement) ||
+    !(panel instanceof HTMLElement) ||
+    !(target instanceof HTMLElement)
+  ) {
     return;
   }
 
   const toggleCookieMaxAge = Number(button.dataset.toggleCookieMaxAge || "0");
+
+  const syncPanelState = (isExpanded) => {
+    const nextState = isExpanded ? "Hide" : "Show";
+    button.textContent = nextState;
+    button.setAttribute("aria-expanded", String(isExpanded));
+    if (Number.isFinite(toggleCookieMaxAge) && toggleCookieMaxAge > 0) {
+      document.cookie = `machines_state=${nextState}; path=/; max-age=${toggleCookieMaxAge}; SameSite=Lax`;
+    }
+  };
 
   const resetMachinesPage = () => {
     const pageInput = document.getElementById("machines_page");
@@ -36,19 +50,16 @@
     }
   });
 
-  button.addEventListener("click", () => {
-    const active = button.textContent.trim() === "Hide";
-    const nextState = active ? "Show" : "Hide";
-
-    button.textContent = nextState;
-    if (Number.isFinite(toggleCookieMaxAge) && toggleCookieMaxAge > 0) {
-      document.cookie = `machines_state=${nextState}; path=/; max-age=${toggleCookieMaxAge}; SameSite=Lax`;
-    }
-
-    if (!active && target.dataset.machinesLoaded !== "1") {
+  panel.addEventListener("shown.bs.collapse", () => {
+    syncPanelState(true);
+    if (target.dataset.machinesLoaded !== "1") {
       target.dataset.machinesLoaded = "loading";
-      htmx.trigger(target, "machines:load");
     }
+    htmx.trigger(target, "machines:load");
+  });
+
+  panel.addEventListener("hidden.bs.collapse", () => {
+    syncPanelState(false);
   });
 
   target.addEventListener("htmx:beforeRequest", () => {

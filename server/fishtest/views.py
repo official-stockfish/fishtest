@@ -2749,6 +2749,77 @@ def _normalize_machine_row(machine):
     }
 
 
+def _machine_filter_state(
+    query_source,
+    *,
+    authenticated_username,
+    use_cookies=False,
+    query_key="q",
+    my_workers_key="my_workers",
+):
+    query_filter = query_source.get(query_key, "")
+    if use_cookies:
+        query_filter = unquote(str(query_filter))
+    query_filter = str(query_filter).strip()
+
+    my_workers = _is_truthy_param(query_source.get(my_workers_key, ""))
+    if not authenticated_username:
+        my_workers = False
+
+    return {
+        "query_filter": query_filter,
+        "my_workers": my_workers,
+        "filters_active": bool(query_filter) or my_workers,
+    }
+
+
+def _filter_machine_rows(
+    normalized_rows,
+    *,
+    query_filter,
+    my_workers,
+    authenticated_username,
+):
+    filtered_rows = list(normalized_rows)
+    if my_workers and authenticated_username:
+        filtered_rows = [
+            machine
+            for machine in filtered_rows
+            if machine.get("username") == authenticated_username
+        ]
+    if query_filter:
+        query_filter_lower = query_filter.lower()
+        filtered_rows = [
+            machine
+            for machine in filtered_rows
+            if any(
+                query_filter_lower in str(machine.get(field, "")).lower()
+                for field in _MACHINES_FILTER_FIELDS
+            )
+        ]
+    return filtered_rows
+
+
+def _normalized_machine_rows(request):
+    return [_normalize_machine_row(machine) for machine in request.rundb.get_machines()]
+
+
+def _filtered_machine_count(
+    request,
+    *,
+    query_filter,
+    my_workers,
+    authenticated_username,
+):
+    filtered_rows = _filter_machine_rows(
+        _normalized_machine_rows(request),
+        query_filter=query_filter,
+        my_workers=my_workers,
+        authenticated_username=authenticated_username,
+    )
+    return len(filtered_rows)
+
+
 def _machines_sort_value(machine_row, sort_key):
     if sort_key == "compiler":
         return (
@@ -2823,10 +2894,16 @@ def _set_machine_cookies(
     )
 
 
-def _workers_count_text(total_count, *, filters_active=False, filtered_count=None):
-    if not filters_active:
-        return f"Workers - {total_count}"
+def _workers_count_label(
+    total_count,
+    *,
+    query_filter="",
+    my_workers=False,
+    filtered_count=None,
+) -> str:
     shown_count = filtered_count if filtered_count is not None else total_count
+    if not (query_filter or my_workers):
+        return f"Workers - {total_count}"
     return f"Workers - {total_count} ({shown_count})"
 
 
@@ -3027,9 +3104,7 @@ def contributors_monthly(request):
 def tests_machines(request):
     # This endpoint is polled and linked directly, so the complete table state
     # lives in the URL and mirrored cookies.
-    normalized_rows = [
-        _normalize_machine_row(machine) for machine in request.rundb.get_machines()
-    ]
+    normalized_rows = _normalized_machine_rows(request)
     total_machines = len(normalized_rows)
 
     sort_param = request.params.get("sort", "").strip().lower()
@@ -3042,26 +3117,20 @@ def tests_machines(request):
         default_reverse=default_reverse,
     )
 
-    query_filter = request.params.get("q", "").strip()
-
-    my_workers = _is_truthy_param(request.params.get("my_workers", ""))
     username = request.authenticated_userid
-    if not username:
-        my_workers = False
+    machine_filters = _machine_filter_state(
+        request.params,
+        authenticated_username=username,
+    )
+    query_filter = machine_filters["query_filter"]
+    my_workers = machine_filters["my_workers"]
 
-    filtered_rows = list(normalized_rows)
-    if my_workers and username:
-        filtered_rows = [m for m in filtered_rows if m.get("username") == username]
-    if query_filter:
-        query_filter_lower = query_filter.lower()
-        filtered_rows = [
-            m
-            for m in filtered_rows
-            if any(
-                query_filter_lower in str(m.get(field, "")).lower()
-                for field in _MACHINES_FILTER_FIELDS
-            )
-        ]
+    filtered_rows = _filter_machine_rows(
+        normalized_rows,
+        query_filter=query_filter,
+        my_workers=my_workers,
+        authenticated_username=username,
+    )
 
     filtered_rows.sort(key=lambda m: str(m.get("username", "")).lower())
     filtered_rows.sort(
@@ -3105,10 +3174,10 @@ def tests_machines(request):
         filtered_count=num_machines,
     )
 
-    filters_active = bool(query_filter) or my_workers
-    workers_count_text = _workers_count_text(
+    workers_count = _workers_count_label(
         total_machines,
-        filters_active=filters_active,
+        query_filter=query_filter,
+        my_workers=my_workers,
         filtered_count=num_machines,
     )
 
@@ -3118,8 +3187,8 @@ def tests_machines(request):
         "machines_count": num_machines,
         "machines_total_count": total_machines,
         "machines_filtered_count": num_machines,
-        "machines_filters_active": filters_active,
-        "workers_count_text": workers_count_text,
+        "machines_filters_active": machine_filters["filters_active"],
+        "workers_count_text": workers_count,
         "machines_page_size": _MACHINES_PAGE_SIZE,
         "pages": pages,
         "sort": sort_param,
@@ -3644,23 +3713,34 @@ def tests(request):
     if not authenticated_user:
         machines_my_workers = False
 
-    machines_filters_active = bool(machines_q) or machines_my_workers
-    machines_filtered_count_raw = request.cookies.get("machines_filtered_count", "")
-    machines_filtered_count = (
-        int(machines_filtered_count_raw)
-        if machines_filtered_count_raw.isdigit()
-        else last_tests["machines_count"]
+    machine_filters = _machine_filter_state(
+        request.cookies,
+        authenticated_username=authenticated_user,
+        use_cookies=True,
+        query_key="machines_q",
+        my_workers_key="machines_my_workers",
     )
-    workers_count_text = _workers_count_text(
+    machines_filters_active = machine_filters["filters_active"]
+    if machines_filters_active:
+        machines_filtered_count = _filtered_machine_count(
+            request,
+            query_filter=machine_filters["query_filter"],
+            my_workers=machine_filters["my_workers"],
+            authenticated_username=authenticated_user,
+        )
+    else:
+        machines_filtered_count = last_tests["machines_count"]
+    workers_count = _workers_count_label(
         last_tests["machines_count"],
-        filters_active=machines_filters_active,
+        query_filter=machine_filters["query_filter"],
+        my_workers=machine_filters["my_workers"],
         filtered_count=machines_filtered_count,
     )
 
     return {
         **last_tests,
         "machines_shown": request.cookies.get("machines_state") == "Hide",
-        "workers_count_text": workers_count_text,
+        "workers_count_text": workers_count,
         "machines_sort": machines_sort,
         "machines_order": machines_order,
         "machines_q": machines_q,
@@ -4710,20 +4790,14 @@ def tests_elo_batch(request):
     if not (pending_runs or paused_runs or active_runs):
         request.response_status = 286
 
-    machines_q = unquote(request.cookies.get("machines_q", "")).strip()
-    machines_my_workers = request.cookies.get(
-        "machines_my_workers", ""
-    ).strip().lower() in {"1", "true", "on", "yes"}
-    if not request.authenticated_userid:
-        machines_my_workers = False
-    filters_active = bool(machines_q) or machines_my_workers
-
-    filtered_count_cookie = request.cookies.get("machines_filtered_count", "").strip()
-    filtered_count = (
-        int(filtered_count_cookie)
-        if filtered_count_cookie.isdigit()
-        else machines_count
+    machine_filters = _machine_filter_state(
+        request.cookies,
+        authenticated_username=request.authenticated_userid,
+        use_cookies=True,
+        query_key="machines_q",
+        my_workers_key="machines_my_workers",
     )
+    filters_active = machine_filters["filters_active"]
 
     result: _TestsEloBatchContext = {
         "panels": panels,
@@ -4732,12 +4806,24 @@ def tests_elo_batch(request):
 
     # workers-count target exists on homepage only.
     if not username:
+        filtered_count = (
+            _filtered_machine_count(
+                request,
+                query_filter=machine_filters["query_filter"],
+                my_workers=machine_filters["my_workers"],
+                authenticated_username=request.authenticated_userid,
+            )
+            if filters_active
+            else machines_count
+        )
         result["machines_count"] = machines_count
-        result["workers_count_text"] = _workers_count_text(
+        workers_count = _workers_count_label(
             machines_count,
-            filters_active=filters_active,
+            query_filter=machine_filters["query_filter"],
+            my_workers=machine_filters["my_workers"],
             filtered_count=filtered_count,
         )
+        result["workers_count_text"] = workers_count
 
     # Include stats OOB updates for the homepage (no username filter).
     if not username:

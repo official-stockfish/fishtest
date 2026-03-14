@@ -749,6 +749,7 @@ class TestHttpUsers(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(self.username, response.text)
         self.assertNotIn("OtherUser", response.text)
+        self.assertIn("Workers - 2 (1)", response.text)
         self.assertIn("my_workers=1", response.text)
 
         with patch.object(self.rundb, "get_machines", return_value=docs):
@@ -809,12 +810,181 @@ class TestHttpUsers(unittest.TestCase):
         self.assertEqual(response_filtered.status_code, 200)
         self.assertIn("Workers - 2 (1)", response_filtered.text)
 
-    def test_tests_elo_batch_preserves_filtered_workers_count_label(self):
-        runs = {"pending": [], "active": []}
-        aggregate_result = (runs, 0.0, 0, 0, 0, 243)
+    def test_tests_homepage_hidden_workers_count_recomputes_filtered_value(self):
+        now = datetime.now(UTC)
+        docs = [
+            {
+                "username": self.username,
+                "country_code": "us",
+                "concurrency": 2,
+                "unique_key": "joekey-aaaa-bbbb",
+                "nps": 2_500_000,
+                "max_memory": 4096,
+                "uname": "Linux",
+                "worker_arch": "x86-64",
+                "gcc_version": [13, 2, 0],
+                "compiler": "g++",
+                "python_version": [3, 12, 0],
+                "version": 100,
+                "modified": False,
+                "task_id": 1,
+                "last_updated": now,
+                "run": {"_id": "run-joe", "args": {"new_tag": "main"}},
+            },
+            {
+                "username": "OtherUser",
+                "country_code": "it",
+                "concurrency": 4,
+                "unique_key": "otherkey-cccc-dddd",
+                "nps": 3_000_000,
+                "max_memory": 8192,
+                "uname": "Windows 11",
+                "worker_arch": "x86-64",
+                "gcc_version": [13, 2, 0],
+                "compiler": "clang",
+                "python_version": [3, 11, 0],
+                "version": 101,
+                "modified": False,
+                "task_id": 2,
+                "last_updated": now - timedelta(seconds=30),
+                "run": {"_id": "run-other", "args": {"new_tag": "dev"}},
+            },
+        ]
+        aggregate_result = ({"pending": [], "active": []}, 0.0, 0, 0, 0, 2)
 
         self.client.cookies.set("machines_q", "windows")
-        self.client.cookies.set("machines_filtered_count", "51")
+        self.client.cookies.set("machines_filtered_count", "99")
+        self.client.cookies.set("machines_state", "Show")
+
+        with (
+            patch.object(
+                self.rundb,
+                "aggregate_unfinished_runs",
+                return_value=aggregate_result,
+            ),
+            patch.object(self.rundb, "get_machines", return_value=docs),
+        ):
+            homepage = self.client.get("/tests")
+
+        self.assertEqual(homepage.status_code, 200)
+        self.assertIn("Workers - 2 (1)", homepage.text)
+
+    def test_tests_elo_batch_recomputes_filtered_workers_count_label(self):
+        now = datetime.now(UTC)
+        docs = [
+            {
+                "username": self.username,
+                "country_code": "us",
+                "concurrency": 2,
+                "unique_key": "joekey-aaaa-bbbb",
+                "nps": 2_500_000,
+                "max_memory": 4096,
+                "uname": "Linux",
+                "worker_arch": "x86-64",
+                "gcc_version": [13, 2, 0],
+                "compiler": "g++",
+                "python_version": [3, 12, 0],
+                "version": 100,
+                "modified": False,
+                "task_id": 1,
+                "last_updated": now,
+                "run": {"_id": "run-joe", "args": {"new_tag": "main"}},
+            },
+            {
+                "username": "OtherUser",
+                "country_code": "it",
+                "concurrency": 4,
+                "unique_key": "otherkey-cccc-dddd",
+                "nps": 3_000_000,
+                "max_memory": 8192,
+                "uname": "Windows 11",
+                "worker_arch": "x86-64",
+                "gcc_version": [13, 2, 0],
+                "compiler": "clang",
+                "python_version": [3, 11, 0],
+                "version": 101,
+                "modified": False,
+                "task_id": 2,
+                "last_updated": now - timedelta(seconds=30),
+                "run": {"_id": "run-other", "args": {"new_tag": "dev"}},
+            },
+        ]
+        runs = {"pending": [], "active": []}
+        aggregate_result = (runs, 0.0, 0, 0, 0, 2)
+
+        self.client.cookies.set("machines_q", "windows")
+        self.client.cookies.set("machines_filtered_count", "99")
+
+        with (
+            patch.object(
+                self.rundb,
+                "aggregate_unfinished_runs",
+                return_value=aggregate_result,
+            ),
+            patch.object(self.rundb, "get_machines", return_value=docs),
+        ):
+            response = self.client.get("/tests/elo_batch")
+
+        self.assertEqual(response.status_code, 286)
+        self.assertIn("Workers - 2 (1)", response.text)
+
+    def test_tests_elo_batch_keeps_hidden_active_filtered_count_current(self):
+        now = datetime.now(UTC)
+        runs = {
+            "pending": [],
+            "active": [
+                {
+                    "_id": "run-sprt-stc-st",
+                    "args": {
+                        "username": self.username,
+                        "base_tag": "master",
+                        "new_tag": "sprt-stc-st",
+                        "resolved_base": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "resolved_new": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "tc": "10+0.1",
+                        "threads": 1,
+                        "sprt": {
+                            "llr": 0.0,
+                            "lower_bound": -2.94,
+                            "upper_bound": 2.94,
+                            "elo0": 0.0,
+                            "elo1": 2.0,
+                            "state": "",
+                        },
+                        "tests_repo": "https://github.com/official-stockfish/Stockfish",
+                    },
+                    "start_time": now,
+                    "finished": False,
+                    "cores": 2,
+                    "workers": 1,
+                    "results": {"wins": 0, "losses": 0, "draws": 0},
+                },
+                {
+                    "_id": "run-spsa-ltc-smp",
+                    "args": {
+                        "username": self.username,
+                        "base_tag": "master",
+                        "new_tag": "spsa-ltc-smp",
+                        "resolved_base": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "resolved_new": "347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+                        "tc": "60+0.6",
+                        "threads": 4,
+                        "spsa": {"iter": 1, "num_iter": 10},
+                        "num_games": 1000,
+                        "tests_repo": "https://github.com/official-stockfish/Stockfish",
+                    },
+                    "start_time": now,
+                    "finished": False,
+                    "cores": 16,
+                    "workers": 4,
+                    "results": {"wins": 0, "losses": 0, "draws": 0},
+                },
+            ],
+        }
+        aggregate_result = (runs, 0.0, 0, 0, 0, 0)
+
+        self.client.cookies.set("active_run_filters", "sprt,stc,st")
+        self.client.cookies.set("active_state", "Show")
 
         with patch.object(
             self.rundb,
@@ -823,8 +993,12 @@ class TestHttpUsers(unittest.TestCase):
         ):
             response = self.client.get("/tests/elo_batch")
 
-        self.assertEqual(response.status_code, 286)
-        self.assertIn("Workers - 243 (51)", response.text)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="active-count"', response.text)
+        self.assertIn('id="active-tbody"', response.text)
+        self.assertIn("sprt-stc-st", response.text)
+        self.assertIn("spsa-ltc-smp", response.text)
+        self.assertIn("Active - 2 (1) tests", response.text)
 
     def test_tests_homepage_machines_filters_render_and_persist(self):
         now = datetime.now(UTC)
