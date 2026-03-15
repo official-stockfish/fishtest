@@ -18,11 +18,27 @@
   <script>
     document.documentElement.style="scroll-behavior:auto; overflow:hidden;";
     function scroll_to(task_id) {
-      const task_offset = document.getElementById("task" + task_id).offsetTop;
-      const tasks_head_height = document.getElementById("tasks-head").offsetHeight;
-      const tasks_div = document.getElementById("tasks");
-      tasks_div.scrollIntoView();
-      tasks_div.scrollTop = task_offset - tasks_head_height;
+      const task_row = document.getElementById("task" + task_id);
+      const tasks_section = document.getElementById("tasks");
+      const tasks_container = document.getElementById("tasks-content");
+      const tasks_head = tasks_container?.querySelector("thead");
+      if (!task_row || !tasks_section || !tasks_container) {
+        return;
+      }
+      tasks_section.scrollIntoView();
+      const container_rect = tasks_container.getBoundingClientRect();
+      const row_rect = task_row.getBoundingClientRect();
+      const head_height = tasks_head?.getBoundingClientRect().height ?? 0;
+      const target_scroll_top =
+        tasks_container.scrollTop + row_rect.top - container_rect.top - head_height;
+      const max_scroll_top = Math.max(
+        0,
+        tasks_container.scrollHeight - tasks_container.clientHeight,
+      );
+      tasks_container.scrollTop = Math.min(
+        Math.max(0, target_scroll_top),
+        max_scroll_top,
+      );
     }
   </script>
 {% endif %}
@@ -448,37 +464,63 @@
     Tasks <span id="tasks-totals">{{ totals }}</span>
   </h4>
   <section id="tasks"
-       class="overflow-auto {{ "collapse show" if tasks_shown else "collapse" }}">
-    <table class='table table-striped table-sm'>
-      <thead id="tasks-head" class="sticky-top">
-        <tr>
-          <th>Idx</th>
-          <th>Worker</th>
-          <th>Info</th>
-          <th>Last Updated</th>
-          <th>Played</th>
-          {% if "pentanomial" not in run["results"] %}
-            <th>Wins</th>
-            <th>Losses</th>
-            <th>Draws</th>
-          {% else %}
-            <th>Pentanomial&nbsp;[0&#8209;2]</th>
-          {% endif %}
-          <th>Crashes</th>
-          <th>Time</th>
+       class="collapse {{ "show" if tasks_shown else "" }}">
+    <form
+      id="tasks-filters"
+      class="row g-2 align-items-end mb-2"
+      method="get"
+      action="/tests/tasks/{{ run_id }}?show_task={{ show_task }}"
+      hx-get="/tests/tasks/{{ run_id }}?show_task={{ show_task }}"
+      hx-target="#tasks-content"
+      hx-swap="innerHTML"
+      hx-trigger="submit, input changed delay:{{ htmx.input_changed_delay_ms }}ms from:#tasks_q, search from:#tasks_q"
+    >
+      <input type="hidden" id="tasks_sort" name="sort" value="{{ tasks_sort }}">
+      <input type="hidden" id="tasks_order" name="order" value="{{ tasks_order }}">
+      <input type="hidden" id="tasks_view" name="view" value="{{ tasks_view }}">
+      <input type="hidden" id="tasks_page" name="page" value="{{ tasks_page }}">
 
-          {% if "spsa" not in run["args"] %}
-            <th>Residual</th>
-          {% endif %}
-        </tr>
-      </thead>
-      <tbody id="tasks-body"
-        data-tasks-loaded="0"
-        hx-get="/tests/tasks/{{ run_id }}?show_task={{ show_task }}"
-        hx-trigger="{% if tasks_shown %}load, tasks:load{% else %}tasks:load{% endif %}{% if not run['finished'] %}, every {{ poll.tasks_detail }}s [document.visibilityState === 'visible' && document.getElementById('tasks').classList.contains('show')], visibilitychange[document.visibilityState === 'visible' && document.getElementById('tasks').classList.contains('show')] from:document{% endif %}"
-        hx-swap="innerHTML"
-      ></tbody>
-    </table>
+      <div class="col-auto">
+        <input
+          id="tasks_q"
+          type="search"
+          name="q"
+          class="form-control form-control-sm"
+          value="{{ tasks_q }}"
+          placeholder="Filter worker or info"
+          aria-label="Filter worker or info"
+          autocomplete="off"
+        >
+      </div>
+
+      <div id="tasks-view-controls" class="col-auto">
+        {% with sort=tasks_sort, order=tasks_order, q=tasks_q, view=tasks_view, num_tasks=tasks_num_tasks, max_all=tasks_max_all, is_truncated=tasks_is_truncated %}
+          {% include "tasks_controls_fragment.html.j2" %}
+        {% endwith %}
+      </div>
+    </form>
+
+    {% set pagination_hx_target = "tasks-content" %}
+    {% set pagination_hx_push_url = false %}
+    {% set pagination_hx_disinherit = "hx-include" %}
+    {% set pagination_hx_params = "none" %}
+    <div id="tasks-pagination" aria-live="polite">
+      {% if tasks_view == "paged" %}
+        {% with pages=tasks_pages %}
+          {% include "pagination.html.j2" %}
+        {% endwith %}
+      {% endif %}
+    </div>
+
+    <div id="tasks-content"
+      data-tasks-loaded="0"
+      class="overflow-auto tasks-panel-scroll"
+      hx-get="/tests/tasks/{{ run_id }}?show_task={{ show_task }}"
+      hx-include="#tasks-filters"
+      hx-sync="#tasks-filters:abort"
+      hx-trigger="{% if tasks_shown %}load, tasks:load{% else %}tasks:load{% endif %}{% if not run['finished'] %}, every {{ poll.tasks_detail }}s [document.visibilityState === 'visible' && document.getElementById('tasks').classList.contains('show')], visibilitychange[document.visibilityState === 'visible' && document.getElementById('tasks').classList.contains('show')] from:document{% endif %}"
+      hx-swap="innerHTML"
+    ></div>
   </section>
 {# End of enclosing div to be able to make things invisible. #}
 </div>
@@ -617,52 +659,31 @@
   const tasksPromise = Promise.resolve();
   {% endif %}
 
-  const tasksTbody = document.getElementById("tasks-body");
+  const tasksContainer = document.getElementById("tasks-content");
   const resolveTasksLoadedOnce = () => {
-    if (!tasksTbody) {
+    if (!tasksContainer) {
       return;
     }
-    tasksTbody.dataset.tasksLoaded = "1";
+    tasksContainer.dataset.tasksLoaded = "1";
     resolveTasksLoaded?.();
     resolveTasksLoaded = null;
   };
 
-  const showTasksError = (e) => {
-    if (!tasksTbody) {
+  const clearTasksLoadingState = () => {
+    if (!tasksContainer) {
       resolveTasksLoaded?.();
       resolveTasksLoaded = null;
       return;
     }
-    tasksTbody.dataset.tasksLoaded = "0";
-    const container = e.target;
-    container.replaceChildren();
-    const tr = document.createElement("tr");
-    const td = document.createElement("td");
-    td.setAttribute("colspan", "20");
-    const wrapper = document.createElement("div");
-    wrapper.className = "alert alert-danger d-flex justify-content-between align-items-center";
-    const msg = document.createElement("span");
-    msg.textContent = "Something went wrong. Please try again.";
-    const btn = document.createElement("button");
-    btn.className = "btn btn-primary";
-    btn.textContent = "Retry";
-    btn.setAttribute("hx-get", "/tests/tasks/{{ run_id }}?show_task={{ show_task }}");
-    btn.setAttribute("hx-target", "#tasks-body");
-    btn.setAttribute("hx-swap", "innerHTML");
-    btn.setAttribute("hx-disabled-elt", "this");
-    wrapper.append(msg, btn);
-    td.append(wrapper);
-    tr.append(td);
-    container.append(tr);
-    htmx.process(container);
+    tasksContainer.dataset.tasksLoaded = "0";
     resolveTasksLoaded?.();
     resolveTasksLoaded = null;
   };
 
-  tasksTbody?.addEventListener("htmx:afterSwap", resolveTasksLoadedOnce);
-  tasksTbody?.addEventListener("htmx:responseError", showTasksError);
-  tasksTbody?.addEventListener("htmx:sendError", showTasksError);
-  if (tasksTbody && (tasksTbody.dataset.tasksLoaded === "1" || tasksTbody.children.length > 0)) {
+  tasksContainer?.addEventListener("htmx:afterSwap", resolveTasksLoadedOnce);
+  tasksContainer?.addEventListener("htmx:responseError", clearTasksLoadingState);
+  tasksContainer?.addEventListener("htmx:sendError", clearTasksLoadingState);
+  if (tasksContainer && (tasksContainer.dataset.tasksLoaded === "1" || tasksContainer.children.length > 0)) {
     resolveTasksLoadedOnce();
   }
 
@@ -675,9 +696,9 @@
       document.cookie =
         "tasks_state=" + btn.textContent.trim() +
         "; path=/; max-age={{ 60 * 60 }}; SameSite=Lax";
-      if (!active && tasksTbody && tasksTbody.dataset.tasksLoaded !== "1") {
-        tasksTbody.dataset.tasksLoaded = "loading";
-        htmx.trigger(tasksTbody, "tasks:load");
+      if (!active && tasksContainer && tasksContainer.dataset.tasksLoaded !== "1") {
+        tasksContainer.dataset.tasksLoaded = "loading";
+        htmx.trigger(tasksContainer, "tasks:load");
       }
     });
   })();
@@ -1033,9 +1054,14 @@
 
   const diffPromise = handleDiff();
 
+  const nextFrame = () => new Promise((resolve) => {
+    requestAnimationFrame(() => resolve());
+  });
+
   Promise.all([spsaPromise, diffPromise, tasksPromise])
-    .then(() => {
+    .then(async () => {
     {% if show_task >= 0 %}
+      await nextFrame();
       scroll_to({{ show_task }});
       document.getElementById("enclosure").style="visibility:visible;";
       document.documentElement.style="overflow:scroll;";

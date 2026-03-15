@@ -1106,6 +1106,26 @@ def _task_info_label(worker_info: dict | None) -> str:
     )
 
 
+def _task_info_filter_text(worker_info: dict | None) -> str:
+    if not worker_info:
+        return "-"
+
+    gcc_version = ".".join(str(m) for m in worker_info.get("gcc_version", []))
+    python_version = ".".join(str(m) for m in worker_info.get("python_version", []))
+    parts = [
+        _task_info_label(worker_info),
+        str(worker_info.get("uname", "")),
+        str(worker_info.get("max_memory", "")),
+        str(worker_info.get("compiler", "")),
+        gcc_version,
+        python_version,
+        str(worker_info.get("version", "")),
+        str(worker_info.get("worker_arch", "")),
+        str(worker_info.get("ARCH", "")),
+    ]
+    return " ".join(part for part in parts if part).casefold()
+
+
 def _task_results_cells(stats: dict, *, show_pentanomial: bool) -> list:
     if show_pentanomial:
         p = stats.get("pentanomial", [0] * 5)
@@ -1162,11 +1182,23 @@ def build_tasks_rows(
             is_approver=is_approver,
         )
         info_label = _task_info_label(worker_info)
+        info_filter_text = _task_info_filter_text(worker_info)
 
         last_updated_label = str(task.get("last_updated", "-")).split(".")[0]
         played_label = f"{total:03d} / {task.get('num_games', 0):03d}"
 
         results_cells = _task_results_cells(stats, show_pentanomial=show_pentanomial)
+        last_updated = task.get("last_updated")
+        last_updated_sort = (
+            last_updated.timestamp() if hasattr(last_updated, "timestamp") else 0.0
+        )
+        played_sort = total * 1000000 + int(task.get("num_games", 0) or 0)
+        wins = int(stats.get("wins", 0) or 0)
+        losses = int(stats.get("losses", 0) or 0)
+        draws = int(stats.get("draws", 0) or 0)
+        pentanomial_sort = tuple(
+            int(value) for value in stats.get("pentanomial", [0] * 5)
+        )
 
         crashes = stats.get("crashes", "-")
         time_losses = stats.get("time_losses", "-")
@@ -1175,6 +1207,9 @@ def build_tasks_rows(
             chi2,
             show_residual=show_residual,
         )
+        residual_sort = float("-inf")
+        if residual_label not in ("", "-"):
+            residual_sort = float(residual_label)
 
         tasks.append(
             {
@@ -1184,13 +1219,21 @@ def build_tasks_rows(
                 "worker_label": worker_label,
                 "worker_url": worker_url,
                 "info_label": info_label,
+                "info_filter_text": info_filter_text,
                 "last_updated_label": last_updated_label,
+                "last_updated_sort": last_updated_sort,
                 "played_label": played_label,
+                "played_sort": played_sort,
                 "results_cells": results_cells,
+                "wins": wins,
+                "losses": losses,
+                "draws": draws,
+                "pentanomial_sort": pentanomial_sort,
                 "crashes": crashes,
                 "time_losses": time_losses,
                 "residual_label": residual_label,
                 "residual_bg": residual_bg,
+                "residual_sort": residual_sort,
             },
         )
 

@@ -52,7 +52,10 @@ from fishtest.http.settings import (
     CONTRIBUTORS_PAGE_SIZE,
     NNS_MAX_ALL,
     NNS_PAGE_SIZE,
+    PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS,
     SESSION_REMEMBER_MAX_AGE_SECONDS,
+    TASKS_MAX_ALL,
+    TASKS_PAGE_SIZE,
     UI_FORM_MAX_FIELDS,
     UI_FORM_MAX_FILES,
     UI_FORM_MAX_PART_SIZE_BYTES,
@@ -105,6 +108,7 @@ from fishtest.views_helpers import (
     _append_vary_header,
     _apply_response_headers,
     _build_query_string,
+    _clamp_page_index,
     _host_url,
     _is_hx_request,
     _is_truthy_param,
@@ -283,8 +287,8 @@ def _order_active_runs_for_filters(
 
 
 def _build_active_run_filter_context(
-    request: Any,
-    active_runs: list[dict],  # noqa: ANN401
+    request: _ViewContext,
+    active_runs: list[dict],
 ) -> _ActiveRunFilterContext:
     enabled_by_dim = _parse_active_run_filter_cookie(
         request.cookies.get("active_run_filters", ""),
@@ -2797,19 +2801,78 @@ def tests_stats(request: _ViewContext) -> dict[str, Any] | Response:
     return context
 
 
-def tests_tasks(request: _ViewContext) -> dict[str, Any]:
-    run = request.rundb.get_run(request.matchdict["id"])
-    if run is None:
-        raise StarletteHTTPException(status_code=404)
-    chi2 = get_chi2(run["tasks"])
+_TASKS_SORT_MAP: dict[str, tuple[str, bool]] = {
+    "idx": ("task_id", True),
+    "worker": ("worker_label", False),
+    "info": ("info_label", False),
+    "last_updated": ("last_updated_sort", True),
+    "played": ("played_sort", True),
+    "wins": ("wins", True),
+    "losses": ("losses", True),
+    "draws": ("draws", True),
+    "pentanomial": ("pentanomial_sort", True),
+    "crashes": ("crashes", True),
+    "time": ("time_losses", True),
+    "residual": ("residual_sort", True),
+}
+_TASKS_DEFAULT_SORT = "idx"
+_TASKS_PAGE_SIZE = TASKS_PAGE_SIZE
+_TASKS_MAX_ALL = TASKS_MAX_ALL
 
+
+def _tasks_cookie_value(request: _ViewContext, name: str) -> str:
+    return unquote(str(request.cookies.get(name, ""))).strip()
+
+
+def _parse_show_task_param(request: _ViewContext) -> int:
     try:
         show_task = int(request.params.get("show_task", -1))
     except ValueError:
-        show_task = -1
-    if show_task >= len(run["tasks"]) or show_task < -1:
-        show_task = -1
+        return -1
+    return max(show_task, -1)
 
+
+def _task_filter_value(
+    request: _ViewContext,
+    *,
+    param_name: str,
+    cookie_name: str,
+) -> str:
+    raw_value = request.params.get(param_name)
+    if raw_value is None:
+        raw_value = _tasks_cookie_value(request, cookie_name)
+    return str(raw_value).strip()
+
+
+def _filter_task_rows(
+    tasks: list[dict[str, Any]],
+    *,
+    search_filter: str,
+) -> list[dict[str, Any]]:
+    filtered_tasks = tasks
+
+    if search_filter:
+        search_folded = search_filter.casefold()
+        filtered_tasks = [
+            task
+            for task in filtered_tasks
+            if search_folded in str(task.get("worker_label", "")).casefold()
+            or search_folded
+            in str(
+                task.get("info_filter_text", task.get("info_label", "")),
+            )
+        ]
+
+    return filtered_tasks
+
+
+def _task_table_state(
+    request: _ViewContext,
+    *,
+    run: dict[str, Any],
+    show_task: int,
+    chi2: float,
+) -> dict[str, Any]:
     approver = request.has_permission("approve_run")
     tasks, show_pentanomial, show_residual = build_tasks_rows(
         run,
@@ -2818,15 +2881,213 @@ def tests_tasks(request: _ViewContext) -> dict[str, Any]:
         is_approver=approver,
     )
 
+    raw_sort = request.params.get("sort")
+    if raw_sort is None:
+        raw_sort = _tasks_cookie_value(request, "tasks_sort")
+    sort_param = str(raw_sort).strip().lower() or _TASKS_DEFAULT_SORT
+    if sort_param not in _TASKS_SORT_MAP:
+        sort_param = _TASKS_DEFAULT_SORT
+
+    sort_key, default_reverse = _TASKS_SORT_MAP[sort_param]
+    order_param, reverse = _normalize_sort_order(
+        request.params.get("order")
+        if request.params.get("order") is not None
+        else _tasks_cookie_value(request, "tasks_order"),
+        default_reverse=default_reverse,
+    )
+
+    raw_view = request.params.get("view")
+    if raw_view is None:
+        raw_view = _tasks_cookie_value(request, "tasks_view")
+    view_param = _normalize_view_mode(raw_view or "paged")
+
+    query_filter = _task_filter_value(
+        request,
+        param_name="q",
+        cookie_name="tasks_q",
+    )
+
+    tasks.sort(
+        key=lambda row: (
+            _tasks_sort_value(row, sort_key),
+            row.get("task_id", 0),
+        ),
+        reverse=reverse,
+    )
+
+    tasks = _filter_task_rows(
+        tasks,
+        search_filter=query_filter,
+    )
+
+    valid_show_task = (
+        show_task if any(task.get("task_id") == show_task for task in tasks) else -1
+    )
+    page_idx = _page_index_from_params(request.params)
+    num_tasks = len(tasks)
+    is_truncated = False
+
+    if view_param == "all":
+        if num_tasks > _TASKS_MAX_ALL:
+            tasks = tasks[:_TASKS_MAX_ALL]
+            is_truncated = True
+    else:
+        if request.params.get("page") is None and valid_show_task != -1:
+            highlighted_index = next(
+                index
+                for index, task in enumerate(tasks)
+                if task.get("task_id") == valid_show_task
+            )
+            page_idx = highlighted_index // _TASKS_PAGE_SIZE
+        page_idx = _clamp_page_index(
+            page_idx,
+            total_count=num_tasks,
+            page_size=_TASKS_PAGE_SIZE,
+        )
+        start = page_idx * _TASKS_PAGE_SIZE
+        tasks = tasks[start : start + _TASKS_PAGE_SIZE]
+
+    run_id = str(run["_id"])
+    query_params = _tasks_query_string(
+        sort_param=sort_param,
+        order_param=order_param,
+        query_filter=query_filter,
+        view=view_param,
+    )
+    pages = (
+        pagination(page_idx, num_tasks, _TASKS_PAGE_SIZE, query_params)
+        if view_param == "paged"
+        else []
+    )
+    for page in pages:
+        page_url = str(page.get("url", ""))
+        if page_url.startswith("?"):
+            page["url"] = f"/tests/tasks/{run_id}{page_url}&show_task={show_task}"
+
     return {
         "run": run,
+        "run_id": run_id,
         "approver": approver,
-        "show_task": show_task,
+        "show_task": valid_show_task,
         "chi2": chi2,
         "tasks": tasks,
         "show_pentanomial": show_pentanomial,
         "show_residual": show_residual,
+        "sort": sort_param,
+        "order": order_param,
+        "q": query_filter,
+        "view": view_param,
+        "current_page": page_idx + 1,
+        "pages": pages,
+        "num_tasks": num_tasks,
+        "max_all": _TASKS_MAX_ALL,
+        "is_truncated": is_truncated,
     }
+
+
+def _set_tasks_cookie(
+    request: _ViewContext,
+    name: str,
+    value: str,
+    max_age_seconds: int,
+) -> None:
+    cookie_value = (
+        f"{name}={quote(value, safe='')}; path=/; max-age={max_age_seconds}; "
+        "SameSite=Lax"
+    )
+    request.response_headerlist.append(
+        (
+            "Set-Cookie",
+            cookie_value,
+        ),
+    )
+
+
+def _set_tasks_cookies(
+    request: _ViewContext,
+    state: dict[str, Any],
+) -> None:
+    cookie_max_age = PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS
+    _set_tasks_cookie(request, "tasks_sort", str(state["sort"]), cookie_max_age)
+    _set_tasks_cookie(request, "tasks_order", str(state["order"]), cookie_max_age)
+    _set_tasks_cookie(request, "tasks_view", str(state["view"]), cookie_max_age)
+    _set_tasks_cookie(request, "tasks_q", str(state["q"]), cookie_max_age)
+
+
+def _tasks_query_string(
+    *,
+    sort_param: str,
+    order_param: str,
+    query_filter: str,
+    view: str,
+) -> str:
+    _, default_reverse = _TASKS_SORT_MAP[_TASKS_DEFAULT_SORT]
+    default_order = "desc" if default_reverse else "asc"
+
+    params: list[tuple[str, str]] = []
+    if sort_param != _TASKS_DEFAULT_SORT:
+        params.append(("sort", sort_param))
+    if order_param != default_order:
+        params.append(("order", order_param))
+    if query_filter:
+        params.append(("q", query_filter))
+    if view == "all":
+        params.append(("view", "all"))
+    return _build_query_string(params)
+
+
+def _tasks_sort_value(
+    row: dict[str, Any],
+    sort_key: str,
+) -> int | float | str | tuple[int, int, int, int, int]:
+    value = row.get(sort_key, "")
+    if sort_key == "task_id":
+        return int(value) if isinstance(value, int) else 0
+
+    if sort_key in (
+        "crashes",
+        "time_losses",
+        "wins",
+        "losses",
+        "draws",
+        "played_sort",
+    ):
+        fallback: int | float | str | tuple[int, int, int, int, int] = -1
+    elif sort_key in ("last_updated_sort", "residual_sort"):
+        fallback = float("-inf")
+    elif sort_key == "pentanomial_sort":
+        fallback = (0, 0, 0, 0, 0)
+    else:
+        return str(value).lower()
+
+    if isinstance(fallback, tuple):
+        return value if isinstance(value, tuple) else fallback
+    if isinstance(fallback, float):
+        return float(value) if isinstance(value, int | float) else fallback
+    return value if isinstance(value, int) else fallback
+
+
+def tests_tasks(request: _ViewContext) -> dict[str, Any] | Response:
+    run = request.rundb.get_run(request.matchdict["id"])
+    if run is None:
+        raise StarletteHTTPException(status_code=404)
+    chi2 = get_chi2(run["tasks"])
+    show_task = _parse_show_task_param(request)
+
+    context = _task_table_state(
+        request,
+        run=run,
+        show_task=show_task,
+        chi2=chi2,
+    )
+    _set_tasks_cookies(request, context)
+
+    response = _render_hx_fragment(
+        request,
+        "tasks_content_fragment.html.j2",
+        context,
+    )
+    return response or context
 
 
 def tests_view(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # noqa: C901, PLR0912, PLR0915
@@ -2987,12 +3248,14 @@ def tests_view(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # n
 
     chi2 = get_chi2(run["tasks"])
 
-    try:
-        show_task = int(request.params.get("show_task", -1))
-    except ValueError:
-        show_task = -1
-    if show_task >= len(run["tasks"]) or show_task < -1:
-        show_task = -1
+    show_task = _parse_show_task_param(request)
+
+    tasks_table_context = _task_table_state(
+        request,
+        run=run,
+        show_task=show_task,
+        chi2=chi2,
+    )
 
     same_user = is_same_user(request, run)
 
@@ -3131,8 +3394,18 @@ def tests_view(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # n
             cores,
             ("s" if cores != 1 else ""),
         ),
-        "tasks_shown": show_task != -1 or request.cookies.get("tasks_state") == "Hide",
-        "show_task": show_task,
+        "tasks_shown": tasks_table_context["show_task"] != -1
+        or request.cookies.get("tasks_state") == "Hide",
+        "show_task": tasks_table_context["show_task"],
+        "tasks_sort": tasks_table_context["sort"],
+        "tasks_order": tasks_table_context["order"],
+        "tasks_view": tasks_table_context["view"],
+        "tasks_page": tasks_table_context["current_page"],
+        "tasks_q": tasks_table_context["q"],
+        "tasks_pages": tasks_table_context["pages"],
+        "tasks_num_tasks": tasks_table_context["num_tasks"],
+        "tasks_max_all": tasks_table_context["max_all"],
+        "tasks_is_truncated": tasks_table_context["is_truncated"],
         "follow": follow,
         "can_modify_run": can_modify_run(request, run),
         "same_user": same_user,
@@ -3252,7 +3525,7 @@ _VIEW_ROUTES = [
     (
         tests_tasks,
         "/tests/tasks/{id}",
-        {"renderer": "tasks_fragment.html.j2"},
+        {"renderer": "tasks_content_fragment.html.j2"},
     ),
     (
         tests_machines,

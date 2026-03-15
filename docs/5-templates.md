@@ -196,7 +196,9 @@ base layout and contain only the HTML subset needed for the swap target.
 | `rate_limits_nav_fragment.html.j2` | `#rate-limits-nav` | -- | -- |
 | `rate_limits_server_fragment.html.j2` | server rate limit cell | Yes (`#server_reset`) | Yes |
 | `run_table_row_fragment.html.j2` | `#run-{id}` (row swap) | -- | -- |
-| `tasks_fragment.html.j2` | `#tasks-body` | -- | Yes |
+| `tasks_content_fragment.html.j2` | `#tasks-content` | Yes (`#tasks-view-controls`, `#tasks-pagination`, hidden input sync) | Yes |
+| `tasks_controls_fragment.html.j2` | included by `tests_view.html.j2` and OOB by `tasks_content_fragment.html.j2` | -- | -- |
+| `tasks_rows_fragment.html.j2` | included by `tasks_content_fragment.html.j2` | -- | -- |
 | `tests_filter_tabs_fragment.html.j2` | caller-defined `hx-target` | -- | -- |
 | `tests_finished_content_fragment.html.j2` | full-page shell include | -- | -- |
 | `tests_finished_results_fragment.html.j2` | `#tests-finished-content` | Yes (tab wrapper in navigation mode) | -- |
@@ -398,17 +400,58 @@ Shared base context only.
 
 Shared base context only.
 
-### `tasks_fragment.html.j2`
+### `tasks_content_fragment.html.j2`
 
 | Key | Type |
 |-----|------|
 | `tasks` | list of task row dicts |
 | `show_pentanomial` | bool |
 | `show_residual` | bool |
+| `run_id` | string |
+| `show_task` | int |
+| `sort` | string (default `"idx"`) |
+| `order` | string (`"asc"` or `"desc"`, default `"desc"`) |
+| `q` | string (combined worker/info filter) |
+| `view` | string (`"paged"` or `"all"`) |
+| `pages` | list of pagination dicts |
+| `num_tasks` | int |
+| `max_all` | int |
+| `is_truncated` | bool |
+
+Primary swap target: `#tasks-content`.
+
+The fragment swaps the scrolling task table body into `#tasks-content` and
+refreshes the fixed controls/pagination wrappers out of band. OOB updates
+target `#tasks-view-controls`, `#tasks-pagination`, and the hidden form inputs
+`#tasks_sort`, `#tasks_order`, and `#tasks_view`.
 
 Each task row: `task_id`, `row_class`, `worker_label`, `worker_url`,
 `info_label`, `last_updated_label`, `played_label`, `results_cells`,
 `crashes`, `time_losses`, `residual_label`, `residual_bg`.
+
+### `tasks_controls_fragment.html.j2`
+
+Included by `tests_view.html.j2` for the page-owned tasks table shell and
+returned OOB by `tasks_content_fragment.html.j2` after sort, filter, or view
+changes.
+
+| Key | Type |
+|-----|------|
+| `run_id` | string |
+| `show_task` | int |
+| `sort` | string |
+| `order` | string |
+| `q` | string |
+| `view` | string |
+| `num_tasks` | int |
+| `max_all` | int |
+| `is_truncated` | bool |
+
+### `tasks_rows_fragment.html.j2`
+
+Included by `tasks_content_fragment.html.j2`. Renders `<tr>` rows from
+the `tasks` list. No standalone context requirements beyond `tasks`,
+`show_pentanomial`, and `show_residual`.
 
 ### `tests.html.j2`
 
@@ -827,10 +870,19 @@ link back to its normal color.
 | `show_delete` | bool |
 | `show_gauge` | bool |
 
-### `tasks_fragment.html.j2`
+### `tasks_content_fragment.html.j2`
 
-Same context as the `tasks_fragment` section of `tests_view.html.j2`:
-`tasks`, `show_pentanomial`, `show_residual`.
+Content fragment for the tasks table. Swaps the scrolling table markup into
+`#tasks-content` and refreshes the fixed controls/pagination wrappers OOB.
+Includes `tasks_rows_fragment.html.j2` for the `<tr>` rows.
+Context keys: `tasks`, `show_pentanomial`, `show_residual`, `run_id`,
+`show_task`, `sort`, `order`, `q`, `view`, `pages`, `num_tasks`, `max_all`,
+`is_truncated`.
+
+### `tasks_rows_fragment.html.j2`
+
+Row renderer included by `tasks_content_fragment.html.j2`.
+Context keys: `tasks`, `show_pentanomial`, `show_residual`.
 
 ### `tests_filter_tabs_fragment.html.j2`
 

@@ -1,0 +1,91 @@
+{% set pagination_hx_target = "tasks-content" %}
+{% set pagination_hx_push_url = false %}
+{% set pagination_hx_sync = "#tasks-filters:abort" %}
+{% set pagination_hx_disinherit = "hx-include" %}
+{% set pagination_hx_params = "none" %}
+{% set sort = sort if sort is defined else "idx" %}
+{% set order = order if order is defined else "desc" %}
+{% set q = q if q is defined else "" %}
+{% set view = view if view is defined else "paged" %}
+{% set current_page = current_page if current_page is defined else 1 %}
+{% set num_tasks = num_tasks if num_tasks is defined else 0 %}
+{% set max_all = max_all if max_all is defined else 5000 %}
+{% set is_truncated = is_truncated if is_truncated is defined else false %}
+{% set run_id = run_id if run_id is defined else "" %}
+{% set show_task = show_task if show_task is defined else -1 %}
+
+{% set base_url = "/tests/tasks/" ~ run_id %}
+{% set base_qs = "show_task=" ~ show_task %}
+
+<input type="hidden" id="tasks_sort" name="sort" value="{{ sort }}" hx-swap-oob="true">
+<input type="hidden" id="tasks_order" name="order" value="{{ order }}" hx-swap-oob="true">
+<input type="hidden" id="tasks_view" name="view" value="{{ view }}" hx-swap-oob="true">
+<input type="hidden" id="tasks_page" name="page" value="{{ current_page }}" hx-swap-oob="true">
+
+<template>
+  <div id="tasks-view-controls" hx-swap-oob="innerHTML">
+    {% include "tasks_controls_fragment.html.j2" %}
+  </div>
+</template>
+
+{% macro sort_header(field, label) -%}
+  {% set is_active = (sort == field) %}
+  {% set next_order = "desc" if (is_active and order == "asc") else "asc" %}
+  {% set sort_url -%}
+    {{ base_url }}?{{ base_qs }}&sort={{ field }}&order={{ next_order }}&view={{ view }}{% if q %}&q={{ q | urlencode }}{% endif %}
+  {%- endset %}
+  <th{% if is_active %} aria-sort="{{ 'ascending' if order == 'asc' else 'descending' }}"{% endif %}>
+    <a
+      class="sort-header text-decoration-none text-reset d-inline-flex align-items-center gap-1"
+      href="{{ sort_url | trim }}"
+      hx-get="{{ sort_url | trim }}"
+      hx-target="#tasks-content"
+      hx-swap="innerHTML"
+      hx-sync="#tasks-filters:abort"
+      hx-disinherit="hx-include"
+      hx-params="none"
+    >
+      <span>{{ label }}</span>
+      <span class="sort-indicator" aria-hidden="true">
+        <i class="fa-solid fa-fw {% if is_active and order == 'asc' %}fa-sort-up{% elif is_active and order == 'desc' %}fa-sort-down{% else %}fa-sort sort-indicator-neutral{% endif %}"></i>
+      </span>
+    </a>
+  </th>
+{%- endmacro %}
+
+<template>
+  <div id="tasks-pagination" hx-swap-oob="innerHTML">
+    {% if view == "paged" %}
+      {% with pages=pages %}
+        {% include "pagination.html.j2" %}
+      {% endwith %}
+    {% endif %}
+  </div>
+</template>
+
+<table id="tasks_table" class="table table-striped table-sm">
+  <thead class="sticky-top">
+    <tr>
+      {{ sort_header("idx", "Idx") }}
+      {{ sort_header("worker", "Worker") }}
+      {{ sort_header("info", "Info") }}
+      {{ sort_header("last_updated", "Last Updated") }}
+      {{ sort_header("played", "Played") }}
+      {% if show_pentanomial %}
+        {{ sort_header("pentanomial", "Pentanomial [0-2]") }}
+      {% else %}
+        {{ sort_header("wins", "Wins") }}
+        {{ sort_header("losses", "Losses") }}
+        {{ sort_header("draws", "Draws") }}
+      {% endif %}
+      {{ sort_header("crashes", "Crashes") }}
+      {{ sort_header("time", "Time") }}
+      {% if show_residual %}
+        {{ sort_header("residual", "Residual") }}
+      {% endif %}
+    </tr>
+  </thead>
+  <tbody>
+    {% include "tasks_rows_fragment.html.j2" %}
+  </tbody>
+</table>
