@@ -1,3 +1,8 @@
+"""Route handlers, dispatch pipeline, and request shim for the fishtest UI."""
+
+from __future__ import annotations
+
+import contextlib
 import copy
 import gzip
 import hashlib
@@ -6,7 +11,7 @@ import os
 import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
 from urllib.parse import quote, unquote, urlencode
 
 import bson
@@ -16,7 +21,7 @@ from fastapi import APIRouter
 from markupsafe import Markup
 from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.requests import Request
+from starlette.requests import Request  # noqa: TC002
 from starlette.responses import HTMLResponse, RedirectResponse, Response
 from vtjson import ValidationError, union, validate
 
@@ -30,6 +35,7 @@ from fishtest.http.boundary import (
     remember,
 )
 from fishtest.http.cookie_session import (
+    CookieSession,
     authenticated_user,
 )
 from fishtest.http.csrf import csrf_token_from_form
@@ -132,6 +138,9 @@ from fishtest.views_run import (
     validate_modify,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 HTTP_TIMEOUT = UI_HTTP_TIMEOUT_SECONDS
 FORM_MAX_FILES = UI_FORM_MAX_FILES
 FORM_MAX_FIELDS = UI_FORM_MAX_FIELDS
@@ -140,6 +149,13 @@ DEFAULT_RECAPTCHA_SITE_KEY = "6LePs8YUAAAAABMmqHZVyVjxat95Z1c_uHrkugZM"
 
 router = APIRouter(tags=["ui"])
 logger = logging.getLogger(__name__)
+
+_LTC_TC_RATIO_THRESHOLD = 4
+_WORKER_NAME_PARTS = 3
+_MAX_NETWORK_SIZE_BYTES = 200_000_000
+_THROUGHPUT_NORMAL_LIMIT = 100
+_MIN_BOOK_EXITS = 100_000
+_RUN_AGE_GITHUB_API_MAX_DAYS = 30
 
 _ACTIVE_RUN_FILTER_VALUES = {
     "test-type": ("sprt", "spsa", "numgames"),
@@ -157,7 +173,6 @@ type _RunTableRows = list[_RunTableRow]
 type _SpsaTableRow = list[str]
 type _RunArgValue = str | list[str | _SpsaTableRow]
 type _RunArg = tuple[str, _RunArgValue, str]
-type _PaginationEntry = dict[str, object]
 
 
 class _ActiveRunFilterContext(TypedDict):
@@ -188,19 +203,6 @@ class _BatchStats(TypedDict):
     games_per_minute: int
 
 
-class _FinishedRunsContext(TypedDict):
-    finished_runs: list[dict]
-    finished_runs_pages: list[_PaginationEntry]
-    num_finished_runs: int
-    visible_finished_runs: int
-    finished_page_size: int
-    failed_runs: list[dict]
-    page_idx: int
-    filters: dict[str, object]
-    title_suffix: str
-    search_mode: bool
-
-
 def _classify_active_run_filters(run: dict) -> dict[str, str]:
     args = run.get("args", {})
     is_spsa = "spsa" in args
@@ -208,7 +210,8 @@ def _classify_active_run_filters(run: dict) -> dict[str, str]:
     test_type = "spsa" if is_spsa else ("sprt" if is_sprt else "numgames")
     time_control = (
         "ltc"
-        if get_tc_ratio(args.get("tc", "10+0.1"), args.get("threads", 1)) > 4
+        if get_tc_ratio(args.get("tc", "10+0.1"), args.get("threads", 1))
+        > _LTC_TC_RATIO_THRESHOLD
         else "stc"
     )
     try:
@@ -280,10 +283,11 @@ def _order_active_runs_for_filters(
 
 
 def _build_active_run_filter_context(
-    request, active_runs: list[dict]
+    request: Any,
+    active_runs: list[dict],  # noqa: ANN401
 ) -> _ActiveRunFilterContext:
     enabled_by_dim = _parse_active_run_filter_cookie(
-        request.cookies.get("active_run_filters", "")
+        request.cookies.get("active_run_filters", ""),
     )
     hidden_selectors: list[str] = []
     style_text = ""
@@ -297,9 +301,11 @@ def _build_active_run_filter_context(
         enabled_values = enabled_by_dim[dimension]
         if len(enabled_values) < len(values):
             all_enabled = False
-        for value in values:
-            if value not in enabled_values:
-                hidden_selectors.append(f'#active-tbody tr[data-{dimension}="{value}"]')
+        hidden_selectors.extend(
+            f'#active-tbody tr[data-{dimension}="{value}"]'
+            for value in values
+            if value not in enabled_values
+        )
 
     if hidden_selectors:
         hidden_rows = ",\n".join(hidden_selectors)
@@ -345,7 +351,14 @@ class _ViewContext:
     context.
     """
 
-    def __init__(self, request, session, post, matchdict, context=None):
+    def __init__(
+        self,
+        request: Request,
+        session: CookieSession,
+        post: Any,  # noqa: ANN401
+        matchdict: dict[str, str],
+        context: Any = None,  # noqa: ANN401
+    ) -> None:
         self._request = request
         self.raw_request = request
         self.session = session
@@ -387,10 +400,10 @@ class _ViewContext:
             self.workerdb = context["workerdb"]
 
     @property
-    def authenticated_userid(self):
+    def authenticated_userid(self) -> str | None:
         return authenticated_user(self.session)
 
-    def has_permission(self, permission):
+    def has_permission(self, permission: str) -> bool:
         if permission != "approve_run":
             return False
         username = self.authenticated_userid
@@ -403,7 +416,12 @@ class _ViewContext:
 _RequestShim = _ViewContext
 
 
-async def _dispatch_view(fn, cfg, request, path_params):
+async def _dispatch_view(
+    fn: Callable[..., Any],
+    cfg: dict[str, Any],
+    request: Request,
+    path_params: dict[str, str],
+) -> Response:
     context = get_request_context(request)
     session = context["session"]
     post = None
@@ -448,7 +466,7 @@ async def _dispatch_view(fn, cfg, request, path_params):
     status_code = getattr(shim, "response_status", 200) or 200
 
     renderer = cfg.get("renderer")
-    if int(status_code) == 204:
+    if int(status_code) == 204:  # noqa: PLR2004
         response = HTMLResponse("", status_code=204)
     elif isinstance(renderer, str):
         context = result if isinstance(result, dict) else {}
@@ -475,7 +493,11 @@ async def _dispatch_view(fn, cfg, request, path_params):
 # === Domain: auth ===
 
 
-def _render_hx_fragment(request, template_name, context):
+def _render_hx_fragment(
+    request: _ViewContext,
+    template_name: str,
+    context: dict[str, Any],
+) -> Response | None:
     if not _is_hx_request(request):
         return None
     return render_template_to_response(
@@ -485,19 +507,25 @@ def _render_hx_fragment(request, template_name, context):
     )
 
 
-def _render_hx_or_context(request, template_name, context, *, extra_context=None):
+def _render_hx_or_context(
+    request: _ViewContext,
+    template_name: str,
+    context: dict[str, Any],
+    *,
+    extra_context: dict[str, Any] | None = None,
+) -> Response | dict[str, Any]:
     hx_context = context if extra_context is None else {**context, **extra_context}
     return _render_hx_fragment(request, template_name, hx_context) or context
 
 
 # === Home redirect ===
-def home(request=None):
+def home(request: object = None) -> RedirectResponse:  # noqa: ARG001
     """Redirect / to /tests. Registered directly on the router (no _dispatch_view)."""
     return RedirectResponse(url="/tests", status_code=302)
 
 
 # === Authentication views ===
-def ensure_logged_in(request):
+def ensure_logged_in(request: _ViewContext) -> str | RedirectResponse:
     """Return authenticated user id or a login RedirectResponse.
 
     Pyramid used exception-based redirect control flow. In the FastAPI port,
@@ -513,7 +541,7 @@ def ensure_logged_in(request):
     return userid
 
 
-def login(request):
+def login(request: _ViewContext) -> dict[str, Any] | RedirectResponse:
     userid = request.authenticated_userid
     if userid:
         return home(request)
@@ -547,10 +575,10 @@ def login(request):
         if "error" not in token:
             if stay_logged_in:
                 # Session persists for a year after login
-                remember(request, username, max_age=SESSION_REMEMBER_MAX_AGE_SECONDS)
+                remember(request, username, max_age=SESSION_REMEMBER_MAX_AGE_SECONDS)  # type: ignore[invalid-argument-type]
             else:
                 # Session ends when the browser is closed
-                remember(request, username)
+                remember(request, username)  # type: ignore[invalid-argument-type]
             next_page = request.params.get("next") or came_from
             return RedirectResponse(url=next_page, status_code=302)
         message = token["error"]
@@ -566,14 +594,14 @@ def login(request):
     return {}
 
 
-def logout(request):
+def logout(request: _ViewContext) -> RedirectResponse:
     session = request.session
     forget(request)
     session.invalidate()
     return RedirectResponse(url="/tests", status_code=302)
 
 
-def signup(request):
+def signup(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # noqa: C901, PLR0911, PLR0912
     recaptcha_site_key = os.environ.get(
         "FISHTEST_CAPTCHA_SITE_KEY",
         DEFAULT_RECAPTCHA_SITE_KEY,
@@ -596,7 +624,9 @@ def signup(request):
     tests_repo = request.POST.get("tests_repo", "").strip()
 
     strong_password, password_err = password_strength(
-        signup_password, signup_username, signup_email
+        signup_password,
+        signup_username,
+        signup_email,
     )
     if not strong_password:
         errors.append(password_err)
@@ -613,7 +643,7 @@ def signup(request):
     try:
         validate(union(github_repo, ""), tests_repo, "tests_repo")
     except ValidationError as e:
-        errors.append(f"Error! Invalid tests repo {tests_repo}: {str(e)}")
+        errors.append(f"Error! Invalid tests repo {tests_repo}: {e!s}")
 
     if errors:
         for error in errors:
@@ -648,7 +678,7 @@ def signup(request):
 
     if "success" not in response or not response["success"]:
         if "error-codes" in response:
-            print(response["error-codes"])
+            logger.warning(response["error-codes"])
         request.session.flash("Captcha failed", "error")
         return signup_context
 
@@ -668,7 +698,7 @@ def signup(request):
             "Account created! "
             "To avoid spam, a person will now manually approve your new account. "
             "This is usually quick but sometimes takes a few hours. "
-            "Thank you for contributing!"
+            "Thank you for contributing!",
         )
         return RedirectResponse(url="/login", status_code=302)
     return signup_context
@@ -680,33 +710,50 @@ def signup(request):
 # === Worker administration ===
 # Note that the allowed length of mailto URLs on Chrome/Windows is severely
 # limited.
-def worker_email(worker_name, blocker_name, message, host_url, blocked):
-    owner_name = worker_name.split("-")[0]
+def worker_email(
+    worker_name: str,
+    blocker_name: str,
+    message: str,
+    host_url: str,
+    blocked: object,  # noqa: ARG001
+) -> str:
+    owner_name = worker_name.split("-", maxsplit=1)[0]
     body = f"""\
 Dear {owner_name},
 
-Thank you for contributing to the development of Stockfish. Unfortunately, it seems your Fishtest worker {worker_name} has some issue(s). More specifically the following has been reported:
+Thank you for contributing to the development of \
+Stockfish. Unfortunately, it seems your Fishtest \
+worker {worker_name} has some issue(s). More \
+specifically the following has been reported:
 
 {message}
 
-You may possibly find more information about this in our event log at {host_url}/actions
+You may possibly find more information about this \
+in our event log at {host_url}/actions
 
-Feel free to reply to this email if you require any help, or else contact the #fishtest-dev channel on the Stockfish Discord server: https://discord.com/invite/awnh2qZfTT
+Feel free to reply to this email if you require \
+any help, or else contact the #fishtest-dev \
+channel on the Stockfish Discord server: \
+https://discord.com/invite/awnh2qZfTT
 
 Enjoy your day,
 
 {blocker_name} (Fishtest approver)
 
 """
-    return body
+    return body  # noqa: RET504
 
 
-def normalize_lf(m):
+def normalize_lf(m: str) -> str:
     m = m.replace("\r\n", "\n").replace("\r", "\n")
     return m.rstrip()
 
 
-def _blocked_worker_rows(blocked_workers, *, show_email):
+def _blocked_worker_rows(
+    blocked_workers: list[dict[str, Any]],
+    *,
+    show_email: bool,
+) -> list[dict[str, Any]]:
     rows = []
     for worker in blocked_workers:
         worker_name_value = worker.get("worker_name", "")
@@ -733,12 +780,15 @@ def _blocked_worker_rows(blocked_workers, *, show_email):
                 "actions_url": actions_url,
                 "owner_email": owner_email,
                 "mailto_url": mailto_url,
-            }
+            },
         )
     return rows
 
 
-def _filter_blocked_workers(blocked_workers, filter_value):
+def _filter_blocked_workers(
+    blocked_workers: list[dict[str, Any]],
+    filter_value: str,
+) -> list[dict[str, Any]]:
     if filter_value == "all-workers":
         return blocked_workers
 
@@ -785,7 +835,14 @@ _USER_MANAGEMENT_MAX_ALL = USER_MANAGEMENT_MAX_ALL
 _USER_MANAGEMENT_FILTER_FIELD = "username"
 
 
-def _workers_query_string(*, filter_value, sort_param, order_param, query_filter, view):
+def _workers_query_string(
+    *,
+    filter_value: str,
+    sort_param: str,
+    order_param: str,
+    query_filter: str,
+    view: str,
+) -> str:
     _, default_reverse = _WORKERS_SORT_MAP[_WORKERS_DEFAULT_SORT]
     default_order = "desc" if default_reverse else "asc"
 
@@ -804,8 +861,13 @@ def _workers_query_string(*, filter_value, sort_param, order_param, query_filter
 
 
 def _user_management_query_string(
-    *, group, sort_param, order_param, query_filter, view
-):
+    *,
+    group: str,
+    sort_param: str,
+    order_param: str,
+    query_filter: str,
+    view: str,
+) -> str:
     _, default_reverse = _USER_MANAGEMENT_SORT_MAP[_USER_MANAGEMENT_DEFAULT_SORT]
     default_order = "desc" if default_reverse else "asc"
 
@@ -823,7 +885,7 @@ def _user_management_query_string(
     return _build_query_string(params)
 
 
-def _workers_sort_value(row, sort_key):
+def _workers_sort_value(row: dict[str, Any], sort_key: str) -> Any:  # noqa: ANN401
     if sort_key == "last_updated":
         value = row.get("last_updated")
         if isinstance(value, datetime):
@@ -832,7 +894,7 @@ def _workers_sort_value(row, sort_key):
     return str(row.get(sort_key, "")).lower()
 
 
-def _user_management_sort_value(row, sort_key):
+def _user_management_sort_value(row: dict[str, Any], sort_key: str) -> Any:  # noqa: ANN401
     if sort_key == "registration_time":
         value = row.get("registration_time")
         if isinstance(value, datetime):
@@ -841,7 +903,7 @@ def _user_management_sort_value(row, sort_key):
     return str(row.get(sort_key, "")).lower()
 
 
-def workers(request):
+def workers(request: _ViewContext) -> dict[str, Any] | Response:  # noqa: C901, PLR0912, PLR0915
     is_approver = request.has_permission("approve_run")
     filter_value = request.params.get("filter", _WORKERS_FILTER_DEFAULT)
     if filter_value not in _WORKERS_FILTER_VALUES:
@@ -875,7 +937,7 @@ def workers(request):
             w["owner_email"] = owner["email"] if owner is not None else ""
             w["body"] = worker_email(
                 w["worker_name"],
-                blocker_name,
+                blocker_name,  # type: ignore[invalid-argument-type]
                 w["message"],
                 _host_url(request),
                 w["blocked"],
@@ -891,16 +953,17 @@ def workers(request):
     except ValidationError as e:
         request.session.flash(str(e), "error")
     else:
-        if len(worker_name.split("-")) != 3:
+        if len(worker_name.split("-")) != _WORKER_NAME_PARTS:  # type: ignore[unresolved-attribute]
             pass  # fall through to shared rendering
         else:
             result = ensure_logged_in(request)
             if isinstance(result, RedirectResponse):
                 return result
-            owner_name = worker_name.split("-")[0]
+            owner_name = worker_name.split("-")[0]  # type: ignore[unresolved-attribute]
             if not is_approver and blocker_name != owner_name:
                 request.session.flash(
-                    "Only owners and approvers can block/unblock", "error"
+                    "Only owners and approvers can block/unblock",
+                    "error",
                 )
             elif request.method == "POST":
                 button = request.POST.get("submit")
@@ -908,20 +971,25 @@ def workers(request):
                     blocked = request.POST.get("blocked") is not None
                     message = request.POST.get("message")
                     max_chars = 500
-                    if len(message) > max_chars:
+                    if len(message) > max_chars:  # type: ignore[invalid-argument-type]
                         request.session.flash(
-                            f"Warning: your description of the issue has been truncated to {max_chars} characters",
+                            "Warning: your description of the"
+                            " issue has been truncated to"
+                            f" {max_chars} characters",
                             "error",
                         )
-                        message = message[:max_chars]
-                    message = normalize_lf(message)
+                        message = message[:max_chars]  # type: ignore[not-subscriptable]
+                    message = normalize_lf(message)  # type: ignore[invalid-argument-type]
                     was_blocked = request.workerdb.get_worker(worker_name)["blocked"]
                     request.rundb.workerdb.update_worker(
-                        worker_name, blocked=blocked, message=message
+                        worker_name,
+                        blocked=blocked,
+                        message=message,
                     )
                     if blocked != was_blocked:
                         request.session.flash(
-                            f"Worker {worker_name} {'blocked' if blocked else 'unblocked'}!",
+                            f"Worker {worker_name}"
+                            f" {'blocked' if blocked else 'unblocked'}!",
                         )
                         request.actiondb.block_worker(
                             username=blocker_name,
@@ -1013,7 +1081,7 @@ def workers(request):
 
 
 # === Neural network uploads + tools ===
-def upload(request):
+def upload(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # noqa: C901, PLR0911, PLR0912, PLR0915
     result = ensure_logged_in(request)
     if isinstance(result, RedirectResponse):
         return result
@@ -1032,24 +1100,25 @@ def upload(request):
         network = input_file.read()
     except AttributeError:
         request.session.flash(
-            "Specify a network file with the 'Choose File' button", "error"
+            "Specify a network file with the 'Choose File' button",
+            "error",
         )
         return base_context
-    except Exception as e:
-        print("Error reading the network file:", e)
+    except Exception:
+        logger.exception("Error reading the network file")
         request.session.flash("Error reading the network file", "error")
         return base_context
     if request.rundb.get_nn(filename):
         request.session.flash(f"Network {filename} already exists", "error")
         return base_context
     errors = []
-    if len(network) >= 200000000:
+    if len(network) >= _MAX_NETWORK_SIZE_BYTES:
         errors.append("Network must be < 200MB")
     if not re.match(r"^nn-[0-9a-f]{12}\.nnue$", filename):
         errors.append('Name must match "nn-[SHA256 first 12 digits].nnue"')
-    hash = hashlib.sha256(network).hexdigest()
-    if hash[:12] != filename[3:15]:
-        errors.append(f"Wrong SHA256 hash: {hash[:12]} Filename: {filename[3:15]}")
+    net_hash = hashlib.sha256(network).hexdigest()
+    if net_hash[:12] != filename[3:15]:
+        errors.append(f"Wrong SHA256 hash: {net_hash[:12]} Filename: {filename[3:15]}")
     if errors:
         for error in errors:
             request.session.flash(error, "error")
@@ -1058,25 +1127,25 @@ def upload(request):
     try:
         with gzip.open(net_file_gz, "xb") as f:
             f.write(network)
-    except FileExistsError as e:
-        print(f"Network {filename} already uploaded:", e)
+    except FileExistsError:
+        logger.exception("Network %s already uploaded", filename)
         request.session.flash(f"Network {filename} already uploaded", "error")
         return base_context
-    except Exception as e:
+    except Exception:
         net_file_gz.unlink(missing_ok=True)
-        print(f"Failed to write network {filename}:", e)
+        logger.exception("Failed to write network %s", filename)
         request.session.flash(f"Failed to write network {filename}", "error")
         return base_context
     try:
         net_data = gzip.decompress(net_file_gz.read_bytes())
-    except Exception as e:
+    except Exception:
         net_file_gz.unlink()
-        print(f"Failed to read uploaded network {filename}:", e)
+        logger.exception("Failed to read uploaded network %s", filename)
         request.session.flash(f"Failed to read uploaded network {filename}", "error")
         return base_context
 
-    hash = hashlib.sha256(net_data).hexdigest()
-    if hash[:12] != filename[3:15]:
+    net_hash = hashlib.sha256(net_data).hexdigest()
+    if net_hash[:12] != filename[3:15]:
         net_file_gz.unlink()
         request.session.flash(f"Invalid hash for uploaded network {filename}", "error")
         return base_context
@@ -1095,7 +1164,7 @@ def upload(request):
     return RedirectResponse(url="/nns", status_code=302)
 
 
-def nns(request):
+def nns(request: _ViewContext) -> dict[str, Any] | Response:  # noqa: C901, PLR0912, PLR0915
     user = request.params.get("user", "")
     network_name = request.params.get("network_name", "")
     sort_param = request.params.get("sort", "time")
@@ -1118,7 +1187,7 @@ def nns(request):
     page_size = NNS_PAGE_SIZE
     max_all = NNS_MAX_ALL
 
-    def _truthy(value):
+    def _truthy(value: Any) -> bool:  # noqa: ANN401
         if isinstance(value, bool):
             return value
         return str(value).strip().lower() in {"1", "true", "on", "yes"}
@@ -1149,17 +1218,17 @@ def nns(request):
         "downloads": sum(int(nn.get("downloads", 0)) for nn in nns),
     }
 
-    def _first_test_date(nn):
+    def _first_test_date(nn: dict[str, Any]) -> datetime:
         return (nn.get("first_test") or {}).get("date") or datetime.min.replace(
-            tzinfo=UTC
+            tzinfo=UTC,
         )
 
-    def _last_test_date(nn):
+    def _last_test_date(nn: dict[str, Any]) -> datetime:
         return (nn.get("last_test") or {}).get("date") or datetime.min.replace(
-            tzinfo=UTC
+            tzinfo=UTC,
         )
 
-    def _sort_key(nn):
+    def _sort_key(nn: dict[str, Any]) -> tuple[object, str]:
         key_map = {
             "time": nn.get("time") or datetime.min.replace(tzinfo=UTC),
             "name": nn.get("name", "").lower(),
@@ -1213,7 +1282,7 @@ def nns(request):
                 ),
                 "last_test_label": last_test_label,
                 "last_test_url": f"/tests/view/{last_test_id}" if last_test_id else "",
-            }
+            },
         )
 
     query_dict = {
@@ -1259,11 +1328,11 @@ def nns(request):
     )
 
 
-def sprt_calc(request):
+def sprt_calc(request: _ViewContext) -> dict[str, Any]:  # noqa: ARG001
     return {}
 
 
-def _build_rate_limits_context():
+def _build_rate_limits_context() -> dict[str, Any]:
     server_rate_limit = -1
     server_reset = "00:00:00"
 
@@ -1273,9 +1342,9 @@ def _build_rate_limits_context():
         reset_timestamp = float(rate_limit.get("reset", 0))
         if reset_timestamp > 0:
             server_reset = datetime.fromtimestamp(reset_timestamp, UTC).strftime(
-                "%H:%M:%S"
+                "%H:%M:%S",
             )
-    except Exception:
+    except Exception:  # noqa: BLE001, S110
         # Keep default placeholder values when GitHub is unavailable.
         pass
 
@@ -1285,19 +1354,19 @@ def _build_rate_limits_context():
     }
 
 
-def rate_limits(request):
+def rate_limits(request: _ViewContext) -> dict[str, Any]:  # noqa: ARG001
     return _build_rate_limits_context()
 
 
-def rate_limits_server(request):
+def rate_limits_server(request: _ViewContext) -> dict[str, Any]:  # noqa: ARG001
     return _build_rate_limits_context()
 
 
-def user_management_pending_count(request):
+def user_management_pending_count(request: _ViewContext) -> dict[str, Any]:  # noqa: ARG001
     return {}
 
 
-def actions(request):
+def actions(request: _ViewContext) -> dict[str, Any] | RedirectResponse | Response:
     result = _actions_impl(request, page_size=ACTIONS_PAGE_SIZE)
     if isinstance(result, RedirectResponse):
         return result
@@ -1308,17 +1377,19 @@ def actions(request):
 
 
 # === User management + profiles ===
-def get_idle_users(users, request):
+def get_idle_users(
+    users: list[dict[str, Any]],
+    request: _ViewContext,
+) -> list[dict[str, Any]]:
     idle = {}
     for u in users:
         idle[u["username"]] = u
     for u in request.userdb.user_cache.find():
         del idle[u["username"]]
-    idle = list(idle.values())
-    return idle
+    return list(idle.values())
 
 
-def _user_management_rows(users):
+def _user_management_rows(users: list[dict[str, Any]]) -> list[dict[str, Any]]:
     rows = []
     for user in users:
         username = user.get("username", "")
@@ -1339,12 +1410,12 @@ def _user_management_rows(users):
                 "groups": groups,
                 "groups_label": format_group(groups),
                 "email": user.get("email", ""),
-            }
+            },
         )
     return rows
 
 
-def user_management(request):
+def user_management(request: _ViewContext) -> dict[str, Any] | Response:  # noqa: C901
     if not request.has_permission("approve_run"):
         request.session.flash("You cannot view user management", "error")
         return home(request)
@@ -1434,7 +1505,7 @@ def user_management(request):
     )
 
     approvers_count = len(
-        [user for user in users if "group:approvers" in user.get("groups", [])]
+        [user for user in users if "group:approvers" in user.get("groups", [])],
     )
 
     context = {
@@ -1463,7 +1534,7 @@ def user_management(request):
     )
 
 
-def user(request):
+def user(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # noqa: C901, PLR0911, PLR0912, PLR0915
     userid = ensure_logged_in(request)
     if isinstance(userid, RedirectResponse):
         return userid
@@ -1506,7 +1577,8 @@ def user(request):
                         return home(request)
                 else:
                     request.session.flash(
-                        "Error! Matching verify password required", "error"
+                        "Error! Matching verify password required",
+                        "error",
                     )
                     return home(request)
 
@@ -1514,7 +1586,8 @@ def user(request):
                 validate(union(github_repo, ""), tests_repo, "tests_repo")
             except ValidationError as e:
                 request.session.flash(
-                    f"Error! Invalid test repo {tests_repo}: {str(e)}", "error"
+                    f"Error! Invalid test repo {tests_repo}: {e!s}",
+                    "error",
                 )
                 return home(request)
 
@@ -1524,19 +1597,19 @@ def user(request):
                 email_is_valid, validated_email = email_valid(new_email)
                 if not email_is_valid:
                     request.session.flash(
-                        "Error! Invalid email: " + validated_email, "error"
+                        "Error! Invalid email: " + validated_email,
+                        "error",
                     )
                     return home(request)
-                else:
-                    user_data["email"] = validated_email
-                    request.session.flash("Success! Email updated")
+                user_data["email"] = validated_email
+                request.session.flash("Success! Email updated")
             request.userdb.save_user(user_data)
         elif "blocked" in request.POST and request.POST["blocked"].isdigit():
             user_data["blocked"] = bool(int(request.POST["blocked"]))
             request.session.flash(
                 ("Blocked" if user_data["blocked"] else "Unblocked")
                 + " user "
-                + user_name
+                + user_name,
             )
             request.userdb.clear_cache()
             request.userdb.save_user(user_data)
@@ -1567,7 +1640,7 @@ def user(request):
     if user_data["tests_repo"] != "":
         try:
             user, repo = gh.parse_repo(user_data["tests_repo"])
-        except Exception:
+        except Exception:  # noqa: BLE001
             safe_tests_repo_url = ""
             extract_repo_from_link = ""
         else:
@@ -1607,7 +1680,7 @@ _CONTRIBUTORS_PAGE_SIZE = CONTRIBUTORS_PAGE_SIZE
 _CONTRIBUTORS_MAX_ALL = CONTRIBUTORS_MAX_ALL
 
 
-def _contributors_sort_value(user, sort_key):
+def _contributors_sort_value(user: dict[str, Any], sort_key: str) -> Any:  # noqa: ANN401
     if sort_key == "username":
         return str(user.get("username", "")).lower()
     if sort_key == "tests_repo":
@@ -1623,7 +1696,12 @@ def _contributors_sort_value(user, sort_key):
         return 0
 
 
-def _contributors_common(request, *, collection, is_monthly):
+def _contributors_common(  # noqa: C901, PLR0912, PLR0915
+    request: _ViewContext,
+    *,
+    collection: Any,  # noqa: ANN401
+    is_monthly: bool,
+) -> dict[str, Any] | RedirectResponse | Response:
     page_idx = _page_index_from_params(request.params)
 
     search = request.params.get("search", "").strip()
@@ -1757,7 +1835,7 @@ def _contributors_common(request, *, collection, is_monthly):
                     sort_param if sort_param != _CONTRIBUTORS_DEFAULT_SORT else None,
                 ),
                 ("order", order_param if order_param != default_order else None),
-            ]
+            ],
         )
         pages = pagination(page_idx, num_users, _CONTRIBUTORS_PAGE_SIZE, query_params)
 
@@ -1784,7 +1862,7 @@ def _contributors_common(request, *, collection, is_monthly):
     )
 
 
-def contributors(request):
+def contributors(request: _ViewContext) -> dict[str, Any] | RedirectResponse | Response:
     return _contributors_common(
         request,
         collection=request.userdb.user_cache,
@@ -1792,7 +1870,9 @@ def contributors(request):
     )
 
 
-def contributors_monthly(request):
+def contributors_monthly(
+    request: _ViewContext,
+) -> dict[str, Any] | RedirectResponse | Response:
     return _contributors_common(
         request,
         collection=request.userdb.top_month,
@@ -1801,25 +1881,28 @@ def contributors_monthly(request):
 
 
 # === Run list fragments + homepage ===
-def tests_machines(request):
+def tests_machines(request: _ViewContext) -> dict[str, Any] | Response:
     return _tests_machines_impl(request)
 
 
-def _build_toggle_states(request, toggle_names):
+def _build_toggle_states(
+    request: _ViewContext,
+    toggle_names: list[str],
+) -> dict[str, str]:
     return {name: request.cookies.get(f"{name}_state", "Show") for name in toggle_names}
 
 
-def _build_run_tables_context(
-    request,
+def _build_run_tables_context(  # noqa: PLR0913
+    request: _ViewContext,
     *,
-    runs,
-    failed_runs,
-    finished_runs,
-    num_finished_runs,
-    finished_runs_pages,
-    page_idx,
-    username="",
-):
+    runs: dict[str, list[dict[str, Any]]] | None,
+    failed_runs: list[dict[str, Any]],
+    finished_runs: list[dict[str, Any]],
+    num_finished_runs: int,
+    finished_runs_pages: list[dict[str, object]],
+    page_idx: int,
+    username: str = "",
+) -> dict[str, Any]:
     runs = runs or {"pending": [], "active": []}
     pending_runs = [r for r in runs.get("pending", []) if not r.get("approved")]
     paused_runs = [r for r in runs.get("pending", []) if r.get("approved")]
@@ -1887,7 +1970,7 @@ def _build_run_tables_context(
     }
 
 
-def tests_finished(request):
+def tests_finished(request: _ViewContext) -> dict[str, Any] | Response:
     context = get_paginated_finished_runs(request)
     if isinstance(context, RedirectResponse):
         return context
@@ -1924,7 +2007,7 @@ def tests_finished(request):
     )
 
 
-def tests_user(request):
+def tests_user(request: _ViewContext) -> dict[str, Any] | Response:
     _append_no_store_headers(request)
     username = request.matchdict.get("username", "")
     user_data = request.userdb.get_user(username)
@@ -1971,7 +2054,7 @@ def tests_user(request):
     )
 
 
-def homepage_results(request):
+def homepage_results(request: _ViewContext) -> dict[str, Any] | RedirectResponse:
     # Get updated results for unfinished runs + finished runs
 
     (
@@ -1999,7 +2082,7 @@ def homepage_results(request):
         "runs": runs,
         "run_tables_ctx": run_tables_ctx,
         "machines_count": machines_count,
-        "pending_hours": "{:.1f}".format(pending_hours),
+        "pending_hours": f"{pending_hours:.1f}",
         "cores": cores,
         "nps": nps,
         "nps_m": f"{nps / 1000000:.0f}M",
@@ -2010,7 +2093,7 @@ def homepage_results(request):
     }
 
 
-def tests(request):
+def tests(request: _ViewContext) -> dict[str, Any] | Response:
     # The homepage mixes user-specific state with frequently refreshed content,
     # so intermediary caches must not store it.
     _append_no_store_headers(request)
@@ -2034,6 +2117,8 @@ def tests(request):
         }
 
     last_tests = homepage_results(request)
+    if isinstance(last_tests, RedirectResponse):
+        return last_tests
 
     authenticated_user = request.authenticated_userid
 
@@ -2055,7 +2140,7 @@ def tests(request):
         machines_page = 1
 
     machines_my_workers = _is_truthy_param(
-        request.cookies.get("machines_my_workers", "")
+        request.cookies.get("machines_my_workers", ""),
     )
     if not authenticated_user:
         machines_my_workers = False
@@ -2101,7 +2186,7 @@ def tests(request):
 
 
 # === Run creation ===
-def tests_run(request):
+def tests_run(request: _ViewContext) -> dict[str, Any] | RedirectResponse:
     user_id = ensure_logged_in(request)
     if isinstance(user_id, RedirectResponse):
         return user_id
@@ -2119,12 +2204,13 @@ def tests_run(request):
                 message=new_run_message(request, run),
             )
             request.session.flash(
-                "The test was submitted to the queue. Please wait for approval."
+                "The test was submitted to the queue. Please wait for approval.",
             )
             return RedirectResponse(
-                url="/tests/view/" + str(run_id) + "?follow=1", status_code=302
+                url="/tests/view/" + str(run_id) + "?follow=1",
+                status_code=302,
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             request.session.flash(str(e), "error")
 
     run_args = {}
@@ -2162,7 +2248,7 @@ def tests_run(request):
     return {
         "args": run_args,
         "is_rerun": len(run_args) > 0,
-        "rescheduled_from": request.params["id"] if "id" in request.params else None,
+        "rescheduled_from": request.params.get("id", None),
         "form_action": request.url,
         "tests_repo_value": tests_repo_value,
         "new_tag_value": new_tag_value,
@@ -2182,7 +2268,7 @@ def tests_run(request):
 
 
 # === Run admin actions ===
-def tests_modify(request):
+def tests_modify(request: _ViewContext) -> RedirectResponse | dict[str, Any]:  # noqa: C901, PLR0912
     userid = ensure_logged_in(request)
     if isinstance(userid, RedirectResponse):
         return userid
@@ -2222,7 +2308,7 @@ def tests_modify(request):
         run["args"]["num_games"] = int(request.POST["num-games"])
         run["args"]["priority"] = int(request.POST["priority"])
         run["args"]["throughput"] = int(request.POST["throughput"])
-        run["args"]["auto_purge"] = True if request.POST.get("auto_purge") else False
+        run["args"]["auto_purge"] = bool(request.POST.get("auto_purge"))
         if (
             is_same_user(request, run)
             and "info" in request.POST
@@ -2246,8 +2332,10 @@ def tests_modify(request):
             if before_ != after_:
                 message.append(
                     "{} changed from {} to {}".format(
-                        k.replace("_", "-"), before_, after_
-                    )
+                        k.replace("_", "-"),
+                        before_,
+                        after_,
+                    ),
                 )
 
     message = "modify: " + ", ".join(message)
@@ -2270,7 +2358,7 @@ def tests_modify(request):
     return home(request)
 
 
-def tests_stop(request):
+def tests_stop(request: _ViewContext) -> RedirectResponse | dict[str, Any]:
     if not request.authenticated_userid:
         request.session.flash("Please login")
         return RedirectResponse(url="/login", status_code=302)
@@ -2290,7 +2378,7 @@ def tests_stop(request):
     return home(request)
 
 
-def tests_approve(request):
+def tests_approve(request: _ViewContext) -> RedirectResponse:
     if not request.authenticated_userid:
         return RedirectResponse(url="/login", status_code=302)
     if not request.has_permission("approve_run"):
@@ -2304,7 +2392,7 @@ def tests_approve(request):
     else:
         try:
             update_nets(request, run)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             request.session.flash(str(e), "error")
         request.actiondb.approve_run(username=username, run=run, message="approved")
         if message:
@@ -2312,11 +2400,11 @@ def tests_approve(request):
     return home(request)
 
 
-def tests_purge(request):
+def tests_purge(request: _ViewContext) -> RedirectResponse | dict[str, Any]:
     run = request.rundb.get_run(request.POST["run-id"])
     if not request.has_permission("approve_run") and not is_same_user(request, run):
         request.session.flash(
-            "Only approvers or the submitting user can purge the run."
+            "Only approvers or the submitting user can purge the run.",
         )
         return RedirectResponse(url="/login", status_code=302)
 
@@ -2340,7 +2428,7 @@ def tests_purge(request):
     return home(request)
 
 
-def tests_delete(request):
+def tests_delete(request: _ViewContext) -> RedirectResponse | dict[str, Any]:
     if not request.authenticated_userid:
         request.session.flash("Please login")
         return RedirectResponse(url="/login", status_code=302)
@@ -2356,9 +2444,9 @@ def tests_delete(request):
             validate(runs_schema, run, "run")
         except ValidationError as e:
             message = (
-                f"The run object {request.POST['run-id']} does not validate: {str(e)}"
+                f"The run object {request.POST['run-id']} does not validate: {e!s}"
             )
-            print(message, flush=True)
+            logger.warning(message)
             if "version" in run and run["version"] >= RUN_VERSION:
                 request.actiondb.log_message(
                     username="fishtest.system",
@@ -2378,21 +2466,24 @@ def tests_delete(request):
 
 
 # === Run detail views ===
-def get_page_title(run):
+def get_page_title(run: dict[str, Any]) -> str:
     if run["args"].get("sprt"):
         page_title = "SPRT {} vs {}".format(
-            run["args"]["new_tag"], run["args"]["base_tag"]
+            run["args"]["new_tag"],
+            run["args"]["base_tag"],
         )
     elif run["args"].get("spsa"):
         page_title = "SPSA {}".format(run["args"]["new_tag"])
     else:
         page_title = "{} games - {} vs {}".format(
-            run["args"]["num_games"], run["args"]["new_tag"], run["args"]["base_tag"]
+            run["args"]["num_games"],
+            run["args"]["new_tag"],
+            run["args"]["base_tag"],
         )
     return page_title
 
 
-def _build_live_elo_context(run):
+def _build_live_elo_context(run: dict[str, Any]) -> dict[str, Any]:
     """Compute SPRT analytics and return template context for gauges + details."""
     run_status_label = _classify_run_status(run)
     if run_status_label == "failed":
@@ -2409,7 +2500,7 @@ def _build_live_elo_context(run):
         elo1=sprt["elo1"],
         elo_model=elo_model,
     )
-    WLD = [results["wins"], results["losses"], results["draws"]]
+    WLD = [results["wins"], results["losses"], results["draws"]]  # noqa: N806
     games = sum(WLD)
     pentanomial = results.get("pentanomial", [])
     return {
@@ -2446,7 +2537,7 @@ def _build_live_elo_context(run):
     }
 
 
-def _classify_run_status(run):
+def _classify_run_status(run: dict[str, Any]) -> str:
     if run.get("finished", False):
         return "failed" if run.get("failed") else "finished"
     if run.get("workers", 0) > 0:
@@ -2454,7 +2545,7 @@ def _classify_run_status(run):
     return "paused" if run.get("approved") else "pending"
 
 
-def tests_elo_batch(request):
+def tests_elo_batch(request: _ViewContext) -> dict[str, Any] | RedirectResponse:
     username = request.params.get("username", "") or ""
 
     (
@@ -2491,7 +2582,8 @@ def tests_elo_batch(request):
         {
             "tbody_id": "pending-tbody",
             "rows": build_run_table_rows(
-                pending_runs, allow_github_api_calls=allow_github_api_calls
+                pending_runs,
+                allow_github_api_calls=allow_github_api_calls,
             ),
             "show_delete": True,
             "empty_text": "No tests pending approval",
@@ -2499,7 +2591,8 @@ def tests_elo_batch(request):
         {
             "tbody_id": "paused-tbody",
             "rows": build_run_table_rows(
-                paused_runs, allow_github_api_calls=allow_github_api_calls
+                paused_runs,
+                allow_github_api_calls=allow_github_api_calls,
             ),
             "show_delete": True,
             "empty_text": "No paused tests",
@@ -2507,7 +2600,8 @@ def tests_elo_batch(request):
         {
             "tbody_id": "failed-tbody",
             "rows": build_run_table_rows(
-                failed_runs, allow_github_api_calls=allow_github_api_calls
+                failed_runs,
+                allow_github_api_calls=allow_github_api_calls,
             ),
             "show_delete": True,
             "empty_text": "No failed tests on this page",
@@ -2515,7 +2609,8 @@ def tests_elo_batch(request):
         {
             "tbody_id": "active-tbody",
             "rows": build_run_table_rows(
-                active_runs_for_display, allow_github_api_calls=allow_github_api_calls
+                active_runs_for_display,
+                allow_github_api_calls=allow_github_api_calls,
             ),
             "show_delete": False,
             "empty_text": "No active tests",
@@ -2523,7 +2618,8 @@ def tests_elo_batch(request):
         {
             "tbody_id": "finished-tbody",
             "rows": build_run_table_rows(
-                finished_runs, allow_github_api_calls=allow_github_api_calls
+                finished_runs,
+                allow_github_api_calls=allow_github_api_calls,
             ),
             "show_delete": False,
             "empty_text": "",
@@ -2598,16 +2694,16 @@ def tests_elo_batch(request):
     # Include stats OOB updates for the homepage (no username filter).
     if not username:
         result["stats"] = {
-            "pending_hours": "{:.1f}".format(pending_hours),
+            "pending_hours": f"{pending_hours:.1f}",
             "cores": cores,
             "nps_m": f"{nps / 1000000:.0f}M",
             "games_per_minute": int(games_per_minute),
         }
 
-    return result
+    return result  # type: ignore[invalid-return-type]
 
 
-def tests_elo(request):
+def tests_elo(request: _ViewContext) -> dict[str, Any]:
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None:
         raise StarletteHTTPException(status_code=404)
@@ -2620,11 +2716,10 @@ def tests_elo(request):
             request.response_status = 286
         elif actual == expected:
             request.response_status = 204
-    else:
-        if actual in {"finished", "failed"}:
-            request.response_status = 286
-        elif actual != "active":
-            request.response_status = 204
+    elif actual in {"finished", "failed"}:
+        request.response_status = 286
+    elif actual != "active":
+        request.response_status = 204
 
     active = 0
     cores = 0
@@ -2633,7 +2728,10 @@ def tests_elo(request):
             active += 1
             cores += task["worker_info"]["concurrency"]
     totals = "({} active worker{} with {} core{})".format(
-        active, ("s" if active != 1 else ""), cores, ("s" if cores != 1 else "")
+        active,
+        ("s" if active != 1 else ""),
+        cores,
+        ("s" if cores != 1 else ""),
     )
 
     return {
@@ -2643,7 +2741,7 @@ def tests_elo(request):
     }
 
 
-def tests_live_elo(request):
+def tests_live_elo(request: _ViewContext) -> dict[str, Any]:
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None or "sprt" not in run["args"]:
         raise StarletteHTTPException(status_code=404)
@@ -2652,7 +2750,7 @@ def tests_live_elo(request):
     return context
 
 
-def live_elo_update(request):
+def live_elo_update(request: _ViewContext) -> dict[str, Any]:
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None or "sprt" not in run["args"]:
         raise StarletteHTTPException(status_code=404)
@@ -2663,7 +2761,7 @@ def live_elo_update(request):
     return context
 
 
-def tests_stats(request):
+def tests_stats(request: _ViewContext) -> dict[str, Any] | Response:
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None:
         raise StarletteHTTPException(status_code=404)
@@ -2699,7 +2797,7 @@ def tests_stats(request):
     return context
 
 
-def tests_tasks(request):
+def tests_tasks(request: _ViewContext) -> dict[str, Any]:
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None:
         raise StarletteHTTPException(status_code=404)
@@ -2731,7 +2829,7 @@ def tests_tasks(request):
     }
 
 
-def tests_view(request):
+def tests_view(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # noqa: C901, PLR0912, PLR0915
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None:
         raise StarletteHTTPException(status_code=404)
@@ -2784,8 +2882,9 @@ def tests_view(request):
             if value != "":
                 filtered_arches = list(
                     filter(
-                        lambda x: regex.search(value, x) is not None, supported_arches
-                    )
+                        lambda x: regex.search(value, x) is not None,
+                        supported_arches,
+                    ),
                 )
                 value += "  (" + ", ".join(filtered_arches) + ")"
             else:
@@ -2801,7 +2900,9 @@ def tests_view(request):
             value = ", ".join(value)
 
         if name == "sprt" and value != "-":
-            value = "elo0: {:.2f} alpha: {:.2f} elo1: {:.2f} beta: {:.2f} state: {} ({})".format(
+            value = (
+                "elo0: {:.2f} alpha: {:.2f} elo1: {:.2f} beta: {:.2f} state: {} ({})"
+            ).format(
                 value["elo0"],
                 value["alpha"],
                 value["elo1"],
@@ -2812,14 +2913,12 @@ def tests_view(request):
 
         if name == "spsa" and value != "-":
             iter_local = value["iter"] + 1  # start from 1 to avoid division by zero
-            A = value["A"]
+            A = value["A"]  # noqa: N806
             alpha = value["alpha"]
             gamma = value["gamma"]
-            summary = "iter: {:d}, A: {:d}, alpha: {:0.3f}, gamma: {:0.3f}".format(
-                iter_local,
-                A,
-                alpha,
-                gamma,
+            summary = (
+                f"iter: {iter_local:d}, A: {A:d},"
+                f" alpha: {alpha:0.3f}, gamma: {gamma:0.3f}"
             )
             params = value["params"]
             value = [summary]
@@ -2828,25 +2927,28 @@ def tests_view(request):
                     c_iter = p["c"] / (iter_local**gamma)
                     r_iter = p["a"] / (A + iter_local) ** alpha / c_iter**2
                 except (ArithmeticError, TypeError, ValueError) as e:
-                    print(
+                    logger.warning(
                         "Invalid SPSA param state while rendering "
-                        f"run {run['_id']} (iter={iter_local}, "
-                        f"param={p.get('name', '<unknown>')}): {str(e)}"
+                        "run %s (iter=%d, param=%s): %s",
+                        run["_id"],
+                        iter_local,
+                        p.get("name", "<unknown>"),
+                        e,
                     )
                     c_iter = float("nan")
                     r_iter = float("nan")
                 value.append(
-                    [
+                    [  # type: ignore[invalid-argument-type]
                         p["name"],
                         "{:.2f}".format(p["theta"]),
                         str(int(p["start"])),
                         str(int(p["min"])),
                         str(int(p["max"])),
-                        "{:.3f}".format(c_iter),
+                        f"{c_iter:.3f}",
                         "{:.3f}".format(p["c_end"]),
-                        "{:.2e}".format(r_iter),
+                        f"{r_iter:.2e}",
                         "{:.2e}".format(p["r_end"]),
-                    ]
+                    ],
                 )
 
         tests_repo_ = tests_repo(run)
@@ -2860,15 +2962,19 @@ def tests_view(request):
 
         if name == "new_tag":
             url = gh.commit_url(
-                user=user, repo=repo, branch=run["args"]["resolved_new"]
+                user=user,
+                repo=repo,
+                branch=run["args"]["resolved_new"],
             )
         elif name == "base_tag":
             url = gh.commit_url(
-                user=user, repo=repo, branch=run["args"]["resolved_base"]
+                user=user,
+                repo=repo,
+                branch=run["args"]["resolved_base"],
             )
 
         if name == "spsa":
-            run_args.append(("spsa", value, ""))
+            run_args.append(("spsa", value, ""))  # type: ignore[invalid-argument-type]
         else:
             run_args.append((name, str(value), url))
 
@@ -2893,13 +2999,11 @@ def tests_view(request):
     spsa_data = request.rundb.spsa_handler.get_spsa_data(run_id)
 
     same_options = True
-    try:
+    with contextlib.suppress(Exception):
         # use sanitize_options for compatibility with old tests
         same_options = sanitize_options(run["args"]["new_options"]) == sanitize_options(
-            run["args"]["base_options"]
+            run["args"]["base_options"],
         )
-    except Exception:
-        pass
 
     notes = []
     if (
@@ -2911,7 +3015,7 @@ def tests_view(request):
         notes.append("this test has been deleted")
 
     warnings = []
-    if run["args"]["throughput"] > 100:
+    if run["args"]["throughput"] > _THROUGHPUT_NORMAL_LIMIT:
         warnings.append("throughput exceeds the normal limit")
     if run["args"]["priority"] > 0:
         warnings.append("priority exceeds the normal limit")
@@ -2930,15 +3034,18 @@ def tests_view(request):
         warnings.append("this test has a non-trivial arch filter")
     if run["args"].get("compiler", "") != "":
         warnings.append("this test has a pinned compiler")
-    book_exits = request.rundb.books.get(run["args"]["book"], {}).get("total", 100000)
-    if book_exits < 100000:
+    book_exits = request.rundb.books.get(
+        run["args"]["book"],
+        {},
+    ).get("total", _MIN_BOOK_EXITS)
+    if book_exits < _MIN_BOOK_EXITS:
         warnings.append(f"this test uses a small book with only {book_exits} exits")
     if "master_repo" in run["args"]:  # if present then it is non-standard
         warnings.append(
-            "the developer repository is not forked from official-stockfish/Stockfish"
+            "the developer repository is not forked from official-stockfish/Stockfish",
         )
 
-    def allow_github_api_calls():
+    def allow_github_api_calls() -> bool:
         # Avoid making pointless GitHub api calls on behalf of
         # crawlers
         if "master_repo" in run["args"]:  # if present then it is non-standard
@@ -2948,15 +3055,13 @@ def tests_view(request):
         now = datetime.now(UTC)
         # Period should be short enough so that it can be
         # served from the api cache!
-        if (now - run["last_updated"]).days > 30:
-            return False
-        return True
+        return (now - run["last_updated"]).days <= _RUN_AGE_GITHUB_API_MAX_DAYS
 
     try:
         user, repo = gh.parse_repo(gh.normalize_repo(tests_repo(run)))
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         user, repo = gh.parse_repo(tests_repo(run))
-        print(f"Unable to normalize_repo: {str(e)}")
+        logger.warning("Unable to normalize_repo: %s", e)
 
     anchor_url = gh.compare_branches_url(
         user1="official-stockfish",
@@ -2968,7 +3073,9 @@ def tests_view(request):
     # autoescape. Build it as Markup so the anchor tag is not escaped.
     # Markup.format will HTML-escape attribute values (defense in depth).
     anchor = Markup(
-        '<a class="alert-link" href="{}" target="_blank" rel="noopener noreferrer">base diff</a>'
+        '<a class="alert-link" href="{}"'
+        ' target="_blank" rel="noopener noreferrer">'
+        "base diff</a>",
     ).format(anchor_url)
     use_3dot_diff = False
     if "spsa" not in run["args"] and allow_github_api_calls():
@@ -2983,7 +3090,7 @@ def tests_view(request):
                     ignore_rate_limit=irl,
                 ):
                     warnings.append(
-                        Markup("base is not an ancestor of master: {}").format(anchor)
+                        Markup("base is not an ancestor of master: {}").format(anchor),
                     )
                 elif not gh.is_ancestor(
                     user1=user,
@@ -3001,7 +3108,7 @@ def tests_view(request):
                     )
                     if merge_base_commit != run["args"]["resolved_base"]:
                         warnings.append(
-                            "base is not the latest common ancestor of new and master"
+                            "base is not the latest common ancestor of new and master",
                         )
             use_3dot_diff = gh.is_ancestor(
                 user1=user,
@@ -3009,8 +3116,8 @@ def tests_view(request):
                 sha2=run["args"]["resolved_new"],
                 ignore_rate_limit=irl,
             )
-        except Exception as e:
-            print(f"Exception processing api calls for {run['_id']}: {str(e)}")
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Exception processing api calls for %s: %s", run["_id"], e)
 
     return {
         "run": run,
@@ -3019,7 +3126,10 @@ def tests_view(request):
         "approver": request.has_permission("approve_run"),
         "chi2": chi2,
         "totals": "({} active worker{} with {} core{})".format(
-            active, ("s" if active != 1 else ""), cores, ("s" if cores != 1 else "")
+            active,
+            ("s" if active != 1 else ""),
+            cores,
+            ("s" if cores != 1 else ""),
         ),
         "tasks_shown": show_task != -1 or request.cookies.get("tasks_state") == "Hide",
         "show_task": show_task,
@@ -3040,7 +3150,8 @@ def tests_view(request):
 
 # Each entry: (view_function, path, config_dict)
 # Config keys: renderer, require_csrf, require_primary, request_method, http_cache
-# Special: direct=True bypasses _dispatch_view (for pure redirects, no DB/session needed)
+# Special: direct=True bypasses _dispatch_view
+# (for pure redirects, no DB/session needed)
 _VIEW_ROUTES = [
     (home, "/", {"direct": True}),
     (
@@ -3155,8 +3266,11 @@ _VIEW_ROUTES = [
 ]
 
 
-def _make_endpoint(fn, cfg_local):
-    async def endpoint(request: Request):
+def _make_endpoint(
+    fn: Callable[..., Any],
+    cfg_local: dict[str, Any],
+) -> Callable[..., Any]:
+    async def endpoint(request: Request) -> Response:
         return await _dispatch_view(
             fn,
             cfg_local,
@@ -3167,7 +3281,7 @@ def _make_endpoint(fn, cfg_local):
     return endpoint
 
 
-def _normalize_methods(methods):
+def _normalize_methods(methods: str | tuple[str, ...] | list[str] | None) -> list[str]:
     if methods is None:
         return ["GET", "POST"]
     if isinstance(methods, str):
@@ -3175,9 +3289,9 @@ def _normalize_methods(methods):
     return list(methods)
 
 
-def _register_view_routes():
+def _register_view_routes() -> None:
     for fn, path, cfg in _VIEW_ROUTES:
-        methods = _normalize_methods(cfg.get("request_method"))
+        methods = _normalize_methods(cfg.get("request_method"))  # type: ignore[invalid-argument-type]
         endpoint = fn if cfg.get("direct") else _make_endpoint(fn, cfg)
         router.add_api_route(
             path,

@@ -1,10 +1,16 @@
-"""Run creation and modification helpers: SHA resolution, net discovery,
-form validation, SPSA parameter parsing, and run lifecycle utilities.
+"""Run creation and modification helpers.
+
+SHA resolution, net discovery, form validation, SPSA parameter parsing,
+and run lifecycle utilities.
 """
 
+from __future__ import annotations
+
 import copy
+import logging
 import re
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any
 
 import regex
 
@@ -19,28 +25,38 @@ from fishtest.util import (
 )
 from fishtest.views_helpers import _host_url
 
+logger = logging.getLogger(__name__)
 
-def get_master_info(
-    user="official-stockfish", repo="Stockfish", ignore_rate_limit=False
-):
-    # Contract: always return a dict with stable keys so templates/callers do
-    # not crash when GitHub is transiently unavailable.
+_SPSA_PARAM_FIELDS = 6
+_RUN_MODIFY_MAX_AGE_DAYS = 30
+
+if TYPE_CHECKING:
+    from starlette.responses import RedirectResponse
+
+
+def get_master_info(  # noqa: C901
+    user: str = "official-stockfish",
+    repo: str = "Stockfish",
+    ignore_rate_limit: bool = False,  # noqa: FBT001, FBT002
+) -> dict[str, Any]:
+    """Return bench, message, and date for the latest master commit."""
     default_info = {"bench": None, "message": "", "date": ""}
 
     try:
         commits = gh.get_commits(
-            user=user, repo=repo, ignore_rate_limit=ignore_rate_limit
+            user=user,
+            repo=repo,
+            ignore_rate_limit=ignore_rate_limit,
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         # Most common production failure: ConnectionError/RemoteDisconnected.
-        print(f"Exception getting commits:\n{e}", flush=True)
+        logger.warning("Exception getting commits:\n%s", e)
         return default_info
 
     if not isinstance(commits, list) or not commits:
         # GitHub can occasionally return an unexpected JSON shape.
-        print(
+        logger.warning(
             "Unexpected GitHub commits payload; expected non-empty list.",
-            flush=True,
         )
         return default_info
 
@@ -50,9 +66,9 @@ def get_master_info(
     try:
         message = commits[0]["commit"]["message"].strip().split("\n")[0].strip()
         date_str = commits[0]["commit"]["committer"]["date"]
-        date = datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%SZ")
-    except Exception as e:
-        print(f"Unexpected commit payload shape: {e}", flush=True)
+        date = datetime.strptime(date_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("Unexpected commit payload shape: %s", e)
         return default_info
 
     for commit in commits:
@@ -84,13 +100,14 @@ def get_master_info(
     return latest_bench_match
 
 
-def get_sha(branch, repo_url):
-    """Resolves the git branch to sha commit"""
+def get_sha(branch: str, repo_url: str) -> tuple[str, str]:
+    """Resolve a git branch to its SHA commit."""
     user, repo = gh.parse_repo(repo_url)
     try:
         commit = gh.get_commit(user=user, repo=repo, branch=branch)
     except Exception as e:
-        raise Exception(f"Unable to access developer repository {repo_url}: {str(e)}")
+        msg = f"Unable to access developer repository {repo_url}: {e!s}"
+        raise ValueError(msg) from e
 
     if not isinstance(commit, dict):
         return "", ""
@@ -109,15 +126,19 @@ def get_sha(branch, repo_url):
     return sha, message
 
 
-def get_nets(commit_sha, repo_url):
-    """Get the nets from evaluate.h or ucioption.cpp in the repo"""
+def get_nets(commit_sha: str, repo_url: str) -> list[str]:  # noqa: C901
+    """Retrieve net filenames from evaluate.h or ucioption.cpp."""
     try:
         nets = []
         pattern = re.compile("nn-[a-f0-9]{12}.nnue")
 
         user, repo = gh.parse_repo(repo_url)
         options = gh.download_from_github(
-            "/src/evaluate.h", user=user, repo=repo, branch=commit_sha, method="raw"
+            "/src/evaluate.h",
+            user=user,
+            repo=repo,
+            branch=commit_sha,
+            method="raw",
         ).decode()
         for line in options.splitlines():
             if "EvalFileDefaultName" in line and "define" in line:
@@ -131,7 +152,11 @@ def get_nets(commit_sha, repo_url):
             return nets
 
         options = gh.download_from_github(
-            "/src/ucioption.cpp", user=user, repo=repo, branch=commit_sha, method="raw"
+            "/src/ucioption.cpp",
+            user=user,
+            repo=repo,
+            branch=commit_sha,
+            method="raw",
         ).decode()
         for line in options.splitlines():
             if "EvalFile" in line and "Option" in line:
@@ -140,20 +165,24 @@ def get_nets(commit_sha, repo_url):
                     net = m.group(0)
                     if net not in nets:
                         nets.append(net)
-        return nets
     except Exception as e:
-        raise Exception(f"Unable to access developer repository {repo_url}: {str(e)}")
+        msg = f"Unable to access developer repository {repo_url}: {e!s}"
+        raise ValueError(msg) from e
+    else:
+        return nets
 
 
-def parse_spsa_params(spsa):
+def parse_spsa_params(spsa: dict[str, Any]) -> list[dict[str, Any]]:
+    """Parse raw SPSA parameter strings into structured dicts."""
     raw = spsa["raw_params"]
     params = []
     for line in raw.split("\n"):
         chunks = line.strip().split(",")
         if len(chunks) == 1 and chunks[0] == "":  # blank line
             continue
-        if len(chunks) != 6:
-            raise Exception("the line {} does not have 6 entries".format(chunks))
+        if len(chunks) != _SPSA_PARAM_FIELDS:
+            msg = f"the line {chunks} does not have {_SPSA_PARAM_FIELDS} entries"
+            raise ValueError(msg)
         param = {
             "name": chunks[0],
             "start": float(chunks[1]),
@@ -170,12 +199,18 @@ def parse_spsa_params(spsa):
     return params
 
 
-def validate_modify(request, run):
+def validate_modify(  # noqa: PLR0911
+    request: Any,  # noqa: ANN401
+    run: dict[str, Any],
+) -> RedirectResponse | None:
     """Return None on success, or a RedirectResponse on validation failure."""
-    from starlette.responses import RedirectResponse
+    from starlette.responses import RedirectResponse  # noqa: PLC0415
 
     now = datetime.now(UTC)
-    if "start_time" not in run or (now - run["start_time"]).days > 30:
+    if (
+        "start_time" not in run
+        or (now - run["start_time"]).days > _RUN_MODIFY_MAX_AGE_DAYS
+    ):
         request.session.flash("Run too old to be modified", "error")
         return RedirectResponse(url="/tests", status_code=302)
 
@@ -203,13 +238,16 @@ def validate_modify(request, run):
         and "spsa" not in run["args"]
     ):
         request.session.flash(
-            "Unable to modify number of games in a fixed game test!", "error"
+            "Unable to modify number of games in a fixed game test!",
+            "error",
         )
         return RedirectResponse(url="/tests", status_code=302)
 
     if "spsa" in run["args"] and num_games != run["args"]["num_games"]:
         request.session.flash(
-            "Unable to modify number of games for SPSA tests, SPSA hyperparams are based off the initial number of games",
+            "Unable to modify number of games for SPSA"
+            " tests, SPSA hyperparams are based off"
+            " the initial number of games",
             "error",
         )
         return RedirectResponse(url="/tests", status_code=302)
@@ -222,23 +260,29 @@ def validate_modify(request, run):
     return None
 
 
-def sanitize_options(options):
+def sanitize_options(options: str) -> str:
+    """Validate and normalize UCI option key=value pairs."""
     try:
         options.encode("ascii")
     except UnicodeEncodeError:
-        raise ValueError("Options must contain only ASCII characters")
+        msg = "Options must contain only ASCII characters"
+        raise ValueError(msg) from None
 
     tokens = options.split()
     token_regex = re.compile(r"^[^\s=]+=[^\s=]+$", flags=re.ASCII)
     for token in tokens:
         if not token_regex.fullmatch(token):
-            raise ValueError(
-                "Each option must be a 'key=value' pair with no extra spaces and exactly one '='"
+            msg = (
+                "Each option must be a 'key=value' pair"
+                " with no extra spaces"
+                " and exactly one '='"
             )
+            raise ValueError(msg)
     return " ".join(tokens)
 
 
-def validate_form(request):
+def validate_form(request: Any) -> dict[str, Any]:  # noqa: ANN401, C901, PLR0912, PLR0915
+    """Extract and validate run-creation form fields."""
     data = {
         "base_tag": request.POST["base-branch"],
         "new_tag": request.POST["test-branch"],
@@ -261,9 +305,8 @@ def validate_form(request):
         # but still use the old repo url
         data["tests_repo"] = gh.normalize_repo(data["tests_repo"])
     except Exception as e:
-        raise Exception(
-            f"Unable to access developer repository {data['tests_repo']}: {str(e)}"
-        ) from e
+        msg = f"Unable to access developer repository {data['tests_repo']}: {e!s}"
+        raise ValueError(msg) from e
 
     user, repo = gh.parse_repo(data["tests_repo"])
     username = request.authenticated_userid
@@ -275,10 +318,11 @@ def validate_form(request):
     master_repo = official_repo
     try:
         master_repo = gh.get_master_repo(user, repo, ignore_rate_limit=True)
-    except Exception as e:
-        print(
-            f"Unable to determine master repo for {data['tests_repo']}: {str(e)}",
-            flush=True,
+    except Exception as e:  # noqa: BLE001
+        logger.warning(
+            "Unable to determine master repo for %s: %s",
+            data["tests_repo"],
+            e,
         )
     else:
         if master_repo != official_repo:
@@ -286,7 +330,8 @@ def validate_form(request):
             message = (
                 f"It seems that your repo {data['tests_repo']} has been forked from "
                 f"{master_repo} and not from {official_repo} "
-                "as recommended in the wiki. As such, some functionality may be broken. "
+                "as recommended in the wiki. As such,"
+                " some functionality may be broken. "
             )
             suffix_soft = (
                 "Please consider replacing your repo with one forked from the official "
@@ -297,24 +342,25 @@ def validate_form(request):
                 "Stockfish repo!"
             )
             if u["registration_time"] >= datetime(2025, 7, 1, tzinfo=UTC):
-                raise Exception(message + " " + suffix_hard)
-            else:
-                request.session.flash(
-                    message + " " + suffix_soft,
-                    "warning",
-                )
+                raise ValueError(message + " " + suffix_hard)
+            request.session.flash(
+                message + " " + suffix_soft,
+                "warning",
+            )
     odds = request.POST.get("odds", "off")  # off checkboxes are not posted
     if odds == "off":
         data["new_tc"] = data["tc"]
 
     checkbox_compiler = request.POST.get(
-        "checkbox-compiler", "off"
+        "checkbox-compiler",
+        "off",
     )  # off checkboxes are not posted
     if checkbox_compiler == "off":
         del data["compiler"]
 
     checkbox_arch_filter = request.POST.get(
-        "checkbox-arch-filter", "off"
+        "checkbox-arch-filter",
+        "off",
     )  # off checkboxes are not posted
     if checkbox_arch_filter == "off":
         data["arch_filter"] = ""
@@ -327,19 +373,28 @@ def validate_form(request):
         if "arch_filter" in data:
             regex.compile(data["arch_filter"])
     except regex.error as e:
-        raise Exception(f"Invalid arch filter: {e}") from e
+        msg = f"Invalid arch filter: {e}"
+        raise ValueError(msg) from e
 
     # check if there are any remaining arches
     if "arch_filter" in data:
         filtered_arches = filter(
-            lambda x: regex.search(data["arch_filter"], x) is not None, supported_arches
+            lambda x: (
+                regex.search(
+                    data["arch_filter"],
+                    x,
+                )
+                is not None
+            ),
+            supported_arches,
         )
         if list(filtered_arches) == []:
-            raise Exception(f"filter {data['arch_filter']} has no compatible arches")
+            msg = f"filter {data['arch_filter']} has no compatible arches"
+            raise ValueError(msg)
 
-    from vtjson import validate
+    from vtjson import validate  # noqa: PLC0415
 
-    from fishtest.schemas import tc as tc_schema
+    from fishtest.schemas import tc as tc_schema  # noqa: PLC0415
 
     validate(tc_schema, data["tc"], "data['tc']")
     validate(tc_schema, data["new_tc"], "data['new_tc']")
@@ -347,7 +402,7 @@ def validate_form(request):
     if request.POST.get("rescheduled_from"):
         data["rescheduled_from"] = request.POST["rescheduled_from"]
 
-    def strip_message(m):
+    def strip_message(m: str) -> str:
         lines = m.strip().split("\n")
         bench_search = re.compile(r"(^|\s)[Bb]ench[ :]+([1-9]\d{5,7})(?!\d)")
         for i, line in enumerate(reversed(lines)):
@@ -364,16 +419,17 @@ def validate_form(request):
     if len(data["new_signature"]) == 0 or len(data["info"]) == 0:
         try:
             c = gh.get_commit(
-                user=user, repo=repo, branch=data["new_tag"], ignore_rate_limit=True
+                user=user,
+                repo=repo,
+                branch=data["new_tag"],
+                ignore_rate_limit=True,
             )
         except Exception as e:
-            raise Exception(
-                f"Unable to access developer repository {data['tests_repo']}: {str(e)}"
-            ) from e
+            msg = f"Unable to access developer repository {data['tests_repo']}: {e!s}"
+            raise ValueError(msg) from e
         if "commit" not in c:
-            raise Exception(
-                f"Cannot find branch {data['new_tag']} in developer repository"
-            )
+            msg = f"Cannot find branch {data['new_tag']} in developer repository"
+            raise ValueError(msg)
         if len(data["new_signature"]) == 0:
             bench_search = re.compile(r"(^|\s)[Bb]ench[ :]+([1-9]\d{5,7})(?!\d)")
             lines = c["commit"]["message"].split("\n")
@@ -383,9 +439,8 @@ def validate_form(request):
                     data["new_signature"] = m.group(2)
                     break
             else:
-                raise Exception(
-                    "This commit has no signature: please supply it manually."
-                )
+                msg = "This commit has no signature: please supply it manually."
+                raise ValueError(msg)
         if len(data["info"]) == 0:
             data["info"] = strip_message(c["commit"]["message"])
 
@@ -394,7 +449,8 @@ def validate_form(request):
 
     for k, v in data.items():
         if len(v) == 0:
-            raise Exception(f"Missing required option: {k}")
+            msg = f"Missing required option: {k}"
+            raise ValueError(msg)
 
     # Handle boolean options
     data["auto_purge"] = request.POST.get("auto-purge") is not None
@@ -410,10 +466,12 @@ def validate_form(request):
         data["msg_new"] = request.POST["msg_new"]
     else:
         data["resolved_base"], data["msg_base"] = get_sha(
-            data["base_tag"], data["tests_repo"]
+            data["base_tag"],
+            data["tests_repo"],
         )
         data["resolved_new"], data["msg_new"] = get_sha(
-            data["new_tag"], data["tests_repo"]
+            data["new_tag"],
+            data["tests_repo"],
         )
         u = request.userdb.get_user(data["username"])
         if u.get("tests_repo", "") != data["tests_repo"]:
@@ -421,7 +479,8 @@ def validate_form(request):
             request.userdb.save_user(u)
 
     if len(data["resolved_base"]) == 0 or len(data["resolved_new"]) == 0:
-        raise Exception("Unable to find branch!")
+        msg = "Unable to find branch!"
+        raise ValueError(msg)
 
     # Check entered bench
     if data["base_tag"] == "master":
@@ -431,15 +490,15 @@ def validate_form(request):
         )
         if master_bench is None:
             # GitHub is transiently unavailable; skip strict verification.
-            print(
+            logger.warning(
                 "Unable to verify master bench signature (GitHub API unavailable).",
-                flush=True,
             )
         elif master_bench != data["base_signature"]:
-            raise Exception(
+            msg = (
                 "Bench signature of Base master does not match, "
-                + 'please "git pull upstream master" !'
+                'please "git pull upstream master" !'
             )
+            raise ValueError(msg)
 
     stop_rule = request.POST["stop_rule"]
 
@@ -454,12 +513,11 @@ def validate_form(request):
         if net is None:
             missing_nets.append(net_name)
     if missing_nets:
-        raise Exception(
-            "Missing net(s). Please upload to: {} the following net(s): {}".format(
-                _host_url(request),
-                ", ".join(missing_nets),
-            )
+        msg = "Missing net(s). Please upload to: {} the following net(s): {}".format(
+            _host_url(request),
+            ", ".join(missing_nets),
         )
+        raise ValueError(msg)
 
     # Integer parameters
     data["threads"] = int(request.POST["threads"])
@@ -467,20 +525,25 @@ def validate_form(request):
     data["throughput"] = int(request.POST["throughput"])
 
     if data["threads"] <= 0:
-        raise Exception("Threads must be >= 1")
+        msg = "Threads must be >= 1"
+        raise ValueError(msg)
 
     if stop_rule == "sprt":
-        # Too small a number results in many API calls, especially with highly concurrent workers.
+        # Too small a number results in many API calls,
+        # especially with highly concurrent workers.
         # This expression results in 32 games per batch for single threaded STC games.
         # This means a batch with be completed in roughly 2 minutes on a 8 core worker.
-        # This expression adjusts the batch size for threads and TC, to keep timings somewhat similar.
+        # This expression adjusts the batch size for
+        # threads and TC, to keep timings somewhat similar.
         sprt_batch_size_games = 2 * max(
-            1, int(0.5 + 16 / get_tc_ratio(data["tc"], data["threads"]))
+            1,
+            int(0.5 + 16 / get_tc_ratio(data["tc"], data["threads"])),
         )
-        assert sprt_batch_size_games % 2 == 0
+        assert sprt_batch_size_games % 2 == 0  # noqa: S101
         elo_model = request.POST["elo_model"]
         if elo_model not in ["BayesElo", "logistic", "normalized"]:
-            raise Exception("Unknown Elo model")
+            msg = "Unknown Elo model"
+            raise ValueError(msg)
         data["sprt"] = fishtest.stats.stat_util.SPRT(
             alpha=0.05,
             beta=0.05,
@@ -494,7 +557,8 @@ def validate_form(request):
     elif stop_rule == "spsa":
         data["num_games"] = int(request.POST["num-games"])
         if data["num_games"] <= 0:
-            raise Exception("Number of games must be >= 0")
+            msg = "Number of games must be >= 0"
+            raise ValueError(msg)
 
         data["spsa"] = {
             "A": int(float(request.POST["spsa_A"]) * data["num_games"] / 2),
@@ -506,27 +570,31 @@ def validate_form(request):
         }
         data["spsa"]["params"] = parse_spsa_params(data["spsa"])
         if len(data["spsa"]["params"]) == 0:
-            raise Exception("Number of params must be > 0")
+            msg = "Number of params must be > 0"
+            raise ValueError(msg)
     else:
         data["num_games"] = int(request.POST["num-games"])
         if data["num_games"] <= 0:
-            raise Exception("Number of games must be >= 0")
+            msg = "Number of games must be >= 0"
+            raise ValueError(msg)
 
     max_games = 3200000
     if data["num_games"] > max_games:
-        raise Exception("Number of games must be <= " + str(max_games))
+        msg = "Number of games must be <= " + str(max_games)
+        raise ValueError(msg)
 
     return data
 
 
-def del_tasks(run):
+def del_tasks(run: dict[str, Any]) -> dict[str, Any]:
+    """Return a deep copy of a run dict with the tasks key removed."""
     run = copy.copy(run)
     run.pop("tasks", None)
-    run = copy.deepcopy(run)
-    return run
+    return copy.deepcopy(run)
 
 
-def update_nets(request, run):
+def update_nets(request: Any, run: dict[str, Any]) -> None:  # noqa: ANN401, C901
+    """Update net metadata timestamps for a run."""
     run_id = str(run["_id"])
     data = run["args"]
     base_nets, new_nets, missing_nets = [], [], []
@@ -541,15 +609,14 @@ def update_nets(request, run):
             if net_name in data["new_nets"]:
                 new_nets.append(net)
     if missing_nets:
-        raise Exception(
-            "Missing net(s). Please upload to {} the following net(s): {}".format(
-                _host_url(request),
-                ", ".join(missing_nets),
-            )
+        msg = "Missing net(s). Please upload to {} the following net(s): {}".format(
+            _host_url(request),
+            ", ".join(missing_nets),
         )
+        raise ValueError(msg)
 
     tests_repo_ = tests_repo(run)
-    user, repo = gh.parse_repo(tests_repo_)
+    _user, _repo = gh.parse_repo(tests_repo_)
     try:
         if gh.is_master(
             run["args"]["resolved_base"],
@@ -558,8 +625,12 @@ def update_nets(request, run):
                 if "is_master" not in net:
                     net["is_master"] = True
                     request.rundb.update_nn(net)
-    except Exception as e:
-        print(f"Unable to evaluate is_master({run['args']['resolved_base']}): {str(e)}")
+    except Exception as e:  # noqa: BLE001
+        logger.warning(
+            "Unable to evaluate is_master(%s): %s",
+            run["args"]["resolved_base"],
+            e,
+        )
 
     for net in new_nets:
         if "first_test" not in net:
@@ -568,7 +639,8 @@ def update_nets(request, run):
         request.rundb.update_nn(net)
 
 
-def new_run_message(request, run):
+def new_run_message(request: Any, run: dict[str, Any]) -> str:  # noqa: ANN401
+    """Build the summary message string for a new run."""
     if "sprt" in run["args"]:
         sprt = run["args"]["sprt"]
         elo_model = sprt.get("elo_model")
@@ -589,13 +661,17 @@ def new_run_message(request, run):
     ret += f" Book:{run['args']['book']}"
     ret += f" Threads:{run['args']['threads']}"
     ret += "(SMP)" if run["args"]["threads"] > 1 else ""
-    ret += f" Hash:{get_hash(run['args']['base_options'])}/{get_hash(run['args']['new_options'])}"
+    base_hash = get_hash(run["args"]["base_options"])
+    new_hash = get_hash(run["args"]["new_options"])
+    ret += f" Hash:{base_hash}/{new_hash}"
     return ret
 
 
-def is_same_user(request, run):
+def is_same_user(request: Any, run: dict[str, Any]) -> bool:  # noqa: ANN401
+    """Check whether the authenticated user owns the run."""
     return run["args"]["username"] == request.authenticated_userid
 
 
-def can_modify_run(request, run):
+def can_modify_run(request: Any, run: dict[str, Any]) -> bool:  # noqa: ANN401
+    """Check whether the user may modify the run."""
     return is_same_user(request, run) or request.has_permission("approve_run")
