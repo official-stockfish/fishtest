@@ -21,6 +21,11 @@ server/
 |   |-- app.py               -- ASGI application factory, lifespan, middleware, routers
 |   |-- api.py               -- Worker API router (22 endpoints)
 |   |-- views.py             -- UI router (34 endpoints, data-driven dispatch)
+|   |-- views_helpers.py     -- Pure stateless helpers extracted from views.py
+|   |-- views_actions.py     -- Actions-page helpers (row building, sorting, query strings)
+|   |-- views_finished.py    -- Finished-runs page helpers (pagination, filtering)
+|   |-- views_machines.py    -- Machines-page helpers (normalization, filter state)
+|   |-- views_run.py         -- Run creation/modification helpers (validation, lifecycle)
 |   |-- rundb.py             -- RunDb: run lifecycle, task distribution, caching
 |   |-- userdb.py            -- UserDb: authentication, groups, registration
 |   |-- actiondb.py          -- ActionDb: audit log
