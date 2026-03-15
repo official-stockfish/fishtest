@@ -1,8 +1,13 @@
-"""Machines-page helpers: row normalization, filtering, sorting, cookie
-management, and the ``tests_machines`` entry point for /tests/machines.
+"""Machines-page helpers for /tests/machines.
+
+Row normalization, filtering, sorting, cookie management, and the
+``tests_machines`` entry point.
 """
 
+from __future__ import annotations
+
 from datetime import datetime
+from typing import Any
 from urllib.parse import quote, unquote
 
 from fishtest.http.settings import (
@@ -58,11 +63,11 @@ _MACHINES_CASEFOLD_SORT_KEYS = {
 }
 
 
-def _clip_long(text, max_length=20):
+def _clip_long(text: str, max_length: int = 20) -> str:
     return text if len(text) <= max_length else text[:max_length] + "..."
 
 
-def _machines_version_parts(values):
+def _machines_version_parts(values: list[Any] | None) -> tuple[int, ...]:
     parts = []
     for value in values or []:
         try:
@@ -72,7 +77,7 @@ def _machines_version_parts(values):
     return tuple(parts)
 
 
-def _normalize_machine_row(machine):
+def _normalize_machine_row(machine: dict[str, Any]) -> dict[str, Any]:
     gcc_values = machine.get("gcc_version", [])
     python_values = machine.get("python_version", [])
     compiler = machine.get("compiler", "g++")
@@ -119,13 +124,13 @@ def _normalize_machine_row(machine):
 
 
 def _machine_filter_state(
-    query_source,
+    query_source: dict[str, Any],
     *,
-    authenticated_username,
-    use_cookies=False,
-    query_key="q",
-    my_workers_key="my_workers",
-):
+    authenticated_username: str | None,
+    use_cookies: bool = False,
+    query_key: str = "q",
+    my_workers_key: str = "my_workers",
+) -> dict[str, Any]:
     query_filter = query_source.get(query_key, "")
     if use_cookies:
         query_filter = unquote(str(query_filter))
@@ -143,12 +148,12 @@ def _machine_filter_state(
 
 
 def _filter_machine_rows(
-    normalized_rows,
+    normalized_rows: list[dict[str, Any]],
     *,
-    query_filter,
-    my_workers,
-    authenticated_username,
-):
+    query_filter: str,
+    my_workers: bool,
+    authenticated_username: str | None,
+) -> list[dict[str, Any]]:
     filtered_rows = list(normalized_rows)
     if my_workers and authenticated_username:
         filtered_rows = [
@@ -169,17 +174,17 @@ def _filter_machine_rows(
     return filtered_rows
 
 
-def _normalized_machine_rows(request):
+def _normalized_machine_rows(request: Any) -> list[dict[str, Any]]:  # noqa: ANN401
     return [_normalize_machine_row(machine) for machine in request.rundb.get_machines()]
 
 
 def _filtered_machine_count(
-    request,
+    request: Any,  # noqa: ANN401
     *,
-    query_filter,
-    my_workers,
-    authenticated_username,
-):
+    query_filter: str,
+    my_workers: bool,
+    authenticated_username: str | None,
+) -> int:
     filtered_rows = _filter_machine_rows(
         _normalized_machine_rows(request),
         query_filter=query_filter,
@@ -189,7 +194,10 @@ def _filtered_machine_count(
     return len(filtered_rows)
 
 
-def _machines_sort_value(machine_row, sort_key):
+def _machines_sort_value(  # noqa: PLR0911
+    machine_row: dict[str, Any],
+    sort_key: str,
+) -> Any:  # noqa: ANN401
     if sort_key == "compiler":
         return (
             str(machine_row.get("compiler", "")).lower(),
@@ -211,8 +219,12 @@ def _machines_sort_value(machine_row, sort_key):
 
 
 def _build_machines_query_params(
-    sort_param, order_param, default_reverse, query_filter, my_workers
-):
+    sort_param: str,
+    order_param: str,
+    default_reverse: bool,  # noqa: FBT001
+    query_filter: str,
+    my_workers: bool,  # noqa: FBT001
+) -> str:
     default_order = "desc" if default_reverse else "asc"
     return _build_query_string(
         [
@@ -220,30 +232,35 @@ def _build_machines_query_params(
             ("order", order_param if order_param != default_order else None),
             ("q", query_filter or None),
             ("my_workers", "1" if my_workers else None),
-        ]
+        ],
     )
 
 
-def _set_machine_cookie(request, name, value, max_age_seconds):
+def _set_machine_cookie(
+    request: Any,  # noqa: ANN401
+    name: str,
+    value: str,
+    max_age_seconds: int,
+) -> None:
     encoded = quote(str(value), safe="")
     request.response_headerlist.append(
         (
             "Set-Cookie",
             f"{name}={encoded}; path=/; max-age={max_age_seconds}; SameSite=Lax",
-        )
+        ),
     )
 
 
-def _set_machine_cookies(
-    request,
+def _set_machine_cookies(  # noqa: PLR0913
+    request: Any,  # noqa: ANN401
     *,
-    sort_param,
-    order_param,
-    page,
-    query_filter,
-    my_workers,
-    filtered_count,
-):
+    sort_param: str,
+    order_param: str,
+    page: int,
+    query_filter: str,
+    my_workers: bool,
+    filtered_count: int,
+) -> None:
     cookie_max_age = PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS
     _set_machine_cookie(request, "machines_sort", sort_param, cookie_max_age)
     _set_machine_cookie(request, "machines_order", order_param, cookie_max_age)
@@ -264,11 +281,11 @@ def _set_machine_cookies(
 
 
 def _workers_count_label(
-    total_count,
+    total_count: int,
     *,
-    query_filter="",
-    my_workers=False,
-    filtered_count=None,
+    query_filter: str = "",
+    my_workers: bool = False,
+    filtered_count: int | None = None,
 ) -> str:
     shown_count = filtered_count if filtered_count is not None else total_count
     if not (query_filter or my_workers):
@@ -276,7 +293,7 @@ def _workers_count_label(
     return f"Workers - {total_count} ({shown_count})"
 
 
-def tests_machines(request):
+def tests_machines(request: Any) -> dict[str, Any]:  # noqa: ANN401
     """Build the /tests/machines page context.
 
     Returns a dict of template context with machine rows, pagination,

@@ -1,9 +1,16 @@
-"""Actions-page helpers: row building, sorting, query-string construction,
-and username matching for the /actions route.
+"""Actions-page helpers for the /actions route.
+
+Row building, sorting, query-string construction, and username matching.
 """
 
+from __future__ import annotations
+
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlencode
+
+if TYPE_CHECKING:
+    from starlette.responses import RedirectResponse
 
 from fishtest.views_helpers import (
     _ANONYMOUS_RESULT_LIMIT_HARD,
@@ -37,9 +44,9 @@ _ACTIONS_SORT_LABELS = {
 
 def _effective_actions_max_count(
     *,
-    is_authenticated,
-    requested_max_count,
-):
+    is_authenticated: bool,
+    requested_max_count: int | None,
+) -> int | None:
     return _effective_result_limit(
         is_authenticated=is_authenticated,
         requested_limit=requested_max_count,
@@ -48,7 +55,9 @@ def _effective_actions_max_count(
     )
 
 
-def _effective_actions_sort_state(params):
+def _effective_actions_sort_state(
+    params: dict[str, Any],
+) -> tuple[str, str]:
     sort_param = (params.get("sort") or _DEFAULT_TIME_SORT_FIELD).strip().lower()
     if sort_param not in _ACTIONS_SORT_LABELS:
         sort_param = _DEFAULT_TIME_SORT_FIELD
@@ -62,7 +71,11 @@ def _effective_actions_sort_state(params):
     return sort_param, order_param
 
 
-def _actions_sort_scope_max_count(*, is_authenticated, max_count):
+def _actions_sort_scope_max_count(
+    *,
+    is_authenticated: bool,
+    max_count: int | None,
+) -> int:
     scope_cap = (
         _ACTIONS_SORT_SCOPE_MAX_AUTH
         if is_authenticated
@@ -73,9 +86,16 @@ def _actions_sort_scope_max_count(*, is_authenticated, max_count):
     return min(max_count, scope_cap)
 
 
-def _build_actions_time_url(
-    *, search_action, username, text, before, run_id, sort_param, order_param
-):
+def _build_actions_time_url(  # noqa: PLR0913
+    *,
+    search_action: str,
+    username: str,
+    text: str,
+    before: float | None,
+    run_id: str,
+    sort_param: str,
+    order_param: str,
+) -> str:
     time_query = {
         "max_count": "1",
         "action": search_action,
@@ -89,17 +109,17 @@ def _build_actions_time_url(
     return "/actions?" + urlencode(time_query)
 
 
-def _build_action_row(
-    action,
-    request,
+def _build_action_row(  # noqa: PLR0913
+    action: dict[str, Any],
+    request: Any,  # noqa: ANN401
     *,
-    search_action,
-    username,
-    text,
-    run_id,
-    sort_param,
-    order_param,
-):
+    search_action: str,
+    username: str,
+    text: str,
+    run_id: str,
+    sort_param: str,
+    order_param: str,
+) -> dict[str, Any]:
     action = dict(action)
     action.setdefault("action", "")
     action.setdefault("username", "")
@@ -109,7 +129,7 @@ def _build_action_row(
         time_label = ""
     else:
         time_label = datetime.fromtimestamp(float(time_value), UTC).strftime(
-            "%y-%m-%d %H:%M:%S"
+            "%y-%m-%d %H:%M:%S",
         )
         time_label = time_label.replace("-", "\u2011", 2)
 
@@ -168,12 +188,15 @@ def _build_action_row(
             "target_name": target_name,
             "target_url": target_url or None,
             "message": action.get("message", ""),
-        }
+        },
     )
     return action
 
 
-def _action_row_sort_value(action_row, sort_param):
+def _action_row_sort_value(
+    action_row: dict[str, Any],
+    sort_param: str,
+) -> Any:  # noqa: ANN401
     if sort_param == "time":
         return float(action_row.get("time") or 0)
     if sort_param == "event":
@@ -187,7 +210,13 @@ def _action_row_sort_value(action_row, sort_param):
     return float(action_row.get("time") or 0)
 
 
-def _sort_action_rows(action_rows, *, sort_param, order_param, username_priority=None):
+def _sort_action_rows(
+    action_rows: list[dict[str, Any]],
+    *,
+    sort_param: str,
+    order_param: str,
+    username_priority: dict[str, int] | None = None,
+) -> None:
     # Keep a deterministic recent-first tie-break so equal values do not jump
     # between requests.
     action_rows.sort(
@@ -203,33 +232,43 @@ def _sort_action_rows(action_rows, *, sort_param, order_param, username_priority
             key=lambda row: (
                 username_priority.get(row.get("username", ""), len(username_priority)),
                 str(row.get("username", "")).lower(),
-            )
+            ),
         )
 
 
-def _actions_sort_summary(*, sort_param, order_param, sorted_count, scope_cap):
+def _actions_sort_summary(
+    *,
+    sort_param: str,
+    order_param: str,
+    sorted_count: int,
+    scope_cap: int,
+) -> str:
     if sort_param == _DEFAULT_TIME_SORT_FIELD and order_param == _DEFAULT_SORT_ORDER:
         return ""
 
     direction = "ascending" if order_param == "asc" else "descending"
     label = _ACTIONS_SORT_LABELS[sort_param]
     if sorted_count >= scope_cap:
-        return f"Sorted by {label} {direction} across the first {scope_cap} matching actions."
+        return (
+            f"Sorted by {label} {direction}"
+            f" across the first {scope_cap}"
+            " matching actions."
+        )
     return f"Sorted by {label} {direction} across {sorted_count} matching actions."
 
 
-def _actions_query_suffix(
+def _actions_query_suffix(  # noqa: PLR0913
     *,
-    username="",
-    search_action="",
-    text="",
-    sort_param=_DEFAULT_TIME_SORT_FIELD,
-    order_param=_DEFAULT_SORT_ORDER,
-    max_count=None,
-    before=None,
-    run_id="",
-    page=None,
-):
+    username: str = "",
+    search_action: str = "",
+    text: str = "",
+    sort_param: str = _DEFAULT_TIME_SORT_FIELD,
+    order_param: str = _DEFAULT_SORT_ORDER,
+    max_count: int | None = None,
+    before: float | None = None,
+    run_id: str = "",
+    page: int | None = None,
+) -> str:
     return _build_query_string(
         [
             ("user", username or None),
@@ -247,11 +286,14 @@ def _actions_query_suffix(
             ("before", before if before is not None else None),
             ("run_id", run_id or None),
             ("page", page if page not in (None, "", 1) else None),
-        ]
+        ],
     )
 
 
-def _matching_action_usernames(actiondb, query):
+def _matching_action_usernames(
+    actiondb: Any,  # noqa: ANN401
+    query: str,
+) -> list[str]:
     normalized_query = query.strip().lower()
     if not normalized_query:
         return []
@@ -260,11 +302,12 @@ def _matching_action_usernames(actiondb, query):
     if not callable(get_action_usernames):
         return [query.strip()]
 
-    def _matches_from_cached_usernames():
-        matches = []
-        for username in get_action_usernames():
-            if normalized_query in username.lower():
-                matches.append(username)
+    def _matches_from_cached_usernames() -> list[str]:
+        matches = [
+            username
+            for username in get_action_usernames()
+            if normalized_query in username.lower()
+        ]
         return _sort_matched_usernames(matches, query)
 
     matches = _matches_from_cached_usernames()
@@ -279,13 +322,17 @@ def _matching_action_usernames(actiondb, query):
     return matches
 
 
-def actions(request, *, page_size):
+def actions(  # noqa: PLR0915
+    request: Any,  # noqa: ANN401
+    *,
+    page_size: int,
+) -> dict[str, Any] | RedirectResponse:
     """Build the /actions page context.
 
     Returns a RedirectResponse for out-of-range pages, or a dict of
     template context for the actions content fragment.
     """
-    from starlette.responses import RedirectResponse
+    from starlette.responses import RedirectResponse  # noqa: PLC0415
 
     is_authenticated = request.authenticated_userid is not None
 

@@ -1,8 +1,13 @@
-"""Finished-runs page helpers: query-string construction, pagination engine,
-username matching, and the ``get_paginated_finished_runs`` entry point.
+"""Finished-runs page helpers.
+
+Query-string construction, pagination engine, username matching, and the
+``get_paginated_finished_runs`` entry point.
 """
 
+from __future__ import annotations
+
 from datetime import UTC, datetime
+from typing import Any
 from urllib.parse import urlencode
 
 from starlette.responses import RedirectResponse
@@ -33,7 +38,10 @@ _FINISHED_MAX_COUNT_QUERY_PARAM = "max_count"
 _FINISHED_SEARCH_MODE = "search"
 
 
-def _matching_finished_usernames(userdb, username_query):
+def _matching_finished_usernames(
+    userdb: Any,  # noqa: ANN401
+    username_query: str,
+) -> list[str] | None:
     normalized_query = username_query.strip().lower()
     if not normalized_query:
         return None
@@ -42,11 +50,12 @@ def _matching_finished_usernames(userdb, username_query):
     if not callable(get_usernames):
         return [username_query.strip()]
 
-    def _matches_from_cached_usernames():
-        matches = []
-        for candidate in get_usernames():
-            if normalized_query in candidate.lower():
-                matches.append(candidate)
+    def _matches_from_cached_usernames() -> list[str]:
+        matches = [
+            candidate
+            for candidate in get_usernames()
+            if normalized_query in candidate.lower()
+        ]
         return _sort_matched_usernames(matches, username_query)
 
     matches = _matches_from_cached_usernames()
@@ -61,16 +70,20 @@ def _matching_finished_usernames(userdb, username_query):
     return matches
 
 
-def _finished_filters_active(*, username_query, text):
+def _finished_filters_active(
+    *,
+    username_query: str,
+    text: str,
+) -> bool:
     return bool(username_query or text)
 
 
 def _effective_finished_max_count(
     *,
-    is_authenticated,
-    requested_max_count,
-    filters_active,
-):
+    is_authenticated: bool,
+    requested_max_count: int | None,
+    filters_active: bool,
+) -> int | None:
     if not filters_active:
         return requested_max_count
     return _effective_result_limit(
@@ -81,30 +94,32 @@ def _effective_finished_max_count(
     )
 
 
-def _finished_search_mode_enabled(params):
+def _finished_search_mode_enabled(params: dict[str, Any]) -> bool:
     return str(params.get("mode", "")).strip().lower() == _FINISHED_SEARCH_MODE
 
 
-def _finished_route_url(request):
+def _finished_route_url(request: Any) -> str:  # noqa: ANN401
     return f"{_host_url(request)}/tests/finished"
 
 
-def _requested_finished_max_count(params):
+def _requested_finished_max_count(
+    params: dict[str, Any],
+) -> int | None:
     return _positive_int_param(
-        params.get(_FINISHED_MAX_COUNT_QUERY_PARAM, None),
+        params.get(_FINISHED_MAX_COUNT_QUERY_PARAM),
         max_value=_MONGO_INT64_MAX,
     )
 
 
-def _finished_canonical_query_string(
-    params,
+def _finished_canonical_query_string(  # noqa: PLR0913
+    params: dict[str, Any],
     *,
-    max_count=None,
-    search_mode=False,
-    username_query=None,
-    text=None,
-    page=None,
-):
+    max_count: int | None = None,
+    search_mode: bool = False,
+    username_query: str | None = None,
+    text: str | None = None,
+    page: int | None = None,
+) -> str:
     if search_mode:
         success_only = False
         yellow_only = False
@@ -121,8 +136,8 @@ def _finished_canonical_query_string(
                 params.get(
                     "text",
                     params.get("info_regex", ""),
-                )
-            )
+                ),
+            ),
         ).strip()
     if page is None:
         page_param = str(params.get("page", "")).strip()
@@ -145,19 +160,19 @@ def _finished_canonical_query_string(
     )
 
 
-def _finished_query_pairs(
+def _finished_query_pairs(  # noqa: PLR0913
     *,
-    success_only=False,
-    yellow_only=False,
-    ltc_only=False,
-    search_mode=False,
-    username_query="",
-    text="",
-    max_count=None,
-    sort_field=_DEFAULT_TIME_SORT_FIELD,
-    sort_order=_DEFAULT_SORT_ORDER,
-    page=None,
-):
+    success_only: bool = False,
+    yellow_only: bool = False,
+    ltc_only: bool = False,
+    search_mode: bool = False,
+    username_query: str = "",
+    text: str = "",
+    max_count: int | None = None,
+    sort_field: str = _DEFAULT_TIME_SORT_FIELD,
+    sort_order: str = _DEFAULT_SORT_ORDER,
+    page: int | None = None,
+) -> list[tuple[str, str | int | None]]:
     return [
         ("mode", _FINISHED_SEARCH_MODE if search_mode else None),
         (
@@ -175,19 +190,19 @@ def _finished_query_pairs(
     ]
 
 
-def _finished_query_suffix(
+def _finished_query_suffix(  # noqa: PLR0913
     *,
-    success_only=False,
-    yellow_only=False,
-    ltc_only=False,
-    search_mode=False,
-    username_query="",
-    text="",
-    max_count=None,
-    sort_field=_DEFAULT_TIME_SORT_FIELD,
-    sort_order=_DEFAULT_SORT_ORDER,
-    page=None,
-):
+    success_only: bool = False,
+    yellow_only: bool = False,
+    ltc_only: bool = False,
+    search_mode: bool = False,
+    username_query: str = "",
+    text: str = "",
+    max_count: int | None = None,
+    sort_field: str = _DEFAULT_TIME_SORT_FIELD,
+    sort_order: str = _DEFAULT_SORT_ORDER,
+    page: int | None = None,
+) -> str:
     return _build_query_string(
         _finished_query_pairs(
             success_only=success_only,
@@ -200,20 +215,20 @@ def _finished_query_suffix(
             sort_field=sort_field,
             sort_order=sort_order,
             page=page,
-        )
+        ),
     )
 
 
-def _finished_tab_query_string(
+def _finished_tab_query_string(  # noqa: PLR0913
     *,
-    tab=None,
-    search_mode=False,
-    username_query="",
-    text="",
-    max_count=None,
-    sort_field=_DEFAULT_TIME_SORT_FIELD,
-    sort_order=_DEFAULT_SORT_ORDER,
-):
+    tab: str | None = None,
+    search_mode: bool = False,
+    username_query: str = "",
+    text: str = "",
+    max_count: int | None = None,
+    sort_field: str = _DEFAULT_TIME_SORT_FIELD,
+    sort_order: str = _DEFAULT_SORT_ORDER,
+) -> str:
     return _build_query_string(
         _finished_query_pairs(
             success_only=tab == "success_only",
@@ -230,7 +245,12 @@ def _finished_tab_query_string(
     )
 
 
-def get_paginated_finished_runs(request, *, username=None, search_mode=False):
+def get_paginated_finished_runs(  # noqa: C901, PLR0912, PLR0915
+    request: Any,  # noqa: ANN401
+    *,
+    username: str | None = None,
+    search_mode: bool = False,
+) -> dict[str, Any] | RedirectResponse:
     """Build the paginated finished-runs context.
 
     Returns a RedirectResponse when query parameters need canonical
@@ -253,8 +273,8 @@ def get_paginated_finished_runs(request, *, username=None, search_mode=False):
                 request.params.get(
                     "text",
                     request.params.get("info_regex", ""),
-                )
-            )
+                ),
+            ),
         ).strip()
     )
     requested_max_count = _requested_finished_max_count(request.params)
@@ -306,7 +326,9 @@ def get_paginated_finished_runs(request, *, username=None, search_mode=False):
         return RedirectResponse(
             url=_path_url(request)
             + _finished_canonical_query_string(
-                request.params, max_count=None, search_mode=False
+                request.params,
+                max_count=None,
+                search_mode=False,
             ),
             status_code=302,
         )
@@ -363,7 +385,7 @@ def get_paginated_finished_runs(request, *, username=None, search_mode=False):
                         run.get("last_updated") or datetime.min.replace(tzinfo=UTC)
                     ).timestamp(),
                     str(run.get("_id", "")),
-                )
+                ),
             )
             num_finished_runs = len(finished_runs)
             start = page_idx * page_size
@@ -412,10 +434,7 @@ def get_paginated_finished_runs(request, *, username=None, search_mode=False):
 
     failed_runs = []
     if page_idx == 0:
-        for run in finished_runs:
-            # Look for failed runs
-            if "failed" in run and run["failed"]:
-                failed_runs.append(run)
+        failed_runs = [run for run in finished_runs if run.get("failed")]
 
     filters = {
         "success_only": bool(success_only),
