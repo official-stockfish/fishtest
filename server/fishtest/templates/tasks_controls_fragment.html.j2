@@ -1,0 +1,43 @@
+{% set q = q if q is defined else "" %}
+
+{% set base_url = "/tests/tasks/" ~ run_id %}
+{% set base_qs = "show_task=" ~ show_task %}
+
+<div class="d-flex flex-wrap align-items-center gap-2">
+  <div>
+    {% if view == "paged" %}
+      <a
+        class="btn btn-outline-secondary btn-sm"
+        href="{{ base_url }}?{{ base_qs }}&view=all&sort={{ sort }}&order={{ order }}{% if q %}&q={{ q | urlencode }}{% endif %}"
+        hx-get="{{ base_url }}?{{ base_qs }}&view=all&sort={{ sort }}&order={{ order }}{% if q %}&q={{ q | urlencode }}{% endif %}"
+        hx-target="#tasks-content"
+        hx-swap="innerHTML"
+        hx-sync="#tasks-filters:abort"
+        hx-disinherit="hx-include"
+        hx-params="none"
+      >
+        <i class="fa-solid fa-list" aria-hidden="true"></i>
+        Show all ({{ num_tasks }} tasks)
+      </a>
+    {% else %}
+      <a
+        class="btn btn-outline-secondary btn-sm"
+        href="{{ base_url }}?{{ base_qs }}&view=paged&sort={{ sort }}&order={{ order }}{% if q %}&q={{ q | urlencode }}{% endif %}"
+        hx-get="{{ base_url }}?{{ base_qs }}&view=paged&sort={{ sort }}&order={{ order }}{% if q %}&q={{ q | urlencode }}{% endif %}"
+        hx-target="#tasks-content"
+        hx-swap="innerHTML"
+        hx-sync="#tasks-filters:abort"
+        hx-disinherit="hx-include"
+        hx-params="none"
+      >
+        <i class="fa-solid fa-table-columns" aria-hidden="true"></i>
+        Show paginated
+      </a>
+    {% endif %}
+  </div>
+  {% if is_truncated %}
+    <div class="alert alert-warning py-1 px-2 mb-0 small">
+      Showing first {{ max_all }} of {{ num_tasks }} tasks.
+    </div>
+  {% endif %}
+</div>
