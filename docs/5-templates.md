@@ -522,6 +522,15 @@ visually bounded by the active range.
 | `supported_arches` | list |
 | `supported_compilers` | list |
 
+Rendered structure notes:
+
+- the preset chooser caption for `Test type` is a neutral heading row, not a
+   `label` wrapper;
+- the ellipsis control is a sibling button that toggles the extra preset blocks
+   through Bootstrap collapse;
+- the collapsed preset blocks expose stable ids so the toggle button can name
+   them through `aria-controls`.
+
 ### `tests_stats.html.j2`
 
 Page shell for `/tests/stats/{id}`. Includes the shared stats content fragment and,
