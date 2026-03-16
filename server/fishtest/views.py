@@ -1362,8 +1362,14 @@ def rate_limits(request: _ViewContext) -> dict[str, Any]:  # noqa: ARG001
     return _build_rate_limits_context()
 
 
-def rate_limits_server(request: _ViewContext) -> dict[str, Any]:  # noqa: ARG001
-    return _build_rate_limits_context()
+def rate_limits_server(request: _ViewContext) -> Response:  # noqa: ARG001
+    context = _build_rate_limits_context()
+    server_rate_limit = context["server_rate_limit"]
+    server_reset = context["server_reset"]
+    return HTMLResponse(
+        f'{server_rate_limit}<span id="server_reset" hx-swap-oob="innerHTML">'
+        f"{server_reset}</span>",
+    )
 
 
 def user_management_pending_count(request: _ViewContext) -> dict[str, Any]:  # noqa: ARG001
@@ -3455,11 +3461,7 @@ _VIEW_ROUTES = [
     (nns, "/nns", {"renderer": "nns.html.j2"}),
     (sprt_calc, "/sprt_calc", {"renderer": "sprt_calc.html.j2"}),
     (rate_limits, "/rate_limits", {"renderer": "rate_limits.html.j2"}),
-    (
-        rate_limits_server,
-        "/rate_limits/server",
-        {"renderer": "rate_limits_server_fragment.html.j2"},
-    ),
+    (rate_limits_server, "/rate_limits/server", {}),
     (
         user_management_pending_count,
         "/user_management/pending_count",

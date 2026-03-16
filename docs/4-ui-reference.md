@@ -66,7 +66,7 @@ registers it on the FastAPI router.
 | `/nns` | GET, POST | `nns` | `nns.html.j2` | HX: `nns_content_fragment` |
 | `/sprt_calc` | GET, POST | `sprt_calc` | `sprt_calc.html.j2` | |
 | `/rate_limits` | GET, POST | `rate_limits` | `rate_limits.html.j2` | |
-| `/rate_limits/server` | GET, POST | `rate_limits_server` | `rate_limits_server_fragment.html.j2` | Fragment-only |
+| `/rate_limits/server` | GET, POST | `rate_limits_server` | inline HTML response | Fragment-only |
 
 ## Sidebar status links
 
@@ -76,10 +76,11 @@ The sidebar contains two visibility-aware status links:
    `/user_management/pending_count` htmx fragment endpoint inside the stable
    `#pending-users-nav` wrapper.
 - `GitHub Rate Limits` uses separate cadences: `POLL_RATE_LIMITS_GITHUB_S` for
-   the browser-side client-token polling that updates both the sidebar link and
-   the `/rate_limits` client row, and `POLL_RATE_LIMITS_SERVER_S` for the
-   `/rate_limits/server` htmx row. The sidebar mount point is the stable
-   `#rate-limits-nav` wrapper in `base.html.j2`.
+   the browser-side client-token polling that runs from shared JavaScript on
+   any page and updates the sidebar link everywhere plus the `/rate_limits`
+   client row when that page is open, and `POLL_RATE_LIMITS_SERVER_S` for the
+   `/rate_limits/server` htmx row. The sidebar link itself is rendered directly
+   in `base.html.j2`.
 
 Route notes:
 - **Fragment-only**: endpoint always returns a fragment template (no full page).
@@ -605,8 +606,8 @@ search and paging.
 
 | Parameter | Values | Default |
 |-----|-----|-----|
-| `network_name` | network name substring (case-insensitive) | empty |
-| `user` | uploader username substring (case-insensitive) | empty |
+| `network_name` | literal network name substring (case-insensitive) | empty |
+| `user` | literal uploader username substring (case-insensitive) | empty |
 | `master_only` | `1`, `true`, `on`, `yes` | absent/false |
 | `page` | integer `>= 1` | `1` |
 
@@ -623,6 +624,8 @@ Behavior notes:
 - Pagination links follow the same dual-mode contract.
 - Search inputs are htmx-triggered (`input changed delay`) and also support
    explicit submit for keyboard and non-JS flows.
+- `network_name` and `user` are treated as literal substring filters;
+  regex metacharacters have no special meaning.
 - htmx updates target `#nns-content` and push updated query URLs for
    back/forward and shareable links.
 - The filter form is rendered inside `#nns-content`, under the explanatory

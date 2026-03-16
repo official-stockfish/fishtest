@@ -27,6 +27,7 @@ class _RunDbStub:
         self.userdb = object()
         self.actiondb = _ActionDbStub()
         self.workerdb = object()
+        self.kvstore = {}
         self.run_cache = _RunCacheStub()
         self.conn = _ConnStub()
         self.scheduler = None
@@ -84,6 +85,44 @@ class TestHttpApp(unittest.TestCase):
             response = client.get("/", follow_redirects=False)
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.headers.get("location"), "/tests")
+
+    def test_secondary_instance_initializes_github_helper_without_refresh(self):
+        import fishtest.app as app_module
+        from fishtest.http.settings import AppSettings
+
+        _FastAPI, TestClient = test_support.require_fastapi()
+
+        async def _fake_run_in_threadpool(func, *args, **kwargs):
+            return func(*args, **kwargs)
+
+        settings = AppSettings(port=8001, primary_port=8000, is_primary_instance=False)
+
+        with mock.patch.dict("os.environ", {"FISHTEST_INSECURE_DEV": "1"}, clear=False):
+            with (
+                mock.patch.object(app_module, "RunDb", _RunDbStub),
+                mock.patch.object(
+                    app_module,
+                    "run_in_threadpool",
+                    _fake_run_in_threadpool,
+                ),
+                mock.patch.object(
+                    app_module.AppSettings,
+                    "from_env",
+                    return_value=settings,
+                ),
+                mock.patch.object(app_module.gh, "init") as init_mock,
+            ):
+                app = app_module.create_app()
+
+                with TestClient(app) as client:
+                    response = client.get("/", follow_redirects=False)
+
+        self.assertEqual(response.status_code, 302)
+        init_mock.assert_called_once_with(
+            mock.ANY,
+            mock.ANY,
+            refresh_master_sha=False,
+        )
 
     def test_openapi_url_enables_non_empty_schema_paths(self):
         import fishtest.app as app_module

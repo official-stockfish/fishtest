@@ -36,8 +36,8 @@ _dummy_sha = 40 * "f"
 official_master_sha = _dummy_sha
 
 
-def init(kvstore, actiondb):
-    global _actiondb, _kvstore, _api_initialized
+def init(kvstore, actiondb, *, refresh_master_sha=True):
+    global _actiondb, _kvstore, _api_initialized, official_master_sha
     _kvstore = kvstore
     _actiondb = actiondb
     try:
@@ -53,7 +53,10 @@ def init(kvstore, actiondb):
         print(f"Unable to restore github_api_cache from kvstore: {str(e)}", flush=True)
 
     _api_initialized = True
-    update_official_master_sha()
+    if refresh_master_sha:
+        update_official_master_sha()
+    else:
+        official_master_sha = _kvstore.get("official_master_sha", _dummy_sha)
 
 
 def clear_api_cache():

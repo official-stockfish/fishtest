@@ -163,8 +163,13 @@ def create_app() -> FastAPI:
         # All instances should use the same user schema.
         schemas.legacy_usernames = set(rundb.kvstore.get("legacy_usernames", []))
 
+        await run_in_threadpool(
+            gh.init,
+            rundb.kvstore,
+            rundb.actiondb,
+            refresh_master_sha=settings.is_primary_instance,
+        )
         if settings.is_primary_instance:
-            await run_in_threadpool(gh.init, rundb.kvstore, rundb.actiondb)
             await run_in_threadpool(rundb.update_aggregated_data)
             await run_in_threadpool(rundb.schedule_tasks)
 
