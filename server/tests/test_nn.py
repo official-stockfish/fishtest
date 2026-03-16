@@ -144,6 +144,38 @@ class TestNNHttp(unittest.TestCase):
         )
         self.assertNotIn("<!doctype html>", response.text.lower())
 
+    def test_nns_search_treats_regex_metacharacters_as_literals(self):
+        literal_name = "nn-h16-net[1].nnue"
+        broad_name = "nn-h16-net1.nnue"
+        literal_user = "Regex(User)"
+        broad_user = "RegexUser"
+        docs = [
+            {
+                "name": literal_name,
+                "user": literal_user,
+                "downloads": 4,
+                "is_master": False,
+            },
+            {
+                "name": broad_name,
+                "user": broad_user,
+                "downloads": 9,
+                "is_master": False,
+            },
+        ]
+        self.rundb.nndb.insert_many(docs)
+
+        response = self.client.get(
+            "/nns?network_name=net[1]&user=Regex(User)",
+            headers={"HX-Request": "true"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(literal_name, response.text)
+        self.assertIn(literal_user, response.text)
+        self.assertNotIn(broad_name, response.text)
+        self.assertNotIn(broad_user, response.text)
+
     def test_nns_summary_cards_render_full_filtered_totals(self):
         docs = [
             {

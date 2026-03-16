@@ -111,10 +111,10 @@ Every template receives these keys from `build_template_context()`:
 - `base.html.j2` includes `pending_users_nav_fragment.html.j2` inside a stable
    htmx poll wrapper. The wrapper owns the `load` and `every` triggers, while
    the fragment owns only the rendered anchor HTML.
-- `base.html.j2` also includes `rate_limits_nav_fragment.html.j2`. That link is
-   updated by `static/js/application.js`, not by a server fragment endpoint,
-   because the browser-side GitHub token lives in local storage and is not part
-   of server session state.
+- `base.html.j2` renders the sidebar `GitHub Rate Limits` anchor directly.
+   `static/js/application.js` updates that link, not a server fragment
+   endpoint, because the browser-side GitHub token lives in local storage and
+   is not part of server session state.
 - `rate_limits.html.j2` exposes the same browser-side client poll cadence via
    `data-poll-seconds` on `#client_rate_limit`, so the page row and the sidebar
    link read the same client limit state.
@@ -193,8 +193,6 @@ base layout and contain only the HTML subset needed for the swap target.
 | `machines_fragment.html.j2` | `#machines` | Yes (`#workers-count`) | Yes |
 | `nns_content_fragment.html.j2` | `#nns-content` | -- | -- |
 | `pending_users_nav_fragment.html.j2` | `#pending-users-nav` | -- | Yes |
-| `rate_limits_nav_fragment.html.j2` | `#rate-limits-nav` | -- | -- |
-| `rate_limits_server_fragment.html.j2` | server rate limit cell | Yes (`#server_reset`) | Yes |
 | `run_table_row_fragment.html.j2` | `#run-{id}` (row swap) | -- | -- |
 | `tasks_content_fragment.html.j2` | `#tasks-content` | Yes (`#tasks-view-controls`, `#tasks-pagination`, hidden input sync) | Yes |
 | `tasks_controls_fragment.html.j2` | included by `tests_view.html.j2` and OOB by `tasks_content_fragment.html.j2` | -- | -- |
@@ -338,6 +336,8 @@ Behavior notes:
 - htmx search updates only `#nns-content`; full-page rendering still works.
 - Typing in `network_name` / `user` and toggling `master_only` triggers
    htmx requests, while submit remains available as a non-JS fallback.
+- `network_name` and `user` are literal case-insensitive substring filters;
+   regex metacharacters are escaped before reaching Mongo.
 - The page shell owns the heading and filter form; the summary cards,
   explanatory copy, view toggle, pagination, and table live in the content
   fragment.
@@ -813,31 +813,15 @@ The fragment owns the NNS summary cards and the explanatory copy as well as the
 filter form, view toggle, pagination, and table so filtered htmx responses
 keep the full vertical page order synchronized with the current server state.
 
+The `network_name` and `user` filters remain literal case-insensitive
+substring searches. Regex syntax is not part of the public contract.
+
 Sortable headers are dual-mode links (`href` + `hx-get`) targeting
 `#nns-content` with `hx-push-url="true"`.
 
 The fragment-owned GET form keeps `view`, `sort`, and `order` in hidden inputs.
 Because the full filter form is inside the swapped fragment, htmx responses do
 not need out-of-band hidden-input refresh for this page.
-
-### `rate_limits_nav_fragment.html.j2`
-
-| Key | Type |
-|-----|------|
-| `urls.rate_limits` | string (href for the rate-limits page) |
-| `poll.rate_limits_github` | int (poll interval seconds, exposed as `data-poll-seconds`) |
-
-Renders the sidebar "GitHub Rate Limits" navigation link inside the
-stable `#rate-limits-nav` wrapper. The link carries a
-`data-poll-seconds` attribute that `application.js` reads to schedule
-client-side GitHub rate-limit budget checks.
-
-### `rate_limits_server_fragment.html.j2`
-
-| Key | Type |
-|-----|------|
-| `server_rate_limit` | string |
-| `server_reset` | string (OOB `#server_reset`) |
 
 The `/rate_limits` page client row and the sidebar `GitHub Rate Limits` link
 both project their cadence from `poll.rate_limits_github`.
@@ -849,9 +833,13 @@ The sidebar link keeps a fixed label and uses the same red status styling as
 the pending-users sidebar item whenever the client GitHub budget is below the
 threshold.
 
-The shared sidebar shell is mounted inside the stable `#rate-limits-nav`
-wrapper in `base.html.j2`, mirroring the stable wrapper pattern already used by
-`#pending-users-nav`.
+The sidebar link is rendered directly in `base.html.j2` with the same
+`data-poll-seconds` cadence that `application.js` uses for client-side GitHub
+budget checks.
+
+The `/rate_limits/server` endpoint returns a tiny inline HTML fragment: the
+remaining server budget plus an out-of-band `#server_reset` update. This route
+does not need a dedicated Jinja template.
 
 The pending-users sidebar wrapper, the `/rate_limits/server` poller, and the
 client-side GitHub rate-limit refresh all use `visibilitychange` activation, so

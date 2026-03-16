@@ -784,9 +784,15 @@ class RunDb:
     def get_nns(self, user="", network_name="", master_only=False, limit=0, skip=0):
         q = {}
         if user:
-            q["user"] = {"$regex": ".*{}.*".format(user), "$options": "i"}
+            q["user"] = {
+                "$regex": f".*{re.escape(user)}.*",
+                "$options": "i",
+            }
         if network_name:
-            q["name"] = {"$regex": ".*{}.*".format(network_name), "$options": "i"}
+            q["name"] = {
+                "$regex": f".*{re.escape(network_name)}.*",
+                "$options": "i",
+            }
         if master_only:
             q["is_master"] = True
 

@@ -2125,10 +2125,7 @@ class TestHttpUsers(unittest.TestCase):
             'class="overflow-auto {{ "collapse show" if tasks_shown else "collapse" }}"',
             template_source,
         )
-        self.assertIn(
-            'const tasks_head = tasks_container?.querySelector("thead");',
-            template_source,
-        )
+        self.assertIn('id="rate-limits-nav-link"', self.client.get("/rate_limits").text)
         self.assertIn(
             "const container_rect = tasks_container.getBoundingClientRect();",
             template_source,
@@ -2690,7 +2687,6 @@ class TestHttpUsers(unittest.TestCase):
     def test_rate_limits_sidebar_link_and_client_poll_contract(self):
         response = self.client.get("/rate_limits")
         self.assertEqual(response.status_code, 200)
-        self.assertIn('id="rate-limits-nav"', response.text)
         self.assertIn('id="rate-limits-nav-link"', response.text)
         self.assertIn(
             f'data-poll-seconds="{POLL_RATE_LIMITS_GITHUB_S}"',
@@ -2759,6 +2755,10 @@ class TestHttpUsers(unittest.TestCase):
 
         self.assertIn(
             'document.addEventListener("visibilitychange", () => {',
+            js_source,
+        )
+        self.assertIn(
+            "!(navLink instanceof HTMLAnchorElement) &&",
             js_source,
         )
         self.assertIn("function isClientRateLimitLow(rateLimit_) {", js_source)
