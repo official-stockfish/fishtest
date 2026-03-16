@@ -339,6 +339,22 @@ class TestHttpBoundary(unittest.TestCase):
             f"POST forms missing explicit csrf_token hidden input: {sorted(set(violations))}",
         )
 
+    def test_tests_run_test_type_toggle_is_not_nested_in_label(self):
+        templates_dir = Path(__file__).resolve().parents[1] / "fishtest" / "templates"
+        template_path = templates_dir / "tests_run.html.j2"
+        text = template_path.read_text(encoding="utf-8")
+
+        nested_toggle_re = re.compile(
+            r"<label\b[^>]*>.*?<button[^>]*class=\"[^\"]*test-type-toggle",
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+
+        self.assertNotRegex(text, nested_toggle_re)
+        self.assertIn(
+            'aria-controls="test-type-vltc test-type-vltc-smp test-type-pt test-type-pt-smp"',
+            text,
+        )
+
     def test_tests_finished_full_page_vs_fragment(self):
         app = self._build_app(include_views=True)
         client = self.TestClient(app)
