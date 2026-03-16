@@ -1325,6 +1325,7 @@ def nns(request: _ViewContext) -> dict[str, Any] | Response:  # noqa: C901, PLR0
         },
         "network_name_filter": network_name,
         "user_filter": user,
+        "cookie_max_age": PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS,
     }
 
     return (

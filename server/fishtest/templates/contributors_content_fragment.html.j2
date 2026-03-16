@@ -37,7 +37,7 @@
   {% set sort_url -%}
     {{ request.url.path }}?sort={{ field }}&order={{ next_order }}&view={{ view }}
   {%- endset %}
-  <th{% if is_active %} aria-sort="{{ 'ascending' if order == 'asc' else 'descending' }}"{% endif %} class="{{ align }}">
+  <th scope="col"{% if is_active %} aria-sort="{{ 'ascending' if order == 'asc' else 'descending' }}"{% endif %} class="{{ align }}">
     <a class="sort-header text-decoration-none text-reset d-inline-flex align-items-center gap-1"
       href="{{ sort_url | trim }}"
       hx-get="{{ sort_url | trim }}"
@@ -64,9 +64,10 @@
 
 <div class="table-responsive-lg">
   <table id="contributors_table" class="table table-striped table-sm">
+    <caption class="visually-hidden">Contributors</caption>
     <thead class="sticky-top">
       <tr>
-        <th class="text-end">#</th>
+        <th scope="col" class="text-end">#</th>
         {{ sort_header("username", "Username") }}
         {{ sort_header("last_updated", "Last active", "text-end") }}
         {{ sort_header("games_per_hour", "Games/Hour", "text-end") }}

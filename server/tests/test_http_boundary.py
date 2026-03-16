@@ -1098,6 +1098,108 @@ class TestHttpBoundary(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertTrue(response.headers.get("location", "").endswith("/tests"))
 
+    # -- H49: sortable table accessibility baseline --
+
+    def test_sortable_tables_have_scope_col_on_th(self):
+        """Every sort_header macro must emit <th scope="col" ...>."""
+        templates_dir = Path(__file__).resolve().parents[1] / "fishtest" / "templates"
+
+        sortable_templates = [
+            "contributors_content_fragment.html.j2",
+            "actions_content_fragment.html.j2",
+            "machines_fragment.html.j2",
+            "tasks_content_fragment.html.j2",
+            "workers_content_fragment.html.j2",
+            "user_management_content_fragment.html.j2",
+            "nns_content_fragment.html.j2",
+        ]
+
+        macro_th_re = re.compile(
+            r"{%\s*macro\s+sort_header\b.*?{%-?\s*endmacro\s*%}",
+            flags=re.DOTALL,
+        )
+        violations = []
+        for name in sortable_templates:
+            text = (templates_dir / name).read_text(encoding="utf-8")
+            m = macro_th_re.search(text)
+            if m is None:
+                violations.append(f"{name}: no sort_header macro found")
+                continue
+            body = m.group(0)
+            if 'scope="col"' not in body:
+                violations.append(f'{name}: sort_header <th> missing scope="col"')
+
+        self.assertEqual(
+            violations, [], f"Sortable tables missing scope='col': {violations}"
+        )
+
+    def test_sortable_tables_have_visually_hidden_caption(self):
+        """Every sortable table must have <caption class="visually-hidden">."""
+        templates_dir = Path(__file__).resolve().parents[1] / "fishtest" / "templates"
+
+        sortable_table_ids = {
+            "contributors_content_fragment.html.j2": "contributors_table",
+            "actions_content_fragment.html.j2": "actions_table",
+            "machines_fragment.html.j2": "machines_table",
+            "tasks_content_fragment.html.j2": "tasks_table",
+            "workers_content_fragment.html.j2": "workers_table",
+            "user_management_content_fragment.html.j2": "user_management_table",
+            "nns_content_fragment.html.j2": "nns_table",
+        }
+
+        caption_re = re.compile(r'<caption\s+class="visually-hidden">')
+        violations = []
+        for name, table_id in sortable_table_ids.items():
+            text = (templates_dir / name).read_text(encoding="utf-8")
+            table_start = text.find(f'id="{table_id}"')
+            if table_start == -1:
+                violations.append(f"{name}: table #{table_id} not found")
+                continue
+            # Check within 200 chars after the <table> tag
+            snippet = text[table_start : table_start + 200]
+            if not caption_re.search(snippet):
+                violations.append(
+                    f"{name}: #{table_id} missing visually-hidden caption"
+                )
+
+        self.assertEqual(
+            violations, [], f"Sortable tables missing caption: {violations}"
+        )
+
+    def test_sortable_tables_have_sticky_top_on_thead(self):
+        """Every sortable table <thead> must have class="sticky-top"."""
+        templates_dir = Path(__file__).resolve().parents[1] / "fishtest" / "templates"
+
+        sortable_table_ids = {
+            "contributors_content_fragment.html.j2": "contributors_table",
+            "actions_content_fragment.html.j2": "actions_table",
+            "machines_fragment.html.j2": "machines_table",
+            "tasks_content_fragment.html.j2": "tasks_table",
+            "workers_content_fragment.html.j2": "workers_table",
+            "user_management_content_fragment.html.j2": "user_management_table",
+            "nns_content_fragment.html.j2": "nns_table",
+        }
+
+        violations = []
+        for name, table_id in sortable_table_ids.items():
+            text = (templates_dir / name).read_text(encoding="utf-8")
+            table_start = text.find(f'id="{table_id}"')
+            if table_start == -1:
+                violations.append(f"{name}: table #{table_id} not found")
+                continue
+            # Find <thead> after the table tag
+            thead_start = text.find("<thead", table_start)
+            if thead_start == -1:
+                violations.append(f"{name}: #{table_id} has no <thead>")
+                continue
+            thead_tag = text[thead_start : text.find(">", thead_start) + 1]
+            if "sticky-top" not in thead_tag:
+                violations.append(f"{name}: #{table_id} <thead> missing sticky-top")
+
+        self.assertEqual(
+            violations, [], f"Sortable tables missing sticky-top: {violations}"
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
