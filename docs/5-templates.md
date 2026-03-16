@@ -143,6 +143,67 @@ This keeps templates focused on structure and server-provided state, aligns with
 MDN separation-of-concerns guidance, and makes the JS contract testable without
 embedding implementation details in the template body.
 
+## Sortable table accessibility baseline
+
+Seven content-fragment templates define inline `sort_header` Jinja2 macros for
+sortable data tables. All sortable tables must satisfy:
+
+1. **`scope="col"`** on every `<th>` in `<thead>` (including non-sortable
+   column headers like the `#` row number). Helps assistive technologies
+   associate headers with data cells.
+2. **`<caption class="visually-hidden">`** as the first child of each
+   `<table>`. Provides a programmatic name for the table so screen readers
+   can announce it before reading cells.
+3. **`class="sticky-top"`** on `<thead>` so column headers remain visible when
+   scrolling long tables.
+4. **`aria-sort`** only on the currently active sort column header. Values:
+   `ascending` or `descending`.
+5. **`aria-hidden="true"`** on the decorative sort-indicator icon span.
+
+Templates that follow this contract:
+
+| Template | Table ID | Caption text |
+|----------|----------|-------------|
+| `actions_content_fragment.html.j2` | `actions_table` | Events log results |
+| `contributors_content_fragment.html.j2` | `contributors_table` | Contributors |
+| `machines_fragment.html.j2` | `machines_table` | Machines |
+| `nns_content_fragment.html.j2` | `nns_table` | Neural networks |
+| `tasks_content_fragment.html.j2` | `tasks_table` | Tasks |
+| `user_management_content_fragment.html.j2` | `user_management_table` | User management |
+| `workers_content_fragment.html.j2` | `workers_table` | Workers |
+
+Regression tests in `test_http_boundary.py` enforce `scope="col"`,
+`visually-hidden` caption, and `sticky-top` on `<thead>` for all seven
+templates.
+
+### Filter and cookie consistency
+
+The seven sortable tables split into two architectural patterns that
+determine their filter form and state-persistence behavior:
+
+| Pattern | Pages | Filters | Cookie persistence | Polling |
+|---------|-------|---------|-------------------|---------|
+| **A** (standalone) | contributors, actions, workers, user_management, nns | `form-control` (full-size) | 0-1 client-side cookies | none |
+| **B** (embedded panel) | machines, tasks | `form-control-sm` | 4-6 server-side cookies | 60 s |
+
+Design rules:
+
+- **No custom width overrides** on filter inputs. Let `col-md-auto` size
+  fields naturally across all standalone pages.
+- **`autocomplete="off"`** on all search/filter text inputs to prevent
+  browser autofill from interfering with htmx-driven filtering.
+- **Cookie max-age** must use `PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS` from
+  `settings.py`, never hardcoded values. Client-side cookies set via
+  `hx-on::before-request` handlers use the Jinja variable
+  `{{ cookie_max_age }}` backed by this constant.
+
+Known gaps documented for future iterations:
+
+- Workers and user_management have zero cookie persistence for filter/sort
+  state (user resets to defaults on page reload).
+- Contributors has one client-side cookie (`monthly/all-time` toggle) but no
+  filter-state cookies.
+
 ## Template catalog
 
 ### Page templates (extend `base.html.j2`)
