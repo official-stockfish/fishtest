@@ -374,6 +374,10 @@ while letting low-risk UI preferences remain simple, readable browser state.
 - The sidebar reuses the last known client warning state from local storage on
    first paint, so page navigation does not flash the link back to its normal
    color before the client poll completes.
+- The browser-side GitHub poll runs on every page that renders the sidebar,
+  pauses while the tab is hidden, refreshes immediately on
+  `visibilitychange`, window `focus`, and bfcache `pageshow`, and then resumes
+  its normal cadence from that activation point.
 - When JavaScript is unavailable, the same link still works as normal
    navigation and the count refreshes on the next full-page render.
 

@@ -2758,12 +2758,22 @@ class TestHttpUsers(unittest.TestCase):
             js_source,
         )
         self.assertIn(
+            'window.addEventListener("focus", () => {',
+            js_source,
+        )
+        self.assertIn(
+            'window.addEventListener("pageshow", (event) => {',
+            js_source,
+        )
+        self.assertIn(
             "!(navLink instanceof HTMLAnchorElement) &&",
             js_source,
         )
         self.assertIn("function isClientRateLimitLow(rateLimit_) {", js_source)
         self.assertNotIn("function serverRateLimit()", js_source)
         self.assertIn("function setGitHubRateLimitLowState(isLow) {", js_source)
+        self.assertIn("function refreshClientRateLimitOnActivation() {", js_source)
+        self.assertIn("clearPollTimeout();", js_source)
         self.assertIn(
             'localStorage.setItem("fishtest_github_rate_limit_low", value);',
             js_source,
