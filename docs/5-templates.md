@@ -837,6 +837,15 @@ The sidebar link is rendered directly in `base.html.j2` with the same
 `data-poll-seconds` cadence that `application.js` uses for client-side GitHub
 budget checks.
 
+`application.js` owns the full browser-side lifecycle for that client poll:
+
+- it initializes on every page that renders `#rate-limits-nav-link`;
+- it pauses its timer while the document is hidden;
+- it refreshes immediately when the page becomes visible again and on window
+   `focus`;
+- it refreshes again on persisted `pageshow` so bfcache restores do not leave
+   stale sidebar or `/rate_limits` client-row state.
+
 The `/rate_limits/server` endpoint returns a tiny inline HTML fragment: the
 remaining server budget plus an out-of-band `#server_reset` update. This route
 does not need a dedicated Jinja template.

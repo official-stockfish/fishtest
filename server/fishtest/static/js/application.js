@@ -557,7 +557,37 @@ function handleClientRateLimitPolling() {
   const pollIntervalMs =
     Math.max(Number.isFinite(pollSeconds) ? pollSeconds : 10, 1) * 1000;
 
+  let pollTimeout = 0;
+  let refreshInFlight = false;
+  let refreshQueued = false;
+
+  function clearPollTimeout() {
+    if (pollTimeout !== 0) {
+      window.clearTimeout(pollTimeout);
+      pollTimeout = 0;
+    }
+  }
+
+  function scheduleNextPoll() {
+    clearPollTimeout();
+    if (document.visibilityState !== "visible") {
+      return;
+    }
+
+    pollTimeout = window.setTimeout(() => {
+      void refreshClientRateLimit();
+    }, pollIntervalMs);
+  }
+
   const refreshClientRateLimit = async () => {
+    if (refreshInFlight) {
+      refreshQueued = true;
+      return;
+    }
+
+    refreshInFlight = true;
+    clearPollTimeout();
+
     try {
       const clientRateLimit = await rateLimit();
       const isLow = isClientRateLimitLow(clientRateLimit);
@@ -576,18 +606,42 @@ function handleClientRateLimitPolling() {
         clientResetDom.classList.add("text-danger");
       }
       log(error);
+    } finally {
+      refreshInFlight = false;
+
+      if (refreshQueued) {
+        refreshQueued = false;
+        void refreshClientRateLimit();
+        return;
+      }
+
+      scheduleNextPoll();
     }
   };
 
-  void refreshClientRateLimit();
-  window.setInterval(() => {
-    if (document.visibilityState === "visible") {
-      void refreshClientRateLimit();
+  function refreshClientRateLimitOnActivation() {
+    if (document.visibilityState !== "visible") {
+      return;
     }
-  }, pollIntervalMs);
+
+    void refreshClientRateLimit();
+  }
+
+  void refreshClientRateLimit();
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") {
-      void refreshClientRateLimit();
+    if (document.visibilityState === "hidden") {
+      clearPollTimeout();
+      return;
+    }
+
+    refreshClientRateLimitOnActivation();
+  });
+  window.addEventListener("focus", () => {
+    refreshClientRateLimitOnActivation();
+  });
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted) {
+      refreshClientRateLimitOnActivation();
     }
   });
 }
