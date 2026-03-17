@@ -79,6 +79,16 @@ When `FISHTEST_PORT` and `FISHTEST_PRIMARY_PORT` are both unset or negative,
 the instance defaults to primary -- the expected mode for single-instance
 development.
 
+## Running validation
+
+Run lint and tests from the project root. These scripts encode the supported
+workflow for this repository.
+
+```bash
+bash scripts/dev/lint_dev.sh
+bash scripts/dev/mongo_test_ctl.sh --test
+```
+
 ## Running tests
 
 ```bash
@@ -87,6 +97,10 @@ mongod --dbpath .local/mongo-data --fork --logpath .local/mongod.log
 pushd server && uv run python -m unittest discover -s tests -v
 popd && mongod --shutdown --dbpath .local/mongo-data
 ```
+
+Use the manual sequence only when you need a focused local loop around the
+server test suite. The repo-root scripts remain the canonical validation entry
+points.
 
 See [0-README.md](0-README.md) for pre-commit hooks and CI workflows.
 

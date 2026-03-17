@@ -388,9 +388,9 @@ prevent XSS from error messages and to keep htmx attributes functional
 
 | Tool | Command / Path | Purpose |
 |------|----------------|---------|
-| Lint script | `cd server && uv run ruff check .` | Ruff linting with `target-version = \"py314\"` |
-| Type check | `cd server && uv run ty check fishtest/app.py fishtest/http/` | Type checking for ASGI entrypoint and HTTP modules |
-| Local test runner | `cd server && uv run python -m unittest discover -s tests -q` | Run the full test suite |
+| Canonical lint script | `bash scripts/dev/lint_dev.sh` | Repo-root lint and type-check workflow |
+| Canonical test script | `bash scripts/dev/mongo_test_ctl.sh --test` | Repo-root MongoDB-backed test workflow |
+| Local test runner | `cd server && uv run python -m unittest discover -s tests -q` | Focused server-only test loop |
 
 ## Testing patterns
 
@@ -436,7 +436,16 @@ validation fails.
 | `test_app.py` | Application startup, middleware, lifespan |
 | `test_api.py` | Worker API protocol (request_task, update_task, beat) |
 | `test_users.py` | Login, CSRF, permissions, UI form submission |
-| `test_actions_view.py` | Actions search, pagination, sorting |
-| `test_finished_view.py` | Finished tests search, pagination |
-| `test_http_boundary.py` | HTTP layer invariants (CSRF fields, headers) |
+| `test_views_actions.py` | Actions search, pagination, sorting |
+| `test_views_finished.py` | Finished-runs search and pagination |
+| `test_views_helpers.py` | Shared pagination, parameter, and merge helpers |
+| `test_views_machines.py` | Machines filter state, normalization, cookies |
+| `test_views_run.py` | Run-form validation, SPSA parsing, permissions |
+| `test_http_boundary.py` | HTTP boundary invariants and template contracts |
+| `test_http_dependencies.py` | Request-state dependency wiring |
+| `test_http_errors.py` | API vs UI error shaping |
+| `test_http_helpers.py` | Jinja/static helpers and shared HTTP utilities |
+| `test_http_middleware.py` | Middleware behavior and blocked-user flow |
+| `test_http_settings.py` | Runtime settings and environment parsing |
+| `test_http_ui_session_semantics.py` | Session commit and UI CSRF semantics |
 | `test_nn.py` | Neural network upload and listing |

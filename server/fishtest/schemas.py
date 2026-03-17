@@ -40,7 +40,7 @@ from vtjson import (
 )
 
 import fishtest.stats.stat_util
-from fishtest.util import (
+from fishtest.constants import (
     PASSWORD_MAX_LENGTH,
     VALID_USERNAME_PATTERN,
     supported_arches,

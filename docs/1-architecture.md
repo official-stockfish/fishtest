@@ -20,7 +20,8 @@ server/
 |-- fishtest/
 |   |-- app.py               -- ASGI application factory, lifespan, middleware, routers
 |   |-- api.py               -- Worker API router (22 endpoints)
-|   |-- views.py             -- UI router (34 endpoints, data-driven dispatch)
+|   |-- views.py             -- UI router (34 endpoints, data-driven dispatch,
+|   |                          routing hub)
 |   |-- views_helpers.py     -- Pure stateless helpers extracted from views.py
 |   |-- views_actions.py     -- Actions-page helpers (row building, sorting, query strings)
 |   |-- views_finished.py    -- Finished-runs page helpers (pagination, filtering)
@@ -43,8 +44,14 @@ server/
 |   |-- templates/           -- Jinja2 templates (49 files, .html.j2)
 |   |-- static/              -- Static assets (JS, CSS, images)
 |   `-- stats/               -- Statistical computation modules
-`-- tests/                   -- Test suite (16 test modules)
+`-- tests/                   -- Test suite (21 test modules; dedicated view
+                               and HTTP contract tests)
 ```
+
+`views.py` remains the stable UI routing hub. The extracted `views_*.py` modules
+hold domain logic, but route registration, `_dispatch_view`, and the request
+shim stay centralized there. Each extracted `views_*.py` module keeps a matching
+dedicated test file under `server/tests/`.
 
 ### HTTP support modules (`server/fishtest/http/`)
 
