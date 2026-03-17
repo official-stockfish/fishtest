@@ -1,6 +1,7 @@
 import os
 import time
 from pathlib import Path
+from typing import Protocol, TypedDict
 from urllib.parse import urlparse
 
 import requests
@@ -8,6 +9,26 @@ from vtjson import validate
 
 from fishtest.lru_cache import LRUCache, lru_cache
 from fishtest.schemas import sha as sha_schema
+
+
+class _KeyValueStore(Protocol):
+    def __contains__(self, key: object, /) -> bool: ...
+
+    def __getitem__(self, key: str, /) -> object: ...
+
+    def __setitem__(self, key: str, value: object, /) -> None: ...
+
+    def get(self, key: str, default: object = None, /) -> object: ...
+
+
+class _GitHubRateLimit(TypedDict):
+    limit: int
+    remaining: int
+    reset: int
+    used: int
+    resource: str
+    _uninitialized: bool
+
 
 """
 Note: we generally don't suppress exceptions since too many things can
@@ -19,9 +40,9 @@ TIMEOUT = 3
 INITIAL_RATELIMIT = 5000
 LRU_CACHE_SIZE = 6000
 
-_api_initialized = False
+_api_initialized: bool = False
 
-_github_rate_limit = {
+_github_rate_limit: _GitHubRateLimit = {
     "limit": INITIAL_RATELIMIT,
     "remaining": INITIAL_RATELIMIT,
     "reset": int(time.time()),
@@ -30,24 +51,55 @@ _github_rate_limit = {
     "_uninitialized": True,
 }
 _lru_cache = LRUCache(LRU_CACHE_SIZE)
-_kvstore = None
+_kvstore: _KeyValueStore | None = None
 
 _dummy_sha = 40 * "f"
 official_master_sha = _dummy_sha
 
 
+def _require_kvstore() -> _KeyValueStore:
+    if _kvstore is None:
+        raise Exception("github_api.py was not properly initialized")
+    return _kvstore
+
+
 def init(kvstore, actiondb, *, refresh_master_sha=True):
-    global _actiondb, _kvstore, _api_initialized, official_master_sha
+    global _kvstore, _api_initialized, official_master_sha
     _kvstore = kvstore
-    _actiondb = actiondb
+    _ = actiondb
     try:
-        if "github_api_cache" in _kvstore:
-            github_api_cache = _kvstore["github_api_cache"]
+        kvstore_handle = _require_kvstore()
+        if "github_api_cache" in kvstore_handle:
+            raw_github_api_cache = kvstore_handle["github_api_cache"]
         else:
             raise Exception("No previously saved github_api_cache")
-        if github_api_cache["version"] != GITHUB_API_VERSION:
+        if not isinstance(raw_github_api_cache, dict):
+            raise Exception("Stored github_api_cache has invalid type")
+
+        cache_version = next(
+            (value for key, value in raw_github_api_cache.items() if key == "version"),
+            None,
+        )
+        if cache_version != GITHUB_API_VERSION:
             raise Exception("Stored github_api_cache has different version")
-        for k, v in github_api_cache["lru_cache"]:
+
+        cache_entries = next(
+            (
+                value
+                for key, value in raw_github_api_cache.items()
+                if key == "lru_cache"
+            ),
+            None,
+        )
+        if not isinstance(cache_entries, list):
+            raise Exception("Stored github_api_cache has invalid lru_cache")
+
+        for entry in cache_entries:
+            if not isinstance(entry, (list, tuple)) or len(entry) != 2:
+                raise Exception("Stored github_api_cache entry has invalid shape")
+            k, v = entry
+            if not isinstance(k, (list, tuple)):
+                raise Exception("Stored github_api_cache key has invalid shape")
             _lru_cache[tuple(k)] = v
     except Exception as e:
         print(f"Unable to restore github_api_cache from kvstore: {str(e)}", flush=True)
@@ -56,7 +108,7 @@ def init(kvstore, actiondb, *, refresh_master_sha=True):
     if refresh_master_sha:
         update_official_master_sha()
     else:
-        official_master_sha = _kvstore.get("official_master_sha", _dummy_sha)
+        official_master_sha = _require_kvstore().get("official_master_sha", _dummy_sha)
 
 
 def clear_api_cache():
@@ -64,7 +116,7 @@ def clear_api_cache():
 
 
 def save():
-    _kvstore["github_api_cache"] = {
+    _require_kvstore()["github_api_cache"] = {
         "version": GITHUB_API_VERSION,
         "lru_cache": list(_lru_cache.items()),
     }
@@ -134,7 +186,7 @@ def call(url, *args, _method="GET", _ignore_rate_limit=False, **kwargs):
         _github_rate_limit["limit"] = int(
             r.headers.get("X-RateLimit-Limit", _github_rate_limit["limit"])
         )
-        _github_rate_limit.pop("_uninitialized", None)
+        _github_rate_limit["_uninitialized"] = False
     return r
 
 
@@ -212,12 +264,12 @@ def get_commits(user="official-stockfish", repo="Stockfish", ignore_rate_limit=F
 
 def _update_rate_limit():
     if (
-        "_uninitialized" not in _github_rate_limit
+        not _github_rate_limit["_uninitialized"]
         and _github_rate_limit["remaining"] == _github_rate_limit["limit"]
     ):
-        _github_rate_limit["reset"] = time.time() + 3600
+        _github_rate_limit["reset"] = int(time.time() + 3600)
     elif (
-        "_uninitialized" in _github_rate_limit
+        _github_rate_limit["_uninitialized"]
         or time.time() > _github_rate_limit["reset"]
     ):
         url = "https://api.github.com/rate_limit"
@@ -404,8 +456,8 @@ def update_official_master_sha():
             flush=True,
         )
     if official_master_sha != _dummy_sha:
-        _kvstore["official_master_sha"] = official_master_sha
+        _require_kvstore()["official_master_sha"] = official_master_sha
     else:
-        official_master_sha = _kvstore.get("official_master_sha", _dummy_sha)
+        official_master_sha = _require_kvstore().get("official_master_sha", _dummy_sha)
         if official_master_sha == _dummy_sha:
             print("Unable to initialize the official master sha", flush=True)
