@@ -1,8 +1,7 @@
-"""FastAPI dependency helpers.
+"""Resolve typed request dependencies for HTTP handlers.
 
-This module provides a typed way to access DB handles attached to the app.
-During migration we keep storing them on `app.state`, but prefer `request.state`
-when available (set by middleware).
+Read DB handles and session state from request-scoped state first, then fall
+back to application state when the request has not overridden them.
 """
 
 from __future__ import annotations

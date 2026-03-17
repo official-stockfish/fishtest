@@ -1,3 +1,5 @@
+"""Test `/actions` view helper contracts."""
+
 import unittest
 from datetime import UTC, datetime
 

@@ -1,7 +1,7 @@
-"""Run creation and modification helpers.
+"""Validate and prepare run creation and modification requests.
 
-SHA resolution, net discovery, form validation, SPSA parameter parsing,
-and run lifecycle utilities.
+Resolve SHAs, discover nets, validate forms, parse SPSA parameters, and manage
+run-lifecycle helper behavior.
 """
 
 from __future__ import annotations

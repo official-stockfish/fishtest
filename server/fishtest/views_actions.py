@@ -1,6 +1,7 @@
-"""Actions-page helpers for the /actions route.
+"""Build and paginate data for the `/actions` route.
 
-Row building, sorting, query-string construction, and username matching.
+Prepare rows, sorting state, query strings, and username matching for the
+actions page.
 """
 
 from __future__ import annotations

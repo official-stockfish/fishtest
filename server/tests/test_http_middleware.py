@@ -1,4 +1,5 @@
 # ruff: noqa: ANN201, ANN206, D100, D101, D102, INP001, PLC0415, PT009
+"""Test HTTP middleware ordering and request behavior."""
 
 import os
 import unittest

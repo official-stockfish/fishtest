@@ -1,3 +1,5 @@
+"""Provide shared test helpers for server-side test modules."""
+
 import atexit
 import os
 import re

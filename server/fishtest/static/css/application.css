@@ -192,10 +192,6 @@ button.notifications:focus-visible {
   box-shadow: inset 0 0 0 2px rgba(var(--bs-link-color-rgb), 0.4);
 }
 
-.tests-finished-text-filter {
-  min-width: min(22rem, 100%);
-}
-
 .bg-light-primary {
   background-color: rgba(var(--bs-primary-rgb), 0.15);
   color: var(--bs-primary);

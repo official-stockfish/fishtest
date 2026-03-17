@@ -1,3 +1,5 @@
+"""Test neural-network upload and storage behavior."""
+
 import unittest
 from datetime import UTC, datetime
 

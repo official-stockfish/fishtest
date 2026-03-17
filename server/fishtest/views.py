@@ -1,4 +1,9 @@
-"""Route handlers, dispatch pipeline, and request shim for the fishtest UI."""
+"""Dispatch fishtest UI routes and preserve the legacy request contract.
+
+Group the UI layer into authentication, list pages, neural-network tools,
+user and contributor flows, homepage run lists, run mutation, run detail, and
+router registration.
+"""
 
 from __future__ import annotations
 
@@ -494,7 +499,7 @@ async def _dispatch_view(
     return _apply_response_headers(shim, response)
 
 
-# === Domain: auth ===
+# === Authentication ===
 
 
 def _render_hx_fragment(
@@ -522,13 +527,13 @@ def _render_hx_or_context(
     return _render_hx_fragment(request, template_name, hx_context) or context
 
 
-# === Home redirect ===
+# === Home Redirect ===
 def home(request: object = None) -> RedirectResponse:  # noqa: ARG001
     """Redirect / to /tests. Registered directly on the router (no _dispatch_view)."""
     return RedirectResponse(url="/tests", status_code=302)
 
 
-# === Authentication views ===
+# === Login And Signup ===
 def ensure_logged_in(request: _ViewContext) -> str | RedirectResponse:
     """Return authenticated user id or a login RedirectResponse.
 
@@ -708,10 +713,10 @@ def signup(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # noqa:
     return signup_context
 
 
-# === Domain: lists ===
+# === Lists ===
 
 
-# === Worker administration ===
+# === Workers ===
 # Note that the allowed length of mailto URLs on Chrome/Windows is severely
 # limited.
 def worker_email(
@@ -1084,7 +1089,7 @@ def workers(request: _ViewContext) -> dict[str, Any] | Response:  # noqa: C901, 
     )
 
 
-# === Neural network uploads + tools ===
+# === Neural Networks ===
 def upload(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # noqa: C901, PLR0911, PLR0912, PLR0915
     result = ensure_logged_in(request)
     if isinstance(result, RedirectResponse):
@@ -1387,7 +1392,7 @@ def actions(request: _ViewContext) -> dict[str, Any] | RedirectResponse | Respon
     )
 
 
-# === User management + profiles ===
+# === Users ===
 def get_idle_users(
     users: list[dict[str, Any]],
     request: _ViewContext,
@@ -1676,7 +1681,7 @@ def user(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # noqa: C
     }
 
 
-# === Contributors views ===
+# === Contributors ===
 _CONTRIBUTORS_SORT_MAP = {
     "cpu_hours": ("cpu_hours", True),
     "username": ("username", False),
@@ -1891,7 +1896,7 @@ def contributors_monthly(
     )
 
 
-# === Run list fragments + homepage ===
+# === Homepage And Run Lists ===
 def tests_machines(request: _ViewContext) -> dict[str, Any] | Response:
     return _tests_machines_impl(request)
 
@@ -2193,10 +2198,10 @@ def tests(request: _ViewContext) -> dict[str, Any] | Response:
     }
 
 
-# === Domain: run mutation ===
+# === Run Mutation ===
 
 
-# === Run creation ===
+# === Run Creation ===
 def tests_run(request: _ViewContext) -> dict[str, Any] | RedirectResponse:
     user_id = ensure_logged_in(request)
     if isinstance(user_id, RedirectResponse):
@@ -2278,7 +2283,7 @@ def tests_run(request: _ViewContext) -> dict[str, Any] | RedirectResponse:
     }
 
 
-# === Run admin actions ===
+# === Run Administration ===
 def tests_modify(request: _ViewContext) -> RedirectResponse | dict[str, Any]:  # noqa: C901, PLR0912
     userid = ensure_logged_in(request)
     if isinstance(userid, RedirectResponse):
@@ -2473,10 +2478,7 @@ def tests_delete(request: _ViewContext) -> RedirectResponse | dict[str, Any]:
     return home(request)
 
 
-# === Domain: run detail ===
-
-
-# === Run detail views ===
+# === Run Detail ===
 def get_page_title(run: dict[str, Any]) -> str:
     if run["args"].get("sprt"):
         page_title = "SPRT {} vs {}".format(
@@ -3426,7 +3428,7 @@ def tests_view(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # n
     }
 
 
-# === Router registration ===
+# === Router Registration ===
 
 # Each entry: (view_function, path, config_dict)
 # Config keys: renderer, require_csrf, require_primary, request_method, http_cache

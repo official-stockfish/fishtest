@@ -1,6 +1,6 @@
-"""Finished-runs page helpers.
+"""Build the finished-runs query and pagination contract.
 
-Query-string construction, pagination engine, username matching, and the
+Prepare canonical query strings, pagination state, username matching, and the
 ``get_paginated_finished_runs`` entry point.
 """
 

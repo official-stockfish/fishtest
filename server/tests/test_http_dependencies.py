@@ -1,3 +1,5 @@
+"""Test HTTP dependency resolution and request-context assembly."""
+
 import unittest
 from types import SimpleNamespace
 from unittest import mock

@@ -388,8 +388,8 @@ prevent XSS from error messages and to keep htmx attributes functional
 
 | Tool | Command / Path | Purpose |
 |------|----------------|---------|
-| Canonical lint script | `bash scripts/dev/lint_dev.sh` | Repo-root lint and type-check workflow |
-| Canonical test script | `bash scripts/dev/mongo_test_ctl.sh --test` | Repo-root MongoDB-backed test workflow |
+| Python project config | `server/pyproject.toml` | Tracked lint, dependency, and test-tool configuration |
+| Server test package | `server/tests/` | Tracked unit and HTTP contract tests |
 | Local test runner | `cd server && uv run python -m unittest discover -s tests -q` | Focused server-only test loop |
 
 ## Testing patterns
@@ -405,10 +405,7 @@ running the suite).
 From the repo root:
 
 ```bash
-# Full pipeline (start mongod, run tests, stop mongod)
-bash scripts/dev/mongo_test_ctl.sh --test
-
-# Or manually
+# Manual local run
 mongod --dbpath /tmp/fishtest-test-db --port 27017 &
 cd server && uv run python -m unittest discover -s tests -q
 ```

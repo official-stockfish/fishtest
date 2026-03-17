@@ -1,3 +1,5 @@
+"""Test shared HTTP helper contracts and defensive utility behavior."""
+
 import os
 import tempfile
 import unittest

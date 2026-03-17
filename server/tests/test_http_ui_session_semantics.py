@@ -1,4 +1,5 @@
 # ruff: noqa: ANN201, ANN206, D100, D101, D102, E501, INP001, PLC0415, PT009
+"""Test UI-session semantics across the FastAPI HTTP boundary."""
 
 import unittest
 

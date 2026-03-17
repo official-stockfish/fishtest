@@ -1,4 +1,5 @@
 # ruff: noqa: ANN201, ANN206, D100, D101, D102, E501, INP001, PLC0415, PT009
+"""Test HTTP boundary shims, template context, and fragment behavior."""
 
 import re
 import tempfile
@@ -1097,8 +1098,6 @@ class TestHttpBoundary(unittest.TestCase):
         response = client.get("/", follow_redirects=False)
         self.assertEqual(response.status_code, 302)
         self.assertTrue(response.headers.get("location", "").endswith("/tests"))
-
-    # -- H49: sortable table accessibility baseline --
 
     def test_sortable_tables_have_scope_col_on_th(self):
         """Every sort_header macro must emit <th scope="col" ...>."""

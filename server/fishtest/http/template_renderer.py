@@ -1,4 +1,4 @@
-"""Unified template renderer for Jinja2."""
+"""Render Jinja2 templates for the FastAPI UI."""
 
 from __future__ import annotations
 

@@ -81,12 +81,12 @@ development.
 
 ## Running validation
 
-Run lint and tests from the project root. These scripts encode the supported
-workflow for this repository.
+Run validation from the project root or from `server/` using the tracked
+project configuration in `pyproject.toml` and the server test package.
 
 ```bash
-bash scripts/dev/lint_dev.sh
-bash scripts/dev/mongo_test_ctl.sh --test
+cd server && uv run ruff check fishtest tests utils
+cd server && uv run python -m unittest discover -s tests -v
 ```
 
 ## Running tests
@@ -99,8 +99,7 @@ popd && mongod --shutdown --dbpath .local/mongo-data
 ```
 
 Use the manual sequence only when you need a focused local loop around the
-server test suite. The repo-root scripts remain the canonical validation entry
-points.
+server test suite.
 
 See [0-README.md](0-README.md) for pre-commit hooks and CI workflows.
 

@@ -1,4 +1,5 @@
 # ruff: noqa: ANN201, ANN206, B904, D100, D101, D102, E501, EM101, EM102, INP001, PLC0415, PT009, S105, S106, TRY003
+"""Test the public API route contracts."""
 
 import base64
 import copy

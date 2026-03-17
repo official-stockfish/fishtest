@@ -1,6 +1,6 @@
-"""UI pipeline helpers for FastAPI HTTP views.
+"""Apply shared HTTP view-response policies.
 
-Ownership: apply response cache headers.
+Attach cache headers to UI responses when a view config enables them.
 """
 
 from __future__ import annotations
