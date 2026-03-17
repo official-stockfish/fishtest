@@ -1103,7 +1103,7 @@ def parse_fastchess_output(
     print(f"TC limit {tc_limit} End time: {end_time}")
 
     num_games_updated = 0
-    posted_fastchess_warnings = set()
+    count_fastchess_warnings = {}
     while datetime.now(timezone.utc) < end_time:
         if current_state["task_id"] is None:
             # This task is no longer necessary.
@@ -1144,19 +1144,35 @@ def parse_fastchess_output(
             message = f"fastchess says: '{line}'"
             raise RunException(message)
 
-        # Check line for fastchess warnings.
-        # Post each warning at most once per engine to the event log.
-        for idx, pattern in enumerate(patterns_fastchess_warning):
+        # Check line for fastchess warnings, and post them to the event log.
+        # Post only the first warning per pattern and engine, followed by an exponential count.
+        for pattern in patterns_fastchess_warning:
             if not pattern.search(line):
                 continue
-            engine_name = "None"
-            for name in (new_name, base_name):
-                if name in line:
-                    engine_name = name
-            if (idx, engine_name) not in posted_fastchess_warnings:
-                posted_fastchess_warnings.add((idx, engine_name))
-                message = f"fastchess says: '{line}'"
+
+            engine_name = (
+                new_name
+                if new_name in line
+                else base_name
+                if base_name in line
+                else "None"
+            )
+
+            count, exponential = count_fastchess_warnings.get(
+                (pattern, engine_name), (0, 1)
+            )
+            count += 1
+
+            if count == exponential:
+                message = (
+                    f"fastchess says: '{line}'"
+                    if count == 1
+                    else f"fastchess has so far said {count} times: '{pattern.pattern}' for {engine_name}"
+                )
                 post_to_worker_log(worker_info, password, remote, message)
+                exponential *= 2
+
+            count_fastchess_warnings[(pattern, engine_name)] = (count, exponential)
 
         # Parse line like this:
         # Finished game 1 (stockfish vs base): 0-1 {White disconnects}
