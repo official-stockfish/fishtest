@@ -1,3 +1,5 @@
+"""Test key-value store behavior."""
+
 import unittest
 
 from fishtest.kvstore import KeyValueStore

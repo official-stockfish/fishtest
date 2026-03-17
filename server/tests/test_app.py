@@ -1,3 +1,5 @@
+"""Test FastAPI application creation and lifecycle wiring."""
+
 import unittest
 from unittest import mock
 

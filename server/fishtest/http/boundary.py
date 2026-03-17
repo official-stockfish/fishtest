@@ -1,6 +1,7 @@
-"""Shared HTTP boundary (FastAPI UI/API).
+"""Bridge FastAPI requests to the legacy fishtest HTTP surface.
 
-Ownership: request shims, session commit helpers, and template context wiring.
+Provide request shims, session-commit helpers, and shared template-context
+wiring for the UI and API layers.
 """
 
 from __future__ import annotations

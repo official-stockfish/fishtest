@@ -1,15 +1,14 @@
-"""FastAPI ASGI application factory and runtime wiring.
+"""Create the FastAPI ASGI application and wire runtime services.
 
-This module provides the production entrypoint ``uvicorn fishtest.app:app`` and
-owns application-level orchestration:
+Expose the production entrypoint ``uvicorn fishtest.app:app`` and manage
+application-level orchestration:
 
-- lifespan startup/shutdown around ``RunDb``,
-- primary-instance safety checks,
-- middleware and error-handler installation,
-- static mount and router registration.
+- wrap ``RunDb`` in lifespan startup and shutdown,
+- enforce primary-instance safety checks,
+- install middleware and error handlers,
+- mount static assets and register routers.
 
-The HTTP behavior itself lives in ``fishtest.http`` (API/UI routers, middleware,
-session handling, and error shaping).
+Keep request and response behavior in ``fishtest.http``.
 """
 
 from __future__ import annotations

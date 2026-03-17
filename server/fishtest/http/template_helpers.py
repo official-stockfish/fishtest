@@ -1,4 +1,4 @@
-"""Shared template helpers for UI templates and parity tooling."""
+"""Provide shared helpers for UI templates and template-facing formatting."""
 
 from __future__ import annotations
 

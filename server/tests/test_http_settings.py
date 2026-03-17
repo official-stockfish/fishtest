@@ -1,3 +1,5 @@
+"""Test HTTP settings parsing and derived runtime flags."""
+
 import unittest
 from pathlib import Path
 from unittest import mock

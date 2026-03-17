@@ -1,7 +1,7 @@
-"""Session helpers for the FastAPI UI.
+"""Provide cookie-backed session helpers for the FastAPI UI.
 
-This keeps the legacy `CookieSession` surface while delegating persistence to
-Starlette's session middleware. The session data lives in `request.scope["session"]`.
+Keep the legacy ``CookieSession`` surface while delegating persistence to
+Starlette session middleware backed by ``request.scope["session"]``.
 """
 
 from __future__ import annotations

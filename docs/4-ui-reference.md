@@ -7,6 +7,10 @@ registration model**: `_VIEW_ROUTES` is a list of route descriptors, and
 `_dispatch_view()` is the centralized dispatch function that handles
 cross-cutting concerns for every UI request.
 
+`views.py` is intentionally organized into stable top-level sections:
+authentication, list pages, neural networks, users, contributors, homepage and
+run lists, run mutation, run detail, and router registration.
+
 ## Route table
 
 Routes are declared in `_VIEW_ROUTES` as tuples of:
@@ -720,6 +724,9 @@ Behavior notes:
    events.
 - The run-info text-search input auto-submits on debounced input and native
    search clear events.
+- In search mode, the username and free-text fields rely on the shared
+  Bootstrap grid sizing used by the other standalone filter pages. The page
+  does not apply a dedicated width override to the free-text control.
 - `user` resolves case-insensitive username substrings from a short-lived
    cached username list on the users collection, then queries the matching
    usernames through the exact-username finished-run path.

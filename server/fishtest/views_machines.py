@@ -1,7 +1,7 @@
-"""Machines-page helpers for /tests/machines.
+"""Build the `/tests/machines` filtering and pagination contract.
 
-Row normalization, filtering, sorting, cookie management, and the
-``tests_machines`` entry point.
+Normalize rows, apply filtering and sorting, manage persistent UI cookies, and
+support the ``tests_machines`` entry point.
 """
 
 from __future__ import annotations

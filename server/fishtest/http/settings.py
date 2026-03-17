@@ -1,6 +1,6 @@
-"""Runtime settings for the FastAPI server.
+"""Parse runtime settings for the FastAPI server.
 
-This module centralizes environment parsing and derived runtime flags.
+Centralize environment parsing, shared UI constants, and derived runtime flags.
 """
 
 from __future__ import annotations

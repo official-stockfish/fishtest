@@ -1,3 +1,5 @@
+"""Test `/tests/machines` helper contracts."""
+
 import unittest
 from datetime import UTC, datetime, timedelta
 

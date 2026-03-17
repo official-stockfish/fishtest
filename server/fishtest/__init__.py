@@ -1,4 +1,1 @@
-"""Fishtest server package.
-
-The active runtime is being migrated to FastAPI/ASGI.
-"""
+"""Expose the fishtest server package and its runtime entrypoints."""

@@ -1,3 +1,5 @@
+"""Test finished-runs search, pagination, and redirect helpers."""
+
 import unittest
 from datetime import UTC, datetime, timedelta
 

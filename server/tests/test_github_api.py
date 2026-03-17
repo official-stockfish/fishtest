@@ -1,3 +1,5 @@
+"""Test GitHub API helpers and compatibility exports."""
+
 import json
 import os
 import re

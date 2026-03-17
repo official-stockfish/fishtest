@@ -1,7 +1,7 @@
-"""CSRF helpers for UI routes.
+"""Validate CSRF tokens for UI routes.
 
-We keep CSRF validation logic centralized so UI POST routes behave consistently
-across the FastAPI migration.
+Keep CSRF validation logic centralized so UI POST routes enforce one stable
+request contract.
 """
 
 from __future__ import annotations

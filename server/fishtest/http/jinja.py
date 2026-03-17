@@ -1,4 +1,4 @@
-"""Jinja2 template rendering helpers for the FastAPI UI."""
+"""Configure Jinja2 templates for the FastAPI UI."""
 
 from __future__ import annotations
 

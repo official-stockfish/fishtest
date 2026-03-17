@@ -1,8 +1,7 @@
-"""Stateless utility functions shared by the views layer.
+"""Provide stateless helper functions for the views layer.
 
-Every function here is pure: it depends only on its arguments and has
-no fishtest imports.  This makes the helpers independently testable
-without a running application or database.
+Keep these utilities pure so the views layer can share pagination, parameter,
+and merge helpers without requiring a running application or database.
 """
 
 from __future__ import annotations

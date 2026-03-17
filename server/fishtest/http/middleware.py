@@ -1,7 +1,7 @@
-"""Starlette/FastAPI middleware.
+"""Define the Starlette and FastAPI middleware stack.
 
-These middlewares preserve legacy behavior while keeping ordering explicit
-and testable.
+Preserve legacy fishtest behavior while keeping middleware ordering explicit and
+testable.
 """
 
 from __future__ import annotations

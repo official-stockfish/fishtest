@@ -1,7 +1,7 @@
-"""Tests for the views_helpers module.
+"""Test views-layer helper contracts.
 
-Covers parameter parsing, pagination, query-string building,
-HTMX request detection, username matching, and heap-based merge.
+Cover parameter parsing, pagination, query-string building, HTMX request
+detection, username matching, and heap-based merge behavior.
 """
 
 import unittest

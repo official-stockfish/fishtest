@@ -1,6 +1,7 @@
-"""UI error rendering helpers for FastAPI.
+"""Render UI error responses and commit session cookies.
 
-Ownership: render legacy UI error templates and commit session cookies.
+Keep legacy login and not-found flows on the HTML path instead of the API error
+path.
 """
 
 from __future__ import annotations

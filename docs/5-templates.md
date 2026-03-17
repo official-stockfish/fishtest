@@ -190,6 +190,9 @@ Design rules:
 
 - **No custom width overrides** on filter inputs. Let `col-md-auto` size
   fields naturally across all standalone pages.
+- This rule also applies to `/tests/finished?mode=search`: its username and
+   free-text controls should size through the shared grid layout, not through a
+   page-specific CSS minimum width.
 - **`autocomplete="off"`** on all search/filter text inputs to prevent
   browser autofill from interfering with htmx-driven filtering.
 - **Cookie max-age** must use `PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS` from

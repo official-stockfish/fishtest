@@ -1,4 +1,5 @@
 # ruff: noqa: ANN201, ANN206, B025, B904, D100, D101, D102, E501, EM102, INP001, PLC0415, PT009, S105, TRY003
+"""Test user-facing UI routes, forms, and session behavior."""
 
 import unittest
 from datetime import UTC, datetime, timedelta

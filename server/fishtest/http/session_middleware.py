@@ -1,9 +1,7 @@
-"""Session middleware with per-request overrides.
+"""Persist fishtest sessions with Starlette-compatible middleware.
 
-This is a small wrapper around Starlette's session middleware behavior:
-- Uses `itsdangerous.TimestampSigner` for signing.
-- Persists a JSON-encoded session dict.
-- Allows per-request `max_age` and secure flags via scope keys.
+Wrap Starlette session behavior so fishtest can sign a JSON session payload and
+apply per-request max-age and secure overrides.
 """
 
 from __future__ import annotations

@@ -1,3 +1,5 @@
+"""Test worker setup, downloads, and command-line behavior."""
+
 import os
 import shutil
 import subprocess
@@ -77,7 +79,10 @@ class WorkerTest(unittest.TestCase):
     def test_setup_fastchess(self):
         self.assertTrue(
             worker.setup_fastchess(
-                self.tempdir, list(worker.detect_compilers())[0], 4, ""
+                self.tempdir,
+                list(worker.detect_compilers())[0],
+                4,
+                "",
             )
         )
 

@@ -1,11 +1,7 @@
-"""FastAPI/Starlette error handlers.
+"""Install FastAPI and Starlette error handlers for the fishtest server.
 
-Ownership: API/UI error shaping; UI HTML rendering delegated to ui_errors.
-
-These handlers preserve legacy fishtest behavior:
-- JSON 404s for `/api/...`
-- HTML 404 page for UI routes rendered via Jinja2
-- Cookie-session commit for UI 404 rendering
+Preserve legacy API and UI behavior by shaping API failures as JSON and routing
+UI failures through the HTML error-rendering helpers.
 """
 
 from __future__ import annotations
