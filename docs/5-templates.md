@@ -940,6 +940,11 @@ link back to its normal color.
 | `show_delete` | bool |
 | `show_gauge` | bool |
 
+The `row` payload is shaped by `build_run_table_rows()` in
+`server/fishtest/http/template_helpers.py`. Its `diff_url` field is derived
+directly from `util.diff_url(run, master_check=allow_github_api_calls)`.
+There is no intermediate run-row diff helper contract.
+
 ### `tasks_content_fragment.html.j2`
 
 Content fragment for the tasks table. Swaps the scrolling table markup into

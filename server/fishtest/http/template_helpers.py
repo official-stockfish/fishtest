@@ -1021,11 +1021,6 @@ def results_pre_attrs(results_info: dict, run: dict) -> Markup:
     return Markup(ret)  # noqa: S704
 
 
-def diff_url_for_run(run: dict, allow_github_api_calls: bool) -> str:  # noqa: FBT001
-    """Build a diff URL for a run with optional GitHub API calls."""
-    return diff_url(run, master_check=allow_github_api_calls)
-
-
 def tests_run_setup(
     args: dict,
     master_info: dict | None,
@@ -1260,7 +1255,6 @@ def build_run_table_rows(
         run_url = f"/tests/view/{run_id}" if run_id else ""
         new_tag = args.get("new_tag", "")
         new_tag_short = new_tag[:23]
-        diff_link = diff_url_for_run(run, allow_github_api_calls)
         is_finished = bool(run.get("finished"))
         is_sprt = "sprt" in args
         live_label = "sprt" if is_sprt else str(args.get("num_games", ""))
@@ -1292,7 +1286,10 @@ def build_run_table_rows(
                 "is_sprt": is_sprt,
                 "new_tag_short": new_tag_short,
                 "run_url": run_url,
-                "diff_url": diff_link,
+                "diff_url": diff_url(
+                    run,
+                    master_check=allow_github_api_calls,
+                ),
                 "live_label": live_label,
                 "live_url": live_url,
                 "tc_label": tc_label,
@@ -1311,7 +1308,6 @@ __all__ = [
     "build_tasks_rows",
     "build_tests_stats_context",
     "diff_url",
-    "diff_url_for_run",
     "display_residual",
     "format_bounds",
     "format_date",
