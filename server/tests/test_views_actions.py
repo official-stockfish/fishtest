@@ -49,18 +49,29 @@ class _PriorityActionDbStub:
     def get_actions(self, *args, **kwargs):
         username = kwargs.get("username")
         usernames = kwargs.get("usernames")
+        action = kwargs.get("action")
         limit = kwargs.get("limit", 0)
         skip = kwargs.get("skip", 0)
 
+        def _filtered_rows(rows):
+            filtered_rows = list(rows)
+            if action:
+                filtered_rows = [
+                    row for row in filtered_rows if row.get("action") == action
+                ]
+            return filtered_rows
+
         if username is not None:
-            rows = list(self._actions_by_username.get(username, []))
+            rows = _filtered_rows(self._actions_by_username.get(username, []))
             total = len(rows)
             return rows[skip : skip + limit], total
 
         if usernames is not None:
             rows = []
             for matched_username in usernames:
-                rows.extend(self._actions_by_username.get(matched_username, []))
+                rows.extend(
+                    _filtered_rows(self._actions_by_username.get(matched_username, []))
+                )
             rows.sort(
                 key=lambda row: (
                     float(row.get("time") or 0),
@@ -370,23 +381,23 @@ class TestActionsHttp(unittest.TestCase):
             authenticated_userid="JoeUser",
         )
         request.actiondb = _PriorityActionDbStub(
-            usernames=["Disservin", "vincenegri"],
+            usernames=["mauvin-agent", "vin-prefix-agent"],
             actions_by_username={
-                "Disservin": [
+                "mauvin-agent": [
                     {
-                        "_id": "disservin-1",
+                        "_id": "mauvin-agent-1",
                         "action": "upload_nn",
-                        "username": "Disservin",
-                        "nn": "nn-disservin.nnue",
+                        "username": "mauvin-agent",
+                        "nn": "nn-mauvin-agent.nnue",
                         "message": "inner substring match",
                         "time": now,
                     }
                 ],
-                "vincenegri": [
+                "vin-prefix-agent": [
                     {
-                        "_id": "vincenegri-1",
+                        "_id": "vin-prefix-agent-1",
                         "action": "new_run",
-                        "username": "vincenegri",
+                        "username": "vin-prefix-agent",
                         "run_id": "64e74776a170cb1f26fa3930",
                         "run": "ranked-prefix-run",
                         "message": "prefix match",
@@ -400,10 +411,95 @@ class TestActionsHttp(unittest.TestCase):
 
         self.assertEqual(
             [row["agent_name"] for row in result["actions"]],
-            ["vincenegri", "Disservin"],
+            ["vin-prefix-agent", "mauvin-agent"],
         )
         self.assertEqual(result["visible_actions"], 2)
         self.assertEqual(result["num_actions"], 2)
+
+    def test_actions_username_filter_keeps_substring_expansion_for_exact_term(self):
+        now = datetime.now(UTC).timestamp()
+        request = _GlueRequestStub(
+            params={"user": "mockuser"},
+            authenticated_userid="JoeUser",
+        )
+        request.actiondb = _PriorityActionDbStub(
+            usernames=["mockuser", "mockuser-alt"],
+            actions_by_username={
+                "mockuser": [
+                    {
+                        "_id": "mockuser-1",
+                        "action": "new_run",
+                        "username": "mockuser",
+                        "run_id": "64e74776a170cb1f26fa3930",
+                        "run": "mockuser-exact-run",
+                        "message": "exact username still expands",
+                        "time": now,
+                    }
+                ],
+                "mockuser-alt": [
+                    {
+                        "_id": "mockuser-alt-1",
+                        "action": "upload_nn",
+                        "username": "mockuser-alt",
+                        "nn": "nn-mockuser-alt.nnue",
+                        "message": "substring expansion stays enabled",
+                        "time": now - 60,
+                    }
+                ],
+            },
+        )
+
+        result = actions_view(request)
+
+        self.assertEqual(
+            [row["agent_name"] for row in result["actions"]],
+            ["mockuser", "mockuser-alt"],
+        )
+        self.assertEqual(result["visible_actions"], 2)
+        self.assertEqual(result["num_actions"], 2)
+
+    def test_actions_ranked_username_merge_preserves_action_filter(self):
+        now = datetime.now(UTC).timestamp()
+        request = _GlueRequestStub(
+            params={"user": "mockuser", "action": "upload_nn"},
+            authenticated_userid="JoeUser",
+        )
+        request.actiondb = _PriorityActionDbStub(
+            usernames=["mockuser", "mockuser-alt"],
+            actions_by_username={
+                "mockuser": [
+                    {
+                        "_id": "mockuser-1",
+                        "action": "new_run",
+                        "username": "mockuser",
+                        "run_id": "64e74776a170cb1f26fa3930",
+                        "run": "mockuser-new-run",
+                        "message": "wrong action for exact user",
+                        "time": now,
+                    }
+                ],
+                "mockuser-alt": [
+                    {
+                        "_id": "mockuser-alt-1",
+                        "action": "upload_nn",
+                        "username": "mockuser-alt",
+                        "nn": "nn-mockuser-alt.nnue",
+                        "message": "matching action survives",
+                        "time": now - 60,
+                    }
+                ],
+            },
+        )
+
+        result = actions_view(request)
+
+        self.assertEqual([row["event"] for row in result["actions"]], ["upload_nn"])
+        self.assertEqual(
+            [row["agent_name"] for row in result["actions"]],
+            ["mockuser-alt"],
+        )
+        self.assertEqual(result["visible_actions"], 1)
+        self.assertEqual(result["num_actions"], 1)
 
     def test_actions_event_sort_applies_to_the_full_capped_result_set(self):
         actions = []

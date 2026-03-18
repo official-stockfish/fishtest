@@ -682,12 +682,15 @@ Behavior notes:
 - Typing pauses trigger the existing debounced htmx form request, so results
    refresh from `GET /actions?...` without a separate suggestions endpoint,
    popup, or second swap target.
-- To keep that debounced path fast on large historical logs, `/actions` first
+- To keep that debounced path fast on large historical logs, `/actions`
    resolves substring matches from a short-lived cached distinct username list
-   built from the actions collection, refreshes that list once on a no-match
-   lookup, then fetches the matching rows by exact username query. This differs
-   from `/contributors` and `/user_management`, which can stay on userdb-backed
-   sources because they only need current user records.
+   built from the actions collection, refreshes it once on a no-match lookup,
+   then fetches the matching rows by exact username query while keeping the
+   active `action`, `text`, `run_id`, and time-cursor filters applied on each
+   exact-username fetch.
+   This differs from `/contributors` and
+   `/user_management`, which can stay on userdb-backed sources because they
+   only need current user records.
 - The summary line reports both the visible row count on the current page and
    the total matching row count, so pagination does not imply every match is
    currently rendered.

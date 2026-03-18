@@ -383,6 +383,7 @@ def actions(  # noqa: PLR0915
             usernames=matched_usernames,
             fetch_fn=lambda u, window, cap: request.actiondb.get_actions(
                 username=u,
+                action=search_action,
                 text=text,
                 skip=0,
                 limit=window,
