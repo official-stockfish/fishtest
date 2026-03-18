@@ -209,22 +209,29 @@ Known gaps documented for future iterations:
 
 ## Template catalog
 
-### Page templates (extend `base.html.j2`)
+The live template inventory contains **48** Jinja templates:
+
+- **1** base layout template
+- **19** full-page templates that extend `base.html.j2`
+- **28** non-base templates used as htmx fragments or shared partials
+
+### Base layout template
 
 | Template | Purpose |
 |----------|---------|
 | `base.html.j2` | Base layout (navbar, footer, asset loading, htmx CDN, pending-user nav poll target) |
+
+### Full-page templates (extend `base.html.j2`)
+
+| Template | Purpose |
+|----------|---------|
 | `actions.html.j2` | Paginated action log |
 | `contributors.html.j2` | Contributor leaderboard (all-time and monthly) |
-| `elo_results.html.j2` | ELO result display (included as partial) |
 | `login.html.j2` | Login form |
 | `nn_upload.html.j2` | Neural network upload form |
 | `nns.html.j2` | Neural network listing with pagination |
 | `notfound.html.j2` | 404 error page |
-| `pagination.html.j2` | Reusable pagination partial |
 | `rate_limits.html.j2` | API rate limit information page |
-| `run_table.html.j2` | Single run table partial |
-| `run_tables.html.j2` | Run listing container (pending/active/finished) |
 | `signup.html.j2` | User registration form |
 | `sprt_calc.html.j2` | SPRT calculator page |
 | `tests.html.j2` | Main tests dashboard |
@@ -238,43 +245,47 @@ Known gaps documented for future iterations:
 | `user_management.html.j2` | User administration page |
 | `workers.html.j2` | Worker blocking administration page |
 
-### Fragment templates (standalone, no `base.html.j2`)
+### Non-base templates
 
-Fragment templates serve htmx partial responses. They do not extend the
-base layout and contain only the HTML subset needed for the swap target.
+These templates do not extend the base layout. Some are direct htmx response
+fragments; others are shared partials included by page or fragment templates.
 
-| Template | Swap target | OOB | Polled |
-|----------|------------|-----|--------|
-| `actions_content_fragment.html.j2` | `#actions-content` | -- | -- |
-| `actions_page_fragment.html.j2` | `#actions-page` | -- | -- |
-| `active_run_filters_fragment.html.j2` | `#active-run-filters` | -- | -- |
-| `contributors_content_fragment.html.j2` | `#contributors-content` | Yes (hidden input sync) | -- |
-| `contributors_rows_fragment.html.j2` | included by `contributors_content_fragment.html.j2` | -- | -- |
-| `elo_batch_fragment.html.j2` | none (OOB only) | Yes | Yes |
-| `elo_results_fragment.html.j2` | none (OOB only) | Yes | Yes |
-| `homepage_stats_fragment.html.j2` | none (OOB only) | Yes | -- |
-| `live_elo_fragment.html.j2` | none (OOB only) | Yes | Yes |
-| `machines_fragment.html.j2` | `#machines` | Yes (`#workers-count`) | Yes |
-| `nns_content_fragment.html.j2` | `#nns-content` | -- | -- |
-| `pending_users_nav_fragment.html.j2` | `#pending-users-nav` | -- | Yes |
-| `run_table_row_fragment.html.j2` | `#run-{id}` (row swap) | -- | -- |
-| `tasks_content_fragment.html.j2` | `#tasks-content` | Yes (`#tasks-view-controls`, `#tasks-pagination`, hidden input sync) | Yes |
-| `tasks_controls_fragment.html.j2` | included by `tests_view.html.j2` and OOB by `tasks_content_fragment.html.j2` | -- | -- |
-| `tasks_rows_fragment.html.j2` | included by `tasks_content_fragment.html.j2` | -- | -- |
-| `tests_filter_tabs_fragment.html.j2` | caller-defined `hx-target` | -- | -- |
-| `tests_finished_content_fragment.html.j2` | full-page shell include | -- | -- |
-| `tests_finished_results_fragment.html.j2` | `#tests-finished-content` | Yes (tab wrapper in navigation mode) | -- |
-| `tests_stats_content_fragment.html.j2` | `#tests-stats-content` | -- | Yes |
-| `tests_user_content_fragment.html.j2` | `#tests-user-content` | -- | -- |
-| `user_management_content_fragment.html.j2` | `#user-management-content` | Yes (hidden input sync) | -- |
-| `user_management_rows_fragment.html.j2` | included by `user_management_content_fragment.html.j2` | -- | -- |
-| `workers_content_fragment.html.j2` | `#workers-content` | Yes (hidden input sync) | -- |
-| `workers_rows_fragment.html.j2` | included by `workers_content_fragment.html.j2` | -- | -- |
+| Template | Kind | Primary use |
+|----------|------|-------------|
+| `actions_content_fragment.html.j2` | htmx content fragment | Swaps `#actions-content` |
+| `active_run_filters_fragment.html.j2` | htmx controls fragment | Swaps `#active-run-filters` |
+| `contributors_content_fragment.html.j2` | htmx content fragment | Swaps `#contributors-content`; includes hidden-input OOB sync |
+| `contributors_rows_fragment.html.j2` | shared row partial | Included by `contributors_content_fragment.html.j2` |
+| `elo_batch_fragment.html.j2` | OOB poll fragment | Poll response for homepage ELO batch updates |
+| `elo_results.html.j2` | shared display partial | Included where ELO summary markup is rendered |
+| `elo_results_fragment.html.j2` | OOB poll fragment | Poll response for live ELO summary updates |
+| `homepage_stats_fragment.html.j2` | OOB summary fragment | Updates homepage stat targets |
+| `live_elo_fragment.html.j2` | OOB poll fragment | Poll response for live ELO page updates |
+| `machines_fragment.html.j2` | htmx content fragment | Swaps `#machines` and updates `#workers-count` OOB |
+| `nns_content_fragment.html.j2` | htmx content fragment | Swaps `#nns-content` |
+| `pagination.html.j2` | shared pagination partial | Included by paginated pages and fragments |
+| `pending_users_nav_fragment.html.j2` | polled nav fragment | Swaps `#pending-users-nav` |
+| `run_table.html.j2` | shared table partial | Renders one run table shell and includes row markup |
+| `run_table_row_fragment.html.j2` | row fragment | Renders `<tr>` rows; can be swapped into `#run-{id}` |
+| `run_tables.html.j2` | shared table-group partial | Composes pending, active, and finished run tables |
+| `tasks_content_fragment.html.j2` | htmx content fragment | Swaps `#tasks-content` and updates controls/pagination OOB |
+| `tasks_controls_fragment.html.j2` | shared controls partial | Included by `tests_view.html.j2` and reused in OOB updates |
+| `tasks_rows_fragment.html.j2` | shared row partial | Included by `tasks_content_fragment.html.j2` |
+| `tests_filter_tabs_fragment.html.j2` | shared navigation partial | Renders test-mode tabs for caller-defined targets |
+| `tests_finished_content_fragment.html.j2` | shared full-page partial | Included by `tests_finished.html.j2` |
+| `tests_finished_results_fragment.html.j2` | htmx results fragment | Swaps `#tests-finished-content`; can update tab wrapper OOB |
+| `tests_stats_content_fragment.html.j2` | polled content fragment | Swaps `#tests-stats-content` |
+| `tests_user_content_fragment.html.j2` | htmx content fragment | Swaps `#tests-user-content` |
+| `user_management_content_fragment.html.j2` | htmx content fragment | Swaps `#user-management-content`; includes hidden-input OOB sync |
+| `user_management_rows_fragment.html.j2` | shared row partial | Included by `user_management_content_fragment.html.j2` |
+| `workers_content_fragment.html.j2` | htmx content fragment | Swaps `#workers-content`; includes hidden-input OOB sync |
+| `workers_rows_fragment.html.j2` | shared row partial | Included by `workers_content_fragment.html.j2` |
 
 Column notes:
-- **OOB**: template contains `hx-swap-oob` attributes that update additional
-  DOM elements beyond the primary swap target.
-- **Polled**: template is fetched on a timer via `hx-trigger="every Ns"`.
+- **htmx content fragment**: returned as the main swap payload for a target.
+- **OOB / poll fragment**: returned for out-of-band updates, often on timers.
+- **shared partial**: included by another template rather than rendered as the
+   top-level response body.
 
 ## Context contracts
 
@@ -759,15 +770,8 @@ Same context as `actions.html.j2` (`actions`, `visible_actions`, `num_actions`, 
 `current_page`, `run_id_filter`, `max_count`, `sort`, `order`,
 `sort_summary`, `filters`, `pages`).
 
-### `actions_page_fragment.html.j2`
-
-Same context as `actions.html.j2`. This fragment owns the filter form,
-the `#actions-content` include, and the search-first `/actions` form that owns
-the debounced username and free-text filters. The username filter is
-substring-based; the view resolves matching usernames before running the exact
-action query so the debounced form stays fast on large logs. The free-text help
-control is a labeled button that opens the Bootstrap modal, so the icon trigger
-is keyboard-focusable and announced as a button.
+`actions.html.j2` renders the page shell and filter form, then includes
+`actions_content_fragment.html.j2` inside `#actions-content`.
 
 ### `active_run_filters_fragment.html.j2`
 
@@ -942,8 +946,7 @@ link back to its normal color.
 
 The `row` payload is shaped by `build_run_table_rows()` in
 `server/fishtest/http/template_helpers.py`. Its `diff_url` field is derived
-directly from `util.diff_url(run, master_check=allow_github_api_calls)`.
-There is no intermediate run-row diff helper contract.
+from the canonical run diff URL builder.
 
 ### `tasks_content_fragment.html.j2`
 
