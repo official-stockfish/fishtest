@@ -39,19 +39,6 @@ PRIMARY_ONLY_WORKER_API_PATHS = WORKER_API_PATHS - {"/api/upload_pgn"}
 router = APIRouter(tags=["api"])
 
 
-def _cors_headers(methods=None):
-    headers = {
-        "access-control-allow-origin": "*",
-        "access-control-allow-headers": "content-type",
-    }
-    if methods:
-        if isinstance(methods, (list, tuple, set)):
-            headers["access-control-allow-methods"] = ", ".join(methods)
-        else:
-            headers["access-control-allow-methods"] = str(methods)
-    return headers
-
-
 def _iter_filelike(fileobj, chunk_size=1024 * 1024):
     try:
         while True:
@@ -722,25 +709,11 @@ async def api_actions(request: Request):
     return JSONResponse(result, headers=api.request.response.headers)
 
 
-@router.options("/api/actions")
-async def api_actions_options(request: Request):
-    # Explicit preflight route retained for browser clients using cross-origin
-    # POST requests against this endpoint.
-    return JSONResponse([], headers=_cors_headers(["POST", "OPTIONS"]))
-
-
 @router.get("/api/get_run/{id}")
 async def api_get_run(id, request: Request):
     api = UserApi(ApiRequestShim(request, matchdict={"id": id}))
     result = await run_in_threadpool(api.get_run)
     return JSONResponse(result, headers=api.request.response.headers)
-
-
-@router.options("/api/get_run/{id}")
-async def api_get_run_options(id, request: Request):
-    # Explicit preflight route retained for browser clients using cross-origin
-    # GET requests with custom headers against this endpoint.
-    return JSONResponse([], headers=_cors_headers(["GET", "OPTIONS"]))
 
 
 @router.get("/api/get_task/{id}/{task_id}")

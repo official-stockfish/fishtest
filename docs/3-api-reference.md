@@ -284,17 +284,10 @@ single-instance handling. It is excluded from `PRIMARY_ONLY_WORKER_API_PATHS`.
 { "duration": 0.001 }
 ```
 
-## CORS support
+## Browser cross-origin policy
 
-Two endpoints respond to CORS preflight requests:
-
-| Endpoint | Purpose |
-|----------|--------|
-| `OPTIONS /api/actions` | Preflight for cross-origin action queries |
-| `OPTIONS /api/get_run/{id}` | Preflight for cross-origin run data access |
-
-Both return `Access-Control-Allow-Origin: *` and
-`Access-Control-Allow-Headers: Content-Type`.
+Endpoint-specific CORS preflight handlers are not part of the public API
+contract.
 
 ## Read-only endpoints (no authentication)
 
@@ -321,13 +314,11 @@ Returns paginated finished runs. Query parameters:
 
 ### POST /api/actions
 
-Returns up to 200 recent actions matching the JSON query body. Supports CORS
-(preflight via `OPTIONS /api/actions`).
+Returns up to 200 recent actions matching the JSON query body.
 
 ### GET /api/get_run/{id}
 
 Returns a single run document (with tasks stripped of sensitive fields).
-Supports CORS.
 
 ### GET /api/get_task/{id}/{task_id}
 

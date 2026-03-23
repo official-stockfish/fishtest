@@ -798,11 +798,47 @@ class TestHttpApi(unittest.TestCase):
         body = response.json()
         self.assertIn(run_id, body)
 
+    def test_actions_post(self):
+        response = self.client.post("/api/actions", json={})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers.get("access-control-allow-origin"), "*")
+        self.assertEqual(
+            response.headers.get("access-control-allow-headers"),
+            "content-type",
+        )
+        self.assertTrue(isinstance(response.json(), list))
+
+    def test_actions_options_is_not_allowed(self):
+        response = self.client.options(
+            "/api/actions",
+            headers={
+                "Origin": "https://example.org",
+                "Access-Control-Request-Method": "POST",
+            },
+        )
+        self.assertEqual(response.status_code, 405)
+
     def test_get_run(self):
         run_id = self._create_run()
         response = self.client.get(f"/api/get_run/{run_id}")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json().get("_id"), run_id)
+        self.assertEqual(response.headers.get("access-control-allow-origin"), "*")
+        self.assertEqual(
+            response.headers.get("access-control-allow-headers"),
+            "content-type",
+        )
+
+    def test_get_run_options_is_not_allowed(self):
+        run_id = self._create_run()
+        response = self.client.options(
+            f"/api/get_run/{run_id}",
+            headers={
+                "Origin": "https://example.org",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+        self.assertEqual(response.status_code, 405)
 
     def test_get_elo(self):
         run_id = self._create_run()
