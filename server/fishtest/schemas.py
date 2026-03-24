@@ -459,10 +459,11 @@ worker_info_schema_api = {
     "near_github_api_limit": bool,
 }
 
-worker_info_schema_runs = copy.deepcopy(worker_info_schema_api)
-worker_info_schema_runs.update(
-    {"remote_addr": ip_address, "country_code": union(country_code, "?")}
-)
+worker_info_schema_runs = {
+    **copy.deepcopy(worker_info_schema_api),
+    "remote_addr": ip_address,
+    "country_code": union(country_code, "?"),
+}
 
 
 def valid_results(stats):
