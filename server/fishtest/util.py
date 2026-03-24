@@ -534,7 +534,7 @@ def email_valid(email):
     try:
         resolver = caching_resolver(timeout=10)
         valid = validate_email(email, dns_resolver=resolver)
-        return True, valid.email
+        return True, valid.normalized
     except EmailNotValidError as e:
         return False, str(e)
 
