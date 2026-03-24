@@ -18,7 +18,7 @@ from fishtest.schemas import api_access_schema, api_schema, gzip_data
 from fishtest.stats.stat_util import SPRT_elo, get_elo
 from fishtest.util import strip_run, worker_name
 
-WORKER_VERSION = 315
+WORKER_VERSION = 316
 
 WORKER_API_PATHS = {
     "/api/request_version",
@@ -258,10 +258,16 @@ class WorkerApi(GenericApi):
 
     def worker_log(self):
         self.validate_request()
-        self.request.actiondb.log_message(
+        if "run_id" in self.request_body and "task_id" not in self.request_body:
+            self.handle_error("Missing task_id for worker_log run context")
+        run = self.run() if "run_id" in self.request_body else None
+        task_id = self.request_body.get("task_id")
+        self.request.actiondb.worker_log(
             username=self.get_username(),
             message=self.message(),
             worker=self.worker_name(),
+            run=run,
+            task_id=task_id,
         )
         return self.add_time({})
 

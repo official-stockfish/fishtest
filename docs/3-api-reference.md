@@ -270,12 +270,17 @@ single-instance handling. It is excluded from `PRIMARY_ONLY_WORKER_API_PATHS`.
 
 **Purpose**: Logs a worker-side diagnostic message on the server's action log.
 
+If `run_id` is provided, `task_id` must also be provided so the server can
+verify that the reporting worker is actually assigned to that task.
+
 **Request body**:
 ```json
 {
   "password": "string",
   "worker_info": { "username": "string", "unique_key": "string" },
-  "message": "log message string"
+  "message": "log message string",
+  "run_id": "optional run id when paired with task_id",
+  "task_id": 0
 }
 ```
 

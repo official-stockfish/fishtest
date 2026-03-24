@@ -352,6 +352,62 @@ class TestActionsHttp(unittest.TestCase):
         self.assertIn("H23 route contract hit", response.text)
         self.assertNotIn("nn-123456789abc.nnue", response.text)
 
+    def test_actions_worker_log_renders_task_target_link(self):
+        self.rundb.actiondb.insert_action(
+            action="worker_log",
+            username="H23ActionsUser",
+            worker="h23-worker-16cores-zz-1a2b",
+            run_id=self.run_id,
+            run="h23-actions-run-abcdef0",
+            task_id=7,
+            message="Bestmove does not match beginning of last PV",
+        )
+
+        response = self.client.get(
+            f"/actions?run_id={self.run_id}",
+            headers={"HX-Request": "true"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("worker_log", response.text)
+        self.assertIn("/workers/h23-worker-16cores", response.text)
+        self.assertIn("h23-worker-16cores-zz-1a2b", response.text)
+        self.assertIn(
+            f"/tests/view/{self.run_id}?show_task=7",
+            response.text,
+        )
+        self.assertIn("h23-actions-run-abcdef0/7", response.text)
+
+    def test_actions_form_offers_worker_log_filter_and_filters_results(self):
+        self.rundb.actiondb.insert_action(
+            action="worker_log",
+            username="H23ActionsUser",
+            worker="h23-worker-16cores-zz-1a2b",
+            run_id=self.run_id,
+            run="h23-actions-run-abcdef0",
+            task_id=7,
+            message="Bestmove warning",
+        )
+        self.rundb.actiondb.insert_action(
+            action="log_message",
+            username="H23ActionsUser",
+            message="Generic server log",
+        )
+
+        page_response = self.client.get(
+            f"/actions?action=worker_log&run_id={self.run_id}"
+        )
+        self.assertEqual(page_response.status_code, 200)
+        self.assertIn('option value="worker_log" selected', page_response.text)
+        self.assertIn("Worker Logs", page_response.text)
+
+        fragment_response = self.client.get(
+            f"/actions?action=worker_log&run_id={self.run_id}",
+            headers={"HX-Request": "true"},
+        )
+        self.assertEqual(fragment_response.status_code, 200)
+        self.assertIn("Bestmove warning", fragment_response.text)
+        self.assertNotIn("Generic server log", fragment_response.text)
+
     def test_actions_username_filter_matches_partial_substrings(self):
         self.rundb.actiondb.insert_action(
             action="new_run",
