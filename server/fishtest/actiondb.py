@@ -274,15 +274,31 @@ class ActionDb:
             self.insert_action(
                 action="log_message",
                 username=username,
-                message=message,
+                message=message[:ACTION_MESSAGE_SIZE],
             )
         else:
             self.insert_action(
                 action="log_message",
                 username=username,
                 worker=worker,
-                message=message,
+                message=message[:ACTION_MESSAGE_SIZE],
             )
+
+    def worker_log(
+        self, username=None, worker=None, message=None, run=None, task_id=None
+    ):
+        action = {
+            "action": "worker_log",
+            "username": username,
+            "worker": worker,
+            "message": message[:ACTION_MESSAGE_SIZE],
+        }
+        if run is not None:
+            action["run_id"] = run["_id"]
+            action["run"] = run_name(run)
+            if task_id is not None:
+                action["task_id"] = task_id
+        self.insert_action(**action)
 
     def insert_action(self, **action):
         if "run_id" in action:

@@ -320,12 +320,18 @@ def send_api_post_request(api_url, payload, quiet=False):
     return response
 
 
-def post_to_worker_log(worker_info, password, remote, message):
+def post_to_worker_log(
+    worker_info, password, remote, message, run_id=None, task_id=None
+):
     payload = {
         "password": password,
         "worker_info": worker_info,
         "message": message,
     }
+    if run_id is not None:
+        payload["run_id"] = run_id
+    if task_id is not None:
+        payload["task_id"] = task_id
     try:
         send_api_post_request(remote + "/api/worker_log", payload)
     except Exception as e:
@@ -1037,6 +1043,8 @@ def parse_fastchess_output(
     batch_size,
     tc_limit,
     pgn_file,
+    run_id,
+    task_id,
 ):
     finished_task_message = (
         "The server told us that no more games are needed for the current task."
@@ -1169,7 +1177,14 @@ def parse_fastchess_output(
                     if count == 1
                     else f"fastchess has so far said {count} times: '{pattern.pattern}' for {engine_name}"
                 )
-                post_to_worker_log(worker_info, password, remote, message)
+                post_to_worker_log(
+                    worker_info,
+                    password,
+                    remote,
+                    message,
+                    run_id=run_id,
+                    task_id=task_id,
+                )
                 exponential *= 2
 
             count_fastchess_warnings[(pattern, engine_name)] = (count, exponential)
@@ -1303,6 +1318,8 @@ def launch_fastchess(
     batch_size,
     tc_limit,
     pgn_file,
+    run_id,
+    task_id,
 ):
     if spsa_tuning:
         # Request parameters for next game.
@@ -1389,6 +1406,8 @@ def launch_fastchess(
                     batch_size,
                     tc_limit,
                     pgn_file,
+                    run_id,
+                    task_id,
                 )
             finally:
                 # We nicely ask fastchess to stop.
@@ -1789,6 +1808,8 @@ def run_games(
             batch_size,
             tc_limit * max(8, games_to_play / games_concurrency),
             pgn_file,
+            str(run["_id"]),
+            task_id,
         )
 
         games_remaining -= games_to_play

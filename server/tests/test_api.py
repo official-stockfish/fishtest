@@ -15,9 +15,11 @@ from fishtest.run_cache import Prio
 
 try:
     from fishtest.api import WORKER_VERSION
+    from fishtest.schemas import ACTION_MESSAGE_SIZE
     from fishtest.util import worker_name
 except ModuleNotFoundError:  # pragma: no cover
     WORKER_VERSION = None  # type: ignore[assignment]
+    ACTION_MESSAGE_SIZE = None  # type: ignore[assignment]
     worker_name = None  # type: ignore[assignment]
 
 
@@ -567,16 +569,99 @@ class TestHttpApi(unittest.TestCase):
             )
 
     def test_worker_log_ok(self):
+        run_id, task_id = self._create_run_with_task()
         response = self.client.post(
             "/api/worker_log",
             json={
                 **self._payload(password=self.password),
+                "run_id": run_id,
+                "task_id": task_id,
                 "message": "hello",
             },
         )
         self.assertEqual(response.status_code, 200)
         body = response.json()
         self.assertTrue(isinstance(body.get("duration"), (int, float)))
+        action = self.rundb.actiondb.actions.find_one(
+            {
+                "action": "worker_log",
+                "username": self.username,
+                "run_id": run_id,
+                "task_id": task_id,
+                "message": "hello",
+            }
+        )
+        self.assertIsNotNone(action)
+        assert action is not None
+        self.assertEqual(action["run_id"], run_id)
+        self.assertEqual(action["task_id"], task_id)
+        self.assertIn("run", action)
+        self.assertEqual(action["action"], "worker_log")
+
+    def test_worker_log_with_run_id_requires_task_id(self):
+        run_id, _task_id = self._create_run_with_task()
+        response = self.client.post(
+            "/api/worker_log",
+            json={
+                **self._payload(password=self.password),
+                "run_id": run_id,
+                "message": "hello",
+            },
+        )
+        self._assert_worker_error_response(
+            response,
+            status_code=400,
+            path="/api/worker_log",
+            contains="Missing task_id for worker_log run context",
+        )
+
+    def test_worker_log_truncates_long_message(self):
+        run_id, task_id = self._create_run_with_task()
+        long_message = "x" * (ACTION_MESSAGE_SIZE + 25)
+
+        response = self.client.post(
+            "/api/worker_log",
+            json={
+                **self._payload(password=self.password),
+                "run_id": run_id,
+                "task_id": task_id,
+                "message": long_message,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+
+        action = self.rundb.actiondb.actions.find_one(
+            {
+                "action": "worker_log",
+                "username": self.username,
+                "run_id": run_id,
+                "task_id": task_id,
+            }
+        )
+        self.assertIsNotNone(action)
+        assert action is not None
+        self.assertEqual(action["message"], long_message[:ACTION_MESSAGE_SIZE])
+        self.assertEqual(len(action["message"]), ACTION_MESSAGE_SIZE)
+
+    def test_log_message_truncates_long_message(self):
+        long_message = "y" * (ACTION_MESSAGE_SIZE + 25)
+
+        self.rundb.actiondb.log_message(
+            username=self.username,
+            message=long_message,
+        )
+
+        action = self.rundb.actiondb.actions.find_one(
+            {
+                "action": "log_message",
+                "username": self.username,
+            },
+            sort=[("time", -1), ("_id", -1)],
+        )
+        self.assertIsNotNone(action)
+        assert action is not None
+        self.assertEqual(action["message"], long_message[:ACTION_MESSAGE_SIZE])
+        self.assertEqual(len(action["message"]), ACTION_MESSAGE_SIZE)
 
     def test_update_task_ok(self):
         run_id, task_id = self._create_run_with_task()
