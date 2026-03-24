@@ -27,7 +27,6 @@ from vtjson import (
     lax,
     magic,
     nothing,
-    number,
     one_of,
     quote,
     regex,
@@ -92,8 +91,8 @@ option_list = intersect(
 uint = intersect(int, ge(0))
 suint = intersect(int, gt(0))
 ufloat = intersect(float, ge(0))
-unumber = intersect(number, ge(0))
-sunumber = intersect(number, gt(0))
+unumber = intersect(float, ge(0))
+sunumber = intersect(float, gt(0))
 
 task_id = set_name(uint, "task_id")
 timestamp = set_name(ufloat, "timestamp")
@@ -754,7 +753,7 @@ runs_schema = intersect(
                 "auto_purge": bool,
                 "throughput": unumber,
                 "itp": unumber,
-                "priority": number,
+                "priority": float,
                 "adjudication": bool,
                 "arch_filter?": regex_pattern,
                 "compiler?": compiler,
@@ -762,11 +761,11 @@ runs_schema = intersect(
                     {
                         "alpha": 0.05,
                         "beta": 0.05,
-                        "elo0": number,
-                        "elo1": number,
+                        "elo0": float,
+                        "elo1": float,
                         "elo_model": "normalized",
                         "state": union("", "accepted", "rejected"),
-                        "llr": number,
+                        "llr": float,
                         "batch_size": suint,
                         "lower_bound": -math.log(19),
                         "upper_bound": math.log(19),
@@ -775,11 +774,11 @@ runs_schema = intersect(
                         "overshoot?": {
                             "last_update": uint,
                             "skipped_updates": uint,
-                            "ref0": number,
-                            "m0": number,
+                            "ref0": float,
+                            "m0": float,
                             "sq0": unumber,
-                            "ref1": number,
-                            "m1": number,
+                            "ref1": float,
+                            "m1": float,
                             "sq1": unumber,
                         },
                     },
@@ -795,21 +794,21 @@ runs_schema = intersect(
                     "params": [
                         {
                             "name": str,
-                            "start": number,
-                            "min": number,
-                            "max": number,
+                            "start": float,
+                            "min": float,
+                            "max": float,
                             "c_end": sunumber,
                             "r_end": unumber,
                             "c": sunumber,
                             "a_end": unumber,
                             "a": unumber,
-                            "theta": number,
+                            "theta": float,
                         },
                         ...,
                     ],
                     "param_history?": [
                         [
-                            {"theta": number, "R": unumber, "c": unumber},
+                            {"theta": float, "R": unumber, "c": unumber},
                             ...,
                         ],
                         ...,
@@ -846,7 +845,7 @@ runs_schema = intersect(
                 "active": False,
                 "last_updated": datetime_utc,
                 "start": uint,
-                "residual": number,
+                "residual": float,
                 "residual_color": residual_color,
                 "bad": True,
                 "task_id": task_id,
