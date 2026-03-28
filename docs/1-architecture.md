@@ -20,7 +20,7 @@ server/
 |-- fishtest/
 |   |-- app.py               -- ASGI application factory, lifespan, middleware, routers
 |   |-- api.py               -- Worker API router (22 endpoints)
-|   |-- views.py             -- UI router (34 endpoints, data-driven dispatch,
+|   |-- views.py             -- UI router (35 endpoints, data-driven dispatch,
 |   |                          routing hub)
 |   |-- views_helpers.py     -- Pure stateless helpers extracted from views.py
 |   |-- views_actions.py     -- Actions-page helpers (row building, sorting, query strings)
@@ -41,7 +41,7 @@ server/
 |   |-- util.py              -- Shared utilities (formatting, validation helpers)
 |   |-- __init__.py          -- Minimal package init
 |   |-- http/                -- HTTP support modules
-|   |-- templates/           -- Jinja2 templates (49 files, .html.j2)
+|   |-- templates/           -- Jinja2 templates (53 files, .html.j2)
 |   |-- static/              -- Static assets (JS, CSS, images)
 |   `-- stats/               -- Statistical computation modules
 `-- tests/                   -- Test suite (21 test modules; dedicated view
@@ -236,6 +236,18 @@ the polling lifecycle:
 - **200** -- swap the response content.
 - **204** -- no content; htmx skips the swap but continues polling.
 - **286** -- swap the response and stop polling (terminal state).
+
+The test detail page uses one visibility-aware OOB poller for live summary and
+detail data:
+
+- `/tests/view/{id}/detail` refreshes the ELO block, run status, active-worker
+   totals, detail table, time block, compact chi-square block, and the
+   embedded SPSA chart payload.
+
+The merged detail poller uses `hx-swap="none"`, so the poller element stays
+stable while htmx still applies the response's out-of-band section updates.
+The tasks table keeps its own conditional `/tests/tasks/{id}` poller because it
+has a separate shell/body + OOB-controls contract.
 
 **Visibility-aware polling policy.** Every periodic htmx poller follows a
 three-part trigger policy:
