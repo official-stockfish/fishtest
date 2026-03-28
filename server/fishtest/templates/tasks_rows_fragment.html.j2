@@ -11,7 +11,7 @@
         {{ task_id }}
       {% endif %}
     </td>
-    <td>
+    <td{% if task.worker_is_bad %} style="text-decoration:line-through; background-color:#ffebeb"{% endif %}>
       {% if worker_url %}
         <a href="{{ worker_url }}">{{ worker_label }}</a>
       {% else %}

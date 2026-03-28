@@ -2470,6 +2470,59 @@ class TestHttpUsers(unittest.TestCase):
         finally:
             self.rundb.runs.delete_one({"_id": run["_id"]})
 
+    def test_tasks_hx_bad_worker_cell_restores_legacy_purged_style(self):
+        run_id = self._create_run()
+        run = self.rundb.get_run(run_id)
+        try:
+            now = datetime.now(UTC)
+            run["tasks"] = [
+                {
+                    "task_id": 18,
+                    "num_games": 704,
+                    "active": False,
+                    "last_updated": now,
+                    "worker_info": {
+                        "username": "BadWorkerUser",
+                        "unique_key": "bad-worker-key-0018",
+                        "concurrency": 12,
+                        "uname": "Windows 11",
+                        "max_memory": 16200,
+                        "compiler": "g++",
+                        "gcc_version": [15, 2, 0],
+                        "python_version": [3, 14, 3],
+                        "version": 316,
+                        "ARCH": "64bit VNNI BMI2 AVX2 SSE41 SSSE3 SSE2 POPCNT",
+                        "worker_arch": "x86-64-avxvnni",
+                    },
+                    "stats": {
+                        "wins": 0,
+                        "losses": 0,
+                        "draws": 0,
+                        "crashes": 0,
+                        "time_losses": 0,
+                        "pentanomial": [0, 0, 0, 0, 0],
+                    },
+                },
+            ]
+            run["bad_tasks"] = []
+            run["results"] = {"wins": 0, "losses": 0, "draws": 0}
+            self.rundb.set_bad_task(0, run)
+            self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+
+            response = self.client.get(
+                f"/tests/tasks/{run_id}?view=paged",
+                headers={"HX-Request": "true"},
+            )
+
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(
+                'style="text-decoration:line-through; background-color:#ffebeb"',
+                response.text,
+            )
+            self.assertIn("BadWorkerUser", response.text)
+        finally:
+            self.rundb.runs.delete_one({"_id": run["_id"]})
+
     def test_application_css_styles_task_search_cancel_button(self):
         css_path = (
             Path(__file__).resolve().parents[1]
