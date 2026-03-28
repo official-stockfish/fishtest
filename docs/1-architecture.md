@@ -196,6 +196,17 @@ detect the `HX-Request: true` header (with a `Sec-Fetch-Mode` guard against
 full-page navigations), then returns the appropriate template via the
 `_render_hx_fragment()` helper. `_dispatch_view()` appends `Vary: HX-Request`
 to every GET response so that HTTP caches distinguish the two representations.
+UI GET responses also emit `Cache-Control`: the default is
+`no-cache, private`, auth-sensitive pages use `no-store`, and explicit
+route-level overrides such as `/tests/machines` can still set a short
+`max-age`. This keeps dynamic cache policy server-authoritative and prevents
+shared caches such as nginx `proxy_cache` from storing personalized UI
+responses.
+
+**Reverse-proxy cache boundary.** nginx should respect those application
+headers for dynamic content and should not add `proxy_cache` in front of UI
+routes. Aggressive proxy/browser caching remains appropriate for immutable
+static assets only.
 
 **Server-authoritative table state.** Newer htmx list pages (`/nns`,
 `/contributors`, `/user_management`, `/workers/show`, `/tests/machines`) keep

@@ -1098,6 +1098,10 @@ class TestHttpBoundary(unittest.TestCase):
         response = client.get("/", follow_redirects=False)
         self.assertEqual(response.status_code, 302)
         self.assertTrue(response.headers.get("location", "").endswith("/tests"))
+        self.assertEqual(
+            response.headers.get("Cache-Control"),
+            "no-cache, private",
+        )
 
     def test_sortable_tables_have_scope_col_on_th(self):
         """Every sort_header macro must emit <th scope="col" ...>."""
