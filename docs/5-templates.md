@@ -209,11 +209,11 @@ Known gaps documented for future iterations:
 
 ## Template catalog
 
-The live template inventory contains **48** Jinja templates:
+The live template inventory contains **53** Jinja templates:
 
 - **1** base layout template
 - **19** full-page templates that extend `base.html.j2`
-- **28** non-base templates used as htmx fragments or shared partials
+- **33** non-base templates used as htmx fragments or shared partials
 
 ### Base layout template
 
@@ -275,6 +275,11 @@ fragments; others are shared partials included by page or fragment templates.
 | `tests_finished_content_fragment.html.j2` | shared full-page partial | Included by `tests_finished.html.j2` |
 | `tests_finished_results_fragment.html.j2` | htmx results fragment | Swaps `#tests-finished-content`; can update tab wrapper OOB |
 | `tests_stats_content_fragment.html.j2` | polled content fragment | Swaps `#tests-stats-content` |
+| `tests_view_detail_fragment.html.j2` | OOB poll fragment | Poll response for live detail-page summary + detail updates |
+| `tests_view_details_section.html.j2` | shared detail partial | Included by `tests_view.html.j2` and `tests_view_detail_fragment.html.j2` |
+| `tests_view_spsa_section.html.j2` | shared SPSA partial | Included by `tests_view.html.j2` |
+| `tests_view_stats_section.html.j2` | shared stats partial | Included by `tests_view.html.j2` and `tests_view_detail_fragment.html.j2` |
+| `tests_view_time_section.html.j2` | shared time partial | Included by `tests_view.html.j2` and `tests_view_detail_fragment.html.j2` |
 | `tests_user_content_fragment.html.j2` | htmx content fragment | Swaps `#tests-user-content` |
 | `user_management_content_fragment.html.j2` | htmx content fragment | Swaps `#user-management-content`; includes hidden-input OOB sync |
 | `user_management_rows_fragment.html.j2` | shared row partial | Included by `user_management_content_fragment.html.j2` |
@@ -611,7 +616,7 @@ Rendered structure notes:
 Page shell for `/tests/stats/{id}`. Includes the shared stats content fragment and,
 for unfinished non-SPSA runs, a visibility-aware htmx poller targeting
 `#tests-stats-content` using the dedicated raw-statistics poll cadence
-`poll.stats_detail`.
+`poll.tests_stats`.
 
 | Key | Type |
 |-----|------|
@@ -654,7 +659,8 @@ Rendered structure:
 | `page_title` | string |
 | `approver` | bool |
 | `chi2` | value |
-| `totals` | string (active workers summary) |
+| `run_status_label` | string |
+| `tasks_totals` | string (active workers summary) |
 | `tasks_shown` | bool |
 | `show_task` | int |
 | `follow` | int |
@@ -668,14 +674,26 @@ Rendered structure:
 | `use_3dot_diff` | bool |
 | `allow_github_api_calls` | bool |
 
-Detail-page ELO polling contract:
+Detail-page merged live polling contract:
 
-- Unfinished runs render a visibility-aware htmx poller targeting
-   `/tests/elo/{id}?expected=<status>`.
-- The `expected` query param must match the page's current run status label:
-   `active`, `paused`, or `pending`.
-- The page-level `_status` Jinja expression is the canonical source for both
-   the visible status label and the poller's expected state.
+- Unfinished runs render one visibility-aware htmx poller targeting
+   `/tests/view/{id}/detail`.
+- The poller includes `#tests-view-detail-expected`, a hidden server-owned
+   input carrying the current canonical `expected` status.
+- The poller uses `hx-swap="none"` and the dedicated cadence
+   `poll.tests_view_detail`.
+- The submitted `expected` value must match the page's canonical
+   `run_status_label`: `active`, `paused`, or `pending`.
+- The shared OOB targets are `#elo-<run_id>`, `#run-status-<run_id>`,
+   `#tasks-totals`, `#tests-view-details`, `#tests-view-time`, and either
+   `#tests-view-stats` or the embedded `#spsa-data-<run_id>` payload depending
+   on the run type.
+- `tests_view_detail_fragment.html.j2` OOB-refreshes the hidden expected-state
+   input alongside the visible status label so paused/pending transitions can
+   settle back to `204` on the next poll.
+- SPSA runs keep the chart shell stable in `tests_view.html.j2`; live detail
+   refreshes swap only the embedded `application/json` payload so
+   `static/js/spsa.js` can redraw without tearing down the toolbar and chart DOM.
 
 Detail-page tasks loader contract:
 
@@ -698,6 +716,89 @@ Run-table row contract:
 - The Active row markup carries filter dimensions plus a source-order index for
    restoring the current server order after checkbox changes and OOB swaps; it
    does not use a row-parity contract.
+
+### `tests_view_detail_fragment.html.j2`
+
+Merged OOB poll fragment returned by `/tests/view/{id}/detail`. Composes the
+shared detail-page summary + detail sections with `hx-swap-oob` enabled.
+
+| Key | Type |
+|-----|------|
+| `run` | dict |
+| `run_status_label` | string |
+| `tasks_totals` | string |
+| `run_args` | list of tuples `(name, value, url)` |
+| `approver` | bool |
+| `chi2` | dict |
+| `document_size` | int |
+| `spsa_data` | dict or None |
+
+Rendered behavior:
+
+- always includes `elo_results_fragment.html.j2`
+- always includes `tests_view_details_section.html.j2`
+- always includes `tests_view_time_section.html.j2`
+- includes `tests_view_stats_section.html.j2` for non-SPSA runs
+- emits an OOB `#spsa-data-<run_id>` `application/json` payload for SPSA runs
+
+### `tests_view_details_section.html.j2`
+
+Shared detail-table section used by `tests_view.html.j2` and the live detail
+fragment.
+
+| Key | Type |
+|-----|------|
+| `run` | dict |
+| `run_args` | list of tuples `(name, value, url)` |
+| `approver` | bool |
+| `document_size` | int |
+
+Rendered structure:
+
+- `#tests-view-details` root element
+- run argument rows, document size, actions link, raw statistics link when
+   applicable, and approver link when present
+
+### `tests_view_stats_section.html.j2`
+
+Shared compact chi-square block for the test detail page.
+
+| Key | Type |
+|-----|------|
+| `chi2` | dict |
+
+Rendered structure:
+
+- `#tests-view-stats` root element
+- compact `chi^2`, `dof`, and `p-value` table
+
+### `tests_view_time_section.html.j2`
+
+Shared time block for the test detail page.
+
+| Key | Type |
+|-----|------|
+| `run` | dict |
+
+Rendered structure:
+
+- `#tests-view-time` root element
+- start time and last updated rows
+
+### `tests_view_spsa_section.html.j2`
+
+Shared SPSA chart section for the test detail page.
+
+| Key | Type |
+|-----|------|
+| `run` | dict |
+| `spsa_data` | dict or None |
+
+Rendered structure:
+
+- `#tests-view-spsa` root element
+- DOM-embedded `application/json` payload for the current SPSA state
+- chart toolbar and chart container used by `static/js/spsa.js`
 
 ### `user.html.j2`
 

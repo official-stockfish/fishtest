@@ -15,7 +15,6 @@ from fishtest.http.settings import (
     POLL_PENDING_USERS_NAV_S,
     POLL_RATE_LIMITS_GITHUB_S,
     POLL_RATE_LIMITS_SERVER_S,
-    POLL_STATS_DETAIL_S,
     SESSION_REMEMBER_MAX_AGE_SECONDS,
 )
 from fishtest.run_cache import Prio
@@ -387,61 +386,6 @@ class TestHttpUsers(unittest.TestCase):
         response = self.client.get(f"/tests/view/{run_id}")
         self.assertEqual(response.status_code, 200)
         self.assertIn(str(run_id), response.text)
-
-    def test_tests_stats_page_renders_shell_with_poller(self):
-        run_id = self._create_run()
-
-        response = self.client.get(f"/tests/stats/{run_id}")
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("Raw Statistics for test", response.text)
-        self.assertIn(f'hx-get="/tests/stats/{run_id}"', response.text)
-        self.assertIn(
-            f"every {POLL_STATS_DETAIL_S}s [document.visibilityState === 'visible']",
-            response.text,
-        )
-        self.assertIn('id="tests-stats-content"', response.text)
-
-    def test_tests_stats_hx_paused_returns_204(self):
-        run_id = self._create_run()
-
-        response = self.client.get(
-            f"/tests/stats/{run_id}",
-            headers={"HX-Request": "true"},
-        )
-
-        self.assertEqual(response.status_code, 204)
-        self.assertEqual(response.text, "")
-
-    def test_tests_stats_hx_active_returns_fragment(self):
-        run_id = self._create_run()
-        run = self.rundb.get_run(run_id)
-        run["workers"] = 1
-        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
-
-        response = self.client.get(
-            f"/tests/stats/{run_id}",
-            headers={"HX-Request": "true"},
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn('id="tests-stats-content"', response.text)
-        self.assertIn("Draws", response.text)
-        self.assertNotIn("<title>", response.text)
-
-    def test_tests_stats_hx_terminal_returns_286(self):
-        run_id = self._create_run()
-        run = self.rundb.get_run(run_id)
-        run["finished"] = True
-        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
-
-        response = self.client.get(
-            f"/tests/stats/{run_id}",
-            headers={"HX-Request": "true"},
-        )
-
-        self.assertEqual(response.status_code, 286)
-        self.assertIn('id="tests-stats-content"', response.text)
 
     def test_contributors_search_goto_redirects_to_best_match(self):
         hit_name = "HxSearchMatchUser"

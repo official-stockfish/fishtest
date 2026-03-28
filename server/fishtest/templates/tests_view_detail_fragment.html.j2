@@ -1,0 +1,20 @@
+{% set oob = true %}
+{% set run_id = run["_id"] | string %}
+
+<input
+  type="hidden"
+  id="tests-view-detail-expected"
+  name="expected"
+  value="{{ run_status_label }}"
+  hx-swap-oob="true"
+>
+
+{% include "elo_results_fragment.html.j2" %}
+{% include "tests_view_details_section.html.j2" %}
+{% if "spsa" not in run["args"] %}
+  {% include "tests_view_stats_section.html.j2" %}
+{% endif %}
+{% include "tests_view_time_section.html.j2" %}
+{% if "spsa" in run["args"] %}
+  <script id="spsa-data-{{ run_id }}" type="application/json" hx-swap-oob="outerHTML">{{ spsa_data | tojson }}</script>
+{% endif %}

@@ -2589,6 +2589,25 @@ def _classify_run_status(run: dict[str, Any]) -> str:
     return "paused" if run.get("approved") else "pending"
 
 
+def _build_tests_view_status_context(run: dict[str, Any]) -> dict[str, str]:
+    active_workers = 0
+    active_cores = 0
+    for task in run["tasks"]:
+        if task["active"]:
+            active_workers += 1
+            active_cores += task["worker_info"]["concurrency"]
+
+    return {
+        "run_status_label": _classify_run_status(run),
+        "tasks_totals": "({} active worker{} with {} core{})".format(
+            active_workers,
+            ("s" if active_workers != 1 else ""),
+            active_cores,
+            ("s" if active_cores != 1 else ""),
+        ),
+    }
+
+
 def tests_elo_batch(request: _ViewContext) -> _TestsEloBatchContext | RedirectResponse:
     username = request.params.get("username", "") or ""
 
@@ -2752,36 +2771,24 @@ def tests_elo(request: _ViewContext) -> dict[str, Any]:
     if run is None:
         raise StarletteHTTPException(status_code=404)
 
+    status_context = _build_tests_view_status_context(run)
+
     expected = (request.params.get("expected") or "").strip().lower()
-    actual = _classify_run_status(run)
+    actual = status_context["run_status_label"]
 
     if expected:
         if actual in {"finished", "failed"}:
             request.response_status = 286
-        elif actual == expected:
+        elif actual in {"paused", "pending"} and actual == expected:
             request.response_status = 204
     elif actual in {"finished", "failed"}:
         request.response_status = 286
     elif actual != "active":
         request.response_status = 204
 
-    active = 0
-    cores = 0
-    for task in run["tasks"]:
-        if task["active"]:
-            active += 1
-            cores += task["worker_info"]["concurrency"]
-    totals = "({} active worker{} with {} core{})".format(
-        active,
-        ("s" if active != 1 else ""),
-        cores,
-        ("s" if cores != 1 else ""),
-    )
-
     return {
         "run": run,
-        "run_status_label": actual,
-        "tasks_totals": totals,
+        **status_context,
     }
 
 
@@ -3054,6 +3061,250 @@ def _set_tasks_cookies(
     _set_tasks_cookie(request, "tasks_q", str(state["q"]), cookie_max_age)
 
 
+def _format_tests_view_spsa_value(
+    run: dict[str, Any],
+    value: dict[str, Any],
+) -> list[str | _SpsaTableRow]:
+    iter_local = value["iter"] + 1  # start from 1 to avoid division by zero
+    A = value["A"]  # noqa: N806
+    alpha = value["alpha"]
+    gamma = value["gamma"]
+    summary = (
+        f"iter: {iter_local:d}, A: {A:d}, alpha: {alpha:0.3f}, gamma: {gamma:0.3f}"
+    )
+    params = value["params"]
+    spsa_value: list[str | _SpsaTableRow] = [summary]
+    for p in params:
+        try:
+            c_iter = p["c"] / (iter_local**gamma)
+            r_iter = p["a"] / (A + iter_local) ** alpha / c_iter**2
+        except (ArithmeticError, TypeError, ValueError) as e:
+            logger.warning(
+                "Invalid SPSA param state while rendering "
+                "run %s (iter=%d, param=%s): %s",
+                run["_id"],
+                iter_local,
+                p.get("name", "<unknown>"),
+                e,
+            )
+            c_iter = float("nan")
+            r_iter = float("nan")
+        spsa_value.append(
+            [
+                p["name"],
+                "{:.2f}".format(p["theta"]),
+                str(int(p["start"])),
+                str(int(p["min"])),
+                str(int(p["max"])),
+                f"{c_iter:.3f}",
+                "{:.3f}".format(p["c_end"]),
+                f"{r_iter:.2e}",
+                "{:.2e}".format(p["r_end"]),
+            ],
+        )
+    return spsa_value
+
+
+def _format_tests_view_string_arg(
+    run: dict[str, Any],
+    name: str,
+    value: str,
+) -> str | None:
+    if name == "arch_filter":
+        if value == "":
+            return None
+        filtered_arches = list(
+            filter(
+                lambda x: regex.search(value, x) is not None,
+                supported_arches,
+            ),
+        )
+        return value + "  (" + ", ".join(filtered_arches) + ")"
+    if name == "new_tag" and "msg_new" in run["args"]:
+        return value + "  (" + run["args"]["msg_new"][:50] + ")"
+    if name == "base_tag" and "msg_base" in run["args"]:
+        return value + "  (" + run["args"]["msg_base"][:50] + ")"
+    return value
+
+
+def _format_tests_view_list_arg(name: str, value: list[str]) -> str:
+    if name in ("new_nets", "base_nets"):
+        return ", ".join(value)
+    return str(value)
+
+
+def _format_tests_view_dict_arg(
+    run: dict[str, Any],
+    name: str,
+    value: dict[str, Any],
+) -> _RunArgValue:
+    if name == "sprt":
+        return (
+            "elo0: {:.2f} alpha: {:.2f} elo1: {:.2f} beta: {:.2f} state: {} ({})"
+        ).format(
+            value["elo0"],
+            value["alpha"],
+            value["elo1"],
+            value["beta"],
+            value.get("state", "-"),
+            value.get("elo_model", "BayesElo"),
+        )
+    if name == "spsa":
+        return _format_tests_view_spsa_value(run, value)
+    return str(value)
+
+
+def _normalize_tests_view_list_arg(value: object) -> list[str] | None:
+    if not isinstance(value, list):
+        return None
+
+    normalized_value: list[str] = []
+    for item in value:
+        if not isinstance(item, str):
+            return None
+        normalized_value.append(item)
+    return normalized_value
+
+
+def _normalize_tests_view_dict_arg(value: object) -> dict[str, Any] | None:
+    if not isinstance(value, dict):
+        return None
+
+    normalized_value: dict[str, Any] = {}
+    for key, item in value.items():
+        if not isinstance(key, str):
+            return None
+        normalized_value[key] = item
+    return normalized_value
+
+
+def _format_tests_view_arg_value(
+    run: dict[str, Any],
+    name: str,
+    value: object,
+) -> _RunArgValue | None:
+    if isinstance(value, str):
+        return _format_tests_view_string_arg(run, name, value)
+
+    normalized_list = _normalize_tests_view_list_arg(value)
+    if normalized_list is not None:
+        return _format_tests_view_list_arg(name, normalized_list)
+
+    normalized_dict = _normalize_tests_view_dict_arg(value)
+    if normalized_dict is not None:
+        return _format_tests_view_dict_arg(run, name, normalized_dict)
+
+    return str(value)
+
+
+def _build_tests_view_arg_url(
+    run: dict[str, Any],
+    name: str,
+    value: _RunArgValue,
+    *,
+    tests_repo_value: str,
+    repo_info: tuple[str, str],
+) -> str:
+    tests_repo_user, tests_repo_repo = repo_info
+    if name == "tests_repo":
+        return tests_repo_value
+    if name == "master_repo":
+        return str(value)
+    if name == "new_tag":
+        return gh.commit_url(
+            user=tests_repo_user,
+            repo=tests_repo_repo,
+            branch=run["args"]["resolved_new"],
+        )
+    if name == "base_tag":
+        return gh.commit_url(
+            user=tests_repo_user,
+            repo=tests_repo_repo,
+            branch=run["args"]["resolved_base"],
+        )
+    return ""
+
+
+def _build_tests_view_run_args(run: dict[str, Any]) -> list[_RunArg]:
+    run_args: list[_RunArg] = [("id", str(run["_id"]), "")]
+    if run.get("rescheduled_from"):
+        run_args.append(("rescheduled_from", str(run["rescheduled_from"]), ""))
+
+    tests_repo_value = tests_repo(run)
+    tests_repo_user, tests_repo_repo = gh.parse_repo(tests_repo_value)
+
+    for name in (
+        "new_tag",
+        "new_signature",
+        "new_options",
+        "resolved_new",
+        "new_net",
+        "new_nets",
+        "base_tag",
+        "base_signature",
+        "base_options",
+        "resolved_base",
+        "base_net",
+        "base_nets",
+        "sprt",
+        "num_games",
+        "spsa",
+        "tc",
+        "new_tc",
+        "threads",
+        "book",
+        "book_depth",
+        "auto_purge",
+        "priority",
+        "itp",
+        "throughput",
+        "username",
+        "tests_repo",
+        "master_repo",
+        "adjudication",
+        "arch_filter",
+        "compiler",
+        "info",
+    ):
+        if name not in run["args"]:
+            continue
+
+        raw_value = tests_repo_value if name == "tests_repo" else run["args"][name]
+        value = _format_tests_view_arg_value(run, name, raw_value)
+        if value is None:
+            continue
+        url = _build_tests_view_arg_url(
+            run,
+            name,
+            value,
+            tests_repo_value=tests_repo_value,
+            repo_info=(tests_repo_user, tests_repo_repo),
+        )
+
+        if name == "spsa":
+            run_args.append(("spsa", value, ""))
+        else:
+            run_args.append((name, str(value), url))
+
+    return run_args
+
+
+def _build_tests_view_detail_context(
+    request: _ViewContext,
+    run: dict[str, Any],
+) -> dict[str, Any]:
+    run_id = str(run["_id"])
+    return {
+        "run": run,
+        **_build_tests_view_status_context(run),
+        "run_args": _build_tests_view_run_args(run),
+        "approver": request.has_permission("approve_run"),
+        "chi2": get_chi2(run["tasks"]),
+        "document_size": len(bson.BSON.encode(run)),
+        "spsa_data": request.rundb.spsa_handler.get_spsa_data(run_id),
+    }
+
+
 def _tasks_query_string(
     *,
     sort_param: str,
@@ -3130,164 +3381,50 @@ def tests_tasks(request: _ViewContext) -> dict[str, Any] | Response:
     return response or context
 
 
+def tests_view_detail(request: _ViewContext) -> dict[str, Any] | Response:
+    run = request.rundb.get_run(request.matchdict["id"])
+    if run is None:
+        raise StarletteHTTPException(status_code=404)
+
+    context = _build_tests_view_detail_context(request, run)
+
+    if _is_hx_request(request):
+        expected = (request.params.get("expected") or "").strip().lower()
+        actual = context["run_status_label"]
+
+        if actual in {"finished", "failed"}:
+            response = _render_hx_fragment(
+                request,
+                "tests_view_detail_fragment.html.j2",
+                context,
+            )
+            if response is not None:
+                response.status_code = 286
+                return response
+        elif (not expected and actual != "active") or (
+            expected and actual == expected and actual != "active"
+        ):
+            request.response_status = 204
+            return context
+
+        response = _render_hx_fragment(
+            request,
+            "tests_view_detail_fragment.html.j2",
+            context,
+        )
+        return response or context
+
+    return context
+
+
 def tests_view(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # noqa: C901, PLR0912, PLR0915
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None:
         raise StarletteHTTPException(status_code=404)
-    run_id = str(run["_id"])
     follow = 1 if "follow" in request.params else 0
-    run_args: list[_RunArg] = [("id", str(run["_id"]), "")]
-    if run.get("rescheduled_from"):
-        run_args.append(("rescheduled_from", str(run["rescheduled_from"]), ""))
+    detail_context = _build_tests_view_detail_context(request, run)
 
-    for name in (
-        "new_tag",
-        "new_signature",
-        "new_options",
-        "resolved_new",
-        "new_net",
-        "new_nets",
-        "base_tag",
-        "base_signature",
-        "base_options",
-        "resolved_base",
-        "base_net",
-        "base_nets",
-        "sprt",
-        "num_games",
-        "spsa",
-        "tc",
-        "new_tc",
-        "threads",
-        "book",
-        "book_depth",
-        "auto_purge",
-        "priority",
-        "itp",
-        "throughput",
-        "username",
-        "tests_repo",
-        "master_repo",
-        "adjudication",
-        "arch_filter",
-        "compiler",
-        "info",
-    ):
-        if name not in run["args"]:
-            continue
-
-        value = run["args"][name]
-        url = ""
-
-        if name == "arch_filter":
-            if value != "":
-                filtered_arches = list(
-                    filter(
-                        lambda x: regex.search(value, x) is not None,
-                        supported_arches,
-                    ),
-                )
-                value += "  (" + ", ".join(filtered_arches) + ")"
-            else:
-                continue
-
-        if name == "new_tag" and "msg_new" in run["args"]:
-            value += "  (" + run["args"]["msg_new"][:50] + ")"
-
-        if name == "base_tag" and "msg_base" in run["args"]:
-            value += "  (" + run["args"]["msg_base"][:50] + ")"
-
-        if name in ("new_nets", "base_nets"):
-            value = ", ".join(value)
-
-        if name == "sprt" and value != "-":
-            value = (
-                "elo0: {:.2f} alpha: {:.2f} elo1: {:.2f} beta: {:.2f} state: {} ({})"
-            ).format(
-                value["elo0"],
-                value["alpha"],
-                value["elo1"],
-                value["beta"],
-                value.get("state", "-"),
-                value.get("elo_model", "BayesElo"),
-            )
-
-        if name == "spsa" and value != "-":
-            iter_local = value["iter"] + 1  # start from 1 to avoid division by zero
-            A = value["A"]  # noqa: N806
-            alpha = value["alpha"]
-            gamma = value["gamma"]
-            summary = (
-                f"iter: {iter_local:d}, A: {A:d},"
-                f" alpha: {alpha:0.3f}, gamma: {gamma:0.3f}"
-            )
-            params = value["params"]
-            spsa_value: list[str | _SpsaTableRow] = [summary]
-            for p in params:
-                try:
-                    c_iter = p["c"] / (iter_local**gamma)
-                    r_iter = p["a"] / (A + iter_local) ** alpha / c_iter**2
-                except (ArithmeticError, TypeError, ValueError) as e:
-                    logger.warning(
-                        "Invalid SPSA param state while rendering "
-                        "run %s (iter=%d, param=%s): %s",
-                        run["_id"],
-                        iter_local,
-                        p.get("name", "<unknown>"),
-                        e,
-                    )
-                    c_iter = float("nan")
-                    r_iter = float("nan")
-                spsa_value.append(
-                    [
-                        p["name"],
-                        "{:.2f}".format(p["theta"]),
-                        str(int(p["start"])),
-                        str(int(p["min"])),
-                        str(int(p["max"])),
-                        f"{c_iter:.3f}",
-                        "{:.3f}".format(p["c_end"]),
-                        f"{r_iter:.2e}",
-                        "{:.2e}".format(p["r_end"]),
-                    ],
-                )
-            value = spsa_value
-
-        tests_repo_ = tests_repo(run)
-        user, repo = gh.parse_repo(tests_repo_)
-        if name == "tests_repo":
-            value = tests_repo_
-            url = tests_repo_
-
-        if name == "master_repo":
-            url = str(value)
-
-        if name == "new_tag":
-            url = gh.commit_url(
-                user=user,
-                repo=repo,
-                branch=run["args"]["resolved_new"],
-            )
-        elif name == "base_tag":
-            url = gh.commit_url(
-                user=user,
-                repo=repo,
-                branch=run["args"]["resolved_base"],
-            )
-
-        if name == "spsa":
-            run_args.append(("spsa", value, ""))
-        else:
-            run_args.append((name, str(value), url))
-
-    active = 0
-    cores = 0
-    for task in run["tasks"]:
-        if task["active"]:
-            active += 1
-            cores += task["worker_info"]["concurrency"]
-
-    chi2 = get_chi2(run["tasks"])
+    chi2 = detail_context["chi2"]
 
     show_task = _parse_show_task_param(request)
 
@@ -3299,8 +3436,6 @@ def tests_view(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # n
     )
 
     same_user = is_same_user(request, run)
-
-    spsa_data = request.rundb.spsa_handler.get_spsa_data(run_id)
 
     same_options = True
     with contextlib.suppress(Exception):
@@ -3362,9 +3497,9 @@ def tests_view(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # n
         return (now - run["last_updated"]).days <= _RUN_AGE_GITHUB_API_MAX_DAYS
 
     try:
-        user, repo = gh.parse_repo(gh.normalize_repo(tests_repo(run)))
+        user, _repo = gh.parse_repo(gh.normalize_repo(tests_repo(run)))
     except Exception as e:  # noqa: BLE001
-        user, repo = gh.parse_repo(tests_repo(run))
+        user, _repo = gh.parse_repo(tests_repo(run))
         logger.warning("Unable to normalize_repo: %s", e)
 
     anchor_url = gh.compare_branches_url(
@@ -3424,17 +3559,8 @@ def tests_view(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # n
             logger.warning("Exception processing api calls for %s: %s", run["_id"], e)
 
     return {
-        "run": run,
-        "run_args": run_args,
+        **detail_context,
         "page_title": get_page_title(run),
-        "approver": request.has_permission("approve_run"),
-        "chi2": chi2,
-        "totals": "({} active worker{} with {} core{})".format(
-            active,
-            ("s" if active != 1 else ""),
-            cores,
-            ("s" if cores != 1 else ""),
-        ),
         "tasks_shown": tasks_table_context["show_task"] != -1
         or request.cookies.get("tasks_state") == "Hide",
         "show_task": tasks_table_context["show_task"],
@@ -3451,8 +3577,6 @@ def tests_view(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # n
         "can_modify_run": can_modify_run(request, run),
         "same_user": same_user,
         "pt_info": request.rundb.pt_info,
-        "document_size": len(bson.BSON.encode(run)),
-        "spsa_data": spsa_data,
         "notes": notes,
         "warnings": warnings,
         "use_3dot_diff": use_3dot_diff,
@@ -3563,6 +3687,11 @@ _VIEW_ROUTES: list[_ViewRoute] = [
         tests_tasks,
         "/tests/tasks/{id}",
         {"renderer": "tasks_content_fragment.html.j2"},
+    ),
+    (
+        tests_view_detail,
+        "/tests/view/{id}/detail",
+        {"renderer": "tests_view_detail_fragment.html.j2"},
     ),
     (
         tests_machines,

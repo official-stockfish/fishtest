@@ -1,0 +1,13 @@
+<div id="tests-view-stats"{% if oob | default(false) %} hx-swap-oob="outerHTML"{% endif %}>
+  <hr>
+
+  <h4>Stats</h4>
+  <table class="table table-striped table-sm">
+    <thead></thead>
+    <tbody>
+      <tr><td>chi^2</td><td>{{ "{0:.2f}".format(chi2["chi2"]) }}</td></tr>
+      <tr><td>dof</td><td>{{ chi2["dof"] }}</td></tr>
+      <tr><td>p-value</td><td>{{ "{0:.2%}".format(chi2["p"]) }}</td></tr>
+    </tbody>
+  </table>
+</div>

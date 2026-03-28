@@ -1,0 +1,12 @@
+<div id="tests-view-time"{% if oob | default(false) %} hx-swap-oob="outerHTML"{% endif %}>
+  <hr>
+
+  <h4>Time</h4>
+  <table class="table table-striped table-sm">
+    <thead></thead>
+    <tbody>
+      <tr><td>start time</td><td>{{ run["start_time"].strftime("%Y-%m-%d %H:%M:%S") }}</td></tr>
+      <tr><td>last updated</td><td>{{ run["last_updated"].strftime("%Y-%m-%d %H:%M:%S") }}</td></tr>
+    </tbody>
+  </table>
+</div>

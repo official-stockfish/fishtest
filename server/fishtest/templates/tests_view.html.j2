@@ -62,10 +62,6 @@
 
 {% if "spsa" in run["args"] %}
   <script src="https://www.gstatic.com/charts/loader.js"></script>
-  <script>
-    const spsaData = {{ spsa_data | tojson }};
-  </script>
-
   <script src="{{ static_url("fishtest:static/js/spsa.js") }}"></script>
 
   <script>
@@ -81,20 +77,26 @@
   <h2>
     <span>{{ page_title }}</span>
     <a href="{{ diff_url(run, master_check=allow_github_api_calls) }}" target="_blank" rel="noopener noreferrer">diff</a>
-    {% set _status = ('failed' if run.get('failed') else 'finished') if run.get('finished') else ('active' if run.get('workers', 0) > 0 else ('paused' if run.get('approved') else 'pending')) %}
-    <span id="run-status-{{ run_id }}">{{ _status }}</span>
+    <span id="run-status-{{ run_id }}">{{ run_status_label }}</span>
   </h2>
 
     <div id="elo-{{ run_id }}" class="elo-results-top">
     {% include "elo_results.html.j2" %}
   </div>
 
-    {% if not run["finished"] %}
-    <div hx-get="/tests/elo/{{ run_id }}?expected={{ _status }}"
-      hx-trigger="every {{ poll.elo_detail }}s [document.visibilityState === 'visible'], visibilitychange[document.visibilityState === 'visible'] from:document"
+  {% if not run["finished"] %}
+    <input
+      type="hidden"
+      id="tests-view-detail-expected"
+      name="expected"
+      value="{{ run_status_label }}"
+    >
+    <div hx-get="/tests/view/{{ run_id }}/detail"
+      hx-include="#tests-view-detail-expected"
+      hx-trigger="every {{ poll.tests_view_detail }}s [document.visibilityState === 'visible'], visibilitychange[document.visibilityState === 'visible'] from:document"
       hx-swap="none">
     </div>
-    {% endif %}
+  {% endif %}
 
   <div class="row">
     <div class="col-12 col-lg-9">
@@ -134,103 +136,7 @@
         <pre id="diff-contents" style="display: none;"><code class="diff"></code></pre>
         <div id="diff-error" class="text-danger" hidden></div>
       </div>
-      <div>
-        <h4 style="margin-top: 9px;">Details</h4>
-        <div class="table-responsive">
-          <table class="table table-striped table-sm">
-            <thead></thead>
-            <tbody>
-              {% for arg in run_args %}
-                {% if arg[2] | length == 0 %}
-                  <tr>
-                    <td>{{ arg[0] }}</td>
-                    {% if arg[0] == "username" %}
-                      <td>
-                        <a href="/tests/user/{{ arg[1] }}">{{ arg[1] }}</a>
-                        {% if approver %}
-                          (<a href="/user/{{ arg[1] }}">info</a>)
-                        {% endif %}
-                      </td>
-                    {% elif arg[0] == "spsa" %}
-                      <td>
-                        {{ arg[1][0] }}<br>
-                        <table class="table table-sm">
-                          <thead>
-                            <tr>
-                              <th>param</th>
-                              <th>value</th>
-                              <th>start</th>
-                              <th>min</th>
-                              <th>max</th>
-                              <th>c</th>
-                              <th>c_end</th>
-                              <th>r</th>
-                              <th>r_end</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {% for row in arg[1][1:] %}
-                              <tr class="spsa-param-row">
-                              {% for element in row %}
-                                <td>{{ element }}</td>
-                              {% endfor %}
-                              </tr>
-                            {% endfor %}
-                          </tbody>
-                        </table>
-                      </td>
-                    {% elif arg[0] in ["resolved_new", "resolved_base"] %}
-                      <td>{{ arg[1][:10] }}</td>
-                    {% elif arg[0] == "rescheduled_from" %}
-                      <td><a href="/tests/view/{{ arg[1] }}">{{ arg[1] }}</a></td>
-                    {% elif arg[0] == "itp" %}
-                      <td>{{ "{0:.2f}".format(arg[1] | float) }}</td>
-                    {% else %}
-                      <td{% if arg[0] == "info" %} class="run-info"{% endif %}>
-                        {{ arg[1] | e | replace("\n", "<br>") | safe }}
-                      </td>
-                    {% endif %}
-                  </tr>
-                {% else %}
-                  <tr>
-                    <td>{{ arg[0] }}</td>
-                    <td>
-                      <a href="{{ arg[2] }}" target="_blank" rel="noopener noreferrer">
-                        {{ arg[1] }}
-                      </a>
-                    </td>
-                  </tr>
-                {% endif %}
-              {% endfor %}
-              <tr>
-                <td>document size</td>
-                <td>{{ document_size }} bytes</td>
-              </tr>
-              <tr>
-                <td>events</td>
-                <td><a href="/actions?run_id={{ run_id }}">/actions?run_id={{ run_id }}</a></td>
-              </tr>
-              {% if "spsa" not in run["args"] %}
-                <tr>
-                  <td>raw statistics</td>
-                  <td><a href="/tests/stats/{{ run_id }}">/tests/stats/{{ run_id }}</a></td>
-                </tr>
-              {% endif %}
-              {% if run["approver"] != "" %}
-              <tr>
-                <td>approver</td>
-                <td>
-                  <a href="/tests/user/{{ run["approver"] }}">{{ run["approver"] }}</a>
-                  {% if approver %}
-                    (<a href="/user/{{ run["approver"] }}">info</a>)
-                  {% endif %}
-                </td>
-              </tr>
-              {% endif %}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {% include "tests_view_details_section.html.j2" %}
     </div>
 
     <div class="col-12 col-lg-3">
@@ -376,29 +282,10 @@
       {% endif %}
 
       {% if "spsa" not in run["args"] %}
-        <hr>
-
-        <h4>Stats</h4>
-        <table class="table table-striped table-sm">
-          <thead></thead>
-          <tbody>
-            <tr><td>chi^2</td><td>{{ "{0:.2f}".format(chi2["chi2"]) }}</td></tr>
-            <tr><td>dof</td><td>{{ chi2["dof"] }}</td></tr>
-            <tr><td>p-value</td><td>{{ "{0:.2%}".format(chi2["p"]) }}</td></tr>
-          </tbody>
-        </table>
+        {% include "tests_view_stats_section.html.j2" %}
       {% endif %}
 
-      <hr>
-
-      <h4>Time</h4>
-      <table class="table table-striped table-sm">
-        <thead></thead>
-        <tbody>
-          <tr><td>start time</td><td>{{ run["start_time"].strftime("%Y-%m-%d %H:%M:%S") }}</td></tr>
-          <tr><td>last updated</td><td>{{ run["last_updated"].strftime("%Y-%m-%d %H:%M:%S") }}</td></tr>
-        </tbody>
-      </table>
+      {% include "tests_view_time_section.html.j2" %}
 
       <hr>
       {% if not run["finished"] %}
@@ -413,44 +300,7 @@
   </div>
 
   {% if "spsa" in run["args"] %}
-    <div id="spsa_preload" class="col-lg-3">
-      <div class="pt-1 text-center">
-        Loading graph...
-      </div>
-    </div>
-
-    <div id="chart_toolbar" style="display: none">
-      Gaussian Kernel Smoother&nbsp;&nbsp;
-      <div class="btn-group">
-        <button id="btn_smooth_plus" class="btn">&nbsp;&nbsp;&nbsp;+&nbsp;&nbsp;&nbsp;</button>
-        <button id="btn_smooth_minus" class="btn">&nbsp;&nbsp;&nbsp;&minus;&nbsp;&nbsp;&nbsp;</button>
-      </div>
-
-      <div class="btn-group">
-        <button
-          id="btn_view_individual"
-          type="button"
-          class="btn btn-default dropdown-toggle" data-bs-toggle="dropdown"
-        >
-          View Individual Parameter<span class="caret"></span>
-        </button>
-        <ul class="dropdown-menu" role="menu" id="dropdown_individual"></ul>
-      </div>
-
-      <button id="btn_view_all" class="btn">View All</button>
-      <div class="form-check form-check-inline">
-        <input
-          type="checkbox"
-          class="form-check-input"
-          id="spsa_percentage"
-          name="spsa-percentage"
-        />
-        <label class="form-check-label" for="spsa_percentage">% c</label>
-      </div>
-    </div>
-    <div class="overflow-auto">
-      <div id="spsa_history_plot"></div>
-    </div>
+    {% include "tests_view_spsa_section.html.j2" %}
   {% endif %}
 
   <h4>
@@ -461,7 +311,7 @@
       >
         {{ "Hide" if tasks_shown else "Show" }}
       </a>
-    Tasks <span id="tasks-totals">{{ totals }}</span>
+    Tasks <span id="tasks-totals">{{ tasks_totals }}</span>
   </h4>
   <section id="tasks"
        class="collapse {{ "show" if tasks_shown else "" }}">

@@ -49,12 +49,13 @@ registers it on the FastAPI router.
 | `/tests/approve` | POST | `tests_approve` | -- | CSRF, primary |
 | `/tests/purge` | POST | `tests_purge` | -- | CSRF, primary |
 | `/tests/delete` | POST | `tests_delete` | -- | CSRF, primary |
-| `/tests/view/{id}` | GET, POST | `tests_view` | `tests_view.html.j2` | |
+| `/tests/view/{id}` | GET, POST | `tests_view` | `tests_view.html.j2` | Full detail page; unfinished runs poll the merged detail fragment endpoint and the dedicated tasks endpoint |
+| `/tests/view/{id}/detail` | GET, POST | `tests_view_detail` | `tests_view_detail_fragment.html.j2` | Fragment-only; OOB refresh for ELO, run status, active-worker totals, detail, time, chi-square, and the embedded SPSA chart payload |
 | `/tests/live_elo/{id}` | GET, POST | `tests_live_elo` | `tests_live_elo.html.j2` | Live Elo page + dual-scale gauge |
 | `/tests/stats/{id}` | GET, POST | `tests_stats` | `tests_stats.html.j2` | HX: `tests_stats_content_fragment.html.j2`; active runs poll with the dedicated stats-page interval and visibility-aware refresh |
 | `/tests/tasks/{id}` | GET, POST | `tests_tasks` | `tasks_content_fragment.html.j2` | Fragment-only; updates the scrolling task table body and refreshes fixed controls/pagination OOB, with server-side sorting for every visible task column, one combined worker/info search filter, and 25-row pagination |
 | `/tests/machines` | GET, POST | `tests_machines` | `machines_fragment.html.j2` | Fragment-only, 10s cache |
-| `/tests/elo/{id}` | GET, POST | `tests_elo` | `elo_results_fragment.html.j2` | Fragment-only (OOB) |
+| `/tests/elo/{id}` | GET, POST | `tests_elo` | `elo_results_fragment.html.j2` | Fragment-only (OOB); standalone ELO/status/totals fragment |
 | `/tests/elo_batch` | GET, POST | `tests_elo_batch` | `elo_batch_fragment.html.j2` | Fragment-only (OOB batch) |
 | `/tests/live_elo_update/{id}` | GET, POST | `live_elo_update` | `live_elo_fragment.html.j2` | Fragment-only (OOB) |
 | `/tests/finished` | GET, POST | `tests_finished` | `tests_finished.html.j2` | HX: `tests_finished_content_fragment` |
@@ -92,14 +93,21 @@ Route notes:
   is present, otherwise renders the full-page template.
 - **OOB**: fragment contains `hx-swap-oob` attributes for multi-element updates.
 
-## `/tests/elo/{id}` expected-state contract
+## `/tests/elo/{id}` standalone fragment contract
 
-The detail-page ELO poller sends an optional `expected` query parameter that
-captures the state the page already shows (`active`, `paused`, or `pending`). The handler
-compares that value to the current run state before responding:
+The standalone ELO fragment accepts an optional `expected` query parameter that
+captures the state the caller already shows (`active`, `paused`, or `pending`).
+The detail page no longer polls this endpoint directly; `/tests/view/{id}` now
+uses `/tests/view/{id}/detail` for live summary + detail updates.
 
-- `204` when the current state still matches `expected`.
+When `/tests/elo/{id}` is called directly, the handler compares `expected` to
+the current run state before responding:
+
+- `204` when the current state still matches `expected` for paused or pending
+   runs.
 - `200` when the state changed and the page needs fresh OOB content.
+- `200` for active runs, even when `expected=active`, so the live ELO summary
+   and NumGames totals keep refreshing while the run is still active.
 - `286` when the run is terminal (`finished` or `failed`).
 
 Without `expected`, the handler follows the older fragment-only contract:
@@ -107,6 +115,40 @@ Without `expected`, the handler follows the older fragment-only contract:
 - `200` for active runs.
 - `204` for paused or pending non-terminal runs.
 - `286` for terminal runs.
+
+## `/tests/view/{id}/detail` live detail contract
+
+The test detail page keeps its live summary and detail data synchronized
+through the fragment-only `/tests/view/{id}/detail` endpoint.
+
+The full detail page uses a visibility-aware htmx poller with:
+
+- `hx-get="/tests/view/{id}/detail"`
+- `hx-include="#tests-view-detail-expected"`
+- `hx-swap="none"`
+
+The response updates these regions out of band:
+
+- `#elo-<run_id>`
+- `#run-status-<run_id>`
+- `#tasks-totals`
+- `#tests-view-details`
+- `#tests-view-time`
+- `#tests-view-stats` for non-SPSA runs
+- `#spsa-data-<run_id>` for SPSA runs
+
+The request submits the page's current canonical `expected` state from a
+server-owned hidden input:
+
+- `active`
+- `paused`
+- `pending`
+
+Server behavior for htmx polling:
+
+- `200` returns fresh OOB detail content.
+- `204` keeps the current DOM when the run is still paused or pending.
+- `286` returns the final fragment and stops polling when the run is terminal.
 
 ## `/tests/live_elo/{id}` gauge scale contract
 
@@ -138,7 +180,7 @@ The raw statistics page is dual-mode:
 
 The page shell keeps a visibility-aware poller for unfinished non-SPSA runs:
 
-- `every {{ poll.stats_detail }}s [document.visibilityState === 'visible']`
+- `every {{ poll.tests_stats }}s [document.visibilityState === 'visible']`
 - `visibilitychange[document.visibilityState === 'visible'] from:document`
 
 Server behavior for htmx polling:

@@ -1,0 +1,99 @@
+{% set run_id = run["_id"] | string %}
+
+<div id="tests-view-details"{% if oob | default(false) %} hx-swap-oob="outerHTML"{% endif %}>
+  <h4 style="margin-top: 9px;">Details</h4>
+  <div class="table-responsive">
+    <table class="table table-striped table-sm">
+      <thead></thead>
+      <tbody>
+        {% for arg in run_args %}
+          {% if arg[2] | length == 0 %}
+            <tr>
+              <td>{{ arg[0] }}</td>
+              {% if arg[0] == "username" %}
+                <td>
+                  <a href="/tests/user/{{ arg[1] }}">{{ arg[1] }}</a>
+                  {% if approver %}
+                    (<a href="/user/{{ arg[1] }}">info</a>)
+                  {% endif %}
+                </td>
+              {% elif arg[0] == "spsa" %}
+                <td>
+                  {{ arg[1][0] }}<br>
+                  <table class="table table-sm">
+                    <thead>
+                      <tr>
+                        <th>param</th>
+                        <th>value</th>
+                        <th>start</th>
+                        <th>min</th>
+                        <th>max</th>
+                        <th>c</th>
+                        <th>c_end</th>
+                        <th>r</th>
+                        <th>r_end</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for row in arg[1][1:] %}
+                        <tr class="spsa-param-row">
+                        {% for element in row %}
+                          <td>{{ element }}</td>
+                        {% endfor %}
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </td>
+              {% elif arg[0] in ["resolved_new", "resolved_base"] %}
+                <td>{{ arg[1][:10] }}</td>
+              {% elif arg[0] == "rescheduled_from" %}
+                <td><a href="/tests/view/{{ arg[1] }}">{{ arg[1] }}</a></td>
+              {% elif arg[0] == "itp" %}
+                <td>{{ "{0:.2f}".format(arg[1] | float) }}</td>
+              {% else %}
+                <td{% if arg[0] == "info" %} class="run-info"{% endif %}>
+                  {{ arg[1] | e | replace("\n", "<br>") | safe }}
+                </td>
+              {% endif %}
+            </tr>
+          {% else %}
+            <tr>
+              <td>{{ arg[0] }}</td>
+              <td>
+                <a href="{{ arg[2] }}" target="_blank" rel="noopener noreferrer">
+                  {{ arg[1] }}
+                </a>
+              </td>
+            </tr>
+          {% endif %}
+        {% endfor %}
+        <tr>
+          <td>document size</td>
+          <td>{{ document_size }} bytes</td>
+        </tr>
+        <tr>
+          <td>events</td>
+          <td><a href="/actions?run_id={{ run_id }}">/actions?run_id={{ run_id }}</a></td>
+        </tr>
+        {% if "spsa" not in run["args"] %}
+          <tr>
+            <td>raw statistics</td>
+            <td><a href="/tests/stats/{{ run_id }}">/tests/stats/{{ run_id }}</a></td>
+          </tr>
+        {% endif %}
+        {% if run["approver"] != "" %}
+        <tr>
+          <td>approver</td>
+          <td>
+            <a href="/tests/user/{{ run["approver"] }}">{{ run["approver"] }}</a>
+            {% if approver %}
+              (<a href="/user/{{ run["approver"] }}">info</a>)
+            {% endif %}
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
