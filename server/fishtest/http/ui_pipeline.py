@@ -9,10 +9,12 @@ from contextlib import suppress
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from starlette.responses import Response
 
 
-def apply_http_cache(response: Response, cfg: dict[str, object] | None) -> Response:
+def apply_http_cache(response: Response, cfg: Mapping[str, object] | None) -> Response:
     """Apply `Cache-Control` from view config when missing."""
     http_cache = cfg.get("http_cache") if cfg else None
     if http_cache is not None and "Cache-Control" not in response.headers:

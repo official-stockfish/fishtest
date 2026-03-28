@@ -284,6 +284,11 @@ def _append_no_store_headers(request: Any) -> None:  # noqa: ANN401
     )
 
 
+def _form_string_value(form: Any, key: str) -> str:  # noqa: ANN401
+    value = form.get(key)
+    return value if isinstance(value, str) else ""
+
+
 def _is_hx_request(request: Any) -> bool:  # noqa: ANN401
     headers = getattr(request, "headers", None)
     if headers is None:

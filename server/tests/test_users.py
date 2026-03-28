@@ -104,6 +104,10 @@ class TestHttpUsers(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 302)
 
+    def _assert_no_store_headers(self, response):
+        self.assertEqual(response.headers.get("Cache-Control"), "no-store")
+        self.assertEqual(response.headers.get("Expires"), "0")
+
     @classmethod
     def tearDownClass(cls):
         test_support.cleanup_test_rundb(
@@ -186,6 +190,7 @@ class TestHttpUsers(unittest.TestCase):
     def test_signup_creates_user_and_redirects(self):
         response = self.client.get("/signup")
         self.assertEqual(response.status_code, 200)
+        self._assert_no_store_headers(response)
         csrf = test_support.extract_csrf_token(response.text)
         with (
             patch.dict(
@@ -217,6 +222,7 @@ class TestHttpUsers(unittest.TestCase):
             )
         self.assertEqual(response.status_code, 302)
         self.assertTrue(response.headers.get("location", "").endswith("/login"))
+        self._assert_no_store_headers(response)
 
     def test_signup_rejects_too_long_password(self):
         long_password = "A1!a" * 20
@@ -245,6 +251,7 @@ class TestHttpUsers(unittest.TestCase):
     def test_login_page_has_csrf_meta(self):
         response = self.client.get("/login")
         self.assertEqual(response.status_code, 200)
+        self._assert_no_store_headers(response)
         csrf = test_support.extract_csrf_token(response.text)
         self.assertTrue(csrf)
 
@@ -259,6 +266,7 @@ class TestHttpUsers(unittest.TestCase):
     def test_login_default_sets_persistent_cookie(self):
         response = self.client.get("/login")
         self.assertEqual(response.status_code, 200)
+        self._assert_no_store_headers(response)
         csrf = test_support.extract_csrf_token(response.text)
 
         response = self.client.post(
@@ -271,6 +279,7 @@ class TestHttpUsers(unittest.TestCase):
             follow_redirects=False,
         )
         self.assertEqual(response.status_code, 302)
+        self._assert_no_store_headers(response)
         cookie = response.headers.get("set-cookie", "")
         self.assertIn("fishtest_session=", cookie)
         self.assertIn(f"Max-Age={SESSION_REMEMBER_MAX_AGE_SECONDS}", cookie)
@@ -322,6 +331,7 @@ class TestHttpUsers(unittest.TestCase):
     def test_signup_page_has_csrf_meta(self):
         response = self.client.get("/signup")
         self.assertEqual(response.status_code, 200)
+        self._assert_no_store_headers(response)
         csrf = test_support.extract_csrf_token(response.text)
         self.assertTrue(csrf)
 

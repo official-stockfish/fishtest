@@ -14,9 +14,10 @@ import hashlib
 import logging
 import os
 import re
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import Any, TypedDict
 from urllib.parse import quote, unquote, urlencode
 
 import bson
@@ -114,6 +115,7 @@ from fishtest.views_helpers import (
     _apply_response_headers,
     _build_query_string,
     _clamp_page_index,
+    _form_string_value,
     _host_url,
     _is_hx_request,
     _is_truthy_param,
@@ -147,9 +149,6 @@ from fishtest.views_run import (
     validate_modify,
 )
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
 HTTP_TIMEOUT = UI_HTTP_TIMEOUT_SECONDS
 FORM_MAX_FILES = UI_FORM_MAX_FILES
 FORM_MAX_FIELDS = UI_FORM_MAX_FIELDS
@@ -182,6 +181,7 @@ type _RunTableRows = list[_RunTableRow]
 type _SpsaTableRow = list[str]
 type _RunArgValue = str | list[str | _SpsaTableRow]
 type _RunArg = tuple[str, _RunArgValue, str]
+type _RouteMethods = str | tuple[str, ...] | list[str]
 
 
 class _ActiveRunFilterContext(TypedDict):
@@ -350,6 +350,18 @@ class _TestsEloBatchContext(TypedDict, total=False):
     stats: _BatchStats
 
 
+class _ViewRouteConfig(TypedDict, total=False):
+    renderer: str
+    require_csrf: bool
+    require_primary: bool
+    request_method: _RouteMethods
+    http_cache: int
+    direct: bool
+
+
+type _ViewRoute = tuple[Callable[..., Any], str, _ViewRouteConfig]
+
+
 class _ViewContext:
     """Compatibility shim for the legacy sync view functions.
 
@@ -427,7 +439,7 @@ _RequestShim = _ViewContext
 
 async def _dispatch_view(
     fn: Callable[..., Any],
-    cfg: dict[str, Any],
+    cfg: _ViewRouteConfig,
     request: Request,
     path_params: dict[str, str],
 ) -> Response:
@@ -470,6 +482,7 @@ async def _dispatch_view(
         if request.method == "GET":
             # Same URL can serve full page or htmx fragment depending on headers.
             _append_vary_header(result, "HX-Request")
+            result.headers.setdefault("Cache-Control", "no-cache, private")
         return _apply_response_headers(shim, result)
 
     status_code = getattr(shim, "response_status", 200) or 200
@@ -496,6 +509,7 @@ async def _dispatch_view(
         # Several UI endpoints return either full-page HTML or fragment HTML
         # for the same URL based on the HX-Request header.
         _append_vary_header(response, "HX-Request")
+        response.headers.setdefault("Cache-Control", "no-cache, private")
     return _apply_response_headers(shim, response)
 
 
@@ -530,7 +544,9 @@ def _render_hx_or_context(
 # === Home Redirect ===
 def home(request: object = None) -> RedirectResponse:  # noqa: ARG001
     """Redirect / to /tests. Registered directly on the router (no _dispatch_view)."""
-    return RedirectResponse(url="/tests", status_code=302)
+    response = RedirectResponse(url="/tests", status_code=302)
+    response.headers.setdefault("Cache-Control", "no-cache, private")
+    return response
 
 
 # === Login And Signup ===
@@ -551,6 +567,7 @@ def ensure_logged_in(request: _ViewContext) -> str | RedirectResponse:
 
 
 def login(request: _ViewContext) -> dict[str, Any] | RedirectResponse:
+    _append_no_store_headers(request)
     userid = request.authenticated_userid
     if userid:
         return home(request)
@@ -578,16 +595,16 @@ def login(request: _ViewContext) -> dict[str, Any] | RedirectResponse:
             value in {"1", "true", "on", "yes"} for value in stay_logged_in_values
         )
 
-        username = request.POST.get("username")
-        password = request.POST.get("password")
+        username = _form_string_value(request.POST, "username")
+        password = _form_string_value(request.POST, "password")
         token = request.userdb.authenticate(username, password)
         if "error" not in token:
             if stay_logged_in:
                 # Session persists for a year after login
-                remember(request, username, max_age=SESSION_REMEMBER_MAX_AGE_SECONDS)  # type: ignore[invalid-argument-type]
+                remember(request, username, max_age=SESSION_REMEMBER_MAX_AGE_SECONDS)
             else:
                 # Session ends when the browser is closed
-                remember(request, username)  # type: ignore[invalid-argument-type]
+                remember(request, username)
             next_page = request.params.get("next") or came_from
             return RedirectResponse(url=next_page, status_code=302)
         message = token["error"]
@@ -610,7 +627,8 @@ def logout(request: _ViewContext) -> RedirectResponse:
     return RedirectResponse(url="/tests", status_code=302)
 
 
-def signup(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # noqa: C901, PLR0911, PLR0912
+def signup(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # noqa: C901, PLR0911, PLR0912, PLR0915
+    _append_no_store_headers(request)
     recaptcha_site_key = os.environ.get(
         "FISHTEST_CAPTCHA_SITE_KEY",
         DEFAULT_RECAPTCHA_SITE_KEY,
@@ -626,11 +644,11 @@ def signup(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # noqa:
         return signup_context
     errors = []
 
-    signup_username = request.POST.get("username", "").strip()
-    signup_password = request.POST.get("password", "").strip()
-    signup_password_verify = request.POST.get("password2", "").strip()
-    signup_email = request.POST.get("email", "").strip()
-    tests_repo = request.POST.get("tests_repo", "").strip()
+    signup_username = _form_string_value(request.POST, "username").strip()
+    signup_password = _form_string_value(request.POST, "password").strip()
+    signup_password_verify = _form_string_value(request.POST, "password2").strip()
+    signup_email = _form_string_value(request.POST, "email").strip()
+    tests_repo = _form_string_value(request.POST, "tests_repo").strip()
 
     strong_password, password_err = password_strength(
         signup_password,
@@ -660,7 +678,10 @@ def signup(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # noqa:
         return signup_context
 
     secret = os.environ.get("FISHTEST_CAPTCHA_SECRET", "").strip()
-    captcha_response = request.POST.get("g-recaptcha-response", "").strip()
+    captcha_response = _form_string_value(
+        request.POST,
+        "g-recaptcha-response",
+    ).strip()
 
     if not secret:
         request.session.flash("Captcha configuration is missing", "error")
@@ -936,17 +957,22 @@ def workers(request: _ViewContext) -> dict[str, Any] | Response:  # noqa: C901, 
     page_idx = _page_index_from_params(request.params)
 
     blocked_workers = request.rundb.workerdb.get_blocked_workers()
-    blocker_name = request.authenticated_userid
+    authenticated_username = request.authenticated_userid
 
-    # If we are approver then we are logged in, so blocker_name is not None
+    # Approvers should already be authenticated; keep the login redirect
+    # contract here so the type is narrowed by control flow.
     if is_approver:
+        approver_result = ensure_logged_in(request)
+        if isinstance(approver_result, RedirectResponse):
+            return approver_result
+        authenticated_username = approver_result
         for w in blocked_workers:
             owner_name = w["worker_name"].split("-")[0]
             owner = request.userdb.get_user(owner_name)
             w["owner_email"] = owner["email"] if owner is not None else ""
             w["body"] = worker_email(
                 w["worker_name"],
-                blocker_name,  # type: ignore[invalid-argument-type]
+                authenticated_username,
                 w["message"],
                 _host_url(request),
                 w["blocked"],
@@ -962,14 +988,17 @@ def workers(request: _ViewContext) -> dict[str, Any] | Response:  # noqa: C901, 
     except ValidationError as e:
         request.session.flash(str(e), "error")
     else:
-        if len(worker_name.split("-")) != _WORKER_NAME_PARTS:  # type: ignore[unresolved-attribute]
+        if not isinstance(worker_name, str) or (
+            len(worker_name.split("-")) != _WORKER_NAME_PARTS
+        ):
             pass  # fall through to shared rendering
         else:
             result = ensure_logged_in(request)
             if isinstance(result, RedirectResponse):
                 return result
-            owner_name = worker_name.split("-")[0]  # type: ignore[unresolved-attribute]
-            if not is_approver and blocker_name != owner_name:
+            authenticated_username = result
+            owner_name = worker_name.split("-")[0]
+            if not is_approver and authenticated_username != owner_name:
                 request.session.flash(
                     "Only owners and approvers can block/unblock",
                     "error",
@@ -978,17 +1007,17 @@ def workers(request: _ViewContext) -> dict[str, Any] | Response:  # noqa: C901, 
                 button = request.POST.get("submit")
                 if button == "Submit":
                     blocked = request.POST.get("blocked") is not None
-                    message = request.POST.get("message")
+                    message = _form_string_value(request.POST, "message")
                     max_chars = 500
-                    if len(message) > max_chars:  # type: ignore[invalid-argument-type]
+                    if len(message) > max_chars:
                         request.session.flash(
                             "Warning: your description of the"
                             " issue has been truncated to"
                             f" {max_chars} characters",
                             "error",
                         )
-                        message = message[:max_chars]  # type: ignore[not-subscriptable]
-                    message = normalize_lf(message)  # type: ignore[invalid-argument-type]
+                        message = message[:max_chars]
+                    message = normalize_lf(message)
                     was_blocked = request.workerdb.get_worker(worker_name)["blocked"]
                     request.rundb.workerdb.update_worker(
                         worker_name,
@@ -1001,7 +1030,7 @@ def workers(request: _ViewContext) -> dict[str, Any] | Response:  # noqa: C901, 
                             f" {'blocked' if blocked else 'unblocked'}!",
                         )
                         request.actiondb.block_worker(
-                            username=blocker_name,
+                            username=authenticated_username,
                             worker=worker_name,
                             message="blocked" if blocked else "unblocked",
                         )
@@ -1432,6 +1461,7 @@ def _user_management_rows(users: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def user_management(request: _ViewContext) -> dict[str, Any] | Response:  # noqa: C901
+    _append_no_store_headers(request)
     if not request.has_permission("approve_run"):
         request.session.flash("You cannot view user management", "error")
         return home(request)
@@ -1551,6 +1581,7 @@ def user_management(request: _ViewContext) -> dict[str, Any] | Response:  # noqa
 
 
 def user(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # noqa: C901, PLR0911, PLR0912, PLR0915
+    _append_no_store_headers(request)
     userid = ensure_logged_in(request)
     if isinstance(userid, RedirectResponse):
         return userid
@@ -1566,11 +1597,11 @@ def user(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # noqa: C
         raise StarletteHTTPException(status_code=404)
     if "user" in request.POST:
         if profile:
-            old_password = request.POST.get("old_password", "").strip()
-            new_password = request.POST.get("password", "").strip()
-            new_password_verify = request.POST.get("password2", "").strip()
-            new_email = request.POST.get("email", "").strip()
-            tests_repo = request.POST.get("tests_repo", "").strip()
+            old_password = _form_string_value(request.POST, "old_password").strip()
+            new_password = _form_string_value(request.POST, "password").strip()
+            new_password_verify = _form_string_value(request.POST, "password2").strip()
+            new_email = _form_string_value(request.POST, "email").strip()
+            tests_repo = _form_string_value(request.POST, "tests_repo").strip()
 
             # Temporary comparison until passwords are hashed.
             if old_password != user_data["password"].strip():
@@ -2558,7 +2589,7 @@ def _classify_run_status(run: dict[str, Any]) -> str:
     return "paused" if run.get("approved") else "pending"
 
 
-def tests_elo_batch(request: _ViewContext) -> dict[str, Any] | RedirectResponse:
+def tests_elo_batch(request: _ViewContext) -> _TestsEloBatchContext | RedirectResponse:
     username = request.params.get("username", "") or ""
 
     (
@@ -2713,7 +2744,7 @@ def tests_elo_batch(request: _ViewContext) -> dict[str, Any] | RedirectResponse:
             "games_per_minute": int(games_per_minute),
         }
 
-    return result  # type: ignore[invalid-return-type]
+    return result
 
 
 def tests_elo(request: _ViewContext) -> dict[str, Any]:
@@ -3191,7 +3222,7 @@ def tests_view(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # n
                 f" alpha: {alpha:0.3f}, gamma: {gamma:0.3f}"
             )
             params = value["params"]
-            value = [summary]
+            spsa_value: list[str | _SpsaTableRow] = [summary]
             for p in params:
                 try:
                     c_iter = p["c"] / (iter_local**gamma)
@@ -3207,8 +3238,8 @@ def tests_view(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # n
                     )
                     c_iter = float("nan")
                     r_iter = float("nan")
-                value.append(
-                    [  # type: ignore[invalid-argument-type]
+                spsa_value.append(
+                    [
                         p["name"],
                         "{:.2f}".format(p["theta"]),
                         str(int(p["start"])),
@@ -3220,6 +3251,7 @@ def tests_view(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # n
                         "{:.2e}".format(p["r_end"]),
                     ],
                 )
+            value = spsa_value
 
         tests_repo_ = tests_repo(run)
         user, repo = gh.parse_repo(tests_repo_)
@@ -3244,7 +3276,7 @@ def tests_view(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # n
             )
 
         if name == "spsa":
-            run_args.append(("spsa", value, ""))  # type: ignore[invalid-argument-type]
+            run_args.append(("spsa", value, ""))
         else:
             run_args.append((name, str(value), url))
 
@@ -3434,7 +3466,7 @@ def tests_view(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # n
 # Config keys: renderer, require_csrf, require_primary, request_method, http_cache
 # Special: direct=True bypasses _dispatch_view
 # (for pure redirects, no DB/session needed)
-_VIEW_ROUTES = [
+_VIEW_ROUTES: list[_ViewRoute] = [
     (home, "/", {"direct": True}),
     (
         login,
@@ -3546,7 +3578,7 @@ _VIEW_ROUTES = [
 
 def _make_endpoint(
     fn: Callable[..., Any],
-    cfg_local: dict[str, Any],
+    cfg_local: _ViewRouteConfig,
 ) -> Callable[..., Any]:
     async def endpoint(request: Request) -> Response:
         return await _dispatch_view(
@@ -3559,7 +3591,7 @@ def _make_endpoint(
     return endpoint
 
 
-def _normalize_methods(methods: str | tuple[str, ...] | list[str] | None) -> list[str]:
+def _normalize_methods(methods: _RouteMethods | None) -> list[str]:
     if methods is None:
         return ["GET", "POST"]
     if isinstance(methods, str):
@@ -3569,7 +3601,7 @@ def _normalize_methods(methods: str | tuple[str, ...] | list[str] | None) -> lis
 
 def _register_view_routes() -> None:
     for fn, path, cfg in _VIEW_ROUTES:
-        methods = _normalize_methods(cfg.get("request_method"))  # type: ignore[invalid-argument-type]
+        methods = _normalize_methods(cfg.get("request_method"))
         endpoint = fn if cfg.get("direct") else _make_endpoint(fn, cfg)
         router.add_api_route(
             path,
