@@ -1211,6 +1211,7 @@ def build_tasks_rows(
                 "task_id": task_id,
                 "row_class": row_class,
                 "pgn_url": f"/api/pgn/{run['_id']}-{task_id:d}.pgn",
+                "worker_is_bad": bool(task.get("bad")),
                 "worker_label": worker_label,
                 "worker_url": worker_url,
                 "info_label": info_label,
