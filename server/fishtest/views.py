@@ -342,7 +342,7 @@ def _build_active_run_filter_context(
     }
 
 
-class _TestsEloBatchContext(TypedDict, total=False):
+class _TestsRunTablesFragmentContext(TypedDict, total=False):
     panels: list[_BatchPanel]
     count_updates: list[_CountUpdate]
     machines_count: int
@@ -1939,6 +1939,61 @@ def _build_toggle_states(
     return {name: request.cookies.get(f"{name}_state", "Show") for name in toggle_names}
 
 
+def _is_tests_run_tables_live_request(request: _ViewContext) -> bool:
+    return request.params.get("live", "") == "run_tables"
+
+
+def _tests_run_tables_query_pairs(
+    request: _ViewContext,
+    *,
+    include_live: bool,
+) -> list[tuple[str, str]]:
+    query_pairs = [
+        (key, value)
+        for key, value in request.query_params.multi_items()
+        if key not in {"live", "username"}
+    ]
+    if include_live:
+        query_pairs.append(("live", "run_tables"))
+    return query_pairs
+
+
+def _tests_run_tables_url(
+    request: _ViewContext,
+    *,
+    include_live: bool,
+) -> str:
+    query_string = _build_query_string(
+        _tests_run_tables_query_pairs(request, include_live=include_live),
+        leading="?",
+    )
+    return f"{request.path}{query_string}"
+
+
+def _render_tests_run_tables_live_fragment(
+    request: _ViewContext,
+) -> Response | RedirectResponse | None:
+    if not _is_tests_run_tables_live_request(request):
+        return None
+
+    if not _is_hx_request(request):
+        return RedirectResponse(
+            url=_tests_run_tables_url(request, include_live=False),
+            status_code=302,
+        )
+
+    context = _build_tests_run_tables_fragment_context(request)
+    if isinstance(context, RedirectResponse):
+        return context
+
+    return render_template_to_response(
+        request=request.raw_request,
+        template_name="tests_run_tables_fragment.html.j2",
+        context=build_template_context(request.raw_request, request.session, context),
+        status_code=int(request.response_status or 200),
+    )
+
+
 def _build_run_tables_context(  # noqa: PLR0913
     request: _ViewContext,
     *,
@@ -2013,6 +2068,9 @@ def _build_run_tables_context(  # noqa: PLR0913
         "prefix": prefix,
         "toggle_states": toggle_states,
         "finished_title_text": finished_title_text,
+        "live_url": (
+            _tests_run_tables_url(request, include_live=True) if page_idx == 0 else None
+        ),
         "show_gauge": False,
     }
 
@@ -2061,6 +2119,11 @@ def tests_user(request: _ViewContext) -> dict[str, Any] | Response:
     if user_data is None:
         raise StarletteHTTPException(status_code=404)
     is_approver = request.has_permission("approve_run")
+    page_idx = _page_index_from_params(request.params)
+    if page_idx == 0:
+        live_fragment = _render_tests_run_tables_live_fragment(request)
+        if live_fragment is not None:
+            return live_fragment
     finished_context = get_paginated_finished_runs(request)
     if isinstance(finished_context, RedirectResponse):
         return finished_context
@@ -2069,8 +2132,7 @@ def tests_user(request: _ViewContext) -> dict[str, Any] | Response:
         "username": username,
         "is_approver": is_approver,
     }
-    page_param = request.params.get("page", "")
-    if not page_param.isdigit() or int(page_param) <= 1:
+    if finished_context["page_idx"] == 0:
         runs = request.rundb.aggregate_unfinished_runs(username=username)[0]
         response["run_tables_ctx"] = _build_run_tables_context(
             request,
@@ -2162,6 +2224,10 @@ def tests(request: _ViewContext) -> dict[str, Any] | Response:
                 page_idx=finished_context["page_idx"],
             ),
         }
+
+    live_fragment = _render_tests_run_tables_live_fragment(request)
+    if live_fragment is not None:
+        return live_fragment
 
     last_tests = homepage_results(request)
     if isinstance(last_tests, RedirectResponse):
@@ -2608,8 +2674,10 @@ def _build_tests_view_status_context(run: dict[str, Any]) -> dict[str, str]:
     }
 
 
-def tests_elo_batch(request: _ViewContext) -> _TestsEloBatchContext | RedirectResponse:
-    username = request.params.get("username", "") or ""
+def _build_tests_run_tables_fragment_context(
+    request: _ViewContext,
+) -> _TestsRunTablesFragmentContext | RedirectResponse:
+    username = request.matchdict.get("username", "")
 
     (
         runs,
@@ -2728,7 +2796,7 @@ def tests_elo_batch(request: _ViewContext) -> _TestsEloBatchContext | RedirectRe
     )
     filters_active = machine_filters["filters_active"]
 
-    result: _TestsEloBatchContext = {
+    result: _TestsRunTablesFragmentContext = {
         "panels": panels,
         "count_updates": count_updates,
     }
@@ -3677,11 +3745,6 @@ _VIEW_ROUTES: list[_ViewRoute] = [
         {"renderer": "live_elo_fragment.html.j2"},
     ),
     (tests_elo, "/tests/elo/{id}", {"renderer": "elo_results_fragment.html.j2"}),
-    (
-        tests_elo_batch,
-        "/tests/elo_batch",
-        {"renderer": "elo_batch_fragment.html.j2"},
-    ),
     (tests_stats, "/tests/stats/{id}", {"renderer": "tests_stats.html.j2"}),
     (
         tests_tasks,

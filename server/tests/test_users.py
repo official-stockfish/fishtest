@@ -824,7 +824,9 @@ class TestHttpUsers(unittest.TestCase):
         self.assertEqual(homepage.status_code, 200)
         self.assertIn("Workers - 2 (1)", homepage.text)
 
-    def test_tests_elo_batch_recomputes_filtered_workers_count_label(self):
+    def test_tests_homepage_live_run_tables_recomputes_filtered_workers_count_label(
+        self,
+    ):
         now = datetime.now(UTC)
         docs = [
             {
@@ -878,12 +880,17 @@ class TestHttpUsers(unittest.TestCase):
             ),
             patch.object(self.rundb, "get_machines", return_value=docs),
         ):
-            response = self.client.get("/tests/elo_batch")
+            response = self.client.get(
+                "/tests?live=run_tables",
+                headers={"HX-Request": "true"},
+            )
 
         self.assertEqual(response.status_code, 286)
         self.assertIn("Workers - 2 (1)", response.text)
 
-    def test_tests_elo_batch_keeps_hidden_active_filtered_count_current(self):
+    def test_tests_homepage_live_run_tables_keeps_hidden_active_filtered_count_current(
+        self,
+    ):
         now = datetime.now(UTC)
         runs = {
             "pending": [],
@@ -946,7 +953,10 @@ class TestHttpUsers(unittest.TestCase):
             "aggregate_unfinished_runs",
             return_value=aggregate_result,
         ):
-            response = self.client.get("/tests/elo_batch")
+            response = self.client.get(
+                "/tests?live=run_tables",
+                headers={"HX-Request": "true"},
+            )
 
         self.assertEqual(response.status_code, 200)
         self.assertIn('id="active-count"', response.text)
@@ -1006,6 +1016,7 @@ class TestHttpUsers(unittest.TestCase):
             "visibilitychange[document.visibilityState === 'visible' && document.getElementById('machines-panel').classList.contains('show')] from:document",
             homepage.text,
         )
+        self.assertIn('hx-get="/tests?live=run_tables"', homepage.text)
 
     def test_tests_homepage_active_filters_render_persisted_first_paint_state(self):
         now = datetime.now(UTC)
@@ -1191,7 +1202,9 @@ class TestHttpUsers(unittest.TestCase):
         self.assertIn('id="active-filter-sprt"', homepage.text)
         self.assertIn("No active tests", homepage.text)
 
-    def test_tests_elo_batch_keeps_active_parentheses_when_count_matches_total(self):
+    def test_tests_homepage_live_run_tables_keeps_active_parentheses_when_count_matches_total(
+        self,
+    ):
         now = datetime.now(UTC)
         runs = {
             "pending": [],
@@ -1260,10 +1273,38 @@ class TestHttpUsers(unittest.TestCase):
             "aggregate_unfinished_runs",
             return_value=aggregate_result,
         ):
-            response = self.client.get("/tests/elo_batch")
+            response = self.client.get(
+                "/tests?live=run_tables",
+                headers={"HX-Request": "true"},
+            )
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("Active - 2 (2) tests", response.text)
+
+    def test_tests_user_page_uses_canonical_live_run_tables_url(self):
+        self._create_run()
+
+        response = self.client.get(f"/tests/user/{self.username}?success_only=1")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            f'hx-get="/tests/user/{self.username}?success_only=1&amp;live=run_tables"',
+            response.text,
+        )
+
+    def test_tests_user_page_live_url_omits_stray_username_query(self):
+        self._create_run()
+
+        response = self.client.get(
+            f"/tests/user/{self.username}?username=OtherUser&success_only=1",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            f'hx-get="/tests/user/{self.username}?success_only=1&amp;live=run_tables"',
+            response.text,
+        )
+        self.assertNotIn("username=OtherUser", response.text)
 
     def test_tests_homepage_active_filters_persist_none_selection(self):
         now = datetime.now(UTC)
