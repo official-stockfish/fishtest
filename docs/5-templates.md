@@ -256,7 +256,7 @@ fragments; others are shared partials included by page or fragment templates.
 | `active_run_filters_fragment.html.j2` | htmx controls fragment | Swaps `#active-run-filters` |
 | `contributors_content_fragment.html.j2` | htmx content fragment | Swaps `#contributors-content`; includes hidden-input OOB sync |
 | `contributors_rows_fragment.html.j2` | shared row partial | Included by `contributors_content_fragment.html.j2` |
-| `elo_batch_fragment.html.j2` | OOB poll fragment | Poll response for homepage ELO batch updates |
+| `tests_run_tables_fragment.html.j2` | OOB poll fragment | Shared run-table OOB payload for `/tests?live=run_tables` and `/tests/user/{username}?live=run_tables` |
 | `elo_results.html.j2` | shared display partial | Included where ELO summary markup is rendered |
 | `elo_results_fragment.html.j2` | OOB poll fragment | Poll response for live ELO summary updates |
 | `homepage_stats_fragment.html.j2` | OOB summary fragment | Updates homepage stat targets |
@@ -382,8 +382,8 @@ Behavior notes:
 - Homepage polling keeps including the current filter form state, so fragment
    refreshes continue while the `q` search filter is active.
 - The hidden homepage Workers header is refreshed from the current machine
-  snapshot during `/tests` and `/tests/elo_batch` rendering, so a collapsed
-  panel still shows a live filtered count.
+   snapshot during `/tests` and page-1 same-route live run-table fragment
+   rendering, so a collapsed panel still shows a live filtered count.
 
 Each machine row: `username`, `country_code`, `concurrency`, `worker_url`,
 `worker_short`, `nps_m` (preformatted string), `max_memory`, `system`,
@@ -906,7 +906,7 @@ submissions preserve the live table state.
 |-----|------|
 | `users` | list of contributor row dicts |
 
-### `elo_batch_fragment.html.j2`
+### `tests_run_tables_fragment.html.j2`
 
 | Key | Type | Description |
 |-----|------|-------------|
@@ -978,8 +978,9 @@ label out of band so homepage polling, sorting, paging, and filters stay in
 sync without replacing the filter controls themselves.
 
 The machine rows come from the current server machine snapshot. The same
-snapshot is reused by `/tests` and `/tests/elo_batch` when they need to render a
-live filtered workers count while the table itself is collapsed.
+snapshot is reused by `/tests` and its page-1 same-route live run-table
+fragment when they need to render a live filtered workers count while the
+table itself is collapsed.
 
 ### `nns_content_fragment.html.j2`
 

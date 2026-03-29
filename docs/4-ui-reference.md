@@ -42,7 +42,7 @@ registers it on the FastAPI router.
 | `/login` | GET, POST | `login` | `login.html.j2` | CSRF |
 | `/logout` | POST | `logout` | -- | CSRF |
 | `/signup` | GET, POST | `signup` | `signup.html.j2` | CSRF |
-| `/tests` | GET, POST | `tests` | `tests.html.j2` | Main dashboard |
+| `/tests` | GET, POST | `tests` | `tests.html.j2` | Main dashboard; page 1 live run tables poll the same route via `?live=run_tables` |
 | `/tests/run` | GET, POST | `tests_run` | `tests_run.html.j2` | CSRF, primary |
 | `/tests/modify` | POST | `tests_modify` | -- | CSRF, primary |
 | `/tests/stop` | POST | `tests_stop` | -- | CSRF, primary |
@@ -56,10 +56,9 @@ registers it on the FastAPI router.
 | `/tests/tasks/{id}` | GET, POST | `tests_tasks` | `tasks_content_fragment.html.j2` | Fragment-only; updates the scrolling task table body and refreshes fixed controls/pagination OOB, with server-side sorting for every visible task column, one combined worker/info search filter, and 25-row pagination |
 | `/tests/machines` | GET, POST | `tests_machines` | `machines_fragment.html.j2` | Fragment-only, 10s cache |
 | `/tests/elo/{id}` | GET, POST | `tests_elo` | `elo_results_fragment.html.j2` | Fragment-only (OOB); standalone ELO/status/totals fragment |
-| `/tests/elo_batch` | GET, POST | `tests_elo_batch` | `elo_batch_fragment.html.j2` | Fragment-only (OOB batch) |
 | `/tests/live_elo_update/{id}` | GET, POST | `live_elo_update` | `live_elo_fragment.html.j2` | Fragment-only (OOB) |
 | `/tests/finished` | GET, POST | `tests_finished` | `tests_finished.html.j2` | HX: `tests_finished_content_fragment` |
-| `/tests/user/{username}` | GET, POST | `tests_user` | `tests_user.html.j2` | HX: `tests_user_content_fragment` |
+| `/tests/user/{username}` | GET, POST | `tests_user` | `tests_user.html.j2` | HX: `tests_user_content_fragment`; page 1 live run tables poll the same route via `?live=run_tables` |
 | `/actions` | GET, POST | `actions` | `actions.html.j2` | HX: `actions_content_fragment` |
 | `/contributors` | GET, POST | `contributors` | `contributors.html.j2` | HX: `contributors_content_fragment`; paginated (100/page) |
 | `/contributors/monthly` | GET, POST | `contributors_monthly` | `contributors.html.j2` | HX: `contributors_content_fragment`; paginated (100/page) |
@@ -474,12 +473,13 @@ Behavior notes:
    `q`, and `my_workers` values in cookies, so returning to `/tests` restores
    the last machines filter state.
 - Workers counter semantics are stable across `/tests`, `/tests/machines`, and
-   `/tests/elo_batch` OOB updates:
+   the page-1 `/tests?live=run_tables` OOB updates:
   - no active filters: `Workers - <total>`
   - active `q` and/or `my_workers`: `Workers - <total> (<filtered>)`
 - When workers filters are active and the Workers panel is collapsed, `/tests`
-   and `/tests/elo_batch` recompute the filtered value from the current machine
-   snapshot instead of reusing the last cookie-backed filtered count.
+   and its page-1 live run-table fragment recompute the filtered value from the
+   current machine snapshot instead of reusing the last cookie-backed filtered
+   count.
 - Machines sorting is fully server-authoritative; the old generic client-side
    header sorter has been retired.
 

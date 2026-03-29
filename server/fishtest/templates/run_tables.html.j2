@@ -6,16 +6,8 @@
 {% set active_toggle = prefix ~ 'active' %}
 
 {% if page_idx == 0 %}
-  {% set batch_username = username if username is defined and username else '' %}
-  {% set batch_filters = filters if filters is defined else {} %}
-  {% set batch_qs = '' %}
-  {% if batch_username %}{% set batch_qs = batch_qs ~ '&username=' ~ batch_username %}{% endif %}
-  {% if batch_filters.get('success_only') %}{% set batch_qs = batch_qs ~ '&success_only=1' %}{% endif %}
-  {% if batch_filters.get('yellow_only') %}{% set batch_qs = batch_qs ~ '&yellow_only=1' %}{% endif %}
-  {% if batch_filters.get('ltc_only') %}{% set batch_qs = batch_qs ~ '&ltc_only=1' %}{% endif %}
-  {% set batch_url = '/tests/elo_batch' ~ ('?' ~ batch_qs[1:] if batch_qs else '') %}
-  <div hx-get="{{ batch_url }}"
-      hx-trigger="every {{ poll.batch_homepage }}s [document.visibilityState === 'visible'], visibilitychange[document.visibilityState === 'visible'] from:document"
+  <div hx-get="{{ live_url }}"
+      hx-trigger="every {{ poll.tests_run_tables }}s [document.visibilityState === 'visible'], visibilitychange[document.visibilityState === 'visible'] from:document"
        hx-swap="none">
   </div>
 {% endif %}

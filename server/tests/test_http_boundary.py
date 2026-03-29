@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Callable, cast
+from unittest.mock import patch
 
 import test_support
 from fastapi import Depends, Request
@@ -614,37 +615,181 @@ class TestHttpBoundary(unittest.TestCase):
             "http://testserver/tests/finished?mode=search&sort=time&order=desc&user=filter",
         )
 
-    def test_tests_elo_batch_returns_valid_response(self):
+    def test_removed_tests_elo_batch_returns_404(self):
         app = self._build_app(include_views=True)
         client = self.TestClient(app)
 
         response = client.get("/tests/elo_batch")
 
+        self.assertEqual(response.status_code, 404)
+
+    def test_tests_homepage_live_run_tables_redirects_non_hx_to_canonical_page(self):
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get("/tests?live=run_tables", follow_redirects=False)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers.get("location"), "/tests")
+
+    def test_tests_homepage_live_run_tables_returns_valid_hx_response(self):
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get(
+            "/tests?live=run_tables",
+            headers={"HX-Request": "true"},
+        )
+
         self.assertNotEqual(response.status_code, 400)
         self.assertIn(response.status_code, {200, 286})
 
-    def test_tests_elo_batch_user_filter_omits_homepage_only_oob(self):
+    def test_tests_user_live_run_tables_redirects_non_hx_to_canonical_page(self):
         app = self._build_app(include_views=True)
         client = self.TestClient(app)
 
-        response = client.get("/tests/elo_batch?username=user01")
+        username = "httpboundarytestsuser"
+        self.rundb.userdb.users.delete_many({"username": username})
+        self.rundb.userdb.clear_cache()
+        self.rundb.userdb.create_user(
+            username,
+            "pwd",
+            f"{username}@example.com",
+            "",
+        )
 
-        self.assertIn(response.status_code, {200, 286})
-        self.assertNotIn('id="workers-count"', response.text)
-        self.assertNotIn('id="homepage-stats"', response.text)
+        try:
+            response = client.get(
+                f"/tests/user/{username}?success_only=1&live=run_tables",
+                follow_redirects=False,
+            )
 
-    def test_tests_elo_batch_preserves_empty_panel_text(self):
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual(
+                response.headers.get("location"),
+                f"/tests/user/{username}?success_only=1",
+            )
+        finally:
+            self.rundb.userdb.users.delete_many({"username": username})
+            self.rundb.userdb.clear_cache()
+
+    def test_tests_user_live_run_tables_omits_homepage_only_oob(self):
         app = self._build_app(include_views=True)
         client = self.TestClient(app)
 
-        response = client.get("/tests/elo_batch?username=__no_such_user__")
+        username = "httpboundarytestsuserhx"
+        self.rundb.userdb.users.delete_many({"username": username})
+        self.rundb.userdb.clear_cache()
+        self.rundb.userdb.create_user(
+            username,
+            "pwd",
+            f"{username}@example.com",
+            "",
+        )
 
-        self.assertIn(response.status_code, {200, 286})
-        self.assertIn("No tests pending approval", response.text)
-        self.assertIn("No paused tests", response.text)
-        self.assertIn("No failed tests on this page", response.text)
-        self.assertIn("No active tests", response.text)
-        self.assertIn("colspan=20>No tests pending approval</td>", response.text)
+        try:
+            response = client.get(
+                f"/tests/user/{username}?live=run_tables",
+                headers={"HX-Request": "true"},
+            )
+
+            self.assertIn(response.status_code, {200, 286})
+            self.assertIn("No tests pending approval", response.text)
+            self.assertIn("No paused tests", response.text)
+            self.assertIn("No failed tests on this page", response.text)
+            self.assertIn("No active tests", response.text)
+            self.assertIn("colspan=20>No tests pending approval</td>", response.text)
+            self.assertNotIn('id="workers-count"', response.text)
+            self.assertNotIn('id="homepage-stats"', response.text)
+        finally:
+            self.rundb.userdb.users.delete_many({"username": username})
+            self.rundb.userdb.clear_cache()
+
+    def test_tests_user_live_run_tables_queries_finished_runs_once(self):
+        import fishtest.views as views_module
+
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        username = "httpboundarytestsuseronce"
+        self.rundb.userdb.users.delete_many({"username": username})
+        self.rundb.userdb.clear_cache()
+        self.rundb.userdb.create_user(
+            username,
+            "pwd",
+            f"{username}@example.com",
+            "",
+        )
+
+        try:
+            with patch.object(
+                views_module,
+                "get_paginated_finished_runs",
+                wraps=views_module.get_paginated_finished_runs,
+            ) as finished_runs_mock:
+                response = client.get(
+                    f"/tests/user/{username}?live=run_tables",
+                    headers={"HX-Request": "true"},
+                )
+
+            self.assertIn(response.status_code, {200, 286})
+            self.assertEqual(finished_runs_mock.call_count, 1)
+        finally:
+            self.rundb.userdb.users.delete_many({"username": username})
+            self.rundb.userdb.clear_cache()
+
+    def test_tests_user_live_run_tables_prefers_route_username(self):
+        import fishtest.views as views_module
+
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        route_username = "httpboundarytestsuserroute"
+        query_username = "httpboundarytestsuserquery"
+        aggregate_result = ({"pending": [], "active": []}, 0.0, 0, 0, 0, 0)
+        finished_context = {
+            "failed_runs": [],
+            "finished_runs": [],
+            "num_finished_runs": 0,
+        }
+
+        self.rundb.userdb.users.delete_many({"username": route_username})
+        self.rundb.userdb.clear_cache()
+        self.rundb.userdb.create_user(
+            route_username,
+            "pwd",
+            f"{route_username}@example.com",
+            "",
+        )
+
+        try:
+            with (
+                patch.object(
+                    self.rundb,
+                    "aggregate_unfinished_runs",
+                    return_value=aggregate_result,
+                ) as aggregate_mock,
+                patch.object(
+                    views_module,
+                    "get_paginated_finished_runs",
+                    return_value=finished_context,
+                ) as finished_runs_mock,
+            ):
+                response = client.get(
+                    f"/tests/user/{route_username}?username={query_username}&live=run_tables",
+                    headers={"HX-Request": "true"},
+                )
+
+            self.assertIn(response.status_code, {200, 286})
+            aggregate_mock.assert_called_once_with(username=route_username)
+            finished_runs_mock.assert_called_once()
+            self.assertEqual(
+                finished_runs_mock.call_args.kwargs.get("username"),
+                route_username,
+            )
+        finally:
+            self.rundb.userdb.users.delete_many({"username": route_username})
+            self.rundb.userdb.clear_cache()
 
     def test_tests_elo_expected_state_returns_204_when_unchanged(self):
         run_id = self._create_tests_elo_run(approved=True)

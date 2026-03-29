@@ -22,7 +22,7 @@ TASK_SEMAPHORE_SIZE: int = 5
 
 # htmx polling intervals (seconds), used via Jinja2 global `poll`.
 POLL_MACHINES_HOMEPAGE_S: int = 60
-POLL_BATCH_HOMEPAGE_S: int = 20
+POLL_TESTS_RUN_TABLES_S: int = 20
 POLL_TESTS_VIEW_DETAIL_S: int = 15
 POLL_TESTS_STATS_S: int = 15
 POLL_TASKS_DETAIL_S: int = 60
