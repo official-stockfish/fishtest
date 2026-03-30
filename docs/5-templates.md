@@ -692,8 +692,10 @@ Detail-page merged live polling contract:
    input alongside the visible status label so paused/pending transitions can
    settle back to `204` on the next poll.
 - SPSA runs keep the chart shell stable in `tests_view.html.j2`; live detail
-   refreshes swap only the embedded `application/json` payload so
-   `static/js/spsa.js` can redraw without tearing down the toolbar and chart DOM.
+   refreshes update only the embedded `application/json` payload contents so
+   `static/js/spsa.js` can keep the payload node mounted, skip unchanged
+   redraws, and redraw changed payloads without replacing the mounted chart
+   shell.
 
 Detail-page tasks loader contract:
 
@@ -739,7 +741,8 @@ Rendered behavior:
 - always includes `tests_view_details_section.html.j2`
 - always includes `tests_view_time_section.html.j2`
 - includes `tests_view_stats_section.html.j2` for non-SPSA runs
-- emits an OOB `#spsa-data-<run_id>` `application/json` payload for SPSA runs
+- emits an OOB `#spsa-data-<run_id>` `application/json` payload update for
+   SPSA runs using `innerHTML` so the existing script node stays mounted
 
 ### `tests_view_details_section.html.j2`
 
@@ -798,6 +801,8 @@ Rendered structure:
 
 - `#tests-view-spsa` root element
 - DOM-embedded `application/json` payload for the current SPSA state
+- `#spsa_history_scroll` retained scroll container
+- CSS-owned `#spsa_history_plot` shell for the fixed-size chart (Google Charts uses 1000x500; layout and scrolling handled by CSS and the scroll container)
 - chart toolbar and chart container used by `static/js/spsa.js`
 
 ### `user.html.j2`

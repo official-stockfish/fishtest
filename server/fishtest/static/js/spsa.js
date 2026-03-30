@@ -103,14 +103,26 @@ function getSPSADataElement() {
   );
 }
 
-function readSPSAData() {
+function getSPSAScrollContainer() {
+  return document.getElementById("spsa_history_scroll");
+}
+
+function getSPSAPlotElement() {
+  return document.getElementById("spsa_history_plot");
+}
+
+function readSPSAPayloadText() {
   const dataElement = getSPSADataElement();
   if (!dataElement) {
     return null;
   }
 
+  return dataElement.textContent || "{}";
+}
+
+function parseSPSAData(payloadText) {
   try {
-    return JSON.parse(dataElement.textContent || "{}");
+    return JSON.parse(payloadText);
   } catch (error) {
     console.warn("Unable to parse SPSA data", error);
     return null;
@@ -180,11 +192,12 @@ function setLoaderVisible(visible) {
 }
 
 function showSPSAAlert(text) {
-  const historyPlot = document.getElementById("spsa_history_plot");
+  const historyPlot = getSPSAPlotElement();
   if (!historyPlot) {
     return;
   }
 
+  historyPlot.style.minHeight = "0";
   const alertElement = document.createElement("div");
   alertElement.className = "alert alert-warning";
   alertElement.role = "alert";
@@ -206,6 +219,7 @@ async function handleSPSA() {
   let spsaData = null;
   let hasRendered = false;
   let refreshQueued = false;
+  let lastRenderedPayloadText = null;
 
   function gaussianKernelRegression(values, bandwidth) {
     if (!bandwidth) {
@@ -231,7 +245,20 @@ async function handleSPSA() {
     chartOptions.animation = {};
     const view = new google.visualization.DataView(chartData);
     view.setColumns(columns);
+    const scroller = getSPSAScrollContainer();
+    const scrollLeft = scroller?.scrollLeft || 0;
+    const scrollTop = scroller?.scrollTop || 0;
     chartObject.draw(view, chartOptions);
+    if (scroller) {
+      scroller.scrollLeft = scrollLeft;
+      scroller.scrollTop = scrollTop;
+      requestAnimationFrame(() => {
+        if (scroller.isConnected) {
+          scroller.scrollLeft = scrollLeft;
+          scroller.scrollTop = scrollTop;
+        }
+      });
+    }
   }
 
   function updateColumnVisibility(col, visibility) {
@@ -261,6 +288,7 @@ async function handleSPSA() {
     const spsaHistory = spsaData.param_history;
     const numIter = asFiniteNumber(spsaData.num_iter, 0);
     const iterValue = asFiniteNumber(spsaData.iter, 0);
+    const gamma = asFiniteNumber(spsaData.gamma, 0);
     const spsaIterRatio =
       numIter > 0 ? Math.min(Math.max(iterValue / numIter, 0), 1) : 0;
 
@@ -271,17 +299,32 @@ async function handleSPSA() {
         dt0.addColumn("number", spsaParams[i].name);
       }
 
+      const nParams = spsaParams.length;
+      const samples =
+        nParams < 100 ? 100 : nParams < 1000 ? 10000 / nParams : 1;
+      const period = numIter > 0 ? Math.max(numIter / samples, 1) : 0;
+      const hasLivePoint =
+        spsaHistory.length > 0 &&
+        period > 0 &&
+        iterValue > spsaHistory.length * period;
+      const totalPoints = spsaHistory.length + (hasLivePoint ? 1 : 0);
+
       const lastValues = spsaParams.map((param) =>
         asFiniteNumber(param.start, asFiniteNumber(param.theta, 0)),
       );
       const unsmoothedData = [];
-      for (let i = 0; i <= spsaHistory.length; i += 1) {
+      for (let i = 0; i <= totalPoints; i += 1) {
         const rowData = [
-          spsaHistory.length > 0 ? (i / spsaHistory.length) * spsaIterRatio : 0,
+          totalPoints > 0 ? (i / totalPoints) * spsaIterRatio : 0,
         ];
         for (let j = 0; j < spsaParams.length; j += 1) {
           if (i === 0) {
             rowData.push(lastValues[j]);
+            continue;
+          }
+
+          if (hasLivePoint && i === totalPoints) {
+            rowData.push(asFiniteNumber(spsaParams[j].theta, lastValues[j]));
             continue;
           }
 
@@ -348,7 +391,10 @@ async function handleSPSA() {
             if (row === 0) {
               return 0;
             }
-            const cValue = Number(spsaHistory[row - 1]?.[i]?.c);
+            const cValue =
+              row <= spsaHistory.length
+                ? Number(spsaHistory[row - 1]?.[i]?.c)
+                : Number(spsaParams[i]?.c) / Math.pow(iterValue + 1, gamma);
             if (!Number.isFinite(cValue) || cValue === 0) {
               return null;
             }
@@ -397,7 +443,7 @@ async function handleSPSA() {
   }
 
   function renderSPSA(nextData) {
-    const historyPlot = document.getElementById("spsa_history_plot");
+    const historyPlot = getSPSAPlotElement();
     const chartToolbar = document.getElementById("chart_toolbar");
     const dropdown = document.getElementById("dropdown_individual");
     const percentageToggle = document.getElementById("spsa_percentage");
@@ -457,8 +503,8 @@ async function handleSPSA() {
   }
 
   async function refreshSPSA({ showLoader = false } = {}) {
-    const nextData = readSPSAData();
-    if (!nextData) {
+    const payloadText = readSPSAPayloadText();
+    if (payloadText == null) {
       return;
     }
 
@@ -466,8 +512,20 @@ async function handleSPSA() {
       setLoaderVisible(true);
     }
 
+    if (hasRendered && payloadText === lastRenderedPayloadText) {
+      setLoaderVisible(false);
+      return;
+    }
+
+    const nextData = parseSPSAData(payloadText);
+    if (!nextData) {
+      setLoaderVisible(false);
+      return;
+    }
+
     await waitForGoogleCharts();
     renderSPSA(nextData);
+    lastRenderedPayloadText = payloadText;
     setLoaderVisible(false);
   }
 
