@@ -258,7 +258,7 @@ fragments; others are shared partials included by page or fragment templates.
 | `contributors_rows_fragment.html.j2` | shared row partial | Included by `contributors_content_fragment.html.j2` |
 | `tests_run_tables_fragment.html.j2` | OOB poll fragment | Shared run-table OOB payload for `/tests?live=run_tables` and `/tests/user/{username}?live=run_tables` |
 | `elo_results.html.j2` | shared display partial | Included where ELO summary markup is rendered |
-| `elo_results_fragment.html.j2` | OOB poll fragment | Poll response for live ELO summary updates |
+| `elo_results_fragment.html.j2` | shared OOB partial | Included by `tests_view_detail_fragment.html.j2` for live ELO summary, status, and task-total updates |
 | `homepage_stats_fragment.html.j2` | OOB summary fragment | Updates homepage stat targets |
 | `live_elo_fragment.html.j2` | OOB poll fragment | Poll response for live ELO page updates |
 | `machines_fragment.html.j2` | htmx content fragment | Swaps `#machines` and updates `#workers-count` OOB |
@@ -924,6 +924,8 @@ Behavior notes:
    the homepage shell and OOB fragment updates.
 
 ### `elo_results_fragment.html.j2`
+
+Shared OOB partial included by `tests_view_detail_fragment.html.j2`.
 
 | Key | Type |
 |-----|------|

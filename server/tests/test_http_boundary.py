@@ -623,6 +623,15 @@ class TestHttpBoundary(unittest.TestCase):
 
         self.assertEqual(response.status_code, 404)
 
+    def test_removed_tests_elo_route_returns_404_for_existing_run(self):
+        run_id = self._create_tests_elo_run(approved=True, workers=1)
+        app = self._build_app(include_views=True)
+        client = self.TestClient(app)
+
+        response = client.get(f"/tests/elo/{run_id}?expected=active")
+
+        self.assertEqual(response.status_code, 404)
+
     def test_tests_homepage_live_run_tables_redirects_non_hx_to_canonical_page(self):
         app = self._build_app(include_views=True)
         client = self.TestClient(app)
@@ -790,46 +799,6 @@ class TestHttpBoundary(unittest.TestCase):
         finally:
             self.rundb.userdb.users.delete_many({"username": route_username})
             self.rundb.userdb.clear_cache()
-
-    def test_tests_elo_expected_state_returns_204_when_unchanged(self):
-        run_id = self._create_tests_elo_run(approved=True)
-        app = self._build_app(include_views=True)
-        client = self.TestClient(app)
-
-        response = client.get(f"/tests/elo/{run_id}?expected=paused")
-
-        self.assertEqual(response.status_code, 204)
-        self.assertEqual(response.content, b"")
-
-    def test_tests_elo_expected_pending_returns_204_when_unchanged(self):
-        run_id = self._create_tests_elo_run(approved=False)
-        app = self._build_app(include_views=True)
-        client = self.TestClient(app)
-
-        response = client.get(f"/tests/elo/{run_id}?expected=pending")
-
-        self.assertEqual(response.status_code, 204)
-        self.assertEqual(response.content, b"")
-
-    def test_tests_elo_expected_state_returns_200_on_transition(self):
-        run_id = self._create_tests_elo_run(approved=False)
-        app = self._build_app(include_views=True)
-        client = self.TestClient(app)
-
-        response = client.get(f"/tests/elo/{run_id}?expected=paused")
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("pending", response.text)
-
-    def test_tests_elo_expected_state_returns_286_on_terminal_transition(self):
-        run_id = self._create_tests_elo_run(approved=True, finished=True)
-        app = self._build_app(include_views=True)
-        client = self.TestClient(app)
-
-        response = client.get(f"/tests/elo/{run_id}?expected=active")
-
-        self.assertEqual(response.status_code, 286)
-        self.assertIn("finished", response.text)
 
     def test_live_elo_page_finished_sprt_has_data_and_no_poller(self):
         run_id = self._create_live_elo_run(sprt_state="accepted")

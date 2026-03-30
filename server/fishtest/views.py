@@ -2834,32 +2834,6 @@ def _build_tests_run_tables_fragment_context(
     return result
 
 
-def tests_elo(request: _ViewContext) -> dict[str, Any]:
-    run = request.rundb.get_run(request.matchdict["id"])
-    if run is None:
-        raise StarletteHTTPException(status_code=404)
-
-    status_context = _build_tests_view_status_context(run)
-
-    expected = (request.params.get("expected") or "").strip().lower()
-    actual = status_context["run_status_label"]
-
-    if expected:
-        if actual in {"finished", "failed"}:
-            request.response_status = 286
-        elif actual in {"paused", "pending"} and actual == expected:
-            request.response_status = 204
-    elif actual in {"finished", "failed"}:
-        request.response_status = 286
-    elif actual != "active":
-        request.response_status = 204
-
-    return {
-        "run": run,
-        **status_context,
-    }
-
-
 def tests_live_elo(request: _ViewContext) -> dict[str, Any]:
     run = request.rundb.get_run(request.matchdict["id"])
     if run is None or "sprt" not in run["args"]:
@@ -3744,7 +3718,6 @@ _VIEW_ROUTES: list[_ViewRoute] = [
         "/tests/live_elo_update/{id}",
         {"renderer": "live_elo_fragment.html.j2"},
     ),
-    (tests_elo, "/tests/elo/{id}", {"renderer": "elo_results_fragment.html.j2"}),
     (tests_stats, "/tests/stats/{id}", {"renderer": "tests_stats.html.j2"}),
     (
         tests_tasks,
