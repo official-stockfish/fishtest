@@ -50,7 +50,7 @@ registers it on the FastAPI router.
 | `/tests/purge` | POST | `tests_purge` | -- | CSRF, primary |
 | `/tests/delete` | POST | `tests_delete` | -- | CSRF, primary |
 | `/tests/view/{id}` | GET, POST | `tests_view` | `tests_view.html.j2` | Full detail page; unfinished runs poll the merged detail fragment endpoint and the dedicated tasks endpoint |
-| `/tests/view/{id}/detail` | GET, POST | `tests_view_detail` | `tests_view_detail_fragment.html.j2` | Fragment-only; OOB refresh for ELO, run status, active-worker totals, detail, time, chi-square, and the embedded SPSA chart payload |
+| `/tests/view/{id}/detail` | GET, POST | `tests_view_detail` | `tests_view_detail_fragment.html.j2` | Fragment-only; OOB refresh for ELO, run status, active-worker totals, detail, time, chi-square, and the retained SPSA data payload |
 | `/tests/live_elo/{id}` | GET, POST | `tests_live_elo` | `tests_live_elo.html.j2` | Live Elo page + dual-scale gauge |
 | `/tests/stats/{id}` | GET, POST | `tests_stats` | `tests_stats.html.j2` | HX: `tests_stats_content_fragment.html.j2`; active runs poll with the dedicated stats-page interval and visibility-aware refresh |
 | `/tests/tasks/{id}` | GET, POST | `tests_tasks` | `tasks_content_fragment.html.j2` | Fragment-only; updates the scrolling task table body and refreshes fixed controls/pagination OOB, with server-side sorting for every visible task column, one combined worker/info search filter, and 25-row pagination |
@@ -112,6 +112,12 @@ The response updates these regions out of band:
 - `#tests-view-time`
 - `#tests-view-stats` for non-SPSA runs
 - `#spsa-data-<run_id>` for SPSA runs
+
+For SPSA runs, the detail fragment updates the existing
+`#spsa-data-<run_id>` node in place. The page-owned `spsa.js` controller keeps
+the chart shell mounted, draws the chart at a fixed 1000x500 size inside the
+scrollable container, skips redraws when the embedded JSON payload is unchanged,
+and redraws changed payloads in place without replacing the chart shell.
 
 The request submits the page's current canonical `expected` state from a
 server-owned hidden input:

@@ -635,6 +635,12 @@ td {
 }
 
 /* tests_view page */
+#spsa_history_plot {
+  width: 100%;
+  max-width: 1000px;
+  min-height: 500px;
+}
+
 .spsa-param-row td:first-child {
   text-align: left;
 }

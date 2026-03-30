@@ -16,5 +16,5 @@
 {% endif %}
 {% include "tests_view_time_section.html.j2" %}
 {% if "spsa" in run["args"] %}
-  <script id="spsa-data-{{ run_id }}" type="application/json" hx-swap-oob="outerHTML">{{ spsa_data | tojson }}</script>
+  <script id="spsa-data-{{ run_id }}" type="application/json" hx-swap-oob="innerHTML">{{ spsa_data | tojson }}</script>
 {% endif %}

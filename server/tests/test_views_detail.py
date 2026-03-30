@@ -169,6 +169,9 @@ class TestTestsViewDetail(unittest.TestCase):
             f'id="spsa-data-{run_id}" type="application/json"',
             response.text,
         )
+        self.assertIn('id="spsa_history_scroll"', response.text)
+        self.assertIn('id="spsa_history_plot"', response.text)
+        self.assertNotIn('id="spsa_history_plot" style=', response.text)
         self.assertNotIn("const spsaData =", response.text)
 
     def test_tests_view_detail_polls_pending_then_paused_then_204(self):
@@ -355,12 +358,58 @@ class TestTestsViewDetail(unittest.TestCase):
         )
         self.assertNotIn('id="tests-view-stats" hx-swap-oob="outerHTML"', response.text)
         self.assertIn(
-            f'id="spsa-data-{run_id}" type="application/json" hx-swap-oob="outerHTML"',
+            f'id="spsa-data-{run_id}" type="application/json" hx-swap-oob="innerHTML"',
             response.text,
         )
         self.assertIn("ParamA", response.text)
         self.assertIn("iter: 3, A: 4", response.text)
         self.assertNotIn("<title>", response.text)
+
+    def test_spsa_script_skips_noop_redraws_without_hover_gating(self):
+        script_path = (
+            Path(__file__).resolve().parents[1]
+            / "fishtest"
+            / "static"
+            / "js"
+            / "spsa.js"
+        )
+        script_source = script_path.read_text(encoding="utf-8")
+
+        self.assertIn("payloadText === lastRenderedPayloadText", script_source)
+        self.assertIn("const scroller = getSPSAScrollContainer();", script_source)
+        self.assertNotIn('historyPlot.addEventListener("pointerenter"', script_source)
+        self.assertNotIn('historyPlot.addEventListener("pointerleave"', script_source)
+        self.assertNotIn("deferredRefreshPending", script_source)
+
+    def test_spsa_plot_shell_keeps_fixed_chart_dimensions(self):
+        repo_root = Path(__file__).resolve().parents[1]
+        template_source = (
+            repo_root / "fishtest" / "templates" / "tests_view_spsa_section.html.j2"
+        ).read_text(encoding="utf-8")
+        css_source = (
+            repo_root / "fishtest" / "static" / "css" / "application.css"
+        ).read_text(encoding="utf-8")
+        script_source = (
+            repo_root / "fishtest" / "static" / "js" / "spsa.js"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('id="spsa_history_plot"', template_source)
+        self.assertNotIn('id="spsa_history_plot" style=', template_source)
+        self.assertIn(
+            'class="overflow-auto overflow-y-hidden" id="spsa_history_scroll"',
+            template_source,
+        )
+        self.assertIn("#spsa_history_plot {", css_source)
+        self.assertIn("width: 100%;", css_source)
+        self.assertIn("max-width: 1000px;", css_source)
+        self.assertIn("min-height: 500px;", css_source)
+        self.assertNotIn("#spsa_history_scroll {", css_source)
+        self.assertNotIn("overflow-x: auto;", css_source)
+        self.assertNotIn("getBoundingClientRect()", script_source)
+        self.assertNotIn("getComputedStyle(historyPlot)", script_source)
+        self.assertNotIn("chartOptions.width = plotSize.width", script_source)
+        self.assertIn("width: 1000,", script_source)
+        self.assertIn("height: 500,", script_source)
 
 
 class TestTestsViewTasks(UiUserTestCase):
