@@ -55,7 +55,6 @@ registers it on the FastAPI router.
 | `/tests/stats/{id}` | GET, POST | `tests_stats` | `tests_stats.html.j2` | HX: `tests_stats_content_fragment.html.j2`; active runs poll with the dedicated stats-page interval and visibility-aware refresh |
 | `/tests/tasks/{id}` | GET, POST | `tests_tasks` | `tasks_content_fragment.html.j2` | Fragment-only; updates the scrolling task table body and refreshes fixed controls/pagination OOB, with server-side sorting for every visible task column, one combined worker/info search filter, and 25-row pagination |
 | `/tests/machines` | GET, POST | `tests_machines` | `machines_fragment.html.j2` | Fragment-only, 10s cache |
-| `/tests/elo/{id}` | GET, POST | `tests_elo` | `elo_results_fragment.html.j2` | Fragment-only (OOB); standalone ELO/status/totals fragment |
 | `/tests/live_elo_update/{id}` | GET, POST | `live_elo_update` | `live_elo_fragment.html.j2` | Fragment-only (OOB) |
 | `/tests/finished` | GET, POST | `tests_finished` | `tests_finished.html.j2` | HX: `tests_finished_content_fragment` |
 | `/tests/user/{username}` | GET, POST | `tests_user` | `tests_user.html.j2` | HX: `tests_user_content_fragment`; page 1 live run tables poll the same route via `?live=run_tables` |
@@ -92,33 +91,11 @@ Route notes:
   is present, otherwise renders the full-page template.
 - **OOB**: fragment contains `hx-swap-oob` attributes for multi-element updates.
 
-## `/tests/elo/{id}` standalone fragment contract
-
-The standalone ELO fragment accepts an optional `expected` query parameter that
-captures the state the caller already shows (`active`, `paused`, or `pending`).
-The detail page no longer polls this endpoint directly; `/tests/view/{id}` now
-uses `/tests/view/{id}/detail` for live summary + detail updates.
-
-When `/tests/elo/{id}` is called directly, the handler compares `expected` to
-the current run state before responding:
-
-- `204` when the current state still matches `expected` for paused or pending
-   runs.
-- `200` when the state changed and the page needs fresh OOB content.
-- `200` for active runs, even when `expected=active`, so the live ELO summary
-   and NumGames totals keep refreshing while the run is still active.
-- `286` when the run is terminal (`finished` or `failed`).
-
-Without `expected`, the handler follows the older fragment-only contract:
-
-- `200` for active runs.
-- `204` for paused or pending non-terminal runs.
-- `286` for terminal runs.
-
 ## `/tests/view/{id}/detail` live detail contract
 
 The test detail page keeps its live summary and detail data synchronized
-through the fragment-only `/tests/view/{id}/detail` endpoint.
+through the fragment-only `/tests/view/{id}/detail` endpoint. This endpoint
+is the live detail-page poll contract.
 
 The full detail page uses a visibility-aware htmx poller with:
 
@@ -480,8 +457,8 @@ Behavior notes:
    and its page-1 live run-table fragment recompute the filtered value from the
    current machine snapshot instead of reusing the last cookie-backed filtered
    count.
-- Machines sorting is fully server-authoritative; the old generic client-side
-   header sorter has been retired.
+- Machines sorting is fully server-authoritative; there is no client-side
+   header sorter.
 
 ## Active runs type filter
 
@@ -577,8 +554,8 @@ Behavior notes:
 - The outer GET form keeps `sort`, `order`, and `view` in hidden inputs.
   htmx fragment responses refresh those hidden inputs out of band so later
   group or filter changes preserve the current table state.
-- Table sorting is fully server-authoritative; the old generic client-side
-   header sorter has been retired.
+- Table sorting is fully server-authoritative; there is no client-side header
+   sorter.
 
 ## Workers management (`/workers/show`) query parameters
 
@@ -611,8 +588,8 @@ Behavior notes:
 - The outer GET form keeps `sort`, `order`, and `view` in hidden inputs.
   htmx fragment responses refresh those hidden inputs out of band so later
   filter changes preserve the current table state.
-- Table sorting is fully server-authoritative; the old generic client-side
-   header sorter has been retired.
+- Table sorting is fully server-authoritative; there is no client-side header
+   sorter.
 
 ## Contributors query parameters
 
@@ -684,8 +661,8 @@ Behavior notes:
   pagination, table, pagination.
 - `master_only` checkbox preference is persisted in a cookie and reused when
    the query parameter is not present.
-- Table sorting is fully server-authoritative; the old generic client-side
-   header sorter has been retired.
+- Table sorting is fully server-authoritative; there is no client-side header
+   sorter.
 
 ## Actions (`/actions`) query parameters
 
