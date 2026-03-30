@@ -19,8 +19,8 @@ server/
 |-- pyproject.toml           -- Package metadata, dependencies
 |-- fishtest/
 |   |-- app.py               -- ASGI application factory, lifespan, middleware, routers
-|   |-- api.py               -- Worker API router (22 endpoints)
-|   |-- views.py             -- UI router (35 endpoints, data-driven dispatch,
+|   |-- api.py               -- Worker API router (20 endpoints)
+|   |-- views.py             -- UI router (33 routes, data-driven dispatch,
 |   |                          routing hub)
 |   |-- views_helpers.py     -- Pure stateless helpers extracted from views.py
 |   |-- views_actions.py     -- Actions-page helpers (row building, sorting, query strings)
@@ -33,7 +33,7 @@ server/
 |   |-- workerdb.py          -- WorkerDb: worker blocking
 |   |-- kvstore.py           -- KVStore: key-value metadata (legacy usernames, flags)
 |   |-- scheduler.py         -- Periodic task scheduler (primary instance only)
-|   |-- schemas.py           -- vtjson validation schemas (18 schemas)
+|   |-- schemas.py           -- vtjson validation schemas
 |   |-- run_cache.py         -- In-memory run cache with dirty-page flush
 |   |-- lru_cache.py         -- Generic LRU cache
 |   |-- spsa_handler.py      -- SPSA tuning parameter handler
@@ -311,8 +311,9 @@ A single `RunDb` instance is created per process at startup and stored on
 
 ## Validation
 
-vtjson is the sole validation layer. The `schemas.py` module defines 19 schemas
-that validate plain Python dicts. Schemas are used in:
+vtjson is the sole validation layer. The `schemas.py` module defines the
+repository's vtjson schemas for plain Python dict validation. Schemas are used
+in:
 
 - API endpoints (request body validation).
 - Domain adapters (run, user, action document validation before MongoDB writes).

@@ -20,26 +20,20 @@ viewing results, and administering users and workers.
 | 6 | [6-worker.md](6-worker.md) | Worker contributors | Worker architecture, task lifecycle, API usage |
 | 7 | [7-development.md](7-development.md) | All developers | Dev setup, local server, testing, OpenAPI |
 | 8 | [8-deployment.md](8-deployment.md) | Operators | systemd, nginx, kernel tuning, capacity audit |
-| 9 | [9-references.md](9-references.md) | All developers | FastAPI, Starlette, Jinja2, htmx curated references |
+| 9 | [9-references.md](9-references.md) | All developers | FastAPI, Starlette, Jinja2, htmx, Python, MongoDB, and tooling references |
 
 ## Quick start
 
 ```bash
 # Install server dependencies (from repo root)
-cd server && uv sync && uv sync --group test
-
-# Run tests (from server/)
-uv run python -m unittest discover -s tests -q
+(cd server && uv sync && uv sync --group test)
 
 # Start the development server (from server/)
-FISHTEST_INSECURE_DEV=1 uv run uvicorn fishtest.app:app --reload --port 8000
-
-# Start with OpenAPI docs enabled (from server/)
-OPENAPI_URL=/openapi.json FISHTEST_INSECURE_DEV=1 uv run uvicorn fishtest.app:app --reload --port 8000
-
-# Entrypoint
-# server/fishtest/app.py
+(cd server && FISHTEST_INSECURE_DEV=1 uv run uvicorn fishtest.app:app --reload --port 8000)
 ```
+
+For OpenAPI docs, worker setup, and local validation workflows, see
+[7-development.md](7-development.md).
 
 ## Technology stack
 
@@ -51,7 +45,7 @@ OPENAPI_URL=/openapi.json FISHTEST_INSECURE_DEV=1 uv run uvicorn fishtest.app:ap
 | Client interactivity | htmx 2.0.8 (CDN, fragment polling/swaps, OOB updates) |
 | Session management | itsdangerous `TimestampSigner` cookie sessions |
 | Database | MongoDB (pymongo) |
-| Validation | vtjson (18 schemas; no Pydantic) |
+| Validation | vtjson (schema-first validation; no Pydantic) |
 | Statistics | scipy, numpy (SPRT, ELO calculations) |
 | Python (server) | >= 3.14 |
 | Python (worker) | >= 3.8 |
