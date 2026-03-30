@@ -79,27 +79,30 @@ When `FISHTEST_PORT` and `FISHTEST_PRIMARY_PORT` are both unset or negative,
 the instance defaults to primary -- the expected mode for single-instance
 development.
 
-## Running validation
+## Linting
 
-Run validation from the project root or from `server/` using the tracked
-project configuration in `pyproject.toml` and the server test package.
+Run server lint directly from the tracked Python project.
 
 ```bash
-cd server && uv run ruff check fishtest tests utils
-cd server && uv run python -m unittest discover -s tests -v
+(cd server && uv run ruff check fishtest tests utils)
 ```
 
 ## Running tests
 
+Start local MongoDB, run the server test suite, then stop MongoDB:
+
 ```bash
 mkdir -p .local/mongo-data
 mongod --dbpath .local/mongo-data --fork --logpath .local/mongod.log
-pushd server && uv run python -m unittest discover -s tests -v
-popd && mongod --shutdown --dbpath .local/mongo-data
+(cd server && uv run python -m unittest discover -s tests -v)
+mongod --shutdown --dbpath .local/mongo-data
 ```
 
-Use the manual sequence only when you need a focused local loop around the
-server test suite.
+For a focused server-only loop when MongoDB is already running:
+
+```bash
+(cd server && uv run python -m unittest discover -s tests -v)
+```
 
 See [0-README.md](0-README.md) for pre-commit hooks and CI workflows.
 

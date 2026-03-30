@@ -20,8 +20,8 @@ Source files:
 
 | Constant | Value | Location |
 |----------|-------|----------|
-| `WORKER_VERSION` | 311 | `worker.py` |
-| `FASTCHESS_SHA` | `e892ad92a74c8a4fd7184b9e4867b97ae8952685` | `worker.py` |
+| `WORKER_VERSION` | 316 | `worker.py` |
+| `FASTCHESS_SHA` | `adc3d025006f2efe7e014cde7dc46970f3bb7252` | `worker.py` |
 | `HTTP_TIMEOUT` | 30.0 s | `worker.py`, `games.py` |
 | `INITIAL_RETRY_TIME` | 15.0 s | `worker.py` |
 | `MAX_RETRY_TIME` | 900 s (15 min) | `worker.py` |

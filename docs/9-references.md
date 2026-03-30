@@ -384,13 +384,30 @@ must be constructed with DOM API (`createElement`, `textContent`,
 prevent XSS from error messages and to keep htmx attributes functional
 (via `htmx.process()`).
 
+## Python, MongoDB, and tooling
+
+### Canonical references
+
+| Topic | URL |
+|------|-----|
+| Python 3.14 docs | https://docs.python.org/3/ |
+| MongoDB manual | https://www.mongodb.com/docs/manual/ |
+| PyMongo | https://www.mongodb.com/docs/languages/python/pymongo-driver/current/ |
+| Ruff | https://docs.astral.sh/ruff/ |
+| ty | https://docs.astral.sh/ty/ |
+| mypy | https://mypy.readthedocs.io/en/stable/ |
+| nginx | https://nginx.org/en/docs/ |
+
+Use [7-development.md](7-development.md) for local lint and test workflows.
+
 ## Tooling references
 
-| Tool | Command / Path | Purpose |
-|------|----------------|---------|
-| Python project config | `server/pyproject.toml` | Tracked lint, dependency, and test-tool configuration |
-| Server test package | `server/tests/` | Tracked unit and HTTP contract tests |
-| Local test runner | `cd server && uv run python -m unittest discover -s tests -q` | Focused server-only test loop |
+| Tool | Path | Purpose |
+|------|------|---------|
+| Repository dev tools | `pyproject.toml` | Shared repo tooling configuration |
+| Server Python project | `server/pyproject.toml` | Server dependency and tool configuration |
+| Worker Python project | `worker/pyproject.toml` | Worker dependency configuration |
+| Server test package | `server/tests/` | Unit and HTTP contract tests |
 
 ## Testing patterns
 
@@ -400,16 +417,6 @@ Server tests live in `server/tests/`. All tests use `unittest.TestCase`.
 MongoDB is required for most tests (the CI workflow starts `mongod` before
 running the suite). User-facing HTTP route tests are split by route family or
 one focused UI motif instead of accumulating in one omnibus module.
-
-### Running tests
-
-From the repo root:
-
-```bash
-# Manual local run
-mongod --dbpath /tmp/fishtest-test-db --port 27017 &
-cd server && uv run python -m unittest discover -s tests -q
-```
 
 ### Fixtures
 
