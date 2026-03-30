@@ -390,7 +390,7 @@ prevent XSS from error messages and to keep htmx attributes functional
 
 | Topic | URL |
 |------|-----|
-| Python 3.14 docs | https://docs.python.org/3/ |
+| Python docs | https://docs.python.org/3/ |
 | MongoDB manual | https://www.mongodb.com/docs/manual/ |
 | PyMongo | https://www.mongodb.com/docs/languages/python/pymongo-driver/current/ |
 | Ruff | https://docs.astral.sh/ruff/ |

@@ -81,10 +81,10 @@ development.
 
 ## Linting
 
-Run server lint directly from the tracked Python project.
+Run Ruff from the repo root so it uses the tracked dev tool and shared config.
 
 ```bash
-(cd server && uv run ruff check fishtest tests utils)
+uv run ruff check server worker --config pyproject.toml
 ```
 
 ## Running tests
