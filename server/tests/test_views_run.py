@@ -4,8 +4,11 @@ import unittest
 from datetime import UTC, datetime, timedelta
 from unittest import mock
 
+import test_support
 from starlette.responses import RedirectResponse
+from ui_user_test_case import UiUserTestCase
 
+from fishtest.run_cache import Prio
 from fishtest.views_run import (
     _RUN_MODIFY_MAX_AGE_DAYS,
     can_modify_run,
@@ -64,7 +67,7 @@ class _RequestStub:
         self,
         *,
         post_data: dict[str, str],
-        authenticated_userid: str = "RunOwner",
+        authenticated_userid: str = "TestRunOwner",
         can_approve: bool = False,
     ) -> None:
         self.POST = dict(post_data)
@@ -227,7 +230,7 @@ class ValidateFormTests(unittest.TestCase):
 class RunPermissionTests(unittest.TestCase):
     def test_del_tasks_returns_deep_copy_without_tasks(self):
         original_run = {
-            "args": {"username": "RunOwner"},
+            "args": {"username": "TestRunOwner"},
             "tasks": [{"worker_info": {"username": "worker"}}],
         }
 
@@ -235,14 +238,14 @@ class RunPermissionTests(unittest.TestCase):
         cloned_run["args"]["username"] = "Changed"
 
         self.assertNotIn("tasks", cloned_run)
-        self.assertEqual(original_run["args"]["username"], "RunOwner")
+        self.assertEqual(original_run["args"]["username"], "TestRunOwner")
 
     def test_run_permission_helpers_follow_owner_or_approver_contract(self):
-        run = {"args": {"username": "RunOwner"}}
+        run = {"args": {"username": "TestRunOwner"}}
         owner_request = _RequestStub(post_data=_valid_post_data())
         approver_request = _RequestStub(
             post_data=_valid_post_data(),
-            authenticated_userid="Approver",
+            authenticated_userid="TestRunApprover",
             can_approve=True,
         )
 
@@ -250,3 +253,159 @@ class RunPermissionTests(unittest.TestCase):
         self.assertFalse(is_same_user(approver_request, run))
         self.assertTrue(can_modify_run(owner_request, run))
         self.assertTrue(can_modify_run(approver_request, run))
+
+
+class TestRunActionViews(UiUserTestCase):
+    username = "TestRunActionsUser"
+
+    def test_tests_stop_hx_detail_redirects_home(self):
+        self._login_user()
+        run_id = self._create_run()
+
+        response = self.client.get(f"/tests/view/{run_id}")
+        self.assertEqual(response.status_code, 200)
+        csrf = test_support.extract_csrf_token(response.text)
+
+        response = self.client.post(
+            "/tests/stop",
+            data={
+                "run-id": run_id,
+                "csrf_token": csrf,
+            },
+            headers={"HX-Request": "true"},
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers.get("location"), "/tests")
+
+    def test_tests_delete_hx_redirects_home(self):
+        self._login_user()
+        run_id = self._create_run()
+
+        response = self.client.get(f"/tests/view/{run_id}")
+        self.assertEqual(response.status_code, 200)
+        csrf = test_support.extract_csrf_token(response.text)
+
+        response = self.client.post(
+            "/tests/delete",
+            data={
+                "run-id": run_id,
+                "csrf_token": csrf,
+            },
+            headers={"HX-Request": "true"},
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers.get("location"), "/tests")
+
+    def test_tests_purge_hx_detail_redirects_home(self):
+        self._login_user()
+        run_id = self._create_run()
+        run = self.rundb.get_run(run_id)
+        self.rundb.set_inactive_run(run)
+
+        response = self.client.get(f"/tests/view/{run_id}")
+        self.assertEqual(response.status_code, 200)
+        csrf = test_support.extract_csrf_token(response.text)
+
+        response = self.client.post(
+            "/tests/purge",
+            data={
+                "run-id": run_id,
+                "csrf_token": csrf,
+            },
+            headers={"HX-Request": "true"},
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers.get("location"), "/tests")
+
+    def test_tests_stop_hx_detail_error_redirects_home(self):
+        self._login_user()
+        run_id = self._create_run()
+        run = self.rundb.get_run(run_id)
+        run["args"]["username"] = "some_other_user"
+        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+
+        response = self.client.get(f"/tests/view/{run_id}")
+        self.assertEqual(response.status_code, 200)
+        csrf = test_support.extract_csrf_token(response.text)
+
+        response = self.client.post(
+            "/tests/stop",
+            data={
+                "run-id": run_id,
+                "csrf_token": csrf,
+            },
+            headers={"HX-Request": "true"},
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers.get("location"), "/tests")
+
+    def test_tests_delete_hx_error_redirects_home(self):
+        self._login_user()
+        run_id = self._create_run()
+        run = self.rundb.get_run(run_id)
+        run["args"]["username"] = "some_other_user"
+        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+
+        response = self.client.get(f"/tests/view/{run_id}")
+        self.assertEqual(response.status_code, 200)
+        csrf = test_support.extract_csrf_token(response.text)
+
+        response = self.client.post(
+            "/tests/delete",
+            data={
+                "run-id": run_id,
+                "csrf_token": csrf,
+            },
+            headers={"HX-Request": "true"},
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers.get("location"), "/tests")
+
+    def test_tests_modify_sends_csrf_token(self):
+        self._login_user()
+        run_id = self._create_run()
+
+        response = self.client.get(f"/tests/view/{run_id}")
+        self.assertEqual(response.status_code, 200)
+        csrf = test_support.extract_csrf_token(response.text)
+
+        run = self.rundb.get_run(run_id)
+        response = self.client.post(
+            "/tests/modify",
+            data={
+                "run": run_id,
+                "num-games": str(run["args"]["num_games"]),
+                "priority": str(run["args"]["priority"]),
+                "throughput": str(run["args"].get("throughput", 1000)),
+                "csrf_token": csrf,
+            },
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers.get("location"), "/tests")
+
+    def test_tests_modify_without_csrf_returns_403(self):
+        self._login_user()
+        run_id = self._create_run()
+
+        response = self.client.post(
+            "/tests/modify",
+            data={
+                "run": run_id,
+                "num-games": "20000",
+                "priority": "0",
+                "throughput": "1000",
+            },
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 403)

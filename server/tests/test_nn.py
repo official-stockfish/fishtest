@@ -81,7 +81,7 @@ class TestNN(unittest.TestCase):
         self.assertEqual(net, new_net)
 
 
-class TestNNHttp(unittest.TestCase):
+class TestNNViews(unittest.TestCase):
     def setUp(self):
         self.rundb = test_support.get_rundb()
         self.client = test_support.make_test_client(

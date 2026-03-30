@@ -15,7 +15,7 @@ def get_rundb():
     return rundb
 
 
-def find_run(arg="username", value="travis"):
+def find_run(arg="username", value="TestRunDbUser"):
     rundb = RunDb(db_name="fishtest_tests")
     atexit.register(rundb.conn.close)
     for run in rundb.get_unfinished_runs():

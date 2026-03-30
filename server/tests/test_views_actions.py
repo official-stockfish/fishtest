@@ -131,7 +131,7 @@ class _FakeUserDb:
         return list(self._users)
 
 
-class ActionsViewMaxCountHttpTest(unittest.TestCase):
+class TestActionsViewMaxCount(unittest.TestCase):
     def _last_kwargs(self, request):
         self.assertIsNotNone(request.actiondb.last_kwargs)
         assert request.actiondb.last_kwargs is not None
@@ -140,7 +140,7 @@ class ActionsViewMaxCountHttpTest(unittest.TestCase):
     def test_prev_link_preserves_max_count_authenticated(self):
         request = _GlueRequestStub(
             params={"page": "20000", "max_count": "500000"},
-            authenticated_userid="JoeUser",
+            authenticated_userid="TestActionsViewer",
             return_count=500000,
         )
         result = actions_view(request)
@@ -164,7 +164,7 @@ class ActionsViewMaxCountHttpTest(unittest.TestCase):
     def test_pagination_includes_last_page_link(self):
         request = _GlueRequestStub(
             params={"page": "2", "max_count": "500000"},
-            authenticated_userid="JoeUser",
+            authenticated_userid="TestActionsViewer",
             return_count=500000,
         )
         result = actions_view(request)
@@ -178,7 +178,7 @@ class ActionsViewMaxCountHttpTest(unittest.TestCase):
     def test_out_of_range_page_redirects_to_last_page_authenticated(self):
         request = _GlueRequestStub(
             params={"page": "999999"},
-            authenticated_userid="JoeUser",
+            authenticated_userid="TestActionsViewer",
             return_count=50000,
         )
         response = actions_view(request)
@@ -212,7 +212,10 @@ class ActionsViewMaxCountHttpTest(unittest.TestCase):
         self.assertEqual(last_kwargs["max_count"], 5000)
 
     def test_authenticated_default_soft_cap_unfiltered(self):
-        request = _GlueRequestStub(params={}, authenticated_userid="JoeUser")
+        request = _GlueRequestStub(
+            params={},
+            authenticated_userid="TestActionsViewer",
+        )
         actions_view(request)
         last_kwargs = self._last_kwargs(request)
         self.assertEqual(last_kwargs["max_count"], 50000)
@@ -220,7 +223,7 @@ class ActionsViewMaxCountHttpTest(unittest.TestCase):
     def test_authenticated_allows_override_upward(self):
         request = _GlueRequestStub(
             params={"max_count": "200000"},
-            authenticated_userid="JoeUser",
+            authenticated_userid="TestActionsViewer",
         )
         actions_view(request)
         last_kwargs = self._last_kwargs(request)
@@ -229,7 +232,7 @@ class ActionsViewMaxCountHttpTest(unittest.TestCase):
     def test_authenticated_filtered_defaults_to_soft_cap(self):
         request = _GlueRequestStub(
             params={"user": "someone"},
-            authenticated_userid="JoeUser",
+            authenticated_userid="TestActionsViewer",
         )
         actions_view(request)
         last_kwargs = self._last_kwargs(request)
@@ -238,7 +241,7 @@ class ActionsViewMaxCountHttpTest(unittest.TestCase):
     def test_authenticated_huge_max_count_is_clamped_to_mongo_int64(self):
         request = _GlueRequestStub(
             params={"max_count": "500000000000000000000000"},
-            authenticated_userid="JoeUser",
+            authenticated_userid="TestActionsViewer",
         )
 
         actions_view(request)
@@ -248,23 +251,23 @@ class ActionsViewMaxCountHttpTest(unittest.TestCase):
 
     def test_actions_username_filter_refreshes_cached_usernames_on_miss(self):
         request = _GlueRequestStub(
-            params={"user": "FreshUser"},
-            authenticated_userid="JoeUser",
+            params={"user": "TestFreshActionUser"},
+            authenticated_userid="TestActionsViewer",
             return_count=1,
         )
         request.actiondb = _RefreshingActionDbStub(
-            usernames_versions=[["OlderUser"], ["FreshUser"]],
+            usernames_versions=[["TestOlderActionUser"], ["TestFreshActionUser"]],
             return_count=1,
         )
 
         actions_view(request)
 
         last_kwargs = self._last_kwargs(request)
-        self.assertEqual(last_kwargs["usernames"], ["FreshUser"])
+        self.assertEqual(last_kwargs["usernames"], ["TestFreshActionUser"])
         self.assertEqual(request.actiondb.get_action_usernames.cache_clear_calls, 1)
 
 
-class TestActionsHttp(unittest.TestCase):
+class TestActionsViews(unittest.TestCase):
     def setUp(self):
         self.rundb = test_support.get_rundb()
         self.client = test_support.make_test_client(
@@ -281,9 +284,9 @@ class TestActionsHttp(unittest.TestCase):
                     {
                         "username": {
                             "$in": [
-                                "H23ActionsUser",
-                                "H23OtherUser",
-                                "H23SortUser",
+                                "TestActionsRouteUser",
+                                "TestOtherActionUser",
+                                "TestSortActionUser",
                             ]
                         }
                     },
@@ -324,19 +327,19 @@ class TestActionsHttp(unittest.TestCase):
     def test_actions_hx_fragment_renders_summary_and_accessible_table(self):
         self.rundb.actiondb.insert_action(
             action="new_run",
-            username="H23ActionsUser",
+            username="TestActionsRouteUser",
             run_id=self.run_id,
             run="h23-actions-run-abcdef0",
             message="H23 route contract hit",
         )
         self.rundb.actiondb.insert_action(
             action="upload_nn",
-            username="H23OtherUser",
+            username="TestOtherActionUser",
             nn="nn-123456789abc.nnue",
         )
 
         response = self.client.get(
-            f"/actions?user=H23ActionsUser&run_id={self.run_id}",
+            f"/actions?user=TestActionsRouteUser&run_id={self.run_id}",
             headers={"HX-Request": "true"},
         )
         self.assertEqual(response.status_code, 200)
@@ -355,7 +358,7 @@ class TestActionsHttp(unittest.TestCase):
     def test_actions_worker_log_renders_task_target_link(self):
         self.rundb.actiondb.insert_action(
             action="worker_log",
-            username="H23ActionsUser",
+            username="TestActionsRouteUser",
             worker="h23-worker-16cores-zz-1a2b",
             run_id=self.run_id,
             run="h23-actions-run-abcdef0",
@@ -380,7 +383,7 @@ class TestActionsHttp(unittest.TestCase):
     def test_actions_form_offers_worker_log_filter_and_filters_results(self):
         self.rundb.actiondb.insert_action(
             action="worker_log",
-            username="H23ActionsUser",
+            username="TestActionsRouteUser",
             worker="h23-worker-16cores-zz-1a2b",
             run_id=self.run_id,
             run="h23-actions-run-abcdef0",
@@ -389,7 +392,7 @@ class TestActionsHttp(unittest.TestCase):
         )
         self.rundb.actiondb.insert_action(
             action="log_message",
-            username="H23ActionsUser",
+            username="TestActionsRouteUser",
             message="Generic server log",
         )
 
@@ -411,19 +414,19 @@ class TestActionsHttp(unittest.TestCase):
     def test_actions_username_filter_matches_partial_substrings(self):
         self.rundb.actiondb.insert_action(
             action="new_run",
-            username="H23ActionsUser",
+            username="TestActionsRouteUser",
             run_id=self.run_id,
             run="h23-actions-run-abcdef0",
             message="Partial username hit",
         )
         self.rundb.actiondb.insert_action(
             action="upload_nn",
-            username="H23OtherUser",
+            username="TestOtherActionUser",
             nn="nn-123456789abc.nnue",
         )
 
         response = self.client.get(
-            "/actions?user=ctionsUs",
+            "/actions?user=tionsRoute",
             headers={"HX-Request": "true"},
         )
         self.assertEqual(response.status_code, 200)
@@ -434,7 +437,7 @@ class TestActionsHttp(unittest.TestCase):
         now = datetime.now(UTC).timestamp()
         request = _GlueRequestStub(
             params={"user": "vin"},
-            authenticated_userid="JoeUser",
+            authenticated_userid="TestActionsViewer",
         )
         request.actiondb = _PriorityActionDbStub(
             usernames=["mauvin-agent", "vin-prefix-agent"],
@@ -476,7 +479,7 @@ class TestActionsHttp(unittest.TestCase):
         now = datetime.now(UTC).timestamp()
         request = _GlueRequestStub(
             params={"user": "mockuser"},
-            authenticated_userid="JoeUser",
+            authenticated_userid="TestActionsViewer",
         )
         request.actiondb = _PriorityActionDbStub(
             usernames=["mockuser", "mockuser-alt"],
@@ -518,7 +521,7 @@ class TestActionsHttp(unittest.TestCase):
         now = datetime.now(UTC).timestamp()
         request = _GlueRequestStub(
             params={"user": "mockuser", "action": "upload_nn"},
-            authenticated_userid="JoeUser",
+            authenticated_userid="TestActionsViewer",
         )
         request.actiondb = _PriorityActionDbStub(
             usernames=["mockuser", "mockuser-alt"],
@@ -564,7 +567,7 @@ class TestActionsHttp(unittest.TestCase):
             actions.append(
                 {
                     "action": action_name,
-                    "username": "H23SortUser",
+                    "username": "TestSortActionUser",
                     "time": float(2000 - index),
                     "message": f"message-{index:02d}",
                 }
@@ -573,7 +576,7 @@ class TestActionsHttp(unittest.TestCase):
         self.rundb.actiondb.actions.insert_many(actions)
 
         response = self.client.get(
-            "/actions?user=H23SortUser&sort=event&order=asc",
+            "/actions?user=TestSortActionUser&sort=event&order=asc",
             headers={"HX-Request": "true"},
         )
         self.assertEqual(response.status_code, 200)
@@ -586,7 +589,8 @@ class TestActionsHttp(unittest.TestCase):
 
     def test_actions_empty_state_uses_real_column_span(self):
         response = self.client.get(
-            "/actions?user=NoSuchActionsUser", headers={"HX-Request": "true"}
+            "/actions?user=MissingActionsUser",
+            headers={"HX-Request": "true"},
         )
         self.assertEqual(response.status_code, 200)
         self.assertIn('colspan="5">No actions available</td>', response.text)

@@ -2,6 +2,7 @@
 
 import unittest
 from datetime import UTC, datetime, timedelta
+from typing import Any, cast
 
 from fastapi.responses import RedirectResponse
 
@@ -29,11 +30,21 @@ class _CachedUsernamesStub:
 
 class _FinishedRunsDbStub:
     def __init__(self):
-        self.last_kwargs = None
+        self.last_kwargs: dict[str, Any] | None = None
 
     def get_finished_runs(self, **kwargs):
         self.last_kwargs = kwargs
         return [], 0
+
+
+class _CountFinishedRunsDbStub(_FinishedRunsDbStub):
+    def __init__(self, *, total_count):
+        super().__init__()
+        self._total_count = total_count
+
+    def get_finished_runs(self, **kwargs):
+        self.last_kwargs = kwargs
+        return [], self._total_count
 
 
 class _PriorityFinishedRunsDbStub(_FinishedRunsDbStub):
@@ -110,9 +121,17 @@ class _FinishedRunsRequestStub:
 
 
 class TestFinishedView(unittest.TestCase):
+    def _last_kwargs(self, rundb):
+        self.assertIsNotNone(rundb.last_kwargs)
+        return cast(dict[str, Any], rundb.last_kwargs)
+
+    def _redirect_response(self, response):
+        self.assertIsInstance(response, RedirectResponse)
+        return cast(RedirectResponse, response)
+
     def test_finished_view_username_filter_refreshes_cached_usernames_on_miss(self):
         rundb = _FinishedRunsDbStub()
-        userdb = _FinishedUsersStub([["OlderFinisher"], ["FreshFinisher"]])
+        userdb = _FinishedUsersStub([["TestOlderFinisher"], ["TestFreshFinisher"]])
         request = _FinishedRunsRequestStub(
             rundb,
             userdb,
@@ -121,60 +140,65 @@ class TestFinishedView(unittest.TestCase):
 
         get_paginated_finished_runs(request, search_mode=True)
 
-        self.assertIsNotNone(rundb.last_kwargs)
-        self.assertEqual(rundb.last_kwargs["usernames"], ["FreshFinisher"])
+        self.assertEqual(
+            self._last_kwargs(rundb)["usernames"],
+            ["TestFreshFinisher"],
+        )
         self.assertEqual(userdb.get_usernames.cache_clear_calls, 1)
 
     def test_finished_view_username_filter_uses_cached_usernames_for_exact_match(self):
         rundb = _FinishedRunsDbStub()
-        userdb = _FinishedUsersStub([["OtherFinisher", "ExactFinisher"]])
+        userdb = _FinishedUsersStub([["TestOtherFinisher", "TestExactFinisher"]])
         request = _FinishedRunsRequestStub(
             rundb,
             userdb,
-            params={"mode": "search", "user": "ExactFinisher"},
+            params={"mode": "search", "user": "TestExactFinisher"},
         )
 
         get_paginated_finished_runs(request, search_mode=True)
 
-        self.assertEqual(rundb.last_kwargs["usernames"], ["ExactFinisher"])
+        self.assertEqual(
+            self._last_kwargs(rundb)["usernames"],
+            ["TestExactFinisher"],
+        )
         self.assertEqual(userdb.get_usernames.cache_clear_calls, 0)
 
     def test_finished_view_passes_text_to_rundb(self):
         rundb = _FinishedRunsDbStub()
         request = _FinishedRunsRequestStub(
             rundb,
-            _FinishedUsersStub([["SearchUser"]]),
+            _FinishedUsersStub([["TestFinishedSearchUser"]]),
             params={"mode": "search", "text": '"branch search"'},
         )
 
         get_paginated_finished_runs(request, search_mode=True)
 
-        self.assertEqual(rundb.last_kwargs["text"], '"branch search"')
+        self.assertEqual(self._last_kwargs(rundb)["text"], '"branch search"')
 
     def test_finished_view_navigation_is_uncapped_for_anonymous_users(self):
         rundb = _FinishedRunsDbStub()
         request = _FinishedRunsRequestStub(
             rundb,
-            _FinishedUsersStub([["AnonUser"]]),
+            _FinishedUsersStub([["TestFinishedAnonUser"]]),
         )
 
         get_paginated_finished_runs(request)
 
-        self.assertIsNone(rundb.last_kwargs["max_count"])
+        self.assertIsNone(self._last_kwargs(rundb)["max_count"])
 
     def test_finished_view_navigation_drops_stale_max_count(self):
         rundb = _FinishedRunsDbStub()
         request = _FinishedRunsRequestStub(
             rundb,
-            _FinishedUsersStub([["AnonUser"]]),
+            _FinishedUsersStub([["TestFinishedAnonUser"]]),
             params={"max_count": "999999"},
         )
 
         response = get_paginated_finished_runs(request)
 
-        self.assertIsInstance(response, RedirectResponse)
+        redirect = self._redirect_response(response)
         self.assertEqual(
-            response.headers.get("location"),
+            redirect.headers.get("location"),
             "http://localhost/tests/finished?sort=time&order=desc",
         )
 
@@ -182,27 +206,27 @@ class TestFinishedView(unittest.TestCase):
         rundb = _FinishedRunsDbStub()
         request = _FinishedRunsRequestStub(
             rundb,
-            _FinishedUsersStub([["AuthUser"]]),
-            authenticated_userid="AuthUser",
+            _FinishedUsersStub([["TestFinishedAuthUser"]]),
+            authenticated_userid="TestFinishedAuthUser",
         )
 
         get_paginated_finished_runs(request)
 
-        self.assertIsNone(rundb.last_kwargs["max_count"])
+        self.assertIsNone(self._last_kwargs(rundb)["max_count"])
 
     def test_finished_view_navigation_redirects_filters_to_search_page(self):
         rundb = _FinishedRunsDbStub()
         request = _FinishedRunsRequestStub(
             rundb,
-            _FinishedUsersStub([["AuthUser"]]),
+            _FinishedUsersStub([["TestFinishedAuthUser"]]),
             params={"user": "Auth", "text": "branch"},
         )
 
         response = get_paginated_finished_runs(request)
 
-        self.assertIsInstance(response, RedirectResponse)
+        redirect = self._redirect_response(response)
         self.assertEqual(
-            response.headers.get("location"),
+            redirect.headers.get("location"),
             "http://localhost/tests/finished?mode=search&sort=time&order=desc&user=Auth&text=branch",
         )
 
@@ -210,84 +234,92 @@ class TestFinishedView(unittest.TestCase):
         rundb = _FinishedRunsDbStub()
         request = _FinishedRunsRequestStub(
             rundb,
-            _FinishedUsersStub([["AnonUser"]]),
+            _FinishedUsersStub([["TestFinishedAnonUser"]]),
             params={"mode": "search"},
         )
 
         get_paginated_finished_runs(request, search_mode=True)
 
-        self.assertEqual(rundb.last_kwargs["max_count"], FINISHED_FILTER_MAX_COUNT_ANON)
+        self.assertEqual(
+            self._last_kwargs(rundb)["max_count"],
+            FINISHED_FILTER_MAX_COUNT_ANON,
+        )
 
     def test_finished_search_authenticated_uses_default_cap_on_entry(self):
         rundb = _FinishedRunsDbStub()
         request = _FinishedRunsRequestStub(
             rundb,
-            _FinishedUsersStub([["AuthUser"]]),
+            _FinishedUsersStub([["TestFinishedAuthUser"]]),
             params={"mode": "search"},
-            authenticated_userid="AuthUser",
+            authenticated_userid="TestFinishedAuthUser",
         )
 
         get_paginated_finished_runs(request, search_mode=True)
 
-        self.assertEqual(rundb.last_kwargs["max_count"], FINISHED_FILTER_MAX_COUNT_AUTH)
+        self.assertEqual(
+            self._last_kwargs(rundb)["max_count"],
+            FINISHED_FILTER_MAX_COUNT_AUTH,
+        )
 
     def test_finished_search_text_only_uses_default_cap(self):
         rundb = _FinishedRunsDbStub()
         request = _FinishedRunsRequestStub(
             rundb,
-            _FinishedUsersStub([["AuthUser"]]),
+            _FinishedUsersStub([["TestFinishedAuthUser"]]),
             params={"mode": "search", "text": "ltc"},
-            authenticated_userid="AuthUser",
+            authenticated_userid="TestFinishedAuthUser",
         )
 
         get_paginated_finished_runs(request, search_mode=True)
 
-        self.assertEqual(rundb.last_kwargs["text"], "ltc")
-        self.assertEqual(rundb.last_kwargs["max_count"], FINISHED_FILTER_MAX_COUNT_AUTH)
+        self.assertEqual(self._last_kwargs(rundb)["text"], "ltc")
+        self.assertEqual(
+            self._last_kwargs(rundb)["max_count"],
+            FINISHED_FILTER_MAX_COUNT_AUTH,
+        )
 
     def test_finished_search_authenticated_allows_override_upward(self):
         rundb = _FinishedRunsDbStub()
         request = _FinishedRunsRequestStub(
             rundb,
-            _FinishedUsersStub([["AuthUser"]]),
+            _FinishedUsersStub([["TestFinishedAuthUser"]]),
             params={"mode": "search", "user": "Auth", "max_count": "200000"},
-            authenticated_userid="AuthUser",
+            authenticated_userid="TestFinishedAuthUser",
         )
 
         get_paginated_finished_runs(request, search_mode=True)
 
-        self.assertEqual(rundb.last_kwargs["max_count"], 200000)
+        self.assertEqual(self._last_kwargs(rundb)["max_count"], 200000)
 
     def test_finished_search_drops_status_tabs_from_canonical_url(self):
         rundb = _FinishedRunsDbStub()
         request = _FinishedRunsRequestStub(
             rundb,
-            _FinishedUsersStub([["AuthUser"]]),
+            _FinishedUsersStub([["TestFinishedAuthUser"]]),
             params={"mode": "search", "success_only": "1", "user": "Auth"},
         )
 
         response = get_paginated_finished_runs(request, search_mode=True)
 
-        self.assertIsInstance(response, RedirectResponse)
+        redirect = self._redirect_response(response)
         self.assertEqual(
-            response.headers.get("location"),
+            redirect.headers.get("location"),
             "http://localhost/tests/finished?mode=search&sort=time&order=desc&user=Auth",
         )
 
     def test_finished_view_out_of_range_page_redirects_to_last_page(self):
-        rundb = _FinishedRunsDbStub()
-        rundb.get_finished_runs = lambda **kwargs: ([], 5000)
+        rundb = _CountFinishedRunsDbStub(total_count=5000)
         request = _FinishedRunsRequestStub(
             rundb,
-            _FinishedUsersStub([["AnonUser"]]),
+            _FinishedUsersStub([["TestFinishedAnonUser"]]),
             params={"page": "999999", "max_count": "999999"},
         )
 
         response = get_paginated_finished_runs(request)
 
-        self.assertIsInstance(response, RedirectResponse)
+        redirect = self._redirect_response(response)
         self.assertEqual(
-            response.headers.get("location"),
+            redirect.headers.get("location"),
             "http://localhost/tests/finished?sort=time&order=desc&page=999999",
         )
 
@@ -295,15 +327,15 @@ class TestFinishedView(unittest.TestCase):
         rundb = _FinishedRunsDbStub()
         request = _FinishedRunsRequestStub(
             rundb,
-            _FinishedUsersStub([["AnonUser"]]),
+            _FinishedUsersStub([["TestFinishedAnonUser"]]),
             params={"success_only": "1", "max_count": "1000"},
         )
 
         response = get_paginated_finished_runs(request)
 
-        self.assertIsInstance(response, RedirectResponse)
+        redirect = self._redirect_response(response)
         self.assertEqual(
-            response.headers.get("location"),
+            redirect.headers.get("location"),
             "http://localhost/tests/finished?sort=time&order=desc&success_only=1",
         )
 
@@ -313,20 +345,23 @@ class TestFinishedView(unittest.TestCase):
         now = datetime.now(UTC)
         rundb = _PriorityFinishedRunsDbStub(
             runs_by_username={
-                "Disservin": [
+                "mauvin-test-user": [
                     {
                         "_id": "disservin-1",
                         "args": {
-                            "username": "Disservin",
+                            "username": "mauvin-test-user",
                             "info": "inner substring match",
                         },
                         "last_updated": now,
                     }
                 ],
-                "vincenegri": [
+                "vin-prefix-test-user": [
                     {
-                        "_id": "vincenegri-1",
-                        "args": {"username": "vincenegri", "info": "prefix match"},
+                        "_id": "vin-prefix-test-user-1",
+                        "args": {
+                            "username": "vin-prefix-test-user",
+                            "info": "prefix match",
+                        },
                         "last_updated": now - timedelta(seconds=1),
                     }
                 ],
@@ -334,16 +369,17 @@ class TestFinishedView(unittest.TestCase):
         )
         request = _FinishedRunsRequestStub(
             rundb,
-            _FinishedUsersStub([["Disservin", "vincenegri"]]),
+            _FinishedUsersStub([["mauvin-test-user", "vin-prefix-test-user"]]),
             params={"mode": "search", "user": "vin"},
-            authenticated_userid="AuthUser",
+            authenticated_userid="TestFinishedAuthUser",
         )
 
         result = get_paginated_finished_runs(request, search_mode=True)
 
+        result = cast(dict[str, Any], result)
         self.assertEqual(
             [run["args"]["username"] for run in result["finished_runs"]],
-            ["vincenegri", "Disservin"],
+            ["vin-prefix-test-user", "mauvin-test-user"],
         )
         self.assertEqual(result["visible_finished_runs"], 2)
         self.assertEqual(result["num_finished_runs"], 2)
@@ -357,41 +393,45 @@ class TestFinishedView(unittest.TestCase):
         # (len(usernames) * merge_window > 600) forces the fallback.
         # With 2 usernames and page 13 (skip=300, limit=25),
         # merge_window = 325, 2*325 = 650 > 600 → fallback.
-        vince_runs = [
+        prefix_runs = [
             {
-                "_id": f"vince-{i}",
-                "args": {"username": "vince", "info": ""},
+                "_id": f"vin-prefix-run-{i}",
+                "args": {"username": "vin-prefix-user", "info": ""},
                 "last_updated": now - timedelta(hours=i),
             }
             for i in range(125)
         ]
-        disservin_runs = [
+        substring_runs = [
             {
-                "_id": f"disservin-{i}",
-                "args": {"username": "Disservin", "info": ""},
+                "_id": f"mauvin-substring-run-{i}",
+                "args": {"username": "mauvin-substring-user", "info": ""},
                 "last_updated": now - timedelta(hours=i, minutes=30),
             }
             for i in range(200)
         ]
         rundb = _PriorityFinishedRunsDbStub(
-            runs_by_username={"vince": vince_runs, "Disservin": disservin_runs},
+            runs_by_username={
+                "vin-prefix-user": prefix_runs,
+                "mauvin-substring-user": substring_runs,
+            },
         )
         # Page 13 → skip=300, merge_window=325. 2*325=650 > 600 → fallback.
         request = _FinishedRunsRequestStub(
             rundb,
-            _FinishedUsersStub([["vince", "Disservin"]]),
+            _FinishedUsersStub([["vin-prefix-user", "mauvin-substring-user"]]),
             params={"mode": "search", "user": "vin", "page": "13"},
-            authenticated_userid="AuthUser",
+            authenticated_userid="TestFinishedAuthUser",
         )
 
         result = get_paginated_finished_runs(request, search_mode=True)
 
+        result = cast(dict[str, Any], result)
         usernames_on_page = [run["args"]["username"] for run in result["finished_runs"]]
         # All vince runs (125 total) must appear before any Disservin runs.
         # Page 13 (rows 300-324) should be entirely Disservin.
         self.assertTrue(
-            all(u == "Disservin" for u in usernames_on_page),
-            f"Expected all Disservin on page 13 but got: {usernames_on_page}",
+            all(u == "mauvin-substring-user" for u in usernames_on_page),
+            f"Expected all mauvin-substring-user on page 13 but got: {usernames_on_page}",
         )
         self.assertEqual(result["num_finished_runs"], 325)
 

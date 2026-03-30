@@ -129,7 +129,7 @@ class TestHttpMiddleware(unittest.TestCase):
 
         os.environ.setdefault("FISHTEST_AUTHENTICATION_SECRET", "test-secret")
 
-        userdb = _UserDbStub(blocked_username="blocked_user")
+        userdb = _UserDbStub(blocked_username="test_blocked_user")
         rundb = _RunDbStub(userdb=userdb)
 
         app = test_support.build_test_app(
@@ -144,7 +144,7 @@ class TestHttpMiddleware(unittest.TestCase):
 
         client = self.TestClient(app)
         signer = TimestampSigner(session_secret_key())
-        data = b64encode(json.dumps({"user": "blocked_user"}).encode("utf-8"))
+        data = b64encode(json.dumps({"user": "test_blocked_user"}).encode("utf-8"))
         cookie_value = signer.sign(data).decode("utf-8")
         client.cookies.set(SESSION_COOKIE_NAME, cookie_value)
         response = client.get("/tests", follow_redirects=False)
@@ -238,7 +238,12 @@ class TestHttpMiddlewareMongo(unittest.TestCase):
         _blocked_cache.timestamp = None
         _blocked_cache.value = None
 
-        self.rundb.userdb.create_user(username, "pwd", f"{username}@example.com", "")
+        self.rundb.userdb.create_user(
+            username,
+            "test-middleware-password",
+            f"{username}@example.com",
+            "",
+        )
         user = self.rundb.userdb.get_user(username)
         user["pending"] = False
         user["blocked"] = True
@@ -273,7 +278,12 @@ class TestHttpMiddlewareMongo(unittest.TestCase):
         _blocked_cache.timestamp = None
         _blocked_cache.value = None
 
-        self.rundb.userdb.create_user(username, "pwd", f"{username}@example.com", "")
+        self.rundb.userdb.create_user(
+            username,
+            "test-middleware-password",
+            f"{username}@example.com",
+            "",
+        )
         user = self.rundb.userdb.get_user(username)
         user["pending"] = False
         user["blocked"] = False

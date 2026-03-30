@@ -44,14 +44,15 @@ server/
 |   |-- templates/           -- Jinja2 templates (53 files, .html.j2)
 |   |-- static/              -- Static assets (JS, CSS, images)
 |   `-- stats/               -- Statistical computation modules
-`-- tests/                   -- Test suite (21 test modules; dedicated view
-                               and HTTP contract tests)
+`-- tests/                   -- Focused unit and HTTP contract tests
 ```
 
 `views.py` remains the stable UI routing hub. The extracted `views_*.py` modules
 hold domain logic, but route registration, `_dispatch_view`, and the request
 shim stay centralized there. Each extracted `views_*.py` module keeps a matching
-dedicated test file under `server/tests/`.
+dedicated test file under `server/tests/`. User-facing route-family UI tests
+reuse `ui_user_test_case.py` and stay grouped by route family or one focused
+UI motif.
 
 ### HTTP support modules (`server/fishtest/http/`)
 
