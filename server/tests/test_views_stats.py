@@ -13,7 +13,7 @@ class TestTestsStatsView(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.rundb = test_support.get_rundb()
-        cls.username = "ViewStatsUser"
+        cls.username = "TestStatsUser"
         test_support.cleanup_test_rundb(
             cls.rundb,
             clear_usernames=[cls.username],
@@ -21,7 +21,7 @@ class TestTestsStatsView(unittest.TestCase):
         )
         cls.rundb.userdb.create_user(
             cls.username,
-            "secret",
+            "test-stats-password",
             "view-stats@example.com",
             "https://github.com/official-stockfish/Stockfish",
         )

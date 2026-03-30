@@ -2,6 +2,9 @@
 
 import unittest
 from datetime import UTC, datetime, timedelta
+from unittest.mock import patch
+
+from ui_user_test_case import UiUserTestCase
 
 from fishtest.http.settings import PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS
 from fishtest.views_machines import (
@@ -93,7 +96,7 @@ class MachineFilterStateTests(unittest.TestCase):
     def test_machine_filter_state_decodes_cookie_values(self):
         filters = _machine_filter_state(
             {"machines_q": "Linux%20worker", "machines_my_workers": "1"},
-            authenticated_username="MachineOwner",
+            authenticated_username="TestMachineOwner",
             use_cookies=True,
             query_key="machines_q",
             my_workers_key="machines_my_workers",
@@ -119,10 +122,10 @@ class MachineRowTests(unittest.TestCase):
         self.assertIn("/7", str(row["run_label"]))
 
     def test_filtered_machine_count_applies_query_and_my_workers(self):
-        owner = "MachineOwner"
+        owner = "TestMachineOwner"
         machines = [
             _machine_doc(0, username=owner, uname="Linux"),
-            _machine_doc(1, username="OtherUser", uname="Windows 11"),
+            _machine_doc(1, username="TestPeerWorkerUser", uname="Windows 11"),
             _machine_doc(2, username=owner, uname="Linux"),
         ]
         request = _RequestStub(machines=machines, authenticated_userid=owner)
@@ -179,3 +182,240 @@ class TestsMachinesEntryPointTests(unittest.TestCase):
                 f"max-age={PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS}",
                 cookie_header,
             )
+
+
+class TestMachinesViews(UiUserTestCase):
+    username = "TestMachinesUser"
+
+    def test_tests_machines_server_sort_and_pagination(self):
+        now = datetime.now(UTC)
+
+        def machine_doc(idx):
+            return {
+                "username": f"PageUser{idx:03d}",
+                "country_code": "us",
+                "concurrency": 1,
+                "unique_key": f"ukey-{idx:03d}-abcd",
+                "nps": 2_000_000 + idx,
+                "max_memory": 2048,
+                "uname": "Linux",
+                "worker_arch": "x86-64",
+                "gcc_version": [13, 2, 0],
+                "compiler": "g++",
+                "python_version": [3, 12, 0],
+                "version": 123,
+                "modified": False,
+                "task_id": idx,
+                "last_updated": now - timedelta(seconds=idx),
+                "run": {
+                    "_id": f"run-{idx:03d}",
+                    "args": {"new_tag": f"branch-{idx:03d}"},
+                },
+            }
+
+        docs = [machine_doc(idx) for idx in range(_MACHINES_PAGE_SIZE + 5)]
+        with patch.object(self.rundb, "get_machines", return_value=docs):
+            response = self.client.get("/tests/machines?sort=machine&page=2")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="machines_table"', response.text)
+        self.assertIn('hx-disinherit="hx-include"', response.text)
+        self.assertIn('hx-params="none"', response.text)
+        self.assertIn(f"PageUser{_MACHINES_PAGE_SIZE + 4:03d}", response.text)
+        self.assertNotIn("PageUser000", response.text)
+        self.assertIn("/tests/machines?page=1&amp;sort=machine", response.text)
+
+    def test_tests_machines_compiler_and_python_sort_are_version_aware(self):
+        now = datetime.now(UTC)
+
+        docs = [
+            {
+                "username": "CompPyUserA",
+                "country_code": "us",
+                "concurrency": 1,
+                "unique_key": "comp-a-0000",
+                "nps": 2_000_000,
+                "max_memory": 2048,
+                "uname": "Linux",
+                "worker_arch": "x86-64",
+                "gcc_version": [20, 1, 8],
+                "compiler": "clang++",
+                "python_version": [3, 11, 0],
+                "version": 300,
+                "modified": False,
+                "task_id": 1,
+                "last_updated": now,
+                "run": {"_id": "run-comp-a", "args": {"new_tag": "main"}},
+            },
+            {
+                "username": "CompPyUserB",
+                "country_code": "us",
+                "concurrency": 1,
+                "unique_key": "comp-b-0000",
+                "nps": 2_000_000,
+                "max_memory": 2048,
+                "uname": "Linux",
+                "worker_arch": "x86-64",
+                "gcc_version": [17, 0, 6],
+                "compiler": "clang++",
+                "python_version": [3, 8, 20],
+                "version": 300,
+                "modified": False,
+                "task_id": 2,
+                "last_updated": now,
+                "run": {"_id": "run-comp-b", "args": {"new_tag": "main"}},
+            },
+            {
+                "username": "CompPyUserC",
+                "country_code": "us",
+                "concurrency": 1,
+                "unique_key": "comp-c-0000",
+                "nps": 2_000_000,
+                "max_memory": 2048,
+                "uname": "Linux",
+                "worker_arch": "x86-64",
+                "gcc_version": [18, 1, 8],
+                "compiler": "clang++",
+                "python_version": [3, 12, 12],
+                "version": 300,
+                "modified": False,
+                "task_id": 3,
+                "last_updated": now,
+                "run": {"_id": "run-comp-c", "args": {"new_tag": "main"}},
+            },
+        ]
+
+        with patch.object(self.rundb, "get_machines", return_value=docs):
+            compiler_response = self.client.get(
+                "/tests/machines?sort=compiler&order=asc"
+            )
+            python_response = self.client.get("/tests/machines?sort=python&order=asc")
+
+        self.assertEqual(compiler_response.status_code, 200)
+        self.assertLess(
+            compiler_response.text.index("CompPyUserB"),
+            compiler_response.text.index("CompPyUserC"),
+        )
+        self.assertLess(
+            compiler_response.text.index("CompPyUserC"),
+            compiler_response.text.index("CompPyUserA"),
+        )
+
+        self.assertEqual(python_response.status_code, 200)
+        self.assertLess(
+            python_response.text.index("CompPyUserB"),
+            python_response.text.index("CompPyUserA"),
+        )
+        self.assertLess(
+            python_response.text.index("CompPyUserA"),
+            python_response.text.index("CompPyUserC"),
+        )
+
+    def test_tests_machines_my_workers_and_query_filter(self):
+        now = datetime.now(UTC)
+        docs = [
+            {
+                "username": self.username,
+                "country_code": "us",
+                "concurrency": 2,
+                "unique_key": "joekey-aaaa-bbbb",
+                "nps": 2_500_000,
+                "max_memory": 4096,
+                "uname": "Linux",
+                "worker_arch": "x86-64",
+                "gcc_version": [13, 2, 0],
+                "compiler": "g++",
+                "python_version": [3, 12, 0],
+                "version": 100,
+                "modified": False,
+                "task_id": 1,
+                "last_updated": now,
+                "run": {"_id": "run-joe", "args": {"new_tag": "main"}},
+            },
+            {
+                "username": "TestPeerWorkerUser",
+                "country_code": "it",
+                "concurrency": 4,
+                "unique_key": "otherkey-cccc-dddd",
+                "nps": 3_000_000,
+                "max_memory": 8192,
+                "uname": "Windows 11",
+                "worker_arch": "x86-64",
+                "gcc_version": [13, 2, 0],
+                "compiler": "clang",
+                "python_version": [3, 11, 0],
+                "version": 101,
+                "modified": False,
+                "task_id": 2,
+                "last_updated": now - timedelta(seconds=30),
+                "run": {"_id": "run-other", "args": {"new_tag": "dev"}},
+            },
+        ]
+
+        self._login_user()
+        with patch.object(self.rundb, "get_machines", return_value=docs):
+            response = self.client.get("/tests/machines?my_workers=1&q=linux")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(self.username, response.text)
+        self.assertNotIn("TestPeerWorkerUser", response.text)
+        self.assertIn("Workers - 2 (1)", response.text)
+        self.assertIn("my_workers=1", response.text)
+
+        with patch.object(self.rundb, "get_machines", return_value=docs):
+            compiler_filter_response = self.client.get("/tests/machines?q=clang")
+
+        self.assertEqual(compiler_filter_response.status_code, 200)
+        self.assertIn("TestPeerWorkerUser", compiler_filter_response.text)
+        self.assertNotIn(self.username, compiler_filter_response.text)
+
+    def test_tests_machines_workers_count_shows_total_and_filtered(self):
+        now = datetime.now(UTC)
+        docs = [
+            {
+                "username": self.username,
+                "country_code": "us",
+                "concurrency": 2,
+                "unique_key": "joekey-aaaa-bbbb",
+                "nps": 2_500_000,
+                "max_memory": 4096,
+                "uname": "Linux",
+                "worker_arch": "x86-64",
+                "gcc_version": [13, 2, 0],
+                "compiler": "g++",
+                "python_version": [3, 12, 0],
+                "version": 100,
+                "modified": False,
+                "task_id": 1,
+                "last_updated": now,
+                "run": {"_id": "run-joe", "args": {"new_tag": "main"}},
+            },
+            {
+                "username": "TestPeerWorkerUser",
+                "country_code": "it",
+                "concurrency": 4,
+                "unique_key": "otherkey-cccc-dddd",
+                "nps": 3_000_000,
+                "max_memory": 8192,
+                "uname": "Windows 11",
+                "worker_arch": "x86-64",
+                "gcc_version": [13, 2, 0],
+                "compiler": "clang",
+                "python_version": [3, 11, 0],
+                "version": 101,
+                "modified": False,
+                "task_id": 2,
+                "last_updated": now - timedelta(seconds=30),
+                "run": {"_id": "run-other", "args": {"new_tag": "dev"}},
+            },
+        ]
+
+        with patch.object(self.rundb, "get_machines", return_value=docs):
+            response_unfiltered = self.client.get("/tests/machines")
+            response_filtered = self.client.get("/tests/machines?q=windows")
+
+        self.assertEqual(response_unfiltered.status_code, 200)
+        self.assertIn("Workers - 2", response_unfiltered.text)
+
+        self.assertEqual(response_filtered.status_code, 200)
+        self.assertIn("Workers - 2 (1)", response_filtered.text)

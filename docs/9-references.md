@@ -398,7 +398,8 @@ prevent XSS from error messages and to keep htmx attributes functional
 
 Server tests live in `server/tests/`. All tests use `unittest.TestCase`.
 MongoDB is required for most tests (the CI workflow starts `mongod` before
-running the suite).
+running the suite). User-facing HTTP route tests are split by route family or
+one focused UI motif instead of accumulating in one omnibus module.
 
 ### Running tests
 
@@ -422,6 +423,9 @@ Most test files import `test_support`, which provides:
 - `find_run(...)`: retrieves a run from the database by field match.
 - `extract_csrf_token(html)`: parses a CSRF token from rendered HTML.
 
+User-facing UI route modules also reuse `ui_user_test_case.py` for shared
+client setup, login helpers, run creation, and DB cleanup.
+
 Worker-related fixtures must match the `short_worker_name` pattern
 (`.*-[\d]+cores-[a-zA-Z0-9]{2,8}`) or `WorkerDb.update_worker()` schema
 validation fails.
@@ -432,12 +436,16 @@ validation fails.
 |--------|----------|
 | `test_app.py` | Application startup, middleware, lifespan |
 | `test_api.py` | Worker API protocol (request_task, update_task, beat) |
-| `test_users.py` | Login, CSRF, permissions, UI form submission |
+| `test_users.py` | Login, signup, remember-me, userdb auth flags, basic UI smoke |
+| `test_views_admin.py` | Workers, user-management, rate-limits, and shared admin UI contracts |
+| `test_views_tests.py` | `/tests` and `/tests/user/{username}` filter state and live-table polling |
 | `test_views_actions.py` | Actions search, pagination, sorting |
+| `test_views_contributors.py` | Contributors search, rank jump, sorting, and HTMX state sync |
+| `test_views_detail.py` | `/tests/view/{id}` detail polling, `/tests/tasks/{id}`, and task UI assets |
 | `test_views_finished.py` | Finished-runs search and pagination |
 | `test_views_helpers.py` | Shared pagination, parameter, and merge helpers |
-| `test_views_machines.py` | Machines filter state, normalization, cookies |
-| `test_views_run.py` | Run-form validation, SPSA parsing, permissions |
+| `test_views_machines.py` | Machines helper behavior plus `/tests/machines` HTTP contracts |
+| `test_views_run.py` | Run-form validation, SPSA parsing, permissions, and run action routes |
 | `test_http_boundary.py` | HTTP boundary invariants and template contracts |
 | `test_http_dependencies.py` | Request-state dependency wiring |
 | `test_http_errors.py` | API vs UI error shaping |

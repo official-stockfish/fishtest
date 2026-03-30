@@ -36,15 +36,15 @@ class TestHttpApi(unittest.TestCase):
 
         cls.rundb = test_support.get_rundb()
 
-        cls.username = "JoeUserWorker"
-        cls.password = "secret"
+        cls.username = "TestWorkerUser"
+        cls.password = "test-worker-password"
         cls.unique_key = "amaya-5a28-4b7d-b27b-d78d97ecf11a"
 
         # Create the API user (worker).
         cls.rundb.userdb.create_user(
             cls.username,
             cls.password,
-            "email@email.email",
+            "test-worker@example.com",
             "https://github.com/official-stockfish/Stockfish",
         )
         user = cls.rundb.userdb.get_user(cls.username)

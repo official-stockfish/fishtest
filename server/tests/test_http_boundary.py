@@ -84,7 +84,7 @@ class TestHttpBoundary(unittest.TestCase):
             new_nets=["nn-0000000000a1.nnue"],
             tests_repo="https://github.com/official-stockfish/Stockfish",
             auto_purge=False,
-            username="travis",
+            username="TestBoundaryRunUser",
             start_time=datetime.now(UTC),
             sprt={
                 "alpha": 0.05,
@@ -122,7 +122,7 @@ class TestHttpBoundary(unittest.TestCase):
         workers: int = 0,
         finished: bool = False,
         failed: bool = False,
-        username: str = "travis",
+        username: str = "TestBoundaryRunUser",
         info: str = "tests elo boundary test",
     ) -> str:
         run_id = self.rundb.new_run(
@@ -471,7 +471,7 @@ class TestHttpBoundary(unittest.TestCase):
         for username in usernames:
             self.rundb.userdb.create_user(
                 username,
-                "pwd",
+                "test-boundary-password",
                 f"{username}@example.com",
                 "",
             )
@@ -662,7 +662,7 @@ class TestHttpBoundary(unittest.TestCase):
         self.rundb.userdb.clear_cache()
         self.rundb.userdb.create_user(
             username,
-            "pwd",
+            "test-boundary-password",
             f"{username}@example.com",
             "",
         )
@@ -691,7 +691,7 @@ class TestHttpBoundary(unittest.TestCase):
         self.rundb.userdb.clear_cache()
         self.rundb.userdb.create_user(
             username,
-            "pwd",
+            "test-boundary-password",
             f"{username}@example.com",
             "",
         )
@@ -725,7 +725,7 @@ class TestHttpBoundary(unittest.TestCase):
         self.rundb.userdb.clear_cache()
         self.rundb.userdb.create_user(
             username,
-            "pwd",
+            "test-boundary-password",
             f"{username}@example.com",
             "",
         )
@@ -766,7 +766,7 @@ class TestHttpBoundary(unittest.TestCase):
         self.rundb.userdb.clear_cache()
         self.rundb.userdb.create_user(
             route_username,
-            "pwd",
+            "test-boundary-password",
             f"{route_username}@example.com",
             "",
         )
@@ -1185,7 +1185,7 @@ class TestHttpBoundary(unittest.TestCase):
         self.rundb.userdb.clear_cache()
         self.rundb.userdb.create_user(
             username,
-            "pwd",
+            "test-boundary-password",
             f"{username}@example.com",
             "",
         )

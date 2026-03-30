@@ -1,9 +1,11 @@
 """Test `/tests/view` detail-page and detail-fragment contracts."""
 
 import unittest
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import test_support
+from ui_user_test_case import UiUserTestCase
 
 from fishtest.run_cache import Prio
 
@@ -41,7 +43,7 @@ class TestTestsViewDetail(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.rundb = test_support.get_rundb()
-        cls.username = "ViewDetailUser"
+        cls.username = "TestDetailUser"
         test_support.cleanup_test_rundb(
             cls.rundb,
             clear_usernames=[cls.username],
@@ -49,7 +51,7 @@ class TestTestsViewDetail(unittest.TestCase):
         )
         cls.rundb.userdb.create_user(
             cls.username,
-            "secret",
+            "test-detail-password",
             "view-detail@example.com",
             "https://github.com/official-stockfish/Stockfish",
         )
@@ -359,3 +361,524 @@ class TestTestsViewDetail(unittest.TestCase):
         self.assertIn("ParamA", response.text)
         self.assertIn("iter: 3, A: 4", response.text)
         self.assertNotIn("<title>", response.text)
+
+
+class TestTestsViewTasks(UiUserTestCase):
+    username = "TasksUser"
+
+    def test_tests_view_tasks_loader_attaches_before_domcontentloaded(self):
+        template_path = (
+            Path(__file__).resolve().parents[1]
+            / "fishtest"
+            / "templates"
+            / "tests_view.html.j2"
+        )
+        template_source = template_path.read_text(encoding="utf-8")
+
+        self.assertIn(
+            'tasksContainer?.addEventListener("htmx:afterSwap", resolveTasksLoadedOnce);',
+            template_source,
+        )
+        self.assertIn(
+            'const tasks_head = tasks_container?.querySelector("thead");',
+            template_source,
+        )
+        self.assertIn(
+            "const container_rect = tasks_container.getBoundingClientRect();",
+            template_source,
+        )
+        self.assertIn(
+            "const row_rect = task_row.getBoundingClientRect();",
+            template_source,
+        )
+        self.assertIn(
+            "const max_scroll_top = Math.max(",
+            template_source,
+        )
+        self.assertIn(
+            "tasks_container.scrollTop = Math.min(",
+            template_source,
+        )
+        self.assertIn(
+            "const nextFrame = () => new Promise((resolve) => {",
+            template_source,
+        )
+        self.assertIn(
+            "await nextFrame();",
+            template_source,
+        )
+        self.assertNotIn('document.getElementById("tasks-head")', template_source)
+        self.assertIn(
+            'if (tasksContainer && (tasksContainer.dataset.tasksLoaded === "1" || tasksContainer.children.length > 0)) {',
+            template_source,
+        )
+        self.assertIn('hx-sync="#tasks-filters:abort"', template_source)
+        self.assertIn(
+            'tasksContainer?.addEventListener("htmx:responseError", clearTasksLoadingState);',
+            template_source,
+        )
+        self.assertIn(
+            'tasksContainer?.addEventListener("htmx:sendError", clearTasksLoadingState);',
+            template_source,
+        )
+        self.assertNotIn("Something went wrong. Please try again.", template_source)
+        self.assertNotIn('btn.textContent = "Retry";', template_source)
+        tasks_region_start = template_source.index("let resolveTasksLoaded = null;")
+        tasks_region = template_source[tasks_region_start:]
+        self.assertLess(
+            tasks_region.index(
+                'tasksContainer?.addEventListener("htmx:afterSwap", resolveTasksLoadedOnce);'
+            ),
+            tasks_region.index("await DOMContentLoaded();"),
+        )
+
+    def test_tests_view_tasks_filters_include_worker_and_info_search(self):
+        template_path = (
+            Path(__file__).resolve().parents[1]
+            / "fishtest"
+            / "templates"
+            / "tests_view.html.j2"
+        )
+        template_source = template_path.read_text(encoding="utf-8")
+        tasks_form_start = template_source.index('<form\n      id="tasks-filters"')
+        tasks_form_end = template_source.index("</form>", tasks_form_start)
+        tasks_form_source = template_source[tasks_form_start:tasks_form_end]
+
+        self.assertIn('id="tasks_q"', tasks_form_source)
+        self.assertIn('name="q"', tasks_form_source)
+        self.assertIn('class="form-control form-control-sm"', tasks_form_source)
+        self.assertNotIn('label for="tasks_q"', tasks_form_source)
+        self.assertIn('placeholder="Filter worker or info"', tasks_form_source)
+        self.assertIn('aria-label="Filter worker or info"', tasks_form_source)
+        self.assertIn(
+            'id="tasks_page" name="page" value="{{ tasks_page }}"', tasks_form_source
+        )
+        self.assertIn("search from:#tasks_q", tasks_form_source)
+        self.assertNotIn("search from:#tasks_info", tasks_form_source)
+        self.assertNotIn('name="info"', tasks_form_source)
+        self.assertIn('id="tasks-view-controls" class="col-auto"', tasks_form_source)
+        self.assertIn('id="tasks-pagination" aria-live="polite"', template_source)
+        self.assertIn('class="overflow-auto tasks-panel-scroll"', template_source)
+        self.assertNotIn(
+            'class="overflow-auto {{ "collapse show" if tasks_shown else "collapse" }}"',
+            template_source,
+        )
+        self.assertIn('id="rate-limits-nav-link"', self.client.get("/rate_limits").text)
+        self.assertIn(
+            "const container_rect = tasks_container.getBoundingClientRect();",
+            template_source,
+        )
+        self.assertIn(
+            "const row_rect = task_row.getBoundingClientRect();", template_source
+        )
+        self.assertIn("const max_scroll_top = Math.max(", template_source)
+        self.assertIn("tasks_container.scrollTop = Math.min(", template_source)
+        self.assertIn(
+            "const nextFrame = () => new Promise((resolve) => {", template_source
+        )
+        self.assertIn("await nextFrame();", template_source)
+        template_path = (
+            Path(__file__).resolve().parents[1]
+            / "fishtest"
+            / "templates"
+            / "tasks_content_fragment.html.j2"
+        )
+        template_source = template_path.read_text(encoding="utf-8")
+
+        self.assertIn('{{ sort_header("wins", "Wins") }}', template_source)
+        self.assertIn('{{ sort_header("losses", "Losses") }}', template_source)
+        self.assertIn('{{ sort_header("draws", "Draws") }}', template_source)
+        self.assertIn(
+            '{{ sort_header("pentanomial", "Pentanomial [0-2]") }}',
+            template_source,
+        )
+        self.assertIn(
+            'id="tasks-view-controls" hx-swap-oob="innerHTML"', template_source
+        )
+        self.assertIn('id="tasks-pagination" hx-swap-oob="innerHTML"', template_source)
+        self.assertIn(
+            'id="tasks_page" name="page" value="{{ current_page }}" hx-swap-oob="true"',
+            template_source,
+        )
+        self.assertIn('hx-sync="#tasks-filters:abort"', template_source)
+        self.assertIn('hx-disinherit="hx-include"', template_source)
+        self.assertIn('hx-params="none"', template_source)
+        self.assertNotIn('<div class="table-responsive">', template_source)
+
+    def test_tasks_controls_fragment_disinherits_filter_include(self):
+        template_path = (
+            Path(__file__).resolve().parents[1]
+            / "fishtest"
+            / "templates"
+            / "tasks_controls_fragment.html.j2"
+        )
+        template_source = template_path.read_text(encoding="utf-8")
+
+        self.assertIn('hx-sync="#tasks-filters:abort"', template_source)
+        self.assertIn('hx-disinherit="hx-include"', template_source)
+        self.assertIn('hx-params="none"', template_source)
+
+    def test_tasks_hx_sort_changes_order_and_active_arrow(self):
+        run_id = self._create_run()
+        run = self.rundb.get_run(run_id)
+        try:
+            now = datetime.now(UTC)
+            run["tasks"] = [
+                {
+                    "task_id": 1,
+                    "num_games": 100,
+                    "active": False,
+                    "last_updated": now,
+                    "worker_info": {
+                        "username": "ZuluUser",
+                        "unique_key": "zulu-key-0001",
+                        "concurrency": 1,
+                        "uname": "Linux",
+                        "max_memory": 2048,
+                        "compiler": "g++",
+                        "gcc_version": [13, 2, 0],
+                        "python_version": [3, 12, 0],
+                        "version": 1,
+                        "ARCH": "popcnt",
+                        "worker_arch": "x86-64",
+                    },
+                    "stats": {
+                        "wins": 10,
+                        "losses": 1,
+                        "draws": 2,
+                        "crashes": 0,
+                        "time_losses": 0,
+                    },
+                },
+                {
+                    "task_id": 2,
+                    "num_games": 100,
+                    "active": False,
+                    "last_updated": now - timedelta(seconds=10),
+                    "worker_info": {
+                        "username": "AlphaUser",
+                        "unique_key": "alpha-key-0002",
+                        "concurrency": 1,
+                        "uname": "Linux",
+                        "max_memory": 2048,
+                        "compiler": "g++",
+                        "gcc_version": [13, 2, 0],
+                        "python_version": [3, 12, 0],
+                        "version": 1,
+                        "ARCH": "popcnt",
+                        "worker_arch": "x86-64",
+                    },
+                    "stats": {
+                        "wins": 3,
+                        "losses": 4,
+                        "draws": 5,
+                        "crashes": 0,
+                        "time_losses": 0,
+                    },
+                },
+            ]
+            run["bad_tasks"] = []
+            run["results"] = {}
+            self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+
+            response = self.client.get(
+                f"/tests/tasks/{run_id}?sort=worker&order=asc&view=paged",
+                headers={"HX-Request": "true"},
+            )
+
+            self.assertEqual(response.status_code, 200)
+            self.assertIn('id="tasks_table"', response.text)
+            self.assertIn('aria-sort="ascending"', response.text)
+            self.assertLess(
+                response.text.index("AlphaUser"),
+                response.text.index("ZuluUser"),
+            )
+            self.assertIn(
+                'id="tasks_sort" name="sort" value="worker" hx-swap-oob="true"',
+                response.text,
+            )
+            self.assertIn(
+                'id="tasks_order" name="order" value="asc" hx-swap-oob="true"',
+                response.text,
+            )
+        finally:
+            self.rundb.runs.delete_one({"_id": run["_id"]})
+
+    def test_tasks_hx_combined_search_matches_worker_and_info_text(self):
+        run_id = self._create_run()
+        run = self.rundb.get_run(run_id)
+        try:
+            now = datetime.now(UTC)
+            run["tasks"] = [
+                {
+                    "task_id": 1,
+                    "num_games": 100,
+                    "active": False,
+                    "last_updated": now,
+                    "worker_info": {
+                        "username": "LinuxWorker",
+                        "unique_key": "linux-key-0001",
+                        "concurrency": 1,
+                        "uname": "Linux 6.8",
+                        "max_memory": 2048,
+                        "compiler": "g++",
+                        "gcc_version": [13, 2, 0],
+                        "python_version": [3, 12, 0],
+                        "version": 1,
+                        "ARCH": "popcnt avx2",
+                        "worker_arch": "x86-64-vnni256",
+                    },
+                    "stats": {
+                        "wins": 1,
+                        "losses": 2,
+                        "draws": 3,
+                        "crashes": 0,
+                        "time_losses": 0,
+                    },
+                },
+                {
+                    "task_id": 2,
+                    "num_games": 100,
+                    "active": False,
+                    "last_updated": now - timedelta(seconds=10),
+                    "worker_info": {
+                        "username": "WindowsWorker",
+                        "unique_key": "windows-key-0002",
+                        "concurrency": 1,
+                        "uname": "Windows 11",
+                        "max_memory": 4096,
+                        "compiler": "clang",
+                        "gcc_version": [17, 0, 0],
+                        "python_version": [3, 11, 0],
+                        "version": 2,
+                        "ARCH": "sse4.1",
+                        "worker_arch": "x86-64",
+                    },
+                    "stats": {
+                        "wins": 4,
+                        "losses": 5,
+                        "draws": 6,
+                        "crashes": 0,
+                        "time_losses": 0,
+                    },
+                },
+            ]
+            run["bad_tasks"] = []
+            run["results"] = {}
+            self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+
+            response = self.client.get(
+                f"/tests/tasks/{run_id}?q=vnni256&view=paged",
+                headers={"HX-Request": "true"},
+            )
+
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("LinuxWorker", response.text)
+            self.assertNotIn("WindowsWorker", response.text)
+
+            compiler_response = self.client.get(
+                f"/tests/tasks/{run_id}?q=clang&view=paged",
+                headers={"HX-Request": "true"},
+            )
+
+            self.assertEqual(compiler_response.status_code, 200)
+            self.assertIn("WindowsWorker", compiler_response.text)
+            self.assertNotIn("LinuxWorker", compiler_response.text)
+
+            unified_response = self.client.get(
+                f"/tests/tasks/{run_id}?q=Windows%2011&view=paged",
+                headers={"HX-Request": "true"},
+            )
+
+            self.assertEqual(unified_response.status_code, 200)
+            self.assertIn("WindowsWorker", unified_response.text)
+            self.assertNotIn("LinuxWorker", unified_response.text)
+        finally:
+            self.rundb.runs.delete_one({"_id": run["_id"]})
+
+    def test_tasks_show_task_link_selects_containing_page_and_highlights_row(self):
+        run_id = self._create_run()
+        run = self.rundb.get_run(run_id)
+        try:
+            now = datetime.now(UTC)
+            run["tasks"] = []
+            for task_id in range(100, 130):
+                run["tasks"].append(
+                    {
+                        "task_id": task_id,
+                        "num_games": 100,
+                        "active": False,
+                        "last_updated": now - timedelta(seconds=task_id),
+                        "worker_info": {
+                            "username": f"Worker{task_id}",
+                            "unique_key": f"worker-key-{task_id}",
+                            "concurrency": 1,
+                            "uname": "Linux",
+                            "max_memory": 2048,
+                            "compiler": "g++",
+                            "gcc_version": [13, 2, 0],
+                            "python_version": [3, 12, 0],
+                            "version": 1,
+                            "ARCH": "popcnt",
+                            "worker_arch": "x86-64",
+                        },
+                        "stats": {
+                            "wins": 1,
+                            "losses": 2,
+                            "draws": 3,
+                            "crashes": 0,
+                            "time_losses": 0,
+                        },
+                    },
+                )
+            run["bad_tasks"] = []
+            run["results"] = {
+                "wins": 30,
+                "losses": 60,
+                "draws": 90,
+            }
+            self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+
+            response = self.client.get(
+                f"/tests/tasks/{run_id}?show_task=100&view=paged",
+                headers={"HX-Request": "true"},
+            )
+
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("Worker100", response.text)
+            self.assertNotIn("Worker129", response.text)
+            self.assertIn('<tr class="highlight" id="task100">', response.text)
+
+            page_response = self.client.get(f"/tests/view/{run_id}?show_task=100")
+
+            self.assertEqual(page_response.status_code, 200)
+            self.assertIn('id="tasks"', page_response.text)
+            self.assertIn('class="collapse show"', page_response.text)
+            self.assertIn('id="tasks_page" name="page" value="2"', page_response.text)
+        finally:
+            self.rundb.runs.delete_one({"_id": run["_id"]})
+
+    def test_tasks_hx_spsa_rows_do_not_crash_without_residual_column(self):
+        run_id = self._create_run()
+        run = self.rundb.get_run(run_id)
+        try:
+            now = datetime.now(UTC)
+            run["args"]["spsa"] = {"iter": 1, "num_iter": 10}
+            run["tasks"] = [
+                {
+                    "task_id": 7,
+                    "num_games": 100,
+                    "active": False,
+                    "last_updated": now,
+                    "worker_info": {
+                        "username": "SpsaWorker",
+                        "unique_key": "spsa-key-0007",
+                        "concurrency": 1,
+                        "uname": "Linux",
+                        "max_memory": 2048,
+                        "compiler": "g++",
+                        "gcc_version": [13, 2, 0],
+                        "python_version": [3, 12, 0],
+                        "version": 1,
+                        "ARCH": "popcnt",
+                        "worker_arch": "x86-64",
+                    },
+                    "stats": {
+                        "wins": 1,
+                        "losses": 2,
+                        "draws": 3,
+                        "crashes": 0,
+                        "time_losses": 0,
+                    },
+                },
+            ]
+            run["bad_tasks"] = []
+            run["results"] = {"wins": 1, "losses": 2, "draws": 3}
+            self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+
+            response = self.client.get(
+                f"/tests/tasks/{run_id}?show_task=7&view=paged",
+                headers={"HX-Request": "true"},
+            )
+
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("SpsaWorker", response.text)
+            self.assertNotIn("Residual", response.text)
+        finally:
+            self.rundb.runs.delete_one({"_id": run["_id"]})
+
+    def test_tasks_hx_bad_worker_cell_restores_legacy_purged_style(self):
+        run_id = self._create_run()
+        run = self.rundb.get_run(run_id)
+        try:
+            now = datetime.now(UTC)
+            run["tasks"] = [
+                {
+                    "task_id": 18,
+                    "num_games": 704,
+                    "active": False,
+                    "last_updated": now,
+                    "worker_info": {
+                        "username": "BadWorkerUser",
+                        "unique_key": "bad-worker-key-0018",
+                        "concurrency": 12,
+                        "uname": "Windows 11",
+                        "max_memory": 16200,
+                        "compiler": "g++",
+                        "gcc_version": [15, 2, 0],
+                        "python_version": [3, 14, 3],
+                        "version": 316,
+                        "ARCH": "64bit VNNI BMI2 AVX2 SSE41 SSSE3 SSE2 POPCNT",
+                        "worker_arch": "x86-64-avxvnni",
+                    },
+                    "stats": {
+                        "wins": 0,
+                        "losses": 0,
+                        "draws": 0,
+                        "crashes": 0,
+                        "time_losses": 0,
+                        "pentanomial": [0, 0, 0, 0, 0],
+                    },
+                },
+            ]
+            run["bad_tasks"] = []
+            run["results"] = {"wins": 0, "losses": 0, "draws": 0}
+            self.rundb.set_bad_task(0, run)
+            self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+
+            response = self.client.get(
+                f"/tests/tasks/{run_id}?view=paged",
+                headers={"HX-Request": "true"},
+            )
+
+            self.assertEqual(response.status_code, 200)
+            self.assertIn(
+                'style="text-decoration:line-through; background-color:#ffebeb"',
+                response.text,
+            )
+            self.assertIn("BadWorkerUser", response.text)
+        finally:
+            self.rundb.runs.delete_one({"_id": run["_id"]})
+
+    def test_application_css_styles_task_search_cancel_button(self):
+        css_path = (
+            Path(__file__).resolve().parents[1]
+            / "fishtest"
+            / "static"
+            / "css"
+            / "application.css"
+        )
+        css_source = css_path.read_text(encoding="utf-8")
+
+        self.assertIn(
+            '#tasks-filters input[type="search"]::-webkit-search-cancel-button,',
+            css_source,
+        )
+        self.assertIn(
+            '#tasks-filters input[type="search"]::-webkit-search-cancel-button:hover,',
+            css_source,
+        )
+        self.assertIn(
+            "--tasks-panel-max-height: calc(var(--machines-panel-max-height) + 6rem);",
+            css_source,
+        )

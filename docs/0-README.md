@@ -67,7 +67,7 @@ fishtest/
 |-- server/
 |   |-- pyproject.toml         -- Server package: runtime + test dependencies
 |   |-- fishtest/              -- FastAPI application (Python >= 3.14)
-|   |-- tests/                 -- Server test suite (16 test modules)
+|   |-- tests/                 -- Focused unit and HTTP contract tests
 |   `-- utils/                 -- Operational utilities (backup, migration, analysis)
 `-- worker/
     |-- pyproject.toml         -- Worker package: runtime dependencies (Python >= 3.8)

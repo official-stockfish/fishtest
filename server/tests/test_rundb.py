@@ -60,7 +60,7 @@ class CreateRunDBTest(unittest.TestCase):
             "concurrency": 1,
             "max_memory": 5702,
             "min_threads": 1,
-            "username": "JoeUserWorker",
+            "username": "TestWorkerUser",
             "version": WORKER_VERSION,
             "python_version": [
                 sys.version_info.major,
@@ -81,7 +81,7 @@ class CreateRunDBTest(unittest.TestCase):
         }
 
     def tearDown(self):
-        self.rundb.runs.delete_many({"args.username": "travis"})
+        self.rundb.runs.delete_many({"args.username": "TestRunDbUser"})
 
     def _create_test_run(self, *, tc: str = "10+0.01", finished: bool = False) -> str:
         num_tasks = 4
@@ -110,7 +110,7 @@ class CreateRunDBTest(unittest.TestCase):
             rescheduled_from="653db116cc309ae839563103",
             tests_repo="https://github.com/15408be06cfa0ff6/Stockfish",
             auto_purge=False,
-            username="travis",
+            username="TestRunDbUser",
             start_time=datetime.now(UTC),
         )
 
@@ -140,7 +140,7 @@ class CreateRunDBTest(unittest.TestCase):
         self.assertTrue(self.rundb.get_run(run_id_stc)["finished"])
 
         for run in self.rundb.get_unfinished_runs():
-            if run["args"]["username"] == "travis":
+            if run["args"]["username"] == "TestRunDbUser":
                 print(run["args"])
 
     def test_20_update_task(self):
@@ -243,7 +243,7 @@ class CreateRunDBTest(unittest.TestCase):
                     "finished": True,
                     "deleted": False,
                     "args": {
-                        "username": "travis",
+                        "username": "TestRunDbUser",
                         "info": f"recent scope row {index}",
                     },
                     "last_updated": now - timedelta(minutes=index),
@@ -256,7 +256,7 @@ class CreateRunDBTest(unittest.TestCase):
                 "finished": True,
                 "deleted": False,
                 "args": {
-                    "username": "travis",
+                    "username": "TestRunDbUser",
                     "info": "needle outside cap",
                 },
                 "last_updated": now - timedelta(minutes=1001),
@@ -290,7 +290,7 @@ class CreateRunDBTest(unittest.TestCase):
                     "finished": True,
                     "deleted": False,
                     "args": {
-                        "username": "travis",
+                        "username": "TestRunDbUser",
                         "info": f"explicit cap row {index}",
                     },
                     "last_updated": now - timedelta(minutes=index),
@@ -303,7 +303,7 @@ class CreateRunDBTest(unittest.TestCase):
                 "finished": True,
                 "deleted": False,
                 "args": {
-                    "username": "travis",
+                    "username": "TestRunDbUser",
                     "info": "explicit needle outside cap",
                 },
                 "last_updated": now - timedelta(minutes=4),
@@ -365,7 +365,7 @@ class CreateRunDBTest(unittest.TestCase):
                 "finished": True,
                 "deleted": False,
                 "args": {
-                    "username": "travis",
+                    "username": "TestRunDbUser",
                     "info": "regex path test needle here",
                 },
                 "last_updated": now - timedelta(minutes=10),
@@ -376,7 +376,7 @@ class CreateRunDBTest(unittest.TestCase):
                 "finished": True,
                 "deleted": False,
                 "args": {
-                    "username": "travis",
+                    "username": "TestRunDbUser",
                     "info": "regex path test other row",
                 },
                 "last_updated": now - timedelta(minutes=5),
@@ -405,7 +405,7 @@ class CreateRunDBTest(unittest.TestCase):
                 "finished": True,
                 "deleted": False,
                 "args": {
-                    "username": "searchuser50",
+                    "username": "TestSearchUser50",
                     "info": "user text combo needle",
                 },
                 "last_updated": now - timedelta(minutes=1),
@@ -416,7 +416,7 @@ class CreateRunDBTest(unittest.TestCase):
                 "finished": True,
                 "deleted": False,
                 "args": {
-                    "username": "otheruser50",
+                    "username": "TestOtherUser50",
                     "info": "user text combo needle",
                 },
                 "last_updated": now - timedelta(minutes=2),
@@ -427,14 +427,14 @@ class CreateRunDBTest(unittest.TestCase):
         try:
             finished_runs, count = self.rundb.get_finished_runs(
                 limit=10,
-                username="searchuser50",
+                username="TestSearchUser50",
                 text="needle",
                 ltc_only=True,
                 max_count=1000,
             )
             self.assertEqual(count, 1)
             self.assertEqual(len(finished_runs), 1)
-            self.assertEqual(finished_runs[0]["args"]["username"], "searchuser50")
+            self.assertEqual(finished_runs[0]["args"]["username"], "TestSearchUser50")
         finally:
             self.rundb.runs.delete_many({"args.info": {"$regex": "^user text combo"}})
 
@@ -446,7 +446,7 @@ class CreateRunDBTest(unittest.TestCase):
                 "finished": True,
                 "deleted": False,
                 "args": {
-                    "username": "deleted-filter-user",
+                    "username": "TestDeletedFilterUser",
                     "info": "visible finished row",
                 },
                 "last_updated": now - timedelta(minutes=1),
@@ -457,7 +457,7 @@ class CreateRunDBTest(unittest.TestCase):
                 "finished": True,
                 "deleted": True,
                 "args": {
-                    "username": "deleted-filter-user",
+                    "username": "TestDeletedFilterUser",
                     "info": "deleted finished row",
                 },
                 "last_updated": now,
@@ -468,14 +468,14 @@ class CreateRunDBTest(unittest.TestCase):
         try:
             finished_runs, count = self.rundb.get_finished_runs(
                 limit=10,
-                username="deleted-filter-user",
+                username="TestDeletedFilterUser",
                 max_count=1000,
             )
             self.assertEqual(count, 1)
             self.assertEqual(len(finished_runs), 1)
             self.assertEqual(finished_runs[0]["args"]["info"], "visible finished row")
         finally:
-            self.rundb.runs.delete_many({"args.username": "deleted-filter-user"})
+            self.rundb.runs.delete_many({"args.username": "TestDeletedFilterUser"})
 
     def test_52_finished_runs_default_limit_returns_all_matches(self):
         now = datetime.now(UTC)
@@ -632,7 +632,7 @@ class CreateRunDBTest(unittest.TestCase):
 
     def test_90_delete_runs(self):
         for run in self.rundb.runs.find():
-            if run["args"]["username"] == "travis" and "deleted" not in run:
+            if run["args"]["username"] == "TestRunDbUser" and "deleted" not in run:
                 print("del ")
                 run["deleted"] = True
                 run["finished"] = True
