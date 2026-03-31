@@ -18,22 +18,6 @@ from fishtest.http.settings import (
 class TestAdminViews(UiUserTestCase):
     username = "TestAdminUser"
 
-    def _set_approver_state(self):
-        approver = self.rundb.userdb.get_user(self.username)
-        original_pending = approver.get("pending", False)
-        original_groups = list(approver.get("groups", []))
-        approver["pending"] = False
-        if "group:approvers" not in approver["groups"]:
-            approver["groups"].append("group:approvers")
-        self.rundb.userdb.save_user(approver)
-        return original_pending, original_groups
-
-    def _restore_approver_state(self, original_pending, original_groups):
-        approver = self.rundb.userdb.get_user(self.username)
-        approver["pending"] = original_pending
-        approver["groups"] = original_groups
-        self.rundb.userdb.save_user(approver)
-
     def test_workers_server_side_filter_hx_fragment(self):
         recent_worker = "hxrecent-1cores-abcd"
         old_worker = "hxold-1cores-abcd"

@@ -62,6 +62,23 @@ class UiUserTestCase(unittest.TestCase):
         user["blocked"] = False
         self.rundb.userdb.save_user(user)
 
+    def _set_approver_state(self):
+        approver = self.rundb.userdb.get_user(self.username)
+        original_pending = approver.get("pending", False)
+        original_groups = list(approver.get("groups", []))
+        approver["pending"] = False
+        groups = approver.setdefault("groups", [])
+        if "group:approvers" not in groups:
+            groups.append("group:approvers")
+        self.rundb.userdb.save_user(approver)
+        return original_pending, original_groups
+
+    def _restore_approver_state(self, original_pending, original_groups):
+        approver = self.rundb.userdb.get_user(self.username)
+        approver["pending"] = original_pending
+        approver["groups"] = original_groups
+        self.rundb.userdb.save_user(approver)
+
     def _login_user(self):
         self._ensure_user_can_login()
 

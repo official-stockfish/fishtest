@@ -3646,9 +3646,21 @@ _VIEW_ROUTES: list[_ViewRoute] = [
     (
         workers,
         "/workers/{worker_name}",
-        {"renderer": "workers.html.j2", "require_csrf": True},
+        {
+            "renderer": "workers.html.j2",
+            "require_csrf": True,
+            "request_method": ("GET", "POST"),
+        },
     ),
-    (upload, "/upload", {"renderer": "nn_upload.html.j2", "require_csrf": True}),
+    (
+        upload,
+        "/upload",
+        {
+            "renderer": "nn_upload.html.j2",
+            "require_csrf": True,
+            "request_method": ("GET", "POST"),
+        },
+    ),
     (logout, "/logout", {"require_csrf": True, "request_method": "POST"}),
     (
         signup,
@@ -3670,8 +3682,24 @@ _VIEW_ROUTES: list[_ViewRoute] = [
     ),
     (actions, "/actions", {"renderer": "actions.html.j2"}),
     (user_management, "/user_management", {"renderer": "user_management.html.j2"}),
-    (user, "/user/{username}", {"renderer": "user.html.j2"}),
-    (user, "/user", {"renderer": "user.html.j2"}),
+    (
+        user,
+        "/user/{username}",
+        {
+            "renderer": "user.html.j2",
+            "require_csrf": True,
+            "request_method": ("GET", "POST"),
+        },
+    ),
+    (
+        user,
+        "/user",
+        {
+            "renderer": "user.html.j2",
+            "require_csrf": True,
+            "request_method": ("GET", "POST"),
+        },
+    ),
     (contributors, "/contributors", {"renderer": "contributors.html.j2"}),
     (
         contributors_monthly,
@@ -3685,6 +3713,7 @@ _VIEW_ROUTES: list[_ViewRoute] = [
             "renderer": "tests_run.html.j2",
             "require_csrf": True,
             "require_primary": True,
+            "request_method": ("GET", "POST"),
         },
     ),
     (
@@ -3758,7 +3787,7 @@ def _make_endpoint(
 
 def _normalize_methods(methods: _RouteMethods | None) -> list[str]:
     if methods is None:
-        return ["GET", "POST"]
+        return ["GET"]
     if isinstance(methods, str):
         return [methods]
     return list(methods)

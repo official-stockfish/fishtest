@@ -26,7 +26,7 @@ Config keys:
 | `renderer` | string | Jinja2 template name (e.g., `"tests.html.j2"`) |
 | `require_csrf` | bool | Enforce CSRF validation on POST |
 | `require_primary` | bool | Reject POST on non-primary instance (503) |
-| `request_method` | string or tuple | Allowed HTTP methods (default: GET + POST) |
+| `request_method` | string or tuple | Allowed HTTP methods (default: GET) |
 | `http_cache` | int | `Cache-Control: max-age=` seconds |
 | `direct` | bool | Bypass `_dispatch_view` (for pure redirects) |
 
@@ -34,42 +34,49 @@ At module load time, `_register_view_routes()` iterates over `_VIEW_ROUTES`,
 wraps each handler with `_dispatch_view()` (unless `direct=True`), and
 registers it on the FastAPI router.
 
+When `request_method` is omitted, the route is read-only and registered as
+`GET` only. The small set of endpoints that render a form on `GET` and process
+it on `POST` opt into `GET, POST` explicitly, while pure mutations stay
+`POST` only. `HEAD` works on `GET` routes through middleware compatibility,
+but generic `OPTIONS` is not part of the UI route contract and returns `405`.
+
 ## Registered routes
 
 | Path | Method(s) | Handler | Template | Notes |
 |------|-----------|---------|----------|-------|
-| `/` | GET, POST | `home` | -- | Redirects to `/tests` (direct) |
+| `/` | GET | `home` | -- | Redirects to `/tests` (direct) |
 | `/login` | GET, POST | `login` | `login.html.j2` | CSRF |
 | `/logout` | POST | `logout` | -- | CSRF |
 | `/signup` | GET, POST | `signup` | `signup.html.j2` | CSRF |
-| `/tests` | GET, POST | `tests` | `tests.html.j2` | Main dashboard; page 1 live run tables poll the same route via `?live=run_tables` |
+| `/tests` | GET | `tests` | `tests.html.j2` | Main dashboard; page 1 live run tables poll the same route via `?live=run_tables` |
 | `/tests/run` | GET, POST | `tests_run` | `tests_run.html.j2` | CSRF, primary |
 | `/tests/modify` | POST | `tests_modify` | -- | CSRF, primary |
 | `/tests/stop` | POST | `tests_stop` | -- | CSRF, primary |
 | `/tests/approve` | POST | `tests_approve` | -- | CSRF, primary |
 | `/tests/purge` | POST | `tests_purge` | -- | CSRF, primary |
 | `/tests/delete` | POST | `tests_delete` | -- | CSRF, primary |
-| `/tests/view/{id}` | GET, POST | `tests_view` | `tests_view.html.j2` | Full detail page; unfinished runs poll the merged detail fragment endpoint and the dedicated tasks endpoint |
-| `/tests/view/{id}/detail` | GET, POST | `tests_view_detail` | `tests_view_detail_fragment.html.j2` | Fragment-only; OOB refresh for ELO, run status, active-worker totals, detail, time, chi-square, and the retained SPSA data payload |
-| `/tests/live_elo/{id}` | GET, POST | `tests_live_elo` | `tests_live_elo.html.j2` | Live Elo page + dual-scale gauge |
-| `/tests/stats/{id}` | GET, POST | `tests_stats` | `tests_stats.html.j2` | HX: `tests_stats_content_fragment.html.j2`; active runs poll with the dedicated stats-page interval and visibility-aware refresh |
-| `/tests/tasks/{id}` | GET, POST | `tests_tasks` | `tasks_content_fragment.html.j2` | Fragment-only; updates the scrolling task table body and refreshes fixed controls/pagination OOB, with server-side sorting for every visible task column, one combined worker/info search filter, and 25-row pagination |
-| `/tests/machines` | GET, POST | `tests_machines` | `machines_fragment.html.j2` | Fragment-only, 10s cache |
-| `/tests/live_elo_update/{id}` | GET, POST | `live_elo_update` | `live_elo_fragment.html.j2` | Fragment-only (OOB) |
-| `/tests/finished` | GET, POST | `tests_finished` | `tests_finished.html.j2` | HX: `tests_finished_content_fragment` |
-| `/tests/user/{username}` | GET, POST | `tests_user` | `tests_user.html.j2` | HX: `tests_user_content_fragment`; page 1 live run tables poll the same route via `?live=run_tables` |
-| `/actions` | GET, POST | `actions` | `actions.html.j2` | HX: `actions_content_fragment` |
-| `/contributors` | GET, POST | `contributors` | `contributors.html.j2` | HX: `contributors_content_fragment`; paginated (100/page) |
-| `/contributors/monthly` | GET, POST | `contributors_monthly` | `contributors.html.j2` | HX: `contributors_content_fragment`; paginated (100/page) |
-| `/user/{username}` | GET, POST | `user` | `user.html.j2` | |
-| `/user` | GET, POST | `user` | `user.html.j2` | |
-| `/user_management` | GET, POST | `user_management` | `user_management.html.j2` | HX: `user_management_content_fragment` |
+| `/tests/view/{id}` | GET | `tests_view` | `tests_view.html.j2` | Full detail page; unfinished runs poll the merged detail fragment endpoint and the dedicated tasks endpoint |
+| `/tests/view/{id}/detail` | GET | `tests_view_detail` | `tests_view_detail_fragment.html.j2` | Fragment-only; OOB refresh for ELO, run status, active-worker totals, detail, time, chi-square, and the retained SPSA data payload |
+| `/tests/live_elo/{id}` | GET | `tests_live_elo` | `tests_live_elo.html.j2` | Live Elo page + dual-scale gauge |
+| `/tests/stats/{id}` | GET | `tests_stats` | `tests_stats.html.j2` | HX: `tests_stats_content_fragment.html.j2`; active runs poll with the dedicated stats-page interval and visibility-aware refresh |
+| `/tests/tasks/{id}` | GET | `tests_tasks` | `tasks_content_fragment.html.j2` | Fragment-only; updates the scrolling task table body and refreshes fixed controls/pagination OOB, with server-side sorting for every visible task column, one combined worker/info search filter, and 25-row pagination |
+| `/tests/machines` | GET | `tests_machines` | `machines_fragment.html.j2` | Fragment-only, 10s cache |
+| `/tests/live_elo_update/{id}` | GET | `live_elo_update` | `live_elo_fragment.html.j2` | Fragment-only (OOB) |
+| `/tests/finished` | GET | `tests_finished` | `tests_finished.html.j2` | HX: `tests_finished_content_fragment` |
+| `/tests/user/{username}` | GET | `tests_user` | `tests_user.html.j2` | HX: `tests_user_content_fragment`; page 1 live run tables poll the same route via `?live=run_tables` |
+| `/actions` | GET | `actions` | `actions.html.j2` | HX: `actions_content_fragment` |
+| `/contributors` | GET | `contributors` | `contributors.html.j2` | HX: `contributors_content_fragment`; paginated (100/page) |
+| `/contributors/monthly` | GET | `contributors_monthly` | `contributors.html.j2` | HX: `contributors_content_fragment`; paginated (100/page) |
+| `/user/{username}` | GET, POST | `user` | `user.html.j2` | CSRF |
+| `/user` | GET, POST | `user` | `user.html.j2` | CSRF |
+| `/user_management` | GET | `user_management` | `user_management.html.j2` | HX: `user_management_content_fragment` |
+| `/user_management/pending_count` | GET | `user_management_pending_count` | `pending_users_nav_fragment.html.j2` | Fragment-only sidebar poll |
 | `/workers/{worker_name}` | GET, POST | `workers` | `workers.html.j2` | CSRF; HX: `workers_content_fragment` |
 | `/upload` | GET, POST | `upload` | `nn_upload.html.j2` | CSRF |
-| `/nns` | GET, POST | `nns` | `nns.html.j2` | HX: `nns_content_fragment` |
-| `/sprt_calc` | GET, POST | `sprt_calc` | `sprt_calc.html.j2` | |
-| `/rate_limits` | GET, POST | `rate_limits` | `rate_limits.html.j2` | |
-| `/rate_limits/server` | GET, POST | `rate_limits_server` | inline HTML response | Fragment-only |
+| `/nns` | GET | `nns` | `nns.html.j2` | HX: `nns_content_fragment` |
+| `/sprt_calc` | GET | `sprt_calc` | `sprt_calc.html.j2` | |
+| `/rate_limits` | GET | `rate_limits` | `rate_limits.html.j2` | |
+| `/rate_limits/server` | GET | `rate_limits_server` | inline HTML response | Fragment-only |
 
 ## Sidebar status links
 
