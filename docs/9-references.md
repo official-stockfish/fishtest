@@ -238,7 +238,9 @@ must use `{{ value|safe }}` or `{% autoescape false %}`.
 | Parameter filtering | https://htmx.org/attributes/hx-params/ |
 | Multiple triggers | https://htmx.org/attributes/hx-trigger/ |
 | Template fragments essay | https://htmx.org/essays/template-fragments/ |
+| Hypermedia Systems (book) | https://hypermedia.systems/ |
 | Web security with htmx | https://htmx.org/essays/web-security-basics-with-htmx/ |
+| `Vary` (MDN) | https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Vary |
 | Search inputs (MDN) | https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/input/search |
 | Search clear pseudo-element (MDN) | https://developer.mozilla.org/en-US/docs/Web/CSS/::-webkit-search-cancel-button |
 | Search event (MDN) | https://developer.mozilla.org/en-US/docs/Web/API/HTMLInputElement/search_event |
@@ -309,6 +311,9 @@ that HTTP caches (nginx, CDNs) store separate representations:
 _append_vary_header(response, "HX-Request")
 ```
 
+Use the same `Vary: HX-Request` value on the full-page response, the fragment
+response, and any `304 Not Modified` response for that URL.
+
 **OOB swaps with Jinja2**: out-of-band elements carry `hx-swap-oob`
 attributes directly in the template markup. Multiple elements can be updated
 in a single response. For table rows, `<template>` wrappers are required
@@ -343,6 +348,12 @@ so user-initiated sort/page changes beat the background poll.
 `hx-disinherit="hx-include"` and `hx-params="none"` so only the explicit URL
 state is sent.
 
+**Search portability**: `input changed delay:{{ htmx.input_changed_delay_ms }}ms`
+is the portable search trigger baseline. Native `search` events and
+`::-webkit-search-cancel-button` styling are browser-specific enhancements,
+not the correctness contract. Search inputs keep visible labels or another
+valid accessible name.
+
 **Conditional polling with visibility**: polls are gated on tab visibility
 to avoid unnecessary server load:
 
@@ -352,6 +363,8 @@ to avoid unnecessary server load:
      hx-swap="none">
 </div>
 ```
+
+Treat the transition to `hidden` as the point to stop background UI updates.
 
 **Focus-return immediate refresh**: every visibility-gated poller also
 triggers on `visibilitychange` so that returning to the tab produces an
@@ -390,7 +403,7 @@ prevent XSS from error messages and to keep htmx attributes functional
 
 | Topic | URL |
 |------|-----|
-| Python docs | https://docs.python.org/3/ |
+| Python 3.14 docs | https://docs.python.org/3.14/ |
 | MongoDB manual | https://www.mongodb.com/docs/manual/ |
 | PyMongo | https://www.mongodb.com/docs/languages/python/pymongo-driver/current/ |
 | Ruff | https://docs.astral.sh/ruff/ |
