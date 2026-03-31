@@ -11,6 +11,7 @@ from pymongo import DESCENDING
 
 from fishtest.api import WORKER_VERSION
 from fishtest.run_cache import Prio
+from fishtest.rundb import RunDb
 from fishtest.spsa_handler import _pack_flips, _unpack_flips
 
 
@@ -142,6 +143,94 @@ class CreateRunDBTest(unittest.TestCase):
         for run in self.rundb.get_unfinished_runs():
             if run["args"]["username"] == "TestRunDbUser":
                 print(run["args"])
+
+    def test_11_get_unfinished_runs_primary_returns_detached_snapshots(self):
+        run_id = self._create_test_run()
+        run = self.rundb.get_run(run_id)
+        run["results"]["wins"] = 11
+        run["results"]["losses"] = 7
+        run["args"]["spsa"] = {
+            "iter": 2,
+            "num_iter": 10,
+            "param_history": [{"theta": 1.0}],
+        }
+        run["bad_tasks"] = [{"task_id": 0}]
+        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+
+        snapshot = next(
+            run
+            for run in self.rundb.get_unfinished_runs(username="TestRunDbUser")
+            if str(run["_id"]) == run_id
+        )
+
+        self.assertNotIn("tasks", snapshot)
+        self.assertNotIn("bad_tasks", snapshot)
+        self.assertEqual(snapshot["args"]["spsa"]["param_history"], [])
+
+        snapshot["results"]["wins"] = 999
+        snapshot["args"]["info"] = "mutated"
+
+        live_run = self.rundb.get_run(run_id)
+        self.assertEqual(live_run["results"]["wins"], 11)
+        self.assertEqual(live_run["args"]["info"], "The ultimate patch")
+        self.assertEqual(
+            live_run["args"]["spsa"]["param_history"],
+            [{"theta": 1.0}],
+        )
+        self.assertIn("tasks", live_run)
+        self.assertIn("bad_tasks", live_run)
+
+    def test_12_get_unfinished_runs_secondary_omits_heavy_fields(self):
+        run_id = self._create_test_run()
+        run = self.rundb.get_run(run_id)
+        run["args"]["spsa"] = {
+            "iter": 3,
+            "num_iter": 12,
+            "param_history": [{"theta": 1.5}],
+        }
+        run["bad_tasks"] = [{"task_id": 1}]
+        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+
+        secondary = RunDb(db_name=self.rundb.db.name, is_primary_instance=False)
+        self.addCleanup(secondary.conn.close)
+
+        snapshot = next(
+            run
+            for run in secondary.get_unfinished_runs(username="TestRunDbUser")
+            if str(run["_id"]) == run_id
+        )
+
+        self.assertEqual(str(snapshot["_id"]), run_id)
+        self.assertNotIn("tasks", snapshot)
+        self.assertNotIn("bad_tasks", snapshot)
+        self.assertEqual(snapshot["args"]["spsa"]["param_history"], [])
+
+    def test_13_get_unfinished_runs_primary_skips_incomplete_results(self):
+        run_id = self._create_test_run()
+        run = self.rundb.get_run(run_id)
+        run["results"] = {"wins": 1, "losses": 2}
+        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+
+        unfinished = list(self.rundb.get_unfinished_runs(username="TestRunDbUser"))
+        self.assertFalse(
+            any(str(r["_id"]) == run_id for r in unfinished),
+            msg="Run with incomplete results must be skipped on primary",
+        )
+
+    def test_14_get_unfinished_runs_secondary_skips_incomplete_results(self):
+        run_id = self._create_test_run()
+        run = self.rundb.get_run(run_id)
+        run["results"] = {"wins": 3, "losses": 4}
+        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+
+        secondary = RunDb(db_name=self.rundb.db.name, is_primary_instance=False)
+        self.addCleanup(secondary.conn.close)
+
+        unfinished = list(secondary.get_unfinished_runs(username="TestRunDbUser"))
+        self.assertFalse(
+            any(str(r["_id"]) == run_id for r in unfinished),
+            msg="Run with incomplete results must be skipped on secondary",
+        )
 
     def test_20_update_task(self):
         run_id = self._create_test_run()

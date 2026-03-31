@@ -847,10 +847,83 @@ class RunDb:
         )
         return unfinished_runs
 
+    def _snapshot_unfinished_run(self, run):
+        snapshot = {}
+        for key, value in run.items():
+            if key in ("tasks", "bad_tasks"):
+                continue
+            if key == "args":
+                snapshot[key] = {}
+                for arg_key, arg_value in value.items():
+                    if arg_key == "spsa":
+                        snapshot[key][arg_key] = {
+                            spsa_key: []
+                            if spsa_key == "param_history"
+                            else copy.deepcopy(spsa_value)
+                            for spsa_key, spsa_value in arg_value.items()
+                        }
+                        # Ensure param_history exists even if the source
+                        # SPSA dict lacks the optional key.
+                        snapshot[key][arg_key].setdefault("param_history", [])
+                    else:
+                        snapshot[key][arg_key] = copy.deepcopy(arg_value)
+            else:
+                snapshot[key] = copy.deepcopy(value)
+        return snapshot
+
+    def _get_unfinished_runs_from_primary_cache(self):
+        with self.unfinished_runs_lock:
+            run_ids = list(self.unfinished_runs)
+
+        unfinished_runs = []
+        for run_id in run_ids:
+            run = self.get_run(run_id)
+            if run is None:
+                continue
+            with self.active_run_lock(run_id):
+                if run["finished"]:
+                    continue
+                snapshot = self._snapshot_unfinished_run(run)
+            if not self._has_valid_results(snapshot):
+                continue
+            unfinished_runs.append(snapshot)
+
+        earliest_time = datetime.min.replace(tzinfo=UTC)
+        unfinished_runs.sort(
+            key=lambda run: run.get("last_updated") or earliest_time,
+            reverse=True,
+        )
+        return unfinished_runs
+
+    @lru_cache(maxsize=1, expiration=5, refresh=False)
+    def _get_unfinished_runs_from_db(self):
+        projection = {"tasks": 0, "bad_tasks": 0, "args.spsa.param_history": 0}
+        return list(
+            self.runs.find(
+                {"finished": False},
+                projection,
+                sort=[("last_updated", DESCENDING)],
+            )
+        )
+
+    @staticmethod
+    def _has_valid_results(run):
+        results = run.get("results")
+        return isinstance(results, dict) and {"wins", "losses", "draws"}.issubset(
+            results
+        )
+
     def get_unfinished_runs(self, username=None):
         # Note: the result can be only used once.
 
-        unfinished_runs = self.runs.find({"finished": False}, {"_id": 1, "tasks": 0})
+        if self.__is_primary_instance:
+            unfinished_runs = iter(self._get_unfinished_runs_from_primary_cache())
+        else:
+            unfinished_runs = (
+                self._snapshot_unfinished_run(run)
+                for run in self._get_unfinished_runs_from_db()
+                if self._has_valid_results(run)
+            )
         if username:
             unfinished_runs = (
                 r for r in unfinished_runs if r["args"].get("username") == username

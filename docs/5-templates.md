@@ -922,6 +922,12 @@ submissions preserve the live table state.
 
 Behavior notes:
 
+- Unfinished panels are built from `aggregate_unfinished_runs()`, which reads
+   stripped unfinished-run snapshots. Primary instances derive those snapshots
+   from authoritative in-memory run state; secondaries reuse a projected 5s DB
+   snapshot. The stripped snapshot omits `tasks`, `bad_tasks`, and
+   `args.spsa.param_history` because this fragment only renders aggregate
+   run-table metadata.
 - When homepage workers filters are active, the fragment recomputes the
    `#workers-count` filtered value from the current machine snapshot instead of
    trusting the last cookie-backed filtered count.
