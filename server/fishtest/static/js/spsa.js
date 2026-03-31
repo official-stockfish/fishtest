@@ -426,7 +426,7 @@ async function handleSPSA() {
   }
 
   function rebuildDropdown(dropdown) {
-    dropdown.replaceChildren();
+    const fragment = document.createDocumentFragment();
     for (let j = 0; j < spsaData.params.length; j += 1) {
       const dropdownItem = document.createElement("li");
       const anchorItem = document.createElement("a");
@@ -434,12 +434,13 @@ async function handleSPSA() {
       if (!viewAll && lastSelectedParam === j + 1) {
         anchorItem.classList.add("active");
       }
-      anchorItem.href = "javascript:";
+      anchorItem.href = "#";
       anchorItem.dataset.paramId = j + 1;
       anchorItem.append(spsaData.params[j].name);
       dropdownItem.append(anchorItem);
-      dropdown.append(dropdownItem);
+      fragment.append(dropdownItem);
     }
+    dropdown.replaceChildren(fragment);
   }
 
   function renderSPSA(nextData) {
@@ -575,7 +576,7 @@ async function handleSPSA() {
     }
 
     const currentScroll = dropdown.scrollTop;
-    Array.from(dropdown.querySelectorAll("a.active")).forEach((element) => {
+    dropdown.querySelectorAll("a.active").forEach((element) => {
       element.classList.remove("active");
     });
     event.target.classList.add("active");
@@ -611,7 +612,7 @@ async function handleSPSA() {
 
     viewAll = true;
     lastSelectedParam = null;
-    Array.from(dropdown.querySelectorAll("a.active")).forEach((element) => {
+    dropdown.querySelectorAll("a.active").forEach((element) => {
       element.classList.remove("active");
     });
     for (let i = 0; i < chartData.getNumberOfColumns(); i += 1) {
