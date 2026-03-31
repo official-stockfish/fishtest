@@ -285,6 +285,64 @@ class TestUsers(UiUserTestCase):
         self.assertIn("location", {k.lower() for k in response.headers})
         self.assertIn("set-cookie", {k.lower() for k in response.headers})
 
+    def test_user_profile_post_requires_csrf(self):
+        original_user = self.rundb.userdb.get_user(self.username)
+        original_email = original_user["email"]
+        original_tests_repo = original_user["tests_repo"]
+
+        self._login_user()
+
+        response = self.client.post(
+            "/user",
+            data={
+                "user": self.username,
+                "old_password": self.password,
+                "email": "updated-auth-user@example.com",
+                "tests_repo": original_tests_repo,
+            },
+            follow_redirects=False,
+        )
+        self.assertEqual(response.status_code, 403)
+
+        updated_user = self.rundb.userdb.get_user(self.username)
+        self.assertEqual(updated_user["email"], original_email)
+        self.assertEqual(updated_user["tests_repo"], original_tests_repo)
+
+    def test_user_admin_post_requires_csrf(self):
+        target_username = self.signup_username
+        self.rundb.userdb.users.delete_many({"username": target_username})
+        self.rundb.userdb.clear_cache()
+
+        created = self.rundb.userdb.create_user(
+            target_username,
+            "target-user-password",
+            "target-user@example.com",
+            self.tests_repo,
+        )
+        self.assertTrue(created)
+
+        target_user = self.rundb.userdb.get_user(target_username)
+        target_user["pending"] = False
+        self.rundb.userdb.save_user(target_user)
+
+        original_pending, original_groups = self._set_approver_state()
+        try:
+            self._login_user()
+
+            response = self.client.post(
+                f"/user/{target_username}",
+                data={"user": target_username, "blocked": "1"},
+                follow_redirects=False,
+            )
+            self.assertEqual(response.status_code, 403)
+
+            updated_target_user = self.rundb.userdb.get_user(target_username)
+            self.assertFalse(updated_target_user["blocked"])
+        finally:
+            self._restore_approver_state(original_pending, original_groups)
+            self.rundb.userdb.users.delete_many({"username": target_username})
+            self.rundb.userdb.clear_cache()
+
     def test_notfound_returns_html(self):
         response = self.client.get("/no-such-route")
         self.assertEqual(response.status_code, 404)
