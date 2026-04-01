@@ -63,6 +63,19 @@ from fishtest.util import (
 )
 from fishtest.workerdb import WorkerDb
 
+_UNFINISHED_RUNS_LIGHTWEIGHT_PROJECTION = {"_id": 1, "tasks": 0}
+
+_UNFINISHED_RUNS_STATS_PROJECTION = {
+    "_id": 1,
+    "args.username": 1,
+    "args.tc": 1,
+    "args.threads": 1,
+    "tasks.worker_info.username": 1,
+    "tasks.last_updated": 1,
+    "tasks.num_games": 1,
+    "tasks.stats": 1,
+}
+
 
 class RunDb:
     def __init__(self, db_name=FISHTEST, port=-1, is_primary_instance=True):
@@ -847,14 +860,29 @@ class RunDb:
         )
         return unfinished_runs
 
+    @staticmethod
+    def _get_unfinished_runs_query(username=None):
+        unfinished_runs_query = {"finished": False}
+        if username:
+            unfinished_runs_query["args.username"] = username
+        return unfinished_runs_query
+
     def get_unfinished_runs(self, username=None):
         # Note: the result can be only used once.
 
-        unfinished_runs = self.runs.find({"finished": False}, {"_id": 1, "tasks": 0})
-        if username:
-            unfinished_runs = (
-                r for r in unfinished_runs if r["args"].get("username") == username
-            )
+        unfinished_runs = self.runs.find(
+            self._get_unfinished_runs_query(username),
+            _UNFINISHED_RUNS_LIGHTWEIGHT_PROJECTION,
+        )
+        return unfinished_runs
+
+    def get_unfinished_runs_for_stats(self, username=None):
+        # Note: the result can be only used once.
+
+        unfinished_runs = self.runs.find(
+            self._get_unfinished_runs_query(username),
+            _UNFINISHED_RUNS_STATS_PROJECTION,
+        )
         return unfinished_runs
 
     @lru_cache(maxsize=1, expiration=5, refresh=False)

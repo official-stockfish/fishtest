@@ -630,8 +630,8 @@ Behavior notes:
    pagination/sort/view links, preventing repeated jumps during later browsing.
 - `/contributors` and `/contributors/monthly` stay on the userdb fast path:
    the all-time page reads from `userdb.user_cache`, and the monthly page reads
-   from `userdb.top_month`, so search and rank-jump never need an actions-log
-   scan.
+   from `userdb.top_month`, a rolling cache rebuilt from unfinished runs
+   (pending and active) plus finished runs started within the last 30 days.
 - Sort-header links are dual-mode (`href` + `hx-get`): contributors sorting
    swaps `#contributors-content` with `hx-push-url="true"` when htmx is active,
    and still works as normal navigation when JavaScript is unavailable.
