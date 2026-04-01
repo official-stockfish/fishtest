@@ -128,7 +128,7 @@ def process_run(run: dict, info: dict) -> None:
 
     # Update the information for the workers contributed by the users
     tc = estimate_game_duration(run["args"]["tc"])
-    for task in run.get("tasks", {}):
+    for task in run["tasks"]:
         if "worker_info" not in task:
             continue
         t_username = task["worker_info"].get("username")
@@ -181,7 +181,7 @@ def update_info(
         dict: New deltas containing newly processed run IDs.
 
     """
-    for run in rundb.get_unfinished_runs():
+    for run in rundb.get_unfinished_runs_for_stats():
         try:
             # Update info_top_month with the contribution of the unfinished run
             process_run(run, info_top_month)

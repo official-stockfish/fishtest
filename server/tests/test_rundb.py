@@ -143,6 +143,118 @@ class CreateRunDBTest(unittest.TestCase):
             if run["args"]["username"] == "TestRunDbUser":
                 print(run["args"])
 
+    def test_11_get_unfinished_runs_keeps_default_projection_lightweight(self):
+        run_id = self._create_test_run()
+        run = self.rundb.get_run(run_id)
+        run["tasks"][0]["worker_info"] = self.worker_info
+        run["tasks"][0]["last_updated"] = datetime.now(UTC)
+        run["tasks"][0]["stats"] = {
+            "wins": 1,
+            "draws": self.chunk_size - 2,
+            "losses": 1,
+            "crashes": 0,
+        }
+        run["workers"] = run["cores"] = 1
+        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+
+        unfinished_run = next(
+            run for run in self.rundb.get_unfinished_runs() if str(run["_id"]) == run_id
+        )
+
+        self.assertNotIn("tasks", unfinished_run)
+
+    def test_12_get_unfinished_runs_for_stats_returns_task_projection(self):
+        run_id = self._create_test_run()
+        run = self.rundb.get_run(run_id)
+        run["tasks"][0]["worker_info"] = self.worker_info
+        run["tasks"][0]["last_updated"] = datetime.now(UTC)
+        run["tasks"][0]["stats"] = {
+            "wins": 2,
+            "draws": self.chunk_size - 4,
+            "losses": 2,
+            "crashes": 0,
+        }
+        run["workers"] = run["cores"] = 1
+        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+
+        unfinished_run = next(
+            run
+            for run in self.rundb.get_unfinished_runs_for_stats()
+            if str(run["_id"]) == run_id
+        )
+
+        self.assertIn("tasks", unfinished_run)
+        self.assertNotIn("results", unfinished_run)
+        self.assertEqual(
+            set(unfinished_run["args"].keys()),
+            {"username", "tc", "threads"},
+        )
+        self.assertEqual(
+            unfinished_run["tasks"][0]["worker_info"],
+            {"username": self.worker_info["username"]},
+        )
+        self.assertIn("last_updated", unfinished_run["tasks"][0])
+        self.assertIn("num_games", unfinished_run["tasks"][0])
+        self.assertIn("stats", unfinished_run["tasks"][0])
+        self.assertNotIn("active", unfinished_run["tasks"][0])
+
+    def test_13_get_unfinished_runs_username_filter_is_pushed_to_query(self):
+        self._create_test_run()
+        self.addCleanup(
+            self.rundb.runs.delete_many,
+            {"args.username": "OtherRunDbUser"},
+        )
+        other_run_id = self.rundb.new_run(
+            "master",
+            "master",
+            self.chunk_size * 4,
+            "10+0.01",
+            "10+0.01",
+            "book.pgn",
+            "10",
+            1,
+            "",
+            "",
+            info="The other patch",
+            resolved_base="347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+            resolved_new="347d613b0e2c47f90cbf1c5a5affe97303f1ac3d",
+            msg_base="Bad stuff",
+            msg_new="Super stuff",
+            base_signature="123456",
+            new_signature="654321",
+            base_nets=["nn-0000000000a0.nnue"],
+            new_nets=["nn-0000000000a0.nnue", "nn-0000000000a1.nnue"],
+            rescheduled_from="653db116cc309ae839563103",
+            tests_repo="https://github.com/15408be06cfa0ff6/Stockfish",
+            auto_purge=False,
+            username="OtherRunDbUser",
+            start_time=datetime.now(UTC),
+        )
+        other_run = self.rundb.get_run(other_run_id)
+        other_run["tasks"].append(
+            {
+                "num_games": self.chunk_size,
+                "stats": {"wins": 0, "draws": 0, "losses": 0, "crashes": 0},
+                "pending": True,
+                "active": True,
+            }
+        )
+        self.rundb.buffer(other_run, priority=Prio.SAVE_NOW)
+
+        unfinished_runs = list(self.rundb.get_unfinished_runs(username="TestRunDbUser"))
+        unfinished_runs_for_stats = list(
+            self.rundb.get_unfinished_runs_for_stats(username="TestRunDbUser")
+        )
+
+        self.assertTrue(unfinished_runs)
+        self.assertEqual(len(unfinished_runs), 1)
+        self.assertEqual(unfinished_runs[0]["args"]["username"], "TestRunDbUser")
+        self.assertEqual(len(unfinished_runs_for_stats), 1)
+        self.assertEqual(
+            unfinished_runs_for_stats[0]["args"]["username"],
+            "TestRunDbUser",
+        )
+
     def test_20_update_task(self):
         run_id = self._create_test_run()
         run = self.rundb.get_run(run_id)
