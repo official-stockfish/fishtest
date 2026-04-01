@@ -230,6 +230,63 @@ class GetShaRobustnessTests(unittest.TestCase):
         self.assertEqual(message, "")
 
 
+class RepoCanonicalizationTests(unittest.TestCase):
+    repo_url = "https://github.com/official-stockfish/Stockfish"
+
+    def tearDown(self):
+        gh.clear_api_cache()
+
+    def test_canonicalize_repo_url_strips_trailing_slash(self):
+        self.assertEqual(
+            gh.canonicalize_repo_url(self.repo_url + "/"),
+            self.repo_url,
+        )
+        self.assertEqual(gh.canonicalize_repo_url(self.repo_url), self.repo_url)
+        self.assertEqual(gh.canonicalize_repo_url(""), "")
+        self.assertIsNone(gh.canonicalize_repo_url(None))
+
+    def test_normalize_repo_returns_slash_free_url(self):
+        response = mock.Mock()
+        response.url = self.repo_url + "/"
+
+        with mock.patch("fishtest.github_api.call", return_value=response) as call:
+            normalized = gh.normalize_repo(self.repo_url + "/")
+
+        self.assertEqual(normalized, self.repo_url)
+        call.assert_called_once_with(
+            self.repo_url,
+            _method="HEAD",
+            timeout=gh.TIMEOUT,
+            allow_redirects=True,
+            _ignore_rate_limit=True,
+        )
+        response.raise_for_status.assert_called_once_with()
+
+    def test_normalize_repo_cache_key_canonicalizes_trailing_slash(self):
+        response = mock.Mock()
+        response.url = self.repo_url
+
+        with mock.patch("fishtest.github_api.call", return_value=response) as call:
+            normalized_with_slash = gh.normalize_repo(self.repo_url + "/")
+            normalized_without_slash = gh.normalize_repo(self.repo_url)
+
+        self.assertEqual(normalized_with_slash, self.repo_url)
+        self.assertEqual(normalized_without_slash, self.repo_url)
+        self.assertEqual(call.call_count, 1)
+
+        key_with_slash = gh.normalize_repo.key(
+            gh.normalize_repo,
+            (self.repo_url + "/",),
+            {},
+        )
+        key_without_slash = gh.normalize_repo.key(
+            gh.normalize_repo,
+            (self.repo_url,),
+            {},
+        )
+        self.assertEqual(key_with_slash, key_without_slash)
+
+
 class GitHubApiRetryTests(unittest.TestCase):
     def _run_call_with_side_effect(self, side_effect):
         old_initialized = gh._api_initialized

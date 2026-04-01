@@ -83,7 +83,13 @@ class CreateRunDBTest(unittest.TestCase):
     def tearDown(self):
         self.rundb.runs.delete_many({"args.username": "TestRunDbUser"})
 
-    def _create_test_run(self, *, tc: str = "10+0.01", finished: bool = False) -> str:
+    def _create_test_run(
+        self,
+        *,
+        tc: str = "10+0.01",
+        finished: bool = False,
+        tests_repo: str = "https://github.com/15408be06cfa0ff6/Stockfish",
+    ) -> str:
         num_tasks = 4
         num_games = num_tasks * self.chunk_size
 
@@ -108,7 +114,7 @@ class CreateRunDBTest(unittest.TestCase):
             base_nets=["nn-0000000000a0.nnue"],
             new_nets=["nn-0000000000a0.nnue", "nn-0000000000a1.nnue"],
             rescheduled_from="653db116cc309ae839563103",
-            tests_repo="https://github.com/15408be06cfa0ff6/Stockfish",
+            tests_repo=tests_repo,
             auto_purge=False,
             username="TestRunDbUser",
             start_time=datetime.now(UTC),
@@ -253,6 +259,18 @@ class CreateRunDBTest(unittest.TestCase):
         self.assertEqual(
             unfinished_runs_for_stats[0]["args"]["username"],
             "TestRunDbUser",
+        )
+
+    def test_14_new_run_canonicalizes_tests_repo(self):
+        run_id = self._create_test_run(
+            tests_repo="https://github.com/15408be06cfa0ff6/Stockfish/",
+        )
+
+        run = self.rundb.get_run(run_id)
+
+        self.assertEqual(
+            run["args"]["tests_repo"],
+            "https://github.com/15408be06cfa0ff6/Stockfish",
         )
 
     def test_20_update_task(self):
