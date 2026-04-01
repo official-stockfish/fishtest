@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from pymongo import ASCENDING
 from vtjson import ValidationError, validate
 
+import fishtest.github_api as gh
 from fishtest.lru_cache import lru_cache
 from fishtest.schemas import user_schema
 
@@ -129,7 +130,7 @@ class UserDb:
                 "blocked": False,
                 "email": email,
                 "groups": [],
-                "tests_repo": tests_repo,
+                "tests_repo": gh.canonicalize_repo_url(tests_repo),
                 "machine_limit": DEFAULT_MACHINE_LIMIT,
             }
             validate_user(user)
@@ -141,6 +142,8 @@ class UserDb:
             return None
 
     def save_user(self, user):
+        if "tests_repo" in user:
+            user["tests_repo"] = gh.canonicalize_repo_url(user["tests_repo"])
         validate_user(user)
         self.users.replace_one({"_id": user["_id"]}, user)
         self.clear_cache()

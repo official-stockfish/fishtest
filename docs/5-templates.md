@@ -40,7 +40,7 @@ and `http/jinja.py`.
 | `results_pre_attrs(...)` | `template_helpers.py` | HTML attributes for results display (returns `Markup`) |
 | `run_tables_prefix(username)` | `template_helpers.py` | Toggle prefix for run tables |
 | `tests_run_setup(...)` | `template_helpers.py` | Test form default values |
-| `tests_repo(run)` | `util.py` | Extract tests repo URL from run |
+| `tests_repo(run)` | `util.py` | Extract the canonical tests repo URL from run |
 | `worker_name(info)` | `util.py` | Format worker name from info dict |
 | `list_to_string(values, decimals)` | `template_helpers.py` | Formats a list of floats as a string |
 | `pdf_to_string(...)` | `template_helpers.py` | Formats a probability density function |
@@ -611,6 +611,13 @@ Rendered structure notes:
 - the collapsed preset blocks expose stable ids so the toggle button can name
    them through `aria-controls`.
 
+Tests repository contract:
+
+- `tests_repo_value` is rendered from the current GitHub repo value for the
+   form
+- trailing-slash input is accepted on submit, but newly stored runs use the
+   slash-free form
+
 ### `tests_stats.html.j2`
 
 Page shell for `/tests/stats/{id}`. Includes the shared stats content fragment and,
@@ -817,6 +824,12 @@ Rendered structure:
 | `form_action` | URL |
 | `registration_time_label` | string |
 | `blocked` | bool |
+
+Tests repository contract:
+
+- `user["tests_repo"]` is persisted as the canonical slash-free GitHub repo URL
+- profile form submissions may include a trailing slash, but stored user data
+   is normalized before save
 
 ### `user_management.html.j2`
 

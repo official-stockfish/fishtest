@@ -608,7 +608,7 @@ class RunDb:
             "base_signature": base_signature,
             "new_signature": new_signature,
             "username": username,
-            "tests_repo": tests_repo,
+            "tests_repo": gh.canonicalize_repo_url(tests_repo),
             "auto_purge": auto_purge,
             "throughput": throughput,
             "itp": 100,  # internal throughput

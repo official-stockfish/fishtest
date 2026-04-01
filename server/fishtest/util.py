@@ -576,7 +576,7 @@ def count_games(stats):
 
 
 def tests_repo(run):
-    tests_repo = run["args"]["tests_repo"]
+    tests_repo = gh.canonicalize_repo_url(run["args"]["tests_repo"])
     if tests_repo != "":
         return tests_repo
     else:

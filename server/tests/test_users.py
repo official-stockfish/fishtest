@@ -136,6 +136,54 @@ class TestUsers(UiUserTestCase):
         self.assertTrue(response.headers.get("location", "").endswith("/login"))
         self._assert_no_store_headers(response)
 
+    def test_signup_canonicalizes_tests_repo(self):
+        signup_username = "TestCanonicalSignupUser"
+        self.rundb.userdb.users.delete_many({"username": signup_username})
+        self.rundb.userdb.clear_cache()
+        self.addCleanup(
+            self.rundb.userdb.users.delete_many,
+            {"username": signup_username},
+        )
+        self.addCleanup(self.rundb.userdb.clear_cache)
+
+        response = self.client.get("/signup")
+        self.assertEqual(response.status_code, 200)
+        csrf = test_support.extract_csrf_token(response.text)
+
+        with (
+            patch.dict(
+                "os.environ",
+                {"FISHTEST_CAPTCHA_SECRET": "test-secret"},
+                clear=False,
+            ),
+            patch(
+                "fishtest.views.requests.post",
+                return_value=type(
+                    "_CaptchaResponse",
+                    (),
+                    {"json": staticmethod(lambda: {"success": True})},
+                )(),
+            ),
+        ):
+            response = self.client.post(
+                "/signup",
+                data={
+                    "username": signup_username,
+                    "password": self.signup_password,
+                    "password2": self.signup_password,
+                    "email": "canonical-signup-test@user.net",
+                    "tests_repo": self.tests_repo + "/",
+                    "g-recaptcha-response": "captcha-ok",
+                    "csrf_token": csrf,
+                },
+                follow_redirects=False,
+            )
+
+        self.assertEqual(response.status_code, 302)
+        created_user = self.rundb.userdb.get_user(signup_username)
+        self.assertIsNotNone(created_user)
+        self.assertEqual(created_user["tests_repo"], self.tests_repo)
+
     def test_signup_rejects_too_long_password(self):
         long_password = "A1!a" * 20
         self.assertGreater(len(long_password), PASSWORD_MAX_LENGTH)
@@ -307,6 +355,30 @@ class TestUsers(UiUserTestCase):
         updated_user = self.rundb.userdb.get_user(self.username)
         self.assertEqual(updated_user["email"], original_email)
         self.assertEqual(updated_user["tests_repo"], original_tests_repo)
+
+    def test_user_profile_post_canonicalizes_tests_repo(self):
+        self._login_user()
+        user = self.rundb.userdb.get_user(self.username)
+
+        response = self.client.get("/user")
+        self.assertEqual(response.status_code, 200)
+        csrf = test_support.extract_csrf_token(response.text)
+
+        response = self.client.post(
+            "/user",
+            data={
+                "user": self.username,
+                "old_password": self.password,
+                "email": user["email"],
+                "tests_repo": self.tests_repo + "/",
+                "csrf_token": csrf,
+            },
+            follow_redirects=False,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        updated_user = self.rundb.userdb.get_user(self.username)
+        self.assertEqual(updated_user["tests_repo"], self.tests_repo)
 
     def test_user_admin_post_requires_csrf(self):
         target_username = self.signup_username

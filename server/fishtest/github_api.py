@@ -113,6 +113,7 @@ def init(kvstore, actiondb, *, refresh_master_sha=True):
 
 def clear_api_cache():
     _lru_cache.clear()
+    normalize_repo.cache_clear()
 
 
 def save():
@@ -329,6 +330,17 @@ def parse_repo(repo_url):
     return (p[1], p[2])
 
 
+def canonicalize_repo_url(repo_url: str | None) -> str | None:
+    if not repo_url:
+        return repo_url
+
+    parsed = urlparse(repo_url)
+    if not parsed.path.endswith("/"):
+        return repo_url
+
+    return parsed._replace(path=parsed.path.rstrip("/")).geturl()
+
+
 def get_merge_base_commit(
     user1="official-stockfish",
     sha1=None,
@@ -417,8 +429,14 @@ def get_master_repo(
             r = r["parent"]
 
 
-@lru_cache(maxsize=128, expiration=600, refresh=False)
+@lru_cache(
+    maxsize=128,
+    expiration=600,
+    refresh=False,
+    key=lambda f, args, kw: (f.__name__, canonicalize_repo_url(args[0])),
+)
 def normalize_repo(repo):
+    repo = canonicalize_repo_url(repo)
     r = call(
         repo,
         _method="HEAD",
@@ -427,7 +445,7 @@ def normalize_repo(repo):
         _ignore_rate_limit=True,
     )
     r.raise_for_status()
-    return r.url
+    return canonicalize_repo_url(r.url)
 
 
 def compare_branches_url(

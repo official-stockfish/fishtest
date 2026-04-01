@@ -98,6 +98,27 @@ Route notes:
   is present, otherwise renders the full-page template.
 - **OOB**: fragment contains `hx-swap-oob` attributes for multi-element updates.
 
+## Tests Repository URL Contract
+
+The `Tests Repository` field used on `/signup`, `/user`, and `/tests/run`
+accepts a GitHub repository URL with or without a trailing slash.
+
+Server-side behavior:
+
+- validation still accepts either `https://github.com/<user>/<repo>` or
+   `https://github.com/<user>/<repo>/`
+- newly created or updated user profile data is canonicalized to the
+   slash-free form
+- newly created run data uses the slash-free form in
+   `run["args"]["tests_repo"]`
+
+Canonical stored value:
+
+- `https://github.com/<user>/<repo>`
+
+This keeps GitHub compare links and worker download URLs stable even when the
+submitted form value includes a trailing slash.
+
 ## `/tests/view/{id}/detail` live detail contract
 
 The test detail page keeps its live summary and detail data synchronized

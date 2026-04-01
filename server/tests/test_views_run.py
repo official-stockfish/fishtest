@@ -207,6 +207,30 @@ class ValidateFormTests(unittest.TestCase):
         self.assertEqual(data["resolved_base"], BASE_SHA)
         self.assertEqual(data["resolved_new"], NEW_SHA)
 
+    def test_validate_form_canonicalizes_tests_repo_and_updates_user(self):
+        post_data = _valid_post_data()
+        post_data["tests-repo"] = BASE_REPO + "/"
+        request = _RequestStub(post_data=post_data)
+        request.userdb._user["tests_repo"] = BASE_REPO + "/"
+
+        with (
+            mock.patch("fishtest.views_run.gh.normalize_repo", return_value=BASE_REPO),
+            mock.patch(
+                "fishtest.views_run.gh.parse_repo",
+                return_value=("official-stockfish", "Stockfish"),
+            ),
+            mock.patch("fishtest.views_run.gh.get_master_repo", return_value=BASE_REPO),
+            mock.patch(
+                "fishtest.views_run.get_sha",
+                side_effect=[(BASE_SHA, "base"), (NEW_SHA, "new")],
+            ),
+            mock.patch("fishtest.views_run.get_nets", return_value=[]),
+        ):
+            data = validate_form(request)
+
+        self.assertEqual(data["tests_repo"], BASE_REPO)
+        self.assertEqual(request.userdb.saved_users[-1]["tests_repo"], BASE_REPO)
+
     def test_validate_form_rejects_invalid_arch_regex(self):
         post_data = _valid_post_data()
         post_data["checkbox-arch-filter"] = "on"

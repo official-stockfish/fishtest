@@ -7,6 +7,7 @@ detection, username matching, and heap-based merge behavior.
 import unittest
 from datetime import UTC, datetime
 
+from fishtest.util import tests_repo
 from fishtest.views_helpers import (
     _build_query_string,
     _clamp_page_index,
@@ -273,6 +274,26 @@ class IsHxRequestTests(unittest.TestCase):
             "R", (), {"headers": {"HX-Request": "true", "Sec-Fetch-Mode": "cors"}}
         )()
         self.assertTrue(_is_hx_request(request))
+
+
+class TestsRepoHelperTests(unittest.TestCase):
+    def test_tests_repo_returns_canonical_url_for_trailing_slash(self):
+        run = {
+            "args": {"tests_repo": "https://github.com/official-stockfish/Stockfish/"}
+        }
+
+        self.assertEqual(
+            tests_repo(run),
+            "https://github.com/official-stockfish/Stockfish",
+        )
+
+    def test_tests_repo_falls_back_for_empty_legacy_value(self):
+        run = {"args": {"tests_repo": ""}}
+
+        self.assertEqual(
+            tests_repo(run),
+            "https://github.com/official-stockfish/Stockfish",
+        )
 
 
 class PaginationTests(unittest.TestCase):
