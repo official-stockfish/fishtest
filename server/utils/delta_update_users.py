@@ -323,7 +323,10 @@ def main() -> None:
     Reads command-line arguments, processes run deltas, updates user statistics,
     and records the update operation.
     """
-    rundb = RunDb()
+    # This is a one-shot stats rebuild script, not a long-lived primary process.
+    # Use the DB-backed reader so get_machines() sees active workers instead of
+    # relying on the in-memory unfinished-run cache initialized by the web app.
+    rundb = RunDb(is_primary_instance=False)
     deltas = {}
     if len(sys.argv) == 1:
         # No guarantee that the returned natural order will be the insertion order
