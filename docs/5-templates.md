@@ -551,6 +551,9 @@ Behavior notes:
 - `tests.html.j2` forwards the homepage Active-panel first-paint filter state
    through `run_tables_ctx`, including restored checkbox selections, filtered
    count text, and initial hide selectors.
+- `run_tables_ctx` is intentionally lightweight. Unfinished-run rows omit
+   `tasks`, `bad_tasks`, and `args.spsa.param_history`; task detail stays on
+   the detail and tasks routes.
 - Notification button state is not part of `run_tables_ctx` because it is
    derived from browser-local follow state at page load time.
 
@@ -935,6 +938,8 @@ submissions preserve the live table state.
 
 Behavior notes:
 
+- The unfinished-run portion of this fragment uses the same lightweight row
+  shape as `run_tables_ctx`.
 - When homepage workers filters are active, the fragment recomputes the
    `#workers-count` filtered value from the current machine snapshot instead of
    trusting the last cookie-backed filtered count.

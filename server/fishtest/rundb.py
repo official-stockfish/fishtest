@@ -63,7 +63,12 @@ from fishtest.util import (
 )
 from fishtest.workerdb import WorkerDb
 
-_UNFINISHED_RUNS_LIGHTWEIGHT_PROJECTION = {"_id": 1, "tasks": 0}
+_UNFINISHED_RUNS_LIGHTWEIGHT_PROJECTION = {
+    "_id": 1,
+    "tasks": 0,
+    "bad_tasks": 0,
+    "args.spsa.param_history": 0,
+}
 
 _UNFINISHED_RUNS_STATS_PROJECTION = {
     "_id": 1,

@@ -152,6 +152,13 @@ class CreateRunDBTest(unittest.TestCase):
     def test_11_get_unfinished_runs_keeps_default_projection_lightweight(self):
         run_id = self._create_test_run()
         run = self.rundb.get_run(run_id)
+        run["args"]["spsa"] = {
+            "iter": 7,
+            "param_history": [[{"theta": 12.0, "c": 1.5}]],
+        }
+        run["bad_tasks"] = [
+            {"num_games": 0, "stats": {"wins": 0, "draws": 0, "losses": 0}}
+        ]
         run["tasks"][0]["worker_info"] = self.worker_info
         run["tasks"][0]["last_updated"] = datetime.now(UTC)
         run["tasks"][0]["stats"] = {
@@ -168,6 +175,9 @@ class CreateRunDBTest(unittest.TestCase):
         )
 
         self.assertNotIn("tasks", unfinished_run)
+        self.assertNotIn("bad_tasks", unfinished_run)
+        self.assertEqual(unfinished_run["args"]["spsa"]["iter"], 7)
+        self.assertNotIn("param_history", unfinished_run["args"]["spsa"])
 
     def test_12_get_unfinished_runs_for_stats_returns_task_projection(self):
         run_id = self._create_test_run()

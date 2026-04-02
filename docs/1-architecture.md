@@ -250,6 +250,12 @@ stable while htmx still applies the response's out-of-band section updates.
 The tasks table keeps its own conditional `/tests/tasks/{id}` poller because it
 has a separate shell/body + OOB-controls contract.
 
+Run-list and detail polling intentionally use different data shapes. The
+`/tests` and `/tests/user/{username}` run-table path rebuilds from
+`aggregate_unfinished_runs()` and the lightweight unfinished-run query, which
+omits `tasks`, `bad_tasks`, and `args.spsa.param_history`. Detail routes use
+full run data via `get_run()` and the dedicated tasks poller.
+
 **Visibility-aware polling policy.** Every periodic htmx poller follows a
 three-part trigger policy:
 
