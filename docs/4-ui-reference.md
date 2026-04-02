@@ -107,10 +107,8 @@ Server-side behavior:
 
 - validation still accepts either `https://github.com/<user>/<repo>` or
    `https://github.com/<user>/<repo>/`
-- newly created or updated user profile data is canonicalized to the
-   slash-free form
-- newly created run data uses the slash-free form in
-   `run["args"]["tests_repo"]`
+- user profile data is canonicalized to the slash-free form
+- run data uses the slash-free form in `run["args"]["tests_repo"]`
 
 Canonical stored value:
 

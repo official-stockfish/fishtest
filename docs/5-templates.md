@@ -615,7 +615,7 @@ Tests repository contract:
 
 - `tests_repo_value` is rendered from the current GitHub repo value for the
    form
-- trailing-slash input is accepted on submit, but newly stored runs use the
+- trailing-slash input is accepted on submit, but stored runs use the
    slash-free form
 
 ### `tests_stats.html.j2`
