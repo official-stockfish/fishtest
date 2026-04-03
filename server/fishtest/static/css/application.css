@@ -1,4 +1,8 @@
 :root {
+  --bs-font-sans-serif:
+    "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", "Liberation Sans", Arial,
+    sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+    "Noto Color Emoji";
   --bs-link-color-rgb: 0, 128, 2;
   --bs-link-color: rgb(var(--bs-link-color-rgb));
   --bs-link-hover-color-rgb: 95, 153, 96;
@@ -22,6 +26,10 @@
   --tasks-panel-max-height: calc(var(--machines-panel-max-height) + 6rem);
   --machines-skeleton-min-height: 37px;
   --machines-skeleton-max-height: 34.7vh;
+}
+
+body {
+  font-variant-numeric: tabular-nums;
 }
 
 button.notifications {
