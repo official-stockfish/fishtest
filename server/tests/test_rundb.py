@@ -89,6 +89,7 @@ class CreateRunDBTest(unittest.TestCase):
         tc: str = "10+0.01",
         finished: bool = False,
         tests_repo: str = "https://github.com/15408be06cfa0ff6/Stockfish",
+        master_repo: str | None = None,
     ) -> str:
         num_tasks = 4
         num_games = num_tasks * self.chunk_size
@@ -115,6 +116,7 @@ class CreateRunDBTest(unittest.TestCase):
             new_nets=["nn-0000000000a0.nnue", "nn-0000000000a1.nnue"],
             rescheduled_from="653db116cc309ae839563103",
             tests_repo=tests_repo,
+            master_repo=master_repo,
             auto_purge=False,
             username="TestRunDbUser",
             start_time=datetime.now(UTC),
@@ -281,6 +283,18 @@ class CreateRunDBTest(unittest.TestCase):
         self.assertEqual(
             run["args"]["tests_repo"],
             "https://github.com/15408be06cfa0ff6/Stockfish",
+        )
+
+    def test_15_new_run_canonicalizes_master_repo(self):
+        run_id = self._create_test_run(
+            master_repo="https://github.com/official-stockfish/Stockfish/",
+        )
+
+        run = self.rundb.get_run(run_id)
+
+        self.assertEqual(
+            run["args"]["master_repo"],
+            "https://github.com/official-stockfish/Stockfish",
         )
 
     def test_20_update_task(self):

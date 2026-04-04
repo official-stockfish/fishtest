@@ -105,9 +105,10 @@ accepts a GitHub repository URL with or without a trailing slash.
 
 Server-side behavior:
 
-- validation still accepts either `https://github.com/<user>/<repo>` or
+- raw form validation accepts either `https://github.com/<user>/<repo>` or
    `https://github.com/<user>/<repo>/`
 - user profile data is canonicalized to the slash-free form
+- persisted user and run validation requires the slash-free canonical form
 - run data uses the slash-free form in `run["args"]["tests_repo"]`
 
 Canonical stored value:

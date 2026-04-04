@@ -638,8 +638,8 @@ Tests repository contract:
 
 - `tests_repo_value` is rendered from the current GitHub repo value for the
    form
-- trailing-slash input is accepted on submit, but stored runs use the
-   slash-free form
+- trailing-slash input is accepted on submit, but persisted run data is
+  canonicalized and validated as the slash-free form
 
 ### `tests_stats.html.j2`
 
@@ -852,7 +852,7 @@ Tests repository contract:
 
 - `user["tests_repo"]` is persisted as the canonical slash-free GitHub repo URL
 - profile form submissions may include a trailing slash, but stored user data
-   is normalized before save
+   is normalized and validated before save
 
 ### `user_management.html.j2`
 

@@ -622,7 +622,7 @@ class RunDb:
         }
 
         if master_repo is not None:
-            run_args["master_repo"] = master_repo
+            run_args["master_repo"] = gh.canonicalize_repo_url(master_repo)
 
         if arch_filter is not None:
             run_args["arch_filter"] = arch_filter

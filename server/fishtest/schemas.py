@@ -79,8 +79,15 @@ even = div(2, name="even")
 datetime_utc = intersect(datetime, fields({"tzinfo": UTC}))
 gzip_data = magic("application/gzip", name="gzip_data")
 residual_color = set_name(union("green", "yellow", "red"), "residual_color")
+# Accept trailing slash only at raw-input boundaries. Persisted documents use
+# the slash-free canonical form.
+github_repo_input = regex(
+    r"https:\/\/(www\.)?github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/?",
+    "github_repo_input",
+)
 github_repo = regex(
-    r"https:\/\/(www\.)?github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/?", "github_repo"
+    r"https:\/\/(www\.)?github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+",
+    "github_repo",
 )
 ascii = set_name(lambda x: x.isascii(), name="ascii")
 set_option = r"[^\s=]+=[^\s=]+"
@@ -702,7 +709,7 @@ valid_aggregated_data = intersect(
 # about non-validation of runs created with the prior
 # schema.
 
-RUN_VERSION = 23
+RUN_VERSION = 24
 
 runs_schema = intersect(
     {
