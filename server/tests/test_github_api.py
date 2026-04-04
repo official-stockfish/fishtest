@@ -8,10 +8,10 @@ from unittest import mock
 
 import requests
 import test_support
-from vtjson import validate
+from vtjson import ValidationError, validate
 
 import fishtest.github_api as gh
-from fishtest.schemas import books_schema
+from fishtest.schemas import books_schema, github_repo, github_repo_input
 from fishtest.views import get_master_info, get_sha
 
 
@@ -142,6 +142,23 @@ class CreateGitHubApiTest(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.rundb.db.kvstore.drop()
+
+
+class RepoSchemaValidationTests(unittest.TestCase):
+    def test_github_repo_input_accepts_trailing_slash(self):
+        validate(
+            github_repo_input,
+            "https://github.com/official-stockfish/Stockfish/",
+            name="tests_repo",
+        )
+
+    def test_github_repo_rejects_trailing_slash(self):
+        with self.assertRaises(ValidationError):
+            validate(
+                github_repo,
+                "https://github.com/official-stockfish/Stockfish/",
+                name="tests_repo",
+            )
 
 
 class MasterInfoRobustnessTests(unittest.TestCase):

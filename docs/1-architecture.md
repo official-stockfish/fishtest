@@ -325,6 +325,12 @@ in:
 - Domain adapters (run, user, action document validation before MongoDB writes).
 - Form input validation (username format, worker name format).
 
+When raw form input and persisted document data intentionally have different
+contracts, fishtest uses different vtjson schemas for those boundaries.
+Raw-input schemas may be broader than the persisted-data schema, while the
+persisted schema describes the canonical stored form validated before MongoDB
+writes.
+
 No Pydantic models are used anywhere in the codebase.
 
 ## Framework usage: FastAPI as a thin wrapper

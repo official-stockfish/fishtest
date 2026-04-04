@@ -86,7 +86,7 @@ from fishtest.http.ui_pipeline import apply_http_cache
 from fishtest.run_cache import Prio
 from fishtest.schemas import (
     RUN_VERSION,
-    github_repo,
+    github_repo_input,
     is_undecided,
     runs_schema,
     short_worker_name,
@@ -670,7 +670,7 @@ def signup(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # noqa:
         errors.append("Error! Alphanumeric username required")
 
     try:
-        validate(union(github_repo, ""), tests_repo, "tests_repo")
+        validate(union(github_repo_input, ""), tests_repo, "tests_repo")
     except ValidationError as e:
         errors.append(f"Error! Invalid tests repo {tests_repo}: {e!s}")
 
@@ -1632,7 +1632,7 @@ def user(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # noqa: C
                     return home(request)
 
             try:
-                validate(union(github_repo, ""), tests_repo, "tests_repo")
+                validate(union(github_repo_input, ""), tests_repo, "tests_repo")
             except ValidationError as e:
                 request.session.flash(
                     f"Error! Invalid test repo {tests_repo}: {e!s}",
