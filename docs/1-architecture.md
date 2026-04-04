@@ -331,6 +331,9 @@ Raw-input schemas may be broader than the persisted-data schema, while the
 persisted schema describes the canonical stored form validated before MongoDB
 writes.
 
+For contributor-facing vtjson rules and schema-change guidance, see
+[7-development.md](7-development.md).
+
 No Pydantic models are used anywhere in the codebase.
 
 ## Framework usage: FastAPI as a thin wrapper
