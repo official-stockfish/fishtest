@@ -174,6 +174,62 @@ class TestTestsViewDetail(unittest.TestCase):
         self.assertNotIn('id="spsa_history_plot" style=', response.text)
         self.assertNotIn("const spsaData =", response.text)
 
+    def test_tests_view_page_renders_query_free_open_graph_metadata(self):
+        run_id = self._create_run()
+
+        response = self.client.get(f"/tests/view/{run_id}?follow=1&show_task=7")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            test_support.extract_meta_content(
+                response.text,
+                property_name="og:title",
+            ),
+            "400 games - master vs master | Stockfish Testing",
+        )
+        self.assertEqual(
+            test_support.extract_meta_content(
+                response.text,
+                property_name="og:url",
+            ),
+            f"http://testserver/tests/view/{run_id}",
+        )
+        description = test_support.extract_meta_content(
+            response.text,
+            property_name="og:description",
+        )
+        self.assertIn("Total:", description)
+        self.assertIn("\n", description)
+        self.assertNotIn("```", description)
+
+    def test_tests_view_page_open_graph_description_is_multiline_and_keeps_ptnml(
+        self,
+    ):
+        run_id = self._create_run()
+        run = self.rundb.get_run(run_id)
+        run["results"] = {
+            "wins": 22,
+            "losses": 18,
+            "draws": 20,
+            "pentanomial": [3, 5, 14, 6, 2],
+        }
+        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+
+        response = self.client.get(f"/tests/view/{run_id}")
+
+        self.assertEqual(response.status_code, 200)
+        description = test_support.extract_meta_content(
+            response.text,
+            property_name="og:description",
+        )
+        self.assertIn("\n", description)
+        self.assertNotIn("```", description)
+        self.assertIn("Elo:", description)
+        self.assertIn("nElo:", description)
+        self.assertIn("+/-", description)
+        self.assertIn("Ptnml(0-2):", description)
+        self.assertNotIn("&plusmn;", description)
+
     def test_tests_view_detail_polls_pending_then_paused_then_204(self):
         run_id = self._create_run(approved=False)
 

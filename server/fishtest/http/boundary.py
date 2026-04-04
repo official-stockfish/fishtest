@@ -28,6 +28,7 @@ from fishtest.http.dependencies import (
     get_userdb,
 )
 from fishtest.http.jinja import static_url
+from fishtest.http.open_graph import default_open_graph
 from fishtest.http.settings import SESSION_REMEMBER_MAX_AGE_SECONDS
 
 if TYPE_CHECKING:
@@ -273,8 +274,10 @@ def build_template_context(
             "warning": _pop_flash_list("warning"),
             "info": _pop_flash_list(),
         },
+        "open_graph": default_open_graph(str(request.url)),
         "pending_users_count": pending_users_count,
         "static_url": static_url,
+        "theme_color": None,
         "theme": request.cookies.get("theme", ""),
         "urls": {
             "home": "/",

@@ -163,3 +163,26 @@ def extract_csrf_token(html: str) -> str:
     if not match:
         raise AssertionError("Could not find csrf-token meta tag")
     return match.group(1)
+
+
+def extract_meta_content(
+    html: str,
+    *,
+    property_name: str | None = None,
+    meta_name: str | None = None,
+) -> str:
+    if (property_name is None) == (meta_name is None):
+        raise ValueError("Provide exactly one of property_name or meta_name")
+
+    attr_name = "property" if property_name is not None else "name"
+    attr_value = property_name if property_name is not None else meta_name
+    assert attr_value is not None
+
+    pattern = re.compile(
+        rf"<meta\b(?=[^>]*\b{attr_name}=\"{re.escape(attr_value)}\")(?=[^>]*\bcontent=\"([^\"]*)\")[^>]*>",
+        re.IGNORECASE,
+    )
+    match = pattern.search(html)
+    if not match:
+        raise AssertionError(f"Could not find meta tag for {attr_name}={attr_value}")
+    return match.group(1)

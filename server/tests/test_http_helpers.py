@@ -39,6 +39,30 @@ class TemplateRequestStaticUrlTests(unittest.TestCase):
                 jinja._STATIC_DIR = original_dir
                 jinja._static_file_token.cache_clear()
 
+
+class MetaExtractionTests(unittest.TestCase):
+    def test_extract_meta_content_accepts_content_before_property(self):
+        html = '<meta content="description" property="og:description">'
+
+        self.assertEqual(
+            test_support.extract_meta_content(
+                html,
+                property_name="og:description",
+            ),
+            "description",
+        )
+
+    def test_extract_meta_content_accepts_content_before_name(self):
+        html = '<meta content="#ffcc00" name="theme-color">'
+
+        self.assertEqual(
+            test_support.extract_meta_content(
+                html,
+                meta_name="theme-color",
+            ),
+            "#ffcc00",
+        )
+
     def test_static_url_token_is_urlsafe(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             static_dir = Path(tmpdir) / "static"

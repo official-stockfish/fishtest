@@ -52,6 +52,7 @@ from fishtest.http.dependencies import (
     get_userdb,
     get_workerdb,
 )
+from fishtest.http.open_graph import build_tests_view_open_graph
 from fishtest.http.settings import (
     ACTIONS_PAGE_SIZE,
     CONTRIBUTORS_MAX_ALL,
@@ -95,6 +96,7 @@ from fishtest.util import (
     email_valid,
     format_date,
     format_group,
+    format_results,
     format_time_ago,
     get_chi2,
     get_tc_ratio,
@@ -3464,7 +3466,15 @@ def tests_view(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # n
     if run is None:
         raise StarletteHTTPException(status_code=404)
     follow = 1 if "follow" in request.params else 0
+    page_title = get_page_title(run)
+    results_info = format_results(run)
     detail_context = _build_tests_view_detail_context(request, run)
+    open_graph, theme_color = build_tests_view_open_graph(
+        host_url=_host_url(request),
+        run=run,
+        page_title=page_title,
+        results_info=results_info,
+    )
 
     chi2 = detail_context["chi2"]
 
@@ -3602,7 +3612,9 @@ def tests_view(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # n
 
     return {
         **detail_context,
-        "page_title": get_page_title(run),
+        "open_graph": open_graph,
+        "page_title": page_title,
+        "results_info": results_info,
         "tasks_shown": tasks_table_context["show_task"] != -1
         or request.cookies.get("tasks_state") == "Hide",
         "show_task": tasks_table_context["show_task"],
@@ -3620,6 +3632,7 @@ def tests_view(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # n
         "same_user": same_user,
         "pt_info": request.rundb.pt_info,
         "notes": notes,
+        "theme_color": theme_color,
         "warnings": warnings,
         "use_3dot_diff": use_3dot_diff,
         "allow_github_api_calls": allow_github_api_calls(),
