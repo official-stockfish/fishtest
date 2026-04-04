@@ -106,6 +106,36 @@ For a focused server-only loop when MongoDB is already running:
 
 See [0-README.md](0-README.md) for pre-commit hooks and CI workflows.
 
+## vtjson rules
+
+Use vtjson for all server-side validation.
+
+Core rules:
+
+- Define persisted document schemas in `server/fishtest/schemas.py`.
+- Treat persisted vtjson schemas as both documentation and the final server-side
+    gate for stored data.
+- Keep vtjson as the only server-side data validation layer. Do not introduce
+    Pydantic models or a second schema system for the same contracts.
+- Use different schemas when raw input and persisted data intentionally allow
+    different values.
+- Canonicalize benign user input in Python before validating the persisted
+    document shape.
+- Keep field-specific contracts in the relevant reference page instead of
+    freezing them into this guide.
+- Name schemas by boundary or purpose, not by convenience.
+- Update `RUN_VERSION` when the stored run schema contract changes.
+- Add focused tests for both the schema rule and the changed behavior.
+- Run the relevant lint checks and test suite after schema changes.
+
+Boundary split pattern:
+
+- a route may accept a broader raw-input value than the stored document allows
+- canonicalization narrows the value before the persisted document is validated
+    and written
+- the persisted schema describes the final stored form, not every accepted
+    input variant
+
 ## nginx development config
 
 For local multi-instance testing with nginx, use the development-only HTTP
