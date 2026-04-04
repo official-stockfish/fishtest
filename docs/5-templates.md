@@ -73,11 +73,31 @@ Every template receives these keys from `build_template_context()`:
 | `request` | `Request` | Starlette request object (for `url_for`) |
 | `csrf_token` | string | CSRF token for forms and meta tags |
 | `current_user` | `{"username": str}` or `None` | Authenticated user |
+| `open_graph` | dict | Server-owned Open Graph fields rendered by `base.html.j2` |
 | `theme` | string | `"dark"`, `"light"`, or empty (from cookie) |
+| `theme_color` | string or `None` | Optional `theme-color` meta value rendered by `base.html.j2` |
 | `pending_users_count` | int | Pending-user count used by the sidebar `Users` link |
 | `static_url` | callable | `static_url(path)` function |
 | `flash` | dict | `{"error": [...], "warning": [...], "info": [...]}` |
 | `urls` | dict | Navigation URLs (see below) |
+
+## Page metadata contract
+
+`base.html.j2` renders the page head from shared context.
+
+Full-page handlers may override these keys:
+
+- `open_graph`: dictionary with `site_name`, `type`, `title`, `description`,
+  and `url`
+- `theme_color`: CSS color string or `None`
+
+For `/tests/view/{id}`, `open_graph['description']` is plain multi-line text so
+Discord link previews preserve the run summary layout, including pentanomial
+lines when present, without shipping literal backticks.
+
+Fragment-only templates do not own page-head metadata. The `/tests/view/{id}`
+detail page follows this rule: the full page renders the head tags, while the
+live `/tests/view/{id}/detail` fragment updates body content only.
 
 ### Navigation URLs (`urls` dict)
 
@@ -219,7 +239,7 @@ The live template inventory contains **53** Jinja templates:
 
 | Template | Purpose |
 |----------|---------|
-| `base.html.j2` | Base layout (navbar, footer, asset loading, htmx CDN, pending-user nav poll target) |
+| `base.html.j2` | Base layout (navbar, footer, page-head metadata, asset loading, htmx CDN, pending-user nav poll target) |
 
 ### Full-page templates (extend `base.html.j2`)
 

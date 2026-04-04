@@ -55,8 +55,8 @@ but generic `OPTIONS` is not part of the UI route contract and returns `405`.
 | `/tests/approve` | POST | `tests_approve` | -- | CSRF, primary |
 | `/tests/purge` | POST | `tests_purge` | -- | CSRF, primary |
 | `/tests/delete` | POST | `tests_delete` | -- | CSRF, primary |
-| `/tests/view/{id}` | GET | `tests_view` | `tests_view.html.j2` | Full detail page; unfinished runs poll the merged detail fragment endpoint and the dedicated tasks endpoint |
-| `/tests/view/{id}/detail` | GET | `tests_view_detail` | `tests_view_detail_fragment.html.j2` | Fragment-only; OOB refresh for ELO, run status, active-worker totals, detail, time, chi-square, and the retained SPSA data payload |
+| `/tests/view/{id}` | GET | `tests_view` | `tests_view.html.j2` | Full detail page; renders server-owned Open Graph metadata with a query-free canonical URL and a Discord-oriented multi-line `og:description`; unfinished runs poll the merged detail fragment endpoint and the dedicated tasks endpoint |
+| `/tests/view/{id}/detail` | GET | `tests_view_detail` | `tests_view_detail_fragment.html.j2` | Fragment-only; no page-head metadata; OOB refresh for ELO, run status, active-worker totals, detail, time, chi-square, and the retained SPSA data payload |
 | `/tests/live_elo/{id}` | GET | `tests_live_elo` | `tests_live_elo.html.j2` | Live Elo page + dual-scale gauge |
 | `/tests/stats/{id}` | GET | `tests_stats` | `tests_stats.html.j2` | HX: `tests_stats_content_fragment.html.j2`; active runs poll with the dedicated stats-page interval and visibility-aware refresh |
 | `/tests/tasks/{id}` | GET | `tests_tasks` | `tasks_content_fragment.html.j2` | Fragment-only; updates the scrolling task table body and refreshes fixed controls/pagination OOB, with server-side sorting for every visible task column, one combined worker/info search filter, and 25-row pagination |
@@ -138,6 +138,18 @@ The response updates these regions out of band:
 - `#tests-view-time`
 - `#tests-view-stats` for non-SPSA runs
 - `#spsa-data-<run_id>` for SPSA runs
+
+Page-head metadata contract:
+
+- The full `/tests/view/{id}` page owns `<title>`, Open Graph tags, and the
+   optional `theme-color` meta tag.
+- The `/tests/view/{id}` `og:description` is emitted as plain multi-line text
+   so Discord previews preserve the run-summary layout without literal
+   backticks.
+- The fragment-only `/tests/view/{id}/detail` endpoint never renders or updates
+   page-head metadata.
+- Shared links and social preview clients must fetch the full page URL, not the
+   fragment URL.
 
 For SPSA runs, the detail fragment updates the existing
 `#spsa-data-<run_id>` node in place. The page-owned `spsa.js` controller keeps

@@ -168,8 +168,8 @@ def _nelo_pentanomial_details(results5: list[int]) -> dict:
     }
 
 
-def nelo_pentanomial_summary(run: dict) -> Markup | None:
-    """Build a summary line for Elo pentanomial results."""
+def _nelo_pentanomial_summary_values(run: dict) -> tuple[float, float, float] | None:
+    """Return numeric values for the pentanomial summary line."""
     if not is_elo_pentanomial_run(run):
         return None
 
@@ -184,6 +184,29 @@ def nelo_pentanomial_summary(run: dict) -> Markup | None:
         pairs_ratio = float("inf")
     else:
         pairs_ratio = float("nan")
+
+    return nelo5, nelo5_delta, pairs_ratio
+
+
+def nelo_pentanomial_summary_text(run: dict) -> str | None:
+    """Build a plain-text summary line for Elo pentanomial results."""
+    summary_values = _nelo_pentanomial_summary_values(run)
+    if summary_values is None:
+        return None
+
+    nelo5, nelo5_delta, pairs_ratio = summary_values
+    return (
+        f"nElo: {nelo5:.2f} +/- {nelo5_delta:.1f} (95%) PairsRatio: {pairs_ratio:.2f}"
+    )
+
+
+def nelo_pentanomial_summary(run: dict) -> Markup | None:
+    """Build a summary line for Elo pentanomial results."""
+    summary_values = _nelo_pentanomial_summary_values(run)
+    if summary_values is None:
+        return None
+
+    nelo5, nelo5_delta, pairs_ratio = summary_values
 
     # The output intentionally contains the HTML entity &plusmn;.
     return Markup(  # noqa: S704
