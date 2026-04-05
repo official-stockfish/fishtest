@@ -180,7 +180,7 @@ function setTheme(theme) {
     darkLink?.remove();
   }
   document.cookie = `theme=${theme}; path=/; max-age=${
-    30 * 24 * 60 * 60
+    10 * 365 * 24 * 60 * 60
   }; SameSite=Lax`;
 }
 
