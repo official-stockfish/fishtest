@@ -18,7 +18,7 @@ from fishtest.schemas import api_access_schema, api_schema, gzip_data
 from fishtest.stats.stat_util import SPRT_elo, get_elo
 from fishtest.util import strip_run, worker_name
 
-WORKER_VERSION = 316
+WORKER_VERSION = 317
 
 WORKER_API_PATHS = {
     "/api/request_version",
