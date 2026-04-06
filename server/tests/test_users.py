@@ -8,7 +8,7 @@ import test_support
 from ui_user_test_case import UiUserTestCase
 from vtjson import ValidationError
 
-from fishtest.http.settings import SESSION_REMEMBER_MAX_AGE_SECONDS
+from fishtest.http.settings import SESSION_REMEMBER_ME_MAX_AGE_SECONDS
 from fishtest.util import PASSWORD_MAX_LENGTH
 
 
@@ -242,7 +242,7 @@ class TestUsers(UiUserTestCase):
         self._assert_no_store_headers(response)
         cookie = response.headers.get("set-cookie", "")
         self.assertIn("fishtest_session=", cookie)
-        self.assertIn(f"Max-Age={SESSION_REMEMBER_MAX_AGE_SECONDS}", cookie)
+        self.assertIn(f"Max-Age={SESSION_REMEMBER_ME_MAX_AGE_SECONDS}", cookie)
 
     def test_login_duplicate_remember_fields_keep_persistent_cookie(self):
         response = self.client.get("/login")
@@ -266,7 +266,7 @@ class TestUsers(UiUserTestCase):
         self.assertEqual(response.status_code, 302)
         cookie = response.headers.get("set-cookie", "")
         self.assertIn("fishtest_session=", cookie)
-        self.assertIn(f"Max-Age={SESSION_REMEMBER_MAX_AGE_SECONDS}", cookie)
+        self.assertIn(f"Max-Age={SESSION_REMEMBER_ME_MAX_AGE_SECONDS}", cookie)
 
     def test_login_explicit_non_remember_sets_session_cookie(self):
         response = self.client.get("/login")

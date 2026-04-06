@@ -215,10 +215,13 @@ Design rules:
    page-specific CSS minimum width.
 - **`autocomplete="off"`** on all search/filter text inputs to prevent
   browser autofill from interfering with htmx-driven filtering.
-- **Cookie max-age** must use `PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS` from
+- **Cookie max-age** must use `UI_STATE_COOKIE_MAX_AGE_SECONDS` from
   `settings.py`, never hardcoded values. Client-side cookies set via
   `hx-on::before-request` handlers use the Jinja variable
-  `{{ cookie_max_age }}` backed by this constant.
+   `{{ cookie_max_age }}` backed by this constant. This is the single max-age
+   owner for non-auth UI cookies; templates should expose
+   `cookies.ui_state_max_age` or a page-specific `cookie_max_age` context
+   instead of introducing alternate aliases or literals.
 
 Known gaps documented for future iterations:
 
@@ -921,7 +924,7 @@ Same context as `actions.html.j2` (`actions`, `visible_actions`, `num_actions`, 
 |-----|------|
 | `active_runs` | list (run dicts for the Active panel) |
 | `active_run_filters` | dict or `None` (parsed cookie state) |
-| `cookies.persistent_ui_max_age` | int (cookie max-age seconds) |
+| `cookies.ui_state_max_age` | int (cookie max-age seconds) |
 
 Renders the faceted filter panel (SPRT/SPSA/NumGames, STC/LTC, ST/SMP)
 above the Active runs table. Server-side rendering of initial checkbox

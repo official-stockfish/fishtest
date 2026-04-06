@@ -1,8 +1,6 @@
 {% set active_run_filters = active_run_filters if active_run_filters is defined and active_run_filters else none %}
 {% set enabled = active_run_filters.enabled_by_dim if active_run_filters else {} %}
-<div id="active-run-filters"
-     class="mb-2"
-     data-filter-cookie-max-age="{{ cookies.persistent_ui_max_age }}">
+<div id="active-run-filters" class="mb-2" data-filter-cookie-max-age="{{ cookies.ui_state_max_age }}">
   <button type="button"
           id="active-filter-toggle"
           class="active-filter-toggle"

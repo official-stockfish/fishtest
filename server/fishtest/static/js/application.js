@@ -179,9 +179,7 @@ function setTheme(theme) {
     document.documentElement.style.colorScheme = "";
     darkLink?.remove();
   }
-  document.cookie = `theme=${theme}; path=/; max-age=${
-    10 * 365 * 24 * 60 * 60
-  }; SameSite=Lax`;
+  setStateCookie("theme", theme, window.uiStateCookieMaxAgeSeconds);
 }
 
 function supportsNotifications() {

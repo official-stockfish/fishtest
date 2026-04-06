@@ -304,17 +304,24 @@
   {% endif %}
 
   <h4>
-      <a
-        id="tasks-button" class="btn btn-sm btn-light border"
-        data-bs-toggle="collapse" href="#tasks" role="button" aria-expanded="false"
-        aria-controls="tasks"
-      >
-        {{ "Hide" if tasks_shown else "Show" }}
-      </a>
+    <a
+      id="tasks-button"
+      class="btn btn-sm btn-light border"
+      data-toggle-cookie-max-age="{{ cookies.ui_state_max_age }}"
+      data-bs-toggle="collapse"
+      href="#tasks"
+      role="button"
+      aria-expanded="false"
+      aria-controls="tasks"
+    >
+      {{ "Hide" if tasks_shown else "Show" }}
+    </a>
     Tasks <span id="tasks-totals">{{ tasks_totals }}</span>
   </h4>
-  <section id="tasks"
-       class="collapse {{ "show" if tasks_shown else "" }}">
+  <section
+    id="tasks"
+    class="collapse {{ "show" if tasks_shown else "" }}"
+  >
     <form
       id="tasks-filters"
       class="row g-2 align-items-end mb-2"
@@ -543,9 +550,11 @@
     btn?.addEventListener("click", () => {
       const active = btn.textContent.trim() === "Hide";
       btn.textContent = active ? "Show" : "Hide";
-      document.cookie =
-        "tasks_state=" + btn.textContent.trim() +
-        "; path=/; max-age={{ 60 * 60 }}; SameSite=Lax";
+      setStateCookie(
+        "tasks_state",
+        btn.textContent.trim(),
+        btn.dataset.toggleCookieMaxAge,
+      );
       if (!active && tasksContainer && tasksContainer.dataset.tasksLoaded !== "1") {
         tasksContainer.dataset.tasksLoaded = "loading";
         htmx.trigger(tasksContainer, "tasks:load");

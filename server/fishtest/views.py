@@ -59,14 +59,14 @@ from fishtest.http.settings import (
     CONTRIBUTORS_PAGE_SIZE,
     NNS_MAX_ALL,
     NNS_PAGE_SIZE,
-    PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS,
-    SESSION_REMEMBER_MAX_AGE_SECONDS,
+    SESSION_REMEMBER_ME_MAX_AGE_SECONDS,
     TASKS_MAX_ALL,
     TASKS_PAGE_SIZE,
     UI_FORM_MAX_FIELDS,
     UI_FORM_MAX_FILES,
     UI_FORM_MAX_PART_SIZE_BYTES,
     UI_HTTP_TIMEOUT_SECONDS,
+    UI_STATE_COOKIE_MAX_AGE_SECONDS,
     USER_MANAGEMENT_MAX_ALL,
     USER_MANAGEMENT_PAGE_SIZE,
     WORKERS_MAX_ALL,
@@ -602,8 +602,7 @@ def login(request: _ViewContext) -> dict[str, Any] | RedirectResponse:
         token = request.userdb.authenticate(username, password)
         if "error" not in token:
             if stay_logged_in:
-                # Session persists for a year after login
-                remember(request, username, max_age=SESSION_REMEMBER_MAX_AGE_SECONDS)
+                remember(request, username, max_age=SESSION_REMEMBER_ME_MAX_AGE_SECONDS)
             else:
                 # Session ends when the browser is closed
                 remember(request, username)
@@ -1361,7 +1360,7 @@ def nns(request: _ViewContext) -> dict[str, Any] | Response:  # noqa: C901, PLR0
         },
         "network_name_filter": network_name,
         "user_filter": user,
-        "cookie_max_age": PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS,
+        "cookie_max_age": UI_STATE_COOKIE_MAX_AGE_SECONDS,
     }
 
     return (
@@ -3098,7 +3097,7 @@ def _set_tasks_cookies(
     request: _ViewContext,
     state: dict[str, Any],
 ) -> None:
-    cookie_max_age = PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS
+    cookie_max_age = UI_STATE_COOKIE_MAX_AGE_SECONDS
     _set_tasks_cookie(request, "tasks_sort", str(state["sort"]), cookie_max_age)
     _set_tasks_cookie(request, "tasks_order", str(state["order"]), cookie_max_age)
     _set_tasks_cookie(request, "tasks_view", str(state["view"]), cookie_max_age)

@@ -1,6 +1,6 @@
 """Build the `/tests/machines` filtering and pagination contract.
 
-Normalize rows, apply filtering and sorting, manage persistent UI cookies, and
+Normalize rows, apply filtering and sorting, manage UI-state cookies, and
 support the ``tests_machines`` entry point.
 """
 
@@ -12,7 +12,7 @@ from urllib.parse import quote, unquote
 
 from fishtest.http.settings import (
     MACHINES_PAGE_SIZE,
-    PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS,
+    UI_STATE_COOKIE_MAX_AGE_SECONDS,
 )
 from fishtest.util import format_time_ago, worker_name
 from fishtest.views_helpers import (
@@ -261,7 +261,7 @@ def _set_machine_cookies(  # noqa: PLR0913
     my_workers: bool,
     filtered_count: int,
 ) -> None:
-    cookie_max_age = PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS
+    cookie_max_age = UI_STATE_COOKIE_MAX_AGE_SECONDS
     _set_machine_cookie(request, "machines_sort", sort_param, cookie_max_age)
     _set_machine_cookie(request, "machines_order", order_param, cookie_max_age)
     _set_machine_cookie(request, "machines_page", str(page), cookie_max_age)
