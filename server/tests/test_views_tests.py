@@ -7,6 +7,8 @@ from unittest.mock import patch
 
 from ui_user_test_case import UiUserTestCase
 
+from fishtest.http.settings import UI_STATE_COOKIE_MAX_AGE_SECONDS
+
 
 class TestTestsHomepage(UiUserTestCase):
     username = "TestHomepageUser"
@@ -253,7 +255,10 @@ class TestTestsHomepage(UiUserTestCase):
         self.assertIn('id="machines_order" name="order" value="asc"', homepage.text)
         self.assertIn('id="machines_page" name="page" value="1"', homepage.text)
         self.assertIn("checked", homepage.text)
-        self.assertIn('data-toggle-cookie-max-age="', homepage.text)
+        self.assertIn(
+            f'data-toggle-cookie-max-age="{UI_STATE_COOKIE_MAX_AGE_SECONDS}"',
+            homepage.text,
+        )
         self.assertIn("static/js/tests_homepage.js", homepage.text)
         self.assertNotIn("document.activeElement?.id !== 'machines_q'", homepage.text)
         self.assertIn(
@@ -645,7 +650,10 @@ class TestTestsHomepage(UiUserTestCase):
         self.assertIn('id="tests-user-filters"', response.text)
         self.assertIn('id="notification_', response.text)
         self.assertIn('data-toggle-cookie-name="', response.text)
-        self.assertIn('data-toggle-cookie-max-age="', response.text)
+        self.assertIn(
+            f'data-toggle-cookie-max-age="{UI_STATE_COOKIE_MAX_AGE_SECONDS}"',
+            response.text,
+        )
 
     def test_notifications_js_reinitializes_after_htmx_swaps(self):
         js_path = (

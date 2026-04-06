@@ -15,13 +15,18 @@
 
 <h4>
 {% if toggle %}
-  <a id="{{ toggle }}-button" class="btn btn-sm btn-light border"
-  data-bs-toggle="collapse" href="#{{ toggle }}" role="button"
-  aria-expanded="{{ 'true' if toggle_state == 'Hide' else 'false' }}"
-      aria-controls="{{ toggle }}"
-      data-toggle-cookie-name="{{ cookie_name }}"
-      data-toggle-cookie-max-age="{{ 60 * 60 * 24 * 365 * 10 }}">
-  {{ 'Hide' if toggle_state == 'Hide' else 'Show' }}
+  <a
+    id="{{ toggle }}-button"
+    class="btn btn-sm btn-light border"
+    data-bs-toggle="collapse"
+    href="#{{ toggle }}"
+    role="button"
+    aria-expanded="{{ 'true' if toggle_state == 'Hide' else 'false' }}"
+    aria-controls="{{ toggle }}"
+    data-toggle-cookie-name="{{ cookie_name }}"
+    data-toggle-cookie-max-age="{{ cookies.ui_state_max_age }}"
+  >
+    {{ 'Hide' if toggle_state == 'Hide' else 'Show' }}
   </a>
 {% endif %}
 {% if header is not none and count is not none %}

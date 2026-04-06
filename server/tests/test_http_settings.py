@@ -6,9 +6,9 @@ from unittest import mock
 
 from fishtest.http.settings import (
     HTMX_INPUT_CHANGED_DELAY_MS,
-    PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS,
     TASK_SEMAPHORE_SIZE,
     THREADPOOL_TOKENS,
+    UI_STATE_COOKIE_MAX_AGE_SECONDS,
     AppSettings,
     default_static_dir,
     env_int,
@@ -73,4 +73,7 @@ class SettingsContractTests(unittest.TestCase):
     def test_runtime_limits_keep_headroom_for_http_work(self):
         self.assertGreater(THREADPOOL_TOKENS, TASK_SEMAPHORE_SIZE)
         self.assertGreater(HTMX_INPUT_CHANGED_DELAY_MS, 0)
-        self.assertGreater(PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS, 0)
+        self.assertEqual(
+            UI_STATE_COOKIE_MAX_AGE_SECONDS,
+            60 * 60 * 24 * 400,
+        )

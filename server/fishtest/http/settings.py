@@ -36,11 +36,11 @@ POLL_PENDING_USERS_NAV_S: int = 10
 HTMX_INPUT_CHANGED_DELAY_MS: int = 350
 
 # Shared cookie and session policy for the UI and HTTP boundary.
-SESSION_MAX_COOKIE_BYTES: int = 3800
-PANEL_TOGGLE_COOKIE_MAX_AGE_SECONDS: int = 60 * 60
-THEME_COOKIE_MAX_AGE_SECONDS: int = 60 * 60 * 24 * 30
-PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS: int = 60 * 60 * 24 * 30
-SESSION_REMEMBER_MAX_AGE_SECONDS: int = 60 * 60 * 24 * 365
+# Keep session cookie values below the practical 4 KB browser limit, leaving
+# room for the cookie name and attributes.
+SESSION_COOKIE_VALUE_MAX_BYTES: int = 3800
+SESSION_REMEMBER_ME_MAX_AGE_SECONDS: int = 60 * 60 * 24 * 400
+UI_STATE_COOKIE_MAX_AGE_SECONDS: int = 60 * 60 * 24 * 400
 
 # Template and UI view defaults.
 WORKERS_PAGE_SIZE: int = 25

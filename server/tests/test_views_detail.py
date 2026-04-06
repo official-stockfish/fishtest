@@ -7,6 +7,7 @@ from pathlib import Path
 import test_support
 from ui_user_test_case import UiUserTestCase
 
+from fishtest.http.settings import UI_STATE_COOKIE_MAX_AGE_SECONDS
 from fishtest.run_cache import Prio
 
 
@@ -201,6 +202,22 @@ class TestTestsViewDetail(unittest.TestCase):
         self.assertIn("Total:", description)
         self.assertIn("\n", description)
         self.assertNotIn("```", description)
+
+    def test_tests_view_page_uses_shared_ui_cookie_max_age_for_theme_and_tasks(self):
+        run_id = self._create_run()
+
+        response = self.client.get(f"/tests/view/{run_id}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            f"window.uiStateCookieMaxAgeSeconds = {UI_STATE_COOKIE_MAX_AGE_SECONDS};",
+            response.text,
+        )
+        self.assertIn('id="tasks-button"', response.text)
+        self.assertIn(
+            f'data-toggle-cookie-max-age="{UI_STATE_COOKIE_MAX_AGE_SECONDS}"',
+            response.text,
+        )
 
     def test_tests_view_page_open_graph_description_is_multiline_and_keeps_ptnml(
         self,

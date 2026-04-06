@@ -24,8 +24,6 @@ from fishtest.http.settings import (
     FINISHED_FILTER_MAX_COUNT_ANON,
     FINISHED_FILTER_MAX_COUNT_AUTH,
     HTMX_INPUT_CHANGED_DELAY_MS,
-    PANEL_TOGGLE_COOKIE_MAX_AGE_SECONDS,
-    PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS,
     POLL_LIVE_ELO_S,
     POLL_MACHINES_HOMEPAGE_S,
     POLL_PENDING_USERS_NAV_S,
@@ -35,7 +33,7 @@ from fishtest.http.settings import (
     POLL_TESTS_RUN_TABLES_S,
     POLL_TESTS_STATS_S,
     POLL_TESTS_VIEW_DETAIL_S,
-    THEME_COOKIE_MAX_AGE_SECONDS,
+    UI_STATE_COOKIE_MAX_AGE_SECONDS,
 )
 from fishtest.util import get_tc_ratio as _get_tc_ratio
 
@@ -162,10 +160,8 @@ def default_environment() -> Environment:
             "filter_max_count_auth": FINISHED_FILTER_MAX_COUNT_AUTH,
         },
         "cookies": {
-            "contributors_findme_max_age": PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS,
-            "panel_toggle_max_age": PANEL_TOGGLE_COOKIE_MAX_AGE_SECONDS,
-            "persistent_ui_max_age": PERSISTENT_UI_COOKIE_MAX_AGE_SECONDS,
-            "theme_max_age": THEME_COOKIE_MAX_AGE_SECONDS,
+            "contributors_findme_max_age": UI_STATE_COOKIE_MAX_AGE_SECONDS,
+            "ui_state_max_age": UI_STATE_COOKIE_MAX_AGE_SECONDS,
         },
     }
     env.globals.update(globals_map)

@@ -30,6 +30,7 @@
 
     <script>
       const darkThemeHash = {{ static_url('fishtest:static/css/theme.dark.css') | tojson }};
+      window.uiStateCookieMaxAgeSeconds = {{ cookies.ui_state_max_age | tojson }};
       try {
         document.documentElement.dataset.githubRateLimitLow =
           localStorage.getItem("fishtest_github_rate_limit_low") === "1"

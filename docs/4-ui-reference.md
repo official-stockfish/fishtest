@@ -340,6 +340,9 @@ The UI uses two cookie families with different ownership and lifecycles:
    `FishtestSessionMiddleware`.
 - **UI state cookies** -- lightweight browser-side preferences such as `theme`,
    `contributors_findme`, `machines_state`, and the homepage workers filters.
+   These non-auth UI cookies use the shared `400 days` max-age policy from
+   `UI_STATE_COOKIE_MAX_AGE_SECONDS` and stay separate from the signed
+   session payload.
 
 ### Session cookie lifecycle
 
@@ -364,7 +367,8 @@ They are written by page-specific JS or server helpers because they do not
 carry authentication state:
 
 - `theme` is written by `static/js/application.js` and controls light/dark
-   presentation.
+   presentation. The same cookie is read during full-page renders so the server
+   can emit the matching theme before first paint.
 - `contributors_findme` is written by `static/js/contributors.js` and preserves
    rank-jump mode across contributors pages.
 - `machines_state` is written by `static/js/tests_homepage.js` and preserves
@@ -548,9 +552,9 @@ Behavior notes:
    only when the effective filter state is truly `All`.
 - The panel header count updates to show both total and filtered counts
   when a filter is active: "Active - N (M) tests".
-- Filter state is persisted in the `active_run_filters` cookie (30-day,
-  `path=/`, `SameSite=Lax`).  When all checkboxes are checked the cookie
-  is cleared.
+- Filter state is persisted in the `active_run_filters` cookie using the shared
+   long-lived UI-cookie policy (`path=/`, `SameSite=Lax`). When all checkboxes
+   are checked the cookie is cleared.
 - On page reload, `/tests` restores the cookie-backed filter state in the first
    HTML response, including the checkbox state, filtered count text, and initial
    row-hide CSS. Hidden categories therefore do not flash briefly before the
