@@ -56,7 +56,6 @@ class TestTestsHomepage(UiUserTestCase):
         aggregate_result = ({"pending": [], "active": []}, 0.0, 0, 0, 0, 2)
 
         self.client.cookies.set("machines_q", "windows")
-        self.client.cookies.set("machines_filtered_count", "99")
         self.client.cookies.set("machines_state", "Show")
 
         with (
@@ -118,7 +117,6 @@ class TestTestsHomepage(UiUserTestCase):
         aggregate_result = (runs, 0.0, 0, 0, 0, 2)
 
         self.client.cookies.set("machines_q", "windows")
-        self.client.cookies.set("machines_filtered_count", "99")
 
         with (
             patch.object(

@@ -2268,19 +2268,19 @@ def tests(request: _ViewContext) -> dict[str, Any] | Response:
     )
     machines_filters_active = machine_filters["filters_active"]
     if machines_filters_active:
-        machines_filtered_count = _filtered_machine_count(
+        matching_machine_count = _filtered_machine_count(
             request,
             query_filter=machine_filters["query_filter"],
             my_workers=machine_filters["my_workers"],
             authenticated_username=authenticated_user,
         )
     else:
-        machines_filtered_count = last_tests["machines_count"]
+        matching_machine_count = last_tests["machines_count"]
     workers_count = _workers_count_label(
         last_tests["machines_count"],
         query_filter=machine_filters["query_filter"],
         my_workers=machine_filters["my_workers"],
-        filtered_count=machines_filtered_count,
+        filtered_count=matching_machine_count,
     )
 
     return {

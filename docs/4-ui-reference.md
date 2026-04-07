@@ -376,8 +376,8 @@ carry authentication state:
    triggers an immediate `/tests/machines` refresh instead of waiting for the
    next periodic poll.
 - `machines_sort`, `machines_order`, `machines_page`, `machines_q`,
-   `machines_my_workers`, and `machines_filtered_count` are written server-side
-   by `views.py` when `/tests/machines` normalizes the current filter state.
+   and `machines_my_workers` are written server-side by `views_machines.py`
+   when `/tests/machines` normalizes the current filter state.
 - `active_run_filters` is written by `static/js/active_run_filters.js` and
    preserves the Active runs filter selection across the three dimensions
    (test type, time control, and threads).

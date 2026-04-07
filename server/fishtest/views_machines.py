@@ -259,19 +259,12 @@ def _set_machine_cookies(  # noqa: PLR0913
     page: int,
     query_filter: str,
     my_workers: bool,
-    filtered_count: int,
 ) -> None:
     cookie_max_age = UI_STATE_COOKIE_MAX_AGE_SECONDS
     _set_machine_cookie(request, "machines_sort", sort_param, cookie_max_age)
     _set_machine_cookie(request, "machines_order", order_param, cookie_max_age)
     _set_machine_cookie(request, "machines_page", str(page), cookie_max_age)
     _set_machine_cookie(request, "machines_q", query_filter, cookie_max_age)
-    _set_machine_cookie(
-        request,
-        "machines_filtered_count",
-        str(filtered_count),
-        cookie_max_age,
-    )
     _set_machine_cookie(
         request,
         "machines_my_workers",
@@ -366,7 +359,6 @@ def tests_machines(request: Any) -> dict[str, Any]:  # noqa: ANN401
         page=page_idx + 1,
         query_filter=query_filter,
         my_workers=my_workers,
-        filtered_count=num_machines,
     )
 
     workers_count = _workers_count_label(
@@ -381,7 +373,6 @@ def tests_machines(request: Any) -> dict[str, Any]:  # noqa: ANN401
         "machines": machines,
         "machines_count": num_machines,
         "machines_total_count": total_machines,
-        "machines_filtered_count": num_machines,
         "machines_filters_active": machine_filters["filters_active"],
         "workers_count_text": workers_count,
         "machines_page_size": _MACHINES_PAGE_SIZE,
