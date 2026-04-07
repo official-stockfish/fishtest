@@ -24,7 +24,7 @@ BASE_PYTHON_VERSION = [3, 12, 1]
 BASE_WORKER_VERSION = 321
 TARGET_PAGE_NUMBER = 2
 EXTRA_MACHINE_COUNT = 2
-EXPECTED_MACHINE_COOKIE_COUNT = 6
+EXPECTED_MACHINE_COOKIE_COUNT = 5
 
 
 def _machine_doc(
@@ -177,6 +177,12 @@ class TestsMachinesEntryPointTests(unittest.TestCase):
             value for key, value in request.response_headerlist if key == "Set-Cookie"
         ]
         self.assertEqual(len(cookie_headers), EXPECTED_MACHINE_COOKIE_COUNT)
+        self.assertTrue(
+            all(
+                "machines_filtered_count=" not in cookie_header
+                for cookie_header in cookie_headers
+            )
+        )
         for cookie_header in cookie_headers:
             self.assertIn(
                 f"max-age={UI_STATE_COOKIE_MAX_AGE_SECONDS}",
