@@ -70,7 +70,7 @@ but generic `OPTIONS` is not part of the UI route contract and returns `405`.
 | `/user/{username}` | GET, POST | `user` | `user.html.j2` | CSRF |
 | `/user` | GET, POST | `user` | `user.html.j2` | CSRF |
 | `/user_management` | GET | `user_management` | `user_management.html.j2` | HX: `user_management_content_fragment` |
-| `/user_management/pending_count` | GET | `user_management_pending_count` | `pending_users_nav_fragment.html.j2` | Fragment-only sidebar poll |
+| `/user_management/pending_count` | GET | `user_management_pending_count` | `pending_users_nav_fragment.html.j2` | Fragment-only sidebar poll; returns the `Users` link fragment directly on GET |
 | `/workers/{worker_name}` | GET, POST | `workers` | `workers.html.j2` | CSRF; HX: `workers_content_fragment` |
 | `/upload` | GET, POST | `upload` | `nn_upload.html.j2` | CSRF |
 | `/nns` | GET | `nns` | `nns.html.j2` | HX: `nns_content_fragment` |
@@ -82,13 +82,14 @@ but generic `OPTIONS` is not part of the UI route contract and returns `405`.
 
 The sidebar contains two visibility-aware status links:
 
-- `Users` is server-owned state and refreshes through the dedicated
-   `/user_management/pending_count` htmx fragment endpoint inside the stable
-   `#pending-users-nav` wrapper.
+- `Users` is rendered inside the stable `#pending-users-nav` wrapper in
+   `base.html.j2`. Full pages include the current count server-side, and the
+   same wrapper mounts a visibility-aware htmx poll to
+   `/user_management/pending_count`.
 - `GitHub Rate Limits` uses separate cadences: `POLL_RATE_LIMITS_GITHUB_S` for
-   the browser-side client-token polling that runs from shared JavaScript on
-   any page and updates the sidebar link everywhere plus the `/rate_limits`
-   client row when that page is open, and `POLL_RATE_LIMITS_SERVER_S` for the
+   the browser-side GitHub rate-limit poll in shared JavaScript, which updates
+   the sidebar link on full pages and also updates the `/rate_limits` client
+   row when that page is open, and `POLL_RATE_LIMITS_SERVER_S` for the
    `/rate_limits/server` htmx row. The sidebar link itself is rendered directly
    in `base.html.j2`.
 
