@@ -52,7 +52,10 @@ from fishtest.http.dependencies import (
     get_userdb,
     get_workerdb,
 )
-from fishtest.http.open_graph import build_tests_view_open_graph
+from fishtest.http.open_graph import (
+    build_actions_open_graph,
+    build_tests_view_open_graph,
+)
 from fishtest.http.settings import (
     ACTIONS_PAGE_SIZE,
     CONTRIBUTORS_MAX_ALL,
@@ -1482,10 +1485,19 @@ def actions(request: _ViewContext) -> dict[str, Any] | RedirectResponse | Respon
     result = _actions_impl(request, page_size=ACTIONS_PAGE_SIZE)
     if isinstance(result, RedirectResponse):
         return result
-    return (
-        _render_hx_fragment(request, "actions_content_fragment.html.j2", result)
-        or result
+
+    fragment = _render_hx_fragment(request, "actions_content_fragment.html.j2", result)
+    if fragment is not None:
+        return fragment
+
+    result["open_graph"] = build_actions_open_graph(
+        page_url=f"{_host_url(request)}{_path_qs(request)}",
+        actions=result["actions"],
+        num_actions=result["num_actions"],
+        filters=result["filters"],
+        run_id_filter=result["run_id_filter"],
     )
+    return result
 
 
 # === Users ===
@@ -3540,7 +3552,7 @@ def tests_view(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # n
     results_info = format_results(run)
     detail_context = _build_tests_view_detail_context(request, run)
     open_graph, theme_color = build_tests_view_open_graph(
-        host_url=_host_url(request),
+        page_url=f"{_host_url(request)}/tests/view/{run['_id']}",
         run=run,
         page_title=page_title,
         results_info=results_info,

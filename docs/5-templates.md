@@ -95,9 +95,18 @@ For `/tests/view/{id}`, `open_graph['description']` is plain multi-line text so
 Discord link previews preserve the run summary layout, including pentanomial
 lines when present, without shipping literal backticks.
 
+For `/actions`, the full page overrides `open_graph` with the first visible
+action row. Its `og:url` keeps the current query string because filters,
+timeline cursors, and explicit `max_count` values define the shared events-log
+slice.
+
 Fragment-only templates do not own page-head metadata. The `/tests/view/{id}`
 detail page follows this rule: the full page renders the head tags, while the
 live `/tests/view/{id}/detail` fragment updates body content only.
+
+`actions_content_fragment.html.j2` follows the same rule: the full `/actions`
+page owns the Open Graph tags, while the htmx fragment updates only
+`#actions-content`.
 
 ### Navigation URLs (`urls` dict)
 
@@ -353,6 +362,10 @@ Each action row:
 | `target_name` | string |
 | `target_url` | string or None |
 | `message` | string |
+
+Full-page `/actions` responses may override the shared `open_graph` metadata
+with a summary of the first visible action row. htmx fragment responses do not
+render page-head tags.
 
 ### `contributors.html.j2`
 

@@ -2,6 +2,7 @@
 
 import unittest
 from datetime import UTC, datetime
+from html import unescape
 
 import test_support
 from fastapi.responses import RedirectResponse
@@ -410,6 +411,70 @@ class TestActionsViews(unittest.TestCase):
         self.assertEqual(fragment_response.status_code, 200)
         self.assertIn("Bestmove warning", fragment_response.text)
         self.assertNotIn("Generic server log", fragment_response.text)
+
+    def test_actions_full_page_renders_query_preserving_open_graph_preview(self):
+        event_time = datetime(2026, 4, 8, 19, 5, 44, tzinfo=UTC).timestamp()
+        self.rundb.actiondb.actions.insert_one(
+            {
+                "action": "failed_task",
+                "username": "TestActionsRouteUser",
+                "worker": "h23-worker-16cores-zz-1a2b",
+                "run_id": self.run_id,
+                "run": "h23-actions-run-abcdef0",
+                "task_id": 7,
+                "message": "clang++ link failed after profile-build",
+                "time": event_time,
+            },
+        )
+        self.rundb.actiondb.actions.insert_one(
+            {
+                "action": "failed_task",
+                "username": "TestActionsRouteUser",
+                "worker": "h23-worker-16cores-zz-1a2b",
+                "run_id": self.run_id,
+                "run": "h23-actions-run-abcdef0",
+                "task_id": 8,
+                "message": "second matching action",
+                "time": event_time - 60,
+            },
+        )
+
+        response = self.client.get(
+            f"/actions?user=TestActionsRouteUser&action=failed_task&run_id={self.run_id}&max_count=2"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            test_support.extract_meta_content(
+                response.text,
+                property_name="og:title",
+            ),
+            "failed_task on h23-actions-run-abcdef0/7 | Stockfish Testing",
+        )
+        self.assertEqual(
+            unescape(
+                test_support.extract_meta_content(
+                    response.text,
+                    property_name="og:url",
+                ),
+            ),
+            "http://testserver/actions?user=TestActionsRouteUser&action=failed_task"
+            f"&run_id={self.run_id}&max_count=2",
+        )
+
+        og_description = test_support.extract_meta_content(
+            response.text,
+            property_name="og:description",
+        )
+        self.assertNotIn("Most recent of", og_description)
+        self.assertIn("1 of 2 matching actions.", og_description)
+        self.assertIn("Time: 26-04-08 19:05:44", og_description)
+        self.assertIn("Event: failed_task", og_description)
+        self.assertIn("Source: h23-worker-16cores-zz-1a2b", og_description)
+        self.assertIn("Target: h23-actions-run-abcdef0/7", og_description)
+        self.assertIn(
+            "Comment: clang++ link failed after profile-build", og_description
+        )
 
     def test_actions_username_filter_matches_partial_substrings(self):
         self.rundb.actiondb.insert_action(
