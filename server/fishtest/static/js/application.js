@@ -11,6 +11,7 @@ let broadcastDispatch = {
   handleModalFocusManagement();
   protectForms();
   handlePanelToggleCookies();
+  handleCheckboxUiCookies();
   handleApplicationLogout();
   handleApplicationThemes();
   handleLoginRememberMePreference();
@@ -78,15 +79,31 @@ function protectForms() {
   });
 }
 
-// Gets from the browser the value of a saved cookie
-function getCookie(cookieName) {
-  return document.cookie
+// Gets from the browser the value of a saved cookie.
+function readUiCookie(cookieName) {
+  if (!cookieName) {
+    return "";
+  }
+
+  const key = `${cookieName}=`;
+  const cookiePart = document.cookie
     .split(";")
-    .map((cookie) => cookie.trim().split("="))
-    .find(([name]) => name === cookieName)?.[1];
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(key));
+
+  if (!cookiePart) {
+    return "";
+  }
+
+  const rawValue = cookiePart.slice(key.length);
+  try {
+    return decodeURIComponent(rawValue);
+  } catch {
+    return rawValue;
+  }
 }
 
-function setStateCookie(name, value, maxAgeSeconds) {
+function writeUiCookie(name, value, maxAgeSeconds) {
   if (!name) {
     return;
   }
@@ -95,7 +112,46 @@ function setStateCookie(name, value, maxAgeSeconds) {
     return;
   }
   // Keep UI state cookies available across all pages that reuse the same panels.
-  document.cookie = `${name}=${value}; path=/; max-age=${maxAge}; SameSite=Lax`;
+  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${maxAge}; SameSite=Lax`;
+}
+
+function clearUiCookie(name) {
+  if (!name) {
+    return;
+  }
+  document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax`;
+}
+
+function syncCheckboxUiCookie(checkbox) {
+  if (!(checkbox instanceof HTMLInputElement) || checkbox.type !== "checkbox") {
+    return;
+  }
+
+  const cookieName = checkbox.dataset.uiCookieName;
+  if (!cookieName) {
+    return;
+  }
+
+  const maxAge =
+    checkbox.dataset.uiCookieMaxAge || window.uiStateCookieMaxAgeSeconds;
+  const checkedValue = checkbox.dataset.uiCookieCheckedValue || "true";
+  const uncheckedValue = checkbox.dataset.uiCookieUncheckedValue || "false";
+
+  writeUiCookie(
+    cookieName,
+    checkbox.checked ? checkedValue : uncheckedValue,
+    maxAge,
+  );
+}
+
+function handleCheckboxUiCookies() {
+  document.addEventListener(
+    "change",
+    (event) => {
+      syncCheckboxUiCookie(event.target);
+    },
+    true,
+  );
 }
 
 function handlePanelToggleCookies() {
@@ -114,7 +170,7 @@ function handlePanelToggleCookies() {
     const nextState = active ? "Show" : "Hide";
 
     button.textContent = nextState;
-    setStateCookie(cookieName, nextState, maxAge);
+    writeUiCookie(cookieName, nextState, maxAge);
   });
 }
 
@@ -129,7 +185,7 @@ function handleLoginRememberMePreference() {
     checkbox.dataset.rememberMeCookieMaxAge ||
     window.uiStateCookieMaxAgeSeconds;
   checkbox.addEventListener("change", () => {
-    setStateCookie(cookieName, checkbox.checked ? "1" : "0", maxAge);
+    writeUiCookie(cookieName, checkbox.checked ? "1" : "0", maxAge);
   });
 }
 
@@ -144,7 +200,7 @@ function formatBytes(bytes) {
 }
 
 function handleApplicationThemes() {
-  if (!getCookie("theme")) {
+  if (!readUiCookie("theme")) {
     setTheme(mediaTheme());
   }
 
@@ -195,7 +251,7 @@ function setTheme(theme) {
     document.documentElement.style.colorScheme = "";
     darkLink?.remove();
   }
-  setStateCookie("theme", theme, window.uiStateCookieMaxAgeSeconds);
+  writeUiCookie("theme", theme, window.uiStateCookieMaxAgeSeconds);
 }
 
 function supportsNotifications() {

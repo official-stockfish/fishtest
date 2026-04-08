@@ -15,16 +15,7 @@
     if (!Number.isFinite(cookieMaxAge) || cookieMaxAge <= 0) {
       return;
     }
-    document.cookie = `${cookieName}=${value}; path=/; max-age=${cookieMaxAge}; SameSite=Lax`;
-  };
-
-  const getCookie = (name) => {
-    const key = `${name}=`;
-    const match = document.cookie
-      .split(";")
-      .map((part) => part.trim())
-      .find((part) => part.startsWith(key));
-    return match ? match.slice(key.length) : "";
+    writeUiCookie(cookieName, value, cookieMaxAge);
   };
 
   const centerHighlightedContributor = () => {
@@ -44,7 +35,7 @@
   ) {
     const params = new URLSearchParams(window.location.search);
     const findmeFromUrl = params.get("findme") === "1";
-    const remembered = getCookie(cookieName);
+    const remembered = readUiCookie(cookieName);
 
     if (remembered === "false") {
       findme.checked = false;

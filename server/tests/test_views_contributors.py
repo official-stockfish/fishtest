@@ -473,7 +473,9 @@ class TestViewsContributors(UiUserTestCase):
         )
         js_source = js_path.read_text(encoding="utf-8")
 
-        self.assertIn("path=/; max-age=${cookieMaxAge}; SameSite=Lax", js_source)
+        self.assertIn("writeUiCookie(cookieName, value, cookieMaxAge);", js_source)
+        self.assertIn("readUiCookie(cookieName)", js_source)
+        self.assertNotIn("document.cookie =", js_source)
         self.assertNotIn(
             "path=/contributors; max-age=${cookieMaxAge}; SameSite=Lax",
             js_source,

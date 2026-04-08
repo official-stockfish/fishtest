@@ -216,12 +216,12 @@ Design rules:
 - **`autocomplete="off"`** on all search/filter text inputs to prevent
   browser autofill from interfering with htmx-driven filtering.
 - **Cookie max-age** must use `UI_STATE_COOKIE_MAX_AGE_SECONDS` from
-  `settings.py`, never hardcoded values. Client-side cookies set via
-  `hx-on::before-request` handlers use the Jinja variable
-   `{{ cookie_max_age }}` backed by this constant. This is the single max-age
-   owner for non-auth UI cookies; templates should expose
-   `cookies.ui_state_max_age` or a page-specific `cookie_max_age` context
-   instead of introducing alternate aliases or literals.
+   `settings.py`, never hardcoded values. Client-side cookies must flow through
+   the shared `writeUiCookie()` helper in `application.js` or through template
+   `data-*` attributes consumed by that helper. This is the single max-age owner
+   for non-auth UI cookies; templates should expose `cookies.ui_state_max_age`
+   or a page-specific `cookie_max_age` context instead of introducing alternate
+   aliases or literals.
 
 Known gaps documented for future iterations:
 
@@ -404,8 +404,9 @@ Behavior notes:
    later visits.
 - `login.html.j2` defaults `remember_me_cookie_name` to `login_remember_me`
    because the same template is also used for generic UI 403 rendering.
-- `application.js` mirrors checkbox changes into the same UI-state cookie, and
-   `POST /login` refreshes it server-side for progressive enhancement.
+- `application.js` mirrors checkbox changes into the same UI-state cookie via
+   `writeUiCookie()`, and `POST /login` refreshes it server-side for
+   progressive enhancement.
 
 ### `machines_fragment.html.j2`
 
@@ -457,6 +458,9 @@ Behavior notes:
    htmx requests, while submit remains available as a non-JS fallback.
 - `network_name` and `user` are literal case-insensitive substring filters;
    regex metacharacters are escaped before reaching Mongo.
+- `nns_content_fragment.html.j2` pairs a hidden `master_only=0` field with the
+   checkbox `value="1"` and `data-ui-cookie-*` attributes, so unchecked htmx
+   requests and cookie persistence stay synchronized without inline JS.
 - The page shell owns the heading and filter form; the summary cards,
   explanatory copy, view toggle, pagination, and table live in the content
   fragment.

@@ -390,7 +390,7 @@
 ></script>
 
 <script>
-  let cookieTheme = getCookie("theme");
+  let cookieTheme = readUiCookie("theme");
   const currentTime = new Date().getTime();
   const oneDayAgo = currentTime - (24 * 60 * 60 * 1000); // 24 hours ago in milliseconds
 
@@ -550,7 +550,7 @@
     btn?.addEventListener("click", () => {
       const active = btn.textContent.trim() === "Hide";
       btn.textContent = active ? "Show" : "Hide";
-      setStateCookie(
+      writeUiCookie(
         "tasks_state",
         btn.textContent.trim(),
         btn.dataset.toggleCookieMaxAge,

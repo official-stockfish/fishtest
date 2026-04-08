@@ -8,11 +8,19 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any
-from urllib.parse import quote, unquote
 
 from fishtest.http.settings import (
     MACHINES_PAGE_SIZE,
     UI_STATE_COOKIE_MAX_AGE_SECONDS,
+)
+from fishtest.http.ui_cookies import (
+    MACHINES_MY_WORKERS_COOKIE_NAME,
+    MACHINES_ORDER_COOKIE_NAME,
+    MACHINES_PAGE_COOKIE_NAME,
+    MACHINES_QUERY_COOKIE_NAME,
+    MACHINES_SORT_COOKIE_NAME,
+    append_ui_cookie,
+    read_cookie_text,
 )
 from fishtest.util import format_time_ago, worker_name
 from fishtest.views_helpers import (
@@ -133,7 +141,7 @@ def _machine_filter_state(
 ) -> dict[str, Any]:
     query_filter = query_source.get(query_key, "")
     if use_cookies:
-        query_filter = unquote(str(query_filter))
+        query_filter = read_cookie_text(query_source, query_key)
     query_filter = str(query_filter).strip()
 
     my_workers = _is_truthy_param(query_source.get(my_workers_key, ""))
@@ -236,21 +244,6 @@ def _build_machines_query_params(
     )
 
 
-def _set_machine_cookie(
-    request: Any,  # noqa: ANN401
-    name: str,
-    value: str,
-    max_age_seconds: int,
-) -> None:
-    encoded = quote(str(value), safe="")
-    request.response_headerlist.append(
-        (
-            "Set-Cookie",
-            f"{name}={encoded}; path=/; max-age={max_age_seconds}; SameSite=Lax",
-        ),
-    )
-
-
 def _set_machine_cookies(  # noqa: PLR0913
     request: Any,  # noqa: ANN401
     *,
@@ -261,15 +254,35 @@ def _set_machine_cookies(  # noqa: PLR0913
     my_workers: bool,
 ) -> None:
     cookie_max_age = UI_STATE_COOKIE_MAX_AGE_SECONDS
-    _set_machine_cookie(request, "machines_sort", sort_param, cookie_max_age)
-    _set_machine_cookie(request, "machines_order", order_param, cookie_max_age)
-    _set_machine_cookie(request, "machines_page", str(page), cookie_max_age)
-    _set_machine_cookie(request, "machines_q", query_filter, cookie_max_age)
-    _set_machine_cookie(
+    append_ui_cookie(
         request,
-        "machines_my_workers",
+        MACHINES_SORT_COOKIE_NAME,
+        sort_param,
+        max_age_seconds=cookie_max_age,
+    )
+    append_ui_cookie(
+        request,
+        MACHINES_ORDER_COOKIE_NAME,
+        order_param,
+        max_age_seconds=cookie_max_age,
+    )
+    append_ui_cookie(
+        request,
+        MACHINES_PAGE_COOKIE_NAME,
+        str(page),
+        max_age_seconds=cookie_max_age,
+    )
+    append_ui_cookie(
+        request,
+        MACHINES_QUERY_COOKIE_NAME,
+        query_filter,
+        max_age_seconds=cookie_max_age,
+    )
+    append_ui_cookie(
+        request,
+        MACHINES_MY_WORKERS_COOKIE_NAME,
         "1" if my_workers else "0",
-        cookie_max_age,
+        max_age_seconds=cookie_max_age,
     )
 
 

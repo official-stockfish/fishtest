@@ -6,7 +6,10 @@ from datetime import UTC, datetime
 import test_support
 from vtjson import ValidationError
 
-from fishtest.http.settings import HTMX_INPUT_CHANGED_DELAY_MS
+from fishtest.http.settings import (
+    HTMX_INPUT_CHANGED_DELAY_MS,
+    UI_STATE_COOKIE_MAX_AGE_SECONDS,
+)
 
 
 def show(mc):
@@ -107,9 +110,41 @@ class TestNNViews(unittest.TestCase):
         )
         self.assertNotIn(">Search</button>", response.text)
         self.assertIn('type="search"', response.text)
-        self.assertIn("hx-on::before-request", response.text)
-        self.assertIn("path=/;", response.text)
+        self.assertIn('type="hidden" name="master_only" value="0"', response.text)
+        self.assertIn('data-ui-cookie-name="master_only"', response.text)
+        self.assertIn(
+            f'data-ui-cookie-max-age="{UI_STATE_COOKIE_MAX_AGE_SECONDS}"',
+            response.text,
+        )
+        self.assertNotIn("hx-on::before-request", response.text)
+        self.assertNotIn("document.cookie =", response.text)
         self.assertNotIn('getElementById("search_nn").addEventListener', response.text)
+
+    def test_nns_master_only_cookie_fallback_filters_results(self):
+        docs = [
+            {
+                "name": "nn-h16-cookie-master.nnue",
+                "user": "CookieUploader",
+                "downloads": 8,
+                "is_master": True,
+            },
+            {
+                "name": "nn-h16-cookie-other.nnue",
+                "user": "CookieUploader",
+                "downloads": 1,
+                "is_master": False,
+            },
+        ]
+        self.rundb.nndb.insert_many(docs)
+
+        response = self.client.get(
+            "/nns?network_name=nn-h16-cookie&view=all",
+            headers={"cookie": "master_only=true"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("nn-h16-cookie-master.nnue", response.text)
+        self.assertNotIn("nn-h16-cookie-other.nnue", response.text)
 
     def test_nns_server_side_search_hx_fragment(self):
         hit_name = "nn-h16-hit.nnue"
