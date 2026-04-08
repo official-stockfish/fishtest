@@ -18,7 +18,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, TypedDict
-from urllib.parse import quote, unquote, urlencode
+from urllib.parse import quote, urlencode
 
 import bson
 import regex
@@ -82,6 +82,26 @@ from fishtest.http.template_helpers import (
     tests_run_setup,
 )
 from fishtest.http.template_renderer import render_template_to_response
+from fishtest.http.ui_cookies import (
+    ACTIVE_RUN_FILTERS_COOKIE_NAME,
+    LOGIN_REMEMBER_ME_COOKIE_NAME,
+    MACHINES_MY_WORKERS_COOKIE_NAME,
+    MACHINES_ORDER_COOKIE_NAME,
+    MACHINES_PAGE_COOKIE_NAME,
+    MACHINES_QUERY_COOKIE_NAME,
+    MACHINES_SORT_COOKIE_NAME,
+    MACHINES_STATE_COOKIE_NAME,
+    MASTER_ONLY_COOKIE_NAME,
+    TASKS_ORDER_COOKIE_NAME,
+    TASKS_QUERY_COOKIE_NAME,
+    TASKS_SORT_COOKIE_NAME,
+    TASKS_STATE_COOKIE_NAME,
+    TASKS_VIEW_COOKIE_NAME,
+    append_ui_cookie,
+    read_cookie_bool,
+    read_cookie_text,
+    read_cookie_toggle_state,
+)
 from fishtest.http.ui_pipeline import apply_http_cache
 from fishtest.run_cache import Prio
 from fishtest.schemas import (
@@ -166,7 +186,6 @@ _MAX_NETWORK_SIZE_BYTES = 200_000_000
 _THROUGHPUT_NORMAL_LIMIT = 100
 _MIN_BOOK_EXITS = 100_000
 _RUN_AGE_GITHUB_API_MAX_DAYS = 30
-_LOGIN_REMEMBER_ME_COOKIE_NAME = "login_remember_me"
 _LOGIN_REMEMBER_ME_TRUE_VALUES = frozenset({"1", "true", "on", "yes"})
 _LOGIN_REMEMBER_ME_FALSE_VALUES = frozenset({"0", "false", "off", "no"})
 
@@ -301,7 +320,7 @@ def _build_active_run_filter_context(
     active_runs: list[dict],
 ) -> _ActiveRunFilterContext:
     enabled_by_dim = _parse_active_run_filter_cookie(
-        request.cookies.get("active_run_filters", ""),
+        read_cookie_text(request, ACTIVE_RUN_FILTERS_COOKIE_NAME),
     )
     hidden_selectors: list[str] = []
     style_text = ""
@@ -571,24 +590,8 @@ def ensure_logged_in(request: _ViewContext) -> str | RedirectResponse:
     return userid
 
 
-def _set_ui_state_cookie(
-    request: _ViewContext,
-    name: str,
-    value: str,
-    max_age_seconds: int,
-) -> None:
-    cookie_value = (
-        f"{name}={quote(value, safe='')}; path=/; max-age={max_age_seconds}; "
-        "SameSite=Lax"
-    )
-    # Keep duplicate Set-Cookie headers intact so UI-state cookies can coexist
-    # with the signed session cookie on the same response.
-    request.response_headerlist.append(("Set-Cookie", cookie_value))
-
-
 def _login_remember_me_checked(request: _ViewContext) -> bool:
-    raw_value = str(request.cookies.get(_LOGIN_REMEMBER_ME_COOKIE_NAME, ""))
-    cookie_value = raw_value.strip().lower()
+    cookie_value = read_cookie_text(request, LOGIN_REMEMBER_ME_COOKIE_NAME).lower()
     if cookie_value in _LOGIN_REMEMBER_ME_FALSE_VALUES:
         return False
     if cookie_value in _LOGIN_REMEMBER_ME_TRUE_VALUES:
@@ -596,7 +599,7 @@ def _login_remember_me_checked(request: _ViewContext) -> bool:
     return True
 
 
-def _login_remember_me_checked_from_form(post_data: Any) -> bool:
+def _login_remember_me_checked_from_form(post_data: object) -> bool:
     submitted_values: list[str] = []
     getlist = getattr(post_data, "getlist", None)
     if callable(getlist):
@@ -604,7 +607,8 @@ def _login_remember_me_checked_from_form(post_data: Any) -> bool:
             str(value).strip().lower() for value in getlist("stay_logged_in")
         ]
     else:
-        raw_value = post_data.get("stay_logged_in")
+        get = getattr(post_data, "get", None)
+        raw_value = get("stay_logged_in") if callable(get) else None
         if raw_value is not None:
             submitted_values = [str(raw_value).strip().lower()]
 
@@ -621,11 +625,11 @@ def _set_login_remember_me_cookie(
     *,
     remember_me_checked: bool,
 ) -> None:
-    _set_ui_state_cookie(
+    append_ui_cookie(
         request,
-        _LOGIN_REMEMBER_ME_COOKIE_NAME,
+        LOGIN_REMEMBER_ME_COOKIE_NAME,
         "1" if remember_me_checked else "0",
-        UI_STATE_COOKIE_MAX_AGE_SECONDS,
+        max_age_seconds=UI_STATE_COOKIE_MAX_AGE_SECONDS,
     )
 
 
@@ -671,7 +675,7 @@ def login(request: _ViewContext) -> dict[str, Any] | RedirectResponse:
         request.session.flash(message, "error")
     return {
         "remember_me_checked": remember_me_checked,
-        "remember_me_cookie_name": _LOGIN_REMEMBER_ME_COOKIE_NAME,
+        "remember_me_cookie_name": LOGIN_REMEMBER_ME_COOKIE_NAME,
     }
 
 
@@ -1285,11 +1289,19 @@ def nns(request: _ViewContext) -> dict[str, Any] | Response:  # noqa: C901, PLR0
             return value
         return str(value).strip().lower() in {"1", "true", "on", "yes"}
 
-    master_only_param = request.params.get("master_only")
-    if master_only_param is None:
-        master_only = _truthy(request.cookies.get("master_only", "false"))
+    master_only_values: list[Any] = []
+    getlist = getattr(request.params, "getlist", None)
+    if callable(getlist):
+        master_only_values = getlist("master_only")
     else:
-        master_only = _truthy(master_only_param)
+        master_only_param = request.params.get("master_only")
+        if master_only_param is not None:
+            master_only_values = [master_only_param]
+
+    if master_only_values:
+        master_only = any(_truthy(value) for value in master_only_values)
+    else:
+        master_only = read_cookie_bool(request, MASTER_ONLY_COOKIE_NAME)
 
     page_idx = 0
     page_param = request.params.get("page", "")
@@ -1991,7 +2003,10 @@ def _build_toggle_states(
     request: _ViewContext,
     toggle_names: list[str],
 ) -> dict[str, str]:
-    return {name: request.cookies.get(f"{name}_state", "Show") for name in toggle_names}
+    return {
+        name: read_cookie_toggle_state(request, f"{name}_state")
+        for name in toggle_names
+    }
 
 
 def _is_tests_run_tables_live_request(request: _ViewContext) -> bool:
@@ -2290,25 +2305,25 @@ def tests(request: _ViewContext) -> dict[str, Any] | Response:
 
     authenticated_user = request.authenticated_userid
 
-    machines_sort = request.cookies.get("machines_sort", "").strip().lower()
+    machines_sort = read_cookie_text(request, MACHINES_SORT_COOKIE_NAME).lower()
     if machines_sort not in _MACHINES_SORT_MAP:
         machines_sort = _MACHINES_DEFAULT_SORT
 
     _, machines_default_reverse = _MACHINES_SORT_MAP[machines_sort]
-    machines_order = request.cookies.get("machines_order", "").strip().lower()
+    machines_order = read_cookie_text(request, MACHINES_ORDER_COOKIE_NAME).lower()
     if machines_order not in {"asc", "desc"}:
         machines_order = "desc" if machines_default_reverse else "asc"
 
-    machines_q = unquote(request.cookies.get("machines_q", ""))
+    machines_q = read_cookie_text(request, MACHINES_QUERY_COOKIE_NAME)
 
-    machines_page_raw = request.cookies.get("machines_page", "")
+    machines_page_raw = read_cookie_text(request, MACHINES_PAGE_COOKIE_NAME)
     if machines_page_raw.isdigit() and int(machines_page_raw) >= 1:
         machines_page = int(machines_page_raw)
     else:
         machines_page = 1
 
     machines_my_workers = _is_truthy_param(
-        request.cookies.get("machines_my_workers", ""),
+        read_cookie_text(request, MACHINES_MY_WORKERS_COOKIE_NAME),
     )
     if not authenticated_user:
         machines_my_workers = False
@@ -2339,7 +2354,11 @@ def tests(request: _ViewContext) -> dict[str, Any] | Response:
 
     return {
         **last_tests,
-        "machines_shown": request.cookies.get("machines_state") == "Hide",
+        "machines_shown": read_cookie_toggle_state(
+            request,
+            MACHINES_STATE_COOKIE_NAME,
+        )
+        == "Hide",
         "workers_count_text": workers_count,
         "machines_sort": machines_sort,
         "machines_order": machines_order,
@@ -2964,10 +2983,6 @@ _TASKS_PAGE_SIZE = TASKS_PAGE_SIZE
 _TASKS_MAX_ALL = TASKS_MAX_ALL
 
 
-def _tasks_cookie_value(request: _ViewContext, name: str) -> str:
-    return unquote(str(request.cookies.get(name, ""))).strip()
-
-
 def _parse_show_task_param(request: _ViewContext) -> int:
     try:
         show_task = int(request.params.get("show_task", -1))
@@ -2984,7 +2999,7 @@ def _task_filter_value(
 ) -> str:
     raw_value = request.params.get(param_name)
     if raw_value is None:
-        raw_value = _tasks_cookie_value(request, cookie_name)
+        raw_value = read_cookie_text(request, cookie_name)
     return str(raw_value).strip()
 
 
@@ -3027,7 +3042,7 @@ def _task_table_state(
 
     raw_sort = request.params.get("sort")
     if raw_sort is None:
-        raw_sort = _tasks_cookie_value(request, "tasks_sort")
+        raw_sort = read_cookie_text(request, TASKS_SORT_COOKIE_NAME)
     sort_param = str(raw_sort).strip().lower() or _TASKS_DEFAULT_SORT
     if sort_param not in _TASKS_SORT_MAP:
         sort_param = _TASKS_DEFAULT_SORT
@@ -3036,19 +3051,19 @@ def _task_table_state(
     order_param, reverse = _normalize_sort_order(
         request.params.get("order")
         if request.params.get("order") is not None
-        else _tasks_cookie_value(request, "tasks_order"),
+        else read_cookie_text(request, TASKS_ORDER_COOKIE_NAME),
         default_reverse=default_reverse,
     )
 
     raw_view = request.params.get("view")
     if raw_view is None:
-        raw_view = _tasks_cookie_value(request, "tasks_view")
+        raw_view = read_cookie_text(request, TASKS_VIEW_COOKIE_NAME)
     view_param = _normalize_view_mode(raw_view or "paged")
 
     query_filter = _task_filter_value(
         request,
         param_name="q",
-        cookie_name="tasks_q",
+        cookie_name=TASKS_QUERY_COOKIE_NAME,
     )
 
     tasks.sort(
@@ -3129,24 +3144,35 @@ def _task_table_state(
     }
 
 
-def _set_tasks_cookie(
-    request: _ViewContext,
-    name: str,
-    value: str,
-    max_age_seconds: int,
-) -> None:
-    _set_ui_state_cookie(request, name, value, max_age_seconds)
-
-
 def _set_tasks_cookies(
     request: _ViewContext,
     state: dict[str, Any],
 ) -> None:
     cookie_max_age = UI_STATE_COOKIE_MAX_AGE_SECONDS
-    _set_tasks_cookie(request, "tasks_sort", str(state["sort"]), cookie_max_age)
-    _set_tasks_cookie(request, "tasks_order", str(state["order"]), cookie_max_age)
-    _set_tasks_cookie(request, "tasks_view", str(state["view"]), cookie_max_age)
-    _set_tasks_cookie(request, "tasks_q", str(state["q"]), cookie_max_age)
+    append_ui_cookie(
+        request,
+        TASKS_SORT_COOKIE_NAME,
+        str(state["sort"]),
+        max_age_seconds=cookie_max_age,
+    )
+    append_ui_cookie(
+        request,
+        TASKS_ORDER_COOKIE_NAME,
+        str(state["order"]),
+        max_age_seconds=cookie_max_age,
+    )
+    append_ui_cookie(
+        request,
+        TASKS_VIEW_COOKIE_NAME,
+        str(state["view"]),
+        max_age_seconds=cookie_max_age,
+    )
+    append_ui_cookie(
+        request,
+        TASKS_QUERY_COOKIE_NAME,
+        str(state["q"]),
+        max_age_seconds=cookie_max_age,
+    )
 
 
 def _format_tests_view_spsa_value(
@@ -3660,7 +3686,7 @@ def tests_view(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # n
         "page_title": page_title,
         "results_info": results_info,
         "tasks_shown": tasks_table_context["show_task"] != -1
-        or request.cookies.get("tasks_state") == "Hide",
+        or read_cookie_toggle_state(request, TASKS_STATE_COOKIE_NAME) == "Hide",
         "show_task": tasks_table_context["show_task"],
         "tasks_sort": tasks_table_context["sort"],
         "tasks_order": tasks_table_context["order"],

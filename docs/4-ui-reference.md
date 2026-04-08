@@ -315,6 +315,9 @@ Cookie ownership is split intentionally:
 - `http/cookie_session.py` owns the session cookie transport contract such as
    the cookie name, SameSite default, secret resolution, and request-scope
    override helpers.
+- `http/ui_cookies.py` owns browser-readable non-auth UI cookie names, shared
+   low-level parsing helpers, and the raw `Set-Cookie` formatting reused by
+   UI views.
 
 ### Session keys
 
@@ -364,16 +367,21 @@ The UI uses two cookie families with different ownership and lifecycles:
 ### UI state cookie lifecycle
 
 UI state cookies are intentionally separate from the signed session payload.
-They are written by page-specific JS or server helpers because they do not
+They are written through shared server or browser helpers because they do not
 carry authentication state:
 
-- `theme` is written by `static/js/application.js` and controls light/dark
-   presentation. The same cookie is read during full-page renders so the server
-   can emit the matching theme before first paint.
+- `theme` is written through `writeUiCookie()` in `static/js/application.js`
+   and controls light or dark presentation. The same cookie is read during
+   full-page renders so the server can emit the matching theme before first
+   paint.
 - `login_remember_me` is written by `POST /login` and mirrored by
-   `static/js/application.js` when the checkbox changes. It keeps the login
-   form's explicit opt-out state across browser restarts without changing the
-   signed auth-cookie lifetime.
+   `static/js/application.js` through the shared browser cookie helper when the
+   checkbox changes. It keeps the login form's explicit opt-out state across
+   browser restarts without changing the signed auth-cookie lifetime.
+- `master_only` is mirrored by the shared checkbox-cookie handler in
+   `static/js/application.js` using `data-ui-cookie-*` attributes from
+   `nns_content_fragment.html.j2`. The `/nns` form also submits an explicit
+   false fallback so unchecked htmx requests do not depend on cookie timing.
 - `contributors_findme` is written by `static/js/contributors.js` and preserves
    rank-jump mode across contributors pages.
 - `machines_state` is written by `static/js/tests_homepage.js` and preserves
@@ -381,8 +389,9 @@ carry authentication state:
    triggers an immediate `/tests/machines` refresh instead of waiting for the
    next periodic poll.
 - `machines_sort`, `machines_order`, `machines_page`, `machines_q`,
-   and `machines_my_workers` are written server-side by `views_machines.py`
-   when `/tests/machines` normalizes the current filter state.
+   and `machines_my_workers` are written server-side through
+   `http/ui_cookies.py` from `views_machines.py` when `/tests/machines`
+   normalizes the current filter state.
 - `active_run_filters` is written by `static/js/active_run_filters.js` and
    preserves the Active runs filter selection across the three dimensions
    (test type, time control, and threads).
@@ -721,7 +730,8 @@ Behavior notes:
   order aligned with the other card pages: cards, text, filters, view switch,
   pagination, table, pagination.
 - `master_only` checkbox preference is persisted in a cookie and reused when
-   the query parameter is not present.
+   the query parameter is not present. The form also submits an explicit false
+   fallback so unchecked htmx requests and cookie persistence stay aligned.
 - Table sorting is fully server-authoritative; there is no client-side header
    sorter.
 

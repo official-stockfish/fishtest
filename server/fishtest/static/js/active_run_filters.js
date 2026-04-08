@@ -88,7 +88,7 @@
   };
 
   const restoreState = () => {
-    const raw = getCookie(cookieName);
+    const raw = readUiCookie(cookieName);
     if (!raw) {
       return;
     }
@@ -122,11 +122,11 @@
     if (!Number.isFinite(cookieMaxAge) || cookieMaxAge <= 0) {
       return;
     }
-    document.cookie = `${cookieName}=${value}; path=/; max-age=${cookieMaxAge}; SameSite=Lax`;
+    writeUiCookie(cookieName, value, cookieMaxAge);
   };
 
   const clearCookie = () => {
-    document.cookie = `${cookieName}=; path=/; max-age=0; SameSite=Lax`;
+    clearUiCookie(cookieName);
   };
 
   const syncAllCheckbox = () => {
@@ -285,7 +285,7 @@
     toggleBtn.setAttribute("aria-expanded", String(visible));
   };
 
-  if (getCookie(toggleCookieName) === "hidden") {
+  if (readUiCookie(toggleCookieName) === "hidden") {
     setPanel(false);
   }
 
@@ -293,9 +293,9 @@
     const isVisible = !filterPanel.hidden;
     setPanel(!isVisible);
     if (isVisible) {
-      setStateCookie(toggleCookieName, "hidden", cookieMaxAge);
+      writeUiCookie(toggleCookieName, "hidden", cookieMaxAge);
     } else {
-      document.cookie = `${toggleCookieName}=; path=/; max-age=0; SameSite=Lax`;
+      clearUiCookie(toggleCookieName);
     }
   });
 

@@ -21,7 +21,7 @@
     button.textContent = nextState;
     button.setAttribute("aria-expanded", String(isExpanded));
     if (Number.isFinite(toggleCookieMaxAge) && toggleCookieMaxAge > 0) {
-      document.cookie = `machines_state=${nextState}; path=/; max-age=${toggleCookieMaxAge}; SameSite=Lax`;
+      writeUiCookie("machines_state", nextState, toggleCookieMaxAge);
     }
   };
 

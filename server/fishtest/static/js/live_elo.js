@@ -90,15 +90,8 @@
     return raw === ELO_MODE_DYNAMIC ? ELO_MODE_DYNAMIC : ELO_MODE_FIXED;
   }
 
-  function getCookie(name) {
-    return document.cookie
-      .split(";")
-      .map((cookie) => cookie.trim().split("="))
-      .find(([cookieName]) => cookieName === name)?.[1];
-  }
-
   function initialEloMode(gauge) {
-    const persistedMode = getCookie(ELO_MODE_COOKIE_NAME);
+    const persistedMode = readUiCookie(ELO_MODE_COOKIE_NAME);
     if (
       persistedMode === ELO_MODE_FIXED ||
       persistedMode === ELO_MODE_DYNAMIC
@@ -112,7 +105,7 @@
     if (!Number.isFinite(eloModeCookieMaxAge) || eloModeCookieMaxAge <= 0) {
       return;
     }
-    document.cookie = `${ELO_MODE_COOKIE_NAME}=${mode}; path=/; max-age=${eloModeCookieMaxAge}; SameSite=Lax`;
+    writeUiCookie(ELO_MODE_COOKIE_NAME, mode, eloModeCookieMaxAge);
   }
 
   function isTerminalSprtState(state) {
