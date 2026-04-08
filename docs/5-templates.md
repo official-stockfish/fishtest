@@ -130,7 +130,7 @@ live `/tests/view/{id}/detail` fragment updates body content only.
 
 - `base.html.j2` includes `pending_users_nav_fragment.html.j2` inside a stable
    htmx poll wrapper. The wrapper owns the `load` and `every` triggers, while
-   the fragment owns only the rendered anchor HTML.
+   the fragment owns only the rendered anchor HTML and current count markup.
 - `base.html.j2` renders the sidebar `GitHub Rate Limits` anchor directly.
    `static/js/application.js` updates that link, not a server fragment
    endpoint, because the browser-side GitHub token lives in local storage and
@@ -287,7 +287,7 @@ fragments; others are shared partials included by page or fragment templates.
 | `machines_fragment.html.j2` | htmx content fragment | Swaps `#machines` and updates `#workers-count` OOB |
 | `nns_content_fragment.html.j2` | htmx content fragment | Swaps `#nns-content` |
 | `pagination.html.j2` | shared pagination partial | Included by paginated pages and fragments |
-| `pending_users_nav_fragment.html.j2` | polled nav fragment | Swaps `#pending-users-nav` |
+| `pending_users_nav_fragment.html.j2` | shared nav anchor fragment | Included server-side in `base.html.j2` and returned by `/user_management/pending_count` to refresh `#pending-users-nav` |
 | `run_table.html.j2` | shared table partial | Renders one run table shell and includes row markup |
 | `run_table_row_fragment.html.j2` | row fragment | Renders `<tr>` rows; can be swapped into `#run-{id}` |
 | `run_tables.html.j2` | shared table-group partial | Composes pending, active, and finished run tables |

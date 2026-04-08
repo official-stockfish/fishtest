@@ -12,7 +12,7 @@ These invariants apply to every worker API endpoint:
   also includes `duration`.
 - Content-Type is always `application/json`.
 - The current worker protocol version is defined by `WORKER_VERSION` in
-  `api.py` (currently 316).
+  `api.py` (currently 317).
 
 ## Authentication
 
@@ -85,7 +85,7 @@ to check if they need to upgrade.
 
 **Response**:
 ```json
-{ "version": 316, "duration": 0.001 }
+{ "version": 317, "duration": 0.001 }
 ```
 
 ---
