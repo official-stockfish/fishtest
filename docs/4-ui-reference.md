@@ -64,7 +64,7 @@ but generic `OPTIONS` is not part of the UI route contract and returns `405`.
 | `/tests/live_elo_update/{id}` | GET | `live_elo_update` | `live_elo_fragment.html.j2` | Fragment-only (OOB) |
 | `/tests/finished` | GET | `tests_finished` | `tests_finished.html.j2` | HX: `tests_finished_content_fragment` |
 | `/tests/user/{username}` | GET | `tests_user` | `tests_user.html.j2` | HX: `tests_user_content_fragment`; page 1 live run tables poll the same route via `?live=run_tables` |
-| `/actions` | GET | `actions` | `actions.html.j2` | HX: `actions_content_fragment` |
+| `/actions` | GET | `actions` | `actions.html.j2` | Full page plus htmx content fragment; full-page responses render route-specific Open Graph metadata that preserves the current query string in `og:url` and summarizes the first visible action row |
 | `/contributors` | GET | `contributors` | `contributors.html.j2` | HX: `contributors_content_fragment`; paginated (100/page) |
 | `/contributors/monthly` | GET | `contributors_monthly` | `contributors.html.j2` | HX: `contributors_content_fragment`; paginated (100/page) |
 | `/user/{username}` | GET, POST | `user` | `user.html.j2` | CSRF |
@@ -787,6 +787,10 @@ Behavior notes:
    currently rendered.
 - The time link remains a normal anchor because it is a shareable deep link
    into the log timeline, not just a local fragment action.
+- Full-page `/actions` responses emit server-owned Open Graph metadata. Unlike
+   `/tests/view/{id}`, the preview keeps the current query string in `og:url`
+   because the filters, time cursor, and explicit `max_count` define the shared
+   log slice; the title and description summarize the first visible action row.
 
 ## Finished Tests (`/tests/finished`) query parameters
 
