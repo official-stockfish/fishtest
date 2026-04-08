@@ -13,6 +13,7 @@ let broadcastDispatch = {
   handlePanelToggleCookies();
   handleApplicationLogout();
   handleApplicationThemes();
+  handleLoginRememberMePreference();
   handleClientRateLimitPolling();
 })();
 
@@ -114,6 +115,21 @@ function handlePanelToggleCookies() {
 
     button.textContent = nextState;
     setStateCookie(cookieName, nextState, maxAge);
+  });
+}
+
+function handleLoginRememberMePreference() {
+  const checkbox = document.querySelector("[data-remember-me-cookie-name]");
+  if (!(checkbox instanceof HTMLInputElement) || checkbox.type !== "checkbox") {
+    return;
+  }
+
+  const cookieName = checkbox.dataset.rememberMeCookieName;
+  const maxAge =
+    checkbox.dataset.rememberMeCookieMaxAge ||
+    window.uiStateCookieMaxAgeSeconds;
+  checkbox.addEventListener("change", () => {
+    setStateCookie(cookieName, checkbox.checked ? "1" : "0", maxAge);
   });
 }
 

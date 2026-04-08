@@ -389,7 +389,23 @@ The `elo` dict contains: `info_lines`, `pre_attrs`, `show_gauge`, `chart_div_id`
 
 ### `login.html.j2`
 
-Shared base context only.
+| Key | Type | Description |
+|-----|------|-------------|
+| `remember_me_checked` | bool | Initial checked state for the Remember me checkbox |
+| `remember_me_cookie_name` | string | UI-state cookie name mirrored by shared application JS |
+
+Behavior notes:
+
+- The form submits `stay_logged_in=0` through a hidden input and
+   `stay_logged_in=1` through the checkbox so the server can distinguish an
+   explicit opt-out from the checked/default case.
+- When no `login_remember_me` UI cookie exists, the checkbox renders checked.
+   An explicit opt-out stored in that cookie renders the checkbox unchecked on
+   later visits.
+- `login.html.j2` defaults `remember_me_cookie_name` to `login_remember_me`
+   because the same template is also used for generic UI 403 rendering.
+- `application.js` mirrors checkbox changes into the same UI-state cookie, and
+   `POST /login` refreshes it server-side for progressive enhancement.
 
 ### `machines_fragment.html.j2`
 
