@@ -370,6 +370,10 @@ carry authentication state:
 - `theme` is written by `static/js/application.js` and controls light/dark
    presentation. The same cookie is read during full-page renders so the server
    can emit the matching theme before first paint.
+- `login_remember_me` is written by `POST /login` and mirrored by
+   `static/js/application.js` when the checkbox changes. It keeps the login
+   form's explicit opt-out state across browser restarts without changing the
+   signed auth-cookie lifetime.
 - `contributors_findme` is written by `static/js/contributors.js` and preserves
    rank-jump mode across contributors pages.
 - `machines_state` is written by `static/js/tests_homepage.js` and preserves
@@ -402,11 +406,18 @@ while letting low-risk UI preferences remain simple, readable browser state.
 
 ### Login flow
 
-1. User submits username/password to `POST /login`.
-2. `UserDb.authenticate()` validates credentials.
-3. On success, `remember(request, username)` sets `session["user"]`.
-4. Optional "stay logged in" sets `session_max_age` to 1 year.
-5. Redirect to the `next` URL or the referrer.
+1. `GET /login` renders the Remember me checkbox checked by default.
+2. If the `login_remember_me` UI cookie stores an explicit opt-out, the same
+   page renders the checkbox unchecked on later visits.
+3. User submits username/password to `POST /login`.
+4. `UserDb.authenticate()` validates credentials.
+5. On success, `remember(request, username)` sets `session["user"]`.
+6. Checked Remember me emits a persistent signed session cookie using the
+   shared remember-me lifetime. Unchecked login keeps the auth cookie scoped to
+   the current browser session.
+7. `POST /login` also refreshes `login_remember_me` so the user's explicit
+   checkbox choice survives later browser starts.
+8. Redirect to the `next` URL or the referrer.
 
 ### Logout flow
 

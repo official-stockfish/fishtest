@@ -4,6 +4,8 @@
 
 {% block body %}
 {% set signup_url = urls.signup %}
+{% set remember_me_checked = remember_me_checked | default(true) %}
+{% set remember_me_cookie_name = remember_me_cookie_name | default('login_remember_me') %}
 
 <div class="col-limited-size">
   <header class="text-md-center py-2">
@@ -57,7 +59,9 @@
         id="staylogged"
         name="stay_logged_in"
         value="1"
-        checked
+        data-remember-me-cookie-name="{{ remember_me_cookie_name }}"
+        data-remember-me-cookie-max-age="{{ cookies.ui_state_max_age }}"
+        {% if remember_me_checked %}checked{% endif %}
       >
     </div>
 

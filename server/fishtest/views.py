@@ -166,6 +166,9 @@ _MAX_NETWORK_SIZE_BYTES = 200_000_000
 _THROUGHPUT_NORMAL_LIMIT = 100
 _MIN_BOOK_EXITS = 100_000
 _RUN_AGE_GITHUB_API_MAX_DAYS = 30
+_LOGIN_REMEMBER_ME_COOKIE_NAME = "login_remember_me"
+_LOGIN_REMEMBER_ME_TRUE_VALUES = frozenset({"1", "true", "on", "yes"})
+_LOGIN_REMEMBER_ME_FALSE_VALUES = frozenset({"0", "false", "off", "no"})
 
 _ACTIVE_RUN_FILTER_VALUES = {
     "test-type": ("sprt", "spsa", "numgames"),
@@ -568,6 +571,64 @@ def ensure_logged_in(request: _ViewContext) -> str | RedirectResponse:
     return userid
 
 
+def _set_ui_state_cookie(
+    request: _ViewContext,
+    name: str,
+    value: str,
+    max_age_seconds: int,
+) -> None:
+    cookie_value = (
+        f"{name}={quote(value, safe='')}; path=/; max-age={max_age_seconds}; "
+        "SameSite=Lax"
+    )
+    # Keep duplicate Set-Cookie headers intact so UI-state cookies can coexist
+    # with the signed session cookie on the same response.
+    request.response_headerlist.append(("Set-Cookie", cookie_value))
+
+
+def _login_remember_me_checked(request: _ViewContext) -> bool:
+    raw_value = str(request.cookies.get(_LOGIN_REMEMBER_ME_COOKIE_NAME, ""))
+    cookie_value = raw_value.strip().lower()
+    if cookie_value in _LOGIN_REMEMBER_ME_FALSE_VALUES:
+        return False
+    if cookie_value in _LOGIN_REMEMBER_ME_TRUE_VALUES:
+        return True
+    return True
+
+
+def _login_remember_me_checked_from_form(post_data: Any) -> bool:
+    submitted_values: list[str] = []
+    getlist = getattr(post_data, "getlist", None)
+    if callable(getlist):
+        submitted_values = [
+            str(value).strip().lower() for value in getlist("stay_logged_in")
+        ]
+    else:
+        raw_value = post_data.get("stay_logged_in")
+        if raw_value is not None:
+            submitted_values = [str(raw_value).strip().lower()]
+
+    # Default to the checked state when old clients or tests omit the field,
+    # and treat any explicit truthy value as the checked path when both the
+    # hidden fallback and checkbox values are submitted.
+    return not submitted_values or any(
+        value in _LOGIN_REMEMBER_ME_TRUE_VALUES for value in submitted_values
+    )
+
+
+def _set_login_remember_me_cookie(
+    request: _ViewContext,
+    *,
+    remember_me_checked: bool,
+) -> None:
+    _set_ui_state_cookie(
+        request,
+        _LOGIN_REMEMBER_ME_COOKIE_NAME,
+        "1" if remember_me_checked else "0",
+        UI_STATE_COOKIE_MAX_AGE_SECONDS,
+    )
+
+
 def login(request: _ViewContext) -> dict[str, Any] | RedirectResponse:
     _append_no_store_headers(request)
     userid = request.authenticated_userid
@@ -578,30 +639,20 @@ def login(request: _ViewContext) -> dict[str, Any] | RedirectResponse:
     if referrer == login_url:
         referrer = "/"  # never use the login form itself as came_from
     came_from = request.params.get("came_from", referrer)
+    remember_me_checked = _login_remember_me_checked(request)
 
     if request.method == "POST":
-        stay_logged_in_values: list[str] = []
-        getlist = getattr(request.POST, "getlist", None)
-        if callable(getlist):
-            stay_logged_in_values = [
-                str(v).strip().lower() for v in getlist("stay_logged_in")
-            ]
-        else:
-            raw_stay_logged_in = request.POST.get("stay_logged_in")
-            if raw_stay_logged_in is not None:
-                stay_logged_in_values = [str(raw_stay_logged_in).strip().lower()]
-
-        # Default to persistent login when the field is absent, and allow
-        # explicit opt-out via stay_logged_in=0.
-        stay_logged_in = not stay_logged_in_values or any(
-            value in {"1", "true", "on", "yes"} for value in stay_logged_in_values
+        remember_me_checked = _login_remember_me_checked_from_form(request.POST)
+        _set_login_remember_me_cookie(
+            request,
+            remember_me_checked=remember_me_checked,
         )
 
         username = _form_string_value(request.POST, "username")
         password = _form_string_value(request.POST, "password")
         token = request.userdb.authenticate(username, password)
         if "error" not in token:
-            if stay_logged_in:
+            if remember_me_checked:
                 remember(request, username, max_age=SESSION_REMEMBER_ME_MAX_AGE_SECONDS)
             else:
                 # Session ends when the browser is closed
@@ -618,7 +669,10 @@ def login(request: _ViewContext) -> dict[str, Any] | RedirectResponse:
                 "Thank you!"
             )
         request.session.flash(message, "error")
-    return {}
+    return {
+        "remember_me_checked": remember_me_checked,
+        "remember_me_cookie_name": _LOGIN_REMEMBER_ME_COOKIE_NAME,
+    }
 
 
 def logout(request: _ViewContext) -> RedirectResponse:
@@ -3081,16 +3135,7 @@ def _set_tasks_cookie(
     value: str,
     max_age_seconds: int,
 ) -> None:
-    cookie_value = (
-        f"{name}={quote(value, safe='')}; path=/; max-age={max_age_seconds}; "
-        "SameSite=Lax"
-    )
-    request.response_headerlist.append(
-        (
-            "Set-Cookie",
-            cookie_value,
-        ),
-    )
+    _set_ui_state_cookie(request, name, value, max_age_seconds)
 
 
 def _set_tasks_cookies(
