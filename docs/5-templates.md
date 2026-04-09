@@ -761,7 +761,8 @@ Detail-page merged live polling contract:
    refreshes update only the embedded `application/json` payload contents so
    `static/js/spsa.js` can keep the payload node mounted, skip unchanged
    redraws, and redraw changed payloads without replacing the mounted chart
-   shell.
+   shell. The full page renders the `% c` checkbox from a browser-readable
+   cookie on first paint.
 
 Detail-page tasks loader contract:
 
@@ -862,11 +863,13 @@ Shared SPSA chart section for the test detail page.
 |-----|------|
 | `run` | dict |
 | `spsa_data` | dict or None |
+| `spsa_percentage_checked` | bool |
 
 Rendered structure:
 
 - `#tests-view-spsa` root element
 - DOM-embedded `application/json` payload for the current SPSA state
+- cookie-backed `% c` checkbox rendered from `spsa_percentage_checked`
 - `#spsa_history_scroll` retained scroll container
 - CSS-owned `#spsa_history_plot` shell for the fixed-size chart (Google Charts uses 1000x500; layout and scrolling handled by CSS and the scroll container)
 - chart toolbar and chart container used by `static/js/spsa.js`

@@ -159,6 +159,9 @@ For SPSA runs, the detail fragment updates the existing
 the chart shell mounted, draws the chart at a fixed 1000x500 size inside the
 scrollable container, skips redraws when the embedded JSON payload is unchanged,
 and redraws changed payloads in place without replacing the chart shell.
+The full `/tests/view/{id}` page also remembers the `% c` checkbox with a
+browser cookie, so the checkbox reopens in its previous mode while live detail
+polling continues to update only the embedded SPSA data node.
 
 The request submits the page's current canonical `expected` state from a
 server-owned hidden input:
