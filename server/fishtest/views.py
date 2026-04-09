@@ -95,6 +95,7 @@ from fishtest.http.ui_cookies import (
     MACHINES_SORT_COOKIE_NAME,
     MACHINES_STATE_COOKIE_NAME,
     MASTER_ONLY_COOKIE_NAME,
+    SPSA_PERCENTAGE_COOKIE_NAME,
     TASKS_ORDER_COOKIE_NAME,
     TASKS_QUERY_COOKIE_NAME,
     TASKS_SORT_COOKIE_NAME,
@@ -3428,6 +3429,10 @@ def _build_tests_view_detail_context(
         "chi2": get_chi2(run["tasks"]),
         "document_size": len(bson.BSON.encode(run)),
         "spsa_data": request.rundb.spsa_handler.get_spsa_data(run_id),
+        "spsa_percentage_checked": read_cookie_bool(
+            request,
+            SPSA_PERCENTAGE_COOKIE_NAME,
+        ),
     }
 
 

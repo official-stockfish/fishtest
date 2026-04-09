@@ -38,6 +38,10 @@
         class="form-check-input"
         id="spsa_percentage"
         name="spsa-percentage"
+        autocomplete="off"
+        data-ui-cookie-name="spsa_percentage"
+        data-ui-cookie-max-age="{{ cookies.ui_state_max_age }}"
+        {{ 'checked' if spsa_percentage_checked else '' }}
       />
       <label class="form-check-label" for="spsa_percentage">% c</label>
     </div>

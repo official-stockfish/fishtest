@@ -8,6 +8,7 @@ import test_support
 from ui_user_test_case import UiUserTestCase
 
 from fishtest.http.settings import UI_STATE_COOKIE_MAX_AGE_SECONDS
+from fishtest.http.ui_cookies import SPSA_PERCENTAGE_COOKIE_NAME
 from fishtest.run_cache import Prio
 
 
@@ -119,7 +120,7 @@ class TestTestsViewDetail(unittest.TestCase):
         self.rundb.buffer(run, priority=Prio.SAVE_NOW)
         return str(run_id)
 
-    def test_tests_view_page_renders_detail_poller_and_spsa_container(self):
+    def _create_spsa_run(self) -> str:
         run_id = self._create_run()
         run = self.rundb.get_run(run_id)
         run["workers"] = 1
@@ -145,6 +146,10 @@ class TestTestsViewDetail(unittest.TestCase):
             "param_history": [[{"theta": 12.0, "c": 1.5}]],
         }
         self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+        return run_id
+
+    def test_tests_view_page_renders_detail_poller_and_spsa_container(self):
+        run_id = self._create_spsa_run()
 
         response = self.client.get(f"/tests/view/{run_id}")
 
@@ -172,8 +177,27 @@ class TestTestsViewDetail(unittest.TestCase):
         )
         self.assertIn('id="spsa_history_scroll"', response.text)
         self.assertIn('id="spsa_history_plot"', response.text)
+        self.assertRegex(
+            response.text,
+            rf'<input[^>]*id="spsa_percentage"[^>]*name="spsa-percentage"'
+            rf'[^>]*autocomplete="off"[^>]*'
+            rf'data-ui-cookie-name="{SPSA_PERCENTAGE_COOKIE_NAME}"[^>]*'
+            rf'data-ui-cookie-max-age="{UI_STATE_COOKIE_MAX_AGE_SECONDS}"',
+        )
         self.assertNotIn('id="spsa_history_plot" style=', response.text)
         self.assertNotIn("const spsaData =", response.text)
+
+    def test_tests_view_spsa_percentage_cookie_controls_first_paint(self):
+        run_id = self._create_spsa_run()
+        self.client.cookies.set(SPSA_PERCENTAGE_COOKIE_NAME, "true")
+
+        response = self.client.get(f"/tests/view/{run_id}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertRegex(
+            response.text,
+            r'id="spsa_percentage"[^>]*checked',
+        )
 
     def test_tests_view_page_renders_query_free_open_graph_metadata(self):
         run_id = self._create_run()
