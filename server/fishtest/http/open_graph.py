@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import TYPE_CHECKING, Any, SupportsFloat, TypedDict
 from urllib.parse import urlsplit, urlunsplit
 
 from fishtest.http.template_helpers import nelo_pentanomial_summary_text
@@ -15,6 +15,8 @@ _SITE_NAME = "Stockfish Testing Framework"
 _DEFAULT_DESCRIPTION = "Distributed testing framework for the Stockfish chess engine."
 _TITLE_SUFFIX = " | Stockfish Testing"
 _YELLOW_THEME_COLOR = "#FFFF00"
+
+_TimestampInput = SupportsFloat | str | None
 
 
 class OpenGraphMetadata(TypedDict):
@@ -113,7 +115,7 @@ def _build_page_open_graph(
     return open_graph
 
 
-def _metadata_time_label(value: int | float | str | None) -> str:
+def _metadata_time_label(value: _TimestampInput) -> str:
     if value is None:
         return ""
 

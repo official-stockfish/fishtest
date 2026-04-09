@@ -179,3 +179,22 @@ class OpenGraphTests(unittest.TestCase):
         self.assertIn("user=alice", open_graph["description"])
         self.assertIn("text=clang", open_graph["description"])
         self.assertIn("run=69d12ae19caf4559aa7ada3e", open_graph["description"])
+
+    def test_build_actions_open_graph_formats_integer_timestamps(self):
+        open_graph = build_actions_open_graph(
+            page_url="https://example.org/actions?user=alice",
+            actions=[
+                {
+                    "time": 1775675144,
+                    "event": "worker_log",
+                    "agent_name": "worker-a",
+                    "target_name": "run-a/3",
+                    "message": "integer timestamp from stored action data",
+                }
+            ],
+            num_actions=1,
+            filters={"action": "", "username": "", "text": "", "run_id": ""},
+            run_id_filter="",
+        )
+
+        self.assertIn("Time: 26-04-08 19:05:44", open_graph["description"])
