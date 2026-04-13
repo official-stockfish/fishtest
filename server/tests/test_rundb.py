@@ -156,7 +156,7 @@ class CreateRunDBTest(unittest.TestCase):
         run = self.rundb.get_run(run_id)
         run["args"]["spsa"] = {
             "iter": 7,
-            "param_history": [[{"theta": 12.0, "c": 1.5}]],
+            "param_history": [[{"theta": 12.0, "R": 0.08, "c": 1.5}]],
         }
         run["bad_tasks"] = [
             {"num_games": 0, "stats": {"wins": 0, "draws": 0, "losses": 0}}

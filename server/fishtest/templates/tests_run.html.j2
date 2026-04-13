@@ -349,8 +349,8 @@
               <input
                 type="number"
                 name="num-games"
-                min="1000"
-                step="1000"
+                min="{{ create_num_games_constraints.min }}"
+                step="{{ create_num_games_constraints.step }}"
                 id="num-games"
                 class="form-control"
                 value="{{ args.get("num_games", 60000) }}"
@@ -406,8 +406,10 @@
             {# This only appears when spsa is selected #}
             <div
               class="mb-2 stop-rule stop-rule-spsa"
-              style="{{ args.get("spsa") or "display: none" }}"
+              style="{{ '' if args.get("spsa") else 'display: none' }}"
             >
+              <input type="hidden" name="spsa_algorithm" id="spsa_algorithm" value="{{ spsa_form["algorithm"] }}">
+
               <div class="row gx-1">
                 <div class="col-4">
                   <div class="mb-2">
@@ -420,7 +422,7 @@
                       name="spsa_A"
                       id="spsa_A"
                       class="form-control"
-                      value="{{ args.get("spsa", {"A": "0.1"})["A"] }}"
+                      value="{{ spsa_form["A"] }}"
                     >
                   </div>
                 </div>
@@ -434,7 +436,7 @@
                       name="spsa_alpha"
                       id="spsa_alpha"
                       class="form-control"
-                      value="{{ args.get("spsa", {"alpha": "0.602"})["alpha"] }}"
+                      value="{{ spsa_form["alpha"] }}"
                     >
                   </div>
                 </div>
@@ -448,7 +450,7 @@
                       name="spsa_gamma"
                       id="spsa_gamma"
                       class="form-control"
-                      value="{{ args.get("spsa", {"gamma": "0.101"})["gamma"] }}"
+                      value="{{ spsa_form["gamma"] }}"
                     >
                   </div>
                 </div>
@@ -461,7 +463,7 @@
                   id="spsa_raw_params"
                   class="form-control"
                   placeholder="Paste values printed at the startup of the code here"
-                >{{ args.get("spsa", {"raw_params": ""})["raw_params"] }}</textarea>
+                >{{ spsa_form["raw_params"] }}</textarea>
               </div>
 
               <div class="mb-2 form-check">
@@ -1157,7 +1159,12 @@
     document.getElementById("spsa_A").value = 0;
     document.getElementById("spsa_alpha").value = 0.0;
     document.getElementById("spsa_gamma").value = 0.0;
-    document.getElementById("num-games").value = 1000 * Math.round(s.num_games / 1000);
+    const numGamesMin = {{ create_num_games_constraints.min }};
+    const numGamesStep = {{ create_num_games_constraints.step }};
+    document.getElementById("num-games").value = Math.max(
+      numGamesMin,
+      numGamesStep * Math.round(s.num_games / numGamesStep),
+    );
     document.getElementById("spsa_raw_params").value = fs.trim();
     return true;
   }

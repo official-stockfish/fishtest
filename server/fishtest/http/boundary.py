@@ -44,8 +44,11 @@ class _SessionFlags(Protocol):
 
 
 class _SessionUser(_SessionFlags, Protocol):
-    raw_request: Request | None
-    session: CookieSession | dict[str, object]
+    @property
+    def raw_request(self) -> Request | None: ...
+
+    @property
+    def session(self) -> CookieSession | dict[str, object]: ...
 
 
 @dataclass(frozen=True, slots=True)

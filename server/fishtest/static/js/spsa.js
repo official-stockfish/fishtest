@@ -284,60 +284,28 @@ async function handleSPSA() {
   }
 
   function buildData(nextSmoothingFactor) {
-    const spsaParams = spsaData.params;
-    const spsaHistory = spsaData.param_history;
-    const numIter = asFiniteNumber(spsaData.num_iter, 0);
-    const iterValue = asFiniteNumber(spsaData.iter, 0);
-    const gamma = asFiniteNumber(spsaData.gamma, 0);
-    const spsaIterRatio =
-      numIter > 0 ? Math.min(Math.max(iterValue / numIter, 0), 1) : 0;
+    const paramNames = spsaData.param_names;
+    const chartRows = spsaData.chart_rows;
+    const finalIterRatio = asFiniteNumber(
+      chartRows.length > 0 ? chartRows[chartRows.length - 1]?.iter_ratio : 0,
+      0,
+    );
 
     if (!dataCache[0]) {
       const dt0 = new google.visualization.DataTable();
       dt0.addColumn("number", "Iteration");
-      for (let i = 0; i < spsaParams.length; i += 1) {
-        dt0.addColumn("number", spsaParams[i].name);
+      for (const paramName of paramNames) {
+        dt0.addColumn("number", paramName);
       }
 
-      const nParams = spsaParams.length;
-      const samples =
-        nParams < 100 ? 100 : nParams < 1000 ? 10000 / nParams : 1;
-      const period = numIter > 0 ? Math.max(numIter / samples, 1) : 0;
-      const hasLivePoint =
-        spsaHistory.length > 0 &&
-        period > 0 &&
-        iterValue > spsaHistory.length * period;
-      const totalPoints = spsaHistory.length + (hasLivePoint ? 1 : 0);
-
-      const lastValues = spsaParams.map((param) =>
-        asFiniteNumber(param.start, asFiniteNumber(param.theta, 0)),
+      dt0.addRows(
+        chartRows.map((row) => [
+          asFiniteNumber(row?.iter_ratio, 0),
+          ...paramNames.map((_, index) =>
+            asFiniteNumber(row?.values?.[index], 0),
+          ),
+        ]),
       );
-      const unsmoothedData = [];
-      for (let i = 0; i <= totalPoints; i += 1) {
-        const rowData = [
-          totalPoints > 0 ? (i / totalPoints) * spsaIterRatio : 0,
-        ];
-        for (let j = 0; j < spsaParams.length; j += 1) {
-          if (i === 0) {
-            rowData.push(lastValues[j]);
-            continue;
-          }
-
-          if (hasLivePoint && i === totalPoints) {
-            rowData.push(asFiniteNumber(spsaParams[j].theta, lastValues[j]));
-            continue;
-          }
-
-          const nextValue = asFiniteNumber(
-            spsaHistory[i - 1]?.[j]?.theta,
-            lastValues[j],
-          );
-          rowData.push(nextValue);
-          lastValues[j] = nextValue;
-        }
-        unsmoothedData.push(rowData);
-      }
-      dt0.addRows(unsmoothedData);
       dataCache[0] = dt0;
     }
 
@@ -345,15 +313,15 @@ async function handleSPSA() {
       const dt0 = dataCache[0];
       const dt = new google.visualization.DataTable();
       dt.addColumn("number", "Iteration");
-      for (let i = 0; i < spsaParams.length; i += 1) {
-        dt.addColumn("number", spsaParams[i].name);
+      for (const paramName of paramNames) {
+        dt.addColumn("number", paramName);
       }
 
       const bandwidth =
-        spsaHistory.length > 0 && spsaIterRatio > 0
+        chartRows.length > 1 && finalIterRatio > 0
           ? 2 *
             nextSmoothingFactor *
-            (spsaHistory.length / (spsaIterRatio * 100))
+            ((chartRows.length - 1) / (finalIterRatio * 100))
           : 0;
       const rawArrays = [];
       for (let col = 1; col < dt0.getNumberOfColumns(); col += 1) {
@@ -386,22 +354,19 @@ async function handleSPSA() {
       const view = new google.visualization.DataView(chartData);
       view.setColumns([
         0,
-        ...spsaParams.map((_, i) => ({
+        ...paramNames.map((paramName, i) => ({
           calc: (dt, row) => {
             if (row === 0) {
               return 0;
             }
-            const cValue =
-              row <= spsaHistory.length
-                ? Number(spsaHistory[row - 1]?.[i]?.c)
-                : Number(spsaParams[i]?.c) / Math.pow(iterValue + 1, gamma);
+            const cValue = Number(chartRows[row]?.c_values?.[i]);
             if (!Number.isFinite(cValue) || cValue === 0) {
               return null;
             }
             return (dt.getValue(row, i + 1) - dt.getValue(0, i + 1)) / cValue;
           },
           type: "number",
-          label: spsaParams[i].name,
+          label: paramName,
         })),
       ]);
       chartData = view;
@@ -427,7 +392,7 @@ async function handleSPSA() {
 
   function rebuildDropdown(dropdown) {
     const fragment = document.createDocumentFragment();
-    for (let j = 0; j < spsaData.params.length; j += 1) {
+    for (let j = 0; j < spsaData.param_names.length; j += 1) {
       const dropdownItem = document.createElement("li");
       const anchorItem = document.createElement("a");
       anchorItem.className = "dropdown-item";
@@ -436,7 +401,7 @@ async function handleSPSA() {
       }
       anchorItem.href = "#";
       anchorItem.dataset.paramId = j + 1;
-      anchorItem.append(spsaData.params[j].name);
+      anchorItem.append(spsaData.param_names[j]);
       dropdownItem.append(anchorItem);
       fragment.append(dropdownItem);
     }
@@ -453,11 +418,10 @@ async function handleSPSA() {
     }
 
     spsaData = {
-      ...nextData,
-      params: Array.isArray(nextData.params) ? nextData.params : [],
-      param_history: Array.isArray(nextData.param_history)
-        ? nextData.param_history
+      param_names: Array.isArray(nextData.param_names)
+        ? nextData.param_names
         : [],
+      chart_rows: Array.isArray(nextData.chart_rows) ? nextData.chart_rows : [],
     };
     dataCache.length = 0;
     chartData = null;
@@ -478,10 +442,10 @@ async function handleSPSA() {
       });
     }
 
-    if (!spsaData.param_history.length) {
+    if (spsaData.chart_rows.length <= 1) {
       chartToolbar.style.display = "none";
       showSPSAAlert(
-        spsaData.params.length >= 1000
+        spsaData.param_names.length >= 1000
           ? "Too many tuning parameters to generate plot."
           : "Not enough data to generate plot.",
       );
@@ -491,7 +455,7 @@ async function handleSPSA() {
 
     if (
       lastSelectedParam != null &&
-      lastSelectedParam > spsaData.params.length
+      lastSelectedParam > spsaData.param_names.length
     ) {
       lastSelectedParam = null;
       viewAll = true;

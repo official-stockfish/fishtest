@@ -466,6 +466,7 @@ validation fails.
 | `test_views_helpers.py` | Shared pagination, parameter, and merge helpers |
 | `test_views_machines.py` | Machines helper behavior plus `/tests/machines` HTTP contracts |
 | `test_views_run.py` | Run-form validation, SPSA parsing, permissions, and run action routes |
+| `test_spsa_workflow.py` | Shared classic SPSA form, worker update, and chart-payload helper contracts |
 | `test_http_boundary.py` | HTTP boundary invariants and template contracts |
 | `test_http_dependencies.py` | Request-state dependency wiring |
 | `test_http_errors.py` | API vs UI error shaping |

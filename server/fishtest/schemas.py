@@ -793,6 +793,7 @@ runs_schema = intersect(
                     one_of("overshoot", "lost_samples"),
                 ),
                 "spsa?": {
+                    "algorithm?": "classic",
                     "A": unumber,
                     "alpha": unumber,
                     "gamma": unumber,

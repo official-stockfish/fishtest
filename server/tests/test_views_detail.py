@@ -143,7 +143,7 @@ class TestTestsViewDetail(unittest.TestCase):
                     "r_end": 1.0e-03,
                 },
             ],
-            "param_history": [[{"theta": 12.0, "c": 1.5}]],
+            "param_history": [[{"theta": 12.0, "R": 0.08, "c": 1.5}]],
         }
         self.rundb.buffer(run, priority=Prio.SAVE_NOW)
         return run_id
@@ -175,6 +175,8 @@ class TestTestsViewDetail(unittest.TestCase):
             f'id="spsa-data-{run_id}" type="application/json"',
             response.text,
         )
+        self.assertIn('"param_names"', response.text)
+        self.assertIn('"chart_rows"', response.text)
         self.assertIn('id="spsa_history_scroll"', response.text)
         self.assertIn('id="spsa_history_plot"', response.text)
         self.assertRegex(
@@ -427,8 +429,8 @@ class TestTestsViewDetail(unittest.TestCase):
                 },
             ],
             "param_history": [
-                [{"theta": 11.5, "c": 1.5}],
-                [{"theta": 12.0, "c": 1.4}],
+                [{"theta": 11.5, "R": 0.09, "c": 1.5}],
+                [{"theta": 12.0, "R": 0.08, "c": 1.4}],
             ],
         }
         self.rundb.buffer(run, priority=Prio.SAVE_NOW)
@@ -458,26 +460,14 @@ class TestTestsViewDetail(unittest.TestCase):
             f'id="spsa-data-{run_id}" type="application/json" hx-swap-oob="innerHTML"',
             response.text,
         )
+        self.assertIn('"param_names"', response.text)
+        self.assertIn('"chart_rows"', response.text)
         self.assertIn("ParamA", response.text)
         self.assertIn("iter: 3, A: 4", response.text)
         self.assertNotIn("<title>", response.text)
 
-    def test_spsa_script_skips_noop_redraws_without_hover_gating(self):
-        script_path = (
-            Path(__file__).resolve().parents[1]
-            / "fishtest"
-            / "static"
-            / "js"
-            / "spsa.js"
-        )
-        script_source = script_path.read_text(encoding="utf-8")
 
-        self.assertIn("payloadText === lastRenderedPayloadText", script_source)
-        self.assertIn("const scroller = getSPSAScrollContainer();", script_source)
-        self.assertNotIn('historyPlot.addEventListener("pointerenter"', script_source)
-        self.assertNotIn('historyPlot.addEventListener("pointerleave"', script_source)
-        self.assertNotIn("deferredRefreshPending", script_source)
-
+class TestSpsaChartAssets(unittest.TestCase):
     def test_spsa_plot_shell_keeps_fixed_chart_dimensions(self):
         repo_root = Path(__file__).resolve().parents[1]
         template_source = (
@@ -507,6 +497,63 @@ class TestTestsViewDetail(unittest.TestCase):
         self.assertNotIn("chartOptions.width = plotSize.width", script_source)
         self.assertIn("width: 1000,", script_source)
         self.assertIn("height: 500,", script_source)
+
+    def test_spsa_plot_script_reads_server_shaped_chart_rows(self):
+        repo_root = Path(__file__).resolve().parents[1]
+        script_source = (
+            repo_root / "fishtest" / "static" / "js" / "spsa.js"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn(
+            "if (spsaData.chart_rows.length <= 1) {",
+            script_source,
+        )
+        self.assertIn(
+            "Array.isArray(nextData.chart_rows)",
+            script_source,
+        )
+        self.assertIn(
+            "const chartRows = spsaData.chart_rows;",
+            script_source,
+        )
+        self.assertIn(
+            "dt0.addRows(",
+            script_source,
+        )
+        self.assertNotIn("getLastHistorySample", script_source)
+        self.assertNotIn("shouldPlotLivePoint", script_source)
+        self.assertNotIn("sampleMatchesLive", script_source)
+        self.assertNotIn("reconcileHistoryPointIters", script_source)
+        self.assertNotIn("plot_live", script_source)
+        self.assertNotIn("param_history", script_source)
+
+    def test_spsa_percentage_uses_server_shaped_c_values(self):
+        repo_root = Path(__file__).resolve().parents[1]
+        script_source = (
+            repo_root / "fishtest" / "static" / "js" / "spsa.js"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn(
+            "const cValue = Number(chartRows[row]?.c_values?.[i]);",
+            script_source,
+        )
+        self.assertIn(
+            "return (dt.getValue(row, i + 1) - dt.getValue(0, i + 1)) / cValue;",
+            script_source,
+        )
+        self.assertNotIn(
+            "const gamma = asFiniteNumber(spsaData.gamma, 0);",
+            script_source,
+        )
+        self.assertNotIn(
+            "Math.pow(iterValue + 1, gamma)",
+            script_source,
+        )
+        self.assertNotIn(
+            "plotLive",
+            script_source,
+        )
+        self.assertNotIn("sample.params", script_source)
 
 
 class TestTestsViewTasks(UiUserTestCase):

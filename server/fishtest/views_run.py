@@ -9,6 +9,7 @@ from __future__ import annotations
 import copy
 import logging
 import re
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
@@ -16,6 +17,7 @@ import regex
 
 import fishtest.github_api as gh
 import fishtest.stats.stat_util
+from fishtest.spsa_workflow import build_spsa_state
 from fishtest.util import (
     format_bounds,
     get_hash,
@@ -27,8 +29,19 @@ from fishtest.views_helpers import _host_url
 
 logger = logging.getLogger(__name__)
 
-_SPSA_PARAM_FIELDS = 6
 _RUN_MODIFY_MAX_AGE_DAYS = 30
+
+
+@dataclass(frozen=True)
+class NumGamesConstraints:
+    """Shared browser-and-server constraints for num-games inputs."""
+
+    min: int
+    step: int
+
+
+CREATE_FORM_NUM_GAMES_CONSTRAINTS = NumGamesConstraints(min=1000, step=1000)
+MODIFY_FORM_NUM_GAMES_CONSTRAINTS = NumGamesConstraints(min=0, step=1000)
 
 if TYPE_CHECKING:
     from starlette.responses import RedirectResponse
@@ -172,44 +185,19 @@ def get_nets(commit_sha: str, repo_url: str) -> list[str]:  # noqa: C901
         return nets
 
 
-def parse_spsa_params(spsa: dict[str, Any]) -> list[dict[str, Any]]:
-    """Parse raw SPSA parameter strings into structured dicts."""
-    raw = spsa["raw_params"]
-    params = []
-    for line in raw.split("\n"):
-        chunks = line.strip().split(",")
-        if len(chunks) == 1 and chunks[0] == "":  # blank line
-            continue
-        if len(chunks) != _SPSA_PARAM_FIELDS:
-            msg = f"the line {chunks} does not have {_SPSA_PARAM_FIELDS} entries"
-            raise ValueError(msg)
-        param = {
-            "name": chunks[0],
-            "start": float(chunks[1]),
-            "min": float(chunks[2]),
-            "max": float(chunks[3]),
-            "c_end": float(chunks[4]),
-            "r_end": float(chunks[5]),
-        }
-        param["c"] = param["c_end"] * spsa["num_iter"] ** spsa["gamma"]
-        param["a_end"] = param["r_end"] * param["c_end"] ** 2
-        param["a"] = param["a_end"] * (spsa["A"] + spsa["num_iter"]) ** spsa["alpha"]
-        param["theta"] = param["start"]
-        params.append(param)
-    return params
-
-
 def validate_modify(  # noqa: PLR0911
     request: Any,  # noqa: ANN401
     run: dict[str, Any],
+    *,
+    now: datetime | None = None,
 ) -> RedirectResponse | None:
     """Return None on success, or a RedirectResponse on validation failure."""
     from starlette.responses import RedirectResponse  # noqa: PLC0415
 
-    now = datetime.now(UTC)
+    current_time = datetime.now(UTC) if now is None else now
     if (
         "start_time" not in run
-        or (now - run["start_time"]).days > _RUN_MODIFY_MAX_AGE_DAYS
+        or (current_time - run["start_time"]).days > _RUN_MODIFY_MAX_AGE_DAYS
     ):
         request.session.flash("Run too old to be modified", "error")
         return RedirectResponse(url="/tests", status_code=302)
@@ -252,6 +240,15 @@ def validate_modify(  # noqa: PLR0911
         )
         return RedirectResponse(url="/tests", status_code=302)
 
+    try:
+        _validate_num_games_value(
+            num_games,
+            constraints=MODIFY_FORM_NUM_GAMES_CONSTRAINTS,
+        )
+    except ValueError as error:
+        request.session.flash(str(error), "error")
+        return RedirectResponse(url="/tests", status_code=302)
+
     max_games = 3200000
     if num_games > max_games:
         request.session.flash("Number of games must be <= " + str(max_games), "error")
@@ -279,6 +276,20 @@ def sanitize_options(options: str) -> str:
             )
             raise ValueError(msg)
     return " ".join(tokens)
+
+
+def _validate_num_games_value(
+    num_games: int,
+    *,
+    constraints: NumGamesConstraints,
+) -> int:
+    if num_games < constraints.min:
+        msg = f"Number of games must be >= {constraints.min}"
+        raise ValueError(msg)
+    if num_games % constraints.step != 0:
+        msg = f"Number of games must be a multiple of {constraints.step}"
+        raise ValueError(msg)
+    return num_games
 
 
 def validate_form(request: Any) -> dict[str, Any]:  # noqa: ANN401, C901, PLR0912, PLR0915
@@ -555,28 +566,23 @@ def validate_form(request: Any) -> dict[str, Any]:  # noqa: ANN401, C901, PLR091
         # Limit on number of games played.
         data["num_games"] = 800000
     elif stop_rule == "spsa":
-        data["num_games"] = int(request.POST["num-games"])
-        if data["num_games"] <= 0:
-            msg = "Number of games must be >= 0"
-            raise ValueError(msg)
+        data["num_games"] = _validate_num_games_value(
+            int(request.POST["num-games"]),
+            constraints=CREATE_FORM_NUM_GAMES_CONSTRAINTS,
+        )
 
-        data["spsa"] = {
-            "A": int(float(request.POST["spsa_A"]) * data["num_games"] / 2),
-            "alpha": float(request.POST["spsa_alpha"]),
-            "gamma": float(request.POST["spsa_gamma"]),
-            "raw_params": request.POST["spsa_raw_params"],
-            "iter": 0,
-            "num_iter": int(data["num_games"] / 2),
-        }
-        data["spsa"]["params"] = parse_spsa_params(data["spsa"])
+        data["spsa"] = build_spsa_state(
+            request.POST,
+            num_games=data["num_games"],
+        )
         if len(data["spsa"]["params"]) == 0:
             msg = "Number of params must be > 0"
             raise ValueError(msg)
     else:
-        data["num_games"] = int(request.POST["num-games"])
-        if data["num_games"] <= 0:
-            msg = "Number of games must be >= 0"
-            raise ValueError(msg)
+        data["num_games"] = _validate_num_games_value(
+            int(request.POST["num-games"]),
+            constraints=CREATE_FORM_NUM_GAMES_CONSTRAINTS,
+        )
 
     max_games = 3200000
     if data["num_games"] > max_games:

@@ -7,7 +7,10 @@ support the ``tests_machines`` entry point.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 from fishtest.http.settings import (
     MACHINES_PAGE_SIZE,
@@ -132,7 +135,7 @@ def _normalize_machine_row(machine: dict[str, Any]) -> dict[str, Any]:
 
 
 def _machine_filter_state(
-    query_source: dict[str, Any],
+    query_source: Mapping[str, Any],
     *,
     authenticated_username: str | None,
     use_cookies: bool = False,
