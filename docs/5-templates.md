@@ -868,7 +868,10 @@ Shared SPSA chart section for the test detail page.
 Rendered structure:
 
 - `#tests-view-spsa` root element
-- DOM-embedded `application/json` payload for the current SPSA state
+- DOM-embedded `application/json` payload for the current SPSA state,
+   exposing `param_names` plus server-shaped `chart_rows`; those chart rows
+   fold together the start row, compact sampled history rows, and the current
+   live point, with `c_values` present when `% c` mode can be rendered
 - cookie-backed `% c` checkbox rendered from `spsa_percentage_checked`
 - `#spsa_history_scroll` retained scroll container
 - CSS-owned `#spsa_history_plot` shell for the fixed-size chart (Google Charts uses 1000x500; layout and scrolling handled by CSS and the scroll container)

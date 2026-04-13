@@ -2,6 +2,7 @@
 
 import unittest
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from unittest import mock
 
 import test_support
@@ -9,12 +10,12 @@ from starlette.responses import RedirectResponse
 from ui_user_test_case import UiUserTestCase
 
 from fishtest.run_cache import Prio
+from fishtest.spsa_workflow import parse_spsa_params
 from fishtest.views_run import (
     _RUN_MODIFY_MAX_AGE_DAYS,
     can_modify_run,
     del_tasks,
     is_same_user,
-    parse_spsa_params,
     sanitize_options,
     validate_form,
     validate_modify,
@@ -24,7 +25,7 @@ BASE_TIME = datetime(2026, 3, 17, tzinfo=UTC)
 BASE_THREADS = "1"
 BASE_PRIORITY = "10"
 BASE_THROUGHPUT = "100"
-BASE_NUM_GAMES = "200"
+BASE_NUM_GAMES = "1000"
 BASE_TC = "10+0.1"
 BASE_REPO = "https://github.com/official-stockfish/Stockfish"
 BASE_SIGNATURE = "123456"
@@ -142,6 +143,30 @@ class SpsaParsingTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, str(SPSA_FIELD_COUNT)):
             parse_spsa_params(spsa)
 
+    def test_parse_spsa_params_rejects_non_finite_values(self):
+        spsa = {
+            "raw_params": "Tempo,nan,0,2,0.5,0.1",
+            "num_iter": 100,
+            "gamma": 0.101,
+            "A": 25,
+            "alpha": 0.602,
+        }
+
+        with self.assertRaisesRegex(ValueError, "line 1 field start"):
+            parse_spsa_params(spsa)
+
+    def test_parse_spsa_params_rejects_non_positive_c_end(self):
+        spsa = {
+            "raw_params": "Tempo,1,0,2,0,0.1",
+            "num_iter": 100,
+            "gamma": 0.101,
+            "A": 25,
+            "alpha": 0.602,
+        }
+
+        with self.assertRaisesRegex(ValueError, "line 1 field c_end"):
+            parse_spsa_params(spsa)
+
 
 class SanitizeOptionsTests(unittest.TestCase):
     def test_sanitize_options_normalizes_spacing(self):
@@ -159,10 +184,10 @@ class ValidateModifyTests(unittest.TestCase):
         request = _RequestStub(post_data=_valid_post_data())
         old_run = {
             "start_time": BASE_TIME - timedelta(days=_RUN_MODIFY_MAX_AGE_DAYS + 1),
-            "args": {"num_games": 200},
+            "args": {"num_games": 1000},
         }
 
-        response = validate_modify(request, old_run)
+        response = validate_modify(request, old_run, now=BASE_TIME)
 
         self.assertIsInstance(response, RedirectResponse)
         self.assertEqual(request.session.messages[0][1], "error")
@@ -171,12 +196,42 @@ class ValidateModifyTests(unittest.TestCase):
         request = _RequestStub(post_data=_valid_post_data())
         current_run = {
             "start_time": BASE_TIME,
-            "args": {"num_games": 400},
+            "args": {"num_games": 1000},
         }
 
-        response = validate_modify(request, current_run)
+        response = validate_modify(request, current_run, now=BASE_TIME)
 
         self.assertIsNone(response)
+
+    def test_validate_modify_allows_zero_games(self):
+        post_data = _valid_post_data()
+        post_data["num-games"] = "0"
+        request = _RequestStub(post_data=post_data)
+        current_run = {
+            "start_time": BASE_TIME,
+            "args": {"num_games": 1000},
+        }
+
+        response = validate_modify(request, current_run, now=BASE_TIME)
+
+        self.assertIsNone(response)
+
+    def test_validate_modify_rejects_non_thousand_step_games(self):
+        post_data = _valid_post_data()
+        post_data["num-games"] = "1500"
+        request = _RequestStub(post_data=post_data)
+        current_run = {
+            "start_time": BASE_TIME,
+            "args": {"num_games": 2000},
+        }
+
+        response = validate_modify(request, current_run, now=BASE_TIME)
+
+        self.assertIsInstance(response, RedirectResponse)
+        self.assertEqual(
+            request.session.messages,
+            [("Number of games must be a multiple of 1000", "error")],
+        )
 
 
 class ValidateFormTests(unittest.TestCase):
@@ -206,6 +261,83 @@ class ValidateFormTests(unittest.TestCase):
         self.assertNotIn("arch_filter", data)
         self.assertEqual(data["resolved_base"], BASE_SHA)
         self.assertEqual(data["resolved_new"], NEW_SHA)
+
+    def test_validate_form_numgames_path_rejects_one_game_with_correct_message(self):
+        post_data = _valid_post_data()
+        post_data["num-games"] = "1"
+        request = _RequestStub(post_data=post_data)
+
+        with (
+            mock.patch(
+                "fishtest.views_run.gh.normalize_repo", side_effect=lambda repo: repo
+            ),
+            mock.patch(
+                "fishtest.views_run.gh.parse_repo",
+                return_value=("official-stockfish", "Stockfish"),
+            ),
+            mock.patch("fishtest.views_run.gh.get_master_repo", return_value=BASE_REPO),
+            mock.patch(
+                "fishtest.views_run.get_sha",
+                side_effect=[(BASE_SHA, "base"), (NEW_SHA, "new")],
+            ),
+            mock.patch("fishtest.views_run.get_nets", return_value=[]),
+        ):
+            with self.assertRaisesRegex(ValueError, "Number of games must be >= 1000"):
+                validate_form(request)
+
+    def test_validate_form_numgames_path_rejects_non_thousand_step_games(self):
+        post_data = _valid_post_data()
+        post_data["num-games"] = "1500"
+        request = _RequestStub(post_data=post_data)
+
+        with (
+            mock.patch(
+                "fishtest.views_run.gh.normalize_repo", side_effect=lambda repo: repo
+            ),
+            mock.patch(
+                "fishtest.views_run.gh.parse_repo",
+                return_value=("official-stockfish", "Stockfish"),
+            ),
+            mock.patch("fishtest.views_run.gh.get_master_repo", return_value=BASE_REPO),
+            mock.patch(
+                "fishtest.views_run.get_sha",
+                side_effect=[(BASE_SHA, "base"), (NEW_SHA, "new")],
+            ),
+            mock.patch("fishtest.views_run.get_nets", return_value=[]),
+        ):
+            with self.assertRaisesRegex(
+                ValueError,
+                "Number of games must be a multiple of 1000",
+            ):
+                validate_form(request)
+
+    def test_validate_form_spsa_path_rejects_one_game_with_correct_message(self):
+        post_data = _valid_post_data()
+        post_data["stop_rule"] = "spsa"
+        post_data["num-games"] = "1"
+        post_data["spsa_A"] = "0.1"
+        post_data["spsa_alpha"] = "0.602"
+        post_data["spsa_gamma"] = "0.101"
+        post_data["spsa_raw_params"] = "Tempo,1,0,2,0.5,0.1"
+        request = _RequestStub(post_data=post_data)
+
+        with (
+            mock.patch(
+                "fishtest.views_run.gh.normalize_repo", side_effect=lambda repo: repo
+            ),
+            mock.patch(
+                "fishtest.views_run.gh.parse_repo",
+                return_value=("official-stockfish", "Stockfish"),
+            ),
+            mock.patch("fishtest.views_run.gh.get_master_repo", return_value=BASE_REPO),
+            mock.patch(
+                "fishtest.views_run.get_sha",
+                side_effect=[(BASE_SHA, "base"), (NEW_SHA, "new")],
+            ),
+            mock.patch("fishtest.views_run.get_nets", return_value=[]),
+        ):
+            with self.assertRaisesRegex(ValueError, "Number of games must be >= 1000"):
+                validate_form(request)
 
     def test_validate_form_canonicalizes_tests_repo_and_updates_user(self):
         post_data = _valid_post_data()
@@ -249,6 +381,50 @@ class ValidateFormTests(unittest.TestCase):
         ):
             with self.assertRaisesRegex(ValueError, "Invalid arch filter"):
                 validate_form(request)
+
+
+class TemplateConstraintContractTests(unittest.TestCase):
+    def test_tests_run_template_uses_shared_create_num_games_constraints(self):
+        repo_root = Path(__file__).resolve().parents[1]
+        template_source = (
+            repo_root / "fishtest" / "templates" / "tests_run.html.j2"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn(
+            'min="{{ create_num_games_constraints.min }}"',
+            template_source,
+        )
+        self.assertIn(
+            'step="{{ create_num_games_constraints.step }}"',
+            template_source,
+        )
+        self.assertIn(
+            "const numGamesMin = {{ create_num_games_constraints.min }};",
+            template_source,
+        )
+        self.assertIn(
+            "const numGamesStep = {{ create_num_games_constraints.step }};",
+            template_source,
+        )
+        self.assertNotIn(
+            'document.getElementById("num-games").value = 1000 * Math.round(s.num_games / 1000);',
+            template_source,
+        )
+
+    def test_tests_view_template_uses_shared_modify_num_games_constraints(self):
+        repo_root = Path(__file__).resolve().parents[1]
+        template_source = (
+            repo_root / "fishtest" / "templates" / "tests_view.html.j2"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn(
+            'min="{{ modify_num_games_constraints.min }}"',
+            template_source,
+        )
+        self.assertIn(
+            'step="{{ modify_num_games_constraints.step }}"',
+            template_source,
+        )
 
 
 class RunPermissionTests(unittest.TestCase):

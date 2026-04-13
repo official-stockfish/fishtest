@@ -219,8 +219,8 @@
               class="form-control"
               name="num-games"
               id="modify-num-games"
-              min="0"
-              step="1000"
+              min="{{ modify_num_games_constraints.min }}"
+              step="{{ modify_num_games_constraints.step }}"
               value="{{ run["args"]["num_games"] }}"
             >
           </div>

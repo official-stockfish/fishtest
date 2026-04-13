@@ -3,6 +3,14 @@ import zlib
 
 import numpy as np
 
+from fishtest.spsa_workflow import (
+    apply_spsa_result_updates,
+    build_spsa_chart_payload,
+    build_spsa_worker_step,
+    clip_spsa_param_value,
+    get_spsa_history_period,
+)
+
 
 def _pack_flips(flips):
     """
@@ -23,35 +31,31 @@ def _unpack_flips(packed_flips, length=None):
     return flips.tolist() if length is None else flips[:length].tolist()
 
 
-def _param_clip(param, increment):
-    return min(max(param["theta"] + increment, param["min"]), param["max"])
-
-
 def _generate_data(spsa, iter=None):
     result = {"w_params": [], "b_params": []}
 
     if iter is None:
         iter = spsa["iter"]
 
-    # Generate a set of tuning parameters
-    iter_local = iter + 1  # start from 1 to avoid division by zero
     for param in spsa["params"]:
-        c = param["c"] / iter_local ** spsa["gamma"]
         flip = random.choice((-1, 1))
+        worker_step = build_spsa_worker_step(
+            spsa,
+            param,
+            iter_value=iter,
+            flip=flip,
+        )
         result["w_params"].append(
             {
                 "name": param["name"],
-                "value": _param_clip(param, c * flip),
-                "R": param["a"] / (spsa["A"] + iter_local) ** spsa["alpha"] / c**2,
-                "c": c,
-                "flip": flip,
+                "value": clip_spsa_param_value(param, worker_step["c"] * flip),
+                **worker_step,
             }
         )
-        # These are only used by the worker
         result["b_params"].append(
             {
                 "name": param["name"],
-                "value": _param_clip(param, -c * flip),
+                "value": clip_spsa_param_value(param, -worker_step["c"] * flip),
             }
         )
 
@@ -59,20 +63,25 @@ def _generate_data(spsa, iter=None):
 
 
 def _add_to_history(spsa, num_games, w_params):
-    # Compute the update frequency so that the required storage does not depend
-    # on the the number of parameters. We have to recompute this every time since
-    # the user may have modified the run.
     n_params = len(spsa["params"])
-    samples = 100 if n_params < 100 else 10000 / n_params if n_params < 1000 else 1
-    period = num_games / 2 / samples
+    period = get_spsa_history_period(num_iter=num_games / 2, param_count=n_params)
 
-    # Now update if the time has come...
+    if len(spsa["params"]) != len(w_params):
+        msg = (
+            "SPSA history length mismatch: "
+            f"{len(spsa['params'])} params, {len(w_params)} worker params"
+        )
+        raise ValueError(msg)
+
+    if period <= 0:
+        return
+
     if "param_history" not in spsa:
         spsa["param_history"] = []
     if len(spsa["param_history"]) + 1 <= spsa["iter"] / period:
         summary = [
             {"theta": spsa_param["theta"], "R": w_param["R"], "c": w_param["c"]}
-            for w_param, spsa_param in zip(w_params, spsa["params"])
+            for spsa_param, w_param in zip(spsa["params"], w_params)
         ]
         spsa["param_history"].append(summary)
 
@@ -148,15 +157,16 @@ class SPSAHandler:
             w_param["flip"] = flips[idx]
             del w_param["value"]  # for safety!
 
-        # Update the current theta based on the results from the worker
         result = spsa_results["wins"] - spsa_results["losses"]
-        spsa["iter"] += spsa_results["num_games"] // 2
+        game_pairs = spsa_results["num_games"] // 2
+        spsa["iter"] += game_pairs
 
-        for idx, param in enumerate(spsa["params"]):
-            R = w_params[idx]["R"]
-            c = w_params[idx]["c"]
-            flip = w_params[idx]["flip"]
-            param["theta"] = _param_clip(param, R * c * result * flip)
+        apply_spsa_result_updates(
+            spsa,
+            w_params,
+            result=result,
+            game_pairs=game_pairs,
+        )
 
         _add_to_history(spsa, run["args"]["num_games"], w_params)
 
@@ -164,4 +174,4 @@ class SPSAHandler:
 
     def get_spsa_data(self, run_id):
         run = self.get_run(run_id)
-        return run["args"].get("spsa", {})
+        return build_spsa_chart_payload(run["args"].get("spsa"))

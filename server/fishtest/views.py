@@ -14,7 +14,7 @@ import hashlib
 import logging
 import os
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, TypedDict
@@ -115,6 +115,7 @@ from fishtest.schemas import (
     runs_schema,
     short_worker_name,
 )
+from fishtest.spsa_workflow import build_spsa_form_values, format_spsa_value
 from fishtest.util import (
     VALID_USERNAME_PATTERN,
     email_valid,
@@ -161,6 +162,8 @@ from fishtest.views_machines import (
 )
 from fishtest.views_machines import tests_machines as _tests_machines_impl
 from fishtest.views_run import (
+    CREATE_FORM_NUM_GAMES_CONSTRAINTS,
+    MODIFY_FORM_NUM_GAMES_CONSTRAINTS,
     can_modify_run,
     del_tasks,
     get_master_info,
@@ -168,7 +171,6 @@ from fishtest.views_run import (
     get_sha,  # noqa: F401 — re-exported for test_github_api.py
     is_same_user,
     new_run_message,
-    parse_spsa_params,  # noqa: F401 — re-exported for test compatibility
     sanitize_options,
     update_nets,
     validate_form,
@@ -399,6 +401,14 @@ class _ViewContext:
     individual handlers can stay synchronous and focused on shaping template
     context.
     """
+
+    raw_request: Request
+    session: CookieSession
+    cookies: Mapping[str, Any]
+    response_headerlist: list[tuple[str, str]]
+    remember: bool
+    forget: bool
+    remember_max_age: int | None
 
     def __init__(
         self,
@@ -2419,11 +2429,11 @@ def tests_run(request: _ViewContext) -> dict[str, Any] | RedirectResponse:
         if run is None:
             raise StarletteHTTPException(status_code=404)
         run_args = copy.deepcopy(run["args"])
-        if "spsa" in run_args:
-            # needs deepcopy
-            run_args["spsa"]["A"] = (
-                round(1000 * 2 * run_args["spsa"]["A"] / run_args["num_games"]) / 1000
-            )
+
+    spsa_form = build_spsa_form_values(
+        run_args.get("spsa"),
+        num_games=run_args.get("num_games"),
+    )
 
     username = request.authenticated_userid
     u = request.userdb.get_user(username)
@@ -2456,12 +2466,14 @@ def tests_run(request: _ViewContext) -> dict[str, Any] | RedirectResponse:
         "new_options_value": new_options_value,
         "base_options_value": base_options_value,
         "info_value": info_value,
+        "spsa_form": spsa_form,
         "test_book": test_book,
         "pt_book": pt_book,
         "master_info": master_info,
         "valid_books": request.rundb.books.keys(),
         "pt_info": request.rundb.pt_info,
         "setup": setup,
+        "create_num_games_constraints": CREATE_FORM_NUM_GAMES_CONSTRAINTS,
         "supported_arches": supported_arches,
         "supported_compilers": supported_compilers,
     }
@@ -3188,50 +3200,6 @@ def _set_tasks_cookies(
     )
 
 
-def _format_tests_view_spsa_value(
-    run: dict[str, Any],
-    value: dict[str, Any],
-) -> list[str | _SpsaTableRow]:
-    iter_local = value["iter"] + 1  # start from 1 to avoid division by zero
-    A = value["A"]  # noqa: N806
-    alpha = value["alpha"]
-    gamma = value["gamma"]
-    summary = (
-        f"iter: {iter_local:d}, A: {A:d}, alpha: {alpha:0.3f}, gamma: {gamma:0.3f}"
-    )
-    params = value["params"]
-    spsa_value: list[str | _SpsaTableRow] = [summary]
-    for p in params:
-        try:
-            c_iter = p["c"] / (iter_local**gamma)
-            r_iter = p["a"] / (A + iter_local) ** alpha / c_iter**2
-        except (ArithmeticError, TypeError, ValueError) as e:
-            logger.warning(
-                "Invalid SPSA param state while rendering "
-                "run %s (iter=%d, param=%s): %s",
-                run["_id"],
-                iter_local,
-                p.get("name", "<unknown>"),
-                e,
-            )
-            c_iter = float("nan")
-            r_iter = float("nan")
-        spsa_value.append(
-            [
-                p["name"],
-                "{:.2f}".format(p["theta"]),
-                str(int(p["start"])),
-                str(int(p["min"])),
-                str(int(p["max"])),
-                f"{c_iter:.3f}",
-                "{:.3f}".format(p["c_end"]),
-                f"{r_iter:.2e}",
-                "{:.2e}".format(p["r_end"]),
-            ],
-        )
-    return spsa_value
-
-
 def _format_tests_view_string_arg(
     run: dict[str, Any],
     name: str,
@@ -3277,7 +3245,11 @@ def _format_tests_view_dict_arg(
             value.get("elo_model", "BayesElo"),
         )
     if name == "spsa":
-        return _format_tests_view_spsa_value(run, value)
+        return format_spsa_value(
+            value,
+            logger=logger,
+            run_id=str(run["_id"]),
+        )
     return str(value)
 
 
@@ -3716,6 +3688,7 @@ def tests_view(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # n
         "tasks_is_truncated": tasks_table_context["is_truncated"],
         "follow": follow,
         "can_modify_run": can_modify_run(request, run),
+        "modify_num_games_constraints": MODIFY_FORM_NUM_GAMES_CONSTRAINTS,
         "same_user": same_user,
         "pt_info": request.rundb.pt_info,
         "notes": notes,

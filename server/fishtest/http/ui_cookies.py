@@ -38,11 +38,13 @@ _TOGGLE_COOKIE_VALUES = frozenset({"Hide", "Show"})
 
 
 class _CookieReader(Protocol):
-    cookies: Mapping[str, Any]
+    @property
+    def cookies(self) -> Mapping[str, Any]: ...
 
 
 class _CookieWriter(_CookieReader, Protocol):
-    response_headerlist: MutableSequence[tuple[str, str]]
+    @property
+    def response_headerlist(self) -> MutableSequence[tuple[str, str]]: ...
 
 
 def _cookie_source(source: _CookieReader | Mapping[str, Any]) -> Mapping[str, Any]:
