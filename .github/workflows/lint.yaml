@@ -27,28 +27,28 @@ jobs:
           node-version: ${{ matrix.node-version }}
 
       - name: Ruff lint
-        uses: astral-sh/ruff-action@v3
+        uses: astral-sh/ruff-action@v4.0.0
         id: ruff-lint
         continue-on-error: true
         with:
           args: "check server worker --config pyproject.toml"
 
       - name: Ruff lint statistics
-        uses: astral-sh/ruff-action@v3
+        uses: astral-sh/ruff-action@v4.0.0
         id: ruff-lint-statistics
         continue-on-error: true
         with:
           args: "check server worker --config pyproject.toml --output-format full --statistics"
 
       - name: Ruff sort
-        uses: astral-sh/ruff-action@v3
+        uses: astral-sh/ruff-action@v4.0.0
         id: ruff-sort
         continue-on-error: true
         with:
           args: "check server worker --select I --config pyproject.toml"
 
       - name: Ruff format
-        uses: astral-sh/ruff-action@v3
+        uses: astral-sh/ruff-action@v4.0.0
         id: ruff-format
         continue-on-error: true
         with:
