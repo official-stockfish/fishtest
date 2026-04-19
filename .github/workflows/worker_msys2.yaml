@@ -7,16 +7,17 @@ permissions:
 
 jobs:
   test:
-    runs-on: windows-latest
+    runs-on: ${{ matrix.os }}
     env:
       PYTHONPATH: ${{ github.workspace }}/worker/packages
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { sys: mingw64, env: x86_64,       comp: gcc }
-          - { sys: ucrt64,  env: ucrt-x86_64,  comp: gcc }
-          - { sys: clang64, env: clang-x86_64, comp: clang }
+          - { os: windows-latest, sys: mingw64,    env: x86_64,        comp: gcc }
+          - { os: windows-latest, sys: ucrt64,     env: ucrt-x86_64,   comp: gcc }
+          - { os: windows-latest, sys: clang64,    env: clang-x86_64,  comp: clang }
+          - { os: windows-11-arm, sys: clangarm64, env: clang-aarch64, comp: clang }
     defaults:
       run:
         shell: msys2 {0}
