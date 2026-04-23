@@ -60,6 +60,12 @@ button.notifications:focus-visible {
     font-size: 14px;
   }
 
+  .summary-card-value {
+    font-size: clamp(1.0625rem, 3.8vw, 1.125rem);
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+
   .run-table .run-button,
   .run-table .run-date,
   .run-table .run-user,
