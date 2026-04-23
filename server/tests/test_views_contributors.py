@@ -384,6 +384,25 @@ class TestViewsContributors(UiUserTestCase):
         self.assertIn("static/js/contributors.js", response.text)
         self.assertNotIn('const FINDME_COOKIE = "contributors_findme"', response.text)
 
+    def test_contributors_summary_cards_keep_uniform_headers(self):
+        response = self.client.get("/contributors")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            'class="card card-lg-sm text-center h-100"',
+            response.text,
+        )
+        self.assertIn(
+            'class="card-header text-nowrap" title="Active testers">Active testers</div>',
+            response.text,
+        )
+        self.assertIn(
+            'class="card-header text-nowrap" title="Tests submitted">Tests submitted</div>',
+            response.text,
+        )
+        self.assertIn("card-title mb-0 monospace summary-card-value", response.text)
+        self.assertNotIn("summary-card-header", response.text)
+
     def test_contributors_sort_headers_use_hx_get_with_push_url(self):
         response = self.client.get("/contributors?sort=username&order=asc")
         self.assertEqual(response.status_code, 200)

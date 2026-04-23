@@ -173,11 +173,11 @@ class TestNNViews(unittest.TestCase):
         self.assertNotIn(miss_name, response.text)
         self.assertRegex(
             response.text,
-            r'title="Total nets">Nets</div>\s*<div class="card-body">\s*<h4 class="card-title mb-0 monospace">1</h4>',
+            r'title="Total nets">Nets</div>\s*<div class="card-body">\s*<h4 class="card-title mb-0 monospace summary-card-value">1</h4>',
         )
         self.assertRegex(
             response.text,
-            r'title="Total downloads">Downloads</div>\s*<div class="card-body">\s*<h4 class="card-title mb-0 monospace">8</h4>',
+            r'title="Total downloads">Downloads</div>\s*<div class="card-body">\s*<h4 class="card-title mb-0 monospace summary-card-value">8</h4>',
         )
         self.assertNotIn("<!doctype html>", response.text.lower())
 
@@ -249,19 +249,19 @@ class TestNNViews(unittest.TestCase):
         )
         self.assertRegex(
             response.text,
-            r'title="Total nets">Nets</div>\s*<div class="card-body">\s*<h4 class="card-title mb-0 monospace">3</h4>',
+            r'title="Total nets">Nets</div>\s*<div class="card-body">\s*<h4 class="card-title mb-0 monospace summary-card-value">3</h4>',
         )
         self.assertRegex(
             response.text,
-            r'title="Total master nets">Master nets</div>\s*<div class="card-body">\s*<h4 class="card-title mb-0 monospace">2</h4>',
+            r'title="Total master nets">Master nets</div>\s*<div class="card-body">\s*<h4 class="card-title mb-0 monospace summary-card-value">2</h4>',
         )
         self.assertRegex(
             response.text,
-            r'title="Total contributors">Contributors</div>\s*<div class="card-body">\s*<h4 class="card-title mb-0 monospace">2</h4>',
+            r'title="Total contributors">Contributors</div>\s*<div class="card-body">\s*<h4 class="card-title mb-0 monospace summary-card-value">2</h4>',
         )
         self.assertRegex(
             response.text,
-            r'title="Total downloads">Downloads</div>\s*<div class="card-body">\s*<h4 class="card-title mb-0 monospace">18</h4>',
+            r'title="Total downloads">Downloads</div>\s*<div class="card-body">\s*<h4 class="card-title mb-0 monospace summary-card-value">18</h4>',
         )
         self.assertIn("These networks are freely available for download", response.text)
         self.assertIn(
