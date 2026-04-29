@@ -1074,30 +1074,32 @@ def parse_fastchess_output(
     fastchess_WLD_results = None
     fastchess_ptnml_results = None
     patterns_fastchess_error = (
-        # Warning; New-SHA doesn't have option ThreatBySafePawn
+        # E.g. "Warning; New-SHA doesn't have option ThreatBySafePawn"
         re.compile(r"Warning;.*doesn't have option"),
-        # Warning; Invalid value for option P: -354
+        # E.g. "Warning; Invalid value for option P: -354"
         re.compile(r"Warning; Invalid value for option"),
+        re.compile(r"Warning; Failed to set.*option"),
         re.compile(r"Warning; No info line available to extract score from engine"),
-        # Warning; Illegal move e2e4 played by ...
+        # E.g. "Warning; Illegal move <none> played by New-SHA"
         re.compile(r"Warning; Illegal move"),
         re.compile(r"Warning; Could not extract score from engine"),
-        # Warning; Illegal PV move e2e4 pv; ...
         re.compile(r"Warning; Illegal PV move"),
         re.compile(r"Warning; Move does not match uci move format"),
         re.compile(r"Warning; PV continues after checkmate"),
         re.compile(r"Warning; PV continues after stalemate"),
-        # Warning; PV continues after threefold repetition - move ...
         re.compile(r"Warning; PV continues after threefold"),
-        # Warning; PV continues after fifty-move rule - move ...
         re.compile(r"Warning; PV continues after fifty-move rule"),
-        re.compile(r"Warning; Incomplete mating PV"),
-        re.compile(r"Warning; Too long mating PV"),
-        re.compile(r"Warning; Mating PV does not end with checkmate"),
     )
     patterns_fastchess_warning = (
-        # SF18 may trigger this warning, so only move up once SF19 is released
-        # Warning; Bestmove does not match beginning of last PV - move ...
+        # These warnings may indicate an engine crash, which may be hw related.
+        re.compile(r"Warning; Engine .* is not responsive"),
+        re.compile(r"Warning; Engine .* didn't respond"),
+        re.compile(r"Warning; No output from"),
+        re.compile(r"Warning; No bestmove found in the last line from"),
+        # SF18 may trigger these warnings, so only move up once SF19 is released
+        re.compile(r"Warning; Incomplete mating PV.*multipv 1 "),
+        re.compile(r"Warning; Too long mating PV.*multipv 1 "),
+        re.compile(r"Warning; Mating PV does not end with checkmate.*multipv 1 "),
         re.compile(r"Warning; Bestmove does not match beginning of last PV"),
     )
 
