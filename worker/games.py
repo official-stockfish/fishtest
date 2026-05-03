@@ -1049,11 +1049,14 @@ def parse_fastchess_output(
     finished_task_message = (
         "The server told us that no more games are needed for the current task."
     )
-    hash_pattern = re.compile(r"(Base|New)-[a-f0-9]+")
 
     def shorten_hash(match):
         word = match.group(0).split("-")
         return "-".join([word[0], word[1][:10]])
+
+    hash_pattern = re.compile(r"(Base|New)-[a-f0-9]+")
+    base_name = hash_pattern.sub(shorten_hash, base_name)
+    new_name = hash_pattern.sub(shorten_hash, new_name)
 
     saved_stats = copy.deepcopy(result["stats"])
 
