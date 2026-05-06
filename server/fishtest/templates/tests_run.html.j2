@@ -63,6 +63,7 @@
                         "book": test_book,
                         "stop_rule": "stop-rule-sprt",
                         "bounds": "standard STC",
+                        "auto_purge": true,
                         "base_branch": base_branch,
                         "base_signature": latest_bench
                       } | tojson }}'
@@ -83,6 +84,7 @@
                         "options": "Hash=64",
                         "book": test_book,
                         "stop_rule": "stop-rule-sprt",
+                        "auto_purge": true,
                         "bounds": "standard LTC"
                       } | tojson }}'>
                     <label class="list-group-item rounded-3" for="ltc_test" title="Long time control | Single-threaded">
@@ -101,6 +103,7 @@
                         "options": "Hash=64",
                         "book": test_book,
                         "stop_rule": "stop-rule-sprt",
+                        "auto_purge": true,
                         "bounds": "standard STC"
                       } | tojson }}'>
                     <label class="list-group-item rounded-3" for="stc_smp_test" title="Short time control | Multi-threaded">
@@ -119,6 +122,7 @@
                         "options": "Hash=256",
                         "book": test_book,
                         "stop_rule": "stop-rule-sprt",
+                        "auto_purge": true,
                         "bounds": "standard LTC"
                       } | tojson }}'>
                     <label class="list-group-item rounded-3" for="ltc_smp_test" title="Long time control | Multi-threaded">
@@ -137,6 +141,7 @@
                         "options": "Hash=192",
                         "book": test_book,
                         "stop_rule": "stop-rule-sprt",
+                        "auto_purge": true,
                         "bounds": "standard STC"
                       } | tojson }}'>
                     <label class="list-group-item rounded-3" for="vltc_test" title="Very long time control | Single-threaded">
@@ -155,6 +160,7 @@
                         "options": "Hash=512",
                         "book": test_book,
                         "stop_rule": "stop-rule-sprt",
+                        "auto_purge": true,
                         "bounds": "standard LTC"
                       } | tojson }}'>
                     <label class="list-group-item rounded-3" for="vltc_smp_test" title="Very long time control | Multi-threaded">
@@ -173,6 +179,7 @@
                         "options": "Hash=64",
                         "book": pt_book,
                         "stop_rule": "stop-rule-games",
+                        "auto_purge": false,
                         "games": 60000,
                         "test_branch": "master",
                         "base_branch": pt_branch,
@@ -195,6 +202,7 @@
                         "options": "Hash=512",
                         "book": pt_book,
                         "stop_rule": "stop-rule-games",
+                        "auto_purge": false,
                         "games": 60000,
                         "test_branch": "master",
                         "base_branch": pt_branch,
@@ -645,7 +653,7 @@
                   class="form-check-input"
                   id="checkbox-auto-purge"
                   name="auto-purge"
-                  checked
+                  {{ "checked" if args.get("auto_purge", True) else "" }}
                 >
               </div>
               <div class="col-6 col-lg-4 mb-2 form-check">
@@ -829,6 +837,7 @@
           book,
           stop_rule,
           bounds,
+          auto_purge,
           games,
           test_branch,
           base_branch,
@@ -867,6 +876,10 @@
 
         if (games) {
           document.getElementById("num-games").value = games;
+        }
+
+        if (!isRun && typeof auto_purge === "boolean") {
+          document.getElementById("checkbox-auto-purge").checked = auto_purge;
         }
 
         if (!isRun) {
