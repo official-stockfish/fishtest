@@ -426,6 +426,27 @@ class TemplateConstraintContractTests(unittest.TestCase):
             template_source,
         )
 
+    def test_tests_run_template_sets_auto_purge_defaults_by_test_type(self):
+        repo_root = Path(__file__).resolve().parents[1]
+        template_source = (
+            repo_root / "fishtest" / "templates" / "tests_run.html.j2"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn(
+            '{{ "checked" if args.get("auto_purge", True) else "" }}',
+            template_source,
+        )
+        self.assertEqual(template_source.count('"auto_purge": true'), 6)
+        self.assertEqual(template_source.count('"auto_purge": false'), 2)
+        self.assertIn(
+            'if (!isRun && typeof auto_purge === "boolean") {',
+            template_source,
+        )
+        self.assertIn(
+            'document.getElementById("checkbox-auto-purge").checked = auto_purge;',
+            template_source,
+        )
+
 
 class RunPermissionTests(unittest.TestCase):
     def test_del_tasks_returns_deep_copy_without_tasks(self):
