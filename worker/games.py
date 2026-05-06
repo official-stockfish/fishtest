@@ -1031,8 +1031,8 @@ def enqueue_output(stream, queue):
 
 def parse_fastchess_output(
     p,
-    new_name,
-    base_name,
+    new_name_long,
+    base_name_long,
     current_state,
     worker_info,
     password,
@@ -1050,13 +1050,26 @@ def parse_fastchess_output(
         "The server told us that no more games are needed for the current task."
     )
 
+    # TODO: To avoid manual edits here, maintain a DB on the server, like for the book sri
+    official_release_shas = (
+        "e0bfc4b69bbe928d6f474a46560bcc3b3f6709aa",  # sf_17
+        "03e27488f3d21d8ff4dbf3065603afa21dbd0ef3",  # sf_17.1
+        "cb3d4ee9b47d0c5aae855b12379378ea1439675c",  # sf_18
+    )
+
+    def is_official_release(name):
+        return any(sha in name for sha in official_release_shas)
+
     def shorten_hash(match):
         word = match.group(0).split("-")
         return "-".join([word[0], word[1][:10]])
 
     hash_pattern = re.compile(r"(Base|New)-[a-f0-9]+")
-    base_name = hash_pattern.sub(shorten_hash, base_name)
-    new_name = hash_pattern.sub(shorten_hash, new_name)
+    base_name = hash_pattern.sub(shorten_hash, base_name_long)
+    new_name = hash_pattern.sub(shorten_hash, new_name_long)
+    release_names = (base_name,) * is_official_release(base_name_long) + (
+        new_name,
+    ) * is_official_release(new_name_long)
 
     saved_stats = copy.deepcopy(result["stats"])
 
@@ -1092,6 +1105,10 @@ def parse_fastchess_output(
         re.compile(r"Warning; PV continues after stalemate"),
         re.compile(r"Warning; PV continues after threefold"),
         re.compile(r"Warning; PV continues after fifty-move rule"),
+        re.compile(r"Warning; Incomplete mating PV.*multipv 1 "),
+        re.compile(r"Warning; Too long mating PV.*multipv 1 "),
+        re.compile(r"Warning; Mating PV does not end with checkmate.*multipv 1 "),
+        re.compile(r"Warning; Bestmove does not match beginning of last PV"),
     )
     patterns_fastchess_warning = (
         # These warnings may indicate an engine crash, which may be hw related.
@@ -1099,11 +1116,6 @@ def parse_fastchess_output(
         re.compile(r"Warning; Engine .* didn't respond"),
         re.compile(r"Warning; No output from"),
         re.compile(r"Warning; No bestmove found in the last line from"),
-        # SF18 may trigger these warnings, so only move up once SF19 is released
-        re.compile(r"Warning; Incomplete mating PV.*multipv 1 "),
-        re.compile(r"Warning; Too long mating PV.*multipv 1 "),
-        re.compile(r"Warning; Mating PV does not end with checkmate.*multipv 1 "),
-        re.compile(r"Warning; Bestmove does not match beginning of last PV"),
     )
 
     q = Queue()
@@ -1152,24 +1164,24 @@ def parse_fastchess_output(
                     f"Finished match uncleanly {num_games_updated} vs. required {games_to_play}."
                 )
 
-        # Check line for fastchess errors.
-        if any(pattern.search(line) for pattern in patterns_fastchess_error):
+        engine_name = (
+            new_name if new_name in line else base_name if base_name in line else "None"
+        )
+
+        # Check line for fastchess errors, exempting official releases.
+        if (
+            any(pattern.search(line) for pattern in patterns_fastchess_error)
+            and engine_name not in release_names
+        ):
             message = f"fastchess says: '{line}'"
             raise RunException(message)
 
-        # Check line for fastchess warnings, and post them to the event log.
+        # Check line for fastchess warnings, and post warnings that do not come
+        # from official releases to the event log.
         # Post only the first warning per pattern and engine, followed by an exponential count.
         for pattern in patterns_fastchess_warning:
-            if not pattern.search(line):
+            if not pattern.search(line) or engine_name in release_names:
                 continue
-
-            engine_name = (
-                new_name
-                if new_name in line
-                else base_name
-                if base_name in line
-                else "None"
-            )
 
             count, exponential = count_fastchess_warnings.get(
                 (pattern, engine_name), (0, 1)
