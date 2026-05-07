@@ -163,6 +163,10 @@ The full `/tests/view/{id}` page also remembers the `% c` checkbox with a
 browser cookie, so the checkbox reopens in its previous mode while live detail
 polling continues to update only the embedded SPSA data node.
 
+The full `/tests/view/{id}` page also loads a dedicated client-side diff
+renderer for the inline Diff panel. That asset is page-scoped and is not part
+of the `/tests/view/{id}/detail` fragment contract.
+
 The request submits the page's current canonical `expected` state from a
 server-owned hidden input:
 
