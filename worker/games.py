@@ -1115,7 +1115,7 @@ def parse_fastchess_output(
         re.compile(r"Warning; Engine .* is not responsive"),
         re.compile(r"Warning; Engine .* didn't respond"),
         re.compile(r"Warning; No output from"),
-        re.compile(r"Warning; No bestmove found in the last line from"),
+        re.compile(r"Warning; No bestmove found from"),
     )
 
     q = Queue()
