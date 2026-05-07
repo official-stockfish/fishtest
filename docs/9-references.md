@@ -249,12 +249,23 @@ must use `{{ value|safe }}` or `{% autoescape false %}`.
 
 ### Project patterns
 
-**CDN loading**: htmx 2.0.8 is loaded from `cdn.jsdelivr.net` in
+**CDN loading**: htmx 2.0.10 is loaded from `cdn.jsdelivr.net` in
 `base.html.j2` with an SRI integrity hash. No npm build step.
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.8/dist/htmx.min.js"
-    integrity="sha256-Iig+9oy3VFkU8KiKG97cclanA9HVgMHSVSF9ClDTExM="
+<script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.10/dist/htmx.min.js"
+    integrity="sha256-cepnGFv6jJjDnTFxfG/OXYUjcPzf0SnbRUN3TTFFwN4="
+    crossorigin="anonymous"
+    referrerpolicy="no-referrer"></script>
+```
+
+**Detail-page diff renderer**: `/tests/view/{id}` loads jsdiff from
+`cdn.jsdelivr.net` in `tests_view.html.j2` for the inline Diff panel. The
+asset is pinned and protected with SRI.
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/diff@9.0.0/dist/diff.min.js"
+    integrity="sha256-tRqdKIXywJDcl7mBAnOV9+fmVYpGx1rjdH2yZ5E6ias="
     crossorigin="anonymous"
     referrerpolicy="no-referrer"></script>
 ```

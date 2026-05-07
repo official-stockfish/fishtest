@@ -188,9 +188,10 @@ Client -> nginx -> Uvicorn -> ASGI middleware stack -> FastAPI router
 
 ### htmx integration
 
-UI templates load htmx 2.0.8 from CDN in `base.html.j2`. The server remains
-fully server-rendered (Jinja2 + HTML responses). htmx adds three capabilities
-without client-side rendering or a JavaScript build step:
+UI templates load htmx 2.0.10 from CDN in `base.html.j2`. The server remains
+fully server-rendered (Jinja2 + HTML responses). The test detail page also
+loads a page-scoped diff renderer for the inline Diff panel. htmx adds three
+capabilities without client-side rendering or a JavaScript build step:
 
 | Capability | Mechanism |
 |------------|-----------|

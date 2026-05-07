@@ -43,7 +43,7 @@ validation rules, see
 | Web framework | FastAPI + Starlette (ASGI) |
 | Application server | Uvicorn |
 | Templates | Jinja2 (`.html.j2`, `StrictUndefined`) |
-| Client interactivity | htmx 2.0.8 (CDN, fragment polling/swaps, OOB updates) |
+| Client interactivity | htmx 2.0.10 (CDN, fragment polling/swaps, OOB updates) |
 | Session management | itsdangerous `TimestampSigner` cookie sessions |
 | Database | MongoDB (pymongo) |
 | Validation | vtjson (schema-first validation; no Pydantic) |
