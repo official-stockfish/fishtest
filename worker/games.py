@@ -18,6 +18,7 @@ import sys
 import tempfile
 import threading
 import time
+import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -1684,7 +1685,32 @@ def run_games(
         nodestime_cmd = ["timemargin=10000"]
 
     def make_player(arg):
-        return run["args"][arg].split(" ")[0]
+        # Ensure uniform event naming across all platforms.
+        replacements = {
+            "\u00df": "ss",
+            "\u1e9e": "SS",
+            "\u00e6": "ae",
+            "\u00c6": "AE",
+            "\u0153": "oe",
+            "\u0152": "OE",
+            "\u00f8": "o",
+            "\u00d8": "O",
+            "\u0142": "l",
+            "\u0141": "L",
+            "\u0111": "d",
+            "\u0110": "D",
+            "\u00f0": "d",
+            "\u00d0": "D",
+            "\u00fe": "th",
+            "\u00de": "TH",
+            "\u0127": "h",
+            "\u0126": "H",
+        }
+        replacements = str.maketrans(replacements)
+        player = run["args"][arg].split(" ")[0].translate(replacements)
+        player = unicodedata.normalize("NFKD", player)
+        no_accents = "".join(c for c in player if not unicodedata.combining(c))
+        return no_accents.encode("ascii", errors="replace").decode("ascii")
 
     if spsa_tuning:
         tc_limit *= 2
