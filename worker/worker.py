@@ -74,7 +74,7 @@ MIN_CLANG_MINOR = 0
 
 FASTCHESS_SHA = "3de44228aec904e688a4ad71c554eb9d461a5a2a"
 
-WORKER_VERSION = 322
+WORKER_VERSION = 323
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -1609,6 +1609,11 @@ def worker():
     fish_exit = False
 
     while current_state["alive"]:
+        if (worker_dir / "fish.finish").is_file():
+            current_state["alive"] = False
+            print("Stopped by 'fish.finish' file")
+            fish_exit = True
+            break
         success = fetch_and_handle_task(
             worker_dir,
             worker_info,
@@ -1638,8 +1643,10 @@ def worker():
             delay = INITIAL_RETRY_TIME
 
     if fish_exit:
-        print("Removing fish.exit file.")
-        (worker_dir / "fish.exit").unlink()
+        print("Removing 'fish.[exit|finish]' file(s).")
+        for filename in ["fish.exit", "fish.finish"]:
+            if (worker_dir / filename).is_file():
+                (worker_dir / filename).unlink()
 
     print("Releasing the worker lock.")
     worker_lock.release()
