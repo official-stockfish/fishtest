@@ -176,8 +176,17 @@ None use Starlette's `BaseHTTPMiddleware`.
 
 ## Request flow
 
-```
-Client -> nginx -> Uvicorn -> ASGI middleware stack -> FastAPI router
+High-level request path:
+
+```mermaid
+flowchart LR
+      client[Client] --> nginx[nginx]
+      nginx --> uvicorn[Uvicorn]
+      uvicorn --> middleware[ASGI middleware stack]
+      middleware --> router[FastAPI router]
+      router -->|HTML pages and fragments| ui[views_router]
+      router -->|Worker and user API| api[api_router]
+      router -->|/static| static[StaticFiles]
 ```
 
 - **Worker API**: `api_router` handles all `/api/*` endpoints. Worker

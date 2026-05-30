@@ -54,6 +54,24 @@ internal process manager distributes PGN upload requests across the workers.
 The extra workers absorb the long-tail latency of large PGN writes
 (p95 approx 30 s at peak load).
 
+High-level routing topology:
+
+```mermaid
+flowchart LR
+    clients[Browsers and workers] --> nginx[nginx reverse proxy]
+    nginx -->|/static and /nn| static[Direct file serving]
+    subgraph cluster[Uvicorn cluster]
+        primary[8000 primary]
+        tests[8001 tests homepage]
+        readonly[8002 read-only UI and API]
+        pgn[8003 upload_pgn (3 workers)]
+    end
+    nginx -->|Worker API| primary
+    nginx -->|/tests| tests
+    nginx -->|Read-only UI and API| readonly
+    nginx -->|/api/upload_pgn| pgn
+```
+
 ## Starting the server
 
 Managed via a systemd service template (one unit per port):

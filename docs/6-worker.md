@@ -20,8 +20,8 @@ Source files:
 
 | Constant | Value | Location |
 |----------|-------|----------|
-| `WORKER_VERSION` | 317 | `worker.py` |
-| `FASTCHESS_SHA` | `1525c4b17e009e4c94c313f5a3f6fa2cf299171a` | `worker.py` |
+| `WORKER_VERSION` | 322 | `worker.py` |
+| `FASTCHESS_SHA` | `3de44228aec904e688a4ad71c554eb9d461a5a2a` | `worker.py` |
 | `HTTP_TIMEOUT` | 30.0 s | `worker.py`, `games.py` |
 | `INITIAL_RETRY_TIME` | 15.0 s | `worker.py` |
 | `MAX_RETRY_TIME` | 900 s (15 min) | `worker.py` |
@@ -31,12 +31,24 @@ Source files:
 
 ## Control flow
 
-```
-worker.py : worker()
-worker.py :    fetch_and_handle_task()            [in loop]
-games.py  :       run_games()
-games.py  :          launch_fastchess()           [in loop for spsa]
-games.py  :             parse_fastchess_output()
+High-level worker control flow:
+
+```mermaid
+flowchart TD
+   start[worker] --> init[Setup parameters and verify worker]
+   init --> toolchain[Verify toolchain and setup fastchess]
+   toolchain --> heartbeat[Start heartbeat thread]
+   heartbeat --> fetch[fetch_and_handle_task]
+   fetch --> assigned{Task assigned}
+   assigned -- No --> retry[Wait and retry] --> fetch
+   assigned -- Yes --> prep[Build engines and stage inputs]
+   prep --> batch[Run fastchess batch]
+   batch --> report[POST /api/update_task]
+   report --> more{More games needed}
+   more -- Yes --> batch
+   more -- No, success --> upload[POST /api/upload_pgn] --> fetch
+   prep -- Failure --> stop[POST /api/failed_task or /api/stop_run] --> fetch
+   batch -- Failure --> stop
 ```
 
 ### `worker()` -- entry point

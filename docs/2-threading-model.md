@@ -157,6 +157,18 @@ while blocked on the mutex.
 
 ### Call chain (per request)
 
+```mermaid
+flowchart TD
+    loop[Event loop] --> offload[Offload request_task to threadpool]
+    offload --> token[One AnyIO token is held]
+    token --> gate[task_semaphore gate]
+    gate --> lock[request_task_lock mutex]
+    lock --> work[sync_request_task]
+    work --> data[MongoDB plus task iteration]
+```
+
+Exact call chain:
+
 ```
 event loop  ->  run_in_threadpool(api.request_task)   [1 AnyIO token]
   threadpool  ->  task_semaphore.acquire(False)       [non-blocking gate]

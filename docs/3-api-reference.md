@@ -12,7 +12,7 @@ These invariants apply to every worker API endpoint:
   also includes `duration`.
 - Content-Type is always `application/json`.
 - The current worker protocol version is defined by `WORKER_VERSION` in
-  `api.py` (currently 317).
+  `api.py` (currently 322).
 
 ## Authentication
 
@@ -26,6 +26,51 @@ Workers authenticate via `username` and `password` fields in the
 ## Protocol lifecycle
 
 A worker's interaction with the server follows this sequence:
+
+```mermaid
+sequenceDiagram
+  actor W as Worker
+  participant S as Fishtest server
+  participant F as Fastchess
+
+  W->>S: POST /api/request_version
+  alt Newer version available
+    S-->>W: version > local
+    W->>W: Self-update and restart
+  else Current version
+    S-->>W: version 322
+    W->>S: POST /api/request_task
+    alt No task ready
+      S-->>W: task_waiting false
+      W->>W: Backoff and retry
+    else Task assigned
+      S-->>W: run and task_id
+      W->>W: Build engines and stage inputs
+      par Task execution
+        loop Each batch
+          opt SPSA run
+            W->>S: POST /api/request_spsa
+            S-->>W: tuning parameters
+          end
+          W->>F: Run games
+          F-->>W: WLD and pentanomial results
+          W->>S: POST /api/update_task
+          S-->>W: duration or task_alive false
+        end
+      and Heartbeat
+        loop Every 120s while task active
+          W->>S: POST /api/beat
+          S-->>W: task_alive
+        end
+      end
+      alt Task completed
+        W->>S: POST /api/upload_pgn
+      else Task failed or run stopped
+        W->>S: POST /api/failed_task or /api/stop_run
+      end
+    end
+  end
+```
 
 1. **Version check** -- `POST /api/request_version`. If the server returns
    a newer version, the worker self-updates and restarts.
@@ -85,7 +130,7 @@ to check if they need to upgrade.
 
 **Response**:
 ```json
-{ "version": 317, "duration": 0.001 }
+{ "version": 322, "duration": 0.001 }
 ```
 
 ---
