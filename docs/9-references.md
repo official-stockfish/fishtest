@@ -40,19 +40,10 @@ app.include_router(api_router)
 app.include_router(views_router)
 ```
 
-**Dependency injection with `Annotated`**: Reusable typed aliases for
-request-scoped dependencies (session data, DB handles, auth checks).
-
-```python
-from typing import Annotated
-from fastapi import Depends
-
-CurrentUser = Annotated[User, Depends(get_current_user)]
-
-@router.post("/endpoint", dependencies=[Depends(check_csrf)])
-async def handler(user: CurrentUser):
-    ...
-```
+**No dependency injection**: fishtest does not use FastAPI's `Depends()` /
+`Annotated` dependency system. Authentication, CSRF, and session access are
+enforced centrally -- in `_dispatch_view` for UI routes and per-handler in the
+API router -- not through injected dependencies.
 
 **Lifespan**: Manages MongoDB client, scheduler, and caches. One
 `@asynccontextmanager` in `app.py`.
@@ -74,11 +65,9 @@ errors return JSON with `{"error": "...", "duration": N}`.
 `run_in_threadpool` by Starlette/FastAPI. Most fishtest handlers use
 `async def` with explicit `run_in_threadpool` calls for blocking DB work.
 
-**Dependency overrides for testing**:
-
-```python
-app.dependency_overrides[get_db] = lambda: mock_db
-```
+**Testing**: tests build the real application with its full middleware stack
+and exercise it against a dedicated `fishtest_tests` MongoDB. Because the app
+uses no FastAPI dependencies, there are no `app.dependency_overrides`.
 
 ## Starlette
 
@@ -98,20 +87,13 @@ app.dependency_overrides[get_db] = lambda: mock_db
 
 ### Project patterns
 
-**Session middleware**: `FishtestSessionMiddleware` (a thin subclass of
-Starlette's `SessionMiddleware`) uses `itsdangerous.TimestampSigner` to sign
-cookies. Per-request `max_age` is supported via `scope["session_max_age"]`.
-
-```python
-SessionMiddleware(
-    app,
-    secret_key="...",
-    session_cookie="fishtest_session",
-    max_age=None,            # session cookie by default
-    same_site="lax",
-    https_only=False,        # set per-request via X-Forwarded-Proto
-)
-```
+**Session middleware**: `FishtestSessionMiddleware` is a pure ASGI middleware
+class; it does not subclass Starlette's `SessionMiddleware`. It signs and
+verifies the `fishtest_session` cookie directly with
+`itsdangerous.TimestampSigner`. Per-request cookie lifetime, the `Secure` flag,
+and forced expiry are driven through `scope["session_max_age"]`,
+`scope["session_secure"]`, and `scope["session_force_clear"]`. It follows the
+pure ASGI middleware shape shown below.
 
 **Pure ASGI middleware** (preferred over `BaseHTTPMiddleware`):
 
@@ -142,10 +124,10 @@ Current middleware stack (all are pure ASGI):
 **Request form limits** (DOS protection):
 
 ```python
-form = await request.form(
-    max_files=1,
-    max_fields=20,
-    max_part_size=200 * 1024 * 1024,
+post = await request.form(
+    max_files=FORM_MAX_FILES,          # UI_FORM_MAX_FILES = 2
+    max_fields=FORM_MAX_FIELDS,        # UI_FORM_MAX_FIELDS = 200
+    max_part_size=FORM_MAX_PART_SIZE,  # UI_FORM_MAX_PART_SIZE_BYTES = 200 MB
 )
 ```
 
@@ -183,7 +165,7 @@ and filters are registered before any template renders.
 ```python
 from starlette.templating import Jinja2Templates
 
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(env=default_environment())  # custom Environment
 
 @router.get("/page")
 async def page(request: Request):
