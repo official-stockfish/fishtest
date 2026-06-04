@@ -232,7 +232,7 @@ Design rules:
    or a page-specific `cookie_max_age` context instead of introducing alternate
    aliases or literals.
 
-Known gaps documented for future iterations:
+Known limitations:
 
 - Workers and user_management have zero cookie persistence for filter/sort
   state (user resets to defaults on page reload).

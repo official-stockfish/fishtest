@@ -650,7 +650,7 @@ The blocked-workers table supports URL-driven server-authoritative state.
 
 Behavior notes:
 
-- `filter` keeps the server-side time-window behavior from H6.
+- `filter` keeps the server-side time-window behavior.
 - Sorting is server-authoritative and stable with worker-name tie-breaks.
 - Pagination uses page size `25` in paged view.
 - `view=all` returns all matching rows up to a hard cap (`5000`) and hides
@@ -677,7 +677,7 @@ URL-driven state for server sorting, search, paging, full view, and rank jump.
 | Parameter | Values | Default |
 |-----|-----|-----|
 | `search` | one-shot go-to query (exact username first, then first substring match) | empty |
-| `sort` | `cpu_hours`, `username`, `last_updated`, `games_per_hour`, `games`, `tests` | `cpu_hours` |
+| `sort` | `cpu_hours`, `username`, `last_updated`, `games_per_hour`, `games`, `tests`, `tests_repo` | `cpu_hours` |
 | `order` | `asc`, `desc` | column default |
 | `page` | integer `>= 1` | `1` |
 | `view` | `paged`, `all` | `paged` |
@@ -842,7 +842,7 @@ Behavior notes:
   by run id.
 - `text` performs a case-insensitive MongoDB `$text` query against the last-column
    run info text on finished runs only.
-- `/actions`, `/tests/finished`, and `/tests/user/{username}` now use the
+- `/actions`, `/tests/finished`, and `/tests/user/{username}` share the
    same `max_count` query parameter for result caps.
 - Anonymous search requests use the anonymous finished-run search cap.
    Authenticated search requests use the authenticated finished-run default.

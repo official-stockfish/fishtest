@@ -114,7 +114,7 @@ Starlette threadpool via `run_in_threadpool()`.
 | Connection capacity | 9,400+ concurrent workers proven in production |
 | Blocking I/O | Occupies a threadpool slot only during the blocking call |
 | Memory per connection | Coroutine frame (~KBs), not a full thread stack |
-| Overload behavior | Connections queue in the kernel backlog (`--backlog 8192`) |
+| Overload behavior | Connections queue in the kernel backlog (`--backlog 16384`) |
 
 All blocking work (MongoDB queries, file I/O, CPU-bound stats, GitHub API
 calls) is offloaded to the threadpool. The event loop stays free to accept
@@ -226,7 +226,7 @@ headers for dynamic content and should not add `proxy_cache` in front of UI
 routes. Aggressive proxy/browser caching remains appropriate for immutable
 static assets only.
 
-**Server-authoritative table state.** Newer htmx list pages (`/nns`,
+**Server-authoritative table state.** The htmx list pages (`/nns`,
 `/contributors`, `/user_management`, `/workers/show`, `/tests/machines`) keep
 sort, search, page, and view state in the URL and render the active control
 state server-side on every response. Where the htmx target contains stateful
