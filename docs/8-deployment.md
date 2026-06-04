@@ -64,7 +64,7 @@ flowchart LR
         primary[8000 primary]
         tests[8001 tests homepage]
         readonly[8002 read-only UI and API]
-        pgn[8003 upload_pgn (3 workers)]
+        pgn["8003 upload_pgn (3 workers)"]
     end
     nginx -->|Worker API| primary
     nginx -->|/tests| tests

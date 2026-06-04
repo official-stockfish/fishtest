@@ -308,7 +308,7 @@ Fragment templates are standalone `.html.j2` files that do not extend
 `base.html.j2`. This avoids partial-block rendering complexity and keeps
 fragments self-contained.
 
-**Content fragments for stateful tables**: newer list pages do not return only
+**Content fragments for stateful tables**: stateful list pages do not return only
 row fragments. They return content fragments (`contributors_content_fragment`,
 `user_management_content_fragment`, `workers_content_fragment`) so that view
 toggles, truncation banners, pagination, and sort state remain synchronized

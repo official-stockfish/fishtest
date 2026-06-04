@@ -273,7 +273,7 @@ key.
 |----------|--------|-------|---------|
 | `/api/request_version` | POST | Setup | Check worker version, trigger update |
 | `/api/request_task` | POST | Setup | Request a task assignment |
-| `/api/nn/{nnue}` | GET | Setup | Download a neural network file |
+| `/api/nn/{id}` | GET | Setup | Download a neural network file |
 | `/api/update_task` | POST | Main loop | Report game results (batch updates) |
 | `/api/request_spsa` | POST | Main loop | Get SPSA tuning parameters |
 | `/api/beat` | POST | Heartbeat | Keep task lease alive (every 120 s) |
