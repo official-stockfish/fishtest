@@ -339,7 +339,7 @@ Cookie ownership is split intentionally:
 ### Per-request overrides
 
 - `scope["session_max_age"]` -- overrides cookie `Max-Age` (used by "remember
-  me": 1 year).
+  me": 400 days, `SESSION_REMEMBER_ME_MAX_AGE_SECONDS`).
 - `scope["session_secure"]` -- overrides the `Secure` flag.
 - `scope["session_force_clear"]` -- forces an expired cookie on the response
   (used by logout).
