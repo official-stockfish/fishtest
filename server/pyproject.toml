@@ -21,18 +21,18 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
 ]
 dependencies = [
-    "awscli>=1.45.1",
+    "awscli>=1.45.22",
     "email-validator>=2.3.0",
-    "fastapi>=0.136.1",
+    "fastapi>=0.136.3",
     "itsdangerous>=2.2.0",
     "jinja2>=3.1.6",
-    "numpy>=2.4.4",
+    "numpy>=2.4.6",
     "pymongo>=4.17.0",
-    "python-multipart>=0.0.27",
-    "regex>=2026.4.4",
-    "requests>=2.33.1",
+    "python-multipart>=0.0.31",
+    "regex>=2026.5.9",
+    "requests>=2.34.2",
     "scipy>=1.17.1",
-    "uvicorn>=0.46.0",
+    "uvicorn>=0.49.0",
     "vtjson>=2.3.0",
     "zxcvbn>=4.5.0",
 ]
@@ -49,7 +49,7 @@ Repository = "https://github.com/official-stockfish/fishtest"
 Issues = "https://github.com/official-stockfish/fishtest"
 
 [build-system]
-requires = ["hatchling>=1.29.0"]
+requires = ["hatchling>=1.30.1"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
