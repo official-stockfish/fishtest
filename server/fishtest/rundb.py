@@ -1341,19 +1341,18 @@ class RunDb:
         # The second adjustment is a multiplicative malus for too many active runs
         itp *= 36.0 / (36.0 + count * count)
 
-        # Finally two gentle bonuses for positive LLR and long-running tests
+        # Latency focus: +10% per 100k games (max +100%)
+        r = run["results"]
+        n = r["wins"] + r["losses"] + r["draws"]
+        itp *= min(1.0 + n / 1_000_000, 2.0)
+
+        # Small bonus for high LLR (more for strong-gainer bounds)
         if sprt := run["args"].get("sprt"):
-            llr = sprt.get("llr", 0)
-            # Don't throw workers at a run that finishes in 2 minutes anyways
-            llr = min(max(llr, 0), 2.0)
-            a = 3  # max LLR bonus 1.67x
-            itp *= (llr + a) / a
-            # max long test bonus 2.0x
-            r = run["results"]
-            n = r["wins"] + r["losses"] + r["draws"]
-            x = 200_000
-            if n > x:
-                itp *= min(n / x, 2)
+            llr = sprt.get("llr", 0.0)
+            if llr > 2.0:
+                itp *= 1.1
+                if sprt.get("elo0", 0.0) > 0.0:
+                    itp *= 1.1
 
         run["args"]["itp"] = itp
 
