@@ -1344,7 +1344,7 @@ class RunDb:
         # Latency focus: +10% per 100k games (max +100%)
         r = run["results"]
         n = r["wins"] + r["losses"] + r["draws"]
-        itp *= min(1.0 + n / 1_000_000, 2.0)
+        itp *= min(1.0 + (n / 100_000) * 0.1, 2.0)
 
         # Small bonus for high LLR (more for strong-gainer bounds)
         if sprt := run["args"].get("sprt"):
