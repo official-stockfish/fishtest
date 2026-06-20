@@ -53,7 +53,7 @@ class TestViewRouteMethods(unittest.TestCase):
     def setUpClass(cls):
         test_support.require_fastapi()
         try:
-            from fastapi.routing import APIRoute
+            from fastapi.routing import APIRoute, iter_route_contexts
 
             from fishtest.views import _VIEW_ROUTES
         except ModuleNotFoundError as exc:  # pragma: no cover
@@ -62,6 +62,10 @@ class TestViewRouteMethods(unittest.TestCase):
             )
 
         cls.APIRoute = APIRoute
+        # FastAPI 0.137.0 stores included routers as a tree in ``app.routes``;
+        # ``iter_route_contexts`` is the supported way to walk it back to the
+        # underlying routes.
+        cls.iter_route_contexts = staticmethod(iter_route_contexts)
         cls.declared_view_paths = {path for _fn, path, _cfg in _VIEW_ROUTES}
         cls.rundb = test_support.get_rundb()
 
@@ -83,10 +87,10 @@ class TestViewRouteMethods(unittest.TestCase):
             include_views=True,
         )
         route_methods = {
-            route.path: set(route.methods or set())
-            for route in app.routes
-            if isinstance(route, self.APIRoute)
-            and route.path in self.declared_view_paths
+            ctx.path: set(ctx.methods or set())
+            for ctx in self.iter_route_contexts(app.routes)
+            if isinstance(ctx.original_route, self.APIRoute)
+            and ctx.path in self.declared_view_paths
         }
         self.assertSetEqual(set(route_methods), self.declared_view_paths)
         return route_methods
