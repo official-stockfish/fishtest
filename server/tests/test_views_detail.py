@@ -1075,3 +1075,69 @@ class TestTestsViewTasks(UiUserTestCase):
             "--tasks-panel-max-height: calc(var(--machines-panel-max-height) + 6rem);",
             css_source,
         )
+
+
+class TestTestsViewDiffWarning(UiUserTestCase):
+    username = "DiffWarningUser"
+
+    def test_diff_overflow_warning_assets_are_present(self):
+        template_path = (
+            Path(__file__).resolve().parents[1]
+            / "fishtest"
+            / "templates"
+            / "tests_view.html.j2"
+        )
+        template_source = template_path.read_text(encoding="utf-8")
+        self.assertIn("function updateDiffOverflowWarning()", template_source)
+        self.assertIn(
+            "diffContents.scrollHeight > diffContents.clientHeight + 1",
+            template_source,
+        )
+        self.assertIn('"diff-overflow-warning",', template_source)
+        self.assertIn("visible && overflowing && !diffReviewed,", template_source)
+        # Listeners are registered only for approvers, not every viewer.
+        self.assertIn(
+            "if (viewerIsApprover) {\n"
+            '    window.addEventListener("resize", updateDiffOverflowWarning);',
+            template_source,
+        )
+        self.assertIn(
+            'diffContents.addEventListener("scroll", updateDiffOverflowWarning, {',
+            template_source,
+        )
+        self.assertIn(
+            "requestAnimationFrame(updateDiffOverflowWarning);", template_source
+        )
+
+        css_path = (
+            Path(__file__).resolve().parents[1]
+            / "fishtest"
+            / "static"
+            / "css"
+            / "application.css"
+        )
+        css_source = css_path.read_text(encoding="utf-8")
+        self.assertIn("#diff-contents.diff-overflow-warning {", css_source)
+        # Outer ring so the vertical scrollbar cannot mask it (no inset).
+        self.assertIn("box-shadow: 0 0 0 3px var(--bs-warning);", css_source)
+        self.assertNotIn("box-shadow: inset 0 0 0 3px var(--bs-warning);", css_source)
+        self.assertIn("@keyframes diff-overflow-pulse {", css_source)
+        self.assertIn("@media (prefers-reduced-motion: reduce) {", css_source)
+
+    def test_diff_overflow_warning_flag_is_true_for_approver(self):
+        run_id = self._create_run()
+        original_pending, original_groups = self._set_approver_state()
+        try:
+            self._login_user()
+            response = self.client.get(f"/tests/view/{run_id}")
+        finally:
+            self._restore_approver_state(original_pending, original_groups)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("const viewerIsApprover = true;", response.text)
+
+    def test_diff_overflow_warning_flag_is_false_for_non_approver(self):
+        run_id = self._create_run()
+        self._login_user()
+        response = self.client.get(f"/tests/view/{run_id}")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("const viewerIsApprover = false;", response.text)

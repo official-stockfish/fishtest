@@ -659,6 +659,38 @@
   const diffText = diffContents.querySelector("code");
   const toggleBtn = document.getElementById("diff-toggle");
 
+  const viewerIsApprover = {{ approver | tojson }};
+  // Latched once the approver scrolls an overflowing diff to its end, so the
+  // attention cue stops nagging after the full diff has actually been seen.
+  let diffReviewed = false;
+
+  function updateDiffOverflowWarning() {
+    // Nudge approvers when part of the diff is below the fold and must be
+    // scrolled into view. The cue is an outer pulsing ring (see CSS): drawn
+    // outside the box so the vertical scrollbar cannot mask it, and pulsing so
+    // it catches the eye. It is dropped once the diff is scrolled to the end.
+    if (!viewerIsApprover) return;
+    const visible =
+      diffContents.style.display !== "none" && diffContents.offsetParent !== null;
+    const overflowing = diffContents.scrollHeight > diffContents.clientHeight + 1;
+    if (visible && overflowing) {
+      const atBottom =
+        diffContents.scrollHeight - diffContents.scrollTop - diffContents.clientHeight <= 2;
+      if (atBottom) diffReviewed = true;
+    }
+    diffContents.classList.toggle(
+      "diff-overflow-warning",
+      visible && overflowing && !diffReviewed,
+    );
+  }
+
+  if (viewerIsApprover) {
+    window.addEventListener("resize", updateDiffOverflowWarning);
+    diffContents.addEventListener("scroll", updateDiffOverflowWarning, {
+      passive: true,
+    });
+  }
+
   async function fetchDiffTwoDots(apiUrlNew, apiUrlBase, diffNew, diffBase, options) {
     const [files1, files2] = await Promise.all([
       getFilesInBranch(apiUrlBase, diffBase, options),
@@ -846,6 +878,7 @@
     addDiff(diffText, text);
     showDiff(diffContents, diffText, count, copyDiffBtn, toggleBtn);
     hljs.highlightElement(diffText);
+    requestAnimationFrame(updateDiffOverflowWarning);
     toggleBtn.addEventListener("click", function () {
         diffContents.style.display =
           diffContents.style.display === "none" ? "" : "none";
@@ -854,6 +887,7 @@
             copyDiffBtn.style.display === "none" ? "" : "none";
         if (toggleBtn.textContent === "Hide") toggleBtn.textContent = "Show";
         else toggleBtn.textContent = "Hide";
+        updateDiffOverflowWarning();
       });
     document.getElementById("diff-section").style.display = "";
 

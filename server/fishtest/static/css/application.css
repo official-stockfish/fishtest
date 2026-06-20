@@ -664,6 +664,33 @@ td {
   margin-bottom: 0 !important;
 }
 
+/* Approver-only cue: the diff box overflows its scroll region and must be
+   scrolled to be read in full. The ring is an outer box-shadow so the vertical
+   scrollbar cannot mask it, it pulses to catch the eye, and it adds no layout
+   box, so it does not change the scrollHeight/clientHeight overflow
+   measurement. */
+#diff-contents.diff-overflow-warning {
+  box-shadow: 0 0 0 3px var(--bs-warning);
+  animation: diff-overflow-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes diff-overflow-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 3px var(--bs-warning);
+  }
+
+  50% {
+    box-shadow: 0 0 0 6px var(--bs-warning);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #diff-contents.diff-overflow-warning {
+    animation: none;
+  }
+}
+
 #tasks {
   max-height: 60vh;
   margin-bottom: 12px;
