@@ -1329,11 +1329,10 @@ class RunDb:
         base_tp = run["args"]["throughput"]
         itp = base_tp = max(min(base_tp, 500), 1)  # Sanity check
 
-        # The primary adjustment is derived from a power law of test TC relative to STC, so that long TCs compromise
-        # between worse latency and chewing too many cores.
+        # The primary adjustment is derived from a power law of test TC relative to STC,
+        # so that long TCs compromise between worse latency and chewing too many cores.
         tc_ratio = get_tc_ratio(run["args"]["tc"], run["args"]["threads"])
-        # Discount longer test itp-per-TC without boosting sub-STC tests
-        if tc_ratio > 1:
+        if tc_ratio > 1:  # Don't boost VSTC tests
             # LTC/STC tc_ratio = 6, target latency ratio = 3/2,
             # --> LTC itp = 4 --> power = log(4)/log(6) ~ 0.774
             itp *= tc_ratio**0.774
