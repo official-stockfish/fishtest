@@ -108,7 +108,7 @@ def _positive_int_param(
         return None
     try:
         value = int(raw_value)
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return None
     if value <= 0:
         return None
@@ -122,7 +122,7 @@ def _float_param(raw_value: Any) -> float | None:  # noqa: ANN401
         return None
     try:
         return float(raw_value)
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return None
 
 
