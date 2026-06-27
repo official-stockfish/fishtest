@@ -8,6 +8,7 @@ import re
 import textwrap
 import threading
 import time
+from collections import defaultdict
 from datetime import UTC, datetime
 
 import regex
@@ -289,13 +290,33 @@ class RunDb:
         with self.unfinished_runs_lock:
             unfinished_runs = [self.get_run(run_id) for run_id in self.unfinished_runs]
 
-        user_active = [
-            run["args"].get("username") for run in unfinished_runs if run["workers"] > 0
-        ]
-
+        # {username: List[Tuple(priority, n_games, id, run)]}
+        users_active_runs = defaultdict(list)
         for run in unfinished_runs:
-            self.calc_itp(run, user_active.count(run["args"].get("username")))
-            self.buffer(run)
+            if run["workers"] > 0 and (username := run["args"].get("username")):
+                users_active_runs[username].append(
+                    (
+                        run["args"]["priority"],
+                        count_games(run["results"]),
+                        run["_id"],
+                        run,
+                    )
+                )
+
+        # Hard cap the number of p=0 runs per user. Offending runs are reduced in priority.
+        max_user_tests = 4
+        for username, user_runs in users_active_runs.items():
+            normal_tests = 0
+            # Sort by (prio, n_games, _id) descending, so newer runs are paused.
+            # _id breaks ties so as to not compare `run` dicts, which would be a TypeError.
+            user_runs.sort(reverse=True)
+            for prio, n_games, _, run in user_runs:
+                if -1 < prio < 1:
+                    normal_tests += 1
+                    if normal_tests > max_user_tests:
+                        run["args"]["priority"] = -1
+                self.calc_itp(run, n_games)
+                self.buffer(run)
 
     def clean_wtt_map(self):
         with self.wtt_lock:
@@ -1326,7 +1347,7 @@ class RunDb:
 
         return [merged_rows[skip : skip + limit], total_count]
 
-    def calc_itp(self, run, count):
+    def calc_itp(self, run, n):
         # Tests default to 100% base throughput, but we have several adjustments behind the scenes to get internal throughput.
         base_tp = run["args"]["throughput"]
         itp = base_tp = max(min(base_tp, 500), 1)  # Sanity check
@@ -1339,13 +1360,8 @@ class RunDb:
             # --> LTC itp = 4 --> power = log(4)/log(6) ~ 0.774
             itp *= tc_ratio**0.774
 
-        # The second adjustment is a multiplicative malus for too many active runs
-        itp *= 36.0 / (36.0 + count * count)
-
         # Latency focus: max +100% bonus at 200k games
         # (At current default bounds, 200k games is a typical neutral-elo duration)
-        r = run["results"]
-        n = r["wins"] + r["losses"] + r["draws"]
         add_bonus = min(n / 200_000, 1.0)
 
         # Small bonus for high LLR (more for strong-gainer bounds)
