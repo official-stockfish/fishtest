@@ -300,6 +300,23 @@ class ActionDb:
                 action["task_id"] = task_id
         self.insert_action(**action)
 
+    def count_fastchess_warnings(self, run_id=None):
+        # Count worker_log actions for this run whose message reports a
+        # fastchess warning (i.e. contains both "fastchess" and "Warning").
+        q = {
+            "action": "worker_log",
+            "run_id": str(run_id),
+            "$and": [
+                {"message": {"$regex": "fastchess"}},
+                {"message": {"$regex": "Warning"}},
+            ],
+        }
+        try:
+            return self.actions.count_documents(q, hint="actions_run_time_id")
+        except OperationFailure:
+            # Be resilient if indexes haven't been created yet (bad hint).
+            return self.actions.count_documents(q)
+
     def insert_action(self, **action):
         if "run_id" in action:
             action["run_id"] = str(action["run_id"])
