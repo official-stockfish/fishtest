@@ -3695,7 +3695,6 @@ def tests_view(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # n
         "theme_color": theme_color,
         "warnings": warnings,
         "use_3dot_diff": use_3dot_diff,
-        "allow_github_api_calls": allow_github_api_calls(),
     }
 
 
