@@ -120,7 +120,7 @@ async def get_json_body(request: Request) -> JsonBodyResult:
     """Parse JSON body, preserving legacy error behavior."""
     try:
         body = await request.json()
-    except JSONDecodeError, TypeError, ValueError:
+    except (JSONDecodeError, TypeError, ValueError):
         return JsonBodyResult(body=None, error=True)
     return JsonBodyResult(body=body, error=False)
 

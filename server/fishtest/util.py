@@ -367,7 +367,7 @@ def get_tc_ratio(tc, threads=1, base="10+0.1"):
     Example: standard LTC is 6x, SMP-STC is 4x."""
     try:
         threads_value = float(threads)
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         print(f"Invalid threads value in get_tc_ratio: {threads!r}; defaulting to 1.0")
         threads_value = 1.0
 

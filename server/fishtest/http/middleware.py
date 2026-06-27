@@ -175,7 +175,7 @@ class RejectNonPrimaryWorkerApiMiddleware:
 
         try:
             is_primary = bool(rundb.is_primary_instance())
-        except AttributeError, RuntimeError, TypeError:
+        except (AttributeError, RuntimeError, TypeError):
             is_primary = True
 
         if is_primary:

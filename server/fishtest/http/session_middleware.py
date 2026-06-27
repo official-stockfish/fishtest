@@ -75,7 +75,7 @@ class FishtestSessionMiddleware:
                     unsigned = signer.unsign(raw, max_age=self.max_age)
                 session = json.loads(b64decode(unsigned))
                 initial_session_was_empty = False
-            except BadSignature, ValueError, TypeError, json.JSONDecodeError:
+            except (BadSignature, ValueError, TypeError, json.JSONDecodeError):
                 session = {}
 
         if not isinstance(session, dict):

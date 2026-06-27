@@ -83,7 +83,7 @@ def _machines_version_parts(values: list[Any] | None) -> tuple[int, ...]:
     for value in values or []:
         try:
             parts.append(int(value))
-        except TypeError, ValueError:
+        except (TypeError, ValueError):
             break
     return tuple(parts)
 
@@ -225,7 +225,7 @@ def _machines_sort_value(  # noqa: PLR0911
         return value.timestamp() if isinstance(value, datetime) else 0
     try:
         return int(machine_row.get(sort_key, 0))
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return 0
 
 

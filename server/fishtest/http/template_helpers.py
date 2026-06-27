@@ -39,7 +39,7 @@ def run_tables_prefix(username: object | None) -> str:
         if username is None:
             return ""
         text = str(username)
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return ""
     token = binascii.hexlify(text.encode()).decode()
     return f"user{token}_"

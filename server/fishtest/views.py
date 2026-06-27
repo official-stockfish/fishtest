@@ -255,7 +255,7 @@ def _classify_active_run_filters(run: dict) -> dict[str, str]:
     )
     try:
         threads = int(args.get("threads", 1))
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         threads = 1
     thread_group = "smp" if threads > 1 else "st"
     return {
@@ -775,7 +775,7 @@ def signup(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # noqa:
             data=payload,
             timeout=HTTP_TIMEOUT,
         ).json()
-    except requests.RequestException, ValueError:
+    except (requests.RequestException, ValueError):
         request.session.flash("Captcha verification failed", "error")
         return signup_context
 
@@ -1829,7 +1829,7 @@ def _contributors_sort_value(user: dict[str, Any], sort_key: str) -> Any:  # noq
         return 0
     try:
         return int(user.get(sort_key, 0))
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return 0
 
 

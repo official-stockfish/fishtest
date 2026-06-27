@@ -22,7 +22,7 @@ _SPSA_PARAM_FIELDS = 6
 def _as_float(value: object, fallback: float | None = None) -> float | None:
     try:
         return float(value)
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         return fallback
 
 
@@ -549,7 +549,7 @@ def build_spsa_chart_payload(spsa: Mapping[str, Any] | None) -> dict[str, Any]:
         if base_c is not None:
             try:
                 live_c = _finite_float(base_c / iter_local**gamma)
-            except ArithmeticError, OverflowError, ValueError:
+            except (ArithmeticError, OverflowError, ValueError):
                 live_c = None
         live_point.append(
             {

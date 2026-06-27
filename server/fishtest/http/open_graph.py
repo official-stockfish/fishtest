@@ -121,7 +121,7 @@ def _metadata_time_label(value: _TimestampInput) -> str:
 
     try:
         return datetime.fromtimestamp(float(value), UTC).strftime("%y-%m-%d %H:%M:%S")
-    except OverflowError, OSError, TypeError, ValueError:
+    except (OverflowError, OSError, TypeError, ValueError):
         return ""
 
 

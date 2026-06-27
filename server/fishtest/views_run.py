@@ -87,7 +87,7 @@ def get_master_info(  # noqa: C901
     for commit in commits:
         try:
             raw_message = commit["commit"]["message"]
-        except KeyError, TypeError:
+        except (KeyError, TypeError):
             # Be tolerant to partial payload corruption in later entries.
             continue
         if not isinstance(raw_message, str):
