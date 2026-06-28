@@ -3594,6 +3594,21 @@ def tests_view(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # n
         warnings.append(
             "the developer repository is not forked from official-stockfish/Stockfish",
         )
+    fastchess_warnings = request.actiondb.count_fastchess_warnings(run_id=run["_id"])
+    if fastchess_warnings > 0:
+        # Link to the event log filtered on this run so the warnings can be inspected.
+        # Build as Markup so the anchor tag is not escaped under Jinja autoescape.
+        event_log = Markup(
+            '<a class="alert-link" href="/actions?run_id={}"'
+            ' target="_blank" rel="noopener noreferrer">event log</a>',
+        ).format(run["_id"])
+        warnings.append(
+            Markup("this test has {} fastchess {} in the {}").format(
+                fastchess_warnings,
+                plural(fastchess_warnings, "warning"),
+                event_log,
+            ),
+        )
 
     def allow_github_api_calls() -> bool:
         # Avoid making pointless GitHub api calls on behalf of
