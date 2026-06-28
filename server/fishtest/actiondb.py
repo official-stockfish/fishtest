@@ -300,7 +300,7 @@ class ActionDb:
                 action["task_id"] = task_id
         self.insert_action(**action)
 
-    def count_fastchess_warnings(self, run_id=None):
+    def count_fastchess_warnings(self, run_id):
         # Count worker_log actions for this run whose message reports a
         # fastchess warning (i.e. contains both "fastchess" and "Warning").
         q = {
