@@ -139,6 +139,8 @@ class RunDb:
 
         self.spsa_handler = fishtest.spsa_handler.SPSAHandler(self)
 
+        self._pending_hours = 0
+
     @lru_cache(maxsize=1, expiration=30, refresh=False)
     def get_runs_index_names(self):
         return set(self.runs.index_information())
@@ -287,6 +289,17 @@ class RunDb:
             )
 
     def update_itp(self):
+        # Update all active/pending runs' internal throughput. First compute the hard cap,
+        # then collate the runs by user, then for each run apply the cap and calculate the itp.
+
+        hours = self._pending_hours
+        # Lookup hours -> cap. In principle this could cause some mild swinging as users manually unpause
+        max_user_tests = (     3 if hours > 72
+                          else 4 if hours > 24
+                          else 6 if hours > 0   # fleet is active
+                          else 4                # fallback/default
+                         )  # fmt: skip
+
         with self.unfinished_runs_lock:
             unfinished_runs = [self.get_run(run_id) for run_id in self.unfinished_runs]
 
@@ -304,7 +317,6 @@ class RunDb:
                 )
 
         # Hard cap the number of p=0 runs per user. Offending runs are reduced in priority.
-        max_user_tests = 4
         for username, user_runs in users_active_runs.items():
             normal_tests = 0
             # Sort by (prio, n_games, _id) descending, so newer runs are paused.
@@ -993,9 +1005,10 @@ class RunDb:
                 nps += run.get("nps", 0.0)
                 games_per_minute += run.get("games_per_minute", 0.0)
             if cores > 0:
-                for run in runs["pending"] + runs["active"]:
+                for run in runs["active"]:
                     eta = remaining_hours(run) / cores
                     pending_hours += eta
+                self._pending_hours = pending_hours
 
         return (
             runs,
