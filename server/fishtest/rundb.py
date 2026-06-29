@@ -936,6 +936,7 @@ class RunDb:
         return machines
 
     def aggregate_unfinished_runs(self, username=None):
+        # The global stats are computed for the homepage, i.e. when username is Falsy, and are 0 otherwise
         unfinished_runs = self.get_unfinished_runs(username=username)
         runs = {"pending": [], "active": []}
         for run in unfinished_runs:
@@ -963,17 +964,18 @@ class RunDb:
         machines_count = 0
         nps = 0.0
         games_per_minute = 0.0
-        for run in runs["active"]:
-            machines_count += run["workers"]
-            cores += run["cores"]
-            nps += run.get("nps", 0.0)
-            games_per_minute += run.get("games_per_minute", 0.0)
-
         pending_hours = 0
-        for run in runs["pending"] + runs["active"]:
+        if not username:  # Only the homepage gets global stats
+            for run in runs["active"]:
+                machines_count += run["workers"]
+                cores += run["cores"]
+                nps += run.get("nps", 0.0)
+                games_per_minute += run.get("games_per_minute", 0.0)
             if cores > 0:
-                eta = remaining_hours(run) / cores
-                pending_hours += eta
+                for run in runs["pending"] + runs["active"]:
+                    eta = remaining_hours(run) / cores
+                    pending_hours += eta
+
         return (
             runs,
             pending_hours,
