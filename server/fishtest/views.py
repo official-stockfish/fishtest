@@ -2909,7 +2909,7 @@ def _build_tests_run_tables_fragment_context(
         "stop_polling": stop_polling,
     }
 
-    # workers-count target exists on homepage only.
+    # Homepage only: update the workers-count target and stats OOB
     if not username:
         filtered_count = (
             _filtered_machine_count(
@@ -2929,9 +2929,6 @@ def _build_tests_run_tables_fragment_context(
             filtered_count=filtered_count,
         )
         result["workers_count_text"] = workers_count
-
-    # Include stats OOB updates for the homepage (no username filter).
-    if not username:
         result["stats"] = {
             "pending_hours": f"{pending_hours:.1f}",
             "cores": cores,
