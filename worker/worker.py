@@ -69,12 +69,12 @@ LOCK_FILE = Path(__file__).resolve().parent / "fishtest_worker.lock"
 MIN_GCC_MAJOR = 9
 MIN_GCC_MINOR = 3
 
-MIN_CLANG_MAJOR = 10
+MIN_CLANG_MAJOR = 11
 MIN_CLANG_MINOR = 0
 
 FASTCHESS_SHA = "58072f231dc1ae33204254f867afd0a195f21a2e"
 
-WORKER_VERSION = 323
+WORKER_VERSION = 324
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
