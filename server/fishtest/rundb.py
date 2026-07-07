@@ -972,7 +972,7 @@ class RunDb:
                 nps += run.get("nps", 0.0)
                 games_per_minute += run.get("games_per_minute", 0.0)
             if cores > 0:
-                for run in runs["pending"] + runs["active"]:
+                for run in runs["active"]:
                     eta = remaining_hours(run) / cores
                     pending_hours += eta
 
