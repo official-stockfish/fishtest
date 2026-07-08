@@ -10,6 +10,15 @@ from fishtest.stats.brownian import Brownian
 
 
 class sprt:
+    # Elo axis clamp for the confidence-bound search. outcome_prob maps Elo
+    # through the logistic score law, so the search runs in logistic Elo over
+    # [-CB_CLAMP, CB_CLAMP] regardless of the elo_model.
+    CB_CLAMP = 1000.0
+    # Grid step (Elo) for the coarse scan. The descending region of outcome_prob
+    # is tens to hundreds of Elo wide for real pentanomial data, so a 10 Elo grid
+    # cannot skip over the leftmost crossing; brentq then refines each bracket.
+    CB_STEP = 10.0
+
     def __init__(self, alpha=0.05, beta=0.05, elo0=0, elo1=5, elo_model="logistic"):
         assert elo_model in ("logistic", "normalized")
         self.elo_model = elo_model
@@ -80,45 +89,80 @@ class sprt:
             T=self.T, y=self.llr
         )
 
+    def _confidence_bounds(self, ps):
+        """
+        For each probability p in `ps`, return the maximal Elo such that the
+        observed outcome of the test has probability less than p, i.e. the Elo
+        where outcome_prob(elo) == 1 - p. The results align with `ps`.
+
+        The root is sought on the logistic Elo axis that outcome_prob uses
+        (s = L_(elo)), over the fixed window [-CB_CLAMP, CB_CLAMP]. The search
+        does not depend on the elo_model or on the units of the SPRT bounds, so
+        every caller and every elo_model agrees on the result.
+
+        outcome_prob is monotone decreasing in Elo only while the small-Elo GSPRT
+        approximation holds. Once the observed Elo lies far outside [elo0, elo1]
+        the approximation breaks down: outcome_prob dips to a minimum and rises
+        again toward the clamp. The confidence bound is the leftmost (descending)
+        crossing; the spurious rising branch is ignored. A level that is never
+        reached inside the window is pinned to the clamp and sets self.clamped.
+        """
+        lo, hi = -self.CB_CLAMP, self.CB_CLAMP
+        steps = round((hi - lo) / self.CB_STEP)
+        # outcome_prob level targeted by each requested p, and the bound for it
+        levels = [1 - p for p in ps]
+        bounds = [None] * len(ps)
+        op_prev = self.outcome_prob(lo)
+        pending = []
+        for index, level in enumerate(levels):
+            if op_prev <= level:
+                # the crossing is at or below the low clamp
+                bounds[index] = lo
+                self.clamped = True
+            else:
+                pending.append(index)
+        x_prev = lo
+        for step in range(1, steps + 1):
+            if not pending:
+                break
+            x = lo + (hi - lo) * step / steps
+            op = self.outcome_prob(x)
+            still_pending = []
+            for index in pending:
+                level = levels[index]
+                # leftmost descending crossing of `level` in (x_prev, x]
+                if op_prev >= level > op:
+                    bounds[index] = scipy.optimize.brentq(
+                        lambda elo, level=level: self.outcome_prob(elo) - level,
+                        x_prev,
+                        x,
+                        disp=False,
+                    )
+                else:
+                    still_pending.append(index)
+            pending = still_pending
+            x_prev, op_prev = x, op
+        for index in pending:
+            # never reached inside the window: the bound is unbounded above
+            bounds[index] = hi
+            self.clamped = True
+        return bounds
+
     def lower_cb(self, p):
         """
-        Maximal elo value such that the observed outcome of the test has probability
-        less than p."""
-        avg_elo = (self.elo0 + self.elo1) / 2
-        delta = self.elo1 - self.elo0
-        N = 30
-        # Various error conditions must be handled better here!
-        while True:
-            elo0 = max(avg_elo - N * delta, -1000)
-            elo1 = min(avg_elo + N * delta, 1000)
-            try:
-                sol, res = scipy.optimize.brentq(
-                    lambda elo: self.outcome_prob(elo) - (1 - p),
-                    elo0,
-                    elo1,
-                    full_output=True,
-                    disp=False,
-                )
-            except ValueError:
-                if elo0 > -1000 or elo1 < 1000:
-                    N *= 2
-                    continue
-                else:
-                    if self.outcome_prob(elo0) - (1 - p) > 0:
-                        return elo1
-                    else:
-                        return elo0
-            assert res.converged
-            break
-        return sol
+        Maximal Elo value such that the observed outcome of the test has
+        probability less than p."""
+        (bound,) = self._confidence_bounds([p])
+        return bound
 
     def analytics(self, p=0.05):
+        elo, ci_lower, ci_upper = self._confidence_bounds([0.5, p / 2, 1 - p / 2])
         ret = {}
         ret["clamped"] = self.clamped
         ret["a"] = self.a
         ret["b"] = self.b
-        ret["elo"] = self.lower_cb(0.5)
-        ret["ci"] = [self.lower_cb(p / 2), self.lower_cb(1 - p / 2)]
+        ret["elo"] = elo
+        ret["ci"] = [ci_lower, ci_upper]
         ret["LOS"] = self.outcome_prob(0)
         ret["LLR"] = self.llr
         return ret
