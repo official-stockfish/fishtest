@@ -18,7 +18,9 @@
   saveTokenButton.addEventListener("click", () => {
     localStorage.setItem("github_token", githubToken.value);
     if (typeof notifyFishtest === "function") {
-      notifyFishtest('<span class="notification-message">Success! GitHub token saved</span>');
+      notifyFishtest(
+        '<span class="notification-message">Success! GitHub token saved</span>',
+      );
     }
     saveTokenButton.textContent = "Saved";
     setTimeout(() => {
