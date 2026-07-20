@@ -10,6 +10,14 @@ from fishtest.stats.brownian import Brownian
 
 
 class sprt:
+    """
+    This class allows one to compute median unbiased Elo estimates
+    for SPRT tests, as well as the corresponding confidence intervals.
+
+    IMPORTANT: The algorithms only work correctly for small Elo differences.
+    For large Elo differences the computed numbers only have a qualitative meaning.
+    """
+
     def __init__(self, alpha=0.05, beta=0.05, elo0=0, elo1=5, elo_model="logistic"):
         assert elo_model in ("logistic", "normalized")
         self.elo_model = elo_model
