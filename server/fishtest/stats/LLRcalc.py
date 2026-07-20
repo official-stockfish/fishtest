@@ -180,26 +180,31 @@ def LLR_drift_variance(pdf, s0, s1, s=None):
     Compute the drift and variance of the LLR for a test s=s0 against
     s=s0 when the empirical distribution is pdf, but the true value of s
     is as given by the argument s. If s is not given then it is assumed
-    that pdf is the true distribution."""
+    that pdf is the true distribution. See
+
+    https://www.cantate.be/Fishtest/GSPRT_approximation.pdf
+    """
     if s is not None:
         pdf = MLE_expected(pdf, s)
     jumps = LLRjumps(pdf, s0, s1)
     return stats(jumps)
 
 
-def LLR_drift_variance_alt2(pdf, s0, s1, s=None):
+def LLR_drift_variance_alt2(pdf, s0, s1, s=None, use_MLE_variance=True):
     """
     Compute the approximated drift and variance of the LLR for a test
     s=s0 against s=s0 approximated by a Brownian motion, when the
     empirical distribution is pdf, but the true value of s is as given by
-    the argument s. If s is not given the it is assumed that pdf is the
-    true distribution. See
+    the argument s. If s is not given, or if use_MLE_variance=False then
+    it is assumed that pdf is the true distribution. See
 
     https://www.cantate.be/Fishtest/GSPRT_approximation.pdf
     """
     s_, v_ = stats(pdf)
+    if s is None:
+        s = s_
     # replace v_ by its MLE if requested
-    s, v = (s_, v_) if s is None else (s, v_ + (s - s_) ** 2)
+    v = v_ if not use_MLE_variance else v_ + (s - s_) ** 2
     mu = (s - (s0 + s1) / 2) * (s1 - s0) / v
     var = (s1 - s0) ** 2 / v
     return mu, var

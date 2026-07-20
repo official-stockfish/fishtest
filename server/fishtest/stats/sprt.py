@@ -18,7 +18,14 @@ class sprt:
         self.elo0 = elo0
         self.elo1 = elo1
         self.clamped = False
-        self.LLR_drift_variance = LLRcalc.LLR_drift_variance_alt2
+
+    def LLR_drift_variance(self, pdf, s0, s1, s):
+        """
+        Setting use_MLE_variance=True below is probably more correct but then
+        outcome_prob becomes non-monotonous in extreme cases. See
+        https://github.com/official-stockfish/fishtest/issues/2571
+        """
+        return LLRcalc.LLR_drift_variance_alt2(pdf, s0, s1, s, use_MLE_variance=False)
 
     def elo_to_score(self, elo):
         """
