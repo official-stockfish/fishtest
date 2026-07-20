@@ -105,7 +105,7 @@ def MLE_t_value(pdfhat, ref, s):
 
 
 def stats(pdf):
-    epsilon = 1e-6
+    epsilon = 1e-3
     for i in range(0, len(pdf)):
         assert -epsilon <= pdf[i][1] <= 1 + epsilon
     n = sum([prob for value, prob in pdf])
@@ -180,11 +180,15 @@ def LLR_drift_variance(pdf, s0, s1, s=None):
     Compute the drift and variance of the LLR for a test s=s0 against
     s=s0 when the empirical distribution is pdf, but the true value of s
     is as given by the argument s. If s is not given then it is assumed
-    that pdf is the true distribution."""
-    if s is not None:
-        pdf = MLE_expected(pdf, s)
-    jumps = LLRjumps(pdf, s0, s1)
-    return stats(jumps)
+    that pdf is the true distribution. See
+
+    https://www.cantate.be/Fishtest/GSPRT_approximation.pdf
+    """
+    _, var_LLR = stats(LLRjumps(pdf, s0, s1))
+    if s is None:
+        s, _ = stats(pdf)
+    mu_LLR, _ = stats(LLRjumps(MLE_expected(pdf, s), s0, s1))
+    return mu_LLR, var_LLR
 
 
 def LLR_drift_variance_alt2(pdf, s0, s1, s=None):
@@ -192,14 +196,14 @@ def LLR_drift_variance_alt2(pdf, s0, s1, s=None):
     Compute the approximated drift and variance of the LLR for a test
     s=s0 against s=s0 approximated by a Brownian motion, when the
     empirical distribution is pdf, but the true value of s is as given by
-    the argument s. If s is not given the it is assumed that pdf is the
+    the argument s. If s is not given then it is assumed that pdf is the
     true distribution. See
 
     https://www.cantate.be/Fishtest/GSPRT_approximation.pdf
     """
-    s_, v_ = stats(pdf)
-    # replace v_ by its MLE if requested
-    s, v = (s_, v_) if s is None else (s, v_ + (s - s_) ** 2)
+    s_, v = stats(pdf)
+    if s is None:
+        s = s_
     mu = (s - (s0 + s1) / 2) * (s1 - s0) / v
     var = (s1 - s0) ** 2 / v
     return mu, var
