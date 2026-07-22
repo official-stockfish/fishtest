@@ -6,9 +6,8 @@ from warnings import warn
 from .api import from_bytes
 from .constant import CHARDET_CORRESPONDENCE, TOO_SMALL_SEQUENCE
 
-# TODO: remove this check when dropping Python 3.7 support
 if TYPE_CHECKING:
-    from typing_extensions import TypedDict
+    from typing import TypedDict
 
     class ResultDict(TypedDict):
         encoding: str | None
@@ -60,7 +59,7 @@ def detect(
             "utf_8",
             "ascii",
         }
-        and r.bom is False  # type: ignore[union-attr]
+        and not r.bom  # type: ignore[union-attr]
         and len(byte_str) < TOO_SMALL_SEQUENCE
     ):
         confidence -= 0.2
@@ -70,7 +69,7 @@ def detect(
     if r is not None and encoding == "utf_8" and r.bom:
         encoding += "_sig"
 
-    if should_rename_legacy is False and encoding in CHARDET_CORRESPONDENCE:
+    if not should_rename_legacy and encoding in CHARDET_CORRESPONDENCE:
         encoding = CHARDET_CORRESPONDENCE[encoding]
 
     return {
