@@ -459,7 +459,7 @@ def validate_form(request: Any) -> dict[str, Any]:  # noqa: ANN401, C901, PLR091
         data["base_signature"] = data["new_signature"]
 
     for k, v in data.items():
-        if len(v) == 0:
+        if not v:
             msg = f"Missing required option: {k}"
             raise ValueError(msg)
 
