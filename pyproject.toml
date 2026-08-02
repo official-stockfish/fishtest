@@ -8,17 +8,18 @@ requires-python = ">=3.14"
 [dependency-groups]
 dev = [
     "pre-commit>=4.6.1",
-    "ruff>=0.15.22",
-    "ty>=0.0.62",
+    "ruff>=0.16.1",
+    "ty>=0.0.65",
 ]
 
 [tool.ruff]
 target-version = "py314"
 src = ["server", "worker"]
-extend-exclude = ["worker/packages"]
+extend-exclude = ["worker/packages", "*.md"]
 force-exclude = true
 
 [tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
 extend-select = ["I"]
 
 [tool.ruff.per-file-target-version]

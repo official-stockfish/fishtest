@@ -21,9 +21,9 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
 ]
 dependencies = [
-    "awscli>=1.45.53",
+    "awscli>=1.45.62",
     "email-validator>=2.3.0",
-    "fastapi>=0.139.2",
+    "fastapi>=0.141.1",
     "itsdangerous>=2.2.0",
     "jinja2>=3.1.6",
     "numpy>=2.5.1",
@@ -32,14 +32,14 @@ dependencies = [
     "regex>=2026.7.19",
     "requests>=2.34.2",
     "scipy>=1.18.0",
-    "uvicorn>=0.51.0",
+    "uvicorn>=0.52.1",
     "vtjson>=2.3.0",
     "zxcvbn>=4.5.0",
 ]
 
 [dependency-groups]
 test = [
-    "httpx2>=2.7.0",
+    "httpx2>=2.9.1",
 ]
 
 [project.urls]
@@ -60,4 +60,5 @@ target-version = "py314"
 force-exclude = true
 
 [tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
 extend-select = ["I"]
