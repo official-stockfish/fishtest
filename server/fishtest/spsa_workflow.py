@@ -455,11 +455,7 @@ def format_spsa_value(
         try:
             c_iter = param["c"] / (iter_local**gamma)
             r_iter = param["a"] / (A + iter_local) ** alpha / c_iter**2
-            pct_c = (
-                (param["theta"] - param["start"]) / c_iter * 100
-                if c_iter != 0
-                else float("nan")
-            )
+            pct_c = (param["theta"] - param["start"]) / c_iter * 100
         except (ArithmeticError, TypeError, ValueError) as error:
             if logger is not None and run_id is not None:
                 logger.warning(
@@ -475,7 +471,7 @@ def format_spsa_value(
             pct_c = float("nan")
 
         pct_c_str = f"{pct_c:+.1f}%" if isfinite(pct_c) else "N/A"
-        
+
         spsa_value.append(
             [
                 param["name"],
@@ -490,7 +486,7 @@ def format_spsa_value(
                 "{:.2e}".format(param["r_end"]),
             ],
         )
-    return spsa_value
+        return spsa_value
 
 
 def build_spsa_worker_step(
