@@ -438,7 +438,7 @@ class TemplateConstraintContractTests(unittest.TestCase):
             r'args\.get\(\s*"auto_purge"\s*,\s*(True|False)\s*\)',
             template_source,
         )
-        self.assertEqual(checkbox_default and checkbox_default.group(1), "True")
+        self.assertEqual(checkbox_default and checkbox_default.group(1), "False")
 
         presets = dict(
             re.findall(
