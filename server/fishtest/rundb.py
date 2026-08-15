@@ -1919,7 +1919,7 @@ After fixing the issues you can unblock the worker at
                 )
 
         # Auto-purge runs here. This may revive the run.
-        if run["args"].get("auto_purge", True) and "spsa" not in run["args"]:
+        if run["args"].get("auto_purge", False) and "spsa" not in run["args"]:
             message = self.purge_run(run)
             self.actiondb.purge_run(
                 username=run["args"]["username"],
