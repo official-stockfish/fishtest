@@ -28,10 +28,16 @@ def create_runs_indexes():
         name="unfinished_runs",
         partialFilterExpression={"finished": False},
     )
+    # Keep "deleted" out of the partial filter or queries omitting it cannot
+    # use this index; as a trailing key it still answers {"deleted": False}.
     db["runs"].create_index(
-        [("finished", ASCENDING), ("last_updated", DESCENDING)],
+        [
+            ("finished", ASCENDING),
+            ("last_updated", DESCENDING),
+            ("deleted", ASCENDING),
+        ],
         name="finished_runs",
-        partialFilterExpression={"finished": True, "deleted": False},
+        partialFilterExpression={"finished": True},
     )
     db["runs"].create_index(
         [
