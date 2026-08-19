@@ -1,5 +1,6 @@
 """Test run-creation and run-mutation helper contracts."""
 
+import re
 import unittest
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -432,12 +433,26 @@ class TemplateConstraintContractTests(unittest.TestCase):
             repo_root / "fishtest" / "templates" / "tests_run.html.j2"
         ).read_text(encoding="utf-8")
 
-        self.assertIn(
-            '{{ "checked" if args.get("auto_purge", True) else "" }}',
+        checkbox_default = re.search(
+            r'id="checkbox-auto-purge"[^>]*?'
+            r'args\.get\(\s*"auto_purge"\s*,\s*(True|False)\s*\)',
             template_source,
         )
-        self.assertEqual(template_source.count('"auto_purge": true'), 6)
-        self.assertEqual(template_source.count('"auto_purge": false'), 2)
+        self.assertEqual(checkbox_default and checkbox_default.group(1), "True")
+
+        presets = dict(
+            re.findall(
+                r"""id="(\w+_test)"\s+data-options='\{\{(.*?)\}\s*\|\s*tojson\s*\}\}'""",
+                template_source,
+                re.DOTALL,
+            )
+        )
+        for preset_id in ("pt_test", "pt_smp_test"):
+            auto_purge = re.search(
+                r'"auto_purge"\s*:\s*(true|false)\b', presets.get(preset_id, "")
+            )
+            self.assertEqual(auto_purge and auto_purge.group(1), "false", preset_id)
+
         self.assertIn(
             'if (!isRun && typeof auto_purge === "boolean") {',
             template_source,
