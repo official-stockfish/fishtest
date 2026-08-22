@@ -1175,6 +1175,7 @@ def build_tasks_rows(
     show_task: int,
     chi2: float,
     is_approver: bool,
+    is_authenticated: bool,
 ) -> tuple[list[dict], bool, bool]:
     """Build template-ready task rows for the tasks table."""
     show_pentanomial = "pentanomial" in run.get("results", {})
@@ -1233,7 +1234,9 @@ def build_tasks_rows(
             {
                 "task_id": task_id,
                 "row_class": row_class,
-                "pgn_url": f"/api/pgn/{run['_id']}-{task_id:d}.pgn",
+                "pgn_url": (
+                    f"/api/pgn/{run['_id']}-{task_id:d}.pgn" if is_authenticated else ""
+                ),
                 "worker_is_bad": bool(task.get("bad")),
                 "worker_label": worker_label,
                 "worker_url": worker_url,

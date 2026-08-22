@@ -15,7 +15,7 @@ from fishtest.http import cookie_session, jinja
 from fishtest.http.errors import _WORKER_API_PATHS
 from fishtest.http.middleware import _get_blocked_cached
 from fishtest.http.settings import AppSettings
-from fishtest.http.template_helpers import tests_run_setup
+from fishtest.http.template_helpers import build_tasks_rows, tests_run_setup
 from fishtest.http.ui_pipeline import apply_http_cache
 
 
@@ -315,3 +315,66 @@ class HttpCacheHeaderTests(unittest.TestCase):
         response = Response()
         apply_http_cache(response, {"http_cache": "not-a-number"})
         self.assertIsNone(response.headers.get("Cache-Control"))
+
+
+class TasksPgnLinkVisibilityTests(unittest.TestCase):
+    RUN = {
+        "_id": "60d1395c40925195e7a6c324",
+        "args": {"spsa": {}},
+        "results": {},
+        "tasks": [
+            {
+                "num_games": 100,
+                "stats": {"wins": 1, "losses": 2, "draws": 97},
+                "worker_info": {
+                    "username": "alice",
+                    "concurrency": 4,
+                    "unique_key": "abcd1234-ef56",
+                },
+            },
+        ],
+    }
+
+    def _rows(self, *, is_authenticated):
+        rows, _, _ = build_tasks_rows(
+            self.RUN,
+            show_task=-1,
+            chi2={},
+            is_approver=False,
+            is_authenticated=is_authenticated,
+        )
+        return rows
+
+    def test_authenticated_user_gets_the_pgn_url(self):
+        rows = self._rows(is_authenticated=True)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(
+            rows[0]["pgn_url"],
+            "/api/pgn/60d1395c40925195e7a6c324-0.pgn",
+        )
+
+    def test_anonymous_user_gets_no_pgn_url(self):
+        rows = self._rows(is_authenticated=False)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["pgn_url"], "")
+
+    def _render(self, rows):
+        template = jinja.default_environment().get_template(
+            "tasks_rows_fragment.html.j2",
+        )
+        return template.render(
+            tasks=rows, show_pentanomial=False, show_residual=False, approver=False
+        )
+
+    def test_rendered_fragment_hides_the_anchor_from_anonymous_users(self):
+        anon = self._render(self._rows(is_authenticated=False))
+        self.assertNotIn("/api/pgn/", anon)
+        self.assertIn("task0", anon)
+
+    def test_rendered_fragment_keeps_the_anchor_for_authenticated_users(self):
+        auth = self._render(self._rows(is_authenticated=True))
+        self.assertIn('href="/api/pgn/60d1395c40925195e7a6c324-0.pgn"', auth)
+
+
+if __name__ == "__main__":
+    unittest.main()

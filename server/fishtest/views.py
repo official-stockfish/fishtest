@@ -3063,6 +3063,7 @@ def _task_table_state(
         show_task=show_task,
         chi2=chi2,
         is_approver=approver,
+        is_authenticated=request.authenticated_userid is not None,
     )
 
     raw_sort = request.params.get("sort")
