@@ -815,17 +815,9 @@ td {
   opacity: 1;
 }
 
-@keyframes contributor-highlight-fade {
-  0% {
-    background-color: palegreen;
-  }
-  100% {
-    background-color: transparent;
-  }
-}
-
-tr.highlight-row > td {
-  animation: contributor-highlight-fade 3s ease-out;
+/* Keep active contributor row green in light mode */
+.table tbody tr.table-active.highlight-row > td {
+  background-color: palegreen;
 }
 
 /* Pagination links */
