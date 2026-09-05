@@ -1056,6 +1056,7 @@ def parse_fastchess_output(
         "03e27488f3d21d8ff4dbf3065603afa21dbd0ef3",  # sf_17.1
         "cb3d4ee9b47d0c5aae855b12379378ea1439675c",  # sf_18
         "43a2be018606176d91f612e48a753bd6c8ed6cf7",  # used for SF18 PTs
+        "edb0d9db6731067ec50ce619ff372b463bc4dd5d",  # sf_19 / used for SF19 PTs
     )
 
     def is_official_release(name):

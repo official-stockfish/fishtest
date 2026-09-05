@@ -112,9 +112,9 @@ class RunDb:
         self.task_duration = 1800  # 30 minutes
         self.ltc_lower_bound = 40  # Beware: this is used as a filter in an index!
         self.pt_info = {
-            "pt_version": "SF_18",
-            "pt_branch": "43a2be018606176d91f612e48a753bd6c8ed6cf7",
-            "pt_bench": 2050811,
+            "pt_version": "SF_19",
+            "pt_branch": "edb0d9db6731067ec50ce619ff372b463bc4dd5d",
+            "pt_bench": 2497913,
         }
 
         if self.port >= 0:
