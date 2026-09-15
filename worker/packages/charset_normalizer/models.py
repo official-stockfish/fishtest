@@ -40,7 +40,11 @@ class CharsetMatch:
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, CharsetMatch):
             if isinstance(other, str):
-                return iana_name(other) == self.encoding
+                # Use non-strict iana_name so an operand that is not a known
+                # encoding alias compares unequal instead of raising, keeping
+                # __eq__ total as the data model requires (mirrors the lookup
+                # in CharsetMatches.__getitem__).
+                return iana_name(other, False) == self.encoding
             return False
         return self.encoding == other.encoding and self.fingerprint == other.fingerprint
 
@@ -68,7 +72,11 @@ class CharsetMatch:
 
     @property
     def multi_byte_usage(self) -> float:
-        return 1.0 - (len(str(self)) / len(self.raw))
+        # Empty payloads are valid (from_bytes(b"") returns a match); avoid /0.
+        raw_len = len(self.raw)
+        if raw_len == 0:
+            return 0.0
+        return 1.0 - (len(str(self)) / raw_len)
 
     def __str__(self) -> str:
         # Lazy Str Loading
@@ -258,8 +266,15 @@ class CharsetMatches:
 
     def __init__(self, results: list[CharsetMatch] | None = None):
         self._results: list[CharsetMatch] = sorted(results) if results else []
+        self._is_sorted: bool = True
+
+    def _ensure_sorted(self) -> None:
+        if not self._is_sorted:
+            self._results.sort()
+            self._is_sorted = True
 
     def __iter__(self) -> Iterator[CharsetMatch]:
+        self._ensure_sorted()
         yield from self._results
 
     def __getitem__(self, item: int | str) -> CharsetMatch:
@@ -268,6 +283,7 @@ class CharsetMatches:
         Raise KeyError upon invalid index or encoding not present in results.
         """
         if isinstance(item, int):
+            self._ensure_sorted()
             return self._results[item]
         if isinstance(item, str):
             item = iana_name(item, False)
@@ -300,7 +316,7 @@ class CharsetMatches:
                     match.add_submatch(item)
                     return
         self._results.append(item)
-        self._results = sorted(self._results)
+        self._is_sorted = False
 
     def best(self) -> CharsetMatch | None:
         """
@@ -308,6 +324,7 @@ class CharsetMatches:
         """
         if not self._results:
             return None
+        self._ensure_sorted()
         return self._results[0]
 
     def first(self) -> CharsetMatch | None:

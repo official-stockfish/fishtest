@@ -140,16 +140,14 @@ def from_bytes(
     if is_too_small_sequence:
         logger.log(
             TRACE,
-            "Trying to detect encoding from a tiny portion of ({}) byte(s).".format(
-                length
-            ),
+            "Trying to detect encoding from a tiny portion of (%i) byte(s).",
+            length,
         )
     elif is_too_large_sequence:
         logger.log(
             TRACE,
-            "Using lazy str decoding because the payload is quite large, ({}) byte(s).".format(
-                length
-            ),
+            "Using lazy str decoding because the payload is quite large, (%i) byte(s).",
+            length,
         )
 
     prioritized_encodings: list[str] = []
@@ -170,12 +168,6 @@ def from_bytes(
     tested_but_hard_failure: list[str] = []
     tested_but_soft_failure: list[str] = []
     soft_failure_skip: set[str] = set()
-    success_fast_tracked: set[str] = set()
-
-    # Cache for decoded payload deduplication: hash(decoded_payload) -> (mean_mess_ratio, cd_ratios_merged, passed)
-    # When multiple encodings decode to the exact same string, we can skip the expensive
-    # mess_ratio and coherence_ratio analysis and reuse the results from the first encoding.
-    payload_result_cache: dict[int, tuple[float, list[tuple[str, float]], bool]] = {}
 
     # Avoid unoptimized RSS usage.
     # this cache is mostly interesting for
@@ -222,7 +214,7 @@ def from_bytes(
     sig_encoding, sig_payload = identify_sig_or_bom(sequences)
 
     if sig_encoding is not None:
-        prioritized_encodings.append(sig_encoding)
+        prioritized_encodings.insert(0, sig_encoding)
         logger.log(
             TRACE,
             "Detected a SIG or BOM mark on first %i byte(s). Priority +1 given for %s.",
@@ -274,15 +266,6 @@ def from_bytes(
             logger.log(
                 TRACE,
                 "%s is deemed too similar to a code page that was already considered unsuited. Continuing!",
-                encoding_iana,
-            )
-            continue
-
-        # Skip encodings that were already fast-tracked from a similar successful encoding.
-        if encoding_iana in success_fast_tracked:
-            logger.log(
-                TRACE,
-                "Skipping %s: already fast-tracked from a similar successful encoding.",
                 encoding_iana,
             )
             continue
@@ -484,12 +467,16 @@ def from_bytes(
             early_stop_count = max_chunk_gave_up
             lazy_str_hard_failure = True
 
-        # We might want to check the sequence again with the whole content
-        # Only if initial MD tests passes
+        mean_mess_ratio: float = sum(md_ratios) / len(md_ratios) if md_ratios else 0.0
+
+        # We might want to check the sequence again with the whole content,
+        # but only if initial MD tests passed.
         if (
             not lazy_str_hard_failure
             and is_too_large_sequence
             and not is_multi_byte_decoder
+            and mean_mess_ratio < threshold
+            and early_stop_count < max_chunk_gave_up
         ):
             try:
                 sequences[int(50e3) :].decode(encoding_iana, errors="strict")
@@ -503,17 +490,10 @@ def from_bytes(
                 tested_but_hard_failure.append(encoding_iana)
                 continue
 
-        mean_mess_ratio: float = sum(md_ratios) / len(md_ratios) if md_ratios else 0.0
         if mean_mess_ratio >= threshold or early_stop_count >= max_chunk_gave_up:
             tested_but_soft_failure.append(encoding_iana)
             if encoding_iana in IANA_SUPPORTED_SIMILAR:
                 soft_failure_skip.update(IANA_SUPPORTED_SIMILAR[encoding_iana])
-            # Cache this soft-failure so identical decoding from other encodings
-            # can be skipped immediately.
-            if decoded_payload is not None and not is_multi_byte_decoder:
-                payload_result_cache.setdefault(
-                    hash(decoded_payload), (mean_mess_ratio, [], False)
-                )
             logger.log(
                 TRACE,
                 "%s was excluded because of initial chaos probing. Gave up %i time(s). "
@@ -593,111 +573,6 @@ def from_bytes(
                 tested_but_hard_failure.append(encoding_iana)
                 continue
 
-        # Payload-hash deduplication: if another encoding already decoded to the
-        # exact same string, reuse its mess_ratio and coherence results entirely.
-        # This is strictly more general than the old IANA_SUPPORTED_SIMILAR approach
-        # because it catches ALL identical decoding, not just pre-mapped ones.
-        if decoded_payload is not None and not is_multi_byte_decoder:
-            payload_hash: int = hash(decoded_payload)
-            cached = payload_result_cache.get(payload_hash)
-            if cached is not None:
-                cached_mess, cached_cd, cached_passed = cached
-                if cached_passed:
-                    # The previous encoding with identical output passed chaos probing.
-                    fast_match = CharsetMatch(
-                        sequences,
-                        encoding_iana,
-                        cached_mess,
-                        bom_or_sig_available,
-                        cached_cd,
-                        (
-                            decoded_payload
-                            if (
-                                not is_too_large_sequence
-                                or encoding_iana
-                                in [specified_encoding, "ascii", "utf_8"]
-                            )
-                            else None
-                        ),
-                        preemptive_declaration=specified_encoding,
-                    )
-                    results.append(fast_match)
-                    success_fast_tracked.add(encoding_iana)
-                    logger.log(
-                        TRACE,
-                        "%s fast-tracked (identical decoded payload to a prior encoding, chaos=%f %%).",
-                        encoding_iana,
-                        round(cached_mess * 100, ndigits=3),
-                    )
-
-                    if (
-                        encoding_iana in [specified_encoding, "ascii", "utf_8"]
-                        and cached_mess < 0.1
-                    ):
-                        if cached_mess == 0.0:
-                            logger.debug(
-                                "Encoding detection: %s is most likely the one.",
-                                fast_match.encoding,
-                            )
-                            if explain:
-                                logger.removeHandler(explain_handler)
-                                logger.setLevel(previous_logger_level)
-                            return CharsetMatches([fast_match])
-                        early_stop_results.append(fast_match)
-
-                    if (
-                        len(early_stop_results)
-                        and (specified_encoding is None or specified_encoding in tested)
-                        and "ascii" in tested
-                        and "utf_8" in tested
-                    ):
-                        probable_result: CharsetMatch = early_stop_results.best()  # type: ignore[assignment]
-                        logger.debug(
-                            "Encoding detection: %s is most likely the one.",
-                            probable_result.encoding,
-                        )
-                        if explain:
-                            logger.removeHandler(explain_handler)
-                            logger.setLevel(previous_logger_level)
-                        return CharsetMatches([probable_result])
-
-                    continue
-                else:
-                    # The previous encoding with identical output failed chaos
-                    # probing. Unreachable when the current candidate passed
-                    # probing on the identical payload (deterministic ratios),
-                    # kept for structural parity with the historic flow.
-                    tested_but_soft_failure.append(encoding_iana)
-                    logger.log(
-                        TRACE,
-                        "%s fast-skipped (identical decoded payload to a prior encoding that failed chaos probing).",
-                        encoding_iana,
-                    )
-                    # Prepare fallbacks for special encodings even when skipped.
-                    if enable_fallback and encoding_iana in [
-                        "ascii",
-                        "utf_8",
-                        specified_encoding,
-                        "utf_16",
-                        "utf_32",
-                    ]:
-                        fallback_entry = CharsetMatch(
-                            sequences,
-                            encoding_iana,
-                            threshold,
-                            bom_or_sig_available,
-                            [],
-                            decoded_payload,
-                            preemptive_declaration=specified_encoding,
-                        )
-                        if encoding_iana == specified_encoding:
-                            fallback_specified = fallback_entry
-                        elif encoding_iana == "ascii":
-                            fallback_ascii = fallback_entry
-                        else:
-                            fallback_u8 = fallback_entry
-                    continue
-
         logger.log(
             TRACE,
             "%s passed initial chaos probing. Mean measured chaos is %f %%",
@@ -713,9 +588,9 @@ def from_bytes(
         if target_languages:
             logger.log(
                 TRACE,
-                "{} should target any language(s) of {}".format(
-                    encoding_iana, str(target_languages)
-                ),
+                "%s should target any language(s) of %s",
+                encoding_iana,
+                target_languages,
             )
 
         cd_ratios = []
@@ -746,9 +621,9 @@ def from_bytes(
         if cd_ratios_merged:
             logger.log(
                 TRACE,
-                "We detected language {} using {}".format(
-                    cd_ratios_merged, encoding_iana
-                ),
+                "We detected language %s using %s",
+                cd_ratios_merged,
+                encoding_iana,
             )
 
         current_match = CharsetMatch(
@@ -769,13 +644,6 @@ def from_bytes(
         )
 
         results.append(current_match)
-
-        # Cache the successful result for payload-hash deduplication.
-        if decoded_payload is not None and not is_multi_byte_decoder:
-            payload_result_cache.setdefault(
-                hash(decoded_payload),
-                (mean_mess_ratio, cd_ratios_merged, True),
-            )
 
         # Count post-definitive same-family SB successes for the early termination cap.
         # Only count low-mess encodings (< 2%) toward the cap. High-mess encodings are
@@ -812,10 +680,11 @@ def from_bytes(
             and "ascii" in tested
             and "utf_8" in tested
         ):
-            probable_result = early_stop_results.best()  # type: ignore[assignment]
+            probable_result = early_stop_results.best()
+            assert probable_result is not None
             logger.debug(
                 "Encoding detection: %s is most likely the one.",
-                probable_result.encoding,  # type: ignore[union-attr]
+                probable_result.encoding,
             )
             if explain:  # Defensive: ensure exit path clean handler
                 logger.removeHandler(explain_handler)
