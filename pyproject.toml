@@ -7,9 +7,9 @@ requires-python = ">=3.14"
 
 [dependency-groups]
 dev = [
-    "pre-commit>=4.6.1",
-    "ruff>=0.16.1",
-    "ty>=0.0.65",
+    "pre-commit>=4.6.2",
+    "ruff>=0.16.7",
+    "ty>=0.0.81",
 ]
 
 [tool.ruff]
