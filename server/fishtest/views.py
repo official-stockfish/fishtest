@@ -1687,37 +1687,47 @@ def user(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # noqa: C
         raise StarletteHTTPException(status_code=404)
     if "user" in request.POST:
         if profile:
-            old_password = _form_string_value(request.POST, "old_password").strip()
-            new_password = _form_string_value(request.POST, "password").strip()
-            new_password_verify = _form_string_value(request.POST, "password2").strip()
-            new_email = _form_string_value(request.POST, "email").strip()
-            tests_repo = _form_string_value(request.POST, "tests_repo").strip()
+            action = _form_string_value(request.POST, "action") or "profile_update"
+            profile_url = str(request.url)
 
-            # Temporary comparison until passwords are hashed.
-            if old_password != user_data["password"].strip():
-                request.session.flash("Invalid password!", "error")
-                return home(request)
+            if action == "password_update":
+                old_password = _form_string_value(request.POST, "old_password").strip()
 
-            if len(new_password) > 0:
-                if new_password == new_password_verify:
-                    strong_password, password_err = password_strength(
-                        new_password,
-                        user_name,
-                        user_data["email"],
-                        (new_email if len(new_email) > 0 else None),
-                    )
-                    if strong_password:
-                        user_data["password"] = new_password
-                        request.session.flash("Success! Password updated")
-                    else:
-                        request.session.flash(password_err, "error")
-                        return home(request)
-                else:
+                # Temporary comparison until passwords are hashed.
+                if old_password != user_data["password"].strip():
+                    request.session.flash("Invalid password!", "error")
+                    return RedirectResponse(url=profile_url, status_code=302)
+
+                new_password = _form_string_value(request.POST, "password").strip()
+                new_password_verify = _form_string_value(
+                    request.POST,
+                    "password2",
+                ).strip()
+
+                if new_password != new_password_verify:
                     request.session.flash(
                         "Error! Matching verify password required",
                         "error",
                     )
-                    return home(request)
+                    return RedirectResponse(url=profile_url, status_code=302)
+
+                strong_password, password_err = password_strength(
+                    new_password,
+                    user_name,
+                    user_data["email"],
+                    None,
+                )
+                if not strong_password:
+                    request.session.flash(password_err, "error")
+                    return RedirectResponse(url=profile_url, status_code=302)
+
+                user_data["password"] = new_password
+                request.session.flash("Success! Password updated")
+                request.userdb.save_user(user_data)
+                return RedirectResponse(url=profile_url, status_code=302)
+
+            new_email = _form_string_value(request.POST, "email").strip()
+            tests_repo = _form_string_value(request.POST, "tests_repo").strip()
 
             try:
                 validate(union(github_repo_input, ""), tests_repo, "tests_repo")
@@ -1726,10 +1736,12 @@ def user(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # noqa: C
                     f"Error! Invalid test repo {tests_repo}: {e!s}",
                     "error",
                 )
-                return home(request)
+                return RedirectResponse(url=profile_url, status_code=302)
 
+            tests_repo_updated = user_data["tests_repo"] != tests_repo
             user_data["tests_repo"] = tests_repo
 
+            email_updated = False
             if len(new_email) > 0 and user_data["email"] != new_email:
                 email_is_valid, validated_email = email_valid(new_email)
                 if not email_is_valid:
@@ -1737,10 +1749,19 @@ def user(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # noqa: C
                         "Error! Invalid email: " + validated_email,
                         "error",
                     )
-                    return home(request)
+                    return RedirectResponse(url=profile_url, status_code=302)
                 user_data["email"] = validated_email
+                email_updated = True
+            if email_updated and tests_repo_updated:
+                request.session.flash("Success! Profile updated")
+            elif email_updated:
                 request.session.flash("Success! Email updated")
+            elif tests_repo_updated:
+                request.session.flash("Success! Profile updated")
+            else:
+                request.session.flash("Success! Profile saved")
             request.userdb.save_user(user_data)
+            return RedirectResponse(url=profile_url, status_code=302)
         elif "blocked" in request.POST and request.POST["blocked"].isdigit():
             user_data["blocked"] = bool(int(request.POST["blocked"]))
             request.session.flash(
