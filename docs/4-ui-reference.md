@@ -283,16 +283,18 @@ if hx:
 return full_page_context
 ```
 
-### `Vary: HX-Request, HX-Request-Type` header
+### `Vary` header
 
-`_dispatch_view()` appends `Vary: HX-Request, HX-Request-Type` to every GET
-response (both fragment and full-page). This tells HTTP caches (nginx, CDNs,
-browsers) that the response body depends on both headers, preventing a cached
-fragment from being served as a full page or vice versa.
+`_dispatch_view()` appends `Vary: HX-Request, HX-History-Restore-Request,
+HX-Request-Type, Sec-Fetch-Mode` to every GET response, fragment and
+full-page alike. The tokens are the four headers `_is_hx_request()` reads,
+declared once in `FRAGMENT_REQUEST_HEADERS`, so adding a signal to the
+decision is one edit rather than two that can drift.
 
-Both tokens are needed. `HX-Request-Type` is what separates a fragment request
-from a boosted navigation to the same URL, so keying on `HX-Request` alone
-would let a cache return a stored fragment for one.
+Every one of them selects a representation: drop a token and a shared cache
+may serve a stored fragment to a request that the same URL answers with a
+whole page. RFC 9111 section 4.1 requires the selecting header fields to be
+named.
 
 ## `_dispatch_view()` pipeline
 
@@ -319,8 +321,8 @@ following steps in order:
    flags to the cookie.
 10. **HTTP cache headers** -- `apply_http_cache()` sets `Cache-Control` if
     configured.
-11. **Vary header** -- `Vary: HX-Request, HX-Request-Type` is appended to
-    every GET response (see htmx fragment dispatch above).
+11. **Vary header** -- one token per header the fragment decision reads is
+    appended to every GET response (see htmx fragment dispatch above).
 12. **Response headers** -- custom headers from the handler are propagated.
 
 ## Session handling
