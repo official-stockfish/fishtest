@@ -197,10 +197,10 @@ flowchart LR
 
 ### htmx integration
 
-UI templates load htmx 2.0.10 from CDN in `base.html.j2`. The server remains
-fully server-rendered (Jinja2 + HTML responses). The test detail page also
-loads a page-scoped diff renderer for the inline Diff panel. htmx adds three
-capabilities without client-side rendering or a JavaScript build step:
+UI templates load htmx 4.0.0 from CDN in `base.html.j2`. The server
+remains fully server-rendered (Jinja2 + HTML responses). The test detail page
+also loads a page-scoped diff renderer for the inline Diff panel. htmx adds
+three capabilities without client-side rendering or a JavaScript build step:
 
 | Capability | Mechanism |
 |------------|-----------|
@@ -208,12 +208,54 @@ capabilities without client-side rendering or a JavaScript build step:
 | In-place content swap | `hx-get` + `hx-target` + `hx-swap="innerHTML"` replaces a page section (filters, pagination) |
 | Out-of-band updates | `hx-swap-oob="innerHTML"` attributes in the response update multiple DOM elements in one response |
 
+**Response swapping.** htmx swaps every response whose status is not listed in
+`htmx.config.noSwap`. `base.html.j2` sets that list to `204, 304, 4xx, 5xx`
+through an `htmx-config` meta tag, because this server answers errors with
+whole pages rather than partials sized for a swap target.
+
+**Settling.** The same meta tag sets `htmx.config.defaultSettleDelay` to `0`.
+Settling copies the attributes of each replaced element onto its replacement
+and restores the response's own attributes a tick later, and it never rewrites
+the `value` property of a focused input, so a filter field typed into while
+its own subtree is swapped would keep the value it was served with. Nothing
+styles the `htmx-settling` or `htmx-added` classes.
+
+**Out-of-band-only responses.** A response whose body holds only out-of-band
+elements leaves an empty fragment for the main swap, and htmx skips that swap:
+`htmx.config.allowEmptySwapAfterOOB` is `false`. Emptying a swap target
+requires a response that carries empty main content. The poll drivers that
+send out-of-band fragments declare `hx-swap="none"`; `#tests-stats-poller` is
+the only poller with a swap target, and its fragment always carries main
+content.
+
+A suppressed status stops the main content swap and nothing else: htmx still
+runs the history update, still applies out-of-band elements from the body, and
+still adopts the response's `<title>`. For any status at or above 400,
+`application.js` therefore cancels `htmx:before:history:update` and, on
+`htmx:before:swap`, clears the response title and empties the task list that
+carries the swaps. A failed request cannot move the address bar, rename the
+tab, or write an id from an error page over live content.
+
 **Dual-mode endpoints.** Several UI routes serve either a full page or an HTML
-fragment from the same URL. The view handler calls `_is_hx_request(request)` to
-detect the `HX-Request: true` header (with a `Sec-Fetch-Mode` guard against
-full-page navigations), then returns the appropriate template via the
-`_render_hx_fragment()` helper. `_dispatch_view()` appends `Vary: HX-Request`
-to every GET response so that HTTP caches distinguish the two representations.
+fragment from the same URL. The view handler calls `_is_hx_request(request)`,
+then returns the appropriate template via the `_render_hx_fragment()` helper.
+`HX-Request: true` opens the door, and three independent signals close it, each
+rejecting the case it identifies: `HX-History-Restore-Request: true` for a back
+navigation, `HX-Request-Type: full` for a swap scoped to the whole document,
+and `Sec-Fetch-Mode: navigate` for a real top-level navigation. A request that
+announces none of them is a fragment request.
+
+`HX-Request-Type` states the scope of the swap: `partial` targets a region of
+the current page, `full` replaces the document, which is what a boosted
+navigation asks for. The check rejects `full` rather than requiring `partial`,
+so a rename of that header degrades to treating every htmx request as a
+fragment request, instead of swapping whole pages into every fragment target
+on the site.
+
+`_dispatch_view()` appends `Vary: HX-Request, HX-Request-Type` to every GET
+response. `HX-Request: true` alone does not separate a fragment request from a
+back-button navigation to the same URL, so a shared cache keyed on it could
+hand a stored fragment to the navigation.
 UI GET responses also emit `Cache-Control`: the default is
 `no-cache, private`, auth-sensitive pages use `no-store`, and explicit
 route-level overrides such as `/tests/machines` can still set a short
@@ -235,25 +277,41 @@ rows. The shared active-search debounce is projected into templates as
 `htmx.input_changed_delay_ms`.
 
 **Request coordination.** Poll-driven fragments that live inside a larger filter
-form may use `hx-sync`, `hx-disinherit`, and `hx-params` to keep inherited form
-state from corrupting sort/pagination links and to ensure explicit user actions
-win over timer-driven refreshes.
+form use `hx-sync` to name the filter form as their request queue. The form
+itself declares no `hx-sync`, so submitting it aborts an in-flight poll tick;
+the poll and the sort/pagination links use `abort`, which drops a request while
+another is in flight on that queue rather than pre-empting it.
+Sort and pagination links carry their own query string and inherit nothing:
+htmx applies an ancestor's attributes only where that ancestor marks them
+`:inherited`, and a `GET` collects the enclosing form only when the requesting
+element is the form itself.
 
 **Fragment templates.** Fragment responses use standalone `.html.j2` files
 (named `*_fragment.html.j2`) that do not extend `base.html.j2`. This avoids
 the need for block-level partial rendering and keeps fragments self-contained.
 See [5-templates.md](5-templates.md) for the full catalog.
 
-**OOB table rows.** HTML spec restrictions prevent `<tbody>` elements from
-appearing inside `<div>`. Fragment templates that update table bodies wrap
-`<tbody>` elements in `<template>` tags with `hx-swap-oob` attributes.
-htmx processes the `<template>` content and discards the wrapper.
+**OOB table rows.** A `<tr>` cannot stand on its own in parsed HTML, so
+fragments that update table bodies send their rows inside a `<template>`.
+The `id` and `hx-swap-oob` attributes go on the `<template>` element itself,
+never on an element inside it: htmx locates out-of-band elements with
+`querySelectorAll`, which does not descend into template content, so a nested
+`hx-swap-oob` is silently ignored. htmx strips the wrapper before the swap and
+applies the rows to the live `<tbody>` named by the `id`.
 
-**Polling lifecycle.** Polled endpoints use HTTP status codes to control
-the polling lifecycle:
-- **200** -- swap the response content.
-- **204** -- no content; htmx skips the swap but continues polling.
-- **286** -- swap the response and stop polling (terminal state).
+**Polling lifecycle.** A poll runs on a dedicated driver element that carries
+the `hx-trigger="every Ns"` attribute and is never itself the swap target.
+htmx clears a poll interval only when its driver leaves the document, so the
+lifecycle is expressed in the response body:
+
+- **200** -- swap the response content and keep polling.
+- **204** -- no content; htmx skips the swap and keeps polling.
+- **200 with a driver-removing element** -- terminal state. The response
+  includes `poll_stop_fragment.html.j2`, which renders
+  `<div id="{poller_id}" hx-swap-oob="delete"></div>` and removes the driver.
+
+The drivers are `#run-tables-poller`, `#live-elo-poller`,
+`#tests-stats-poller`, and `#tests-view-detail-poller`.
 
 The test detail page uses one visibility-aware OOB poller for live summary and
 detail data:
@@ -276,7 +334,10 @@ full run data via `get_run()` and the dedicated tasks poller.
 **Visibility-aware polling policy.** Every periodic htmx poller follows a
 three-part trigger policy:
 
-1. A periodic trigger gated on `document.visibilityState === 'visible'`.
+1. A periodic trigger gated on `document.visibilityState === 'visible'`,
+   written `every[<condition>] Ns`. htmx reads a `[condition]` filter off the
+   leading trigger token only, so `every Ns [<condition>]` silently drops the
+   condition and polls unconditionally.
 2. An immediate focus-return trigger using
    `visibilitychange[document.visibilityState === 'visible'] from:document`.
 3. Section-scoped pollers (machines, tasks) additionally gate on the

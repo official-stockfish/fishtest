@@ -241,11 +241,11 @@ Known limitations:
 
 ## Template catalog
 
-The live template inventory contains **53** Jinja templates:
+The live template inventory contains **54** Jinja templates:
 
 - **1** base layout template
 - **19** full-page templates that extend `base.html.j2`
-- **33** non-base templates used as htmx fragments or shared partials
+- **34** non-base templates used as htmx fragments or shared partials
 
 ### Base layout template
 
@@ -297,6 +297,7 @@ fragments; others are shared partials included by page or fragment templates.
 | `nns_content_fragment.html.j2` | htmx content fragment | Swaps `#nns-content` |
 | `pagination.html.j2` | shared pagination partial | Included by paginated pages and fragments |
 | `pending_users_nav_fragment.html.j2` | shared nav anchor fragment | Included server-side in `base.html.j2` and returned by `/user_management/pending_count` to refresh `#pending-users-nav` |
+| `poll_stop_fragment.html.j2` | shared OOB partial | Renders `<div id="{poller_id}" hx-swap-oob="delete">`; included by a terminal poll response to remove its driver element and stop the poll |
 | `run_table.html.j2` | shared table partial | Renders one run table shell and includes row markup |
 | `run_table_row_fragment.html.j2` | row fragment | Renders `<tr>` rows; can be swapped into `#run-{id}` |
 | `run_tables.html.j2` | shared table-group partial | Composes pending, active, and finished run tables |
@@ -766,13 +767,23 @@ Detail-page merged live polling contract:
 
 Detail-page tasks loader contract:
 
-- When `tasks_shown` is true, `#tasks-body` starts an htmx load request from
+- When `tasks_shown` is true, `#tasks-content` starts an htmx load request from
    `tests_view.html.j2`.
-- The template attaches the `htmx:afterSwap` and error listeners for
-   `#tasks-body` before `await DOMContentLoaded()` so the initial `load` request
-   cannot outrun the promise-resolution path.
-- The same script also resolves immediately if `#tasks-body` is already marked
-   loaded or already contains rows.
+- The template registers its swap observer and its `htmx:response:error` and
+   `htmx:error` listeners before `await DOMContentLoaded()` so the initial
+   `load` request cannot outrun the promise-resolution path.
+- The swap observer matches on the **swap target**, through
+   `onHtmxSwap((target) => target.id === "tasks-content", ...)`. htmx dispatches
+   swap events on the element that issued the request, and `#tasks-content` is
+   filled by two: its own `load`/poll triggers, and `#tasks-filters` when the
+   reader types. An element-level `htmx:after:swap` listener on the panel sees
+   only the first kind, so it misses every form-driven fill -- including the
+   replacement for a load request the form aborted, which `hx-sync` makes a
+   reachable case. `onHtmxSwap` also drops responses htmx did not swap, so an
+   error is never recorded as a completed load. `#machines` in
+   `tests_homepage.js` follows the same rule.
+- The same script also resolves immediately if `#tasks-content` is already
+   marked loaded or already contains rows.
 
 Run-table row contract:
 
@@ -1307,16 +1318,18 @@ table state without introducing page-specific synchronization JavaScript.
     Each OOB element in the fragment template declares its own ID and swap
     strategy (e.g., `<span id="count" hx-swap-oob="innerHTML">`).
 
-13. **Table OOB requires `<template>` wrappers**: the HTML parser rejects
-    `<tbody>` inside `<div>`. Wrap table OOB elements in `<template>` tags:
+13. **Row OOB requires a `<template>` wrapper, and the wrapper carries the
+    attributes**: a `<tr>` cannot stand on its own in parsed HTML. Put `id`
+    and `hx-swap-oob` on the `<template>` itself:
     ```jinja
-    <template>
-      <tbody id="my-table" hx-swap-oob="innerHTML">
-        {% for row in rows %}...{% endfor %}
-      </tbody>
+    <template id="my-table" hx-swap-oob="innerHTML">
+      {% for row in rows %}...{% endfor %}
     </template>
     ```
-    htmx processes the `<template>` content and discards the wrapper.
+    htmx locates out-of-band elements with `querySelectorAll`, which does not
+    descend into template content, so an `hx-swap-oob` nested inside the
+    wrapper is silently ignored. htmx strips the wrapper before the swap.
+    Targets that can stand alone, such as a `<div>`, need no wrapper.
 
 14. **DOM API over `innerHTML` in error handlers**: JavaScript retry-button
     construction must use `createElement` / `textContent` / `setAttribute`
@@ -1338,7 +1351,9 @@ table state without introducing page-specific synchronization JavaScript.
 
 17. **Polling trigger policy**: every periodic htmx poller must include
     three trigger components: (a) a periodic trigger gated on
-    `document.visibilityState === 'visible'`, (b) an immediate
+    `document.visibilityState === 'visible'`, written `every[<condition>] Ns`
+    because htmx reads the filter off the leading token only and silently
+    ignores `every Ns [<condition>]`, (b) an immediate
     `visibilitychange[...] from:document` refresh, and (c) for
     section-scoped pollers, a gate on the section's expanded state.
     See [1-architecture.md](1-architecture.md) for the full policy.
@@ -1382,6 +1397,7 @@ table state without introducing page-specific synchronization JavaScript.
    ```
 
 4. For OOB elements, add `hx-swap-oob` attributes directly on elements
-   inside the fragment template. For table bodies, wrap in `<template>` tags.
+   inside the fragment template. Rows travel inside a `<template>` that
+   carries the `id` and `hx-swap-oob` attributes.
 
 5. Add a test that verifies both the full-page and fragment responses.
