@@ -435,6 +435,21 @@ class TestHttpBoundary(unittest.TestCase):
         head = response.text.split("</head>")[0]
         self.assertLess(head.index("htmx-config"), head.index("htmx.min.js"))
 
+    def test_timer_refreshed_panels_morph(self):
+        # innerHTML would drop keyboard focus out of the panel on every tick.
+        # Details: docs/1-architecture.md (section: "Swapping and morphing").
+        templates_dir = Path(__file__).resolve().parents[1] / "fishtest" / "templates"
+
+        for name, target in (
+            ("tests.html.j2", 'id="machines"'),
+            ("tests_view.html.j2", 'id="tasks-content"'),
+        ):
+            with self.subTest(template=name):
+                source = (templates_dir / name).read_text(encoding="utf-8")
+                start = source.index(target)
+                element = source[start : source.index(">", start)]
+                self.assertIn('hx-swap="innerMorph"', element)
+
     def test_template_post_forms_include_explicit_csrf_token(self):
         templates_dir = Path(__file__).resolve().parents[1] / "fishtest" / "templates"
         form_re = re.compile(

@@ -208,6 +208,15 @@ three capabilities without client-side rendering or a JavaScript build step:
 | In-place content swap | `hx-get` + `hx-target` + `hx-swap="innerHTML"` replaces a page section (filters, pagination) |
 | Out-of-band updates | `hx-swap-oob="innerHTML"` attributes in the response update multiple DOM elements in one response |
 
+**Swapping and morphing.** A swap style of `innerHTML` replaces the children
+of its target, so every node inside it is a new node. Anything the browser
+attached to the old nodes goes with them, keyboard focus first of all: focus
+on a link inside the panel returns to `<body>` on each tick. The two panels
+that refresh on a timer, `#machines` on the homepage and `#tasks-content` on
+the test detail page, use `innerMorph`, which patches the existing nodes in
+place and keeps their identity. Both panels keep their filter form outside
+the swap target either way.
+
 **Response swapping.** htmx swaps every response whose status is not listed in
 `htmx.config.noSwap`, which holds `204` and `304`. This server answers errors
 with whole pages rather than partials sized for a swap target, so the `<body>`

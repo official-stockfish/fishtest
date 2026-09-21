@@ -375,7 +375,9 @@
       hx-include="#tasks-filters"
       hx-sync="#tasks-filters:abort"
       hx-trigger="{% if tasks_shown %}load, tasks:load{% else %}tasks:load{% endif %}{% if not run['finished'] %}, every[document.visibilityState === 'visible' && document.getElementById('tasks').classList.contains('show')] {{ poll.tasks_detail }}s, visibilitychange[document.visibilityState === 'visible' && document.getElementById('tasks').classList.contains('show')] from:document{% endif %}"
-      hx-swap="innerHTML"
+      {# Refreshes on a timer under the reader's hands.
+         Details: docs/1-architecture.md (section: "Swapping and morphing"). #}
+      hx-swap="innerMorph"
     ></div>
   </section>
 {# End of enclosing div to be able to make things invisible. #}

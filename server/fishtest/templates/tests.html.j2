@@ -97,7 +97,9 @@
       hx-include="#machines-filters"
       hx-sync="#machines-filters:abort"
       hx-trigger="{% if machines_shown %}load, {% endif %}machines:load, every[document.visibilityState === 'visible' && document.getElementById('machines-panel').classList.contains('show')] {{ poll.machines_homepage }}s, visibilitychange[document.visibilityState === 'visible' && document.getElementById('machines-panel').classList.contains('show')] from:document"
-      hx-swap="innerHTML"
+      {# Refreshes on a timer under the reader's hands.
+         Details: docs/1-architecture.md (section: "Swapping and morphing"). #}
+      hx-swap="innerMorph"
     >
       <div id="machines-loading" class="skeleton-wrap">
         <div class="skeleton-line"></div>
