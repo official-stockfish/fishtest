@@ -290,13 +290,21 @@ def _form_string_value(form: Any, key: str) -> str:  # noqa: ANN401
 
 
 def _is_hx_request(request: Any) -> bool:  # noqa: ANN401
+    """Report whether this request wants a fragment sized for a swap target.
+
+    Details: docs/4-ui-reference.md (section: "Detection: `_is_hx_request(request)`").
+    """
     headers = getattr(request, "headers", None)
     if headers is None:
         return False
     if (headers.get("HX-Request") or "").lower() != "true":
         return False
-    # Never treat top-level document navigations as fragment requests,
-    # even if HX-Request appears in transit.
+    # Each rejection names the case it identifies: a back navigation, a swap
+    # scoped to the whole document, a top-level document navigation.
+    if (headers.get("HX-History-Restore-Request") or "").lower() == "true":
+        return False
+    if (headers.get("HX-Request-Type") or "").lower() == "full":
+        return False
     return (headers.get("Sec-Fetch-Mode") or "").lower() != "navigate"
 
 

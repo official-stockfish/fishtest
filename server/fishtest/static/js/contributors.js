@@ -88,9 +88,9 @@
       centerHighlightedContributor();
     }
   });
-  document.body.addEventListener("htmx:afterSwap", (event) => {
-    if (event.target && event.target.id === "contributors-content") {
-      requestAnimationFrame(centerHighlightedContributor);
-    }
-  });
+  // Recentre only when the contributors table is swapped.
+  onHtmxSwap(
+    (target) => target.id === "contributors-content",
+    () => requestAnimationFrame(centerHighlightedContributor),
+  );
 })();

@@ -726,3 +726,88 @@ function remainingApiCalls(response) {
   }
   return Number.MAX_VALUE;
 }
+
+// htmx swap observation.
+// Details: docs/9-references.md (section: "Swap events").
+
+// True when htmx swapped the response behind this event.
+function htmxSwapSucceeded(event) {
+  const status = event?.detail?.ctx?.response?.status;
+  return typeof status === "number" && status < 400;
+}
+
+// The element a swap left in the document, or null when it left nothing.
+function resolveHtmxSwapTarget(target) {
+  if (target.isConnected) {
+    return target;
+  }
+  return target.id ? document.getElementById(target.id) : null;
+}
+
+// Runs callback(targets) once per response that swaps a matching element.
+function onHtmxSwap(matches, callback) {
+  // Keyed on the request context: interleaved responses cannot be paired by
+  // arrival order.
+  const pending = new WeakMap();
+
+  document.addEventListener("htmx:before:swap", (event) => {
+    const ctx = event?.detail?.ctx;
+    const tasks = event?.detail?.tasks;
+    if (!ctx || !Array.isArray(tasks)) {
+      return;
+    }
+    const targets = pending.get(ctx) ?? [];
+    for (const task of tasks) {
+      if (task?.target instanceof Element && matches(task.target)) {
+        targets.push(task.target);
+      }
+    }
+    if (targets.length > 0) {
+      pending.set(ctx, targets);
+    }
+  });
+
+  document.addEventListener("htmx:after:swap", (event) => {
+    const ctx = event?.detail?.ctx;
+    const targets = ctx && pending.get(ctx);
+    if (!targets) {
+      return;
+    }
+    pending.delete(ctx);
+    if (!htmxSwapSucceeded(event)) {
+      return;
+    }
+    const live = targets.map(resolveHtmxSwapTarget).filter(Boolean);
+    if (live.length > 0) {
+      callback(live);
+    }
+  });
+}
+
+// True when the request behind this event was cancelled rather than failed.
+// Details: docs/9-references.md (section: "Aborted requests").
+function htmxRequestAborted(event) {
+  return event?.detail?.error?.name === "AbortError";
+}
+
+// An error response must not move the page around it: noSwap suppresses the
+// main swap only.
+// Details: docs/9-references.md (section: "Response swapping").
+
+document.addEventListener("htmx:before:history:update", (event) => {
+  const status = event?.detail?.response?.status;
+  if (typeof status === "number" && status >= 400) {
+    event.preventDefault();
+  }
+});
+
+document.addEventListener("htmx:before:swap", (event) => {
+  const ctx = event?.detail?.ctx;
+  if (!ctx || htmxSwapSucceeded(event)) {
+    return;
+  }
+  ctx.title = "";
+  if (Array.isArray(event.detail.tasks)) {
+    event.detail.tasks.length = 0;
+  }
+});

@@ -508,7 +508,7 @@ class TestRunActionViews(UiUserTestCase):
                 "run-id": run_id,
                 "csrf_token": csrf,
             },
-            headers={"HX-Request": "true"},
+            headers={"HX-Request": "true", "HX-Request-Type": "partial"},
             follow_redirects=False,
         )
 
@@ -529,7 +529,7 @@ class TestRunActionViews(UiUserTestCase):
                 "run-id": run_id,
                 "csrf_token": csrf,
             },
-            headers={"HX-Request": "true"},
+            headers={"HX-Request": "true", "HX-Request-Type": "partial"},
             follow_redirects=False,
         )
 
@@ -552,7 +552,7 @@ class TestRunActionViews(UiUserTestCase):
                 "run-id": run_id,
                 "csrf_token": csrf,
             },
-            headers={"HX-Request": "true"},
+            headers={"HX-Request": "true", "HX-Request-Type": "partial"},
             follow_redirects=False,
         )
 
@@ -576,7 +576,7 @@ class TestRunActionViews(UiUserTestCase):
                 "run-id": run_id,
                 "csrf_token": csrf,
             },
-            headers={"HX-Request": "true"},
+            headers={"HX-Request": "true", "HX-Request-Type": "partial"},
             follow_redirects=False,
         )
         self.assertEqual(response.status_code, 302)
@@ -599,7 +599,7 @@ class TestRunActionViews(UiUserTestCase):
                 "run-id": run_id,
                 "csrf_token": csrf,
             },
-            headers={"HX-Request": "true"},
+            headers={"HX-Request": "true", "HX-Request-Type": "partial"},
             follow_redirects=False,
         )
         self.assertEqual(response.status_code, 302)

@@ -571,35 +571,20 @@ function cleanup_() {
   localStorage.removeItem("__fishtest__latest_fetch_time");
 }
 
-document.addEventListener("htmx:oobAfterSwap", (e) => {
-  const target = e?.detail?.target;
-  if (!(target instanceof Element)) {
-    return;
-  }
+// Rescan the swapped subtrees only: a poll response carries several
+// out-of-band elements, and a document-wide rescan per element would rebuild
+// every bell on the page on each tick.
+onHtmxSwap(
+  () => true,
+  (targets) => {
+    for (const target of targets) {
+      initializeNotificationButtons(target);
+    }
+  },
+);
 
-  // Batch poll replaces whole run-table tbodies via OOB. Reinitialize
-  // notification bells after each tbody swap to keep icons visible in Firefox.
-  if (target.matches('tbody[id$="-tbody"]')) {
-    initializeNotificationButtons(target);
-  }
-});
-
-document.addEventListener("htmx:afterSwap", (e) => {
-  const target = e?.detail?.target;
-  if (!(target instanceof Element)) {
-    return;
-  }
-  initializeNotificationButtons(target);
-});
-
-document.addEventListener("htmx:load", (e) => {
-  const loaded = e?.detail?.elt;
-  if (!(loaded instanceof Element)) {
-    return;
-  }
-  initializeNotificationButtons(loaded);
-});
-
+// Covers the page the bells land on; the swap listener above covers content
+// htmx inserts.
 void DOMContentLoaded().then(() => {
   initializeNotificationButtons(document);
 });

@@ -418,7 +418,7 @@ class TestViewsContributors(UiUserTestCase):
     def test_contributors_hx_fragment_syncs_outer_hidden_sort_state(self):
         response = self.client.get(
             "/contributors?sort=username&order=asc&view=all",
-            headers={"HX-Request": "true"},
+            headers={"HX-Request": "true", "HX-Request-Type": "partial"},
         )
 
         self.assertEqual(response.status_code, 200)

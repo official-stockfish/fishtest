@@ -166,7 +166,7 @@ class TestNNViews(unittest.TestCase):
         self.rundb.nndb.insert_many(docs)
         response = self.client.get(
             "/nns?network_name=h16-hit&user=h16uploader&master_only=1",
-            headers={"HX-Request": "true"},
+            headers={"HX-Request": "true", "HX-Request-Type": "partial"},
         )
         self.assertEqual(response.status_code, 200)
         self.assertIn(hit_name, response.text)
@@ -204,7 +204,7 @@ class TestNNViews(unittest.TestCase):
 
         response = self.client.get(
             "/nns?network_name=net[1]&user=Regex(User)",
-            headers={"HX-Request": "true"},
+            headers={"HX-Request": "true", "HX-Request-Type": "partial"},
         )
 
         self.assertEqual(response.status_code, 200)
@@ -332,7 +332,9 @@ class TestNNViews(unittest.TestCase):
         ]
         self.rundb.nndb.insert_many(docs)
 
-        paged_fragment = self.client.get("/nns", headers={"HX-Request": "true"})
+        paged_fragment = self.client.get(
+            "/nns", headers={"HX-Request": "true", "HX-Request-Type": "partial"}
+        )
         self.assertEqual(paged_fragment.status_code, 200)
         self.assertIn('id="search_nn"', paged_fragment.text)
         self.assertIn("Show all", paged_fragment.text)
@@ -351,7 +353,7 @@ class TestNNViews(unittest.TestCase):
 
         all_fragment = self.client.get(
             "/nns?view=all",
-            headers={"HX-Request": "true"},
+            headers={"HX-Request": "true", "HX-Request-Type": "partial"},
         )
         self.assertEqual(all_fragment.status_code, 200)
         self.assertIn('id="search_nn"', all_fragment.text)

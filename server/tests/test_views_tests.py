@@ -128,11 +128,20 @@ class TestTestsHomepage(UiUserTestCase):
         ):
             response = self.client.get(
                 "/tests?live=run_tables",
-                headers={"HX-Request": "true"},
+                headers={"HX-Request": "true", "HX-Request-Type": "partial"},
             )
 
-        self.assertEqual(response.status_code, 286)
+        # No runs left to poll for: a 200 that deletes the polling driver.
+        self.assertEqual(response.status_code, 200)
         self.assertIn("Workers - 2 (1)", response.text)
+        self.assertIn(
+            '<div id="run-tables-poller" hx-swap-oob="delete"></div>',
+            response.text,
+        )
+        self.assertIn(
+            '<template id="finished-tbody" hx-swap-oob="innerHTML">', response.text
+        )
+        self.assertNotIn("<tbody", response.text)
 
     def test_tests_homepage_live_run_tables_keeps_hidden_active_filtered_count_current(
         self,
@@ -201,7 +210,7 @@ class TestTestsHomepage(UiUserTestCase):
         ):
             response = self.client.get(
                 "/tests?live=run_tables",
-                headers={"HX-Request": "true"},
+                headers={"HX-Request": "true", "HX-Request-Type": "partial"},
             )
 
         self.assertEqual(response.status_code, 200)
@@ -522,7 +531,7 @@ class TestTestsHomepage(UiUserTestCase):
         ):
             response = self.client.get(
                 "/tests?live=run_tables",
-                headers={"HX-Request": "true"},
+                headers={"HX-Request": "true", "HX-Request-Type": "partial"},
             )
 
         self.assertEqual(response.status_code, 200)
@@ -641,7 +650,7 @@ class TestTestsHomepage(UiUserTestCase):
 
         response = self.client.get(
             f"/tests/user/{self.username}?success_only=1",
-            headers={"HX-Request": "true"},
+            headers={"HX-Request": "true", "HX-Request-Type": "partial"},
         )
 
         self.assertEqual(response.status_code, 200)
@@ -663,7 +672,104 @@ class TestTestsHomepage(UiUserTestCase):
         )
         js_source = js_path.read_text(encoding="utf-8")
 
-        self.assertIn('document.addEventListener("htmx:afterSwap"', js_source)
-        self.assertIn('document.addEventListener("htmx:load"', js_source)
+        self.assertIn("onHtmxSwap(", js_source)
+        self.assertNotIn("htmx:oobAfterSwap", js_source)
+
+        self.assertNotIn('addEventListener("htmx:after:init"', js_source)
         self.assertIn("initializeNotificationButtons(target)", js_source)
         self.assertIn('notification.dataset.notificationReady = "1"', js_source)
+
+        # The one document-wide scan belongs to the initial page load.
+        self.assertEqual(js_source.count("initializeNotificationButtons(document)"), 1)
+        self.assertIn(
+            "onHtmxSwap(\n"
+            "  () => true,\n"
+            "  (targets) => {\n"
+            "    for (const target of targets) {\n"
+            "      initializeNotificationButtons(target);\n"
+            "    }\n"
+            "  },\n"
+            ");",
+            js_source,
+        )
+
+    def test_htmx_swap_helpers_filter_by_target_and_status(self):
+        js_path = (
+            Path(__file__).resolve().parents[1]
+            / "fishtest"
+            / "static"
+            / "js"
+            / "application.js"
+        )
+        js_source = js_path.read_text(encoding="utf-8")
+
+        self.assertIn("function onHtmxSwap(matches, callback)", js_source)
+        self.assertIn('document.addEventListener("htmx:before:swap"', js_source)
+
+        # Interleaved responses: the pair is joined through detail.ctx.
+        self.assertIn("const pending = new WeakMap();", js_source)
+        self.assertIn("pending.get(ctx)", js_source)
+        self.assertIn("pending.set(ctx, targets)", js_source)
+        self.assertIn("pending.delete(ctx)", js_source)
+
+        self.assertIn("function htmxSwapSucceeded(event)", js_source)
+        self.assertIn("status < 400", js_source)
+
+        self.assertIn("function resolveHtmxSwapTarget(target)", js_source)
+        self.assertIn("document.getElementById(target.id)", js_source)
+        self.assertIn("targets.map(resolveHtmxSwapTarget).filter(Boolean)", js_source)
+
+    def test_aborted_requests_are_distinguished_from_failures(self):
+        js_dir = Path(__file__).resolve().parents[1] / "fishtest" / "static" / "js"
+        js_source = (js_dir / "application.js").read_text(encoding="utf-8")
+
+        self.assertIn("function htmxRequestAborted(event)", js_source)
+        self.assertIn('"AbortError"', js_source)
+
+        # Every htmx:error handler that resets load state must consult it.
+        homepage = (js_dir / "tests_homepage.js").read_text(encoding="utf-8")
+        self.assertIn("htmxRequestAborted(event)", homepage)
+        detail = (
+            Path(__file__).resolve().parents[1]
+            / "fishtest"
+            / "templates"
+            / "tests_view.html.j2"
+        ).read_text(encoding="utf-8")
+        self.assertIn("htmxRequestAborted(event)", detail)
+
+    def test_error_responses_do_not_push_url_or_retitle_the_page(self):
+        js_path = (
+            Path(__file__).resolve().parents[1]
+            / "fishtest"
+            / "static"
+            / "js"
+            / "application.js"
+        )
+        js_source = js_path.read_text(encoding="utf-8")
+
+        self.assertIn(
+            'document.addEventListener("htmx:before:history:update"', js_source
+        )
+        self.assertIn("event.preventDefault();", js_source)
+        self.assertIn('ctx.title = "";', js_source)
+
+        # The same guard empties the task list, which covers the out-of-band
+        # elements htmx would otherwise apply from an error page.
+        self.assertIn("event.detail.tasks.length = 0;", js_source)
+
+    def test_swap_listeners_do_not_react_to_unrelated_requests(self):
+        js_dir = Path(__file__).resolve().parents[1] / "fishtest" / "static" / "js"
+
+        # The sidebar badge polls on every page, so a bare listener fires on a
+        # timer in every one of these files.
+        for name in (
+            "contributors.js",
+            "live_elo.js",
+            "spsa.js",
+            "notifications.js",
+            "tests_homepage.js",
+        ):
+            with self.subTest(script=name):
+                source = (js_dir / name).read_text(encoding="utf-8")
+                self.assertIn("onHtmxSwap(", source)
+                self.assertNotIn('addEventListener("htmx:after:swap"', source)
