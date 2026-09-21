@@ -7,6 +7,8 @@ detection, username matching, and heap-based merge behavior.
 import unittest
 from datetime import UTC, datetime
 
+import test_support
+
 from fishtest.util import tests_repo
 from fishtest.views_helpers import (
     _build_query_string,
@@ -612,6 +614,84 @@ class RankedMultiUsernameMergeTests(unittest.TestCase):
         rows, count = result
         # max_count=1, so total capped at 1
         self.assertEqual(count, 1)
+
+
+class FragmentRequestHeadersTests(unittest.TestCase):
+    """Every header the fragment decision reads must be declared in Vary."""
+
+    def test_is_hx_request_reads_exactly_the_declared_headers(self):
+        from fishtest.views_helpers import FRAGMENT_REQUEST_HEADERS
+
+        baseline = {"HX-Request": "true"}
+        self.assertTrue(_is_hx_request(_request_with_headers(baseline)))
+
+        # Each declared header can flip the decision on its own.
+        flips = {
+            "HX-History-Restore-Request": "true",
+            "HX-Request-Type": "full",
+            "Sec-Fetch-Mode": "navigate",
+        }
+        for header, value in flips.items():
+            with self.subTest(header=header):
+                self.assertIn(header, FRAGMENT_REQUEST_HEADERS)
+                request = _request_with_headers({**baseline, header: value})
+                self.assertFalse(_is_hx_request(request))
+
+        self.assertEqual(set(FRAGMENT_REQUEST_HEADERS), {"HX-Request", *flips})
+
+
+class DualModeVaryTests(unittest.TestCase):
+    """A dual-mode response varies on every fragment-request header."""
+
+    @classmethod
+    def setUpClass(cls):
+        test_support.require_fastapi()
+        cls.rundb = test_support.get_rundb()
+
+    @classmethod
+    def tearDownClass(cls):
+        test_support.cleanup_test_rundb(cls.rundb)
+
+    def test_vary_declares_every_fragment_request_header(self):
+        from fishtest.views_helpers import FRAGMENT_REQUEST_HEADERS
+
+        client = test_support.make_test_client(
+            rundb=self.rundb,
+            include_api=False,
+            include_views=True,
+        )
+
+        for path in ("/actions", "/nns"):
+            with self.subTest(path=path):
+                response = client.get(path, headers={"HX-Request": "true"})
+                self.assertEqual(response.status_code, 200)
+                declared = {
+                    token.strip().lower()
+                    for token in response.headers.get("Vary", "").split(",")
+                    if token.strip()
+                }
+                for header in FRAGMENT_REQUEST_HEADERS:
+                    self.assertIn(header.lower(), declared)
+
+    def test_the_body_really_varies_on_each_declared_header(self):
+        client = test_support.make_test_client(
+            rundb=self.rundb,
+            include_api=False,
+            include_views=True,
+        )
+        fragment = client.get("/actions", headers={"HX-Request": "true"}).text
+
+        for header, value in (
+            ("HX-History-Restore-Request", "true"),
+            ("HX-Request-Type", "full"),
+            ("Sec-Fetch-Mode", "navigate"),
+        ):
+            with self.subTest(header=header):
+                other = client.get(
+                    "/actions",
+                    headers={"HX-Request": "true", header: value},
+                ).text
+                self.assertNotEqual(fragment, other)
 
 
 if __name__ == "__main__":

@@ -380,19 +380,19 @@ toggles, truncation banners, pagination, and sort state remain synchronized
 with the table body.
 
 **Vary header for HTTP caching**: when the same URL can return either a
-full page or a fragment, both request headers must appear in `Vary` so that
-HTTP caches (nginx, CDNs) store separate representations:
+full page or a fragment, every header the choice reads must appear in `Vary`
+so that HTTP caches (nginx, CDNs) store separate representations:
 
 ```python
-_append_vary_header(response, "HX-Request")
-_append_vary_header(response, "HX-Request-Type")
+for header in FRAGMENT_REQUEST_HEADERS:
+    _append_vary_header(response, header)
 ```
 
-Both tokens are needed: `HX-Request-Type` is what separates a fragment request
-from a boosted navigation to the same URL, so keying on `HX-Request` alone lets
-a cache return a stored fragment for one. Use the same `Vary` value on the
-full-page response, the fragment response, and any `304 Not Modified` response
-for that URL.
+Every token earns its place: `HX-Request-Type` separates a fragment request
+from a boosted navigation to the same URL, and `HX-History-Restore-Request`
+and `Sec-Fetch-Mode` each mark a request the same URL answers with a whole
+page. Use the same `Vary` value on the full-page response, the fragment
+response, and any `304 Not Modified` response for that URL.
 
 **OOB swaps with Jinja2**: out-of-band elements carry `hx-swap-oob`
 attributes directly in the template markup, and one response can update many

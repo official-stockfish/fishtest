@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import heapq
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Final
 from urllib.parse import urlencode
 
 if TYPE_CHECKING:
@@ -287,6 +287,15 @@ def _append_no_store_headers(request: Any) -> None:  # noqa: ANN401
 def _form_string_value(form: Any, key: str) -> str:  # noqa: ANN401
     value = form.get(key)
     return value if isinstance(value, str) else ""
+
+
+FRAGMENT_REQUEST_HEADERS: Final = (
+    "HX-Request",
+    "HX-History-Restore-Request",
+    "HX-Request-Type",
+    "Sec-Fetch-Mode",
+)
+"""Every request header `_is_hx_request` reads, and so every token in `Vary`."""
 
 
 def _is_hx_request(request: Any) -> bool:  # noqa: ANN401

@@ -137,6 +137,7 @@ from fishtest.views_actions import actions as _actions_impl
 from fishtest.views_finished import get_paginated_finished_runs
 from fishtest.views_helpers import (
     _SORT_ORDER_VALUES,
+    FRAGMENT_REQUEST_HEADERS,
     _append_no_store_headers,
     _append_vary_header,
     _apply_response_headers,
@@ -476,6 +477,12 @@ class _ViewContext:
 _RequestShim = _ViewContext
 
 
+def _vary_on_fragment_headers(response: Response) -> None:
+    """Declare every request header the fragment decision reads."""
+    for header in FRAGMENT_REQUEST_HEADERS:
+        _append_vary_header(response, header)
+
+
 async def _dispatch_view(
     fn: Callable[..., Any],
     cfg: _ViewRouteConfig,
@@ -520,8 +527,7 @@ async def _dispatch_view(
         apply_http_cache(result, cfg)
         if request.method == "GET":
             # Same URL can serve full page or htmx fragment depending on headers.
-            _append_vary_header(result, "HX-Request")
-            _append_vary_header(result, "HX-Request-Type")
+            _vary_on_fragment_headers(result)
             result.headers.setdefault("Cache-Control", "no-cache, private")
         return _apply_response_headers(shim, result)
 
@@ -548,8 +554,7 @@ async def _dispatch_view(
     if request.method == "GET":
         # Several UI endpoints return either full-page HTML or fragment HTML
         # for the same URL depending on the fragment-request headers.
-        _append_vary_header(response, "HX-Request")
-        _append_vary_header(response, "HX-Request-Type")
+        _vary_on_fragment_headers(response)
         response.headers.setdefault("Cache-Control", "no-cache, private")
     return _apply_response_headers(shim, response)
 

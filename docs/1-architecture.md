@@ -265,10 +265,12 @@ so a rename of that header degrades to treating every htmx request as a
 fragment request, instead of swapping whole pages into every fragment target
 on the site.
 
-`_dispatch_view()` appends `Vary: HX-Request, HX-Request-Type` to every GET
-response. `HX-Request: true` alone does not separate a fragment request from a
-back-button navigation to the same URL, so a shared cache keyed on it could
-hand a stored fragment to the navigation.
+`_dispatch_view()` appends one `Vary` token per header the decision above
+reads: `HX-Request, HX-History-Restore-Request, HX-Request-Type,
+Sec-Fetch-Mode`, listed once in `FRAGMENT_REQUEST_HEADERS`. RFC 9111 section
+4.1 requires the selecting header fields to be named there, or a shared cache
+may hand a stored fragment to a request the server would answer with a whole
+page.
 UI GET responses also emit `Cache-Control`: the default is
 `no-cache, private`, auth-sensitive pages use `no-store`, and explicit
 route-level overrides such as `/tests/machines` can still set a short
