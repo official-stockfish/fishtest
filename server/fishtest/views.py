@@ -378,6 +378,7 @@ class _TestsRunTablesFragmentContext(TypedDict, total=False):
     machines_count: int
     workers_count_text: str
     stats: _BatchStats
+    stop_polling: bool
 
 
 class _ViewRouteConfig(TypedDict, total=False):
@@ -520,6 +521,7 @@ async def _dispatch_view(
         if request.method == "GET":
             # Same URL can serve full page or htmx fragment depending on headers.
             _append_vary_header(result, "HX-Request")
+            _append_vary_header(result, "HX-Request-Type")
             result.headers.setdefault("Cache-Control", "no-cache, private")
         return _apply_response_headers(shim, result)
 
@@ -545,8 +547,9 @@ async def _dispatch_view(
     apply_http_cache(response, cfg)
     if request.method == "GET":
         # Several UI endpoints return either full-page HTML or fragment HTML
-        # for the same URL based on the HX-Request header.
+        # for the same URL depending on the fragment-request headers.
         _append_vary_header(response, "HX-Request")
+        _append_vary_header(response, "HX-Request-Type")
         response.headers.setdefault("Cache-Control", "no-cache, private")
     return _apply_response_headers(shim, response)
 
@@ -2883,8 +2886,7 @@ def _build_tests_run_tables_fragment_context(
         },
     ]
 
-    if not (pending_runs or paused_runs or active_runs):
-        request.response_status = 286
+    stop_polling = not (pending_runs or paused_runs or active_runs)
 
     machine_filters = _machine_filter_state(
         request.cookies,
@@ -2898,6 +2900,7 @@ def _build_tests_run_tables_fragment_context(
     result: _TestsRunTablesFragmentContext = {
         "panels": panels,
         "count_updates": count_updates,
+        "stop_polling": stop_polling,
     }
 
     # workers-count target exists on homepage only.
@@ -2947,10 +2950,8 @@ def live_elo_update(request: _ViewContext) -> dict[str, Any]:
     if run is None or "sprt" not in run["args"]:
         raise StarletteHTTPException(status_code=404)
 
-    context = _build_live_elo_context(run)
-    if context["sprt_state"]:
-        request.response_status = 286
-    return context
+    # A truthy sprt_state is terminal: live_elo_fragment removes the poller.
+    return _build_live_elo_context(run)
 
 
 def tests_stats(request: _ViewContext) -> dict[str, Any] | Response:
@@ -2967,14 +2968,8 @@ def tests_stats(request: _ViewContext) -> dict[str, Any] | Response:
     if _is_hx_request(request):
         actual = _classify_run_status(run)
         if actual in {"finished", "failed"}:
-            response = _render_hx_fragment(
-                request,
-                "tests_stats_content_fragment.html.j2",
-                context,
-            )
-            if response is not None:
-                response.status_code = 286
-                return response
+            # Terminal: render the content and remove the poller.
+            context["stop_polling"] = True
         elif actual != "active":
             request.response_status = 204
             return context
@@ -3497,14 +3492,8 @@ def tests_view_detail(request: _ViewContext) -> dict[str, Any] | Response:
         actual = context["run_status_label"]
 
         if actual in {"finished", "failed"}:
-            response = _render_hx_fragment(
-                request,
-                "tests_view_detail_fragment.html.j2",
-                context,
-            )
-            if response is not None:
-                response.status_code = 286
-                return response
+            # Terminal: render the detail and remove the poller.
+            context["stop_polling"] = True
         elif (not expected and actual != "active") or (
             expected and actual == expected and actual != "active"
         ):

@@ -341,7 +341,7 @@ class TestActionsViews(unittest.TestCase):
 
         response = self.client.get(
             f"/actions?user=TestActionsRouteUser&run_id={self.run_id}",
-            headers={"HX-Request": "true"},
+            headers={"HX-Request": "true", "HX-Request-Type": "partial"},
         )
         self.assertEqual(response.status_code, 200)
         self.assertNotIn("<!doctype html>", response.text.lower())
@@ -369,7 +369,7 @@ class TestActionsViews(unittest.TestCase):
 
         response = self.client.get(
             f"/actions?run_id={self.run_id}",
-            headers={"HX-Request": "true"},
+            headers={"HX-Request": "true", "HX-Request-Type": "partial"},
         )
         self.assertEqual(response.status_code, 200)
         self.assertIn("worker_log", response.text)
@@ -406,7 +406,7 @@ class TestActionsViews(unittest.TestCase):
 
         fragment_response = self.client.get(
             f"/actions?action=worker_log&run_id={self.run_id}",
-            headers={"HX-Request": "true"},
+            headers={"HX-Request": "true", "HX-Request-Type": "partial"},
         )
         self.assertEqual(fragment_response.status_code, 200)
         self.assertIn("Bestmove warning", fragment_response.text)
@@ -492,7 +492,7 @@ class TestActionsViews(unittest.TestCase):
 
         response = self.client.get(
             "/actions?user=tionsRoute",
-            headers={"HX-Request": "true"},
+            headers={"HX-Request": "true", "HX-Request-Type": "partial"},
         )
         self.assertEqual(response.status_code, 200)
         self.assertIn("Partial username hit", response.text)
@@ -642,7 +642,7 @@ class TestActionsViews(unittest.TestCase):
 
         response = self.client.get(
             "/actions?user=TestSortActionUser&sort=event&order=asc",
-            headers={"HX-Request": "true"},
+            headers={"HX-Request": "true", "HX-Request-Type": "partial"},
         )
         self.assertEqual(response.status_code, 200)
         self.assertIn("Sorted by Event ascending", response.text)
@@ -655,7 +655,7 @@ class TestActionsViews(unittest.TestCase):
     def test_actions_empty_state_uses_real_column_span(self):
         response = self.client.get(
             "/actions?user=MissingActionsUser",
-            headers={"HX-Request": "true"},
+            headers={"HX-Request": "true", "HX-Request-Type": "partial"},
         )
         self.assertEqual(response.status_code, 200)
         self.assertIn('colspan="5">No actions available</td>', response.text)

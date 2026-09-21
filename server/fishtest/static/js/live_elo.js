@@ -434,10 +434,9 @@
     }
   });
 
-  // Update on each htmx OOB swap (innerHTML of #live-elo-data).
-  document.body.addEventListener("htmx:oobAfterSwap", (e) => {
-    if (e?.detail?.target?.id === "live-elo-data") {
-      scheduleGaugeUpdate(document.getElementById("gauge-data"));
-    }
-  });
+  // Redraw the gauges only when the live-Elo payload is swapped.
+  onHtmxSwap(
+    (target) => target.id === "live-elo-data",
+    () => scheduleGaugeUpdate(document.getElementById("gauge-data")),
+  );
 })();

@@ -1,0 +1,4 @@
+{# Out-of-band element that stops a poll by deleting its driver.
+   Requires: poller_id -- the id of the driver element to remove.
+   Details: docs/9-references.md (section: "Polling lifecycle"). #}
+<div id="{{ poller_id }}" hx-swap-oob="delete"></div>

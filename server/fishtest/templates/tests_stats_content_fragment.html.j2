@@ -148,3 +148,9 @@
     </div>
   {% endif %}
 </div>
+
+{% if stop_polling is defined and stop_polling %}
+  {% with poller_id="tests-stats-poller" %}
+    {% include "poll_stop_fragment.html.j2" %}
+  {% endwith %}
+{% endif %}

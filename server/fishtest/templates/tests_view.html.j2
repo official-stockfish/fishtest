@@ -91,9 +91,10 @@
       name="expected"
       value="{{ run_status_label }}"
     >
-    <div hx-get="/tests/view/{{ run_id }}/detail"
+    <div id="tests-view-detail-poller"
+      hx-get="/tests/view/{{ run_id }}/detail"
       hx-include="#tests-view-detail-expected"
-      hx-trigger="every {{ poll.tests_view_detail }}s [document.visibilityState === 'visible'], visibilitychange[document.visibilityState === 'visible'] from:document"
+      hx-trigger="every[document.visibilityState === 'visible'] {{ poll.tests_view_detail }}s, visibilitychange[document.visibilityState === 'visible'] from:document"
       hx-swap="none">
     </div>
   {% endif %}
@@ -359,8 +360,6 @@
 
     {% set pagination_hx_target = "tasks-content" %}
     {% set pagination_hx_push_url = false %}
-    {% set pagination_hx_disinherit = "hx-include" %}
-    {% set pagination_hx_params = "none" %}
     <div id="tasks-pagination" aria-live="polite">
       {% if tasks_view == "paged" %}
         {% with pages=tasks_pages %}
@@ -375,7 +374,7 @@
       hx-get="/tests/tasks/{{ run_id }}?show_task={{ show_task }}"
       hx-include="#tasks-filters"
       hx-sync="#tasks-filters:abort"
-      hx-trigger="{% if tasks_shown %}load, tasks:load{% else %}tasks:load{% endif %}{% if not run['finished'] %}, every {{ poll.tasks_detail }}s [document.visibilityState === 'visible' && document.getElementById('tasks').classList.contains('show')], visibilitychange[document.visibilityState === 'visible' && document.getElementById('tasks').classList.contains('show')] from:document{% endif %}"
+      hx-trigger="{% if tasks_shown %}load, tasks:load{% else %}tasks:load{% endif %}{% if not run['finished'] %}, every[document.visibilityState === 'visible' && document.getElementById('tasks').classList.contains('show')] {{ poll.tasks_detail }}s, visibilitychange[document.visibilityState === 'visible' && document.getElementById('tasks').classList.contains('show')] from:document{% endif %}"
       hx-swap="innerHTML"
     ></div>
   </section>
@@ -537,9 +536,18 @@
     resolveTasksLoaded = null;
   };
 
-  tasksContainer?.addEventListener("htmx:afterSwap", resolveTasksLoadedOnce);
-  tasksContainer?.addEventListener("htmx:responseError", clearTasksLoadingState);
-  tasksContainer?.addEventListener("htmx:sendError", clearTasksLoadingState);
+  // Match on the swap target: #tasks-content is also filled by #tasks-filters.
+  // Details: docs/9-references.md (section: "Source versus target").
+  onHtmxSwap((target) => target.id === "tasks-content", resolveTasksLoadedOnce);
+  tasksContainer?.addEventListener("htmx:response:error", clearTasksLoadingState);
+  tasksContainer?.addEventListener("htmx:error", (event) => {
+    // An abort arrives here too; resolving on it would scroll before the
+    // requested row has arrived.
+    if (htmxRequestAborted(event)) {
+      return;
+    }
+    clearTasksLoadingState();
+  });
   if (tasksContainer && (tasksContainer.dataset.tasksLoaded === "1" || tasksContainer.children.length > 0)) {
     resolveTasksLoadedOnce();
   }

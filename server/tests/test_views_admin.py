@@ -36,7 +36,7 @@ class TestAdminViews(UiUserTestCase):
         try:
             response = self.client.get(
                 "/workers/show?filter=gt-5days",
-                headers={"HX-Request": "true"},
+                headers={"HX-Request": "true", "HX-Request-Type": "partial"},
             )
             self.assertEqual(response.status_code, 200)
             self.assertIn(old_worker, response.text)
@@ -56,7 +56,7 @@ class TestAdminViews(UiUserTestCase):
         try:
             response = self.client.get(
                 "/workers/show?filter=all-workers&sort=worker&order=asc&page=2&q=H19Worker&view=paged",
-                headers={"HX-Request": "true"},
+                headers={"HX-Request": "true", "HX-Request-Type": "partial"},
             )
             self.assertEqual(response.status_code, 200)
             self.assertIn('id="workers_table"', response.text)
@@ -89,7 +89,7 @@ class TestAdminViews(UiUserTestCase):
 
             non_worker_match = self.client.get(
                 "/workers/show?filter=all-workers&sort=worker&order=asc&q=actions?text&view=paged",
-                headers={"HX-Request": "true"},
+                headers={"HX-Request": "true", "HX-Request-Type": "partial"},
             )
             self.assertEqual(non_worker_match.status_code, 200)
             self.assertNotIn(worker_names[0], non_worker_match.text)
@@ -102,7 +102,7 @@ class TestAdminViews(UiUserTestCase):
         with patch.object(self.rundb.workerdb, "get_blocked_workers", return_value=[]):
             response = self.client.get(
                 "/workers/show?filter=all-workers",
-                headers={"HX-Request": "true"},
+                headers={"HX-Request": "true", "HX-Request-Type": "partial"},
             )
 
         self.assertEqual(response.status_code, 200)
@@ -119,7 +119,7 @@ class TestAdminViews(UiUserTestCase):
             with patch.object(self.rundb.userdb, "get_users", return_value=[]):
                 response = self.client.get(
                     "/user_management?group=blocked",
-                    headers={"HX-Request": "true"},
+                    headers={"HX-Request": "true", "HX-Request-Type": "partial"},
                 )
 
             self.assertEqual(response.status_code, 200)
@@ -195,7 +195,7 @@ class TestAdminViews(UiUserTestCase):
 
             response = self.client.get(
                 "/user_management?group=blocked",
-                headers={"HX-Request": "true"},
+                headers={"HX-Request": "true", "HX-Request-Type": "partial"},
             )
             self.assertEqual(response.status_code, 200)
             self.assertIn(blocked_user, response.text)
@@ -227,7 +227,7 @@ class TestAdminViews(UiUserTestCase):
             self._login_user()
             response = self.client.get(
                 "/user_management?group=pending&sort=username&order=asc&page=2&q=H19UmUser&view=paged",
-                headers={"HX-Request": "true"},
+                headers={"HX-Request": "true", "HX-Request-Type": "partial"},
             )
             self.assertEqual(response.status_code, 200)
             self.assertIn('id="user_management_table"', response.text)
@@ -254,7 +254,7 @@ class TestAdminViews(UiUserTestCase):
 
             non_username_match = self.client.get(
                 "/user_management?group=pending&sort=username&order=asc&q=%40example.com&view=paged",
-                headers={"HX-Request": "true"},
+                headers={"HX-Request": "true", "HX-Request-Type": "partial"},
             )
             self.assertEqual(non_username_match.status_code, 200)
             self.assertNotIn(created_users[0], non_username_match.text)
@@ -281,8 +281,10 @@ class TestAdminViews(UiUserTestCase):
         self.assertIn("<th>Client</th>", full_response.text)
         self.assertIn('id="server_rate_limit"', full_response.text)
         self.assertIn('id="client_rate_limit"', full_response.text)
+        # The condition rides the every token.
         self.assertIn(
-            f'hx-trigger="load, every {POLL_RATE_LIMITS_SERVER_S}s ',
+            "hx-trigger=\"load, every[document.visibilityState === 'visible'] "
+            f"{POLL_RATE_LIMITS_SERVER_S}s,",
             full_response.text,
         )
         self.assertIn(
@@ -306,7 +308,7 @@ class TestAdminViews(UiUserTestCase):
         }
         response = self.client.get(
             "/rate_limits",
-            headers={"HX-Request": "true", "Sec-Fetch-Mode": "navigate"},
+            headers={"HX-Request": "true", "HX-Request-Type": "full"},
         )
         self.assertEqual(response.status_code, 200)
         self.assertIn("<!doctype html>", response.text.lower())
@@ -346,8 +348,9 @@ class TestAdminViews(UiUserTestCase):
                 full_response.text,
             )
             self.assertIn(
-                f'hx-trigger="load, every {POLL_PENDING_USERS_NAV_S}s '
-                "[document.visibilityState === 'visible'], "
+                'hx-trigger="load, '
+                "every[document.visibilityState === 'visible'] "
+                f"{POLL_PENDING_USERS_NAV_S}s, "
                 "visibilitychange[document.visibilityState === 'visible'] "
                 'from:document"',
                 full_response.text,

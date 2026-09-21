@@ -8,8 +8,9 @@
 
 {% if not has_spsa and not run.get("finished", false) %}
   <div
+    id="tests-stats-poller"
     hx-get="/tests/stats/{{ run_id }}"
-    hx-trigger="every {{ poll.tests_stats }}s [document.visibilityState === 'visible'], visibilitychange[document.visibilityState === 'visible'] from:document"
+    hx-trigger="every[document.visibilityState === 'visible'] {{ poll.tests_stats }}s, visibilitychange[document.visibilityState === 'visible'] from:document"
     hx-target="#tests-stats-content"
     hx-swap="outerHTML"
   ></div>

@@ -246,33 +246,87 @@ class FloatParamTests(unittest.TestCase):
         self.assertEqual(_float_param("-2.5"), -2.5)
 
 
+def _request_with_headers(headers):
+    return type("R", (), {"headers": headers})()
+
+
 class IsHxRequestTests(unittest.TestCase):
-    def test_htmx_request(self):
-        request = type("R", (), {"headers": {"HX-Request": "true"}})()
+    def test_partial_request(self):
+        request = _request_with_headers(
+            {"HX-Request": "true", "HX-Request-Type": "partial"}
+        )
         self.assertTrue(_is_hx_request(request))
 
     def test_non_htmx_request(self):
-        request = type("R", (), {"headers": {}})()
+        self.assertFalse(_is_hx_request(_request_with_headers({})))
+
+    def test_full_request_is_not_a_fragment_request(self):
+        # htmx sends HX-Request-Type: full for boosted navigations.
+        request = _request_with_headers(
+            {"HX-Request": "true", "HX-Request-Type": "full"}
+        )
         self.assertFalse(_is_hx_request(request))
 
-    def test_htmx_with_navigate_mode(self):
-        request = type(
-            "R", (), {"headers": {"HX-Request": "true", "Sec-Fetch-Mode": "navigate"}}
-        )()
+    def test_history_restore_is_not_a_fragment_request(self):
+        # A back navigation must receive a whole page.
+        request = _request_with_headers(
+            {
+                "HX-Request": "true",
+                "HX-Request-Type": "full",
+                "HX-History-Restore-Request": "true",
+            }
+        )
+        self.assertFalse(_is_hx_request(request))
+
+    def test_missing_request_type_still_serves_a_fragment(self):
+        # Rejecting "full" rather than requiring "partial" survives a rename.
+        request = _request_with_headers({"HX-Request": "true"})
+        self.assertTrue(_is_hx_request(request))
+
+    def test_history_restore_without_other_hx_headers(self):
+        # A back navigation carries no HX-Request and must still not get a
+        # fragment.
+        request = _request_with_headers({"HX-History-Restore-Request": "true"})
+        self.assertFalse(_is_hx_request(request))
+
+    def test_history_restore_is_rejected_even_when_typed_partial(self):
+        request = _request_with_headers(
+            {
+                "HX-Request": "true",
+                "HX-Request-Type": "partial",
+                "HX-History-Restore-Request": "true",
+            }
+        )
         self.assertFalse(_is_hx_request(request))
 
     def test_no_headers(self):
-        request = type("R", (), {"headers": None})()
-        self.assertFalse(_is_hx_request(request))
+        self.assertFalse(_is_hx_request(_request_with_headers(None)))
 
-    def test_htmx_case_insensitive(self):
-        request = type("R", (), {"headers": {"HX-Request": "True"}})()
+    def test_header_values_are_case_insensitive(self):
+        request = _request_with_headers(
+            {"HX-Request": "True", "HX-Request-Type": "Partial"}
+        )
         self.assertTrue(_is_hx_request(request))
 
-    def test_htmx_with_cors_mode(self):
-        request = type(
-            "R", (), {"headers": {"HX-Request": "true", "Sec-Fetch-Mode": "cors"}}
-        )()
+    def test_top_level_navigation_is_not_a_fragment_request(self):
+        # Sec-Fetch-Mode is the only signal page script cannot forge.
+        request = _request_with_headers(
+            {
+                "HX-Request": "true",
+                "HX-Request-Type": "partial",
+                "Sec-Fetch-Mode": "navigate",
+            }
+        )
+        self.assertFalse(_is_hx_request(request))
+
+    def test_fragment_request_carries_a_non_navigate_fetch_mode(self):
+        request = _request_with_headers(
+            {
+                "HX-Request": "true",
+                "HX-Request-Type": "partial",
+                "Sec-Fetch-Mode": "same-origin",
+            }
+        )
         self.assertTrue(_is_hx_request(request))
 
 

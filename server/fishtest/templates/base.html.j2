@@ -19,6 +19,11 @@
     <meta name="csrf-token" content="{{ csrf_token }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+    {# Read at init, so this precedes the bundle.
+       Details: docs/9-references.md (sections: "Response swapping",
+       "Settle phase"). #}
+    <meta name="htmx-config" content='{"noSwap": [204, 304, "4xx", "5xx"], "defaultSettleDelay": 0}'>
+
     <meta property="og:site_name" content="{{ open_graph['site_name'] }}">
     <meta property="og:type" content="{{ open_graph['type'] }}">
     <meta property="og:title" content="{{ open_graph['title'] }}">
@@ -87,8 +92,8 @@
     ></script>
 
     <script
-      src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.10/dist/htmx.min.js"
-      integrity="sha256-cepnGFv6jJjDnTFxfG/OXYUjcPzf0SnbRUN3TTFFwN4="
+      src="https://cdn.jsdelivr.net/npm/htmx.org@4.0.0/dist/htmx.min.js"
+      integrity="sha256-5ITZFxqdswo5yPFuPXCdQTfzIRxln45hJYFmNQM9WT8="
       crossorigin="anonymous"
       referrerpolicy="no-referrer"
     ></script>
@@ -325,7 +330,7 @@
                       <span
                         id="pending-users-nav"
                         hx-get="/user_management/pending_count"
-                        hx-trigger="load, every {{ poll.pending_users_nav }}s [document.visibilityState === 'visible'], visibilitychange[document.visibilityState === 'visible'] from:document"
+                        hx-trigger="load, every[document.visibilityState === 'visible'] {{ poll.pending_users_nav }}s, visibilitychange[document.visibilityState === 'visible'] from:document"
                         hx-swap="innerHTML"
                       >
                         {% include "pending_users_nav_fragment.html.j2" %}

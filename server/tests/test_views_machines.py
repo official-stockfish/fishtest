@@ -225,8 +225,10 @@ class TestMachinesViews(UiUserTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn('id="machines_table"', response.text)
-        self.assertIn('hx-disinherit="hx-include"', response.text)
-        self.assertIn('hx-params="none"', response.text)
+        # Inheritance is explicit and GET does not collect the enclosing form.
+        self.assertNotIn("hx-disinherit", response.text)
+        self.assertNotIn("hx-params", response.text)
+        self.assertIn('hx-sync="#machines-filters:abort"', response.text)
         self.assertIn(f"PageUser{_MACHINES_PAGE_SIZE + 4:03d}", response.text)
         self.assertNotIn("PageUser000", response.text)
         self.assertIn("/tests/machines?page=1&amp;sort=machine", response.text)

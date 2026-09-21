@@ -1,8 +1,6 @@
 {% set pagination_hx_target = "machines" %}
 {% set pagination_hx_push_url = false %}
 {% set pagination_hx_sync = "#machines-filters:abort" %}
-{% set pagination_hx_disinherit = "hx-include" %}
-{% set pagination_hx_params = "none" %}
 {% set sort = sort if sort is defined else "last_active" %}
 {% set order = order if order is defined else "desc" %}
 {% set q = q if q is defined else "" %}
@@ -21,8 +19,6 @@
       hx-target="#machines"
       hx-swap="innerHTML"
       hx-sync="#machines-filters:abort"
-      hx-disinherit="hx-include"
-      hx-params="none"
     >
       <span>{{ label }}</span>
       <span class="sort-indicator" aria-hidden="true">
@@ -32,13 +28,11 @@
   </th>
 {%- endmacro %}
 
-<template>
-  <div id="machines-pagination" hx-swap-oob="innerHTML">
-    {% with pages=pages %}
-      {% include "pagination.html.j2" %}
-    {% endwith %}
-  </div>
-</template>
+<div id="machines-pagination" hx-swap-oob="innerHTML">
+  {% with pages=pages %}
+    {% include "pagination.html.j2" %}
+  {% endwith %}
+</div>
 
   <table id="machines_table" class="table table-striped table-sm">
   <caption class="visually-hidden">Machines</caption>

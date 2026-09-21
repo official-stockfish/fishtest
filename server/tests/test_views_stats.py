@@ -84,7 +84,7 @@ class TestTestsStatsView(unittest.TestCase):
         self.assertIn("Raw Statistics for test", response.text)
         self.assertIn(f'hx-get="/tests/stats/{run_id}"', response.text)
         self.assertIn(
-            f"every {POLL_TESTS_STATS_S}s [document.visibilityState === 'visible']",
+            f"every[document.visibilityState === 'visible'] {POLL_TESTS_STATS_S}s",
             response.text,
         )
         self.assertIn('id="tests-stats-content"', response.text)
@@ -94,7 +94,7 @@ class TestTestsStatsView(unittest.TestCase):
 
         response = self.client.get(
             f"/tests/stats/{run_id}",
-            headers={"HX-Request": "true"},
+            headers={"HX-Request": "true", "HX-Request-Type": "partial"},
         )
 
         self.assertEqual(response.status_code, 204)
@@ -108,7 +108,7 @@ class TestTestsStatsView(unittest.TestCase):
 
         response = self.client.get(
             f"/tests/stats/{run_id}",
-            headers={"HX-Request": "true"},
+            headers={"HX-Request": "true", "HX-Request-Type": "partial"},
         )
 
         self.assertEqual(response.status_code, 200)
@@ -116,7 +116,7 @@ class TestTestsStatsView(unittest.TestCase):
         self.assertIn("Draws", response.text)
         self.assertNotIn("<title>", response.text)
 
-    def test_tests_stats_hx_terminal_returns_286(self):
+    def test_tests_stats_hx_terminal_removes_poller(self):
         run_id = self._create_run()
         run = self.rundb.get_run(run_id)
         run["finished"] = True
@@ -124,8 +124,38 @@ class TestTestsStatsView(unittest.TestCase):
 
         response = self.client.get(
             f"/tests/stats/{run_id}",
-            headers={"HX-Request": "true"},
+            headers={"HX-Request": "true", "HX-Request-Type": "partial"},
         )
 
-        self.assertEqual(response.status_code, 286)
+        # The terminal response is a 200 that deletes the polling driver.
+        self.assertEqual(response.status_code, 200)
         self.assertIn('id="tests-stats-content"', response.text)
+        self.assertIn(
+            '<div id="tests-stats-poller" hx-swap-oob="delete"></div>',
+            response.text,
+        )
+
+    def test_tests_stats_hx_active_keeps_poller(self):
+        run_id = self._create_run()
+        run = self.rundb.get_run(run_id)
+        run["workers"] = 1
+        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+
+        response = self.client.get(
+            f"/tests/stats/{run_id}",
+            headers={"HX-Request": "true", "HX-Request-Type": "partial"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("tests-stats-poller", response.text)
+
+    def test_tests_stats_full_page_has_no_poller_stop_element(self):
+        run_id = self._create_run()
+        run = self.rundb.get_run(run_id)
+        run["finished"] = True
+        self.rundb.buffer(run, priority=Prio.SAVE_NOW)
+
+        response = self.client.get(f"/tests/stats/{run_id}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn('hx-swap-oob="delete"', response.text)
