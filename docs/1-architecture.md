@@ -209,11 +209,15 @@ three capabilities without client-side rendering or a JavaScript build step:
 | Out-of-band updates | `hx-swap-oob="innerHTML"` attributes in the response update multiple DOM elements in one response |
 
 **Response swapping.** htmx swaps every response whose status is not listed in
-`htmx.config.noSwap`. `base.html.j2` sets that list to `204, 304, 4xx, 5xx`
-through an `htmx-config` meta tag, because this server answers errors with
-whole pages rather than partials sized for a swap target.
+`htmx.config.noSwap`, which holds `204` and `304`. This server answers errors
+with whole pages rather than partials sized for a swap target, so the `<body>`
+element in `base.html.j2` carries
+`hx-status:4xx:inherited="swap:none push:false"` and the `5xx` equivalent:
+every descendant inherits them, and an error response neither swaps nor moves
+the address bar.
 
-**Settling.** The same meta tag sets `htmx.config.defaultSettleDelay` to `0`.
+**Settling.** An `htmx-config` meta tag sets `htmx.config.defaultSettleDelay`
+to `0`.
 Settling copies the attributes of each replaced element onto its replacement
 and restores the response's own attributes a tick later, and it never rewrites
 the `value` property of a focused input, so a filter field typed into while

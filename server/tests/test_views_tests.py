@@ -747,15 +747,21 @@ class TestTestsHomepage(UiUserTestCase):
         )
         js_source = js_path.read_text(encoding="utf-8")
 
-        self.assertIn(
-            'document.addEventListener("htmx:before:history:update"', js_source
-        )
-        self.assertIn("event.preventDefault();", js_source)
+        # The swap and the history push are declared on the body element, so
+        # only the title and the out-of-band elements are left to the guard.
+        self.assertNotIn("htmx:before:history:update", js_source)
         self.assertIn('ctx.title = "";', js_source)
-
-        # The same guard empties the task list, which covers the out-of-band
-        # elements htmx would otherwise apply from an error page.
         self.assertIn("event.detail.tasks.length = 0;", js_source)
+
+        base = (
+            Path(__file__).resolve().parents[1]
+            / "fishtest"
+            / "templates"
+            / "base.html.j2"
+        ).read_text(encoding="utf-8")
+        self.assertIn('hx-status:4xx:inherited="swap:none push:false"', base)
+        self.assertIn('hx-status:5xx:inherited="swap:none push:false"', base)
+        self.assertNotIn("noSwap", base)
 
     def test_swap_listeners_do_not_react_to_unrelated_requests(self):
         js_dir = Path(__file__).resolve().parents[1] / "fishtest" / "static" / "js"

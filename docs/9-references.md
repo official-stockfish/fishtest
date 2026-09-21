@@ -241,26 +241,34 @@ extensions.
 ```
 
 **Response swapping**: htmx swaps every response whose status is not listed in
-`htmx.config.noSwap`. This server answers errors with whole pages rather than
-partials sized for a swap target, so `base.html.j2` restricts swapping before
-htmx loads:
+`htmx.config.noSwap`, which holds `204` and `304`. This server answers errors
+with whole pages rather than partials sized for a swap target, so the `<body>`
+element in `base.html.j2` states the policy for the whole document:
 
 ```html
-<meta name="htmx-config" content='{"noSwap": [204, 304, "4xx", "5xx"], "defaultSettleDelay": 0}'>
+<body
+  hx-status:4xx:inherited="swap:none push:false"
+  hx-status:5xx:inherited="swap:none push:false"
+>
 ```
+
+`:inherited` carries the attribute to every descendant, so an element-level
+request and an `htmx.ajax()` call from `<body>` are both covered. Declare the
+policy in one of the two places, never both: htmx consults `hx-status` only
+for a code that `noSwap` does not already claim, and a `noSwap` hit returns
+before the attribute is read.
 
 A suppressed status still runs the swap pipeline with swap `none`, so
 `htmx:after:swap` fires for `4xx` and `5xx`. Handlers that record load state
 must check the response status.
 
-`noSwap` reaches the main swap and nothing else. The history update runs on
-entry to `swap()` and the title is adopted after it, neither of them gated on
-the status, and out-of-band elements in the response body are applied
-regardless. `application.js` closes all three with document-level guards on
-`htmx:before:history:update` and `htmx:before:swap`; the latter clears
-`detail.ctx.title` and empties `detail.tasks`, which is the array htmx iterates
-to perform every swap in the response, main and out-of-band alike. Emptying it
-is what makes `noSwap` redundant rather than load-bearing.
+`swap:none push:false` reaches the main swap and the history entry. The title
+is adopted after the swap and out-of-band elements in the response body are
+applied regardless, neither of them gated on the status, so a whole error page
+would still rename the tab and overwrite any element whose id it collides with.
+`application.js` closes both with a document-level `htmx:before:swap` guard
+that clears `detail.ctx.title` and empties `detail.tasks`, the array htmx
+iterates to perform every swap in the response, main and out-of-band alike.
 
 **Settle phase**: `htmx.config.defaultSettleDelay` is `0`, which skips settling
 altogether. The phase exists to animate a swap through the `htmx-settling` and

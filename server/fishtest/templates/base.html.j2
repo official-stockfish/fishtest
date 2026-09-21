@@ -20,9 +20,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     {# Read at init, so this precedes the bundle.
-       Details: docs/9-references.md (sections: "Response swapping",
-       "Settle phase"). #}
-    <meta name="htmx-config" content='{"noSwap": [204, 304, "4xx", "5xx"], "defaultSettleDelay": 0}'>
+       Details: docs/9-references.md (section: "Settle phase"). #}
+    <meta name="htmx-config" content='{"defaultSettleDelay": 0}'>
 
     <meta property="og:site_name" content="{{ open_graph['site_name'] }}">
     <meta property="og:type" content="{{ open_graph['type'] }}">
@@ -103,7 +102,12 @@
     <script src="{{ static_url('fishtest:static/js/notifications.js') }}"></script>
   </head>
 
-  <body>
+  {# Error pages are whole documents, never partials sized for a swap target.
+     Details: docs/9-references.md (section: "Response swapping"). #}
+  <body
+    hx-status:4xx:inherited="swap:none push:false"
+    hx-status:5xx:inherited="swap:none push:false"
+  >
     <header class="navbar navbar-expand-lg sticky-top shadow-sm">
       <nav
         class="container-fluid flex-wrap flex-lg-nowrap"
