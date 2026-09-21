@@ -205,20 +205,18 @@ must use `{{ value|safe }}` or `{% autoescape false %}`.
 
 | Topic | URL |
 |-------|-----|
-| Documentation | https://htmx.org/docs/ |
-| Attributes reference | https://htmx.org/reference/ |
-| Events reference | https://htmx.org/events/ |
-| Request/response headers | https://htmx.org/reference/#headers |
-| Configuration | https://htmx.org/docs/#config |
-| Polling | https://htmx.org/docs/#polling |
-| OOB swaps | https://htmx.org/docs/#oob_swaps |
-| OOB troublesome tables | https://htmx.org/attributes/hx-swap-oob/#troublesome-tables-and-lists |
-| Push URL | https://htmx.org/attributes/hx-push-url/ |
-| Indicator | https://htmx.org/attributes/hx-indicator/ |
-| Sync / request coordination | https://htmx.org/attributes/hx-sync/ |
-| Inheritance control | https://htmx.org/attributes/hx-disinherit/ |
-| Parameter filtering | https://htmx.org/attributes/hx-params/ |
-| Multiple triggers | https://htmx.org/attributes/hx-trigger/ |
+| Documentation | https://four.htmx.org/docs |
+| Reference index | https://four.htmx.org/reference |
+| Swap | https://four.htmx.org/reference/attributes/hx-swap |
+| OOB swaps | https://four.htmx.org/reference/attributes/hx-swap-oob |
+| Status-scoped behavior | https://four.htmx.org/reference/attributes/hx-status |
+| Push URL | https://four.htmx.org/reference/attributes/hx-push-url |
+| Indicator | https://four.htmx.org/reference/attributes/hx-indicator |
+| Sync / request coordination | https://four.htmx.org/reference/attributes/hx-sync |
+| Triggers | https://four.htmx.org/reference/attributes/hx-trigger |
+| Swap event | https://four.htmx.org/reference/events/htmx-after-swap |
+| Empty swap after OOB | https://four.htmx.org/reference/config/htmx-config-allowEmptySwapAfterOOB |
+| What's new in htmx 4 | https://four.htmx.org/docs/whats-new-in-htmx-4 |
 | Template fragments essay | https://htmx.org/essays/template-fragments/ |
 | Hypermedia Systems (book) | https://hypermedia.systems/ |
 | Web security with htmx | https://htmx.org/essays/web-security-basics-with-htmx/ |
@@ -231,15 +229,84 @@ must use `{{ value|safe }}` or `{% autoescape false %}`.
 
 ### Project patterns
 
-**CDN loading**: htmx 2.0.10 is loaded from `cdn.jsdelivr.net` in
-`base.html.j2` with an SRI integrity hash. No npm build step.
+**CDN loading**: htmx 4.0.0 is loaded from `cdn.jsdelivr.net` in
+`base.html.j2` with an SRI integrity hash. No npm build step, and no htmx
+extensions.
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.10/dist/htmx.min.js"
-    integrity="sha256-cepnGFv6jJjDnTFxfG/OXYUjcPzf0SnbRUN3TTFFwN4="
+<script src="https://cdn.jsdelivr.net/npm/htmx.org@4.0.0/dist/htmx.min.js"
+    integrity="sha256-5ITZFxqdswo5yPFuPXCdQTfzIRxln45hJYFmNQM9WT8="
     crossorigin="anonymous"
     referrerpolicy="no-referrer"></script>
 ```
+
+**Response swapping**: htmx swaps every response whose status is not listed in
+`htmx.config.noSwap`. This server answers errors with whole pages rather than
+partials sized for a swap target, so `base.html.j2` restricts swapping before
+htmx loads:
+
+```html
+<meta name="htmx-config" content='{"noSwap": [204, 304, "4xx", "5xx"], "defaultSettleDelay": 0}'>
+```
+
+A suppressed status still runs the swap pipeline with swap `none`, so
+`htmx:after:swap` fires for `4xx` and `5xx`. Handlers that record load state
+must check the response status.
+
+`noSwap` reaches the main swap and nothing else. The history update runs on
+entry to `swap()` and the title is adopted after it, neither of them gated on
+the status, and out-of-band elements in the response body are applied
+regardless. `application.js` closes all three with document-level guards on
+`htmx:before:history:update` and `htmx:before:swap`; the latter clears
+`detail.ctx.title` and empties `detail.tasks`, which is the array htmx iterates
+to perform every swap in the response, main and out-of-band alike. Emptying it
+is what makes `noSwap` redundant rather than load-bearing.
+
+**Settle phase**: `htmx.config.defaultSettleDelay` is `0`, which skips settling
+altogether. The phase exists to animate a swap through the `htmx-settling` and
+`htmx-added` classes, and it reaches that by copying the attributes of each
+replaced element onto its replacement and restoring the response's own
+attributes one tick later. The restore writes the `value` property of an input
+only when that input does not hold focus, and htmx restores focus before it
+settles, so a field being typed in while its own subtree is swapped keeps the
+`value` attribute copied off the element it replaced. No stylesheet here
+targets either class.
+
+**Swap events**: htmx fires one `htmx:before:swap` / `htmx:after:swap` pair per
+response, both on the element that issued the request. Only `htmx:before:swap`
+carries the swapped elements, in `detail.tasks`. `application.js` provides
+`onHtmxSwap(matches, callback)` and `htmxSwapSucceeded(event)` for this;
+listeners that skip the target filter fire on every request the page makes,
+including the sidebar poll present on every page.
+
+`swap()` awaits the swap tasks between the two events, so two responses in
+flight interleave and the pair cannot be joined by arrival order.
+`onHtmxSwap` keys pending targets on `detail.ctx`, the request context both
+events carry.
+
+`detail.tasks` names the element a swap targeted, which for `outerHTML` and
+`delete` is detached by the time the pair closes. `onHtmxSwap` resolves each
+target to what the swap left in the document -- the replacement carries the
+same `id` -- and drops the ones that left nothing. Callers therefore never need
+a document-wide fallback, which matters because `hx-swap-oob="true"` means
+`outerHTML` and the hidden sort/order/page inputs carry it on nearly every poll
+response the app sends.
+
+**Source versus target**: htmx dispatches `htmx:before:swap` and
+`htmx:after:swap` on the element that *issued* the request, not on the element
+that was swapped. An element-level listener on a swap target therefore only
+sees requests that element issued itself. Where a region is filled from more
+than one place -- its own poll trigger and a filter form, say -- match on the
+target with `onHtmxSwap` instead.
+
+**Aborted requests**: htmx reports an aborted fetch through `htmx:error`, the
+same event a network failure uses, and logs it at error level. Aborts are
+routine here: `hx-sync` names a queue on the filter form, the form itself
+carries no `hx-sync`, so a keystroke in the filter aborts an in-flight poll on
+that queue, and htmx applies a 60s default timeout. `application.js` provides
+`htmxRequestAborted(event)`; handlers that reset load state must call it, or a
+cancelled tick is shown to the reader as a failure while its replacement is
+already in flight.
 
 **Detail-page diff renderer**: `/tests/view/{id}` loads jsdiff from
 `cdn.jsdelivr.net` in `tests_view.html.j2` for the inline Diff panel. The
@@ -253,9 +320,15 @@ asset is pinned and protected with SRI.
 ```
 
 **Fragment detection in Starlette/FastAPI**: htmx sends `HX-Request: true`
-on every AJAX request. The server detects this header to decide between
-full-page and fragment rendering. A `Sec-Fetch-Mode` guard prevents
-htmx-boosted full-page navigations from being treated as fragment requests:
+on every request it makes, and `HX-Request-Type` stating the scope of the
+swap. `partial` targets a region of the current page; `full` replaces the
+document, which is what a boosted navigation asks for. A back navigation names
+itself with `HX-History-Restore-Request` and carries `HX-Request-Type: full`,
+but no `HX-Request`: the restore passes its own request object, which replaces
+the core headers, and only the request type is added back afterwards. The
+server rejects each of those cases by name instead of requiring `partial`, so
+a header rename degrades to treating every htmx request as a fragment request
+rather than swapping whole pages into fragment targets:
 
 ```python
 def _is_hx_request(request) -> bool:
@@ -264,9 +337,11 @@ def _is_hx_request(request) -> bool:
         return False
     if (headers.get("HX-Request") or "").lower() != "true":
         return False
-    if (headers.get("Sec-Fetch-Mode") or "").lower() == "navigate":
+    if (headers.get("HX-History-Restore-Request") or "").lower() == "true":
         return False
-    return True
+    if (headers.get("HX-Request-Type") or "").lower() == "full":
+        return False
+    return (headers.get("Sec-Fetch-Mode") or "").lower() != "navigate"
 ```
 
 **Dual-mode rendering with Jinja2**: the view handler renders either a
@@ -297,49 +372,77 @@ toggles, truncation banners, pagination, and sort state remain synchronized
 with the table body.
 
 **Vary header for HTTP caching**: when the same URL can return either a
-full page or a fragment, `Vary: HX-Request` must be set on the response so
-that HTTP caches (nginx, CDNs) store separate representations:
+full page or a fragment, both request headers must appear in `Vary` so that
+HTTP caches (nginx, CDNs) store separate representations:
 
 ```python
 _append_vary_header(response, "HX-Request")
+_append_vary_header(response, "HX-Request-Type")
 ```
 
-Use the same `Vary: HX-Request` value on the full-page response, the fragment
-response, and any `304 Not Modified` response for that URL.
+Both tokens are needed: `HX-Request-Type` is what separates a fragment request
+from a boosted navigation to the same URL, so keying on `HX-Request` alone lets
+a cache return a stored fragment for one. Use the same `Vary` value on the
+full-page response, the fragment response, and any `304 Not Modified` response
+for that URL.
 
 **OOB swaps with Jinja2**: out-of-band elements carry `hx-swap-oob`
-attributes directly in the template markup. Multiple elements can be updated
-in a single response. For table rows, `<template>` wrappers are required
-because the HTML parser rejects `<tbody>` inside `<div>`:
+attributes directly in the template markup, and one response can update many
+elements. Rows need a `<template>` wrapper because a `<tr>` cannot stand on
+its own in parsed HTML.
+
+Put `id` and `hx-swap-oob` on the `<template>` element itself. htmx locates
+out-of-band elements with `querySelectorAll`, which does not descend into
+template content, so an `hx-swap-oob` on an element inside the wrapper is
+silently ignored and the swap never happens. htmx strips the wrapper before
+applying the swap.
 
 ```jinja
-{# OOB span -- works directly #}
+{# OOB element that can stand alone -- no wrapper #}
 <span id="count" hx-swap-oob="innerHTML">{{ count }}</span>
 
-{# OOB table body -- requires template wrapper #}
-<template>
-  <tbody id="my-table" hx-swap-oob="innerHTML">
-    {% for row in rows %}
-      <tr>...</tr>
-    {% endfor %}
-  </tbody>
+{# OOB rows -- wrapper carries the id and the swap #}
+<template id="my-table" hx-swap-oob="innerHTML">
+  {% for row in rows %}
+    <tr>...</tr>
+  {% endfor %}
 </template>
 ```
 
-**Polling lifecycle codes**: polled endpoints use HTTP status codes to
-control client behavior:
+Only wrap what the parser requires. A `<div>` or `<span>` target needs no
+`<template>`.
+
+**Polling lifecycle**: htmx clears a poll interval only when the element
+carrying `hx-trigger="every Ns"` leaves the document. Put the trigger on a
+dedicated driver element that is never the swap target, and end the poll from
+the response body:
+
 - **200** -- swap the response content, continue polling.
 - **204** -- no content change; htmx skips the swap, continues polling.
-- **286** -- swap the response and stop polling (terminal state).
+- **200 with a driver-removing element** -- terminal state:
+
+```jinja
+<div id="{{ poller_id }}" hx-swap-oob="delete"></div>
+```
+
+A status code cannot stop a poll.
 
 **Request coordination**: `hx-sync` is used where user actions and polling can
-target the same fragment. The main repo pattern is `hx-sync="#machines-filters:abort"`
-so user-initiated sort/page changes beat the background poll.
+target the same fragment. The main repo pattern is
+`hx-sync="#machines-filters:abort"`, which puts the poll driver and the
+sort/pagination links on the queue owned by the filter form. `abort` means
+*drop this request while one is in flight on that queue*, so it is the poll
+that yields: the filter form declares no `hx-sync` of its own, which leaves it
+on the default `queue first` strategy, and htmx aborts an in-flight `abort`
+request to run it. A sort or pagination click that lands inside a poll's
+request window is dropped rather than queued.
 
-**Inherited attribute control**: inside filter forms that use inherited
-`hx-include`, sort and pagination links may opt out with
-`hx-disinherit="hx-include"` and `hx-params="none"` so only the explicit URL
-state is sent.
+**Attribute inheritance**: htmx applies an ancestor's attribute to a
+descendant only where the ancestor marks it `:inherited`, for example
+`hx-target:inherited="#output"`. Sort and pagination links inside a filter
+form therefore inherit nothing and send only their own query string. A `GET`
+collects the enclosing form only when the requesting element is the form
+itself.
 
 **Search portability**: `input changed delay:{{ htmx.input_changed_delay_ms }}ms`
 is the portable search trigger baseline. Native `search` events and
@@ -348,24 +451,37 @@ not the correctness contract. Search inputs keep visible labels or another
 valid accessible name.
 
 **Conditional polling with visibility**: polls are gated on tab visibility
-to avoid unnecessary server load:
+to avoid unnecessary server load. The condition goes on the `every` token
+itself, with the interval after it:
 
 ```html
 <div hx-get="/endpoint"
-     hx-trigger="every 30s [document.visibilityState === 'visible']"
+     hx-trigger="every[document.visibilityState === 'visible'] 30s"
      hx-swap="none">
 </div>
 ```
+
+The token order matters and the failure is silent. htmx splits a trigger into
+one leading token plus modifiers, and reads a `[condition]` filter off the
+leading token only (`#parseTriggerSpecs` then `#extractFilter`). Written the
+other way round, `every 30s [document.visibilityState === 'visible']` parses as
+the bare event `every`: the interval is still read out of the modifier bag, so
+the poll works, but the condition is swallowed as junk keys and never
+evaluated. The poll then runs in hidden tabs and behind collapsed panels, with
+nothing in the console to say so.
+`test_poll_conditions_are_attached_to_the_every_token` in
+`test_http_boundary.py` guards the whole template tree against that form.
 
 Treat the transition to `hidden` as the point to stop background UI updates.
 
 **Focus-return immediate refresh**: every visibility-gated poller also
 triggers on `visibilitychange` so that returning to the tab produces an
-immediate update instead of waiting for the next poll cycle:
+immediate update instead of waiting for the next poll cycle. A named event
+carries its own filter directly, with no space before the bracket:
 
 ```html
 <div hx-get="/endpoint"
-     hx-trigger="every 30s [document.visibilityState === 'visible'],
+     hx-trigger="every[document.visibilityState === 'visible'] 30s,
                  visibilitychange[document.visibilityState === 'visible'] from:document"
      hx-swap="none">
 </div>
@@ -376,8 +492,8 @@ section expanded state in a single filter expression:
 
 ```html
 <div hx-get="/endpoint"
-     hx-trigger="every 120s [document.visibilityState === 'visible'
-                 && document.getElementById('section').classList.contains('show')],
+     hx-trigger="every[document.visibilityState === 'visible'
+                 && document.getElementById('section').classList.contains('show')] 120s,
                  visibilitychange[document.visibilityState === 'visible'
                  && document.getElementById('section').classList.contains('show')] from:document"
      hx-swap="innerHTML">
