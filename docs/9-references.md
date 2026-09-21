@@ -504,9 +504,12 @@ section expanded state in a single filter expression:
                  && document.getElementById('section').classList.contains('show')] 120s,
                  visibilitychange[document.visibilityState === 'visible'
                  && document.getElementById('section').classList.contains('show')] from:document"
-     hx-swap="innerHTML">
+     hx-swap="innerMorph">
 </div>
 ```
+
+A polled region a reader interacts with uses a morph swap: `innerHTML` gives
+the region new nodes on every tick, which drops keyboard focus out of it.
 
 **Error recovery in JavaScript**: retry buttons in htmx error handlers
 must be constructed with DOM API (`createElement`, `textContent`,
