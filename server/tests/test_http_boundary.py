@@ -413,20 +413,24 @@ class TestHttpBoundary(unittest.TestCase):
 
         self.assertEqual(missing, [], "\n".join(sorted(set(missing))))
 
-    def test_htmx_config_meta_declares_swap_and_settle_policy(self):
-        # htmx reads its config at init, so the tag ships ahead of the bundle.
-        # Details: docs/9-references.md (sections: "Response swapping",
-        # "Settle phase").
+    def test_error_response_policy_rides_the_body_element(self):
+        # noSwap and hx-status cannot both name a status code.
+        # Details: docs/9-references.md (section: "Response swapping").
         app = self._build_app(include_views=True)
         client = self.TestClient(app)
 
         response = client.get("/nns")
         self.assertEqual(response.status_code, 200)
         self.assertIn(
-            '<meta name="htmx-config" content=\'{"noSwap": [204, 304, "4xx", "5xx"], '
-            '"defaultSettleDelay": 0}\'>',
+            '<meta name="htmx-config" content=\'{"defaultSettleDelay": 0}\'>',
             response.text,
         )
+        for code in ("4xx", "5xx"):
+            with self.subTest(code=code):
+                self.assertIn(
+                    f'hx-status:{code}:inherited="swap:none push:false"',
+                    response.text,
+                )
 
         head = response.text.split("</head>")[0]
         self.assertLess(head.index("htmx-config"), head.index("htmx.min.js"))

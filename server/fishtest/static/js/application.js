@@ -790,17 +790,9 @@ function htmxRequestAborted(event) {
   return event?.detail?.error?.name === "AbortError";
 }
 
-// An error response must not move the page around it: noSwap suppresses the
-// main swap only.
+// hx-status stops the swap and the history push for an error response; the
+// response title and its out-of-band elements are applied regardless.
 // Details: docs/9-references.md (section: "Response swapping").
-
-document.addEventListener("htmx:before:history:update", (event) => {
-  const status = event?.detail?.response?.status;
-  if (typeof status === "number" && status >= 400) {
-    event.preventDefault();
-  }
-});
-
 document.addEventListener("htmx:before:swap", (event) => {
   const ctx = event?.detail?.ctx;
   if (!ctx || htmxSwapSucceeded(event)) {
