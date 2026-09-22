@@ -253,14 +253,18 @@ def _discover_fastapi_routes() -> list[str]:
     server_dir = _server_dir()
     sys.path.insert(0, str(server_dir))
 
-    apiroute = importlib.import_module("fastapi.routing").APIRoute
+    routing = importlib.import_module("fastapi.routing")
     create_app = importlib.import_module("fishtest.app").create_app
     app = create_app()
 
+    # Included routers stay lazy in ``app.routes``, which therefore holds
+    # router wrappers rather than endpoints. ``iter_route_contexts`` flattens
+    # them into one context per endpoint, each exposing the mounted path.
     paths = {
-        (route.path.split("{", maxsplit=1)[0].rstrip("/") or "/")
-        for route in app.routes
-        if isinstance(route, apiroute)
+        (context.path.split("{", maxsplit=1)[0].rstrip("/") or "/")
+        for context in routing.iter_route_contexts(app.routes)
+        if isinstance(context.original_route, routing.APIRoute)
+        and context.path is not None
     }
     return sorted(paths, key=lambda path: (len(path), path), reverse=True)
 
