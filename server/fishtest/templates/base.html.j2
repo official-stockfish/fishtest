@@ -528,13 +528,6 @@
                   class="btn-close"
                   aria-label="Close"
                 ></button>
-                <script>
-                  const fallback_button =
-                    document.getElementById("fallback_button");
-                  fallback_button.addEventListener("click", () => {
-                    dismissNotification("fallback_div");
-                  });
-                </script>
               </div>
               <div
                 id="error_div"
@@ -548,13 +541,6 @@
                   class="btn-close"
                   aria-label="Close"
                 ></button>
-                <script>
-                  const error_button =
-                    document.getElementById("error_button");
-                  error_button.addEventListener("click", () => {
-                      error_button.parentElement.style.display="none";
-                  });
-                </script>
               </div>
               {% for message in flash.error %}
                 <div class="alert alert-danger alert-dismissible">

@@ -316,6 +316,18 @@ that queue, and htmx applies a 60s default timeout. `application.js` provides
 cancelled tick is shown to the reader as a failure while its replacement is
 already in flight.
 
+**History restores**: a back or forward navigation to a pushed URL swaps a
+refetched `<body>` into the document. htmx runs every `<script>` in it again,
+and every element a listener was bound to at load time is replaced by a new
+one. A second run of an inline script that declares a top-level `const` or
+`let` throws, and a listener bound directly to a shell control is lost. The
+controls on the page shell -- the theme toggle, the Logout link, and the close
+buttons of the notification and error banners -- are therefore delegated
+`document` listeners in `application.js`, and a page reachable through a
+pushed URL carries no inline `<script>` in `<body>`.
+`test_page_shell_survives_a_history_restore` in `test_views_tests.py` guards
+both rules.
+
 **Detail-page diff renderer**: `/tests/view/{id}` loads jsdiff from
 `cdn.jsdelivr.net` in `tests_view.html.j2` for the inline Diff panel. The
 asset is pinned and protected with SRI.

@@ -13,6 +13,7 @@ let broadcastDispatch = {
   handlePanelToggleCookies();
   handleCheckboxUiCookies();
   handleApplicationLogout();
+  handleBannerCloseButtons();
   handleApplicationThemes();
   handleLoginRememberMePreference();
   handleClientRateLimitPolling();
@@ -212,13 +213,18 @@ function handleApplicationThemes() {
     console.error(e);
   }
 
-  document
-    .getElementById("sun")
-    .addEventListener("click", () => setTheme("light"));
-
-  document
-    .getElementById("moon")
-    .addEventListener("click", () => setTheme("dark"));
+  // Delegated, like every handler on the page shell: a history restore
+  // replaces <body> and the elements a direct listener was bound to.
+  document.addEventListener("click", (e) => {
+    if (!(e.target instanceof Element)) {
+      return;
+    }
+    if (e.target.closest("#sun")) {
+      setTheme("light");
+    } else if (e.target.closest("#moon")) {
+      setTheme("dark");
+    }
+  });
 }
 
 // Gets prefered theme based on user's system
@@ -442,9 +448,26 @@ async function fetchPost(url, payload) {
 }
 
 function handleApplicationLogout() {
-  document.getElementById("logout")?.addEventListener("click", (e) => {
+  document.addEventListener("click", (e) => {
+    if (!(e.target instanceof Element) || !e.target.closest("#logout")) {
+      return;
+    }
     e.preventDefault();
     logout();
+  });
+}
+
+// Close buttons of the notification fallback and error banners.
+function handleBannerCloseButtons() {
+  document.addEventListener("click", (e) => {
+    if (!(e.target instanceof Element)) {
+      return;
+    }
+    if (e.target.closest("#fallback_button")) {
+      dismissNotification("fallback_div");
+    } else if (e.target.closest("#error_button")) {
+      document.getElementById("error_div").style.display = "none";
+    }
   });
 }
 
