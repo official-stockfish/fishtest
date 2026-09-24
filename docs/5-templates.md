@@ -780,8 +780,7 @@ Detail-page tasks loader contract:
    only the first kind, so it misses every form-driven fill -- including the
    replacement for a load request the form aborted, which `hx-sync` makes a
    reachable case. `onHtmxSwap` also drops responses htmx did not swap, so an
-   error is never recorded as a completed load. `#machines` in
-   `tests_homepage.js` follows the same rule.
+   error is never recorded as a completed load.
 - The same script also resolves immediately if `#tasks-content` is already
    marked loaded or already contains rows.
 

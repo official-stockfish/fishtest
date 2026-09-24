@@ -91,7 +91,6 @@
     {% set height = (machines_count * 37) | string ~ "px" %}
     <section
       id="machines"
-      data-machines-loaded="0"
       class="overflow-auto machines-panel-scroll"
       hx-get="/tests/machines"
       hx-include="#machines-filters"

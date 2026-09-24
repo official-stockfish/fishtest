@@ -52,45 +52,10 @@
 
   panel.addEventListener("shown.bs.collapse", () => {
     syncPanelState(true);
-    if (target.dataset.machinesLoaded !== "1") {
-      target.dataset.machinesLoaded = "loading";
-    }
     htmx.trigger(target, "machines:load");
   });
 
   panel.addEventListener("hidden.bs.collapse", () => {
     syncPanelState(false);
-  });
-
-  // #machines is both the requesting element and the swap target.
-  target.addEventListener("htmx:before:request", () => {
-    if (target.dataset.machinesLoaded !== "1") {
-      target.dataset.machinesLoaded = "loading";
-    }
-  });
-
-  // Match on the swap target: #machines is also filled by #machines-filters.
-  // Details: docs/9-references.md (section: "Source versus target").
-  onHtmxSwap(
-    (swapped) => swapped.id === "machines",
-    () => {
-      target.dataset.machinesLoaded = "1";
-    },
-  );
-
-  const restoreRetryState = () => {
-    if (target.dataset.machinesLoaded !== "1") {
-      target.dataset.machinesLoaded = "0";
-    }
-  };
-
-  target.addEventListener("htmx:response:error", restoreRetryState);
-  target.addEventListener("htmx:error", (event) => {
-    // An abort arrives here too, and its replacement request is already in
-    // flight.
-    if (htmxRequestAborted(event)) {
-      return;
-    }
-    restoreRetryState();
   });
 })();
