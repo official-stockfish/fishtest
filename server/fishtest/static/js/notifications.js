@@ -571,23 +571,16 @@ function cleanup_() {
   localStorage.removeItem("__fishtest__latest_fetch_time");
 }
 
-// Rescan the swapped subtrees only: a poll response carries several
-// out-of-band elements, and a document-wide rescan per element would rebuild
-// every bell on the page on each tick.
-onHtmxSwap(
-  () => true,
-  (targets) => {
-    for (const target of targets) {
-      initializeNotificationButtons(target);
-    }
-  },
-);
-
-// Covers the page the bells land on; the swap listener above covers content
-// htmx inserts.
-void DOMContentLoaded().then(() => {
-  initializeNotificationButtons(document);
-});
+// htmx calls back once for <body> at init and once for every root a swap
+// inserts, so each bell is initialized where it lands. Without htmx the page
+// still initializes its bells once.
+if (window.htmx) {
+  htmx.onLoad(initializeNotificationButtons);
+} else {
+  void DOMContentLoaded().then(() => {
+    initializeNotificationButtons(document);
+  });
+}
 
 cleanup_();
 mainFollowLoop();
