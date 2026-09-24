@@ -42,7 +42,7 @@ server/
 |   |-- util.py              -- Shared utilities (formatting, validation helpers)
 |   |-- __init__.py          -- Minimal package init
 |   |-- http/                -- HTTP support modules
-|   |-- templates/           -- Jinja2 templates (53 files, .html.j2)
+|   |-- templates/           -- Jinja2 templates (54 files, .html.j2)
 |   |-- static/              -- Static assets (JS, CSS, images)
 |   `-- stats/               -- Statistical computation modules
 `-- tests/                   -- Focused unit and HTTP contract tests
@@ -241,13 +241,13 @@ send out-of-band fragments declare `hx-swap="none"`; `#tests-stats-poller` is
 the only poller with a swap target, and its fragment always carries main
 content.
 
-A suppressed status stops the main content swap and nothing else: htmx still
-runs the history update, still applies out-of-band elements from the body, and
-still adopts the response's `<title>`. For any status at or above 400,
-`application.js` therefore cancels `htmx:before:history:update` and, on
-`htmx:before:swap`, clears the response title and empties the task list that
-carries the swaps. A failed request cannot move the address bar, rename the
-tab, or write an id from an error page over live content.
+The `<body>` policy stops the main content swap and, through `push:false`, the
+history entry. htmx still applies out-of-band elements from the body and still
+adopts the response's `<title>`, neither of them gated on the status. For any
+status at or above 400, `application.js` therefore clears the response title
+and empties the task list that carries the swaps on `htmx:before:swap`. A
+failed request cannot move the address bar, rename the tab, or write an id
+from an error page over live content.
 
 **Dual-mode endpoints.** Several UI routes serve either a full page or an HTML
 fragment from the same URL. The view handler calls `_is_hx_request(request)`,
