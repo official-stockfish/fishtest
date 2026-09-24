@@ -984,7 +984,8 @@ reapplies the persisted filter. The template only renders when
 ### `contributors_content_fragment.html.j2`
 
 Same context as the content area of `contributors.html.j2`: `users`, `pages`,
-`sort`, `order`, `view`, `num_users`, `max_all`, `is_truncated`.
+`sort`, `order`, `view`, `num_users`, `max_all`, `is_truncated`, and, in the
+htmx response only, `is_hx`.
 
 Sortable headers are dual-mode links (`href` + `hx-get`) targeting
 `#contributors-content` with `hx-push-url="true"`.
@@ -1226,7 +1227,8 @@ the pushed URL after htmx tab clicks.
 
 Same context as the content area of `user_management.html.j2`: `group`,
 `sort`, `order`, `q`, `view`, `pages`, `selected_users`,
-`num_selected_users`, `max_all`, `is_truncated`.
+`num_selected_users`, `max_all`, `is_truncated`, and, in the htmx response
+only, `is_hx`.
 
 The outer GET form keeps `sort`, `order`, and `view` in hidden inputs. htmx
 fragment responses refresh those inputs out of band so later form-triggered
@@ -1242,7 +1244,8 @@ requests preserve the current table state.
 
 Same context as the content area of `workers.html.j2`: `filter_value`,
 `sort`, `order`, `q`, `view`, `pages`, `blocked_workers`, `show_email`,
-`num_workers`, `max_all`, `is_truncated`.
+`num_workers`, `max_all`, `is_truncated`, and, in the htmx response only,
+`is_hx`.
 
 Sortable headers are dual-mode links (`href` + `hx-get`) targeting
 `#workers-content` with `hx-push-url="true"`.
@@ -1258,7 +1261,11 @@ sort/view/pagination links, the fragment must refresh any stateful hidden form
 inputs out of band. This repo uses the same pattern as `/tests/machines`:
 
 - keep stable ids on the outer hidden inputs;
-- return matching hidden inputs from the fragment with `hx-swap-oob="true"`.
+- return matching hidden inputs from the fragment with `hx-swap-oob="true"`;
+- render those out-of-band inputs only in the htmx response, behind
+  `{% if is_hx | default(false) %}`, with the view passing `is_hx` through
+  `extra_context`. A content fragment that the full page includes would
+  otherwise render every id twice.
 
 That keeps later form submissions aligned with the current server-authoritative
 table state without introducing page-specific synchronization JavaScript.

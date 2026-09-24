@@ -129,6 +129,31 @@ class TestAdminViews(UiUserTestCase):
         finally:
             self._restore_approver_state(original_pending, original_groups)
 
+    def test_shell_state_inputs_render_once_per_page(self):
+        # The page's filter form holds the hidden sort/order/view inputs; the
+        # content fragment sends its copies out of band only in htmx responses.
+        original_pending, original_groups = self._set_approver_state()
+        try:
+            self._login_user()
+            for url, prefix in (
+                ("/workers/show", "workers"),
+                ("/user_management", "user_management"),
+            ):
+                full = self.client.get(url)
+                fragment = self.client.get(
+                    url,
+                    headers={"HX-Request": "true", "HX-Request-Type": "partial"},
+                )
+                for name in ("sort", "order", "view"):
+                    with self.subTest(url=url, input=name):
+                        marker = f'id="{prefix}_{name}"'
+                        self.assertEqual(full.text.count(marker), 1)
+                        self.assertEqual(fragment.text.count(marker), 1)
+                        self.assertIn(f'{marker} name="{name}"', fragment.text)
+                        self.assertIn('hx-swap-oob="true"', fragment.text)
+        finally:
+            self._restore_approver_state(original_pending, original_groups)
+
     def test_server_authoritative_tables_retire_legacy_sorting_js(self):
         js_path = (
             Path(__file__).resolve().parents[1]

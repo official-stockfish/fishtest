@@ -2004,6 +2004,7 @@ def _contributors_common(  # noqa: C901, PLR0912, PLR0915
         request,
         "contributors_content_fragment.html.j2",
         context,
+        extra_context={"is_hx": True},
     )
 
 
