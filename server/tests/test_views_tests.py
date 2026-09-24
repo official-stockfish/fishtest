@@ -717,8 +717,6 @@ class TestTestsHomepage(UiUserTestCase):
         self.assertIn('"AbortError"', js_source)
 
         # Every htmx:error handler that resets load state must consult it.
-        homepage = (js_dir / "tests_homepage.js").read_text(encoding="utf-8")
-        self.assertIn("htmxRequestAborted(event)", homepage)
         detail = (
             Path(__file__).resolve().parents[1]
             / "fishtest"
@@ -799,7 +797,8 @@ class TestTestsHomepage(UiUserTestCase):
 
         # The sidebar badge polls on every page, so a bare listener fires on a
         # timer in every one of these files. notifications.js reacts to every
-        # inserted root through htmx.onLoad() instead of a swap listener.
+        # inserted root through htmx.onLoad() instead of a swap listener, and
+        # tests_homepage.js triggers a load and listens to no swap at all.
         for name in (
             "contributors.js",
             "live_elo.js",
@@ -810,5 +809,5 @@ class TestTestsHomepage(UiUserTestCase):
             with self.subTest(script=name):
                 source = (js_dir / name).read_text(encoding="utf-8")
                 self.assertNotIn('addEventListener("htmx:after:swap"', source)
-                if name != "notifications.js":
+                if name not in {"notifications.js", "tests_homepage.js"}:
                     self.assertIn("onHtmxSwap(", source)
