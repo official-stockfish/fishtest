@@ -59,9 +59,13 @@
   {% endwith %}
 {% endif %}
 
-<input type="hidden" id="user_management_sort" name="sort" value="{{ sort }}" hx-swap-oob="true">
-<input type="hidden" id="user_management_order" name="order" value="{{ order }}" hx-swap-oob="true">
-<input type="hidden" id="user_management_view" name="view" value="{{ view }}" hx-swap-oob="true">
+{# Out-of-band sync for the page's filter form; a full page renders the form
+   with these values already. #}
+{% if is_hx | default(false) %}
+  <input type="hidden" id="user_management_sort" name="sort" value="{{ sort }}" hx-swap-oob="true">
+  <input type="hidden" id="user_management_order" name="order" value="{{ order }}" hx-swap-oob="true">
+  <input type="hidden" id="user_management_view" name="view" value="{{ view }}" hx-swap-oob="true">
+{% endif %}
 
 <div class="table-responsive-lg">
   <table id="user_management_table" class="table table-striped table-sm">

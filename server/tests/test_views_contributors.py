@@ -415,6 +415,22 @@ class TestViewsContributors(UiUserTestCase):
         self.assertIn('hx-target="#contributors-content"', response.text)
         self.assertIn('hx-push-url="true"', response.text)
 
+    def test_contributors_shell_state_inputs_render_once_per_page(self):
+        # The page's filter form holds the hidden view/sort/order inputs; the
+        # content fragment sends its copies out of band only in htmx responses.
+        for url in ("/contributors", "/contributors/monthly"):
+            full = self.client.get(url)
+            fragment = self.client.get(
+                url,
+                headers={"HX-Request": "true", "HX-Request-Type": "partial"},
+            )
+            for name in ("view", "sort", "order"):
+                with self.subTest(url=url, input=name):
+                    marker = f'id="contributors_{name}"'
+                    self.assertEqual(full.text.count(marker), 1)
+                    self.assertEqual(fragment.text.count(marker), 1)
+                    self.assertIn(f'{marker} name="{name}" value=', fragment.text)
+
     def test_contributors_hx_fragment_syncs_outer_hidden_sort_state(self):
         response = self.client.get(
             "/contributors?sort=username&order=asc&view=all",
