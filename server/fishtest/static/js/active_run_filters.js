@@ -42,10 +42,10 @@
     return;
   }
 
-  // Dynamic <style> element for CSS-based row filtering.
-  // CSS attribute selectors survive htmx's 20 ms attribute-settle phase
-  // (which would strip a class like d-none added by JS between the swap
-  // and the settle timeout).
+  // Dynamic <style> element for CSS-based row filtering. The rules match the
+  // rows' data-* attributes, so rows a poll swaps into #active-tbody are hidden
+  // from their first paint, before the MutationObserver below runs.
+  // tests.html.j2 renders the same element for the page's first paint.
   const filterStyleEl = (() => {
     const existing = document.getElementById("active-run-filter-style");
     if (existing instanceof HTMLStyleElement) {
