@@ -742,6 +742,17 @@ class RunDb:
         pgn = self.pgndb.find_one({"run_id": run_id})
         return (pgn["pgn_zip"], pgn["size"]) if pgn else (None, 0)
 
+    def has_run_pgns(self, run_id: str) -> bool:
+        # Covered by the run_id index: the projection keeps only indexed fields,
+        # so no PGN document is fetched.
+        return (
+            self.pgndb.find_one(
+                {"run_id": {"$regex": f"^{run_id}-\\d+"}},
+                {"_id": 0, "run_id": 1},
+            )
+            is not None
+        )
+
     def get_run_pgns(self, run_id):
         # Compute the total size using MongoDB's aggregation framework
         pgns_query = {"run_id": {"$regex": f"^{run_id}-\\d+"}}

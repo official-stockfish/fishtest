@@ -731,6 +731,7 @@ Rendered structure:
 | `tasks_shown` | bool |
 | `show_task` | int |
 | `follow` | int |
+| `has_pgns` | bool (run has stored task PGNs) |
 | `can_modify_run` | bool |
 | `same_user` | bool |
 | `pt_info` | dict |
