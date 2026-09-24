@@ -672,26 +672,16 @@ class TestTestsHomepage(UiUserTestCase):
         )
         js_source = js_path.read_text(encoding="utf-8")
 
-        self.assertIn("onHtmxSwap(", js_source)
+        self.assertNotIn("onHtmxSwap(", js_source)
         self.assertNotIn("htmx:oobAfterSwap", js_source)
-
         self.assertNotIn('addEventListener("htmx:after:init"', js_source)
-        self.assertIn("initializeNotificationButtons(target)", js_source)
         self.assertIn('notification.dataset.notificationReady = "1"', js_source)
 
-        # The one document-wide scan belongs to the initial page load.
+        # htmx calls back for <body> at init and for every root a swap inserts.
+        self.assertIn("htmx.onLoad(initializeNotificationButtons);", js_source)
+        # Without htmx the page initializes its bells once, from the document.
+        self.assertIn("if (window.htmx) {", js_source)
         self.assertEqual(js_source.count("initializeNotificationButtons(document)"), 1)
-        self.assertIn(
-            "onHtmxSwap(\n"
-            "  () => true,\n"
-            "  (targets) => {\n"
-            "    for (const target of targets) {\n"
-            "      initializeNotificationButtons(target);\n"
-            "    }\n"
-            "  },\n"
-            ");",
-            js_source,
-        )
 
     def test_htmx_swap_helpers_filter_by_target_and_status(self):
         js_path = (
@@ -808,7 +798,8 @@ class TestTestsHomepage(UiUserTestCase):
         js_dir = Path(__file__).resolve().parents[1] / "fishtest" / "static" / "js"
 
         # The sidebar badge polls on every page, so a bare listener fires on a
-        # timer in every one of these files.
+        # timer in every one of these files. notifications.js reacts to every
+        # inserted root through htmx.onLoad() instead of a swap listener.
         for name in (
             "contributors.js",
             "live_elo.js",
@@ -818,5 +809,6 @@ class TestTestsHomepage(UiUserTestCase):
         ):
             with self.subTest(script=name):
                 source = (js_dir / name).read_text(encoding="utf-8")
-                self.assertIn("onHtmxSwap(", source)
                 self.assertNotIn('addEventListener("htmx:after:swap"', source)
+                if name != "notifications.js":
+                    self.assertIn("onHtmxSwap(", source)
