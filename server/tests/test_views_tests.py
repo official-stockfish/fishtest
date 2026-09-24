@@ -737,6 +737,47 @@ class TestTestsHomepage(UiUserTestCase):
         ).read_text(encoding="utf-8")
         self.assertIn("htmxRequestAborted(event)", detail)
 
+    def test_page_shell_survives_a_history_restore(self):
+        # A back or forward navigation swaps a refetched <body> and runs its
+        # inline scripts again, and every element a listener was bound to at
+        # load time is replaced. Pushed views therefore carry no inline
+        # script in <body>, and the shell controls are delegated.
+        for url in (
+            "/nns",
+            "/contributors",
+            "/contributors/monthly",
+            "/workers/show",
+            "/actions",
+            "/tests/finished",
+            f"/tests/user/{self.username}",
+        ):
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, 200)
+                body = response.text[response.text.index("<body") :]
+                for chunk in body.split("<script")[1:]:
+                    tag = chunk.split(">", 1)[0]
+                    self.assertIn("src=", tag, "inline <script> inside <body>")
+
+        js_path = (
+            Path(__file__).resolve().parents[1]
+            / "fishtest"
+            / "static"
+            / "js"
+            / "application.js"
+        )
+        js_source = js_path.read_text(encoding="utf-8")
+        for selector in (
+            "#sun",
+            "#moon",
+            "#logout",
+            "#fallback_button",
+            "#error_button",
+        ):
+            self.assertIn(f'e.target.closest("{selector}")', js_source)
+        self.assertNotIn('getElementById("logout")?.addEventListener', js_source)
+        self.assertNotIn('addEventListener("click", () => setTheme(', js_source)
+
     def test_error_responses_do_not_push_url_or_retitle_the_page(self):
         js_path = (
             Path(__file__).resolve().parents[1]
