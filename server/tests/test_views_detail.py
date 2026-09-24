@@ -1,5 +1,6 @@
 """Test `/tests/view` detail-page and detail-fragment contracts."""
 
+import gzip
 import unittest
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -63,6 +64,7 @@ class TestTestsViewDetail(unittest.TestCase):
         test_support.cleanup_test_rundb(
             cls.rundb,
             clear_usernames=[cls.username],
+            clear_pgndb=True,
             clear_runs=True,
             drop_runs=True,
         )
@@ -200,6 +202,28 @@ class TestTestsViewDetail(unittest.TestCase):
             response.text,
             r'id="spsa_percentage"[^>]*checked',
         )
+
+    def test_tests_view_disables_games_download_without_pgns(self):
+        run_id = self._create_run()
+
+        response = self.client.get(f"/tests/view/{run_id}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn(f'href="/api/run_pgns/{run_id}.pgn.gz"', response.text)
+        self.assertRegex(response.text, r"<button[^>]*disabled>\s*No games\s*</button>")
+
+    def test_tests_view_links_games_download_with_pgns(self):
+        run_id = self._create_run()
+        self.rundb.upload_pgn(f"{run_id}-0", gzip.compress(b"pgn"))
+
+        response = self.client.get(f"/tests/view/{run_id}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertRegex(
+            response.text,
+            rf'<a[^>]*href="/api/run_pgns/{run_id}\.pgn\.gz"[^>]*>Download games</a>',
+        )
+        self.assertNotIn("No games", response.text)
 
     def test_tests_view_page_renders_query_free_open_graph_metadata(self):
         run_id = self._create_run()

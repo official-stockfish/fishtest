@@ -3683,6 +3683,7 @@ def tests_view(request: _ViewContext) -> dict[str, Any] | RedirectResponse:  # n
         "tasks_max_all": tasks_table_context["max_all"],
         "tasks_is_truncated": tasks_table_context["is_truncated"],
         "follow": follow,
+        "has_pgns": request.rundb.has_run_pgns(str(run["_id"])),
         "can_modify_run": can_modify_run(request, run),
         "modify_num_games_constraints": MODIFY_FORM_NUM_GAMES_CONSTRAINTS,
         "same_user": same_user,

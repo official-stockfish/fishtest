@@ -178,9 +178,16 @@
         {% endif %}
 
         <div class="col-12 col-sm">
-          <button id="download_games" class="btn btn-primary text-nowrap w-100">
-            Download games
-          </button>
+          {% if has_pgns %}
+            <a
+              class="btn btn-primary text-nowrap w-100"
+              href="/api/run_pgns/{{ run_id }}.pgn.gz"
+            >Download games</a>
+          {% else %}
+            <button type="button" class="btn btn-primary text-nowrap w-100" disabled>
+              No games
+            </button>
+          {% endif %}
         </div>
         <div class="col-12 col-sm">
           <a class="btn btn-light border w-100" href="/tests/run?id={{ run_id }}">Reschedule</a>
@@ -444,71 +451,6 @@
   document
     .getElementById("moon")
     .addEventListener("click", () => setHighlightTheme("dark"));
-
-  let downloading = false;
-  async function downloadPGNs(e) {
-    if (downloading) {
-      return;
-    }
-    downloading = true;
-    const button = e.currentTarget;
-    button.textContent = "Downloading...";
-    try {
-      const response = await fetch(`/api/run_pgns/${runId}.pgn.gz`);
-      if (!response.ok) {
-        if (response.status === 404) {
-          alertError("No games found for this run");
-        } else {
-          alertError("Unable to download PGNs");
-        }
-        return;
-      }
-      const contentLength = parseInt(response.headers.get('Content-Length'));
-      const contentLengthFormatted = formatBytes(contentLength);
-      const reader = response.body.getReader();
-      let receivedLength = 0;
-      let chunks = [];
-
-      while (true) {
-        const { done, value } = await reader.read();
-
-        if (done) {
-          break;
-        }
-
-        chunks.push(value);
-        receivedLength += value.length;
-
-        const progressFormatted = formatBytes(receivedLength);
-        button.textContent = progressFormatted + " / " + contentLengthFormatted;
-      }
-
-      // Combine all chunks into a single Blob
-      const blob = new Blob(chunks);
-
-      // Check if the blob is empty
-      if (blob.size === 0) {
-        alertError("Blob is empty!");
-        return;
-      }
-
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${runId}.pgn.gz`;
-      document.body.append(a);
-      a.click();
-      document.body.removeChild(a);
-    } catch (error) {
-      alertError("Network error: please check your network!");
-    } finally {
-      downloading = false;
-      button.textContent = "Download Games";
-    }
-  }
-
-  const downloadPGNsButton = document.getElementById("download_games");
-  downloadPGNsButton?.addEventListener("click", downloadPGNs);
 
   let resolveTasksLoaded = null;
   {% if show_task >= 0 %}

@@ -1,5 +1,6 @@
 """Test RunDb persistence and run lifecycle behavior."""
 
+import gzip
 import random
 import sys
 import unittest
@@ -783,6 +784,17 @@ class CreateRunDBTest(unittest.TestCase):
                     }
                 }
             )
+
+    def test_60_has_run_pgns_matches_only_the_run_task_pgns(self):
+        run_id = "0123456789abcdef01234567"
+        other_run_id = "0123456789abcdef01234568"
+        self.assertFalse(self.rundb.has_run_pgns(run_id))
+
+        self.rundb.upload_pgn(f"{other_run_id}-0", gzip.compress(b"pgn"))
+        self.assertFalse(self.rundb.has_run_pgns(run_id))
+
+        self.rundb.upload_pgn(f"{run_id}-3", gzip.compress(b"pgn"))
+        self.assertTrue(self.rundb.has_run_pgns(run_id))
 
     def test_90_delete_runs(self):
         for run in self.rundb.runs.find():
