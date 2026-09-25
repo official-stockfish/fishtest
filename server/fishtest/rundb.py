@@ -8,6 +8,7 @@ import re
 import textwrap
 import threading
 import time
+from collections import defaultdict
 from datetime import UTC, datetime
 
 import regex
@@ -137,6 +138,8 @@ class RunDb:
         self._shutdown = False
 
         self.spsa_handler = fishtest.spsa_handler.SPSAHandler(self)
+
+        self._pending_hours = 0
 
     @lru_cache(maxsize=1, expiration=30, refresh=False)
     def get_runs_index_names(self):
@@ -286,16 +289,46 @@ class RunDb:
             )
 
     def update_itp(self):
+        # Update all active/pending runs' internal throughput. First compute the hard cap,
+        # then collate the runs by user, then for each run apply the cap and calculate the itp.
+
+        hours = self._pending_hours
+        # Lookup hours -> cap. In principle this could cause some mild swinging as users manually unpause
+        max_user_tests = (     3 if hours > 72
+                          else 4 if hours > 24
+                          else 6 if hours > 0   # fleet is active
+                          else 4                # fallback/default
+                         )  # fmt: skip
+
         with self.unfinished_runs_lock:
             unfinished_runs = [self.get_run(run_id) for run_id in self.unfinished_runs]
 
-        user_active = [
-            run["args"].get("username") for run in unfinished_runs if run["workers"] > 0
-        ]
-
+        # {username: List[Tuple(priority, n_games, id, run)]}
+        users_active_runs = defaultdict(list)
         for run in unfinished_runs:
-            self.calc_itp(run, user_active.count(run["args"].get("username")))
-            self.buffer(run)
+            if run["workers"] > 0 and (username := run["args"].get("username")):
+                users_active_runs[username].append(
+                    (
+                        run["args"]["priority"],
+                        count_games(run["results"]),
+                        run["_id"],
+                        run,
+                    )
+                )
+
+        # Hard cap the number of p=0 runs per user. Offending runs are reduced in priority.
+        for username, user_runs in users_active_runs.items():
+            normal_tests = 0
+            # Sort by (prio, n_games, _id) descending, so newer runs are paused.
+            # _id breaks ties so as to not compare `run` dicts, which would be a TypeError.
+            user_runs.sort(reverse=True)
+            for prio, n_games, _, run in user_runs:
+                if -1 < prio < 1:
+                    normal_tests += 1
+                    if normal_tests > max_user_tests:
+                        run["args"]["priority"] = -1
+                self.calc_itp(run, n_games)
+                self.buffer(run)
 
     def clean_wtt_map(self):
         with self.wtt_lock:
@@ -936,6 +969,7 @@ class RunDb:
         return machines
 
     def aggregate_unfinished_runs(self, username=None):
+        # The global stats are computed for the homepage, i.e. when username is Falsy, and are 0 otherwise
         unfinished_runs = self.get_unfinished_runs(username=username)
         runs = {"pending": [], "active": []}
         for run in unfinished_runs:
@@ -963,17 +997,19 @@ class RunDb:
         machines_count = 0
         nps = 0.0
         games_per_minute = 0.0
-        for run in runs["active"]:
-            machines_count += run["workers"]
-            cores += run["cores"]
-            nps += run.get("nps", 0.0)
-            games_per_minute += run.get("games_per_minute", 0.0)
-
         pending_hours = 0
-        for run in runs["pending"] + runs["active"]:
+        if not username:  # Only the homepage gets global stats
+            for run in runs["active"]:
+                machines_count += run["workers"]
+                cores += run["cores"]
+                nps += run.get("nps", 0.0)
+                games_per_minute += run.get("games_per_minute", 0.0)
             if cores > 0:
-                eta = remaining_hours(run) / cores
-                pending_hours += eta
+                for run in runs["active"]:
+                    eta = remaining_hours(run) / cores
+                    pending_hours += eta
+                self._pending_hours = pending_hours
+
         return (
             runs,
             pending_hours,
@@ -1324,7 +1360,7 @@ class RunDb:
 
         return [merged_rows[skip : skip + limit], total_count]
 
-    def calc_itp(self, run, count):
+    def calc_itp(self, run, n):
         # Tests default to 100% base throughput, but we have several adjustments behind the scenes to get internal throughput.
         base_tp = run["args"]["throughput"]
         itp = base_tp = max(min(base_tp, 500), 1)  # Sanity check
@@ -1337,13 +1373,8 @@ class RunDb:
             # --> LTC itp = 4 --> power = log(4)/log(6) ~ 0.774
             itp *= tc_ratio**0.774
 
-        # The second adjustment is a multiplicative malus for too many active runs
-        itp *= 36.0 / (36.0 + count * count)
-
         # Latency focus: max +100% bonus at 200k games
         # (At current default bounds, 200k games is a typical neutral-elo duration)
-        r = run["results"]
-        n = r["wins"] + r["losses"] + r["draws"]
         add_bonus = min(n / 200_000, 1.0)
 
         # Small bonus for high LLR (more for strong-gainer bounds)
