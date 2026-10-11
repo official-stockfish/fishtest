@@ -1649,15 +1649,15 @@ def run_games(
         raise RunException("\n".join(run_errors))
 
     # Fishtest with Stockfish 11 used 1.6 Mnps as the reference and 0.7 Mnps
-    # as the slow-worker threshold. The new reference (628000 nps) and
-    # threshold (180000 nps) result from comparing Stockfish 11 vs Stockfish 18
+    # as the slow-worker threshold. The new reference (672000 nps) and
+    # threshold (190000 nps) result from comparing Stockfish 11 vs Stockfish 19
     # bench values across several architectures and machines.
-    # Benches employed clang++ 21.1.8, parallel bench at depth 13, 100 iterations.
+    # Benches employed clang++ 22.1.8, parallel bench at depth 13, 100 iterations.
     # Reference cores are Ryzen 7 PRO 7840U / Xeon E5-2680 v3; the slow-worker
     # threshold uses Core i7 3770K so older machines remain viable.
     # Values also live in rundb.py and delta_update_users.py. See GitHub PR #2459.
-    factor = 628000 / base_nps
-    min_nps_required = 180000 / (1 + 3 * math.tanh((worker_concurrency - 1) / 8))
+    factor = 672000 / base_nps
+    min_nps_required = 190000 / (1 + 3 * math.tanh((worker_concurrency - 1) / 8))
     if base_nps < min_nps_required:
         message = (
             f"This machine is too slow to run this task effectively - sorry!\n"
