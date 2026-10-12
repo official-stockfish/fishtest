@@ -486,7 +486,7 @@ def format_spsa_value(
                 "{:.2e}".format(param["r_end"]),
             ],
         )
-        return spsa_value
+    return spsa_value
 
 
 def build_spsa_worker_step(
