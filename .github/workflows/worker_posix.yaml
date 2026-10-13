@@ -14,34 +14,39 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          # setup-python provides no Python 3.8 or 3.9 builds for Ubuntu 26.04
+          - os: ubuntu-24.04
             python-version: "3.8"
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             python-version: "3.9"
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             python-version: "3.10"
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             python-version: "3.11"
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             python-version: "3.12"
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             python-version: "3.13"
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             python-version: "3.14"
-          - os: macos-latest
+          - os: ubuntu-26.04
+            python-version: "3.15"
+          - os: macos-26
             python-version: "3.8"
-          - os: macos-latest
+          - os: macos-26
             python-version: "3.9"
-          - os: macos-latest
+          - os: macos-26
             python-version: "3.10"
-          - os: macos-latest
+          - os: macos-26
             python-version: "3.11"
-          - os: macos-latest
+          - os: macos-26
             python-version: "3.12"
-          - os: macos-latest
+          - os: macos-26
             python-version: "3.13"
-          - os: macos-latest
+          - os: macos-26
             python-version: "3.14"
+          - os: macos-26
+            python-version: "3.15"
     defaults:
       run:
         working-directory: worker
