@@ -14,9 +14,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: windows-latest, sys: mingw64,    env: x86_64,        comp: gcc }
-          - { os: windows-latest, sys: ucrt64,     env: ucrt-x86_64,   comp: gcc }
-          - { os: windows-latest, sys: clang64,    env: clang-x86_64,  comp: clang }
+          - { os: windows-2025,   sys: mingw64,    env: x86_64,        comp: gcc }
+          - { os: windows-2025,   sys: ucrt64,     env: ucrt-x86_64,   comp: gcc }
+          - { os: windows-2025,   sys: clang64,    env: clang-x86_64,  comp: clang }
           - { os: windows-11-arm, sys: clangarm64, env: clang-aarch64, comp: clang }
     defaults:
       run:
