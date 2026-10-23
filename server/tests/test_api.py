@@ -8,6 +8,7 @@ import io
 import sys
 import unittest
 from datetime import UTC, datetime
+from unittest import mock
 
 import test_support
 
@@ -1058,6 +1059,22 @@ class TestHttpApi(unittest.TestCase):
         self.assertEqual(response.headers.get("content-length"), str(len(pgn_bytes)))
         self.assertEqual(response.headers.get("content-type"), "application/gzip")
         self.assertEqual(response.content, raw_pgn)
+
+    def test_finished_runs_timestamp_is_utc(self):
+        with mock.patch.object(
+            self.rundb,
+            "get_finished_runs",
+            return_value=([], 0),
+        ) as get_finished_runs:
+            response = self.client.get(
+                "/api/finished_runs?page=1&timestamp=1790000000",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            get_finished_runs.call_args.kwargs["last_updated"],
+            datetime(2026, 9, 21, 14, 13, 20, tzinfo=UTC),
+        )
 
 
 if __name__ == "__main__":
