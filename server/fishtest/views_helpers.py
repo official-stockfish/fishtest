@@ -197,8 +197,10 @@ def pagination(
         for idx in range(1, min(last_idx, 4)):
             add_page(idx)
     elif page_idx >= last_idx - 2:
-        pages.append({"idx": "...", "url": "", "state": "disabled"})
-        for idx in range(max(1, last_idx - 3), last_idx):
+        first_idx = max(1, last_idx - 3)
+        if first_idx > 1:
+            pages.append({"idx": "...", "url": "", "state": "disabled"})
+        for idx in range(first_idx, last_idx):
             add_page(idx)
     else:
         pages.append({"idx": "...", "url": "", "state": "disabled"})
