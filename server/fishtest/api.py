@@ -371,7 +371,7 @@ class UserApi(GenericApi):
 
         last_updated = None
         if timestamp != "" and re.match(r"^\d{10}(\.\d+)?$", timestamp):
-            last_updated = datetime.fromtimestamp(float(timestamp))
+            last_updated = datetime.fromtimestamp(float(timestamp), UTC)
         elif timestamp != "":
             self.handle_error("Please provide a valid UNIX timestamp.")
 
