@@ -52,7 +52,7 @@ from fishtest.rundb import RunDb
 from fishtest.views import router as views_router
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncGenerator
 
     from starlette.types import ASGIApp
 
@@ -137,7 +137,7 @@ def create_app() -> FastAPI:
     bootstrap_settings = AppSettings.from_env()
 
     @asynccontextmanager
-    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         settings = AppSettings.from_env()
         app.state.settings = settings
 
