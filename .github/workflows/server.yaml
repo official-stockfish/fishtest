@@ -7,9 +7,10 @@ permissions:
 
 jobs:
   test:
-    # MongoDB 8 exits at startup on Linux 6.19 to 7.0.13 (SERVER-121912);
-    # ubuntu-26.04 runs Linux 7.0.0
-    runs-on: ubuntu-24.04
+    # MongoDB 8.3 releases before 8.3.16 exit at startup on the Ubuntu
+    # 7.0.0 kernels of ubuntu-24.04 and ubuntu-26.04 (SERVER-131779);
+    # ubuntu-22.04 runs Linux 6.8
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         python-version: ["3.15"]
