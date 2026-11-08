@@ -4,7 +4,7 @@
 
 | Component | Minimum version | Purpose |
 |-----------|-----------------|---------|
-| Python | >= 3.14 | Runtime |
+| Python | >= 3.15 | Runtime |
 | MongoDB | mongod service | Data store |
 | nginx | -- | Reverse proxy, TLS, static files |
 | uv | -- | Python package manager |

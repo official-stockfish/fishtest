@@ -9,7 +9,7 @@ the development workflow and coding standards for the project.
 
 | Component | Minimum Version  | Purpose          |
 |-----------|------------------|------------------|
-| Python    | >= 3.14          | Server runtime   |
+| Python    | >= 3.15          | Server runtime   |
 | Python    | >= 3.8           | Worker runtime   |
 | [MongoDB](https://www.mongodb.com/docs/manual/administration/install-community/) | `mongod` service | Data store       |
 | [uv](https://docs.astral.sh/uv/) | latest | Package manager |

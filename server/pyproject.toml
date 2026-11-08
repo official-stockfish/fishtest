@@ -2,7 +2,7 @@
 name = "fishtest-server"
 version = "0.1.0"
 description = "fishtest-server"
-requires-python = ">=3.14"
+requires-python = ">=3.15"
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -13,7 +13,7 @@ classifiers = [
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Topic :: Internet",
     "Topic :: Internet :: WWW/HTTP",
     "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
@@ -56,7 +56,7 @@ build-backend = "hatchling.build"
 packages = ["fishtest"]
 
 [tool.ruff]
-target-version = "py314"
+target-version = "py315"
 force-exclude = true
 
 [tool.ruff.lint]
