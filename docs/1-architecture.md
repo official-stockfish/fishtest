@@ -197,7 +197,7 @@ flowchart LR
 
 ### htmx integration
 
-UI templates load htmx 4.0.0 from CDN in `base.html.j2`. The server
+UI templates load htmx 4.0.1 from CDN in `base.html.j2`. The server
 remains fully server-rendered (Jinja2 + HTML responses). The test detail page
 also loads a page-scoped diff renderer for the inline Diff panel. htmx adds
 three capabilities without client-side rendering or a JavaScript build step:

@@ -229,13 +229,13 @@ must use `{{ value|safe }}` or `{% autoescape false %}`.
 
 ### Project patterns
 
-**CDN loading**: htmx 4.0.0 is loaded from `cdn.jsdelivr.net` in
+**CDN loading**: htmx 4.0.1 is loaded from `cdn.jsdelivr.net` in
 `base.html.j2` with an SRI integrity hash. No npm build step, and no htmx
 extensions.
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/htmx.org@4.0.0/dist/htmx.min.js"
-    integrity="sha256-5ITZFxqdswo5yPFuPXCdQTfzIRxln45hJYFmNQM9WT8="
+<script src="https://cdn.jsdelivr.net/npm/htmx.org@4.0.1/dist/htmx.min.js"
+    integrity="sha256-oKuwTy9FofidHUhEAjJFU35eYBTIexRFU+Bge0zDITA="
     crossorigin="anonymous"
     referrerpolicy="no-referrer"></script>
 ```
