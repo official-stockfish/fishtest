@@ -3,7 +3,7 @@ name = "fishtest"
 version = "0.1.0"
 description = "fishtest framework"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.15"
 
 [dependency-groups]
 dev = [
@@ -13,7 +13,7 @@ dev = [
 ]
 
 [tool.ruff]
-target-version = "py314"
+target-version = "py315"
 src = ["server", "worker"]
 extend-exclude = ["worker/packages", "*.md"]
 force-exclude = true

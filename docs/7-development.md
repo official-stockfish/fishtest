@@ -4,7 +4,7 @@
 
 | Component | Minimum version | Purpose |
 |-----------|-----------------|---------|
-| Python | >= 3.14 | Server Runtime |
+| Python | >= 3.15 | Server Runtime |
 | Python | >= 3.8 | Worker Runtime |
 | MongoDB | mongod service | Data store |
 | uv | -- | Python package manager |

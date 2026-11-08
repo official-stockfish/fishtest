@@ -48,7 +48,7 @@ validation rules, see
 | Database | MongoDB (pymongo) |
 | Validation | vtjson (schema-first validation; no Pydantic) |
 | Statistics | scipy, numpy (SPRT, ELO calculations) |
-| Python (server) | >= 3.14 |
+| Python (server) | >= 3.15 |
 | Python (worker) | >= 3.8 |
 
 ## Project layout
@@ -61,7 +61,7 @@ fishtest/
 |-- docs/                      -- Architecture and reference documentation
 |-- server/
 |   |-- pyproject.toml         -- Server package: runtime + test dependencies
-|   |-- fishtest/              -- FastAPI application (Python >= 3.14)
+|   |-- fishtest/              -- FastAPI application (Python >= 3.15)
 |   |-- tests/                 -- Focused unit and HTTP contract tests
 |   `-- utils/                 -- Operational utilities (backup, migration, analysis)
 `-- worker/
@@ -77,7 +77,7 @@ fishtest/
 The root `pyproject.toml` defines **development-only tools** (ruff, ty, pre-commit)
 shared across the repo. The server and worker each have their own
 `pyproject.toml` with independent dependency sets and Python version
-constraints -- the server requires Python >= 3.14 while the worker supports
+constraints -- the server requires Python >= 3.15 while the worker supports
 Python >= 3.8 to run on contributor machines with older distributions.
 
 ### Build system
