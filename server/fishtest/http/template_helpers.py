@@ -168,6 +168,15 @@ def _nelo_pentanomial_details(results5: list[int]) -> dict:
     }
 
 
+def nelo_pentanomial_range(results5: list[int]) -> str | None:
+    if len(results5) != 5 or sum(results5) == 0:
+        return None
+    details = _nelo_pentanomial_details(results5)
+    nelo5 = details["nelo5"]
+    delta = details["nelo5_delta"]
+    return _format_range(nelo5, nelo5 - delta, nelo5 + delta, decimals=2)
+
+
 def _nelo_pentanomial_summary_values(run: dict) -> tuple[float, float, float] | None:
     """Return numeric values for the pentanomial summary line."""
     if not is_elo_pentanomial_run(run):
@@ -681,6 +690,15 @@ def _build_pent_rows(pent: dict, sprt: dict, *, has_sprt: bool) -> dict:
                     decimals=4,
                 ),
             ),
+            (
+                "Normalized Elo",
+                _format_range(
+                    pent["nelo5"],
+                    pent["nelo5_l"],
+                    pent["nelo5_u"],
+                    decimals=2,
+                ),
+            ),
             ("LOS(1-p)", f"{sprt['los5']:.5f}"),
         ],
         "aux_rows": [
@@ -734,24 +752,11 @@ def _build_pent_rows(pent: dict, sprt: dict, *, has_sprt: bool) -> dict:
     )
 
     if has_sprt:
-        pent_rows["aux_rows"].append(("Normalized Elo", f"{pent['nelo5']:.2f}"))
         pent_rows["aux_rows"].append(("LLR jumps [0-2]", sprt["llrjumps5"]))
         pent_rows["aux_rows"].append(
             (
                 "Expected overshoot [H0,H1]",
                 f"[{sprt['overshoot0']:.5f}, {sprt['overshoot1']:.5f}]",
-            ),
-        )
-    else:
-        pent_rows["aux_rows"].append(
-            (
-                "Normalized Elo",
-                _format_range(
-                    pent["nelo5"],
-                    pent["nelo5_l"],
-                    pent["nelo5_u"],
-                    decimals=2,
-                ),
             ),
         )
 
@@ -778,6 +783,15 @@ def _build_tri_rows(tri: dict, sprt: dict, *, has_sprt: bool) -> dict:
                     sprt["elo3_l"],
                     sprt["elo3_u"],
                     decimals=4,
+                ),
+            ),
+            (
+                "Normalized Elo",
+                _format_range(
+                    tri["nelo3"],
+                    tri["nelo3_l"],
+                    tri["nelo3_u"],
+                    decimals=2,
                 ),
             ),
             ("LOS(1-p)", f"{sprt['los3']:.5f}"),
@@ -830,7 +844,6 @@ def _build_tri_rows(tri: dict, sprt: dict, *, has_sprt: bool) -> dict:
                 ),
             ],
         )
-        tri_rows["aux_rows"].append(("Normalized Elo", f"{tri['nelo3']:.2f}"))
         tri_rows["aux_rows"].append(
             ("LLR jumps [loss, draw, win]", sprt["llrjumps3"]),
         )
@@ -856,17 +869,6 @@ def _build_tri_rows(tri: dict, sprt: dict, *, has_sprt: bool) -> dict:
                     ),
                 ),
             ],
-        )
-        tri_rows["aux_rows"].append(
-            (
-                "Normalized Elo",
-                _format_range(
-                    tri["nelo3"],
-                    tri["nelo3_l"],
-                    tri["nelo3_u"],
-                    decimals=2,
-                ),
-            ),
         )
 
     return tri_rows
