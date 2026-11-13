@@ -1592,16 +1592,19 @@ def run_games(
         version,
         global_cache,
     )
-    base_engine = setup_engine(
-        testing_dir,
-        remote,
-        run["args"]["resolved_base"],
-        repo_url,
-        concurrency,
-        compiler,
-        version,
-        global_cache,
-    )
+    if run["args"]["resolved_new"] == run["args"]["resolved_base"]:
+        base_engine = new_engine
+    else:
+        base_engine = setup_engine(
+            testing_dir,
+            remote,
+            run["args"]["resolved_base"],
+            repo_url,
+            concurrency,
+            compiler,
+            version,
+            global_cache,
+        )
 
     # Ensure we are back in the testing directory
     os.chdir(testing_dir)
