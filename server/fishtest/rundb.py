@@ -8,6 +8,7 @@ import re
 import textwrap
 import threading
 import time
+from collections import defaultdict
 from datetime import UTC, datetime
 
 import regex
@@ -286,16 +287,49 @@ class RunDb:
             )
 
     def update_itp(self):
+        '''Update itp for every run, enforce a per-user hard cap, auto-unpause runs up to the cap'''
         with self.unfinished_runs_lock:
             unfinished_runs = [self.get_run(run_id) for run_id in self.unfinished_runs]
 
-        user_active = [
-            run["args"].get("username") for run in unfinished_runs if run["workers"] > 0
-        ]
-
+        # {username: List[Tuple(priority, start_time, id, run)]}
+        users_runs = defaultdict(list)
         for run in unfinished_runs:
-            self.calc_itp(run, user_active.count(run["args"].get("username")))
-            self.buffer(run)
+            if (username := run["args"].get("username")):
+                users_runs[username].append(
+                    (
+                        run["args"]["priority"],
+                        run["start_time"],
+                        run["_id"],
+                        run,
+                    )
+                )
+
+        # Hard cap the number of p=0 runs per user. Offending runs are reduced in priority.
+        max_user_tests = 2
+        for username, user_runs in users_runs.items():
+            normal_tests = abnormal_tests = 0
+            # Sort by (prio, start_time, _id), so newer runs are paused.
+            # _id breaks ties so as to not compare `run` dicts, which would be a TypeError.
+            user_runs.sort()
+            for prio, start_time, _, run in user_runs:
+                if run["workers"] > 0:
+                    p = round(prio)
+                    if p == 0:
+                        normal_tests += 1
+                        if normal_tests > max_user_tests:
+                            run["args"]["priority"] = -1
+                    elif p < 0: # In edge cases, maybe some "paused" tests have workers;
+                        # they don't count against the cap but they count against auto-unpausing.
+                        abnormal_tests += 1
+            # After counting running tests, now auto-unpause by start_time
+            # (also buffer all runs)
+            todo = max_user_tests - normal_tests - abnormal_tests
+            for prio, start_time, _, run in user_runs:
+                if todo > 0 and round(prio) == -1:
+                    run["args"]["priority"] = 0
+                    todo -= 1
+                self.calc_itp(run)
+                self.buffer(run)
 
     def clean_wtt_map(self):
         with self.wtt_lock:
@@ -947,6 +981,7 @@ class RunDb:
         return machines
 
     def aggregate_unfinished_runs(self, username=None):
+        # The global stats are computed for the homepage, i.e. when username is Falsy, and are 0 otherwise
         unfinished_runs = self.get_unfinished_runs(username=username)
         runs = {"pending": [], "active": []}
         for run in unfinished_runs:
@@ -974,17 +1009,23 @@ class RunDb:
         machines_count = 0
         nps = 0.0
         games_per_minute = 0.0
-        for run in runs["active"]:
-            machines_count += run["workers"]
-            cores += run["cores"]
-            nps += run.get("nps", 0.0)
-            games_per_minute += run.get("games_per_minute", 0.0)
-
         pending_hours = 0
-        for run in runs["pending"] + runs["active"]:
+        if not username:  # Only the homepage gets global stats
+            for run in runs["active"]:
+                machines_count += run["workers"]
+                cores += run["cores"]
+                nps += run.get("nps", 0.0)
+                games_per_minute += run.get("games_per_minute", 0.0)
             if cores > 0:
-                eta = remaining_hours(run) / cores
-                pending_hours += eta
+                for run in runs["active"]:
+                    eta = remaining_hours(run) / cores
+                    pending_hours += eta
+                # started-but-paused tests rarely finish, but unstarted probably will
+                for run in runs["pending"]:
+                    if count_games(run["results"]) == 0:
+                        eta = remaining_hours(run) / cores
+                        pending_hours += eta
+
         return (
             runs,
             pending_hours,
@@ -1335,7 +1376,7 @@ class RunDb:
 
         return [merged_rows[skip : skip + limit], total_count]
 
-    def calc_itp(self, run, count):
+    def calc_itp(self, run):
         # Tests default to 100% base throughput, but we have several adjustments behind the scenes to get internal throughput.
         base_tp = run["args"]["throughput"]
         itp = base_tp = max(min(base_tp, 500), 1)  # Sanity check
@@ -1348,14 +1389,9 @@ class RunDb:
             # --> LTC itp = 4 --> power = log(4)/log(6) ~ 0.774
             itp *= tc_ratio**0.774
 
-        # The second adjustment is a multiplicative malus for too many active runs
-        itp *= 36.0 / (36.0 + count * count)
-
         # Latency focus: max +100% bonus at 200k games
         # (At current default bounds, 200k games is a typical neutral-elo duration)
-        r = run["results"]
-        n = r["wins"] + r["losses"] + r["draws"]
-        add_bonus = min(n / 200_000, 1.0)
+        add_bonus = min(count_games(run["results"]) / 200_000, 1.0)
 
         # Small bonus for high LLR (more for strong-gainer bounds)
         if sprt := run["args"].get("sprt"):
