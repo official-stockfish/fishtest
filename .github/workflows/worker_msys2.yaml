@@ -35,7 +35,7 @@ jobs:
           msystem: ${{ matrix.sys }}
           install: >-
             make
-            mingw-w64-${{ matrix.env }}-python3
+            mingw-w64-${{ matrix.env }}-python
             mingw-w64-${{ matrix.env }}-${{ matrix.comp }}
 
       - name: Run worker tests
