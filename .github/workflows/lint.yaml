@@ -77,3 +77,22 @@ jobs:
           echo "uv run ruff check --fix"
           echo "uv run ruff format"
           echo "npx prettier --write 'server/fishtest/static/{css/*.css,html/*.html,js/*.js}'"
+
+  zizmor:
+    # Security audit of the workflows. Any finding fails the job and annotates
+    # the line. The job token lets zizmor run its online audits, which read
+    # the GitHub API.
+    runs-on: ubuntu-26.04
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
+      - name: Audit the workflows
+        run: uvx zizmor==1.32.0 --format=github .
+        env:
+          GH_TOKEN: ${{ github.token }}
