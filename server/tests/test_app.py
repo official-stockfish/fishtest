@@ -59,7 +59,9 @@ class TestHttpApp(unittest.TestCase):
 
         settings = AppSettings(port=8000, primary_port=8000, is_primary_instance=False)
 
-        with mock.patch.dict("os.environ", {"FISHTEST_INSECURE_DEV": "1"}, clear=False):
+        # Proof-of-work gating has its own tests; disable it to test routing.
+        env = {"FISHTEST_INSECURE_DEV": "1", "FISHTEST_POW_DIFFICULTY": "0"}
+        with mock.patch.dict("os.environ", env, clear=False):
             with (
                 mock.patch.object(app_module, "RunDb", _RunDbStub),
                 mock.patch.object(
@@ -99,7 +101,9 @@ class TestHttpApp(unittest.TestCase):
 
         settings = AppSettings(port=8001, primary_port=8000, is_primary_instance=False)
 
-        with mock.patch.dict("os.environ", {"FISHTEST_INSECURE_DEV": "1"}, clear=False):
+        # Proof-of-work gating has its own tests; disable it to test routing.
+        env = {"FISHTEST_INSECURE_DEV": "1", "FISHTEST_POW_DIFFICULTY": "0"}
+        with mock.patch.dict("os.environ", env, clear=False):
             with (
                 mock.patch.object(app_module, "RunDb", _RunDbStub),
                 mock.patch.object(
@@ -142,7 +146,9 @@ class TestHttpApp(unittest.TestCase):
             openapi_url="/openapi.json",
         )
 
-        with mock.patch.dict("os.environ", {"FISHTEST_INSECURE_DEV": "1"}, clear=False):
+        # Proof-of-work gating has its own tests; disable it to test routing.
+        env = {"FISHTEST_INSECURE_DEV": "1", "FISHTEST_POW_DIFFICULTY": "0"}
+        with mock.patch.dict("os.environ", env, clear=False):
             with (
                 mock.patch.object(app_module, "RunDb", _RunDbStub),
                 mock.patch.object(

@@ -42,6 +42,7 @@ from fishtest.http.middleware import (
     RejectNonPrimaryWorkerApiMiddleware,
     ShutdownGuardMiddleware,
 )
+from fishtest.http.proof_of_work import ProofOfWorkMiddleware
 from fishtest.http.session_middleware import FishtestSessionMiddleware
 from fishtest.http.settings import (
     THREADPOOL_TOKENS,
@@ -196,6 +197,12 @@ def create_app() -> FastAPI:
         cast("MiddlewareFactory", RejectNonPrimaryWorkerApiMiddleware),
     )
     app.add_middleware(cast("MiddlewareFactory", RedirectBlockedUiUsersMiddleware))
+    # Runs right after session loading: anonymous UI traffic must solve a
+    # proof-of-work challenge before reaching any DB-backed handler.
+    app.add_middleware(
+        cast("MiddlewareFactory", ProofOfWorkMiddleware),
+        secret_key=session_secret_key,
+    )
     app.add_middleware(
         cast("MiddlewareFactory", FishtestSessionMiddleware),
         secret_key=session_secret_key,
