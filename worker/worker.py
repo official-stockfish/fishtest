@@ -74,7 +74,7 @@ MIN_CLANG_MINOR = 0
 
 FASTCHESS_SHA = "ebfd64cb7fac80d4822c50b07dca4fe934779d21"
 
-WORKER_VERSION = 332
+WORKER_VERSION = 333
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
 HTTP_TIMEOUT = 30.0
 INITIAL_RETRY_TIME = 15.0
@@ -1169,19 +1169,17 @@ def get_exception(files):
 
 
 def get_worker_arch(worker_dir):
-    working_dir = os.getcwd()
-    os.chdir(worker_dir)
+    # Download a snapshot of Stockfish master and run get_native_properties.sh in situ
+    tmp_dir = Path(tempfile.mkdtemp(dir=worker_dir))
     try:
-        blob = download_from_github(
-            item="scripts/get_native_properties.sh",
-            owner="official-stockfish",
-            repo="Stockfish",
-            branch="master",
-        )
-        with open("get_native_properties.sh", "w") as f:
-            f.write(blob.decode())
+        item_url = "https://github.com/official-stockfish/Stockfish/archive/refs/heads/master.zip"
+        print(f"Downloading {item_url}...")
+        file_list = unzip(requests_get(item_url).content, tmp_dir)
+        repo_dir = tmp_dir / os.path.commonprefix([n.filename for n in file_list])
         arch = (
-            subprocess.check_output(["sh", "./get_native_properties.sh"])
+            subprocess.check_output(
+                ["sh", "./scripts/get_native_properties.sh"], cwd=repo_dir
+            )
             .decode()
             .split()[0]
         )
@@ -1191,7 +1189,7 @@ def get_worker_arch(worker_dir):
         print('Unable to determine worker arch. Setting it to "unknown"')
         arch = "unknown"
     finally:
-        os.chdir(working_dir)
+        shutil.rmtree(tmp_dir, ignore_errors=True)
     return arch
 
 
