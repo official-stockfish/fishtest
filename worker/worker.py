@@ -73,6 +73,8 @@ MIN_CLANG_MAJOR = 11
 MIN_CLANG_MINOR = 0
 
 FASTCHESS_SHA = "ebfd64cb7fac80d4822c50b07dca4fe934779d21"
+# Stockfish commit for scripts/get_native_properties.sh
+STOCKFISH_ARCH_SHA = "3e8fde75412e7c47fc140cd82022a395bc681d92"
 
 WORKER_VERSION = 333
 FILE_LIST = ["updater.py", "worker.py", "games.py"]
@@ -1168,13 +1170,29 @@ def get_exception(files):
     return message
 
 
-def get_worker_arch(worker_dir):
-    # Download a snapshot of Stockfish master and run get_native_properties.sh in situ
+def get_worker_arch(worker_dir, global_cache):
+    # Download a pinned snapshot of Stockfish and run get_native_properties.sh in situ
     tmp_dir = Path(tempfile.mkdtemp(dir=worker_dir))
     try:
-        item_url = "https://github.com/official-stockfish/Stockfish/archive/refs/heads/master.zip"
-        print(f"Downloading {item_url}...")
-        file_list = unzip(requests_get(item_url).content, tmp_dir)
+        sha = STOCKFISH_ARCH_SHA
+        zip_name = sha + ".zip"
+        blob = cache_read(global_cache, zip_name)
+        if blob is None:
+            item_url = (
+                f"https://github.com/official-stockfish/Stockfish/archive/{sha}.zip"
+            )
+            print(f"Downloading {item_url}...")
+            blob = requests_get(item_url).content
+            blob_needs_write = True
+        else:
+            print(f"Using {zip_name} from global cache.")
+            blob_needs_write = False
+
+        file_list = unzip(blob, tmp_dir)
+        # once unzipped without error, we can write
+        if blob_needs_write:
+            cache_write(global_cache, zip_name, blob)
+
         repo_dir = tmp_dir / os.path.commonprefix([n.filename for n in file_list])
         arch = (
             subprocess.check_output(
@@ -1579,7 +1597,7 @@ def worker():
         "compiler": compiler,
         "unique_key": get_uuid(options),
         "modified": not unmodified,
-        "worker_arch": get_worker_arch(worker_dir),
+        "worker_arch": get_worker_arch(worker_dir, options.global_cache),
         "ARCH": "?",
         "nps": 0.0,
         "near_github_api_limit": False,

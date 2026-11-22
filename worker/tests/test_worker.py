@@ -39,8 +39,12 @@ class WorkerTest(unittest.TestCase):
         self.assertIsNotNone(blob)
 
     def test_get_worker_arch(self):
-        arch = worker.get_worker_arch(self.worker_dir)
+        cache = self.tempdir / "cache"
+        cache.mkdir()
+        arch = worker.get_worker_arch(self.worker_dir, str(cache))
         self.assertNotEqual(arch, "unknown")
+        self.assertEqual(len(list(cache.glob("*.zip"))), 1)
+        self.assertEqual(worker.get_worker_arch(self.worker_dir, str(cache)), arch)
 
     def test_config_setup(self):
         sys.argv = [sys.argv[0], "user", "pass", "--no_validation"]
