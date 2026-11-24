@@ -289,12 +289,19 @@ class RunDb:
         with self.unfinished_runs_lock:
             unfinished_runs = [self.get_run(run_id) for run_id in self.unfinished_runs]
 
-        user_active = [
-            run["args"].get("username") for run in unfinished_runs if run["workers"] > 0
-        ]
+        # A user's load: their runs with workers, each counted by its cost,
+        # tc_ratio^0.5 (STC 1, LTC ~2.4, SMP-LTC 4, VVLTC ~6.9).
+        user_load = {}
+        for run in unfinished_runs:
+            if run["workers"] > 0:
+                username = run["args"].get("username")
+                tc_ratio = get_tc_ratio(run["args"]["tc"], run["args"]["threads"])
+                user_load[username] = (
+                    user_load.get(username, 0.0) + max(tc_ratio, 1.0) ** 0.5
+                )
 
         for run in unfinished_runs:
-            self.calc_itp(run, user_active.count(run["args"].get("username")))
+            self.calc_itp(run, user_load.get(run["args"].get("username"), 0.0))
             self.buffer(run)
 
     def clean_wtt_map(self):
@@ -1335,7 +1342,7 @@ class RunDb:
 
         return [merged_rows[skip : skip + limit], total_count]
 
-    def calc_itp(self, run, count):
+    def calc_itp(self, run, load):
         # Tests default to 100% base throughput, but we have several adjustments behind the scenes to get internal throughput.
         base_tp = run["args"]["throughput"]
         itp = base_tp = max(min(base_tp, 500), 1)  # Sanity check
@@ -1348,8 +1355,9 @@ class RunDb:
             # --> LTC itp = 4 --> power = log(4)/log(6) ~ 0.774
             itp *= tc_ratio**0.774
 
-        # The second adjustment is a multiplicative malus for too many active runs
-        itp *= 36.0 / (36.0 + count * count)
+        # The second adjustment is a multiplicative malus for the user's load of active
+        # runs, each counted by its cost (see update_itp)
+        malus = 36.0 / (36.0 + load * load)
 
         # Latency focus: max +100% bonus at 200k games
         # (At current default bounds, 200k games is a typical neutral-elo duration)
@@ -1362,7 +1370,8 @@ class RunDb:
             if sprt.get("llr", 0.0) > 2.0:
                 add_bonus += 0.1 + 0.1 * (sprt.get("elo0", 0.0) > 0.0)
 
-        run["args"]["itp"] = itp * (1.0 + add_bonus)
+        # The bonus is worth the same for every test instead of scaling with the TC weight
+        run["args"]["itp"] = malus * (itp + 100.0 * add_bonus)
 
     # Caps concurrent /api/request_task threadpool usage to
     # TASK_SEMAPHORE_SIZE (5) out of THREADPOOL_TOKENS (200).
