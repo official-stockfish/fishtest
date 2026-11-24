@@ -81,6 +81,7 @@ from fishtest.http.template_helpers import (
     build_run_table_rows,
     build_tasks_rows,
     build_tests_stats_context,
+    nelo_pentanomial_range,
     run_tables_prefix,
     tests_run_setup,
 )
@@ -2731,6 +2732,7 @@ def _build_live_elo_context(run: dict[str, Any]) -> dict[str, Any]:
         "LOS_raw": 100 * a["LOS"],
         "a_raw": a["a"],
         "b_raw": a["b"],
+        "nelo_range": nelo_pentanomial_range(pentanomial[:5]),
         "elo_value": round(a["elo"], 2),
         "ci_lower": round(a["ci"][0], 2),
         "ci_upper": round(a["ci"][1], 2),

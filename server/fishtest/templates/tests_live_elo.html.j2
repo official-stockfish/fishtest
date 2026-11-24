@@ -91,6 +91,12 @@
             <td>Elo</td>
             <td>{{ elo_value }} [{{ ci_lower }},{{ ci_upper }}] (95%)</td>
           </tr>
+          {% if nelo_range %}
+          <tr>
+            <td>Normalized Elo</td>
+            <td>{{ nelo_range }} (95%)</td>
+          </tr>
+          {% endif %}
           <tr>
             <td>LOS</td>
             <td>{{ LOS }}%</td>
