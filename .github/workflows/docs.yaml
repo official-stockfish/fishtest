@@ -1,0 +1,80 @@
+name: CI docs
+
+# Build the documentation site from docs/ with zensical on every push and pull
+# request, so a broken link or a page missing from the nav fails the check.
+# A push to the publishing branch deploys the site to GitHub Pages through the
+# Actions-based deployment: an uploaded artifact deployed over OIDC, no
+# gh-pages branch. The publishing branch is master on the upstream repository;
+# a fork publishes a preview by naming its branch in the DOCS_PAGES_BRANCH
+# repository variable. One-time setup: Settings -> Pages -> Build and
+# deployment -> Source: "GitHub Actions", with the branch allowed to deploy to
+# the github-pages environment.
+on: [push, pull_request, workflow_dispatch]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-26.04
+    env:
+      PUBLISH: ${{ github.event_name == 'push' && github.ref_name == (vars.DOCS_PAGES_BRANCH || 'master') && (vars.DOCS_PAGES_BRANCH != '' || github.repository == 'official-stockfish/fishtest') }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
+      - name: Sync the docs tools
+        run: uv sync --locked --only-group docs
+
+      # The Pages address of this repository, which the site's absolute links
+      # (llms.txt, the sitemap, canonical URLs) are built on.
+      - name: Read the Pages address
+        id: pages
+        if: env.PUBLISH == 'true'
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+
+      # --strict fails the build on a link to a page or an anchor that does
+      # not exist, and on a page under docs/ that no nav entry lists.
+      - name: Build the site
+        env:
+          PAGES_URL: ${{ steps.pages.outputs.base_url }}
+        run: |
+          if [ -n "$PAGES_URL" ]; then
+            export DOCS_SITE_URL="$PAGES_URL/"
+          fi
+          uv run --no-sync zensical build --strict
+
+      # zensical builds into ./site; upload-pages-artifact reads ./_site unless
+      # told otherwise.
+      - name: Upload the site
+        if: env.PUBLISH == 'true'
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    if: github.event_name == 'push' && github.ref_name == (vars.DOCS_PAGES_BRANCH || 'master') && (vars.DOCS_PAGES_BRANCH != '' || github.repository == 'official-stockfish/fishtest')
+    runs-on: ubuntu-26.04
+    # One deployment at a time; never cancel a publish already in flight.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    # deploy-pages publishes the artifact and mints the OIDC token Pages
+    # verifies.
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

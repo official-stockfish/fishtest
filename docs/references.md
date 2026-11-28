@@ -550,6 +550,7 @@ prevent XSS from error messages and to keep htmx attributes functional
 | pre-commit | https://pre-commit.com/ |
 | Prettier | https://prettier.io/docs/ |
 | zizmor | https://docs.zizmor.sh/ |
+| zensical | https://zensical.org/docs/ |
 | nginx | https://nginx.org/en/docs/ |
 
 Use [Development](development.md) for local lint and test workflows.
@@ -558,12 +559,13 @@ Use [Development](development.md) for local lint and test workflows.
 
 | Tool | Path | Purpose |
 |------|------|---------|
-| Repository dev tools | `pyproject.toml`, `uv.lock` | Shared repo tooling configuration |
+| Repository dev tools | `pyproject.toml`, `uv.lock` | Shared repo tooling configuration and the docs site tools |
 | Server Python project | `server/pyproject.toml`, `server/uv.lock` | Server dependency and tool configuration |
 | Worker Python project | `worker/pyproject.toml`, `worker/uv.lock` | Worker dependency configuration |
 | Server test package | `server/tests/` | Unit and HTTP contract tests |
 | Pre-commit hooks | `.pre-commit-config.yaml` | Checks run on every commit |
-| CI workflows | `.github/workflows/*.yaml` | Lint, server and worker tests |
+| CI workflows | `.github/workflows/*.yaml` | Lint, server and worker tests, docs site |
+| Docs site | `mkdocs.yml` | The zensical configuration of this site |
 
 ## Testing patterns
 

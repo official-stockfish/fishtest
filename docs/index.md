@@ -10,17 +10,25 @@ viewing results, and administering users and workers.
 
 ## Documents
 
-| # | Document | Audience | Description |
+The pages fall into three groups: guides for a task, explanations of how the
+system is shaped, and reference tables to look a fact up in.
+
+| Section | Document | Audience | Description |
 |---|---|---|---|
-| 1 | [Architecture](architecture.md) | All contributors | Server structure, module map, request flow, startup/shutdown |
-| 2 | [Threading model](threading-model.md) | Backend contributors | Async/sync boundaries, threadpool usage, rules for new code |
-| 3 | [Worker API reference](api-reference.md) | Worker and integration developers | Worker API endpoints, protocol invariants, error shapes |
-| 4 | [UI routes](ui-reference.md) | UI contributors | UI routes, view dispatch pipeline, htmx fragment dispatch, session/CSRF/auth |
-| 5 | [Templates](templates.md) | UI contributors | Jinja2 environment, template catalog (page + fragment), context contracts |
-| 6 | [Worker](worker.md) | Worker contributors | Worker architecture, task lifecycle, API usage |
-| 7 | [Development](development.md) | All developers | Dev setup, validation workflows, vtjson rules, OpenAPI |
-| 8 | [Deployment](deployment.md) | Operators | systemd, nginx, kernel tuning, capacity audit |
-| 9 | [External references](references.md) | All developers | FastAPI, Starlette, Jinja2, htmx, Python, MongoDB, and tooling references |
+| Guides | [Development](development.md) | All developers | Dev setup, validation workflows, vtjson rules, OpenAPI, this site |
+| Guides | [Deployment](deployment.md) | Operators | systemd, nginx, kernel tuning, capacity audit |
+| Explanation | [Architecture](architecture.md) | All contributors | Server structure, module map, request flow, startup/shutdown |
+| Explanation | [Threading model](threading-model.md) | Backend contributors | Async/sync boundaries, threadpool usage, rules for new code |
+| Explanation | [Worker](worker.md) | Worker contributors | Worker architecture, task lifecycle, API usage |
+| Reference | [Worker API reference](api-reference.md) | Worker and integration developers | Worker API endpoints, protocol invariants, error shapes |
+| Reference | [UI routes](ui-reference.md) | UI contributors | UI routes, view dispatch pipeline, htmx fragment dispatch, session/CSRF/auth |
+| Reference | [Templates](templates.md) | UI contributors | Jinja2 environment, template catalog (page + fragment), context contracts |
+| Reference | [External references](references.md) | All developers | FastAPI, Starlette, Jinja2, htmx, Python, MongoDB, and tooling references |
+
+The site serves [`llms.txt`](https://official-stockfish.github.io/fishtest/llms.txt),
+a manifest of these pages, and
+[`llms-full.txt`](https://official-stockfish.github.io/fishtest/llms-full.txt),
+their full text, for tools that read documentation.
 
 ## Quick start
 
@@ -54,10 +62,11 @@ validation rules, see
 ## Project layout
 ```
 fishtest/
-|-- pyproject.toml             -- Root: dev tools (ruff, ty, pre-commit)
+|-- pyproject.toml             -- Root: dev tools (ruff, ty, pre-commit), docs tools (zensical)
 |-- uv.lock                    -- Locked dependency set for the root project
+|-- mkdocs.yml                 -- Docs site configuration
 |-- .pre-commit-config.yaml    -- Pre-commit hooks (file checks, ruff, uv-lock)
-|-- .github/workflows/         -- CI: lint, server tests, worker tests (POSIX + MSYS2)
+|-- .github/workflows/         -- CI: lint, server tests, worker tests (POSIX + MSYS2), docs site
 |-- docs/                      -- Architecture and reference documentation
 |-- server/
 |   |-- pyproject.toml         -- Server package: runtime + test dependencies
@@ -121,7 +130,8 @@ the updated `uv.lock`.
 The `.pre-commit-config.yaml` runs on every commit:
 
 - **pre-commit-hooks** -- large file check, TOML and YAML validation (YAML
-  with `--unsafe`), end-of-file fixer, trailing whitespace
+  with `--unsafe`, for the Python tag in `mkdocs.yml`), end-of-file fixer,
+  trailing whitespace
 - **ruff** -- lint with `--fix --exit-zero`, which applies the fixes it can and
   never fails the commit, and format
 - **uv-lock** -- re-lock the root `uv.lock` when the root `pyproject.toml`
@@ -137,3 +147,4 @@ Install with: `uv run pre-commit install`
 | Server | `server.yaml` | push, PR, manual | Server test suite (MongoDB required) |
 | Worker POSIX | `worker_posix.yaml` | push, PR, manual | Worker tests on Linux/macOS |
 | Worker MSYS2 | `worker_msys2.yaml` | push, PR, manual | Worker tests on Windows (MSYS2) |
+| Docs | `docs.yaml` | push, PR, manual | Build this site with `zensical build --strict`; a push to `master`, or on a fork to the branch named by the `DOCS_PAGES_BRANCH` variable, publishes it to GitHub Pages |
