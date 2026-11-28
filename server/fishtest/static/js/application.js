@@ -741,7 +741,7 @@ function remainingApiCalls(response) {
 }
 
 // htmx swap observation.
-// Details: docs/9-references.md (section: "Swap events").
+// Details: docs/references.md (section: "Swap events").
 
 // True when htmx swapped the response behind this event.
 function htmxSwapSucceeded(event) {
@@ -798,14 +798,14 @@ function onHtmxSwap(matches, callback) {
 }
 
 // True when the request behind this event was cancelled rather than failed.
-// Details: docs/9-references.md (section: "Aborted requests").
+// Details: docs/references.md (section: "Aborted requests").
 function htmxRequestAborted(event) {
   return event?.detail?.error?.name === "AbortError";
 }
 
 // hx-status stops the swap and the history push for an error response; the
 // response title and its out-of-band elements are applied regardless.
-// Details: docs/9-references.md (section: "Response swapping").
+// Details: docs/references.md (section: "Response swapping").
 document.addEventListener("htmx:before:swap", (event) => {
   const ctx = event?.detail?.ctx;
   if (!ctx || htmxSwapSucceeded(event)) {

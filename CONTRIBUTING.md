@@ -129,11 +129,11 @@ fishtest/
 
 ## Additional Resources
 
-- [Development Guide](docs/7-development.md) — environment variables, nginx
+- [Development Guide](docs/development.md) — environment variables, nginx
   config, and multi-instance testing.
-- [Architecture Overview](docs/1-architecture.md) — server design and
+- [Architecture Overview](docs/architecture.md) — server design and
   threading model.
-- [API Reference](docs/3-api-reference.md) — worker API endpoints.
+- [API Reference](docs/api-reference.md) — worker API endpoints.
 - [Wiki Contributing Page](https://github.com/official-stockfish/fishtest/wiki/Contributing-to-Fishtest) - development environment setup, coding styles, development wrokflow.
 - [Coding Style Guide (Issue #634)](https://github.com/official-stockfish/fishtest/issues/634)
   — original style discussion.

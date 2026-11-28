@@ -369,7 +369,7 @@ class TestHttpBoundary(unittest.TestCase):
 
     def test_poll_conditions_are_attached_to_the_every_token(self):
         # htmx reads a [condition] off the leading trigger token only.
-        # Details: docs/5-templates.md (rule 17, "Polling trigger policy").
+        # Details: docs/templates.md (rule 17, "Polling trigger policy").
         templates_dir = Path(__file__).resolve().parents[1] / "fishtest" / "templates"
         trigger_re = re.compile(r'hx-trigger="(?P<value>[^"]*)"', flags=re.DOTALL)
         # "every", then anything that is not a bracket, then an opening bracket.
@@ -415,7 +415,7 @@ class TestHttpBoundary(unittest.TestCase):
 
     def test_error_response_policy_rides_the_body_element(self):
         # noSwap and hx-status cannot both name a status code.
-        # Details: docs/9-references.md (section: "Response swapping").
+        # Details: docs/references.md (section: "Response swapping").
         app = self._build_app(include_views=True)
         client = self.TestClient(app)
 
@@ -437,7 +437,7 @@ class TestHttpBoundary(unittest.TestCase):
 
     def test_timer_refreshed_panels_morph(self):
         # innerHTML would drop keyboard focus out of the panel on every tick.
-        # Details: docs/1-architecture.md (section: "Swapping and morphing").
+        # Details: docs/architecture.md (section: "Swapping and morphing").
         templates_dir = Path(__file__).resolve().parents[1] / "fishtest" / "templates"
 
         for name, target in (

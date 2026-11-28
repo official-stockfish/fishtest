@@ -1368,7 +1368,7 @@ class RunDb:
     # TASK_SEMAPHORE_SIZE (5) out of THREADPOOL_TOKENS (200).
     # Only 1 thread is active inside request_task_lock; the other 4
     # absorb arrival jitter.  195 tokens stay free for beat/update_task.
-    # Derivation: docs/2-threading-model.md "Task scheduling throttle".
+    # Derivation: docs/threading-model.md "Task scheduling throttle".
     task_semaphore = threading.Semaphore(TASK_SEMAPHORE_SIZE)
 
     def worker_cap(self, run, worker_info):

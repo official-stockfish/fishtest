@@ -2,8 +2,8 @@
 
 Curated web references and project-specific patterns for the four libraries
 that form the fishtest server stack. For server architecture and request
-flow, see [1-architecture.md](1-architecture.md). For the threading model
-and async/sync boundaries, see [2-threading-model.md](2-threading-model.md).
+flow, see [Architecture](architecture.md). For the threading model
+and async/sync boundaries, see [Threading model](threading-model.md).
 
 ## FastAPI
 
@@ -543,7 +543,7 @@ prevent XSS from error messages and to keep htmx attributes functional
 | mypy | https://mypy.readthedocs.io/en/stable/ |
 | nginx | https://nginx.org/en/docs/ |
 
-Use [7-development.md](7-development.md) for local lint and test workflows.
+Use [Development](development.md) for local lint and test workflows.
 
 ## Tooling references
 

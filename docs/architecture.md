@@ -124,11 +124,11 @@ parsing, CSRF checks).
 Application-level throttling (`task_semaphore(TASK_SEMAPHORE_SIZE)` +
 `request_task_lock` in `rundb.py`) governs the scheduling critical path.
 Both `THREADPOOL_TOKENS` and `TASK_SEMAPHORE_SIZE` are defined in
-`http/settings.py`; see [2-threading-model.md](2-threading-model.md) for
+`http/settings.py`; see [Threading model](threading-model.md) for
 the full analysis. Do **not** use Uvicorn's
 `--limit-concurrency` flag -- it rejects excess connections with HTTP 503
 instead of queuing them, which triggers exponential backoff in workers
-(see [8-deployment.md](8-deployment.md) for details).
+(see [Deployment](deployment.md) for details).
 
 ### Startup sequence
 
@@ -304,7 +304,7 @@ element is the form itself.
 **Fragment templates.** Fragment responses use standalone `.html.j2` files
 (named `*_fragment.html.j2`) that do not extend `base.html.j2`. This avoids
 the need for block-level partial rendering and keeps fragments self-contained.
-See [5-templates.md](5-templates.md) for the full catalog.
+See [Templates](templates.md) for the full catalog.
 
 **OOB table rows.** A `<tr>` cannot stand on its own in parsed HTML, so
 fragments that update table bodies send their rows inside a `<template>`.
@@ -425,7 +425,7 @@ persisted schema describes the canonical stored form validated before MongoDB
 writes.
 
 For contributor-facing vtjson rules and schema-change guidance, see
-[7-development.md](7-development.md).
+[Development](development.md).
 
 No Pydantic models are used anywhere in the codebase.
 
