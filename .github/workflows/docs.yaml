@@ -38,6 +38,21 @@ jobs:
         if: env.PUBLISH == 'true'
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 
+      # This workflow is the one publisher of the site. The "Deploy from a
+      # branch" source adds GitHub's own Jekyll build of the whole repository
+      # on every push, which publishes to the same site and stops on the Jinja
+      # tags the pages quote.
+      - name: Check the Pages source
+        if: env.PUBLISH == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          build_type=$(gh api "repos/$GITHUB_REPOSITORY/pages" --jq .build_type)
+          if [ "$build_type" != workflow ]; then
+            echo "::error title=Pages source::Pages builds with '$build_type'; set Settings -> Pages -> Build and deployment -> Source to GitHub Actions"
+            exit 1
+          fi
+
       # --strict fails the build on a link to a page or an anchor that does
       # not exist, and on a page under docs/ that no nav entry lists.
       - name: Build the site
