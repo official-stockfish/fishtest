@@ -20,7 +20,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     {# Read at init, so this precedes the bundle.
-       Details: docs/9-references.md (section: "Settle phase"). #}
+       Details: docs/references.md (section: "Settle phase"). #}
     <meta name="htmx-config" content='{"defaultSettleDelay": 0}'>
 
     <meta property="og:site_name" content="{{ open_graph['site_name'] }}">
@@ -103,7 +103,7 @@
   </head>
 
   {# Error pages are whole documents, never partials sized for a swap target.
-     Details: docs/9-references.md (section: "Response swapping"). #}
+     Details: docs/references.md (section: "Response swapping"). #}
   <body
     hx-status:4xx:inherited="swap:none push:false"
     hx-status:5xx:inherited="swap:none push:false"

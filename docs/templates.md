@@ -1363,7 +1363,7 @@ table state without introducing page-specific synchronization JavaScript.
     ignores `every Ns [<condition>]`, (b) an immediate
     `visibilitychange[...] from:document` refresh, and (c) for
     section-scoped pollers, a gate on the section's expanded state.
-    See [1-architecture.md](1-architecture.md) for the full policy.
+    See [Architecture](architecture.md) for the full policy.
 
 ## Adding a new template
 

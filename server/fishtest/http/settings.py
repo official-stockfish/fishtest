@@ -15,7 +15,7 @@ from pathlib import Path
 # TASK_SEMAPHORE_SIZE: Max concurrent /api/request_task calls admitted.
 # Invariant: TASK_SEMAPHORE_SIZE << THREADPOOL_TOKENS to avoid starving
 # /api/beat and /api/update_task during reconnection bursts.
-# Details: docs/2-threading-model.md (section: "Task scheduling throttle").
+# Details: docs/threading-model.md (section: "Task scheduling throttle").
 
 THREADPOOL_TOKENS: int = 200
 TASK_SEMAPHORE_SIZE: int = 5

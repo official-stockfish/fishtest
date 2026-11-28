@@ -301,7 +301,7 @@ FRAGMENT_REQUEST_HEADERS: Final = (
 def _is_hx_request(request: Any) -> bool:  # noqa: ANN401
     """Report whether this request wants a fragment sized for a swap target.
 
-    Details: docs/4-ui-reference.md (section: "Detection: `_is_hx_request(request)`").
+    Details: docs/ui-reference.md (section: "Detection: `_is_hx_request(request)`").
     """
     headers = getattr(request, "headers", None)
     if headers is None:

@@ -383,7 +383,7 @@
       hx-sync="#tasks-filters:abort"
       hx-trigger="{% if tasks_shown %}load, tasks:load{% else %}tasks:load{% endif %}{% if not run['finished'] %}, every[document.visibilityState === 'visible' && document.getElementById('tasks').classList.contains('show')] {{ poll.tasks_detail }}s, visibilitychange[document.visibilityState === 'visible' && document.getElementById('tasks').classList.contains('show')] from:document{% endif %}"
       {# Refreshes on a timer under the reader's hands.
-         Details: docs/1-architecture.md (section: "Swapping and morphing"). #}
+         Details: docs/architecture.md (section: "Swapping and morphing"). #}
       hx-swap="innerMorph"
     ></div>
   </section>
@@ -481,7 +481,7 @@
   };
 
   // Match on the swap target: #tasks-content is also filled by #tasks-filters.
-  // Details: docs/9-references.md (section: "Source versus target").
+  // Details: docs/references.md (section: "Source versus target").
   onHtmxSwap((target) => target.id === "tasks-content", resolveTasksLoadedOnce);
   tasksContainer?.addEventListener("htmx:response:error", clearTasksLoadingState);
   tasksContainer?.addEventListener("htmx:error", (event) => {

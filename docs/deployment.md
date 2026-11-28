@@ -186,7 +186,7 @@ acceptance is handled by the event loop and costs negligible resources per
 idle connection. Application-level throttling
 (`task_semaphore(TASK_SEMAPHORE_SIZE)` + `request_task_lock` in `rundb.py`)
 governs the critical scheduling path. Both constants live in
-`http/settings.py`; see [2-threading-model.md](2-threading-model.md)
+`http/settings.py`; see [Threading model](threading-model.md)
 for the full analysis. There is no need for an HTTP-layer concurrency cap.
 
 **OpenAPI docs** (`/docs`, `/redoc`, `/openapi.json`) are disabled in

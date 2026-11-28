@@ -1,6 +1,6 @@
 {# Rows travel inside a <template>, which carries the out-of-band
    attributes itself.
-   Details: docs/5-templates.md (rule 13). #}
+   Details: docs/templates.md (rule 13). #}
 {% for panel in panels %}
   <template id="{{ panel.tbody_id }}" hx-swap-oob="innerHTML">
     {% set _batch_panel_id = panel.tbody_id.replace('-tbody', '') %}

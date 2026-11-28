@@ -12,15 +12,15 @@ viewing results, and administering users and workers.
 
 | # | Document | Audience | Description |
 |---|---|---|---|
-| 1 | [1-architecture.md](1-architecture.md) | All contributors | Server structure, module map, request flow, startup/shutdown |
-| 2 | [2-threading-model.md](2-threading-model.md) | Backend contributors | Async/sync boundaries, threadpool usage, rules for new code |
-| 3 | [3-api-reference.md](3-api-reference.md) | Worker and integration developers | Worker API endpoints, protocol invariants, error shapes |
-| 4 | [4-ui-reference.md](4-ui-reference.md) | UI contributors | UI routes, view dispatch pipeline, htmx fragment dispatch, session/CSRF/auth |
-| 5 | [5-templates.md](5-templates.md) | UI contributors | Jinja2 environment, template catalog (page + fragment), context contracts |
-| 6 | [6-worker.md](6-worker.md) | Worker contributors | Worker architecture, task lifecycle, API usage |
-| 7 | [7-development.md](7-development.md) | All developers | Dev setup, validation workflows, vtjson rules, OpenAPI |
-| 8 | [8-deployment.md](8-deployment.md) | Operators | systemd, nginx, kernel tuning, capacity audit |
-| 9 | [9-references.md](9-references.md) | All developers | FastAPI, Starlette, Jinja2, htmx, Python, MongoDB, and tooling references |
+| 1 | [Architecture](architecture.md) | All contributors | Server structure, module map, request flow, startup/shutdown |
+| 2 | [Threading model](threading-model.md) | Backend contributors | Async/sync boundaries, threadpool usage, rules for new code |
+| 3 | [Worker API reference](api-reference.md) | Worker and integration developers | Worker API endpoints, protocol invariants, error shapes |
+| 4 | [UI routes](ui-reference.md) | UI contributors | UI routes, view dispatch pipeline, htmx fragment dispatch, session/CSRF/auth |
+| 5 | [Templates](templates.md) | UI contributors | Jinja2 environment, template catalog (page + fragment), context contracts |
+| 6 | [Worker](worker.md) | Worker contributors | Worker architecture, task lifecycle, API usage |
+| 7 | [Development](development.md) | All developers | Dev setup, validation workflows, vtjson rules, OpenAPI |
+| 8 | [Deployment](deployment.md) | Operators | systemd, nginx, kernel tuning, capacity audit |
+| 9 | [External references](references.md) | All developers | FastAPI, Starlette, Jinja2, htmx, Python, MongoDB, and tooling references |
 
 ## Quick start
 
@@ -34,7 +34,7 @@ viewing results, and administering users and workers.
 
 For OpenAPI docs, worker setup, local validation workflows, and vtjson
 validation rules, see
-[7-development.md](7-development.md).
+[Development](development.md).
 
 ## Technology stack
 

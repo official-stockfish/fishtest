@@ -24,7 +24,7 @@ are defined in `http/settings.py`.
 
 Do **not** use Uvicorn's `--limit-concurrency` flag. It rejects excess
 connections with HTTP 503 instead of queuing them. See
-[8-deployment.md](8-deployment.md) for the correct Uvicorn flags.
+[Deployment](deployment.md) for the correct Uvicorn flags.
 
 Blocking work includes:
 

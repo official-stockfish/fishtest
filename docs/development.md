@@ -64,7 +64,7 @@ exposes the full API and UI route schema in the Swagger UI.
 
 ## Environment variables
 
-The full environment variables table is in [8-deployment.md](8-deployment.md).
+The full environment variables table is in [Deployment](deployment.md).
 The following subset is relevant during development:
 
 | Variable | Default | Description |
@@ -104,7 +104,7 @@ For a focused server-only loop when MongoDB is already running:
 (cd server && uv run python -m unittest discover -s tests -v)
 ```
 
-See [0-README.md](0-README.md) for pre-commit hooks and CI workflows.
+See [Home](index.md) for pre-commit hooks and CI workflows.
 
 ## vtjson rules
 
