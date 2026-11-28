@@ -26,7 +26,7 @@ viewing results, and administering users and workers.
 
 ```bash
 # Install server dependencies (from repo root)
-(cd server && uv sync && uv sync --group test)
+(cd server && uv sync --group test)
 
 # Start the development server (from server/)
 (cd server && FISHTEST_INSECURE_DEV=1 uv run uvicorn fishtest.app:app --reload --port 8000)
@@ -56,19 +56,23 @@ validation rules, see
 fishtest/
 |-- pyproject.toml             -- Root: dev tools (ruff, ty, pre-commit)
 |-- uv.lock                    -- Locked dependency set for the root project
-|-- .pre-commit-config.yaml    -- Pre-commit hooks (ruff, format, uv-lock)
+|-- .pre-commit-config.yaml    -- Pre-commit hooks (file checks, ruff, uv-lock)
 |-- .github/workflows/         -- CI: lint, server tests, worker tests (POSIX + MSYS2)
 |-- docs/                      -- Architecture and reference documentation
 |-- server/
 |   |-- pyproject.toml         -- Server package: runtime + test dependencies
+|   |-- uv.lock                -- Locked dependency set for the server
 |   |-- fishtest/              -- FastAPI application (Python >= 3.15)
 |   |-- tests/                 -- Focused unit and HTTP contract tests
-|   `-- utils/                 -- Operational utilities (backup, migration, analysis)
+|   `-- utils/                 -- Operational utilities (backup, indexes, migration, analysis)
 `-- worker/
     |-- pyproject.toml         -- Worker package: runtime dependencies (Python >= 3.8)
+    |-- uv.lock                -- Locked dependency set for the worker
     |-- worker.py              -- Main worker script
     |-- games.py               -- Engine compilation, game execution
     |-- updater.py             -- Self-update mechanism
+    |-- sri.txt                -- SRI hashes of the worker files
+    |-- tests/                 -- Worker tests
     `-- packages/              -- Vendored packages
 ```
 
@@ -82,18 +86,18 @@ Python >= 3.8 to run on contributor machines with older distributions.
 
 ### Build system
 
-Both the server and worker use **hatchling** as the build backend. Hatchling
-is a lightweight, standards-compliant PEP 517 build system with no runtime
-dependencies.
+Both the server and worker use **hatchling**, a standards-compliant PEP 517
+build backend.
 
 ### Dependency management with uv
 
-[uv](https://docs.astral.sh/uv/) is the package manager. The root `uv.lock`
-locks all dependencies (root + server + worker) for reproducible installs.
+[uv](https://docs.astral.sh/uv/) is the package manager. The root, the
+server and the worker are three independent projects, each with its own
+`uv.lock`; run `uv` in the directory of the project it should change.
 
 ```bash
-# Install all dependencies (server)
-cd server && uv sync
+# Install the server's runtime and test dependencies
+cd server && uv sync --group test
 
 # Add a dependency
 uv add <package>               # runtime dependency
@@ -116,9 +120,12 @@ the updated `uv.lock`.
 
 The `.pre-commit-config.yaml` runs on every commit:
 
-- **pre-commit-hooks** -- large file check, TOML/YAML validation, trailing whitespace
-- **ruff** -- lint (`--fix`) and format
-- **uv-lock** -- verify `uv.lock` is up to date
+- **pre-commit-hooks** -- large file check, TOML and YAML validation (YAML
+  with `--unsafe`), end-of-file fixer, trailing whitespace
+- **ruff** -- lint with `--fix --exit-zero`, which applies the fixes it can and
+  never fails the commit, and format
+- **uv-lock** -- re-lock the root `uv.lock` when the root `pyproject.toml`
+  changes; `server/uv.lock` and `worker/uv.lock` are not checked
 
 Install with: `uv run pre-commit install`
 
@@ -126,7 +133,7 @@ Install with: `uv run pre-commit install`
 
 | Workflow | File | Trigger | What it does |
 |----------|------|---------|-------------|
-| Lint | `lint.yaml` | push, PR | ruff check + format; zizmor security audit of the workflows |
-| Server | `server.yaml` | push, PR | Server test suite (MongoDB required) |
-| Worker POSIX | `worker_posix.yaml` | push, PR | Worker tests on Linux/macOS |
-| Worker MSYS2 | `worker_msys2.yaml` | push, PR | Worker tests on Windows (MSYS2) |
+| Lint | `lint.yaml` | push, PR, manual | ruff check, import sort and format; Prettier check of the static CSS, HTML and JS; zizmor security audit of the workflows |
+| Server | `server.yaml` | push, PR, manual | Server test suite (MongoDB required) |
+| Worker POSIX | `worker_posix.yaml` | push, PR, manual | Worker tests on Linux/macOS |
+| Worker MSYS2 | `worker_msys2.yaml` | push, PR, manual | Worker tests on Windows (MSYS2) |

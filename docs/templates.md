@@ -9,7 +9,7 @@
 | Autoescape | Enabled for HTML, XML, and `.j2` files |
 | Undefined behavior | `StrictUndefined` (missing variables raise errors) |
 | Extensions | `jinja2.ext.do` |
-| Instance | Single `Environment` created at import time in `http/jinja.py` |
+| Instance | Single `Environment` built by `http/jinja.py` on the first render (`_jinja_templates()` in `http/template_renderer.py` is cached) |
 
 Custom filters and global functions are registered via `http/template_helpers.py`
 and `http/jinja.py`.
@@ -41,22 +41,26 @@ and `http/jinja.py`.
 | `run_tables_prefix(username)` | `template_helpers.py` | Toggle prefix for run tables |
 | `tests_run_setup(...)` | `template_helpers.py` | Test form default values |
 | `tests_repo(run)` | `util.py` | Extract the canonical tests repo URL from run |
+| `get_tc_ratio(...)` | `util.py` | Time control ratio of a run |
 | `worker_name(info)` | `util.py` | Format worker name from info dict |
 | `list_to_string(values, decimals)` | `template_helpers.py` | Formats a list of floats as a string |
 | `pdf_to_string(...)` | `template_helpers.py` | Formats a probability density function |
 | `t_conf(...)` | `template_helpers.py` | Confidence interval formatting |
 | `poll` | `http/jinja.py` | Shared htmx polling intervals exposed to templates |
+| `finished` | `http/jinja.py` | Finished-run result caps (`filter_max_count_anon`, `filter_max_count_auth`) |
 | `htmx` | `http/jinja.py` | Shared htmx timing defaults exposed to templates |
 | `cookies` | `http/jinja.py` | Shared cookie max-age values for page scripts/templates |
 | `fishtest` | `fishtest` package | Package module (version, metadata) |
 | `gh` | `github_api.py` | GitHub API module (commit_url, etc.) |
-| `math`, `datetime`, `copy`, `urllib`, `float` | Python stdlib | Standard library access |
+| `math`, `datetime`, `copy`, `float` | Python stdlib | Standard library access |
+| `urllib` | Python stdlib | `urllib.parse` |
 
 ## Rendering flow
 
-1. The view handler returns a `(template_name, context_dict)` pair (via
-   `_dispatch_view`'s `renderer` config).
-2. `_dispatch_view()` calls `render_template_to_response()`.
+1. The view handler returns a context dict; the template is the route's
+   `renderer` in `_VIEW_ROUTES`.
+2. `_dispatch_view()` calls `render_template_to_response()` in the
+   threadpool.
 3. `build_template_context()` in `http/boundary.py` constructs the shared
    base context (CSRF token, current user, flash messages, navigation URLs).
 4. The handler-specific context is merged with the base context.
@@ -70,7 +74,7 @@ Every template receives these keys from `build_template_context()`:
 
 | Key | Type | Description |
 |-----|------|-------------|
-| `request` | `Request` | Starlette request object (for `url_for`) |
+| `request` | `Request` | Starlette request object (templates read `request.url`) |
 | `csrf_token` | string | CSRF token for forms and meta tags |
 | `current_user` | `{"username": str}` or `None` | Authenticated user |
 | `open_graph` | dict | Server-owned Open Graph fields rendered by `base.html.j2` |
@@ -222,22 +226,24 @@ Design rules:
 - This rule also applies to `/tests/finished?mode=search`: its username and
    free-text controls should size through the shared grid layout, not through a
    page-specific CSS minimum width.
-- **`autocomplete="off"`** on all search/filter text inputs to prevent
-  browser autofill from interfering with htmx-driven filtering.
+- **`autocomplete="off"`** on search/filter text inputs prevents browser
+  autofill from interfering with htmx-driven filtering. The `/actions`
+  username and text inputs and the `/tests/finished` search inputs do not
+  carry it.
 - **Cookie max-age** must use `UI_STATE_COOKIE_MAX_AGE_SECONDS` from
    `settings.py`, never hardcoded values. Client-side cookies must flow through
    the shared `writeUiCookie()` helper in `application.js` or through template
    `data-*` attributes consumed by that helper. This is the single max-age owner
    for non-auth UI cookies; templates should expose `cookies.ui_state_max_age`
-   or a page-specific `cookie_max_age` context instead of introducing alternate
-   aliases or literals.
+   or a page-specific `cookie_max_age` context instead of introducing
+   literals. `cookies.contributors_findme_max_age` is the one other alias.
 
 Known limitations:
 
 - Workers and user_management have zero cookie persistence for filter/sort
   state (user resets to defaults on page reload).
-- Contributors has one client-side cookie (`monthly/all-time` toggle) but no
-  filter-state cookies.
+- Contributors has one client-side cookie (`contributors_findme`, the
+  rank-jump mode) but no filter-state cookies.
 
 ## Template catalog
 
@@ -285,7 +291,7 @@ fragments; others are shared partials included by page or fragment templates.
 | Template | Kind | Primary use |
 |----------|------|-------------|
 | `actions_content_fragment.html.j2` | htmx content fragment | Swaps `#actions-content` |
-| `active_run_filters_fragment.html.j2` | htmx controls fragment | Swaps `#active-run-filters` |
+| `active_run_filters_fragment.html.j2` | shared controls partial | Included by `run_table.html.j2` through `filters_template` for the Active panel |
 | `contributors_content_fragment.html.j2` | htmx content fragment | Swaps `#contributors-content`; includes hidden-input OOB sync |
 | `contributors_rows_fragment.html.j2` | shared row partial | Included by `contributors_content_fragment.html.j2` |
 | `tests_run_tables_fragment.html.j2` | OOB poll fragment | Shared run-table OOB payload for `/tests?live=run_tables` and `/tests/user/{username}?live=run_tables` |
@@ -299,7 +305,7 @@ fragments; others are shared partials included by page or fragment templates.
 | `pending_users_nav_fragment.html.j2` | shared nav anchor fragment | Included server-side in `base.html.j2` and returned by `/user_management/pending_count` to refresh `#pending-users-nav` |
 | `poll_stop_fragment.html.j2` | shared OOB partial | Renders `<div id="{poller_id}" hx-swap-oob="delete">`; included by a terminal poll response to remove its driver element and stop the poll |
 | `run_table.html.j2` | shared table partial | Renders one run table shell and includes row markup |
-| `run_table_row_fragment.html.j2` | row fragment | Renders `<tr>` rows; can be swapped into `#run-{id}` |
+| `run_table_row_fragment.html.j2` | row fragment | Renders `<tr>` rows; included by `run_table.html.j2`, and by `tests_run_tables_fragment.html.j2` inside the `<template id="<panel>-tbody" hx-swap-oob="innerHTML">` wrappers |
 | `run_tables.html.j2` | shared table-group partial | Composes pending, active, and finished run tables |
 | `tasks_content_fragment.html.j2` | htmx content fragment | Swaps `#tasks-content` and updates controls/pagination OOB |
 | `tasks_controls_fragment.html.j2` | shared controls partial | Included by `tests_view.html.j2` and reused in OOB updates |
@@ -374,7 +380,7 @@ render page-head tags.
 |-----|------|-------------|
 | `is_monthly` | bool | Monthly vs all-time view |
 | `is_approver` | bool | Current user is approver |
-| `summary` | dict | `{testers, developers, active_testers, cpu_years, games, tests}` |
+| `summary` | dict | `{testers, developers, active_testers, cpu_hours, games, tests}`; the template derives the CPU years |
 | `users` | list of dicts | Contributor rows (current page) |
 | `pages` | list | Pagination items |
 | `search` | string | Active search query |
@@ -386,9 +392,9 @@ render page-head tags.
 | `num_users` | int | Total filtered row count before paging/cap |
 | `max_all` | int | Hard cap used for `view=all` |
 
-Each contributor row: `username`, `user_url`, `rank`, `percentile`, `cpu_pct`,
-`last_updated_label`, `last_updated_sort`, `games_per_hour`, `cpu_hours`,
-`games`, `tests`, `tests_repo_url`, `tests_user_url`.
+Each contributor row: `username`, `user_url`, `rank`, `last_updated_label`,
+`last_updated_sort`, `games_per_hour`, `cpu_hours`, `games`, `tests`,
+`tests_repo_url`, `tests_user_url`.
 
 ### `elo_results.html.j2`
 
@@ -396,10 +402,9 @@ Included as a partial within run display templates.
 
 | Key | Type | Description |
 |-----|------|-------------|
-| `elo` | dict | ELO display context |
-
-The `elo` dict contains: `info_lines`, `pre_attrs`, `show_gauge`, `chart_div_id`,
-`nelo_summary_html`, `live_elo_url`, `is_sprt`.
+| `run` | dict | The run whose results are shown |
+| `show_gauge` | bool, optional | Render the live ELO gauge; default `false` |
+| `results_info` | dict, optional | Formatted results; default `format_results(run)` |
 
 ### `login.html.j2`
 
@@ -475,9 +480,9 @@ Behavior notes:
 - `nns_content_fragment.html.j2` pairs a hidden `master_only=0` field with the
    checkbox `value="1"` and `data-ui-cookie-*` attributes, so unchecked htmx
    requests and cookie persistence stay synchronized without inline JS.
-- The page shell owns the heading and filter form; the summary cards,
-  explanatory copy, view toggle, pagination, and table live in the content
-  fragment.
+- The page shell owns the heading; the summary cards, explanatory copy,
+  filter form (`#search_nn`), view toggle, pagination, and table live in the
+  content fragment.
 
 ### `notfound.html.j2`
 
@@ -495,7 +500,10 @@ Reusable partial included by other templates.
 
 ### `rate_limits.html.j2`
 
-Shared base context only.
+| Key | Type | Description |
+|-----|------|-------------|
+| `server_rate_limit` | int | The server's remaining GitHub API calls, first paint |
+| `server_reset` | string | When the GitHub rate limit resets, first paint |
 
 ### `run_table.html.j2`
 
@@ -597,7 +605,7 @@ the `tasks` list. No standalone context requirements beyond `tasks`,
 | `page_idx` | int |
 | `cores` | int |
 | `nps_m` | string |
-| `games_per_minute` | string |
+| `games_per_minute` | int |
 | `pending_hours` | string |
 | `machines_shown` | bool |
 | `machines_count` | int |
@@ -618,8 +626,13 @@ Behavior notes:
 
 | Key | Type |
 |-----|------|
-| `filters` | dict (`ltc_only`, `success_only`, `yellow_only`) |
-| `title_suffix` | string |
+| `filters` | dict (`ltc_only`, `success_only`, `yellow_only`, `username_query`, `text`, `max_count`, `mode`, the `*_query_string` keys, `filtered_query_suffix`) |
+| `title` | string (the title suffix, e.g. ` - Greens`) |
+| `title_text` | string |
+| `search_mode` | bool |
+| `page_idx` | int |
+| `finished_page_size` | int |
+| `show_gauge` | bool |
 | `finished_runs` | list of run rows |
 | `visible_finished_runs` | int |
 | `num_finished_runs` | int |
@@ -922,7 +935,7 @@ Tests repository contract:
 | `q` | string |
 | `view` | string |
 | `pages` | list |
-| `users` | list of user row dicts |
+| `selected_users` | list of user row dicts |
 | `num_selected_users` | int |
 | `max_all` | int |
 | `is_truncated` | bool |
@@ -972,15 +985,14 @@ Same context as `actions.html.j2` (`actions`, `visible_actions`, `num_actions`, 
 
 | Key | Type |
 |-----|------|
-| `active_runs` | list (run dicts for the Active panel) |
 | `active_run_filters` | dict or `None` (parsed cookie state) |
 | `cookies.ui_state_max_age` | int (cookie max-age seconds) |
 
 Renders the faceted filter panel (SPRT/SPSA/NumGames, STC/LTC, ST/SMP)
-above the Active runs table. Server-side rendering of initial checkbox
-state eliminates the flash where all rows are briefly visible before JS
-reapplies the persisted filter. The template only renders when
-`active_runs` is non-empty.
+above the Active runs table, wherever `run_table.html.j2` includes it: the
+Active panel on page 1 of a run list without a username. Server-side
+rendering of initial checkbox state eliminates the flash where all rows are
+briefly visible before JS reapplies the persisted filter.
 
 ### `contributors_content_fragment.html.j2`
 
@@ -1005,10 +1017,12 @@ submissions preserve the live table state.
 
 | Key | Type | Description |
 |-----|------|-------------|
-| `panels` | list of dicts | Each: `tbody_id`, `rows`, `show_delete` |
+| `panels` | list of dicts | Each: `tbody_id`, `rows`, `show_delete`, `empty_text` |
 | `count_updates` | list of dicts | Each: `id`, `text` (OOB count spans) |
-| `machines` | list of dicts | Machine rows (OOB `#workers-count`) |
+| `machines_count` | int or absent | Worker count (OOB `#workers-count`) |
+| `workers_count_text` | string or absent | The workers-counter text for `#workers-count` |
 | `stats` | dict or absent | Homepage stats (OOB, omitted when filtered by user) |
+| `stop_polling` | bool or absent | Remove `#run-tables-poller` and stop the poll |
 
 Behavior notes:
 
@@ -1027,9 +1041,9 @@ Shared OOB partial included by `tests_view_detail_fragment.html.j2`.
 | Key | Type |
 |-----|------|
 | `run` | dict |
-| `elo` | dict (same as `elo_results.html.j2`) |
-| `_status` | string (OOB `#run-status-{id}`) |
-| `tasks_totals` | string (OOB `#tasks-totals`) |
+| `run_status_label` | string, optional (OOB `#run-status-{id}`; computed from the run when absent) |
+| `tasks_totals` | string, optional (OOB `#tasks-totals`) |
+| `show_gauge`, `results_info` | optional, as for `elo_results.html.j2` |
 
 ### `homepage_stats_fragment.html.j2`
 
@@ -1037,7 +1051,7 @@ Shared OOB partial included by `tests_view_detail_fragment.html.j2`.
 |-----|------|
 | `cores` | int |
 | `nps_m` | string |
-| `games_per_minute` | string |
+| `games_per_minute` | int |
 | `pending_hours` | string |
 
 ### `live_elo_fragment.html.j2`
@@ -1130,8 +1144,9 @@ does not need a dedicated Jinja template.
 
 The pending-users sidebar wrapper, the `/rate_limits/server` poller, and the
 client-side GitHub rate-limit refresh all use `visibilitychange` activation, so
-an active page refreshes after a hidden tab becomes visible again without
-issuing duplicate calls on first page load.
+an active page refreshes after a hidden tab becomes visible again. The
+pending-users wrapper and the `/rate_limits/server` poller also fire on
+`load`, so each fetches once on page load beside its server-rendered value.
 
 The GitHub sidebar link also restores the last known client warning state from
 local storage before first paint so page navigation does not briefly flash the
@@ -1165,8 +1180,10 @@ Context keys: `tasks`, `show_pentanomial`, `show_residual`.
 
 ### `tests_filter_tabs_fragment.html.j2`
 
-Reusable partial included by `tests_finished.html.j2` and
-`tests_user.html.j2` for filter tab buttons (All / Green / Yellow / LTC).
+Reusable partial included by `tests_finished_content_fragment.html.j2`,
+`tests_finished_results_fragment.html.j2` and
+`tests_user_content_fragment.html.j2` for filter tab buttons (All / Green /
+Yellow / LTC).
 
 | Key | Type | Description |
 |-----|------|-------------|
@@ -1174,8 +1191,9 @@ Reusable partial included by `tests_finished.html.j2` and
 | `hx_target` | string | Target element ID for `hx-target` |
 | `base_url` | string | Base URL for filter links (default `/tests/finished`) |
 
-When present, `filters.all_query_string` and `filters.filtered_query_suffix`
-preserve additional GET state such as username search fields while the user
+When present, `filters.all_query_string`, `filters.green_query_string`,
+`filters.yellow_query_string`, `filters.ltc_query_string` and
+`filters.filtered_query_suffix` preserve additional GET state such as username search fields while the user
 switches between the tab filters.
 
 ### `tests_finished_content_fragment.html.j2`
@@ -1189,10 +1207,11 @@ switches between the tab filters.
 | `finished_runs_pages` | list |
 
 This full-page include owns the tab strip and the search-first
-`/tests/finished` GET form. Username substring uses a cached finished-run
-username list and the exact-username finished-run path, while the `text` field
-performs a case-insensitive MongoDB text search against the last-column run
-info text on finished rows only. The form preserves the effective `max_count`
+`/tests/finished` GET form. Username substring uses the cached list of
+usernames in the users collection (`userdb.get_usernames()`, cached 30 s) and
+the exact-username finished-run path, while the `text` field searches the run
+info of finished rows (see the finished tests parameters in
+[UI routes](ui-reference.md#finished-tests-testsfinished-query-parameters)). The form preserves the effective `max_count`
 cap so tab switches and pagination stay on the same server-authoritative
 finished-tests query contract.
 
@@ -1295,8 +1314,9 @@ table state without introducing page-specific synchronization JavaScript.
 5. **Macros**: use Jinja2 macros for repeated patterns (pagination, run
    tables).
 
-6. **Request object**: not used directly in templates except via `url_for`
-   and `static_url` helpers.
+6. **Request object**: templates read `request.url` and `request.url.path`
+   for the current address (form actions, query links); nothing else on the
+   request.
 
 7. **Escaping boundary**: view handlers pass raw strings. Jinja2 autoescape
    handles HTML-escaping at render time. Do not pre-escape values into plain
@@ -1358,9 +1378,8 @@ table state without introducing page-specific synchronization JavaScript.
 
 17. **Polling trigger policy**: every periodic htmx poller must include
     three trigger components: (a) a periodic trigger gated on
-    `document.visibilityState === 'visible'`, written `every[<condition>] Ns`
-    because htmx reads the filter off the leading token only and silently
-    ignores `every Ns [<condition>]`, (b) an immediate
+    `document.visibilityState === 'visible'`, written `every[<condition>] Ns`,
+    the one spelling the templates use, (b) an immediate
     `visibilitychange[...] from:document` refresh, and (c) for
     section-scoped pollers, a gate on the section's expanded state.
     See [Architecture](architecture.md) for the full policy.
@@ -1372,7 +1391,7 @@ table state without introducing page-specific synchronization JavaScript.
 1. Create `templates/mypage.html.j2` extending `base.html.j2`:
    ```jinja
    {% extends "base.html.j2" %}
-   {% block content %}
+   {% block body %}
    ...
    {% endblock %}
    ```

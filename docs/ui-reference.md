@@ -8,8 +8,10 @@ registration model**: `_VIEW_ROUTES` is a list of route descriptors, and
 cross-cutting concerns for every UI request.
 
 `views.py` is intentionally organized into stable top-level sections:
-authentication, list pages, neural networks, users, contributors, homepage and
-run lists, run mutation, run detail, and router registration.
+authentication (with the htmx helpers), home redirect, login and signup, lists,
+workers, neural networks, users, contributors, homepage and run lists, run
+mutation, run creation, run administration, run detail, and router
+registration.
 
 ## Route table
 
@@ -62,7 +64,7 @@ but generic `OPTIONS` is not part of the UI route contract and returns `405`.
 | `/tests/tasks/{id}` | GET | `tests_tasks` | `tasks_content_fragment.html.j2` | Fragment-only; updates the scrolling task table body and refreshes fixed controls/pagination OOB, with server-side sorting for every visible task column, one combined worker/info search filter, and 25-row pagination |
 | `/tests/machines` | GET | `tests_machines` | `machines_fragment.html.j2` | Fragment-only, 10s cache |
 | `/tests/live_elo_update/{id}` | GET | `live_elo_update` | `live_elo_fragment.html.j2` | Fragment-only (OOB) |
-| `/tests/finished` | GET | `tests_finished` | `tests_finished.html.j2` | HX: `tests_finished_content_fragment` |
+| `/tests/finished` | GET | `tests_finished` | `tests_finished.html.j2` | HX: `tests_finished_results_fragment` |
 | `/tests/user/{username}` | GET | `tests_user` | `tests_user.html.j2` | HX: `tests_user_content_fragment`; page 1 live run tables poll the same route via `?live=run_tables` |
 | `/actions` | GET | `actions` | `actions.html.j2` | Full page plus htmx content fragment; full-page responses render route-specific Open Graph metadata that preserves the current query string in `og:url` and summarizes the first visible action row |
 | `/contributors` | GET | `contributors` | `contributors.html.j2` | HX: `contributors_content_fragment`; paginated (100/page) |
@@ -136,6 +138,7 @@ The full detail page uses a visibility-aware htmx poller with:
 
 The response updates these regions out of band:
 
+- `#tests-view-detail-expected`, the hidden input the next poll sends back
 - `#elo-<run_id>`
 - `#run-status-<run_id>`
 - `#tasks-totals`
@@ -191,7 +194,8 @@ details table in sync through `/tests/live_elo_update/{id}` OOB swaps.
 
 The Elo gauge supports two display modes:
 
-- Fixed mode (default): fixed gauge range `[-4, +4]` for visual consistency.
+- Fixed mode (default without a saved choice): fixed gauge range `[-4, +4]`
+   for visual consistency.
 - Dynamic mode: auto range chosen from the smallest symmetric power-of-two
    interval that covers the current Elo value and confidence interval.
 
@@ -199,6 +203,7 @@ Switching modes:
 
 - Clicking the Elo gauge toggles between fixed and dynamic mode.
 - Keyboard activation on the Elo gauge (`Enter` or `Space`) also toggles modes.
+- The chosen mode is saved in the `live_elo_mode` cookie.
 
 Value display rule:
 
@@ -210,8 +215,8 @@ Value display rule:
 The raw statistics page is dual-mode:
 
 - Full-page navigation renders `tests_stats.html.j2`.
-- `HX-Request: true` with `HX-Request-Type: partial` renders
-  `tests_stats_content_fragment.html.j2`.
+- A fragment request (see [Detection](#detection-_is_hx_requestrequest))
+  renders `tests_stats_content_fragment.html.j2`.
 
 The page shell keeps a visibility-aware poller for unfinished non-SPSA runs:
 
@@ -245,10 +250,10 @@ of the following, case-insensitively:
 
 1. `HX-History-Restore-Request: true` -- a back navigation. htmx 4 keeps no
    page snapshots, so it refetches the pushed URL and swaps the response into
-   `<body>`. This is the *only* header such a request carries:
-   `htmx.ajax()` overwrites the request object the restore was built with, so
-   `HX-Request`, `HX-Request-Type`, `HX-Source` and `Accept` are all dropped.
-   A restore therefore has to be rejected by this header alone.
+   `<body>`. The restore passes its own request object, which replaces the
+   core headers: the request carries `HX-History-Restore-Request: true` and
+   `HX-Request-Type: full`, and no `HX-Request`, `HX-Source` or `Accept`. The
+   missing `HX-Request` already rejects it; this check names the case.
 2. `HX-Request-Type: full` -- a swap scoped to the whole document, which is
    what a boosted navigation asks for.
 3. `Sec-Fetch-Mode: navigate` -- a real top-level navigation. htmx never issues
@@ -313,16 +318,21 @@ following steps in order:
    is not primary, returns a 503 HTML response.
 6. **Handler execution** -- `await run_in_threadpool(fn, shim)` runs the
    sync handler body in the threadpool.
-7. **Redirect handling** -- if the handler returns a `RedirectResponse`, it is
-   returned directly (with session commit).
-8. **Template rendering** -- if `renderer` is set and the handler returns a
-   dict, `render_template_to_response()` renders the Jinja2 template.
+7. **Response passthrough** -- if the handler returns a `Response` (a
+   redirect, an htmx fragment, an `HTMLResponse`), it is returned as is,
+   with the session commit, the HTTP cache headers, and on GET the `Vary`
+   tokens and a default `Cache-Control: no-cache, private`.
+8. **Template rendering** -- a `response_status` of 204 returns an empty 204;
+   otherwise, if `renderer` is set, `render_template_to_response()` renders the
+   Jinja2 template with the handler's dict, and a route without a renderer
+   returns an empty 204.
 9. **Session commit** -- `commit_session_response()` applies remember/forget
    flags to the cookie.
 10. **HTTP cache headers** -- `apply_http_cache()` sets `Cache-Control` if
     configured.
 11. **Vary header** -- one token per header the fragment decision reads is
-    appended to every GET response (see htmx fragment dispatch above).
+    appended to every GET response (see htmx fragment dispatch above), with a
+    default `Cache-Control: no-cache, private`.
 12. **Response headers** -- custom headers from the handler are propagated.
 
 ## Session handling
@@ -361,6 +371,7 @@ Cookie ownership is split intentionally:
 | `csrf_token` | string | CSRF token (generated on first access) |
 | `flashes` | dict | Flash message queues (`error`, `warning`, default) |
 | `created_at` | string | ISO timestamp of session creation |
+| `remember_max_age` | int | Cookie max-age in seconds after a "remember me" login |
 
 ### Per-request overrides
 
@@ -386,10 +397,12 @@ The UI uses two cookie families with different ownership and lifecycles:
 
 1. `FishtestSessionMiddleware` reads `fishtest_session` at request start and
     decodes the signed JSON payload into `scope["session"]`.
-2. `load_session()` wraps that dict in `CookieSession`, which lazily creates
-    `created_at` and the CSRF token on first access.
-3. Rendering most full-page templates touches `session.get_csrf_token()`, so a
-    previously empty session becomes dirty during the response.
+2. `load_session()` wraps that dict in `CookieSession` and sets `created_at`
+    when it is missing; the CSRF token is created on first access.
+3. `build_template_context()` calls `session.get_csrf_token()` on every render,
+    pages and fragments alike. The middleware emits `Set-Cookie` whenever the
+    session dict is non-empty, so every `_dispatch_view` response sets the
+    session cookie.
 4. On login, `remember()` writes `session["user"]` and optionally stores a
     persistent max-age marker for "remember me" behavior.
 5. On logout, `forget()` clears the session and marks the response to emit an
@@ -431,6 +444,17 @@ carry authentication state:
    (test type, time control, and threads).
 - `active_run_filters_panel` is written by `static/js/active_run_filters.js`
    and preserves whether the expandable Active runs filter controls are shown.
+- `<prefix>pending_state`, `<prefix>paused_state`, `<prefix>failed_state`,
+   `<prefix>active_state` and `<prefix>finished_state` are written by the
+   toggle handler in `static/js/application.js` and preserve which run-table
+   panels are collapsed.
+- `live_elo_mode` is written by `static/js/live_elo.js` and preserves the Elo
+   gauge mode.
+- `spsa_percentage` is mirrored by the shared checkbox-cookie handler from
+   the `% c` checkbox of the SPSA section.
+- `tasks_state` preserves whether the tasks panel of the detail page is
+   collapsed; `tasks_sort`, `tasks_order`, `tasks_view` and `tasks_q` are
+   written server-side when `/tests/tasks/{id}` normalizes its controls.
 
 This split keeps auth/session semantics on the server-controlled signed cookie
 while letting low-risk UI preferences remain simple, readable browser state.
@@ -460,7 +484,8 @@ while letting low-risk UI preferences remain simple, readable browser state.
    the current browser session.
 7. `POST /login` also refreshes `login_remember_me` so the user's explicit
    checkbox choice survives later browser starts.
-8. Redirect to the `next` URL or the referrer.
+8. Redirect to the `next` parameter, else the `came_from` parameter, else the
+   current URL (`/` when that is the login page itself).
 
 ### Logout flow
 
@@ -478,8 +503,9 @@ while letting low-risk UI preferences remain simple, readable browser state.
 
 ## URL generation
 
-- Templates use `url_for(route_name, **params)` (Starlette built-in).
-- All routes have explicit `name=` for URL generation.
+- Templates write route paths literally and read `request.url` where they
+  need the current address; no route carries a `name=`, and no template calls
+  `url_for`.
 - `static_url(path)` maps to `/static/{path}` with a cache-busting query
   parameter (SHA-384 hash of file content).
 - Navigation URLs are provided as a `urls` dict in the base template context.
@@ -519,7 +545,9 @@ while letting low-risk UI preferences remain simple, readable browser state.
 
 3. Create the Jinja2 template in `templates/`.
 
-4. Add a contract test in `tests/test_actions_view.py` or a new test file.
+4. Add a contract test in the route family's `tests/test_views_*.py` module
+   (for example `test_views_actions.py`), and the route's methods in
+   `test_views_routes.py`.
 
 ## Homepage workers (`/tests/machines`) query parameters
 
@@ -707,7 +735,7 @@ URL-driven state for server sorting, search, paging, full view, and rank jump.
 | `order` | `asc`, `desc` | column default |
 | `page` | integer `>= 1` | `1` |
 | `view` | `paged`, `all` | `paged` |
-| `findme` | any truthy value | absent |
+| `findme` | any non-empty value (`findme=0` included) | absent |
 | `highlight` | username | empty |
 
 Behavior notes:
@@ -740,6 +768,9 @@ search and paging.
 | `network_name` | literal network name substring (case-insensitive) | empty |
 | `user` | literal uploader username substring (case-insensitive) | empty |
 | `master_only` | `1`, `true`, `on`, `yes` | absent/false |
+| `sort` | `time`, `name`, `user`, `first_test`, `last_test`, `downloads` | `time` |
+| `order` | `asc`, `desc` | `desc` |
+| `view` | `paged`, `all` | `paged` |
 | `page` | integer `>= 1` | `1` |
 
 Behavior notes:
@@ -791,9 +822,9 @@ Behavior notes:
 - Sorting is server-authoritative. The default `time desc` path stays on the
    indexed fast query; explicit alternate sorts materialize and sort the
    capped working set server-side.
-- Anonymous requests are capped at `5000` actions. Unfiltered authenticated
-   requests default to `50000`; explicit `max_count` values are preserved in
-   the URL and hidden form state.
+- Anonymous requests are capped at `5000` actions. Authenticated requests
+   without an explicit `max_count` default to `50000`; explicit `max_count`
+   values are preserved in the URL and hidden form state.
 - htmx requests target `#actions-content` and keep URL state via
    `hx-push-url="true"`.
 - The visible filters auto-submit on select change and search/input events.
@@ -838,7 +869,8 @@ pagination, and htmx fragment refresh on the canonical `/tests/finished` route.
 | `sort` | `time` | `time` |
 | `order` | `desc` | `desc` |
 | `user` | case-insensitive username substring | empty |
-| `text` | MongoDB text-search query for run info | empty |
+| `text` | text search on the run info; `info_regex` is read as an alias | empty |
+| `mode` | `search` for the search form, which ignores the three filters above | absent |
 | `max_count` | positive integer, capped by auth state | route policy |
 | `page` | integer `>= 1` | `1` |
 
@@ -866,10 +898,12 @@ Behavior notes:
 - Finished rows without a usable `last_updated` value sort after timestamped
   rows in the merged recent-first result, and equal fallback rows stay stable
   by run id.
-- `text` performs a case-insensitive MongoDB `$text` query against the last-column
-   run info text on finished runs only.
-- `/actions`, `/tests/finished`, and `/tests/user/{username}` share the
-   same `max_count` query parameter for result caps.
+- `text` alone runs a MongoDB `$text` query against the run info of finished
+   runs. With a `user` filter it runs a case-insensitive `$regex` on
+   `args.info` instead, so the username index serves the query.
+- `/actions` and `/tests/finished` share the same `max_count` query parameter
+   for result caps. `/tests/user/{username}` applies no cap: it carries no
+   filter, so a `max_count` there is stripped by redirect.
 - Anonymous search requests use the anonymous finished-run search cap.
    Authenticated search requests use the authenticated finished-run default.
    Explicit `max_count` values are preserved in the URL and hidden form state.

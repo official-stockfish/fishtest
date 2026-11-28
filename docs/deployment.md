@@ -5,9 +5,19 @@
 | Component | Minimum version | Purpose |
 |-----------|-----------------|---------|
 | Python | >= 3.15 | Runtime |
-| MongoDB | mongod service | Data store |
-| nginx | -- | Reverse proxy, TLS, static files |
+| MongoDB | mongod service | Data store, on `localhost`, database `fishtest_new` |
+| nginx | >= 1.25.1 (`http2 on`) | Reverse proxy, TLS, static files |
 | uv | -- | Python package manager |
+
+The server creates no MongoDB index. Run `server/utils/create_indexes.py`
+once on a new database, and again when it changes.
+
+Two directories under `/var/www/fishtest` are shared with nginx:
+
+| Path | Content |
+|------|---------|
+| `/var/www/fishtest/nn` | Uploaded networks, written by the server as `<name>.gz`; writable by the service user |
+| `/var/www/fishtest/static` | The static files nginx serves; a copy of `server/fishtest/static`, since the server derives the asset cache-busting tokens from the package copy |
 
 ## Environment variables
 
@@ -15,16 +25,21 @@
 |----------|----------|---------|-------------|
 | `FISHTEST_PORT` | Yes | `-1` | Port for this instance |
 | `FISHTEST_PRIMARY_PORT` | Yes | `-1` | Fixed primary port (typically 8000) |
-| `FISHTEST_URL` | Dev: No; Prod: Yes | -- | Public URL (e.g., `https://tests.stockfishchess.org`); may be empty in development for dynamic host/IP |
+| `FISHTEST_URL` | No | the first request's origin | Public URL (e.g., `https://tests.stockfishchess.org`) the server writes into run links in its log |
 | `FISHTEST_NN_URL` | No | (unset => request host; empty => same-host) | Base URL workers use to download neural networks (see below) |
 | `FISHTEST_AUTHENTICATION_SECRET` | Yes | -- | Cookie signing secret (itsdangerous) |
-| `FISHTEST_CAPTCHA_SECRET` | No | -- | reCAPTCHA secret key for signup |
+| `FISHTEST_CAPTCHA_SECRET` | For signup | -- | reCAPTCHA secret key; without it every signup fails |
 | `FISHTEST_CAPTCHA_SITE_KEY` | No | built-in | reCAPTCHA site key for signup |
-| `FISHTEST_INSECURE_DEV` | No | -- | Set to `1` for development mode (insecure secret) |
+| `FISHTEST_INSECURE_DEV` | No | -- | `1`, `true`, `yes` or `on` for development mode (insecure secret) |
 | `FISHTEST_JINJA_TEMPLATES_DIR` | No | auto | Override Jinja2 templates directory |
+| `FISHTEST_STATIC_DIR` | No | the package's `static/` | Override the directory mounted at `/static` |
+| `GH_TOKEN` | No | -- | GitHub token sent with the server's GitHub API calls, for a higher rate limit |
 | `OPENAPI_URL` | No | (empty) | Set to `/openapi.json` to enable `/docs` and `/redoc` (development-only) |
-| `UVICORN_WORKERS` | No | -- | Must be `1` on primary (enforced at startup) |
-| `WEB_CONCURRENCY` | No | -- | Fallback for `UVICORN_WORKERS` (checked if unset) |
+| `UVICORN_WORKERS` | No | -- | On the primary, an integer other than `1` stops the server at startup |
+| `WEB_CONCURRENCY` | No | -- | Read in place of `UVICORN_WORKERS` when that is unset |
+
+The startup check reads these variables, not Uvicorn's `--workers` argument,
+so the systemd unit passes `--workers $UVICORN_WORKERS`.
 
 **Session invalidation**: deploying a new `FISHTEST_AUTHENTICATION_SECRET`
 invalidates all existing sessions. Users must re-authenticate once.
@@ -32,25 +47,30 @@ invalidates all existing sessions. Users must re-authenticate once.
 ### Primary instance detection
 
 If `FISHTEST_PORT == FISHTEST_PRIMARY_PORT`, the instance is primary. If
-either value is unset or negative, the instance defaults to primary for
-backward compatibility.
+either value is unset, not an integer, or negative, the instance is primary
+too.
 
 ## Primary / secondary instance model
 
 | Instance | Port | Responsibilities |
 |----------|------|------------------|
-| Primary | 8000 | Scheduler, GitHub integration, aggregated data, cache flush, worker API |
-| Secondary | 8001 | UI traffic (`/tests` homepage) |
-| Secondary | 8002 | Read-only API, finished tests, contributors, static pages |
+| Primary | 8000 | Scheduler, GitHub master SHA refresh, aggregated data, cache flush; the worker API except PGN uploads; the run actions (`/tests/run`, `modify`, `stop`, `approve`, `purge`, `delete`); every other `/api/` and `/tests/` path |
+| Secondary | 8001 | The `/tests` homepage and every path no other backend takes |
+| Secondary | 8002 | `/api/actions`, `/api/active_runs`, `/api/calc_elo`; the `/api/nn/`, `/api/pgn/` and `/api/run_pgns/` downloads; `/tests/finished`, `/tests/machines`, `/tests/user`; `/contributors` |
 | Secondary | 8003 | PGN uploads (`/api/upload_pgn`) -- 3 Uvicorn workers (production override) |
 
-Four systemd units (ports 8000-8003), six OS processes total. The primary
+A secondary answers the worker API except `/api/upload_pgn`, and the run
+actions, with HTTP 503.
+
+Four systemd units (ports 8000-8003), seven OS processes: one each on 8000,
+8001 and 8002, and on 8003 the Uvicorn supervisor and its three workers. The primary
 (8000) must be a single process (`UVICORN_WORKERS=1`) because it holds
 in-process mutable state (run cache, scheduler, task locks). As a
 single-core async process, the primary saturates at roughly 15,000
 concurrent workers -- this is the practical scaling ceiling. Port 8003
-runs 3 Uvicorn workers via a systemd drop-in override (see below); Uvicorn's
-internal process manager distributes PGN upload requests across the workers.
+runs 3 Uvicorn workers via a systemd drop-in override (see below); the
+workers share one listening socket, and the kernel hands each connection to
+the worker that accepts it.
 The extra workers absorb the long-tail latency of large PGN writes
 (p95 approx 30 s at peak load).
 
@@ -184,9 +204,9 @@ enter exponential backoff (15 s -> 900 s), effectively removing themselves
 from the active pool. Under Uvicorn's ASGI async model, connection
 acceptance is handled by the event loop and costs negligible resources per
 idle connection. Application-level throttling
-(`task_semaphore(TASK_SEMAPHORE_SIZE)` + `request_task_lock` in `rundb.py`)
-governs the critical scheduling path. Both constants live in
-`http/settings.py`; see [Threading model](threading-model.md)
+(`task_semaphore` and `request_task_lock` in `rundb.py`) governs the critical
+scheduling path. Their sizes, `THREADPOOL_TOKENS` and `TASK_SEMAPHORE_SIZE`,
+live in `http/settings.py`; see [Threading model](threading-model.md)
 for the full analysis. There is no need for an HTTP-layer concurrency cap.
 
 **OpenAPI docs** (`/docs`, `/redoc`, `/openapi.json`) are disabled in
@@ -195,7 +215,7 @@ in the environment to re-enable during development.
 
 ## nginx configuration
 
-The nginx setup uses two configuration files:
+The nginx setup uses three configuration files:
 
 1. **`/etc/nginx/conf.d/default.conf`** -- catch-all server that handles
    HTTP->HTTPS redirects and rejects TLS handshakes for unrecognized
@@ -204,6 +224,13 @@ The nginx setup uses two configuration files:
 
 2. **`/etc/nginx/sites-available/fishtest.conf`** -- the named fishtest
    vhost with upstream routing, static file serving, and reverse proxy.
+
+3. **`/etc/nginx/conf.d/cidr.conf`** -- the `geo $region` block that maps a
+   client address to its country code, which the vhost forwards as
+   `X-Country-Code`. Generate it from the ipverse country blocks with
+   `server/utils/nginx_cidr_builder.py -o /etc/nginx/conf.d/cidr.conf`.
+   Without it `nginx -t` fails on the unknown `$region` variable. The server
+   shows a missing code or `ZZ` as `?`.
 
 ### Default server configuration
 
