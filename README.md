@@ -18,3 +18,5 @@ The fishtest server:
 - Knows how to stop tests when they are statistically significant and publishes the final tests results.
 
 To get more information, such as the worker/server install and configuration instructions, visit the [Fishtest Wiki](https://github.com/official-stockfish/fishtest/wiki).
+
+The developer documentation is at https://official-stockfish.github.io/fishtest/, with [llms.txt](https://official-stockfish.github.io/fishtest/llms.txt) and [llms-full.txt](https://official-stockfish.github.io/fishtest/llms-full.txt) for LLM tools.

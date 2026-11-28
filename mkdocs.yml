@@ -1,0 +1,125 @@
+site_name: Fishtest
+site_description: The distributed testing framework of the Stockfish chess engine.
+# The address the absolute links (llms.txt, the sitemap, canonical URLs) are
+# built on; the docs workflow sets DOCS_SITE_URL to the Pages address of the
+# repository that publishes.
+site_url: !ENV [DOCS_SITE_URL, 'https://official-stockfish.github.io/fishtest/']
+repo_url: https://github.com/official-stockfish/fishtest
+repo_name: official-stockfish/fishtest
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - navigation.footer
+    - content.code.copy
+    - toc.follow
+    - search.suggest
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+nav:
+  - Home: index.md
+  - Guides:
+      - Development: development.md
+      - Deployment: deployment.md
+  - Explanation:
+      - Architecture: architecture.md
+      - Threading model: threading-model.md
+      - Worker: worker.md
+  - Reference:
+      - Worker API: api-reference.md
+      - UI routes: ui-reference.md
+      - Templates: templates.md
+      - External references: references.md
+
+# Every check the builder makes on a link and on the nav, raised to a warning so
+# that --strict fails the build on it: a page or an anchor a link names that
+# does not exist, a page under docs/ that no nav entry lists, and a link the
+# builder cannot read as one to a page.
+validation:
+  nav:
+    omitted_files: warn
+    not_found: warn
+    absolute_links: warn
+  links:
+    not_found: warn
+    anchors: warn
+    absolute_links: warn
+    unrecognized_links: warn
+
+markdown_extensions:
+  - admonition
+  # A diagram is a `mermaid` block: the theme loads Mermaid on a page holding
+  # one and draws it in the site's palette, and GitHub draws the same block.
+  # The formatter is named by a Python tag, which is why the check-yaml hook
+  # parses this file with --unsafe.
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+  # A numbered page address, such as 1-architecture.md, redirects to the page
+  # that holds its content.
+  - redirects:
+      redirect_maps:
+        0-README.md: index.md
+        1-architecture.md: architecture.md
+        2-threading-model.md: threading-model.md
+        3-api-reference.md: api-reference.md
+        4-ui-reference.md: ui-reference.md
+        5-templates.md: templates.md
+        6-worker.md: worker.md
+        7-development.md: development.md
+        8-deployment.md: deployment.md
+        9-references.md: references.md
+  # A machine-readable view of the site: /llms.txt, a manifest mirroring the
+  # nav, and /llms-full.txt, the full text of every page.
+  - llmstxt:
+      markdown_description: >-
+        Fishtest is the distributed testing framework of the Stockfish chess
+        engine. Developers submit patches as test runs; volunteer workers build
+        both engines, play games with fastchess and report the results; the
+        server schedules tasks, computes SPRT and Elo statistics, and stops a
+        test once it is statistically decided. The server is a FastAPI and
+        Starlette application with Jinja2 templates and htmx, backed by
+        MongoDB.
+      full_output: llms-full.txt
+      sections:
+        Home:
+          - index.md: What fishtest is, the technology stack, the project layout, and the map of these pages.
+        Guides:
+          - development.md: Set up a development server, run the checks and tests, and follow the validation rules.
+          - deployment.md: Run the production server with systemd and nginx, tune the host, and audit its capacity.
+        Explanation:
+          - architecture.md: The server's modules, request flow, startup and shutdown, and the htmx UI model.
+          - threading-model.md: The async and sync boundaries, the threadpool, and the rules for new code.
+          - worker.md: The worker's architecture, task lifecycle, and use of the server API.
+        Reference:
+          - api-reference.md: The worker API endpoints, the protocol invariants, and the error shapes.
+          - ui-reference.md: The UI routes, the view dispatch pipeline, htmx fragment dispatch, and session, CSRF and auth.
+          - templates.md: The Jinja2 environment, the page and fragment template catalog, and each template's context contract.
+          - references.md: The FastAPI, Starlette, Jinja2, htmx, Python, MongoDB and tooling references the code relies on.
