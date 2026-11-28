@@ -293,7 +293,13 @@ into `nav`, and into the `llmstxt` sections that generate `/llms.txt` and
 `/llms-full.txt`. A link to a file outside `docs/` uses its full GitHub URL,
 since the site serves only the pages.
 
-A fork previews the site on its own GitHub Pages: set Pages to deploy from
-GitHub Actions, allow the branch in the `github-pages` environment, and name it
-in the `DOCS_PAGES_BRANCH` repository variable. A push to that branch
-publishes the site there.
+A push to `master` publishes the site to the GitHub Pages of the upstream
+repository. A fork previews the site on its own GitHub Pages: allow the branch
+in the `github-pages` environment and name it in the `DOCS_PAGES_BRANCH`
+repository variable. A push to that branch publishes the site there.
+
+The publishing repository sets Settings -> Pages -> Build and deployment ->
+Source to "GitHub Actions". The "Deploy from a branch" source runs a Jekyll
+build of the whole repository on every push, which publishes to the same site
+and stops on the Jinja tags the pages quote. While that source is set, a push
+to the publishing branch fails the docs check.
