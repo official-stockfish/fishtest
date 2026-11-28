@@ -391,6 +391,15 @@ class PaginationTests(unittest.TestCase):
         self.assertEqual(len(active_pages), 1)
         self.assertEqual(active_pages[0]["idx"], 3)  # page 3 (1-based)
 
+    def test_no_ellipsis_without_hidden_pages(self):
+        # 4 or 5 pages fit without gaps; "..." must not appear on any page.
+        for num_pages in (4, 5):
+            for page_idx in range(num_pages):
+                with self.subTest(num_pages=num_pages, page_idx=page_idx):
+                    pages = pagination(page_idx, num_pages * 25, 25, "")
+                    labels = [p["idx"] for p in pages[1:-1]]
+                    self.assertEqual(labels, list(range(1, num_pages + 1)))
+
 
 class UsernameMatchSortKeyTests(unittest.TestCase):
     def test_exact_prefix(self):
