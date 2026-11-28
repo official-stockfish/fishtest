@@ -17,9 +17,10 @@ accounts, action logs, and neural network metadata are stored there.
 ```
 server/
 |-- pyproject.toml           -- Package metadata, dependencies
+|-- uv.lock                  -- Locked dependency set
 |-- fishtest/
 |   |-- app.py               -- ASGI application factory, lifespan, middleware, routers
-|   |-- api.py               -- Worker API router (20 endpoints)
+|   |-- api.py               -- API router (9 worker and 11 read-only endpoints)
 |   |-- views.py             -- UI router (33 routes, data-driven dispatch,
 |   |                          routing hub)
 |   |-- views_helpers.py     -- Pure stateless helpers extracted from views.py
@@ -31,7 +32,8 @@ server/
 |   |-- userdb.py            -- UserDb: authentication, groups, registration
 |   |-- actiondb.py          -- ActionDb: audit log
 |   |-- workerdb.py          -- WorkerDb: worker blocking
-|   |-- kvstore.py           -- KVStore: key-value metadata (legacy usernames, flags)
+|   |-- kvstore.py           -- KeyValueStore: key-value metadata (books, legacy usernames,
+|   |                          worker runs, GitHub API cache, official master SHA)
 |   |-- scheduler.py         -- Periodic task scheduler (primary instance only)
 |   |-- schemas.py           -- vtjson validation schemas
 |   |-- run_cache.py         -- In-memory run cache with dirty-page flush
@@ -40,12 +42,14 @@ server/
 |   |-- spsa_handler.py      -- SPSA worker orchestration, request/update flow, history buffering
 |   |-- github_api.py        -- GitHub integration (commit metadata, branch resolution)
 |   |-- util.py              -- Shared utilities (formatting, validation helpers)
+|   |-- constants.py         -- Shared constants (supported compilers and architectures)
 |   |-- __init__.py          -- Minimal package init
 |   |-- http/                -- HTTP support modules
 |   |-- templates/           -- Jinja2 templates (54 files, .html.j2)
 |   |-- static/              -- Static assets (JS, CSS, images)
 |   `-- stats/               -- Statistical computation modules
-`-- tests/                   -- Focused unit and HTTP contract tests
+|-- tests/                   -- Focused unit and HTTP contract tests
+`-- utils/                   -- Operational scripts (backup, indexes, migration, nginx CIDR)
 ```
 
 `views.py` remains the stable UI routing hub. The extracted `views_*.py` modules
@@ -69,15 +73,17 @@ http/
 |-- boundary.py              -- API request adapter (ApiRequestShim), session commit,
 |                               template context builder (build_template_context)
 |-- cookie_session.py        -- CookieSession class, secret key management, session helpers
-|-- csrf.py                  -- CSRF token generation and validation
-|-- dependencies.py          -- FastAPI dependency functions (get_rundb, get_userdb, etc.)
+|-- csrf.py                  -- CSRF token validation (CookieSession generates the token)
+|-- dependencies.py          -- Request-state accessors (get_rundb, get_userdb, etc.), called directly
 |-- errors.py                -- Centralized error handler installation (API/UI routing)
 |-- jinja.py                 -- Jinja2 Environment, Jinja2Templates instance, static_url
 |-- middleware.py            -- Pure ASGI middleware (5 middleware classes)
+|-- open_graph.py            -- Open Graph metadata for shared links
 |-- session_middleware.py    -- FishtestSessionMiddleware (itsdangerous cookie signing)
 |-- settings.py              -- AppSettings (environment variable parsing)
 |-- template_helpers.py      -- Jinja2 filters and global functions
 |-- template_renderer.py     -- Template rendering helper (render_template_to_response)
+|-- ui_cookies.py            -- Browser-readable UI preference cookies
 |-- ui_errors.py             -- HTML error page rendering (404, 403)
 `-- ui_pipeline.py           -- HTTP cache header application
 ```
@@ -132,19 +138,23 @@ instead of queuing them, which triggers exponential backoff in workers
 
 ### Startup sequence
 
-1. `AppSettings.from_env()` reads environment variables (`FISHTEST_PORT`,
-   `FISHTEST_PRIMARY_PORT`).
-2. On the primary instance, `_require_single_worker_on_primary()` enforces
-   that `UVICORN_WORKERS` is 1 (prevents duplicated scheduler side effects).
-3. `RunDb(port, is_primary_instance)` is constructed in the threadpool. This
+1. `AppSettings.from_env()` reads `FISHTEST_PORT`, `FISHTEST_PRIMARY_PORT`
+   and `OPENAPI_URL`; the result is stored as `app.state.settings`.
+2. The threadpool limiter is set to `THREADPOOL_TOKENS`.
+3. On the primary instance, `_require_single_worker_on_primary()` stops the
+   startup when `UVICORN_WORKERS` (or `WEB_CONCURRENCY`) is an integer other
+   than 1 (prevents duplicated scheduler side effects).
+4. `RunDb(port, is_primary_instance)` is constructed in the threadpool. This
    connects to MongoDB and initializes all domain adapters (UserDb, ActionDb,
-   WorkerDb, KVStore).
-4. Domain adapters are stored on `app.state` for request-scoped access:
+   WorkerDb, KeyValueStore).
+5. Domain adapters are stored on `app.state` for request-scoped access:
    `app.state.rundb`, `app.state.userdb`, `app.state.actiondb`,
    `app.state.workerdb`.
-5. `schemas.legacy_usernames` is populated from KVStore.
-6. On the primary instance only:
-   - `gh.init()` initializes the GitHub API client.
+6. The SIGUSR1 thread-dump handler is installed.
+7. `schemas.legacy_usernames` is populated from the key-value store.
+8. `gh.init()` initializes the GitHub API client on every instance; only the
+   primary refreshes the official master SHA.
+9. On the primary instance only:
    - `rundb.update_aggregated_data()` refreshes cached statistics.
    - `rundb.schedule_tasks()` starts the periodic scheduler.
 
@@ -154,7 +164,7 @@ instead of queuing them, which triggers exponential backoff in workers
 2. `asyncio.sleep(0.5)` -- brief drain period.
 3. Scheduler is stopped (`rundb.scheduler.stop()`).
 4. On primary: run cache is flushed, persistent data is saved.
-5. A `system_event` action is logged.
+5. A `system_event` action is logged when the instance has a port.
 6. MongoDB connection is closed.
 
 ## Middleware stack
@@ -190,7 +200,8 @@ flowchart LR
 ```
 
 - **Worker API**: `api_router` handles all `/api/*` endpoints. Worker
-  endpoints require authentication via `username`/`password` in the POST body.
+  endpoints require authentication: `password` and `worker_info.username` in
+  the POST body.
 - **UI**: `views_router` handles all HTML-rendering endpoints. Routes are
   registered from the `_VIEW_ROUTES` table via `_register_view_routes()`.
 - **Static assets**: `StaticFiles` mount serves `/static/*`.
@@ -237,9 +248,10 @@ styles the `htmx-settling` or `htmx-added` classes.
 elements leaves an empty fragment for the main swap, and htmx skips that swap:
 `htmx.config.allowEmptySwapAfterOOB` is `false`. Emptying a swap target
 requires a response that carries empty main content. The poll drivers that
-send out-of-band fragments declare `hx-swap="none"`; `#tests-stats-poller` is
-the only poller with a swap target, and its fragment always carries main
-content.
+send only out-of-band fragments, `#run-tables-poller`, `#live-elo-poller` and
+`#tests-view-detail-poller`, declare `hx-swap="none"`. `#tests-stats-poller`
+and the pollers that swap into themselves (see Polling lifecycle) receive
+main content with every response.
 
 The `<body>` policy stops the main content swap and, through `push:false`, the
 history entry. htmx still applies out-of-band elements from the body and still
@@ -284,15 +296,17 @@ routes. Aggressive proxy/browser caching remains appropriate for immutable
 static assets only.
 
 **Server-authoritative table state.** The htmx list pages (`/nns`,
-`/contributors`, `/user_management`, `/workers/show`, `/tests/machines`) keep
+`/contributors`, `/user_management`, `/workers/show`, `/tests/machines`,
+`/actions`, `/tests/finished`) keep
 sort, search, page, and view state in the URL and render the active control
 state server-side on every response. Where the htmx target contains stateful
 controls, the swapped boundary is the full content fragment, not just table
 rows. The shared active-search debounce is projected into templates as
 `htmx.input_changed_delay_ms`.
 
-**Request coordination.** Poll-driven fragments that live inside a larger filter
-form use `hx-sync` to name the filter form as their request queue. The form
+**Request coordination.** The poll-driven panels below a filter form,
+`#machines` and `#tasks-content`, use `hx-sync` to name the form as their
+request queue. The form
 itself declares no `hx-sync`, so submitting it aborts an in-flight poll tick;
 the poll and the sort/pagination links use `abort`, which drops a request while
 another is in flight on that queue rather than pre-empting it.
@@ -302,7 +316,8 @@ htmx applies an ancestor's attributes only where that ancestor marks them
 element is the form itself.
 
 **Fragment templates.** Fragment responses use standalone `.html.j2` files
-(named `*_fragment.html.j2`) that do not extend `base.html.j2`. This avoids
+(named `*_fragment.html.j2`) that do not extend `base.html.j2`;
+`/rate_limits/server` returns its short fragment as inline HTML. This avoids
 the need for block-level partial rendering and keeps fragments self-contained.
 See [Templates](templates.md) for the full catalog.
 
@@ -314,10 +329,10 @@ never on an element inside it: htmx locates out-of-band elements with
 `hx-swap-oob` is silently ignored. htmx strips the wrapper before the swap and
 applies the rows to the live `<tbody>` named by the `id`.
 
-**Polling lifecycle.** A poll runs on a dedicated driver element that carries
-the `hx-trigger="every Ns"` attribute and is never itself the swap target.
-htmx clears a poll interval only when its driver leaves the document, so the
-lifecycle is expressed in the response body:
+**Polling lifecycle.** A poll that ends runs on a dedicated driver element
+that carries the `hx-trigger="every Ns"` attribute and is not its own swap
+target. htmx clears a poll interval only when its driver leaves the document,
+so the lifecycle is expressed in the response body:
 
 - **200** -- swap the response content and keep polling.
 - **204** -- no content; htmx skips the swap and keeps polling.
@@ -327,6 +342,11 @@ lifecycle is expressed in the response body:
 
 The drivers are `#run-tables-poller`, `#live-elo-poller`,
 `#tests-stats-poller`, and `#tests-view-detail-poller`.
+
+Four pollers swap into the element that carries the trigger and poll for the
+life of the page: `#machines` and `#tasks-content` (`innerMorph`; the tasks
+panel renders the periodic trigger only for an unfinished run),
+`#server_rate_limit` and `#pending-users-nav` (`innerHTML`).
 
 The test detail page uses one visibility-aware OOB poller for live summary and
 detail data:
@@ -350,9 +370,8 @@ full run data via `get_run()` and the dedicated tasks poller.
 three-part trigger policy:
 
 1. A periodic trigger gated on `document.visibilityState === 'visible'`,
-   written `every[<condition>] Ns`. htmx reads a `[condition]` filter off the
-   leading trigger token only, so `every Ns [<condition>]` silently drops the
-   condition and polls unconditionally.
+   written `every[<condition>] Ns`, the form htmx parses natively; the
+   templates use no other spelling.
 2. An immediate focus-return trigger using
    `visibilitychange[document.visibilityState === 'visible'] from:document`.
 3. Section-scoped pollers (machines, tasks) additionally gate on the
@@ -368,17 +387,24 @@ designated the **primary** via the `FISHTEST_PRIMARY_PORT` environment variable.
 
 ### Primary responsibilities
 
-- Periodic scheduler (run cleanup, ELO recalculation).
+- Periodic scheduler: buffer flush, cache cleanup, dead-task scavenging,
+  throughput, nps and games-per-minute updates, run and data-structure
+  validation, worker-map cleanup, book updates, and the official master SHA
+  refresh.
 - Aggregated data updates.
-- GitHub API integration.
+- The official master SHA refresh at startup, and the GitHub API cache save at
+  shutdown.
 - Run cache flush and persistent data save on shutdown.
+- The worker API, except `/api/upload_pgn`, and the run actions
+  (`/tests/run`, `modify`, `stop`, `approve`, `purge`, `delete`).
 
 ### Secondary instances
 
-- Serve UI traffic only.
-- Worker API requests return 503 (via `RejectNonPrimaryWorkerApiMiddleware`).
-- nginx routes worker API traffic to the primary; UI traffic is distributed
-  across all instances.
+- Serve UI pages, the read-only `/api/*` endpoints and `/api/upload_pgn`.
+- Worker API requests other than `/api/upload_pgn` return 503 (via
+  `RejectNonPrimaryWorkerApiMiddleware`), and so do the run actions.
+- nginx routes worker API traffic to the primary and PGN uploads to their own
+  instance; the rest is distributed across the instances.
 
 ## Signals
 
@@ -398,10 +424,10 @@ These are not HTTP modules. They encapsulate business logic and MongoDB access.
 | Adapter | Module | Responsibility |
 |---------|--------|----------------|
 | `RunDb` | `rundb.py` | Run lifecycle, task assignment, result aggregation, run cache |
-| `UserDb` | `userdb.py` | User CRUD, password hashing (zxcvbn strength), group membership |
+| `UserDb` | `userdb.py` | User CRUD, authentication, group membership |
 | `ActionDb` | `actiondb.py` | Audit trail for user and system actions |
 | `WorkerDb` | `workerdb.py` | Worker ban list management |
-| `KVStore` | `kvstore.py` | Lightweight key-value pairs in MongoDB |
+| `KeyValueStore` | `kvstore.py` | Lightweight key-value pairs in MongoDB |
 | `Scheduler` | `scheduler.py` | Periodic background tasks on primary instance |
 
 A single `RunDb` instance is created per process at startup and stored on
@@ -432,13 +458,15 @@ No Pydantic models are used anywhere in the codebase.
 ## Framework usage: FastAPI as a thin wrapper
 
 This project uses FastAPI as a thin routing convenience layer on top of
-Starlette. The three FastAPI-exclusive features in use are:
+Starlette. The FastAPI-exclusive features in use are:
 
 1. **`FastAPI()`** -- the application class (inherits `starlette.Starlette`).
 2. **`APIRouter`** -- decorator-style route registration and data-driven
    `add_api_route()`.
 3. **Exception handlers** -- two fallback handlers from
    `fastapi.exception_handlers`.
+4. **`HTTPException` and `RequestValidationError`** -- raised by the API and
+   CSRF code, and handled by `install_error_handlers`.
 
 The following FastAPI features are **not used**:
 
@@ -463,9 +491,10 @@ They route errors differently based on the request path:
 
 | Path prefix | HTTP 404 | HTTP 401/403 | Validation error | Unhandled exception |
 |-------------|----------|--------------|------------------|---------------------|
-| `/api/*` (worker) | JSON `{"error": "...", "duration": N}` | JSON | JSON `{"error": "...", "duration": N}` | JSON `{"error": "...", "duration": N}` |
-| `/api/*` (other) | JSON `{"detail": "Not Found"}` | JSON | JSON | JSON |
-| UI routes | HTML 404 page (Jinja2) | HTML 403 page (Jinja2) | Default | Plain text 500 |
+| `/api/*` (worker) | JSON `{"error": "...", "duration": N}` | JSON | 400 `{"error": "<path>: invalid request", "duration": N}` | 500 `{"error": "<path>: Internal Server Error", "duration": N}` |
+| `/api/*` (other) | the handler's `{"error": "...", "duration": N}`; `{"detail": "Not Found"}` for an unknown path | JSON | 400 `{"detail": "Invalid request", "errors": [...]}` | 500 `{"detail": "Internal Server Error"}` |
+| UI routes | HTML 404 page (Jinja2) | the login page with HTTP 403 and a "Please login" message | FastAPI's 422 JSON | Plain text 500 |
 
-Worker API errors always include a `duration` field to maintain protocol
-compatibility.
+A handler's error dict is returned as the response body, so worker API errors
+carry `duration`. The one exception is shutdown: `ShutdownGuardMiddleware`
+answers every path with an empty 503.

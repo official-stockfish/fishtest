@@ -50,7 +50,8 @@ complete quickly (microseconds to low milliseconds).
 
 Code offloaded to the default anyio threadpool via `run_in_threadpool()`.
 
-- All API endpoint handler bodies (sync functions -> FastAPI auto-offloads).
+- All API endpoint handler bodies (each `async def` route wrapper awaits
+  `run_in_threadpool(api.<method>)`).
 - All UI endpoint handler bodies (via `_dispatch_view` -> `run_in_threadpool`).
 - `RunDb` construction and shutdown (MongoDB connect/close).
 - Scheduler start/stop.
@@ -74,10 +75,13 @@ Async generators that yield chunks, with each chunk read in the threadpool.
 | `create_app()` / `lifespan()` | `[LOOP]` | Orchestrates startup/shutdown |
 | `RunDb(...)` | `[THREAD]` | MongoDB connect via `run_in_threadpool` |
 | `gh.init(...)` | `[THREAD]` | GitHub API setup |
+| `rundb.update_aggregated_data()` | `[THREAD]` | Refreshes cached statistics (primary) |
 | `rundb.schedule_tasks()` | `[THREAD]` | Starts periodic scheduler |
 | `_shutdown_rundb(...)` | `[LOOP]` | Coordinates threadpool shutdown calls |
 | `rundb.scheduler.stop()` | `[THREAD]` | Stops scheduler |
 | `rundb.run_cache.flush_all()` | `[THREAD]` | Flushes dirty pages |
+| `rundb.save_persistent_data()` | `[THREAD]` | Saves persistent data (primary) |
+| `rundb.actiondb.system_event(...)` | `[THREAD]` | Logs the stop event |
 | `rundb.conn.close()` | `[THREAD]` | Closes MongoDB connection |
 
 ### Middleware (`http/middleware.py`, `http/session_middleware.py`)
@@ -106,15 +110,15 @@ Async generators that yield chunks, with each chunk read in the threadpool.
 |-----------|--------|-------|
 | `_dispatch_view()` | `[LOOP]` | Form parsing, CSRF check, then `run_in_threadpool` |
 | All UI view handler bodies (every route except direct `home`) | `[THREAD]` | Via `_dispatch_view` |
-| Template rendering | `[THREAD]` | Inside handler body, `render_template_to_response` |
+| Template rendering | `[THREAD]` | Pages: `_dispatch_view` renders the route's `renderer` in its own `run_in_threadpool` call after the handler returns; fragments: `_render_hx_fragment` renders inside the handler body |
 
-### Error handlers (`http/errors.py`)
+### Error handlers (`http/errors.py`, `http/ui_errors.py`)
 
 | Component | Domain | Notes |
 |-----------|--------|-------|
 | `_http_exception_handler` | `[LOOP]` | Routes to JSON or HTML |
-| `render_notfound_response` | `[THREAD]` | Template rendering for 404 page |
-| `render_forbidden_response` | `[THREAD]` | Template rendering for 403 page |
+| `render_notfound_response` | `[LOOP]` + `[THREAD]` | Session load and context on the loop; the 404 page render offloaded |
+| `render_forbidden_response` | `[LOOP]` + `[THREAD]` | Session load and context on the loop; the login page render offloaded |
 
 ## Event-loop CPU hotspots
 
@@ -123,15 +127,17 @@ in the threadpool. They are acceptable because they process small payloads:
 
 | Hotspot | Location | Payload size |
 |---------|----------|-------------|
-| JSON decode | `await request.json()` in API routes | Typically < 10 KB |
+| JSON decode | `await request.json()` in API routes | Typically < 10 KB; a `/api/upload_pgn` body carries the base64 games of a task |
 | Form parse | `await request.form()` in `_dispatch_view` | Typically < 200 MB max (PGN uploads are API, not UI) |
 | Cookie decode | `itsdangerous.unsign()` in session middleware | < 4 KB (cookie size limit enforced) |
 
 ## Rules for adding new code
 
-1. **New endpoints**: write handler functions as `def` (sync). FastAPI
-   auto-offloads sync handlers to the threadpool. If you write an `async def`
-   handler, you must explicitly offload blocking calls.
+1. **New endpoints**: follow the existing routes. An API route is an
+   `async def` wrapper that builds the request shim and awaits
+   `run_in_threadpool(api.<method>)`; a UI route is a `_VIEW_ROUTES` entry,
+   which `_dispatch_view` runs in the threadpool. Any other blocking call in
+   an `async def` must be offloaded explicitly.
 
 2. **New middleware**: write as pure ASGI (`__call__(self, scope, receive,
    send)`). Never use `BaseHTTPMiddleware` -- it buffers the entire response
@@ -171,6 +177,7 @@ Exact call chain:
 
 ```
 event loop  ->  run_in_threadpool(api.request_task)   [1 AnyIO token]
+  threadpool  ->  validate_request()                  [auth, schema, run lookup]
   threadpool  ->  task_semaphore.acquire(False)       [non-blocking gate]
     threadpool  ->  request_task_lock                 [blocking mutex]
       sync_request_task(...)                          [MongoDB + iteration]
@@ -201,9 +208,10 @@ that *must* proceed promptly:
 | `/api/update_task` | ~7.4 req/s (observed)     | Lost game results -> spurious dead-task scavenges |
 
 The `task_semaphore` gates entry so that at most `TASK_SEMAPHORE_SIZE`
-threads can hold tokens for `request_task` at any time. The next caller
-gets an immediate "server busy" response (zero token impact) and retries
-after a short backoff -- harmless because `task_duration` is 30 minutes.
+threads can wait on the lock at any time. The next caller, after its request
+is validated, gets an immediate `{"task_waiting": false, "info": "...too
+busy..."}` without waiting on the lock, and retries after a short backoff --
+harmless because `task_duration` is 30 minutes.
 
 ### Why `TASK_SEMAPHORE_SIZE = 5` when `THREADPOOL_TOKENS = 200`
 
@@ -256,6 +264,5 @@ for beat/update_task.
 ### Where the constants live
 
 Both `THREADPOOL_TOKENS` and `TASK_SEMAPHORE_SIZE` are defined in
-`fishtest/http/settings.py` -- a dependency-free module that neither
-`app.py` nor `rundb.py` imports from each other, avoiding circular
-imports.
+`fishtest/http/settings.py`, which imports only the standard library, so
+`app.py` and `rundb.py` both import it without an import cycle.

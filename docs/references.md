@@ -36,8 +36,8 @@ from .views import router as views_router
 # openapi_url is read from OPENAPI_URL env var; defaults to None (disabled
 # in production, enables full interactive docs when set in development).
 app = FastAPI(lifespan=lifespan, openapi_url=openapi_url)
-app.include_router(api_router)
 app.include_router(views_router)
+app.include_router(api_router)
 ```
 
 **No dependency injection**: fishtest does not use FastAPI's `Depends()` /
@@ -65,9 +65,12 @@ errors return JSON with `{"error": "...", "duration": N}`.
 `run_in_threadpool` by Starlette/FastAPI. Most fishtest handlers use
 `async def` with explicit `run_in_threadpool` calls for blocking DB work.
 
-**Testing**: tests build the real application with its full middleware stack
-and exercise it against a dedicated `fishtest_tests` MongoDB. Because the app
-uses no FastAPI dependencies, there are no `app.dependency_overrides`.
+**Testing**: HTTP tests build their application with `build_test_app()`, a
+`FastAPI()` wired like production without the lifespan, the
+`RejectNonPrimaryWorkerApiMiddleware` and the `/static` mount, around a
+`RunDb` on the test MongoDB database. `test_app.py` builds the production
+application with `create_app()` around a stub `RunDb`. Because the app uses
+no FastAPI dependencies, there are no `app.dependency_overrides`.
 
 ## Starlette
 
@@ -131,8 +134,9 @@ post = await request.form(
 )
 ```
 
-**URL generation**: `request.url_for("route_name", **path_params)` -- all
-routes used by templates must have explicit `name=` parameters.
+**URL generation**: templates write route paths literally and build static
+asset URLs with `static_url`; no route carries a `name=`, and no code calls
+`url_for`.
 
 **Response classes**:
 - `HTMLResponse` for UI endpoints
@@ -156,45 +160,47 @@ blocking DB and filesystem work off the event loop via `run_in_threadpool`.
 
 ### Project patterns
 
-**Environment setup**: A single `jinja2.Environment` instance is created at
-import time with `select_autoescape(["html", "xml", "j2"])`. Custom globals
-and filters are registered before any template renders.
+**Environment setup**: one `jinja2.Environment`, built on the first render
+(`_jinja_templates()` in `template_renderer.py` is cached), with
+`select_autoescape(["html", "xml", "j2"])`, `StrictUndefined` and the
+`jinja2.ext.do` extension. The globals and filters are registered as the
+environment is built.
 
-**Template rendering**: Synchronous, always off the event loop.
+**Template rendering**: synchronous, always off the event loop. A view in the
+`_VIEW_ROUTES` table is registered with `add_api_route`, and its handler
+returns the context; `_dispatch_view` then renders the template in the
+threadpool:
 
 ```python
-from starlette.templating import Jinja2Templates
-
-templates = Jinja2Templates(env=default_environment())  # custom Environment
-
-@router.get("/page")
-async def page(request: Request):
-    return templates.TemplateResponse(
-        request=request,
-        name="page.html",
-        context={"title": "Page"},
-    )
+response = await run_in_threadpool(
+    render_template_to_response,
+    request=request,
+    template_name=renderer,
+    context=context,
+)
 ```
 
 **Key rules**:
-- `Jinja2Templates.TemplateResponse()` injects `request` into the context if it
-    is missing, but repository code still passes it explicitly and relies on it
-    being present for `url_for` and shared context builders.
+- `render_template_response()` raises `ValueError` when the context has no
+    `request`, so every render passes it explicitly.
 - `Jinja2Templates` accepts `directory=` or `env=`, not both.
 - `TemplateResponse` exposes `.template` and `.context` for test assertions.
-- Context processors must be sync functions.
 - JS data is passed via `{{ value|tojson }}`.
 
 **Registered globals** (repository-specific):
 
 | Global | Source |
 |--------|--------|
-| `url_for` | Injected by Starlette |
+| `url_for` | Injected by Starlette; unused |
 | `static_url` | `server/fishtest/http/jinja.py` |
-| `poll` | `server/fishtest/http/jinja.py` |
+| `poll`, `finished`, `cookies` | UI settings, `server/fishtest/http/jinja.py` |
 | `htmx.input_changed_delay_ms` | `server/fishtest/http/jinja.py` |
 | Formatting helpers | `server/fishtest/http/template_helpers.py` |
+| `get_tc_ratio` | `server/fishtest/util.py` |
 | `gh`, `fishtest` | registered in `server/fishtest/http/jinja.py` |
+| `copy`, `datetime`, `math`, `float`, `urllib` | Python modules and builtins |
+
+Filters beside Jinja2's own: `urlencode`, `split` and `string`.
 
 **Autoescaping**: Enabled for `.html`, `.xml`, `.j2` extensions. Raw HTML
 must use `{{ value|safe }}` or `{% autoescape false %}`.
@@ -386,8 +392,9 @@ Fragment templates are standalone `.html.j2` files that do not extend
 fragments self-contained.
 
 **Content fragments for stateful tables**: stateful list pages do not return only
-row fragments. They return content fragments (`contributors_content_fragment`,
-`user_management_content_fragment`, `workers_content_fragment`) so that view
+row fragments. They return content fragments (for example
+`contributors_content_fragment`, `user_management_content_fragment`,
+`workers_content_fragment`, `actions_content_fragment`) so that view
 toggles, truncation banners, pagination, and sort state remain synchronized
 with the table body.
 
@@ -433,9 +440,8 @@ Only wrap what the parser requires. A `<div>` or `<span>` target needs no
 `<template>`.
 
 **Polling lifecycle**: htmx clears a poll interval only when the element
-carrying `hx-trigger="every Ns"` leaves the document. Put the trigger on a
-dedicated driver element that is never the swap target, and end the poll from
-the response body:
+carrying `hx-trigger="every Ns"` leaves the document. A poll ends from the
+response body, by removing that element:
 
 - **200** -- swap the response content, continue polling.
 - **204** -- no content change; htmx skips the swap, continues polling.
@@ -481,16 +487,14 @@ itself, with the interval after it:
 </div>
 ```
 
-The token order matters and the failure is silent. htmx splits a trigger into
-one leading token plus modifiers, and reads a `[condition]` filter off the
-leading token only (`#parseTriggerSpecs` then `#extractFilter`). Written the
-other way round, `every 30s [document.visibilityState === 'visible']` parses as
-the bare event `every`: the interval is still read out of the modifier bag, so
-the poll works, but the condition is swallowed as junk keys and never
-evaluated. The poll then runs in hidden tabs and behind collapsed panels, with
-nothing in the console to say so.
+htmx splits a trigger into one leading token plus modifiers, and reads a
+`[condition]` filter off the leading token (`#parseTriggerSpecs` then
+`#extractFilter`). `every[<condition>] Ns` is that form; htmx also rewrites
+`every Ns [<condition>]` into it before parsing. The templates write
+the condition on the `every` token only.
 `test_poll_conditions_are_attached_to_the_every_token` in
-`test_http_boundary.py` guards the whole template tree against that form.
+`test_http_boundary.py` guards the whole template tree against the other
+spellings.
 
 Treat the transition to `hidden` as the point to stop background UI updates.
 
@@ -513,7 +517,7 @@ section expanded state in a single filter expression:
 ```html
 <div hx-get="/endpoint"
      hx-trigger="every[document.visibilityState === 'visible'
-                 && document.getElementById('section').classList.contains('show')] 120s,
+                 && document.getElementById('section').classList.contains('show')] 60s,
                  visibilitychange[document.visibilityState === 'visible'
                  && document.getElementById('section').classList.contains('show')] from:document"
      hx-swap="innerMorph">
@@ -538,9 +542,14 @@ prevent XSS from error messages and to keep htmx attributes functional
 | Python 3.15 docs | https://docs.python.org/3.15/ |
 | MongoDB manual | https://www.mongodb.com/docs/manual/ |
 | PyMongo | https://www.mongodb.com/docs/languages/python/pymongo-driver/current/ |
+| Uvicorn | https://uvicorn.dev/ |
+| vtjson | https://github.com/vdbergh/vtjson |
+| uv | https://docs.astral.sh/uv/ |
 | Ruff | https://docs.astral.sh/ruff/ |
 | ty | https://docs.astral.sh/ty/ |
-| mypy | https://mypy.readthedocs.io/en/stable/ |
+| pre-commit | https://pre-commit.com/ |
+| Prettier | https://prettier.io/docs/ |
+| zizmor | https://docs.zizmor.sh/ |
 | nginx | https://nginx.org/en/docs/ |
 
 Use [Development](development.md) for local lint and test workflows.
@@ -549,10 +558,12 @@ Use [Development](development.md) for local lint and test workflows.
 
 | Tool | Path | Purpose |
 |------|------|---------|
-| Repository dev tools | `pyproject.toml` | Shared repo tooling configuration |
-| Server Python project | `server/pyproject.toml` | Server dependency and tool configuration |
-| Worker Python project | `worker/pyproject.toml` | Worker dependency configuration |
+| Repository dev tools | `pyproject.toml`, `uv.lock` | Shared repo tooling configuration |
+| Server Python project | `server/pyproject.toml`, `server/uv.lock` | Server dependency and tool configuration |
+| Worker Python project | `worker/pyproject.toml`, `worker/uv.lock` | Worker dependency configuration |
 | Server test package | `server/tests/` | Unit and HTTP contract tests |
+| Pre-commit hooks | `.pre-commit-config.yaml` | Checks run on every commit |
+| CI workflows | `.github/workflows/*.yaml` | Lint, server and worker tests |
 
 ## Testing patterns
 
@@ -568,12 +579,16 @@ one focused UI motif instead of accumulating in one omnibus module.
 Most test files import `test_support`, which provides:
 
 - `get_rundb()`: returns a `RunDb` connected to the test MongoDB instance.
-- `build_test_app(...)`: constructs a FastAPI `TestApplication` with selectable
+- `build_test_app(...)`: constructs a `FastAPI()` application with selectable
   API and views routers.
 - `make_test_client(...)`: wraps `build_test_app` in a Starlette `TestClient`.
 - `cleanup_test_rundb(...)`: drops test collections after a test class runs.
 - `find_run(...)`: retrieves a run from the database by field match.
 - `extract_csrf_token(html)`: parses a CSRF token from rendered HTML.
+- `extract_meta_content(html, ...)`: reads a `<meta>` tag's content from
+  rendered HTML.
+- `require_fastapi()`: imports FastAPI and the test client, skipping the test
+  when the server dependencies are missing.
 
 User-facing UI route modules also reuse `ui_user_test_case.py` for shared
 client setup, login helpers, run creation, and DB cleanup.
@@ -607,3 +622,12 @@ validation fails.
 | `test_http_settings.py` | Runtime settings and environment parsing |
 | `test_http_ui_session_semantics.py` | Session commit and UI CSRF semantics |
 | `test_nn.py` | Neural network upload and listing |
+| `test_rundb.py` | `RunDb` persistence and run lifecycle |
+| `test_kvstore.py` | Key-value store behavior |
+| `test_lru_cache.py` | LRU cache storage, eviction, and decorator behavior |
+| `test_github_api.py` | GitHub API helpers |
+| `test_delta_update_users.py` | Monthly contributor stats rebuild helpers |
+| `test_http_open_graph.py` | Open Graph metadata helpers |
+| `test_http_ui_cookies.py` | Browser-readable UI cookie helpers |
+| `test_views_routes.py` | UI route HTTP method contracts |
+| `test_views_stats.py` | `/tests/stats` page and fragment contracts |
